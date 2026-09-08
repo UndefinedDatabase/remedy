@@ -11344,3 +11344,105 @@ HOW TO REVERSE. Delete this paragraph and restore, from git history at `64346333
 `packages/orchestration/worker_recommend.py`'s three consumer edges, the `worker_recommendation`
 dashboard section with its two pins, and the three removed keys of `token_policy_applied` in
 `packages/orchestration/event_schemas.py`.
+
+## DECISION F274 D8 — F274 CLOSES AT THE EDGE WORK IT BUILT, and the cluster deletion, the atomic record flip and the classic runner move to a follow-up feature registered directly after it (2026-09-08)
+
+Date: 2026-09-08. Feature F274, round 16, session 7. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7 and EXECUTED on the session's own authority under
+operator amendment amend0905-throughput; the operator's veto is any later session.
+
+WHY THIS RULING HAPPENS NOW RATHER THAN LATER. F274 stands at 15 delegated rounds and this is its
+SEVENTH session, so the SESSION half of the soft limit binds first and the ROUND half does not bind
+at all. `docs/roadmap/features/T2_F274.md` rules the applicable limit explicitly in its Orchestrator
+brief — "This feature's soft limit is the standing 7 sessions and 25 rounds: amend0906 granted
+12-and-40 to F272 BY NAME, on a measurement of F272's scope, and such a grant does not travel with a
+split" — so the wider budget F272 ran under is not available here and no reading of amend0906 makes
+it so. Operator amendment amend0827-process-diet rule 6 makes the obligation at the limit a SCOPE
+REPORT rather than more work, and amend0905-throughput makes the standing default at that point
+SPLIT-AND-CLOSE, EXECUTED BY THE SESSION rather than proposed and waited on. Rowing on quietly is a
+protocol violation; so is stopping to ask a question the default already answers.
+
+THE SCOPE REPORT, PART ONE — WHAT F274 ACTUALLY BUILT. Measured by the reviewer at `2cc1211f`, this
+round's base, over the range from the branch's fork point
+`13dfaabd93d7b6452a1d23ca698e29ed47ecf035`, which is 130
+commits, and 46 files under `packages/`, `apps/`, `tests/`, `scripts/` and `docs/` at 1269
+insertions against 1340 deletions — a feature that removed more than it added, which is what a
+deletion feature should read like.
+
+- THE DELETION MAP AS A LIVE RATCHET. `tests/orchestration/cluster_deletion_map.txt` records one
+  surviving consumer edge per line, is GENERATED from the live import graph rather than typed, and
+  is held against that graph in BOTH directions by `tests/orchestration/test_cluster_deletion_map.py`
+  — so a re-inserted edge reddens a test instead of passing unnoticed. Neither file existed before
+  this feature. Finding R-0830 is why the deletion is bounded by edges rather than by F260's module
+  list at all.
+- THE IMPORT-REACHABILITY RATCHET that T003's deletion runs behind:
+  `tests/orchestration/test_import_reachability.py` with its 326-line allowlist, ruled a RATCHET
+  rather than a one-shot gate by DECISION F274 D1.
+- THE EDGE WORK ITSELF. The map today records TWENTY surviving consumer edges across ELEVEN of the
+  twenty-four cluster modules, leaving THIRTEEN with no edge at all, and
+  `packages.orchestration.worker_recommend` is one of the thirteen and is deletable now. At the
+  map's creation commit `0d6da86f` it recorded 42 edges across 22 modules; those two readings are
+  NOT a clean before-and-after, because R-0834's fix widened the walker to non-Python files in
+  between, so the honest claim is the direction and the current absolute figure, never their
+  difference.
+- THE COCKPIT AND COMMAND-LAYER CUTS. `packages/orchestration/ui_server.py` lost 458 lines and
+  gained none; the `feature` command group was deleted whole at 101 lines; and
+  `apps/cli/commands/context.py` and `apps/cli/commands/worker.py` were cut into the per-command
+  modules their surviving halves needed.
+- SEVEN DATED RULINGS, DECISION F274 D1 through D7, each naming what dies, what inherits its idea
+  and how to reverse it — the replace-is-delete discipline AGENTS.md Scope Control requires, applied
+  ruling by ruling rather than assembled at the end.
+- THE FINDINGS. Seven were registered by this feature, R-0830 through R-0836; four are resolved,
+  R-0833, R-0834, R-0835 and R-0836; three stand open as documented risks, R-0830, R-0831 and
+  R-0832. The High findings still open on the record are R-0803, R-0804, R-0806 and R-0807, and
+  every one of them is F273's rather than this feature's, per DECISION F272 D12.
+
+THE SCOPE REPORT, PART TWO — WHAT IS MISSING, measured at the same commit. Twenty consumer edges
+survive across eleven cluster modules: `orchestrator_brain.py` and `apps/cli/commands/
+worker_facade_cmd.py` carry four each, `ui_server.py` three, `token_economy.py`, `self_dogfood.py`
+and `self_dogfood_execution.py` two each, and `provider_patch_material.py`, `real_test_execution.py`
+and `repair_request_builder.py` one each; on the other side `packages.orchestration.provider_trust`
+alone is the target of seven of the twenty and is the single biggest blocker. The two carry-overs
+F260's Design section names have not begun, DECISION F260 D3 is undrafted, and T001 and T002 have
+not begun at all. `.agent/plan.md` carried five open steps into this round, read at `2cc1211f`.
+
+CHOSEN: SPLIT AT THE T-SLICE SEAM THE FEATURE FILE ALREADY NAMES. F274 closes at what it built — the
+map, the reachability ratchet, D1 through D7, the cockpit and command-layer edge cuts and the
+`worker_recommend` retirement — and a follow-up feature inherits the remaining edges, the two
+carry-overs, DECISION F260 D3, the deletion itself, T001 and T002. Three mechanical obligations come
+with that and are executed in the registration round, not left as intentions. The follow-up's STATUS
+line is placed IMMEDIATELY after F274's inside the SAME Tier 2 heading, per operator amendment
+amend0906-split-placement, so Rule A5 proposes it before any other unchecked feature. Every OPEN
+feature file naming F274 in its `Depends on` line gains the follow-up there in the same commit. And
+the registration is ONE commit carrying the STATUS line, the feature file, the `TOTAL_FEATURES` pin
+in `tests/docs/test_docs_consistency.py` and the README counters together, because splitting it
+leaves an intermediate state in which `tests/docs/` is red.
+
+WHY THIS CLOSE IS SELF-CONSISTENT AND NOT A HALF-PERFORMED ONE. The single state this work must not
+leave behind is a partly-deleted cluster, and there is none: no cluster module has been removed, the
+map is a complete generated work list rather than a partial one, and every edge cut so far landed
+with its own tests and its own dated ruling. What F274 hands over is a SMALLER problem described by
+a machine-checked file, not a broken one — which is exactly the condition amend0905-throughput
+attaches to the split-and-close default.
+
+ALTERNATIVES CONSIDERED AND REJECTED. (a) RUN ON PAST THE LIMIT and finish T003 — rejected because
+amend0827 rule 6 names continuing quietly past the limit a protocol violation in as many words, and
+because T003 does not fit: twenty edges across nine consumer files, four of them the Orchestrator
+brain's live signal reads, is not one session's work at this feature's measured rate of three to
+five rounds per session. (b) START T003 NOW AND SPLIT INSIDE IT — rejected outright; the feature
+file's Orchestrator brief states that a session which cannot finish T003 does not start it, and a
+half-performed deletion is the one state that brief forbids by name. (c) HARD STOP WITH AN OPERATOR
+QUESTION — rejected because amend0905-throughput reserves that for the case where NO self-consistent
+close is possible, and one is, as the paragraph above measures. (d) CLOSE F274 WITH NO FOLLOW-UP and
+let the remaining scope be absorbed by F271, "no more legacy" — rejected because the deletion is
+bounded by a generated map this feature owns and by DECISION F260 D3, which is owed by the deletion
+round and by nothing else; routing a specific owed ruling into a feature with a different Goal is
+how such a ruling gets lost, which is the failure DECISION F272 D16 was written to avoid one split
+earlier.
+
+HOW TO REVERSE. Delete this paragraph; revert the single registration commit that adds the follow-up
+feature's STATUS line, its feature file, the `TOTAL_FEATURES` pin, the README counters and the
+`Depends on` edits; restore F274's STATUS marker from `[x]` to `[~]` with the README counters that
+go with it; and resume at `.agent/plan.md`'s step list as this round found it. Nothing under
+`packages/`, `apps/` or `tests/` changes behaviour by this ruling, so the reversal is a
+documentation revert and carries no product risk.
