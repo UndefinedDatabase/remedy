@@ -593,86 +593,6 @@ def _build_snapshot_rollback_section(job: Any) -> dict[str, Any]:
                 "next_safe_action": "", "live": False, "source": "unavailable"}
 
 
-def _build_main_builder_adapter_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Main Builder Adapter v0 cockpit summary (Step 1993). Counts/status + next safe
-    action only; no mutation buttons; no fake live builder; no raw/private data."""
-    try:
-        from packages.orchestration.main_builder_adapter import (
-            list_builder_adapter_specs,
-            list_builder_sessions,
-        )
-        specs = list_builder_adapter_specs()
-        sessions = list_builder_sessions(str(job.id))
-        enabled = sum(1 for s in specs if s.get("enabled", False))
-        latest = sessions[-1] if sessions else {}
-        blocked = sum(1 for s in sessions if s.get("status") == "blocked")
-        pkg_ready = sum(1 for s in sessions if s.get("status") in ("package_ready", "waiting_for_operator"))
-        candidate = sum(1 for s in sessions if s.get("status") == "candidate_received")
-        intake = sum(1 for s in sessions if s.get("status") == "completed_intake_only")
-        running = sum(1 for s in sessions if s.get("status") == "running")
-        return {
-            "enabled_adapter_count": enabled,
-            "latest_session_status": latest.get("status", "none"),
-            "latest_adapter_kind": latest.get("adapter_id", ""),
-            "package_ready_count": pkg_ready,
-            "blocked_session_count": blocked,
-            "candidate_intake_status": "candidate_received" if candidate else (
-                "intake_complete" if intake else "none"),
-            "token_warning": "",
-            "next_safe_action": latest.get("next_safe_action", ""),
-            "live": bool(running),
-            "source": "main_builder_adapter",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"enabled_adapter_count": 0, "latest_session_status": "none",
-                "blocked_session_count": 0, "next_safe_action": "", "live": False,
-                "source": "unavailable"}
-
-
-def _build_managed_execution_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Managed Builder Execution v1.1 cockpit summary. Counts/status/approval state +
-    next safe action only; no mutation buttons; no raw output; no fake live execution."""
-    try:
-        from packages.orchestration.managed_builder_execution import (
-            list_command_templates,
-            list_execution_approvals,
-            list_execution_results,
-        )
-        templates = list_command_templates()
-        results = list_execution_results(str(job.id))
-        approvals = list_execution_approvals()
-        enabled = sum(1 for t in templates if t.get("enabled", False))
-        latest = results[-1] if results else {}
-        running = sum(1 for r in results if r.get("status") == "running")
-        completed = sum(1 for r in results if r.get("status") == "completed")
-        failed = sum(1 for r in results if r.get("status") == "failed")
-        blocked = sum(1 for r in results if r.get("status") in ("blocked", "approval_required"))
-        # v1.1: approval state.
-        active_approvals = 0
-        for a in approvals:
-            max_runs = int(a.get("max_runs", 0))
-            used = int(a.get("used_count", 0))
-            if max_runs <= 0 or used < max_runs:
-                active_approvals += 1
-        return {
-            "enabled_template_count": enabled,
-            "execution_count": len(results),
-            "completed_count": completed,
-            "failed_count": failed,
-            "blocked_count": blocked,
-            "approval_count": len(approvals),
-            "active_approval_count": active_approvals,
-            "latest_status": latest.get("status", "none"),
-            "next_safe_action": latest.get("next_safe_action", ""),
-            "live": bool(running),
-            "source": "managed_builder_execution",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"enabled_template_count": 0, "execution_count": 0,
-                "latest_status": "none", "next_safe_action": "", "live": False,
-                "source": "unavailable"}
-
-
 def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
     """Safe snapshot/apply-record summary from the authoritative builder.
 
@@ -841,85 +761,6 @@ def _build_overnight_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
         return unknown
 
 
-def _build_overnight_run_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
-    """Safe read-only Bounded Overnight Executor run summary for the cockpit (Step
-    1292).
-
-    Latest run status + stop reason + selected-action label + checkpoint count +
-    morning-report availability. Read-only: no buttons, no mutation, no fabricated
-    running state. "none"/"unknown" when no run or the data root is unavailable.
-    """
-    unknown = {"run_count": "unknown", "latest_status": "unknown",
-               "selected_action": "", "executed_action": "", "stop_reason": "",
-               "checkpoint_count": "unknown", "report_available": "unknown",
-               "source": "unavailable"}
-    if data_dir is None:
-        return unknown
-    try:
-        from packages.orchestration.overnight_executor import (
-            latest_run_record,
-            list_run_records,
-        )
-        records = list_run_records(str(job.id), data_dir)
-        latest = latest_run_record(str(job.id), data_dir)
-        if not latest:
-            return {"run_count": 0, "latest_status": "none", "selected_action": "",
-                    "executed_action": "", "stop_reason": "", "checkpoint_count": 0,
-                    "report_available": False, "source": "overnight_executor"}
-        return {
-            "run_count": len(records),
-            "latest_status": latest.get("stop_reason", ""),
-            "mode": latest.get("mode", ""),
-            "selected_action": (latest.get("selected_action") or {}).get("kind", ""),
-            "executed_action": (latest.get("executed_action") or {}).get("kind", ""),
-            "stop_reason": latest.get("stop_reason", ""),
-            "evidence_status": latest.get("evidence_status", ""),
-            "checkpoint_count": len(latest.get("checkpoints", [])),
-            "report_available": bool(latest.get("run_id")),
-            "source": "overnight_executor",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return unknown
-
-
-def _build_provider_trust_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Provider Trust Gate summary for the cockpit (Step 1325).
-
-    Counts only (reports / accepted / rejected / needs_review / pending intents).
-    No buttons, no provider execution, no mutation, no raw output."""
-    try:
-        from packages.orchestration.provider_trust import load_trust_reports
-        reports = list(load_trust_reports(job).values())
-        accepted = sum(1 for r in reports if r.get("trust_status") == "accepted")
-        rejected = sum(1 for r in reports if r.get("trust_status") == "rejected")
-        needs = sum(1 for r in reports if r.get("trust_status") == "needs_human_review")
-        pending = sum(1 for r in reports
-                      if r.get("trust_status") == "accepted" and r.get("repair_intent_id"))
-        materialized = failed = 0
-        try:
-            from packages.orchestration.provider_patch_material import load_materials
-            mats = list(load_materials(job).values())
-            materialized = sum(1 for m in mats if m.get("material_state") == "materialized")
-            failed = sum(1 for m in mats if m.get("material_state") == "materialization_failed")
-        except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-            materialized = failed = 0
-        return {
-            "report_count": len(reports),
-            "accepted": accepted,
-            "rejected": rejected,
-            "needs_review": needs,
-            "pending_provider_repair_approval": pending,
-            "materialized_count": materialized,
-            "materialization_failed_count": failed,
-            "source": "provider_trust",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"report_count": "unknown", "accepted": "unknown", "rejected": "unknown",
-                "needs_review": "unknown", "pending_provider_repair_approval": "unknown",
-                "materialized_count": "unknown", "materialization_failed_count": "unknown",
-                "source": "unavailable"}
-
-
 def _build_token_economy_section(job: Any) -> dict[str, Any]:
     """Safe read-only Token Economy + Context Budget v0 summary for the cockpit (Step 1770).
 
@@ -1028,38 +869,6 @@ def _build_builder_routing_section(job: Any) -> dict[str, Any]:
                 "next_safe_action_label": "", "source": "unavailable"}
 
 
-def _build_provider_verification_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Provider Trust Verification v1 summary for the cockpit (Step 1559).
-
-    Counts + latest status only. No buttons, no mutation, no provider execution, no raw."""
-    try:
-        from packages.orchestration.provider_trust_verification import load_verification_reports
-        reports = list(load_verification_reports(job).values())
-        passed = sum(1 for r in reports if r.get("decision") == "verification_passed")
-        needs = sum(1 for r in reports if r.get("decision") == "needs_human_review")
-        rejected = sum(1 for r in reports if r.get("decision") == "verification_rejected")
-        incomplete = sum(1 for r in reports if r.get("decision") == "verification_incomplete")
-        pending = sum(1 for r in reports
-                      if r.get("decision") == "verification_passed" and r.get("allowed_to_create_intent"))
-        latest = reports[-1] if reports else None
-        return {
-            "verification_count": len(reports),
-            "passed": passed,
-            "needs_review": needs,
-            "rejected": rejected,
-            "incomplete": incomplete,
-            "pending_approval_after_verification": pending,
-            "latest_status": (latest or {}).get("verification_status", ""),
-            "latest_decision": (latest or {}).get("decision", ""),
-            "source": "provider_verification",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"verification_count": "unknown", "passed": "unknown", "needs_review": "unknown",
-                "rejected": "unknown", "incomplete": "unknown",
-                "pending_approval_after_verification": "unknown", "latest_status": "",
-                "latest_decision": "", "source": "unavailable"}
-
-
 def _build_repair_request_section(job: Any) -> dict[str, Any]:
     """Safe read-only Repair Request Builder summary for the cockpit (Step 1381).
 
@@ -1156,33 +965,6 @@ def _build_orchestrator_section(job: Any) -> dict[str, Any]:
         return {"decision_count": "unknown", "latest_stop_reason": "unknown", "confidence": "unknown",
                 "next_safe_action": "", "loop_guard_status": "unknown",
                 "model_routing_tier": "unknown", "source": "unavailable"}
-
-
-def _build_local_advisor_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Local Model Advisor summary for the cockpit (Step 1520). Latest
-    advisor critique + counts only. No buttons, no mutation, no raw prompt/response."""
-    try:
-        from packages.orchestration.local_model_advisor import list_local_advisor_runs
-        from packages.orchestration.orchestrator_brain import list_decisions
-        scope = f"job:{job.id}"
-        runs = [r for r in list_local_advisor_runs() if r.get("scope") == scope]
-        decisions = list_decisions(scope)
-        adv = ((decisions[-1].get("advisor") if decisions else None) or {}) if decisions else {}
-        latest = runs[-1] if runs else {}
-        return {
-            "run_count": len(runs),
-            "enabled": bool(adv.get("enabled", False)),
-            "available": bool(adv.get("available", False)),
-            "latest_status": latest.get("status", "none"),
-            "latest_decision_impact": adv.get("decision_impact", latest.get("decision_impact", "")),
-            "concern_count": len(adv.get("suggested_concerns", []) or []),
-            "model_routing_tier": ((decisions[-1].get("model_routing_plan") or {}).get("tier", "")
-                                   if decisions else ""),
-            "source": "local_model_advisor",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"run_count": "unknown", "enabled": "unknown", "available": "unknown",
-                "latest_status": "unknown", "source": "unavailable"}
 
 
 _PROMPT_TRACE_PREVIEW_MAX = 1200
@@ -1737,21 +1519,15 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "continuation": _build_continuation_section(job, events, truth_data_dir),
         "repair": _build_repair_section(job),
         "overnight": _build_overnight_section(job, truth_data_dir),
-        "overnight_run": _build_overnight_run_section(job, truth_data_dir),
-        "provider_trust": _build_provider_trust_section(job),
-        "provider_verification": _build_provider_verification_section(job),
         "builder_routing": _build_builder_routing_section(job),
         "worker_registry": _build_worker_registry_section(job),
         "token_economy": _build_token_economy_section(job),
         "test_execution": _build_test_execution_section(job),
         "snapshot_rollback": _build_snapshot_rollback_section(job),
-        "main_builder_adapter": _build_main_builder_adapter_section(job),
-        "managed_execution": _build_managed_execution_section(job),
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
         "orchestrator": _build_orchestrator_section(job),
-        "local_advisor": _build_local_advisor_section(job),
         "token_usage": _build_token_usage(events),
         "budget_final": _build_budget_final(events),
         "tasks": task_items,

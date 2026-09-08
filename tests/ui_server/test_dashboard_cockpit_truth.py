@@ -284,32 +284,6 @@ class TestDashboardShape:
         # No fabricated "ready" overnight state without evidence/policy.
         assert ov["can_run_unattended"] in (False, "unknown")
 
-    def test_provider_trust_section_present(self):
-        # Read-only Provider Trust Gate summary (Step 1325).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "provider_trust" in dash
-        pt = dash["provider_trust"]
-        assert "report_count" in pt
-        assert "rejected" in pt
-        assert "pending_provider_repair_approval" in pt
-        assert "materialized_count" in pt
-        assert "materialization_failed_count" in pt
-
-    def test_provider_verification_section_present(self):
-        # Read-only Provider Trust Verification v1 summary (Step 1559).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "provider_verification" in dash
-        pv = dash["provider_verification"]
-        assert "verification_count" in pv
-        assert "passed" in pv
-        assert "needs_review" in pv
-        assert "rejected" in pv
-        assert "pending_approval_after_verification" in pv
-        # No buttons / mutation surface.
-        assert "buttons" not in pv and "actions" not in pv
-
     def test_builder_routing_section_present(self):
         # Read-only Expensive Builder Routing v0 summary (Step 1595).
         job = Job(name="t")
@@ -374,31 +348,6 @@ class TestDashboardShape:
         assert "decision_count" in ob
         assert "latest_stop_reason" in ob
         assert "model_routing_tier" in ob
-
-    def test_local_advisor_section_present(self):
-        # Read-only Local Model Advisor summary (Step 1520).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "local_advisor" in dash
-        la = dash["local_advisor"]
-        assert "run_count" in la
-        assert "enabled" in la
-        assert "available" in la
-        assert "latest_status" in la
-        # No fabricated availability without a real local advisor run.
-        assert la["available"] in (False, "unknown")
-
-    def test_overnight_run_section_present(self):
-        # Read-only Bounded Overnight Executor run summary (Step 1292).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "overnight_run" in dash
-        ovr = dash["overnight_run"]
-        assert "latest_status" in ovr
-        assert "stop_reason" in ovr
-        assert "checkpoint_count" in ovr
-        # No fabricated running state without a durable run record.
-        assert ovr.get("executed_action", "") in ("", "none")
 
     def test_unknown_when_data_dir_unavailable(self, monkeypatch):
         monkeypatch.setattr(ui_server, "_resolve_dashboard_data_dir", lambda: None)

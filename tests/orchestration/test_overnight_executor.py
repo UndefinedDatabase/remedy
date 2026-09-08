@@ -360,7 +360,6 @@ class TestRedaction:
             extract_overnight_run_items,
         )
         from packages.orchestration.review_bundle import _build_overnight_run_summary
-        from packages.orchestration.ui_server import _build_overnight_run_section
         rec = OX.load_run_record(str(job.id), r.run_id, env)
         items = extract_overnight_run_items(rec)
         blobs = [
@@ -369,7 +368,6 @@ class TestRedaction:
             OX.render_overnight_run_report_markdown(r),
             json.dumps([{"id": i.item_id, "s": i.safe_summary} for i in items]),
             json.dumps(_build_overnight_run_summary(job, env)),
-            json.dumps(_build_overnight_run_section(job, env)),
         ]
         for b in blobs:
             assert "/home/" not in b

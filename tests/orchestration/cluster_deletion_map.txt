@@ -18,15 +18,11 @@ packages.orchestration.dogfood_run <- apps/cli/commands/worker_facade_cmd.py
 packages.orchestration.execution_approval_policy <- apps/cli/commands/worker_facade_cmd.py
 packages.orchestration.feature_planner <- apps/cli/commands/feature_cmd.py
 packages.orchestration.local_model_advisor <- packages/orchestration/orchestrator_brain.py
-packages.orchestration.local_model_advisor <- packages/orchestration/ui_server.py
 packages.orchestration.main_builder_adapter <- apps/cli/commands/worker_facade_cmd.py
-packages.orchestration.main_builder_adapter <- packages/orchestration/ui_server.py
 packages.orchestration.managed_builder_execution <- apps/cli/commands/worker_facade_cmd.py
-packages.orchestration.managed_builder_execution <- packages/orchestration/ui_server.py
 packages.orchestration.overnight_executor <- packages/orchestration/orchestrator_brain.py
 packages.orchestration.overnight_executor <- packages/orchestration/self_dogfood.py
 packages.orchestration.overnight_executor <- packages/orchestration/self_dogfood_execution.py
-packages.orchestration.overnight_executor <- packages/orchestration/ui_server.py
 packages.orchestration.overnight_readiness <- packages/orchestration/ui_server.py
 packages.orchestration.progress_ledger <- apps/cli/commands/feature_cmd.py
 packages.orchestration.provider_trust <- packages/orchestration/orchestrator_brain.py
@@ -36,9 +32,7 @@ packages.orchestration.provider_trust <- packages/orchestration/repair_request_b
 packages.orchestration.provider_trust <- packages/orchestration/self_dogfood.py
 packages.orchestration.provider_trust <- packages/orchestration/self_dogfood_execution.py
 packages.orchestration.provider_trust <- packages/orchestration/token_economy.py
-packages.orchestration.provider_trust <- packages/orchestration/ui_server.py
 packages.orchestration.provider_trust_verification <- packages/orchestration/orchestrator_brain.py
-packages.orchestration.provider_trust_verification <- packages/orchestration/ui_server.py
 packages.orchestration.worker_recommend <- packages/orchestration/agent_loop.py
 packages.orchestration.worker_recommend <- packages/orchestration/autonomy_loop.py
 packages.orchestration.worker_recommend <- packages/orchestration/dashboard.py
