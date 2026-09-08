@@ -36,14 +36,6 @@ EVENT_METADATA_SCHEMAS: dict[str, frozenset[str]] = {
         "task_count", "pending_task_count", "pending_approval_count",
         "applied_count", "test_run_count",
     }),
-    "agent_loop_cycle_decision": frozenset({
-        "cycle", "decision", "reason", "next_action", "blocked_by",
-        "token_mode", "selected_worker", "readiness_level",
-    }),
-    "agent_loop_stopped": frozenset({
-        "final_decision", "stop_reason", "cycles_run",
-        "unresolved_blocker_count",
-    }),
     "context_budget_optimized": frozenset({
         "mode", "budget", "estimated_tokens", "token_savings",
         "recommended_worker", "included_section_count",
