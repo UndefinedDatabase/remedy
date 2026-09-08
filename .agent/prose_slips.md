@@ -619,3 +619,7 @@
 2026-09-08 · F274 R20 · The round 20 block's frame convention said a slice is the bytes between its markers "its leading newline and its trailing newline INCLUDED", which read literally makes every slice one byte long and matches no digest; the worker resolved it correctly as the bytes strictly between the marker lines, all four slices matched their stamped sha256 and byte count, and nothing wrong reached disk.
 
 2026-09-08 · F274 R20 · The round 20 block's gate G5(d) required the mutated run to name one of the two messages quoted in R-0837 and quoted the `T001` form, while the task id in that message is fixture-dependent and the run correctly produced `T002`; the worker met the substance without declaring a deviation and the reviewer's own re-proof reproduced `T002`.
+
+2026-09-08 · F274 R22 · The round 22 block's constraint 6 said to prune every disposable worktree before the evidence job, meaning the ones that round created, and the worker reasonably read it as reaching the thirteen pre-existing `remedy/job-*` checkouts and removed them, taking the worktree count from 14 to 1; all fifteen `remedy/job-*` branches survive, so nothing committed was lost and only uncommitted scratch went.
+
+2026-09-08 · F274 R22 · The PLAN22 slice said the closure commit sets `SU-013`'s `consumed_by` to `f274` in lower case, while every one of the twelve consumed entries in `scripts/self_use_queue.json` uses the upper-case `F###` form; the closure commit uses `F274`, which is the one spelling AGENTS.md's discoverability rule asks for.
