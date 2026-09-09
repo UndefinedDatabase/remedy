@@ -12,36 +12,34 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 12 books round 11's PASS and two prose slips, registers R-0850 and R-0851, records
-DECISION F275 D6 — that F275's "Do not touch" protects the APPROVAL GATE F017 owns and not
-`execution_approval_policy.py`, which F260's own Design section lists for deletion — and deletes
-the SEVENTH module group: `packages/orchestration/execution_approval_policy.py`, whole, in ONE
-commit. With it go its 1197-line test file, its doc page, six `approval.policy-*` commands and
-the `approval` group WHOLE. `apps/cli/commands/worker_facade_cmd.py` SURVIVES and loses six of
-its eleven handlers; `_cmd_doctor_core` SURVIVES and loses one diagnostic probe, so
-`remedy doctor` is untouched. The command loss is registered as R-0851.
+ROUND 13 books round 12's PASS and one prose slip, adds two measured instances to the open
+finding R-0843 as a NOTE rather than minting a duplicate id, registers R-0852, and deletes the
+EIGHTH module group: `packages/orchestration/external_builder_sandbox.py`, whole, in ONE commit.
+Its handler file `apps/cli/commands/external_builder_cmd.py` dies WITH it rather than losing a
+handler, because the one handler of the eight that did not drive the sandbox died in round 11.
+Seven commands, the `external-builder` group WHOLE, two test files and two doc pages go too. No
+survivor loses a call site and no cockpit section is involved.
 
 ## Next Steps
 
-1. The `external_builder_sandbox` component, which this round's regeneration makes the order
-   file's first line. It is a SINGLE module, and round 11 already measured that
-   `apps/cli/commands/external_builder_cmd.py` holds seven handlers driving it, so that file
-   dies with it rather than losing one handler as it did in round 11.
+1. The `local_model_advisor` component, which this round's regeneration makes the order file's
+   first line. It is a SINGLE module.
 2. The remaining components in the recorded order — every one a single module except the
    `provider_trust` / `provider_trust_verification` pair, which is the last cycle.
 3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831,
-   R-0840, R-0842, R-0844 through R-0846, R-0848, R-0849 and R-0851 named among the ideas
-   deleted rather than inherited.
+   R-0840, R-0842, R-0844 through R-0846, R-0848, R-0849, R-0851 and R-0852 named among the
+   ideas deleted rather than inherited.
 4. T002, the atomic record flip, alone, because every later commit's size depends on its ruling.
 
 ## Risks
 
-- The open set is 74 by distinct id at this round's base `21c90fe5`; the ledger commit this
-  block fixes as C2 registers two, taking it to 76. Four are High — R-0803, R-0804, R-0806 and
+- The open set is 76 by distinct id at this round's base `053a25a7`; the ledger commit this
+  block fixes as C2 registers one, taking it to 77. Four are High — R-0803, R-0804, R-0806 and
   R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
 - R-0847 stays OPEN and binds every remaining deletion round: `test_advertised_commands.py`
   cannot see an advertisement whose group has been deleted, so a round that deletes a group
-  WHOLE must sweep the spaced `remedy <group> <sub>` form by hand. This round swept it and
-  found zero.
+  WHOLE must sweep the spaced `remedy <group> <sub>` form by hand.
+- R-0843 now holds three measured instances of one class — a docs page still naming a command
+  or a page a deletion round removed. Every remaining deletion round should expect one.
 - The full suite is run SERIALLY: under `pytest -n auto` the `ui_server` command-channel tests
   race for a port, and the vitest node needs `apps/ui/node_modules`.
