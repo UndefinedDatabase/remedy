@@ -54,7 +54,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
+from packages.common.public_text_redaction import _safe_path_label, _scrub_public
 
 # ---------------------------------------------------------------------------
 # Constants / vocabularies
@@ -590,7 +590,6 @@ def compute_token_economy_decision(
         or d.estimated_token_band == TokenBand.UNKNOWN
         or d.budget_status == BudgetStatus.UNKNOWN)
 
-    # Approval: unknown context OR hard-safety floor OR over-budget OR over the approval threshold.
     over_threshold = est.estimated_total_tokens >= profile.require_human_approval_over_tokens \
         and est.estimated_total_tokens > 0
     # UNCONDITIONAL since F275 round 20: with the registry deleted no spec resolves, so the former

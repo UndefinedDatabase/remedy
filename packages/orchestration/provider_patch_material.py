@@ -39,11 +39,10 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
+from packages.common.public_text_redaction import _safe_path_label, _scrub_public
 from packages.orchestration.provider_trust import (
     Severity,
     TrustStatus,
-    _safe_path_label,
-    _scrub_public,
     validate_paths,
 )
 

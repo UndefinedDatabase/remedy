@@ -40,6 +40,14 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
+from packages.common.public_text_redaction import (
+    _ABS_PATH_RE,
+    _SECRET_PATTERNS,
+    _TRACEBACK_RE,
+    _safe_path_label,
+    _scrub_public,
+)
+
 # ---------------------------------------------------------------------------
 # Limits (Step 1308 / 1313)
 # ---------------------------------------------------------------------------
@@ -513,32 +521,9 @@ def _safe_text(text: str, limit: int) -> str:
     return out[:limit]
 
 
-def _scrub_public(text: str) -> str:
-    """Mask secret-like material and absolute paths in a public-facing string."""
-    scrubbed = text
-    for pat in _SECRET_PATTERNS:
-        scrubbed = pat.sub("[redacted-secret]", scrubbed)
-    scrubbed = _ABS_PATH_RE.sub(lambda m: m.group(0).replace(m.group(1), "[redacted-path]"), scrubbed)
-    scrubbed = _TRACEBACK_RE.sub("[redacted-trace]", scrubbed)
-    return scrubbed
-
-
 # ---------------------------------------------------------------------------
 # Secret / raw-leak scanner (Step 1311)
 # ---------------------------------------------------------------------------
-
-_SECRET_PATTERNS = [
-    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
-    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
-    re.compile(r"\bsk-[A-Za-z0-9]{16,}\b"),
-    re.compile(r"\bghp_[A-Za-z0-9]{20,}\b"),
-    re.compile(r"\bBearer\s+[A-Za-z0-9._\-]{12,}"),
-    re.compile(r"(?i)\b(api[_-]?key|secret|token|password|passwd|pwd)\b\s*[:=]\s*\S{6,}"),
-    re.compile(r"(?i)\bAWS_SECRET_ACCESS_KEY\b\s*[:=]\s*\S+"),
-]
-_ABS_PATH_RE = re.compile(r"(?:^|[\s\"'=(])(/(?:home|Users|root|etc|var|opt|private)/[^\s\"':]+)")
-_TRACEBACK_RE = re.compile(r"Traceback \(most recent call last\)")
-
 
 def scan_secrets(text: str) -> list[ProviderTrustFinding]:
     """Detect secret-like / raw-leak material. NEVER echoes the matched value."""
@@ -596,14 +581,6 @@ def validate_paths(target_files: list[str]) -> list[ProviderTrustFinding]:
                                      "Generated/lock file change not allowed in v0.",
                                      target=_safe_path_label(p)))
     return findings
-
-
-def _safe_path_label(path: str) -> str:
-    """A repo-relative-ish, length-bounded label. Never an absolute path."""
-    p = (path or "").replace("\\", "/")
-    if p.startswith("/"):
-        p = p.rsplit("/", 1)[-1]
-    return p[:80]
 
 
 # ---------------------------------------------------------------------------

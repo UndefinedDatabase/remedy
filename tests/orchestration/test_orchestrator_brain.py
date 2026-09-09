@@ -182,6 +182,28 @@ class TestModelRouting:
         assert s.model_routing_plan.tier == OB.RoutingTier.EXTERNAL_BUILDER_NEEDED
         assert s.model_routing_plan.notes  # plan only
 
+    def test_loop_guard_forces_human_review_tier(self, env):
+        """R-0862: the human-review tier had no positive pin after round 18.
+
+        Round 18 deleted `_review_state` and the two tests that pinned this tier. The
+        tier still ships and is still reachable through the loop guard, so it is pinned
+        here through the surviving durable-failure signal rather than through the
+        deleted review state."""
+        d, _ = env
+        job = _job(d)
+        from packages.orchestration import repair_loop as RL
+        j = load_job(UUID(str(job.id)), d)
+        for i in range(2):
+            att = RL.RepairAttempt(attempt_id=f"h{i}", job_id=str(job.id),
+                                   failure_artifact_id=f"f{i}", status="tested_failed",
+                                   source="cli_v1", created_at="t")
+            RL.save_repair_attempt(j, att)
+        s = OB.build_orchestrator_situation(str(job.id), d)
+        # The precondition, asserted so this test cannot pass vacuously.
+        assert s.loop_guard.status == OB.LoopGuardStatus.REQUIRE_HUMAN_REVIEW
+        assert s.model_routing_plan.tier == OB.RoutingTier.HUMAN_REVIEW_REQUIRED
+        assert s.model_routing_plan.allow_external is False
+
     def test_routing_never_executes(self, env):
         # The routing plan is data only — no model is invoked (architecture guard covers
         # imports; here we assert the plan carries a "plan only" note for non-deterministic).

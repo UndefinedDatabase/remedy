@@ -197,7 +197,7 @@ def _now() -> str:
 def _scrub(text: str) -> str:
     """Scrub secret-like / absolute-path / traceback material from any text that
     will be shared with an untrusted external actor (defense-in-depth)."""
-    from packages.orchestration.provider_trust import _scrub_public
+    from packages.common.public_text_redaction import _scrub_public
     return _scrub_public(str(text))
 
 

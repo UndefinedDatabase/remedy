@@ -58,6 +58,7 @@ apps.cli.commands.worker_facade_cmd
 apps.cli.cost_preview_confirm
 packages.common
 packages.common.path_redaction
+packages.common.public_text_redaction
 packages.common.secure_fs
 packages.common.strict_json
 packages.core.models

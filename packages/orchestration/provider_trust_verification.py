@@ -43,14 +43,13 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
+from packages.common.public_text_redaction import _safe_path_label, _scrub_public
 from packages.orchestration.provider_trust import (
     ProviderCandidateRepair,
     Severity,
     _is_docs_path,
     _is_test_path,
     _read_quarantined_raw,
-    _safe_path_label,
-    _scrub_public,
     parse_candidate,
     scan_secrets,
 )

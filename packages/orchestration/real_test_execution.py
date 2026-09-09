@@ -46,7 +46,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
-from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
+from packages.common.public_text_redaction import _safe_path_label, _scrub_public
 
 SCHEMA_VERSION = "real-test-execution-v1"
 _RTE_DIRNAME = "real_test_execution"
