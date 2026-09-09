@@ -12,34 +12,34 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 14 books round 13's PASS and one prose slip, registers R-0853 and R-0854, adds one
-measured instance to the open finding R-0847 as a NOTE, and deletes the NINTH module group,
-`packages/orchestration/local_model_advisor.py`, whole. This is a PRODUCTION round rather than
-a deletion round: `orchestrator_brain.py` loses the adapter entry point, two private helpers,
-the `advisor` dataclass field and the `advisor` key of the exported decision JSON;
-`run_contract.py` loses two `ContractAction` members; and `orchestrator_cmd.py`, `grouped.py`
-and `command_catalog.py` lose the `--use-local-advisor` path. Two enum members SURVIVE by
-measurement rather than by omission.
+ROUND 15 books round 14's PASS and one prose slip, registers R-0855 through R-0858, records
+DECISION F275 D7 on the approval gate, sweeps the survivor state R-0855 names, and deletes the
+TENTH module group, `packages/orchestration/managed_builder_execution.py`, whole. This is a
+PRODUCTION round: `worker_facade_cmd.py` loses the template half of three user-facing
+commands, `exec_guard.py` loses seven prose citations of the dying module, `run_contract.py`
+loses fourteen `ContractAction` members, and the catalog loses the `execution` group with
+seventeen commands.
 
 ## Next Steps
 
-1. The `managed_builder_execution` component, which this round's regeneration makes the
-   order file's first line. It is a SINGLE module.
-2. The remaining components in the recorded order — every one a single module except the
+1. The `main_builder_adapter` component, which this round's regeneration moves from position
+   four to position one of the order file. It takes the adapter half of the three `worker`
+   commands this round halved.
+2. The remaining components in the recorded order — each a single module except the
    `provider_trust` / `provider_trust_verification` pair, which is the last cycle.
 3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831,
-   R-0840, R-0842, R-0844 through R-0846, R-0848, R-0849 and R-0851 through R-0854 named among
+   R-0840, R-0842, R-0844 through R-0846, R-0848, R-0849 and R-0851 through R-0857 named among
    the ideas deleted rather than inherited. That round also discharges R-0843's widened sweep.
-4. T002, the atomic record flip, alone, because every later commit's size depends on its ruling.
+4. T002, the atomic record flip, alone, because every later commit's size depends on its
+   ruling.
 
 ## Risks
 
-- The open set is 77 by distinct id at this round's base `16494bbd`; the ledger commit this
-  block fixes as C2 registers two, taking it to 79. Four are High — R-0803, R-0804, R-0806 and
-  R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
-- R-0847 stays OPEN and now holds a second face, measured at this round's dry run: a `GroupDef`
-  left behind with no command and no handler passes every catalog guard at exit 0.
-- The exported orchestrator decision JSON has NO test pinning its key set, so R-0854's contract
-  change is invisible to the suite. That was measured by probe, not assumed.
+- The open set is 79 by distinct id at this round's base `fadf4715`; the ledger commit this
+  block fixes as C2 registers four, taking it to 83. Four are High — R-0803, R-0804, R-0806
+  and R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
+- Deleting `remedy execution approve` deletes a HUMAN approval command. DECISION F275 D7 rules
+  that this leaves no ungated path because the executor it gates dies in the same commit, and
+  records the measurement behind it rather than asserting it.
 - The full suite is run SERIALLY: under `pytest -n auto` the `ui_server` command-channel tests
   race for a port, and the vitest node needs `apps/ui/node_modules`.
