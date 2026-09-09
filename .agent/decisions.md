@@ -11895,3 +11895,75 @@ restore the six deleted tests, and re-add the module to the boundary allowlist, 
 reachability allowlist, `CLUSTER_MODULES` and the deletion map. Reversing this decision
 without also repairing the parser restores a gate that blocks unconditionally, which is the
 state this decision ends.
+
+## DECISION F275 D9 — `token_economy` degrades FAIL-SAFE when the Worker Registry is deleted; its routing recommendation is not cluster surface that dies with it (2026-09-09, F275 round 20)
+
+THE QUESTION. `packages/orchestration/worker_registry.py` is component 1 of
+`.agent/f275_deletion_order.md` and is deleted by this round under T001 RULE 1. The
+SURVIVING module `packages/orchestration/token_economy.py` does not merely import a helper
+from it: its routing recommendation is built out of it. One of the imported symbols is not a
+convenience. `hard_safety_requires_approval` describes itself in its own docstring as a "HARD
+safety invariant (R-0095)" and states that a user policy "may add stricter approval but must
+NEVER weaken this"; it forces human approval for expensive or unknown cost, for high, blocked
+or unknown risk, for the external-builder and cloud kinds, for the cloud execution mode and
+for every placeholder route. F275's own "Do not touch" section names THE APPROVAL GATE among
+the things this feature may not touch. So the deletion removes an approval-forcing invariant
+from a surviving module, and T001 RULE 3 — the survivor loses the call site and never gains a
+copy — points straight into that collision. Session 10's handback recorded the collision as
+unresolved anywhere on disk and ruled that round 20 must settle it before the first `git rm`.
+
+THE MEASUREMENT THAT SETTLES IT, taken at `0d18e58a`. The approval disjunction in
+`compute_token_economy_decision` already ended in `or not spec`. That term is not decoration:
+before this deletion, a job whose route policy left no eligible worker resolved `spec` to
+`None` and required human approval for that reason alone, independently of the hard-safety
+call. Deleting the registry makes `spec` unresolvable for EVERY job, so the term that was
+reached occasionally is now reached always and `requires_human_approval` is unconditionally
+true. The invariant is therefore preserved by DEGRADATION and is strictly STRICTER than the
+floor it replaces: the deleted check forced approval for a named set of risky routes, and
+what replaces it forces approval for all of them. Nothing that previously required approval
+stops requiring it, which is the only property F275's "Do not touch" clause protects.
+
+THAT THE DEGRADATION IS PINNED BY TESTS RATHER THAN MERELY WRITTEN was measured BY THE
+REVIEWER'S APPLIED DRY RUN OF THIS ROUND, before this block was authored, in a disposable
+worktree at `0d18e58a` with the whole change set applied, over the node set
+`tests/orchestration/test_token_economy.py`,
+`tests/orchestration/test_token_economy_integration.py` and
+`tests/ui_server/test_dashboard_cockpit_truth.py`: the unmutated control is exit 0 at 72
+passed, forcing `requires_human_approval` to `False` is exit 1 at 5 failed and 67 passed, and
+the revert returns exit 0 at 72 passed. The five named failures include
+`TestIntegrity::test_real_unknown_decision_is_safe_under_audit`, which is this module's own
+R-0099 audit invariant, so the safety property is held by a test that bites and not by a
+comment.
+
+CHOSEN. `token_economy` survives the deletion in a FAIL-SAFE form. It loses all three
+`worker_registry` import statements, the whole of `estimate_route_token_band` — which has no
+production caller and can never acquire one once no worker spec exists anywhere — and the
+registry consultation inside `compute_token_economy_decision`. `recommended_worker_id` stays
+empty, `estimated_cost_band` stays UNKNOWN, approval becomes unconditional, and the
+reason/next-action ladder collapses to two branches whose `next_safe_action` strings name only
+surviving commands. No worker spec type, no local reimplementation of
+`hard_safety_requires_approval`, no compatibility reader: T001 RULE 3 and AGENTS.md's Scope
+Control forbid all three by name. The capability genuinely lost — a named recommended worker,
+a real cost band, and the cockpit's `ollama_placeholder_available` key — is registered as
+finding R-0865 naming F110 as the inheriting feature, exactly as T001 RULE 3 orders.
+
+ALTERNATIVES CONSIDERED. (1) Copy `hard_safety_requires_approval` into `token_economy`.
+Rejected: T001 RULE 3 forbids it in terms, and a copy of a check whose only input is a worker
+spec is dead code the moment no worker spec exists. (2) Rule the whole routing recommendation
+cluster surface and delete `compute_token_economy_decision` with the registry. Rejected: that
+is a claim about a SURVIVING module's purpose rather than about the cluster, F275's own scope
+says no module outside F260's Design lists is deleted, and the function's other three inputs —
+the budget profile, the context estimate and the pack recommendation — are unrelated to the
+cluster and are read by `remedy token economy-report`, the cockpit and `routing_token_hint`.
+Establishing it would need a measurement of every consumer of `token_economy` that this round
+has no reason to open. (3) Keep `worker_registry.py` alive for this one consumer. Rejected: it
+is a component of an order the operator ruled PERFORMED rather than prepared, and a module
+kept for one caller is the attic AGENTS.md Scope Control refuses.
+
+HOW TO REVERSE. Restore `packages/orchestration/worker_registry.py` from `0d18e58a`, restore
+the three import statements, `estimate_route_token_band` and the registry consultation in
+`compute_token_economy_decision`, restore the deleted `token_economy` tests, and re-add the
+module to the reachability allowlist, `CLUSTER_MODULES` and the deletion map. Reversing this
+decision restores a WEAKER approval rule than the one it installs, because the unconditional
+floor becomes conditional again; a reversal that intends to keep the stricter behaviour must
+keep `d.requires_human_approval = True` as well.
