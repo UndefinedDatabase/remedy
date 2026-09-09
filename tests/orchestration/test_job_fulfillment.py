@@ -1695,7 +1695,7 @@ class TestIntegrityReadOnlyV07:
 
         monkeypatch.setattr(ig, "run_integrity_checks", bomb)
 
-        from packages.orchestration.overnight_readiness import _integrity_status
+        from packages.orchestration.mission_readiness import _integrity_status
         result = _integrity_status()
         assert result == "unknown"
 
@@ -1710,7 +1710,7 @@ class TestIntegrityReadOnlyV07:
 
         monkeypatch.setattr(sp, "run", bomb)
 
-        from packages.orchestration.overnight_readiness import _integrity_status
+        from packages.orchestration.mission_readiness import _integrity_status
         result = _integrity_status()
         assert result == "unknown"
 
@@ -1723,7 +1723,7 @@ class TestIntegrityReadOnlyV07:
         assert result["status"] == "unknown"
         assert result["passed"] is None
 
-        from packages.orchestration.overnight_readiness import _integrity_status
+        from packages.orchestration.mission_readiness import _integrity_status
         assert _integrity_status() == "unknown"
 
 

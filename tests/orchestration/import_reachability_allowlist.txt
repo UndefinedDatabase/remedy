@@ -31,7 +31,6 @@ apps.cli.commands.loop_cmd
 apps.cli.commands.memory
 apps.cli.commands.mission_cmd
 apps.cli.commands.orchestrator_cmd
-apps.cli.commands.overnight_cmd
 apps.cli.commands.patch
 apps.cli.commands.plan_cmd
 apps.cli.commands.policy
@@ -174,7 +173,6 @@ packages.orchestration.model_routing
 packages.orchestration.orchestrator_brain
 packages.orchestration.orchestrator_loop
 packages.orchestration.orchestrator_move_schema
-packages.orchestration.overnight_readiness
 packages.orchestration.patch_apply
 packages.orchestration.patch_intent
 packages.orchestration.path_utils

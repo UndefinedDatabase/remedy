@@ -11,9 +11,9 @@ keep their `overnight_` spelling because F261 owns renames.
 COMPLETE AND WIRED. The carry-over is 655 lines, which exceeds the DECISION F104 D1
 cap of 500 insertions for one commit, so it landed across two commits in two rounds.
 `remedy mission readiness` and the cockpit readiness section both read it, and those
-two consumers are why `packages/orchestration/overnight_readiness.py` has no
-surviving consumer left. That module is still on disk and is deleted with its
-cluster group; it was never touched by this move.
+two consumers were why `packages/orchestration/overnight_readiness.py` had no
+surviving consumer left. F275 round 19 deleted that module with its cluster group;
+it was never touched by this move.
 """
 
 from __future__ import annotations

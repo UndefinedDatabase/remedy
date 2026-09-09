@@ -132,7 +132,6 @@ GROUPS: dict[str, GroupDef] = {
     "dashboard": GroupDef("dashboard", "Dashboard", "Project and job dashboards.", user_facing=False),
     "guide": GroupDef("guide", "Guide", "Human guidance rail — next safe actions.", user_facing=False),
     "repair": GroupDef("repair", "Repair", "Test failure repair.", user_facing=False),
-    "overnight": GroupDef("overnight", "Overnight", "Bounded overnight preparation.", user_facing=False),
     "provider": GroupDef("provider", "Provider", "Provider Trust Gate.", user_facing=False),
     "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
     "orchestrator": GroupDef("orchestrator", "Orchestrator", "Orchestrator brain — evidence-backed decisions.", user_facing=False),
@@ -2823,48 +2822,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("repair.request", "provider.intake-repair"),
     ),
 
-    # ── overnight (read-only preparation) ─────────────────────────────────
-    CommandEntry(
-        command_id="overnight.readiness",
-        group_id="overnight",
-        subcommand="readiness",
-        description="Read-only: is this job safe to run unattended? (Bounded Overnight Prep v0)",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("overnight.plan", "overnight.report"),
-    ),
-    CommandEntry(
-        command_id="overnight.plan",
-        group_id="overnight",
-        subcommand="plan",
-        description="Read-only dry-run: what Remedy would do in one bounded cycle.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("overnight.readiness", "overnight.report"),
-    ),
-    CommandEntry(
-        command_id="overnight.report",
-        group_id="overnight",
-        subcommand="report",
-        description="Read-only morning-style report from current job evidence.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--markdown", "Render the report as markdown",
-                   required=False, is_option=True, default="false"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("overnight.readiness", "overnight.plan"),
-    ),
     # ── overnight mission contract (Review/Repair Spine v0) ────────────────
 
     # ── provider (trust gate — intake UNTRUSTED external output) ──────────

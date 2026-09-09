@@ -79,7 +79,6 @@ Baseline: **76.3%** (branch coverage enabled).
 | 7.6% | 99 | apps/cli/commands/provider_cmd.py |
 | 9.5% | 93 | apps/cli/commands/self_cmd.py |
 | 10.9% | 70 | apps/cli/commands/event.py |
-| 11.1% | 48 | apps/cli/commands/overnight_cmd.py |
 | 11.2% | 83 | apps/cli/commands/external_builder_cmd.py |
 
 All gaps are in CLI command handlers. Core orchestration modules range 72-98%.

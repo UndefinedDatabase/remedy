@@ -8,12 +8,6 @@ FUTURE bounded overnight run. This block is preparation only — there is **no
 executor, no scheduler, no background worker**, and nothing applies code, runs
 tests, proposes/applies repairs, calls a provider, or mutates the repo.
 
-Commands (all read-only):
-
-    remedy overnight readiness <job_id> --json
-    remedy overnight plan <job_id> --json
-    remedy overnight report <job_id> [--markdown] [--json]
-
 ## Readiness vs. actual overnight run
 
 - **Readiness** answers: is this job *coherent* to assess, what would Remedy do
