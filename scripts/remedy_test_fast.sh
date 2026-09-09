@@ -31,7 +31,6 @@ exec scripts/remedy_pytest.sh \
     tests/cli/test_worker_facade_cmd.py \
     tests/orchestration/test_managed_builder_execution.py \
     tests/orchestration/test_main_builder_adapter.py \
-    tests/orchestration/test_execution_approval_policy.py \
     tests/orchestration/test_development_artifact_boundary.py \
     tests/cli/test_product_spine.py \
     -q

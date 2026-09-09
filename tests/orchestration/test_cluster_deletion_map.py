@@ -49,7 +49,6 @@ CLUSTER_MODULES = (
     "packages.orchestration.overnight_readiness",
     "packages.orchestration.main_builder_adapter",
     "packages.orchestration.managed_builder_execution",
-    "packages.orchestration.execution_approval_policy",
 )
 
 # The handlers of cluster COMMANDS. They die with the cluster, so their imports

@@ -88,7 +88,6 @@ Specifications and design documents for the built system.
 | [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
 | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | Diff-only repair: hunk selection, unified-diff response, strict apply, full-file fallback |
 | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | What the F085 stage-1 execution guard does NOT prevent |
-| [execution-approval-policy-v0.md](system/execution-approval-policy-v0.md) | Human approval gates for execution |
 | [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | Sandbox for external builder execution |
 | [external-builder-worker-contract-v0.md](system/external-builder-worker-contract-v0.md) | Contract for external builder workers |
 | [feature-planner-v0.md](system/feature-planner-v0.md) | Feature planning and decomposition |

@@ -33,10 +33,8 @@ Normal Remedy users never need to read, edit, or depend on this file.
 
 The following modules must NOT depend on `.agent/live_review.md`:
 
-- `execution_approval_policy.py` — policy evaluation must use structured policy/package state
 - `managed_builder_execution.py` — execution must use approval records
 - `worker_facade_cmd.py` — worker commands must use structured run/mission state
-- Approval CLI commands — must use policy/approval records
 
 Guard tests enforce this boundary (see `test_execution_approval_policy.py::TestNoLiveReviewDependency`
 and `tests/orchestration/test_development_artifact_boundary.py`).
@@ -66,13 +64,11 @@ Product questions must be answered from structured Remedy state:
 |----------|------------------|--------|
 | Mission status | Mission records | `mission_state.py` |
 | Execution status | Managed execution records, event ledger | `managed_builder_execution.py` |
-| Approval status | Approval/policy records | `execution_approval_policy.py` |
 | Builder status | Builder session records | `main_builder_adapter.py` |
 | Test status | Real test execution records | `real_test_execution.py` |
 | Repair proposal status | Self-repair proposal records | `self_repair_proposals.py` |
 | Proof status | Proof chain records | `file_provenance.py` |
 | Config status | Config diagnostics | `config_diagnostics.py` |
-| Policy evaluation | Policy + package + session + template records | `execution_approval_policy.py` |
 | Package truth | BuilderRequestPackage on disk | `main_builder_adapter.py` |
 
 These sources are structured JSON, persisted to `data_dir`, and testable without `.agent/`.

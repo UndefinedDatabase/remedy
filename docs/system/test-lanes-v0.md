@@ -16,7 +16,6 @@ healthy without risk of environment-specific hangs.
 | `test_managed_builder_execution.py` | unit | Command templates, approval, execution safety, placeholders |
 | `test_main_builder_adapter.py` | unit | Adapter specs, enable/disable, mode management |
 | `test_self_repair_proposal.py` | unit | Proposal lifecycle: create/approve/deny/edit/worker-prompt |
-| `test_execution_approval_policy.py` | unit+integration | Policy model, evaluation, grant, real storage path truth |
 | `test_development_artifact_boundary.py` | guard | Dev artifact vs product truth boundary enforcement |
 | `test_product_spine.py` | unit | Operator command consistency, stale doc scanner, lane self-test |
 

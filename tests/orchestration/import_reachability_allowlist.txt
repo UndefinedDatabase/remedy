@@ -134,7 +134,6 @@ packages.orchestration.event_replay
 packages.orchestration.evidence_index
 packages.orchestration.evidence_mode
 packages.orchestration.exec_guard
-packages.orchestration.execution_approval_policy
 packages.orchestration.external_builder_sandbox
 packages.orchestration.failure_postmortem
 packages.orchestration.failure_stats
