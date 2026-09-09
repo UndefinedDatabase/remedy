@@ -29,14 +29,20 @@ def env(tmp_path, monkeypatch):
     return d, ad
 
 
-def _job(data_dir, *, failure=True):
+def _job(data_dir, *, failure=True, failures=1):
+    """A job carrying ``failures`` unresolved failure artifacts (none when ``failure`` is false).
+
+    Each unresolved failure yields one HIGH ``EVIDENCE_GAP`` item, so the count is how a
+    test asks for one high-priority item or for several.
+    """
     t = Task(description="t")
     arts = []
     if failure:
-        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=t.id,
-                      metadata={"test_failure": True, "failure_kind": "test_failed",
-                                "related_task_id": str(t.id), "safe_summary": "boom"})
-        arts.append(fa)
+        for n in range(failures):
+            fa = Artifact(name=f"tf{n}", content="x", kind=ArtifactKind.VERIFICATION, task_id=t.id,
+                          metadata={"test_failure": True, "failure_kind": "test_failed",
+                                    "related_task_id": str(t.id), "safe_summary": "boom"})
+            arts.append(fa)
     job = Job(id=uuid4(), name="ov", tasks=[t], artifacts=arts, metadata={"target_repo": "."})
     save_job(job, root=data_dir)
     return job
@@ -53,21 +59,6 @@ class TestInspection:
         insp = SD.build_self_dogfood_inspection(data_dir=d)
         assert insp.repository_identity
         assert any(s.name == ".agent/live_review.md" for s in insp.sources_checked)
-
-    def test_pending_review_is_blocker(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text("## Verdict\nPENDING\n")
-        insp = SD.build_self_dogfood_inspection(data_dir=d)
-        assert "review_verdict_not_pass" in insp.blockers
-        assert any(i.item_type == SD.ItemType.SAFETY_GAP and i.priority == SD.Priority.BLOCKER
-                   for i in insp.items)
-
-    def test_open_blocker_finding(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text(
-            "## Verdict\nPASS\n\n### R-1: x\n- **Status**: Open\n- **Severity**: High\n")
-        insp = SD.build_self_dogfood_inspection(data_dir=d)
-        assert "open_blocker_or_high_findings" in insp.blockers
 
     def test_evidence_gap_failure_without_repair(self, env):
         d, _ = env
@@ -104,9 +95,9 @@ class TestPlanAndPropose:
         assert len(plan.recommended) <= 3
 
     def test_propose_ambiguous_requires_selection(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text("## Verdict\nPENDING\n\n### R-1: x\n- **Status**: Open\n- **Severity**: High\n")
-        job = _job(d)
+        # Two unresolved failures → two HIGH evidence-gap items → no single obvious pick.
+        d, _ = env
+        job = _job(d, failures=2)
         r = SD.propose_self_improvement(str(job.id), data_dir=d)
         assert r.stop_reason == "ambiguous_selection"
         assert not r.proposed_task_ids

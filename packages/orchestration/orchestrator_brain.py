@@ -224,10 +224,6 @@ def _scrub(text: str) -> str:
     return _scrub_public(str(text))[:300]
 
 
-def _agent_dir() -> Path:
-    return Path(os.environ.get("REMEDY_AGENT_DIR") or ".agent")
-
-
 # ---------------------------------------------------------------------------
 # Idea intake (Steps 1479/1480) — metadata-only, scrubbed, classified.
 # ---------------------------------------------------------------------------
@@ -296,17 +292,6 @@ def list_ideas(data_dir: Path | None = None) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Situation builder (Step 1467) — safe summaries only.
 # ---------------------------------------------------------------------------
-
-
-def _review_state() -> tuple[str, bool, int]:
-    """Return (verdict, blocks, open_blocker_high)."""
-    from packages.orchestration.overnight_executor import (
-        parse_review_findings,
-        review_findings_block_execution,
-    )
-    f = parse_review_findings(_agent_dir() / "live_review.md")
-    blocks, _ = review_findings_block_execution(f)
-    return f.verdict, blocks, f.open_blocker_or_high
 
 
 def _gather_signals(job_id: str, data_dir: Path,
@@ -478,16 +463,6 @@ def build_orchestrator_situation(
                               repository_identity=_repository_identity())
 
     refs: list[OrchestratorRisk] = []
-    verdict, review_blocks, open_bh = _review_state()
-    s.evidence_refs.append(OrchestratorEvidenceRef(".agent/live_review.md",
-                                                   "available" if verdict != "unknown" else "missing",
-                                                   summary=f"verdict={verdict}"))
-    if review_blocks:
-        s.blockers.append("review_findings_open")
-        s.risks.append(OrchestratorRisk("review_findings_open", "blocker",
-                                        f"Live review verdict={verdict}, open blocker/high={open_bh}.",
-                                        "live_review"))
-
     sig: dict[str, Any] = {}
     if job_id:
         sig = _gather_signals(job_id, ddir, s.evidence_refs)
@@ -518,11 +493,11 @@ def build_orchestrator_situation(
         s.evidence_refs.append(OrchestratorEvidenceRef("ideas", "available",
                                                        summary=f"{len(ideas)} idea(s)"))
 
-    s.options = _generate_options(s, sig, job_id or "", review_blocks, ideas)
-    s.evidence_fingerprint = _evidence_fingerprint(sig, verdict)
+    s.options = _generate_options(s, sig, job_id or "", ideas)
+    s.evidence_fingerprint = _evidence_fingerprint(sig)
     s.loop_guard = _loop_guard(s, sig, ddir)
-    _score_options(s, sig, review_blocks)
-    s.model_routing_plan = _routing_plan(s, sig, review_blocks)
+    _score_options(s, sig)
+    s.model_routing_plan = _routing_plan(s, sig)
     s.evidence_status = "degraded" if any(r.status in ("missing", "malformed")
                                           for r in s.evidence_refs) else "complete"
     avail = [o for o in s.options if o.available]
@@ -563,7 +538,7 @@ def _opt(kind: str, label: str, *, command: str = "", entity_ids: list[str] | No
 
 
 def _generate_options(s: OrchestratorSituation, sig: dict[str, Any], job_id: str,
-                      review_blocks: bool, ideas: list[dict]) -> list[OrchestratorOption]:
+                      ideas: list[dict]) -> list[OrchestratorOption]:
     opts: list[OrchestratorOption] = []
     # Always-safe inspect baseline.
     opts.append(_opt(OptionKind.SELF_INSPECT, "Inspect self-improvement evidence",
@@ -688,17 +663,13 @@ _BASE_SCORE = {
 }
 
 
-def _score_options(s: OrchestratorSituation, sig: dict[str, Any], review_blocks: bool) -> None:
+def _score_options(s: OrchestratorSituation, sig: dict[str, Any]) -> None:
     for o in s.options:
         score = _BASE_SCORE.get(o.kind, 10)
         codes: list[str] = []
         if not o.available:
             score = 0
             codes.append("unavailable")
-        # Open blocker/high review forces human-review: execution-like options unsafe.
-        if review_blocks and o.kind not in (OptionKind.SELF_INSPECT, OptionKind.HUMAN_REVIEW):
-            score = min(score, 1)
-            codes.append("review_blocks_execution")
         # Budget exhaustion suppresses apply-type options.
         if sig.get("budget_exhausted") and o.kind in (OptionKind.CONTINUE_INTENT,):
             score = min(score, 2)
@@ -719,9 +690,8 @@ def _score_options(s: OrchestratorSituation, sig: dict[str, Any], review_blocks:
 # ---------------------------------------------------------------------------
 
 
-def _evidence_fingerprint(sig: dict[str, Any], verdict: str) -> str:
+def _evidence_fingerprint(sig: dict[str, Any]) -> str:
     key = json.dumps({
-        "verdict": verdict,
         "unresolved_failures": sig.get("unresolved_failures", 0),
         "repair_attempts": sig.get("repair_attempts", 0),
         "repair_failed": sig.get("repair_failed", 0),
@@ -775,13 +745,13 @@ OrchestratorSituation.scope_key = _scope_key  # type: ignore[attr-defined]
 # ---------------------------------------------------------------------------
 
 
-def _routing_plan(s: OrchestratorSituation, sig: dict[str, Any],
-                  review_blocks: bool) -> OrchestratorModelRoutingPlan:
-    if review_blocks or s.loop_guard.status in (LoopGuardStatus.BLOCK,
-                                                LoopGuardStatus.REQUIRE_HUMAN_REVIEW):
+def _routing_plan(s: OrchestratorSituation,
+                  sig: dict[str, Any]) -> OrchestratorModelRoutingPlan:
+    if s.loop_guard.status in (LoopGuardStatus.BLOCK,
+                               LoopGuardStatus.REQUIRE_HUMAN_REVIEW):
         return OrchestratorModelRoutingPlan(
             RoutingTier.HUMAN_REVIEW_REQUIRED,
-            "Open blocker/high review or loop guard block — a human decides.", False)
+            "Loop guard block — a human decides.", False)
     avail = [o for o in s.options if o.available and o.score > 1]
     if not avail:
         return OrchestratorModelRoutingPlan(

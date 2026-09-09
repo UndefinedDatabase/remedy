@@ -13,9 +13,6 @@
 # EDGE — a cut whose line is left behind reds the test just as a new edge does.
 #
 # Blank lines and lines beginning with `#` are ignored by the reader.
-packages.orchestration.overnight_executor <- packages/orchestration/orchestrator_brain.py
-packages.orchestration.overnight_executor <- packages/orchestration/self_dogfood.py
-packages.orchestration.overnight_executor <- packages/orchestration/self_dogfood_execution.py
 packages.orchestration.provider_trust <- packages/orchestration/orchestrator_brain.py
 packages.orchestration.provider_trust <- packages/orchestration/provider_patch_material.py
 packages.orchestration.provider_trust <- packages/orchestration/real_test_execution.py

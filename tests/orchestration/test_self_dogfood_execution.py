@@ -79,13 +79,6 @@ class TestEligibility:
         e = SE.evaluate_self_execution_eligibility(unapproved.id, str(job.id), env)
         assert not e.eligible and e.stop_reason == SE.StopReason.NOT_APPROVED
 
-    def test_pending_review_blocks(self, env, monkeypatch):
-        ad = Path(__import__("os").environ["REMEDY_AGENT_DIR"])
-        (ad / "live_review.md").write_text("## Verdict\nPENDING\n")
-        job, pt = _approved_task(env)
-        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.id), env)
-        assert not e.eligible and e.stop_reason == SE.StopReason.REVIEW_FINDINGS_OPEN
-
     def test_main_branch_blocks(self, env, monkeypatch):
         monkeypatch.setattr(SE, "current_branch", lambda: "main")
         job, pt = _approved_task(env)

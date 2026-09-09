@@ -174,7 +174,6 @@ packages.orchestration.model_routing
 packages.orchestration.orchestrator_brain
 packages.orchestration.orchestrator_loop
 packages.orchestration.orchestrator_move_schema
-packages.orchestration.overnight_executor
 packages.orchestration.overnight_readiness
 packages.orchestration.patch_apply
 packages.orchestration.patch_intent

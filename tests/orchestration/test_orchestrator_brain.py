@@ -56,16 +56,6 @@ class TestDecisionQuality:
         if dec.selected_option and dec.selected_option.get("command"):
             assert validate_next_safe_action_command(dec.next_safe_action)
 
-    def test_open_blocker_forces_human_review(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text(
-            "## Verdict\nFAIL\n\n### R-1: x\n- **Status**: Open\n- **Severity**: High\n")
-        job = _job(d)
-        s = OB.build_orchestrator_situation(str(job.id), d)
-        dec = OB.select_orchestrator_decision(s, d)
-        assert dec.stop_reason == OB.StopReason.HUMAN_REVIEW_REQUIRED
-        assert s.model_routing_plan.tier == OB.RoutingTier.HUMAN_REVIEW_REQUIRED
-
     def test_unresolved_failure_beats_roadmap(self, env):
         d, _ = env
         job = _job(d)
@@ -178,14 +168,6 @@ class TestAntiLoop:
 
 
 class TestModelRouting:
-    def test_open_blocker_high_human_review(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text("## Verdict\nPENDING\n")
-        job = _job(d)
-        s = OB.build_orchestrator_situation(str(job.id), d)
-        assert s.model_routing_plan.tier == OB.RoutingTier.HUMAN_REVIEW_REQUIRED
-        assert s.model_routing_plan.allow_external is False
-
     def test_candidate_generation_external_builder(self, env):
         d, _ = env
         # Failure with no repair attempt + test budget available → candidate needed.

@@ -418,15 +418,6 @@ def _transition(attempt: SelfImprovementAttempt, target: str) -> bool:
 _SELF_DOGFOOD_PREFIX = "self_dogfood:"
 
 
-def _review_blocks() -> tuple[bool, str]:
-    from packages.orchestration.overnight_executor import (
-        parse_review_findings,
-        review_findings_block_execution,
-    )
-    agent_dir = Path(os.environ.get("REMEDY_AGENT_DIR") or ".agent")
-    return review_findings_block_execution(parse_review_findings(agent_dir / "live_review.md"))
-
-
 def evaluate_self_execution_eligibility(
     proposed_task_id: str, job_id: str | None = None, data_dir: Path | None = None,
 ) -> SelfExecEligibility:
@@ -477,15 +468,6 @@ def evaluate_self_execution_eligibility(
     if fp.startswith(_SELF_DOGFOOD_PREFIX):
         fp = fp[len(_SELF_DOGFOOD_PREFIX):]
     elig.item_fingerprint = fp
-
-    # Review must not be PENDING/FAIL/open blocker-high.
-    blocked, _ = _review_blocks()
-    if blocked:
-        elig.blockers.append("review_findings_open")
-        elig.stop_reason = StopReason.REVIEW_FINDINGS_OPEN
-        elig.next_safe_action = "remedy self inspect --json"
-        elig.safe_summary = "Live review is PENDING/FAIL/open blocker-high."
-        return elig
 
     # Contract gate.
     try:

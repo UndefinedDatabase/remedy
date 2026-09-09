@@ -226,45 +226,8 @@ def _read_agent_file(name: str) -> tuple[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Live review parser reuse (Step 1402)
-# ---------------------------------------------------------------------------
-
-
-def _review_findings():
-    """Reuse the safe live-review parser from the overnight executor."""
-    from packages.orchestration.overnight_executor import parse_review_findings
-    return parse_review_findings(_agent_dir() / "live_review.md")
-
-
-# ---------------------------------------------------------------------------
 # Detectors (Steps 1402-1406)
 # ---------------------------------------------------------------------------
-
-
-def _detect_review(items: list, blockers: list, risks: list) -> None:
-    f = _review_findings()
-    if f.source in ("unavailable", "malformed"):
-        items.append(_mk_item(
-            ItemType.EVIDENCE_GAP, Priority.MEDIUM, Confidence.HIGH,
-            "Live review file missing or unreadable", key="live_review_missing",
-            detail="No parseable .agent/live_review.md verdict.", source_type="live_review"))
-        return
-    if f.verdict in ("pending", "fail"):
-        blockers.append("review_verdict_not_pass")
-        risks.append(SelfImprovementRisk(
-            id="review_verdict", severity=Priority.BLOCKER,
-            summary=f"Live review verdict is {f.verdict}.", source="live_review"))
-        items.append(_mk_item(
-            ItemType.SAFETY_GAP, Priority.BLOCKER, Confidence.HIGH,
-            f"Live review verdict is {f.verdict}", key=f"review_verdict_{f.verdict}",
-            detail="Resolve the review before claiming merge-ready.", source_type="live_review"))
-    if f.open_blocker_or_high > 0:
-        blockers.append("open_blocker_or_high_findings")
-        items.append(_mk_item(
-            ItemType.SAFETY_GAP, Priority.BLOCKER, Confidence.HIGH,
-            f"{f.open_blocker_or_high} open blocker/high review finding(s)",
-            key="open_blocker_high", detail="Open blocker/high findings must be resolved.",
-            source_type="live_review"))
 
 
 def _detect_stale_handoff(items: list) -> None:
@@ -359,9 +322,6 @@ def _detect_roadmap(items: list) -> None:
         (has("provider_trust.py") and has("repair_request_builder.py"),
          "Provider Trust Verification v1", "provider_trust.py",
          "Trust gate + request builder exist; harden trust verification beyond regex."),
-        (has("overnight_executor.py"),
-         "Bounded Overnight Executor v1", "overnight_executor.py",
-         "Single-cycle executor exists; consider a bounded multi-cycle v1 (still gated)."),
         (has("self_dogfood.py"),
          "Self-Dogfood Execution v0", "self_dogfood.py",
          "Self-dogfood planner exists; a guarded execution rail is the natural next step."),
@@ -435,7 +395,6 @@ def build_self_dogfood_inspection(
     items: list[SelfImprovementItem] = []
     blockers: list[str] = []
     risks: list[SelfImprovementRisk] = []
-    _detect_review(items, blockers, risks)
     _detect_stale_handoff(items)
     _detect_evidence_gaps(job, items)
     _detect_roadmap(items)

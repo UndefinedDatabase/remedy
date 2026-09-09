@@ -45,7 +45,6 @@ CLUSTER_MODULES = (
     "packages.orchestration.provider_trust",
     "packages.orchestration.provider_trust_verification",
     "packages.orchestration.worker_registry",
-    "packages.orchestration.overnight_executor",
     "packages.orchestration.overnight_readiness",
 )
 
