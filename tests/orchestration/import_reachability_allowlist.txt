@@ -27,7 +27,6 @@ apps.cli.commands.job
 apps.cli.commands.job_context_cmd
 apps.cli.commands.job_rerun_cmd
 apps.cli.commands.job_stop_cmd
-apps.cli.commands.local_advisor_cmd
 apps.cli.commands.loop_cmd
 apps.cli.commands.main_builder_adapter_cmd
 apps.cli.commands.managed_builder_execution_cmd
@@ -158,7 +157,6 @@ packages.orchestration.job_queue
 packages.orchestration.job_runner
 packages.orchestration.list_options
 packages.orchestration.llm_planner
-packages.orchestration.local_model_advisor
 packages.orchestration.long_run_executor
 packages.orchestration.loop_run
 packages.orchestration.loop_spec

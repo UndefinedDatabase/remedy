@@ -32,20 +32,11 @@ def _cmd_orchestrator_inspect(args: Any) -> None:
 def _cmd_orchestrator_decide(args: Any) -> None:
     from packages.orchestration.orchestrator_brain import (
         build_orchestrator_situation,
-        consult_local_advisor_for_decision,
         export_decision_json,
-        persist_decision,
         select_orchestrator_decision,
     )
     s = build_orchestrator_situation(getattr(args, "job_id", None))
-    use_advisor = bool(getattr(args, "use_local_advisor", False))
-    d = select_orchestrator_decision(s, persist=not use_advisor)
-    if use_advisor:
-        # Deterministic decision first; advisor critique is advisory-only and never changes
-        # which command executes. Persist after the (possibly softened) decision is final.
-        d = consult_local_advisor_for_decision(
-            d, s, enabled_override=True, new=bool(getattr(args, "new", False)))
-        persist_decision(d)
+    d = select_orchestrator_decision(s, persist=True)
     data = export_decision_json(d)
     if getattr(args, "json", False):
         print(json.dumps(data, indent=2))

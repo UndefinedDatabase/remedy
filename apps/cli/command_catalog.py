@@ -136,7 +136,6 @@ GROUPS: dict[str, GroupDef] = {
     "provider": GroupDef("provider", "Provider", "Provider Trust Gate.", user_facing=False),
     "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
     "orchestrator": GroupDef("orchestrator", "Orchestrator", "Orchestrator brain — evidence-backed decisions.", user_facing=False),
-    "local-advisor": GroupDef("local-advisor", "Local Advisor", "Optional local-model advisory critique.", user_facing=False),
     "route-policy": GroupDef("route-policy", "Route Policy", "Worker route policy.", user_facing=False),
     "token": GroupDef("token", "Token", "Token economy and cost budgets.", user_facing=False),
     "context-pack": GroupDef("context-pack", "Context Pack", "Context budget optimizer.", user_facing=False),
@@ -3450,14 +3449,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             ArgDef("--job-id", "Optional job to include", required=False, is_option=True),
-            ArgDef("--use-local-advisor", "Optionally consult a local advisor (advisory-only)",
-                   required=False, is_option=True, default="false"),
-            ArgDef("--new", "Force a fresh advisor run (ignore idempotent reuse)",
-                   required=False, is_option=True, default="false"),
             _JSON_OPT,
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
-        related=("orchestrator.inspect", "orchestrator.report", "local-advisor.run"),
+        related=("orchestrator.inspect", "orchestrator.report"),
     ),
     CommandEntry(
         command_id="orchestrator.report",
@@ -3482,33 +3477,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(ArgDef("text", "Idea text"), _JSON_OPT),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
         related=("orchestrator.inspect",),
-    ),
-
-    # ── local-advisor (optional loopback advisory — disabled by default) ───
-    CommandEntry(
-        command_id="local-advisor.status",
-        group_id="local-advisor",
-        subcommand="status",
-        description="Read-only: local advisor enabled/availability (loopback only; no secrets).",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
-        related=("local-advisor.run", "orchestrator.decide"),
-    ),
-    CommandEntry(
-        command_id="local-advisor.run",
-        group_id="local-advisor",
-        subcommand="run",
-        description="Metadata-only: advise on the latest orchestrator decision (advisory critique only).",
-        action_class="write_metadata",
-        args=(
-            ArgDef("--job-id", "Optional job to scope the decision", required=False, is_option=True),
-            ArgDef("--new", "Force a fresh advisor run (ignore idempotent reuse)",
-                   required=False, is_option=True, default="false"),
-            _JSON_OPT,
-        ),
-        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
-        related=("local-advisor.status", "orchestrator.decide"),
     ),
 
     # ── review ───────────────────────────────────────────────────────────

@@ -189,12 +189,6 @@ class ContractAction:
     ORCHESTRATOR_INSPECT = "orchestrator_inspect"
     ORCHESTRATOR_DECIDE = "orchestrator_decide"
     ORCHESTRATOR_REPORT = "orchestrator_report"
-    # Local Model Advisor Adapter v0 (Step 1515) — OPTIONAL loopback-only advisory critique.
-    # Distinct from CLOUD_PROVIDER (external execution, denied by no_cloud) and from any
-    # external builder: this is a local, advisory-only, metadata-level action. status is
-    # read-only; run is metadata-only (advisory text; never executes/applies/approves).
-    LOCAL_ADVISOR_STATUS = "local_advisor_status"
-    LOCAL_ADVISOR_RUN = "local_advisor_run"
 
     # Open-Ended Dogfood Run Orchestrator + Replay Analyzer v0 (Step 2160) — METADATA + EVALUATION +
     # REPLAY only. NOT provider/model/worker execution, NOT apply/approve/git. create/step/stop persist
@@ -401,8 +395,6 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.ORCHESTRATOR_INSPECT,
     ContractAction.ORCHESTRATOR_DECIDE,
     ContractAction.ORCHESTRATOR_REPORT,
-    ContractAction.LOCAL_ADVISOR_STATUS,
-    ContractAction.LOCAL_ADVISOR_RUN,
     ContractAction.DOGFOOD_RUN_CREATE,
     ContractAction.DOGFOOD_RUN_STEP,
     ContractAction.DOGFOOD_RUN_STOP,

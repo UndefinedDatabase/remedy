@@ -107,13 +107,12 @@ catalog-backed options:
 
 ## Local advisor hook (Step 1555) — DEFERRED
 
-An optional local-advisor critique of the safe verification summary is **deferred** to a
+An optional local model critique of the safe verification summary is **deferred** to a
 future block (the report carries a forward-compatible `advisor_critique` field, currently
 `None`). Per design, if implemented it may **only** lower confidence or add a human-review
 concern — it can **never** pass or reject a candidate by itself, create a command, or
 override a deterministic check. Deferring avoids a fragile second model-prompt path while
-keeping the hard safety invariant trivially true. See
-[local-model-advisor-v0.md](local-model-advisor-v0.md).
+keeping the hard safety invariant trivially true.
 
 ## What this block does NOT do
 

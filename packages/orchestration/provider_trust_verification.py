@@ -18,7 +18,7 @@ Hard rules enforced here (mirroring the Trust Gate):
   - Verification NEVER approves, applies, tests, or creates PRs. A PASSED verification
     only marks a candidate *eligible* for materialization into a pending, approval-
     gated intent. Accepted ≠ verified ≠ approved ≠ applied.
-  - Model/local-advisor output, if consulted, is critique ONLY and can never pass or
+  - Model output, if consulted, is critique ONLY and can never pass or
     reject a candidate by itself.
 
 Public API::

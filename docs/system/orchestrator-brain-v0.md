@@ -39,11 +39,11 @@ applies/approves nothing, creates no PR, mutates no code, inserts no `Job.tasks`
 
 ## Deterministic first; models later
 
-Deterministic decisioning is preferred whenever evidence is sufficient. The optional
-**[Local Model Advisor Adapter v0](local-model-advisor-v0.md)** now provides cheap advisory
-critique behind the routing plan (`remedy orchestrator decide --use-local-advisor`) — it can
-only lower confidence, add missing-evidence hints, or escalate weak evidence to human review,
-never change the deterministic action. Expensive/external builders remain reserved for
+Deterministic decisioning is preferred whenever evidence is sufficient. Remedy
+deliberately has NO local model advisory adapter: the optional loopback critique that once
+sat behind the routing plan was deleted with F260's prototype cluster, so the
+`local_advisor_preferred` routing tier is a plan label and nothing consults a model for it.
+Expensive/external builders remain reserved for
 justified, targeted candidate generation (see
 [expensive-builder-routing-future.md](../archive/expensive-builder-routing-future.md)). Model output is
 **never truth** and never bypasses approval. The base orchestrator still calls no model.
@@ -56,8 +56,6 @@ escalates warn → block. New evidence resets the guard.
 
 ## Future
 
-- [Local Model Advisor Adapter v0](local-model-advisor-v0.md) — **built**: optional cheap
-  advisory critique behind the routing plan (loopback-only, advisory-only).
 - Provider Trust Verification v1 — stronger verification for untrusted output.
 - [Expensive Builder Routing (future)](../archive/expensive-builder-routing-future.md).
 

@@ -36,7 +36,6 @@
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
 | job budget | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | system |
 | job context | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | guide |
-| model advisor | [local-model-advisor-v0.md](system/local-model-advisor-v0.md) | system |
 | model defaults / dead models | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | system |
 | project scoping | [project-scoping-v0.md](system/project-scoping-v0.md) | system |
 | plan / roadmap mirror | [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | system |
@@ -90,7 +89,6 @@ Specifications and design documents for the built system.
 | [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone |
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
 | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |
-| [local-model-advisor-v0.md](system/local-model-advisor-v0.md) | Local model advisory critique adapter |
 | [main-builder-adapter-v0-token-controlled-session-rail.md](system/main-builder-adapter-v0-token-controlled-session-rail.md) | Token-controlled session rail for main builder |
 | [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | Managed external builder execution + observability |
 | [managed-external-builder-execution-v1-1-hardening.md](system/managed-external-builder-execution-v1-1-hardening.md) | Approval hardening for managed external builders |

@@ -42,7 +42,6 @@ EDGE_SEPARATOR = " <- "
 CLUSTER_MODULES = (
     "packages.orchestration.provider_trust",
     "packages.orchestration.provider_trust_verification",
-    "packages.orchestration.local_model_advisor",
     "packages.orchestration.worker_registry",
     "packages.orchestration.overnight_executor",
     "packages.orchestration.overnight_readiness",
@@ -58,7 +57,6 @@ CLUSTER_MODULES = (
 # their own deletion-bound handler files for exactly that reason.
 CLUSTER_COMMAND_HANDLERS = (
     "apps/cli/commands/dogfood_cmd.py",
-    "apps/cli/commands/local_advisor_cmd.py",
     "apps/cli/commands/main_builder_adapter_cmd.py",
     "apps/cli/commands/managed_builder_execution_cmd.py",
     "apps/cli/commands/overnight_cmd.py",
