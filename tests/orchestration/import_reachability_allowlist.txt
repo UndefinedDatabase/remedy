@@ -18,7 +18,6 @@ apps.cli.commands.decision
 apps.cli.commands.dev
 apps.cli.commands.do_cmd
 apps.cli.commands.event
-apps.cli.commands.external_builder_cmd
 apps.cli.commands.failure_stats_cmd
 apps.cli.commands.file
 apps.cli.commands.guide
@@ -134,7 +133,6 @@ packages.orchestration.event_replay
 packages.orchestration.evidence_index
 packages.orchestration.evidence_mode
 packages.orchestration.exec_guard
-packages.orchestration.external_builder_sandbox
 packages.orchestration.failure_postmortem
 packages.orchestration.failure_stats
 packages.orchestration.file_provenance
