@@ -11829,3 +11829,69 @@ THE READING. A gate exists to stand between an actor and a capability. When the 
 CHOSEN: `remedy execution approve` and the sixteen other `execution` commands are deleted with their module, their group, their tests and their four documentation pages, and F275's Do-not-touch clause is read — as D6 already read it — as protecting F017's human gate rather than any file that happens to contain the word "approve". The capability loss is registered as R-0856 in the same round rather than mitigated.
 
 ALTERNATIVES CONSIDERED AND REJECTED. (a) Keep the `execution` group and delete only the module. Rejected: the seventeen handlers import the module at call time, so every one of them would exit with `ModuleNotFoundError` — a command advertised in `remedy --all-commands` that cannot run is worse than an absent one, and R-0847 already records that the advertised-commands guard is blind to exactly this shape. (b) Keep `execution approve` alone as a stub that refuses. Rejected by AGENTS.md Scope Control, which forbids a stub, a shim and a compatibility reader by name, and by the observation that a gate with nothing behind it is a false live indicator. (c) Stop the deletion and ask the operator. Rejected by §2 of the planner and reviewer prompt, which bars a ruling request, and by operator amendment amend0908-f275-finish rule 2, which permits an early stop only where a module group is genuinely undeletable under the three rules in `docs/roadmap/features/T2_F275.md` T001 — this one is not.
+
+## DECISION F275 D8 (2026-09-09) — the live-review parser dies with its module; the three surviving consumers lose the gate rather than inheriting the parser
+
+CONTEXT. Round 18 deletes `packages/orchestration/overnight_executor.py`, component 1 of
+`.agent/f275_deletion_order.md`. Three SURVIVING production modules import out of it:
+`orchestrator_brain.py` and `self_dogfood_execution.py` take both `parse_review_findings`
+and `review_findings_block_execution`, and `self_dogfood.py` takes the parser alone. Those
+functions read `.agent/live_review.md` and turn its verdict into a refusal to execute. This
+is the first deletion of this feature that removes a RESTRICTION rather than a capability,
+so DECISION F275 D7's fail-safe argument does not reach it and is not copied onto it.
+
+TWO READINGS WERE ON DISK AND DISAGREED. Both are now measured rather than argued.
+
+READING A, that the deletion discharges a boundary violation, is FALSE. It rests on
+`docs/system/development-artifact-boundary-v0.md` ruling that product modules must not
+depend on the development ledger. Measured at `c4c314c2`: that document's "Allowed
+development uses" table EXPLICITLY ALLOWLISTS all four modules — `self_dogfood.py`,
+`self_dogfood_execution.py`, `overnight_executor.py` and `orchestrator_brain.py` — and its
+disallowed list names only `worker_facade_cmd.py`. The guard
+`tests/orchestration/test_development_artifact_boundary.py` carries the same allowlist.
+These reads are sanctioned, not violations, and no boundary is repaired by removing them.
+
+READING B, that the deletion removes a safeguard, is TRUE, and the measurement makes the
+loss much smaller than the sentence suggests. Run at `c4c314c2` against the repository's
+real `.agent/live_review.md`, `parse_review_findings` returns `source='malformed'`,
+`verdict='unknown'` and every open-finding count zero, while the record holds 85 open
+findings by distinct id. `review_findings_block_execution` therefore returns
+`(True, 'review_findings_open')` UNCONDITIONALLY. The parser expects a `## Verdict` heading
+and `### R-XXXX` blocks carrying `**Status**` and `**Severity**` fields; this repository's
+ledger uses `- R-XXXX — ` registration paragraphs, `Done:` lines and `Gate:` entries, and
+has none of those shapes. Every test that exercises the gate writes a SYNTHETIC file in the
+old format, through `REMEDY_REVIEW_FILE` or a temporary agent directory, so the suite has
+been green over a production path that never once read real review state.
+
+CHOSEN. Delete the parser with its module, and remove the call site from each of the three
+survivors, per T001 RULE 3, which forbids a stub, a shim or a copy of cluster code into a
+survivor. The gate as built is a constant, not a discriminator: it answers "block" for every
+possible state of the real record, so removing it does not trade a working safeguard for
+convenience. It removes a jammed one.
+
+CONSEQUENCES, stated plainly rather than minimised. Self-execution eligibility loses its
+`REVIEW_FINDINGS_OPEN` stop; the orchestrator's `_score_options` no longer suppresses
+execution-like options; `_routing_plan` reaches the human-review tier only through the loop
+guard; and `remedy self inspect` no longer reports a review verdict blocker. Because the old
+gate blocked unconditionally, the direction of the change is from "always refuses" to
+"proceeds subject to the other gates", which is a real loosening and is registered as
+R-0863. The other gates in that eligibility path are measured to survive untouched —
+approval, run contract, attached target repo and branch safety — and round 18's red-proof P2
+pins the approval gate by mutation rather than by assertion. F275's "Do not touch" keeps the
+approval gate out of this feature's reach, so that layer is not weakened here.
+
+ALTERNATIVES CONSIDERED. (1) Move the parser into a surviving module. Rejected: T001 RULE 3
+forbids exactly this, and it would preserve a reader that cannot read the file it is aimed
+at. (2) Repair the parser to the current ledger format and then move it. Rejected twice
+over: building new capability inside a deletion round is the scope widening AGENTS.md
+forbids, and the development ledger's format is not this feature's to freeze. (3) Keep
+`overnight_executor.py` alive for the parser alone. Rejected: it is component 1 of an order
+the operator ruled PERFORMED rather than prepared, and a module kept for one helper is the
+attic AGENTS.md Scope Control refuses.
+
+HOW TO REVERSE. Restore `packages/orchestration/overnight_executor.py` from `c4c314c2`,
+restore the three call sites and the four unthreaded parameters in `orchestrator_brain.py`,
+restore the six deleted tests, and re-add the module to the boundary allowlist, the
+reachability allowlist, `CLUSTER_MODULES` and the deletion map. Reversing this decision
+without also repairing the parser restores a gate that blocks unconditionally, which is the
+state this decision ends.
