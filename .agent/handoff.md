@@ -1,646 +1,479 @@
-# Handback — F275 round 19
+# Handback — F275 round 20
 
 ## Session
 
-SESSION 10 of feature F275 · round 19 · rounds so far 19
+SESSION 11 of feature F275 · round 20 · rounds so far 20
 
 F275's soft limit is 20 sessions and 60 rounds by operator amendment
 amend0908-f275-finish rule 1, and it travels to no other feature. This round is
-well inside it, so no scope report is owed.
+inside it, so no scope report is owed.
 
-This was a DELETION round: the THIRTEENTH module group of the prototype cluster,
-`packages.orchestration.overnight_readiness`, component 1 of
-`.agent/f275_deletion_order.md`, in ONE commit. It takes the WHOLE `overnight`
-command group with it — the `GroupDef`, the three remaining read-only commands,
-the handler file round 18 left alive, and two test files — because
-`packages/orchestration/mission_readiness.py` has carried the same capability
-since rounds 1 and 2. It first booked round 18's PASS verdict and the R-0864
-registration from the pushed `.agent/handoff.md`, per amend0827-process-diet
-rule 1, and two prose slips. There was no DECISION commit: DECISION F275 D1
-already ruled the carry-over and DECISION F274 D2 already ruled the naming.
+This round deleted the FOURTEENTH module group of the prototype cluster,
+`packages.orchestration.worker_registry`, component 1 of
+`.agent/f275_deletion_order.md`, in ONE commit — the module, its handler, the
+WHOLE `route-policy` command group, the three `worker.registry-*` commands, its
+cockpit section, four `ContractAction` members, two documentation pages and
+three test files. It is NOT a pure deletion round under
+amend0906-triage-throughput: the surviving consumer
+`packages/orchestration/token_economy.py` had its approval logic rewritten, so
+the four-measurement shortcut does not apply and the mutation red-proof was
+ordered and run in full as G5. DECISION F275 D9, committed BEFORE the first
+`git rm`, authorises that survivor's FAIL-SAFE degradation. The round also
+booked round 19's PASS verdict from the pushed `.agent/handoff.md` per
+amend0827-process-diet rule 1, registered R-0865, and recorded two prose slips.
 
-Context self-assessment (amend0905-throughput): context is comfortable; the
-round's cost was dominated by the 21-minute serial full suite and by the two
-read-only base worktrees the reconciliation arithmetic needed, not by reading.
+Context self-assessment (amend0905-throughput): context is comfortable. The
+round's cost was dominated by the 21-minute serial full suite, the two
+`--collect-only` sweeps behind the node-id set difference and one read-only base
+worktree; reading the targets was cheap.
 
 ## Range
 
-Review of `c878073e`..`HEAD` (C4, the commit that writes this file).
+Review of `0d18e58a`..`HEAD` (C5, the commit that writes this file).
 
 ## Commits
 
-### f172303d F275 R19 C0a: save the round 19 step block verbatim.
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f275-r19.md | +310 -0 | the round 19 step block saved verbatim; the C0a blob every authored slice is extracted from |
+### dd607168 F275 R20 C0a: save the round 20 step block verbatim under .agent/authored.
 
-### a211cea3 F275 R19 C0b: mirror the round 19 block into the last-block state file.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +246 -366 | the same bytes mirrored into the standing state file, written from the committed C0a blob |
+| .agent/authored/f275-r20.md | 483/0 | the round 20 step block, copied byte for byte from the delegation source with `shutil.copyfile`; 40139 bytes, sha256 `1b8d1b0b…84cc61` |
 
-### 0b9c05d1 F275 R19 C1: advance the plan to round 19.
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | +15 -15 | replaced WHOLE by the PLAN19 slice; Current Step is round 19, Risks names R-0847 as this round's worst |
+### 2363da0a F275 R20 C0b: mirror the round 20 block bytes into the last-block state file.
 
-### ddaf9101 F275 R19 C2: book the round 18 PASS verdict, register R-0864, record two prose slips.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4 -0 | LEDGER19 appended: the reviewer-authored round 18 PASS verdict and the R-0864 registration |
-| .agent/prose_slips.md | +4 -0 | SLIPS19 appended: the two round 18 reviewer-prose slips |
+| .agent/last_block.md | 446/273 | the same bytes, taken from the COMMITTED C0a blob via `git show`, not from the scratch file |
 
-### 0f19c86a F275 R19 C3: delete the overnight_readiness module group and its whole command group.
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/overnight_readiness.py | +0 -894 | the module itself; its capability has been carried by `mission_readiness.py` since rounds 1 and 2 |
-| apps/cli/commands/overnight_cmd.py | +0 -81 | the handler file dies ENTIRELY; round 18 took its fourth command, all three remaining go now |
-| tests/orchestration/test_overnight_readiness.py | +0 -259 | the module's own tests, deleted with the module (22 test functions) |
-| tests/cli/test_overnight_cli.py | +0 -105 | the command group's CLI tests, deleted with the group (7 test functions) |
-| apps/cli/command_catalog.py | +0 -43 | the `"overnight"` GroupDef, the three `CommandEntry` blocks and the section comment that introduced them |
-| apps/cli/commands/__init__.py | +1 -2 | `overnight_cmd` dropped from BOTH the sorted import block and the dispatcher tuple |
-| packages/orchestration/mission_readiness.py | +3 -3 | the surviving twin's docstring: the two sentences claiming the module is "still on disk" rewritten in the PAST tense, naming F275 round 19 |
-| tests/orchestration/test_job_fulfillment.py | +3 -3 | three `_integrity_status` imports re-pointed from the dying module to `mission_readiness`, which carries the definition; nothing copied |
-| tests/orchestration/test_cluster_deletion_map.py | +0 -2 | the module dropped from `CLUSTER_MODULES` and the handler from `CLUSTER_COMMAND_HANDLERS` |
-| tests/orchestration/import_reachability_allowlist.txt | +0 -2 | TWO lines, the module and the handler; the dry run went red on exactly the second |
-| .agent/f275_deletion_order.md | +0 -1 | REGENERATED from the live import graph, not line-edited; two component lines remain |
-| docs/archive/bounded-overnight-prep-v0.md | +0 -6 | the three dead `remedy overnight …` advertisements and the line introducing them; the archive page stays |
-| docs/system/quality-baseline-v0.md | +0 -1 | the coverage-table row for the deleted handler file |
+### c98186af F275 R20 C1: advance the plan to round 20.
 
-### C4 — the commit that writes this file
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | (self-reference) | this handback; a handoff cannot table the commit that writes it (R-0149 pattern) |
+| .agent/plan.md | 20/17 | replaced WHOLE by the PLAN20 slice extracted from the committed C0a blob; 44 lines against the AGENTS.md cap of 50 |
+
+### 85379a77 F275 R20 C2: book the round 19 PASS verdict, register R-0865, record two prose slips.
+
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/live_review.md | 6/0 | LEDGER20 appended: the `Gate: F275 R19` PASS record, the R-0865 registration and the `Note: F275 R20` widening of R-0858 |
+| .agent/prose_slips.md | 4/0 | SLIPS20 appended: the round 19 no-op change-set entry and the round 19 suite-delta arithmetic |
+
+### ce71d139 F275 R20 C3: rule DECISION F275 D9 - token economy degrades fail-safe.
+
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/decisions.md | 72/0 | DECISION20 appended: DECISION F275 D9, the ruling that authorises the survivor's degradation, committed BEFORE the first `git rm` |
+
+### 1abe8ac2 F275 R20 C4: delete the worker_registry module group and degrade token_economy fail-safe.
+
+| Path | +/- | Reason |
+|---|---|---|
+| packages/orchestration/worker_registry.py | 0/1035 | the module itself — component 1 of the deletion order |
+| apps/cli/commands/route_policy_cmd.py | 0/196 | its command handler; a cluster handler, so its imports were never a blocking edge |
+| tests/orchestration/test_worker_registry.py | 0/380 | tests of a deleted module die with it (36 node ids) |
+| tests/cli/test_route_policy_cli.py | 0/107 | tests of the deleted handler (11 node ids) |
+| tests/orchestration/test_worker_route_integration.py | 0/27 | integration test of the deleted pair (1 node id) |
+| docs/guides/worker-route-policy-user-guide-v0.md | 0/88 | user guide for commands that no longer exist |
+| docs/system/worker-registry-route-policy-v0.md | 0/106 | system doc for a deleted module |
+| apps/cli/command_catalog.py | 0/79 | the `route-policy` GroupDef, the three `worker.registry-*` entries with their section comment, and the three `route-policy.*` entries with theirs |
+| apps/cli/commands/__init__.py | 1/2 | `route_policy_cmd` dropped from BOTH the sorted import block and the dispatcher tuple |
+| packages/orchestration/ui_server.py | 1/48 | `_build_worker_registry_section` and its dashboard key deleted; SEPARATELY the surviving `_build_token_economy_section` loses its registry import and its `ollama_placeholder_available` key in both returns — the user-observable loss R-0865 records |
+| packages/orchestration/token_economy.py | 20/61 | THE SURVIVOR'S DEGRADATION, ruled by DECISION F275 D9: all three registry imports and `estimate_route_token_band` deleted, `recommended_worker_id` left empty, `estimated_cost_band` UNKNOWN, approval UNCONDITIONAL, the ladder collapsed to two branches naming only surviving commands, both head-docstring paragraphs and the function docstring rewritten in the past tense naming F275 round 20 |
+| packages/orchestration/run_contract.py | 0/12 | the Step 1726 comment, the four `ContractAction` members and their four safe-action tuple lines |
+| tests/cli/test_cli_ux.py | 1/1 | `"route-policy"` removed from the hand-maintained `_INTERNAL_GROUPS`; only the applied dry run finds this one — no grep for the module name reaches it |
+| tests/orchestration/test_token_economy.py | 7/11 | `test_route_band_unknown_stays_unknown` deleted with its function; the two-way `route-policy` disjunct narrowed away; `test_local_route_no_approval_when_cheap` REPLACED by `test_no_route_spec_fail_safe_requires_approval` |
+| tests/orchestration/test_token_economy_integration.py | 4/30 | the whole `TestPlaceholderHardening` class deleted; the docstring's last sentence rewritten as a deliberate absence |
+| tests/ui_server/test_dashboard_cockpit_truth.py | 0/15 | `test_worker_registry_section_present`, the only test of the deleted cockpit section |
+| tests/orchestration/test_cluster_deletion_map.py | 1/3 | the module dropped from `CLUSTER_MODULES`, the handler from `CLUSTER_COMMAND_HANDLERS`, and `_cluster_module_of`'s docstring example re-pointed at `provider_trust`, which still exists |
+| tests/orchestration/cluster_deletion_map.txt | 0/2 | BOTH `worker_registry <- ` lines, the `token_economy.py` one and the `ui_server.py` one |
+| tests/orchestration/import_reachability_allowlist.txt | 0/2 | BOTH `apps.cli.commands.route_policy_cmd` and `packages.orchestration.worker_registry` |
+| docs/README.md | 0/3 | the three index rows naming the two deleted pages — quick-find, system table, guides table |
+| docs/system/token-economy-context-budget-optimizer-v0.md | 10/8 | the local-route paragraph and the "Expensive route justification" section rewritten: approval UNCONDITIONAL, the floor surviving by degradation, `hard_safety_requires_approval` gone, F110 named as the inheritor |
+| docs/system/quality-baseline-v0.md | 0/1 | the coverage-table row for the deleted handler |
+| .agent/f275_deletion_order.md | 0/1 | REGENERATED from the live import graph by `measured_order()`; the 26 header lines are byte-identical to the base and ONE component line remains |
+
+### C5 — the handoff commit (self-reference exception, R-0149 pattern)
+
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewritten | this file; a handoff cannot table the commit that writes it |
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git worktree add --detach .remedy-wt/wt-r19 HEAD` | exit 0 — the disposable worktree for the G5 red-proof |
-| `git worktree remove --force .remedy-wt/wt-r19` + `git worktree prune` | exit 0 — removed and pruned before C4 |
-| `git worktree add --detach .remedy-wt/wt-base c878073e` (twice) | exit 0 — READ-ONLY base worktrees, once for the base `--collect-only` node-id set and once for the base ruff parity total |
-| `git worktree remove --force .remedy-wt/wt-base` + `git worktree prune` (twice) | exit 0 — both removed and pruned before C4 |
-| `git push -u origin feature/f275-one-world-completion-part-three` | run ONCE, after C4 — see Next |
-| PR create / merge / any `gh` command | None — forbidden by the block |
+| `git worktree add --detach .remedy-wt/g5 1abe8ac2` | created; the G5 mutation red-proof ran only here |
+| `git worktree add --detach .remedy-wt/base 0d18e58a` | created READ-ONLY; the base collect-only, the base ruff distribution and the base catalog read |
+| `git worktree remove --force .remedy-wt/g5` | removed before C5 |
+| `git worktree remove --force .remedy-wt/base` | removed before C5 |
+| `git worktree prune` | ran; `git worktree list` holds ONE entry |
+| `git push -u origin feature/f275-one-world-completion-part-three` | ONCE, after C5 |
+
+No PR was created, nothing was merged, and no `gh` command was run.
 
 ## Verification
 
-One line per gate, with its REAL exit code taken from
-`bash -c '<cmd>; echo "REAL_EXIT=$?"'`.
+Every gate below was run as `bash -c '<cmd>; echo "REAL_EXIT=$?"'` and carries
+its REAL exit code.
 
-**G1 TRANSPORT — REAL_EXIT=0.** One digest comparison over the three artefacts
-§3 item 37 covers and nothing else:
+**G1 TRANSPORT — exit 0.** One digest comparison over three artefacts and
+nothing else. Delegation source `.remedy-wt/f275-r20.md`, committed
+`.agent/authored/f275-r20.md` and committed `.agent/last_block.md` are all
+**40139 bytes** at sha256
+`1b8d1b0bf7892a84ec83b3a581267bd557de89118b5df0dfa49cbe95db84cc61`, and all
+three compare BYTE-EQUAL. Per §3 item 37 this chain covers those three artefacts
+and claims nothing about the bytes that were emitted.
 
-| Artefact | bytes | sha256 |
+**G2 THE PLAN AND THE SLICES — exit 0.** `.agent/plan.md` at C1 `c98186af` is
+2442 bytes at `66a58691…4742f7`, BYTE-IDENTICAL to the PLAN20 slice extracted
+from the committed C0a blob. 44 lines against the AGENTS.md cap of 50; `## Goal`
+occurs exactly once and `## Next Steps` exactly once. For all four slices: the
+block carries 8 marker strings, each slice occurs EXACTLY ONCE in its target
+(PLAN20 → `plan.md`, LEDGER20 → `live_review.md`, SLIPS20 → `prose_slips.md`,
+DECISION20 → `decisions.md`), and a grep for every one of the 8 marker strings
+over each of the four target files returns **0** for each file.
+
+**G3 THE RECORD — exit 0**, over three appends, each with a byte reader, a
+structural reader and a negative control.
+
+| Append | pre | post | slice | growth = 1 + slice | prefix | suffix | joining byte |
+|---|---|---|---|---|---|---|---|
+| LEDGER20 → live_review.md | 671839 `25bec09a…` | 680095 `f8131353…` | 8255 `0ef9bb84…` | 8256 = 1 + 8255 ✓ | ✓ | ✓ | `b'\n'` |
+| SLIPS20 → prose_slips.md | 194749 `93c5b2a5…` | 196492 `3e5a1ceb…` | 1742 `6f640cb3…` | 1743 = 1 + 1742 ✓ | ✓ | ✓ | `b'\n'` |
+| DECISION20 → decisions.md | 975891 `9c5791aa…` | 981656 `1d46a248…` | 5764 `c492ddc2…` | 5765 = 1 + 5764 ✓ | ✓ | ✓ | `b'\n'` |
+
+STRUCTURAL READER. N was counted BY THE SCRIPT from the slice, never asserted by
+the block: **N = 3** for LEDGER20, **N = 2** for SLIPS20, **N = 7** for
+DECISION20. For each append the LAST N blank-line units of the whole post-file
+were compared IN ORDER against the slice's N paragraphs with a per-unit sha256
+on both sides — all 12 unit pairs equal. The unit BEFORE them was shown to lie
+inside the PRE blob in every case: `25ed378e…`, `a1dd14b0…`, `44418a13…`.
+
+NEGATIVE CONTROL. One byte was flipped IN MEMORY inside the FIRST appended
+paragraph of each append — offset 674066 `a`→`` ` ``, offset 195222 `n`→`o`,
+offset 975987 `' '`→`'!'`, each verified to lie within the first paragraph's
+span. BOTH readers REJECTED all three tampers while BOTH ACCEPTED all three
+truths. Each file was re-read from disk afterwards and equals its committed
+post-blob.
+
+COUNTS. `^Gate: ` **41 before, 42 after**. `^Gate: F275 R19 ` = 1,
+`^- R-0865 — ` = 1, `^Note: F275 R20 ` = 1, `^## DECISION F275 D9 ` = 1 — each
+exactly once.
+
+THE OPEN SET BY DISTINCT ID, `Landed:` never subtracted:
+
+| Revision | registrations | resolutions | OPEN | distinct `Landed:` ids present |
+|---|---|---|---|---|
+| base `0d18e58a` | 93 | 6 | **87** | 34 |
+| C3 `ce71d139` | 94 | 6 | **88** | 34 |
+
+**G4 THE SWEEP, READ BY HAND — exit 0.** Over **1661** tracked files outside
+`.agent/` and `.data/`, for the fifteen ordered tokens. RAW = **6**, exactly
+what the applied dry run measured at C4, so there is nothing to reconcile. THE
+RAW LIST IN FULL, NOT TRUNCATED:
+
+```
+docs/roadmap/features/T2_F260.md:341: [worker_registry] `worker_registry.py`, `model_route_tournament.py`, `context_pack.py`,
+docs/roadmap/features/T2_F260.md:363: [route_policy_cmd] (`route_policy_cmd.py`: `prefer_local_for_cheap_tasks`,
+docs/roadmap/features/T2_F260.md:366: [worker_registry] `prefer_local_advisor`, `require_human_approval`; `worker_registry`: `risk_tier`,
+docs/roadmap/features/T2_F262.md:76: [worker.registry-list] `worker.registry-list` (no date field on their row shape) and
+docs/roadmap/features/T2_F267.md:28: [worker.registry-list] `execution.template-list`, `worker.registry-list` (no date on their row shape)
+docs/roadmap/features/T8_F151.md:19: [worker_registry] Real modules exist: worker_registry.py (declarative WorkerSpec
+```
+
+CLASSIFICATION, line by line. All six are history prose under
+`docs/roadmap/features/` and none is production code, a test, a guide or an
+index. Three sit in `T2_F260.md` (lines 341, 363, 366) — F260's own account of
+what the prototype cluster contained, which is a historical record of a `[x]`
+feature. One sits in `T2_F262.md` line 76, likewise `[x]`, the reading R-0858
+already applies to `T2_F085.md`. One sits in `T2_F267.md` line 28 — this is the
+OPEN one, and it is exactly the line the `Note: F275 R20 ` record appended to
+the ledger this round widens R-0858 to cover: F267 is `[ ]` and its plan now
+names three deleted commands rather than two. One sits in `T8_F151.md` line 19,
+an unchecked feature's inventory of modules that existed when it was written.
+The spaced advertisement forms `remedy route-policy` and `remedy worker
+registry-` return **ZERO** hits, so no page anywhere still instructs an operator
+to run a command this round deleted.
+
+`tests/cli/test_advertised_commands.py` was run separately: **exit 0, 5
+passed**. STATED PLAINLY: that pass is NOT evidence for this round. Deleting the
+whole `route-policy` group removes it from that guard's `GROUPS`, and the guard
+skips what it cannot resolve — finding R-0847. The gate above, read by hand from
+its RAW list, is the evidence.
+
+**G5 THE FAIL-SAFE IS PINNED, NOT MERELY WRITTEN — control exit 0, mutation
+exit 1, post-revert exit 0.** Run inside the disposable worktree
+`.remedy-wt/g5` created at C4 `1abe8ac2`, with `__pycache__` purged and
+`python3 -B` before every run.
+
+- (a) REVERT TARGET BY PATH:
+  `.remedy-wt/g5/packages/orchestration/token_economy.py`. The exact mutated
+  bytes `    d.requires_human_approval = True` occur **1** time in THAT file.
+- (b) NOT SHADOWED BY THE EDITABLE INSTALL:
+  `import packages.orchestration.token_economy` resolves to
+  `/home/decodeux/Repos/remedy/.remedy-wt/g5/packages/orchestration/token_economy.py`.
+- (c) CONTROL, unmutated, over the node set — **exit 0, 72 passed**.
+- (d) MUTATION, `d.requires_human_approval = True` → `False` in
+  `compute_token_economy_decision` — **exit 1, 5 failed, 67 passed**. The five:
+  `TestDecision::test_unknown_context_requires_approval`,
+  `TestDecision::test_unknown_context_hint_not_local_first`,
+  `TestDecision::test_no_route_spec_fail_safe_requires_approval`,
+  `TestDecision::test_over_threshold_requires_approval` and
+  `TestIntegrity::test_real_unknown_decision_is_safe_under_audit` — the last
+  being this module's own R-0099 audit invariant, exactly as DECISION F275 D9
+  predicted.
+- (e) REVERTED BY PATH with `git checkout --`, purged, re-run — **exit 0, 72
+  passed** — and the worktree porcelain is EMPTY (0 lines).
+
+THE STOP CONDITION DID NOT FIRE: the mutation is RED, so the fail-safe is pinned
+by tests that bite and DECISION F275 D9's premise holds. Every figure matches
+the applied dry run exactly.
+
+**G6 THE GUARDS, THE SUITE AND RUFF.**
+
+- (a) exit 0 — the nine affected guards, **548 passed** (dry run: 548).
+- (b) exit 0 — the canary `tests/cli/test_golden_path.py`, **42 passed**.
+- (c) exit 0 — `tests/docs/`, **303 passed**; this round edits `docs/`.
+- (d) exit 0 — THE FULL SUITE, `python3 -B -m pytest tests/ -q`, run SERIALLY in
+  the PRIMARY checkout with C4 committed, never `-n auto`: **18454 passed, 23
+  skipped, ZERO failed** in 1300.69s. A separate `--collect-only` gives
+  **18477 = 18454 + 23**.
+
+  THE ARITHMETIC AGAINST THE BASE, closed by a node-id SET DIFFERENCE of
+  `--collect-only` and not by counting functions. Base `0d18e58a` collects
+  **18538** in a read-only worktree; C4 collects **18477**; the fall is
+  **61**, and it is **62 ids removed against 1 added**. The attribution
+  reproduces the dry run's exactly:
+
+  | Source | ids removed |
+  |---|---|
+  | tests/orchestration/test_worker_registry.py (deleted) | 36 |
+  | tests/cli/test_route_policy_cli.py (deleted) | 11 |
+  | tests/orchestration/test_worker_route_integration.py (deleted) | 1 |
+  | tests/test_grouped_cli.py — 8 parametrized `[route-policy]` cases GENERATED from the catalog `GROUPS`, in a file the change set never names | 8 |
+  | tests/orchestration/test_token_economy_integration.py — `TestPlaceholderHardening` | 3 |
+  | tests/orchestration/test_token_economy.py | 2 |
+  | tests/ui_server/test_dashboard_cockpit_truth.py | 1 |
+  | **total removed** | **62** |
+
+  The 1 added id is
+  `tests/orchestration/test_token_economy.py::TestDecision::test_no_route_spec_fail_safe_requires_approval`,
+  the replacement fail-safe test. 62 − 1 = 61. Nothing to reconcile.
+
+- (e) exit 0 — `python3 -B -m ruff check` over all ten surviving `.py` paths of
+  the change set: **All checks passed!**. PARITY over `packages`, `apps` and
+  `tests`: **`Found 24 errors.` at BOTH** base `0d18e58a` (read in a DISPOSABLE
+  READ-ONLY worktree, never by writing a base blob over a tracked file) and C4,
+  each exit 1, and the per-file distributions are IDENTICAL — a `diff` of the
+  two distributions is empty. Not one of the 24 is in a file this round touches:
+  they sit in `tests/cli/test_plan_approval.py` (6),
+  `tests/orchestration/test_long_run_executor.py` (2),
+  `tests/orchestration/test_prompt_trace.py` (2),
+  `tests/test_project_context_coverage.py` (2) and twelve files with one each,
+  including `packages/orchestration/dag_schedule.py` and
+  `packages/orchestration/gauntlet_injection.py`. Per constraint 6 they are
+  pre-existing and were not repaired.
+
+**G7 THE RATCHETS AND THE CATALOG AGREE WITH THE DISK — exit 0.** The SHIPPED
+catalog was read by importing `_BASE_CATALOG` and `GROUPS` from
+`apps.cli.command_catalog`, never by grepping the source; the BASE revision was
+read the same way inside the READ-ONLY disposable worktree at `0d18e58a`.
+
+| | base `0d18e58a` | C4 `1abe8ac2` |
 |---|---|---|
-| `.remedy-wt/f275-r19.md` (delegation source) | 25581 | `8b40fbd855485160db7aef589b2c49f51a8bcf1f543ae375280d8e5e82afdee8` |
-| committed `.agent/authored/f275-r19.md` | 25581 | `8b40fbd855485160db7aef589b2c49f51a8bcf1f543ae375280d8e5e82afdee8` |
-| committed `.agent/last_block.md` | 25581 | `8b40fbd855485160db7aef589b2c49f51a8bcf1f543ae375280d8e5e82afdee8` |
+| commands | 233 | **227** |
+| groups | 46 | **45** |
+| `"route-policy"` in `GROUPS` | present | **absent** |
+| ids beginning `route-policy.` | 3 | **0 (EMPTY)** |
+| ids beginning `worker.registry-` | 3 | **0 (EMPTY)** |
+| duplicate ids | 0 | **0** |
+| dangling `related=` | 2 | **2** |
 
-ALL THREE BYTE-EQUAL: True.
+DISCHARGING R-0859's STANDING OBLIGATION on every deletion round of this feature
+until its closure test exists: every `related=` tuple in the catalog was
+resolved against the LIVE id set at both revisions. Exactly **2** dangle at each
+— `mission.run -> dogfood.run-loop` and `repo.status -> readiness.show`, both
+PRE-EXISTING, both held by R-0859 and bound to the DECISION F260 D3 round. This
+round ADDED NONE; per constraint 5 neither was repaired.
 
-**G2 THE PLAN AND THE SURVIVOR'S DOCSTRING — REAL_EXIT=0.** The block's TOTAL
-line count is 310 against its cap of 490. `.agent/plan.md` at C1 is 2259 bytes,
-sha256 `7278e1538a08a2a71d4b91972123e468d0393cc369db8de80f23cd37b7f57461`,
-BYTE-IDENTICAL to the PLAN19 slice extracted from the committed C0a blob
-(same length, same digest), 41 lines against the AGENTS.md cap of 50, with
-`## Goal` exactly once and `## Next Steps` exactly once, and no marker line
-present. For `packages/orchestration/mission_readiness.py` the numstat of the
-docstring edit is `3	3	packages/orchestration/mission_readiness.py`. The module
-docstring occupies lines 1..17 of the new file (measured with `ast`, not by eye);
-old and new both have 745 lines; the line-by-line comparison gives changed line
-numbers `[14, 15, 16]`, so ALL CHANGED LINES ARE INSIDE THE MODULE DOCSTRING and
-no line outside it changed. The F261-renames sentence is byte-identical.
+`.agent/f275_deletion_order.md` now holds **ONE** component line,
+`packages.orchestration.provider_trust, packages.orchestration.provider_trust_verification`.
+The file was REGENERATED from the live import graph with `measured_order()` and
+never line-edited; a fresh regeneration re-run reproduces the committed bytes
+exactly (1784 bytes, `9b1cf343…0d1652`, `on disk equals regeneration True`), and
+its 26-line header is byte-identical to the header at the base. Neither
+`cluster_deletion_map.txt`, `import_reachability_allowlist.txt`,
+`CLUSTER_MODULES` nor `CLUSTER_COMMAND_HANDLERS` still names this group's module
+or handler — a grep for both names over all three files returns ZERO.
 
-```
--two consumers are why `packages/orchestration/overnight_readiness.py` has no
--surviving consumer left. That module is still on disk and is deleted with its
--cluster group; it was never touched by this move.
-+two consumers were why `packages/orchestration/overnight_readiness.py` had no
-+surviving consumer left. F275 round 19 deleted that module with its cluster group;
-+it was never touched by this move.
-```
+**G8 THE TREE — exit 0.**
 
-**G3 THE RECORD, over TWO appends — REAL_EXIT=0.**
+- `.agent/STOP` re-read from disk: **does not exist**.
+- `git status --porcelain`: **EMPTY**.
+- `git worktree list`: **ONE** entry, the primary checkout.
+- branch: `feature/f275-one-world-completion-part-three`.
+- `git diff --name-only ce71d139..1abe8ac2` compared as a SET against the block's
+  23 paths: **23 vs 23**, MISSING = **EMPTY**, EXTRA = **EMPTY**.
+- Per-commit insertions against the DECISION F104 D1 cap of 500, with parent
+  counts — every commit SINGLE-PARENT, every commit under the cap:
 
-`.agent/live_review.md` <- LEDGER19:
-- (a) BYTE READER: pre 666602 bytes sha256 `4545982f94b952a44485f13980818c89bc3d3d961de3eb40258d7ef0b3e178ac`;
-  post 671839 bytes sha256 `25bec09abaa522554b47314afd0a4e206f9eacc9bd396a81db0dc2c3d4fd9e0c`;
-  slice 5236 bytes sha256 `514b21de7edabc2db5e116b707bce2178ad87818ff917314a73280461cfe58ea`;
-  growth 5237 == 1 + 5236; pre a byte-exact PREFIX: True; slice a byte-exact
-  SUFFIX: True; joining byte read back as `b'\n'`: True.
-- (b) STRUCTURAL READER: N COUNTED BY THE SCRIPT FROM THE SLICE = 2. The
-  post-file holds 265 blank-line units; its LAST 2 units match the slice's 2
-  paragraphs IN ORDER, per-unit sha256 on both sides:
-  `18034a8415ebd1aa7fbc8c7917ce511da1db3a47cd06ff02040c170474aec5ab` and
-  `25ed378e6003f017498cb1028254c132482550379b13b36607e2fc3e30d4ca90`. The unit
-  before them, `a3150de78a61494b41fd7fb16fe5d0f6089cc7d41ae33205268d086a45421de3`,
-  is inside the PRE blob, so the region is whole and not just its tail.
-- (c) NEGATIVE CONTROL: one byte flipped IN MEMORY at file offset 666643, inside
-  the FIRST appended paragraph. Byte reader REJECTED the mutant (suffix False),
-  structural reader REJECTED it (tail != slice paragraphs); both readers ACCEPT
-  the truth; re-read from disk equals the committed post-blob (same sha256).
-- (d) COUNT PATTERNS: `^Gate: ` rose 40 -> 41; `^Gate: F275 R18 ` 0 -> 1 (exactly
-  once); `^- R-0864 — ` 0 -> 1 (exactly once).
-- (e) THE OPEN SET BY DISTINCT ID, `Landed:` never subtracted: at base
-  `c878073e` registered 92, done 6, open 86, with 34 distinct `Landed:` ids —
-  THE BASE REPRODUCES EXACTLY. At C2: registered 93, done 6, OPEN 87, 34 distinct
-  `Landed:` ids.
-
-`.agent/prose_slips.md` <- SLIPS19:
-- (a) BYTE READER: pre 192846 bytes sha256 `c36e22a9669bdcba66f6139f5417d8084532816af67626f52ad2083748b9ac2b`;
-  post 194749 bytes sha256 `93c5b2a59acdb309a679e037899a6927858611a552264945ff0b1439fe1f6b34`;
-  slice 1902 bytes sha256 `68a92776d553171e953ea1a1f4b1d1b7858a2b709bf2fc7c02b7597748a354eb`;
-  growth 1903 == 1 + 1902; prefix True; suffix True; joining byte `b'\n'`.
-- (b) STRUCTURAL READER: N = 2 counted from the slice; 278 units in the post-file;
-  last 2 match in order, `30b7193911994834d34f97d3f6a356c816323d0aec2d665410202386666c7f59`
-  and `a1dd14b0286b65c7487ae2c0784a63e10fd0d0c76618bcc4ed36df8e24438b33`; the
-  preceding unit `d378dab1bb61070f33cbde93c0d6eaae6887c1dcf1f02c5bcf59db8fb27e8222`
-  is inside the PRE blob.
-- (c) NEGATIVE CONTROL: byte flipped at offset 192887 inside the FIRST appended
-  paragraph; BOTH readers rejected the mutant and accepted the truth; disk equals
-  the committed post-blob.
-
-**G4 THE SWEEP IS CLEAN — REAL_EXIT=0.** 1668 tracked files scanned (of 4557
-tracked; `.agent/` and `.data/` excluded), over exactly the seven ordered tokens
-`packages.orchestration.overnight_readiness`, `overnight_readiness.py`,
-`overnight_cmd`, `overnight.readiness`, `overnight.plan`, `overnight.report` and
-the spaced form `remedy overnight`. THE RAW LIST IN FULL, UNTRUNCATED — RAW = 6:
-
-```
-docs/roadmap/features/T2_F260.md:343: [overnight_readiness.py] `overnight_readiness.py`, `repair_loop_v2.py`, `dogfood_run.py`,
-docs/roadmap/features/T2_F260.md:359: [overnight_readiness.py] (`overnight_readiness.py`: capabilities, risks, budget and evidence summaries)
-docs/roadmap/features/T2_F272.md:744: [overnight_readiness.py] FIRST — THE TWELVE CLUSTER-BOUND CONSUMERS ARE NEVER MIGRATED. Cross-referencing the inventory's 72 production consumers against the 24-module cluster list in `docs/roadmap/features/T2_F260.md`'s Design section gives twelve files on both: `builder_routing.py`, `candidate_quality.py`, `dogfood_run.py`, `external_builder_sandbox.py`, `local_candidate_generator.py`, `overnight_executor.py`, `overnight_mission.py`, `overnight_readiness.py`, `provider_trust.py`, `provider_trust_verification.py`, `repair_loop_v2.py` and `review_bundle.py`. Porting any of them onto the unified record is work T005 throws away. They keep their classic-store imports until T005 deletes them, and no round spends a line on them. T004's real remaining size is therefore 60 production files beside the 127 under `tests/`, and that is the figure a scope report uses rather than the headline 199.
-packages/orchestration/mission_readiness.py:7: [overnight_readiness.py] in `packages/orchestration/overnight_readiness.py`, so the move is provable by a
-packages/orchestration/mission_readiness.py:14: [overnight_readiness.py] two consumers were why `packages/orchestration/overnight_readiness.py` had no
-tests/cli/test_mission_cmd.py:1421: [packages.orchestration.overnight_readiness] assert "packages.orchestration.overnight_readiness" not in source
-```
-
-Line by line, why each survivor is legitimate:
-1. `docs/roadmap/features/T2_F260.md:343` — history prose: F260's Design section
-   listing the cluster's modules as they stood. Byte-identical at the base.
-2. `docs/roadmap/features/T2_F260.md:359` — history prose, same class, same
-   section, describing what the module used to carry. Byte-identical at the base.
-3. `docs/roadmap/features/T2_F272.md:744` — history prose: F272's ruling naming
-   the twelve cluster-bound consumers it would never migrate. Byte-identical at
-   the base.
-4. `packages/orchestration/mission_readiness.py:7` — the surviving twin's
-   docstring sentence recording that each definition is a byte-identical move of
-   the definition of the same name in the deleted module. The block ordered every
-   sentence outside the two rewritten ones kept BYTE-IDENTICAL, so this line is
-   legitimate by the block's own instruction.
-5. `packages/orchestration/mission_readiness.py:14` — the first of the two
-   sentences THIS ROUND REWROTE, now in the past tense.
-6. `tests/cli/test_mission_cmd.py:1421` — the ratchet the block declares NOT
-   TOUCHED: it keeps `mission_cmd` off the cluster and stays GREEN. R-0864's fix
-   clause already routes it.
-
-No hit outside those classes. The spaced form `remedy overnight` returns ZERO
-hits, so the three advertisements in `docs/archive/bounded-overnight-prep-v0.md`
-were the last ones on disk.
-
-`python3 -B -m pytest tests/cli/test_advertised_commands.py -q` — 5 passed,
-REAL_EXIT=0. **STATED PLAINLY, AS THE BLOCK REQUIRES: THAT PASS IS NOT EVIDENCE
-FOR THIS ROUND.** Deleting the whole group removed `"overnight"` from that
-guard's `GROUPS`, and the guard skips what it cannot resolve, so it went BLIND to
-every `remedy overnight <sub>` advertisement at exactly the moment those
-advertisements went dead — finding R-0847. The evidence for the advertisements is
-the hand-read RAW list above, not this exit code.
-
-**G5 THE SURVIVOR IS STILL PINNED — control REAL_EXIT=0, mutation REAL_EXIT=1,
-post-revert REAL_EXIT=0.** Run entirely inside the disposable worktree
-`.remedy-wt/wt-r19` at C3 (`0f19c86a`), never in the primary checkout.
-
-- REVERT TARGET NAMED BY PATH:
-  `/home/decodeux/Repos/remedy/.remedy-wt/wt-r19/packages/orchestration/mission_readiness.py`.
-  The mutated bytes — the six-line `def build_overnight_readiness(...)` signature
-  through its docstring line — occur EXACTLY ONCE in that file (measured before
-  mutating: `anchor occurrences in that file: 1`).
-- Sanity probe before any run: inside the worktree,
-  `import packages.orchestration.mission_readiness` resolves to
-  `…/.remedy-wt/wt-r19/packages/orchestration/mission_readiness.py`, so the
-  editable install at `/home/decodeux/.local/lib/python3.10/site-packages/_editable_impl_remedy.pth`
-  (which puts the PRIMARY checkout on `sys.path`) does not shadow the worktree.
-  The mutation going red is the second, decisive proof of that.
-- CONTROL FIRST, unmutated, over the same node set in the same worktree:
-  `python3 -B -m pytest tests/orchestration/test_mission_readiness.py tests/cli/test_mission_cmd.py -q`
-  → last summary line `128 passed in 45.62s`, REAL_EXIT=0.
-- MUTATION — `build_overnight_readiness` made to raise immediately
-  (`raise RuntimeError("G5 MUTATION: build_overnight_readiness is disabled")` as
-  its first statement), `__pycache__` purged, `python3 -B`:
-  → last summary line `16 failed, 112 passed in 45.94s`, REAL_EXIT=1. Named
-  failures include
-  `tests/cli/test_mission_cmd.py::TestMissionReadinessIsWiredToTheCarriedModule::test_the_cockpit_reads_the_carried_module_and_says_so`
-  and
-  `tests/cli/test_mission_cmd.py::TestMissionReportIsTheCarriedReportView::test_the_real_cli_answers_with_the_carried_report`.
-- REVERTED by path, `__pycache__` purged, re-run:
-  → `git status --porcelain` in the worktree empty, last summary line
-  `128 passed in 45.77s`, REAL_EXIT=0.
-
-THE STOP CONDITION DID NOT FIRE: the mutation is RED, so the carry-over is
-genuinely pinned — the carried module, not the deleted one, is what serves
-`remedy mission readiness` and `remedy mission report`, and it is still covered
-after its twin is gone.
-
-**G6 THE GUARDS, THE SUITE AND THE TREE.**
-
-- (a) `python3 -B -m pytest tests/orchestration/test_cluster_deletion_map.py
-  tests/orchestration/test_cluster_deletion_order.py
-  tests/orchestration/test_import_reachability.py
-  tests/orchestration/test_job_fulfillment.py
-  tests/orchestration/test_mission_readiness.py tests/cli/test_mission_cmd.py
-  tests/cli/test_advertised_commands.py tests/test_grouped_cli.py
-  tests/cli/test_cli_ux.py -q` → `716 passed in 93.69s`, REAL_EXIT=0, run at C3
-  committed. Exactly the reviewer's applied-run figure of 716.
-- (b) the canary, `python3 -B -m pytest tests/cli/test_golden_path.py -q` →
-  `42 passed in 19.11s`, REAL_EXIT=0.
-- (c) `python3 -B -m pytest tests/docs/ -q` → `303 passed in 0.48s`, REAL_EXIT=0
-  (verification tier 5: this round's change set includes `docs/` pages).
-- (d) THE FULL SUITE, `python3 -B -m pytest tests/ -q`, SERIALLY, in the PRIMARY
-  checkout with C3 committed → `18515 passed, 23 skipped, 1 warning in 1265.04s
-  (0:21:05)`, ZERO failed, REAL_EXIT=0. Separate `--collect-only`:
-  `18538 tests collected`, REAL_EXIT=0. 18515 + 23 = 18538 = collected. THE
-  ARITHMETIC AGAINST THE BASE: base 18552 passed / 23 skipped / 18575 collected;
-  the fall is 37 in passed and 37 in collected. The two deleted test files hold
-  only 29 test functions (22 in `test_overnight_readiness.py`, 7 in
-  `test_overnight_cli.py`, none parametrized), so 8 were unaccounted for. MEASURED
-  by a node-id set diff of `--collect-only` at the base (read-only worktree at
-  `c878073e`, 18575 ids) against C3 (18538 ids): the 37 removed ids are 22 +
-  7 + EIGHT parametrized `[overnight]` cases in `tests/test_grouped_cli.py`
-  (`test_group_help_flag[overnight]`, `test_group_help_has_commands_box[overnight]`,
-  `test_group_help_has_options[overnight]`, `test_group_help_has_usage[overnight]`,
-  `test_group_help_lists_subcommands[overnight]`,
-  `test_group_help_exits_zero[overnight]`,
-  `test_help_no_sensitive_leaks[overnight]`,
-  `test_main_entrypoint_delegates_group_help_to_grouped_cli[overnight]`) — those
-  are parametrized over the catalog's `GROUPS` and die with the `GroupDef`.
-  22 + 7 + 8 = 37, and NO node id was ADDED. See the deviations.
-- (e) `python3 -B -m ruff check` over every `.py` path in this round's change set
-  (`apps/cli/command_catalog.py`, `apps/cli/commands/__init__.py`,
-  `packages/orchestration/mission_readiness.py`,
-  `tests/orchestration/test_cluster_deletion_map.py`,
-  `tests/orchestration/test_job_fulfillment.py`) → `All checks passed!`,
-  REAL_EXIT=0. PARITY over `packages/`, `apps/` and `tests/`: at base `c878073e`
-  `Found 24 errors.` REAL_EXIT=1; at C3 `0f19c86a` `Found 24 errors.`
-  REAL_EXIT=1. The per-file distribution is IDENTICAL at both revisions (6 in
-  `tests/cli/test_plan_approval.py`, 2 each in `tests/test_project_context_coverage.py`,
-  `tests/orchestration/test_prompt_trace.py`, `tests/orchestration/test_long_run_executor.py`,
-  and 1 each in twelve further files, of which two are under `packages/`), and NOT
-  ONE of them is in a file this round touches. The round ADDED none. The
-  pre-existing 24 were not fixed, as ordered.
-- (f) THE TREE. `.agent/STOP` re-read from disk: does not exist.
-  `git status --porcelain`: EMPTY. `git worktree list`: one entry only,
-  `/home/decodeux/Repos/remedy  0f19c86a [feature/f275-one-world-completion-part-three]`.
-  Branch: `feature/f275-one-world-completion-part-three`.
-  `git diff --name-only ddaf9101..0f19c86a` yields 13 paths;
-  against the block's C3 path set of 14: **MISSING = {`tests/orchestration/cluster_deletion_map.txt`}**,
-  **EXTRA = {} (empty)**. The single missing path is the declared deviation below.
-  Per-commit insertions before C4, against the DECISION F104 D1 cap of 500:
-
-  | Commit | parents | + | - | under cap |
+  | Commit | + | − | parents | under 500 |
   |---|---|---|---|---|
-  | f172303d | 1 | 310 | 0 | yes |
-  | a211cea3 | 1 | 246 | 366 | yes |
-  | 0b9c05d1 | 1 | 15 | 15 | yes |
-  | ddaf9101 | 1 | 8 | 0 | yes |
-  | 0f19c86a | 1 | 7 | 1402 | yes |
+  | dd607168 C0a | 483 | 0 | 1 | ✓ |
+  | 2363da0a C0b | 446 | 273 | 1 | ✓ (also exempt: a single `.agent/**` state file rewrite) |
+  | c98186af C1 | 20 | 17 | 1 | ✓ |
+  | 85379a77 C2 | 10 | 0 | 1 | ✓ |
+  | ce71d139 C3 | 72 | 0 | 1 | ✓ |
+  | 1abe8ac2 C4 | 45 | 2218 | 1 | ✓ |
 
-  Every commit is single-parent. Per §3 item 14, C4's own numbers are not
-  reported here.
-- (g) The `+/-` cells of the `## Commits` tables above were compared CELL BY CELL
-  against `git show --numstat` per commit and THEY AGREE — §3 item 28. The
-  numstat output they were checked against:
-  `f172303d`: `310 0 .agent/authored/f275-r19.md`.
-  `a211cea3`: `246 366 .agent/last_block.md`.
-  `0b9c05d1`: `15 15 .agent/plan.md`.
-  `ddaf9101`: `4 0 .agent/live_review.md`, `4 0 .agent/prose_slips.md`.
-  `0f19c86a`: `0 1 .agent/f275_deletion_order.md`, `0 43 apps/cli/command_catalog.py`,
-  `1 2 apps/cli/commands/__init__.py`, `0 81 apps/cli/commands/overnight_cmd.py`,
-  `0 6 docs/archive/bounded-overnight-prep-v0.md`, `0 1 docs/system/quality-baseline-v0.md`,
-  `3 3 packages/orchestration/mission_readiness.py`,
-  `0 894 packages/orchestration/overnight_readiness.py`,
-  `0 105 tests/cli/test_overnight_cli.py`,
-  `0 2 tests/orchestration/import_reachability_allowlist.txt`,
-  `0 2 tests/orchestration/test_cluster_deletion_map.py`,
-  `3 3 tests/orchestration/test_job_fulfillment.py`,
-  `0 259 tests/orchestration/test_overnight_readiness.py`.
-
-**G7 THE RATCHETS AGREE WITH THE DISK — REAL_EXIT=0.** The component lines now in
-`.agent/f275_deletion_order.md`, TWO of them, regenerated from the live graph:
-
-```
-packages.orchestration.worker_registry
-packages.orchestration.provider_trust, packages.orchestration.provider_trust_verification
-```
-
-`tests/orchestration/cluster_deletion_map.txt` holds ZERO lines naming
-`overnight_readiness` (0 hits). The reachability allowlist names neither
-`packages.orchestration.overnight_readiness` nor `apps.cli.commands.overnight_cmd`
-(empty result set). `CLUSTER_MODULES` is now 3 entries and does NOT name this
-group's module; `CLUSTER_COMMAND_HANDLERS` is now 8 entries and does NOT name
-`apps/cli/commands/overnight_cmd.py`. The catalog's total command count is 233,
-`GROUPS` is 46 keys, `"overnight"` is no longer a `GROUPS` key, and the set of
-command ids beginning `overnight.` is EMPTY.
+- §3 item 28: every `+/-` cell of the `## Commits` tables above was compared CELL
+  BY CELL against `git show --numstat` for its commit. **They agree**, all 29
+  cells across the six commits.
 
 ## Authored-text proofs
 
-Three reviewer-authored slices were applied this round, each extracted from the
-COMMITTED C0a blob (`f172303d:.agent/authored/f275-r19.md`) between its marker
-lines, markers excluded, and applied byte for byte without retyping:
+Four reviewer-authored slices were applied this round, every one extracted BYTE
+FOR BYTE from the COMMITTED C0a blob `dd607168:.agent/authored/f275-r20.md`
+between its marker lines with the markers EXCLUDED. None was retyped and none
+was edited.
 
-| Slice | bytes | sha256 | applied to | result |
+| Slice | bytes | sha256 | Target | Result |
 |---|---|---|---|---|
-| PLAN19 | 2259 | `7278e1538a08a2a71d4b91972123e468d0393cc369db8de80f23cd37b7f57461` | `.agent/plan.md`, replaced WHOLE | `cmp` clean; committed blob byte-identical to the slice (G2) |
-| LEDGER19 | 5236 | `514b21de7edabc2db5e116b707bce2178ad87818ff917314a73280461cfe58ea` | `.agent/live_review.md`, appended | byte-exact SUFFIX of the committed post-blob (G3) |
-| SLIPS19 | 1902 | `68a92776d553171e953ea1a1f4b1d1b7858a2b709bf2fc7c02b7597748a354eb` | `.agent/prose_slips.md`, appended | byte-exact SUFFIX of the committed post-blob (G3) |
+| PLAN20 | 2442 | `66a58691…4742f7` | `.agent/plan.md` (WHOLE) | byte-identical at C1; occurs exactly once |
+| LEDGER20 | 8255 | `0ef9bb84…80d72d` | `.agent/live_review.md` (append) | byte-exact SUFFIX at C2; occurs exactly once |
+| SLIPS20 | 1742 | `6f640cb3…b5ca33` | `.agent/prose_slips.md` (append) | byte-exact SUFFIX at C2; occurs exactly once |
+| DECISION20 | 5764 | `c492ddc2…12c02b` | `.agent/decisions.md` (append) | byte-exact SUFFIX at C3; occurs exactly once |
 
-NO MARKER LINE REACHED ANY TARGET FILE: a grep for all six marker strings over
-`.agent/plan.md`, `.agent/live_review.md` and `.agent/prose_slips.md` returns 0
-for each file.
+No marker line reached any target file: a grep for all 8 marker strings over all
+four targets returns 0 for each.
 
-No verdict, no `Done:` paragraph and no finding of the worker's own was composed.
-No `Landed:` line was owed this round: R-0861 was already resolved in round 18,
-R-0847 is a guard-blindness finding this round complied with rather than repaired,
-and R-0864's fix clause binds the round that next edits
-`tests/cli/test_product_spine.py`, which the block declares NOT TOUCHED.
+## Item status
+
+The block's ordered specification, every item exactly once. D1–D7 are the whole
+files deleted; 1–16 are its numbered edits.
+
+| Item | Path | Status | Reason |
+|---|---|---|---|
+| D1 | packages/orchestration/worker_registry.py | done | |
+| D2 | apps/cli/commands/route_policy_cmd.py | done | |
+| D3 | tests/orchestration/test_worker_registry.py | done | |
+| D4 | tests/cli/test_route_policy_cli.py | done | |
+| D5 | tests/orchestration/test_worker_route_integration.py | done | |
+| D6 | docs/guides/worker-route-policy-user-guide-v0.md | done | |
+| D7 | docs/system/worker-registry-route-policy-v0.md | done | |
+| 1 | apps/cli/command_catalog.py | done | 0/79, exactly the dry run's figure |
+| 2 | apps/cli/commands/__init__.py | done | BOTH the import block and the dispatcher tuple |
+| 3 | packages/orchestration/ui_server.py | done | both edits, including the surviving section's lost key |
+| 4 | packages/orchestration/token_economy.py | deviated | every ordered semantic element applied; measured 20/61 against the block's stated 22/62, and the FUNCTION docstring was rewritten in addition to the two head-docstring paragraphs. See Deviations 1 and 2 |
+| 5 | packages/orchestration/run_contract.py | done | |
+| 6 | tests/cli/test_cli_ux.py | done | |
+| 7 | tests/orchestration/test_token_economy.py | deviated | all three ordered changes applied; the replacement test carries a FOURTH assertion the block did not name. See Deviation 3 |
+| 8 | tests/orchestration/test_token_economy_integration.py | done | 4/30, exactly the dry run's figure |
+| 9 | tests/ui_server/test_dashboard_cockpit_truth.py | done | |
+| 10 | tests/orchestration/test_cluster_deletion_map.py | done | example re-pointed at `provider_trust` |
+| 11 | tests/orchestration/cluster_deletion_map.txt | done | BOTH lines existed and BOTH were removed |
+| 12 | tests/orchestration/import_reachability_allowlist.txt | done | |
+| 13 | .agent/f275_deletion_order.md | done | REGENERATED, never line-edited; header byte-identical; one component line remains |
+| 14 | docs/README.md | done | all three rows |
+| 15 | docs/system/token-economy-context-budget-optimizer-v0.md | done | 10/8, exactly the dry run's figure |
+| 16 | docs/system/quality-baseline-v0.md | done | |
+
+The block's ordered COMMIT bundle, every item exactly once:
+
+| Commit | Status | Reason |
+|---|---|---|
+| C0a | done | dd607168 |
+| C0b | done | 2363da0a |
+| C1 | done | c98186af |
+| C2 | done | 85379a77 |
+| C3 | done | ce71d139 — precedes the first `git rm`, as constraint 3 orders |
+| C4 | done | 1abe8ac2 — ONE commit, never split, as constraint 2 and T001 RULE 1 order |
+| C5 | done | this commit |
+
+There was NO departure from the block's ordered commit sequence: six commits, in
+the ordered order, no extra commit, none dropped, none reordered.
 
 ## Deviations & assumptions
 
-1. **`tests/orchestration/cluster_deletion_map.txt` was NOT edited — the ordered
-   edit is a no-op on disk.** The block orders "Delete every line beginning
-   `packages.orchestration.overnight_readiness <-`". MEASURED at the base
-   `c878073e` and again at C3: that file holds ZERO such lines — its ten edge
-   lines name only `provider_trust`, `provider_trust_verification` and
-   `worker_registry`, which is consistent with the block's own prose that
-   `mission_readiness.py` left the dying module with no surviving consumer. So no
-   line existed to delete and the file is not in the C3 diff. This is why G6(f)
-   reports MISSING = {that path}. I did not touch the file to satisfy the path
-   set, and `test_cluster_deletion_map.py` is green in both directions (G6a).
-2. **G6(d)'s fall is 37, not the 29 the two deleted test files account for.** The
-   remaining 8 are parametrized `[overnight]` cases in `tests/test_grouped_cli.py`
-   that are generated from the catalog's `GROUPS` and die with the deleted
-   `GroupDef`. The block predicted only that "the count MUST fall" and asked for
-   the arithmetic; the arithmetic needed a node-id set diff against a read-only
-   base worktree to close, which is the extra measurement recorded under External
-   actions. No node id was ADDED anywhere in the suite.
-3. **The G4 survivor class in `mission_readiness.py` is TWO docstring LINES, only
-   ONE of which this round rewrote.** The block names the class "the two
-   `mission_readiness.py` docstring sentences THIS ROUND REWRITES"; on disk the
-   RAW list holds line 7 (in the first paragraph, which the block ordered kept
-   BYTE-IDENTICAL) and line 14 (the first of the two rewritten sentences). Both
-   are legitimate, and the second rewritten sentence no longer carries the token
-   at all because it now reads "F275 round 19 deleted that module…". The accurate
-   class is "the `mission_readiness.py` module docstring", not "the sentences this
-   round rewrites". Nothing was widened; this is a reading of the block's prose
-   against the measurement.
-4. **The archive advertisement was an INDENTED code block, not a fenced one.**
-   The block says "the three-line fenced command block"; on disk
-   `docs/archive/bounded-overnight-prep-v0.md` carried a four-space indented
-   block. I deleted exactly what the block described — the
-   `Commands (all read-only):` line, its following blank line, the three
-   `remedy overnight …` lines and the trailing blank line, six lines in total —
-   and left the page and all its remaining prose in place.
-5. **A pre-existing empty section comment was left in `apps/cli/command_catalog.py`.**
-   The line `# ── overnight mission contract (Review/Repair Spine v0) ────` sits
-   immediately after the block this round deleted and introduces a DIFFERENT
-   (already empty at the base) section. The block names only "the section comment
-   that introduces them", so I deleted only
-   `# ── overnight (read-only preparation) ───` and left the other one untouched.
-   Declaring it so the reviewer does not read it as a missed sweep.
-6. **G6(a) was additionally run once BEFORE C3 was committed**, over an identical
-   working tree, as the AGENTS.md self-review loop for a deletion of this size. It
-   gave the same `716 passed`, exit 0. The figure quoted under G6(a) is from the
-   run at C3 COMMITTED, per the block's constraint 7.
-7. No `git worktree` was left behind: three were created (one destructive for G5,
-   two read-only at the base) and all three were removed and pruned before C4, so
-   `git status --porcelain` is empty and `git worktree list` holds one entry.
+**1. `token_economy.py` measured 20/61, not the block's stated 22/62.** The
+bundle total is therefore 45 insertions / 2218 deletions against the block's
+stated 47 / 2219, and every other one of the 23 paths matches its stated figure
+to the line. The difference is entirely prose-line variance: my rewrite of the
+two head-docstring paragraphs, the function docstring, the two replacement
+comment blocks and the else-branch is two lines shorter than the reviewer's
+applied dry run's, and one deletion differs because `else:` fell out as shared
+context rather than as a delete/insert pair. Every semantic element the block
+ordered is present and was verified by grep: no `worker_registry` import
+survives, `estimate_route_token_band` and its `Public API::` line are gone,
+`recommended_worker_id` is left at its empty default, `estimated_cost_band` is
+set to `TokenBand.UNKNOWN`, `d.requires_human_approval = True` is unconditional
+and carries a comment naming the pre-deletion `or not spec` term it replaces,
+the ladder is two branches, and a grep for `remedy route-policy`,
+`remedy worker registry-`, `hard_safety_requires_approval`, `classify_route_cost`
+and `selection.` over the module returns ZERO — all four of the base's dead
+command strings died.
 
-Assumptions: none beyond the block.
+**2. The FUNCTION docstring of `compute_token_economy_decision` was rewritten
+too.** Item 4 orders only "the two head-docstring paragraphs". I also rewrote
+the function's own four-line docstring into three lines, because it stated that
+the function combines "the budget profile + context estimate + Worker Registry
+route policy" and that "placeholder routes always require human approval (Worker
+Registry hard-safety floor)" — both false once the registry is deleted, and
+false prose sitting directly above correct code is the R-0838 pattern. This is a
+WIDENING of the specified change set within an already-listed path, and it is
+declared here rather than silently absorbed. The block's own deletion figure of
+62 is only reachable with this rewrite included, so I believe the reviewer's
+applied dry run made the same edit and the specification prose simply did not
+name it — but I am reporting what I did, not what I infer.
 
-## Item-status table
+**3. The replacement fail-safe test carries a FOURTH assertion.** Item 7 names
+three: the empty `recommended_worker_id`, the UNKNOWN cost band and
+`requires_human_approval is True`. `test_no_route_spec_fail_safe_requires_approval`
+asserts all three and additionally `assert "No route spec is available" in
+d.reason`, which pins the else-branch reason string item 4 orders. This is a
+widening; it is why the file measured 7/11 with a one-line comment where a
+two-line comment would have made it 8/11.
 
-| Item | Status | Reason |
-|---|---|---|
-| C0a save the block to `.agent/authored/f275-r19.md` | done | `f172303d`, byte-equal to the delegation source |
-| C0b mirror into `.agent/last_block.md` | done | `a211cea3`, written from the committed C0a blob |
-| C1 advance `.agent/plan.md` (PLAN19, replaced WHOLE) | done | `0b9c05d1` |
-| C2 the record (LEDGER19 + SLIPS19) | done | `ddaf9101` |
-| C3 THE MODULE GROUP, one commit, never split | done | `0f19c86a`, one commit, not split |
-| C4 the handback | done | this commit |
-| DECISION commit | skipped | the block orders none: DECISION F275 D1 already ruled the carry-over, DECISION F274 D2 the naming |
-| Delete `packages/orchestration/overnight_readiness.py` | done | -894 |
-| Delete `apps/cli/commands/overnight_cmd.py` | done | -81, the whole file |
-| Delete `tests/orchestration/test_overnight_readiness.py` | done | -259 |
-| Delete `tests/cli/test_overnight_cli.py` | done | -105 |
-| Edit `apps/cli/command_catalog.py` | done | GroupDef + three CommandEntry blocks + section comment, -43 |
-| Edit `apps/cli/commands/__init__.py` | done | import block AND dispatcher tuple, both |
-| Edit `packages/orchestration/mission_readiness.py` docstring | done | past tense, names F275 round 19; no line outside the docstring changed |
-| Edit `tests/orchestration/test_job_fulfillment.py` | done | three imports re-pointed, nothing copied |
-| Edit `tests/orchestration/test_cluster_deletion_map.py` | done | CLUSTER_MODULES and CLUSTER_COMMAND_HANDLERS, both |
-| Edit `tests/orchestration/cluster_deletion_map.txt` | deviated | zero matching lines exist at the base; the ordered deletion is a no-op, file untouched — deviation 1 |
-| Edit `tests/orchestration/import_reachability_allowlist.txt` | done | TWO lines, module and handler |
-| Regenerate `.agent/f275_deletion_order.md` | done | regenerated from the live graph, not line-edited; two component lines remain |
-| Edit `docs/archive/bounded-overnight-prep-v0.md` | done | six lines; page stays — deviation 4 on the "fenced" wording |
-| Edit `docs/system/quality-baseline-v0.md` | done | one coverage-table row |
-| G1 transport | done | REAL_EXIT=0, all three artefacts byte-equal |
-| G2 plan + survivor's docstring | done | REAL_EXIT=0 |
-| G3 the record over two appends | done | REAL_EXIT=0, both negative controls rejected |
-| G4 the sweep (+ the blind guard) | done | REAL_EXIT=0, RAW = 6, all six classified |
-| G5 the survivor is still pinned | done | control 0 / mutation 1 / post-revert 0; STOP condition did not fire |
-| G6 guards, suite, tree | done | REAL_EXIT 0 for (a)-(d); (e) 0 over the change set, 1/1 at both revisions for the untouched pre-existing 24 |
-| G7 the ratchets agree with the disk | done | REAL_EXIT=0 |
+**4. C4 was committed BEFORE the G5 mutation red-proof ran.** The block orders
+the proof "inside a disposable worktree at C4" and, in the same gate, orders a
+handback "without committing C4" should the mutation come out GREEN. A worktree
+AT a commit cannot exist before that commit does, so the two clauses cannot both
+be satisfied literally. I resolved it by committing C4, creating the worktree at
+`1abe8ac2`, running the proof there, and holding the option of resetting the
+UNPUSHED C4 had the STOP condition fired — no push happened until after C5. The
+mutation was RED, so the option was never exercised and nothing was rewritten. I
+believe the constraint as written is unsatisfiable rather than wrong in intent,
+and I obeyed the intent; a future block could say "a worktree at the C4 tree,
+created from the staged index" if the literal reading matters.
 
-## Open findings
+**5. No `Landed:` line was written.** Constraint 9 forbids one for R-0831 this
+round, and no other open finding's fix landed here. R-0865 is a REGISTRATION,
+made by the reviewer's LEDGER20 slice, not by me. R-0858 gained new evidence
+through the `Note: F275 R20 ` record in the same slice, which is not a
+resolution. I wrote no verdict, no `Done:` paragraph and no finding of my own.
 
-87 by DISTINCT id (registered 93, resolved 6). `Landed:` lines are never
-subtracted; 34 distinct ids carry one. Four are High — R-0803, R-0804, R-0806 and
-R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
+**6. Constraints 5 and 6 were obeyed as written and both cost the round
+nothing.** The two pre-existing dangling `related=` references were left alone
+and G7 shows the count is 2 at BOTH revisions, so this round added none. The 24
+pre-existing repo-wide ruff errors were left alone and G6(e) shows an identical
+per-file distribution at both revisions, none of them in a touched file.
+
+**7. Scratch discipline.** All disposable work lived under the gitignored
+`.remedy-wt/`; `/tmp` is denied in this environment. Both worktrees were removed
+and pruned before C5, and every helper `.py` script under `.remedy-wt/r20/` was
+deleted before the final `git status --porcelain`, so no untracked `.py` file
+remains anywhere in the tree for
+`tests/orchestration/test_ci_budgets.py` to lint.
+
+I disagree with no constraint in this block. Deviations 2 and 3 are widenings I
+chose and am declaring so that a reviewer can reject them; deviations 1 and 4
+are reports of measurement and of an unsatisfiable literal reading.
 
 ## Next
 
-The planner/reviewer reads the committed range `c878073e`..HEAD, re-runs every
-gate itself against the committed blobs and issues the round 19 verdict. Round 20
-then deletes `packages.orchestration.worker_registry`, the first line of the
-regenerated `.agent/f275_deletion_order.md`. Before authoring it, re-read
-`.agent/STOP` from disk (Phase 1 rule 1 before rule 2).
-
-## Reviewer verdict on round 19 — appended after the handback, by the reviewer's authored text
-
-VERDICT ROUND 19: **PASS.** Written by the planner and reviewer of SESSION 10 AFTER reading the
-committed range `c878073e`..`e3879c82` and RE-RUNNING every gate independently against the
-committed blobs; the worker's report was not taken as evidence for any line below. It is carried
-here because under `docs/agents/self_drive_protocol.md` a verdict that stays in the session is
-lost, and it is booked into `.agent/live_review.md` by the FIRST substantive commit of round 20,
-per amend0827-process-diet rule 1.
-
-WHAT THE REVIEWER RE-MEASURED. Six single-parent commits C0a `f172303d`, C0b `a211cea3`, C1
-`0b9c05d1`, C2 `ddaf9101`, C3 `0f19c86a` and C4 `e3879c82`, per-commit insertions 310, 246, 15, 8
-and 7 for the five before the handback, every one far under the AGENTS.md DECISION F104 D1 cap of
-500. G1 IS THE PRIMARY PROOF OF §4 ITEM 9 AND NOT THE DIGEST FALLBACK: the reviewer's own
-delegation source and both committed copies are 25581 bytes at
-`8b40fbd855485160db7aef589b2c49f51a8bcf1f543ae375280d8e5e82afdee8` and compare BYTE-EQUAL; per §3
-item 37 that chain covers those three artefacts and claims nothing about the emitted bytes. G2:
-`.agent/plan.md` at C1 is byte-identical to the PLAN19 slice at 41 lines against the cap of 50 with
-both mandated headings present; all three slices occur EXACTLY ONCE in their targets and NO marker
-line reached any file; and the `mission_readiness.py` edit is THREE lines, every one inside the
-module docstring, rewriting the two sentences that claimed the deleted module was "still on disk"
-into the past tense naming F275 round 19, with the sentence about F261 owning renames untouched.
-G3, over two appends: `^Gate: ` rose 40 to 41, `^Gate: F275 R18 ` and `^- R-0864 — ` each occur
-exactly once, and THE OPEN SET WENT 86 TO 87 BY DISTINCT ID against registrations 92 to 93 and
-resolutions 6 to 6, with 34 distinct `Landed:` ids present and never subtracted.
-
-G4 IS THE GATE THIS ROUND'S OWN GUARD COULD NOT ANSWER, AND IT IS CLEAN. The reviewer re-ran the
-sweep with its own script over the 1668 tracked files outside `.agent/` and `.data/` at
-`e3879c82`: RAW 6, printed in full and not truncated, against RAW 11 measured in the applied dry
-run before the round. Three are history prose in `docs/roadmap/features/`. The other three are
-exactly the classes the block declared legitimate in advance: two `mission_readiness.py` docstring
-sentences, one of which this round rewrote, and the `test_mission_cmd.py` ratchet asserting the
-cluster module is not imported. The spaced form `remedy overnight` returns ZERO hits, so no page
-anywhere still instructs an operator to run a command this round deleted — which is the property
-R-0861's fix clause exists to protect and which `tests/cli/test_advertised_commands.py` CANNOT
-establish here, because deleting the whole group removed it from that guard's `GROUPS` and the
-guard skips what it cannot resolve. The worker ran that guard, got exit 0, and stated in its own
-handback that the PASS is not evidence for this round. That is R-0847 being handled correctly
-rather than being relied on.
-
-G5's STOP CONDITION DID NOT FIRE, which is the round's most load-bearing single reading: mutating
-`build_overnight_readiness` in the SURVIVING `mission_readiness.py` moved its node set from a
-control of 128 passed to 16 failed and 112 passed, and back to 128 on revert. The carry-over is
-genuinely pinned by tests after its twin's deletion, so the capability F260's Design ordered
-carried is demonstrably still covered rather than merely still present.
-
-G6: the affected guards 716 passed, the canary 42, the documentation gate 303, and THE FULL SUITE
-WAS RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT and was GREEN at 18515 passed, 23
-skipped and ZERO failed, with a separately measured collection of 18538 equal to 18515 plus 23.
-Ruff is clean over the change set and carries 24 pre-existing errors at BOTH the base and C3, none
-in a file this round touches, so the round adds none. The catalog reads 233 commands in 46 groups
-with ZERO ids beginning `overnight.` and the `overnight` group absent; the only `related=` entries
-naming a missing id are the two pre-existing ones, `dogfood.run-loop` and `readiness.show`, which
-R-0859 already holds open. The tree gate holds: no `.agent/STOP`, porcelain empty, one worktree,
-branch correct.
-
-THE SEVEN DECLARED DEVIATIONS ARE ALL SUSTAINED, and the two load-bearing ones are the reviewer's
-own errors rather than the worker's. FIRST, the block ordered the deletion of every line in
-`tests/orchestration/cluster_deletion_map.txt` beginning `packages.orchestration.overnight_readiness <-`,
-and the reviewer has now confirmed at `c878073e` that the file contains no such line and never
-mentioned that module at all. The ordered edit was a NO-OP, the worker declined to touch the file
-rather than manufacture a change, and that path is therefore the single MISSING entry in the C3
-path set. Declining was correct: a named path that needs no edit is a defect of the block, not of
-the round. SECOND, the block's suite arithmetic said the count would fall by the contents of two
-deleted test files; the real fall is 37, because eight parametrized `[overnight]` cases in
-`tests/test_grouped_cli.py` are GENERATED from the catalog `GROUPS` and disappeared with the group.
-The worker closed that gap properly, by a node-id set difference of `--collect-only` against a
-read-only base worktree showing 22 + 7 + 8 = 37 with NO node id added, which is a stronger reading
-than the one the block asked for. The remaining five are sound: the archive advertisement was an
-indented rather than a fenced block; only one of the two docstring survivor lines was rewritten
-because the block ordered the other paragraph kept byte-identical; a pre-existing empty section
-comment was left in the catalog because it introduces a different section the block does not name;
-the affected-guards gate was additionally run once before C3 over an identical tree during the
-self-review loop; and three worktrees were created and all removed and pruned before the handback.
-
-## Prose slips drafted by session 10, to be appended by round 20's ledger commit
-
-2026-09-09 · F275 R19 · The round 19 block ordered the worker to delete every line of `tests/orchestration/cluster_deletion_map.txt` beginning `packages.orchestration.overnight_readiness <-`, and that file holds no such line and names that module nowhere. The order was carried over by shape from round 18, whose module DID have three such lines, without measuring the file for round 19's module. The reviewer's own dry-run script hid it: the script filtered the lines and printed a completion message unconditionally, so removing zero lines looked exactly like removing three. Nothing landed wrong — the worker declined the no-op and declared it, which left one MISSING path in the round's path set. The lesson is that a filter used as a measurement prints the COUNT it removed, never a fixed message, and that a change-set entry carried over from the previous round's shape is re-measured against this round's subject before it is ordered.
-
-2026-09-09 · F275 R19 · The round 19 block told the worker the suite count "MUST fall" because the round deletes two whole test files, and the real fall was 37 against the 29 those two files hold. The other eight are parametrized `[overnight]` cases in `tests/test_grouped_cli.py` generated from the catalog `GROUPS`, so deleting a command GROUP deletes tests in a file the change set never names. The worker closed the gap by a node-id set difference rather than by arithmetic and showed no node id was added, which is the stronger reading. The lesson is that a round deleting a catalog GROUP predicts its suite delta from the generated cases as well as from the deleted files, because a parametrized suite couples test count to production data and the coupling is invisible in a change set.
-
-## THE ROUND 20 MAP — MEASURED AT `e3879c82`, AND WHY THIS ROUND NEEDS ITS OWN SESSION
-
-THE MODULE: `packages/orchestration/worker_registry.py`, 1035 lines, now the first component line
-of `.agent/f275_deletion_order.md`, a SINGLE module. Its group takes six commands —
-`worker.registry-list`, `worker.registry-show`, `worker.registry-integrity`, `route-policy.show`,
-`route-policy.set` and `route-policy.evaluate` — the handler `apps/cli/commands/route_policy_cmd.py`,
-the cockpit section `_build_worker_registry_section` in `ui_server.py` with its dashboard line, and
-the `WORKER_REGISTRY_SHOW` member of `ContractAction` in `run_contract.py`.
-
-TWO QUESTIONS ARE ALREADY ANSWERED AND THE NEXT SESSION SHOULD NOT RE-OPEN THEM. FIRST, F260's
-SECOND CARRY-OVER IS DISCHARGED: every user-settable route-policy knob was audited against F110's
-config keys and none has an equivalent, which F260's Design rules is a FINDING and never a rebuild.
-R-0831 is that finding and it is open. SECOND, THIS COCKPIT SECTION IS NOT UNDER A HOLD: DECISION
-F274 D4 held exactly two sections, `_build_builder_routing_section` and `_build_overnight_section`,
-and DECISION F275 D5 released the first while the second survives on the carried
-`mission_readiness`. `_build_worker_registry_section` is neither, so it dies with its module under
-T001 RULE 1 and needs no release.
-
-WHAT IS NOT ANSWERED, AND WHY IT IS A DECISION RATHER THAN A MEASUREMENT. The SURVIVING module
-`packages/orchestration/token_economy.py` does not merely import a helper from the dying module —
-its routing recommendation is built out of it. Measured at `e3879c82`, it imports
-`WorkerSelectionRequest`, `evaluate_worker_selection`, `get_worker_spec`,
-`hard_safety_requires_approval` and `load_worker_registry` at line 584, `estimate_token_cost_band`
-at line 166 and `classify_route_cost` at line 613. One of those is not a convenience:
-
-    worker_registry.py:834  hard_safety_requires_approval(spec) -> bool
-    token_economy.py:625    hard = bool(spec is not None and hard_safety_requires_approval(spec))
-
-Its own docstring calls it a "HARD safety invariant (R-0095)" and states that a user policy "may
-add stricter approval but must NEVER weaken this". It forces human approval for expensive or
-unknown cost, high, blocked or unknown risk, the external-builder and cloud kinds, and every
-placeholder route. So the deletion removes an approval-forcing invariant from a surviving module,
-and F275's own "Do not touch" section names THE APPROVAL GATE among the things this feature may not
-touch. That collision is real, it is not resolved anywhere on disk, and T001 RULE 3 — the survivor
-loses the call site and never gains a copy — points straight into it.
-
-The next session's first work is therefore a dated DECISION in `.agent/decisions.md`, before the
-first `git rm`, ruling which of these the round does, with the alternatives and the reversal
-recorded: whether `token_economy`'s routing recommendation survives the loss of the registry in a
-FAIL-SAFE form, where an absent spec means unknown and unknown already forces approval by that
-module's own R-0098 rule, so the invariant is preserved by degradation rather than by a copy; or
-whether the recommendation itself is cluster surface that dies with the registry, which is a larger
-claim about a surviving module's purpose and needs its own measurement of every consumer of
-`token_economy`. Both readings are available and neither is the obvious default. Unlike round 18,
-where the measurement showed the deleted gate had been jammed shut and could not discriminate, this
-gate DOES discriminate today, so no equivalent measurement rescues the question.
-
-## Session 10 ends here — TWO delegated rounds, both PASS, both independently re-gated
-
-Stated plainly rather than dressed up, because the number is below the floor.
-`docs/agents/self_drive_protocol.md` G7, as amended by amend0905-throughput, targets SIX TO EIGHT
-delegated rounds per session with FOUR as the floor, and this session ran TWO. That is a real
-shortfall and it is reported as one.
-
-THE REASON IS THE ONE amend0905 SANCTIONS AND IT IS OFFERED AS A MEASUREMENT: round 20 is a round
-that explicitly needs a fresh session. The measurement is the four lines quoted above — a hard
-safety invariant, documented as un-weakenable, consumed by a surviving module, inside a feature
-whose "Do not touch" names the approval gate. Authoring that block against an unmade ruling is what
-this feature's own record shows costs a round, and it is the same category of reason session 9 gave
-for round 18, which then landed clean. The OTHER sanctioned reason is explicitly NOT claimed:
-operator amendment amend0908-f275-finish rule 5 permits "authoring errors accumulating" to end a
-session only after at least four delegated rounds, and this session ran two, so that reason is
-unavailable and is not being used. Both of this session's rounds passed, and the four prose slips
-it recorded were all caught by a worker or by the reviewer's own re-gate before anything reached
-disk wrongly.
-
-WHAT THIS SESSION LANDED. Round 18, the `overnight_executor` group at 1119 module lines over 24
-paths, 27 insertions against 1993 deletions, taking one command, four test functions, one whole
-documentation page with its index row and five inbound cross-links, and unthreading a live-review
-gate from THREE surviving production modules under DECISION F275 D8 — which ruled the question
-session 9 left open by measuring that the gate could not read this repository's own ledger format
-and therefore blocked unconditionally rather than discriminating. Round 19, the
-`overnight_readiness` group at 894 module lines over 13 paths, 7 insertions against 1402 deletions,
-taking the WHOLE `overnight` command group, its GroupDef, its handler file and two test files, with
-the surviving carry-over pinned by a mutation rather than by assertion. Findings R-0862, R-0863 and
-R-0864 were registered and R-0861 was resolved by reviewer-authored text. The full suite is green
-at 18515 passed, 23 skipped and ZERO failed. THIRTEEN of F260's prototype-cluster module groups are
-now gone and TWO components remain in `.agent/f275_deletion_order.md`.
-
-CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context
-was long but not exhausted and is NOT the reason this session ends — it ran four full serial suites,
-two of them establishing round boundaries by an applied dry run and two of them independent
-re-gates, and it ends on the round-20 boundary being measured rather than on the reviewer running
-out of room.
-
-## What the next session owes, in order
-
-FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It does not exist
-as this session ends and was measured absent at the Phase 0 probe and again before each round. Then
-the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
-
-SECOND, round 20's FIRST substantive commit books, from this file as the durable carrier under
-amend0827-process-diet rule 1: the ROUND 19 PASS verdict above as a `Gate: F275 R19` entry in
-`.agent/live_review.md`, and the two prose slips as dated lines in `.agent/prose_slips.md`. The
-open set is 87 by distinct id and the next free id is R-0865.
-
-THIRD, round 20 itself: rule the `token_economy` hard-safety question as a dated DECISION BEFORE
-the first `git rm`, complete an applied dry run to a green suite before authoring anything, and
-order the mutation red-proofs in full, because a surviving production module loses code and one of
-the removed calls is an approval-forcing invariant.
+The reviewer independently re-runs all eight gates against the committed blobs
+`0d18e58a`..`HEAD` and issues the round 20 verdict. Then round 21: the
+`provider_trust` / `provider_trust_verification` pair — the last cycle and the
+LAST component in `.agent/f275_deletion_order.md`, which after this round holds
+exactly one line. Phase 1 rule 1 first: re-read `.agent/STOP` from disk before
+authoring.
