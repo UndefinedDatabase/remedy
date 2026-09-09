@@ -1,256 +1,298 @@
-# Handback — F275 round 16
+# Handback — F275 round 17
 
 ## Session
 
-SESSION 9 of feature F275 · round 16 · rounds so far 16
+SESSION 9 of feature F275 · round 17 · rounds so far 17
 
 F275's soft limit is 20 sessions and 60 rounds by operator amendment
 amend0908-f275-finish rule 1, and it travels to no other feature. This round is
 well inside it, so no scope report is owed.
 
+This was a REPAIR round. Round 16's gate G4 went red at exit 1 because the
+reviewer's exhaustive change set never named
+`docs/guides/simple-operator-quickstart-v0.md`; round 16's worker declared the
+red gate rather than widening its scope, which is the sanctioned move. This
+round sweeps the RAW list rather than only the stripped count, as R-0861's fix
+clause binds.
+
 ## Range
 
-Review of `38e03d2f`..`HEAD`
+Review of `12dd60ad`..`HEAD`
 
 ## Commits
 
-### e5fe544f F275 R16 C0a: save the round 16 authored block.
+### 10034ac5 F275 R17 C0a: save the round 17 authored block.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f275-r16.md | +395 / -0 | The delegation source copied byte for byte with `shutil.copyfile`, never retyped. |
+| .agent/authored/f275-r17.md | +254 / -0 | The delegation source copied byte for byte with `shutil.copyfile`, never retyped. |
 
-### 3720c48b F275 R16 C0b: mirror the round 16 block into the last-block file.
+### bc2cca93 F275 R17 C0b: mirror the round 17 block into the last-block state file.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +275 / -313 | The same bytes mirrored; a single `.agent/**` state-file rewrite. |
+| .agent/last_block.md | +162 / -303 | The same bytes mirrored; a single `.agent/**` state-file rewrite. |
 
-### 453b80d6 F275 R16 C1: advance the plan to round 16.
+### 97f71317 F275 R17 C1: advance the plan to round 17.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +20 / -20 | Replaced WHOLE by the PLAN16 slice extracted from the committed C0a blob. |
+| .agent/plan.md | +18 / -19 | Replaced WHOLE by the PLAN17 slice extracted from the committed C0a blob. |
 
-### 876dc89e F275 R16 C2: book the round 15 PASS, resolve R-0855, register R-0859 and R-0860, record five prose slips.
+### d7e71e1d F275 R17 C2: book the round 16 FAIL verdict, register R-0861, record three prose slips.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +8 / -0 | LEDGER16 appended: the round 15 PASS, `Done: R-0855`, and the R-0859 and R-0860 registrations. |
-| .agent/prose_slips.md | +10 / -0 | SLIPS16 appended: the five round 15 slips. |
+| .agent/live_review.md | +4 / -0 | LEDGER17 appended: the round 16 FAIL entry and the R-0861 registration. |
+| .agent/prose_slips.md | +6 / -0 | SLIPS17 appended: three dated round 16 lines. |
 
-### 3384dd53 F275 R16 C3: delete the main builder adapter module group and repair the survivors.
+### ee86115a F275 R17 C3: sweep the operator-facing advertisements of the deleted worker commands.
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/main_builder_adapter.py | +0 / -964 | The module, removed whole by `git rm`. |
-| apps/cli/commands/main_builder_adapter_cmd.py | +0 / -143 | Its handler file, removed whole. |
-| tests/orchestration/test_main_builder_adapter.py | +0 / -474 | Its unit tests, removed whole. |
-| tests/cli/test_main_builder_adapter_cli.py | +0 / -139 | Its CLI tests, removed whole. |
-| docs/system/main-builder-adapter-v0-token-controlled-session-rail.md | +0 / -142 | Its spec page, removed whole. |
-| docs/guides/main-builder-adapter-user-guide-v0.md | +0 / -80 | Its user guide, removed whole. |
-| apps/cli/command_catalog.py | +1 / -142 | The `builder` GroupDef, the 110-line `builder` section holding ten `CommandEntry` records, the three `worker.doctor` / `worker.add` / `worker.disable` records (30 lines), and the one insertion repairing a `related=` tuple. |
-| packages/orchestration/run_contract.py | +0 / -12 | Six `ContractAction` members and their six `_DEFAULT_ALLOWED_ACTIONS` rows. |
-| apps/cli/commands/__init__.py | +1 / -2 | `main_builder_adapter_cmd` out of the import block and out of the `for mod in (…)` tuple. |
-| apps/cli/commands/worker_facade_cmd.py | +0 / -218 | `_cmd_worker_doctor`, `_cmd_worker_add`, `_cmd_worker_disable`, their three `COMMAND_HANDLERS` rows, `_WORKER_ALIASES`, `_resolve_alias` and the four section-banner comment blocks. |
-| tests/cli/test_worker_facade_cmd.py | +4 / -166 | Four test classes deleted with their banners, the two readerless `_ADAPTER_PATCH` / `_SAVE_ADAPTER` constants, the now-unused `unittest.mock.patch` import, and four rewritten assertions. |
-| tests/cli/test_product_spine.py | +1 / -13 | Two tests deleted whole; the operator-command tuple narrowed. |
-| tests/orchestration/test_development_artifact_boundary.py | +4 / -8 | `main_builder_adapter` out of `_PRODUCT_MODULES`, its test deleted, and the no-agent loop repointed at the four modules `_cmd_doctor_core` really imports. |
-| tests/cli/test_cli_ux.py | +1 / -1 | `builder` out of the hardcoded `_INTERNAL_GROUPS` set. |
-| tests/orchestration/test_cluster_deletion_map.py | +0 / -2 | The module and its handler file out of the cluster tuples. |
-| tests/orchestration/import_reachability_allowlist.txt | +0 / -2 | The module and its handler out of the allowlist. |
-| tests/orchestration/cluster_deletion_map.txt | +0 / -1 | The one recorded import edge into the module. |
-| pyproject.toml | +0 / -1 | The handler out of the mypy module list. |
-| scripts/remedy_test_fast.sh | +0 / -1 | The deleted test file out of the fast lane. |
-| .agent/f275_deletion_order.md | +0 / -1 | REGENERATED from `measured_order()`, never typed; a pure shrink from five components to four. |
-| docs/README.md | +0 / -2 | The two index rows linking the deleted pages, matched on the link target. |
-| docs/system/core-product-spine-v0.md | +1 / -2 | The numbered operator path loses `6. Check worker` and is renumbered whole from seven steps to six. |
-| docs/system/development-artifact-boundary-v0.md | +0 / -2 | The `Builder status` and `Package truth` table rows. |
-| docs/system/test-lanes-v0.md | +0 / -1 | The deleted test file's lane row. |
+| docs/guides/simple-operator-quickstart-v0.md | +0 / -32 | Three whole `###` sections (`Check worker readiness`, `Add a worker` with its `Known workers:` line, `Disable a worker`) and three "Advanced equivalent(s)" table rows deleted. `### Check core health` and the `job status`, `job report`, `job run-loop` and `doctor core` rows survive untouched. |
+| docs/system/core-product-spine-v0.md | +8 / -8 | The `## What a worker is` body replaced by the SPINE17 deliberate-absence note (heading kept); the `worker doctor <name>` and `worker add <name>` taxonomy rows deleted. |
+| docs/system/mission-run-loop-morning-report-v0.md | +0 / -11 | The `## How Claude Code fits` section deleted whole — every one of its five steps named a rail rounds 13, 15 or 16 deleted. |
 
-C3 totals: 24 paths, +13 / -2519.
+The `+/-` column above was read from `git show --numstat` per commit and compared
+cell by cell against the Verification lines below; every cell agrees. C3's totals
+are +8 / -51 over three paths, matching the block's predicted "8 insertions
+against 51 deletions" and its three predicted per-file numstats (0/32, 8/8, 0/11)
+exactly.
 
-### C4 — this handback commit
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewritten whole | A handoff cannot table the commit that writes it (R-0149 pattern). |
+The final handoff commit C4, which writes this file, cannot table itself
+(R-0149 pattern); its numbers belong to the next round's ledger entry per §3
+item 31.
 
 ## External actions
 
-| Command | Outcome |
-|---|---|
-| `git worktree add .remedy-wt/base16 38e03d2f` | Created; used for the G5 base end, the G7b base ruff run and the G7f base collection. |
-| `git worktree add .remedy-wt/rp16 3384dd53` | Created; used for all four G6 red-proofs. |
-| `git worktree remove .remedy-wt/rp16 --force` | Removed. |
-| `git worktree remove .remedy-wt/base16 --force` | Removed. |
-| `git worktree prune` | Ran; `git worktree list` now names the primary checkout alone. |
-| `git push -u origin feature/f275-one-world-completion-part-three` | ONE push, after C4. See below. |
-
-No PR was created, edited or merged. No `gh` command was run.
+- `git push -u origin feature/f275-one-world-completion-part-three` — ONCE, after C4. Outcome recorded below.
+- No PR created, edited or merged. No `gh` command run. No worktree added or removed.
 
 ## Verification
 
-One line per gate, with its REAL exit code.
+Five gates, every one EXECUTED, real exit codes captured with
+`bash -c '<cmd>; echo "REAL_EXIT=$?"'`.
 
-| Gate | Exit | Measurement |
-|---|---|---|
-| G1 TRANSPORT | 0 | All three artefacts 45340 bytes at sha256 `994447338d251f5fb4a068aef05ea266acd07e362d150b80713d7abf84e253bb` and byte-equal: the `.remedy-wt/f275-r16.md` source, the committed `.agent/authored/f275-r16.md` and the committed `.agent/last_block.md`. |
-| G2 PLAN AND BLOCK | 0 | `.agent/plan.md` at C1 byte-identical to the PLAN16 slice extracted from the committed C0a blob: 2454 bytes, sha256 `da53b429ce39170d54e05fda0dd17fbedbe422df5ff6c62ed4d88d3925081b2d`, 45 lines against the cap of 50; `## Goal` and `## Next Steps` both present. C0a blob TOTAL 395 lines against the cap of 490. |
-| G3 THE RECORD | 0 | (a) `.agent/live_review.md` 634559 → 650049, growth 15490 = 1 + 15489; `.agent/prose_slips.md` 185058 → 189111, growth 4053 = 1 + 4052; for each the pre-blob a byte-exact prefix, the slice a byte-exact suffix, the joining byte read back as `b'\n'`. (b) N COUNTED FROM EACH SLICE by the script: 4 and 5; the last N blank-line units of each post-file equal the slice's paragraphs in order, per-unit sha256 printed and equal on both sides for all nine units. (c) Both negative controls — one byte flipped IN MEMORY inside the FIRST appended paragraph — rejected by reader (a) and reader (b) alike, while both readers accept the truth; both files re-read from disk and byte-equal to their committed post-blobs. (d) `^Gate: ` 37 → 38, rise exactly 1; `^Gate: F275 R15 `, `^Done: R-0855 — `, `^- R-0859 — ` and `^- R-0860 — ` exactly 1 each. (e) OPEN SET BY DISTINCT ID: registered 87 → 89, done 4 → 5, OPEN 83 → 84. |
-| G4 DELETION COMPLETE | **1** | All six whole-file removals ABSENT from `git ls-tree -r` at C3 over 4562 tracked files. The token sweep over the 1676 tracked files outside `.agent/` and `.data/` read 16 RAW lines and 6 STRIPPED lines. THREE STRIPPED LINES FALL OUTSIDE `docs/roadmap/features/`, so the gate's binding condition FAILS. See Deviations, item 1 — the path is not in the change set and constraint 2 forbids widening. |
-| G5 SHIPPED READERS | 0 | Read BY IMPORT at both ends with `sys.path` pinned and the resolved `__file__` printed. `len(_BASE_CATALOG)` 250 → 237, `len(collect_all_handlers())` 250 → 237, `len(GROUPS)` 48 → 47, `len(ALL_KNOWN_ACTIONS)` 106 → 100, duplicate ids 0 at both ends. `builder` ABSENT from `GROUPS` at C3 and all ten `builder.` ids ABSENT from both readers; the `worker` GROUP still PRESENT with its nine survivors (`list`, `registry-integrity`, `registry-list`, `registry-show`, `resources`, `run`, `show`, `status`, `unload`) and `worker.doctor` / `worker.add` / `worker.disable` ABSENT from both readers; `patch.approve`, `do.continue`, `mission.run`, `mission.report` and `doctor.core` PRESENT in both readers at C3. REFERENTIAL CLOSURE: the dangling set is EXACTLY `dogfood.run-loop` and `readiness.show` at both ends, and does NOT contain `worker.doctor`. `# ── ` section comments in `apps/cli/command_catalog.py` 57 → 56, exactly one gone, `# ── brain ───` surviving. Order file 5 → 4 components with NO survivor moving, its 26-line header sha256 unchanged at `aff913e6eedb4d9c7e5ab6e76578be881ffffa3612018cf58b5a48ad508b0cc2`, and EQUAL to a fresh regeneration from the live import graph at both ends. |
-| G6 RED-PROOFS | 0 | All four inside ONE disposable worktree at C3, `__pycache__` purged before every run, `python3 -B`, each control run over that probe's OWN selection in the SAME script immediately before its mutation. Controls exit 0 at 3, 3, 3 and 37 passed; mutants exit 1 at 1, 1, 2 and 2 failures. Every target restored and proved byte-identical by sha256 before and after; worktree porcelain empty at the end. |
-| G7 RUFF, RATCHETS, SUITE | 0 | (a) `python3 -m ruff check` over all nine edited `.py` files still existing at C3 — `All checks passed!`, exit 0. (b) Repo-wide `ruff check .` at the base in a disposable worktree and at C3 in the primary checkout: 26 diagnostics at BOTH ends, ruff exit 1 at both, and the two SETS compared item by item and IDENTICAL. (c) The eight-path ratchet selection — 860 passed, exit 0. (d) The canary `tests/cli/test_golden_path.py` — 42 passed, exit 0. (e) THE FULL SUITE, `python3 -B -m pytest tests/ -q`, SERIALLY, in the PRIMARY checkout with C3 COMMITTED — 18603 passed, 23 skipped, ZERO failed, exit 0, in 22:18; 18603 + 23 = 18626, equal to the C3 collection exactly. (f) THE ARITHMETIC BY THE ID SET: 18712 at the base, 18626 at C3, 86 LOST and ZERO GAINED, attributed 51 to `tests/orchestration/test_main_builder_adapter.py`, 14 to `tests/cli/test_worker_facade_cmd.py`, 10 to `tests/cli/test_main_builder_adapter_cli.py`, 8 to `tests/test_grouped_cli.py` — which parametrises over the catalog and is in no change set — 2 to `tests/cli/test_product_spine.py` and 1 to `tests/orchestration/test_development_artifact_boundary.py`. |
-| G8 THE TREE | 0 | `.agent/STOP` re-read from disk and ABSENT. `git status --porcelain` EMPTY. `git worktree list` names the primary checkout ALONE. Branch `feature/f275-one-world-completion-part-three`. `git diff --name-only 876dc89e..3384dd53` compared against the block's twenty-four C3 paths as a SET: MISSING set EMPTY, EXTRA set EMPTY. Every commit before C4 single-parent, insertions 395, 275, 20, 18 and 13, all under the DECISION F104 D1 cap of 500. |
+- **G1 TRANSPORT — exit 0.** One digest comparison over three artefacts.
+  `.remedy-wt/f275-r17.md`, the committed `.agent/authored/f275-r17.md` and the
+  committed `.agent/last_block.md` are each 28529 bytes at sha256
+  `05bf237e16c1bb54e3ae5bf5003d47512baf87ee0d528eeede51b46520473c42`;
+  ALL THREE BYTE-EQUAL: True. Per §3 item 37 this covers those three artefacts
+  and claims nothing about any other bytes.
 
-### G4 — the raw and stripped sweep, printed in full
+- **G2 THE PLAN, THE BLOCK AND THE SPINE SLICE — exit 0.** C0a blob TOTAL 254
+  lines against the cap of 490. `.agent/plan.md` at C1 is 2537 bytes, sha256
+  `e2f6802970279070d19f28c02739714149d1fb068c8d6d8ba852deaefc9150e1`, BYTE-IDENTICAL
+  to the PLAN17 slice extracted from the committed C0a blob between its marker
+  lines; 44 lines against the AGENTS.md cap of 50; `## Goal` 1 occurrence and
+  `## Next Steps` 1 occurrence. The SPINE17 slice (551 bytes, sha256
+  `337d4871b586bc6d98c060a707a68f83cb2fd293d77a09f52d41b103ba6775b2`) occurs
+  EXACTLY ONCE in `docs/system/core-product-spine-v0.md` at C3, and the bytes at
+  that site re-hash to the same digest — byte-identical.
 
-RAW, 16 lines:
+- **G3 THE RECORD, over TWO appends — exit 0.**
+  - `.agent/live_review.md` <- LEDGER17. (a) BYTE READER: pre 650049 sha256
+    `a7c801a7…`, post 659974 sha256 `81bb7a48…`, growth 9925 == 1 + 9924; pre a
+    byte-exact PREFIX; slice a byte-exact SUFFIX; joining byte read back `b'\n'`.
+    (b) STRUCTURAL READER: N COUNTED from the slice by the script = 2; the last 2
+    blank-line units of the whole post-file equal the slice's 2 paragraphs in
+    order, per-unit sha256 `112aaaf3cbec0f31` and `09187da105d565d2` on both
+    sides. (c) NEGATIVE CONTROL: byte 653300 flipped `r` -> `R` IN MEMORY inside
+    the FIRST appended paragraph — reader (a) REJECTS and reader (b) REJECTS,
+    both accept the truth; file re-read from disk is 659974 bytes at `81bb7a48…`,
+    byte-equal to the committed post-blob.
+  - `.agent/prose_slips.md` <- SLIPS17. (a) pre 189111 sha256 `b821af02…`, post
+    191891 sha256 `efe99ef7…`, growth 2780 == 1 + 2779; prefix, suffix and
+    joining byte `b'\n'` all confirmed. (b) N COUNTED = 3; units
+    `62176e3a21ad5091`, `9cdcb0bd813b8d50`, `3afe9989c706d99e` equal in order.
+    (c) byte 189604 flipped `t` -> `T` inside the FIRST appended paragraph —
+    BOTH readers REJECT the mutant and BOTH accept the truth; disk re-read
+    byte-equal to the committed post-blob.
+  - (d) COUNT PATTERNS in the post-blob: `^Gate: ` 38 -> 39, rise exactly 1;
+    `^Gate: F275 R16 ` exactly 1; `^- R-0861 — ` exactly 1.
+  - (e) THE OPEN SET BY DISTINCT ID, `Landed:` lines never subtracted —
+    BEFORE at base `12dd60ad`: registered 89, done 5, open 84.
+    AFTER at C2 `d7e71e1d`: registered 90, done 5, open 85.
+    The base figures reproduce the reviewer's measured 89 / 5 / 84 exactly.
+    (34 distinct `Landed:` ids exist and were not subtracted.)
 
-```
-docs/guides/simple-operator-quickstart-v0.md:56: remedy worker doctor claude --json
-docs/guides/simple-operator-quickstart-v0.md:65: remedy worker add claude --json
-docs/guides/simple-operator-quickstart-v0.md:85: remedy worker disable claude --json
-docs/guides/simple-operator-quickstart-v0.md:109: | `worker add claude`      | `builder adapter-enable`      |
-docs/guides/simple-operator-quickstart-v0.md:110: | `worker doctor claude`   | `builder adapter-show`          |
-docs/guides/simple-operator-quickstart-v0.md:111: | `worker disable claude`  | `builder adapter-enable --disabled` |
-docs/roadmap/features/T2_F260.md:344: `self_repair_proposal.py`, `main_builder_adapter.py`,
-docs/roadmap/features/T2_F262.md:75: catalog's 28. `builder.adapter-list`, `execution.template-list`,
-docs/roadmap/features/T2_F262.md:79: dates (test.list, repair.item-list, builder.session-list,
-docs/roadmap/features/T2_F267.md:14: - test.list · repair.item-list · builder.session-list ·
-docs/roadmap/features/T2_F267.md:27: D4 excluded four of the 13 permanently — `builder.adapter-list`,
-docs/roadmap/features/T8_F151.md:22: main_builder_adapter.py (the current builder's wrapping), plus the
-docs/system/core-product-spine-v0.md:52: Adding a worker (`remedy worker add claude`) enables the adapter and template
-docs/system/core-product-spine-v0.md:102: | `worker doctor <name>` | Check worker readiness | No | No |
-docs/system/core-product-spine-v0.md:103: | `worker add <name>` | Enable adapter + template | Metadata | No |
-docs/system/mission-run-loop-morning-report-v0.md:63: 1. Operator adds worker: `remedy worker add claude --json`
-```
+- **G4 THE SWEEP IS CLEAN — exit 0.** This is the gate round 16 failed; it is
+  now green. 29 tokens swept over 1676 tracked files outside `.agent/` and
+  `.data/` (4563 tracked in total; 1 file skipped as undecodable, non-UTF-8).
+  The ten `builder.<sub>` command ids were resolved mechanically from the
+  catalog at `876dc89e` (the parent of round 16's C3) rather than assumed:
+  `builder.adapter-enable`, `builder.adapter-list`, `builder.adapter-show`,
+  `builder.integrity`, `builder.package-create`, `builder.session-create`,
+  `builder.session-intake`, `builder.session-list`,
+  `builder.session-record-output`, `builder.session-show`.
+  **RAW 11, printed in full, never truncated:**
+  ```
+  docs/roadmap/features/T2_F085.md:152  managed_builder_execution
+  docs/roadmap/features/T2_F085.md:254  managed_builder_execution
+  docs/roadmap/features/T2_F085.md:264  managed_builder_execution
+  docs/roadmap/features/T2_F260.md:344  main_builder_adapter
+  docs/roadmap/features/T2_F260.md:345  managed_builder_execution
+  docs/roadmap/features/T2_F262.md:75   builder.adapter-list
+  docs/roadmap/features/T2_F262.md:79   builder.session-list
+  docs/roadmap/features/T2_F267.md:14   builder.session-list
+  docs/roadmap/features/T2_F267.md:27   builder.adapter-list
+  docs/roadmap/features/T8_F151.md:22   main_builder_adapter
+  docs/system/core-product-spine-v0.md:51  worker doctor, worker add, worker disable
+  ```
+  **STRIPPED 3:** `docs/roadmap/features/T2_F262.md:79`,
+  `docs/roadmap/features/T2_F267.md:14`, `docs/roadmap/features/T8_F151.md:22`.
+  BINDING CONDITION 1 — the only RAW path outside `docs/roadmap/features/` is
+  `docs/system/core-product-spine-v0.md`, which this block's change set NAMES;
+  the not-in-change-set set is EMPTY. That single line is the deliberate-absence
+  note this round ADDS, which quotes the deleted command names on purpose.
+  BINDING CONDITION 2 — all three STRIPPED lines lie in
+  `docs/roadmap/features/`; the outside set is EMPTY.
+  RAW 11 and STRIPPED 3 reproduce the reviewer's applied-dry-run figures
+  exactly, in the three files it named.
 
-STRIPPED (every backtick-quoted span deleted before matching), 6 lines:
+- **G5 THE GUARDS, THE SUITE AND THE TREE — exit 0 on all four parts.**
+  - (a) `python3 -B -m pytest tests/docs/ tests/cli/test_advertised_commands.py tests/cli/test_product_spine.py tests/cli/test_cli_ux.py tests/test_grouped_cli.py -q`
+    → `851 passed in 36.59s`, REAL_EXIT=0. This is the §3 verification-tier-5
+    documentation gate.
+  - (b) canary `python3 -B -m pytest tests/cli/test_golden_path.py -q`
+    → `42 passed in 20.38s`, REAL_EXIT=0.
+  - (c) THE FULL SUITE, `python3 -B -m pytest tests/ -q`, SERIALLY, in the
+    PRIMARY checkout with C3 committed →
+    `18603 passed, 23 skipped, 1 warning in 1333.60s (0:22:13)`, REAL_EXIT=0.
+    ZERO FAILED. Collection at C3 measured separately with
+    `pytest tests/ -q --collect-only` → `18626 tests collected`, REAL_EXIT=0.
+    18603 + 23 = 18626 equals the C3 collection. These are the round 16 figures
+    unchanged, as expected for a round with no `.py` file in its change set; no
+    difference to report.
+  - (d) `.agent/STOP` re-read from disk: ABSENT. `git status --porcelain`: empty.
+    `git worktree list`: ONE entry, `/home/decodeux/Repos/remedy ee86115a
+    [feature/f275-one-world-completion-part-three]`. Branch correct.
+    `git diff --name-only d7e71e1d..ee86115a` is an EXACT MATCH on this block's
+    three C3 paths — MISSING set EMPTY, EXTRA set EMPTY.
+    Per-commit, every commit BEFORE C4, against the AGENTS.md DECISION F104 D1
+    cap of 500 insertions:
 
-```
-docs/guides/simple-operator-quickstart-v0.md:56: remedy worker doctor claude --json
-docs/guides/simple-operator-quickstart-v0.md:65: remedy worker add claude --json
-docs/guides/simple-operator-quickstart-v0.md:85: remedy worker disable claude --json
-docs/roadmap/features/T2_F262.md:79: dates (test.list, repair.item-list, builder.session-list,
-docs/roadmap/features/T2_F267.md:14: - test.list · repair.item-list · builder.session-list ·
-docs/roadmap/features/T8_F151.md:22: main_builder_adapter.py (the current builder's wrapping), plus the
-```
+    | Commit | SHA | Parents | +/- | Under cap |
+    |---|---|---|---|---|
+    | C0a | 10034ac5 | 1 | +254 / -0 | yes |
+    | C0b | bc2cca93 | 1 | +162 / -303 | yes |
+    | C1 | 97f71317 | 1 | +18 / -19 | yes |
+    | C2 | d7e71e1d | 1 | +10 / -0 | yes |
+    | C3 | ee86115a | 1 | +8 / -51 | yes |
 
-Three of the six lie in `docs/roadmap/features/`, which is the round's declared scope
-ruling. The other three lie in `docs/guides/simple-operator-quickstart-v0.md`, which the
-block's exhaustive change set does not name.
+    Every commit is single-parent. No commit is oversize, so no inseparability
+    declaration is owed.
+
+No mutation red-proof is reported because none is owed: this round's change set
+touches only `docs/` and `.agent/`, and the block orders the verification-tier-5
+documentation gate (G5a) in its place.
 
 ## Authored-text proofs
 
-| Slice | Target | Result |
-|---|---|---|
-| PLAN16 | `.agent/plan.md` at C1 | Extracted from the COMMITTED C0a blob between its marker lines, markers excluded; 2454 bytes, sha256 `da53b429…`; disk-to-disk BYTE-IDENTICAL to the committed `.agent/plan.md`. |
-| LEDGER16 | `.agent/live_review.md` at C2 | 15489 bytes, sha256 `9ce796a88005e18c3345238f401dadfd51e2537c8be5dd0ccdabedf826da8fe9`; byte-exact SUFFIX of the committed post-blob, growth 15490 = 1 + 15489, per-paragraph sha256 equal for all 4 units. |
-| SLIPS16 | `.agent/prose_slips.md` at C2 | 4052 bytes, sha256 `a9d04b8acb90644e8b7b10f7bebea88269e6bbcd565a558e6758ceb25ee34458`; byte-exact SUFFIX of the committed post-blob, growth 4053 = 1 + 4052, per-paragraph sha256 equal for all 5 units. |
+| Slice | Applied to | Bytes | sha256 | Proof |
+|---|---|---|---|---|
+| SPINE17 | `docs/system/core-product-spine-v0.md`, body of `## What a worker is` | 551 | `337d4871b586bc6d98c060a707a68f83cb2fd293d77a09f52d41b103ba6775b2` | Occurs EXACTLY ONCE at C3; bytes at the site re-hash to the slice digest (G2). Spliced programmatically from the extracted slice file, never retyped. |
+| PLAN17 | `.agent/plan.md`, replaced WHOLE | 2537 | `e2f6802970279070d19f28c02739714149d1fb068c8d6d8ba852deaefc9150e1` | Committed blob at C1 BYTE-IDENTICAL to the slice (G2). 44 lines, cap 50. |
+| SLIPS17 | `.agent/prose_slips.md`, appended | 2779 | — | Byte reader + structural reader (N counted = 3) + negative control, all in G3. |
+| LEDGER17 | `.agent/live_review.md`, appended | 9924 | — | Byte reader + structural reader (N counted = 2) + negative control, all in G3. |
 
-No slice was edited. The marker lines reached no target file.
+All four slices were extracted from the COMMITTED C0a blob between their
+`--- BEGIN-<NAME> ---` / `--- END-<NAME> ---` marker lines, markers excluded, and
+applied without retyping. No marker line reached any target file. Every slice was
+applied BYTE FOR BYTE; none was edited.
 
 ## Deviations & assumptions
 
-1. **G4 IS RED AND THE ROUND DID NOT REPAIR IT — SCOPE, NOT OVERSIGHT.** Three
-   STRIPPED sweep lines fall outside `docs/roadmap/features/`, all in
-   `docs/guides/simple-operator-quickstart-v0.md`: lines 56, 65 and 85 are fenced
-   `bash` blocks reading `remedy worker doctor claude --json`, `remedy worker add
-   claude --json` and `remedy worker disable claude --json`, each the body of its own
-   `###` section ("Check worker readiness", "Add a worker", "Disable a worker"). Lines
-   109 to 111 of the same file are an "Advanced commands" table mapping all three
-   deleted `worker` commands onto the deleted `builder adapter-*` commands; they are
-   backtick-quoted, so they survive the stripped reading but are equally dead. That
-   path is NOT in the block's twenty-four-path change set, and constraint 2 orders me
-   to stop and declare rather than widen. I declared and did not touch it. Note that
-   `tests/cli/test_advertised_commands.py` PASSED over this state, which is the
-   R-0847 blindness again: the guard does not see these forms.
-2. **`apps/cli/commands/worker_facade_cmd.py` measured 0 / 218, the block predicted
-   0 / 210.** The spec was applied exactly: the three command functions, their three
-   `COMMAND_HANDLERS` rows, `_WORKER_ALIASES`, `_resolve_alias` and the four
-   section-banner comment blocks. The file went from 533 physical lines to 315, and
-   315 = 533 − 218; the surviving text keeps two blank lines on each side of `_err`
-   and of the `mission run facade` banner, and ruff is clean over it.
-3. **`tests/cli/test_worker_facade_cmd.py` measured 4 / 166, the block predicted
-   4 / 157.** The four insertions are exactly the four rewritten assertions the block
-   names. The nine extra deletions are the blank lines carried by the four deleted
-   class/banner regions plus the two-line `_ADAPTER_PATCH` / `_SAVE_ADAPTER` constant
-   pair — see deviation 4.
-4. **`_ADAPTER_PATCH` and `_SAVE_ADAPTER` were deleted although the block does not
-   name them.** They are inside a listed path. After the three test classes go they
-   have no reader, and both are string literals containing the token
-   `main_builder_adapter` OUTSIDE backticks, so leaving them would have put two more
-   lines into G4's stripped result. Deleting them is R-0855's fix clause applied
-   within the change set, not a widening of it.
-5. **C3 totals measured +13 / -2519; the block predicted 13 insertions against 2502
-   deletions.** The 13 insertions match exactly. The 17-deletion difference is exactly
-   deviations 2 and 3 summed (8 + 9). Every other path's `+/-` matched the block cell
-   for cell.
-6. **The `related=("worker.doctor", "mission.report")` tuple belongs to the
-   `doctor.core` record, not to `mission.run`.** The block's catalog spec attributes it
-   to `mission.run`. I applied the ORDER as written — that tuple became
-   `related=("mission.report",)`, the one insertion — on the record that actually
-   carries it, at what was line 1601. `mission.run`'s own tuple is
-   `("mission.report", "mission.ledger", "dogfood.run-loop")` and was left untouched;
-   its dangling `dogfood.run-loop` is one of the two R-0859 registers.
-7. **R-0859's prose misattributes both dangling references.** Measured through the
-   shipped reader at the base: `dogfood.run-loop` is named by `mission.run` (R-0859
-   says `mission.ledger`), and `readiness.show` is named by `repo.status` (R-0859 says
-   "a `readiness`-group record"). The finding's SUBSTANCE holds — exactly two dangling
-   `related=` references, exactly those two ids, no guard sees them — and I applied the
-   slice byte for byte without editing it.
-8. **The block's `I001` prediction did not materialise.** The change set says that
-   after `from unittest.mock import patch` goes, "the blank line ruff's `I001` wants
-   after `import pytest` goes with it". Removing only the import left the import block
-   correctly sorted; ruff reported `All checks passed!` at exit 0 over the file with
-   that blank line still in place, so no blank line was removed.
-9. **Two readerless comment regions survive inside listed paths, because the block's
-   per-path numstats forbid touching them and constraint 8 says no further sweep is
-   owed.** `packages/orchestration/run_contract.py` lines 144-147 still carry the
-   four-line "Main Builder Adapter v0 (Step 1985)" comment that explained the six
-   deleted members — the spec's `0 / 12` is exactly the members and their rows.
-   `docs/system/test-lanes-v0.md` still describes `test_worker_facade_cmd.py` as
-   covering "Worker add/doctor/disable, alias registry, catalog wiring" — the spec's
-   `0 / 1` is exactly the deleted lane row.
-10. **`docs/system/core-product-spine-v0.md` still advertises two deleted commands in
-    its command-taxonomy table** (lines 102-103, `worker doctor <name>` and
-    `worker add <name>`) and in prose at line 52. Backtick-quoted, so they survive
-    G4's stripped reading. The block orders `1 / 2` for this file — the numbered
-    operator path only — so they were left.
-11. **No `Landed:` line was written, and no verdict, finding or `Done:` paragraph of
-    my own.** The only `Done:` text applied this round is the reviewer-authored
-    `Done: R-0855` paragraph inside the LEDGER16 slice, applied as part of that slice.
-12. **The bundle's ordered commit sequence was followed exactly**: C0a, C0b, C1, C2,
-    C3, C4. No commit was added, dropped or reordered.
+1. **The SPINE17 substitution region — declared reading, not a repair.** The
+   change set says the SPINE17 slice is applied "between the heading line and the
+   blank line preceding `## What a report is`". Read strictly, that region is 7
+   lines (the blank line after the heading plus two prose paragraphs), and
+   replacing it with the slice's 8 lines would have yielded a numstat of +8 / -9
+   for this file once the two taxonomy rows are counted — contradicting the
+   block's own measured `8 / 8`. I therefore kept the blank line immediately
+   after the heading and replaced the two prose paragraphs (6 lines) with the
+   slice's 8 lines, which yields exactly the measured +8 / -8 and produces
+   well-formed markdown. The slice itself was applied byte for byte and is
+   unedited; only the boundary of the region it replaced was resolved. Both
+   readings satisfy G2's "occurs exactly once, byte-identical" condition.
+   The applied result reads: heading, blank line, SPINE17, blank line,
+   `## What a report is`.
 
-## Item-status table
+2. **The block's `12dd60ad` base disagreed with this session's opening git
+   snapshot, which showed `fadf4715`.** I re-read the branch from disk: HEAD was
+   `12dd60ad`, matching the block. The snapshot was stale, not the block. No
+   action taken beyond verifying it.
+
+3. **The ten `builder.<sub>` command ids in G4 are not enumerated by the block.**
+   I resolved them mechanically from the catalog at `876dc89e`, the parent of
+   round 16's C3, by matching quoted `"builder.<sub>"` ids under `packages/` and
+   `apps/cli/` — exactly ten, listed in the G4 transcript. I did not guess them
+   and did not use the looser `builder.<word>` grep, which also matches
+   `builder.py`, `builder.name`, `builder.num`, `builder.model`,
+   `builder.provider`, `builder.temperature`, `builder.build` — attribute and
+   filename spellings, not command ids.
+
+4. **Two stale-looking spans inside a change-set file were NOT touched, per
+   constraint 2.** In `docs/system/core-product-spine-v0.md` the "What Remedy is
+   today" prose still says Remedy helps operators "manage builder workers", the
+   terminology table still defines **Worker**, and the Advanced-operator-path
+   table still carries the row `` `builder adapter-show/enable/list` | Direct
+   adapter management | Debugging adapter state ``. None of these matches any G4
+   token — the spaced form `builder adapter-show` is not in the token list, only
+   the dotted command ids are — so none is a gate condition, and the block's
+   change set does not order them changed. I am declaring them rather than
+   widening scope. This is an observation for the reviewer, not a finding of
+   mine.
+
+5. **Commit-gate ordering.** C0a and C0b were committed while `.agent/plan.md`
+   still described round 16, because the block fixes C1 as the commit that
+   advances the plan and places it after them. This follows the block's ordered
+   bundle and the established pattern of rounds 14 through 16; it is noted here
+   because AGENTS.md's Commit Gate reads on every commit.
+
+No departure from the block's ordered commit sequence: six commits C0a, C0b, C1,
+C2, C3, C4, in that order, none added, none dropped, none reordered.
+
+I wrote no verdict, no `Done:` paragraph and no finding of my own.
+
+## Item status
 
 | Item | Status | Reason |
 |---|---|---|
 | C0a save the authored block | done | |
-| C0b mirror to `.agent/last_block.md` | done | |
+| C0b mirror to last_block.md | done | |
 | C1 advance the plan | done | |
-| C2 the record (LEDGER16 + SLIPS16) | done | |
-| C3 delete the module group, 24 paths | done | |
+| C2 the record — LEDGER17 + SLIPS17 | done | |
+| C3 sweep the advertisements — three paths | done | |
 | C4 the handback | done | |
+| SPINE17 slice | done | Substituted, not appended; region boundary declared as deviation 1. |
+| PLAN17 slice | done | |
+| SLIPS17 slice | done | |
+| LEDGER17 slice | done | |
 | G1 transport | done | exit 0 |
-| G2 plan and block | done | exit 0 |
-| G3 the record | done | exit 0 |
-| G4 deletion complete | deviated | exit 1 — binding condition fails on three lines in a path outside the change set; declared, not repaired (deviation 1) |
-| G5 shipped readers | done | exit 0 |
-| G6 red-proofs | done | exit 0 |
-| G7 ruff, ratchets, suite | done | exit 0 |
-| G8 the tree | done | exit 0 |
-| R-0855 fix clause | done | discharged by C3 as constraint 8 describes |
-| R-0857 fix clause | done | the three `worker` commands deleted whole |
+| G2 plan, block and spine slice | done | exit 0 |
+| G3 the record, two appends | done | exit 0 |
+| G4 the sweep is clean | done | exit 0 — RAW 11, STRIPPED 3 |
+| G5 guards, suite and tree | done | exit 0 — 851 / 42 / 18603+23 |
+| R-0861 | done | Swept; see the `Landed:` line below. The reviewer authors the resolution. |
+
+Landed: R-0861 — the three operator-facing pages no longer advertise `worker doctor`, `worker add` or `worker disable`, and the sweep's stripped result outside `docs/roadmap/features/` is now empty.
 
 ## Open findings
 
-**84 by distinct id** at C2, up from 83 at the base `38e03d2f`: R-0859 and R-0860
-registered, R-0855 resolved. Registered 89, done 5. Four are High — R-0803, R-0804,
-R-0806 and R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
+85 by distinct id at C2 `d7e71e1d` (registered 90, done 5), up from 84 at the
+base `12dd60ad` by this round's registration of R-0861. `Landed:` lines are never
+subtracted. Four remain High — R-0803, R-0804, R-0806 and R-0807 — all F273's
+rather than this feature's, per DECISION F272 D12.
+
+R-0847, the advertised-commands guard's blindness, is measured a THIRD time by
+this round: `tests/cli/test_advertised_commands.py` passed at exit 0 over the
+state that G4 found red in round 16, and it passes again now. Until R-0847 is
+fixed, every deletion round of this feature must read the RAW sweep list by hand
+and not only the stripped count.
 
 ## Next
 
-The planner and reviewer of session 9 re-runs all eight gates itself against the
-committed blobs over `38e03d2f`..`HEAD` and issues the round 16 verdict, weighing the
-red G4 against the scope constraint that produced it. Before authoring the next round
-it re-reads `.agent/STOP` from disk (Phase 1 rule 1) and only then the Open PR Gate
-(rule 2). Round 17's target is the `overnight_executor` component, which this round's
-regeneration made the order file's first line and which is a SINGLE module.
+The reviewer independently re-runs all five gates against the committed blobs
+over `12dd60ad`..`ee86115a` and issues the round 17 verdict, resolving or
+re-opening R-0861 on its own authority. Phase 1 rule 1 first: re-read
+`.agent/STOP` from disk before authoring round 18.
+
+Round 18 is then the `overnight_executor` component, the regenerated order
+file's first line and a SINGLE module.
