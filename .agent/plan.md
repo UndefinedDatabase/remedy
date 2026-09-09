@@ -12,38 +12,38 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 10 books round 9's PASS, registers R-0845 and R-0846, and deletes the FIFTH module
-group and the first that is a strongly connected COMPONENT: `dogfood_run`, `feature_planner`,
-`overnight_mission`, `progress_ledger`, `repair_loop_v2` and `self_repair_proposal`, whole,
-in ONE commit under DECISION F275 D2. With them go their five handler files, 38 catalog
-entries, the `dogfood`, `progress` and `self-repair` groups, eleven test files, five doc
-pages and the surviving call sites. `apps/cli/commands/worker_facade_cmd.py` SURVIVES and
-loses the dogfood mode of `mission run`; `packages/orchestration/main_builder_adapter.py`
-SURVIVES and loses its `remedy repair evaluate` next-action. Both losses are registered.
+ROUND 11 books round 10's PASS and four prose slips, registers R-0847, R-0848 and R-0849,
+closes F260's SECOND carry-over as a NOTE on R-0831 — the route-policy audit re-measured, a
+finding update and never a rebuild — releases DECISION F274 D4's hold on the builder-routing
+cockpit section as DECISION F275 D5, and deletes the SIXTH module group and the second that is
+a strongly connected COMPONENT: `builder_routing`, `candidate_quality`,
+`local_candidate_generator` and `model_route_tournament`, whole, in ONE commit under DECISION
+F275 D2. With them go four handler files, 14 catalog entries, the `builder-routing`,
+`candidate-quality`, `local-candidate` and `tournament` groups WHOLE, nine test files, five doc
+pages and nine index rows. `apps/cli/commands/external_builder_cmd.py` SURVIVES and loses one
+of its eight handlers; `packages/orchestration/worker_registry.py` SURVIVES and loses the
+next-action it gave a local-candidate worker. Both losses are registered.
 
 ## Next Steps
 
-1. The `builder_routing` / `candidate_quality` / `local_candidate_generator` /
-   `model_route_tournament` component, which this round's regeneration makes the order
-   file's first line. Its four modules import each other, so DECISION F275 D2 makes the
-   whole component one commit.
-2. The remaining components in the recorded order, the single-module ones as ordinary
-   group commits and the two-module `provider_trust` pair as one.
-3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and
-   R-0831, R-0840, R-0842, R-0844, R-0845 and R-0846 named among the ideas deleted rather
-   than inherited.
+1. The `execution_approval_policy` component, which this round's regeneration makes the order
+   file's first line. It is a SINGLE module, so it is an ordinary group commit.
+2. The remaining components in the recorded order — after this round every one is a single
+   module except the `provider_trust` / `provider_trust_verification` pair, which is the last
+   cycle in the cluster.
+3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831,
+   R-0840, R-0842, R-0844, R-0845, R-0846, R-0848 and R-0849 named among the ideas deleted
+   rather than inherited.
 4. T002, the atomic record flip, alone, because every later commit's size depends on its ruling.
 
 ## Risks
 
-- The open set is 69 by distinct id at this round's base `982d016b`; the ledger commit this
-  block fixes as C2 registers R-0845 and R-0846, taking it to 71. Four are High — R-0803,
-  R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
-- The two carry-overs F260's Design orders before the first `git rm` ARE DONE: `mission
-  readiness` landed in round 3 and `mission report` in round 4, and `Gate: F275 R4` records
-  both. No carry-over work is owed by this round or any later one.
-- `tests/test_grouped_cli.py` parametrises over the catalog, so 24 of this round's 381
-  collected-id fall come from a file the deletion never names. A file-level reading of the
-  fall cannot close; only the id-set difference can.
-- The full suite is run SERIALLY. Under `pytest -n auto` the `ui_server` command-channel
-  tests race for a server port and the vitest node needs `apps/ui/node_modules`.
+- The open set is 71 by distinct id at this round's base `cb89bbc3`; the ledger commit this
+  block fixes as C2 registers three, taking it to 74. Four are High — R-0803, R-0804, R-0806
+  and R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
+- R-0847 is a GATE defect, not only a code defect: `tests/cli/test_advertised_commands.py`
+  cannot see an advertisement whose group has been deleted, so this round's four whole-group
+  deletions widen a blind spot the same round registers. No later deletion round may rely on
+  that guard to catch its own dead advertisements.
+- The full suite is run SERIALLY: under `pytest -n auto` the `ui_server` command-channel tests
+  race for a port, and the vitest node needs `apps/ui/node_modules`, absent from any worktree.
