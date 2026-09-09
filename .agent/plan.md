@@ -12,30 +12,33 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 19 deletes the `overnight_readiness` module group, the first line of the regenerated
-deletion order. It takes the WHOLE `overnight` command group with it — the GroupDef, the
-three remaining read-only commands, the handler file round 18 left alive, and two test
-files — because `mission_readiness.py` has carried the same capability since rounds 1 and 2
-and `remedy mission readiness` and `remedy mission report` already serve every reader. It
-also books round 18's PASS verdict and registers R-0864.
+ROUND 20 deletes the `worker_registry` module group — the module, its handler, the whole
+`route-policy` command group, the three `worker.registry-*` commands, its cockpit section,
+four `ContractAction` members and two documentation pages. DECISION F275 D9, committed
+before the first `git rm`, rules that the surviving `token_economy.py` degrades FAIL-SAFE
+rather than dying: no route spec resolves, so approval becomes unconditional and the R-0095
+hard-safety floor holds by degradation. The round books round 19's PASS verdict and
+registers R-0865.
 
 ## Next Steps
 
-1. `worker_registry`, the next component of the order file.
-2. Then the `provider_trust` / `provider_trust_verification` pair, which is the last cycle
-   and the last component.
-3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and the
+1. The `provider_trust` / `provider_trust_verification` pair, which is the last cycle and
+   the last component of the deletion order.
+2. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and the
    open ids named among the ideas deleted rather than inherited. That round also discharges
    R-0843's widened sweep, R-0858's repair of F267 and R-0859's referential-closure test.
-4. T002, the atomic record flip, alone, because every later commit's size depends on it.
+3. T002, the atomic record flip, alone, because every later commit's size depends on it.
+4. T003, the classic runner, which T002's ruling is the prerequisite for.
 
 ## Risks
 
-- The open set is 86 by distinct id at this round's base `c878073e`. Round 19 registers one,
-  taking it to 87. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's rather
+- The open set is 87 by distinct id at this round's base `0d18e58a`. Round 20 registers one,
+  taking it to 88. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's rather
   than this feature's, per DECISION F272 D12.
-- R-0847 is worst on this round: deleting a whole command group removes it from the
-  advertised-command guard's `GROUPS`, so the guard goes blind exactly when the group's
-  advertisements go dead. The sweep is read by hand, as its RAW list.
+- Worst on this round: a surviving production module loses an approval-forcing invariant.
+  The mutation red-proof is ordered in full and its STOP condition blocks the commit.
+- R-0847 again: deleting a whole command group removes it from the advertised-command
+  guard's `GROUPS`, so the guard goes blind exactly when the group's advertisements go
+  dead. The sweep is read by hand, as its RAW list.
 - The full suite is run SERIALLY: under `pytest -n auto` the `ui_server` command-channel
-  tests race for a port, and the vitest node needs `apps/ui/node_modules`.
+  tests race for a port.
