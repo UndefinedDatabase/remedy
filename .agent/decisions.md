@@ -11759,3 +11759,59 @@ it; a reader of the dashboard has no routing view until F110 provides one. That 
 as R-0848 rather than mitigated, and DECISION F260 D3 will name it among the ideas deleted rather
 than inherited. Nothing on disk becomes inconsistent under the reversal above, because the section
 and its module are recoverable from git and no later commit depends on their absence.
+
+## DECISION F275 D6 — the "approval gate" F275's Do-not-touch protects is F017's HUMAN gate, not `execution_approval_policy.py`, which F260's Design lists for deletion (2026-09-09)
+
+Ruled by the reviewer while authoring F275 round 12, under docs/agents/planner_reviewer_prompt.md
+§4 item 7, which routes a ruling to a loud, persisted, reversible decision rather than to a
+question the operator is never asked. Reverse it by deleting this section, which puts
+`execution_approval_policy.py` back under the Do-not-touch clause and stops the cluster deletion
+at component line 1 of `.agent/f275_deletion_order.md`.
+
+THE APPARENT CONTRADICTION, stated plainly because it is the whole reason this decision exists.
+`docs/roadmap/features/T2_F275.md`'s "Do not touch" section says: "Everything F272's and F274's
+'Do not touch' sections name, unchanged: the scope-fence builtin deny list (F017), the approval
+gate, STATUS semantics." That clause is inherited unchanged from `T2_F272.md`, which inherited it
+unchanged from `T2_F260.md` line 433. And `T2_F260.md` line 345 — in the Design section's cluster
+module list, thirty lines earlier in the same file — names `execution_approval_policy.py` among
+the modules to be deleted. Read naively, one feature file both protects a module and schedules
+it for deletion.
+
+THE READING, and the evidence for it. The two clauses are about DIFFERENT things. "The approval
+gate" is the human-in-the-loop mechanism F017 owns: `patch approve`, `do continue`, and the
+`approval_required` truth the cockpit and the run record carry. `execution_approval_policy.py` is
+a prototype POLICY layer that could authorise a managed builder execution WITHOUT that human, and
+it is a cluster module by F260's own enumeration. Three measurements support the reading and were
+taken rather than assumed. FIRST, `T2_F260.md` line 345 lists the module by name in the deletion
+list, and the same file's Do-not-touch closes with "No module outside the lists above is deleted"
+— which makes the LISTS the authority on what is deleted and the approval-gate clause a statement
+about a mechanism, not about a file. SECOND, the six commands that die are `user_facing=False` in
+`apps/cli/command_catalog.py`, while `patch approve` and `do continue` survive untouched by this
+round's change set. THIRD, `.agent/live_review.md` already uses "the approval gate" in exactly
+this sense: R-0845's own text routes the self-repair proposal queue "to the approval gate F017
+owns", written five rounds before this question arose and by a different round's authoring.
+
+CHOSEN: `execution_approval_policy.py` is deleted with its group, its tests and its doc page, and
+the Do-not-touch clause is read as protecting F017's human gate, which this round does not touch.
+The deletion makes Remedy STRICTLY MORE conservative — an execution that a policy could once
+auto-approve now requires the human — so even a wrong reading here fails safe. The capability
+loss is registered as R-0851 in the same round rather than mitigated.
+
+ALTERNATIVES CONSIDERED AND REJECTED. (a) Treat the clause as protecting the module and stop the
+deletion here — rejected because it stops F275 at its first single-module component on a reading
+that contradicts F260's own deletion list, and operator amendment amend0908-f275-finish permits
+an early close only when a module group is genuinely undeletable under T001's three rules, which
+this one is not. (b) Ask the operator — rejected because
+docs/agents/planner_reviewer_prompt.md §2 forbids handing the operator a ruling request and §4
+item 7 requires a loud, persisted, reversible decision instead; this section is that decision and
+any later relay is the veto. (c) Delete the module but keep the six commands as thin wrappers —
+rejected on AGENTS.md Scope Control, which forbids a stub, a shim, an alias or a compatibility
+reader by name.
+
+CONSEQUENCE, stated plainly. Remedy has no automated execution-approval policy after this round,
+and `remedy approval` disappears as a command group. Anything that wants an execution approved
+goes through the human gate. `remedy doctor` is deliberately NOT affected: `_cmd_doctor_core`
+reached this module only through a string-keyed `_try_import` diagnostic probe, that probe line
+goes, and the command keeps working — a fact the round measures through the shipped readers
+rather than asserting. Nothing on disk becomes inconsistent under the reversal above, because the
+module and its tests are recoverable from git and no later commit depends on their absence.
