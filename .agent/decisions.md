@@ -11967,3 +11967,69 @@ module to the reachability allowlist, `CLUSTER_MODULES` and the deletion map. Re
 decision restores a WEAKER approval rule than the one it installs, because the unconditional
 floor becomes conditional again; a reversal that intends to keep the stricter behaviour must
 keep `d.requires_human_approval = True` as well.
+
+## DECISION F275 D10 (2026-09-10) — the shared redaction helpers MOVE to `packages/common/public_text_redaction.py`, byte-identically, in their own round
+
+CONTEXT. Round 22 deletes `packages.orchestration.provider_trust` and
+`packages.orchestration.provider_trust_verification`, the last component of
+`.agent/f275_deletion_order.md`. Measured by the reviewer at `3949f3c6` with an `ast` sweep
+over `packages/`, `apps/`, `tests/` and `scripts/`: SEVEN modules that survive that deletion
+import `_scrub_public` from the dying module — `orchestrator_brain.py`,
+`provider_patch_material.py`, `real_test_execution.py`, `repair_request_builder.py`,
+`self_dogfood.py`, `self_dogfood_execution.py` and `token_economy.py` — and three of those
+seven also import `_safe_path_label`. `_scrub_public` masks secret-like material, home-ish
+absolute paths and stack traces in strings that reach public surfaces, which is why R-0083
+put it there in the first place.
+
+THE PROBLEM. Operator RULE 3 in `docs/roadmap/features/T2_F275.md` T001 says a surviving
+consumer LOSES THE CALL SITE and never gains a copy. Applied literally to these seven, that
+would delete REDACTION from seven survivors — a weakening in the unsafe direction, and the
+exact opposite of the fail-safe direction DECISION F275 D9 established one round earlier.
+RULE 3 exists to stop cluster CAPABILITY being smuggled into survivors under another name;
+these are shared safety utilities that happen to live in a cluster file, and the rule was
+never aimed at them.
+
+CHOSEN. A BYTE-IDENTICAL MOVE into a new module `packages/common/public_text_redaction.py`,
+performed in its own round BEFORE the deletion, following the precedent DECISION F275 D1
+already set for shared code in a dying file. Five names move: `_scrub_public`,
+`_safe_path_label`, `_SECRET_PATTERNS`, `_ABS_PATH_RE` and `_TRACEBACK_RE`. No name is
+renamed, no body is edited, and every call site is unchanged; the move is proved by
+extracting the three source spans from the committed base blob rather than by retyping them.
+The dying module itself imports them back for the one round it has left, which is a genuine
+use — `scan_secrets`, `_safe_text` and `validate_paths` all still call them — and not a
+re-export shim, because after the repoints nothing outside that file imports those names
+from it.
+
+ALTERNATIVES CONSIDERED, AND WHY EACH LOSES.
+(1) Delete the call sites, per a literal RULE 3. Rejected: it removes masking from seven
+    survivors. Safety before rule-shape.
+(2) Move into the existing `packages/common/path_redaction.py`. Rejected on a measurement:
+    that module already defines a module-level `ABS_PATH_RE`, and this move brings an
+    `_ABS_PATH_RE` with a different and much narrower regex. Two absolute-path patterns
+    whose names differ by one underscore, in one file, with different jobs, is precisely the
+    synonym drift AGENTS.md's Code Discoverability Conventions forbid, and the next reader to
+    edit the wrong one pays for it. The two modules also do different things: that one
+    reduces every path to its bare file name, this one replaces a narrow class of tokens
+    with `[redacted-...]` markers.
+(3) Move into `packages/orchestration/redaction_patterns.py`. Rejected on a measurement: it
+    already defines `_TRACEBACK_RE`, with a looser case-insensitive regex, so a
+    byte-identical move would collide and a rename would stop the move being byte-identical.
+(4) Rename the five to public names while moving them. Rejected: it changes call sites in
+    seven surviving modules, and AGENTS.md forbids mass renames as their own activity.
+(5) Do the move inside the deletion commit. Rejected: it would put a new file, nine
+    repoints and a two-thousand-line deletion in one commit, and RULE 1's "never split"
+    binds the deletion, not the preparation for it.
+
+CONSEQUENCE. Round 21 is not a deletion round under amend0906-triage-throughput: its change
+set edits lines under `packages/` and `tests/`, so the four-measurement shortcut does not
+apply and a mutation red-proof over the moved definition is mandatory. `packages/common/`
+gains one module and `tests/orchestration/import_reachability_allowlist.txt` gains one line,
+because the new module is reachable from the D11 (c) entry points through its seven
+importers. Three of the eight edges in `tests/orchestration/cluster_deletion_map.txt`
+disappear, because `real_test_execution.py`, `repair_request_builder.py` and
+`token_economy.py` import nothing else from the dying pair.
+
+REVERSE THIS DECISION by moving the five names back into `packages/orchestration/provider_trust.py`
+and deleting `packages/common/public_text_redaction.py` — which is only possible while that
+file still exists, so reversing it after round 22 means choosing a different destination
+rather than restoring the old one.
