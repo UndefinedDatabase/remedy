@@ -44,7 +44,6 @@ EDGE_SEPARATOR = " <- "
 CLUSTER_MODULES = (
     "packages.orchestration.provider_trust",
     "packages.orchestration.provider_trust_verification",
-    "packages.orchestration.worker_registry",
 )
 
 # The handlers of cluster COMMANDS. They die with the cluster, so their imports
@@ -60,7 +59,6 @@ CLUSTER_COMMAND_HANDLERS = (
     "apps/cli/commands/provider_cmd.py",
     "apps/cli/commands/repair_loop_v2_cmd.py",
     "apps/cli/commands/review_cmd.py",
-    "apps/cli/commands/route_policy_cmd.py",
     "apps/cli/commands/self_repair_cmd.py",
 )
 
@@ -93,7 +91,7 @@ def embedded_first_party_imports(path: Path) -> set[str]:
 def _cluster_module_of(dotted: str) -> str | None:
     """The cluster module a dotted import name refers to, or None.
 
-    `from packages.orchestration.worker_registry import run` contributes both the
+    `from packages.orchestration.provider_trust import run` contributes both the
     module and `module.run`, so an attribute suffix still names the module.
     """
     for module in CLUSTER_MODULES:

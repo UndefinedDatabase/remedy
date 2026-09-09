@@ -24,5 +24,4 @@
 # that removes them from disk, exactly as it does for `cluster_deletion_map.txt`.
 #
 # Blank lines and lines beginning with `#` are ignored by the reader.
-packages.orchestration.worker_registry
 packages.orchestration.provider_trust, packages.orchestration.provider_trust_verification

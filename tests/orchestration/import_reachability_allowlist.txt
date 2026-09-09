@@ -43,7 +43,6 @@ apps.cli.commands.real_test_execution_cmd
 apps.cli.commands.repair_cmd
 apps.cli.commands.repo
 apps.cli.commands.review_cmd
-apps.cli.commands.route_policy_cmd
 apps.cli.commands.run_invocation
 apps.cli.commands.runtime_cmd
 apps.cli.commands.self_cmd
@@ -277,7 +276,6 @@ packages.orchestration.verifier_profiles
 packages.orchestration.watchdog
 packages.orchestration.worker_adapters
 packages.orchestration.worker_queue
-packages.orchestration.worker_registry
 packages.orchestration.workspace
 packages.orchestration.worktree_resume
 packages.orchestration.worktrees

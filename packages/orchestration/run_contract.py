@@ -92,14 +92,6 @@ class ContractAction:
     EXTERNAL_BUILDER_PACKAGE = "external_builder_package"
     EXTERNAL_BUILDER_SUBMIT = "external_builder_submit"
     EXTERNAL_BUILDER_SHOW = "external_builder_show"
-    # Worker Registry + User-Selectable Route Policy v0 (Step 1726) — METADATA + POLICY only. NOT
-    # worker/provider/model/Ollama/cloud execution. worker-registry-show / route-policy-show /
-    # route-policy-evaluate are read-only; route-policy-set is metadata-only (persists a safe
-    # per-job policy). None of these ever execute a worker, start work, or call a provider.
-    WORKER_REGISTRY_SHOW = "worker_registry_show"
-    ROUTE_POLICY_SHOW = "route_policy_show"
-    ROUTE_POLICY_SET = "route_policy_set"
-    ROUTE_POLICY_EVALUATE = "route_policy_evaluate"
     # Token Economy + Context Budget Optimizer v0 (Step 1766) — ESTIMATES + METADATA only. NOT
     # provider/model/Ollama/cloud execution, NOT real pricing. budget-show/estimate/economy-report
     # and context-pack-recommend are read-only; budget-set is metadata-only (persists a safe per-job
@@ -313,10 +305,6 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.EXTERNAL_BUILDER_PACKAGE,
     ContractAction.EXTERNAL_BUILDER_SUBMIT,
     ContractAction.EXTERNAL_BUILDER_SHOW,
-    ContractAction.WORKER_REGISTRY_SHOW,
-    ContractAction.ROUTE_POLICY_SHOW,
-    ContractAction.ROUTE_POLICY_SET,
-    ContractAction.ROUTE_POLICY_EVALUATE,
     ContractAction.TOKEN_BUDGET_SHOW,
     ContractAction.TOKEN_BUDGET_SET,
     ContractAction.TOKEN_ESTIMATE,

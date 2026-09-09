@@ -1,7 +1,9 @@
 """Token Economy integration tests (Steps 1775/1777/1772).
 
-Builder-routing token hint, progress ledger items, feature suggestions, review-bundle section,
-cockpit section, and placeholder-readiness hardening. All read-only; nothing executes a worker.
+Builder-routing token hint, progress ledger items, feature suggestions, review-bundle section, and
+cockpit section. All read-only; nothing executes a worker. Remedy deliberately does not test
+placeholder-readiness hardening here any more: F275 round 20 deleted the Worker Registry that owned
+every placeholder spec, so no placeholder route survives to harden (DECISION F275 D9).
 """
 from __future__ import annotations
 
@@ -49,31 +51,3 @@ class TestSafeSurfaces:
         assert s["source"] in ("token_economy", "unavailable")
         assert "buttons" not in s and "actions" not in s
         assert " run" not in str(s.get("next_safe_action", ""))
-
-# ---------------------------------------------------------------------------
-# Placeholder readiness hardening (Step 1772)
-# ---------------------------------------------------------------------------
-
-
-class TestPlaceholderHardening:
-    def test_ollama_placeholder_not_executable(self):
-        from packages.orchestration.worker_registry import get_worker_spec, is_placeholder
-        for wid in ("ollama.placeholder", "cloud.placeholder"):
-            s = get_worker_spec(wid)
-            assert is_placeholder(s) is True and s.enabled is False
-
-    def test_enabled_ollama_placeholder_flagged_and_not_executed(self, tmp_path):
-        # A future custom enabled ollama_candidate must still be treated as a placeholder requiring
-        # approval, and integrity must flag any claim of executable readiness.
-        from packages.orchestration.worker_registry import (
-            _spec_from_dict,
-            hard_safety_requires_approval,
-        )
-        spec = _spec_from_dict({"worker_id": "custom.ollama", "kind": "ollama_candidate",
-                                "enabled": True, "cost_tier": "cheap", "risk_tier": "medium",
-                                "execution_mode": "local_model"})
-        assert hard_safety_requires_approval(spec) is True  # ollama kind → always approval
-
-    def test_worker_registry_integrity_still_passes(self, tmp_path):
-        from packages.orchestration.worker_registry import worker_registry_integrity
-        assert worker_registry_integrity(data_dir=tmp_path)["passed"] is True

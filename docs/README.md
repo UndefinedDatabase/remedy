@@ -51,7 +51,6 @@
 | resume | [resume.md](guides/resume.md) | guide |
 | runtime harness | [runtime-harness-v1.md](system/runtime-harness-v1.md) | system |
 | routing policy | [model_routing_policy.md](agents/model_routing_policy.md) | agents |
-| routing | [worker-registry-route-policy-v0.md](system/worker-registry-route-policy-v0.md) | system |
 | self-dogfood | [self-dogfood-v0.md](system/self-dogfood-v0.md) | system |
 | self-dogfood | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | system |
 | semantic dedupe | [semantic-dedupe-v1.md](system/semantic-dedupe-v1.md) | system |
@@ -120,7 +119,6 @@ Specifications and design documents for the built system.
 | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | Token economy + context budget optimizer |
 | [vocabulary.md](system/vocabulary.md) | The binding vocabulary: one row per word with its meaning, its code spelling today and after F260/F261, its CLI spelling and what it is NOT; the do-not-confuse table; the concept diagram; and the rulings that decided them |
 | [worker.md](system/worker.md) | Worker architecture and guide |
-| [worker-registry-route-policy-v0.md](system/worker-registry-route-policy-v0.md) | Worker registry + route policy |
 
 ## Guides (`docs/guides/`)
 
@@ -142,7 +140,6 @@ User-facing guides, quickstarts, and usage documentation.
 | [self-repair-proposal-user-guide-v0.md](guides/self-repair-proposal-user-guide-v0.md) | Self-repair proposal workflow |
 | [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | Quickstart for new operators |
 | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | Token budgets and context packs |
-| [worker-route-policy-user-guide-v0.md](guides/worker-route-policy-user-guide-v0.md) | Choosing workers and routes |
 
 ## Archive (`docs/archive/`)
 

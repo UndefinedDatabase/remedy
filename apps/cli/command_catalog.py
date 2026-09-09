@@ -135,7 +135,6 @@ GROUPS: dict[str, GroupDef] = {
     "provider": GroupDef("provider", "Provider", "Provider Trust Gate.", user_facing=False),
     "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
     "orchestrator": GroupDef("orchestrator", "Orchestrator", "Orchestrator brain — evidence-backed decisions.", user_facing=False),
-    "route-policy": GroupDef("route-policy", "Route Policy", "Worker route policy.", user_facing=False),
     "token": GroupDef("token", "Token", "Token economy and cost budgets.", user_facing=False),
     "context-pack": GroupDef("context-pack", "Context Pack", "Context budget optimizer.", user_facing=False),
     "rollback": GroupDef("rollback", "Rollback", "Rollback proof.", user_facing=False),
@@ -1195,38 +1194,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("worker.run",),
     ),
-    # Worker Registry v0 (Step 1725) — replaceable route-policy worker specs. Read-only; distinct
-    # from the legacy provider-adapter `worker list`/`worker show` above (different taxonomy).
-    CommandEntry(
-        command_id="worker.registry-list",
-        group_id="worker",
-        subcommand="registry-list",
-        description="List Worker Registry route-policy specs (kind/cost/risk/execution-mode; metadata-only, no execution).",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True,
-        related=("worker.registry-show", "route-policy.show"),
-    ),
-    CommandEntry(
-        command_id="worker.registry-show",
-        group_id="worker",
-        subcommand="registry-show",
-        description="Show one Worker Registry spec by worker_id (metadata-only; placeholders are non-executable).",
-        action_class="read_only",
-        args=(ArgDef("worker_id", "Worker ID (e.g. local.candidate_generator)"), _JSON_OPT),
-        supports_json=True,
-        related=("worker.registry-list",),
-    ),
-    CommandEntry(
-        command_id="worker.registry-integrity",
-        group_id="worker",
-        subcommand="registry-integrity",
-        description="Check Worker Registry + route-policy invariants (read-only; safe failure codes only).",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True,
-        related=("worker.registry-list", "route-policy.show"),
-    ),
 
     # ── mission (facade over dogfood run-loop + morning report) ──────────
     CommandEntry(
@@ -1459,52 +1426,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("mission.report",),
     ),
 
-    # ── route-policy (Worker Registry user-selectable routing) ─────────────
-    CommandEntry(
-        command_id="route-policy.show",
-        group_id="route-policy",
-        subcommand="show",
-        description="Show the user-selectable route policy for a job (metadata-only; never executes).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("route-policy.set", "route-policy.evaluate", "worker.registry-list"),
-    ),
-    CommandEntry(
-        command_id="route-policy.set",
-        group_id="route-policy",
-        subcommand="set",
-        description="Set route policy constraints for a job (select/prefer/block workers, cost/risk ceilings, local/Ollama preference). Metadata-only; never executes a worker.",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("--prefer-worker", "Worker ID to prefer", required=False, is_option=True),
-            ArgDef("--select-worker", "Worker ID the user selects (wins among eligible)", required=False, is_option=True),
-            ArgDef("--block-worker", "Worker ID to block", required=False, is_option=True),
-            ArgDef("--max-cost-tier", "Max cost tier (free|cheap|standard|expensive)", required=False, is_option=True),
-            ArgDef("--max-risk-tier", "Max risk tier (low|medium|high)", required=False, is_option=True),
-            ArgDef("--prefer-local-for-cheap-tasks", "Prefer local route for cheap tasks", required=False, is_option=True),
-            ArgDef("--prefer-ollama-for-cheap-tasks", "Prefer Ollama route for cheap tasks (placeholder; not executable)", required=False, is_option=True),
-            ArgDef("--require-human-approval-for-expensive", "Require human approval for expensive routes", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("route-policy.show", "route-policy.evaluate"),
-    ),
-    CommandEntry(
-        command_id="route-policy.evaluate",
-        group_id="route-policy",
-        subcommand="evaluate",
-        description="Evaluate which worker the route policy recommends for a task type (read-only recommendation; never executes).",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--task-type", "Task type to evaluate (e.g. repair)", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("route-policy.show", "worker.registry-list"),
-    ),
     # ── token (Token Economy + Context Budget Optimizer) ───────────────────
     CommandEntry(
         command_id="token.budget-show",

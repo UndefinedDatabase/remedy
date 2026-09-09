@@ -773,8 +773,6 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
         est = rep.get("context_budget_estimate", {}) or {}
         pack = rep.get("context_pack_recommendation", {}) or {}
         decision = rep.get("decision", {}) or {}
-        from packages.orchestration.worker_registry import get_worker_spec, is_placeholder
-        oll = get_worker_spec("ollama.placeholder")
         return {
             "budget_status": decision.get("budget_status", "unknown_budget"),
             "estimated_token_band": decision.get("estimated_token_band", "unknown"),
@@ -783,7 +781,6 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
             "estimated_token_savings_band": (pack.get("estimated_token_savings", {}) or {}).get("band", "unknown"),
             "local_first_recommended": (decision.get("estimated_cost_band") in ("free", "cheap")
                                         and not decision.get("requires_human_approval")),
-            "ollama_placeholder_available": bool(oll is not None and is_placeholder(oll)),
             "requires_human_approval": decision.get("requires_human_approval", True),
             "warning_count": len(est.get("warnings", [])),
             "next_safe_action": decision.get("next_safe_action", ""),
@@ -794,52 +791,9 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
         return {"budget_status": "unknown_budget", "estimated_token_band": "unknown",
                 "estimated_context_tokens": "unknown", "context_pack_recommendation": "",
                 "estimated_token_savings_band": "unknown", "local_first_recommended": False,
-                "ollama_placeholder_available": "unknown", "requires_human_approval": True,
+                "requires_human_approval": True,
                 "warning_count": "unknown", "next_safe_action": "", "live": False,
                 "source": "unavailable"}
-
-
-def _build_worker_registry_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Worker Registry + Route Policy v0 summary for the cockpit (Step 1730).
-
-    Counts + active route policy + recommended route only. No buttons, no mutation, no "run worker",
-    no fake provider/Ollama status. LIVE is always false — this block is metadata + policy only."""
-    try:
-        from packages.orchestration.worker_registry import (
-            WorkerSelectionRequest,
-            evaluate_worker_selection,
-            is_placeholder,
-            load_route_policy,
-            load_worker_registry,
-        )
-        specs = load_worker_registry()
-        policy = load_route_policy(str(job.id))
-        selection = evaluate_worker_selection(
-            WorkerSelectionRequest(job_id=str(job.id), task_type="repair"), policy=policy,
-            registry=specs)
-        return {
-            "available_workers_count": len(specs),
-            "enabled_workers_count": sum(1 for s in specs if s.enabled),
-            "placeholder_workers_count": sum(1 for s in specs if is_placeholder(s)),
-            "selected_workers": list(policy.user_selected_worker_ids),
-            "preferred_workers": list(policy.preferred_worker_ids),
-            "blocked_workers": list(policy.blocked_worker_ids),
-            "local_first_enabled": policy.prefer_local_for_cheap_tasks,
-            "ollama_preference_enabled": policy.prefer_ollama_for_cheap_tasks,
-            "max_cost_tier": policy.max_cost_tier,
-            "max_risk_tier": policy.max_risk_tier,
-            "token_budget_hint": policy.token_budget_hint,
-            "recommended_worker_id": selection.recommended_worker_id,
-            "requires_human_approval": selection.requires_human_approval,
-            "recommended_next_action": selection.next_safe_action,
-            "live": False,
-            "source": "worker_registry",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"available_workers_count": "unknown", "selected_workers": [],
-                "preferred_workers": [], "blocked_workers": [], "local_first_enabled": "unknown",
-                "ollama_preference_enabled": "unknown", "recommended_worker_id": "",
-                "recommended_next_action": "", "live": False, "source": "unavailable"}
 
 
 def _build_repair_request_section(job: Any) -> dict[str, Any]:
@@ -1485,7 +1439,6 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "continuation": _build_continuation_section(job, events, truth_data_dir),
         "repair": _build_repair_section(job),
         "overnight": _build_overnight_section(job, truth_data_dir),
-        "worker_registry": _build_worker_registry_section(job),
         "token_economy": _build_token_economy_section(job),
         "test_execution": _build_test_execution_section(job),
         "snapshot_rollback": _build_snapshot_rollback_section(job),

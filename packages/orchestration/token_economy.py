@@ -2,9 +2,9 @@
 Token Economy + Context Budget Optimizer v0 (Steps 1757-1796).
 
 The first structured layer that ESTIMATES token cost + context budget, recommends context packs, and
-surfaces budget warnings — so Remedy can keep users oriented while reducing token waste. It builds on
-the Worker Registry + Route Policy: cheap/small tasks should prefer local/Ollama-capable routes when
-safe, expensive/unknown routes require human-facing justification.
+surfaces budget warnings — so Remedy can keep users oriented while reducing token waste. It WAS built
+on the Worker Registry + Route Policy, which F275 round 20 deleted; no route spec resolves any more,
+so this module recommends no worker and no cost band (DECISION F275 D9). F110 inherits routing.
 
   Workers execute. Remedy governs. Token reduction + context retention are core product pillars.
 
@@ -21,8 +21,9 @@ Hard rules enforced here:
   - Context pack recommendations exclude protected paths and never dump raw content; missing context
     is reported as a warning, not a fabricated zero.
   - memory_candidates are SUGGESTIONS only (no durable memory is persisted in this block).
-  - Expensive/unknown/high-risk/placeholder routes always require human approval (reuses the Worker
-    Registry hard-safety floor).
+  - Human approval is UNCONDITIONAL since F275 round 20 deleted the Worker Registry hard-safety floor
+    this rule used to reuse: no worker spec resolves, so the pre-deletion `or not spec` term now holds
+    for every job and the floor survives by degradation, strictly stricter (DECISION F275 D9).
   - No raw prompts/context/source dumps/secrets/absolute paths in any public export.
 
 Public API::
@@ -30,7 +31,6 @@ Public API::
     estimate_text_tokens(text) -> int
     estimate_context_tokens(context_items) -> int
     estimate_task_token_band(task_type, context_estimate) -> str
-    estimate_route_token_band(worker_spec, context_estimate) -> str
     estimate_token_savings(original_estimate, optimized_estimate) -> dict
     default_token_budget_profile(job_id) -> TokenBudgetProfile
     load_token_budget_profile(job_id, data_dir=None) -> TokenBudgetProfile
@@ -158,21 +158,6 @@ def estimate_task_token_band(task_type: str, context_estimate: int) -> str:
     if context_estimate <= 32_000:
         return TokenBand.MEDIUM
     return TokenBand.HIGH
-
-
-def estimate_route_token_band(worker_spec: Any, context_estimate: int) -> str:
-    """ESTIMATE band for routing a context of ~N tokens to a worker. Combines the worker's own token
-    band with the context size; unknown on either side stays unknown (never downgraded to cheap)."""
-    from packages.orchestration.worker_registry import estimate_token_cost_band
-    if worker_spec is None:
-        return TokenBand.UNKNOWN
-    worker_band = estimate_token_cost_band(worker_spec)
-    ctx_band = estimate_task_token_band("", context_estimate)
-    order = {TokenBand.LOW: 1, TokenBand.MEDIUM: 2, TokenBand.HIGH: 3}
-    if worker_band == TokenBand.UNKNOWN or ctx_band == TokenBand.UNKNOWN:
-        return TokenBand.UNKNOWN
-    worst = max(order.get(worker_band, 0), order.get(ctx_band, 0))
-    return {1: TokenBand.LOW, 2: TokenBand.MEDIUM, 3: TokenBand.HIGH}.get(worst, TokenBand.UNKNOWN)
 
 
 def estimate_token_savings(original_estimate: int, optimized_estimate: int) -> dict[str, Any]:
@@ -576,18 +561,10 @@ def compute_token_economy_decision(
     job_id: str, *, task_id: str = "", route_id: str = "", task_type: str = "repair",
     data_dir: Path | None = None,
 ) -> TokenEconomyDecision:
-    """Combine the budget profile + context estimate + Worker Registry route policy into a SAFE,
-    read-only recommendation. NEVER executes a worker / starts work. Expensive/unknown/high-risk/
-    placeholder routes always require human approval (Worker Registry hard-safety floor); a
-    cheap small task under the local-preference threshold recommends a local route."""
+    """Combine the budget profile + context estimate into a SAFE, read-only recommendation. NEVER
+    executes a worker / starts work. Since F275 round 20 deleted the Worker Registry no route spec
+    resolves, so no worker is recommended and human approval is unconditional (DECISION F275 D9)."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.worker_registry import (
-        WorkerSelectionRequest,
-        evaluate_worker_selection,
-        get_worker_spec,
-        hard_safety_requires_approval,
-        load_worker_registry,
-    )
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     d = TokenEconomyDecision(decision_id=f"te-{uuid4().hex[:8]}", job_id=job_id, task_id=task_id,
                              route_id=route_id)
@@ -601,17 +578,9 @@ def compute_token_economy_decision(
     d.budget_status = _budget_status(est.estimated_total_tokens, profile)
     d.warnings = list(est.warnings)
 
-    registry = load_worker_registry(ddir)
-    selection = evaluate_worker_selection(
-        WorkerSelectionRequest(job_id=job_id, task_type=task_type,
-                               estimated_context_tokens=est.estimated_input_tokens),
-        registry=registry, data_dir=ddir)
-    d.recommended_worker_id = selection.recommended_worker_id
-    spec = get_worker_spec(d.recommended_worker_id, registry) if d.recommended_worker_id else None
-
-    # Cost band from worker spec (estimate) — unknown stays unknown.
-    from packages.orchestration.worker_registry import classify_route_cost
-    d.estimated_cost_band = classify_route_cost(spec) if spec is not None else TokenBand.UNKNOWN
+    # F275 round 20 deleted the Worker Registry: no worker spec resolves for any job, so
+    # `recommended_worker_id` stays at its empty default (DECISION F275 D9; F110 inherits routing).
+    d.estimated_cost_band = TokenBand.UNKNOWN
 
     # Unknown context/budget is NEVER cheap/safe (R-0098). If the context could not be inspected,
     # or the token band / budget status is unknown, Remedy must not claim a cheap/local route fits —
@@ -622,12 +591,11 @@ def compute_token_economy_decision(
         or d.budget_status == BudgetStatus.UNKNOWN)
 
     # Approval: unknown context OR hard-safety floor OR over-budget OR over the approval threshold.
-    hard = bool(spec is not None and hard_safety_requires_approval(spec))
     over_threshold = est.estimated_total_tokens >= profile.require_human_approval_over_tokens \
         and est.estimated_total_tokens > 0
-    d.requires_human_approval = bool(unknown_context or selection.requires_human_approval or hard
-                                     or over_threshold or d.budget_status == BudgetStatus.OVER
-                                     or not spec)
+    # UNCONDITIONAL since F275 round 20: with the registry deleted no spec resolves, so the former
+    # disjunction's `or not spec` term is always true and the R-0095 floor holds (DECISION F275 D9).
+    d.requires_human_approval = True
 
     if unknown_context and "unknown_context_or_budget" not in d.warnings:
         d.warnings.append("unknown_context_or_budget")
@@ -637,26 +605,17 @@ def compute_token_economy_decision(
         d.warnings.append("estimated_total_over_approval_threshold")
 
     # Reason + next action.
-    if not spec:
-        d.reason = "No eligible worker under the route policy — adjust policy or use the human route."
-        d.next_safe_action = f"remedy route-policy show {job_id} --json" if job_id else \
-            "remedy worker registry-list --json"
-    elif unknown_context:
+    if unknown_context:
         # Honest unknown state — never imply a cheap route is ready.
         d.reason = ("Context/budget is unknown (no inspection or unknown estimate) — cannot claim a "
                     "cheap/local route fits; run a context inspection or review before routing.")
         d.next_safe_action = (f"remedy context inspect {job_id} --json" if job_id
                               else "remedy context inspect <job_id> --json")
-    elif d.requires_human_approval:
-        d.reason = ("Recommended route needs human approval (expensive/unknown/high-risk/placeholder "
-                    "or over budget/threshold) — estimate only, nothing runs.")
-        d.next_safe_action = selection.next_safe_action or (
-            f"remedy token economy-report {job_id} --json" if job_id else "remedy worker registry-list --json")
     else:
-        d.reason = ("Cheap/local route fits the estimated budget — recommended (estimate; no "
-                    "execution).")
-        d.next_safe_action = selection.next_safe_action or (
-            f"remedy token estimate {job_id} --json" if job_id else "remedy worker registry-list --json")
+        d.reason = ("No route spec is available — the Worker Registry was deleted, so Remedy "
+                    "recommends no worker and approval is unconditional (estimate; nothing runs).")
+        d.next_safe_action = (f"remedy token economy-report {job_id} --json" if job_id
+                              else "remedy token budget-show <job_id> --json")
     d.context_pack_kind = recommend_context_pack(
         job_id, task_id=task_id, route_id=route_id, data_dir=ddir).recommended_pack_kind
     return d

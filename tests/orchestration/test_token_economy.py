@@ -68,12 +68,6 @@ class TestEstimateHelpers:
         assert te.estimate_task_token_band("repair", 50000) == te.TokenBand.HIGH
         assert te.estimate_task_token_band("repair", -1) == te.TokenBand.UNKNOWN
 
-    def test_route_band_unknown_stays_unknown(self):
-        from packages.orchestration.worker_registry import get_worker_spec
-        ext = get_worker_spec("external.builder_package")  # token band unknown
-        assert te.estimate_route_token_band(ext, 4000) == te.TokenBand.UNKNOWN
-        assert te.estimate_route_token_band(None, 4000) == te.TokenBand.UNKNOWN
-
     def test_savings(self):
         s = te.estimate_token_savings(10000, 3000)
         assert s["saved_tokens"] == 7000 and s["band"] == te.TokenBand.HIGH
@@ -177,19 +171,21 @@ class TestDecision:
         assert "fits the estimated budget" not in d.reason.lower()
         assert "unknown" in d.reason.lower()
         # next action points to a safe inspection, not a cheap-route-ready implication.
-        assert "context inspect" in d.next_safe_action or "route-policy" in d.next_safe_action
+        assert "context inspect" in d.next_safe_action
 
     def test_unknown_context_hint_not_local_first(self, env):
         h = te.routing_token_hint("no-such-job")
         assert h["requires_human_approval"] is True
         assert h["local_first_recommended"] is False
 
-    def test_local_route_no_approval_when_cheap(self, env):
+    def test_no_route_spec_fail_safe_requires_approval(self, env):
         jid = _job_with_repo(env, files={"README.md": "hi\n", "src/a.py": "x=1\n"})
         d = te.compute_token_economy_decision(jid, task_type="repair")
-        # small repo → local route, cheap, no approval
-        assert d.recommended_worker_id == "local.candidate_generator"
-        assert d.requires_human_approval is False
+        # F275 R20 / DECISION F275 D9: no spec resolves → no recommendation, UNKNOWN band, approval on
+        assert d.recommended_worker_id == ""
+        assert d.estimated_cost_band == te.TokenBand.UNKNOWN
+        assert d.requires_human_approval is True
+        assert "No route spec is available" in d.reason
 
     def test_over_threshold_requires_approval(self, env):
         jid = _job_with_repo(env, files={"README.md": "hi\n"})
