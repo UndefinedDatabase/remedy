@@ -1,120 +1,309 @@
-STEP T001 — F275 round 17 — the repair round: sweep the advertisements rounds 15 and 16 left behind
+STEP T001/round 18 — F275 — the overnight_executor module group
 
-Goal: book session 9's round 16 FAIL verdict and its prose slips, register R-0861, and sweep
-the surviving operator-facing advertisements of commands rounds 15 and 16 deleted, which is
-what turned round 16's gate G4 red.
+Goal: Delete component 1 of `.agent/f275_deletion_order.md` — the module group
+`packages.orchestration.overnight_executor` — after ruling, as a dated DECISION,
+what happens to the live-review parser three SURVIVING production modules import
+out of it. Book round 17's PASS verdict, the R-0861 resolution and the round 17
+prose slip from `.agent/handoff.md`, which carried them as the durable carrier
+amend0827-process-diet rule 1 names.
 
-WHY THIS ROUND EXISTS. Round 16's own G4 gate went RED at exit 1, correctly, and the worker
-declared it rather than widening its change set — which is the sanctioned move and the right
-one. The defect is the reviewer's: the round 16 block's exhaustive change set never named
-`docs/guides/simple-operator-quickstart-v0.md`, so three operator-facing sections advertising
-`remedy worker doctor`, `remedy worker add` and `remedy worker disable` survived the commit
-that deleted those commands. The reviewer's own re-run of G4 confirms the worker's reading
-exactly — RAW 16, STRIPPED 6, three stripped lines outside `docs/roadmap/features/`, all in
-that one file — and the RAW list additionally shows four more advertisements that the
-backtick-stripping filter hides from the binding count but which are just as stale. This round
-sweeps all of them.
+WHAT THE REVIEWER MEASURED BEFORE AUTHORING THIS BLOCK. Every numeral below comes
+from an APPLIED dry run in a disposable worktree at base `c4c314c2`: the whole
+deletion was performed, ruff and the affected suites were run, the full suite was
+run serially to completion, and three mutation probes were executed control-first.
+The worktree was removed and pruned before this block was written. You are not
+being asked to rediscover any of it, but you ARE being asked to re-measure it.
 
-Base: `12dd60ad`. Branch: `feature/f275-one-world-completion-part-three`. Session 9, round 17.
+Bundle, in this commit order:
+  C0a  save this block verbatim to `.agent/authored/f275-r18.md`
+  C0b  mirror the same bytes into `.agent/last_block.md`
+  C1   advance `.agent/plan.md` to round 18 — PLAN18, replaced WHOLE
+  C2   the record — LEDGER18 appended to `.agent/live_review.md`, SLIPS18
+       appended to `.agent/prose_slips.md`
+  C3   DECISION18 appended to `.agent/decisions.md`, BEFORE the first `git rm`
+  C4   THE MODULE GROUP, one commit, never split
+  C5   the handback, rewriting `.agent/handoff.md`
 
-EVERY NUMERAL BELOW WAS MEASURED BY AN APPLIED DRY RUN, NOT DERIVED. The reviewer applied this
-exact change set in a disposable worktree at `12dd60ad`, ran the documentation and catalog
-guards green, re-ran the completeness sweep to zero outside `docs/roadmap/features/`, and read
-the numstat off the resulting commit.
+Change — C4, the module group. Exactly these paths, nothing beyond them.
 
+DELETED WHOLE (4 files):
+  packages/orchestration/overnight_executor.py            1119 lines
+  tests/orchestration/test_overnight_executor.py           394 lines
+  tests/cli/test_overnight_executor_cli.py                 137 lines
+  docs/system/bounded-overnight-executor-v0.md             112 lines
 
-BUNDLE — the commits below, in this order
+EDITED — the handler and the catalog:
+  apps/cli/commands/overnight_cmd.py
+      Delete `_cmd_overnight_run` whole and its `"overnight.run"` line in
+      COMMAND_HANDLERS. THE FILE SURVIVES: its other three commands
+      (`overnight.readiness`, `overnight.plan`, `overnight.report`) import
+      `packages.orchestration.overnight_readiness`, which is component 3 of the
+      order file and NOT this round. Measured at `c4c314c2` by reading every
+      import in the file. Do not delete this file.
+  apps/cli/command_catalog.py
+      Delete the `overnight.run` CommandEntry whole. Measured at `c4c314c2`:
+      NO `related=` tuple anywhere in the catalog names `overnight.run`, so no
+      other entry needs repair. Re-measure this yourself — R-0859 records that
+      nothing resolves `related=` against the catalog automatically.
 
-  C0a  save the authored block:  `shutil.copyfile` `.remedy-wt/f275-r17.md` to
-       `.agent/authored/f275-r17.md`. Never retype it.
-  C0b  mirror the same bytes:    `shutil.copyfile` the same source to `.agent/last_block.md`.
-  C1   advance `.agent/plan.md`  — replaced WHOLE by the PLAN17 slice.
-  C2   the record: append LEDGER17 to `.agent/live_review.md` and SLIPS17 to
-       `.agent/prose_slips.md`.
-  C3   sweep the advertisements — three paths.
-  C4   the handback: rewrite `.agent/handoff.md` whole.
+EDITED — the three SURVIVING consumers. DECISION18 rules this; RULE 3 of
+`docs/roadmap/features/T2_F275.md` T001 requires the survivor to lose the call
+site and forbids a stub, a shim or a copy of the parser into a survivor.
+  packages/orchestration/self_dogfood.py
+      Delete `_review_findings`, `_detect_review` whole, the
+      `_detect_review(items, blockers, risks)` call, and the capability rule
+      whose predicate is `has("overnight_executor.py")`.
+  packages/orchestration/self_dogfood_execution.py
+      Delete `_review_blocks` whole and the review-gate call site in
+      `evaluate_self_execution_eligibility` (the block from the comment
+      `# Review must not be PENDING/FAIL/open blocker-high.` through its
+      `return elig`). Every OTHER gate in that function survives untouched.
+  packages/orchestration/orchestrator_brain.py
+      Delete `_review_state` whole and its call site with the evidence-ref and
+      blocker append that consume it. THEN unthread the two values that call
+      site produced, which ruff surfaces as F821 if you stop early:
+        `_generate_options`  drop the `review_blocks` parameter — measured at
+                             `c4c314c2` to be UNUSED in that function's body.
+        `_score_options`     drop the parameter AND the branch guarded by
+                             `review_blocks`.
+        `_evidence_fingerprint` drop the `verdict` parameter and its `"verdict"`
+                             key from the hashed dict.
+        `_routing_plan`      drop the parameter and remove `review_blocks` from
+                             its `if`, leaving the loop-guard condition alone.
+                             Its message loses the review clause.
 
-C1 is the FIRST substantive commit and advances the plan before the ledger commit, per §3
-item 23. C2 books the verdict and registers R-0861 BEFORE C3 repairs what it describes, which
-is the ordering §4 item 4 requires of a repair round: findings persist first, in their own
-commit, and only then is the defect fixed.
+EDITED — the tests of the deleted behaviour. Each named below is DELETED because
+what it pins is what RULE 3 removes, except the ONE marked RE-BASED, which is
+kept because it pins a SURVIVING branch that merely happened to be reached
+through a review blocker.
+  tests/orchestration/test_orchestrator_brain.py
+      DELETE `TestDecisionQuality::test_open_blocker_forces_human_review` and
+      `TestModelRouting::test_open_blocker_high_human_review`.
+  tests/orchestration/test_self_dogfood.py
+      DELETE `TestInspection::test_pending_review_is_blocker` and
+      `TestInspection::test_open_blocker_finding`.
+      RE-BASE `TestPlanAndPropose::test_propose_ambiguous_requires_selection`.
+      It asserts `stop_reason == "ambiguous_selection"`, which
+      `propose_self_improvement` raises when MORE THAN ONE item is BLOCKER or
+      HIGH. The review detector was one such producer. Measured at `c4c314c2`
+      in the applied worktree: after the deletion exactly ONE producer of a
+      BLOCKER/HIGH item remains in `self_dogfood.py`, the per-failure
+      EVIDENCE_GAP item in `_detect_evidence_gaps`, and it emits ONE item PER
+      unresolved failure artifact. So give the fixture TWO unresolved failures
+      and the branch is reached with no review file involved. Widen the `_job`
+      helper with a count rather than writing a second helper. The reviewer ran
+      this re-based test against a mutation that downgrades that item's
+      priority and it went RED — see G5 probe P3, which you must reproduce.
+  tests/orchestration/test_self_dogfood_execution.py
+      DELETE `TestEligibility::test_pending_review_blocks`.
 
+EDITED — the ratchets, the allowlists and the order file:
+  tests/orchestration/test_development_artifact_boundary.py
+      Delete the `"packages/orchestration/overnight_executor.py"` entry from
+      `_ALLOWED_LEGACY`. THIS IS LOAD-BEARING: `TestAllowlistCompleteness`
+      asserts every allowlisted path EXISTS, so deleting the module without
+      this edit turns that guard RED. Leave the other five entries alone —
+      measured at `c4c314c2`, each of those files still references the ledger.
+  docs/system/development-artifact-boundary-v0.md
+      Delete the single table row naming `overnight_executor.py`.
+  tests/orchestration/test_cluster_deletion_map.py
+      Delete the `"packages.orchestration.overnight_executor"` CLUSTER_MODULES entry.
+  tests/orchestration/cluster_deletion_map.txt
+      Delete the three lines beginning `packages.orchestration.overnight_executor <-`.
+  tests/orchestration/import_reachability_allowlist.txt
+      Delete the `packages.orchestration.overnight_executor` line.
+  .agent/f275_deletion_order.md
+      REGENERATE, do not line-edit. Removing this component REORDERS the
+      remainder: the condensation the ratchet measures becomes, in order,
+      `overnight_readiness`, then `worker_registry`, then the
+      `provider_trust, provider_trust_verification` cycle. Deleting only the
+      first line leaves `worker_registry` ahead of `overnight_readiness` and
+      `test_cluster_deletion_order.py` goes RED with both lists printed. The
+      reviewer hit exactly that in the dry run.
 
-THE CHANGE SET OF C3 — three paths, 8 insertions against 51 deletions
+EDITED — the advertisements. R-0861's fix clause is BINDING on this round: read
+the sweep's RAW list, not only its stripped count, and name every `docs/` page
+the sweep reaches. Deleting `docs/system/bounded-overnight-executor-v0.md` breaks
+every inbound reference listed here, measured at `c4c314c2`:
+  docs/README.md                             the index row for the deleted page
+  docs/system/repair-loop-v1.md              one cross-link bullet
+  docs/system/provider-trust-gate-v0.md      one cross-link bullet
+  docs/guides/do-continue-v1.md              one cross-link bullet
+  docs/archive/self-dogfood-overnight-future.md   one cross-link bullet
+  docs/archive/bounded-overnight-prep-v0.md  TWO references, one prose sentence
+                                             and one cross-link bullet
+Remove each reference so no surviving page links a deleted file. Where a
+sentence is left dangling by the removal, delete the sentence, never invent a
+replacement target. Registering the page in `docs/README.md` is an AGENTS.md
+Documentation-Updates obligation and its REMOVAL is the same obligation.
 
-  docs/guides/simple-operator-quickstart-v0.md                     0 / 32
-      Delete three whole `###` sections and three table rows. The sections are
-      `### Check worker readiness`, `### Add a worker` (with its `Known workers:` line) and
-      `### Disable a worker`, each with its fenced `bash` block and its explanatory prose.
-      `### Check core health` sits between the second and third and SURVIVES UNTOUCHED —
-      `remedy doctor core` is not deleted. In the "Normal command / Advanced equivalent(s)"
-      table, delete the three rows whose first cell is `` `worker add claude` ``,
-      `` `worker doctor claude` `` and `` `worker disable claude` ``; the `job status`,
-      `job report`, `job run-loop` and `doctor core` rows all SURVIVE, and the table's header
-      and separator rows are untouched.
-  docs/system/core-product-spine-v0.md                             8 / 8
-      Two edits. FIRST, the body of the `## What a worker is` section is REPLACED — the
-      heading itself stays — by the deliberate-absence note AGENTS.md's Code Discoverability
-      Conventions require, because text search cannot find a command that does not exist and
-      this section is exactly where a reader will look for one. The replacement text is the
-      SPINE17 slice below, applied byte for byte between the heading line and the blank line
-      preceding `## What a report is`. SECOND, in the command-taxonomy table delete the two
-      rows `| `worker doctor <name>` | Check worker readiness | No | No |` and
-      `| `worker add <name>` | Enable adapter + template | Metadata | No |`.
-  docs/system/mission-run-loop-morning-report-v0.md                0 / 11
-      Delete the whole `## How Claude Code fits` section — its heading, its one-line
-      introduction and its five numbered steps — up to but not including `## How Self-Repair
-      Proposals fit`. Every one of those five steps names a rail this feature has deleted:
-      step 1 is `remedy worker add`, steps 2 and 3 are the managed execution round 15 removed,
-      and step 4 is the sandbox intake round 13 removed. The section describes a path that no
-      longer exists end to end, so it goes whole rather than losing a step at a time.
+Constraints:
+ 1. Apply every authored slice BYTE FOR BYTE, extracted from your committed C0a
+    blob between its marker lines, markers excluded. Never retype a slice. If a
+    slice contradicts this block's prose, follow the slice and DECLARE it.
+ 2. Touch NO path this block does not name. If the suite reds on a path not
+    named here, STOP, declare the red gate, and do not widen scope — that is the
+    sanctioned move and round 16 was right to take it.
+ 3. C4 is ONE commit and is never split: F275 T001 RULE 1 makes one module group
+    the atomic unit, and a half-deleted module is the state this must not leave.
+ 4. C3 lands BEFORE any `git rm`. F275 T001 and round 17's handback both require
+    the ruling on disk before the deletion it authorises.
+ 5. You write NO verdict, NO `Done:` paragraph and NO finding of your own. Where
+    a fix lands before the reviewer has authored its resolution, write one
+    `Landed: R-XXXX — <what changed, which commit>` line and nothing else.
+ 6. Destructive verification runs ONLY in a disposable `git worktree`, never in
+    the primary checkout, which satisfies `git status --porcelain` empty at the
+    handback. Remove and prune the worktree before C5.
+ 7. Run the full suite SERIALLY and in the PRIMARY checkout. Under `pytest -n
+    auto` the `ui_server` command-channel tests race for a port, and the vitest
+    node needs `apps/ui/node_modules`, which no fresh worktree carries.
+ 8. EVERY gate below runs at or after C4 and BEFORE C5, because C5 writes the
+    handback that quotes each gate's exit code, and a gate ordered after the
+    commit that quotes it can only be reported by a number nobody has seen —
+    §3 item 31. The single exception is G2's block line count, which is a
+    property of the bytes you save at C0a.
 
-DELIBERATELY NOT TOUCHED, unchanged from rounds 15 and 16: the roadmap files under
-`docs/roadmap/features/`. After this round's sweep the completeness measurement reads RAW 11
-and STRIPPED 3, and all three stripped lines are in `T2_F262.md`, `T2_F267.md` and
-`T8_F151.md` — two closed features' records and one whose repair is already registered as
-R-0858.
+Done when — the gates below. Execute every one and record its REAL exit code with
+`bash -c '<cmd>; echo "REAL_EXIT=$?"'`. "Green" as a word is a finding.
 
+G1 TRANSPORT — one digest comparison, per amend0827 rule 5. Report sha256 and
+   byte length of `.remedy-wt/f275-r18.md`, of the committed
+   `.agent/authored/f275-r18.md` and of the committed `.agent/last_block.md`,
+   and state whether ALL THREE are byte-equal. Per §3 item 37 this covers those
+   three artefacts and claims nothing about the bytes the reviewer emitted.
 
-CONSTRAINTS
+G2 THE PLAN AND THE DECISION SLICE. Report this block's TOTAL line count against
+   its cap of 490. Report `.agent/plan.md` at C1: byte length, sha256, and
+   whether it is byte-identical to the PLAN18 slice extracted from your
+   committed C0a blob; its line count against the AGENTS.md cap of 50; and that
+   `## Goal` and `## Next Steps` each occur exactly once. Report that the
+   DECISION18 slice occurs EXACTLY ONCE in `.agent/decisions.md` at C3 and that
+   the bytes at that site re-hash to the slice's own digest.
 
- 1. Apply every authored slice BYTE FOR BYTE. If a slice looks wrong, apply it as written and
-    declare it in the handback. Never edit a slice.
- 2. The change set above is EXHAUSTIVE. Touch no other path. If a gate demands a change to a
-    path not listed, stop and declare it rather than widening — that is exactly what round 16's
-    worker did, correctly, and it is why this round exists.
- 3. Each append is `post = pre + b"\n" + slice`, where the slice is the bytes strictly between
-    its marker lines INCLUDING the newline that ends its last text line. Both targets end with
-    a newline, so the joining byte is one `\n`.
- 4. `.agent/plan.md` is replaced WHOLE by PLAN17. Measure its line count against the AGENTS.md
-    cap of 50 and report the number you measured; it carries `## Goal` and `## Next Steps`.
- 5. This round changes only `docs/` and `.agent/`, so no mutation red-proof over production
-    code is owed and none is ordered. The documentation gate of §3 verification tier 5 applies
-    instead and is gate G4 below.
- 6. Env-var assignment (`VAR=x cmd`, `env VAR=x`, `export`) and `cp` are DENIED by this
-    sandbox. Copy with `python3 -c "import shutil; shutil.copyfile(a, b)"`. Capture real exit
-    codes with `bash -c '<cmd>; echo "REAL_EXIT=$?"'` or from `subprocess.run`.
- 7. The primary checkout satisfies `git status --porcelain` empty at the handback.
- 8. Report every number you measure even where it differs from a number above.
- 9. In the change-set section the runs of SPACES that align the `ins / del` column carry no
-    meaning and are not appliable bytes: the appliable bytes are the four marker-delimited
-    slices alone, each proved against its own target by its own gate (§3 item 37).
+G3 THE RECORD, over TWO appends — full byte forensics, which amend0827 rule 5
+   reserves for exactly this target. For `.agent/live_review.md` <- LEDGER18 and
+   for `.agent/prose_slips.md` <- SLIPS18, report all four readings:
+   (a) BYTE READER: pre length and sha256, post length and sha256, growth equal
+       to 1 + slice length, pre a byte-exact PREFIX of post, the slice a
+       byte-exact SUFFIX of post, and the joining byte read back as `b'\n'`.
+   (b) STRUCTURAL READER: N COUNTED BY YOUR SCRIPT from the slice, never a
+       number this block asserts; then the last N blank-line units of the WHOLE
+       post-file compared against the slice's N paragraphs IN ORDER, with a
+       per-unit sha256 on both sides. Per §3 item 36 this reader covers the
+       WHOLE appended region, not its tail.
+   (c) NEGATIVE CONTROL: flip one byte IN MEMORY inside the FIRST appended
+       paragraph and report that BOTH readers REJECT the mutant and BOTH accept
+       the truth; then re-read the file from disk and confirm it is byte-equal
+       to the committed post-blob.
+   (d) COUNT PATTERNS in the post-blob: the rise in `^Gate: `, and that
+       `^Gate: F275 R17 `, `^Done: R-0861 — `, `^- R-0862 — ` and `^- R-0863 — `
+       each occur exactly once.
+   (e) THE OPEN SET BY DISTINCT ID, `Landed:` lines never subtracted. At base
+       `c4c314c2` the reviewer measured registered 90, done 5, open 85, with 34
+       distinct `Landed:` ids present and not subtracted. Report the same three
+       figures at C2 and confirm the base reproduces.
 
+G4 THE SWEEP IS CLEAN, and R-0861's fix clause binds it. Over every tracked file
+   outside `.agent/` and `.data/`, sweep for `overnight_executor`,
+   `run_overnight_executor`, `parse_review_findings`,
+   `review_findings_block_execution`, `render_overnight_run_report_markdown`,
+   `bounded-overnight-executor-v0` and the command id `overnight.run` in both
+   its dotted and its spaced form. PRINT THE RAW LIST IN FULL AND NEVER TRUNCATE
+   IT, then state which lines survive stripping and why each is legitimate. The
+   reviewer's applied run left exactly one class of survivor: prose in
+   `docs/roadmap/features/` naming the deletion as history, which is correct and
+   stays. A hit anywhere else is a violation. Then run
+   `python3 -B -m pytest tests/cli/test_advertised_commands.py -q` and report its
+   exit code: in the dry run this guard was the ONLY suite failure caused by the
+   change, and it named `docs/system/bounded-overnight-executor-v0.md:14`
+   advertising `remedy overnight run`.
 
-AUTHORED SLICES
+G5 THE RED-PROOFS, in a disposable worktree at your C4 commit. For each probe run
+   the UNMUTATED CONTROL FIRST over the SAME node set, then the mutation, then
+   revert and re-run; report all three exit codes and the last summary line of
+   each. Name the revert target by PATH and confirm the mutated bytes occur
+   exactly once in that file before you change them.
+   P2 — in `packages/orchestration/self_dogfood_execution.py` replace the
+        condition `task.status != ProposedTaskStatus.APPROVED_FOR_BUILD` with a
+        constant false, over
+        `tests/orchestration/test_self_dogfood_execution.py::TestEligibility`.
+        PROPERTY: the approval gate SURVIVES this round untouched and is still
+        pinned, so the control is exit 0 and the mutation is exit 1. The
+        reviewer measured 6 passed, then 1 failed and 5 passed.
+   P3 — in `packages/orchestration/self_dogfood.py` downgrade the per-failure
+        EVIDENCE_GAP item from `Priority.HIGH` to `Priority.LOW`, over the
+        RE-BASED node
+        `tests/orchestration/test_self_dogfood.py::TestPlanAndPropose::test_propose_ambiguous_requires_selection`.
+        PROPERTY: the re-based test genuinely BITES rather than passing
+        vacuously, so the control is exit 0 and the mutation is exit 1. The
+        reviewer measured 1 passed, then 1 failed.
+   P1 — THIS ONE IS ORDERED AS A PROBE AND NOT AS A COLOUR, per §3 item 5. In
+        `packages/orchestration/orchestrator_brain.py` replace the surviving
+        loop-guard condition in `_routing_plan` with a constant false, over
+        `tests/orchestration/test_orchestrator_brain.py::TestAntiLoop` and
+        `::TestModelRouting`. REPORT THE COLOUR; DO NOT ASSERT IT. The reviewer
+        measured control exit 0 at 5 passed and the MUTATION ALSO EXIT 0 — the
+        branch is not pinned once this round's two routing tests are deleted,
+        which is the coverage loss finding R-0862 records. A green mutation here
+        is the expected reading and is not a failure of your round.
 
---- BEGIN-SPINE17 ---
-Remedy deliberately ships no worker-onboarding command. Delegating a task to
-an external tool ran through a builder adapter and a bounded command template,
-and F275 deleted both together with the runner that used them, so there is no
-`worker doctor`, `worker add` or `worker disable` and no stub standing in for
-them. The bounded-subprocess guard those rails were built on survives as
-`packages/orchestration/exec_guard.py`, which F085 owns; a future feature that
-reintroduces external workers builds on that guard rather than on the deleted
-adapter.
---- END-SPINE17 ---
+G6 THE GUARDS, THE SUITE AND THE TREE.
+   (a) `python3 -B -m pytest tests/orchestration/test_development_artifact_boundary.py
+       tests/orchestration/test_cluster_deletion_map.py
+       tests/orchestration/test_import_reachability.py
+       tests/orchestration/test_cluster_deletion_order.py
+       tests/orchestration/test_orchestrator_brain.py
+       tests/orchestration/test_self_dogfood.py
+       tests/orchestration/test_self_dogfood_execution.py -q`
+       The reviewer's applied run gave 69 passed, exit 0.
+   (b) the canary, `python3 -B -m pytest tests/cli/test_golden_path.py -q`.
+   (c) `python3 -B -m pytest tests/docs/ -q`, because this round's change set
+       includes `docs/` pages and the index — verification tier 5.
+   (d) THE FULL SUITE, `python3 -B -m pytest tests/ -q`, SERIALLY, in the PRIMARY
+       checkout with C4 committed. Report passed, skipped, failed and the
+       collection count from a separate `--collect-only`, and confirm
+       passed + skipped equals collected. At base the suite was 18603 passed and
+       23 skipped against 18626 collected. This round deletes two whole test
+       files and five test functions and re-bases one, so the count MUST fall;
+       report the new figures and the arithmetic, and do not reconcile them
+       against the base by hand-waving. In the reviewer's worktree run the only
+       failures were `test_advertised_commands` — which this round's doc
+       deletions fix — plus two worktree artefacts that do not arise in the
+       primary checkout: the vitest node, which needs `apps/ui/node_modules`,
+       and `test_evidence_index`, which reads `git status --porcelain` and was
+       reacting to the uncommitted deletion.
+   (e) `python3 -B -m ruff check` over every `.py` path in this round's change
+       set. Report exit 0. The base carries 13 pre-existing ruff errors in files
+       this round does not touch; do not fix them and do not count them.
+   (f) THE TREE: `.agent/STOP` re-read from disk, `git status --porcelain`,
+       `git worktree list`, the branch name, and
+       `git diff --name-only <C3>..<C4>` compared against this block's C4 path
+       set with the MISSING and EXTRA sets both stated. Then a per-commit table
+       of insertions for every commit BEFORE C5, each against the AGENTS.md
+       DECISION F104 D1 cap of 500 insertions, with parent counts. Per §3 item
+       14 C5's own numbers are not yours to report; the reviewer books them.
+   (g) Compare the `+/-` column of your `## Commits` table cell by cell against
+       `git show --numstat` per commit and state that they agree — §3 item 28.
 
---- BEGIN-PLAN17 ---
+G7 THE RATCHETS AGREE WITH THE DISK. Report that
+   `.agent/f275_deletion_order.md` now holds exactly three component lines in the
+   regenerated order, that `tests/orchestration/cluster_deletion_map.txt` holds
+   no line naming `overnight_executor`, and that the reachability allowlist and
+   `CLUSTER_MODULES` no longer name it. These are the four measurements
+   amend0906-triage-throughput requires of a deletion, restated against this
+   round's own artefacts.
+
+Handback: the completion report, and rewrite `.agent/handoff.md` at C5. Carry
+the SESSION NUMBER — this is SESSION 10 of F275 — the round number, the branch,
+the commit SHAs, the changed-files table with `+/-` per path and a REASON per
+path, one line per gate with its real exit code, the item-status table AGENTS.md
+mandates with every ordered item appearing exactly once, the open-findings count
+by distinct id, and the next expected action. It has NO length cap. Declare every
+deviation; a declared deviation costs nothing and an undeclared one is a finding.
+Push ONCE, after C5, with `git push -u origin feature/f275-one-world-completion-part-three`.
+Create no PR, merge nothing, and run no `gh` command.
+
+--- BEGIN-PLAN18 ---
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -129,126 +318,113 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 17 is a REPAIR round. Round 16's gate G4 went red because three operator-facing sections
-of `docs/guides/simple-operator-quickstart-v0.md` still advertised `worker doctor`, `worker
-add` and `worker disable` after the commit that deleted them; the reviewer's change set never
-named that file. This round books round 16's FAIL verdict, registers R-0861 and sweeps every
-surviving advertisement across three documentation pages, replacing the core product spine's
-worker section with the deliberate-absence note AGENTS.md requires.
+ROUND 18 deletes the `overnight_executor` module group, the first component of the recorded
+deletion order. It first books round 17's PASS verdict, the R-0861 resolution and one prose
+slip, then rules as DECISION F275 D8 what becomes of the live-review parser that three
+SURVIVING modules import out of the dying one. Measured before the ruling: that parser cannot
+read this repository's own ledger format, so the gate it feeds blocks unconditionally rather
+than reading review state. The three survivors lose the call site, per T001 RULE 3.
 
 ## Next Steps
 
-1. The `overnight_executor` component, the order file's first line. It is a SINGLE module.
-2. The remaining components in the recorded order — `worker_registry`, then
-   `overnight_readiness`, then the `provider_trust` / `provider_trust_verification` pair,
+1. The `overnight_readiness` component. The order file is REGENERATED by round 18 and this
+   component moves to its first line, ahead of `worker_registry`. It also holds the three
+   surviving `overnight` commands and their handler file.
+2. Then `worker_registry`, then the `provider_trust` / `provider_trust_verification` pair,
    which is the last cycle.
-3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831,
-   R-0840, R-0842, R-0844 through R-0846, R-0848, R-0849 and R-0851 through R-0861 named among
-   the ideas deleted rather than inherited. That round also discharges R-0843's widened sweep,
-   R-0858's repair of F267 and R-0859's referential-closure test.
-4. T002, the atomic record flip, alone, because every later commit's size depends on its
-   ruling.
+3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and the
+   open ids named among the ideas deleted rather than inherited. That round also discharges
+   R-0843's widened sweep, R-0858's repair of F267 and R-0859's referential-closure test.
+4. T002, the atomic record flip, alone, because every later commit's size depends on it.
 
 ## Risks
 
-- The open set is 84 by distinct id at this round's base `12dd60ad`; the ledger commit this
-  block fixes as C2 registers one, taking it to 85. Four are High — R-0803, R-0804, R-0806 and
-  R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
-- The advertised-commands guard did NOT catch these three sections, which is R-0847's blindness
-  measured a third time. Until R-0847 is fixed, every deletion round of this feature runs the
-  token sweep by hand and reads its RAW list, not only its stripped count.
-- The full suite is run SERIALLY: under `pytest -n auto` the `ui_server` command-channel tests
-  race for a port, and the vitest node needs `apps/ui/node_modules`.
---- END-PLAN17 ---
+- The open set is 85 by distinct id at this round's base `c4c314c2`. Round 18 resolves one
+  and registers two, so it ends at 86. Four are High — R-0803, R-0804, R-0806 and R-0807 —
+  all F273's rather than this feature's, per DECISION F272 D12.
+- R-0847's blindness is unfixed, so every deletion round reads the RAW sweep list by hand.
+- The full suite is run SERIALLY: under `pytest -n auto` the `ui_server` command-channel
+  tests race for a port, and the vitest node needs `apps/ui/node_modules`.
+--- END-PLAN18 ---
 
---- BEGIN-SLIPS17 ---
-2026-09-09 · F275 R16 · The round 16 block ordered the `related=("worker.doctor", "mission.report")` tuple repaired on "the surviving `mission.run` record". That tuple belongs to the `doctor.core` record; `mission.run` carries a different one, `related=("mission.report", "mission.ledger", "dogfood.run-loop")`. The worker resolved the tuple to the record that actually carries it and applied the order there, then declared the difference, which is the correct reading of an order whose quoted bytes are unambiguous and whose attribution is not. The reviewer re-resolved every `related=` tuple in the catalog at the base and confirms the worker: the owners are `worker.add`, `mission.run`, `doctor.core` and `repo.status`. The lesson is that an order naming a RECORD and quoting its BYTES must have the record resolved mechanically before emission, exactly as §3 item 9 requires of a `file:line` citation, because the quoted bytes were right and only the name beside them was wrong.
+--- BEGIN-LEDGER18 ---
+Gate: F275 R17 — the F275 round 17 entry. VERDICT PASS, written by the planner and reviewer of session 9 after reading the committed range `12dd60ad`..`f5509039` and re-running all five gates independently against the committed blobs, and booked here by round 18's first substantive commit per amend0827-process-diet rule 1. Six single-parent commits, insertions 254, 162, 18, 10 and 8 for the five before the handback, every one far under the DECISION F104 D1 cap of 500. G1 transport: the reviewer's own delegation source and both committed copies are 28529 bytes at `05bf237e16c1bb54e3ae5bf5003d47512baf87ee0d528eeede51b46520473c42` and compare byte-equal; per §3 item 37 that chain covers those three artefacts and claims nothing about the emitted bytes. G2: `.agent/plan.md` byte-identical to PLAN17 at 2537 bytes and `e2f68029…`, 44 lines against the cap of 50; the block 254 lines against 490; the SPINE17 slice occurring exactly once in `docs/system/core-product-spine-v0.md` and byte-identical there. G3 over two appends: `.agent/live_review.md` 650049 to 659974 and `.agent/prose_slips.md` 189111 to 191891, both with byte-exact prefix and suffix, the joining byte read back as a newline, N counted by the reader as 2 and 3, ordered equality over the whole appended region, and both negative controls flipped inside the FIRST appended paragraph rejected by BOTH readers. The open set 84 to 85 by distinct id against registrations 89 to 90. G4, the gate round 16 failed, was green: RAW 11 and STRIPPED 3 over 29 tokens and 1676 tracked files, both binding conditions holding with EMPTY violation sets. G5: the documentation gate 851 passed, the canary 42 passed, and the full suite green at 18603 passed, 23 skipped and ZERO failed against 18626 collected. All five worker deviations sustained, the load-bearing one being the reviewer's own: the block's SPINE17 region description spanned seven lines while the same block's change set measured 8/8, and the worker resolved toward the measured numeral, landed exactly 8/8 with the slice byte-identical at the site, and declared it.
 
-2026-09-09 · F275 R16 · The R-0859 slice the round 16 block shipped states that `mission.ledger` names `dogfood.run-loop` and that a `readiness`-group record names `readiness.show`. Both attributions are wrong: the owners are `mission.run` and `repo.status`, resolved by the reviewer at `38e03d2f` by walking back from each `related=` line to its `command_id`. The finding's load-bearing claims are untouched — two dangling references exist, at those two sites, naming those two deleted commands, and no guard in the repository resolves `related=` at all — so under AGENTS.md's prose-slips rule this is a non-load-bearing inaccuracy in landed text and earns a dated line rather than a correction round. The record is append-only and the sentence stands; this line is the correction a later reader will find beside it.
+Done: R-0861 — RESOLVED at C3 `ee86115a`, verified by the reviewer of session 9 by re-running the completeness sweep itself rather than reading the worker's report. All three pages the finding names are repaired. `docs/guides/simple-operator-quickstart-v0.md` loses its `### Check worker readiness`, `### Add a worker` and `### Disable a worker` sections with their fenced `bash` blocks, and the three table rows that mapped those commands onto the equally deleted `builder adapter-*` commands; `### Check core health` survives untouched, because `remedy doctor core` is not deleted. `docs/system/core-product-spine-v0.md` loses its two command-taxonomy rows, and the body of its `## What a worker is` section is replaced by the deliberate-absence note AGENTS.md's Code Discoverability Conventions require. `docs/system/mission-run-loop-morning-report-v0.md` loses its `## How Claude Code fits` section whole. THE MEASUREMENT that closes it: the sweep at C3 reads RAW 11 and STRIPPED 3 with both violation sets EMPTY, against RAW 16 and STRIPPED 6 with three violations at the base. The finding's FIX CLAUSE remains BINDING on every remaining deletion round of this feature and is NOT discharged by this resolution: the completeness sweep is read as its RAW list and not only as its stripped count, and the block names every `docs/guides/` and `docs/system/` page the sweep reaches rather than only the pages a consumer map predicted. R-0847 is NOT resolved and gains a third measured instance here — `tests/cli/test_advertised_commands.py` passed at exit 0 over the state this round found broken, both before and after the repair.
 
-2026-09-09 · F275 R16 · The round 16 block predicted `apps/cli/commands/worker_facade_cmd.py` at 0/210 and `tests/cli/test_worker_facade_cmd.py` at 4/157, and the round landed 0/218 and 4/166 for a C3 total of −2519 against a predicted −2502. The difference is entirely the worker deleting `_ADAPTER_PATCH` and `_SAVE_ADAPTER`, two module-level constants that the four test classes the block ordered deleted were the only readers of. The block did not name them; the worker deleted them inside a path the change set does name, declared it, and was right — R-0855's fix clause binds every deletion round of this feature to sweep the constants left with no reader, and leaving those two would have been the very defect that clause exists to prevent. The lesson is that a block ordering a test CLASS deleted also names the module-level constants that class alone reads, rather than leaving the worker to choose between an unswept constant and an unordered edit.
---- END-SLIPS17 ---
+- R-0862 — Medium, DELETING THE LIVE-REVIEW GATE LEAVES `RoutingTier.HUMAN_REVIEW_REQUIRED` WITH NO POSITIVE TEST PIN. Round 18 deletes `orchestrator_brain._review_state` and, with it, the two tests that pinned the human-review routing tier — `TestDecisionQuality::test_open_blocker_forces_human_review` and `TestModelRouting::test_open_blocker_high_human_review`. That tier survives in the product and is still reachable through the loop guard, but nothing asserts it any more. THE MEASUREMENT, taken by the reviewer at base `c4c314c2` in an applied worktree: with the deletion applied, replacing the surviving loop-guard condition in `_routing_plan` with a constant false leaves `TestAntiLoop` and `TestModelRouting` at exit 0 and 5 passed — the mutation does not go red, so the branch is unpinned. A repo-wide search of `tests/` for `HUMAN_REVIEW_REQUIRED` after the deletion returns exactly one line, and it is a permissive membership assertion rather than a pin. FIX CLAUSE, binding on the round that next touches `orchestrator_brain.py`: add one test that drives the loop guard to BLOCK or REQUIRE_HUMAN_REVIEW and asserts `_routing_plan` returns the human-review tier with `allow_external` false, and prove it with the mutation above going red. The behaviour is NOT lost and no capability is inherited by another feature; only its guard is, which is why this is Medium and not High.
 
---- BEGIN-LEDGER17 ---
-Gate: F275 R16 — the F275 round 16 entry. VERDICT FAIL, on gate G4 alone, booked by round 17 rather than by a round of its own, per operator amendment amend0827-process-diet rule 1, and carried from the pushed `.agent/handoff.md` at `12dd60ad`. THE VERDICT WAS ISSUED BY THE PLANNER AND REVIEWER OF SESSION 9, which re-ran every one of the eight gates itself against the COMMITTED blobs over the range `38e03d2f`..`12dd60ad`; the worker's report was evidence for nothing. THE FAIL IS THE REVIEWER'S DEFECT AND NOT THE WORKER'S, and it is recorded that way because the record is read later by sessions deciding whom to trust. G4 ordered that every line surviving the completeness sweep with backtick-quoted spans stripped must lie in `docs/roadmap/features/`. It does not: the reviewer's own independent re-run reads RAW 16 and STRIPPED 6 over 1676 tracked files outside `.agent/` and `.data/`, and THREE of the six stripped lines are in `docs/guides/simple-operator-quickstart-v0.md` — a user-facing quickstart whose sections `### Check worker readiness`, `### Add a worker` and `### Disable a worker` each still instruct an operator to run a command that commit C3 deleted. That path was never named in the block's exhaustive change set, so under constraint 2 the worker could not repair it without leaving its scope; it declared the red gate and stopped, which is the sanctioned move and the same one round 14's worker was credited for. THE RAW LIST SHOWS FOUR MORE ADVERTISEMENTS THAT THE STRIPPED FILTER HIDES and that are just as stale — three quickstart table rows mapping the deleted `worker` commands onto the deleted `builder adapter-*` commands, two command-taxonomy rows in `docs/system/core-product-spine-v0.md`, and a five-step `## How Claude Code fits` section in `docs/system/mission-run-loop-morning-report-v0.md` whose every step names a rail rounds 13, 15 or 16 deleted — so the round 17 repair sweeps the raw list rather than the binding count. EVERY OTHER GATE PASSED AND WAS RE-RUN INDEPENDENTLY. Six single-parent commits C0a `e5fe544f`, C0b `3720c48b`, C1 `453b80d6`, C2 `876dc89e`, C3 `3384dd53` and C4 `12dd60ad`, per-commit insertions 395, 275, 20, 18 and 13 for the five before the handback commit, every one under the AGENTS.md DECISION F104 D1 cap of 500. G1 was the PRIMARY proof of §4 item 9: the reviewer's own delegation source and both committed copies are 45340 bytes at `994447338d251f5fb4a068aef05ea266acd07e362d150b80713d7abf84e253bb` and compare BYTE-EQUAL; per §3 item 37 that chain covers those three artefacts and claims nothing about the emitted bytes. G2: `.agent/plan.md` byte-identical to PLAN16 at 2454 bytes, 45 lines against the cap of 50, both mandated headings present, the block 395 lines against its cap of 490. G3, over TWO appends: `.agent/live_review.md` 634559 to 650049, growth 15490 = 1 + 15489; `.agent/prose_slips.md` 185058 to 189111, growth 4053 = 1 + 4052; for both the prefix and suffix byte-exact and the joining byte read back as a newline; N COUNTED from each slice by the reviewer's own reader as 4 and 5, ordered equality over the WHOLE appended region; and BOTH negative controls, flipped IN MEMORY inside the FIRST appended paragraph per §3 item 36, REJECTED by BOTH readers, with both files re-read from disk and byte-equal to their committed post-blobs. `^Gate: ` 37 to 38, and `^Gate: F275 R15 `, `^Done: R-0855 — `, `^- R-0859 — ` and `^- R-0860 — ` exactly 1 each; THE OPEN SET 83 TO 84 BY DISTINCT ID against registrations 87 to 89 and resolutions 4 to 5, the fifth being the R-0855 this round's predecessor resolved. G5: through the SHIPPED readers, by import with the resolved `__file__` printed at both ends, `_BASE_CATALOG` and `collect_all_handlers()` both fell 250 to 237, `GROUPS` 48 to 47 and `ALL_KNOWN_ACTIONS` 106 to 100, zero duplicate ids at both ends; the `builder` group and all TEN of its ids ABSENT from both readers at C3; the `worker` GROUP still present with exactly its nine surviving ids and `worker.doctor`, `worker.add` and `worker.disable` gone; `patch.approve`, `do.continue`, `mission.run`, `mission.report` and `doctor.core` all PRESENT. THREE PROPERTIES THIS ROUND TURNED ON WERE MEASURED RATHER THAN ASSUMED: the catalog's `# ── ` section comments fell 57 to 56, so exactly one disappeared and the `# ── brain ───` comment the reviewer's own first dry run had swallowed SURVIVED; the dangling `related=` set at C3 is EXACTLY `dogfood.run-loop` and `readiness.show` with `worker.doctor` gone from it, so the repair landed; and the regenerated order file holds FOUR components against five, EQUAL to a fresh regeneration from the live import graph at both ends, a PURE shrink with no survivor moving and its 26-line header sha256 unchanged at `aff913e6…`. G6: ALL FOUR RED-PROOFS RE-RUN BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE AT C3, `__pycache__` purged before every run, `python3 -B`, each probe's control run over that probe's OWN selection in the SAME script immediately before its mutation — controls exit 0 at 3, 3, 3 and 37 passed against mutants exit 1 at 1, 1, 2 and 2 failures — every target restored byte-identically and proved by sha256, worktree porcelain empty. G7: THE FULL SUITE WAS RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT and was GREEN at 18603 passed, 23 skipped and ZERO failed, with 18603 + 23 = 18626 equal to the C3 collection; the id arithmetic closes at 18712 to 18626, 86 LOST and ZERO gained. G8: `.agent/STOP` absent, porcelain empty, ONE worktree, branch correct, and the C3 path set an EXACT MATCH on 24 paths with the missing and extra sets both EMPTY. WHAT THE ROUND ACHIEVED, and it is not undone by the FAIL: the ELEVENTH module group, `main_builder_adapter` at 964 module lines, in ONE commit at 13 insertions against 2519 deletions over 24 paths, taking its 143-line handler whole, the `builder` group and its TEN commands, SIX `ContractAction` members, two test files, two documentation pages and the three `worker` commands R-0857's fix clause ordered deleted rather than narrowed a second time. TWELVE DEVIATIONS WERE DECLARED AND ALL TWELVE ARE SUSTAINED; three are the reviewer's own authoring errors and are dated `.agent/prose_slips.md` lines rather than ids, per amend0827-process-diet rule 2, because not one put anything wrong on disk beyond what G4 already names. THE ROUND'S ONLY DEFECT ON DISK IS REGISTERED BELOW AS R-0861, and the repair is ordered by the block this entry travels in.
+- R-0863 — Medium, THREE SURVIVING MODULES LOSE THE REVIEW-STATE STOP, AND THE CAPABILITY IS INHERITED BY NO FEATURE. Per T001 RULE 3 a surviving consumer loses the call site and never gains a copy, so `orchestrator_brain`, `self_dogfood_execution` and `self_dogfood` lose the ability to refuse work because the development review record says stop. The user-observable losses are three: `remedy self inspect` no longer reports a blocker when the review verdict is PENDING or FAIL; self-execution eligibility no longer stops with `REVIEW_FINDINGS_OPEN`; and the orchestrator's option scoring no longer suppresses execution-like options in favour of self-inspect and human-review. DECISION F275 D8 rules the deletion and records why the loss is smaller than it reads: measured at `c4c314c2` against the real `.agent/live_review.md`, the parser returns `source='malformed'` and all counts zero while 85 findings are open, so the gate blocked UNCONDITIONALLY and never once discriminated on review state in production. NO FEATURE INHERITS THIS IDEA, which is the honest answer rather than a routing to a convenient id: the capability as built was a parser for a ledger format this repository no longer writes, and re-creating it belongs to whatever feature next decides the development ledger needs a machine reader. The surviving stops in that eligibility path — approval, contract, target repo and branch safety — are untouched, and round 18's red-proof P2 pins the approval gate by mutation.
+--- END-LEDGER18 ---
 
-- R-0861 — Medium, THREE OPERATOR-FACING DOCUMENTATION PAGES STILL INSTRUCT A USER TO RUN COMMANDS THIS FEATURE HAS DELETED, AND THE GUARD BUILT TO CATCH EXACTLY THAT DID NOT FIRE. Measured by the reviewer of session 9 at `3384dd53` by running the round 16 block's own G4 sweep independently over the 1676 tracked files outside `.agent/` and `.data/`: RAW 16 lines, STRIPPED 6, and three of the six outside the declared scope. THE INSTANCES. FIRST, `docs/guides/simple-operator-quickstart-v0.md` — a page whose title promises a quickstart for operators — carries three whole `###` sections, each with a fenced `bash` block, telling a reader to run `remedy worker doctor claude --json`, `remedy worker add claude --json` and `remedy worker disable claude --json`; all three commands were deleted at `3384dd53` and every one of those blocks now fails with an unknown-command error. The same page's "Normal command / Advanced equivalent(s)" table maps those three onto `builder adapter-enable`, `builder adapter-show` and `builder adapter-enable --disabled`, which the same commit also deleted, so the row maps a dead command onto a dead command. SECOND, `docs/system/core-product-spine-v0.md` describes `remedy worker add claude` in the prose of its `## What a worker is` section and lists `worker doctor <name>` and `worker add <name>` as two rows of its command-taxonomy table. THIRD, `docs/system/mission-run-loop-morning-report-v0.md` carries a five-step `## How Claude Code fits` section whose step 1 is `remedy worker add`, whose steps 2 and 3 are the managed execution round 15 deleted, and whose step 4 is the sandbox intake round 13 deleted — a path that has not existed end to end for two rounds. WHY NO GATE CAUGHT IT: `tests/cli/test_advertised_commands.py` PASSED over this state at exit 0. It caught one instance in the same file family during the reviewer's dry run and misses these, which is the third measured face of the OPEN finding R-0847 — the advertised-commands scanner is blind to advertisement forms it does not model, and a spaced command name inside a fenced block or a table cell is one of them. WHY THIS IS AN ID AND NOT A PROSE SLIP: three tracked files under `docs/` instruct a user to run commands that do not exist, which is wrong state on disk in the tree AGENTS.md's Documentation Updates section governs, and it is worse than a stale comment because a reader follows it. WHAT WOULD RESOLVE IT, and the block this entry travels in orders exactly that: the three quickstart sections and three table rows deleted; the spine's worker section body replaced by the deliberate-absence note AGENTS.md's Code Discoverability Conventions require, since text search cannot find a command that does not exist and that section is where a reader looks for one; the spine's two taxonomy rows deleted; and the morning report's `## How Claude Code fits` section deleted whole. FIX CLAUSE, BINDING ON EVERY REMAINING DELETION ROUND OF THIS FEATURE: the completeness sweep is read as its RAW list and not only as its stripped count, because a command name inside backticks in a table cell or a fenced block is an ADVERTISEMENT a user will follow and not a mere quotation, and the stripped filter that protects against quoted-token false positives hides exactly those; and the block names every `docs/guides/` and `docs/system/` page the sweep reaches, not only the pages a consumer map predicted.
---- END-LEDGER17 ---
+--- BEGIN-SLIPS18 ---
+2026-09-09 · F275 R17 · The round 17 block described the SPINE17 substitution region as lying "between the heading line and the blank line preceding `## What a report is`", which read strictly spans seven lines and implies a numstat of 8/9, while the same block's own change set gave the measured figure 8/8. The worker resolved the contradiction toward the measured numeral — keeping the blank line after the heading and replacing the two prose paragraphs — landed exactly 8/8 with the slice byte-identical at the site, and declared it. Nothing landed wrong. The lesson is that a block substituting a slice into the MIDDLE of a file states the region by its two anchor lines and by the numstat it measured, and the reviewer reads those two statements against each other before emission exactly as §3 item 18 requires of a probe's recipe and its property, because here both halves were individually sound and only their agreement was not checked.
+--- END-SLIPS18 ---
 
+--- BEGIN-DECISION18 ---
+## DECISION F275 D8 (2026-09-09) — the live-review parser dies with its module; the three surviving consumers lose the gate rather than inheriting the parser
 
-DONE WHEN — five gates, every one EXECUTED with its real exit code recorded
+CONTEXT. Round 18 deletes `packages/orchestration/overnight_executor.py`, component 1 of
+`.agent/f275_deletion_order.md`. Three SURVIVING production modules import out of it:
+`orchestrator_brain.py` and `self_dogfood_execution.py` take both `parse_review_findings`
+and `review_findings_block_execution`, and `self_dogfood.py` takes the parser alone. Those
+functions read `.agent/live_review.md` and turn its verdict into a refusal to execute. This
+is the first deletion of this feature that removes a RESTRICTION rather than a capability,
+so DECISION F275 D7's fail-safe argument does not reach it and is not copied onto it.
 
-G1 TRANSPORT. `.remedy-wt/f275-r17.md`, the committed `.agent/authored/f275-r17.md` and the
-   committed `.agent/last_block.md` are byte-identical: same length, same sha256, all three
-   printed. ONE digest comparison; it covers those three artefacts and claims nothing about
-   any other bytes (§3 item 37).
+TWO READINGS WERE ON DISK AND DISAGREED. Both are now measured rather than argued.
 
-G2 THE PLAN, THE BLOCK AND THE SPINE SLICE. `.agent/plan.md` at C1 is byte-identical to the
-   PLAN17 slice extracted from the COMMITTED C0a blob between its marker lines, markers
-   excluded; print its length, sha256 and line count against the cap of 50; both mandated
-   headings present. Report the C0a blob's TOTAL line count against the cap of 490. Then show
-   that the SPINE17 slice occurs EXACTLY ONCE in `docs/system/core-product-spine-v0.md` at C3
-   and that its bytes there are byte-identical to the slice.
+READING A, that the deletion discharges a boundary violation, is FALSE. It rests on
+`docs/system/development-artifact-boundary-v0.md` ruling that product modules must not
+depend on the development ledger. Measured at `c4c314c2`: that document's "Allowed
+development uses" table EXPLICITLY ALLOWLISTS all four modules — `self_dogfood.py`,
+`self_dogfood_execution.py`, `overnight_executor.py` and `orchestrator_brain.py` — and its
+disallowed list names only `worker_facade_cmd.py`. The guard
+`tests/orchestration/test_development_artifact_boundary.py` carries the same allowlist.
+These reads are sanctioned, not violations, and no boundary is repaired by removing them.
 
-G3 THE RECORD, over TWO appends — `.agent/live_review.md` and `.agent/prose_slips.md` at C2:
-   (a) BYTE READER: pre-length, post-length, growth == 1 + slice length; the pre-blob a
-       byte-exact PREFIX of the post-blob; the slice a byte-exact SUFFIX; the joining byte read
-       back out of the post-blob is `b'\n'`.
-   (b) STRUCTURAL READER: your script COUNTS N from each slice — never a number this block
-       asserts — and the LAST N blank-line units of the whole post-file equal the slice's N
-       paragraphs IN ORDER, unit by unit, with a per-unit sha256 printed on both sides.
-   (c) NEGATIVE CONTROL: flip one byte IN MEMORY inside the FIRST appended paragraph of each
-       file (§3 item 36) and show that reader (a) and reader (b) BOTH reject the mutant and
-       BOTH accept the truth. Re-read both files from disk afterwards and show them byte-equal
-       to their committed post-blobs.
-   (d) COUNT PATTERNS in the post-blob of `.agent/live_review.md`: `^Gate: ` rises by exactly
-       1; `^Gate: F275 R16 ` and `^- R-0861 — ` are each exactly 1.
-   (e) THE OPEN SET BY DISTINCT ID, `Landed:` lines never subtracted: report registered, done
-       and open before and after. The reviewer measured 89 / 5 / 84 at the base.
+READING B, that the deletion removes a safeguard, is TRUE, and the measurement makes the
+loss much smaller than the sentence suggests. Run at `c4c314c2` against the repository's
+real `.agent/live_review.md`, `parse_review_findings` returns `source='malformed'`,
+`verdict='unknown'` and every open-finding count zero, while the record holds 85 open
+findings by distinct id. `review_findings_block_execution` therefore returns
+`(True, 'review_findings_open')` UNCONDITIONALLY. The parser expects a `## Verdict` heading
+and `### R-XXXX` blocks carrying `**Status**` and `**Severity**` fields; this repository's
+ledger uses `- R-XXXX — ` registration paragraphs, `Done:` lines and `Gate:` entries, and
+has none of those shapes. Every test that exercises the gate writes a SYNTHETIC file in the
+old format, through `REMEDY_REVIEW_FILE` or a temporary agent directory, so the suite has
+been green over a production path that never once read real review state.
 
-G4 THE SWEEP IS CLEAN, which is the gate round 16 failed. Over every tracked file outside
-   `.agent/` and `.data/` at C3, sweep for these tokens: `main_builder_adapter`,
-   `main-builder-adapter`, `BUILDER_ADAPTER_`, `BUILDER_PACKAGE_CREATE`, `BUILDER_SESSION_`,
-   `managed_builder_execution`, `managed-external-builder`, each of the ten `builder.<sub>`
-   command ids, `worker.doctor`, `worker.add`, `worker.disable`, `worker doctor`, `worker add`,
-   `worker disable`, `get_builder_adapter_spec`, `save_builder_adapter_spec`,
-   `BuilderAdapterSpec`, `BuilderAdapterMode`, `execution approve` and
-   `execution template-show`. PRINT THE RAW RESULT IN FULL, never truncated, and then the
-   STRIPPED result. TWO BINDING CONDITIONS, and the first is the one round 16 lacked: every
-   RAW line outside `docs/roadmap/features/` lies in a file this block's change set NAMES, and
-   every STRIPPED line lies in `docs/roadmap/features/`. The reviewer measured RAW 11 and
-   STRIPPED 3 after this change set, with the three stripped lines in `T2_F262.md`,
-   `T2_F267.md` and `T8_F151.md` and the single remaining `docs/system/` raw line being the
-   deliberate-absence note this round ADDS, which quotes the deleted command names on purpose.
+CHOSEN. Delete the parser with its module, and remove the call site from each of the three
+survivors, per T001 RULE 3, which forbids a stub, a shim or a copy of cluster code into a
+survivor. The gate as built is a constant, not a discriminator: it answers "block" for every
+possible state of the real record, so removing it does not trade a working safeguard for
+convenience. It removes a jammed one.
 
-G5 THE GUARDS, THE SUITE AND THE TREE.
-   (a) `python3 -B -m pytest tests/docs/ tests/cli/test_advertised_commands.py
-       tests/cli/test_product_spine.py tests/cli/test_cli_ux.py tests/test_grouped_cli.py -q`
-       — exit 0. This is the §3 verification-tier-5 documentation gate for a `docs/` round.
-   (b) The canary `python3 -B -m pytest tests/cli/test_golden_path.py -q` — exit 0.
-   (c) THE FULL SUITE, `python3 -B -m pytest tests/ -q`, SERIALLY, in the PRIMARY checkout,
-       with C3 COMMITTED. BINDING: zero failed, and passed + skipped equals the C3 collection.
-       No `.py` file is in this round's change set, so the reviewer expects the round 16
-       figures unchanged at 18603 passed and 23 skipped against a collection of 18626 — report
-       what you measure, and report any difference as a finding rather than absorbing it.
-   (d) `.agent/STOP` re-read from disk and reported ABSENT; `git status --porcelain` empty;
-       `git worktree list` naming the primary checkout ALONE; branch correct. Compare
-       `git diff --name-only <C2>..<C3>` against this block's three C3 paths as a SET and
-       report the missing and extra sets, both of which must be EMPTY. For every commit BEFORE
-       C4, report its parent count and its insertion count against the cap of 500; C4's own
-       numbers belong to the next round's ledger entry (§3 item 31).
+CONSEQUENCES, stated plainly rather than minimised. Self-execution eligibility loses its
+`REVIEW_FINDINGS_OPEN` stop; the orchestrator's `_score_options` no longer suppresses
+execution-like options; `_routing_plan` reaches the human-review tier only through the loop
+guard; and `remedy self inspect` no longer reports a review verdict blocker. Because the old
+gate blocked unconditionally, the direction of the change is from "always refuses" to
+"proceeds subject to the other gates", which is a real loosening and is registered as
+R-0863. The other gates in that eligibility path are measured to survive untouched —
+approval, run contract, attached target repo and branch safety — and round 18's red-proof P2
+pins the approval gate by mutation rather than by assertion. F275's "Do not touch" keeps the
+approval gate out of this feature's reach, so that layer is not weakened here.
 
+ALTERNATIVES CONSIDERED. (1) Move the parser into a surviving module. Rejected: T001 RULE 3
+forbids exactly this, and it would preserve a reader that cannot read the file it is aimed
+at. (2) Repair the parser to the current ledger format and then move it. Rejected twice
+over: building new capability inside a deletion round is the scope widening AGENTS.md
+forbids, and the development ledger's format is not this feature's to freeze. (3) Keep
+`overnight_executor.py` alive for the parser alone. Rejected: it is component 1 of an order
+the operator ruled PERFORMED rather than prepared, and a module kept for one helper is the
+attic AGENTS.md Scope Control refuses.
 
-HANDBACK
-
-Rewrite `.agent/handoff.md` WHOLE at C4, per docs/agents/handback_template.md. It has no length
-cap (amend0827 rule 3). It carries: SESSION 9 of F275, round 17; the range; a per-commit
-changed-files table with the `+/-` column read from `git show --numstat` and compared cell by
-cell against the Verification lines (§3 item 28); ONE LINE PER GATE with its real exit code;
-the authored-text proofs table; every deviation, declared rather than repaired; the item-status
-table; the open-findings count; and the next expected action. Push ONCE, after C4. Create no
-PR, edit none, merge none.
-
-Write no verdict, no `Done:` paragraph and no finding of your own. If the sweep this round
-performs makes you believe R-0861 is resolved, write `Landed: R-0861 — <one line>` in the
-handback and nothing else; the reviewer authors the resolution at the next gate.
+HOW TO REVERSE. Restore `packages/orchestration/overnight_executor.py` from `c4c314c2`,
+restore the three call sites and the four unthreaded parameters in `orchestrator_brain.py`,
+restore the six deleted tests, and re-add the module to the boundary allowlist, the
+reachability allowlist, `CLUSTER_MODULES` and the deletion map. Reversing this decision
+without also repairing the parser restores a gate that blocks unconditionally, which is the
+state this decision ends.
+--- END-DECISION18 ---
