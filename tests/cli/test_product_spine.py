@@ -89,11 +89,6 @@ class TestStaleCommandScanner:
         assert "--adapter " not in text, \
             "Stale --adapter flag (should be --adapter-id)"
 
-    def test_no_stale_adapter_flag_in_operator_path(self):
-        text = self._read_doc("controlled-claude-code-operator-path-v0.md")
-        assert "--adapter " not in text or "--adapter-id" in text, \
-            "Stale --adapter flag without --adapter-id"
-
     def test_no_stale_self_proposal_list(self):
         text = self._read_doc("simple-operator-quickstart-v0.md")
         assert "remedy self proposal-list" not in text, \

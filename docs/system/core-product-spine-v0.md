@@ -115,7 +115,6 @@ without prior explicit approval.
 |---------|-------------|-------------|
 | `approval summary/show/enable` | Execution approval policy | Advanced autonomy setting |
 | `mission run/report` | Mission contract facade | Internal bounded loops |
-| `execution approve/run/show` | Direct execution control | Debugging execution state |
 | `builder adapter-show/enable/list` | Direct adapter management | Debugging adapter state |
 | `overnight *` | Bounded overnight preparation | Pre-run planning |
 

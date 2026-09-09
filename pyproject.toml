@@ -123,7 +123,6 @@ module = [
     "apps.cli.commands.contract_cmd",
     "apps.cli.commands.job",
     "apps.cli.commands.main_builder_adapter_cmd",
-    "apps.cli.commands.managed_builder_execution_cmd",
     "apps.cli.commands.repair_cmd",
     "apps.cli.commands.snapshot_cmds",
 ]

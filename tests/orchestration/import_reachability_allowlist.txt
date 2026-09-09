@@ -29,7 +29,6 @@ apps.cli.commands.job_rerun_cmd
 apps.cli.commands.job_stop_cmd
 apps.cli.commands.loop_cmd
 apps.cli.commands.main_builder_adapter_cmd
-apps.cli.commands.managed_builder_execution_cmd
 apps.cli.commands.memory
 apps.cli.commands.mission_cmd
 apps.cli.commands.orchestrator_cmd
@@ -161,7 +160,6 @@ packages.orchestration.long_run_executor
 packages.orchestration.loop_run
 packages.orchestration.loop_spec
 packages.orchestration.main_builder_adapter
-packages.orchestration.managed_builder_execution
 packages.orchestration.manifest_schema
 packages.orchestration.manual_attestation
 packages.orchestration.markdown_output_safety

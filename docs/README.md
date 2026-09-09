@@ -32,7 +32,6 @@
 | do run | [do-run-v1.md](guides/do-run-v1.md) | guide |
 | dogfood | [dogfood-run-user-guide.md](guides/dogfood-run-user-guide.md) | guide |
 | exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
-| external builder | [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | system |
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
 | job budget | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | system |
 | job context | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | guide |
@@ -80,7 +79,6 @@ Specifications and design documents for the built system.
 | [cache-optimal-prompt-ordering-v1.md](system/cache-optimal-prompt-ordering-v1.md) | Ranked prompt-segment composition, the measured before/after cacheable prefix, and why the provider-side cache share is unmeasured |
 | [ci-self-check-v1.md](system/ci-self-check-v1.md) | Remedy's own CI: the stage table, the measured runtime budgets, the hosted workflow, and what CI deliberately never runs |
 | [context-inspector.md](system/context-inspector.md) | Context window inspection and debugging |
-| [controlled-claude-code-operator-path-v0.md](system/controlled-claude-code-operator-path-v0.md) | Controlled operator path for Claude Code sessions |
 | [core-product-spine-v0.md](system/core-product-spine-v0.md) | Core product architecture spine |
 | [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
 | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | Diff-only repair: hunk selection, unified-diff response, strict apply, full-file fallback |
@@ -90,8 +88,6 @@ Specifications and design documents for the built system.
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
 | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |
 | [main-builder-adapter-v0-token-controlled-session-rail.md](system/main-builder-adapter-v0-token-controlled-session-rail.md) | Token-controlled session rail for main builder |
-| [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | Managed external builder execution + observability |
-| [managed-external-builder-execution-v1-1-hardening.md](system/managed-external-builder-execution-v1-1-hardening.md) | Approval hardening for managed external builders |
 | [mission-run-loop-morning-report-v0.md](system/mission-run-loop-morning-report-v0.md) | Mission run loop + morning report *(overnight superseded)* |
 | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | Built-in model alias table, the shipped dead-model list, and the `remedy doctor core` warning |
 | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | Operator cockpit UI spec |
@@ -143,7 +139,6 @@ User-facing guides, quickstarts, and usage documentation.
 | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
 | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |
 | [main-builder-adapter-user-guide-v0.md](guides/main-builder-adapter-user-guide-v0.md) | Main builder adapter usage |
-| [managed-external-builder-execution-user-guide-v1.md](guides/managed-external-builder-execution-user-guide-v1.md) | Managed external builder usage |
 | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |
 | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
 | [resume.md](guides/resume.md) | Resuming interrupted jobs |

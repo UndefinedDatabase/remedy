@@ -22,25 +22,21 @@ if TYPE_CHECKING:
 _WORKER_ALIASES: dict[str, dict[str, str]] = {
     "claude": {
         "adapter_id": "claude-code-v0",
-        "template_id": "claude-code-repair-v0",
         "kind": "claude_code",
         "label": "Claude Code",
     },
     "claude-code": {
         "adapter_id": "claude-code-v0",
-        "template_id": "claude-code-repair-v0",
         "kind": "claude_code",
         "label": "Claude Code",
     },
     "fixture": {
         "adapter_id": "fixture-v0",
-        "template_id": "fixture-echo-v0",
         "kind": "fixture_builder",
         "label": "Fixture (test only)",
     },
     "generic": {
         "adapter_id": "generic-cli-v0",
-        "template_id": "generic-cli-v0",
         "kind": "generic_external_cli_builder",
         "label": "Generic CLI",
     },
@@ -65,7 +61,6 @@ def _cmd_worker_doctor(ns: argparse.Namespace) -> None:
     import shutil
 
     from packages.orchestration.main_builder_adapter import get_builder_adapter_spec
-    from packages.orchestration.managed_builder_execution import get_command_template
 
     worker = getattr(ns, "worker", "")
     if not worker:
@@ -75,10 +70,8 @@ def _cmd_worker_doctor(ns: argparse.Namespace) -> None:
         _err(f"unknown worker: {worker}. Known: {', '.join(sorted(_WORKER_ALIASES))}")
 
     adapter_id = alias["adapter_id"]
-    template_id = alias["template_id"]
 
     adapter = get_builder_adapter_spec(adapter_id)
-    template = get_command_template(template_id)
 
     checks: list[dict[str, str | bool]] = []
     blockers: list[str] = []
@@ -101,24 +94,12 @@ def _cmd_worker_doctor(ns: argparse.Namespace) -> None:
     else:
         blockers.append(f"Adapter {adapter_id} not found.")
 
-    checks.append({"check": "template_exists", "ok": template is not None,
-                    "detail": template_id})
-    if template:
-        enabled = template.get("enabled", False)
-        checks.append({"check": "template_enabled", "ok": enabled,
-                        "detail": str(enabled)})
-        if not enabled:
-            blockers.append(f"Template disabled. Fix: remedy worker add {worker} --json")
-    else:
-        blockers.append(f"Template {template_id} not found.")
-
     ready = len(blockers) == 0
     next_cmd = "" if ready else f"remedy worker add {worker} --json"
 
     report: dict[str, Any] = {
         "worker": worker,
         "adapter_id": adapter_id,
-        "template_id": template_id,
         "ready": ready,
         "checks": checks,
         "blockers": blockers,
@@ -154,10 +135,6 @@ def _cmd_worker_add(ns: argparse.Namespace) -> None:
         get_builder_adapter_spec,
         save_builder_adapter_spec,
     )
-    from packages.orchestration.managed_builder_execution import (
-        enable_command_template,
-        get_command_template,
-    )
 
     worker = getattr(ns, "worker", "")
     if not worker:
@@ -167,8 +144,7 @@ def _cmd_worker_add(ns: argparse.Namespace) -> None:
         _err(f"unknown worker: {worker}. Known: {', '.join(sorted(_WORKER_ALIASES))}")
 
     adapter_id = alias["adapter_id"]
-    template_id = alias["template_id"]
-    results: dict[str, Any] = {"worker": worker, "adapter_id": adapter_id, "template_id": template_id}
+    results: dict[str, Any] = {"worker": worker, "adapter_id": adapter_id}
     warnings: list[str] = []
 
     adapter_d = get_builder_adapter_spec(adapter_id)
@@ -187,39 +163,21 @@ def _cmd_worker_add(ns: argparse.Namespace) -> None:
         results["adapter_enabled"] = False
         warnings.append(f"Adapter {adapter_id} not found in default specs.")
 
-    template = get_command_template(template_id)
-    if template:
-        if not template.get("enabled", False):
-            tmpl = enable_command_template(template_id)
-            results["template_enabled"] = tmpl is not None
-            if not tmpl:
-                warnings.append(f"Template {template_id} failed safety validation.")
-        else:
-            results["template_enabled"] = True
-    else:
-        results["template_enabled"] = False
-        warnings.append(f"Template {template_id} not found in default templates.")
-
-    results["ready"] = results.get("adapter_enabled", False) and results.get("template_enabled", False)
+    results["ready"] = results.get("adapter_enabled", False)
     results["warnings"] = warnings
-    results["note"] = "Execution still requires explicit approval per session."
 
     quickstart = [
         f"1. Check readiness: remedy worker doctor {worker} --json",
         "2. Create or choose a mission run: remedy dogfood create <job_id> --json",
         "3. Run mission loop: remedy mission run <run_id> --job-id <job_id> --json",
-        "4. Approve execution when prompted: remedy execution approve <session_id> --template <template_id> --json",
-        "5. Read morning report: remedy mission report <run_id> --job-id <job_id> --json",
+        "4. Read morning report: remedy mission report <run_id> --job-id <job_id> --json",
     ]
     results["quickstart"] = quickstart
 
     results["advanced"] = {
         "adapter_id": adapter_id,
-        "template_id": template_id,
         "low_level_commands": [
             f"remedy builder adapter-show {adapter_id} --json",
-            f"remedy execution template-show {template_id} --json",
-            f"remedy execution approve <session_id> --template {template_id} --json",
         ],
     }
 
@@ -231,7 +189,6 @@ def _cmd_worker_add(ns: argparse.Namespace) -> None:
     if warnings:
         for w in warnings:
             print(f"  warning: {w}")
-    print(f"  note: {results['note']}")
     print("  quickstart:")
     for step in quickstart:
         print(f"    {step}")
@@ -249,9 +206,6 @@ def _cmd_worker_disable(ns: argparse.Namespace) -> None:
         get_builder_adapter_spec,
         save_builder_adapter_spec,
     )
-    from packages.orchestration.managed_builder_execution import (
-        disable_command_template,
-    )
 
     worker = getattr(ns, "worker", "")
     if not worker:
@@ -261,7 +215,6 @@ def _cmd_worker_disable(ns: argparse.Namespace) -> None:
         _err(f"unknown worker: {worker}. Known: {', '.join(sorted(_WORKER_ALIASES))}")
 
     adapter_id = alias["adapter_id"]
-    template_id = alias["template_id"]
 
     adapter_disabled = False
     adapter_d = get_builder_adapter_spec(adapter_id)
@@ -271,14 +224,10 @@ def _cmd_worker_disable(ns: argparse.Namespace) -> None:
         spec.mode = BuilderAdapterMode.DISABLED
         adapter_disabled = bool(save_builder_adapter_spec(spec))
 
-    template_ok = disable_command_template(template_id)
-
     result: dict[str, Any] = {
         "worker": worker,
         "adapter_disabled": adapter_disabled,
-        "template_disabled": template_ok is not None,
         "adapter_id": adapter_id,
-        "template_id": template_id,
     }
 
     if getattr(ns, "json", False):

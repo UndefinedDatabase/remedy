@@ -14,7 +14,6 @@
 #
 # Blank lines and lines beginning with `#` are ignored by the reader.
 packages.orchestration.main_builder_adapter <- apps/cli/commands/worker_facade_cmd.py
-packages.orchestration.managed_builder_execution <- apps/cli/commands/worker_facade_cmd.py
 packages.orchestration.overnight_executor <- packages/orchestration/orchestrator_brain.py
 packages.orchestration.overnight_executor <- packages/orchestration/self_dogfood.py
 packages.orchestration.overnight_executor <- packages/orchestration/self_dogfood_execution.py

@@ -25,7 +25,6 @@ class TestWorkerAliasRegistry:
         from apps.cli.commands.worker_facade_cmd import _WORKER_ALIASES
         c = _WORKER_ALIASES["claude"]
         assert c["adapter_id"] == "claude-code-v0"
-        assert c["template_id"] == "claude-code-repair-v0"
         assert c["kind"] == "claude_code"
 
     def test_resolve_case_insensitive(self):
@@ -123,46 +122,37 @@ def _ns(**kwargs) -> argparse.Namespace:
 
 
 _ADAPTER_PATCH = "packages.orchestration.main_builder_adapter.get_builder_adapter_spec"
-_TMPL_PATCH = "packages.orchestration.managed_builder_execution.get_command_template"
 _SAVE_ADAPTER = "packages.orchestration.main_builder_adapter.save_builder_adapter_spec"
-_ENABLE_TMPL = "packages.orchestration.managed_builder_execution.enable_command_template"
-_DISABLE_TMPL = "packages.orchestration.managed_builder_execution.disable_command_template"
 
 
 class TestWorkerDoctor:
-    @patch(_TMPL_PATCH)
     @patch(_ADAPTER_PATCH)
     @patch("shutil.which", return_value="/usr/bin/claude")
-    def test_doctor_all_ready(self, mock_which, mock_adapter, mock_tmpl, capsys):
+    def test_doctor_all_ready(self, mock_which, mock_adapter, capsys):
         mock_adapter.return_value = {"enabled": True, "mode": "operator_launched",
                                      "adapter_id": "claude-code-v0"}
-        mock_tmpl.return_value = {"enabled": True, "template_id": "claude-code-repair-v0"}
         from apps.cli.commands.worker_facade_cmd import _cmd_worker_doctor
         _cmd_worker_doctor(_ns(worker="claude", json=True))
         out = json.loads(capsys.readouterr().out)
         assert out["ready"] is True
         assert out["blockers"] == []
 
-    @patch(_TMPL_PATCH)
     @patch(_ADAPTER_PATCH)
     @patch("shutil.which", return_value=None)
-    def test_doctor_binary_missing(self, mock_which, mock_adapter, mock_tmpl, capsys):
+    def test_doctor_binary_missing(self, mock_which, mock_adapter, capsys):
         mock_adapter.return_value = {"enabled": True, "mode": "operator_launched",
                                      "adapter_id": "claude-code-v0"}
-        mock_tmpl.return_value = {"enabled": True, "template_id": "claude-code-repair-v0"}
         from apps.cli.commands.worker_facade_cmd import _cmd_worker_doctor
         _cmd_worker_doctor(_ns(worker="claude", json=True))
         out = json.loads(capsys.readouterr().out)
         assert out["ready"] is False
         assert any("binary" in b.lower() for b in out["blockers"])
 
-    @patch(_TMPL_PATCH)
     @patch(_ADAPTER_PATCH)
     @patch("shutil.which", return_value="/usr/bin/claude")
-    def test_doctor_adapter_disabled(self, mock_which, mock_adapter, mock_tmpl, capsys):
+    def test_doctor_adapter_disabled(self, mock_which, mock_adapter, capsys):
         mock_adapter.return_value = {"enabled": False, "mode": "disabled",
                                      "adapter_id": "claude-code-v0"}
-        mock_tmpl.return_value = {"enabled": True, "template_id": "claude-code-repair-v0"}
         from apps.cli.commands.worker_facade_cmd import _cmd_worker_doctor
         _cmd_worker_doctor(_ns(worker="claude", json=True))
         out = json.loads(capsys.readouterr().out)
@@ -175,13 +165,11 @@ class TestWorkerDoctor:
         with pytest.raises(SystemExit):
             _cmd_worker_doctor(_ns(worker="nonexistent", json=True))
 
-    @patch(_TMPL_PATCH)
     @patch(_ADAPTER_PATCH)
     @patch("shutil.which", return_value="/usr/bin/claude")
-    def test_doctor_text_output(self, mock_which, mock_adapter, mock_tmpl, capsys):
+    def test_doctor_text_output(self, mock_which, mock_adapter, capsys):
         mock_adapter.return_value = {"enabled": True, "mode": "operator_launched",
                                      "adapter_id": "claude-code-v0"}
-        mock_tmpl.return_value = {"enabled": True, "template_id": "claude-code-repair-v0"}
         from apps.cli.commands.worker_facade_cmd import _cmd_worker_doctor
         _cmd_worker_doctor(_ns(worker="claude", json=False))
         out = capsys.readouterr().out
@@ -195,46 +183,35 @@ class TestWorkerDoctor:
 
 
 class TestWorkerAdd:
-    @patch(_ENABLE_TMPL)
-    @patch(_TMPL_PATCH)
     @patch(_SAVE_ADAPTER)
     @patch(_ADAPTER_PATCH)
-    def test_add_enables_both(self, mock_get_adapter, mock_save, mock_get_tmpl,
-                              mock_enable_tmpl, capsys):
+    def test_add_enables_adapter(self, mock_get_adapter, mock_save, capsys):
         mock_get_adapter.return_value = {"enabled": False, "mode": "disabled",
                                          "adapter_id": "claude-code-v0",
                                          "kind": "claude_code"}
         mock_save.return_value = True
-        mock_get_tmpl.return_value = {"enabled": False, "template_id": "claude-code-repair-v0"}
-        mock_enable_tmpl.return_value = {"enabled": True}
 
         from apps.cli.commands.worker_facade_cmd import _cmd_worker_add
         _cmd_worker_add(_ns(worker="claude", json=True))
         out = json.loads(capsys.readouterr().out)
         assert out["ready"] is True
         assert out["adapter_enabled"] is True
-        assert out["template_enabled"] is True
         assert "quickstart" in out
         assert len(out["quickstart"]) > 0
         assert "advanced" in out
 
-    @patch(_ENABLE_TMPL)
-    @patch(_TMPL_PATCH)
     @patch(_SAVE_ADAPTER)
     @patch(_ADAPTER_PATCH)
-    def test_add_already_enabled(self, mock_get_adapter, mock_save, mock_get_tmpl,
-                                  mock_enable_tmpl, capsys):
+    def test_add_already_enabled(self, mock_get_adapter, mock_save, capsys):
         mock_get_adapter.return_value = {"enabled": True, "mode": "operator_launched",
                                          "adapter_id": "claude-code-v0",
                                          "kind": "claude_code"}
-        mock_get_tmpl.return_value = {"enabled": True, "template_id": "claude-code-repair-v0"}
 
         from apps.cli.commands.worker_facade_cmd import _cmd_worker_add
         _cmd_worker_add(_ns(worker="claude", json=True))
         out = json.loads(capsys.readouterr().out)
         assert out["ready"] is True
         mock_save.assert_not_called()
-        mock_enable_tmpl.assert_not_called()
 
     def test_add_unknown_worker(self):
         from apps.cli.commands.worker_facade_cmd import _cmd_worker_add
@@ -248,21 +225,18 @@ class TestWorkerAdd:
 
 
 class TestWorkerDisable:
-    @patch(_DISABLE_TMPL)
     @patch(_SAVE_ADAPTER)
     @patch(_ADAPTER_PATCH)
-    def test_disable_both(self, mock_get_adapter, mock_save, mock_disable_tmpl, capsys):
+    def test_disable_adapter(self, mock_get_adapter, mock_save, capsys):
         mock_get_adapter.return_value = {"enabled": True, "mode": "operator_launched",
                                          "adapter_id": "claude-code-v0",
                                          "kind": "claude_code"}
         mock_save.return_value = True
-        mock_disable_tmpl.return_value = {"enabled": False}
 
         from apps.cli.commands.worker_facade_cmd import _cmd_worker_disable
         _cmd_worker_disable(_ns(worker="claude", json=True))
         out = json.loads(capsys.readouterr().out)
         assert out["adapter_disabled"] is True
-        assert out["template_disabled"] is True
 
     def test_disable_unknown_worker(self):
         from apps.cli.commands.worker_facade_cmd import _cmd_worker_disable

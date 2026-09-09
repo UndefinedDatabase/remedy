@@ -48,7 +48,6 @@ CLUSTER_MODULES = (
     "packages.orchestration.overnight_executor",
     "packages.orchestration.overnight_readiness",
     "packages.orchestration.main_builder_adapter",
-    "packages.orchestration.managed_builder_execution",
 )
 
 # The handlers of cluster COMMANDS. They die with the cluster, so their imports
@@ -60,7 +59,6 @@ CLUSTER_MODULES = (
 CLUSTER_COMMAND_HANDLERS = (
     "apps/cli/commands/dogfood_cmd.py",
     "apps/cli/commands/main_builder_adapter_cmd.py",
-    "apps/cli/commands/managed_builder_execution_cmd.py",
     "apps/cli/commands/overnight_cmd.py",
     "apps/cli/commands/overnight_mission_cmd.py",
     "apps/cli/commands/progress_cmd.py",

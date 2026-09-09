@@ -33,11 +33,10 @@ Normal Remedy users never need to read, edit, or depend on this file.
 
 The following modules must NOT depend on `.agent/live_review.md`:
 
-- `managed_builder_execution.py` — execution must use approval records
 - `worker_facade_cmd.py` — worker commands must use structured run/mission state
 
-Guard tests enforce this boundary (see `test_execution_approval_policy.py::TestNoLiveReviewDependency`
-and `tests/orchestration/test_development_artifact_boundary.py`).
+Guard tests enforce this boundary (see
+`tests/orchestration/test_development_artifact_boundary.py`).
 
 ## Current legacy dependencies
 
@@ -63,7 +62,6 @@ Product questions must be answered from structured Remedy state:
 | Question | Structured Source | Relative Path |
 |----------|------------------|--------|
 | Mission status | Mission records | `mission_state.py` |
-| Execution status | Managed execution records, event ledger | `managed_builder_execution.py` |
 | Builder status | Builder session records | `main_builder_adapter.py` |
 | Test status | Real test execution records | `real_test_execution.py` |
 | Repair proposal status | Self-repair proposal records | `self_repair_proposals.py` |

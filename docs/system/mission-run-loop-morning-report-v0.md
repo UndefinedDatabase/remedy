@@ -66,7 +66,6 @@ Claude Code can be launched through managed execution rails:
 4. Output enters sandbox intake (untrusted)
 5. Morning report shows execution status
 
-See `docs/controlled-claude-code-operator-path-v0.md` for the full walkthrough.
 
 ## How Self-Repair Proposals fit
 
@@ -85,7 +84,6 @@ prior analysis (replay, review, test failures).
 For full overnight autonomy, these steps still require operator action:
 
 - Starting the loop (`remedy mission run`)
-- Approving managed execution (`remedy execution approve`)
 - Reviewing builder output
 - Applying approved self-repair proposals
 - Merging PRs

@@ -106,9 +106,9 @@ See `docs/core-product-spine-v0.md` for the full command taxonomy.
 | `job status <id>`        | `job summary <id> --json`, `job show <id>`                 |
 | `job report <id>`        | `mission report <run_id> --job-id <id>`                    |
 | `job run-loop <id>`      | `mission run <run_id> --job-id <id>`                       |
-| `worker add claude`      | `builder adapter-enable`, `execution template-enable`      |
-| `worker doctor claude`   | `builder adapter-show`, `execution template-show`          |
-| `worker disable claude`  | `builder adapter-enable --disabled`, `execution template-disable` |
+| `worker add claude`      | `builder adapter-enable`      |
+| `worker doctor claude`   | `builder adapter-show`          |
+| `worker disable claude`  | `builder adapter-enable --disabled` |
 | `doctor core`            | (no low-level equivalent — this is the check)              |
 
 Note: `mission` commands are an advanced/internal facade for mission contract
