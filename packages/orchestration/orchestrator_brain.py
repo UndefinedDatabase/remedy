@@ -919,19 +919,6 @@ def select_orchestrator_decision(
 
 
 # ---------------------------------------------------------------------------
-# Local Model Advisor integration (Steps 1509-1511) — advisory ONLY.
-#
-# The model NEVER controls the orchestrator. It can only: lower confidence, add safe
-# missing-evidence hints, or escalate weak/unknown evidence to human review. It can NEVER
-# create a command, approve/apply/propose, mark evidence complete, override a blocker/high
-# review, bypass budget/contract, or change which deterministic command executes. The final
-# next_safe_action stays deterministic + catalog-backed + entity-backed.
-# ---------------------------------------------------------------------------
-
-_CONFIDENCE_ORDER = ["low", "medium", "high"]
-
-
-# ---------------------------------------------------------------------------
 # Report (Step 1476) + exports
 # ---------------------------------------------------------------------------
 

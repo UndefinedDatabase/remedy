@@ -47,9 +47,6 @@ def _cmd_orchestrator_decide(args: Any) -> None:
         print(f"  selected: {sel['label']}")
     print(f"  next: {data['next_safe_action']}")
     print(f"  routing: {data['model_routing_plan']['tier']}  loop: {data['loop_guard_status']}")
-    adv = data.get("advisor")
-    if adv:
-        print(f"  advisor: {adv.get('status')}  impact: {adv.get('decision_impact')}")
 
 
 def _cmd_orchestrator_report(args: Any) -> None:

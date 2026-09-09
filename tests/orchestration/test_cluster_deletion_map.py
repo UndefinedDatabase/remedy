@@ -38,7 +38,9 @@ MAP_PATH = Path(__file__).resolve().parent / "cluster_deletion_map.txt"
 
 EDGE_SEPARATOR = " <- "
 
-# The twenty-four modules F260's Design lists as the prototype cluster.
+# The modules of F260's prototype cluster that are still tracked in the repo.
+# One module group leaves this tuple per deletion round, so it deliberately
+# states no count: any numeral written here is stale from the next commit on.
 CLUSTER_MODULES = (
     "packages.orchestration.provider_trust",
     "packages.orchestration.provider_trust_verification",
