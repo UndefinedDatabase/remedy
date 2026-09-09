@@ -11710,3 +11710,52 @@ ALTERNATIVES CONSIDERED AND REJECTED. (1) Delete the group and leave the event r
 CONSEQUENCE. Round 8's change set is 24 paths rather than the dozen a pure module group costs, and it EDITS lines under `packages/`, `apps/`, `scripts/` and `tests/`, so it is NOT a deletion round under operator amendment amend0906-triage-throughput and does not get that paragraph's four-measurement shortcut. It is gated as a production-code round, with a ratchet red-proof in a disposable worktree and the full suite run serially in the primary checkout.
 
 REVERSE by deleting this section, at which point the event readers of a deleted emitter go back to waiting for the D3 round and R-0832 carries the whole obligation alone. Nothing on disk becomes inconsistent under that reversal, because the deletions this decision authorises are recoverable from git and no later commit depends on their absence.
+
+## DECISION F275 D5 — DECISION F274 D4's hold on the builder-routing cockpit section is RELEASED, and the section dies with its subject module (2026-09-09)
+
+Ruled by the reviewer while authoring F275 round 11, under docs/agents/planner_reviewer_prompt.md
+§4 item 7, which routes a ruling to a loud, persisted, reversible decision rather than to a
+question the operator is never asked. Reverse it by deleting this section, which restores D4's
+hold and makes `_build_builder_routing_section` undeletable until the carry-over is discharged by
+some other route.
+
+WHAT WAS HELD, AND WHY. DECISION F274 D4 deleted six cockpit sections and explicitly HELD two —
+`_build_builder_routing_section` and `_build_overnight_section` — on the ground that their modules
+still owed a carry-over that F260's Design orders BEFORE the deletion. For the builder-routing
+section that carry-over is the second of F260's two: every user-settable route-policy knob checked
+against F110's config keys, with F260's Design ruling the outcome in advance — existing knob →
+delete, missing knob → register as a finding, never rebuild.
+
+WHY THE HOLD IS RELEASED NOW. The carry-over is DISCHARGED. R-0831 registered the audit at
+`4ba5e0f6`, and the reviewer RE-RAN it at `cb89bbc3` rather than trusting the finding, because
+many rounds had landed in between: `BuilderRoutingPolicy` declares sixteen knobs and the candidate
+configuration surfaces `role_config.py`, `model_routing.py` and `config.py` carry an equivalent for
+none of them, with the four near-name matches individually checked and rejected as substring
+artifacts. The re-measurement is recorded as a `Note:` on R-0831 in `.agent/live_review.md` in the
+same round as this decision. F260's rule therefore lands on the "missing knob" branch for all
+sixteen, the outcome is a finding rather than a rebuild, and the finding exists. Nothing further is
+owed before the section may go.
+
+CHOSEN: the hold is released and `_build_builder_routing_section` is deleted in the SAME commit as
+`packages/orchestration/builder_routing.py`, together with its dashboard-dict row and
+`tests/ui_server/test_dashboard_cockpit_truth.py::TestDashboardShape::test_builder_routing_section_present`,
+which is the test that goes red if the section is cut. `_build_overnight_section` is NOT touched by
+this decision: D4 held two sections, this releases exactly one, and the overnight carry-over stands
+on its own record.
+
+ALTERNATIVES CONSIDERED AND REJECTED. (a) Keep the section and delete only the module, letting the
+section's `try/except ImportError` swallow the missing import and report `source: "unavailable"` —
+rejected because a cockpit panel that structurally cannot ever carry data is a false live indicator,
+which docs/agents/planner_reviewer_prompt.md §4 item 5 makes a block condition, and because
+AGENTS.md Scope Control forbids leaving a replaced mechanism alive beside nothing. (b) Delete the
+section in a later round, after the module — rejected because operator RULE 1 makes the module
+group ATOMIC in one commit and names the `ui_server.py` section as part of the group, so splitting
+it is the half-deleted state RULE 1 exists to forbid. (c) Carry the knobs into F110's configuration
+first — rejected because F260's Design rules "never rebuild" for exactly this case, and F110 owns
+routing configuration on its own schedule rather than on this deletion's.
+
+CONSEQUENCE, stated plainly. The cockpit loses its routing panel and no surviving section replaces
+it; a reader of the dashboard has no routing view until F110 provides one. That loss is registered
+as R-0848 rather than mitigated, and DECISION F260 D3 will name it among the ideas deleted rather
+than inherited. Nothing on disk becomes inconsistent under the reversal above, because the section
+and its module are recoverable from git and no later commit depends on their absence.
