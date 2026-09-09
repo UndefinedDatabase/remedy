@@ -28,12 +28,6 @@ def _read_doc(name: str) -> str:
 
 
 class TestOperatorCommandsExist:
-    def test_worker_facade_in_catalog(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = {c.command_id for c in CATALOG}
-        for cmd_id in ("worker.doctor", "worker.add", "worker.disable"):
-            assert cmd_id in ids, f"{cmd_id} missing from catalog"
-
     def test_mission_facade_in_catalog(self):
         from apps.cli.command_catalog import CATALOG
         ids = {c.command_id for c in CATALOG}
@@ -44,11 +38,6 @@ class TestOperatorCommandsExist:
         from apps.cli.command_catalog import get_command
         cmd = get_command("doctor.core")
         assert cmd is not None
-        assert cmd.action_class == "read_only"
-
-    def test_worker_doctor_is_read_only(self):
-        from apps.cli.command_catalog import get_command
-        cmd = get_command("worker.doctor")
         assert cmd.action_class == "read_only"
 
     def test_mission_report_is_read_only(self):
@@ -64,8 +53,7 @@ class TestOperatorCommandsExist:
     def test_all_operator_commands_have_handlers(self):
         from apps.cli.commands import collect_all_handlers
         handlers = collect_all_handlers()
-        for cmd_id in ("worker.doctor", "worker.add", "worker.disable",
-                       "mission.run", "mission.report", "doctor.core"):
+        for cmd_id in ("mission.run", "mission.report", "doctor.core"):
             assert cmd_id in handlers, f"{cmd_id} missing from handlers"
 
 

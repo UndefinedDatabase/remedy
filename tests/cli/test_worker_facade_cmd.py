@@ -4,39 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
-from unittest.mock import patch
 
 import pytest
-
-# ---------------------------------------------------------------------------
-# Alias registry
-# ---------------------------------------------------------------------------
-
-
-class TestWorkerAliasRegistry:
-    def test_known_aliases(self):
-        from apps.cli.commands.worker_facade_cmd import _WORKER_ALIASES
-        assert "claude" in _WORKER_ALIASES
-        assert "claude-code" in _WORKER_ALIASES
-        assert "fixture" in _WORKER_ALIASES
-        assert "generic" in _WORKER_ALIASES
-
-    def test_claude_alias_fields(self):
-        from apps.cli.commands.worker_facade_cmd import _WORKER_ALIASES
-        c = _WORKER_ALIASES["claude"]
-        assert c["adapter_id"] == "claude-code-v0"
-        assert c["kind"] == "claude_code"
-
-    def test_resolve_case_insensitive(self):
-        from apps.cli.commands.worker_facade_cmd import _resolve_alias
-        assert _resolve_alias("Claude") is not None
-        assert _resolve_alias("CLAUDE") is not None
-        assert _resolve_alias(" claude ") is not None
-
-    def test_resolve_unknown_returns_none(self):
-        from apps.cli.commands.worker_facade_cmd import _resolve_alias
-        assert _resolve_alias("nonexistent") is None
-
 
 # ---------------------------------------------------------------------------
 # Handler registry
@@ -46,8 +15,7 @@ class TestWorkerAliasRegistry:
 class TestHandlerRegistry:
     def test_all_handlers_present(self):
         from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
-        expected = {"worker.doctor", "worker.add", "worker.disable",
-                    "mission.run", "doctor.core"}
+        expected = {"mission.run", "doctor.core"}
         assert set(COMMAND_HANDLERS.keys()) == expected
 
     def test_all_handlers_callable(self):
@@ -69,8 +37,7 @@ class TestCatalogIntegration:
     def test_worker_facade_commands_in_catalog(self):
         from apps.cli.command_catalog import CATALOG
         ids = {c.command_id for c in CATALOG}
-        for cmd_id in ("worker.doctor", "worker.add", "worker.disable",
-                       "mission.run", "mission.report"):
+        for cmd_id in ("mission.run", "mission.report"):
             assert cmd_id in ids, f"{cmd_id} missing from catalog"
 
     def test_mission_commands_in_catalog(self):
@@ -89,7 +56,7 @@ class TestCatalogIntegration:
         from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
         facade_cmds = [c for c in CATALOG
                        if c.command_id in COMMAND_HANDLERS]
-        assert len(facade_cmds) == 5
+        assert len(facade_cmds) == len(COMMAND_HANDLERS)
         for cmd in facade_cmds:
             assert cmd.command_id in COMMAND_HANDLERS
 
@@ -112,136 +79,8 @@ class TestContractActions:
             assert val in _DEFAULT_ALLOWED_ACTIONS, f"{name} not in defaults"
 
 
-# ---------------------------------------------------------------------------
-# worker doctor
-# ---------------------------------------------------------------------------
-
-
 def _ns(**kwargs) -> argparse.Namespace:
     return argparse.Namespace(**kwargs)
-
-
-_ADAPTER_PATCH = "packages.orchestration.main_builder_adapter.get_builder_adapter_spec"
-_SAVE_ADAPTER = "packages.orchestration.main_builder_adapter.save_builder_adapter_spec"
-
-
-class TestWorkerDoctor:
-    @patch(_ADAPTER_PATCH)
-    @patch("shutil.which", return_value="/usr/bin/claude")
-    def test_doctor_all_ready(self, mock_which, mock_adapter, capsys):
-        mock_adapter.return_value = {"enabled": True, "mode": "operator_launched",
-                                     "adapter_id": "claude-code-v0"}
-        from apps.cli.commands.worker_facade_cmd import _cmd_worker_doctor
-        _cmd_worker_doctor(_ns(worker="claude", json=True))
-        out = json.loads(capsys.readouterr().out)
-        assert out["ready"] is True
-        assert out["blockers"] == []
-
-    @patch(_ADAPTER_PATCH)
-    @patch("shutil.which", return_value=None)
-    def test_doctor_binary_missing(self, mock_which, mock_adapter, capsys):
-        mock_adapter.return_value = {"enabled": True, "mode": "operator_launched",
-                                     "adapter_id": "claude-code-v0"}
-        from apps.cli.commands.worker_facade_cmd import _cmd_worker_doctor
-        _cmd_worker_doctor(_ns(worker="claude", json=True))
-        out = json.loads(capsys.readouterr().out)
-        assert out["ready"] is False
-        assert any("binary" in b.lower() for b in out["blockers"])
-
-    @patch(_ADAPTER_PATCH)
-    @patch("shutil.which", return_value="/usr/bin/claude")
-    def test_doctor_adapter_disabled(self, mock_which, mock_adapter, capsys):
-        mock_adapter.return_value = {"enabled": False, "mode": "disabled",
-                                     "adapter_id": "claude-code-v0"}
-        from apps.cli.commands.worker_facade_cmd import _cmd_worker_doctor
-        _cmd_worker_doctor(_ns(worker="claude", json=True))
-        out = json.loads(capsys.readouterr().out)
-        assert out["ready"] is False
-        assert any("adapter" in b.lower() for b in out["blockers"])
-        assert "next_recommended_command" in out
-
-    def test_doctor_unknown_worker(self):
-        from apps.cli.commands.worker_facade_cmd import _cmd_worker_doctor
-        with pytest.raises(SystemExit):
-            _cmd_worker_doctor(_ns(worker="nonexistent", json=True))
-
-    @patch(_ADAPTER_PATCH)
-    @patch("shutil.which", return_value="/usr/bin/claude")
-    def test_doctor_text_output(self, mock_which, mock_adapter, capsys):
-        mock_adapter.return_value = {"enabled": True, "mode": "operator_launched",
-                                     "adapter_id": "claude-code-v0"}
-        from apps.cli.commands.worker_facade_cmd import _cmd_worker_doctor
-        _cmd_worker_doctor(_ns(worker="claude", json=False))
-        out = capsys.readouterr().out
-        assert "Claude Code" in out
-        assert "ready: True" in out
-
-
-# ---------------------------------------------------------------------------
-# worker add
-# ---------------------------------------------------------------------------
-
-
-class TestWorkerAdd:
-    @patch(_SAVE_ADAPTER)
-    @patch(_ADAPTER_PATCH)
-    def test_add_enables_adapter(self, mock_get_adapter, mock_save, capsys):
-        mock_get_adapter.return_value = {"enabled": False, "mode": "disabled",
-                                         "adapter_id": "claude-code-v0",
-                                         "kind": "claude_code"}
-        mock_save.return_value = True
-
-        from apps.cli.commands.worker_facade_cmd import _cmd_worker_add
-        _cmd_worker_add(_ns(worker="claude", json=True))
-        out = json.loads(capsys.readouterr().out)
-        assert out["ready"] is True
-        assert out["adapter_enabled"] is True
-        assert "quickstart" in out
-        assert len(out["quickstart"]) > 0
-        assert "advanced" in out
-
-    @patch(_SAVE_ADAPTER)
-    @patch(_ADAPTER_PATCH)
-    def test_add_already_enabled(self, mock_get_adapter, mock_save, capsys):
-        mock_get_adapter.return_value = {"enabled": True, "mode": "operator_launched",
-                                         "adapter_id": "claude-code-v0",
-                                         "kind": "claude_code"}
-
-        from apps.cli.commands.worker_facade_cmd import _cmd_worker_add
-        _cmd_worker_add(_ns(worker="claude", json=True))
-        out = json.loads(capsys.readouterr().out)
-        assert out["ready"] is True
-        mock_save.assert_not_called()
-
-    def test_add_unknown_worker(self):
-        from apps.cli.commands.worker_facade_cmd import _cmd_worker_add
-        with pytest.raises(SystemExit):
-            _cmd_worker_add(_ns(worker="nope", json=True))
-
-
-# ---------------------------------------------------------------------------
-# worker disable
-# ---------------------------------------------------------------------------
-
-
-class TestWorkerDisable:
-    @patch(_SAVE_ADAPTER)
-    @patch(_ADAPTER_PATCH)
-    def test_disable_adapter(self, mock_get_adapter, mock_save, capsys):
-        mock_get_adapter.return_value = {"enabled": True, "mode": "operator_launched",
-                                         "adapter_id": "claude-code-v0",
-                                         "kind": "claude_code"}
-        mock_save.return_value = True
-
-        from apps.cli.commands.worker_facade_cmd import _cmd_worker_disable
-        _cmd_worker_disable(_ns(worker="claude", json=True))
-        out = json.loads(capsys.readouterr().out)
-        assert out["adapter_disabled"] is True
-
-    def test_disable_unknown_worker(self):
-        from apps.cli.commands.worker_facade_cmd import _cmd_worker_disable
-        with pytest.raises(SystemExit):
-            _cmd_worker_disable(_ns(worker="nope", json=True))
 
 
 # ---------------------------------------------------------------------------
@@ -742,8 +581,7 @@ class TestCollectHandlers:
     def test_facade_in_collected(self):
         from apps.cli.commands import collect_all_handlers
         handlers = collect_all_handlers()
-        for key in ("worker.doctor", "worker.add", "worker.disable",
-                    "mission.run", "mission.report", "doctor.core"):
+        for key in ("mission.run", "mission.report", "doctor.core"):
             assert key in handlers, f"{key} missing from collect_all_handlers"
 
 

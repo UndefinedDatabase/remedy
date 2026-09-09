@@ -47,7 +47,6 @@ CLUSTER_MODULES = (
     "packages.orchestration.worker_registry",
     "packages.orchestration.overnight_executor",
     "packages.orchestration.overnight_readiness",
-    "packages.orchestration.main_builder_adapter",
 )
 
 # The handlers of cluster COMMANDS. They die with the cluster, so their imports
@@ -58,7 +57,6 @@ CLUSTER_MODULES = (
 # their own deletion-bound handler files for exactly that reason.
 CLUSTER_COMMAND_HANDLERS = (
     "apps/cli/commands/dogfood_cmd.py",
-    "apps/cli/commands/main_builder_adapter_cmd.py",
     "apps/cli/commands/overnight_cmd.py",
     "apps/cli/commands/overnight_mission_cmd.py",
     "apps/cli/commands/progress_cmd.py",

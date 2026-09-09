@@ -87,7 +87,6 @@ Specifications and design documents for the built system.
 | [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone |
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
 | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |
-| [main-builder-adapter-v0-token-controlled-session-rail.md](system/main-builder-adapter-v0-token-controlled-session-rail.md) | Token-controlled session rail for main builder |
 | [mission-run-loop-morning-report-v0.md](system/mission-run-loop-morning-report-v0.md) | Mission run loop + morning report *(overnight superseded)* |
 | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | Built-in model alias table, the shipped dead-model list, and the `remedy doctor core` warning |
 | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | Operator cockpit UI spec |
@@ -138,7 +137,6 @@ User-facing guides, quickstarts, and usage documentation.
 | [dogfood-run-user-guide.md](guides/dogfood-run-user-guide.md) | Running dogfood jobs *(overnight superseded)* |
 | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
 | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |
-| [main-builder-adapter-user-guide-v0.md](guides/main-builder-adapter-user-guide-v0.md) | Main builder adapter usage |
 | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |
 | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
 | [resume.md](guides/resume.md) | Resuming interrupted jobs |

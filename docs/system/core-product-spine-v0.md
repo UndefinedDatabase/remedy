@@ -32,8 +32,7 @@ operator approval.
 3. Read the report    →  remedy job report <job_id> --json
 4. Open the UI        →  remedy ui <job_id>
 5. Review results     →  remedy review run <job_id> --json
-6. Check worker       →  remedy worker doctor <name> --json
-7. Approve if needed  →  remedy patch approve <job_id> <patch_intent_id>
+6. Approve if needed  →  remedy patch approve <job_id> <patch_intent_id>
 ```
 
 Each step is explicit. No step runs automatically from the previous one.

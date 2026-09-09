@@ -62,11 +62,9 @@ Product questions must be answered from structured Remedy state:
 | Question | Structured Source | Relative Path |
 |----------|------------------|--------|
 | Mission status | Mission records | `mission_state.py` |
-| Builder status | Builder session records | `main_builder_adapter.py` |
 | Test status | Real test execution records | `real_test_execution.py` |
 | Repair proposal status | Self-repair proposal records | `self_repair_proposals.py` |
 | Proof status | Proof chain records | `file_provenance.py` |
 | Config status | Config diagnostics | `config_diagnostics.py` |
-| Package truth | BuilderRequestPackage on disk | `main_builder_adapter.py` |
 
 These sources are structured JSON, persisted to `data_dir`, and testable without `.agent/`.

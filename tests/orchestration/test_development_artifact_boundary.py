@@ -12,7 +12,6 @@ from pathlib import Path
 
 # Modules that must NEVER reference live_review.md or REMEDY_REVIEW_FILE.
 _PRODUCT_MODULES = (
-    "main_builder_adapter",
     "worker_facade_cmd",
 )
 
@@ -76,12 +75,6 @@ def _without_docstrings(source: str) -> str:
 
 class TestProductModulesNoLiveReview:
     """Product modules must not depend on .agent/live_review.md."""
-
-    def test_main_builder_adapter(self):
-        from packages.orchestration import main_builder_adapter as mod
-        source = inspect.getsource(mod)
-        assert not _LIVE_REVIEW_PATTERN.search(source), \
-            "main_builder_adapter.py must not reference live_review.md"
 
     def test_worker_facade_cmd(self):
         from apps.cli.commands import worker_facade_cmd as mod
@@ -157,7 +150,10 @@ class TestFunctionalNoAgent:
         """Doctor core import checks work without .agent/."""
         import importlib
         for mod_name in (
-            "packages.orchestration.main_builder_adapter",
+            "apps.cli.commands.worker_facade_cmd",
+            "apps.cli.command_catalog",
+            "packages.orchestration.run_contract",
+            "packages.orchestration.config",
         ):
             mod = importlib.import_module(mod_name)
             assert mod is not None

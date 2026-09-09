@@ -147,7 +147,6 @@ GROUPS: dict[str, GroupDef] = {
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
     "contract": GroupDef("contract", "Contract", "Run contract inspection.", user_facing=False),
     "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False),
-    "builder": GroupDef("builder", "Builder", "Builder session rail.", user_facing=False),
 }
 
 
@@ -961,116 +960,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
 
     # ── repair (Token-Aware Repair Loop v1/v2) ───────────────────────────
 
-    # ── builder (Main Builder Adapter v0, Step 1981) ───────────────────
-    CommandEntry(
-        command_id="builder.adapter-list",
-        group_id="builder",
-        subcommand="adapter-list",
-        description="List all configured builder adapters (read-only; no secrets).",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="builder.adapter-show",
-        group_id="builder",
-        subcommand="adapter-show",
-        description="Show details of a builder adapter (read-only; no secrets).",
-        action_class="read_only",
-        args=(ArgDef("adapter_id", "Adapter ID"), _JSON_OPT),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="builder.adapter-enable",
-        group_id="builder",
-        subcommand="adapter-enable",
-        description="Enable a builder adapter with a mode (metadata-only; no secrets stored).",
-        action_class="write_metadata",
-        args=(
-            ArgDef("adapter_id", "Adapter ID"),
-            ArgDef("--mode", "Adapter mode (package_only|operator_launched|controlled_session|fixture_only)", required=True, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="builder.package-create",
-        group_id="builder",
-        subcommand="package-create",
-        description="Create a token-aware builder request package (metadata-only; no execution).",
-        action_class="write_metadata",
-        args=(
-            ArgDef("job_id", "Job UUID"),
-            ArgDef("--repair-id", "Repair work item ID", required=False, is_option=True),
-            ArgDef("--adapter-id", "Adapter ID", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="builder.session-create",
-        group_id="builder",
-        subcommand="session-create",
-        description="Create a builder session record (metadata-only; no execution).",
-        action_class="write_metadata",
-        args=(
-            ArgDef("package_id", "Request package ID"),
-            ArgDef("--adapter-id", "Adapter ID", required=True, is_option=True),
-            ArgDef("--job-id", "Job UUID", required=False, is_option=True),
-            ArgDef("--repair-id", "Repair work item ID", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="builder.session-show",
-        group_id="builder",
-        subcommand="session-show",
-        description="Show a builder session record (read-only; no raw transcript/candidate).",
-        action_class="read_only",
-        args=(ArgDef("session_id", "Session ID"), _JSON_OPT),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="builder.session-list",
-        group_id="builder",
-        subcommand="session-list",
-        description="List builder sessions for a job (read-only).",
-        action_class="read_only",
-        args=(ArgDef("job_id", "Job UUID"), _JSON_OPT),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="builder.session-record-output",
-        group_id="builder",
-        subcommand="session-record-output",
-        description="Record builder output refs (metadata-only; no raw output).",
-        action_class="write_metadata",
-        args=(
-            ArgDef("session_id", "Session ID"),
-            ArgDef("--artifact-ref", "Candidate artifact reference", required=True, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="builder.session-intake",
-        group_id="builder",
-        subcommand="session-intake",
-        description="Route builder candidate through sandbox intake (write_metadata; no auto-apply).",
-        action_class="write_metadata",
-        args=(ArgDef("session_id", "Session ID"), _JSON_OPT),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="builder.integrity",
-        group_id="builder",
-        subcommand="integrity",
-        description="Check builder adapter invariants (read-only; safe codes).",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True,
-    ),
 
     # ── brain ────────────────────────────────────────────────────────────
     CommandEntry(
@@ -1339,36 +1228,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("worker.registry-list", "route-policy.show"),
     ),
-    CommandEntry(
-        command_id="worker.doctor",
-        group_id="worker",
-        subcommand="doctor",
-        description="Check worker readiness — adapter, template, binary (read-only; no execution; no auth check).",
-        action_class="read_only",
-        args=(ArgDef("worker", "Worker name (e.g. claude)"), _JSON_OPT),
-        supports_json=True,
-        related=("worker.add",),
-    ),
-    CommandEntry(
-        command_id="worker.add",
-        group_id="worker",
-        subcommand="add",
-        description="Set up a worker for first-time use — enable adapter + template (metadata-only; no execution; approval still required per session).",
-        action_class="write_metadata",
-        args=(ArgDef("worker", "Worker name (e.g. claude)"), _JSON_OPT),
-        supports_json=True,
-        related=("worker.doctor", "worker.disable"),
-    ),
-    CommandEntry(
-        command_id="worker.disable",
-        group_id="worker",
-        subcommand="disable",
-        description="Disable a worker — disable adapter + template (no deletion of evidence/history).",
-        action_class="write_metadata",
-        args=(ArgDef("worker", "Worker name (e.g. claude)"), _JSON_OPT),
-        supports_json=True,
-        related=("worker.add", "worker.doctor"),
-    ),
 
     # ── mission (facade over dogfood run-loop + morning report) ──────────
     CommandEntry(
@@ -1598,7 +1457,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
-        related=("worker.doctor", "mission.report"),
+        related=("mission.report",),
     ),
 
     # ── route-policy (Worker Registry user-selectable routing) ─────────────

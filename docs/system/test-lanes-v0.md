@@ -13,7 +13,6 @@ healthy without risk of environment-specific hangs.
 |-------|------|----------------|
 | `test_worker_facade_cmd.py` | unit | Worker add/doctor/disable, alias registry, catalog wiring |
 | `test_dogfood_run.py` | unit | Mission run loop, morning report, 10 stop conditions, evidence |
-| `test_main_builder_adapter.py` | unit | Adapter specs, enable/disable, mode management |
 | `test_self_repair_proposal.py` | unit | Proposal lifecycle: create/approve/deny/edit/worker-prompt |
 | `test_development_artifact_boundary.py` | guard | Dev artifact vs product truth boundary enforcement |
 | `test_product_spine.py` | unit | Operator command consistency, stale doc scanner, lane self-test |
