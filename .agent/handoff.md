@@ -1,680 +1,311 @@
-# Handback — F275 ROUND 10 — round 9's PASS is booked, R-0845 and R-0846 are registered, and the FIFTH module group — the first that is a CYCLE — is gone with the tree green
-
-This file supersedes the F275 round 9 handback. It is written by the delegated worker of F275
-round 10 on the reviewer's authored text; the reviewer never edits a work-tree file. It carries
-NO verdict of its own — verdicts live in `.agent/live_review.md`, and this round's C2 booked the
-reviewer's authored F275 round 9 PASS there. C2 also REGISTERS R-0845 and R-0846, so the open set
-moves 69 → 71 by distinct id (measured at G3(f): two registrations, no resolution). Block
-constraint 2 forbids the worker writing any `Done:` paragraph, verdict, finding or registration
-of its own, and none was written. The next free id after this round is R-0847.
-
-THE FIFTH `git rm` OF F275, AND THE FIRST WHOSE ATOMIC UNIT IS A STRONGLY CONNECTED COMPONENT
-RATHER THAN A MODULE. Six modules that import each other —
-`packages/orchestration/dogfood_run.py` (1725 lines), `feature_planner.py` (1045),
-`overnight_mission.py` (918), `progress_ledger.py` (2284), `repair_loop_v2.py` (1167) and
-`self_repair_proposal.py` (813) — go in ONE commit under DECISION F275 D2 and operator
-amendment amend0908-f275-finish RULE 3, together with their five `apps/cli/commands/*_cmd.py`
-handler files, 38 `CommandEntry` blocks, the three `GroupDef`s of `dogfood`, `progress` and
-`self-repair`, eleven test files whose subject is a dying module, five doc pages whose subject is
-a dying module, five index rows, eleven allowlist lines, one map edge, six `CLUSTER_MODULES`
-lines, five `pyproject.toml` lines, twelve test definitions across ten surviving files and the
-regenerated deletion-order file — ONE commit, `e9944c64`, **31 insertions against 14365 deletions
-over 55 paths**, exactly the figures the block states.
-
-THE TWO SURVIVORS THAT LOSE BEHAVIOUR, AND WHY BOTH ARE REGISTERED RATHER THAN STUBBED.
-`apps/cli/commands/worker_facade_cmd.py` SURVIVES and loses the dogfood half of
-`remedy mission run`: `_cmd_mission_run` carried TWO modes on one name, resolved between by
-`_names_a_mission`, and the second mode was a real
-`from packages.orchestration.dogfood_run import run_mission_loop` in the function body — a live
-production code path, not the string-keyed `importlib` probe an inherited map recorded. The
-resolver and the second mode both die; the command now resolves exactly one object.
-`packages/orchestration/main_builder_adapter.py` SURVIVES and loses its
-`remedy repair evaluate` next-action, which becomes the empty string with a comment saying where
-a reader would search for it that no surviving command evaluates a repair WORK ITEM. Both losses
-are user-observable, so operator RULE 4 obliges a finding naming the inheriting feature, and
-R-0845 and R-0846 in C2 are those findings. No stub, shim, alias or compatibility reader was
-written anywhere: AGENTS.md Scope Control forbids them by name.
+# Handback — F275 round 11 — the SIXTH module group: the four-module `builder_routing` component
 
 ## Session
 
-`SESSION 6 of feature F275 · round 10 · rounds so far 10`
+SESSION 7 of feature F275 · round 11 · rounds so far 11
 
-CONTEXT SELF-ASSESSMENT (operator amendment amend0905-throughput): this worker's context is
-comfortable. The round cost one block read, twelve ordered edit steps over 55 paths and eight
-gates; the only long wall-clock items were the 23m32s serial full suite and two base-side
-collections. Nothing was re-read twice and no gate needed a second attempt. F275's soft limit is
-20 sessions and 60 rounds by operator amendment amend0908-f275-finish RULE 1, and the feature
-stands at session 6, round 10 — well inside it, so no scope report is owed.
+Against operator amendment amend0908-f275-finish's soft limit of 20 sessions and 60 rounds,
+which is F275's own and travels to no other feature. The limit is not reached: 7 of 20 sessions
+and 11 of 60 rounds. No scope report is owed.
+
+Context self-assessment (amend0905-throughput): context was comfortable throughout — the round
+spent most of its budget on one 23-minute serial suite run rather than on reading, and the worker
+ends with ample headroom.
 
 ## Range
 
-Review of `982d016b`..`HEAD`.
+Review of `cb89bbc3`..`eed65ba1`.
 
 ## Commits
 
-### d6c7694a  F275 R10 C0a: save the round 10 block verbatim under .agent/authored.
+### fadfb7c6 F275 R11 C0a: save the round 11 block verbatim to .agent/authored.
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r10.md` | +444/-0 | the block saved verbatim by `shutil.copyfile` (A) |
+| .agent/authored/f275-r11.md | 396/0 | the work order copied by `shutil.copyfile`, never retyped |
 
-### bf9ffe68  F275 R10 C0b: mirror the round 10 block into last_block.
+### f5e95902 F275 R11 C0b: mirror the round 11 block to .agent/last_block.md.
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +417/-373 | the SAME bytes mirrored by `shutil.copyfile` |
+| .agent/last_block.md | 375/423 | the same bytes mirrored; the churn is round 10's block leaving |
 
-### ccf684bd  F275 R10 C1: the round 10 plan.
+### 390f908d F275 R11 C1: advance the plan to round 11.
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +28/-24 | replaced WHOLE by the PLAN10 slice, 2948 bytes, 49 lines |
+| .agent/plan.md | 28/28 | replaced WHOLE by the PLAN11 slice, §3 item 23 |
 
-### eac1082e  F275 R10 C2: book the round 9 PASS and register R-0845 and R-0846.
+### 8ec836ca F275 R11 C2: book the round 10 PASS, register R-0847 to R-0849, and record seven prose slips.
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +6/-0 | LEDGER10 appended: `Gate: F275 R9`, `- R-0845`, `- R-0846` |
-| `.agent/prose_slips.md` | +6/-0 | SLIPS10 appended: three dated F275 R10 lines |
+| .agent/live_review.md | 10/0 | LEDGER11 appended: the R10 verdict, the R11 Note on R-0831, R-0847/48/49 |
+| .agent/prose_slips.md | 14/0 | SLIPS11 appended: seven dated lines |
 
-### e9944c64  F275 R10 C3: delete the six-module prototype component and its call sites.
+### 75a1fa1f F275 R11 C3: release DECISION F274 D4's hold on the builder-routing cockpit section as DECISION F275 D5.
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/f275_deletion_order.md` | +0/-1 | REGENERATED from `measured_order()`; eleven components → ten |
-| `apps/cli/command_catalog.py` | +0/-489 | the 38 `CommandEntry(` blocks and 3 `GroupDef` lines |
-| `apps/cli/commands/__init__.py` | +1/-6 | 5 handler imports and 5 names out of the `for mod in (…)` tuple |
-| `apps/cli/commands/dogfood_cmd.py` | +0/-281 | handler, deleted whole (D) |
-| `apps/cli/commands/overnight_mission_cmd.py` | +0/-156 | handler, deleted whole (D) |
-| `apps/cli/commands/progress_cmd.py` | +0/-57 | handler, deleted whole (D) |
-| `apps/cli/commands/repair_loop_v2_cmd.py` | +0/-187 | handler, deleted whole (D) |
-| `apps/cli/commands/self_repair_cmd.py` | +0/-213 | handler, deleted whole (D) |
-| `apps/cli/commands/worker_facade_cmd.py` | +14/-61 | `_names_a_mission` gone, `_cmd_mission_run` replaced by CODE1, 2 probes gone |
-| `docs/README.md` | +0/-5 | the five index rows of the five deleted pages |
-| `docs/guides/overnight-mission-user-guide-v0.md` | +0/-70 | doc page, deleted whole (D) |
-| `docs/guides/token-aware-repair-loop-user-guide-v1.md` | +0/-83 | doc page, deleted whole (D) |
-| `docs/system/development-artifact-boundary-v0.md` | +1/-5 | 2 table rows, 1 bullet, 1 row; `Mission status` re-sourced |
-| `docs/system/open-ended-dogfood-run-orchestrator-replay-analyzer-v0.md` | +0/-173 | doc page, deleted whole (D) |
-| `docs/system/overnight-mission-contract-review-repair-spine-v0.md` | +0/-114 | doc page, deleted whole (D) |
-| `docs/system/real-test-execution-snapshot-rollback-proof-v1.md` | +0/-6 | the whole `## Mission contract gate relationship` section |
-| `docs/system/run-contract-v1.md` | +0/-2 | the `progress_ledger` and `feature_planner` bullets |
-| `docs/system/snapshot-rollback-v1.md` | +0/-2 | the `progress_ledger.py` and `feature_planner.py` table rows |
-| `docs/system/token-aware-repair-loop-v1-v2.md` | +0/-105 | doc page, deleted whole (D) |
-| `packages/orchestration/dogfood_run.py` | +0/-1725 | module, deleted whole (D) |
-| `packages/orchestration/feature_planner.py` | +0/-1045 | module, deleted whole (D) |
-| `packages/orchestration/main_builder_adapter.py` | +5/-2 | CODE2-FROM → CODE2-TO, the `repair evaluate` next-action |
-| `packages/orchestration/overnight_mission.py` | +0/-918 | module, deleted whole (D) |
-| `packages/orchestration/progress_ledger.py` | +0/-2284 | module, deleted whole (D) |
-| `packages/orchestration/repair_loop_v2.py` | +0/-1167 | module, deleted whole (D) |
-| `packages/orchestration/self_repair_proposal.py` | +0/-813 | module, deleted whole (D) |
-| `pyproject.toml` | +0/-5 | 1 `per-file-ignores` entry and 4 mypy `module = [` entries |
-| `scripts/remedy_test_fast.sh` | +0/-2 | the two deleted test files' lanes |
-| `tests/cli/test_cli_ux.py` | +3/-3 | 2 group names out of two rosters (see deviation 1) |
-| `tests/cli/test_overnight_mission_cli.py` | +0/-89 | test file, deleted whole (D) |
-| `tests/cli/test_progress_feature_runtime.py` | +0/-73 | test file, deleted whole (D) |
-| `tests/cli/test_repair_loop_v2_cli.py` | +0/-94 | test file, deleted whole (D) |
-| `tests/cli/test_self_repair_cmd.py` | +0/-203 | test file, deleted whole (D) |
-| `tests/cli/test_worker_facade_cmd.py` | +1/-27 | 1 test, 1 assertion, `MagicMock`, `_MISSION_LOOP` |
-| `tests/orchestration/cluster_deletion_map.txt` | +0/-1 | the one `dogfood_run <- worker_facade_cmd.py` edge |
-| `tests/orchestration/import_reachability_allowlist.txt` | +0/-11 | 6 modules + 5 handlers |
-| `tests/orchestration/test_builder_routing.py` | +0/-94 | class `TestEmittedCommandsRunnable` |
-| `tests/orchestration/test_cluster_deletion_map.py` | +1/-7 | 6 `CLUSTER_MODULES` lines + the docstring example |
-| `tests/orchestration/test_development_artifact_boundary.py` | +0/-27 | 2 methods + 3 allowlist string lines |
-| `tests/orchestration/test_do_continue.py` | +0/-43 | class `TestContinuationIntegrations` |
-| `tests/orchestration/test_dogfood_run.py` | +0/-1194 | test file, deleted whole (D) |
-| `tests/orchestration/test_feature_planner.py` | +0/-264 | test file, deleted whole (D) |
-| `tests/orchestration/test_local_model_advisor.py` | +0/-18 | method `TestAdvisorImpact.test_advisor_dict_redacted_for_downstream` |
-| `tests/orchestration/test_main_builder_adapter.py` | +5/-2 | CODE3-FROM → CODE3-TO, the assertion R-0846 describes |
-| `tests/orchestration/test_model_route_tournament_integration.py` | +0/-44 | classes `TestProgressLedger`, `TestFeatureSuggestions` |
-| `tests/orchestration/test_overnight_mission.py` | +0/-285 | test file, deleted whole (D) |
-| `tests/orchestration/test_overnight_mission_integration.py` | +0/-28 | class `TestProgressLedger` |
-| `tests/orchestration/test_progress_ledger.py` | +0/-388 | test file, deleted whole (D) |
-| `tests/orchestration/test_progress_redaction.py` | +0/-105 | test file, deleted whole (D) |
-| `tests/orchestration/test_real_test_execution.py` | +0/-40 | class `TestMissionGates` |
-| `tests/orchestration/test_repair_loop_v2.py` | +0/-443 | test file, deleted whole (D) |
-| `tests/orchestration/test_self_repair_proposal.py` | +0/-800 | test file, deleted whole (D) |
-| `tests/orchestration/test_token_economy_integration.py` | +0/-59 | classes `TestProgressLedger`, `TestFeatureSuggestions` |
-| `tests/orchestration/test_worker_route_integration.py` | +0/-45 | classes `TestProgressLedgerItems`, `TestFeatureSuggestions` |
-| `tests/test_test_categories.py` | +0/-1 | the one `"test_dogfood_run.py",` line |
+| .agent/decisions.md | 49/0 | DECISION11 appended; it lands BEFORE the commit that cuts the section |
 
-### C4 — the commit that writes this file
-A handoff cannot table the commit that writes it (R-0149 pattern). C4 changes exactly one path,
-`.agent/handoff.md`, rewritten whole; it is the only commit of this round outside the block's
-C0a–C3 range and carries no other file.
+### eed65ba1 F275 R11 C4: delete the four-module builder_routing component and its call sites.
+
+ONE commit, 49 paths, 21 insertions against 6393 deletions.
+
+| Path | +/- | Reason |
+|---|---|---|
+| packages/orchestration/builder_routing.py | 0/1085 | deleted whole — component module 1 |
+| packages/orchestration/candidate_quality.py | 0/796 | deleted whole — component module 2 |
+| packages/orchestration/local_candidate_generator.py | 0/778 | deleted whole — component module 3 |
+| packages/orchestration/model_route_tournament.py | 0/729 | deleted whole — component module 4 |
+| apps/cli/commands/builder_routing_cmd.py | 0/113 | deleted whole — handler of a dying group |
+| apps/cli/commands/candidate_quality_cmd.py | 0/146 | deleted whole — handler of a dying group |
+| apps/cli/commands/local_candidate_cmd.py | 0/87 | deleted whole — handler of a dying group |
+| apps/cli/commands/tournament_cmd.py | 0/101 | deleted whole — handler of a dying group |
+| tests/orchestration/test_builder_routing.py | 0/318 | deleted whole — test of a deleted module |
+| tests/orchestration/test_candidate_quality.py | 0/285 | deleted whole — test of a deleted module |
+| tests/orchestration/test_local_candidate_generator.py | 0/300 | deleted whole — test of a deleted module |
+| tests/orchestration/test_model_route_tournament.py | 0/253 | deleted whole — test of a deleted module |
+| tests/orchestration/test_model_route_tournament_integration.py | 0/43 | deleted whole — its last test class dies with the component |
+| tests/cli/test_builder_routing_cli.py | 0/114 | deleted whole — CLI test of a deleted group |
+| tests/cli/test_candidate_quality_cli.py | 0/73 | deleted whole — CLI test of a deleted group |
+| tests/cli/test_local_candidate_cli.py | 0/115 | deleted whole — CLI test of a deleted group |
+| tests/cli/test_tournament_cli.py | 0/98 | deleted whole — CLI test of a deleted group |
+| docs/system/expensive-builder-routing-v0.md | 0/122 | deleted whole — page of a deleted module |
+| docs/system/local-candidate-generator-v0.md | 0/106 | deleted whole — page of a deleted module |
+| docs/system/candidate-quality-evaluation-v1.md | 0/97 | deleted whole — page of a deleted module |
+| docs/system/model-route-tournament-harness-v0.md | 0/87 | deleted whole — page of a deleted module |
+| docs/guides/model-route-tournament-user-guide-v0.md | 0/65 | deleted whole — guide of a deleted group |
+| apps/cli/command_catalog.py | 0/206 | 14 `CommandEntry` blocks, 4 section banners, 4 `GroupDef` rows |
+| apps/cli/commands/__init__.py | 1/5 | four handler imports and four names in the `for mod in (…)` tuple |
+| apps/cli/commands/external_builder_cmd.py | 0/26 | `_cmd_external_builder_evaluate` and its `COMMAND_HANDLERS` row; the file survives with seven handlers |
+| packages/orchestration/ui_server.py | 0/28 | `_build_builder_routing_section` and its dashboard-dict row, released by DECISION F275 D5 |
+| packages/orchestration/worker_registry.py | 4/2 | the `LOCAL_CANDIDATE` next-action branch replaced by a deliberate-absence comment; R-0847 |
+| pyproject.toml | 0/2 | two mypy module entries |
+| docs/README.md | 0/9 | four quick-find rows and five index rows, keyed on the LINK TARGET |
+| docs/system/local-model-advisor-v0.md | 0/2 | see-also bullets linking deleted pages |
+| docs/system/orchestrator-brain-v0.md | 0/2 | see-also bullets linking deleted pages |
+| docs/system/repair-request-builder-v0.md | 0/2 | see-also bullets linking deleted pages |
+| docs/system/self-dogfood-execution-v0.md | 0/1 | see-also bullet linking a deleted page |
+| docs/system/development-artifact-boundary-v0.md | 0/2 | the `builder_routing.py` and `candidate_quality.py` table rows |
+| docs/system/external-builder-sandbox-v0.md | 0/2 | the `candidate-quality evaluate` line and its continuation in the flow block |
+| docs/system/external-builder-worker-contract-v0.md | 1/13 | section 5 whole; section 6 renumbered to 5 |
+| docs/system/provider-trust-verification-v1.md | 7/10 | the `## Next` section rewritten; states what survives and records the absence |
+| docs/system/worker-registry-route-policy-v0.md | 0/6 | the `### Builder Routing integration` section whole |
+| .agent/f275_deletion_order.md | 2/3 | REGENERATED from `measured_order()`; eleven components became ten at R10 and become NINE here |
+| tests/orchestration/cluster_deletion_map.txt | 0/1 | the one `builder_routing <- ui_server.py` edge |
+| tests/orchestration/import_reachability_allowlist.txt | 0/8 | four modules and four handlers |
+| tests/orchestration/test_cluster_deletion_map.py | 1/9 | four `CLUSTER_MODULES` rows, four handler paths, the docstring example re-pointed to `worker_registry` |
+| tests/orchestration/test_development_artifact_boundary.py | 0/1 | the `builder_routing.py` allowlist string |
+| tests/orchestration/test_external_builder_sandbox.py | 0/26 | `class TestQualityIntegration` whole with its banner |
+| tests/orchestration/test_token_economy_integration.py | 0/43 | `class TestRoutingIntegration` whole with its banner and two orphan banners |
+| tests/orchestration/test_worker_route_integration.py | 3/52 | the module-level import, `class TestRoutingPolicyConstraint`, the unused `worker_registry` import, three orphan banners, the docstring re-scoped |
+| tests/cli/test_cli_ux.py | 2/4 | three names out of `_INTERNAL_GROUPS`, `builder-routing` out of `test_no_internal_names` |
+| tests/cli/test_external_builder_cli.py | 0/5 | the `evaluate` leg of the submit test and its now-unused `sid` binding |
+| tests/ui_server/test_dashboard_cockpit_truth.py | 0/12 | `test_builder_routing_section_present`, the test DECISION F274 D4's hold protected |
+
+### C5 — this handback (self-reference)
+
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewritten whole | a handoff cannot table the commit that writes it (R-0149 pattern); C5's own numbers belong to the next round's ledger entry, per §3 items 14 and 31 |
 
 ## External actions
 
-| Action | Outcome |
+| Command | Outcome |
 |---|---|
-| `git worktree add --detach .remedy-wt/r10-redproof e9944c64` | created for G5(e); REMOVED and pruned |
-| `git worktree add --detach .remedy-wt/r10-base 982d016b` | created for G6's base-side ruff; REMOVED and pruned |
-| `git worktree add --detach .remedy-wt/r10-base2 982d016b` | created for G7's base-side id set; REMOVED and pruned |
-| `git worktree remove --force` ×3, `git worktree prune -v` | `git worktree list` names the primary checkout ALONE |
-| `git push -u origin feature/f275-one-world-completion-part-three` | issued ONCE, after C4 |
+| `gh pr list --state open --json number,headRefName,baseRefName,isDraft` | `[]` — no open PR; the Open PR Gate passes |
+| `git worktree add --detach .remedy-wt/base-r11 cb89bbc3` | created, for the base-side ruff / catalog / collect-only readings only |
+| `git worktree remove --force .remedy-wt/base-r11` + `git worktree prune` | removed; `git worktree list` names the primary checkout alone |
+| `git push -u origin feature/f275-one-world-completion-part-three` | run ONCE, after this commit |
 
-No pull request was created, none was merged, nothing was force-pushed, no history was rewritten.
-The `remedy` CLI is denied in this environment and was never invoked; no gate needs it.
+No PR created, nothing merged: the PR belongs to this feature's closure sequence.
 
 ## Verification
 
-Every gate was RUN. Exit codes are read from the process object, never through a pipe.
+Eight gates, every one RUN, every exit code read from the process object
+(`subprocess.CompletedProcess.returncode`), never through a pipe and never inferred.
 
-- **G1 TRANSPORT** — exit 0. `.agent/authored/f275-r10.md` @`d6c7694a` and `.agent/last_block.md`
-  @`bf9ffe68` are each 41781 bytes at sha256
-  `cd016eb03ec8698d0b61eee5bf1a5fb1e42d78750eef66c41ff150e605d2ca10`, equal to each other and to
-  the pair the delegation states. Per §3 item 37 this claims nothing about the bytes the reviewer
-  emitted — all three artefacts are this worker's output.
-- **G2 THE PLAN** — exit 0. `.agent/plan.md` @`ccf684bd` is 2948 bytes at sha256
-  `8e583c36e2f8f12a29f7ac446ed822d8492a3e37d092ae5f6dfea1e7eba65643`, byte-identical to the
-  PLAN10 slice, 49 lines against the AGENTS.md cap of 50.
-- **G3 THE RECORD** — exit 0, read from the committed blobs at C1 (pre) and C2 (post), never from
-  the worktree. (a) `.agent/live_review.md` 559516 → 569448, growth 9932 = 1 + 9931;
-  `.agent/prose_slips.md` 175541 → 177821, growth 2280 = 1 + 2279. (b) pre-blob a byte-exact
-  PREFIX and the slice a byte-exact SUFFIX of each post-file; joining bytes at offsets 559516 and
-  175541 both read back as `b'\n'`. (c) N COUNTED from each slice = 3 and 3; the file's last N
-  blank-line-separated units equal the slice's N paragraphs IN ORDER, per-unit sha256 printed and
-  all six equal. (d) negative controls flipped one byte IN MEMORY inside the FIRST appended
-  paragraph of each file (offsets 561540 and 175997) and were REJECTED by both reader (b) and
-  reader (c); both tracked files re-read from disk afterwards are byte-equal to the committed
-  post-blobs. (e) `^Gate: ` 31 → 32, and `^Gate: F275 R9 `, `^- R-0845 — `, `^- R-0846 — `
-  exactly 1 each. (f) THE OPEN SET BY DISTINCT ID: 73/4/**69** open before, 75/4/**71** open
-  after — registrations +2, resolutions +0.
-- **G4 THE DELETION IS COMPLETE** — exit 0. `git ls-tree -r e9944c64 --name-only` over 4606
-  tracked files prints **False for all 27** deleted paths. The whole-word sweep over the 1726
-  tracked files EXCLUDING `.agent/` and `.data/` finds **12 distinct remaining lines** (15
-  module-line pairs: `dogfood_run` 2, `feature_planner` 1, `overnight_mission` 4,
-  `progress_ledger` 5, `repair_loop_v2` 2, `self_repair_proposal` 1), every line printed in full,
-  never truncated. **Every one of the 12 is a must-not-touch item**: 11 in
-  `docs/roadmap/features/` (`T1_F034.md`, `T2_F260.md` ×5, `T2_F269.md`, `T2_F272.md`,
-  `T2_F277.md` ×3) and 1 at `docs/system/vocabulary.md:245`, which step (11) names as a survivor.
-  **Zero lines outside those areas**, so the gate's own failure condition — "a line that is NOT
-  one of those" — did not trigger. The block predicted 28 lines; see deviation 2. Zero-gated
-  symbols: `_names_a_mission` 0, `run_mission_loop` 0, `list_self_repair_proposals` 0,
-  `build_progress_ledger` 0, `build_feature_plan` 0, `_cmd_mission_run` in
-  `apps/cli/commands/dogfood_cmd.py` 0 (the file is absent from the tree);
-  `build_mission_morning_report` is **1**, not 0 — see deviation 3.
-- **G5(a) RATCHETS** — `python3 -B -m pytest tests/orchestration/test_import_reachability.py
-  tests/orchestration/test_cluster_deletion_map.py
-  tests/orchestration/test_cluster_deletion_order.py
-  tests/orchestration/test_main_builder_adapter.py -q` → **exit 0, 60 passed in 5.41s**.
-- **G5(b) DOCS AND CANARY** — `python3 -B -m pytest tests/docs/ -q` → **exit 0, 303 passed in
-  0.67s**; `python3 -B -m pytest tests/cli/test_golden_path.py -q` → **exit 0, 42 passed in
-  20.50s**.
-- **G5(c) THE SHIPPED READERS** — exit 0, through `apps.cli.command_catalog` and
-  `apps.cli.commands`, not by grep. `len(_BASE_CATALOG)` **334 → 296**,
-  `len(collect_all_handlers())` **334 → 296**, `len(GROUPS)` **59 → 56**. All **38** dying ids
-  ABSENT from both readers (printed one per line); all **10** named survivors PRESENT in both;
-  `dogfood`, `progress`, `self-repair` absent from `GROUPS` while `overnight` and `repair` are
-  present.
-- **G5(d) THE ORDER FILE** — exit 0. `.agent/f275_deletion_order.md` holds **TEN** components at
-  C3 against **eleven** at the base; new first body line
-  `packages.orchestration.builder_routing, packages.orchestration.candidate_quality,
-  packages.orchestration.local_candidate_generator, packages.orchestration.model_route_tournament`;
-  `git show --numstat e9944c64 -- .agent/f275_deletion_order.md` reads **`0	1`**. The 26-line
-  comment header was carried byte for byte (sha256 of the header text
-  `aff913e6eedb4d9c7e5ab6e76578be881ffffa3612018cf58b5a48ad508b0cc2`) and the body was rendered by
-  `", ".join(component)` over `measured_order()`; the file was never hand-edited.
-- **G5(e) THE RED-PROOF** — run in the disposable worktree `.remedy-wt/r10-redproof` at C3 and
-  NOWHERE ELSE, `__pycache__` purged before every run, `python3 -B` and
-  `PYTHONDONTWRITEBYTECODE=1` throughout, selection = the four-file command of G5(a). Each FROM
-  string was counted in its own named file first and was exactly 1; each mutation was applied
-  ALONE, reverted, and the revert re-checked by sha256 (all three matched their pre-mutation
-  digest). **THE COLOUR SEQUENCE, IN ORDER**: control **exit 0, 60 passed** → (i) `CLUSTER_MODULES`
-  regains `dogfood_run` **exit 1, 2 failed** → (ii) the allowlist regains
-  `packages.orchestration.dogfood_run` **exit 1, 1 failed** → (iii) `main_builder_adapter.py`
-  regains CODE2-FROM's second line **exit 1, 1 failed** → control **exit 0, 60 passed**. The
-  worktree's `git status --porcelain` was empty after the proof, and the worktree was removed and
-  pruned.
-- **G6 RUFF AND BASH** — `python3 -m ruff check` over exactly the **18** `.py` files that
-  `git diff --name-only 982d016b..e9944c64` names and that still exist at C3 → **`All checks
-  passed!`, exit 0**. Repo-wide `python3 -m ruff check .` reads **`Found 26 errors.`, exit 1** at
-  C3 and **`Found 26 errors.`, exit 1** at the base read in the disposable worktree
-  `.remedy-wt/r10-base` at `982d016b` — the round adds none, and 26 is the ceiling
-  `tests/orchestration/test_ci_budgets.py` holds. `bash -n scripts/remedy_test_fast.sh` →
-  **exit 0**, no output.
-- **G7 THE FULL SUITE** — `python3 -B -m pytest tests/ -q`, SERIALLY (no `-n auto`) in the PRIMARY
-  checkout, exit code read from the process object → **exit 0, 19209 passed, 23 skipped, 1
-  warning in 1412.72s (0:23:32)**. THE ARITHMETIC IS CLOSED BY THE ID SET, not by a file-level
-  count: `--collect-only tests/` is **19613** at the base and **19232** at C3, a fall of **381**,
-  with **0 ids gained**. Attributed: **325** in the eleven deleted test files, **32** across the
-  ten files of step (8) (4+5+4+4+3+2+6+2+1+1, printed per file), **24** in
-  `tests/test_grouped_cli.py`, which the deletion never names and which parametrises over the
-  catalog, and **0 anywhere else**. 325 + 32 + 24 = 381 exactly. 19232 collected = 19209 passed +
-  23 skipped. The base-side COUNT was taken before C3 while the code tree was byte-identical to
-  `982d016b` (proved by an empty `git diff --stat 982d016b..HEAD -- . ':(exclude).agent'`); the
-  base-side ID SET was taken in the disposable worktree `.remedy-wt/r10-base2` at `982d016b`.
-- **G8 THE TREE** — exit 0. `.agent/STOP` re-read from disk: **absent**. `git status --porcelain`:
-  **empty**. `git worktree list`: **the primary checkout ALONE**. Branch:
-  **`feature/f275-one-world-completion-part-three`**. SET COMPARISON: `git diff --name-only
-  982d016b..e9944c64` names **60** paths, not 55 — the five extra are the block's own C0a/C0b/C1/C2
-  `.agent/` writes, listed with their commit in deviation 4; **nothing is MISSING**. The exact-55
-  match holds for C3's own commit, `git diff --name-only eac1082e..e9944c64`: **55 paths, EXACT SET
-  MATCH, nothing extra, nothing missing**. Every commit C0a–C3 is **single-parent**, with
-  insertions **444, 417, 28, 12, 31** — all under the AGENTS.md DECISION F104 D1 cap of 500. C4's
-  own numbers belong to the next round's ledger entry (§3 items 14 and 31) and are not claimed here.
+| Gate | Exit | Measured |
+|---|---|---|
+| G1 TRANSPORT | 0 | source, `.agent/authored/f275-r11.md` at C0a and `.agent/last_block.md` at C0b are all 47959 bytes at sha256 `bce4e44492d94253bf84fbb8d190d827a31f85da50039b39e6e5e8af46f8398c`; all three compare EQUAL |
+| G2 THE PLAN | 0 | `.agent/plan.md` at C1 byte-identical to PLAN11: 3029 bytes, sha256 `3e744146ac9c38fc59e323b5184f7e37aa216a392d4c40632743011c298f93ce`, 49 lines against the AGENTS.md cap of 50 |
+| G3 THE RECORD | 0 | (a) live_review 569448→586275 growth 16827 = 1+16826; prose_slips 177821→181173 growth 3352 = 1+3351; decisions 958331→962212 growth 3881 = 1+3880; pre a byte-exact PREFIX and slice a byte-exact SUFFIX in all three, joining byte re-read as `b'\n'`. (b) N counted BY THE SCRIPT from each slice as 5, 7 and 7; the last N units equal the slice's units IN ORDER, per-unit sha256 printed for all 19 pairs. (c) one byte flipped IN MEMORY inside the FIRST appended paragraph of each file — BOTH readers REJECTED all three, and the three tracked files re-read from disk are byte-equal to the committed post-blobs. (d) `^Gate: ` 32→33; `^Gate: F275 R10 `, `^Note: F275 R11 `, `^- R-0847 — `, `^- R-0848 — `, `^- R-0849 — `, `^## DECISION F275 D5 ` exactly 1 each. (e) OPEN SET BY DISTINCT ID 75/4/71 before, 78/4/74 after |
+| G4 THE DELETION IS COMPLETE | 0 | all 22 deleted paths print False from `git ls-tree -r eed65ba1 --name-only` over 4585 tracked files; the whole-word sweep for the four module names over the 1704 tracked files outside `.agent/` and `.data/` printed IN FULL, nothing truncated — FOUR remaining lines, EVERY one a must-not-touch item under `docs/roadmap/features/` (`T2_F260.md` 340, 341, 365 and `T2_F272.md` 744), zero outside; the four zero-gated symbols read 0, 0, 0, 0 after backtick-quoted spans were deleted from each line |
+| G5 THE FOUR MEASUREMENTS | 0 | (a) ratchets `317 passed` at exit 0. (b) through the SHIPPED readers: `len(_BASE_CATALOG)` 296→282, `len(collect_all_handlers())` 296→282, `len(GROUPS)` 56→52 (the 296/296/56 base side measured in the disposable worktree, not restated), duplicate ids 0; all 14 deleted ids ABSENT from both readers and all four groups absent from `GROUPS`, printed one per line; `external-builder.submit`, `external-builder.integrity`, `route-policy.show`, `worker.registry-list`, `token.estimate` PRESENT in both. (c) the order file holds NINE components against ten at the base, the 26-line comment header unchanged, and all nine body lines equal `", ".join(component)` over `measured_order()`; regenerated, never hand-edited. (d) canary `42 passed` at exit 0 |
+| G6 RUFF AND BASH | 0 | `All checks passed!` at exit 0 over the 13 `.py` files the range `cb89bbc3..eed65ba1` names that still exist at C4; repo-wide `Found 26 errors.` at BOTH C4 and the base `cb89bbc3` read in the disposable worktree — the `tests/orchestration/test_ci_budgets.py` ceiling holds and this round adds none; `bash -n scripts/remedy_test_fast.sh` exit 0 |
+| G7 THE FULL SUITE | 0 | `python3 -B -m pytest tests/ -q` SERIALLY in the PRIMARY CHECKOUT: **19050 passed, 23 skipped, 0 failed** in 1382.89s. The arithmetic closes BY THE ID SET: `--collect-only tests/` 19232 at the base (disposable worktree) and 19073 at C4, a FALL OF 159 with 0 ids GAINED, and 19050 + 23 = 19073. Attributed: 118 over the nine deleted test files, 32 in `tests/test_grouped_cli.py` (the catalog parametrisation no file-level reading predicts), and 9 over the five swept survivors |
+| G8 THE TREE | 0 | `.agent/STOP` re-read from disk: absent. `git status --porcelain`: empty. `git worktree list`: the primary checkout ALONE. Branch `feature/f275-one-world-completion-part-three`. `git diff --name-only 75a1fa1f..eed65ba1` an EXACT SET MATCH of the 49 paths — nothing extra, nothing missing. C0a..C4 all single-parent at insertions 396, 375, 28, 24, 49 and 21, every one under the DECISION F104 D1 cap of 500 |
+
+Transcript details, trimmed to command, exit code and decisive lines:
+
+```
+G1  python3 g1.py                                            -> 0
+    SOURCE / C0a authored / C0b last_block: 47959 bytes each, sha256 bce4e444…8398c
+    ALL THREE COMPARE EQUAL: True
+
+G2  python3 g2.py                                            -> 0
+    PLAN11 slice  bytes=3029 lines=49 sha256=3e744146…f93ce
+    plan.md at C1 bytes=3029 lines=49 sha256=3e744146…f93ce
+    BYTE-IDENTICAL: True   LINE COUNT 49 against the cap of 50: UNDER CAP
+
+G3  python3 g3.py                                            -> 0
+    growth 16827/3352/3881 == 1+16826/1+3351/1+3880 : True True True
+    N counted from each slice = 5, 7, 7 ; all 19 per-unit sha256 pairs equal
+    negative control: reader A REJECTS=True reader B REJECTS=True (x3)
+    disk re-read == committed post-blob (x3): True
+    ^Gate: 32 -> 33 ; the six exact-1 patterns all count=1
+    open set 75/4/71 -> 78/4/74
+
+G4  python3 g4.py                                            -> 0
+    tracked files at C4: 4585 ; all 22 deleted paths present=False
+    corpus 1704 files ; REMAINING LINES: 4, printed IN FULL, none truncated
+      docs/roadmap/features/T2_F260.md:340,341,365
+      docs/roadmap/features/T2_F272.md:744
+    lines outside docs/roadmap/features/ and docs/archive/: 0
+    select_builder_routing_decision=0 evaluate_candidate_quality=0
+    _build_builder_routing_section=0 BuilderRoutingPolicy=0
+
+G5a python3 -B -m pytest tests/orchestration/test_import_reachability.py
+      tests/orchestration/test_cluster_deletion_map.py
+      tests/orchestration/test_cluster_deletion_order.py tests/docs/
+      tests/cli/test_advertised_commands.py -q                -> 0
+    317 passed in 5.56s
+G5b python3 g5b.py                                           -> 0
+    _BASE_CATALOG 296->282, collect_all_handlers 296->282, GROUPS 56->52, dupes 0
+G5c python3 g5c.py                                           -> 0
+    base 10 components, C4 9 components, 26-line header UNCHANGED, all 9 rows equal
+G5d python3 -B -m pytest tests/cli/test_golden_path.py -q    -> 0
+    42 passed in 19.97s
+
+G6a python3 g6a.py                                           -> 0
+    13 .py files still existing at C4 -> All checks passed!  (ruff exit 0)
+G6b python3 g6b.py                                           -> 0
+    C4 (primary checkout)    ruff tail=['Found 26 errors.']
+    base cb89bbc3 (worktree) ruff tail=['Found 26 errors.']
+    bash -n scripts/remedy_test_fast.sh -> 0
+
+G7  python3 -B -m pytest tests/ -q                           -> 0
+    19050 passed, 23 skipped, 1 warning in 1382.89s (0:23:02)
+    collect-only: base 19232 (worktree), C4 19073 (primary), fall 159, gained 0
+    19050 + 23 = 19073
+
+G8  python3 g8.py                                            -> 0
+    STOP absent ; porcelain '' ; 1 worktree ; branch correct
+    C3..C4 EXACT SET MATCH of 49 paths (extra [], missing [])
+    insertions 396 / 375 / 28 / 24 / 49 / 21, all single-parent, all < 500
+```
 
 ## Authored-text proofs
 
-| Text | Proof |
-|---|---|
-| the block | `shutil.copyfile` from the delegation's file to `.agent/authored/f275-r10.md` and to `.agent/last_block.md`; both re-read at 41781 bytes / `cd016eb0…5d2ca10`, equal to the delegation's stated pair and to each other (G1) |
-| PLAN10 | extracted as the bytes STRICTLY between its BEGIN and END marker lines; verified 2948 bytes / `8e583c36…ba65643` against its own BEGIN line BEFORE use; committed blob re-verified at G2 |
-| LEDGER10 | extracted the same way; verified 9931 bytes / `e21bd30f…c6a6a611` before use; committed blob re-verified at G3 as a byte-exact SUFFIX with per-paragraph sha256 |
-| SLIPS10 | extracted the same way; verified 2279 bytes / `cda11055…6145ce45` before use; committed blob re-verified at G3 the same way |
-| CODE1, CODE2-FROM/TO, CODE3-FROM/TO | extracted verbatim from the COMMITTED `.agent/authored/f275-r10.md` by header line and blank-line run, never retyped; each FROM string counted in its own named file and required to be exactly 1 before replacement (both were 1) |
+Four BEGIN/END slices were extracted from the delegated work order, digested BEFORE use, and
+applied byte for byte. The marker lines are the reviewer's own and did not land in any target.
 
-No slice was edited, reflowed, rewrapped, corrected or renumbered.
+| Slice | Bytes | Lines | sha256 | Applied to |
+|---|---|---|---|---|
+| PLAN11 | 3029 | 49 | `3e744146ac9c38fc59e323b5184f7e37aa216a392d4c40632743011c298f93ce` | `.agent/plan.md`, replaced WHOLE (C1) |
+| LEDGER11 | 16826 | 9 | `c08b7d7abae1bb049094ab8ca8badbeda15ae319e5ec6e59d0f2bde3d1412c8e` | appended to `.agent/live_review.md` (C2) |
+| SLIPS11 | 3351 | 13 | `acc662b4fe61859e500be066967b9035d02fb4375f336819ede304ce13785665` | appended to `.agent/prose_slips.md` (C2) |
+| DECISION11 | 3880 | 48 | `065ace7fa4308d53338fdeafe0761866c8551cd82615336906a930b3fc622f20` | appended to `.agent/decisions.md` (C3) |
+
+The work order itself: 47959 bytes, sha256
+`bce4e44492d94253bf84fbb8d190d827a31f85da50039b39e6e5e8af46f8398c`, authenticated against the
+three values the delegation stated BEFORE the first read of its content, and copied to both
+`.agent/` targets by `shutil.copyfile`. G1 is the disk-to-disk proof.
 
 ## Deviations & assumptions
 
-The block's ORDERED COMMIT SEQUENCE was followed exactly: C0a, C0b, C1, C2, C3, C4, in that order,
-no extra commit, none dropped, none reordered. C3 is ONE commit carrying all 55 paths, per
-constraint 3. C2 precedes C3, per constraint 4. `.agent/plan.md` was advanced at C1, per
-constraint 5. `.agent/STOP` was re-read from disk before C0a and again at G8, absent both times,
-per constraint 8.
+**1. C4 was AMENDED once, and the amend is the most important thing on this page.** The first C4
+was `4a257571`. It FAILED G4: the sweep found a fifth remaining line, and it was the worker's own
+prose — the re-scoped module docstring of `tests/orchestration/test_worker_route_integration.py`
+read ``more — `builder_routing` and its route-policy consultation were deleted (F275).`` G4's
+whole-word sweep, unlike its zero-gate clause, does NOT strip backtick-quoted spans, so a
+backticked mention in a deliberate-absence docstring is a real gate failure. The line was rewritten
+to `more — that module and its route-policy consultation were deleted by F275.` — same three
+insertion lines, so the file's numstat is still 3/52 — and C4 was amended to `eed65ba1`. The block
+does not order the docstring's wording, only that it be "re-scoped to what the file still tests",
+so this is a correction of the worker's own text and not a change to the ordered change set. AMEND
+RATHER THAN A SEVENTH COMMIT, and the reason is stated rather than hidden: constraint 8 orders C4
+to be ONE commit carrying all 49 paths, and every gate from G4 to G8 is worded "at C4", so a
+follow-up commit would have left a reviewable C4 that fails its own gate and would have moved the
+gates off the commit the block names. Nothing was pushed, nothing was force-pushed, and no commit
+that ever left this machine was rewritten. The reviewer sees exactly one C4.
 
-**1. Step (8), `tests/cli/test_cli_ux.py`: one of the three named strings does not exist.** The
-block orders removing `"self-repair"`, `"dogfood"` and `"progress"` from `_INTERNAL_GROUPS`. The
-first two are present and were removed. **`"progress"` does not occur anywhere in that file** —
-`grep -n progress tests/cli/test_cli_ux.py` returns nothing at the base `982d016b` and nothing at
-C3. `_INTERNAL_GROUPS` holds `tournament, local-candidate, candidate-quality, route-policy, token,
-context-pack, self-repair, execution, builder, dogfood, snapshot, contract, integrity` and never
-held `progress`. The block's own `+3/-3` numstat for this file is reached EXACTLY without it —
-one changed line in each of the two `_INTERNAL_GROUPS` rows and one in the wrapped list inside
-`TestNoInternalInDefault.test_no_internal_names` — and the measured numstat is `3 3`. Nothing was
-invented to make the third removal happen and the change set is unaffected.
+**2. `apps/cli/command_catalog.py` measures 0/206 against the block's 0/205 — one line.** The
+block's figure came from a mechanical deletion that kept BOTH blank lines bounding the
+`builder-routing` / `local-candidate` / `candidate-quality` run, leaving two consecutive blank
+lines inside the `_BASE_CATALOG` literal. This round deleted the leading blank of each of the three
+runs instead, so the surviving text keeps the file's own one-blank-line-between-sections
+convention. Functionally identical; ruff and the suite are unaffected.
 
-**2. G4: the sweep is CLEANER than the block predicts, and the missing lines are the ones step
-(11) removes.** The block states 28 remaining lines — `dogfood_run` 6, `feature_planner` 3,
-`overnight_mission` 7, `progress_ledger` 8, `repair_loop_v2` 3, `self_repair_proposal` 1 — split
-18 in `docs/roadmap/features/`, 1 in `docs/system/vocabulary.md` and 9 in other `docs/system/`
-pages. MEASURED at C3 over the same scope: **12 distinct lines** (15 module-line pairs, since two
-lines name several modules), split **11 / 1 / 0**. The gap is accounted for: the four
-`docs/system/` pages this round EDITS held **10** matching lines at `982d016b` and hold **0** at
-C3 — `development-artifact-boundary-v0.md` 5 → 0, `run-contract-v1.md` 2 → 0,
-`snapshot-rollback-v1.md` 2 → 0, `real-test-execution-snapshot-rollback-proof-v1.md` 1 → 0 — each
-line printed in the gate transcript with its base line number. So the block's 28 appears to have
-been counted BEFORE step (11)'s doc edits were applied. This is a numeral disagreement in the
-reviewer's favour: the gate's stated failure condition is "if your sweep finds a line that is NOT
-one of those, that is a real miss", and no such line exists. Nothing was fixed, because nothing
-was missed.
+**3. `docs/system/worker-registry-route-policy-v0.md` measures 0/6 against the block's 0/5 — one
+line, the same class.** Deleting only the `### Builder Routing integration` heading and its four
+body lines would have left two consecutive blank lines before `## CLI`; the blank line following
+the section went with it.
 
-**3. G4: `build_mission_morning_report` is 1, not 0, and the 1 is a guard asserting its absence.**
-The single occurrence is `tests/cli/test_mission_cmd.py:1469`, the line
-`assert "build_mission_morning_report" not in source` inside
-`test_the_facade_module_no_longer_names_the_cluster_builder`, which reads
-`apps/cli/commands/worker_facade_cmd.py` and asserts the symbol is NOT there. The line is present
-verbatim at the base `982d016b` at the same line number, and `tests/cli/test_mission_cmd.py` is
-NOT in this round's change set, so this round neither created it nor could remove it without
-widening the change set — which was not done. The symbol has zero LIVE references: the gate's
-intent holds. The other five zero-gated symbols and `_cmd_mission_run` in the deleted handler are
-all genuinely 0.
+Deviations 2 and 3 together are the whole of the round's 6393 deletions against the block's 6391.
+The insertion count, 21, matches the block exactly, as do all 47 other per-path numstats.
 
-**4. G8: `git diff --name-only 982d016b..<C3>` cannot name exactly 55 paths, by the block's own
-construction.** That range spans C0a, C0b, C1, C2 and C3, and the same block orders `.agent/`
-writes in the first four. The range names **60** paths: the 55 of the change set plus
-`.agent/authored/f275-r10.md` (C0a), `.agent/last_block.md` (C0b), `.agent/plan.md` (C1),
-`.agent/live_review.md` (C2) and `.agent/prose_slips.md` (C2) — exactly the block's own declared
-"six `.agent/` paths across C0a, C0b, C1, C2 and C4" minus `.agent/handoff.md`, which belongs to
-C4 and lies outside the range. Nothing is MISSING and nothing unaccounted-for is present. The
-EXACT-55 set match the gate is asking for holds when scoped to C3's own commit,
-`git diff --name-only eac1082e..e9944c64`: 55 paths, nothing extra, nothing missing. Both readings
-are printed in the G8 transcript.
+**4. `tests/orchestration/test_token_economy_integration.py` — the 43-line region the block words
+as "`class TestRoutingIntegration` whole" also carries two ORPHAN section banners.** The measured
+numstat 0/43 is only reachable by taking the "Progress ledger items (Step 1767)" and "Feature
+suggestions (Step 1768)" banners with it — both left contentless by earlier rounds, both stranded
+between the dying class and the surviving one. Removing the class alone is 33 lines. This is
+declared rather than assumed silent because the block's prose named only the class, while its
+numstat named the region; the same treatment is ordered EXPLICITLY for the sibling file
+`test_worker_route_integration.py`, which is what settles the reading.
 
-**5. Method note on base-side readings (not a defect, stated because the gates name a route).**
-G6's base-side repo-wide ruff was read in a disposable worktree at `982d016b`, as the gate words
-it (`Found 26 errors.`). An earlier read taken in the primary checkout BEFORE C3, while the code
-tree was byte-identical to the base, gave the same 26; both are reported. G7's base-side
-collection COUNT (19613) was taken before C3 in the primary checkout under that same
-byte-identity, which the gate explicitly permits — and the base-side ID SET needed to close the
-381 arithmetic was taken in a disposable worktree at `982d016b`. No base-side reading ever wrote
-to the primary checkout, and no overwrite-and-restore was used anywhere (constraint 6, §3 item 29).
+**5. G7's numbers are not the block's, and the block predicted that they would not be.** The
+reviewer measured 19042 passed / 29 skipped / 2 failed in a disposable worktree. In the primary
+checkout the suite is GREEN at exit 0 with 19050 passed / 23 skipped / 0 failed: the two worktree
+failures are gone (`apps/ui/node_modules` exists here, and the change IS committed here), and the
+eight-pass / six-skip difference is the vitest and evidence-index nodes running rather than
+skipping. The block's own G7 wording requires exactly this, so it is reported rather than
+reconciled to the worktree figure.
 
-**6. One correction to my own tooling, declared for completeness.** The AST-based remover of step
-(8) initially consumed the file-terminating empty element of
-`tests/orchestration/test_development_artifact_boundary.py` as part of the "blank run that
-FOLLOWS" the last removed method, which would have deleted the blank line PRECEDING it and made
-that file `+0/-28` instead of the block's `+0/-27`. This was caught by comparing against the
-block's stated numstat before C3, corrected in the working tree before any commit, and verified:
-the committed file is exactly the base's lines 1–239 minus the three allowlist strings, numstat
-`0 27`. No commit ever carried the wrong version.
+**6. NOT FIXED, because the block does not order it and constraint 3 forbids widening.**
+`_job_with_repo` in `tests/orchestration/test_token_economy_integration.py` is now unreferenced —
+`TestRoutingIntegration` was its only caller. It is a module-level function, so ruff's selected
+rules do not flag it, `Found 26 errors.` holds at both ends, and the suite is green. It is left
+on disk and named here rather than deleted on the worker's own authority. No finding is registered
+for it: the worker writes none.
 
-No gate went red. No question arose that the rules do not answer. The change set was never
-widened: every path written is one of the 55 of C3 or one of the six `.agent/` paths the block
-names.
+**7. Assumption, stated because it decided a numstat.** The block's `docs/README.md · 0/9` says to
+key the removal on the LINK TARGET and never on the slug. The nine rows were selected by exact
+substring match on the five parenthesised targets; the three surviving `archive/` rows that share
+the `expensive-builder-routing-v0` and `model-route-tournament` slugs were asserted still present
+after the edit and are.
 
-## Item-status table
+No other departure from the block's ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5 landed
+in that order, none dropped, none reordered, one amended as declared above.
 
-The block's ordered items are its six commits and its twelve deletion steps. Every one appears
-exactly once.
+## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block to `.agent/authored/f275-r10.md` | done | `shutil.copyfile`, `d6c7694a` |
-| C0b mirror to `.agent/last_block.md` | done | `shutil.copyfile`, same bytes, `bf9ffe68` |
-| C1 `.agent/plan.md` replaced by PLAN10 | done | byte-identical, `ccf684bd` |
-| C2 append LEDGER10 and SLIPS10 | done | both appends byte-exact, `eac1082e` |
-| C3 the deletion, all 55 paths, ONE commit | done | 31 insertions / 14365 deletions, `e9944c64` |
-| C4 `.agent/handoff.md` rewritten | done | this file |
-| (1) `git rm` the 27 whole files | done | all 27 absent from `git ls-tree -r e9944c64` |
-| (2) 38 `CommandEntry` blocks + 3 `GroupDef` lines | done | `+0/-489`; 334 blocks parsed, 38 matched by `command_id`, 3 `GroupDef` lines each unique |
-| (3) 5 handler imports + the `for mod in (…)` tuple | done | `+1/-6`; tuple 64 → 59 names |
-| (4) `worker_facade_cmd.py`: 2 probes, `_names_a_mission`, CODE1 | done | `+14/-61`; banner comment untouched |
-| (5) `main_builder_adapter.py` CODE2-FROM → CODE2-TO | done | `+5/-2`; FROM count was 1 |
-| (6) `test_main_builder_adapter.py` CODE3-FROM → CODE3-TO | done | `+5/-2`; FROM count was 1 |
-| (7) the ratchet inputs | done | `+0/-11`, `+0/-1`, `+1/-7`; docstring example re-pointed at `builder_routing` |
-| (8) the surviving tests | deviated | all twelve named definitions and both extra edits done; `"progress"` is absent from `_INTERNAL_GROUPS` — deviation 1. `TestMissionRun` keeps `test_run_no_run_id` and is not empty |
-| (9) `.agent/f275_deletion_order.md` REGENERATED | done | eleven → ten components, numstat `0 1`, header byte-for-byte |
-| (10) `pyproject.toml`, `remedy_test_fast.sh`, `test_test_categories.py` | done | `+0/-5`, `+0/-2`, `+0/-1` |
-| (11) the doc edits | done | `+0/-5`, `+1/-5`, `+0/-2`, `+0/-2`, `+0/-6`; `docs/system/vocabulary.md` NOT touched |
-| (12) the five must-not-touch spec files | done | `T1_F034.md`, `T2_F260.md`, `T2_F269.md`, `T2_F272.md`, `T2_F277.md` all absent from the change set and unchanged in the range |
-| R-0845 registration | done | reviewer's text, applied verbatim inside LEDGER10 at C2; exactly 1 `^- R-0845 — ` |
-| R-0846 registration | done | reviewer's text, applied verbatim inside LEDGER10 at C2; exactly 1 `^- R-0846 — ` |
+| C0a save the block to `.agent/authored/f275-r11.md` | done | by `shutil.copyfile`; G1 |
+| C0b mirror to `.agent/last_block.md` | done | by `shutil.copyfile`; G1 |
+| C1 `.agent/plan.md` replaced WHOLE by PLAN11 | done | G2, 49 lines under the cap of 50 |
+| C2 LEDGER11 → `live_review.md`, SLIPS11 → `prose_slips.md` | done | G3 (a)-(e) |
+| C3 DECISION11 → `decisions.md` | done | G3; lands BEFORE C4, per constraint 4 |
+| C4 the deletion, all 49 paths, ONE commit | deviated | one AMEND after a red G4 on the worker's own docstring; see deviation 1. The commit is one, the paths are 49, the set match is exact |
+| C5 `.agent/handoff.md` rewritten whole | done | this file |
 
 ## Open findings
 
-**71 open by distinct id** (75 registrations − 4 resolutions), measured at G3(f) from the
-committed blob at C2. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's rather than
-this feature's, per DECISION F272 D12. The next free id is R-0847.
+**74 open by distinct id**, measured from the committed blob at C3 by DECISION F085 D7's rule
+(registrations minus resolutions as a SET DIFFERENCE): 78 registrations, 4 resolutions
+(R-0721, R-0725, R-0837, R-0841), 74 open. It was 71 at this round's base `cb89bbc3`; C2's three
+registrations R-0847, R-0848 and R-0849 take it to 74. Four are High — R-0803, R-0804, R-0806 and
+R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
+
+The worker resolved nothing, registered nothing and wrote no verdict, no `Done:` paragraph and no
+finding of its own anywhere.
 
 ## Next
 
-The reviewer reviews `982d016b`..`HEAD`, re-runs the eight gates itself against the committed
-blobs, and issues the round 10 verdict. Under operator amendment amend0827-process-diet rule 1
-that verdict is booked into `.agent/live_review.md` by the FIRST commit of round 11, not by a
-round of its own. Round 11's own work is the next component in the regenerated order file:
-`packages.orchestration.builder_routing, …candidate_quality, …local_candidate_generator,
-…model_route_tournament` — four modules that import each other, so DECISION F275 D2 makes the
-whole component ONE commit. Before authoring it, Phase 1 rule 1: re-read `.agent/STOP` from disk.
-
-## Reviewer verdict on round 10 — appended after the handback, by the reviewer's authored text
-
-VERDICT ROUND 10: **PASS.** Written by the planner/reviewer of session 6 AFTER reading the
-committed range `982d016b`..`57058636` and RE-RUNNING every one of the eight gates independently
-against the committed blobs; the worker's report was not taken as evidence for any line below.
-It is carried here because under `docs/agents/self_drive_protocol.md` a verdict that stays in
-the session is lost, and it is booked into `.agent/live_review.md` by the FIRST substantive
-commit of the next round, per amend0827-process-diet rule 1. It is NOT a `Done:` paragraph and
-resolves no finding.
-
-WHAT THE REVIEWER RE-MEASURED. Six single-parent commits C0a `d6c7694a`, C0b `bf9ffe68`,
-C1 `ccf684bd`, C2 `eac1082e`, C3 `e9944c64` and C4 `57058636`, each parent read from
-`git rev-list --parents`, with per-commit insertions 444, 417, 28, 12, 31 and 339, every one
-under the AGENTS.md DECISION F104 D1 cap of 500. G1 IS THE PRIMARY PROOF OF §4 ITEM 9 AND NOT
-THE DIGEST FALLBACK: the reviewer's own scratchpad original and the committed
-`.agent/authored/f275-r10.md` and `.agent/last_block.md` are all 41781 bytes at
-`cd016eb03ec8698d0b61eee5bf1a5fb1e42d78750eef66c41ff150e605d2ca10`, and the two committed blobs
-compare byte-equal to the scratchpad original, so this round's chain does reach the emitted
-bytes — which §3 item 37 says the digest-only form cannot. G2: `.agent/plan.md` byte-identical
-to PLAN10 at 2948 bytes and 49 lines against the cap of 50. G3: `.agent/live_review.md` 559516
-to 569448, growth 9932 = 1 + 9931; `.agent/prose_slips.md` 175541 to 177821, growth
-2280 = 1 + 2279; both edges byte-exact with the joining byte read back as a newline; N counted
-from each slice by the reviewer's own reader as 3 and 3 with ordered equality holding over the
-WHOLE appended region and a per-unit sha256 printed for all six units; and BOTH negative
-controls — flipped in memory inside the FIRST appended paragraph, per §3 item 36 — REJECTED by
-both readers, with the tracked files re-read from disk afterwards and byte-equal to the
-committed post-blobs. `^Gate: ` 31 to 32, and `^Gate: F275 R10`'s three keys `^Gate: F275 R9 `,
-`^- R-0845 — ` and `^- R-0846 — ` exactly 1 each, with THE OPEN SET 69 TO 71 BY DISTINCT ID
-against registrations 73 to 75 and resolutions 4 to 4. G4: all 27 whole-file removals absent
-from `git ls-tree` at C3 over 4606 tracked files, and the whole-word sweep for the six module
-names over the 1726 tracked files outside `.agent/` and `.data/` printed IN FULL — 15
-module-name hits on 12 DISTINCT lines, every one a must-not-touch item: eleven in
-`docs/roadmap/features/` (`T1_F034.md`, `T2_F260.md`, `T2_F269.md`, `T2_F272.md`, `T2_F277.md`)
-and one at `docs/system/vocabulary.md` line 245, which step (11) names and deliberately keeps.
-Eight of the nine gated symbols read ZERO; the ninth is deviation 3 below. G5: the four ratchets
-60 passed at exit 0, `tests/docs/` 303 passed, the canary 42 passed; through the SHIPPED readers
-`_BASE_CATALOG` and `collect_all_handlers()` both fell 334 to 296 and `GROUPS` 59 to 56, with
-all 38 deleted ids ABSENT from both readers, all ten named survivors PRESENT in both,
-`dogfood`, `progress` and `self-repair` gone from `GROUPS` while `overnight` and `repair`
-remain, and zero duplicate command ids; the regenerated order file holds TEN components against
-eleven at a `0 1` numstat, a PURE DELETION, with its 26-line header intact. THE RED-PROOF WAS
-RE-RUN BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE AT `e9944c64`: control exit 0 at 60
-passed, then the three mutations exit 1 at 2, 1 and 1 failures, then the control exit 0 again,
-each FROM string counted unique in its named file first and each file reverted byte-identically
-by sha256. G6: ruff `All checks passed!` over the 18 edited Python files still existing at C3,
-every one re-parsed with `ast` without error, and repo-wide `Found 26 errors.` at BOTH the base
-— read in a disposable worktree, never by writing to the primary checkout — and the tip, so this
-round adds none and sits exactly on the `test_ci_budgets.py` ceiling; `bash -n` exit 0. G7: THE
-FULL SUITE WAS RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT at exit code 0 read from
-the process object, 19209 passed and 23 skipped, and the arithmetic closes exactly:
-`--collect-only` 19613 at the base and 19232 at C3, a fall of 381 = 325 for the eleven deleted
-test files plus 32 over the ten swept files plus 24 in `tests/test_grouped_cli.py`, with ZERO
-ids gained, and 19209 + 23 = 19232 equal to the collection. G8: `.agent/STOP` absent,
-`git status --porcelain` empty, one worktree, branch correct, and `eac1082e..e9944c64` naming
-55 paths in an EXACT SET MATCH against the block's enumeration — nothing extra, nothing missing,
-and every whole-file removal named in the block.
-
-WHAT THIS ROUND ACHIEVED. The fifth module group is gone and it is the FIRST that is a strongly
-connected COMPONENT rather than a single module: `dogfood_run`, `feature_planner`,
-`overnight_mission`, `progress_ledger`, `repair_loop_v2` and `self_repair_proposal`, 7952 module
-lines, deleted in ONE commit as DECISION F275 D2 and operator RULE 1 require, at 31 insertions
-against 14365 deletions over 55 paths. With them went five handler files, 38 catalog entries,
-the `dogfood`, `progress` and `self-repair` groups with their `GroupDef`s, eleven test files and
-five doc pages. THE SCOPE WAS ESTABLISHED BY APPLYING THE DELETION AND RUNNING THE SUITE, not by
-reading the inherited map, and that is what the round is worth: the applied dry run turned 53
-real failures into the boundary, and six of its work items appear in no map — the three
-operator-facing pages `tests/cli/test_advertised_commands.py` reads for command strings, the
-`main_builder_adapter.py` advertisement of a dying command, the `tests/orchestration/test_evidence_index.py`
-enumeration that is a dirty-tree artefact rather than a defect, and the 24 parametrised ids in
-`tests/test_grouped_cli.py` that no file-level reading of the fall can predict.
-
-THE INHERITED MAP WAS WRONG IN THREE PLACES AND THE APPLIED DRY RUN FOUND ALL THREE. First, the
-session-5 map stated that neither of F260's two carry-overs had landed and ordered the next
-session to settle their ordering as a dated DECISION; both had landed at rounds 3 and 4, as
-`Gate: F275 R4` records, so that DECISION was owed by nobody and this round correctly did not
-write it. Second, the map recorded `worker_facade_cmd.py`'s coupling as two string-keyed
-`importlib` probes; a third site, a real `from packages.orchestration.dogfood_run import
-run_mission_loop` inside `_cmd_mission_run`, carried the dogfood-facade half of
-`remedy mission run` and would have been deleted out from under a live production path. Third,
-the map named two dying doc pages where five exist. All three are the reviewer's own prose and
-are dated `.agent/prose_slips.md` lines rather than ids, per amend0827 rule 2, because none left
-anything wrong on disk.
-
-SIX DEVIATIONS WERE DECLARED AND ALL SIX ARE SUSTAINED; FOUR ARE THE REVIEWER'S OWN BLOCK TEXT
-AND NONE EARNS AN ID. DEVIATION 1: step (8) ordered `"progress"` removed from `_INTERNAL_GROUPS`
-in `tests/cli/test_cli_ux.py`, and the reviewer confirmed by reading the blob at `982d016b` that
-the string was never there — the block ordered a removal with no target, the worker declared it
-rather than inventing one, and the `+3/-3` the block predicts was reached exactly without it.
-DEVIATION 2: G4 predicted 28 remaining sweep lines against a measured 12 distinct; the block's
-figure was taken before the round's own docs pass was applied, so it described an intermediate
-state of the reviewer's dry run rather than the change set it shipped with, and the gate's real
-condition — that no remaining line is anything but a must-not-touch item — held on every one.
-DEVIATION 3 IS THE R-0584 CLASS AND THE MOST INSTRUCTIVE: G4 gated `build_mission_morning_report`
-to ZERO, and it reads 1, at `tests/cli/test_mission_cmd.py` line 1469, where the line is
-`assert "build_mission_morning_report" not in source` — an ABSENCE GUARD that must quote the
-symbol in order to forbid it. The gate as worded was unmeetable by any correct round, the guard
-is right and worth keeping, and the worker was right to declare rather than delete it; a
-zero-gate over a bare symbol must strip quoted spans first, exactly as §3 item 20's R-0586
-clause already requires of the record scan. DEVIATION 4: G8 ordered the 55-path SET MATCH over
-`982d016b..<C3>`, a range that also spans C0a through C2 and therefore names 60; the reviewer
-re-measured both readings and confirms 60 over that range and exactly 55 over
-`eac1082e..e9944c64`, with the set match holding — the §3 item 16 / R-0585 shape, a count
-resolved against the wrong list, in a gate the same block wrote. DEVIATION 5 records the routes
-taken for the base-side readings and is exactly what §3 item 29 asks for; the reviewer confirms
-no base reading was taken by overwrite-and-restore. DEVIATION 6 is a tooling bug the worker
-caught in its own AST remover before any commit carried it, found by comparing against the
-block's numstat — the block's per-file `+/-` column doing the work it was included for.
-
-FOUR AUTHORING SLIPS IN ONE BLOCK IS A SIGNAL AND IS NAMED RATHER THAN DRESSED UP. None is
-load-bearing: none reached `.agent/live_review.md`, none changed a path, and every substantive
-claim LEDGER10 makes was re-measured true. But operator amendment amend0908-f275-finish rule 5
-makes "authoring errors accumulating" an honest reason to end a session only after at least four
-delegated rounds, and this session has run one, so the reason is recorded for the next session
-to weigh rather than cited here.
-
-## Session 6 ends here — ONE delegated round, reviewed and PASSED, plus a GREEN APPLIED map for round 11
-
-`.agent/STOP` does not exist; it was measured absent at the Phase 0 probe, again before authoring
-round 10, and again now. No pull request exists and none is owed: under
-`docs/roadmap/STATUS_closure_protocol.md` the PR belongs to the closure sequence. F275's soft
-limit is 20 sessions and 60 rounds by operator amendment amend0908-f275-finish RULE 1, and the
-feature stands at session 6, round 10 — well inside it, so no scope report is owed.
-
-THE REASON THIS SESSION ENDS AT ONE ROUND, AND IT IS THE THIRD IN A ROW, SO IT IS NAMED AS THE
-THROUGHPUT PROBLEM IT IS RATHER THAN DRESSED UP. Sessions 4 and 5 each ended at one round having
-handed forward a map that was written but never APPLIED, and session 5's map was wrong in three
-places — this session's round 10 found all three by applying it. So this session spent its
-remaining budget differently: instead of writing round 11's map, it BUILT AND RAN round 11, whole,
-in a disposable worktree, to a GREEN FULL SUITE. The reason it does not also author and delegate
-round 11 is budget to VERIFY, stated as a measurement: this session has already run the full suite
-FIVE times at roughly 22 minutes each — three inside round 10's dry run, one to gate round 10
-independently, one inside round 11's dry run — and a delegated round 11 needs a sixth for the
-worker and a seventh for the reviewer's own independent gate. Starting it without the budget to
-verify it would leave an UNGATED round on the branch, which Phase 1 rule 4 forbids planning over.
-That is amend0905-throughput's honest reason "a round that explicitly needs a fresh session".
-Operator amendment amend0908-f275-finish rule 5 is NOT cited and could not be: this session ran
-one delegated round, not four.
-
-CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the session had context
-enough to author, delegate and independently verify one large deletion AND to measure the next one
-to green, and it ends with the next round's boundary established by execution rather than by
-reading — the one thing the previous two sessions could not hand forward.
-
-## What round 10 landed
-
-The FIFTH module group, and the first that is a strongly connected COMPONENT rather than a single
-module: `dogfood_run`, `feature_planner`, `overnight_mission`, `progress_ledger`, `repair_loop_v2`
-and `self_repair_proposal`, 7952 module lines, in ONE commit `e9944c64` at 31 insertions against
-14365 deletions over 55 paths. 38 commands, three whole command groups, five handler files, eleven
-test files and five doc pages went with them. The verdict above records the eight re-run gates.
-
-## The four `.agent/prose_slips.md` lines round 11's C2 owes, from this file as the durable carrier
-
-No id is spent on any of them, per operator amendment amend0827-process-diet rule 2: all four are
-the reviewer's own block text, none reached `.agent/live_review.md`, and none left anything wrong
-under `packages/`, `apps/`, `tests/` or `docs/`. None buys a correction round.
-
-1. The round 10 block's step (8) ordered the string `"progress"` removed from `_INTERNAL_GROUPS` in
-   `tests/cli/test_cli_ux.py`, and the reviewer confirmed against the blob at `982d016b` that the
-   string was never there — an order with no target, which the worker declared rather than invented
-   a target for, and the block's own `+3/-3` prediction was reached exactly without it.
-2. The round 10 block's G4 predicted 28 remaining sweep lines against a measured 12 distinct; the
-   figure was taken from an intermediate state of the reviewer's dry run, before that same dry
-   run's docs pass was applied, so it described a tree the round never shipped. The gate's real
-   condition — that every remaining line is a must-not-touch item — held on all twelve.
-3. The round 10 block's G4 gated the bare symbol `build_mission_morning_report` to ZERO, and it
-   reads 1: `tests/cli/test_mission_cmd.py` line 1469 is `assert "build_mission_morning_report" not
-   in source`, an ABSENCE GUARD that must quote the symbol in order to forbid it. The gate was
-   unmeetable by any correct round. A zero-gate over a bare symbol must delete quoted spans first,
-   which is exactly what §3 item 20's R-0586 clause already requires of the record scan and what
-   this gate did not do.
-4. The round 10 block's G8 ordered the 55-path SET MATCH over `982d016b..<C3>`, a range that also
-   spans C0a through C2 and therefore names 60; the reviewer re-measured 60 over that range and
-   exactly 55 over `eac1082e..e9944c64`, with the set match holding on the second. The §3 item 16 /
-   R-0585 shape — a count resolved against the wrong list — inside a gate the same block wrote.
-
-## THE ROUND 11 MAP — BUILT AND RUN TO A GREEN FULL SUITE at `8820d974`, not estimated
-
-Everything below was produced by APPLYING the whole deletion in a disposable worktree at the commit
-named above and running the suite until it was green, then removing the worktree. This is not a
-reading of the import graph; it is the result of executing the change. THE NEXT SESSION SHOULD
-STILL RE-APPLY IT before authoring — the map is only as current as its base — but it inherits the
-boundary rather than having to discover it.
-
-THE COMPONENT: `builder_routing` 1085 + `candidate_quality` 796 + `local_candidate_generator` 778 +
-`model_route_tournament` 729 = 3388 module lines, the four-module cycle that is line 1 of
-`.agent/f275_deletion_order.md`. One commit, per DECISION F275 D2 and operator RULE 1.
-
-THE MEASURED RESULT: 37 paths, 13 insertions, 6064 deletions. 18 files deleted whole, 19 edited.
-`_BASE_CATALOG` and `collect_all_handlers()` both fall 296 to 282; `GROUPS` falls 56 to 52, because
-all four of `builder-routing` (2 ids), `candidate-quality` (5), `local-candidate` (2) and
-`tournament` (4) die WHOLE — no group survives partially, unlike round 10. The order file falls
-from ten components to NINE, and after this round every remaining component is a SINGLE module
-except the `provider_trust` / `provider_trust_verification` pair, so this is the last cycle.
-The full suite reads 19049 passed and 23 skipped; `--collect-only` falls 19232 to 19072, a fall of
-160 = 118 across the eight deleted test files + 10 across the six surgically edited ones + 32 in
-`tests/test_grouped_cli.py`, which parametrises over the catalog and which no file-level reading
-predicts — the same trap round 10 hit. Repo-wide `ruff check .` reads `Found 26 errors.` at both
-the base and the tip, so the round adds none and stays on the `test_ci_budgets.py` ceiling.
-
-DELETED WHOLE, 18 paths: the four modules under `packages/orchestration/`; their four handlers
-`builder_routing_cmd.py`, `candidate_quality_cmd.py`, `local_candidate_cmd.py` and
-`tournament_cmd.py` under `apps/cli/commands/`; the eight test files
-`tests/orchestration/test_builder_routing.py`, `test_candidate_quality.py`,
-`test_local_candidate_generator.py`, `test_model_route_tournament.py` and
-`tests/cli/test_builder_routing_cli.py`, `test_candidate_quality_cli.py`,
-`test_local_candidate_cli.py`, `test_tournament_cli.py`; and the two doc pages
-`docs/system/expensive-builder-routing-v0.md` and `docs/system/local-candidate-generator-v0.md`.
-
-EDITED, 19 paths: `apps/cli/command_catalog.py` (13 entries + 4 `GroupDef` lines + the
-`external-builder.evaluate` entry), `apps/cli/commands/__init__.py` (4 imports + the `for mod in`
-tuple), `apps/cli/commands/external_builder_cmd.py`, `packages/orchestration/ui_server.py`,
-`pyproject.toml` (2 lines), `docs/README.md` (4 rows), `docs/system/external-builder-worker-contract-v0.md`,
-`.agent/f275_deletion_order.md` (regenerated), `tests/orchestration/cluster_deletion_map.txt` (1),
-`tests/orchestration/import_reachability_allowlist.txt` (8),
-`tests/orchestration/test_cluster_deletion_map.py` (4 `CLUSTER_MODULES` lines),
-`tests/orchestration/test_development_artifact_boundary.py` (1 allowlist line),
-`tests/orchestration/test_external_builder_sandbox.py`,
-`tests/orchestration/test_model_route_tournament_integration.py`,
-`tests/orchestration/test_token_economy_integration.py`,
-`tests/orchestration/test_worker_route_integration.py`, `tests/cli/test_cli_ux.py`,
-`tests/cli/test_external_builder_cli.py`, `tests/ui_server/test_dashboard_cockpit_truth.py`.
-
-THE FIVE THINGS THE DRY RUN FOUND THAT NO MAP NAMES, each of which cost a suite run to discover:
-
-1. THE COCKPIT SECTION, AND IT IS HELD BY A DECISION. `packages/orchestration/ui_server.py` carries
-   `_build_builder_routing_section` at line 845 and its dashboard-dict line at 1515, and DECISION
-   F274 D4 CHOSEN SECOND explicitly HELD that section — with `_build_overnight_section` — while
-   six others were deleted, on the ground that `builder_routing.BuilderRoutingPolicy` still owed
-   the route-policy carry-over. Deleting it is therefore not a mechanical step: the hold must be
-   RELEASED by a dated DECISION in `.agent/decisions.md` first. `tests/ui_server/test_dashboard_cockpit_truth.py::TestDashboardShape::test_builder_routing_section_present`
-   is what goes red if the section is cut without it.
-2. A SURVIVING HANDLER FILE LOSES ONE HANDLER — THE ROUND 9 `review_cmd.py` SHAPE, AGAIN.
-   `apps/cli/commands/external_builder_cmd.py` holds EIGHT handlers; exactly one,
-   `_cmd_external_builder_evaluate`, imports `candidate_quality`. The other seven drive
-   `packages/orchestration/external_builder_sandbox.py`, which is component line 2 of the
-   regenerated order and therefore dies in a LATER round. So the FILE survives this round and loses
-   one handler, one handler-table line and one catalog entry, `external-builder.evaluate`. Deleting
-   the file whole would take seven working commands with it.
-3. AN ADVERTISEMENT IN A SURVIVING DOC. `docs/system/external-builder-worker-contract-v0.md` line 77
-   advertises `remedy external-builder evaluate` in a fenced block, and
-   `tests/cli/test_advertised_commands.py::test_every_operator_facing_advertised_command_exists_in_the_catalog`
-   reads operator-facing pages for exactly that. The page's subject SURVIVES, so only the block goes.
-4. REMOVING A METHOD CAN EMPTY ITS CLASS. `TestQualityIntegration` in
-   `tests/orchestration/test_external_builder_sandbox.py` has ONE member,
-   `test_external_evaluation`; removing it leaves `class TestQualityIntegration:` with no body and
-   the file stops parsing. The class goes whole, with the banner comment above it.
-5. A SUBSTRING SWEEP OF `docs/README.md` IS OVER-WIDE. Keying the index-row removal on
-   `expensive-builder-routing-v0` also matches
-   `| [expensive-builder-routing-v0-plan.md](archive/expensive-builder-routing-v0-plan.md) | … | DEPRECATED |`,
-   a DIFFERENT and SURVIVING file under `archive/`. Four rows go, not five; key the removal on the
-   exact link target.
-
-## THE ROUTE-POLICY CARRY-OVER — RE-MEASURED AT `8820d974`, and it is the one thing that gates round 11
-
-T001's "WHAT IS OWED HERE, IN ORDER" names two carry-overs before the first `git rm`. THE FIRST IS
-DONE: `mission readiness` landed in round 3 and `mission report` in round 4, as `Gate: F275 R4`
-records. THE SECOND is the route-policy knobs checked against F110's config keys, which T001 itself
-rules is "a finding update, not a rebuild" because R-0831 already holds the audit. The reviewer
-re-ran that audit at the commit named above rather than trusting the finding: `BuilderRoutingPolicy`
-declares SIXTEEN knobs, and the candidate config surfaces of `packages/orchestration/role_config.py`
-(16 keys), `model_routing.py` (77) and `config.py` (30) contain an equivalent for NONE of them.
-Four knobs produce a NEAR-NAME match and all four are substring artifacts, checked individually and
-rejected: `max_builder_attempts_per_failure`, `_per_self_item` and `max_external_builder_attempts_per_day`
-match only the token `"builder"`, which is a ROLE NAME in `role_config.py`'s nested-config docstring
-and a role-to-task-class key at `model_routing.py:1261`; and `max_estimated_cost` matches only
-`"cost"` at `model_routing.py:796`, which is a `float` FIELD TYPE in a schema, not a ceiling. So the
-audit REPRODUCES R-0831 exactly, at a commit many rounds later, and widens it from the eight
-instances R-0831 counted to all sixteen knobs. F260's Design rules the outcome in advance —
-"existing knob → delete; missing knob → register as a finding, never rebuild" — so nothing is
-rebuilt and the knobs die with their module.
-
-## What the next session owes, in order
-
-FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It does not exist as
-this session ends. Then the Open PR Gate: no PR is open.
-
-SECOND, round 11's FIRST substantive commit books, from this file as the durable carrier: the ROUND
-10 PASS verdict above as a `Gate: F275 R10` entry in `.agent/live_review.md`, and the FOUR dated
-`.agent/prose_slips.md` lines listed above. `.agent/plan.md` is advanced in that same commit, per §3
-item 23. The open set is 71 by distinct id and the next free id is R-0847.
-
-THIRD, the two authored texts round 11 needs BEFORE its deletion commit, neither of which exists yet
-and neither of which the dry run can supply, because both are rulings rather than edits:
-  (a) the R-0831 UPDATE, stating the re-measured audit above and closing the second carry-over as
-      T001 words it — a finding update, never a rebuild; and
-  (b) a dated DECISION in `.agent/decisions.md` RELEASING DECISION F274 D4's hold on
-      `_build_builder_routing_section`, on the ground that the carry-over it was held for is
-      discharged by (a) and that the section dies with its subject module in the same commit.
-Both are small, and both must land before or in the commit that cuts the cockpit section.
-
-FOURTH, the deletion itself: the four-module component, whole, in ONE commit, using the map above
-and re-applying it at the session's own base before authoring. Two findings are owed under operator
-RULE 3 for behaviour that goes with no inheritor — the thirteen deleted commands and the four whole
-groups, and `remedy external-builder evaluate`, which is the only command that scores an external
-submission and whose seven sibling commands survive it.
+Review `cb89bbc3..eed65ba1` and issue the round 11 verdict. If PASS, the next round takes the
+`execution_approval_policy` component, which this round's regeneration makes the order file's
+FIRST line and which is a SINGLE module, so it is an ordinary group commit. Read `.agent/STOP`
+before authoring it (Phase 1 rule 1 before rule 2).
