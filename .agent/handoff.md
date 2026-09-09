@@ -463,3 +463,184 @@ gate itself against the committed blobs and issues the round 19 verdict. Round 2
 then deletes `packages.orchestration.worker_registry`, the first line of the
 regenerated `.agent/f275_deletion_order.md`. Before authoring it, re-read
 `.agent/STOP` from disk (Phase 1 rule 1 before rule 2).
+
+## Reviewer verdict on round 19 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 19: **PASS.** Written by the planner and reviewer of SESSION 10 AFTER reading the
+committed range `c878073e`..`e3879c82` and RE-RUNNING every gate independently against the
+committed blobs; the worker's report was not taken as evidence for any line below. It is carried
+here because under `docs/agents/self_drive_protocol.md` a verdict that stays in the session is
+lost, and it is booked into `.agent/live_review.md` by the FIRST substantive commit of round 20,
+per amend0827-process-diet rule 1.
+
+WHAT THE REVIEWER RE-MEASURED. Six single-parent commits C0a `f172303d`, C0b `a211cea3`, C1
+`0b9c05d1`, C2 `ddaf9101`, C3 `0f19c86a` and C4 `e3879c82`, per-commit insertions 310, 246, 15, 8
+and 7 for the five before the handback, every one far under the AGENTS.md DECISION F104 D1 cap of
+500. G1 IS THE PRIMARY PROOF OF §4 ITEM 9 AND NOT THE DIGEST FALLBACK: the reviewer's own
+delegation source and both committed copies are 25581 bytes at
+`8b40fbd855485160db7aef589b2c49f51a8bcf1f543ae375280d8e5e82afdee8` and compare BYTE-EQUAL; per §3
+item 37 that chain covers those three artefacts and claims nothing about the emitted bytes. G2:
+`.agent/plan.md` at C1 is byte-identical to the PLAN19 slice at 41 lines against the cap of 50 with
+both mandated headings present; all three slices occur EXACTLY ONCE in their targets and NO marker
+line reached any file; and the `mission_readiness.py` edit is THREE lines, every one inside the
+module docstring, rewriting the two sentences that claimed the deleted module was "still on disk"
+into the past tense naming F275 round 19, with the sentence about F261 owning renames untouched.
+G3, over two appends: `^Gate: ` rose 40 to 41, `^Gate: F275 R18 ` and `^- R-0864 — ` each occur
+exactly once, and THE OPEN SET WENT 86 TO 87 BY DISTINCT ID against registrations 92 to 93 and
+resolutions 6 to 6, with 34 distinct `Landed:` ids present and never subtracted.
+
+G4 IS THE GATE THIS ROUND'S OWN GUARD COULD NOT ANSWER, AND IT IS CLEAN. The reviewer re-ran the
+sweep with its own script over the 1668 tracked files outside `.agent/` and `.data/` at
+`e3879c82`: RAW 6, printed in full and not truncated, against RAW 11 measured in the applied dry
+run before the round. Three are history prose in `docs/roadmap/features/`. The other three are
+exactly the classes the block declared legitimate in advance: two `mission_readiness.py` docstring
+sentences, one of which this round rewrote, and the `test_mission_cmd.py` ratchet asserting the
+cluster module is not imported. The spaced form `remedy overnight` returns ZERO hits, so no page
+anywhere still instructs an operator to run a command this round deleted — which is the property
+R-0861's fix clause exists to protect and which `tests/cli/test_advertised_commands.py` CANNOT
+establish here, because deleting the whole group removed it from that guard's `GROUPS` and the
+guard skips what it cannot resolve. The worker ran that guard, got exit 0, and stated in its own
+handback that the PASS is not evidence for this round. That is R-0847 being handled correctly
+rather than being relied on.
+
+G5's STOP CONDITION DID NOT FIRE, which is the round's most load-bearing single reading: mutating
+`build_overnight_readiness` in the SURVIVING `mission_readiness.py` moved its node set from a
+control of 128 passed to 16 failed and 112 passed, and back to 128 on revert. The carry-over is
+genuinely pinned by tests after its twin's deletion, so the capability F260's Design ordered
+carried is demonstrably still covered rather than merely still present.
+
+G6: the affected guards 716 passed, the canary 42, the documentation gate 303, and THE FULL SUITE
+WAS RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT and was GREEN at 18515 passed, 23
+skipped and ZERO failed, with a separately measured collection of 18538 equal to 18515 plus 23.
+Ruff is clean over the change set and carries 24 pre-existing errors at BOTH the base and C3, none
+in a file this round touches, so the round adds none. The catalog reads 233 commands in 46 groups
+with ZERO ids beginning `overnight.` and the `overnight` group absent; the only `related=` entries
+naming a missing id are the two pre-existing ones, `dogfood.run-loop` and `readiness.show`, which
+R-0859 already holds open. The tree gate holds: no `.agent/STOP`, porcelain empty, one worktree,
+branch correct.
+
+THE SEVEN DECLARED DEVIATIONS ARE ALL SUSTAINED, and the two load-bearing ones are the reviewer's
+own errors rather than the worker's. FIRST, the block ordered the deletion of every line in
+`tests/orchestration/cluster_deletion_map.txt` beginning `packages.orchestration.overnight_readiness <-`,
+and the reviewer has now confirmed at `c878073e` that the file contains no such line and never
+mentioned that module at all. The ordered edit was a NO-OP, the worker declined to touch the file
+rather than manufacture a change, and that path is therefore the single MISSING entry in the C3
+path set. Declining was correct: a named path that needs no edit is a defect of the block, not of
+the round. SECOND, the block's suite arithmetic said the count would fall by the contents of two
+deleted test files; the real fall is 37, because eight parametrized `[overnight]` cases in
+`tests/test_grouped_cli.py` are GENERATED from the catalog `GROUPS` and disappeared with the group.
+The worker closed that gap properly, by a node-id set difference of `--collect-only` against a
+read-only base worktree showing 22 + 7 + 8 = 37 with NO node id added, which is a stronger reading
+than the one the block asked for. The remaining five are sound: the archive advertisement was an
+indented rather than a fenced block; only one of the two docstring survivor lines was rewritten
+because the block ordered the other paragraph kept byte-identical; a pre-existing empty section
+comment was left in the catalog because it introduces a different section the block does not name;
+the affected-guards gate was additionally run once before C3 over an identical tree during the
+self-review loop; and three worktrees were created and all removed and pruned before the handback.
+
+## Prose slips drafted by session 10, to be appended by round 20's ledger commit
+
+2026-09-09 · F275 R19 · The round 19 block ordered the worker to delete every line of `tests/orchestration/cluster_deletion_map.txt` beginning `packages.orchestration.overnight_readiness <-`, and that file holds no such line and names that module nowhere. The order was carried over by shape from round 18, whose module DID have three such lines, without measuring the file for round 19's module. The reviewer's own dry-run script hid it: the script filtered the lines and printed a completion message unconditionally, so removing zero lines looked exactly like removing three. Nothing landed wrong — the worker declined the no-op and declared it, which left one MISSING path in the round's path set. The lesson is that a filter used as a measurement prints the COUNT it removed, never a fixed message, and that a change-set entry carried over from the previous round's shape is re-measured against this round's subject before it is ordered.
+
+2026-09-09 · F275 R19 · The round 19 block told the worker the suite count "MUST fall" because the round deletes two whole test files, and the real fall was 37 against the 29 those two files hold. The other eight are parametrized `[overnight]` cases in `tests/test_grouped_cli.py` generated from the catalog `GROUPS`, so deleting a command GROUP deletes tests in a file the change set never names. The worker closed the gap by a node-id set difference rather than by arithmetic and showed no node id was added, which is the stronger reading. The lesson is that a round deleting a catalog GROUP predicts its suite delta from the generated cases as well as from the deleted files, because a parametrized suite couples test count to production data and the coupling is invisible in a change set.
+
+## THE ROUND 20 MAP — MEASURED AT `e3879c82`, AND WHY THIS ROUND NEEDS ITS OWN SESSION
+
+THE MODULE: `packages/orchestration/worker_registry.py`, 1035 lines, now the first component line
+of `.agent/f275_deletion_order.md`, a SINGLE module. Its group takes six commands —
+`worker.registry-list`, `worker.registry-show`, `worker.registry-integrity`, `route-policy.show`,
+`route-policy.set` and `route-policy.evaluate` — the handler `apps/cli/commands/route_policy_cmd.py`,
+the cockpit section `_build_worker_registry_section` in `ui_server.py` with its dashboard line, and
+the `WORKER_REGISTRY_SHOW` member of `ContractAction` in `run_contract.py`.
+
+TWO QUESTIONS ARE ALREADY ANSWERED AND THE NEXT SESSION SHOULD NOT RE-OPEN THEM. FIRST, F260's
+SECOND CARRY-OVER IS DISCHARGED: every user-settable route-policy knob was audited against F110's
+config keys and none has an equivalent, which F260's Design rules is a FINDING and never a rebuild.
+R-0831 is that finding and it is open. SECOND, THIS COCKPIT SECTION IS NOT UNDER A HOLD: DECISION
+F274 D4 held exactly two sections, `_build_builder_routing_section` and `_build_overnight_section`,
+and DECISION F275 D5 released the first while the second survives on the carried
+`mission_readiness`. `_build_worker_registry_section` is neither, so it dies with its module under
+T001 RULE 1 and needs no release.
+
+WHAT IS NOT ANSWERED, AND WHY IT IS A DECISION RATHER THAN A MEASUREMENT. The SURVIVING module
+`packages/orchestration/token_economy.py` does not merely import a helper from the dying module —
+its routing recommendation is built out of it. Measured at `e3879c82`, it imports
+`WorkerSelectionRequest`, `evaluate_worker_selection`, `get_worker_spec`,
+`hard_safety_requires_approval` and `load_worker_registry` at line 584, `estimate_token_cost_band`
+at line 166 and `classify_route_cost` at line 613. One of those is not a convenience:
+
+    worker_registry.py:834  hard_safety_requires_approval(spec) -> bool
+    token_economy.py:625    hard = bool(spec is not None and hard_safety_requires_approval(spec))
+
+Its own docstring calls it a "HARD safety invariant (R-0095)" and states that a user policy "may
+add stricter approval but must NEVER weaken this". It forces human approval for expensive or
+unknown cost, high, blocked or unknown risk, the external-builder and cloud kinds, and every
+placeholder route. So the deletion removes an approval-forcing invariant from a surviving module,
+and F275's own "Do not touch" section names THE APPROVAL GATE among the things this feature may not
+touch. That collision is real, it is not resolved anywhere on disk, and T001 RULE 3 — the survivor
+loses the call site and never gains a copy — points straight into it.
+
+The next session's first work is therefore a dated DECISION in `.agent/decisions.md`, before the
+first `git rm`, ruling which of these the round does, with the alternatives and the reversal
+recorded: whether `token_economy`'s routing recommendation survives the loss of the registry in a
+FAIL-SAFE form, where an absent spec means unknown and unknown already forces approval by that
+module's own R-0098 rule, so the invariant is preserved by degradation rather than by a copy; or
+whether the recommendation itself is cluster surface that dies with the registry, which is a larger
+claim about a surviving module's purpose and needs its own measurement of every consumer of
+`token_economy`. Both readings are available and neither is the obvious default. Unlike round 18,
+where the measurement showed the deleted gate had been jammed shut and could not discriminate, this
+gate DOES discriminate today, so no equivalent measurement rescues the question.
+
+## Session 10 ends here — TWO delegated rounds, both PASS, both independently re-gated
+
+Stated plainly rather than dressed up, because the number is below the floor.
+`docs/agents/self_drive_protocol.md` G7, as amended by amend0905-throughput, targets SIX TO EIGHT
+delegated rounds per session with FOUR as the floor, and this session ran TWO. That is a real
+shortfall and it is reported as one.
+
+THE REASON IS THE ONE amend0905 SANCTIONS AND IT IS OFFERED AS A MEASUREMENT: round 20 is a round
+that explicitly needs a fresh session. The measurement is the four lines quoted above — a hard
+safety invariant, documented as un-weakenable, consumed by a surviving module, inside a feature
+whose "Do not touch" names the approval gate. Authoring that block against an unmade ruling is what
+this feature's own record shows costs a round, and it is the same category of reason session 9 gave
+for round 18, which then landed clean. The OTHER sanctioned reason is explicitly NOT claimed:
+operator amendment amend0908-f275-finish rule 5 permits "authoring errors accumulating" to end a
+session only after at least four delegated rounds, and this session ran two, so that reason is
+unavailable and is not being used. Both of this session's rounds passed, and the four prose slips
+it recorded were all caught by a worker or by the reviewer's own re-gate before anything reached
+disk wrongly.
+
+WHAT THIS SESSION LANDED. Round 18, the `overnight_executor` group at 1119 module lines over 24
+paths, 27 insertions against 1993 deletions, taking one command, four test functions, one whole
+documentation page with its index row and five inbound cross-links, and unthreading a live-review
+gate from THREE surviving production modules under DECISION F275 D8 — which ruled the question
+session 9 left open by measuring that the gate could not read this repository's own ledger format
+and therefore blocked unconditionally rather than discriminating. Round 19, the
+`overnight_readiness` group at 894 module lines over 13 paths, 7 insertions against 1402 deletions,
+taking the WHOLE `overnight` command group, its GroupDef, its handler file and two test files, with
+the surviving carry-over pinned by a mutation rather than by assertion. Findings R-0862, R-0863 and
+R-0864 were registered and R-0861 was resolved by reviewer-authored text. The full suite is green
+at 18515 passed, 23 skipped and ZERO failed. THIRTEEN of F260's prototype-cluster module groups are
+now gone and TWO components remain in `.agent/f275_deletion_order.md`.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context
+was long but not exhausted and is NOT the reason this session ends — it ran four full serial suites,
+two of them establishing round boundaries by an applied dry run and two of them independent
+re-gates, and it ends on the round-20 boundary being measured rather than on the reviewer running
+out of room.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It does not exist
+as this session ends and was measured absent at the Phase 0 probe and again before each round. Then
+the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
+
+SECOND, round 20's FIRST substantive commit books, from this file as the durable carrier under
+amend0827-process-diet rule 1: the ROUND 19 PASS verdict above as a `Gate: F275 R19` entry in
+`.agent/live_review.md`, and the two prose slips as dated lines in `.agent/prose_slips.md`. The
+open set is 87 by distinct id and the next free id is R-0865.
+
+THIRD, round 20 itself: rule the `token_economy` hard-safety question as a dated DECISION BEFORE
+the first `git rm`, complete an applied dry run to a green suite before authoring anything, and
+order the mutation red-proofs in full, because a surviving production module loses code and one of
+the removed calls is an approval-forcing invariant.
