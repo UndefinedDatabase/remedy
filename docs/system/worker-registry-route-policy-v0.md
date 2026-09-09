@@ -65,12 +65,6 @@ high-risk, unknown-cost, or placeholder recommendations set `requires_human_appr
 `token_reduction_reason` produce **estimated bands** only. There is no invented exact pricing and no
 pricing call. Public surfaces say `estimated`, never `verified`. Unknown cost stays unknown.
 
-### Builder Routing integration
-`builder_routing` consults the route policy read-only: if the user blocked/disabled the worker a
-route maps to (or selected a different worker), the route escalates to **human review** with a
-catalog-valid `remedy route-policy show <job> --json` next action. This is a no-op under the default
-policy (which blocks/selects nothing), so existing routing behaviour is unchanged.
-
 ## CLI
 
 ```

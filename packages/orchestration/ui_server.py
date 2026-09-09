@@ -842,33 +842,6 @@ def _build_worker_registry_section(job: Any) -> dict[str, Any]:
                 "recommended_next_action": "", "live": False, "source": "unavailable"}
 
 
-def _build_builder_routing_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Expensive Builder Routing v0 summary for the cockpit (Step 1595).
-
-    Latest tier + budget/loop status + external-recommended flag + next-action label only.
-    No buttons, no mutation, no execution, no raw content."""
-    try:
-        from packages.orchestration.builder_routing import load_builder_routing_traces
-        scope = f"job:{job.id}"
-        traces = load_builder_routing_traces(scope=scope)
-        latest = traces[-1] if traces else None
-        external_recommended = any(
-            t.get("selected_tier") == "external_candidate_generator" for t in traces)
-        return {
-            "routing_decision_count": len(traces),
-            "latest_tier": (latest or {}).get("selected_tier", ""),
-            "loop_guard_status": (latest or {}).get("loop_guard_status", ""),
-            "risk_level": ((latest or {}).get("risk_summary", {}) or {}).get("level", ""),
-            "external_builder_recommended": external_recommended,
-            "next_safe_action_label": (latest or {}).get("next_safe_action", ""),
-            "source": "builder_routing",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"routing_decision_count": "unknown", "latest_tier": "",
-                "loop_guard_status": "", "external_builder_recommended": False,
-                "next_safe_action_label": "", "source": "unavailable"}
-
-
 def _build_repair_request_section(job: Any) -> dict[str, Any]:
     """Safe read-only Repair Request Builder summary for the cockpit (Step 1381).
 
@@ -1512,7 +1485,6 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "continuation": _build_continuation_section(job, events, truth_data_dir),
         "repair": _build_repair_section(job),
         "overnight": _build_overnight_section(job, truth_data_dir),
-        "builder_routing": _build_builder_routing_section(job),
         "worker_registry": _build_worker_registry_section(job),
         "token_economy": _build_token_economy_section(job),
         "test_execution": _build_test_execution_section(job),

@@ -44,11 +44,7 @@ CLUSTER_MODULES = (
     "packages.orchestration.provider_trust_verification",
     "packages.orchestration.external_builder_sandbox",
     "packages.orchestration.local_model_advisor",
-    "packages.orchestration.local_candidate_generator",
-    "packages.orchestration.candidate_quality",
-    "packages.orchestration.builder_routing",
     "packages.orchestration.worker_registry",
-    "packages.orchestration.model_route_tournament",
     "packages.orchestration.overnight_executor",
     "packages.orchestration.overnight_readiness",
     "packages.orchestration.main_builder_adapter",
@@ -63,12 +59,9 @@ CLUSTER_MODULES = (
 # measurable. F274 round 4 moved their cluster-bound handlers out into
 # their own deletion-bound handler files for exactly that reason.
 CLUSTER_COMMAND_HANDLERS = (
-    "apps/cli/commands/builder_routing_cmd.py",
-    "apps/cli/commands/candidate_quality_cmd.py",
     "apps/cli/commands/dogfood_cmd.py",
     "apps/cli/commands/external_builder_cmd.py",
     "apps/cli/commands/local_advisor_cmd.py",
-    "apps/cli/commands/local_candidate_cmd.py",
     "apps/cli/commands/main_builder_adapter_cmd.py",
     "apps/cli/commands/managed_builder_execution_cmd.py",
     "apps/cli/commands/overnight_cmd.py",
@@ -79,7 +72,6 @@ CLUSTER_COMMAND_HANDLERS = (
     "apps/cli/commands/review_cmd.py",
     "apps/cli/commands/route_policy_cmd.py",
     "apps/cli/commands/self_repair_cmd.py",
-    "apps/cli/commands/tournament_cmd.py",
 )
 
 # Production trees a surviving consumer can live in. `tests/` is deliberately
@@ -111,7 +103,7 @@ def embedded_first_party_imports(path: Path) -> set[str]:
 def _cluster_module_of(dotted: str) -> str | None:
     """The cluster module a dotted import name refers to, or None.
 
-    `from packages.orchestration.builder_routing import run` contributes both the
+    `from packages.orchestration.worker_registry import run` contributes both the
     module and `module.run`, so an attribute suffix still names the module.
     """
     for module in CLUSTER_MODULES:

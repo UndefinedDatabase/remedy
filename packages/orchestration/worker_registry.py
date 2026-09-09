@@ -709,8 +709,10 @@ def _worker_next_action(spec: WorkerSpec | None, job_id: str) -> str:
         return "remedy feature plan --agent --json"
     if spec.kind == WorkerKind.EXTERNAL_BUILDER:
         return f"remedy external-builder package-create {jid} --json"
-    if spec.kind in (WorkerKind.LOCAL_CANDIDATE,):
-        return f"remedy builder-routing report --job-id {jid} --json"
+    # WorkerKind.LOCAL_CANDIDATE has no next action of its own. Remedy deliberately does
+    # not advertise a local-candidate routing report, because no surviving command reports
+    # one: `remedy builder-routing report` died with the prototype cluster (F275, R-0848).
+    # The kind therefore falls through to this function's `worker registry-list` default.
     if spec.kind == WorkerKind.REVIEWER:
         return "remedy review list --json"
     if spec.kind == WorkerKind.HUMAN:

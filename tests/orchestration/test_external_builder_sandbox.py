@@ -224,32 +224,6 @@ class TestSubmission:
 
 
 # ---------------------------------------------------------------------------
-# Step 1689 — candidate quality evaluation of external submission
-# ---------------------------------------------------------------------------
-
-
-class TestQualityIntegration:
-    def test_external_evaluation(self, env):
-        from packages.orchestration.candidate_quality import (
-            evaluate_candidate_quality,
-            export_candidate_quality_json,
-        )
-        jid, _ = _job(env)
-        pkg = create_external_builder_request_package(jid, data_dir=env)
-        sub = submit_external_candidate(pkg.package_id, _cand_file(env, _SAFE_CAND), "claude", data_dir=env)
-        e = evaluate_candidate_quality(
-            trust_report_id=sub.trust_report_id, verification_id=sub.verification_id,
-            intent_id=sub.intent_id, job_id=jid,
-            model_label="external_builder:claude", route_tier="external_candidate_generator",
-            data_dir=env)
-        d = export_candidate_quality_json(e)
-        assert d["outcome"] == "pending_approval"
-        assert d["route_tier"] == "external_candidate_generator"
-        assert d["model_label"] == "external_builder:claude"
-        assert d["score"]["band"] in ("medium", "low", "very_low")   # pending capped, not success
-
-
-# ---------------------------------------------------------------------------
 # Step 1695 — integrity
 # ---------------------------------------------------------------------------
 

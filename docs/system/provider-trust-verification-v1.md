@@ -124,13 +124,10 @@ upgrades. Verification reports are safe summaries only.
 
 ## Next
 
-[Expensive Builder Routing v0](expensive-builder-routing-v0.md) (now built — local-first routing
-that requires trust + verification before any external builder route) OR Automated Local Candidate
-Generator Adapter v0 — both gated behind request package + trust + verification.
-
-See also: [local-candidate-generator-v0.md](local-candidate-generator-v0.md) — locally-generated
-candidates enter this exact Trust Gate + Verification pipeline (provider label
-`local_candidate_generator:<model>`); no candidate becomes an intent before verification passes.
-The verification decision is also read (after the fact) by
-[candidate-quality-evaluation-v1.md](candidate-quality-evaluation-v1.md) as one evidence stage —
-a candidate cannot score high without verification passing, nor excellent without verified proof.
+Every external candidate still enters this exact Trust Gate + Verification pipeline, whatever
+produced it: no candidate becomes a repair intent before verification passes, and a human still
+approves that intent afterwards. Remedy deliberately does not choose between candidate sources
+here, and deliberately does not score a candidate's quality here — the local-first routing layer,
+the local candidate generator and the evidence-based scorecards were prototypes and were deleted
+with the prototype cluster. F110 owns routing and its configuration from here; F082 owns
+evidence-based scoring of a candidate.

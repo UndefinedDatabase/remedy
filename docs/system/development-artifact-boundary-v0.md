@@ -25,7 +25,6 @@ Normal Remedy users never need to read, edit, or depend on this file.
 | Parse review verdict for self-dogfood gates | `packages/orchestration/self_dogfood.py` | development self-test |
 | Parse review findings for self-dogfood execution | `packages/orchestration/self_dogfood_execution.py` | development self-test |
 | Parse review findings for overnight self-dev | `packages/orchestration/overnight_executor.py` | development self-dev |
-| Parse review findings for builder routing | `packages/orchestration/builder_routing.py` | development self-dev |
 | Orchestrator brain context | `packages/orchestration/orchestrator_brain.py` | development context |
 | Integrity gate checks | `packages/orchestration/integrity_gate.py` | development process health |
 | Progress command display | `apps/cli/commands/progress_cmd.py` | development progress display |
@@ -69,7 +68,6 @@ Product questions must be answered from structured Remedy state:
 | Execution status | Managed execution records, event ledger | `managed_builder_execution.py` |
 | Approval status | Approval/policy records | `execution_approval_policy.py` |
 | Builder status | Builder session records | `main_builder_adapter.py` |
-| Candidate status | Sandbox/candidate quality records | `candidate_quality.py` |
 | Test status | Real test execution records | `real_test_execution.py` |
 | Repair proposal status | Self-repair proposal records | `self_repair_proposals.py` |
 | Proof status | Proof chain records | `file_provenance.py` |

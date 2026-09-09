@@ -71,19 +71,7 @@ quarantine → Trust Gate → Verification → Materialization (if passed) → p
 - **Pending approval** arises only when trust + verification pass and a supported materialization
   produced a real, human-approvable intent. A human still approves; `do continue` still applies.
 
-## 5. Quality is judged later, from evidence
-
-```
-remedy external-builder evaluate <submission_id> --json
-```
-
-Candidate Quality scores the submission by the same evidence rules as local candidates
-([candidate-quality-evaluation-v1](candidate-quality-evaluation-v1.md)): no score claims success
-without verified proof; rejected/unverified → low; pending ≠ completed. Scorecards aggregate by the
-`external_candidate_generator` route + `external_builder:<name>` source, feeding Builder Routing as a
-read-only confidence signal (poor history → human review; never auto-runs a worker).
-
-## 6. Why no external execution happens in Remedy
+## 5. Why no external execution happens in Remedy
 
 Remedy never launches the external worker, never calls a provider/model SDK, never reaches the
 network, never runs a subprocess for the worker, and never auto-applies/approves/tests. The worker

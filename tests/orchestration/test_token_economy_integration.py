@@ -34,49 +34,6 @@ def env(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Builder routing integration (Step 1775)
-# ---------------------------------------------------------------------------
-
-
-class TestRoutingIntegration:
-    def test_decision_carries_token_economy(self, env):
-        from packages.orchestration.builder_routing import (
-            BuilderRoutingRequest,
-            export_builder_routing_json,
-            select_builder_routing_decision,
-        )
-        jid = _job_with_repo(env, files={"README.md": "hi\n", "src/a.py": "x=1\n"})
-        d = select_builder_routing_decision(BuilderRoutingRequest(job_id=jid), data_dir=env)
-        exported = export_builder_routing_json(d)
-        assert "token_economy" in exported
-        te = exported["token_economy"]
-        assert "estimated_token_band" in te and te.get("estimated") is True
-        # next action never an execution command
-        assert " run" not in str(te.get("next_safe_action", ""))
-
-    def test_no_side_effects(self, env):
-        # Calling routing twice must not create execution artifacts; pure recommendation.
-        from packages.orchestration.builder_routing import (
-            BuilderRoutingRequest,
-            select_builder_routing_decision,
-        )
-        jid = _job_with_repo(env, files={"README.md": "hi\n"})
-        d1 = select_builder_routing_decision(BuilderRoutingRequest(job_id=jid), data_dir=env)
-        d2 = select_builder_routing_decision(BuilderRoutingRequest(job_id=jid), data_dir=env)
-        assert d1.selected_tier == d2.selected_tier
-
-
-# ---------------------------------------------------------------------------
-# Progress ledger items (Step 1767)
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# Feature suggestions (Step 1768)
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
 # Review bundle + cockpit (Step 1777)
 # ---------------------------------------------------------------------------
 

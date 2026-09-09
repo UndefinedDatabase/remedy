@@ -24,7 +24,6 @@ _ALLOWED_LEGACY = {
     "packages/orchestration/self_dogfood.py",
     "packages/orchestration/self_dogfood_execution.py",
     "packages/orchestration/overnight_executor.py",
-    "packages/orchestration/builder_routing.py",
     "packages/orchestration/orchestrator_brain.py",
     "packages/orchestration/integrity_gate.py",
     # The freshness gate binds packaged evidence to the agent's live review by

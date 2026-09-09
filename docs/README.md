@@ -22,9 +22,7 @@
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
 | brain | [project-brain.md](system/project-brain.md) | system |
 | chat | [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) | roadmap |
-| candidate eval | [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | system |
 | CI self-check | [ci-self-check-v1.md](system/ci-self-check-v1.md) | system |
-| candidate gen | [local-candidate-generator-v0.md](system/local-candidate-generator-v0.md) | system |
 | cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
 | context | [context-inspector.md](system/context-inspector.md) | system |
 | cost preview | [cost-preview-user-guide-v0.md](guides/cost-preview-user-guide-v0.md) | guide |
@@ -55,7 +53,6 @@
 | repair | [repair-loop-v1.md](system/repair-loop-v1.md) | system |
 | repair | [repair-request-builder-v0.md](system/repair-request-builder-v0.md) | system |
 | resume | [resume.md](guides/resume.md) | guide |
-| routing | [expensive-builder-routing-v0.md](system/expensive-builder-routing-v0.md) | system |
 | runtime harness | [runtime-harness-v1.md](system/runtime-harness-v1.md) | system |
 | routing policy | [model_routing_policy.md](agents/model_routing_policy.md) | agents |
 | routing | [worker-registry-route-policy-v0.md](system/worker-registry-route-policy-v0.md) | system |
@@ -68,7 +65,6 @@
 | test lanes | [test-lanes-v0.md](system/test-lanes-v0.md) | system |
 | token economy | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | system |
 | token economy | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | guide |
-| tournament | [model-route-tournament-harness-v0.md](system/model-route-tournament-harness-v0.md) | system |
 | UI | [ui-target.md](archive/ui-target.md) | archive |
 | vocabulary | [vocabulary.md](system/vocabulary.md) | system |
 | watchdog | [autonomy-watchdog-v1.md](system/autonomy-watchdog-v1.md) | system |
@@ -85,7 +81,6 @@ Specifications and design documents for the built system.
 | [autonomy-watchdog-v1.md](system/autonomy-watchdog-v1.md) | Mission tripwires (no-progress, burn anomaly, goal drift), the pause-only action, and the mission watchdog/resume/show surface |
 | [bounded-overnight-executor-v0.md](system/bounded-overnight-executor-v0.md) | Bounded overnight executor *(overnight superseded)* |
 | [cache-optimal-prompt-ordering-v1.md](system/cache-optimal-prompt-ordering-v1.md) | Ranked prompt-segment composition, the measured before/after cacheable prefix, and why the provider-side cache share is unmeasured |
-| [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | Scoring and evaluation of candidate patches |
 | [ci-self-check-v1.md](system/ci-self-check-v1.md) | Remedy's own CI: the stage table, the measured runtime budgets, the hosted workflow, and what CI deliberately never runs |
 | [context-inspector.md](system/context-inspector.md) | Context window inspection and debugging |
 | [controlled-claude-code-operator-path-v0.md](system/controlled-claude-code-operator-path-v0.md) | Controlled operator path for Claude Code sessions |
@@ -94,21 +89,18 @@ Specifications and design documents for the built system.
 | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | Diff-only repair: hunk selection, unified-diff response, strict apply, full-file fallback |
 | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | What the F085 stage-1 execution guard does NOT prevent |
 | [execution-approval-policy-v0.md](system/execution-approval-policy-v0.md) | Human approval gates for execution |
-| [expensive-builder-routing-v0.md](system/expensive-builder-routing-v0.md) | Local-first routing to expensive external builders |
 | [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | Sandbox for external builder execution |
 | [external-builder-worker-contract-v0.md](system/external-builder-worker-contract-v0.md) | Contract for external builder workers |
 | [feature-planner-v0.md](system/feature-planner-v0.md) | Feature planning and decomposition |
 | [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone |
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
 | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |
-| [local-candidate-generator-v0.md](system/local-candidate-generator-v0.md) | Local candidate generation adapter |
 | [local-model-advisor-v0.md](system/local-model-advisor-v0.md) | Local model advisory critique adapter |
 | [main-builder-adapter-v0-token-controlled-session-rail.md](system/main-builder-adapter-v0-token-controlled-session-rail.md) | Token-controlled session rail for main builder |
 | [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | Managed external builder execution + observability |
 | [managed-external-builder-execution-v1-1-hardening.md](system/managed-external-builder-execution-v1-1-hardening.md) | Approval hardening for managed external builders |
 | [mission-run-loop-morning-report-v0.md](system/mission-run-loop-morning-report-v0.md) | Mission run loop + morning report *(overnight superseded)* |
 | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | Built-in model alias table, the shipped dead-model list, and the `remedy doctor core` warning |
-| [model-route-tournament-harness-v0.md](system/model-route-tournament-harness-v0.md) | Model/route tournament comparison harness |
 | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | Operator cockpit UI spec |
 | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | Main orchestrator brain (decision engine) |
 | [orchestrator-loop.md](system/orchestrator-loop.md) | Orchestrator loop contract |
@@ -159,7 +151,6 @@ User-facing guides, quickstarts, and usage documentation.
 | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |
 | [main-builder-adapter-user-guide-v0.md](guides/main-builder-adapter-user-guide-v0.md) | Main builder adapter usage |
 | [managed-external-builder-execution-user-guide-v1.md](guides/managed-external-builder-execution-user-guide-v1.md) | Managed external builder usage |
-| [model-route-tournament-user-guide-v0.md](guides/model-route-tournament-user-guide-v0.md) | Comparing routes with tournament harness |
 | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |
 | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
 | [resume.md](guides/resume.md) | Resuming interrupted jobs |

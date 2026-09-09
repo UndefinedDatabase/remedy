@@ -66,11 +66,6 @@ def test_submit_candidate_json(env):
     assert d["state"] == "pending_approval"
     assert d["intent_id"]
     assert "hi" not in r.stdout and "documentation gap" not in r.stdout
-    sid = d["submission_id"]
-    # evaluate
-    r2 = run_grouped_cli(["external-builder", "evaluate", sid, "--json"], env)
-    assert r2.returncode == 0, r2.stderr
-    assert json.loads(r2.stdout)["outcome"] == "pending_approval"
 
 
 def test_submit_requires_candidate_file(env):

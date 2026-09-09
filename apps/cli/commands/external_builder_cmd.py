@@ -140,31 +140,6 @@ def _cmd_external_builder_submission_list(args: Any) -> None:
               f"  (received={s.get('received_at', '')})")
 
 
-def _cmd_external_builder_evaluate(args: Any) -> None:
-    from packages.orchestration.candidate_quality import (
-        evaluate_candidate_quality,
-        export_candidate_quality_json,
-    )
-    from packages.orchestration.external_builder_sandbox import get_external_submission
-    rec = get_external_submission(args.submission_id)
-    if rec is None:
-        print("Error: submission not found", file=sys.stderr)
-        sys.exit(1)
-    e = evaluate_candidate_quality(
-        trust_report_id=rec.get("trust_report_id") or None,
-        verification_id=rec.get("verification_id") or None,
-        intent_id=rec.get("intent_id") or None, job_id=rec.get("job_id") or None,
-        model_label=f"external_builder:{rec.get('source_label', 'external')}",
-        route_tier="external_candidate_generator", new=bool(getattr(args, "new", False)))
-    data = export_candidate_quality_json(e)
-    if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
-        return
-    print(f"External candidate quality: {data['evaluation_id']}")
-    print(f"  outcome: {data['outcome']}  score: {data['score']['band']} ({data['score']['value']})")
-    print(f"  next: {data['next_safe_action']}")
-
-
 def _cmd_external_builder_integrity(args: Any) -> None:
     from packages.orchestration.external_builder_sandbox import external_builder_integrity
     data = external_builder_integrity()
@@ -182,6 +157,5 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "external-builder.submit": _cmd_external_builder_submit,
     "external-builder.submission-show": _cmd_external_builder_submission_show,
     "external-builder.submission-list": _cmd_external_builder_submission_list,
-    "external-builder.evaluate": _cmd_external_builder_evaluate,
     "external-builder.integrity": _cmd_external_builder_integrity,
 }

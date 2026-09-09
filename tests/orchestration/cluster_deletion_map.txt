@@ -13,7 +13,6 @@
 # EDGE — a cut whose line is left behind reds the test just as a new edge does.
 #
 # Blank lines and lines beginning with `#` are ignored by the reader.
-packages.orchestration.builder_routing <- packages/orchestration/ui_server.py
 packages.orchestration.execution_approval_policy <- apps/cli/commands/worker_facade_cmd.py
 packages.orchestration.local_model_advisor <- packages/orchestration/orchestrator_brain.py
 packages.orchestration.main_builder_adapter <- apps/cli/commands/worker_facade_cmd.py

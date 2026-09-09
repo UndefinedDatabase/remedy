@@ -58,8 +58,6 @@ remedy external-builder package-create <job>      → safe request package (priv
 remedy external-builder submit <package> --candidate-file <f> --source-label <s>
    → quarantine (private, bounded) → Trust Gate → Verification → Materialization (if passed)
    → pending repair intent (if supported) → approval_required (human)
-remedy candidate-quality evaluate --intent-id ... (or via submission ids)
-   → evidence-based scorecard (external route/source dimension)
 remedy patch approve ... ; remedy do continue ...   (human-gated apply, unchanged)
 ```
 

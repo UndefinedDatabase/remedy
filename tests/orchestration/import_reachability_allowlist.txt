@@ -8,8 +8,6 @@ apps.cli.commands
 apps.cli.commands.bench_cmd
 apps.cli.commands.blocker
 apps.cli.commands.brain
-apps.cli.commands.builder_routing_cmd
-apps.cli.commands.candidate_quality_cmd
 apps.cli.commands.change
 apps.cli.commands.ci_cmd
 apps.cli.commands.config_cmd
@@ -31,7 +29,6 @@ apps.cli.commands.job_context_cmd
 apps.cli.commands.job_rerun_cmd
 apps.cli.commands.job_stop_cmd
 apps.cli.commands.local_advisor_cmd
-apps.cli.commands.local_candidate_cmd
 apps.cli.commands.loop_cmd
 apps.cli.commands.main_builder_adapter_cmd
 apps.cli.commands.managed_builder_execution_cmd
@@ -61,7 +58,6 @@ apps.cli.commands.status_cmd
 apps.cli.commands.teach_cmd
 apps.cli.commands.test_cmds
 apps.cli.commands.token_cmd
-apps.cli.commands.tournament_cmd
 apps.cli.commands.ui
 apps.cli.commands.worker
 apps.cli.commands.worker_facade_cmd
@@ -93,9 +89,7 @@ packages.orchestration.budget_guard
 packages.orchestration.budget_resolution
 packages.orchestration.builder_bridge
 packages.orchestration.builder_models
-packages.orchestration.builder_routing
 packages.orchestration.call_identity
-packages.orchestration.candidate_quality
 packages.orchestration.capability_bench
 packages.orchestration.change_provenance_gate
 packages.orchestration.change_set
@@ -167,7 +161,6 @@ packages.orchestration.job_queue
 packages.orchestration.job_runner
 packages.orchestration.list_options
 packages.orchestration.llm_planner
-packages.orchestration.local_candidate_generator
 packages.orchestration.local_model_advisor
 packages.orchestration.long_run_executor
 packages.orchestration.loop_run
@@ -186,7 +179,6 @@ packages.orchestration.mission_plan_schema
 packages.orchestration.mission_readiness
 packages.orchestration.mission_state
 packages.orchestration.model_aliases
-packages.orchestration.model_route_tournament
 packages.orchestration.model_routing
 packages.orchestration.orchestrator_brain
 packages.orchestration.orchestrator_loop

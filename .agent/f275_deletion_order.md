@@ -24,13 +24,12 @@
 # that removes them from disk, exactly as it does for `cluster_deletion_map.txt`.
 #
 # Blank lines and lines beginning with `#` are ignored by the reader.
-packages.orchestration.builder_routing, packages.orchestration.candidate_quality, packages.orchestration.local_candidate_generator, packages.orchestration.model_route_tournament
 packages.orchestration.execution_approval_policy
 packages.orchestration.external_builder_sandbox
 packages.orchestration.local_model_advisor
-packages.orchestration.managed_builder_execution
 packages.orchestration.overnight_executor
 packages.orchestration.worker_registry
-packages.orchestration.main_builder_adapter
+packages.orchestration.managed_builder_execution
 packages.orchestration.overnight_readiness
+packages.orchestration.main_builder_adapter
 packages.orchestration.provider_trust, packages.orchestration.provider_trust_verification
