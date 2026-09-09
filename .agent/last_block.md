@@ -1,189 +1,156 @@
-STEP T001 — F275 round 15 — delete the managed builder execution module group, the TENTH
+STEP T001 — F275 round 16 — delete the main builder adapter module group, the ELEVENTH
 
-Goal: book session 8's round 14 PASS, its prose slip and its drafted finding R-0855; register
-the three findings this round's own deletion owes; sweep the survivor state R-0855 names; and
-delete `packages/orchestration/managed_builder_execution` whole, with its handler, its
-seventeen commands, the `execution` group, fourteen `ContractAction` members, two test files,
-four documentation pages and the survivors that lose code.
+Goal: book session 9's round 15 PASS, its five prose slips and its resolution of R-0855;
+register the two findings this round owes; and delete
+`packages/orchestration/main_builder_adapter` whole, with its handler, the `builder` group and
+its ten commands, six `ContractAction` members, the three `worker` commands whose remaining
+half it carried, two test files and two documentation pages.
 
-This is a PRODUCTION round, not a deletion round under amend0906-triage-throughput: three
-surviving files lose code — `apps/cli/commands/worker_facade_cmd.py`,
-`packages/orchestration/exec_guard.py` and `apps/cli/commands/orchestrator_cmd.py` — so the
-mutation red-proofs are ordered in full.
+This is a PRODUCTION round. `apps/cli/commands/worker_facade_cmd.py` loses three of its five
+commands and the alias registry that served only them; `apps/cli/command_catalog.py` loses a
+whole group and a dangling `related=` reference; and a documented operator path in
+`docs/system/core-product-spine-v0.md` loses a numbered step and is renumbered.
 
-Base: `fadf4715`. Branch: `feature/f275-one-world-completion-part-three`. Session 9, round 15.
+Base: `38e03d2f`. Branch: `feature/f275-one-world-completion-part-three`. Session 9, round 16.
 
 EVERY NUMERAL BELOW WAS MEASURED BY AN APPLIED DRY RUN, NOT DERIVED. The reviewer applied this
-exact change set in a disposable worktree at `fadf4715`, ran the full suite serially to green,
-ran all four red-proofs with matched controls, and split the result into the two production
-commits ordered below. Where a number below disagrees with what you measure, REPORT THE
+exact change set in a disposable worktree at `38e03d2f`, ran the full suite serially to green
+with the change COMMITTED, ran all four red-proofs with matched controls, and read the numstat
+off the resulting commit. Where a number below disagrees with what you measure, REPORT THE
 MEASUREMENT AND DO NOT ADJUST THE CHANGE SET.
 
+WHY THE THREE `worker` COMMANDS DIE RATHER THAN NARROW AGAIN. Round 15 registered R-0857 when
+it took the TEMPLATE half of `worker doctor`, `worker add` and `worker disable`; that finding's
+FIX CLAUSE binds this round by name and orders those three deleted WHOLE rather than left
+reporting that an adapter which no longer exists is absent. This block discharges that clause.
 
-BUNDLE — six commits, in this order
 
-  C0a  save the authored block:  `shutil.copyfile` `.remedy-wt/f275-r15.md` to
-       `.agent/authored/f275-r15.md`. Never retype it.
+BUNDLE — the commits below, in this order
+
+  C0a  save the authored block:  `shutil.copyfile` `.remedy-wt/f275-r16.md` to
+       `.agent/authored/f275-r16.md`. Never retype it.
   C0b  mirror the same bytes:    `shutil.copyfile` the same source to `.agent/last_block.md`.
-  C1   advance `.agent/plan.md`  — replaced WHOLE by the PLAN15 slice.
-  C2   the record: append LEDGER15 to `.agent/live_review.md`, SLIPS15 to
-       `.agent/prose_slips.md`, and DECISION15 to `.agent/decisions.md`.
-  C3   sweep the survivor state finding R-0855 names — three paths.
-  C4   delete the module group — thirty paths.
-  C5   the handback: rewrite `.agent/handoff.md` whole.
+  C1   advance `.agent/plan.md`  — replaced WHOLE by the PLAN16 slice.
+  C2   the record: append LEDGER16 to `.agent/live_review.md` and SLIPS16 to
+       `.agent/prose_slips.md`.
+  C3   delete the module group — twenty-four paths.
+  C4   the handback: rewrite `.agent/handoff.md` whole.
 
-C1 is the FIRST substantive commit and it advances the plan before the ledger commit, per §3
-item 23. C2 registers R-0855 through R-0858 BEFORE C3 and C4 change anything they describe,
-which is the ordering §3 item 20's R-0524 carve-out requires of a slice that states a fact
-about this round's own landed change: DECISION15 and the R-0856 through R-0858 paragraphs
-each name that ordering rather than a SHA that cannot exist when they are written.
-
-
-THE CHANGE SET OF C3 — three paths, 3 insertions against 17 deletions
-
-  apps/cli/commands/orchestrator_cmd.py                     0 / 3
-      In `_cmd_orchestrator_decide`, delete the three lines `adv = data.get("advisor")`,
-      `if adv:` and the `print` beneath them. Round 14 removed `"advisor"` from
-      `export_decision_json`, so the branch can never fire.
-  packages/orchestration/orchestrator_brain.py              0 / 13
-      Delete the whole `# Local Model Advisor integration (Steps 1509-1511)` banner block,
-      its explanatory paragraph, the closing rule line, `_CONFIDENCE_ORDER` and the blank
-      lines that separated them. `_CONFIDENCE_ORDER` has exactly one occurrence repo-wide —
-      its own definition — because round 14 deleted its only reader.
-  tests/orchestration/test_cluster_deletion_map.py          3 / 1
-      Replace the one-line comment above `CLUSTER_MODULES` with a comment that states NO
-      count, per §3 item 16. The tuple shrinks once per group commit, so any numeral there
-      is wrong from the next commit onward.
+C1 is the FIRST substantive commit and advances the plan before the ledger commit, per §3
+item 23. C2 books round 15's verdict and its resolution of R-0855 and registers R-0859 and
+R-0860 BEFORE C3 changes anything they describe, which is the ordering §3 item 20's R-0524
+carve-out requires of a slice stating a fact about this round's own landed change; the R-0860
+paragraph names that ordering rather than a SHA that cannot exist when it is written.
 
 
-THE CHANGE SET OF C4 — thirty paths, 42 insertions against 4801 deletions
+THE CHANGE SET OF C3 — twenty-four paths, 13 insertions against 2502 deletions
 
-WHOLE-FILE REMOVALS, eight paths, by `git rm`:
-  packages/orchestration/managed_builder_execution.py        0 / 1694
-  apps/cli/commands/managed_builder_execution_cmd.py         0 / 350
-  tests/orchestration/test_managed_builder_execution.py      0 / 1793
-  tests/cli/test_managed_builder_execution_cli.py            0 / 95
-  docs/system/managed-external-builder-execution-v1.md       0 / 177
-  docs/system/managed-external-builder-execution-v1-1-hardening.md   0 / 88
-  docs/guides/managed-external-builder-execution-user-guide-v1.md    0 / 79
-  docs/system/controlled-claude-code-operator-path-v0.md     0 / 146
-
-The last two are NOT in the map the round 14 handback carried; the reviewer's own token sweep
-found them and read both pages. Each is entirely about the deleted feature: the user guide
-documents `execution template-list/show/approve/run`, and the operator path's every numbered
-step but two is an `execution` command. A page whose subject this commit deletes is deleted
-with it — AGENTS.md Scope Control forbids the attic by name.
+WHOLE-FILE REMOVALS, six paths, by `git rm`:
+  packages/orchestration/main_builder_adapter.py                   0 / 964
+  apps/cli/commands/main_builder_adapter_cmd.py                    0 / 143
+  tests/orchestration/test_main_builder_adapter.py                 0 / 474
+  tests/cli/test_main_builder_adapter_cli.py                       0 / 139
+  docs/system/main-builder-adapter-v0-token-controlled-session-rail.md   0 / 142
+  docs/guides/main-builder-adapter-user-guide-v0.md                0 / 80
 
 CATALOG AND CONTRACT:
-  apps/cli/command_catalog.py                                0 / 197
-      Delete the `"execution": GroupDef(...)` line, and the 196-line span that begins at the
-      `# ── execution ─` section comment and ends at the last `CommandEntry` whose
-      `group_id="execution"`. That span holds SEVENTEEN command entries; count them from the
-      span rather than from this list, and report the number you counted.
-  packages/orchestration/run_contract.py                     0 / 34
-      Delete the fourteen `EXECUTION_*` members of `ContractAction`, their fourteen
-      `ContractAction.EXECUTION_*` rows in `_DEFAULT_ALLOWED_ACTIONS`, the four-line
-      `# Managed Builder Execution v1 (Step 2035)` comment above the members, and the two
-      one-line comments `# v1.1: approval hardening read-only surfaces` and
-      `# v1.2: operator path (Step 2506)`. `SELF_EXECUTION_STATUS` is NOT one of them and
-      SURVIVES: it does not begin with `EXECUTION_`.
-  apps/cli/commands/__init__.py                              1 / 2
-      `managed_builder_execution_cmd` out of the import block and out of the `for mod in (…)`
-      tuple.
+  apps/cli/command_catalog.py                                      1 / 142
+      Delete the `"builder": GroupDef(...)` line; delete the 110-line span that begins at the
+      `# ── builder (Main Builder Adapter v0, Step 1981) ───` section comment and ends at the
+      `),` closing the LAST `CommandEntry` whose `group_id="builder"` — that span holds TEN
+      command records, and you count them from the span rather than from this sentence and
+      report the number you counted. THE SPAN STOPS BEFORE THE NEXT SECTION COMMENT: the line
+      `# ── brain ───` belongs to the section that follows and MUST SURVIVE. The reviewer's
+      own first dry run swallowed it, and every `# ── ` section comment in the file is to be
+      counted before and after to prove none was lost. Then delete the three `CommandEntry`
+      records whose `command_id` is `"worker.doctor"`, `"worker.add"` and `"worker.disable"` —
+      30 lines — leaving the `worker` GROUP itself alive with its nine other commands. Finally
+      the ONE insertion: the surviving `mission.run` record reads
+      `related=("worker.doctor", "mission.report")`, which after this commit names a command
+      that does not exist, so it becomes `related=("mission.report",)`.
+  packages/orchestration/run_contract.py                           0 / 12
+      Delete the six `ContractAction` members `BUILDER_ADAPTER_SHOW`,
+      `BUILDER_ADAPTER_ENABLE`, `BUILDER_PACKAGE_CREATE`, `BUILDER_SESSION_CREATE`,
+      `BUILDER_SESSION_SHOW` and `BUILDER_SESSION_INTAKE`, and their six
+      `_DEFAULT_ALLOWED_ACTIONS` rows. `BUILDER_ROUTING_DECIDE`, `BUILDER_ROUTING_REPORT` and
+      the three `EXTERNAL_BUILDER_*` members are DIFFERENT actions and SURVIVE: none of them
+      begins with `BUILDER_ADAPTER_`, `BUILDER_PACKAGE_` or `BUILDER_SESSION_`.
+  apps/cli/commands/__init__.py                                    1 / 2
+      `main_builder_adapter_cmd` out of the import block and out of the `for mod in (…)` tuple.
 
-SURVIVORS THAT LOSE CODE:
-  apps/cli/commands/worker_facade_cmd.py                     3 / 54
-      Delete `template_id` from all four entries of `_WORKER_ALIASES`. In `_cmd_worker_doctor`
-      delete the `managed_builder_execution` import, the `template` local, the
-      `template_exists` and `template_enabled` checks with their blockers, and the
-      `"template_id"` key of `report`. In `_cmd_worker_add` delete the
-      `managed_builder_execution` import, the `template` block, the `"template_id"` key, the
-      `results["note"]` line and the `print` that renders it, and make `results["ready"]` read
-      `results.get("adapter_enabled", False)` alone; the quickstart list loses its
-      `execution approve` step and is RENUMBERED to four items, and `advanced` loses
-      `template_id` and the two `execution` low-level commands. In `_cmd_worker_disable` delete
-      the `managed_builder_execution` import, `template_ok`, and the `"template_disabled"` and
-      `"template_id"` keys. THE ADAPTER HALF SURVIVES: `main_builder_adapter` is a LATER
-      component of the order file and dies in a later round, so each of the three commands
-      keeps its adapter behaviour and loses only its template behaviour.
-  packages/orchestration/exec_guard.py                      24 / 19
-      Seven docstring and comment citations of `managed_builder_execution` are PROSE that
-      would dangle. The anchor moves into this surviving module and is stated ONCE. In
-      `test_command_exec_policy` replace the sentence deferring to
-      `managed_builder_execution._builder_exec_policy` with the reason itself, recovered from
-      that function's own docstring before it is deleted, and mark it the one statement the
-      others cite. In `dod_process_exec_policy`, `dod_app_exec_policy`,
-      `runtime_build_exec_policy` and `runtime_server_exec_policy` replace the same deferral
-      with a citation of `:func:`test_command_exec_policy``. In `run_guarded_test_command`
-      replace the `_guarded_exit_code` citation with the translation it described. Above
-      `FORBIDDEN_ENV_KEYS` drop the "same spelling and members as" clause: after this commit
-      this is the ONE definition of the set. NO BEHAVIOUR CHANGES — every edit is inside a
-      docstring or a comment, and the four `ExecGuardPolicy` constructions are untouched.
+THE SURVIVOR THAT LOSES CODE:
+  apps/cli/commands/worker_facade_cmd.py                           0 / 210
+      Delete `_cmd_worker_doctor`, `_cmd_worker_add` and `_cmd_worker_disable` whole, their
+      three `COMMAND_HANDLERS` rows, and the four section-banner comment blocks that titled
+      them and the alias registry. Delete `_WORKER_ALIASES` and `_resolve_alias`: after the
+      three commands go, this round's own sweep shows they have no reader left, which is
+      R-0855's fix clause applied to this deletion. `_err`, `_cmd_mission_run`,
+      `remedy_scripts_dir` and `_cmd_doctor_core` SURVIVE, and `COMMAND_HANDLERS` keeps
+      `mission.run` and `doctor.core`.
 
 TESTS:
-  tests/cli/test_worker_facade_cmd.py                        7 / 33
-      Delete the `template_id` assertion from `test_claude_alias_fields`; delete the
-      `_TMPL_PATCH`, `_ENABLE_TMPL` and `_DISABLE_TMPL` constants; drop the template `@patch`
-      decorator, its parameter and its `return_value` from the four `TestWorkerDoctor` tests,
-      from both `TestWorkerAdd` tests and from `TestWorkerDisable`; drop the
-      `template_enabled`, `template_disabled` and `mock_enable_tmpl.assert_not_called()`
-      assertions. RENAME `test_add_enables_both` to `test_add_enables_adapter` and
-      `test_disable_both` to `test_disable_adapter`: each now exercises one half, and a name
-      that counts two is the §3 item 16 defect in a node id.
-  tests/cli/test_cli_ux.py                                   1 / 1
-      Drop `"execution"` from the hardcoded `_INTERNAL_GROUPS` set at the top of the file.
-  tests/orchestration/test_development_artifact_boundary.py  0 / 8
-      Drop `"managed_builder_execution"` from `_PRODUCT_MODULES`, delete the whole
-      `test_managed_builder_execution` method of `TestProductModulesNoLiveReview`, and drop
-      the module from the tuple `test_worker_doctor_core_no_agent` iterates.
-  tests/cli/test_product_spine.py                            0 / 5
-      Delete `test_no_stale_adapter_flag_in_operator_path` whole. Its helper raises on a
-      missing page by design, and the page it reads is deleted by this commit.
-  tests/orchestration/test_cluster_deletion_map.py           0 / 2
-      The `CLUSTER_MODULES` and `CLUSTER_COMMAND_HANDLERS` entries. C3 already fixed the
-      comment above the tuple; do not touch it again here.
-  tests/test_test_categories.py                              0 / 1
-  tests/orchestration/import_reachability_allowlist.txt      0 / 2
-  tests/orchestration/cluster_deletion_map.txt               0 / 1
+  tests/cli/test_worker_facade_cmd.py                              4 / 157
+      Delete the classes `TestWorkerAliasRegistry`, `TestWorkerDoctor`, `TestWorkerAdd` and
+      `TestWorkerDisable` whole, with the banner comment above each. In
+      `TestHandlerRegistry::test_all_handlers_present` the expected set becomes
+      `{"mission.run", "doctor.core"}`; in
+      `TestCatalogIntegration::test_worker_facade_commands_in_catalog` the tuple becomes
+      `("mission.run", "mission.report")`; in `TestCollectHandlers::test_facade_in_collected`
+      it becomes `("mission.run", "mission.report", "doctor.core")`. In
+      `TestCatalogIntegration::test_all_facade_commands_have_handlers` the assertion
+      `len(facade_cmds) == 5` becomes `len(facade_cmds) == len(COMMAND_HANDLERS)`: the
+      PROPERTY it existed to state is that every handler the facade registers is carried by the
+      catalog, and a literal is a pin that goes stale every time the facade changes (§3 item
+      16). Finally `from unittest.mock import patch` has no remaining user and goes, and the
+      blank line ruff's `I001` wants after `import pytest` goes with it.
+  tests/cli/test_product_spine.py                                  1 / 13
+      Delete `test_worker_facade_in_catalog` and `test_worker_doctor_is_read_only` whole, and
+      in `test_all_operator_commands_have_handlers` the tuple becomes
+      `("mission.run", "mission.report", "doctor.core")`.
+  tests/orchestration/test_development_artifact_boundary.py        4 / 8
+      Drop `"main_builder_adapter"` from `_PRODUCT_MODULES`; delete the
+      `test_main_builder_adapter` method whole. Its deletion would leave
+      `test_worker_doctor_core_no_agent` iterating an EMPTY tuple, which asserts nothing, so
+      REPOINT that loop at the four modules `_cmd_doctor_core` really imports —
+      `apps.cli.commands.worker_facade_cmd`, `apps.cli.command_catalog`,
+      `packages.orchestration.run_contract` and `packages.orchestration.config`. The guard then
+      states the property its name claims instead of degenerating to a vacuous pass.
+  tests/cli/test_cli_ux.py                                         1 / 1
+      Drop `"builder"` from the hardcoded `_INTERNAL_GROUPS` set.
+  tests/orchestration/test_cluster_deletion_map.py                 0 / 2
+  tests/orchestration/import_reachability_allowlist.txt            0 / 2
+  tests/orchestration/cluster_deletion_map.txt                     0 / 1
 
 PACKAGING, SCRIPTS AND THE ORDER FILE:
-  pyproject.toml                                             0 / 1
-  scripts/remedy_test_fast.sh                                0 / 1
-  .agent/f275_deletion_order.md                              1 / 2
-      REGENERATED from `measured_order()`, never typed. This file REORDERS as well as
-      shrinking: six components fall to five AND `main_builder_adapter` moves from position
-      four to position one, because deleting this module changes the graph's topological
-      order. Keep the 26 header lines BYTE-VERBATIM and write the body as one component per
-      line, comma-joined within a cycle, with NO leading indentation and a TRAILING NEWLINE.
-      `_render` in `tests/orchestration/test_cluster_deletion_order.py` is the ASSERTION
-      MESSAGE's formatter and indents by two spaces; it is NOT this file's format, and the
-      reviewer's own first dry run used it and had to be corrected.
+  pyproject.toml                                                   0 / 1
+  scripts/remedy_test_fast.sh                                      0 / 1
+  .agent/f275_deletion_order.md                                    0 / 1
+      REGENERATED from `measured_order()`, never typed, keeping the 26 header lines
+      BYTE-VERBATIM and writing one component per line, comma-joined within a cycle, NO leading
+      indentation, TRAILING NEWLINE. `_render` in
+      `tests/orchestration/test_cluster_deletion_order.py` is the ASSERTION MESSAGE's formatter
+      and indents by two spaces; it is NOT this file's format. Unlike round 15's this
+      regeneration is a PURE SHRINK — five components fall to four and no survivor moves — so a
+      `0 1` numstat is correct here and would have been wrong last round.
 
 DOCUMENTATION:
-  docs/README.md                                             0 / 5
-      The rows linking the four deleted pages, matched on the LINK TARGET.
-  docs/system/core-product-spine-v0.md                       0 / 1
-      The `| `execution approve/run/show` | ... |` table row.
-  docs/system/mission-run-loop-morning-report-v0.md          0 / 2
-      The `See `docs/controlled-claude-code-operator-path-v0.md`` line and the
-      `- Approving managed execution` bullet.
-  docs/system/development-artifact-boundary-v0.md            2 / 4
-      The `managed_builder_execution.py` bullet, the `Execution status` table row, and the
-      guard-test sentence beneath the bullet, which still cites
-      `test_execution_approval_policy.py` — a file round 12 deleted.
-  docs/system/test-lanes-v0.md                               0 / 1
-  docs/guides/simple-operator-quickstart-v0.md               3 / 3
-      Three table cells lose their `execution template-*` half and keep their `builder
-      adapter-*` half.
+  docs/README.md                                                   0 / 2
+      The two rows linking the deleted pages, matched on the LINK TARGET.
+  docs/system/core-product-spine-v0.md                             1 / 2
+      The numbered operator path loses `6. Check worker → remedy worker doctor <name> --json`
+      and the list is RENUMBERED WHOLE from seven steps to six, per §3 item 17: a pair that
+      changes a numbered structure's arity spans the whole structure, so the old step 7
+      becomes step 6 in the same edit rather than leaving two steps numbered 6.
+  docs/system/development-artifact-boundary-v0.md                  0 / 2
+      The `Builder status` and `Package truth` table rows, both naming the deleted module.
+  docs/system/test-lanes-v0.md                                     0 / 1
 
-DELIBERATELY NOT TOUCHED, and this is the round's one scope ruling. Four roadmap files still
-name a deleted token and none is edited. `docs/roadmap/features/T2_F085.md` and
-`docs/roadmap/features/T2_F262.md` are `[x]` in `docs/roadmap/STATUS.md`: a closed feature file
-is a historical record of what that feature built, and git is the archive.
-`docs/roadmap/features/T2_F260.md` line 345 is the deletion LIST that authorises this work and
-must stand until the list is discharged. `docs/roadmap/features/T2_F267.md` is `[ ]` — an
-unstarted plan naming two commands this commit deletes — and that is registered as R-0858
-rather than repaired, because editing another feature's plan is re-planning it.
+DELIBERATELY NOT TOUCHED, the round's one scope ruling, unchanged from round 15: the roadmap
+files under `docs/roadmap/features/` that still name a deleted token. `T2_F085.md`,
+`T2_F151.md` and `T2_F262.md` are `[x]` in `docs/roadmap/STATUS.md` and are closed features'
+records of what they built; `T2_F260.md` carries the deletion LIST that authorises this work
+and must stand until the list is discharged; `T2_F267.md` is `[ ]` and its repair is already
+registered as R-0858.
 
 
 CONSTRAINTS
@@ -192,10 +159,12 @@ CONSTRAINTS
     declare it in the handback. Never edit a slice.
  2. The change set above is EXHAUSTIVE. Touch no other path. If a gate demands a change to a
     path not listed, stop and declare it rather than widening.
- 3. Each append is `post = pre + b"\n" + slice`. All three targets end with a newline; the
-    joining byte is one `\n` and the slice carries no trailing newline of its own.
- 4. `.agent/plan.md` is replaced WHOLE by PLAN15. PLAN15 is 44 lines against the AGENTS.md cap
-    of 50 and carries `## Goal` and `## Next Steps`.
+ 3. Each append is `post = pre + b"\n" + slice`, where the slice is the bytes strictly between
+    its marker lines INCLUDING the newline that ends its last text line — round 15 measured
+    that convention against round 14's commits and it is stated here so no worker has to
+    re-derive it. Both targets end with a newline, so the joining byte is one `\n`.
+ 4. `.agent/plan.md` is replaced WHOLE by PLAN16. Measure its line count against the AGENTS.md
+    cap of 50 and report the number you measured; it carries `## Goal` and `## Next Steps`.
  5. Destructive verification runs ONLY inside a disposable `git worktree` under `.remedy-wt/`.
     The primary checkout satisfies `git status --porcelain` empty at the handback.
  6. Env-var assignment (`VAR=x cmd`, `env VAR=x`, `export`) and `cp` are DENIED by this
@@ -203,23 +172,25 @@ CONSTRAINTS
     codes with `bash -c '<cmd>; echo "REAL_EXIT=$?"'` or from `subprocess.run`.
  7. The full suite is run SERIALLY in the PRIMARY checkout with the change COMMITTED. Under
     `-n auto` the `ui_server` command-channel tests race for a port. A fresh worktree has no
-    `apps/ui/node_modules`, which is why the suite gate is not run in one.
- 8. R-0855's FIX CLAUSE BINDS THIS BLOCK and this block discharges it in its own text: every
-    definition ordered deleted above is accompanied by an order to sweep its callers, the
-    constants left with no reader and the section comment above it. That is what the
-    `exec_guard.py`, `run_contract.py` comment, `worker_facade_cmd.py` `template_id` and
-    documentation orders are. No further sweep is owed and none may be invented.
+    `apps/ui/node_modules`, which is why the suite gate is not run in one. NOTE, measured by
+    the reviewer twice now: `tests/orchestration/test_evidence_index.py` reads
+    `git status --porcelain`, so it FAILS while the deletion is unstaged and PASSES once the
+    change is committed. Commit C3 before running the suite.
+ 8. R-0855's FIX CLAUSE BINDS THIS BLOCK and this block discharges it in its own text: the
+    `_WORKER_ALIASES` / `_resolve_alias` order, the four banner-comment orders, the
+    `related=` repair and the documentation orders ARE that sweep. R-0857's fix clause binds it
+    too and is discharged by deleting the three `worker` commands whole. No further sweep is
+    owed and none may be invented.
  9. Report every number you measure even where it differs from a number above.
-10. In the two change-set sections the runs of SPACES that align the `ins / del` column carry
-    no meaning and are not appliable bytes: nothing in this block's frame reaches a file, the
-    appliable bytes are the four marker-delimited slices alone, and each is proved against its
-    own target by its own gate. G8 resolves each commit against the PATH SET rather than
-    against any column position (§3 item 37).
+10. In the change-set section the runs of SPACES that align the `ins / del` column carry no
+    meaning and are not appliable bytes: the appliable bytes are the three marker-delimited
+    slices alone, each proved against its own target by its own gate, and G8 resolves the
+    commit against the PATH SET rather than any column position (§3 item 37).
 
 
 AUTHORED SLICES
 
---- BEGIN-PLAN15 ---
+--- BEGIN-PLAN16 ---
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -234,200 +205,191 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 15 books round 14's PASS and one prose slip, registers R-0855 through R-0858, records
-DECISION F275 D7 on the approval gate, sweeps the survivor state R-0855 names, and deletes the
-TENTH module group, `packages/orchestration/managed_builder_execution.py`, whole. This is a
-PRODUCTION round: `worker_facade_cmd.py` loses the template half of three user-facing
-commands, `exec_guard.py` loses seven prose citations of the dying module, `run_contract.py`
-loses fourteen `ContractAction` members, and the catalog loses the `execution` group with
-seventeen commands.
+ROUND 16 books round 15's PASS, five prose slips and the resolution of R-0855, registers R-0859
+and R-0860, and deletes the ELEVENTH module group,
+`packages/orchestration/main_builder_adapter.py`, whole. This is a PRODUCTION round: the
+`builder` group and its ten commands go, six `ContractAction` members go, and
+`worker_facade_cmd.py` loses three of its five commands — `worker doctor`, `worker add` and
+`worker disable` — which R-0857's fix clause orders deleted whole rather than narrowed a second
+time.
 
 ## Next Steps
 
-1. The `main_builder_adapter` component, which this round's regeneration moves from position
-   four to position one of the order file. It takes the adapter half of the three `worker`
-   commands this round halved.
-2. The remaining components in the recorded order — each a single module except the
-   `provider_trust` / `provider_trust_verification` pair, which is the last cycle.
+1. The `overnight_executor` component, which this round's regeneration makes the order file's
+   first line. It is a SINGLE module.
+2. The remaining components in the recorded order — `worker_registry`, then
+   `overnight_readiness`, then the `provider_trust` / `provider_trust_verification` pair, which
+   is the last cycle.
 3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831,
-   R-0840, R-0842, R-0844 through R-0846, R-0848, R-0849 and R-0851 through R-0857 named among
-   the ideas deleted rather than inherited. That round also discharges R-0843's widened sweep.
+   R-0840, R-0842, R-0844 through R-0846, R-0848, R-0849 and R-0851 through R-0860 named among
+   the ideas deleted rather than inherited. That round also discharges R-0843's widened sweep
+   and R-0858's repair of F267.
 4. T002, the atomic record flip, alone, because every later commit's size depends on its
    ruling.
 
 ## Risks
 
-- The open set is 79 by distinct id at this round's base `fadf4715`; the ledger commit this
-  block fixes as C2 registers four, taking it to 83. Four are High — R-0803, R-0804, R-0806
-  and R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
-- Deleting `remedy execution approve` deletes a HUMAN approval command. DECISION F275 D7 rules
-  that this leaves no ungated path because the executor it gates dies in the same commit, and
-  records the measurement behind it rather than asserting it.
+- The open set is 83 by distinct id at this round's base `38e03d2f`; the ledger commit this
+  block fixes as C2 registers two and resolves one, taking it to 84. Four are High — R-0803,
+  R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
+- This round removes three USER-FACING commands and a documented step from the core product
+  spine. R-0860 records the loss and its inheritor; no stub, shim or alias replaces them.
 - The full suite is run SERIALLY: under `pytest -n auto` the `ui_server` command-channel tests
   race for a port, and the vitest node needs `apps/ui/node_modules`.
---- END-PLAN15 ---
+--- END-PLAN16 ---
 
---- BEGIN-SLIPS15 ---
-2026-09-09 · F275 R14 · The reviewer's LEDGER14 slice recorded probe C's unmutated control as "470 passed" beside a mutated reading of 507; 470 was measured over a SIX-file selection while probe C runs over THREE, so the two numbers in that sentence come from different selections and are not comparable as written. The worker measured the matched control at 499 and declared the difference, and the reviewer re-measured 499 against 507 independently. Nothing is wrong on disk and the finding's conclusion is untouched, because it rests on the mutated reading alone: at exit 0 either way, an orphan `GroupDef` is invisible to every catalog guard. The lesson is that a control belongs to a SELECTION, not to a worktree, and a probe's control must be run over the probe's own selection in the same script that runs the probe.
---- END-SLIPS15 ---
+--- BEGIN-SLIPS16 ---
+2026-09-09 · F275 R15 · The round 15 block's constraint 3 stated that each authored slice "carries no trailing newline of its own" and that the append is `post = pre + b"\n" + slice`. The second half is right and the first is wrong: the slices as delimited by their marker lines DO end in a newline, and only the inclusive reading reproduces the committed `.agent/plan.md` at 2588 bytes. The worker proved the convention against round 14's own commits before writing a byte, applied the inclusive reading, and declared the difference; the reviewer confirmed it independently at both readings. Nothing landed wrong because the growth arithmetic `growth == 1 + len(slice)` holds under the reading actually used. The lesson is that a block which states a slice's TERMINAL BYTE must measure that byte rather than describe it, because the extraction and the sentence beside it are produced by different means and only one of them was mechanical.
 
---- BEGIN-DECISION15 ---
-## DECISION F275 D7 — deleting `remedy execution approve` together with the executor it gates leaves no ungated path, so F275's Do-not-touch clause does not protect it (2026-09-09)
+2026-09-09 · F275 R15 · The round 15 block's BUNDLE heading read "six commits, in this order" above a list of SEVEN — C0a, C0b, C1, C2, C3, C4 and C5. Seven were ordered, seven were made in order, and no gate could see the discrepancy because every gate resolves against the named commits rather than the count; the worker caught it and reported it. This is §3 item 16 exactly — a heading stating a count of the contents beneath it — committed in the block written by the reviewer who had just re-read that item, which is why the item says to sweep every heading rather than the one that changed.
 
-Ruled by the reviewer while authoring F275 round 15, under docs/agents/planner_reviewer_prompt.md §4 item 7, which routes a ruling to a loud, persisted, reversible decision rather than to a question the operator is never asked. Reverse it by deleting this section, which puts `remedy execution approve` back under the Do-not-touch clause and stops the cluster deletion at component line 1 of `.agent/f275_deletion_order.md`.
+2026-09-09 · F275 R15 · Four numerals in the round 15 block were wrong: constraint 4 said PLAN15 was 44 lines against an actual 45; the change-set spec said `packages/orchestration/exec_guard.py` was 24/19 against an actual 24/21 and `apps/cli/command_catalog.py` was 0/197 against an actual 0/196; and the C4 total said 42/4801 against an actual 42/4802, which is exactly the sum of the two path-level corrections. The worker measured all four correctly and declared them. The `command_catalog.py` figure has a diagnosable cause worth keeping: the reviewer's dry-run applier deleted a section's `CommandEntry` block by scanning forward to the next non-matching `CommandEntry`, which swallowed the FOLLOWING section's `# ── ` comment line, while the worker applied the block's SPEC — a span ending at the last matching record — and did not. The landed state is the worker's and is correct. The lesson is that a block shipping a SPEC per path re-derives its `+/-` column from the FINAL dry-run commits, and that a span-scanning applier stops at the next SECTION COMMENT, not at the next record.
 
-WHY THIS IS A SECOND DECISION AND NOT DECISION F275 D6. D6 ruled about `packages/orchestration/execution_approval_policy.py`, a prototype POLICY layer that could authorise an execution WITHOUT a human, and its whole argument was that the module is not a human gate. `remedy execution approve` IS a human gate: an operator types it, per session, and `remedy worker add` prints it as step 4 of its own quickstart beside the sentence "Execution still requires explicit approval per session." D6's reasoning therefore does not reach it, and reading D6 as covering it would be exactly the widening §3 item 34 warns against.
+2026-09-09 · F275 R15 · The round 15 block ordered `Landed: R-XXXX` discipline in its handback section while its C3 change set named only three paths, none of them `.agent/live_review.md`, and constraint 2 declared that change set exhaustive. The two orders cannot both be obeyed, so the worker routed the `Landed: R-0855` line into `.agent/handoff.md`, which amend0827-process-diet rule 1 makes a durable carrier, and declared it. That was the correct resolution of the reviewer's contradiction. The lesson is that a block whose round RESOLVES a finding names `.agent/live_review.md` in the change set of the commit that resolves it, or says in its own text where the landed line is to be written.
 
-THE MEASUREMENT, taken at `fadf4715` and not assumed. Every caller of the four approval functions — `approve_managed_execution`, `get_execution_approval`, `list_execution_approvals` and `validate_execution_approval` — was resolved repo-wide by grep over every tracked `.py` file. All of them live in exactly three places: `packages/orchestration/managed_builder_execution.py` itself, its own handler `apps/cli/commands/managed_builder_execution_cmd.py`, and its own two test files. NOT ONE SURVIVING MODULE CALLS ANY OF THEM. The gate and the thing it gates are the same module, and this commit deletes both.
+2026-09-09 · F275 R15 · While re-running gate G5 the reviewer prefixed its probe command with `git checkout 795e4080 -- .`, which reverted and staged `.agent/handoff.md` in the PRIMARY checkout — a work-tree write by a role that writes nothing. It was caught immediately by `git status --porcelain`, restored with `git checkout HEAD --` plus `git reset`, and the restored file proved byte-identical to the committed `38e03d2f` blob at 19871 bytes; no commit was made and no history was touched. The lesson is that a read-only re-gate composes its probes out of `git show <sha>:<path>` and disposable worktrees only, and never out of a command that writes into the checkout it is measuring.
+--- END-SLIPS16 ---
 
-THE READING. A gate exists to stand between an actor and a capability. When the capability is removed in the same commit as the gate, there is no path left to gate: after this commit Remedy cannot launch a managed builder execution at all, by any route, approved or not. The change is therefore STRICTLY MORE CONSERVATIVE than the state before it, which is the same fail-safe direction D6 relied on. `packages/orchestration/exec_guard.py` SURVIVES and keeps its own six importers — `integrity_gate`, `ci_run`, `pingpong_loop`, `pingpong_promote`, `runtime_supervisor` and the dod seams — but none of those ever passed through `execution approve`; they call the guard directly and their posture is unchanged by this commit. F017's human gate is likewise untouched, and the round's own G5 gate proves it by import rather than by assertion: `patch.approve` and `do.continue` are PRESENT in both shipped readers after the deletion.
+--- BEGIN-LEDGER16 ---
+Gate: F275 R15 — the F275 round 15 entry. VERDICT PASS, booked by round 16 rather than by a round of its own, per operator amendment amend0827-process-diet rule 1, and carried from the pushed `.agent/handoff.md` at `38e03d2f`, which that rule makes a durable carrier. THE VERDICT WAS ISSUED BY THE PLANNER AND REVIEWER OF SESSION 9, which re-ran every one of the eight gates itself against the COMMITTED blobs over the range `fadf4715`..`38e03d2f`; the worker's report was evidence for nothing. Seven single-parent commits C0a `d68fa6d2`, C0b `74b90eab`, C1 `b98dcf29`, C2 `a33a93a6`, C3 `8124377d`, C4 `795e4080` and C5 `38e03d2f`, with per-commit insertions 433, 408, 20, 26, 3 and 42 for the six before the handback commit, every one under the AGENTS.md DECISION F104 D1 cap of 500. G1 WAS THE PRIMARY PROOF OF §4 ITEM 9 AND NOT THE DIGEST FALLBACK: the reviewer's own delegation source and both committed copies are 48472 bytes at `bbb87d8b66a18521c37f6214526202700667be0174b9b3a543df3442216eb0e4` and compare BYTE-EQUAL; per §3 item 37 that chain covers those three artefacts and claims nothing about the emitted bytes. G2: `.agent/plan.md` byte-identical to PLAN15 at 2588 bytes and `5a43749f…`, 45 lines against the cap of 50, both mandated headings present, the block 433 lines against its cap of 490. G3, OVER THREE APPENDS: `.agent/live_review.md` 618783 to 634559, growth 15776 = 1 + 15775; `.agent/prose_slips.md` 184231 to 185058, growth 827 = 1 + 826; `.agent/decisions.md` 966757 to 970963, growth 4206 = 1 + 4205; for each the prefix and suffix byte-exact and the joining byte read back as a newline; N COUNTED from each slice by the reviewer's own reader as 5, 1 and 7, ordered equality holding over the WHOLE appended region with a per-unit sha256 on both sides for all thirteen units; and ALL THREE negative controls, flipped IN MEMORY inside the FIRST appended paragraph per §3 item 36, REJECTED by BOTH readers, with all three files re-read from disk and byte-equal to their committed post-blobs. `^Gate: ` 36 to 37, and `^Gate: F275 R14 `, `^- R-0855 — `, `^- R-0856 — `, `^- R-0857 — `, `^- R-0858 — ` and `^## DECISION F275 D7 ` exactly 1 each; THE OPEN SET 79 TO 83 BY DISTINCT ID against registrations 83 to 87 and resolutions 4 to 4. G4: all EIGHT whole-file removals absent from `git ls-tree` at C4 over 4567 tracked files, and the sweep over the 1682 tracked files outside `.agent/` and `.data/`, printed IN FULL, read exactly TEN lines RAW and FOUR with backtick-quoted spans stripped; three of the four are the `docs/roadmap/features/` lines the round's scope ruling declares and the fourth is the FALSE POSITIVE the block names by path, `tests/cli/test_real_test_execution_cli.py:79`, where the token `execution.list` matches inside `real_test_execution.list_test_runs`. G5: through the SHIPPED readers, by import with the resolved `__file__` printed at both ends, `_BASE_CATALOG` and `collect_all_handlers()` both fell 267 to 250, `GROUPS` 49 to 48 and `ALL_KNOWN_ACTIONS` 120 to 106, zero duplicate ids at both ends; all SEVENTEEN `execution.` ids PRESENT in both readers at the base and ABSENT from both at C4, `execution` gone from `GROUPS`; and THE HUMAN APPROVAL GATE PROVEN UNTOUCHED BY IMPORT RATHER THAN BY ASSERTION, with `patch.approve`, `do.continue`, `worker.doctor`, `worker.add`, `worker.disable`, `mission.run`, `doctor.core` and `builder.adapter-show` all PRESENT at C4. The regenerated order file holds FIVE components against six, compares EQUAL to a fresh regeneration from the live import graph at both ends, and its 26-line header sha256 is unchanged at `aff913e6…`; the REORDER DECISION F275 D3 permits is visible, `main_builder_adapter` moving from position four to position one. G6: ALL FOUR RED-PROOFS RE-RUN BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE AT C4, `__pycache__` purged before every run, `python3 -B`, each probe's control run over that probe's OWN selection in the SAME script immediately before its mutation — controls exit 0 at 3, 3, 3 and 51 passed against mutants exit 1 at 1, 1, 2 and 2 failures — every target restored byte-identically and proved by sha256, worktree porcelain empty. G7: ruff `All checks passed!` at exit 0 over all thirteen edited Python files still existing at C4, repo-wide `ruff check .` reading 26 diagnostics at BOTH ends with the two SETS compared item by item and IDENTICAL; ratchets 870 passed and canary 42 passed, both exit 0; and THE FULL SUITE RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT, GREEN at 18689 passed, 23 skipped and ZERO failed, with 18689 + 23 = 18712 equal to the tip collection exactly. The arithmetic closes BY THE ID SET: 18867 at the base against 18712 at the tip, 157 LOST and 2 GAINED, attributed 133 to `tests/orchestration/test_managed_builder_execution.py`, 12 to `tests/cli/test_managed_builder_execution_cli.py`, 8 to `tests/test_grouped_cli.py` — which parametrises over the catalog and is in no change set — 2 to the two RENAMED node ids, 1 to `test_development_artifact_boundary.py` and 1 to `test_product_spine.py`; the 2 GAINED are exactly the two renames C4 orders, so a GAINED set is expected and is not a defect. G8: `.agent/STOP` absent, porcelain empty, ONE worktree, branch correct, and both path sets EXACT with the missing and extra sets EMPTY for each. WHAT THE ROUND ACHIEVED: the TENTH module group, `managed_builder_execution` at 1694 module lines, in ONE commit at 42 insertions against 4802 deletions over 30 paths — the largest single deletion of this feature — taking its 350-line handler whole, SEVENTEEN commands, the `execution` group, FOURTEEN `ContractAction` members, two test files and FOUR documentation pages, two of which the reviewer's own token sweep found and which appear in no consumer map this feature ever produced. It also carried a RULING and a REPAIR: DECISION F275 D7 records, from a repo-wide resolution of every caller of the four approval functions, that deleting `remedy execution approve` together with the executor it gates leaves no ungated path because NOT ONE SURVIVING MODULE CALLS ANY OF THEM; and C3 discharged R-0855. THE WORKER'S EIGHT DECLARED DEVIATIONS ARE ALL SUSTAINED AND SIX ARE THE REVIEWER'S OWN AUTHORING ERRORS: the slice trailing-newline convention, which the worker proved against round 14's commits and applied correctly; four wrong numerals, all of which the worker measured right; and a BUNDLE heading counting six over a body of seven. None put anything wrong on disk, so under amend0827-process-diet rule 2 each is a dated `.agent/prose_slips.md` line and not an id. ONE DEVIATION IS THE REVIEWER'S OWN CONDUCT: while re-running G5 it prefixed a probe with `git checkout 795e4080 -- .`, which reverted and staged `.agent/handoff.md` in the primary checkout — a work-tree write by a read-only role — caught by the next porcelain, restored, and proved byte-identical to the committed `38e03d2f` blob at 19871 bytes, with no commit made and no history touched. It is recorded because a reviewer that hides its own slip cannot be trusted about the worker's.
 
-CHOSEN: `remedy execution approve` and the sixteen other `execution` commands are deleted with their module, their group, their tests and their four documentation pages, and F275's Do-not-touch clause is read — as D6 already read it — as protecting F017's human gate rather than any file that happens to contain the word "approve". The capability loss is registered as R-0856 in the same round rather than mitigated.
+Done: R-0855 — RESOLVED at C3 `8124377d`, verified by the reviewer of session 9 reading the committed diff rather than the worker's report. All three instances the finding names are gone. FIRST, `apps/cli/commands/orchestrator_cmd.py` loses the three lines `adv = data.get("advisor")`, `if adv:` and the print beneath them, so no code path now reads a JSON key round 14 removed. SECOND, `packages/orchestration/orchestrator_brain.py` loses the whole Local Model Advisor banner, its explanatory paragraph and `_CONFIDENCE_ORDER`, whose only reader round 14 had already deleted. THIRD, the `CLUSTER_MODULES` comment in `tests/orchestration/test_cluster_deletion_map.py` is rewritten to state NO count, per §3 item 16, and says in its own words why: the tuple loses a module group per deletion round, so any numeral there is stale from the next commit onward. The finding's FIX CLAUSE was also honoured by the block that ordered this repair — the round 15 block accompanies every definition it orders deleted with an order to sweep that definition's callers, its readerless constants and the section comment above it, and says so in its own constraint 8 — and that clause REMAINS BINDING on every remaining deletion round of this feature, including the one this entry's block orders. The worker wrote `Landed: R-0855` into `.agent/handoff.md` rather than into this record because the block's C3 change set did not name `.agent/live_review.md` and constraint 2 forbids touching an unnamed path; that omission is the reviewer's, the worker's routing was correct, and this paragraph is the authored resolution that replaces the landed line.
 
-ALTERNATIVES CONSIDERED AND REJECTED. (a) Keep the `execution` group and delete only the module. Rejected: the seventeen handlers import the module at call time, so every one of them would exit with `ModuleNotFoundError` — a command advertised in `remedy --all-commands` that cannot run is worse than an absent one, and R-0847 already records that the advertised-commands guard is blind to exactly this shape. (b) Keep `execution approve` alone as a stub that refuses. Rejected by AGENTS.md Scope Control, which forbids a stub, a shim and a compatibility reader by name, and by the observation that a gate with nothing behind it is a false live indicator. (c) Stop the deletion and ask the operator. Rejected by §2 of the planner and reviewer prompt, which bars a ruling request, and by operator amendment amend0908-f275-finish rule 2, which permits an early stop only where a module group is genuinely undeletable under the three rules in `docs/roadmap/features/T2_F275.md` T001 — this one is not.
---- END-DECISION15 ---
+- R-0859 — Medium, THE COMMAND CATALOG CARRIES `related=` CROSS-REFERENCES TO COMMANDS THAT NO LONGER EXIST, AND NO GUARD IN THE REPOSITORY CAN SEE THEM. Measured by the reviewer of session 9 at `38e03d2f` by resolving every `related=` tuple in `apps/cli/command_catalog.py` against the live `_BASE_CATALOG` ids read from the SHIPPED reader by import: 250 live ids, and TWO dangling references. `mission.ledger` names `dogfood.run-loop`, deleted by F272 across its rounds 20 to 22; and a `readiness`-group record names `readiness.show`, likewise long gone. Both PREDATE this round — they are not caused by the deletion the next entry describes, and the measurement was taken at the tip BEFORE that deletion was applied. WHY NO GATE SEES IT: `tests/cli/test_advertised_commands.py` scans SCRIPTS AND DOCUMENTATION for advertised command strings and never reads `related=`; the catalog integrity tests check ids, groups and duplicate ids but not the referential closure of `related=`; and `remedy --all-commands` prints the list without resolving it. So a `related=` tuple is the one place in the catalog where a deleted command can survive indefinitely, which is precisely the "attic" AGENTS.md Scope Control forbids by name, and this feature has deleted ELEVEN module groups without one of them being caught. THE HISTORICAL EVIDENCE THAT THIS IS A REGRESSION RATHER THAN A STANDING GAP: the `Gate: F275 R6` entry in this record shows the reviewer of that round checking by hand that "the catalog carries ZERO surviving `command_id` or `related` references to either dead id" and noting that `context.inspect` now reads `related=('context.pack',)`. That check was performed once, by hand, and never again, which is the rule-in-a-round's-prose class R-0548 names. WHY THIS IS AN ID AND NOT A PROSE SLIP: two `related=` tuples in `apps/cli/command_catalog.py` name commands that do not exist, which is wrong state on disk under `apps/`, exactly what amend0827-process-diet rule 2 reserves an id for. WHAT WOULD RESOLVE IT, and both halves are owed: the two dangling references repaired, and A TEST that resolves every `related=` entry against the catalog's own ids so the eleventh deletion cannot repeat the tenth's silence — a single set-difference assertion, which is the cheapest possible guard and would have caught both of these the day they were made. FIX CLAUSE, binding on the round that drafts DECISION F260 D3, which is the last round of this feature whose change set already contains both `apps/cli/command_catalog.py` and a test directory: that round repairs both dangling references and adds the referential-closure test, and names this id in its own commit message. Until that test exists, every remaining deletion round of this feature resolves `related=` by hand as part of R-0855's sweep, and says in its block that it did.
 
---- BEGIN-LEDGER15 ---
-Gate: F275 R14 — the F275 round 14 entry. VERDICT PASS, booked by round 15 rather than by a round of its own, per operator amendment amend0827-process-diet rule 1, and carried from the pushed `.agent/handoff.md` at `fadf4715`, which that rule makes a durable carrier. THE VERDICT WAS ISSUED BY THE PLANNER AND REVIEWER OF SESSION 8, which re-ran every one of the eight gates itself against the COMMITTED blobs over the range `16494bbd`..`5fb38765`; that session's own account is the handback text this entry books, and session 9 does not restate those readings as if it had taken them. Six single-parent commits C0a `490221e8`, C0b `dbffaba9`, C1 `11b4dff7`, C2 `ed9a78b0`, C3 `b3ddaa35` and C4 `5fb38765`, per-commit insertions 382, 346, 18, 10, 14 and 233, every one under the AGENTS.md DECISION F104 D1 cap of 500. G1 was the PRIMARY proof of §4 item 9 and not the digest fallback: the delegation source and both committed copies are 37397 bytes at `e8108d5345442dbf948921396afaf07dba35045ab51941fb0c318158e56b073d` and compare BYTE-EQUAL; per §3 item 37 that chain covers those three artefacts and claims nothing about the emitted bytes. G2: `.agent/plan.md` byte-identical to PLAN14 at 2720 bytes, 45 lines against the cap of 50, both mandated headings present. G3: `.agent/live_review.md` 608189 to 618783, growth 10594 = 1 + 10593; `.agent/prose_slips.md` 183299 to 184231, growth 932 = 1 + 931; N counted from each slice as 4 and 1, ordered equality over the WHOLE appended region with a per-unit sha256 on both sides, and BOTH negative controls flipped in the FIRST appended paragraph per §3 item 36 REJECTED by both readers; `^Gate: ` 35 to 36, and `^Gate: F275 R13 `, `^Note: F275 R14 `, `^- R-0853 — ` and `^- R-0854 — ` exactly 1 each; THE OPEN SET 77 TO 79 BY DISTINCT ID against registrations 81 to 83 and resolutions 4 to 4. G4: all five whole-file removals absent from `git ls-tree` at C3 over 4574 tracked files, and the sweep over 1690 tracked files outside `.agent/` and `.data/`, printed IN FULL with the four SURVIVING advisor tokens neutralised first, read exactly FOUR lines RAW and ONE with backtick-quoted spans stripped, which is the binding count and is the single `docs/system/vocabulary.md` line the round's scope ruling leaves to R-0843. G5: through the SHIPPED readers, by import with the resolved `__file__` printed, `_BASE_CATALOG` and `collect_all_handlers()` both fell 269 to 267, `GROUPS` 50 to 49 and `ALL_KNOWN_ACTIONS` 122 to 120, with zero duplicate ids, both deleted ids ABSENT from both readers, and `orchestrator.decide`, `orchestrator.inspect`, `orchestrator.report`, `provider.verify`, `patch.approve` and `do.continue` all PRESENT; `orchestrator.decide` args fell to `('--job-id', '--json')`; the exported decision key set fell from 20 keys to 19 with `advisor` gone; and the regenerated order file held SIX components against seven with its 26-line header sha256 unchanged at `aff913e6…`. G6: ALL FOUR RED-PROOFS WERE RE-RUN BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE, each with its OWN matched control over its OWN selection — probe A control exit 0 at 3 passed against mutated exit 1; probe B control exit 0 at 6 passed against mutated exit 1 at 2 failed; probe C control exit 0 at 499 passed against mutated exit 0 at 507 passed; probe D control exit 0 at 61 passed against mutated exit 0 at 61 passed — every file restored byte-identically and proved by sha256. G7: ruff `All checks passed!` over the eight edited Python files still existing at C3 and repo-wide `Found 26 errors.` at both ends with the two diagnostic sets compared item by item and identical; the ratchets and canary 484 passed at exit 0; and THE FULL SUITE WAS RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT and was GREEN at 18844 passed, 23 skipped and ZERO failed, with 18844 + 23 = 18867 equal to the C3 collection against 18919 at the base, a fall of 52 with zero gained. G8: `.agent/STOP` absent, porcelain empty, ONE worktree, branch correct, and `ed9a78b0..b3ddaa35` naming the 24 paths in an EXACT SET MATCH. WHAT THE ROUND ACHIEVED: the NINTH module group, `local_model_advisor` at 947 module lines, in ONE commit at 14 insertions against 1845 deletions over 24 paths, taking its 101-line handler file whole, two commands, the `local-advisor` group, two test files, one doc page and two `ContractAction` members with it, and repairing seven surviving documentation pages. Unlike rounds 11 to 13 this was a PRODUCTION round: three survivors lost code and one loss changed an exported JSON contract. THE WORKER'S SIX DECLARED DEVIATIONS ARE ALL SUSTAINED, and the load-bearing one is the reviewer's own: the LEDGER14 text recorded probe C's unmutated control at "470 passed" beside a mutated 507, where 470 came from a SIX-file selection and the correctly matched control over probe C's THREE files is 499, which the reviewer re-measured independently at 499 against 507. The finding's conclusion is untouched because it rests on the mutated reading alone, so under amend0827-process-diet rule 2 that is a dated `.agent/prose_slips.md` line and not an id. NO FINDING IS RESOLVED BY THIS GATE, and the three artefacts the round's anchors left standing in its survivors are registered below as R-0855.
-
-- R-0855 — Medium, ROUND 14's DELETION LEFT DEAD SURVIVOR STATE ITS ANCHORS DID NOT REACH, IN TWO FILES, AND ONE OF THE TWO IS A CODE PATH THAT READS A JSON KEY THE SAME ROUND REMOVED. Raised by the reviewer of session 8 at the round 14 gate, from the worker's declared deviation 4, and re-measured independently at `5fb38765` before this text was written. It is ONE id rather than two because the defect, the cause and the fix are one: an ordered anchor deleted a definition without sweeping the neighbourhood the definition served, and one sweep repairs both — which is exactly the counter-measure the resolved R-0841 and the open R-0843 already state and which that block failed to apply to its own orders. FIRST INSTANCE, `apps/cli/commands/orchestrator_cmd.py`, in `_cmd_orchestrator_decide`: the three lines `adv = data.get("advisor")`, `if adv:` and the print beneath them SURVIVE, while the same round removed `"advisor"` from `export_decision_json`, so `data.get("advisor")` is now always `None` and the branch can never fire. That is the attic AGENTS.md Scope Control forbids by name, and it is worse than ordinary dead code because a reader takes it as evidence that the exported key still exists. SECOND INSTANCE, `packages/orchestration/orchestrator_brain.py` lines 922 to 931: the ten-line section banner `# Local Model Advisor integration (Steps 1509-1511) — advisory ONLY.` and its explanatory paragraph describe an integration that round deleted, and the constant `_CONFIDENCE_ORDER` beneath it now has EXACTLY ONE occurrence repo-wide — its own definition — because its only reader was `_lower_confidence`, which the same commit removed. A THIRD INSTANCE WAS FOUND BY THE SAME SWEEP AND PREDATES THAT ROUND: `tests/orchestration/test_cluster_deletion_map.py` line 41 reads `# The twenty-four modules F260's Design lists as the prototype cluster.` above a `CLUSTER_MODULES` tuple that holds SEVEN, having shrunk once per group commit since round 7. It is named here rather than given an id of its own because the same sweep fixes it. WHY THIS IS AN ID AND NOT A PROSE SLIP: all three are wrong state on disk under `apps/`, `packages/` and `tests/`, which is precisely what amend0827-process-diet rule 2 reserves an R-id for, and the first instance is a live code path rather than a comment. NO GATE COULD SEE ANY OF THEM — ruff reports no error, the full suite is green, and the round 14 sweep could not fire because none of the three names a deleted symbol. WHAT WOULD RESOLVE IT: one commit deleting the three lines in `orchestrator_cmd.py`, the banner and `_CONFIDENCE_ORDER` in `orchestrator_brain.py`, and correcting the `CLUSTER_MODULES` comment to state no numeral at all per §3 item 16. FIX CLAUSE, BINDING ON EVERY REMAINING DELETION ROUND OF THIS FEATURE: a block that orders a definition deleted also orders the reader to sweep, in the same commit, for the callers of that definition, for the constants left with no reader, and for the section comment above it — and the block says so in its own text rather than leaving the worker to choose between an unordered edit and a declared deviation.
-
-- R-0856 — Medium, THE WHOLE MANAGED EXTERNAL BUILDER EXECUTION SURFACE IS DELETED: SEVENTEEN COMMANDS, THE `execution` GROUP AND FOURTEEN RUN-PERMISSION ACTIONS, AND NO SURVIVING COMMAND REPLACES ANY OF THEM. Registered under operator RULE 3 of `docs/roadmap/features/T2_F275.md` T001, which requires a round removing a user-observable behaviour to name the behaviour and the feature that inherits the idea. THIS PARAGRAPH DESCRIBES THIS ROUND'S OWN LANDED CHANGE, so under §3 item 20's R-0524 carve-out it names no SHA — the commit it describes does not exist when it is written — and names instead the ordering its block fixes: the block's BUNDLE orders this registration as C2 and the deletion as C4, so every past-tense reading below is true from C4 onward and of no earlier commit. The behaviour: `execution.template-list`, `template-show`, `template-create`, `template-enable`, `template-disable`, `template-update`, `approve`, `run`, `show`, `list`, `debug-bundle`, `integrity`, `approval-show`, `approval-validate`, `approval-list`, `operator-runbook` and `claude-doctor` — the bounded managed runner for an external builder, its command-template registry, its per-session approval records with expiry and scope, its debug bundle, its operator runbook and its Claude readiness doctor. Fourteen `ContractAction` members go with them, so a run contract can no longer even NAME a managed execution as a permitted action. THE INHERITOR IS F085, which owns `packages/orchestration/exec_guard.py` — the surviving, shipped guard that six modules already use — and F017, which owns the human approval gate that `patch approve` and `do continue` still serve. REMEDY DELIBERATELY SHIPS WITHOUT A MANAGED EXTERNAL BUILDER RUNNER after this commit: there is no stub, no shim and no compatibility reader, per AGENTS.md Scope Control, and the deletion is fail-safe because it removes a capability rather than a restriction — DECISION F275 D7 records the measurement behind that reading. WHAT WOULD RESOLVE IT: DECISION F260 D3, the deletion paragraph, naming this id and the `execution` group among the ideas DELETED rather than inherited, and naming F085 and F017 as above. FIX CLAUSE, binding on the round that drafts DECISION F260 D3: that paragraph names all seventeen commands, the `execution` group and the fourteen `ContractAction` members among the deleted ideas, names F085 as the inheritor of bounded subprocess execution and F017 as the inheritor of human approval, and records that Remedy deliberately runs no external builder until a later feature provides one — the deliberate-absence note AGENTS.md's Code Discoverability Conventions require, written where a reader would search for the missing capability.
-
-- R-0857 — Medium, THREE SURVIVING USER-FACING `worker` COMMANDS LOSE HALF THEIR BEHAVIOUR AND KEEP THEIR NAMES, AND NOTHING IN THEIR OUTPUT SAYS SO. `remedy worker doctor`, `remedy worker add` and `remedy worker disable` each paired an ADAPTER from `packages/orchestration/main_builder_adapter` with a TEMPLATE from the module this round deletes. LIKE R-0856 THIS PARAGRAPH DESCRIBES THIS ROUND'S OWN LANDED CHANGE and therefore names no SHA, per §3 item 20's R-0524 carve-out; the ordering it rests on is its block's BUNDLE, which fixes this registration at C2 and the deletion at C4, so "after this commit" below means C4 and nothing earlier. After this commit `worker doctor` no longer reports `template_exists` or `template_enabled`, `worker add` no longer enables a template, no longer returns `template_enabled`, and no longer prints the note "Execution still requires explicit approval per session" or the quickstart step naming `execution approve`, and `worker disable` no longer returns `template_disabled`. The commands still exist, still succeed, and still report `ready` — now on the adapter alone. THIS IS A DIFFERENT DEFECT FROM R-0856 AND WAS SEARCHED FOR SEPARATELY per §3 item 30: R-0856 is a group that DISAPPEARS, where absence is its own signal, while this is a surviving name whose meaning silently narrows, which is the harder failure to notice. It is registered rather than mitigated because the honest mitigation is the NEXT round: `main_builder_adapter` is component line one of the regenerated `.agent/f275_deletion_order.md`, so the adapter half dies too and all three commands become shells the round after this one, at which point they are deleted rather than narrowed. THE INHERITOR IS F275's own next round for the deletion, and F085 for any future readiness check over a bounded runner. WHAT WOULD RESOLVE IT: the round that deletes `main_builder_adapter` deleting these three commands, their catalog entries and their tests in the same commit, and DECISION F260 D3 naming this id. FIX CLAUSE, binding on the round that deletes `main_builder_adapter`: that round deletes `worker doctor`, `worker add` and `worker disable` WHOLE rather than leaving three commands whose only remaining behaviour is to report that an adapter which no longer exists is absent, and it names this id in its own finding text so the narrowing and the removal are one record.
-
-- R-0858 — Low, AN UNSTARTED FEATURE'S PLAN NAMES TWO COMMANDS THIS ROUND DELETES, AND NOTHING WILL TELL THE SESSION THAT CLAIMS IT. `docs/roadmap/features/T2_F267.md` is `[ ]` in `docs/roadmap/STATUS.md` — "List commands v2 completion — sort/filter/limit for the remaining nine commands" — and its Goal names `execution.approval-list` as one of the nine commands it will wire to `apply_list_options`, while its "Why this exists" section names `execution.template-list` among the four DECISION F262 D4 excluded. Both are deleted by this round's C4, so the feature's scope is nine commands of which one cannot exist, and its own DONE condition is unreachable as written. MEASURED at `fadf4715` by reading the file and the ledger line: F262 is `[x]` and F267 is `[ ]`, which is what makes this an open plan rather than a historical record — the same reading spares `T2_F085.md` and `T2_F262.md`, whose identical-looking references are closed features' accounts of what they built. WHY THIS IS AN ID AND NOT A PROSE SLIP: `docs/roadmap/features/T2_F267.md` is wrong state on disk under `docs/`, which amend0827-process-diet rule 2 names, and the harm is real and dated — Rule A5 will one day propose F267, and the session that claims it will plan against a command that has not existed since this commit. WHY IT IS NOT REPAIRED HERE: editing another feature's Goal and scope is re-planning that feature, which AGENTS.md Scope Control forbids as a "while I'm here" edit and which this round's change set does not authorise. WHAT WOULD RESOLVE IT: one commit in the round that drafts DECISION F260 D3 — which is already editing roadmap files — striking `execution.approval-list` from F267's list of nine, restating the count as EIGHT or removing the numeral per §3 item 16, and dropping `execution.template-list` from the D4 exclusion sentence, with a one-line note naming this id and F275 as the feature that deleted them. FIX CLAUSE, binding on the round that drafts DECISION F260 D3: that round also performs the F267 repair above, because it is the only remaining round of this feature whose change set already contains `docs/roadmap/features/`, and a repair that waits for a round with no reason to open is a repair that does not happen.
---- END-LEDGER15 ---
+- R-0860 — Medium, THE MANAGED-BUILDER ADAPTER SURFACE IS DELETED: THE `builder` GROUP AND ITS TEN COMMANDS, SIX RUN-PERMISSION ACTIONS, THREE USER-FACING `worker` COMMANDS AND A NUMBERED STEP OF THE DOCUMENTED OPERATOR PATH. Registered under operator RULE 3 of `docs/roadmap/features/T2_F275.md` T001, which requires a round removing a user-observable behaviour to name the behaviour and the feature that inherits the idea. THIS PARAGRAPH DESCRIBES THIS ROUND'S OWN LANDED CHANGE, so under §3 item 20's R-0524 carve-out it names no SHA — the commit it describes does not exist when it is written — and names instead the ordering its block fixes: the block's BUNDLE orders this registration as C2 and the deletion as C3, so every past-tense reading below is true from C3 onward and of no earlier commit. THE BEHAVIOUR LOST, first half: `builder.adapter-list`, `adapter-show`, `adapter-enable`, `package-create`, `session-create`, `session-show`, `session-list`, `session-record-output`, `session-intake` and `integrity` — the adapter registry that named an external builder and its mode, the BuilderRequestPackage a job handed it, and the session record that bound the two — together with six `ContractAction` members, so a run contract can no longer name an adapter action as permitted. SECOND HALF, and this is the part a user notices: `remedy worker doctor`, `remedy worker add` and `remedy worker disable` are DELETED, not narrowed. Round 15 took their template half and registered R-0857 for it; that finding's fix clause ordered them deleted whole in this round rather than left reporting that an adapter which no longer exists is absent, and this round discharges it. With them goes step 6 of the seven-step operator path in `docs/system/core-product-spine-v0.md`, which is renumbered to six steps. The `worker` GROUP SURVIVES with its nine other commands, and `doctor core`, `mission run` and `mission report` are untouched — measured through the shipped readers, not assumed. THE INHERITOR IS F085, which owns `packages/orchestration/exec_guard.py`, the surviving bounded-subprocess guard that six modules already use, and F017, which owns the human approval gate. REMEDY DELIBERATELY SHIPS WITHOUT AN EXTERNAL-BUILDER ADAPTER after this commit, and therefore without any command that onboards, checks or disables an external worker: there is no stub, no shim, no alias and no compatibility reader, per AGENTS.md Scope Control. WHY THIS IS A SEPARATE ID FROM R-0856 AND FROM R-0857, searched for per §3 item 30 before it was minted: R-0856 names the `execution` surface, which is the RUNNER; R-0857 names the NARROWING of three commands and is RESOLVED by this round rather than duplicated by it; this id names the ADAPTER surface and the removal of those same three commands, which is a different behaviour with a different inheritor. WHAT WOULD RESOLVE IT: DECISION F260 D3 naming this id, the `builder` group, the three `worker` commands and the six actions among the ideas DELETED rather than inherited, naming F085 and F017 as above, and recording the deliberate absence where a reader would search for it — which for a deleted operator command is the core-product-spine page this round already edits. FIX CLAUSE, binding on the round that drafts DECISION F260 D3: that paragraph names all thirteen deleted command ids, the `builder` group, the six `ContractAction` members and this id, states F085 as the inheritor of bounded execution and F017 as the inheritor of human approval, and adds to `docs/system/core-product-spine-v0.md` the one-sentence deliberate-absence note AGENTS.md's Code Discoverability Conventions require — "Remedy deliberately ships no external-builder onboarding command because …" — because text search cannot find a command that does not exist, and the operator path this round shortened is exactly where a reader will look for it.
+--- END-LEDGER16 ---
 
 
 DONE WHEN — eight gates, every one EXECUTED with its real exit code recorded
 
-G1 TRANSPORT. `.remedy-wt/f275-r15.md`, the committed `.agent/authored/f275-r15.md` and the
+G1 TRANSPORT. `.remedy-wt/f275-r16.md`, the committed `.agent/authored/f275-r16.md` and the
    committed `.agent/last_block.md` are byte-identical: same length, same sha256, all three
-   printed. ONE digest comparison, per the gate budget. This chain covers those three
-   artefacts and claims nothing about any other bytes (§3 item 37).
+   printed. ONE digest comparison. This chain covers those three artefacts and claims nothing
+   about any other bytes (§3 item 37).
 
-G2 THE PLAN AND THE BLOCK. `.agent/plan.md` at C1 is byte-identical to the PLAN15 slice
+G2 THE PLAN AND THE BLOCK. `.agent/plan.md` at C1 is byte-identical to the PLAN16 slice
    extracted from the COMMITTED C0a blob between its marker lines, markers excluded; print its
-   length, sha256 and line count against the cap of 50; `## Goal` and `## Next Steps` both
-   present. Re-measure the C0a blob's TOTAL line count and its PROSE line count (TOTAL minus
-   the slice bodies) and report both.
+   length, sha256 and line count against the cap of 50; both mandated headings present.
+   Re-measure and report the C0a blob's TOTAL line count against the cap of 490.
 
-G3 THE RECORD, over THREE appends. For `.agent/live_review.md`, `.agent/prose_slips.md` and
-   `.agent/decisions.md` at C2:
-   (a) BYTE READER: pre-length, post-length, growth == 1 + slice length; the pre-blob is a
-       byte-exact PREFIX of the post-blob; the slice is a byte-exact SUFFIX; the joining byte
-       read back out of the post-blob is `b'\n'`.
+G3 THE RECORD, over TWO appends — `.agent/live_review.md` and `.agent/prose_slips.md` at C2:
+   (a) BYTE READER: pre-length, post-length, growth == 1 + slice length; the pre-blob a
+       byte-exact PREFIX of the post-blob; the slice a byte-exact SUFFIX; the joining byte read
+       back out of the post-blob is `b'\n'`.
    (b) STRUCTURAL READER: your script COUNTS N from each slice — never a number this block
        asserts — and the LAST N blank-line units of the whole post-file equal the slice's N
        paragraphs IN ORDER, unit by unit, with a per-unit sha256 printed on both sides.
    (c) NEGATIVE CONTROL: flip one byte IN MEMORY inside the FIRST appended paragraph of each
        file (§3 item 36) and show that reader (a) and reader (b) BOTH reject the mutant and
-       BOTH accept the truth. Re-read all three files from disk afterwards and show them
-       byte-equal to their committed post-blobs.
-   (d) COUNT PATTERNS in the post-blobs: `^Gate: ` rises by exactly 1; `^Gate: F275 R14 `,
-       `^- R-0855 — `, `^- R-0856 — `, `^- R-0857 — `, `^- R-0858 — ` and
-       `^## DECISION F275 D7 ` are each exactly 1.
+       BOTH accept the truth. Re-read both files from disk afterwards and show them byte-equal
+       to their committed post-blobs.
+   (d) COUNT PATTERNS in the post-blob of `.agent/live_review.md`: `^Gate: ` rises by exactly
+       1; `^Gate: F275 R15 `, `^Done: R-0855 — `, `^- R-0859 — ` and `^- R-0860 — ` are each
+       exactly 1.
    (e) THE OPEN SET BY DISTINCT ID, `Landed:` lines never subtracted: report registered, done
-       and open before and after. The reviewer measured 83 / 4 / 79 at the base.
+       and open before and after. The reviewer measured 87 / 4 / 83 at the base, and this
+       round registers two and resolves one.
 
-G4 THE DELETION IS COMPLETE. `git ls-tree -r <C4>` holds none of the eight whole-file removal
+G4 THE DELETION IS COMPLETE. `git ls-tree -r <C3>` holds none of the six whole-file removal
    paths; report the tracked-file total. Then sweep every tracked file outside `.agent/` and
-   `.data/` for these tokens: `managed_builder_execution`, `managed-external-builder`,
-   `EXECUTION_TEMPLATE_`, `EXECUTION_APPROV`, `EXECUTION_RUN`, `EXECUTION_SHOW`,
-   `EXECUTION_DEBUG_BUNDLE`, `EXECUTION_OPERATOR_RUNBOOK`, `EXECUTION_CLAUDE_DOCTOR`, each of
-   the seventeen `execution.<sub>` command ids, `execution approve`, `execution template-show`,
-   `approve_managed_execution`, `get_execution_approval`, `list_execution_approvals`,
-   `validate_execution_approval`, `get_command_template`, `enable_command_template` and
-   `disable_command_template`. PRINT THE RAW RESULT IN FULL, never truncated, then print the
-   STRIPPED result — the same lines with every backtick-quoted span deleted before matching,
-   per §3 item 20's R-0584 clause. THE BINDING CONDITION is that every STRIPPED line lies in
-   `docs/roadmap/features/`, which is the round's declared scope ruling above. The reviewer
-   measured RAW 10 and STRIPPED 4, the stripped four being `T2_F262.md` twice, `T2_F267.md`
-   once and one FALSE POSITIVE in `tests/cli/test_real_test_execution_cli.py` where the token
-   `execution.list` matches inside `real_test_execution.list_test_runs`. Report what you
-   measure and name any line that falls outside `docs/roadmap/features/` other than that one.
+   `.data/` for these tokens: `main_builder_adapter`, `main-builder-adapter`,
+   `BUILDER_ADAPTER_`, `BUILDER_PACKAGE_CREATE`, `BUILDER_SESSION_`, each of the ten
+   `builder.<sub>` command ids, `worker.doctor`, `worker.add`, `worker.disable`,
+   `worker doctor`, `worker add`, `worker disable`, `get_builder_adapter_spec`,
+   `save_builder_adapter_spec`, `BuilderAdapterSpec` and `BuilderAdapterMode`. PRINT THE RAW
+   RESULT IN FULL, never truncated, then print the STRIPPED result — the same lines with every
+   backtick-quoted span deleted before matching, per §3 item 20's R-0584 clause. THE BINDING
+   CONDITION is that every STRIPPED line lies in `docs/roadmap/features/`, which is the round's
+   declared scope ruling. Report what you measure and name any line that falls outside it.
 
-G5 THE SHIPPED READERS AND THE ORDER FILE, at the base `fadf4715` and at C4. Read BY IMPORT,
-   never by grep, with `sys.path` pinned and the resolved `__file__` PRINTED FIRST so no
-   editable install can shadow the reading; take the base end inside a disposable worktree.
-   Report at both ends: `len(_BASE_CATALOG)`, `len(collect_all_handlers())`, `len(GROUPS)`,
-   `len(ALL_KNOWN_ACTIONS)` and the duplicate-id count. Show `execution` ABSENT from `GROUPS`
-   at C4 and every `execution.` command id ABSENT from BOTH readers. Show `patch.approve`,
-   `do.continue`, `worker.doctor`, `worker.add`, `worker.disable`, `mission.run`, `doctor.core`
-   and `builder.adapter-show` PRESENT in both readers at C4 — the human approval gate and the
-   surviving worker facade. For the order file: print its component count at both ends, show
-   its 26 header lines byte-identical at both ends with their sha256, show the file EQUAL to a
-   fresh regeneration from the live import graph, and print the component list at C4 IN ORDER
-   so the REORDER is visible. The reviewer measured 267 to 250, 267 to 250, 49 to 48, 120 to
-   106, 0 duplicates at both ends, six components to five, and header sha256 `aff913e6…`.
+G5 THE SHIPPED READERS, THE SECTION COMMENTS AND THE ORDER FILE, at the base `38e03d2f` and at
+   C3. Read BY IMPORT, never by grep, with `sys.path` pinned and the resolved `__file__`
+   PRINTED FIRST; take the base end inside a disposable worktree. Report at both ends:
+   `len(_BASE_CATALOG)`, `len(collect_all_handlers())`, `len(GROUPS)`,
+   `len(ALL_KNOWN_ACTIONS)` and the duplicate-id count. Show `builder` ABSENT from `GROUPS` at
+   C3 and every `builder.` command id ABSENT from BOTH readers; show the `worker` GROUP still
+   PRESENT with its nine surviving ids listed, and `worker.doctor`, `worker.add` and
+   `worker.disable` ABSENT from both readers. Show `patch.approve`, `do.continue`,
+   `mission.run`, `mission.report` and `doctor.core` PRESENT in both readers at C3. THEN THE
+   REFERENTIAL CLOSURE R-0859 NAMES: resolve every `related=` entry in the catalog against the
+   live ids at C3 and report the dangling set; it must be EXACTLY the two R-0859 registers —
+   `dogfood.run-loop` and `readiness.show` — and must NOT contain `worker.doctor`. Count every
+   `# ── ` section comment in `apps/cli/command_catalog.py` at both ends and report both
+   numbers: exactly one must be gone. For the order file: print its component count at both
+   ends, show its 26 header lines byte-identical with their sha256, and show the file EQUAL to
+   a fresh regeneration from the live import graph. The reviewer measured 250 to 237, 250 to
+   237, 48 to 47, 106 to 100, 0 duplicates at both ends, five components to four with NO
+   survivor moving, and header sha256 `aff913e6…`.
 
-G6 THE RED-PROOFS — four, all inside ONE disposable worktree checked out at C4, `__pycache__`
+G6 THE RED-PROOFS — four, all inside ONE disposable worktree checked out at C3, `__pycache__`
    purged before EVERY run, `python3 -B`, and each probe's UNMUTATED CONTROL run over that
    probe's OWN selection in the SAME script immediately before its mutation. After each probe
    restore the target with `git checkout -- <path>` and prove the restore by sha256 before and
    after; the worktree porcelain is empty at the end.
-   A. Append `packages/orchestration/managed_builder_execution.py` back into
+   A. Append `packages/orchestration/main_builder_adapter.py` back into
       `tests/orchestration/import_reachability_allowlist.txt`. Selection:
       `tests/orchestration/test_import_reachability.py`. Must go RED.
-   B. Add `"packages.orchestration.managed_builder_execution",` back as the first entry of
-      `CLUSTER_MODULES` in `tests/orchestration/test_cluster_deletion_map.py`. Selection:
-      that same file. Must go RED.
-   C. Insert the line `packages.orchestration.managed_builder_execution` immediately above
-      `packages.orchestration.main_builder_adapter` in `.agent/f275_deletion_order.md`.
+   B. Add `"packages.orchestration.main_builder_adapter",` back as the first entry of
+      `CLUSTER_MODULES` in `tests/orchestration/test_cluster_deletion_map.py`. Selection: that
+      same file. Must go RED.
+   C. Insert the line `packages.orchestration.main_builder_adapter` immediately above
+      `packages.orchestration.overnight_executor` in `.agent/f275_deletion_order.md`.
       Selection: `tests/orchestration/test_cluster_deletion_order.py`. Must go RED.
-   D. In `apps/cli/commands/worker_facade_cmd.py`, replace the single line
-      `    results["ready"] = results.get("adapter_enabled", False)` — which occurs exactly
-      once in that file at C4 — with `    results["ready"] = False`. Selection:
-      `tests/cli/test_worker_facade_cmd.py`. Must go RED. This probe exists because C4
-      REWRITES that file's tests, and a rewritten assertion that no longer bites is the
-      failure this gate is here to exclude.
-   The reviewer ran all four at `fadf4715` plus this change set: controls exit 0 at 3, 3, 3 and
-   51 passed; mutants exit 1 at 1, 1, 2 and 2 failures. Report your own numbers.
+   D. In `apps/cli/commands/worker_facade_cmd.py`, delete the single line
+      `    "doctor.core": _cmd_doctor_core,` — which occurs exactly once in that file at C3 —
+      from `COMMAND_HANDLERS`. Selection: `tests/cli/test_worker_facade_cmd.py`. Must go RED.
+      This probe exists because C3 REWRITES that file's assertions, and a rewritten assertion
+      that no longer bites is the failure this gate is here to exclude.
+   The reviewer ran all four against this change set: controls exit 0 at 3, 3, 3 and 37 passed;
+   mutants exit 1 at 1, 1, 2 and 2 failures. Report your own numbers.
 
 G7 RUFF, THE RATCHETS AND THE FULL SUITE.
-   (a) `python3 -m ruff check` over every edited `.py` file that still exists at C4 — expect
+   (a) `python3 -m ruff check` over every edited `.py` file that still exists at C3 — expect
        `All checks passed!` at exit 0.
-   (b) `python3 -m ruff check .` repo-wide at the base inside a disposable worktree and at C4
+   (b) `python3 -m ruff check .` repo-wide at the base inside a disposable worktree and at C3
        in the primary checkout. The GATE IS THE EQUALITY of the two diagnostic SETS, compared
        item by item, not the exit code: ruff exits 1 at both ends reporting a pre-existing 26.
-       If your base reading differs from 26, check the worktree for your own scratch files
-       before reporting it — that cost round 14 a retraction.
+       The reviewer's dry run needed TWO repairs to reach that equality — an unused
+       `unittest.mock.patch` import and the blank line ruff's `I001` then wanted removed after
+       `import pytest` — both of which the change set above already orders.
    (c) `python3 -B -m pytest` over `tests/orchestration/test_import_reachability.py`,
        `test_cluster_deletion_map.py`, `test_cluster_deletion_order.py`, `tests/docs/`,
        `tests/cli/test_advertised_commands.py`, `tests/cli/test_cli_ux.py`,
        `tests/cli/test_product_spine.py` and `tests/test_grouped_cli.py` — exit 0.
    (d) The canary `python3 -B -m pytest tests/cli/test_golden_path.py -q` — exit 0.
    (e) THE FULL SUITE, `python3 -B -m pytest tests/ -q`, SERIALLY, in the PRIMARY checkout,
-       with C4 COMMITTED. BINDING: zero failed, and passed + skipped equals the C4 collection.
-       The reviewer measured 18689 passed, 23 skipped, zero failed, against a collection of
-       18712.
+       with C3 COMMITTED. BINDING: zero failed, and passed + skipped equals the C3 collection.
+       The reviewer measured 18603 passed, 23 skipped, zero failed, against a collection of
+       18626.
    (f) THE ARITHMETIC BY THE ID SET, both sides collected in the same environment: report the
-       base id count, the C4 id count, the LOST set and the GAINED set with a per-file
-       attribution of each. The reviewer measured 18867 at the base and 18712 at C4 — 157 lost
-       and 2 GAINED, the two gained being `TestWorkerAdd::test_add_enables_adapter` and
-       `TestWorkerDisable::test_disable_adapter`, which are the two renames C4 orders. A
-       GAINED set is expected this round and is not a defect.
+       base id count, the C3 id count, the LOST set and the GAINED set with a per-file
+       attribution of each. The reviewer measured 18712 at the base and 18626 at C3 — 86 lost
+       and ZERO gained, attributed 51 to `tests/orchestration/test_main_builder_adapter.py`,
+       14 to `tests/cli/test_worker_facade_cmd.py`, 10 to
+       `tests/cli/test_main_builder_adapter_cli.py`, 8 to `tests/test_grouped_cli.py` — which
+       parametrises over the catalog and is in no change set — 2 to
+       `tests/cli/test_product_spine.py` and 1 to
+       `tests/orchestration/test_development_artifact_boundary.py`.
 
 G8 THE TREE. Re-read `.agent/STOP` from disk and report it ABSENT. `git status --porcelain`
    empty. `git worktree list` naming the primary checkout ALONE. Branch correct. Compare
-   `git diff --name-only <C2>..<C3>` against this block's three C3 paths and
-   `git diff --name-only <C3>..<C4>` against its thirty C4 paths, each as a SET: report the
-   missing set and the extra set, both of which must be EMPTY. For every commit BEFORE C5,
+   `git diff --name-only <C2>..<C3>` against this block's twenty-four C3 paths as a SET: report
+   the missing set and the extra set, both of which must be EMPTY. For every commit BEFORE C4,
    report its parent count and its insertion count against the DECISION F104 D1 cap of 500.
-   C5's own numbers belong to the next round's ledger entry and are not reported here (§3
+   C4's own numbers belong to the next round's ledger entry and are not reported here (§3
    item 31).
 
 
 HANDBACK
 
-Rewrite `.agent/handoff.md` WHOLE at C5, per docs/agents/handback_template.md. It has no length
-cap (amend0827 rule 3). It carries: SESSION 9 of F275, round 15; the range; a per-commit
+Rewrite `.agent/handoff.md` WHOLE at C4, per docs/agents/handback_template.md. It has no length
+cap (amend0827 rule 3). It carries: SESSION 9 of F275, round 16; the range; a per-commit
 changed-files table with the `+/-` column read from `git show --numstat` and compared cell by
 cell against the Verification lines (§3 item 28); ONE LINE PER GATE with its real exit code;
 the authored-text proofs table; every deviation, declared rather than repaired; the item-status
-table; the open-findings count; and the next expected action. Push ONCE, after C5. Create no
+table; the open-findings count; and the next expected action. Push ONCE, after C4. Create no
 PR, edit none, merge none.
 
-Write no verdict, no `Done:` paragraph and no finding of your own. If a fix lands before the
-reviewer has authored its resolution, write `Landed: R-XXXX — <one line>` and nothing else.
+Write no verdict, no `Done:` paragraph and no finding of your own. The only `Done:` text this
+round applies is the reviewer-authored `Done: R-0855` paragraph inside the LEDGER16 slice.
