@@ -12,33 +12,33 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 20 deletes the `worker_registry` module group — the module, its handler, the whole
-`route-policy` command group, the three `worker.registry-*` commands, its cockpit section,
-four `ContractAction` members and two documentation pages. DECISION F275 D9, committed
-before the first `git rm`, rules that the surviving `token_economy.py` degrades FAIL-SAFE
-rather than dying: no route spec resolves, so approval becomes unconditional and the R-0095
-hard-safety floor holds by degradation. The round books round 19's PASS verdict and
-registers R-0865.
+ROUND 21 prepares the last deletion instead of performing it. The five redaction names that
+seven SURVIVING modules import from the dying `provider_trust.py` — `_scrub_public`,
+`_safe_path_label` and the three patterns they read — move BYTE-IDENTICALLY into the new
+`packages/common/public_text_redaction.py` under DECISION F275 D10, and nine importers
+repoint. Nothing is deleted. The round also discharges R-0862's fix clause with a positive
+pin on the human-review routing tier and R-0855's clause on `token_economy.py`, and books
+round 20's PASS verdict.
 
 ## Next Steps
 
-1. The `provider_trust` / `provider_trust_verification` pair, which is the last cycle and
-   the last component of the deletion order.
-2. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and the
-   open ids named among the ideas deleted rather than inherited. That round also discharges
-   R-0843's widened sweep, R-0858's repair of F267 and R-0859's referential-closure test.
+1. The `provider_trust` / `provider_trust_verification` pair itself, the last component of
+   `.agent/f275_deletion_order.md`. Its first commit is a dated DECISION on the self-dogfood
+   external-candidate rail, which loses its only entry point when `provider intake-repair`
+   dies.
+2. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it. That round
+   also discharges R-0843, R-0858, R-0859, R-0860 and R-0864.
 3. T002, the atomic record flip, alone, because every later commit's size depends on it.
 4. T003, the classic runner, which T002's ruling is the prerequisite for.
 
 ## Risks
 
-- The open set is 87 by distinct id at this round's base `0d18e58a`. Round 20 registers one,
-  taking it to 88. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's rather
-  than this feature's, per DECISION F272 D12.
-- Worst on this round: a surviving production module loses an approval-forcing invariant.
-  The mutation red-proof is ordered in full and its STOP condition blocks the commit.
-- R-0847 again: deleting a whole command group removes it from the advertised-command
-  guard's `GROUPS`, so the guard goes blind exactly when the group's advertisements go
-  dead. The sweep is read by hand, as its RAW list.
-- The full suite is run SERIALLY: under `pytest -n auto` the `ui_server` command-channel
-  tests race for a port.
+- The open set is 88 by distinct id at this round's base `3949f3c6`. This round registers
+  none and resolves R-0862. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's
+  rather than this feature's, per DECISION F272 D12.
+- Worst on this round: seven surviving production modules keep a redaction call whose
+  definition moves, so a silent breakage removes masking from public strings. The mutation
+  red-proof over the moved definition is ordered in full and its STOP condition blocks the
+  push.
+- The full suite runs SERIALLY in the PRIMARY checkout. A fresh worktree has a cold
+  `apps/ui/node_modules` and reddens the vitest foundation test on a first pass only.
