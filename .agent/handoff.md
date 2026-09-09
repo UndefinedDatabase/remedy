@@ -381,3 +381,118 @@ round of its own. Round 11's own work is the next component in the regenerated o
 `packages.orchestration.builder_routing, …candidate_quality, …local_candidate_generator,
 …model_route_tournament` — four modules that import each other, so DECISION F275 D2 makes the
 whole component ONE commit. Before authoring it, Phase 1 rule 1: re-read `.agent/STOP` from disk.
+
+## Reviewer verdict on round 10 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 10: **PASS.** Written by the planner/reviewer of session 6 AFTER reading the
+committed range `982d016b`..`57058636` and RE-RUNNING every one of the eight gates independently
+against the committed blobs; the worker's report was not taken as evidence for any line below.
+It is carried here because under `docs/agents/self_drive_protocol.md` a verdict that stays in
+the session is lost, and it is booked into `.agent/live_review.md` by the FIRST substantive
+commit of the next round, per amend0827-process-diet rule 1. It is NOT a `Done:` paragraph and
+resolves no finding.
+
+WHAT THE REVIEWER RE-MEASURED. Six single-parent commits C0a `d6c7694a`, C0b `bf9ffe68`,
+C1 `ccf684bd`, C2 `eac1082e`, C3 `e9944c64` and C4 `57058636`, each parent read from
+`git rev-list --parents`, with per-commit insertions 444, 417, 28, 12, 31 and 339, every one
+under the AGENTS.md DECISION F104 D1 cap of 500. G1 IS THE PRIMARY PROOF OF §4 ITEM 9 AND NOT
+THE DIGEST FALLBACK: the reviewer's own scratchpad original and the committed
+`.agent/authored/f275-r10.md` and `.agent/last_block.md` are all 41781 bytes at
+`cd016eb03ec8698d0b61eee5bf1a5fb1e42d78750eef66c41ff150e605d2ca10`, and the two committed blobs
+compare byte-equal to the scratchpad original, so this round's chain does reach the emitted
+bytes — which §3 item 37 says the digest-only form cannot. G2: `.agent/plan.md` byte-identical
+to PLAN10 at 2948 bytes and 49 lines against the cap of 50. G3: `.agent/live_review.md` 559516
+to 569448, growth 9932 = 1 + 9931; `.agent/prose_slips.md` 175541 to 177821, growth
+2280 = 1 + 2279; both edges byte-exact with the joining byte read back as a newline; N counted
+from each slice by the reviewer's own reader as 3 and 3 with ordered equality holding over the
+WHOLE appended region and a per-unit sha256 printed for all six units; and BOTH negative
+controls — flipped in memory inside the FIRST appended paragraph, per §3 item 36 — REJECTED by
+both readers, with the tracked files re-read from disk afterwards and byte-equal to the
+committed post-blobs. `^Gate: ` 31 to 32, and `^Gate: F275 R10`'s three keys `^Gate: F275 R9 `,
+`^- R-0845 — ` and `^- R-0846 — ` exactly 1 each, with THE OPEN SET 69 TO 71 BY DISTINCT ID
+against registrations 73 to 75 and resolutions 4 to 4. G4: all 27 whole-file removals absent
+from `git ls-tree` at C3 over 4606 tracked files, and the whole-word sweep for the six module
+names over the 1726 tracked files outside `.agent/` and `.data/` printed IN FULL — 15
+module-name hits on 12 DISTINCT lines, every one a must-not-touch item: eleven in
+`docs/roadmap/features/` (`T1_F034.md`, `T2_F260.md`, `T2_F269.md`, `T2_F272.md`, `T2_F277.md`)
+and one at `docs/system/vocabulary.md` line 245, which step (11) names and deliberately keeps.
+Eight of the nine gated symbols read ZERO; the ninth is deviation 3 below. G5: the four ratchets
+60 passed at exit 0, `tests/docs/` 303 passed, the canary 42 passed; through the SHIPPED readers
+`_BASE_CATALOG` and `collect_all_handlers()` both fell 334 to 296 and `GROUPS` 59 to 56, with
+all 38 deleted ids ABSENT from both readers, all ten named survivors PRESENT in both,
+`dogfood`, `progress` and `self-repair` gone from `GROUPS` while `overnight` and `repair`
+remain, and zero duplicate command ids; the regenerated order file holds TEN components against
+eleven at a `0 1` numstat, a PURE DELETION, with its 26-line header intact. THE RED-PROOF WAS
+RE-RUN BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE AT `e9944c64`: control exit 0 at 60
+passed, then the three mutations exit 1 at 2, 1 and 1 failures, then the control exit 0 again,
+each FROM string counted unique in its named file first and each file reverted byte-identically
+by sha256. G6: ruff `All checks passed!` over the 18 edited Python files still existing at C3,
+every one re-parsed with `ast` without error, and repo-wide `Found 26 errors.` at BOTH the base
+— read in a disposable worktree, never by writing to the primary checkout — and the tip, so this
+round adds none and sits exactly on the `test_ci_budgets.py` ceiling; `bash -n` exit 0. G7: THE
+FULL SUITE WAS RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT at exit code 0 read from
+the process object, 19209 passed and 23 skipped, and the arithmetic closes exactly:
+`--collect-only` 19613 at the base and 19232 at C3, a fall of 381 = 325 for the eleven deleted
+test files plus 32 over the ten swept files plus 24 in `tests/test_grouped_cli.py`, with ZERO
+ids gained, and 19209 + 23 = 19232 equal to the collection. G8: `.agent/STOP` absent,
+`git status --porcelain` empty, one worktree, branch correct, and `eac1082e..e9944c64` naming
+55 paths in an EXACT SET MATCH against the block's enumeration — nothing extra, nothing missing,
+and every whole-file removal named in the block.
+
+WHAT THIS ROUND ACHIEVED. The fifth module group is gone and it is the FIRST that is a strongly
+connected COMPONENT rather than a single module: `dogfood_run`, `feature_planner`,
+`overnight_mission`, `progress_ledger`, `repair_loop_v2` and `self_repair_proposal`, 7952 module
+lines, deleted in ONE commit as DECISION F275 D2 and operator RULE 1 require, at 31 insertions
+against 14365 deletions over 55 paths. With them went five handler files, 38 catalog entries,
+the `dogfood`, `progress` and `self-repair` groups with their `GroupDef`s, eleven test files and
+five doc pages. THE SCOPE WAS ESTABLISHED BY APPLYING THE DELETION AND RUNNING THE SUITE, not by
+reading the inherited map, and that is what the round is worth: the applied dry run turned 53
+real failures into the boundary, and six of its work items appear in no map — the three
+operator-facing pages `tests/cli/test_advertised_commands.py` reads for command strings, the
+`main_builder_adapter.py` advertisement of a dying command, the `tests/orchestration/test_evidence_index.py`
+enumeration that is a dirty-tree artefact rather than a defect, and the 24 parametrised ids in
+`tests/test_grouped_cli.py` that no file-level reading of the fall can predict.
+
+THE INHERITED MAP WAS WRONG IN THREE PLACES AND THE APPLIED DRY RUN FOUND ALL THREE. First, the
+session-5 map stated that neither of F260's two carry-overs had landed and ordered the next
+session to settle their ordering as a dated DECISION; both had landed at rounds 3 and 4, as
+`Gate: F275 R4` records, so that DECISION was owed by nobody and this round correctly did not
+write it. Second, the map recorded `worker_facade_cmd.py`'s coupling as two string-keyed
+`importlib` probes; a third site, a real `from packages.orchestration.dogfood_run import
+run_mission_loop` inside `_cmd_mission_run`, carried the dogfood-facade half of
+`remedy mission run` and would have been deleted out from under a live production path. Third,
+the map named two dying doc pages where five exist. All three are the reviewer's own prose and
+are dated `.agent/prose_slips.md` lines rather than ids, per amend0827 rule 2, because none left
+anything wrong on disk.
+
+SIX DEVIATIONS WERE DECLARED AND ALL SIX ARE SUSTAINED; FOUR ARE THE REVIEWER'S OWN BLOCK TEXT
+AND NONE EARNS AN ID. DEVIATION 1: step (8) ordered `"progress"` removed from `_INTERNAL_GROUPS`
+in `tests/cli/test_cli_ux.py`, and the reviewer confirmed by reading the blob at `982d016b` that
+the string was never there — the block ordered a removal with no target, the worker declared it
+rather than inventing one, and the `+3/-3` the block predicts was reached exactly without it.
+DEVIATION 2: G4 predicted 28 remaining sweep lines against a measured 12 distinct; the block's
+figure was taken before the round's own docs pass was applied, so it described an intermediate
+state of the reviewer's dry run rather than the change set it shipped with, and the gate's real
+condition — that no remaining line is anything but a must-not-touch item — held on every one.
+DEVIATION 3 IS THE R-0584 CLASS AND THE MOST INSTRUCTIVE: G4 gated `build_mission_morning_report`
+to ZERO, and it reads 1, at `tests/cli/test_mission_cmd.py` line 1469, where the line is
+`assert "build_mission_morning_report" not in source` — an ABSENCE GUARD that must quote the
+symbol in order to forbid it. The gate as worded was unmeetable by any correct round, the guard
+is right and worth keeping, and the worker was right to declare rather than delete it; a
+zero-gate over a bare symbol must strip quoted spans first, exactly as §3 item 20's R-0586
+clause already requires of the record scan. DEVIATION 4: G8 ordered the 55-path SET MATCH over
+`982d016b..<C3>`, a range that also spans C0a through C2 and therefore names 60; the reviewer
+re-measured both readings and confirms 60 over that range and exactly 55 over
+`eac1082e..e9944c64`, with the set match holding — the §3 item 16 / R-0585 shape, a count
+resolved against the wrong list, in a gate the same block wrote. DEVIATION 5 records the routes
+taken for the base-side readings and is exactly what §3 item 29 asks for; the reviewer confirms
+no base reading was taken by overwrite-and-restore. DEVIATION 6 is a tooling bug the worker
+caught in its own AST remover before any commit carried it, found by comparing against the
+block's numstat — the block's per-file `+/-` column doing the work it was included for.
+
+FOUR AUTHORING SLIPS IN ONE BLOCK IS A SIGNAL AND IS NAMED RATHER THAN DRESSED UP. None is
+load-bearing: none reached `.agent/live_review.md`, none changed a path, and every substantive
+claim LEDGER10 makes was re-measured true. But operator amendment amend0908-f275-finish rule 5
+makes "authoring errors accumulating" an honest reason to end a session only after at least four
+delegated rounds, and this session has run one, so the reason is recorded for the next session
+to weigh rather than cited here.
