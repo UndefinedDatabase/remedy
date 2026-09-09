@@ -12,34 +12,33 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 16 books round 15's PASS, five prose slips and the resolution of R-0855, registers R-0859
-and R-0860, and deletes the ELEVENTH module group,
-`packages/orchestration/main_builder_adapter.py`, whole. This is a PRODUCTION round: the
-`builder` group and its ten commands go, six `ContractAction` members go, and
-`worker_facade_cmd.py` loses three of its five commands — `worker doctor`, `worker add` and
-`worker disable` — which R-0857's fix clause orders deleted whole rather than narrowed a second
-time.
+ROUND 17 is a REPAIR round. Round 16's gate G4 went red because three operator-facing sections
+of `docs/guides/simple-operator-quickstart-v0.md` still advertised `worker doctor`, `worker
+add` and `worker disable` after the commit that deleted them; the reviewer's change set never
+named that file. This round books round 16's FAIL verdict, registers R-0861 and sweeps every
+surviving advertisement across three documentation pages, replacing the core product spine's
+worker section with the deliberate-absence note AGENTS.md requires.
 
 ## Next Steps
 
-1. The `overnight_executor` component, which this round's regeneration makes the order file's
-   first line. It is a SINGLE module.
+1. The `overnight_executor` component, the order file's first line. It is a SINGLE module.
 2. The remaining components in the recorded order — `worker_registry`, then
-   `overnight_readiness`, then the `provider_trust` / `provider_trust_verification` pair, which
-   is the last cycle.
+   `overnight_readiness`, then the `provider_trust` / `provider_trust_verification` pair,
+   which is the last cycle.
 3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831,
-   R-0840, R-0842, R-0844 through R-0846, R-0848, R-0849 and R-0851 through R-0860 named among
-   the ideas deleted rather than inherited. That round also discharges R-0843's widened sweep
-   and R-0858's repair of F267.
+   R-0840, R-0842, R-0844 through R-0846, R-0848, R-0849 and R-0851 through R-0861 named among
+   the ideas deleted rather than inherited. That round also discharges R-0843's widened sweep,
+   R-0858's repair of F267 and R-0859's referential-closure test.
 4. T002, the atomic record flip, alone, because every later commit's size depends on its
    ruling.
 
 ## Risks
 
-- The open set is 83 by distinct id at this round's base `38e03d2f`; the ledger commit this
-  block fixes as C2 registers two and resolves one, taking it to 84. Four are High — R-0803,
-  R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
-- This round removes three USER-FACING commands and a documented step from the core product
-  spine. R-0860 records the loss and its inheritor; no stub, shim or alias replaces them.
+- The open set is 84 by distinct id at this round's base `12dd60ad`; the ledger commit this
+  block fixes as C2 registers one, taking it to 85. Four are High — R-0803, R-0804, R-0806 and
+  R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
+- The advertised-commands guard did NOT catch these three sections, which is R-0847's blindness
+  measured a third time. Until R-0847 is fixed, every deletion round of this feature runs the
+  token sweep by hand and reads its RAW list, not only its stripped count.
 - The full suite is run SERIALLY: under `pytest -n auto` the `ui_server` command-channel tests
   race for a port, and the vitest node needs `apps/ui/node_modules`.
