@@ -45,12 +45,14 @@ start with a job.
 
 ## What a worker is
 
-A worker is an external tool (like Claude Code) that Remedy can delegate
-tasks to. Workers are not embedded in Remedy — they run as separate
-processes through bounded command templates.
-
-Adding a worker (`remedy worker add claude`) enables the adapter and template
-metadata. It does NOT execute the worker or create any sessions.
+Remedy deliberately ships no worker-onboarding command. Delegating a task to
+an external tool ran through a builder adapter and a bounded command template,
+and F275 deleted both together with the runner that used them, so there is no
+`worker doctor`, `worker add` or `worker disable` and no stub standing in for
+them. The bounded-subprocess guard those rails were built on survives as
+`packages/orchestration/exec_guard.py`, which F085 owns; a future feature that
+reintroduces external workers builds on that guard rather than on the deleted
+adapter.
 
 ## What a report is
 
@@ -99,8 +101,6 @@ to give to a worker. The proposal itself never executes anything.
 | `do job-run <id> --json` | Run pending tasks through Builder/Reviewer/Repair | Yes | Yes |
 | `ui <id>` | Open interactive UI | No | No |
 | `review run <id> --json` | Reviewer recommendations | No | No |
-| `worker doctor <name>` | Check worker readiness | No | No |
-| `worker add <name>` | Enable adapter + template | Metadata | No |
 | `config list/show/get` | View config | No | No |
 | `review bundle <id>` | Review evidence bundle | No | No |
 | `job fulfill <id> --fixture-demo` | Run fixture fulfillment demo | Metadata+repo | No* |

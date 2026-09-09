@@ -50,27 +50,6 @@ remedy job report <job_id> --json
 Read-only report of job progress: task details, evidence count,
 artifact count. No raw logs or output.
 
-### Check worker readiness
-
-```bash
-remedy worker doctor claude --json
-```
-
-Read-only check: binary on PATH, adapter enabled, template enabled.
-Reports blockers and next recommended command if not ready.
-
-### Add a worker
-
-```bash
-remedy worker add claude --json
-```
-
-Enables the adapter and template metadata for Claude Code.
-This does NOT execute the worker. Execution still requires
-explicit approval per session.
-
-Known workers: `claude`, `claude-code`, `fixture`, `generic`.
-
 ### Check core health
 
 ```bash
@@ -78,14 +57,6 @@ remedy doctor core --json
 ```
 
 Read-only check: all core modules loadable, test lane scripts present.
-
-### Disable a worker
-
-```bash
-remedy worker disable claude --json
-```
-
-Disables adapter + template. Does not delete evidence or history.
 
 ## What Remedy does NOT do automatically
 
@@ -106,9 +77,6 @@ See `docs/core-product-spine-v0.md` for the full command taxonomy.
 | `job status <id>`        | `job summary <id> --json`, `job show <id>`                 |
 | `job report <id>`        | `mission report <run_id> --job-id <id>`                    |
 | `job run-loop <id>`      | `mission run <run_id> --job-id <id>`                       |
-| `worker add claude`      | `builder adapter-enable`      |
-| `worker doctor claude`   | `builder adapter-show`          |
-| `worker disable claude`  | `builder adapter-enable --disabled` |
 | `doctor core`            | (no low-level equivalent — this is the check)              |
 
 Note: `mission` commands are an advanced/internal facade for mission contract

@@ -56,17 +56,6 @@ The morning report answers:
 - Is there a proposed self-repair prompt?
 - What should I do next?
 
-## How Claude Code fits
-
-Claude Code can be launched through managed execution rails:
-
-1. Operator adds worker: `remedy worker add claude --json`
-2. Operator approves execution for a session
-3. Loop or operator runs managed execution
-4. Output enters sandbox intake (untrusted)
-5. Morning report shows execution status
-
-
 ## How Self-Repair Proposals fit
 
 The morning report shows:
