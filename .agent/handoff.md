@@ -283,3 +283,238 @@ over `16494bbd`..HEAD — the gated work ends at C3 `b3ddaa35` and the handback 
 follows it — and issue the round 14 verdict. The next production round
 deletes the `managed_builder_execution` component, which this round's regeneration makes
 the order file's first line and which is a SINGLE module.
+
+## Reviewer verdict on round 14 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 14: **PASS.** Written by the planner and reviewer of SESSION 8 AFTER reading the
+committed range `16494bbd`..`5fb38765` and RE-RUNNING every one of the eight gates independently
+against the committed blobs; the worker's report was not taken as evidence for any line below. It
+is carried here because under `docs/agents/self_drive_protocol.md` a verdict that stays in the
+session is lost, and it is booked into `.agent/live_review.md` by the FIRST substantive commit of
+round 15, per amend0827-process-diet rule 1. It is NOT a `Done:` paragraph and resolves no finding.
+
+WHAT THE REVIEWER RE-MEASURED. Six single-parent commits C0a `490221e8`, C0b `dbffaba9`, C1
+`11b4dff7`, C2 `ed9a78b0`, C3 `b3ddaa35` and C4 `5fb38765`, each parent read from `git log`, with
+per-commit insertions 382, 346, 18, 10, 14 and 233, every one under the AGENTS.md DECISION F104 D1
+cap of 500. G1 IS THE PRIMARY PROOF OF §4 ITEM 9 AND NOT THE DIGEST FALLBACK: the reviewer's own
+scratchpad original and both committed copies are 37397 bytes at
+`e8108d5345442dbf948921396afaf07dba35045ab51941fb0c318158e56b073d` and compare BYTE-EQUAL; per §3
+item 37 that chain covers those three artefacts and claims nothing about the emitted bytes. G2:
+`.agent/plan.md` byte-identical to PLAN14 at 2720 bytes, 45 lines against the cap of 50, both
+mandated headings present; the block re-measured from the C0a blob at 382 lines TOTAL and 329
+PROSE, inside both caps. G3: `.agent/live_review.md` 608189 to 618783, growth 10594 = 1 + 10593;
+`.agent/prose_slips.md` 183299 to 184231, growth 932 = 1 + 931; for both the prefix and suffix are
+byte-exact and the joining byte was read back as a newline; N was COUNTED from each slice by the
+reviewer's own reader as 4 and 1, with ordered equality holding over the WHOLE appended region and
+a per-unit sha256 printed on both sides; and BOTH negative controls, flipped in memory inside the
+FIRST appended paragraph per §3 item 36, were REJECTED by both readers, with both tracked files
+re-read from disk afterwards and byte-equal to their committed post-blobs. `^Gate: ` 35 to 36, and
+`^Gate: F275 R13 `, `^Note: F275 R14 `, `^- R-0853 — ` and `^- R-0854 — ` exactly 1 each; THE OPEN
+SET 77 TO 79 BY DISTINCT ID against registrations 81 to 83 and resolutions 4 to 4. G4: all five
+whole-file removals absent from `git ls-tree` at C3 over 4574 tracked files, and the sweep over the
+1690 tracked files outside `.agent/` and `.data/`, printed IN FULL with the four SURVIVING advisor
+tokens neutralised first, read exactly FOUR lines RAW and ONE with backtick-quoted spans stripped,
+which is the binding count and is the single `docs/system/vocabulary.md` line the block's scope
+ruling leaves to R-0843. G5: through the SHIPPED readers, by import with the resolved `__file__`
+printed, `_BASE_CATALOG` and `collect_all_handlers()` both fell 269 to 267, `GROUPS` 50 to 49 and
+`ALL_KNOWN_ACTIONS` 122 to 120, with zero duplicate ids, both deleted ids ABSENT from both readers,
+`local-advisor` gone from `GROUPS`, and `orchestrator.decide`, `orchestrator.inspect`,
+`orchestrator.report`, `provider.verify`, `patch.approve` and `do.continue` all PRESENT — the human
+approval path is untouched; `orchestrator.decide` args fell to `('--job-id', '--json')`; the
+exported decision key set fell from 20 keys to 19 with `advisor` gone; and the regenerated order
+file holds SIX components against seven with its 26-line header sha256 unchanged at `aff913e6…`.
+G6: ALL FOUR RED-PROOFS WERE RE-RUN BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE, each with its
+OWN matched control over its OWN selection — probe A control exit 0 at 3 passed against mutated
+exit 1; probe B control exit 0 at 6 passed against mutated exit 1 at 2 failed; probe C control exit
+0 at 499 passed against mutated exit 0 at 507 passed; probe D control exit 0 at 61 passed against
+mutated exit 0 at 61 passed — every file restored byte-identically and proved by sha256. G7: ruff
+`All checks passed!` over the eight edited Python files still existing at C3 and repo-wide `Found
+26 errors.` at both ends; the ratchets and canary 484 passed at exit 0; and THE FULL SUITE WAS
+RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT and was GREEN at 18844 passed, 23 skipped
+and ZERO failed — the worker's figure exactly — with 18844 + 23 = 18867 equal to the C3 collection
+against 18919 at the base, a fall of 52 with zero gained. G8: `.agent/STOP` absent, porcelain
+empty, ONE worktree, branch correct, and `ed9a78b0..b3ddaa35` naming the 24 paths in an EXACT SET
+MATCH, nothing extra and nothing missing.
+
+WHAT ROUND 14 ACHIEVED. The NINTH module group, `local_model_advisor` at 947 module lines, in ONE
+commit at 14 insertions against 1845 deletions over 24 paths, taking its 101-line handler file
+whole, two commands, the `local-advisor` group, two test files, one doc page and two
+`ContractAction` members with it, and repairing seven surviving documentation pages whose links the
+deletion would otherwise have broken. Unlike rounds 11 to 13 this was a PRODUCTION round: three
+survivors lost code and one of the losses changed an exported JSON contract.
+
+THE WORKER'S SIX DECLARED DEVIATIONS ARE ALL SUSTAINED, and two of them are the reviewer's own.
+FIRST AND LOAD-BEARING, the worker is RIGHT about probe C's control. The reviewer's LEDGER14 text
+records the unmutated control at "470 passed" beside a mutated 507; 470 was a reading taken over a
+SIX-file selection while probe C runs over THREE, and the correctly matched control is 499, which
+the reviewer re-measured independently at 499 against 507. The finding's conclusion is untouched,
+because it rests on the mutated reading alone — an orphan `GroupDef` passes at exit 0 either way —
+so this is a non-load-bearing prose inaccuracy that put nothing wrong on disk, and under
+amend0827-process-diet rule 2 it is a dated `.agent/prose_slips.md` line rather than an id and
+earns no correction round. SECOND, the worker's withdrawn base-ruff reading of 34 was its own
+scratch files being linted, and it deleted them, re-read 26 at both ends and recorded the
+retraction rather than dropping it silently; that is the record working as intended. THIRD, its
+base ruff and base collection were taken in the primary checkout while the branch still stood at
+the base, before any commit, with a clean tree and nothing written — read-only, so guardrail G5 is
+untouched, and the reviewer's own base readings were taken in a worktree and agree.
+
+WHAT THE ROUND LEFT ON DISK, WHICH IS THE REVIEWER'S AUTHORING MISS AND NOT THE WORKER'S. The
+worker's deviation 4 names three artefacts the block's anchors did not reach, and the reviewer
+re-measured all three at `5fb38765` and confirms every one. They are registered as R-0855 below.
+The worker was RIGHT to declare rather than widen: constraint 3 bound its change set and AGENTS.md
+Scope Control forbids an unordered edit, so declaring is the sanctioned move and the same one round
+12's worker was credited for.
+
+## Finding drafted by session 8, to be booked by round 15's FIRST substantive commit
+
+- R-0855 — Medium, ROUND 14's DELETION LEFT DEAD SURVIVOR STATE ITS ANCHORS DID NOT REACH, IN TWO FILES, AND ONE OF THE TWO IS A CODE PATH THAT READS A JSON KEY THE SAME ROUND REMOVED. Raised by the reviewer of session 8 at the round 14 gate, from the worker's declared deviation 4, and re-measured independently at `5fb38765` before this text was written. It is ONE id rather than two because the defect, the cause and the fix are one: an ordered anchor deleted a definition without sweeping the neighbourhood the definition served, and one sweep repairs both — which is exactly the counter-measure the resolved R-0841 and the open R-0843 already state and which this block failed to apply to its own orders. FIRST INSTANCE, `apps/cli/commands/orchestrator_cmd.py`, in `_cmd_orchestrator_decide`: the three lines `adv = data.get("advisor")`, `if adv:` and the print beneath them SURVIVE, while the same round removed `"advisor"` from `export_decision_json`, so `data.get("advisor")` is now always `None` and the branch can never fire. That is the attic AGENTS.md Scope Control forbids by name, and it is worse than ordinary dead code because a reader takes it as evidence that the exported key still exists. SECOND INSTANCE, `packages/orchestration/orchestrator_brain.py` lines 922 to 931: the ten-line section banner `# Local Model Advisor integration (Steps 1509-1511) — advisory ONLY.` and its explanatory paragraph describe an integration this round deleted, and the constant `_CONFIDENCE_ORDER` beneath it now has EXACTLY ONE occurrence repo-wide — its own definition — because its only reader was `_lower_confidence`, which the same commit removed. A THIRD INSTANCE WAS FOUND BY THE SAME SWEEP AND PREDATES THIS ROUND: `tests/orchestration/test_cluster_deletion_map.py` line 41 reads `# The twenty-four modules F260's Design lists as the prototype cluster.` above a `CLUSTER_MODULES` tuple that holds SEVEN, having shrunk once per group commit since round 7. It is named here rather than given an id of its own because the same sweep fixes it. WHY THIS IS AN ID AND NOT A PROSE SLIP: all three are wrong state on disk under `apps/`, `packages/` and `tests/`, which is precisely what amend0827-process-diet rule 2 reserves an R-id for, and the first instance is a live code path rather than a comment. NO GATE COULD SEE ANY OF THEM — ruff reports no error, the full suite is green at 18844 passed, and the round 14 sweep could not fire because none of the three names a deleted symbol. WHAT WOULD RESOLVE IT: one commit deleting the three lines in `orchestrator_cmd.py`, the banner and `_CONFIDENCE_ORDER` in `orchestrator_brain.py`, and correcting the `CLUSTER_MODULES` comment to state no numeral at all per §3 item 16. FIX CLAUSE, BINDING ON EVERY REMAINING DELETION ROUND OF THIS FEATURE: a block that orders a definition deleted also orders the reader to sweep, in the same commit, for the callers of that definition, for the constants left with no reader, and for the section comment above it — and the block says so in its own text rather than leaving the worker to choose between an unordered edit and a declared deviation.
+
+## Prose slip drafted by session 8, to be appended by round 15's ledger commit
+
+2026-09-09 · F275 R14 · The reviewer's LEDGER14 slice recorded probe C's unmutated control as "470 passed" beside a mutated reading of 507; 470 was measured over a SIX-file selection while probe C runs over THREE, so the two numbers in that sentence come from different selections and are not comparable as written. The worker measured the matched control at 499 and declared the difference, and the reviewer re-measured 499 against 507 independently. Nothing is wrong on disk and the finding's conclusion is untouched, because it rests on the mutated reading alone: at exit 0 either way, an orphan `GroupDef` is invisible to every catalog guard. The lesson is that a control belongs to a SELECTION, not to a worktree, and a probe's control must be run over the probe's own selection in the same script that runs the probe.
+
+## THE ROUND 15 MAP — MEASURED AT `5fb38765` BY AN APPLIED, INCOMPLETE DRY RUN
+
+Everything below was measured by the reviewer of session 8 against the tree at the commit named
+above. Unlike the session 7 map this is an APPLIED dry run, not a consumer map read from source —
+which is why it is trustworthy about scope and why it can say what it does NOT yet cover. THE DRY
+RUN IS INCOMPLETE AND WAS LEFT INCOMPLETE DELIBERATELY: the mechanical half was applied and the
+suite was run to establish the boundary by execution, and twelve tests are RED, each needing a
+judgement the next session should make rather than inherit.
+
+THE MODULE: `packages/orchestration/managed_builder_execution.py`, 1694 lines, component line 1 of
+`.agent/f275_deletion_order.md`, a SINGLE module.
+
+DIES WITH IT, and all six were applied cleanly: `apps/cli/commands/managed_builder_execution_cmd.py`
+(350 lines, SEVENTEEN handlers), `tests/orchestration/test_managed_builder_execution.py` (1793),
+`tests/cli/test_managed_builder_execution_cli.py` (95),
+`docs/system/managed-external-builder-execution-v1.md` and
+`docs/system/managed-external-builder-execution-v1-1-hardening.md`.
+
+THE CATALOG: the `execution` `GroupDef` at line 151 and a 195-line block holding exactly SEVENTEEN
+`CommandEntry` ids, counted from the block by the applier rather than by hand —
+`execution.template-list`, `template-show`, `template-create`, `template-enable`,
+`template-disable`, `template-update`, `approve`, `run`, `show`, `list`, `debug-bundle`,
+`integrity`, `approval-show`, `approval-validate`, `approval-list`, `operator-runbook` and
+`claude-doctor`.
+
+THE RUN-PERMISSION VOCABULARY: FOURTEEN `ContractAction` members in
+`packages/orchestration/run_contract.py` and their fourteen rows in `_DEFAULT_ALLOWED_ACTIONS`, 28
+lines in total, all of them `EXECUTION_*` and all of them reachable only through the dying handler.
+
+A DATED DECISION IS OWED BEFORE THE FIRST `git rm`, and this is the round's real planning work.
+`remedy execution approve` is a HUMAN approval command — `remedy worker add` prints it as step 4 of
+its own quickstart and states "Execution still requires explicit approval per session" — while
+F275's Do-not-touch section protects "the approval gate". DECISION F275 D6 does NOT settle this: it
+ruled about `execution_approval_policy.py` and named F017's `patch approve` / `do continue` /
+`approval_required` path as the protected gate. The next session must rule, as a dated DECISION in
+`.agent/decisions.md`, whether deleting a gate TOGETHER WITH
+the thing it gates leaves any ungated path — the reviewer's reading is that it does not, because
+managed builder execution itself dies in the same commit, but that reading is a recommendation and
+not yet a ruling.
+
+THE SURVIVORS THAT LOSE CODE. `apps/cli/commands/worker_facade_cmd.py` keeps `mission.run` and
+`doctor.core` and loses the TEMPLATE half of three user-facing commands — `worker doctor` loses its
+`template_exists` and `template_enabled` checks, `worker add` its `template_enabled` result and the
+two quickstart lines naming `execution approve` and `execution template-show`, and `worker disable`
+its `template_disabled` result. Each of those three PAIRS a template with an ADAPTER from
+`packages/orchestration/main_builder_adapter`, which is component line 1 of the REGENERATED order
+file and therefore dies in a LATER round, so this round leaves each command holding its adapter
+half alone and the next-but-one round takes the rest. `packages/orchestration/exec_guard.py`
+SURVIVES comfortably — six modules import it, among them `integrity_gate`, `ci_run`,
+`pingpong_loop`, `pingpong_promote` and `runtime_supervisor` — and loses only SEVEN docstring
+citations of `managed_builder_execution` at lines 91, 550, 606, 642, 722, 812 and 889, which are
+prose and must be swept rather than left dangling.
+
+THE ORDER FILE REORDERS RATHER THAN SHRINKING PURELY, which round 13's did not: regeneration gives
+SIX components falling to FIVE, and `main_builder_adapter` moves from position four to position
+one while `overnight_readiness` moves too, because deleting this module changes the import graph's
+topological order. The 26-line header sha256 is unchanged at `aff913e6…`. A block that predicts a
+`0 1` numstat for this file will be wrong.
+
+TWELVE TESTS ARE RED AFTER THE MECHANICAL HALF, IN FOUR FILES THAT NO CONSUMER MAP PREDICTED, and
+this list is the round's real remaining work:
+  - `tests/cli/test_worker_facade_cmd.py` — SEVEN: `TestWorkerDoctor` `test_doctor_all_ready`,
+    `test_doctor_binary_missing`, `test_doctor_adapter_disabled`, `test_doctor_text_output`;
+    `TestWorkerAdd` `test_add_enables_both`, `test_add_already_enabled`; `TestWorkerDisable`
+    `test_disable_both`. All seven patch `packages.orchestration.managed_builder_execution`
+    symbols by dotted path at lines 126, 128 and 129, and their assertions describe the paired
+    adapter-and-template behaviour this round halves. Each needs a judgement about what the
+    surviving command asserts, not a mechanical edit.
+  - `tests/orchestration/test_development_artifact_boundary.py` — TWO:
+    `TestProductModulesNoLiveReview::test_managed_builder_execution`, which imports the module, and
+    `TestFunctionalNoAgent::test_worker_doctor_core_no_agent`. The module also appears in the list
+    at line 15 and at line 167.
+  - `tests/cli/test_cli_ux.py` — TWO: `TestHiddenCallable::test_hidden_group_callable` and
+    `TestGroupDefIntegrity::test_internal_groups_marked`. Both hold `"execution"` in a hardcoded
+    group-id list, at lines 17 and 124.
+  - `tests/docs/test_docs_consistency.py::TestPrimaryDocLinksResolve` for `docs/README.md`, which
+    still links both deleted doc pages. Note that this gate DID fire here and did NOT fire in round
+    14, because a README row links these pages and no README row linked round 14's.
+Also mechanical and already applied: `pyproject.toml` (1 line),
+`tests/orchestration/import_reachability_allowlist.txt` (2),
+`tests/orchestration/cluster_deletion_map.txt` (1), `tests/orchestration/test_cluster_deletion_map.py`
+(2), `tests/test_test_categories.py` (1), `scripts/remedy_test_fast.sh` (1) and
+`docs/system/test-lanes-v0.md` (1).
+
+AT LEAST ONE FINDING IS OWED under operator RULE 3: the `execution` group and its seventeen
+commands, which is the whole managed-external-builder execution surface — templates, approval,
+execution, integrity, the debug bundle, the operator runbook and the Claude doctor. Whether the
+loss of the three `worker` commands' template half is a second id or belongs to the same one is a
+judgement for the round that ships it, and §3 item 30 requires the open set to be searched for the
+defect before either is minted.
+
+## Session 8 ends here — ONE delegated round, reviewed and PASSED, BELOW the four-round floor
+
+This is stated plainly rather than dressed up. `docs/agents/self_drive_protocol.md` G7, as amended
+by amend0905-throughput, sets a target of six to eight delegated rounds per session with FOUR as
+the floor, and this session ran ONE. The honest reason is the one amend0905 names — a round that
+explicitly needs a fresh session — and it is offered as a MEASUREMENT rather than a preference:
+round 15 was mapped by an APPLIED dry run, not by reading source, and that dry run establishes
+that the round needs a dated DECISION on whether `remedy execution approve` is the approval gate
+F275's Do-not-touch protects, that it removes seventeen commands and fourteen run-permission
+actions, and that it leaves twelve tests red across four files no consumer map predicted, seven of
+them requiring the assertions of three surviving user-facing commands to be rewritten rather than
+deleted. Beginning that round on the remainder of this session would have meant authoring its block
+against an incomplete dry run, which is the one thing this feature's record shows costs a round.
+
+WHAT THIS SESSION LANDED. Round 14 alone: the ninth module group, applied by the reviewer in a
+disposable worktree and run to a full green suite BEFORE its block was authored, then delegated,
+then independently re-gated against the committed blobs with all four red-proofs re-run and the
+full suite re-run serially in the primary checkout. Two findings were registered by the round
+itself, R-0853 and R-0854, and one more, R-0855, is drafted above for round 15 to book. The
+reviewer's own authoring miss is recorded as R-0855 rather than hidden in a deviation, because the
+dead code it names is on disk under `apps/` and `packages/`.
+
+WHAT THE SESSION-7 MAP GOT WRONG, recorded because it is the reason this session re-measured
+everything. That map named four survivors and missed `packages/orchestration/run_contract.py`,
+whose two `ContractAction` members existed only for the adapter; it missed the enum USE SITES at
+`orchestrator_brain.py` lines 687 and 807, which are what decide whether the two enum members may
+die; it missed the surviving assertion at `tests/orchestration/test_orchestrator_brain.py` line
+210, which would have gone red had they been deleted; and it missed one archive See-also link. A
+handback map is a lead, and §3 item 34's "read every file the block orders a change against" is
+what caught it.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context
+was NOT the binding constraint and remained comfortable throughout — this session ran three full
+serial suites at roughly 22 minutes each, one to establish round 14's boundary by execution, one to
+gate it independently, and one inside round 15's dry run — and the session ends with round 15's
+boundary measured by execution rather than read from source.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It does not exist
+as this session ends, and was measured absent at the Phase 0 probe, again before authoring round
+14, and again now. Then the Open PR Gate: no pull request is open, and none is owed until the
+closure sequence.
+
+SECOND, round 15's FIRST substantive commit books, from this file as the durable carrier under
+amend0827-process-diet rule 1: the ROUND 14 PASS verdict above as a `Gate: F275 R14` entry in
+`.agent/live_review.md`, the R-0855 registration, the prose slip as a dated line in
+`.agent/prose_slips.md`, and `.agent/plan.md` advanced in the same commit per §3 item 23. The open
+set is 79 by distinct id and the next free id is R-0856.
+
+THIRD, round 15 itself, as a PRODUCTION-CODE round under §3 Round-types: complete the applied dry
+run above to a green suite before authoring anything, rule the approval-gate question as a dated
+DECISION in `.agent/decisions.md` before the first `git rm`, order the mutation red-proofs in full,
+and register the RULE 3 finding the map names.
