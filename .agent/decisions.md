@@ -12448,3 +12448,69 @@ THEREFORE NO FINDING IS OWED, AND THIS IS THE PART THAT AMENDS D18 OPERATIONALLY
 ALTERNATIVES CONSIDERED. (a) FOLLOW D18 AS WRITTEN — delete the flags and register two findings naming an inheriting feature — rejected on both measurements above: it ends F114's contract inside an unrelated feature's deletion round and removes the only non-interactive path above the cost threshold, and a finding is a record of a regression rather than a substitute for not causing one. (b) KEEP `job.run` ALIVE beside `job.resume` until a later feature re-homes the flags — rejected by AGENTS.md's Scope Control, which forbids leaving a replaced mechanism alive beside its replacement and names the compatibility alias as the thing not to build. (c) MOVE `is_expensive` TO `do.run`, which also spends money — rejected because `do.run` does not call `confirm_cost_preview` at all, so marking it expensive would make the catalog claim a preview the code does not perform, which is the gate-that-lies class this record exists to prevent. (d) GIVE THE FLAGS TO `job.resume` IN ONE ROUND AND DELETE `job.run` IN THE NEXT — rejected because it leaves two doors carrying the same flags across a session boundary, and because the whole change measured green in one commit.
 
 HOW TO REVERSE. Delete this paragraph and the five above it; DECISION F275 D18's own text is unedited and still reads as originally recorded, so reverting this amendment restores its "genuinely lost" reading without any further edit. Reversing the CODE is `git revert` of this round's C4.
+
+## DECISION F275 D20 (2026-09-10, F275 round 37) — amending DECISION F260 D3: the nineteen deleted CLI handler modules, and the feature that inherited each
+
+WHAT IS BEING AMENDED, AND WHAT IS NOT. DECISION F260 D3, recorded at round 23, maps every
+module F260's Design section lists to the feature that inherited its idea. Its own opening
+clause states the obligation it answers, which `docs/roadmap/features/T2_F275.md` words as
+D3 "exists and names every deleted module and the feature that inherited its idea". D3's
+landed text is NOT rewritten, per planner_reviewer_prompt.md §3 item 20; this paragraph is
+its dated extension.
+
+THE GAP, MEASURED at `f4fc3459` rather than noticed. Walking `a5bf894946ab6de053a4232109d6341a63533768..f4fc3459`
+with `git log --diff-filter=D` gives 42 deleted non-test `.py` modules: 23 under `packages/`
+and 19 under `apps/cli/commands/`. D3's mapping names the 23, and a twenty-fourth,
+`packages/orchestration/overnight_readiness.py`, which it records as CARRIED rather than
+deleted in idea. It names NONE of the 19 handlers. Read strictly, the feature's DONE
+condition was therefore met for 23 of 42 modules and left the rest to an inference.
+
+THE MAPPING, DERIVED FROM GIT AND NOT FROM THE HANDLER NAMES. For each handler the reviewer
+read its LAST content before the commit that deleted it — `git show <killer>~1:<path>` —
+parsed it with `ast`, and recorded every first-party import of a module this feature also
+deleted. Seventeen handlers serve exactly one such module and two serve two. The handler
+inherits precisely what its module inherits, because operator RULE 1 in
+`docs/roadmap/features/T2_F275.md` T001 defines a module group as one cluster module
+together with everything that exists ONLY for it and names the handler first among those.
+
+`builder_routing_cmd.py` served `builder_routing` — F110, routing configuration (R-0848,
+with R-0831 holding the knob-by-knob audit). `candidate_quality_cmd.py` served
+`candidate_quality` — F082, evidence-based comparison of a candidate (R-0848).
+`context_optimizer_cmd.py` served `context_optimizer` and `context_pack_cmd.py` served
+`context_pack` — both F107, context compiler v2 (R-0842). `dogfood_cmd.py` served
+`dogfood_run` — NONE, deliberately, because F260's Design deletes the prototype rather than
+carrying it (R-0845). `external_builder_cmd.py` served `external_builder_sandbox` — F085,
+external-worker ingress (R-0852), with the scoring step going to F082 (R-0849).
+`local_advisor_cmd.py` served `local_model_advisor` — F110, local-model advisory critique
+(R-0853). `local_candidate_cmd.py` served `local_candidate_generator` — NONE, deliberately
+(R-0848). `main_builder_adapter_cmd.py` served `main_builder_adapter` and
+`managed_builder_execution_cmd.py` served both `main_builder_adapter` and
+`managed_builder_execution` — F085 for bounded subprocess execution and F017 for human
+approval (R-0856, R-0860). `overnight_cmd.py` served `overnight_readiness`, which is the one
+entry on this list whose idea was CARRIED rather than deleted: DECISION F275 D1 moved its
+measured definition set byte-identically into `packages/orchestration/mission_readiness.py`
+and it ships as `mission readiness`, the single command id this feature added.
+`overnight_mission_cmd.py` served `overnight_mission` — F269, which
+`docs/system/vocabulary.md` already records as the feature that builds the contract
+(R-0845), with the morning report carried to `mission report` in its degraded form and the
+run-keyed addressing deleted (R-0840). `progress_cmd.py` served `progress_ledger` —
+`job show --full` and `job evidence`, the mapping F260's own stub fixes (R-0844).
+`provider_cmd.py` served both `provider_trust` and `provider_trust_verification` — the Trust
+Gate; NONE, deliberately, with R-0866 recording the residue. `repair_loop_v2_cmd.py` served
+`repair_loop_v2` — F110, for the repair work item, its route recommendation and its policy
+knobs (R-0845). `route_policy_cmd.py` served `worker_registry` — F110, model routing
+(R-0865); the user-settable route-policy knobs themselves are among the ideas DELETED rather
+than inherited, per R-0831. `self_repair_cmd.py` served `self_repair_proposal` — F017, the
+approval gate (R-0845). `tournament_cmd.py` served `model_route_tournament` — F082 (R-0848).
+`worker_recommend_cmd.py` served `worker_recommend` — NONE, by DECISION F274 D7, which rules
+worker recommendation dies with the cluster; its token mode MOVED to
+`packages/orchestration/token_policy.py` because it never belonged to the cluster.
+
+WHAT THIS AMENDMENT DELIBERATELY DOES NOT DO. It provides no stub, no shim, no alias and no
+compatibility reader, which AGENTS.md's Scope Control forbids by name and which T001 RULE 3
+forbids again. It re-opens no finding: naming an inheritor is not resolving one. It mints no
+feature; where the answer is NONE it says NONE. And it adds no module to D3's own list,
+because D3's subject is F260's Design list and this amendment's subject is the handlers that
+served it — two different sets, and merging them would make D3's own arithmetic unreadable.
+
+HOW TO REVERSE: delete this decision. DECISION F260 D3 stands unedited either way.
