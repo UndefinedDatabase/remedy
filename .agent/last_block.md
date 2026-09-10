@@ -1,33 +1,42 @@
-STEP T001-close / F275 — ROUND 24 — THE SURVIVING SURFACES THAT ADVERTISE DELETED THINGS
+STEP T001-close / F275 — ROUND 25 — THE D3 SEQUENCE CLOSES: RETIRE THE SCAFFOLDING, REPAIR THE PLANS IT LEFT WRONG
 
-Goal: repair the three places where a command, a cross-reference or an operator page
-still offers the reader something this feature deleted — `remedy mission run`'s catalog
-entry, the two dangling `related=` tuples, and the mission run-loop page whose Quick
-start gives an operator a command that cannot run — and land the referential-closure
-test R-0859 asks for, so that the next dangling cross-reference goes red instead of
-quiet. Book the round 23 verdict and the findings session 13 measured while doing it.
+Goal: close the DECISION F260 D3 sequence DECISION F275 D13 opened and D14 (c)
+extended. Retire the four cluster scaffolding artefacts that became gates which
+cannot fail the moment the module list emptied; repair the unstarted feature whose
+plan names five commands this feature deleted; banner the historical `Groups` table
+that has been quietly wrong for most of its rows; and sweep the three residues rounds
+23 and 24 left in files their own change sets had named.
 
 Bundle, in commit order:
-  C0a  save this block verbatim to `.agent/authored/f275-r24.md`
+  C0a  save this block verbatim to `.agent/authored/f275-r25.md`
   C0b  mirror the COMMITTED C0a blob into `.agent/last_block.md`
-  C1   `.agent/plan.md` <- PLAN24
-  C2   the record: LEDGER24 appended to `.agent/live_review.md`, SLIPS24 appended to
+  C1   `.agent/plan.md` <- PLAN25
+  C2   the record: LEDGER25 appended to `.agent/live_review.md`, SLIPS25 appended to
        `.agent/prose_slips.md`
-  C3   DEC24 appended to `.agent/decisions.md` — DECISION F275 D14
-  C4   the catalog: pairs Q1 and Q2, and the new test Q3
-  C5   the operator page: pairs Q4, Q5, Q6 and Q7
-  C6   the handback
+  C3   DEC25 appended to `.agent/decisions.md` — DECISION F275 D15
+  C4   retire the cluster scaffolding: `git rm` the four paths named below. The
+       commit message NAMES R-0868.
+  C5   the residues rounds 23 and 24 left: pairs S8, S9 and S10. The commit message
+       NAMES R-0870.
+  C6   the plans: pairs S1 to S6 into the F267 feature file, and pair S7 into
+       `docs/system/architecture.md`. The commit message NAMES R-0858 and R-0843.
+  C7   the handback
 
 Change set — EXACTLY these paths, nothing else:
-  .agent/authored/f275-r24.md
+  .agent/authored/f275-r25.md
   .agent/last_block.md
   .agent/plan.md
   .agent/live_review.md
   .agent/prose_slips.md
   .agent/decisions.md
+  .agent/f275_deletion_order.md                          (DELETED)
+  tests/orchestration/cluster_deletion_map.txt           (DELETED)
+  tests/orchestration/test_cluster_deletion_map.py       (DELETED)
+  tests/orchestration/test_cluster_deletion_order.py     (DELETED)
   apps/cli/command_catalog.py
-  tests/test_command_catalog.py
   docs/system/mission-run-loop-morning-report-v0.md
+  docs/roadmap/features/T2_F267.md
+  docs/system/architecture.md
   .agent/handoff.md
 
 Constraints:
@@ -36,119 +45,144 @@ Constraints:
     apply it anyway and declare it in the handback.
  2. Marker lines are never written into any target file.
  3. THE APPEND CONVENTION for `.agent/live_review.md`, `.agent/prose_slips.md` and
-    `.agent/decisions.md`, verified by the reviewer against all three files at
-    `ea5f8128`: each file ends with exactly ONE newline byte. An append writes
-    `pre + b"\n" + slice`, where the slice itself ends with one newline.
+    `.agent/decisions.md`, verified by the reviewer against all three at `06dbb1c6`:
+    each file ends with exactly ONE newline byte. An append writes
+    `pre + b"\n" + slice`, where the slice itself ends with one newline. The ledger's
+    length at this base is 732715 bytes — the round 24 handback's own arithmetic
+    re-baselines here, not on any earlier figure.
  4. WITHIN a slice bound for `.agent/live_review.md` or `.agent/prose_slips.md`,
-    records are separated from each other by a BLANK line. Measured at `ea5f8128`:
-    244 of the 258 adjacent entry pairs in `.agent/prose_slips.md` are blank-
-    separated and 14 are on consecutive lines, so blank separation is the dominant
-    convention rather than a universal one, and this constraint orders it rather
-    than claiming it.
- 5. C2 is the FIRST substantive commit of this round, before C3, C4 and C5.
- 6. Q1's FROM begins with a comment line whose trailing rule is a run of exactly TEN
-    U+2500 BOX DRAWINGS LIGHT HORIZONTAL characters. The length is stated because a
-    run of one repeated character is the one thing a reader cannot recover by eye.
-    Transport is a byte copy, so nothing retypes it — but the count is on the record.
- 7. PAIR SHAPES, each classified by a containment test the reviewer RAN at
-    `ea5f8128`, one reading per pair:
-      Q1 TO contains FROM: false -> REWRITE. FROM occurs 1x in its target.
-      Q2 TO contains FROM: false -> REWRITE. FROM occurs 1x in its target.
-      Q3 TO contains FROM: false -> REWRITE. FROM occurs 1x in its target.
-      Q4 TO contains FROM: false -> REWRITE. FROM occurs 1x in its target.
-      Q5 TO contains FROM: false -> REWRITE. FROM occurs 1x in its target.
-      Q6 TO contains FROM: false -> REWRITE. FROM occurs 1x in its target.
-      Q7 TO contains FROM: false -> REWRITE. FROM occurs 1x in its target.
- 8. NOTHING under `apps/ui/` is touched. DECISION F275 D14 records why the surviving
-    `context_budget_optimized` residue is left standing rather than swept.
- 9. Destructive verification runs ONLY inside a disposable `git worktree`, never in
+    records are separated from each other by a BLANK line.
+ 5. C2 is the FIRST substantive commit of this round, before C3 through C6.
+ 6. THREE COMMIT MESSAGES CARRY AN ID, and this is ordered rather than left to
+    judgement because R-0859's fix clause asked for exactly that last round and the
+    block that ordered the work forgot to order the message: C4 names R-0868, C5 names
+    R-0870, C6 names R-0858 and R-0843. Commit subjects carry no leading-slash token
+    and no absolute path, per AGENTS.md Commit Discipline.
+ 7. S10's FROM contains a comment line whose trailing rule is a run of exactly
+    FIFTY-SEVEN U+2500 BOX DRAWINGS LIGHT HORIZONTAL characters, and its leading rule
+    is a run of exactly TWO. The lengths are stated because a run of one repeated
+    character is the one thing a reader cannot recover by eye. Transport is a byte
+    copy, so nothing retypes it.
+ 8. PAIR SHAPES, each classified by a containment test the reviewer RAN at `06dbb1c6`,
+    one reading per pair, output recorded. S1 to S7 and S9: TO contains FROM false ->
+    REWRITE, FROM 1x in its target, TO 0x in the target before the edit. S8 AND S10 ARE
+    DIFFERENT AND ARE THE TWO TO READ TWICE: TO contains FROM false and FROM 1x for
+    both, but each TO ALREADY occurs 1x in its target before the edit, because each is a
+    span deletion whose TO is a substring of its own FROM — S8's TO is the FROM's second
+    line and S10's TO is the FROM's prefix. So NEITHER gets a "TO 1x" gate, which would
+    be satisfied before the edit and is therefore no gate at all (§3 item 6). G6 gates
+    them on what actually changes: for S8 the removed bullet going to zero and the file's
+    remaining `self-repair` lines enumerated; for S10 the vacant banner line going to
+    zero and the anchor line staying at one.
+ 9. NO module, command or catalog ENTRY is deleted in this round. C4 deletes four
+    scaffolding files and S10 deletes a comment; `len(_BASE_CATALOG)` and
+    `len(GROUPS)` are unchanged, and G6 measures that.
+10. Destructive verification runs ONLY inside a disposable `git worktree`, never in
     the primary checkout. Remove and prune it before the handback.
-10. Read `.agent/STOP` from disk before the first commit. If it exists, write the
+11. Read `.agent/STOP` from disk before the first commit. If it exists, write the
     handback and stop.
+12. DO NOT RUN THE SUITE WHILE THE FOUR DELETIONS ARE UNCOMMITTED, and if you do, read
+    the red correctly rather than chasing it. The reviewer measured this at `06dbb1c6`
+    in a disposable worktree:
+    `tests/orchestration/test_evidence_index.py::TestPorcelainParsing::test_every_enumerated_path_exists_in_this_repo`
+    walks `dirty_source_test_files`, which reads `git status --porcelain`, and asserts
+    every enumerated path exists — so an UNCOMMITTED deletion makes it fail on the path
+    it just removed, and the same run is green the moment C4 commits. That is the
+    producer's blindness to deletion, which is R-0839's subject, not a defect this
+    round introduces. G8 runs after C6 for exactly this reason. The same worktree also
+    reddens `TestVitestFrontendTestFoundation::test_vitest_passes` with
+    `ERR_MODULE_NOT_FOUND`, because `apps/ui/node_modules` is gitignored and a fresh
+    worktree carries no runner — which is why G8 runs in the PRIMARY checkout.
 
 Done when — G1 to G8 below have all been RUN, with their real exit codes recorded,
-and the handback carries ONE line per gate. Every gate runs at or before C5.
+and the handback carries ONE line per gate. Every gate runs at or before C6.
 
-G1 TRANSPORT. `sha256` of the committed `.agent/authored/f275-r24.md` blob at C0a
+G1 TRANSPORT. `sha256` of the committed `.agent/authored/f275-r25.md` blob at C0a
 equals the digest the delegation names, and the committed `.agent/last_block.md` blob
 at C0b equals the same digest. Report both. Per §3 item 37 this covers those two
 committed artefacts and the reviewer's scratch original, and claims nothing about the
 bytes that travelled into your prompt.
 
-G2 THE PLAN. `.agent/plan.md` at C1 is byte-identical to PLAN24. Report its byte
-length and line count, which must be under the AGENTS.md cap of 50, and confirm
-`^## Goal$` and `^## Next Steps$` each occur exactly once.
+G2 THE PLAN. `.agent/plan.md` at C1 is byte-identical to PLAN25. Report its byte length
+and line count, under the AGENTS.md cap of 50, and confirm `^## Goal$` and
+`^## Next Steps$` each occur exactly once.
 
 G3 THE RECORD, at C2, for `.agent/live_review.md` and `.agent/prose_slips.md`
 separately. Reading (a), bytes: the committed post-blob equals the pre-blob, then one
 newline, then the slice exactly as extracted; READ THE JOINING BYTE BACK from the post
-blob at offset len(pre) and report it. Reading (b), structure: count N as the number
-of blank-line-separated paragraphs IN THE SLICE with your own script — never from this
+blob at offset len(pre) and report it. Reading (b), structure: count N as the number of
+blank-line-separated paragraphs IN THE SLICE with your own script — never from this
 block — and compare the LAST N blank-line units of the whole post-file against those N
 paragraphs IN ORDER. Negative control: flip one byte inside the FIRST appended
 paragraph and confirm BOTH readers reject it while both accept the truth. Then report
-over the whole post-file: `^Gate: F275 R23 ` exactly 1, `^- R-0871 — ` exactly 1,
-`^Note: F275 R24 ` exactly 3, `^Done: R-0864 — ` exactly 1, and `^Done: R-0862 — `
+over the whole post-file: `^Gate: F275 R24 ` exactly 1, `^Note: F275 R25 ` exactly 2,
+`^Done: R-0859 — ` exactly 1, `^Done: R-0871 — ` exactly 1, and `^Done: R-0864 — `
 still exactly 1. Finally report THE OPEN SET BY DISTINCT ID, every distinct id in a
 `^- R-\d+ — ` paragraph minus every distinct id in a `^Done: R-\d+ — ` line. The
-reviewer computed it at `ea5f8128` as 92, over 99 distinct registrations against 7
-distinct resolutions. It must read 92 at C2, because this commit registers one id and
-resolves one.
+reviewer computed it at `06dbb1c6` as 92, over 100 distinct registrations against 8
+distinct resolutions. It must read 90 at C2, because this commit registers nothing and
+resolves two.
 
 G4 THE DECISION, at C3, over `.agent/decisions.md`. The same two readings and the same
-negative control as G3. Then report `^## DECISION F275 D14 ` as occurring exactly once
+negative control as G3. Then report `^## DECISION F275 D15 ` as occurring exactly once
 in the whole file.
 
-G5 THE CATALOG, at C4, read through the SHIPPED reader by importing
-`apps.cli.command_catalog`, never by grepping source. Report all of it:
-  (a) Q1 and Q2: the FROM string reads 0x and the TO string reads 1x in
-      `apps/cli/command_catalog.py`.
-  (b) `len(_BASE_CATALOG)` is 222 and `len(GROUPS)` is 44, UNCHANGED from `ea5f8128` —
-      this round repairs entries and deletes no command.
-  (c) `get_command("mission.run")`: the option names are exactly `--iterations`,
-      `--no-llm`, the project-scope option and the json option, with `--job-id`,
-      `--max-steps` and `--max-seconds` ABSENT; `related` is exactly
-      `("mission.report", "mission.ledger")`; and the description contains neither
-      `dogfood` nor `run id`.
-  (d) Resolving every `related=` tuple against the live id set gives ZERO dangling
-      references. The reviewer measured TWO at `ea5f8128` — `mission.run` ->
-      `dogfood.run-loop` and `repo.status` -> `readiness.show` — and this round
-      repairs both.
-  (e) `python3 -m ruff check apps/cli/command_catalog.py tests/test_command_catalog.py`.
+G5 THE RETIREMENT, at C4. `git ls-tree` at C4 resolves NONE of
+`.agent/f275_deletion_order.md`, `tests/orchestration/cluster_deletion_map.txt`,
+`tests/orchestration/test_cluster_deletion_map.py` and
+`tests/orchestration/test_cluster_deletion_order.py`, and all four resolved at the
+parent. Then, over every tracked file outside `.agent/` and `.data/`, report a HARD
+ZERO for the bare tokens `cluster_deletion_map`, `cluster_deletion_order` and
+`f275_deletion_order`. The reviewer measured at `06dbb1c6` that the only references
+outside the four files themselves are in `docs/roadmap/features/T2_F274.md` and
+`docs/roadmap/features/T2_F275.md`, which are HISTORY PROSE under
+`docs/roadmap/features/` and stay — so report those separately as the RAW list, per
+R-0869's split-sweep clause, and drive only the tracked-file-outside-`docs/roadmap/`
+half to zero. Finally: `python3 -m pytest tests/orchestration/ -q` real exit code and
+real counts, and the collected-test count at C4 against the parent, whose difference
+must be exactly the SIX tests those two files contributed.
 
-G6 THE NEW TEST BITES, at C4, inside a disposable `git worktree` and never in the
-primary checkout. Report four readings in this order. The UNMUTATED CONTROL:
-`python3 -B -m pytest tests/test_command_catalog.py -q` is exit 0, with the passed
-count. THE MUTATION: add the single string `"mission.nonexistent"` to `mission.run`'s
-`related` tuple in that worktree's `apps/cli/command_catalog.py` — the bytes
-`related=("mission.report", "mission.ledger")` occur exactly ONCE in that file at C4,
-which is the unique revert target §3 item 25 requires. Re-run the same command: it must
-be exit 1 with the failure naming
-`test_every_related_reference_resolves_to_a_live_command`, and you report HOW MANY
-tests failed and WHICH. THE REVERT: restore the file and confirm exit 0 at the control's
-count with the worktree's `git status --porcelain` EMPTY. Purge `__pycache__` before
-each run and use `python3 -B`, so no stale bytecode answers for the source.
+G6 THE RESIDUES AND THE CATALOG, at C5. For S9 the FROM reads 0x and the TO reads 1x in
+`docs/system/mission-run-loop-morning-report-v0.md`. For S8, per constraint 8, the FROM
+reads 0x and the line `- Is there a proposed self-repair prompt?` reads 0x; there is no
+TO count. Then over that ONE file PRINT EVERY LINE matching `self-repair` or
+`self repair`, case-insensitively, with its line number, and report the total: the
+reviewer measured that after both pairs exactly three remain, all inside the "How
+Self-Repair Proposals fit" section round 24 rewrote to say the mechanism is gone. Report
+what YOU measure; a line outside that section is the defect this gate exists to find.
+For S10: the FROM reads 0x in `apps/cli/command_catalog.py`, the line
+beginning `    # ── dogfood ` reads 0x, and `        related=("snapshot.inspect",),`
+STILL reads exactly 1x. Then, through the SHIPPED reader by importing
+`apps.cli.command_catalog`: `len(_BASE_CATALOG)` is 222, `len(GROUPS)` is 44, and
+resolving every `related=` tuple against the live id set gives ZERO dangling
+references — all three UNCHANGED from `06dbb1c6`. And
+`python3 -m ruff check apps/cli/command_catalog.py`.
 
-G7 THE OPERATOR PAGE, at C5. For each of Q4, Q5, Q6 and Q7 the FROM reads 0x and the TO
-reads 1x in `docs/system/mission-run-loop-morning-report-v0.md`. Then over that ONE
-file report a hard zero for each of these spaced forms: `remedy dogfood create`,
-`remedy dogfood run-loop`, `remedy dogfood morning-report`, `remedy dogfood step`,
-`remedy dogfood replay`, `remedy dogfood show`, and `--job-id`. Also report that
-`remedy self proposal-list` still reads 0, which
-`tests/cli/test_product_spine.py::test_no_stale_self_proposal_list_in_mission_docs`
-pins and which this round must not break.
+G7 THE PLANS, at C6. For each of S1 to S7 the FROM reads 0x and the TO reads 1x in its
+target. Then over `docs/roadmap/features/T2_F267.md`, for each of the five deleted ids
+`repair.item-list`, `builder.session-list`, `execution.approval-list`,
+`external-builder.package-list` and `self-repair.proposal-list`: print every hit with
+its line number, print the line range of the blockquote S2 introduces, and report the
+count of hits OUTSIDE that blockquote, which must be ZERO. A flat zero over the whole
+file is NOT ordered and would be a gate that cannot pass, because the blockquote names
+all five ids on purpose — that is R-0869's split-sweep clause applied to a page. Report
+the four surviving ids `test.list`,
+`mission.list`, `change.list` and `event.list` as each occurring at least once. Then
+`python3 -m pytest tests/docs/ -q`, which is the docs-round gate this change set's
+`docs/roadmap/**` path makes mandatory.
 
-G8 THE SUITE AND HYGIENE, at C5, from the PRIMARY checkout.
-  python3 -m pytest tests/test_command_catalog.py tests/cli/test_product_spine.py tests/cli/test_worker_facade_cmd.py tests/cli/test_mission_cmd.py tests/test_grouped_cli.py -q
+G8 THE SUITE AND HYGIENE, at C6, from the PRIMARY checkout.
+  python3 -m pytest tests/orchestration/ tests/cli/test_product_spine.py tests/test_command_catalog.py tests/docs/ -q
   python3 -m pytest tests/cli/test_golden_path.py -q
 Report both real exit codes and real counts. The full suite is NOT part of this round's
 gate. Then: `.agent/STOP` does not exist; `git status --porcelain` is EMPTY;
 `git worktree list` holds exactly ONE entry; the branch is
-`feature/f275-one-world-completion-part-three`; `git diff --name-only ea5f8128..C5`
-names EXACTLY the change-set paths above other than `.agent/handoff.md`, reported as an
-exact set match with MISSING and EXTRA both printed even when empty; and each commit's
-insertion count from `git show --numstat`, for every commit before the handback commit,
-against the AGENTS.md DECISION F104 D1 cap of 500.
+`feature/f275-one-world-completion-part-three`; `git diff --name-status 06dbb1c6..C6`
+names EXACTLY the change-set paths above other than `.agent/handoff.md`, with the four
+retired paths carrying status `D`, reported as an exact set match with MISSING and
+EXTRA both printed even when empty; and each commit's insertion count from
+`git show --numstat`, for every commit before the handback commit, against the
+AGENTS.md DECISION F104 D1 cap of 500.
 
 Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md — the state
 block with the SESSION NUMBER, the per-commit changed-files table with `+/-` cells
@@ -156,7 +190,7 @@ transcribed from `git show --numstat` and compared cell by cell against it, one 
 per gate with its real exit code, every declared deviation, the item status table, and
 the next expected action. There is no length cap. Then push.
 
-<<<BEGIN PLAN24>>>
+<<<BEGIN PLAN25>>>
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -171,310 +205,264 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 24 repairs the surviving surfaces that still offer a reader something this feature
-deleted. `remedy mission run` advertises a second mode and three options no code path
-honours; two `related=` tuples name commands that no longer exist; and the mission
-run-loop page's Quick start gives an operator a `mission report` invocation that cannot
-parse. The round lands the referential-closure test R-0859 asks for, with the mutation
-colour that proves it bites, and books the round 23 verdict.
+ROUND 25 closes the DECISION F260 D3 sequence. It retires the four cluster scaffolding
+artefacts that became gates which cannot fail once the module list emptied, repairs the
+unstarted F267 plan that names five commands this feature deleted, banners the historical
+`Groups` table in `docs/system/architecture.md` instead of maintaining a hand-written
+mirror of the catalog, and sweeps the three residues rounds 23 and 24 left behind in files
+their own change sets had already named.
 
 ## Next Steps
 
-1. Retire the cluster scaffolding R-0868 names — the deletion map, its two ratchets and
-   the order file — repair F267's plan as the round 23 measurement re-states it, and
-   banner the historical `Groups` table in `docs/system/architecture.md`.
-2. T002, the atomic record flip, alone, because every later commit's size depends on it.
-3. T003, the classic runner, which T002's ruling is the prerequisite for.
+1. T002: the DECISION F272 D7 raising-property probe over every candidate `.id` receiver,
+   giving the real site set rather than D15's upper bound, then the dated decision choosing
+   the route. No production line moves in that slice.
+2. T003, the classic runner, which T002's ruling is the prerequisite for.
+3. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
+   STATUS line and the PR.
 
 ## Risks
 
-- The open set is 92 by distinct id at this round's base `ea5f8128`, computed mechanically
-  from the record. This round registers one and resolves one, leaving 92. Four are High —
-  R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION
+- The open set is 92 by distinct id at this round's base `06dbb1c6`, computed mechanically
+  from the record. This round registers nothing and resolves two, leaving 90. Four are High
+  — R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION
   F272 D12.
-- Removing three advertised options is a user-visible narrowing of a SURVIVING command.
-  DECISION F275 D14 rules it, and R-0871 records it; nothing is wired in to replace them.
-- The advertisement guard `tests/cli/test_advertised_commands.py` is still blind to a
-  whole-group deletion, which is R-0847 and is why this page survived four rounds of
-  sweeps. Every remaining round sweeps the spaced form by hand.
-<<<END PLAN24>>>
+- Retiring the two ratchets removes six passing tests. DECISION F275 D15 rules it and states
+  what still holds the tree honest once they are gone: the import-reachability ratchet,
+  which F274 D1 ruled a ratchet and which this round does not touch.
+- T002 is the slice that has been deferred by three features. It needs a fresh session's
+  full context and is the reason this one should not start it late.
+<<<END PLAN25>>>
 
-<<<BEGIN LEDGER24>>>
-Gate: F275 R23 — the F275 round 23 entry. VERDICT PASS, written by the planner and reviewer of session 13 after reading the committed range `6f865e50`..`ea5f8128` and RE-RUNNING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was not evidence for any line here. Booked by round 24's C2 from the pushed handback, under amend0827-process-diet rule 1. SEVEN single-parent commits C0a `ca41fdc7`, C0b `0603be17`, C1 `d8184f50`, C2 `75ca69d0`, C3 `9db5326d`, C4 `64932207` and C5 `ea5f8128`, per-commit insertions 467, 445, 21, 20, 183 and 7 for the six before the handback, every one under the AGENTS.md DECISION F104 D1 cap of 500. G1 TRANSPORT covers the chain this workflow can walk and NOT the emitted bytes, per §3 item 37: the reviewer's scratch original `.remedy-wt/f275-r23.md`, the committed `.agent/authored/f275-r23.md` and the committed `.agent/last_block.md` are all 48390 bytes at `990e0f1e2e70dc575fe55935a7f19c97a795ff61280aeaa7e8a7f4fc33a71d69` and compare BYTE-EQUAL. G2: `.agent/plan.md` at C1 is 2411 bytes byte-identical to the PLAN23 slice, 43 lines against the cap of 50, with `^## Goal$` and `^## Next Steps$` each exactly once. G3 AND G4 HELD OVER THREE APPENDS, each re-run by the reviewer against the committed blobs: `.agent/live_review.md` 702413 to 717936, `.agent/prose_slips.md` 201417 to 205219 and `.agent/decisions.md` 991391 to 1005161, every post-blob equal to its pre-blob then ONE newline then the slice exactly as extracted, with the joining byte READ BACK from each post blob at offset len(pre) and reading `b'\n'` in all three rather than asserted. The structural reader counted N from each slice — 6, 4 and 20 paragraphs — and matched the last N blank-line units of each whole post-file IN ORDER. The reviewer ran its OWN negative control on the FIRST appended paragraph of the ledger slice, per §3 item 36: the byte reader rejects it, the structural reader rejects it, and both accept the truth, with the later paragraphs provably untouched by the flip. `^Gate: F275 R22 `, `^- R-0869 — `, `^- R-0870 — `, `^Done: R-0862 — `, `^Landed: R-0870 ` each read exactly 1 and `^Note: F275 R23 ` reads exactly 2; `^Landed: R-0862 ` STILL reads 1 and was NOT removed, which is DECISION F272 D10 obeyed rather than §4 item 4 read literally. THE OPEN SET WENT 91 TO 92 BY DISTINCT ID, over 99 registrations against 7 resolutions, which is correct for a round registering two ids and resolving one — and the reviewer's own pre-emission figure of 91 at the base reproduced exactly. `^## DECISION F260 D3 `, `^## DECISION F275 D12 ` and `^## DECISION F275 D13 ` each occur exactly once. G5 THE REPAIRS: for Q1, Q2 and Q3 the FROM reads 0 and the TO reads 1; for Q4 the FROM reads 0, the deleted assertion line reads 0 and the surviving assertion still reads exactly 1 — the reading §3 item 6 requires, because that TO already occurred once in the target before the edit. The reviewer re-ran the round's own commands from the primary checkout and measured 307 passed in 44.83s at exit 0 and `All checks passed!` from ruff over the four touched files, both reproducing the applied dry run this block was authored against. G6 THE SPLIT SWEEP, which is R-0869's fix clause in force for the first time: the meetable half is a HARD ZERO and holds — all five spaced advertisement forms read 0 over the 1652 tracked files outside `.agent/` and `.data/` — and the unmeetable half is a RAW LIST, printed in full and reconciled against the file set the block named IN ADVANCE. The reviewer's own sweep finds 13 occurrences on 9 lines across exactly those 8 files, with UNEXPECTED empty, and both R-0870 files now clean; the worker reported 9, which is the LINE count the gate asked for, against the reviewer's 13 OCCURRENCES, and the two readings agree on the only thing the gate is stated over, which is the file set. G7: the canary 42 passed at exit 0. G8: no `.agent/STOP`, porcelain EMPTY, ONE worktree, the branch correct, `6f865e50..64932207` naming EXACTLY the ten change-set paths with MISSING and EXTRA both empty, and every one of the eleven `+/-` cells of the handback's `## Commits` table agreeing with `git show --numstat` for its commit. ALL FOUR DECLARED DEVIATIONS ARE SUSTAINED and every one of them is the reviewer's error rather than the worker's: G1 named a BEGIN-marker digest the block does not carry, so the worker verified against the delegation's digest and said so; constraint 4 claimed a universal about the prose-slips separator that 14 of 258 pairs falsify; the P4 pair leaves the enclosing test's name and docstring arguing for the assertion it removes; and no worktree was created because no destructive check was ordered. The first, second and fourth are prose slips. The third landed on disk and is folded into R-0870 below.
+<<<BEGIN LEDGER25>>>
+Gate: F275 R24 — the F275 round 24 entry. VERDICT PASS, written by the planner and reviewer of session 13 after reading the committed range `ea5f8128`..`06dbb1c6` and RE-RUNNING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was not evidence for any line here. Booked by round 25's C2 from the pushed handback, under amend0827-process-diet rule 1. EIGHT single-parent commits C0a `379e98de`, C0b `dc307a9e`, C1 `d7d20e60`, C2 `0d68d754`, C3 `98539f94`, C4 `90a72e8d`, C5 `b11bd5fb` and C6 `06dbb1c6`, per-commit insertions 480, 417, 16, 18, 52, 24 and 26 for the seven before the handback, every one under the AGENTS.md DECISION F104 D1 cap of 500. G1 TRANSPORT covers the chain this workflow can walk and NOT the emitted bytes, per §3 item 37: the reviewer's scratch original, the committed `.agent/authored/f275-r24.md` and the committed `.agent/last_block.md` are all 41171 bytes at `2bd1b0c6436c263222f76a0c927aef9b7690cf5fae4b88544c1f112a7b58f9ff` and compare BYTE-EQUAL. G2: `.agent/plan.md` at C1 is 2181 bytes byte-identical to PLAN24, 40 lines against the cap of 50. G3 AND G4 HELD OVER THREE APPENDS, each re-run by the reviewer: `.agent/live_review.md` 718208 to 732715, `.agent/prose_slips.md` 205219 to 207261 and `.agent/decisions.md` 1005161 to 1009356, every post-blob equal to its pre-blob then ONE newline then the slice exactly as extracted, with the joining byte READ BACK at offset len(pre) and reading `b'\n'` in all three. The structural reader counted N from each slice — 6, 3 and 5 paragraphs — and matched the last N blank-line units of each whole post-file IN ORDER. The reviewer ran its OWN negative control on the FIRST appended paragraph of the DECISION slice this time rather than the ledger slice, so the two rounds between them exercise both files: the byte reader rejects it, the structural reader rejects it, both accept the truth, and the later paragraphs are provably untouched. `^Gate: F275 R23 `, `^- R-0871 — `, `^Done: R-0864 — `, `^Done: R-0862 — ` and `^Landed: R-0862 ` each read exactly 1, `^Note: F275 R24 ` reads exactly 3, and `^## DECISION F275 D14 ` reads exactly 1. THE OPEN SET HELD AT 92 BY DISTINCT ID, over 100 registrations against 8 resolutions, which is correct for a round registering one id and resolving one. G5 THE CATALOG, read by IMPORTING the shipped reader rather than by grepping source: commands 222 and groups 44 both UNCHANGED, `mission.run`'s options exactly `run_id`, `--iterations`, `--no-llm`, `--project` and `--json` with all three dead options ABSENT, `related` exactly `("mission.report", "mission.ledger")`, the description carrying neither `dogfood` nor `run id`, and DANGLING `related=` REFERENCES AT ZERO where the reviewer measured TWO at the base. Ruff clean over both touched Python files. G6 THE RED PROOF BIT, and the reviewer takes the worker's method as sound because it reported the import probe that makes it evidence: in a disposable worktree with `__pycache__` purged and `python3 -B`, the unmutated control is exit 0 at 26 passed, adding one bogus id to `mission.run`'s `related` tuple — bytes the worker verified UNIQUE in that file, per §3 item 25 — gives exit 1 with EXACTLY ONE failure, `TestCatalogIntegrity::test_every_related_reference_resolves_to_a_live_command`, and the revert returns exit 0 at 26 passed with the worktree porcelain EMPTY. The guard R-0859 asked for exists and bites. G7: over the operator page, all six spaced `remedy dogfood` forms and `--job-id` read ZERO, and `remedy self proposal-list` still reads ZERO, which `tests/cli/test_product_spine.py` pins. G8: 633 passed at exit 0 across the five named files and the canary 42 passed, both re-run by the reviewer in the primary checkout; no `.agent/STOP`, porcelain EMPTY, ONE worktree, the branch correct, `ea5f8128..b11bd5fb` naming EXACTLY the nine change-set paths with MISSING and EXTRA both empty, and every one of the nine `+/-` cells of the handback's `## Commits` table agreeing with `git show --numstat` for its commit. THE THREE DECLARED DEVIATIONS ARE SUSTAINED and none is a worker error: G1's reference digest lives in the delegation rather than in the block, which the round 23 slip already recorded; S-shaped banner narrowing of one column, measured against a file whose 52 banners already span 72 to 83 columns; and LEDGER24 writing a `Done:` and a registration with no `Landed:` line, applied verbatim and flagged. THE THREE FINDINGS THE WORKER RAISED THAT THE BLOCK DID NOT NAME ARE ALL REAL, the reviewer measured each at `06dbb1c6`, and two of them are folded into R-0870 by the `Note: F275 R25` entry below while the third — that a block re-baselining its append arithmetic on 717936 would be one append behind, because round 23's C4 took the ledger to 718208 — is a prose slip and is corrected in constraint 3 of the round 25 block, which states 732715.
 
-- R-0871 — Medium, A SURVIVING COMMAND ADVERTISES A MODE IT NO LONGER HAS AND THREE OPTIONS NO CODE PATH READS, AND EVERY ONE OF THEM IS ACCEPTED SILENTLY. Raised by the reviewer of session 13 while measuring R-0859's two dangling `related=` tuples, which is R-0870's fix clause working as intended — the neighbourhood sweep found the defect, not the cross-reference itself. §3 item 30's search of the open set at `ea5f8128` returns no finding for it: R-0845 records the LOSS of `remedy mission run`'s second mode and says nothing about the advertisement surviving, R-0847 is about the GUARD being blind to a deleted group, and R-0861, which held the doc-page instance of this class, is RESOLVED. THE MEASUREMENT, taken at `ea5f8128` by reading the SHIPPED catalog and the SHIPPED handler rather than by grep. `apps/cli/command_catalog.py` gives `mission.run` the description "Run a mission's orchestrator loop when the id is a mission (F070); otherwise the bounded dogfood run loop for that run id", and declares `ArgDef`s for `--job-id`, `--max-steps` and `--max-seconds`. `apps/cli/grouped.py` wires all three into the parser at lines 147 to 150 and 226 to 227, with `dest` `job_id`, `max_steps` and `max_seconds`. `apps/cli/commands/worker_facade_cmd._cmd_mission_run` reads `run_id`, `project`, `iterations`, `json` and `no_llm` and NONE of those three, and its own docstring states plainly that the second mode died with the cluster. So `remedy mission run <id> --max-steps 3 --max-seconds 30 --job-id x` parses, runs, and ignores every one of them — the failure mode a flag that errors does not have, because the user is told nothing. The section comment above the entry still reads "mission (facade over dogfood run-loop + morning report)" and the `related` tuple still names `dogfood.run-loop`, which is one of R-0859's two dangling references, so this finding and that one meet in the same twenty lines. WHY MEDIUM: wrong state on disk under `apps/`, user-visible through `remedy mission run --help` and every catalog reader, and no gate in the repository can see it — the suite is green, ruff is clean, and nothing asserts that a declared option is read by the handler it is declared for. THE FIX, which this round performs: the three options and the second mode go OUT of the entry rather than being wired IN, because wiring them would be building a feature under a deletion mandate; DECISION F275 D14 records that choice and its alternative. FIX CLAUSE, binding on any later round that adds an option to a catalog entry: the option is read by the handler in the same commit, or it is not declared — a declared option is a promise the parser keeps and the handler breaks.
+Note: F275 R25 — new evidence for the OPEN finding R-0870, added rather than given an id of its own per `docs/agents/planner_reviewer_prompt.md` §3 item 30, and recorded because it is the class recurring in the round that WIDENED the clause meant to stop it. R-0870 records prose falsified by a deletion that no gate can see. THESE ARE THE FIFTH AND SIXTH INSTANCES, both measured by the reviewer at `06dbb1c6` while gating round 24, and both are in files that round's OWN change set named. FIRST, `docs/system/mission-run-loop-morning-report-v0.md` now says of self-repair proposals "They do not, any more" at line 65, while line 60 still asks "Is there a proposed self-repair prompt?" among the questions the morning report answers and line 77 still lists "Applying approved self-repair proposals" among the steps that require operator action — so one page contradicts itself within seventeen lines, and the pair that repaired the section did not reach the two bullets outside it. SECOND, `apps/cli/command_catalog.py` carries a section banner reading `# ── dogfood ──` with NO entries beneath it, the readerless-banner half of the class, in a file the same round edited twice. The worker found both, declined to widen an exact change set to reach them, and flagged them, which is the correct handling. WHY NEITHER IS A NEW ID: R-0870 is OPEN, both are Low for the reason its other instances are — nothing executes either line — and its widened fix clause, which orders a pair authored against the WHOLE enclosing unit, is precisely what would have caught them. WHAT THIS ADDS TO THAT CLAUSE, and it is the sharper half: the enclosing unit of a page-level claim is THE PAGE, not the section, so a sweep for the CONCEPT in the page's own words — "self-repair", "dogfood", "overnight" — runs beside the sweep for identifiers. Both are repaired by this round's C5, which constraint 5 and the bundle order after this commit.
 
-Note: F275 R24 — new evidence for the OPEN finding R-0870, added rather than given an id of its own per `docs/agents/planner_reviewer_prompt.md` §3 item 30, because it is the same defect in the same class and R-0870's own fix clause is what should have caught it. R-0870 records comments falsified by a deletion in files the deletion's change set did not name. THESE ARE THE THIRD AND FOURTH INSTANCES, both measured by the reviewer at `ea5f8128` while gating round 23, and both are in files that ROUND'S OWN change set DID name — which is the widening. FIRST, `packages/common/public_text_redaction.py` line 8 still reads "F275 round 21 deletes the trust gate", while round 21 MOVED the helpers and round 22 deleted the gate at `0242c0a3`; the round 23 pair repaired line 4 of that same docstring and left line 8 contradicting it four lines below. SECOND, `tests/cli/test_mission_cmd.py` carries `test_the_cockpit_no_longer_imports_the_cluster_readiness_module`, whose NAME and whose entire docstring argue for the `not in source` assertion the round 23 pair removed; what survives asserts the POSITIVE import of the carried module, so the test no longer does what it is called. The worker declared the second before the reviewer measured it, applied the slice verbatim as constraint 1 required, and was right to. WHY NEITHER IS A NEW ID: R-0870 is OPEN, its subject is exactly "a comment falsified by a deletion that no gate can see", and both are Low for the same reason — nothing executes either line. WIDENED FIX CLAUSE, replacing the reach of R-0870's original and binding on every remaining round of this feature: a pair that narrows or removes a definition, an assertion or a sentence is authored against the WHOLE enclosing unit — the docstring it sits in, the test name above it, the section comment over it — and the block states what it read, because a sweep for a deleted IDENTIFIER cannot see a sentence that describes the deleted thing in words.
+Note: F275 R25 — new evidence for the OPEN finding R-0839, added rather than given an id of its own per `docs/agents/planner_reviewer_prompt.md` §3 item 30, because it is the same producer and the same blindness. R-0839 records that the closure bundle's content proof carries no tombstone for a deleted path, so the one document the packager calls the authority source cannot tell "deleted" from "never in scope". THIS IS THAT BLINDNESS REACHING A TEST rather than a package, measured by the reviewer at `06dbb1c6` in a disposable worktree while dry-running the round 25 change set: `tests/orchestration/test_evidence_index.py::TestPorcelainParsing::test_every_enumerated_path_exists_in_this_repo` walks `dirty_source_test_files`, which reads `git status --porcelain`, and asserts that every path it enumerates exists on disk. A working tree holding an UNCOMMITTED deletion therefore fails that test on the very path it has just removed — the reading was `enumerated a nonexistent path: .agent/f275_deletion_order.md` — and the same run is green once the deletion is committed, which the reviewer confirmed by committing in that worktree and re-running to 33 passed. NOTHING IS WRONG ON DISK and no round has ever been broken by it, because every round of this workflow commits before it gates. What it costs is a false red for anyone who runs the suite mid-edit on a deletion, which is precisely the moment a worker most wants to run it, and the failure message points at the deletion rather than at the enumerator. WHAT WOULD RESOLVE IT is R-0839's own fix: the producer distinguishing a deleted path from a missing one — a porcelain `D` status is already in the bytes it parses — after which the guard can assert existence for the paths that should exist and a tombstone for the rest. This round does not widen into `packages/orchestration/evidence_index.py` to do it; constraint 12 of the round 25 block states the expectation instead, so the worker reads the red correctly rather than chasing it.
 
-Note: F275 R24 — new evidence for the OPEN finding R-0847, added rather than given an id of its own per §3 item 30, because R-0847's subject is precisely the guard that should have caught this and did not. R-0847 records that `tests/cli/test_advertised_commands.py` cannot see an advertisement whose command GROUP has been deleted. THE MEASUREMENT, taken by the reviewer at `ea5f8128`. `docs/system/mission-run-loop-morning-report-v0.md` is an operator-facing page under `docs/system/`, pinned by `tests/cli/test_product_spine.py`, and its "Internal commands (advanced)" section advertises SIX commands of the deleted `dogfood` group — create, run-loop, morning-report, step, replay and show — while its Terminology note tells the reader those commands "remain available for debugging and backwards compatibility". The sharper half is its QUICK START, which the page itself labels recommended: `remedy mission report <run_id> --job-id <job_id> --json` names a positional and an option that the shipped entry for `mission.report` does not have — its arguments are `job_id`, `--markdown` and `--json` — so the one invocation the page recommends to an operator cannot parse. This page survived R-0861's three-page sweep, which is RESOLVED, and four subsequent deletion rounds, for exactly the reason R-0847 names: every one of those rounds swept for command ids and for the spaced form of groups that still exist. R-0847's own fix clause binds the first round that may edit the scanner and this round does not edit it, so the clause is untouched; what this round repairs is the PAGE. The half of R-0847's clause naming `worker_registry.py` line 710 is already discharged by round 20 deleting that module, and this note records that so the clause is not read as outstanding in full.
+Done: R-0859 — Resolved by F275 round 24's C4 `90a72e8d`, verified by the reviewer of session 13 by re-running the measurement itself through the SHIPPED reader rather than reading the worker's report. The finding recorded that `apps/cli/command_catalog.py` carried `related=` cross-references to commands that no longer exist and that no guard in the repository could see them. BOTH DANGLING REFERENCES ARE GONE: `mission.run` no longer names the deleted `dogfood.run-loop` and `repo.status` now names `readiness.job` in place of `readiness.show`, a command id that has not existed for many features. THE GUARD NOW EXISTS AND BITES: `tests/test_command_catalog.py::TestCatalogIntegrity::test_every_related_reference_resolves_to_a_live_command` resolves every tuple against the live `CATALOG` id set, and its colour was measured in a disposable worktree at C4 — control exit 0 at 26 passed, one bogus id giving exit 1 with EXACTLY that one test failing, revert exit 0 at 26 passed. Resolving every tuple at `06dbb1c6` gives ZERO dangling references where the reviewer measured TWO at `ea5f8128`. ONE CLAUSE OF THE FIX WAS NOT HONOURED AND IS RECORDED RATHER THAN GLOSSED: the clause asked that the round "names this id in its own commit message", and C4's subject names the work without naming R-0859. The block that ordered the work did not order the message, which is the reviewer's omission and not the worker's; it is a prose slip below, and it is not repaired, because repairing it would mean rewriting a pushed commit and `docs/agents/self_drive_protocol.md` G2 forbids that outright. The substance the clause exists to secure — the repair, the guard and the colour — landed in full, and this paragraph is the pointer a reader searching for R-0859 will find in place of the commit subject.
 
-Note: F275 R24 — new evidence for the OPEN finding R-0832, and the measurement that makes most of its fix clause moot, recorded rather than given an id per §3 item 30. R-0832 records that the cluster deletion map measures IMPORT edges only, so a consumer coupled to the cluster by EVENT NAME survives the deletion as dead code, and its fix asks for a second measurement recording those couplings so the deletion round removes them with their emitter. THE MEASUREMENT, taken by the reviewer at `ea5f8128` over the 1652 tracked files outside `.agent/` and `.data/`: `context_pack_created`, `NT_CONTEXT_PACK` and `_build_context_pack_node` — the whole first half of R-0832's evidence — are at ZERO, removed by the rounds that deleted their module group rather than by any map. What survives is the second half, `context_budget_optimized`, at three sites and no emitter: a schema entry in `packages/orchestration/event_schemas.py`, a bookkeeping classification in `apps/ui/src/api/actionClass.ts`, and four lines of `tests/orchestration/test_event_ledger.py` that pin the schema. SO THE COUNTER-MEASURE HAS LOST ITS SUBJECT: the deletion is finished, no further emitter can die, and the map R-0832 asks to extend is itself retired by R-0868's clause in the next round. WHAT REMAINS OWED is the residue, and DECISION F275 D14 rules it left standing rather than swept, with the reason. R-0832 STAYS OPEN and its text is not rewritten; what resolves it is the residue's removal by a feature that owns the cockpit's event vocabulary, and this note is the dated record of why this feature is not that one.
+Done: R-0871 — Resolved by F275 round 24's C4 `90a72e8d` and C5 `b11bd5fb`, verified by the reviewer of session 13 through the shipped catalog reader and by reading the committed page. The finding recorded that `remedy mission run` advertised a second mode it no longer had and three options no code path read, every one of them accepted silently. THE CATALOG ENTRY NOW MATCHES THE HANDLER: `get_command("mission.run")` gives options exactly `--iterations`, `--no-llm`, `--project` and `--json`, with `--job-id`, `--max-steps` and `--max-seconds` ABSENT, so the parser now refuses what `_cmd_mission_run` cannot honour instead of accepting it in silence; the description names the F070 loop alone and carries neither `dogfood` nor `run id`; and the section comment above it no longer calls the entry a facade over a deleted command. THE OPERATOR PAGE WAS REPAIRED IN THE SAME ROUND, which matters because the page is where a user would have found the flags after `--help` stopped offering them: its Quick start no longer recommends `remedy mission report <run_id> --job-id <job_id>`, an invocation that could not parse against the shipped entry, and its stop-condition list no longer promises per-step and wall-clock caps that nothing enforced. DECISION F275 D14 (a) records why the three options were REMOVED rather than WIRED, and states the user-visible consequence plainly: an operator who was passing `--max-steps` now gets an argparse error where they previously got silence, which is the safer direction because the flag never did anything. The fix clause R-0871 carries — that an option is read by its handler in the same commit or is not declared — binds forward and is not discharged by this resolution.
+<<<END LEDGER25>>>
 
-Done: R-0864 — Resolved by F275 round 23's C4 `64932207`, verified by the reviewer of session 13 reading the committed diff rather than the worker's report. Both halves the fix clause named are gone. FIRST, `tests/cli/test_product_spine.py::test_fast_lane_no_heavy_runtime_smoke` no longer names `test_overnight_executor_cli.py` in its `heavy` list; the reviewer re-measured that the three surviving entries — `test_worker_cli_runtime.py`, `test_self_dogfood_execution_cli.py` and `test_smoke_scripts.py` — all resolve to files on disk, so the guard bites for every entry it still holds, which is what made the fourth entry a defect rather than a harmless line. SECOND, `tests/cli/test_mission_cmd.py` no longer asserts `"packages.orchestration.overnight_readiness" not in source`, an assertion that could not fail for any possible future state once round 19 deleted that module; the POSITIVE assertion beside it, that `ui_server.py` imports from the carried `mission_readiness` module, survives and still bites. The round registered no `Landed:` line for this id because the block's authored text named only R-0870, which is a reviewer omission recorded as a prose slip and not a defect on disk — the fix itself landed correctly and the reviewer verified it independently before writing this paragraph. What this resolution does NOT claim is that the class is gone: a deletion round still has to search the suite for negative assertions naming what it removes, because an import goes red and a negative assertion goes quiet, and that lesson stays in R-0864's original text where a later reader will find it.
-<<<END LEDGER24>>>
+<<<BEGIN SLIPS25>>>
+2026-09-10 · F275 R24 · R-0859's fix clause asked that the round repairing the dangling `related=` references "names this id in its own commit message", and the round 24 block ordered the repair, the guard and the colour without ordering anything about the commit subject — so C4 `90a72e8d` names the work and not the id, and the clause landed part-met on a round that did everything else it asked. Nothing is wrong on disk and the commit is pushed, so G2 forbids repairing it. The lesson is that a fix clause specifying a property of a COMMIT — its message, its position, its atomicity — is transcribed into the block's own constraints, because a block orders commits and a clause read only for its code half quietly drops the other one.
 
-<<<BEGIN SLIPS24>>>
-2026-09-10 · F275 R23 · The round 23 block's G1 ordered the transport digest compared against "the digest in this block's BEGIN marker", and the block carries no BEGIN marker holding a digest — its `<<<BEGIN …>>>` markers only delimit slices, and the sha256 travelled in the delegation wrapper instead. The worker verified against the wrapper's digest, said so, and all three artefacts matched, so nothing landed wrong. The lesson is that a gate naming WHERE a reference value lives is checked against the artefact that actually carries it, because under self-drive the block and the wrapper are two different texts and only one of them is copied to disk.
+2026-09-10 · F275 R24 · The round 24 block's LEDGER24 slice reported round 23's ledger append as "702413 to 717936", which is C2's true post-length, while round 23's C4 appended the `Landed: R-0870` line and left the file at 718208 — so the figure is right about the commit it names and wrong as a baseline, and a later block re-deriving its append arithmetic from it would be one append behind. The worker measured it and said so. The lesson is that a byte length quoted for a round is labelled with the COMMIT it was taken at whenever a later block might read it as the file's current size, and that a round appending to the same file twice has two lengths rather than one.
 
-2026-09-10 · F275 R23 · The round 23 block's constraint 4 stated that every entry already in `.agent/prose_slips.md` is separated from its neighbour by a BLANK line, and the worker measured 244 blank-separated adjacent pairs against 14 on consecutive lines out of 258. The constraint was ORDERING the right thing and CLAIMING a universal that the file falsifies — the §3 item 11 shape, a claim about another file's contents stated as a universal nobody counted. Nothing landed wrong because the slice followed the convention the constraint ordered. The lesson is to order the format and state the measurement beside it, never to justify an order with an unmeasured "every".
+2026-09-10 · F275 R24 · The round 24 block's Q7 pair rewrote the "How Self-Repair Proposals fit" section to say the mechanism is gone, and left two bullets outside that section — one in the morning-report question list and one in the manual-steps list — still promising it, seventeen lines apart on the same page. The block had been written in the same round whose LEDGER24 widened R-0870's fix clause to demand a pair authored against the WHOLE enclosing unit. The lesson is the one the widened clause states and this block did not apply to itself: for a claim about a PAGE the enclosing unit is the page, so the sweep runs over the page's own vocabulary before the pair is written, not after the worker reports what it found.
+<<<END SLIPS25>>>
 
-2026-09-10 · F275 R23 · The round 23 block's LANDED23 slice named only R-0870, while the same round's Q3 and Q4 pairs were verbatim the repair R-0864's fix clause asks for, so R-0864's fix landed with no `Landed:` line and the finding stayed counted open with no pointer to `64932207`. The worker found it, declined to write a line the change set did not authorise, and flagged it — which is the correct handling and is why nothing is wrong on disk. The lesson is that a block whose change set discharges a fix clause writes the `Landed:` line for THAT id too, and the check is mechanical: for every fix clause the round's own DECISION says it takes, grep the block's authored text for the id.
-<<<END SLIPS24>>>
+<<<BEGIN DEC25>>>
+## DECISION F275 D15 (2026-09-10, F275 round 25) — the cluster deletion map, its two ratchets and the deletion order file are RETIRED, and what still holds the tree honest is named
 
-<<<BEGIN DEC24>>>
-## DECISION F275 D14 (2026-09-10, F275 round 24) — three rulings the D3 sequence needs: what happens to a dead option, to the last event-name residue, and to the rounds the sequence still owes
+CONTEXT. F274 built `tests/orchestration/cluster_deletion_map.txt` with the ratchet
+`tests/orchestration/test_cluster_deletion_map.py` holding it against the live import
+graph in both directions, and F275 round 5 added `.agent/f275_deletion_order.md` with
+`tests/orchestration/test_cluster_deletion_order.py` holding that against the same
+graph. Both existed to bound and sequence a deletion. Round 22 deleted the last
+component; `CLUSTER_MODULES` is the empty tuple, the map holds no edge lines and the
+order file holds no component lines. R-0868 measured the consequence: with an empty
+subject both ratchets pass for every possible state of the repository, which is the
+gate-that-cannot-fail shape this record spends ids on.
 
-(a) A DEAD ADVERTISED OPTION IS REMOVED, NEVER WIRED. `remedy mission run` declares
-    `--job-id`, `--max-steps` and `--max-seconds`; `apps/cli/grouped.py` wires all three
-    into the parser and `_cmd_mission_run` reads none of them, which R-0871 measures at
-    `ea5f8128`. CHOSEN: the three `ArgDef`s and the description's second mode come OUT of
-    the catalog entry in this round, so the parser refuses what the handler cannot honour.
-    ALTERNATIVE CONSIDERED: wire them through to `_cmd_mission_run_loop` so the flags mean
-    what they say — rejected because that is building a budget feature inside a deletion
-    feature, which AGENTS.md Scope Control forbids by name, and because the F070 loop's
-    own budget belongs to the feature that owns that loop rather than to this one.
-    CONSEQUENCE, stated because it is user-visible: an operator who has been passing
-    `--max-steps` will now get an argparse error where they previously got silence. That is
-    the safer direction — the flag never did anything — and R-0871 is the record of it.
+CHOSEN: all four artefacts are deleted, in one commit, and the six tests they
+contribute go with them. R-0868's clause offered the alternative explicitly — retire
+them together, or record a dated decision saying why an empty ratchet is kept — and
+this is the first half taken.
 
-(b) THE LAST EVENT-NAME RESIDUE IS LEFT STANDING, DELIBERATELY, AND RECORDED WHERE A
-    READER WILL LOOK. `context_budget_optimized` survives at three sites with no emitter
-    anywhere in the tree: a schema entry in `packages/orchestration/event_schemas.py`, a
-    bookkeeping classification in `apps/ui/src/api/actionClass.ts`, and four pinning lines
-    in `tests/orchestration/test_event_ledger.py`. CHOSEN: none of the three is touched by
-    this feature. WHY: the classification is cockpit behaviour — it decides whether a kind
-    is filtered out of the NowCard — so removing it is a product change to a surface F275
-    has not entered in twenty-four rounds, and it carries its own vitest test that this
-    workflow cannot run in the disposable worktree its guardrails require. An entry that
-    classifies an event which never arrives is inert; a cockpit filter changed by a
-    deletion feature is not. ALTERNATIVE CONSIDERED: delete all three in this round —
-    rejected on scope and on the measurement that nothing observable depends on the entry
-    existing. The `Note: F275 R24` entry on R-0832 carries the site list, so a later
-    feature that owns the cockpit's event vocabulary can find it by id.
+WHY, and this is the part a later reader needs. A ratchet whose subject is empty is
+not a cheap safety net, it is a false one: it reports green in the same voice it used
+when it was measuring something, and the next reader has no way to tell the two apart
+without opening it. Keeping it would also leave `.agent/f275_deletion_order.md` as a
+state file that outlives its feature, which the `.agent/` contract in AGENTS.md does
+not contemplate. Git is the archive, exactly as AGENTS.md Scope Control says for a
+replaced mechanism, and the map's own history is where the twenty-four modules and
+their forty-two edges are recorded.
 
-(c) THE D3 SEQUENCE RUNS ONE ROUND LONGER THAN D13 DISTRIBUTED IT. DECISION F275 D13 gave
-    "the next round" R-0832's couplings, R-0859's test and repairs, R-0858's F267 repair,
-    R-0843's `Groups` table and R-0868's retirement. MEASURED at `ea5f8128` while
-    assembling this block: R-0859's repairs sit inside the same twenty lines as R-0871,
-    which D13 could not know about because the reviewer found it while measuring R-0859;
-    and the operator page R-0847's new evidence names is a fourth repair of the same class.
-    Those three are one coherent change set — surviving surfaces that advertise deleted
-    things — and adding the retirement of four scaffolding files plus two roadmap and docs
-    repairs to them exceeds DECISION F085 D6's 490-line block cap, which DECISION F009 D16
-    makes a reason not to deliver rather than a reason to trim. CHOSEN: this round takes
-    the advertising surfaces; the round after it takes R-0868's retirement, R-0858's F267
-    repair and R-0843's banner, and the D3 sequence closes there. ALTERNATIVE CONSIDERED:
-    drop the page repair to keep D13's distribution intact — rejected because the page
-    recommends an invocation that cannot parse, which is the sharpest instance of the class
-    this whole feature has produced, and deferring it to keep a bookkeeping promise is the
-    wrong trade.
+WHAT STILL HOLDS THE TREE HONEST, named because deleting a guard without naming its
+successor is how a gap gets made. `tests/orchestration/test_import_reachability.py`
+with its allowlist SURVIVES and is untouched by this round; DECISION F274 D1 ruled it
+a RATCHET rather than a one-shot gate, and it is the guard that fails if any deleted
+module is reimported or any new module becomes unreachable. The catalog's own
+integrity tests, including the referential-closure test F275 round 24 added, hold the
+command surface. Neither of those has an empty subject.
 
-HOW TO REVERSE: delete this decision. (a) is reversed by restoring the three `ArgDef`s and
-wiring them; (b) by any feature that owns the cockpit's event vocabulary sweeping the three
-sites; (c) by any later relay redistributing the remaining clauses across rounds as it
-prefers, since every one of them still names the finding it discharges.
-<<<END DEC24>>>
+ALTERNATIVES CONSIDERED. (i) Keep the two ratchets with a dated comment explaining the
+empty subject — rejected because the comment would be read by whoever opens the file
+and the GREEN would be read by everyone else, and the second audience is larger. (ii)
+Repoint the map's ratchet at some other module set so it keeps measuring something —
+rejected because inventing a subject for a guard is how a guard stops meaning what its
+name says, and no such set was asked for by any feature.
 
-Q1 — apps/cli/command_catalog.py — REWRITE — the comment's trailing rule is 10 x U+2500
-<<<BEGIN Q1 FROM>>>
-    # ── mission (facade over dogfood run-loop + morning report) ──────────
-    CommandEntry(
-        command_id="mission.run",
-        group_id="mission",
-        subcommand="run",
-        description="Run a mission's orchestrator loop when the id is a mission (F070); otherwise the bounded dogfood run loop for that run id. Stops on a terminal move, the iteration limit, a stop request or an escalation.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("run_id", "Mission id (F070 loop) or run id (dogfood loop)"),
-            ArgDef("--job-id", "Job UUID", required=False, is_option=True),
-            ArgDef("--max-steps", "Max loop steps (default 10)", required=False, is_option=True),
-            ArgDef("--max-seconds", "Max wall-clock seconds (default 300)", required=False, is_option=True),
-            ArgDef("--iterations", "Max orchestrator iterations this run (mission id only)", required=False, is_option=True),
-            ArgDef("--no-llm", "Run without a provider — reports the honest no_provider terminal", required=False, is_option=True, is_flag=True),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.report", "mission.ledger", "dogfood.run-loop"),
+HOW TO REVERSE: restore the four paths from git history at `06dbb1c6`, which is this
+round's base and the last commit at which all four exist.
+<<<END DEC25>>>
+
+S1 — docs/roadmap/features/T2_F267.md — REWRITE — the title's numeral
+<<<BEGIN S1 FROM>>>
+# T2_F267 — List commands v2 completion — sort/filter/limit for the remaining nine commands
+<<<END S1 FROM>>>
+<<<BEGIN S1 TO>>>
+# T2_F267 — List commands v2 completion — sort/filter/limit for the remaining list commands
+<<<END S1 TO>>>
+
+S2 — docs/roadmap/features/T2_F267.md — REWRITE — the scope list and its numerals
+<<<BEGIN S2 FROM>>>
+The nine list-shaped commands F262 left parsing the shared flags but ignoring
+them honour `--sort <field> [--desc] --since <when> --until <when> --limit <n>`
+exactly as the fifteen F262 wired do, with newest-first as the default, and
+two tests F262 never built prove the whole catalog rather than a sample:
+
+- test.list · repair.item-list · builder.session-list ·
+  execution.approval-list · mission.list · change.list · event.list ·
+  external-builder.package-list · self-repair.proposal-list
+
+DONE when every one of the nine exits non-zero on `--sort bogus` naming its
+<<<END S2 FROM>>>
+<<<BEGIN S2 TO>>>
+The list-shaped commands F262 left parsing the shared flags but ignoring
+them honour `--sort <field> [--desc] --since <when> --until <when> --limit <n>`
+exactly as the ones F262 wired do, with newest-first as the default, and
+two tests F262 never built prove the whole catalog rather than a sample:
+
+- test.list · mission.list · change.list · event.list
+
+> **Scope narrowed by F275 on 2026-09-10, finding R-0858.** This list held five
+> more ids — `repair.item-list`, `builder.session-list`,
+> `execution.approval-list`, `external-builder.package-list` and
+> `self-repair.proposal-list` — and F275 deleted every one of them with the
+> prototype cluster it removed. The numerals that counted them are deleted
+> rather than re-synchronised, per `docs/agents/planner_reviewer_prompt.md` §3
+> item 16. The session that claims this feature re-derives the in-scope set
+> from `apps/cli/command_catalog.py` through the shipped reader, never from
+> this file.
+
+DONE when every one of them exits non-zero on `--sort bogus` naming its
+<<<END S2 TO>>>
+
+S3 — docs/roadmap/features/T2_F267.md — REWRITE — the F262 measurement, dated as history
+<<<BEGIN S3 FROM>>>
+F262's round 23 (FINDING R-0796 in `.agent/live_review.md`) measured the
+catalog mechanically: 28 list-shaped commands, 15 wired to
+`packages/orchestration/list_options.apply_list_options`, 13 not. DECISION F262
+D4 excluded four of the 13 permanently — `builder.adapter-list`,
+`execution.template-list`, `worker.registry-list` (no date on their row shape)
+and `approval.policy-list` (browsed by name/state, not recency) — and kept the
+nine above IN scope because each has a genuine date field and is exactly the
+class T003 exists to fix. They did not fit F262's remaining round budget, and
+the operator ruled (DECISION F262 D5) to close F262 at the 24-of-28 scope and
+finish the nine here rather than run F262 past its soft limits.
+<<<END S3 FROM>>>
+<<<BEGIN S3 TO>>>
+F262's round 23 (FINDING R-0796 in `.agent/live_review.md`) measured the
+catalog mechanically: 28 list-shaped commands, 15 wired to
+`packages/orchestration/list_options.apply_list_options`, 13 not. DECISION F262
+D4 excluded four of the 13 permanently — `builder.adapter-list`,
+`execution.template-list`, `worker.registry-list` (no date on their row shape)
+and `approval.policy-list` (browsed by name/state, not recency) — and kept the
+rest IN scope because each has a genuine date field and is exactly the
+class T003 exists to fix. They did not fit F262's remaining round budget, and
+the operator ruled (DECISION F262 D5) to close F262 at that scope and
+finish the remainder here rather than run F262 past its soft limits.
+
+Every count in the paragraph above is F262's, taken on 2026-09-05, and is kept
+as the record of the decision it explains. It is no longer a description of the
+catalog: F275 deleted all four D4 exclusions along with five of the commands
+that paragraph kept in scope, and the catalog fell from 339 commands to 222 in
+the same feature. Read `apps/cli/command_catalog.py` for what ships.
+<<<END S3 TO>>>
+
+S4 — docs/roadmap/features/T2_F267.md — REWRITE — the T001 heading's numeral
+<<<BEGIN S4 FROM>>>
+## T001 — The nine wirings
+<<<END S4 FROM>>>
+<<<BEGIN S4 TO>>>
+## T001 — The wirings
+<<<END S4 TO>>>
+
+S5 — docs/roadmap/features/T2_F267.md — REWRITE — the T002 exclusion sentence
+<<<BEGIN S5 FROM>>>
+T001) cannot. The four D4 exclusions are named in the test by id and reason.
+<<<END S5 FROM>>>
+<<<BEGIN S5 TO>>>
+T001) cannot. The D4 exclusions are named in the test by id and reason, for as
+many of them as still exist — F275 deleted all four, so the session that builds
+this test re-measures the exclusion set before writing it down.
+<<<END S5 TO>>>
+
+S6 — docs/roadmap/features/T2_F267.md — REWRITE — the Acceptance numerals
+<<<BEGIN S6 FROM>>>
+- Each of the nine: `--sort bogus` exits non-zero and names the valid fields;
+  `--limit 1` returns one row; `--since`/`--until` filter by the row's date.
+- The catalog-driven handler test covers all 24 in-scope commands.
+- The ten-second demo passes as a test.
+<<<END S6 FROM>>>
+<<<BEGIN S6 TO>>>
+- Each command in scope: `--sort bogus` exits non-zero and names the valid
+  fields; `--limit 1` returns one row; `--since`/`--until` filter by the date.
+- The catalog-driven handler test covers every in-scope command, where the
+  in-scope set is derived from the catalog at the time the test is written.
+- The ten-second demo passes as a test.
+<<<END S6 TO>>>
+
+S7 — docs/system/architecture.md — REWRITE — banner the historical Groups table
+<<<BEGIN S7 FROM>>>
+### Groups
+
+| Group     | Commands | Description |
+|-----------|----------|-------------|
+<<<END S7 FROM>>>
+<<<BEGIN S7 TO>>>
+### Groups
+
+> **Status (2026-09-10): HISTORICAL SNAPSHOT, finding R-0843.** The table below
+> records the groups the grouped CLI shipped with at the step that introduced
+> it. Measured through the shipped reader at `06dbb1c6`: the catalog holds 222
+> commands in 44 groups, and only three of the twelve rows below still state a
+> command count the catalog agrees with. It is kept as the record of that step
+> rather than repaired row by row, because a hand-written mirror of the catalog
+> drifts by construction and would need repairing again after every feature
+> that adds or deletes a command. Read `apps/cli/command_catalog.py`, or run
+> `remedy list`, for what ships today.
+
+| Group     | Commands | Description |
+|-----------|----------|-------------|
+<<<END S7 TO>>>
+
+S8 — docs/system/mission-run-loop-morning-report-v0.md — REWRITE — the report question list
+<<<BEGIN S8 FROM>>>
+- Is there a proposed self-repair prompt?
+- What should I do next?
+<<<END S8 FROM>>>
+<<<BEGIN S8 TO>>>
+- What should I do next?
+<<<END S8 TO>>>
+
+S9 — docs/system/mission-run-loop-morning-report-v0.md — REWRITE — the manual-steps list
+<<<BEGIN S9 FROM>>>
+- Starting the loop (`remedy mission run`)
+- Reviewing builder output
+- Applying approved self-repair proposals
+- Merging PRs
+<<<END S9 FROM>>>
+<<<BEGIN S9 TO>>>
+- Starting the loop (`remedy mission run`)
+- Reviewing builder output
+- Merging PRs
+<<<END S9 TO>>>
+
+S10 — apps/cli/command_catalog.py — REWRITE, and see constraints 7 and 8 — the vacant banner
+<<<BEGIN S10 FROM>>>
+        related=("snapshot.inspect",),
     ),
-<<<END Q1 FROM>>>
-<<<BEGIN Q1 TO>>>
-    # ── mission (the F070 orchestrator loop, keyed on a mission id) ──────
-    CommandEntry(
-        command_id="mission.run",
-        group_id="mission",
-        subcommand="run",
-        description="Run the F070 orchestrator loop for one mission. Stops on a terminal move, the iteration limit, a stop request or an escalation.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("run_id", "Mission id (F070 loop)"),
-            ArgDef("--iterations", "Max orchestrator iterations this run", required=False, is_option=True),
-            ArgDef("--no-llm", "Run without a provider — reports the honest no_provider terminal", required=False, is_option=True, is_flag=True),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.report", "mission.ledger"),
+
+    # ── dogfood ─────────────────────────────────────────────────────────
+
+<<<END S10 FROM>>>
+<<<BEGIN S10 TO>>>
+        related=("snapshot.inspect",),
     ),
-<<<END Q1 TO>>>
 
-Q2 — apps/cli/command_catalog.py — REWRITE — the repo.status cross-reference
-<<<BEGIN Q2 FROM>>>
-        related=("readiness.show",),
-<<<END Q2 FROM>>>
-<<<BEGIN Q2 TO>>>
-        related=("readiness.job",),
-<<<END Q2 TO>>>
-
-Q3 — tests/test_command_catalog.py — REWRITE — the referential-closure test R-0859 asks for
-<<<BEGIN Q3 FROM>>>
-            assert sub == cmd.subcommand, f"command_id suffix mismatch: {cmd.command_id}"
-
-
-class TestCatalogClassification:
-<<<END Q3 FROM>>>
-<<<BEGIN Q3 TO>>>
-            assert sub == cmd.subcommand, f"command_id suffix mismatch: {cmd.command_id}"
-
-    def test_every_related_reference_resolves_to_a_live_command(self) -> None:
-        """R-0859: nothing here resolved `related=` against the catalog.
-
-        A deletion round removes a command and its own entry, and the entries
-        that POINT at it keep pointing. Every other guard in this class reads
-        an entry's own fields, so a cross-reference to a command that no
-        longer exists was invisible to all of them — and `remedy list` then
-        offers the reader a sibling that resolves to nothing.
-        """
-        live = {cmd.command_id for cmd in CATALOG}
-        dangling = sorted(
-            (cmd.command_id, ref)
-            for cmd in CATALOG
-            for ref in (cmd.related or ())
-            if ref not in live
-        )
-        assert dangling == [], f"related= names commands that do not exist: {dangling}"
-
-
-class TestCatalogClassification:
-<<<END Q3 TO>>>
-
-Q4 — docs/system/mission-run-loop-morning-report-v0.md — REWRITE — the Quick start
-<<<BEGIN Q4 FROM>>>
-```bash
-# 1. Run a bounded mission loop
-remedy mission run <run_id> --job-id <job_id> --json
-
-# 2. Read the morning report
-remedy mission report <run_id> --job-id <job_id> --json
-```
-
-These are the operator-facing commands. They call the same logic as the
-internal `dogfood` commands below.
-<<<END Q4 FROM>>>
-<<<BEGIN Q4 TO>>>
-```bash
-# 1. Run a bounded mission loop, keyed on a MISSION id
-remedy mission run <mission_id> --json
-
-# 2. Read the morning report, keyed on a JOB id
-remedy mission report <job_id> --json
-```
-
-These are the operator-facing commands, and since F275 they are the only
-ones: the internal `dogfood` group they used to wrap is deleted.
-<<<END Q4 TO>>>
-
-Q5 — docs/system/mission-run-loop-morning-report-v0.md — REWRITE — the stop conditions
-<<<BEGIN Q5 FROM>>>
-- Budget exhausted (step, token, or wall-clock limit reached)
-- Operator stopped (manual stop command)
-- Max loop steps reached (loop-level cap, default 10)
-- Max loop seconds reached (wall clock, default 300)
-- No safe next action
-- Internal error
-<<<END Q5 FROM>>>
-<<<BEGIN Q5 TO>>>
-- Budget exhausted (token budget reached)
-- Operator stopped (manual stop command)
-- Iteration cap reached (`--iterations`)
-- No safe next action
-- Internal error
-
-Remedy deliberately ships no per-step or wall-clock cap on `remedy mission
-run`. The `--max-steps` and `--max-seconds` flags belonged to the deleted
-dogfood loop, were accepted and ignored by the surviving handler, and F275
-removed them rather than wiring them in — see R-0871 and DECISION F275 D14.
-<<<END Q5 TO>>>
-
-Q6 — docs/system/mission-run-loop-morning-report-v0.md — REWRITE — the terminology note
-<<<BEGIN Q6 FROM>>>
-The CLI group `dogfood` is internal developer naming. Operator-facing
-documentation uses:
-
-- **Mission Run** — the bounded loop
-- **Mission Report** — the morning report
-- **Self-Repair Proposal** — suggested fix from analysis
-
-The internal `dogfood` commands remain available for debugging and
-backwards compatibility.
-
-## Internal commands (advanced)
-
-```bash
-# Create a run
-remedy dogfood create <job_id> --json
-
-# Run the bounded loop (low-level)
-remedy dogfood run-loop <run_id> --job-id <job_id> --max-steps 10 --max-seconds 300 --json
-
-# Morning report (low-level)
-remedy dogfood morning-report <run_id> --job-id <job_id> --json
-
-# Single step (fine-grained control)
-remedy dogfood step <run_id> <job_id> --json
-
-# Replay analysis
-remedy dogfood replay <run_id> <job_id> --json
-
-# Quick status
-remedy dogfood show <run_id> <job_id> --json
-```
-<<<END Q6 FROM>>>
-<<<BEGIN Q6 TO>>>
-The CLI group `dogfood` was internal developer naming for the prototype this
-page was written against. Operator-facing documentation uses:
-
-- **Mission Run** — the bounded loop
-- **Mission Report** — the morning report
-
-Remedy deliberately ships no low-level equivalents of these two commands.
-The whole `dogfood` group — create, run-loop, morning-report, step, replay
-and show — was deleted by F275 together with the module behind it, and
-nothing stands in for it: there is no alias, no shim and no compatibility
-reader, per AGENTS.md Scope Control. The operator-facing pair above is the
-only surface, and git history is where the prototype lives now.
-<<<END Q6 TO>>>
-
-Q7 — docs/system/mission-run-loop-morning-report-v0.md — REWRITE — the self-repair section
-<<<BEGIN Q7 FROM>>>
-## How Self-Repair Proposals fit
-
-The morning report shows:
-
-- Whether proposals exist
-- Latest proposal status
-- How many await operator review
-- Command to inspect proposals
-
-Self-repair proposals are never auto-created by the loop. They come from
-prior analysis (replay, review, test failures).
-<<<END Q7 FROM>>>
-<<<BEGIN Q7 TO>>>
-## How Self-Repair Proposals fit
-
-They do not, any more. The `self-repair` group and the proposal queue behind
-it were deleted by F275; the approval gate F017 owns inherited the idea of a
-policy-authorised approval, and no surviving command creates, lists or
-approves a self-repair proposal. The finding R-0845 records what was lost and
-DECISION F260 D3 records which feature took which idea.
-<<<END Q7 TO>>>
+<<<END S10 TO>>>
