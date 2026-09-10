@@ -326,3 +326,140 @@ both inside reviewer-authored text, both declared above, neither repaired. If th
 round is substantive work rather than a repair, it is T002: the DECISION F272 D7
 raising-property probe over every candidate `.id` receiver, which the plan records as
 wanting a fresh session.
+
+## Reviewer verdict on round 26 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 26: **PASS.** Written by the planner and reviewer of SESSION 13 after reading the committed
+range `684b1b55`..`319b8777` and RE-RUNNING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was not evidence for any line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST substantive commit of round 27, per amend0827-process-diet rule 1.
+
+WHAT THE REVIEWER RE-MEASURED. Seven single-parent commits C0a `a517f769`, C0b `79dd47f4`, C1 `9fb92ba0`,
+C2 `ae50c3b7`, C3 `d0652d43`, C4 `319b8777` and C5 `7701f035`, per-commit insertions 306, 228, 14, 14, 11
+and 15 for the six before the handback, every one far under the AGENTS.md DECISION F104 D1 cap of 500. G1
+covers the chain this workflow can walk and NOT the emitted bytes, per §3 item 37: the reviewer's scratch
+original, the committed `.agent/authored/f275-r26.md` and the committed `.agent/last_block.md` are all
+29712 bytes at `cf0cac758b2ba9feae85af33883b5615472f97aa1b529c67302f197f37f53725` and compare BYTE-EQUAL.
+G2: `.agent/plan.md` at C1 is 2237 bytes byte-identical to PLAN26, 41 lines against the cap of 50, with
+`## Goal` and `## Next Steps` each exactly once. G3 over both append targets: `.agent/live_review.md`
+745098 to 755015 and `.agent/prose_slips.md` 209425 to 211596, each post-blob equal to its pre-blob then
+ONE newline then the slice exactly as extracted, the joining byte READ BACK at offset len(pre) and reading
+a newline in both, and the structural reader counting N from each slice — 4 and 3 paragraphs — and matching
+the last N blank-line units IN ORDER. `^Gate: F275 R25 `, `^Note: F275 R26 `, `^Done: R-0843 — `,
+`^Done: R-0858 — `, `^Done: R-0859 — ` and `^Done: R-0871 — ` each read exactly 1. THE OPEN SET FELL 90 TO
+88 BY DISTINCT ID, over 100 registrations against 12 resolutions, which is correct for a round that
+registers nothing and resolves two.
+
+G4 IS THE GATE THIS ROUND EXISTED TO PASS, and it passed on the reading rather than on a hope. Over
+`docs/roadmap/features/T2_F267.md` the reviewer's own sweep finds `24`, `fifteen` and `nine` at ZERO; the
+five deleted command ids at exactly one occurrence each and every one of them INSIDE the blockquote round
+25 added, with the outside-the-blockquote set EMPTY for all five; and `four` at exactly the four places the
+block named in advance, every one a sentence about the DECISION F262 D4 exclusions rather than a live
+claim. That is R-0869's split-sweep clause working as designed for the second round running: the half that
+can be zero is zero, and the half that cannot is a stated expectation the worker reconciled against. G5 and
+G6: `12 groups` survives at lines 2928 and 2972 and `twelve` at 2914 and 2977, all four BENEATH the
+`## Group-first CLI v0` heading at line 2908 and inside the section its new banner dates, with the outside
+set empty; the section banner sits at line 2910 and the table banner at 2976, each one blank line below its
+heading, so a reader lands on the date before the content. G7: the shipped catalog is UNCHANGED at 222
+commands and 44 groups with ZERO dangling `related=` references, which is what a round touching no code
+must show; `tests/docs/` and `tests/cli/test_product_spine.py` are green at 368 passed and the canary at 42,
+both re-run by the reviewer in the primary checkout; no `.agent/STOP`, porcelain EMPTY, ONE worktree, the
+branch correct, and `684b1b55..319b8777` an EXACT set match over the seven change-set paths with MISSING and
+EXTRA both empty.
+
+THE WORKER'S OWN END-TO-END SWEEP PRODUCED THE BEST FINDING OF THIS SESSION, and the reviewer sustains both
+declared deviations after measuring each itself. FIRST, the banner the reviewer wrote advertises a command
+that does not exist: `docs/system/architecture.md` line 2916 tells the reader to "run `remedy list`", and
+there is no `list` group among the 44 and no `list.*` id among the 222 — a `git log -S` over the catalog
+finds no commit that ever added one, so this is not a deletion residue but a command the reviewer invented
+while repairing a finding about dead advertisements. It entered at round 25's `9cf79a08` in the table
+banner, round 26's U5 dropped that copy and U4 restated it one subsection higher, so exactly ONE live
+instance stands. SECOND, that banner dates "Steps 38 to 43" while its section is the last `##` heading in
+the file and runs to end of file at line 3073, carrying subsections for Steps 48, 50, 51, 52 and 53 — so the
+declaration is true of less than it covers. Both are recorded below and repaired by round 27; neither is a
+worker error and neither changes this verdict, because every gate the block ordered was run and returned a
+true reading, and the round's own change set is exactly what it declared.
+
+## Findings and corrections drafted by session 13, to be booked by round 27's first substantive commit
+
+Note: F275 R27 — new evidence for the OPEN finding R-0847, added rather than given an id of its own per `docs/agents/planner_reviewer_prompt.md` §3 item 30, and it is the sharper form of that finding rather than another instance of it. R-0847 records that `tests/cli/test_advertised_commands.py` cannot see an advertisement whose command GROUP has been deleted, and its measured cause was the scanner's group pre-filter. THE WIDER CAUSE, found by the WORKER of round 26 while sweeping beyond the block's expectations and re-measured by the reviewer at `319b8777`: the scanner matches a TWO-TOKEN form, `remedy <group> <subcommand>`, so it is structurally blind to a SINGLE-TOKEN invocation `remedy <something>` no matter which groups exist. THE INSTANCE THAT PROVES IT, and it is the reviewer's own: `docs/system/architecture.md` line 2916 instructs a reader to "run `remedy list`". Measured through the shipped dispatcher rather than by grep — `apps.cli.grouped.main(["list"])` exits 2 on `Error: Unknown command 'list'.` against a control `main(["worker","--help"])` at exit 0 — and measured through the shipped catalog: no `list` group among the 44, no `list.*` id among the 222, and `git log -S 'remedy list' -- apps/cli/command_catalog.py` finds no commit that ever added one. So this is not a deletion residue at all; it is a command that never existed, written into a status banner by the reviewer of round 25 at `9cf79a08` while repairing R-0843, which is a finding about pages advertising commands that cannot run. Round 26's U5 removed that copy and its U4 restated it one subsection higher, so exactly ONE live instance stands at line 2916. A SECOND DEFECT IN THE SAME BANNER, measured at the same commit: it declares the section a snapshot of "Steps 38 to 43", while `## Group-first CLI v0` is the LAST `##` heading in the file and runs to end of file at line 3073, carrying subsections for Steps 48, 50, 51, 52 and 53 — so the date is true of less than the banner covers, which is the opposite failure to the one the banner was written to fix. FIX CLAUSE, binding on round 27: repair both — replace the invented command with a real one or with no command at all, and widen the stated span to what the section actually holds — and widen the scanner's matcher to the single-token form in the same round that touches it, which R-0847's original clause already binds to the first round that may edit `tests/cli/test_advertised_commands.py`. AND THE LESSON THAT OUTLIVES THE INSTANCE: a repair for a dead-advertisement finding is itself swept for dead advertisements before it lands, through the shipped dispatcher and not by eye, because the reviewer writing the fix is the reader least likely to doubt the command it recommends.
+
+## Prose slips drafted by session 13, to be appended by round 27's ledger commit
+
+2026-09-10 · F275 R25 · The round 25 block's S7 slice told a reader to "run `remedy list`" inside a status banner whose whole purpose was to stop a page advertising commands that cannot run. The reviewer wrote the recommendation from memory of what a catalog reader ought to be called, never probed it, and the round 26 block then carried the same clause into U4 without re-probing it either — so one invented command survived two rounds of a session whose subject was dead advertisements. The lesson is that any command a reviewer types into an authored slice is executed through the shipped dispatcher before emission, exactly as a numeral is re-derived, because a command name is a claim about the product and not a turn of phrase.
+
+2026-09-10 · F275 R26 · The round 26 block's constraint 8 declared U4 an APPEND on the reasoning that it inserts a banner between a heading and the paragraph under it and therefore keeps its whole FROM. The mechanical containment test the same checklist item requires reported `TO contains FROM: false`, because the inserted banner separates the FROM's blank line from its second line, and the constraint and the gate were both corrected before emission. Nothing landed wrong. It is recorded because the eye and the test disagreed on the pair shape this repository most often gets wrong, and the eye was confident: §3 item 15's instruction to classify by test and never by eye earned its place again, in a block written by a reviewer who had just quoted it.
+
+2026-09-10 · F275 R23-R26 · Session 13 ran four delegated rounds and every one of them shipped a block whose authored text carried a defect the WORKER found rather than the reviewer: a gate naming a digest the block did not carry, a universal about a file's separators that fourteen entries falsify, a pair whose FROM stopped one line short of the numeral it existed to remove, a banner at the wrong granularity, and a banner recommending a command that does not exist. Every round still passed on its measured gates, and the product state each one left is correct. The lesson is about rate rather than about any one slip: four rounds produced eleven dated slips, which is the signal `docs/agents/self_drive_protocol.md` G7 as amended by amend0905-throughput names as an honest reason to end a session, and this session ends on it rather than writing a fifth block at the same rate.
+
+## Session 13 ends here — FOUR delegated rounds, all four PASS, all four independently re-gated
+
+Rounds 23, 24, 25 and 26, against the amend0905-throughput target of six to eight and its floor of four.
+This session reaches the floor and stops there, and the reason is stated plainly rather than implied.
+
+THE REASON IS ONE amend0905 SANCTIONS AND amend0908-f275-finish RULE 5 PERMITS ONLY NOW. Rule 5 allows a
+session of F275 to cite "authoring errors accumulating" only after at least four delegated rounds; this
+session has run exactly four, so the reason becomes available at the moment it is claimed, and it is
+claimed on a measurement rather than a feeling: four rounds produced eleven dated lines in
+`.agent/prose_slips.md`, and in every one of the four the worker's report named a defect in the reviewer's
+own authored text that the reviewer's pre-emission checklist had not caught. The second sanctioned reason
+also holds and is the forward-looking half: T002 is next, it is the slice three features have deferred, its
+central artefact is a probe over every candidate `.id` receiver across 1068 tracked Python files followed
+by a dated ruling that lands in an append-only file, and this session's own plan has recorded for two
+rounds that it wants a fresh context. Context is NOT exhausted and is not claimed as the reason.
+
+WHAT THIS SESSION LANDED. Round 23 recorded DECISION F260 D3, the deletion paragraph F260's Design, F275's
+Goal & Done and F275's T001 all require before this feature can close: every one of the twenty-four modules
+the prototype-cluster deletion removed, mapped to the feature that inherited its idea or to a deliberate
+NONE, with the command surface measured through the shipped reader at 339 commands falling to 222 and 59
+groups to 44, and the ideas deleted rather than inherited named with the finding id that holds each
+enumeration. DECISION F275 D12 ruled the three questions the fix clauses handed that round and D13 ruled
+the sequence's shape. Round 24 repaired the surviving surfaces that still advertised deleted things —
+`remedy mission run`'s catalog entry, which declared three options no handler read, and the mission
+run-loop page, whose Quick start recommended an invocation that could not parse — and landed the
+referential-closure test R-0859 asked for with the mutation colour that proves it bites. Round 25 retired
+the four cluster scaffolding artefacts that had become gates which cannot fail, under DECISION F275 D15,
+and repaired the unstarted F267 plan and the historical `Groups` table. Round 26 swept both remaining
+documents end to end and closed R-0843 and R-0858 on those sweeps.
+
+THE STATE OF T001. Every module F260's Design section lists is gone from disk, the deletion paragraph
+exists, the scaffolding that bounded the deletion is retired, and the command surface is measured rather
+than asserted. What remains of T001 is documentary and is named in the fix clause above. THE OPEN SET is
+88 by distinct id at `319b8777`, down from 91 at this session's start, over 100 registrations against 12
+resolutions; four are High — R-0803, R-0804, R-0806 and R-0807 — and all four are F273's rather than this
+feature's, per DECISION F272 D12. F275 stands at 26 rounds and 13 sessions against the operator's soft
+limit of 60 rounds and 20 sessions, so no scope report is owed.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context is long
+but not exhausted, it ran four full independent re-gates and four applied dry runs without approaching a
+boundary, and this session ends on its own authoring-error rate and on T002 wanting a fresh start, not on
+running out of room.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It does not exist as this
+session ends and was measured absent at the Phase 0 probe and again before each of the four rounds. Then
+the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
+
+SECOND, round 27's FIRST substantive commit books, from this file as the durable carrier under
+amend0827-process-diet rule 1: the ROUND 26 PASS verdict above as a `Gate: F275 R26` entry in
+`.agent/live_review.md`; the `Note: F275 R27` entry folding the two banner defects into R-0847; and the
+three prose slips above as dated lines in `.agent/prose_slips.md`, BLANK-LINE SEPARATED. The open set is 88
+by distinct id and the next free id after R-0871 is R-0872; this booking registers nothing and resolves
+nothing, so it stays 88.
+
+THIRD, round 27 itself, which is small and should not be given a round of its own if it can ride with the
+first T002 commit: repair `docs/system/architecture.md` line 2916 and the banner's stated span, per the fix
+clause above. Do not re-verify the deleted-module sweeps — round 26 measured them and they hold.
+
+FOURTH, T002, alone and with a fresh context. It is NOT the flip. DECISION F272 D15 measured an UPPER BOUND
+from a receiver-name heuristic — 468 `<job-ish>.id` reads in 74 production files and 1545 in 137 test files
+over 1068 tracked Python files — and recorded in terms that this is not a probe measurement, `.id` being
+polymorphic exactly as `.status` was. What T002 owes is the DECISION F272 D7 raising-property probe over
+every candidate receiver, giving the REAL site set, and then a dated DECISION in `.agent/decisions.md`
+choosing between the three routes F275's own T002 section names: the real set proves small enough for one
+commit; the one oversize commit AGENTS.md's Commit Discipline permits per feature is declared with its
+inseparability reason before review; or an operator amendment is obtained. No production line moves in that
+slice, and a session that starts flipping sites before that ruling lands repeats DECISION F272 D14 part 2's
+mistake by name. THEN T003, the classic runner, for which T002's ruling is the prerequisite.
