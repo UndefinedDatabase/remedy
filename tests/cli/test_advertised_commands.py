@@ -198,19 +198,6 @@ def collect_operator_facing_advertisements() -> tuple[int, list[UnresolvedAdvert
 #: ratchet at zero is a gate that cannot fail.
 KNOWN_DEAD_DOC_ADVERTISEMENTS: frozenset[tuple[str, str]] = frozenset(
     (
-        ('docs/guides/dogfood-run-user-guide.md', 'dogfood create'),
-        ('docs/guides/dogfood-run-user-guide.md', 'dogfood next'),
-        ('docs/guides/dogfood-run-user-guide.md', 'dogfood replay'),
-        ('docs/guides/dogfood-run-user-guide.md', 'dogfood show'),
-        ('docs/guides/dogfood-run-user-guide.md', 'dogfood step'),
-        ('docs/guides/dogfood-run-user-guide.md', 'dogfood stop'),
-        ('docs/guides/self-repair-proposal-user-guide-v0.md', 'self-repair proposal-approve'),
-        ('docs/guides/self-repair-proposal-user-guide-v0.md', 'self-repair proposal-create'),
-        ('docs/guides/self-repair-proposal-user-guide-v0.md', 'self-repair proposal-deny'),
-        ('docs/guides/self-repair-proposal-user-guide-v0.md', 'self-repair proposal-edit'),
-        ('docs/guides/self-repair-proposal-user-guide-v0.md', 'self-repair proposal-list'),
-        ('docs/guides/self-repair-proposal-user-guide-v0.md', 'self-repair proposal-show'),
-        ('docs/guides/self-repair-proposal-user-guide-v0.md', 'self-repair worker-prompt'),
         ('docs/system/architecture.md', 'apply-patch-intent'),
         ('docs/system/architecture.md', 'attach-project-job'),
         ('docs/system/architecture.md', 'attach-project-repo'),
@@ -237,9 +224,6 @@ KNOWN_DEAD_DOC_ADVERTISEMENTS: frozenset[tuple[str, str]] = frozenset(
         ('docs/system/core-product-spine-v0.md', 'self-repair proposal-edit'),
         ('docs/system/core-product-spine-v0.md', 'self-repair proposal-list'),
         ('docs/system/core-product-spine-v0.md', 'self-repair worker-prompt'),
-        ('docs/system/feature-planner-v0.md', 'feature accept'),
-        ('docs/system/feature-planner-v0.md', 'feature plan'),
-        ('docs/system/progress-ledger-v1.md', 'progress checklist'),
         ('docs/system/vocabulary.md', 'absorb'),
     )
 )
@@ -248,7 +232,7 @@ KNOWN_DEAD_DOC_ADVERTISEMENTS: frozenset[tuple[str, str]] = frozenset(
 #: ``len(KNOWN_DEAD_DOC_ADVERTISEMENTS)`` would move with every entry added and
 #: the ratchet assertion below could then never fail — a gate that cannot fail.
 #: It may fall as the backlog is worked; it may never rise.
-_ALLOWLIST_CEILING = 43
+_ALLOWLIST_CEILING = 27
 
 
 def test_every_advertised_command_exists_in_the_catalog() -> None:

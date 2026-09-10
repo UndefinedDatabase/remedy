@@ -30,7 +30,6 @@
 | diff-only repair | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | system |
 | do continue | [do-continue-v1.md](guides/do-continue-v1.md) | guide |
 | do run | [do-run-v1.md](guides/do-run-v1.md) | guide |
-| dogfood | [dogfood-run-user-guide.md](guides/dogfood-run-user-guide.md) | guide |
 | exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
 | job budget | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | system |
@@ -79,7 +78,6 @@ Specifications and design documents for the built system.
 | [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
 | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | Diff-only repair: hunk selection, unified-diff response, strict apply, full-file fallback |
 | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | What the F085 stage-1 execution guard does NOT prevent |
-| [feature-planner-v0.md](system/feature-planner-v0.md) | Feature planning and decomposition |
 | [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone |
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
 | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |
@@ -88,7 +86,6 @@ Specifications and design documents for the built system.
 | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | Operator cockpit UI spec |
 | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | Main orchestrator brain (decision engine) |
 | [orchestrator-loop.md](system/orchestrator-loop.md) | Orchestrator loop contract |
-| [progress-ledger-v1.md](system/progress-ledger-v1.md) | Progress ledger for tracking feature/task state |
 | [project-brain.md](system/project-brain.md) | Project brain knowledge graph |
 | [project-scoping-v0.md](system/project-scoping-v0.md) | Project-scoped job listings and creation guard |
 | [proof-chain.md](system/proof-chain.md) | Proof chain for file provenance |
@@ -104,7 +101,6 @@ Specifications and design documents for the built system.
 | [reviewer-safety.md](system/reviewer-safety.md) | Reviewer and test safety constraints |
 | [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | One-way roadmap mirror, `remedy plan status`/`next`, feature→mission adapter |
 | [run-contract-v1.md](system/run-contract-v1.md) | Run contract (apply/test gates, budgets) |
-| [run-replay-to-self-repair-proposal-v0.md](system/run-replay-to-self-repair-proposal-v0.md) | Replay analysis to self-repair proposal pipeline |
 | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | Self-dogfood execution (bounded self-improvement) |
 | [self-dogfood-v0.md](system/self-dogfood-v0.md) | Self-dogfood readiness + improvement planner |
 | [self-use-track-v1.md](system/self-use-track-v1.md) | Self-use track: the curated queue, the job-file format, one item consumed per feature close |
@@ -127,13 +123,11 @@ User-facing guides, quickstarts, and usage documentation.
 | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | Reading `remedy stats report` |
 | [do-continue-v1.md](guides/do-continue-v1.md) | `remedy do --continue` one-cycle apply flow |
 | [do-run-v1.md](guides/do-run-v1.md) | `remedy do` cohesive flow |
-| [dogfood-run-user-guide.md](guides/dogfood-run-user-guide.md) | Running dogfood jobs *(overnight superseded)* |
 | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
 | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |
 | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |
 | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
 | [resume.md](guides/resume.md) | Resuming interrupted jobs |
-| [self-repair-proposal-user-guide-v0.md](guides/self-repair-proposal-user-guide-v0.md) | Self-repair proposal workflow |
 | [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | Quickstart for new operators |
 | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | Token budgets and context packs |
 
