@@ -12334,3 +12334,47 @@ HOW TO REVERSE: delete this decision. (a) is reversed by restoring the three `Ar
 wiring them; (b) by any feature that owns the cockpit's event vocabulary sweeping the three
 sites; (c) by any later relay redistributing the remaining clauses across rounds as it
 prefers, since every one of them still names the finding it discharges.
+
+## DECISION F275 D15 (2026-09-10, F275 round 25) — the cluster deletion map, its two ratchets and the deletion order file are RETIRED, and what still holds the tree honest is named
+
+CONTEXT. F274 built `tests/orchestration/cluster_deletion_map.txt` with the ratchet
+`tests/orchestration/test_cluster_deletion_map.py` holding it against the live import
+graph in both directions, and F275 round 5 added `.agent/f275_deletion_order.md` with
+`tests/orchestration/test_cluster_deletion_order.py` holding that against the same
+graph. Both existed to bound and sequence a deletion. Round 22 deleted the last
+component; `CLUSTER_MODULES` is the empty tuple, the map holds no edge lines and the
+order file holds no component lines. R-0868 measured the consequence: with an empty
+subject both ratchets pass for every possible state of the repository, which is the
+gate-that-cannot-fail shape this record spends ids on.
+
+CHOSEN: all four artefacts are deleted, in one commit, and the six tests they
+contribute go with them. R-0868's clause offered the alternative explicitly — retire
+them together, or record a dated decision saying why an empty ratchet is kept — and
+this is the first half taken.
+
+WHY, and this is the part a later reader needs. A ratchet whose subject is empty is
+not a cheap safety net, it is a false one: it reports green in the same voice it used
+when it was measuring something, and the next reader has no way to tell the two apart
+without opening it. Keeping it would also leave `.agent/f275_deletion_order.md` as a
+state file that outlives its feature, which the `.agent/` contract in AGENTS.md does
+not contemplate. Git is the archive, exactly as AGENTS.md Scope Control says for a
+replaced mechanism, and the map's own history is where the twenty-four modules and
+their forty-two edges are recorded.
+
+WHAT STILL HOLDS THE TREE HONEST, named because deleting a guard without naming its
+successor is how a gap gets made. `tests/orchestration/test_import_reachability.py`
+with its allowlist SURVIVES and is untouched by this round; DECISION F274 D1 ruled it
+a RATCHET rather than a one-shot gate, and it is the guard that fails if any deleted
+module is reimported or any new module becomes unreachable. The catalog's own
+integrity tests, including the referential-closure test F275 round 24 added, hold the
+command surface. Neither of those has an empty subject.
+
+ALTERNATIVES CONSIDERED. (i) Keep the two ratchets with a dated comment explaining the
+empty subject — rejected because the comment would be read by whoever opens the file
+and the GREEN would be read by everyone else, and the second audience is larger. (ii)
+Repoint the map's ratchet at some other module set so it keeps measuring something —
+rejected because inventing a subject for a guard is how a guard stops meaning what its
+name says, and no such set was asked for by any feature.
+
+HOW TO REVERSE: restore the four paths from git history at `06dbb1c6`, which is this
+round's base and the last commit at which all four exist.
