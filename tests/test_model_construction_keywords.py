@@ -107,9 +107,28 @@ class TestEveryConstructionKeywordIsADeclaredField:
         assert len(_tracked_python_files()) > 500
 
     def test_an_undeclared_keyword_really_is_dropped_rather_than_rejected(self) -> None:
-        """The premise, pinned: this is why the defect is invisible at runtime."""
+        """The premise, pinned: this is why the defect is invisible at runtime.
+
+        The keywords are passed as a SPLAT, not written literally, and that is
+        load-bearing rather than stylistic: the sweep above reads every tracked file
+        including this one, so a literal ``type=`` here would make the guard report
+        itself — which is exactly what it did when this file first landed. A splat
+        carries no ``keyword.arg``, so the sweep skips it for the same reason it should:
+        its subject is the literal keyword a reader sees and believes, and a splat is a
+        different thing. The runtime behaviour demonstrated is identical.
+        """
         from packages.core.models import Task
 
-        task = Task(description="d", type="write_readme")
+        task = Task(**{"description": "d", "type": "write_readme"})
         assert not hasattr(task, "type")
         assert task.model_extra is None
+
+    def test_the_sweep_reads_this_file_too(self) -> None:
+        """No file is exempt from the sweep, including this one.
+
+        Pinned because the obvious repair for the self-report above would have been a
+        per-file exemption, and an exemption is a hole a later reader can widen instead of
+        fixing the offender it hides.
+        """
+        own_path = str(Path(__file__).resolve().relative_to(REPO_ROOT))
+        assert own_path in _tracked_python_files()
