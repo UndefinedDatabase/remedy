@@ -1,348 +1,276 @@
-# Handback — F275 round 33
+# Handback — F275 round 34
 
 ## Session
 
-SESSION 16 of feature F275 · round 33 · rounds so far 33
+SESSION 16 of feature F275 · round 34 · rounds so far 34
 
-Context self-assessment (amend0905-throughput): the worker's context is comfortable —
-one full serial suite of 21 minutes, two short suites, two text sweeps, two `ast`
-sweeps and a base-worktree lint comparison, with no discarded run and no re-work; the
-one surprise (`ruff` red on two change-set files) was resolved by measuring the base
-rather than by editing anything. F275's soft limit is 20 sessions and 60 rounds by
-amend0908-f275-finish, so at session 16 and round 33 the limit is not in sight and no
-scope report is owed.
+Context self-assessment (amend0905-throughput): context is comfortable — this
+round spent most of its budget on one 21-minute serial suite rather than on
+reading, and the reviewer's dry run had already sized every production edit, so
+there is ample room for further rounds this session.
 
 ## Range
 
-Review of `7d14e89f`..`HEAD`.
+Review of `bc77c7ac`..`0523aa36`
 
 ## Commits
 
-### 5d8d4170 F275 R33 C0a: save the round 33 step block verbatim.
+### 30ccdd26 F275 R34 C0a: save the round 34 step block verbatim.
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f275-r33.md` | +313 / -0 | the round 33 block saved byte-verbatim by `shutil.copyfile`, 28569 bytes |
+|------|-----|--------|
+| .agent/authored/f275-r34.md | +388/-0 | the block saved with `shutil.copyfile`, byte-verbatim |
 
-### e2d52ffd F275 R33 C0b: mirror the round 33 block into the last-block slot.
+### 4dcdd0b0 F275 R34 C0b: mirror the committed step block into the last-block pointer.
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | +259 / -321 | the COMMITTED C0a blob `7285f34e` written out with `git cat-file blob`, never a retype |
+|------|-----|--------|
+| .agent/last_block.md | +326/-251 | written from `git cat-file blob` of the committed C0a blob, never a retype |
 
-### 7bd2da3f F275 R33 C1: rewrite the plan for round 33.
+### e86466fa F275 R34 C1: the round 34 plan.
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/plan.md` | +18 / -19 | whole-file replacement by the PLAN33 slice, byte for byte |
+|------|-----|--------|
+| .agent/plan.md | +18/-18 | whole-file replacement by slice PLAN34 |
 
-### 750eb7e8 F275 R33 C2: book the round 32 verdict, register R-0874 and record three prose slips.
+### b92f6de7 F275 R34 C2: book the round 33 verdict and two prose slips.
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +4 / -0 | the RECORD33 slice — the round 32 PASS verdict and the R-0874 registration — appended |
-| `.agent/prose_slips.md` | +6 / -0 | the SLIPS33 slice, three dated lines, appended |
+|------|-----|--------|
+| .agent/live_review.md | +2/-0 | append of slice RECORD34, the round 33 PASS verdict |
+| .agent/prose_slips.md | +6/-0 | append of slice SLIPS34, three dated lines |
 
-### 7e61da07 F275 R33 C3: repair the two architecture sentences describing the deleted execution loop, and resolve R-0874.
+### bd452b61 F275 R34 C3: record DECISION F275 D19, the amendment inheriting the cost-preview surfaces onto job resume.
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +2 / -0 | the DONE33 slice, the reviewer-authored `Done: R-0874` paragraph, appended |
-| `docs/system/architecture.md` | +5 / -3 | pairs A1 and A2 applied byte for byte, the two R-0874 sites |
+|------|-----|--------|
+| .agent/decisions.md | +16/-0 | append of slice DECISION34 |
 
-### 45ed2c8c F275 R33 C4: retire the job.run-next command surface and move its 29 advertisements to job resume.
+### 0523aa36 F275 R34 C4: inherit the unattended, yes and expensive surfaces onto job resume and retire the job.run command surface.
 | Path | +/- | Reason |
-|---|---|---|
-| `apps/cli/command_catalog.py` | +2 / -12 | SPEC-RETIRE (c): the ten-line `job.run-next` `CommandEntry` deleted, both `related=` tuples repaired |
-| `apps/cli/commands/job.py` | +0 / -1 | SPEC-RETIRE (d): the dispatch line deleted; `_cmd_run_next_task_local` itself untouched |
-| `packages/orchestration/agent_loop.py` | +1 / -1 | SPEC-RETIRE (a) pass 1 |
-| `packages/orchestration/autonomy_loop.py` | +2 / -2 | SPEC-RETIRE (a) pass 1 |
-| `packages/orchestration/brain_detail.py` | +2 / -2 | SPEC-RETIRE (a) pass 1 |
-| `packages/orchestration/cockpit.py` | +4 / -4 | SPEC-RETIRE (a) pass 1 |
-| `packages/orchestration/dashboard.py` | +1 / -1 | SPEC-RETIRE (a) pass 1 |
-| `packages/orchestration/long_run_executor.py` | +1 / -1 | SPEC-RETIRE (a) pass 1, a docstring |
-| `packages/orchestration/timeline.py` | +1 / -1 | SPEC-RETIRE (a) pass 1 |
-| `packages/orchestration/trust_report.py` | +4 / -4 | SPEC-RETIRE (a) pass 1 |
-| `scripts/remedy_smoke.sh` | +4 / -4 | SPEC-RETIRE (a), two lines in pass 1 and two in pass 2 |
-| `tests/cli/test_plan_approval.py` | +2 / -2 | SPEC-RETIRE (b): both argv-list invocations |
-| `tests/orchestration/test_long_run_executor.py` | +1 / -1 | SPEC-RETIRE (a) pass 1, a docstring |
-| `tests/test_agent_loop.py` | +1 / -1 | SPEC-RETIRE (a) pass 2 |
-| `tests/test_cockpit.py` | +2 / -2 | SPEC-RETIRE (a) pass 2 |
-| `tests/test_command_catalog.py` | +1 / -1 | SPEC-RETIRE (e): the id pin |
-| `tests/test_remedy_smoke_script.py` | +3 / -3 | SPEC-RETIRE (a), two lines in pass 1 and one in pass 2 |
-| `tests/test_timeline.py` | +1 / -1 | SPEC-RETIRE (a) pass 2 |
-| `tests/test_trust_report.py` | +1 / -1 | SPEC-RETIRE (a) pass 2 |
+|------|-----|--------|
+| apps/cli/command_catalog.py | +11/-28 | `job.resume` gains `--unattended`, `--yes`, `is_expensive=True`, drops `job.run` from `related=`; the 27-line `job.run` entry deleted |
+| apps/cli/commands/job.py | +15/-12 | `_cmd_job_resume` gains `unattended`/`yes` and passes both through; dispatch reads both with `getattr` defaults; `command_name` becomes `job.resume`; the 7-line `job.run` dispatch entry deleted |
+| apps/cli/commands/decision.py | +1/-1 | spaced advertisement swept |
+| apps/cli/commands/loop_cmd.py | +1/-1 | spaced advertisement swept |
+| packages/orchestration/config.py | +1/-1 | spaced advertisement swept |
+| packages/orchestration/orchestrator_loop.py | +1/-1 | spaced advertisement swept |
+| docs/README.md | +1/-1 | index description swept |
+| docs/guides/cost-preview-user-guide-v0.md | +10/-10 | pair E2 plus both sweeps |
+| docs/system/remedy-toml-configuration-system-v0.md | +1/-1 | spaced advertisement swept |
+| tests/cli/test_cost_preview.py | +4/-4 | dotted id swept |
+| tests/cli/test_loop_cmd.py | +1/-1 | spaced advertisement swept |
+| tests/orchestration/test_escalation.py | +7/-7 | sweeps plus part (4)(b): two monkeypatch targets moved to `_cmd_job_resume` |
+| tests/orchestration/test_long_run_executor.py | +5/-5 | sweeps plus part (4)(c): `entry.subcommand == "resume"` |
+| tests/orchestration/test_resume_cli.py | +4/-1 | part (4)(a): three exact kwargs dicts widened by `unattended`/`yes` |
+| tests/test_command_catalog.py | +7/-7 | pairs E1 and E3 plus the dotted-id sweep |
 
-### C5 (this commit) F275 R33 C5: the round 33 handback.
+### C5 F275 R34 C5: the round 34 handback.
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | rewrite | this file; a handback cannot table the commit that writes it (R-0149 pattern) |
+|------|-----|--------|
+| .agent/handoff.md | rewrite | this file. Its SHA is deliberately not named: a handoff cannot table the commit that writes it (R-0149 pattern), and an unmeasured SHA is never written |
 
 ## External actions
 
-| Command | Outcome |
-|---|---|
-| `git worktree add .remedy-wt/base33 7d14e89f --detach` | created, for the G8 lint base comparison only (self_drive_protocol.md G5) |
-| `git worktree remove .remedy-wt/base33 --force` | removed |
-| `git worktree prune` | clean; `git worktree list` reads exactly ONE entry |
-| `git push -u origin feature/f275-one-world-completion-part-three` | see the push line below |
-
-No PR created, none edited, none merged. This round is not a closure sequence.
+- `git worktree add --detach .remedy-wt/base-r34 bc77c7ac` — OK, used for the
+  G5 base-presence import and the G7 BEFORE readings.
+- `git worktree add --detach .remedy-wt/mut-r34 0523aa36` — OK, used for the G6
+  control and the two mutation red-proofs. `apps/ui/node_modules` symlinked in,
+  never staged.
+- `git worktree remove --force` on both, then `git worktree prune` — OK,
+  `git worktree list` now has exactly one entry.
+- `git push -u origin feature/f275-one-world-completion-part-three` — see Next.
+- No PR created, none merged; this round is not a closure sequence.
 
 ## Verification
 
-**G1 TRANSPORT (at C0b) — REAL_EXIT=0.** The reviewer's scratch original
-`.remedy-wt/f275-r33-block.md` is 28569 bytes at sha256
-`a1f8eab17d2e94432732ebfac36a9a8666607035f81c8b2ea860be6d2ba66558`, which the worker
-computed itself before doing anything else and which matches the digest stated in the
-delegation. Committed `.agent/authored/f275-r33.md` — written by `shutil.copyfile`, not
-by a text extraction — is 28569 bytes at that same digest, and committed
-`.agent/last_block.md`, written by `git cat-file blob HEAD:.agent/authored/f275-r33.md`,
-is 28569 bytes at that same digest. `git rev-parse` reads BOTH committed paths as the
-SAME blob `7285f34e7d464e4a3d5736f7e60ce9a3e98cad92`. WHAT THE CHAIN COVERS: three
-on-disk artefacts — the scratch original, the committed authored copy and the committed
-mirror. It claims NOTHING about bytes emitted into a prompt.
+**G1 TRANSPORT (at C0b) — REAL_EXIT=0.** All three on-disk artefacts 34579
+bytes at
+`82714e2ea0dca36a5ea051e2332e4648e16ef47d825a461d810af074c9faa07c`:
+the scratch `.remedy-wt/f275-r34-block.md`, the committed
+`.agent/authored/f275-r34.md` and the committed `.agent/last_block.md`, byte-equal
+as one shared git blob. The chain covers those three ON-DISK artefacts and claims
+nothing about bytes emitted into a prompt.
 
-**G2 THE PLAN (at C1) — REAL_EXIT=0.** PLAN33 as extracted is 2270 bytes; committed
-`.agent/plan.md` is 2270 bytes; both sha256
-`00605a396157c18c2e7fc7afff752da454c089bd4d4400f528890c616ff420dc`; BYTE-EQUAL True.
-41 lines against the cap of 50. `^## Goal$` count 1, `^## Next Steps$` count 1.
+**G2 THE PLAN (at C1) — REAL_EXIT=0.** Committed `.agent/plan.md` byte-equal to
+PLAN34: both 2261 bytes at
+`8f537c5486899dc223df1c5be5ae27ddbc88322cd7ab2631686dc7c90b7451a6`. 41 lines
+against the cap of 50. `^## Goal$` 1, `^## Next Steps$` 1.
 
-**G3 THE RECORD (at C2 and C3) — REAL_EXIT=0.** Base sizes read from `7d14e89f`:
-`.agent/live_review.md` 799726 bytes (matches the block), `.agent/prose_slips.md`
-219069 bytes (matches the block).
+**G3 THE RECORD (at C2 and C3) — REAL_EXIT=0.** Every pre-size equals
+constraint 4's figure and every append is pre + ONE newline + slice:
+`.agent/live_review.md` 808624 → 814121 (RECORD34, 5496 B);
+`.agent/prose_slips.md` 221335 → 223959 (SLIPS34, 2623 B);
+`.agent/decisions.md` 1033519 → 1039256 (DECISION34, 5736 B). The joining byte
+READ BACK at offset len(pre) is `b'\n'` in all three. The independent structural
+reader counted N from each slice itself — 1, 3 and 8 paragraphs — and matched the
+last N blank-line units IN ORDER. One negative control per append, flipped INSIDE
+the first appended paragraph, REJECTED by BOTH readers in all three cases.
+`^Gate: F275 R33 ` exactly 1; `^## DECISION F275 D19 ` exactly 1.
 
-| Append | Commit | pre | slice | post | post == pre+`\n`+slice | byte at offset len(pre) | N counted from slice | last N units match IN ORDER | negative control |
-|---|---|---|---|---|---|---|---|---|---|
-| RECORD33 → `.agent/live_review.md` | C2 | 799726 | 6976 | 806703 | True | `b'\n'` | 2 | True | byte 799767 flipped inside the FIRST appended paragraph — arithmetic reader REJECTED, structural reader REJECTED |
-| SLIPS33 → `.agent/prose_slips.md` | C2 | 219069 | 2265 | 221335 | True | `b'\n'` | 3 | True | byte 219110 flipped inside the FIRST appended paragraph — arithmetic reader REJECTED, structural reader REJECTED |
-| DONE33 → `.agent/live_review.md` | C3 | 806703 | 1920 | 808624 | True | `b'\n'` | 1 | True | byte 806744 flipped inside the FIRST appended paragraph — arithmetic reader REJECTED, structural reader REJECTED |
+**G4 THE OPEN SET (at C4) — REAL_EXIT=0.** BY DISTINCT ID: base `bc77c7ac` reads
+103 registered − 16 resolved = **87 OPEN**; C4 `0523aa36` reads 103 − 16 =
+**87 OPEN**. Registered this round: **[]**. Resolved this round: **[]**. R-0875
+is absent from the record, so the next free id is unspent.
 
-N was counted by the worker from each slice's own paragraph structure, never read from
-the block. Marker counts at C3, from the committed blob: `^Gate: F275 R32 ` = 1,
-`^- R-0874 — ` = 1, `^Done: R-0874 — ` = 1.
+**G5 THE INHERITANCE LANDED (at C4) — REAL_EXIT=0.** By IMPORTING
+`apps.cli.command_catalog` in `python3` (the `remedy` binary is denied here):
+**220 commands in 44 groups**, **0 dangling `related=` references** resolved on
+the dotted id, `is_expensive` true for exactly **`['job.resume']`**, and
+`job.resume`'s args in order are
+`['job_id', '--checkpoint', '--dry-run', '--cycles', '--unattended', '--yes', '--json']`
+— every expected value met. `job.run` is ABSENT from the id set at C4; the
+absence is reported beside its presence, measured by the same import in a
+worktree at the base, where the catalog read **221 commands in 44 groups**,
+`job.run` PRESENT and `is_expensive` = `['job.run']`. The contract moved rather
+than vanished.
 
-**G4 THE OPEN SET (at three commits) — REAL_EXIT=0.** By distinct id, every
-`^- R-\d+ — ` id minus every `^Done: R-\d+ — ` id, read mechanically from the committed
-`.agent/live_review.md`:
+**G6 THE HANDLER SURVIVED AND THE FLAGS REACH IT (at C4) — RED PROOF.**
+- ast half, REAL_EXIT=0: parsing `apps/cli/commands/job.py`,
+  `_cmd_job_run_cycles` is still DEFINED, and the functions referencing it are
+  exactly `['_cmd_job_resume']` — the sole surviving door, as DECISION F275 D18
+  rules.
+- CONTROL, unmutated, in a disposable worktree at C4 with `__pycache__` purged
+  and `python3 -B`: `129 passed in 0.89s`, REAL_EXIT=0.
+- **M1** — deleted `            yes=getattr(args, "yes", False),` (verified to
+  occur exactly once) from the `job.resume` dispatch lambda. REAL_EXIT=1,
+  `2 failed, 127 passed`. The assertion that fired is the exact-kwargs equality
+  at `tests/orchestration/test_resume_cli.py:516`,
+  `assert seen == [("abcdef12", {...})]`, reporting `At index 0 diff:` a handed-off
+  dict missing `'yes': False`. Reverted by exact path; worktree porcelain for
+  that path empty.
+- **M2** — changed the `job.resume` entry's `is_expensive=True,` to
+  `is_expensive=False,` (occurs once after C4). REAL_EXIT=1, `2 failed, 127 passed`,
+  both in `tests/test_command_catalog.py` as predicted. Two distinct assertions
+  fired: `:105` `assert marked == ["job.resume"]` — "Right contains one more item:
+  'job.resume'" — and `:110` `assert get_command("job.resume").is_expensive is True`
+  → `assert False is True`. The F114 contract binds to the real value, so it
+  really did move rather than being re-pointed at an assertion that would pass
+  either way. Reverted by exact path; worktree porcelain for that path empty.
 
-| Commit | registrations | resolutions | OPEN BY DISTINCT ID |
+**G7 THE SWEEPS AND THE SUITE (at C4) — REAL_EXIT=0.** Over the trees
+SPEC-INHERIT (3) names (tracked files under `apps/`, `packages/`, `tests/`,
+`scripts/`, `docs/`, excluding `docs/roadmap/`):
+
+| Population | BEFORE (`bc77c7ac`) | AFTER (C4) | lines the sweep CHANGED |
 |---|---|---|---|
-| base `7d14e89f` | 102 | 15 | **87** |
-| C2 `750eb7e8` | 103 | 15 | **88** |
-| C3 `7e61da07` | 103 | 16 | **87** |
+| spaced `remedy job run`, excl. `run-loop`/`run-next` | 17 lines / 11 files | **0 / 0** | 16 in 11 files |
+| token-safe `(?<![\w.])job\.run(?![\w-])` | 26 lines / 7 files | **0 / 0** | 20 in 5 files |
+| bare `job.run` (excl. `job.run-`) — the constraint 8 hazard set | 60 lines / 13 files | 34 / 6 | not swept, by design |
 
-Registered this round: `['R-0874']`. Resolved this round: `['R-0874']`. Each list holds
-exactly one id, as constraint 8 requires. The highest registered id at the base was
-R-0873, so R-0874 was indeed the next free id.
+Both binding populations read ZERO after, with their before readings beside
+them. The bare substring falls 60 → 34, and the surviving 34 are exactly the
+attribute-access lines in the six files constraint 8 names —
+`pingpong_job.py` 23, `self_use_runner.py` 3, `test_job_rerun_manifest.py` 2,
+`test_job_run_refs.py` 4, `test_legacy_manifest_presence.py` 1,
+`test_run_manifest_recovery.py` 1 — every one PRESERVED. The sweep counts are
+smaller than the base readings exactly as SPEC-INHERIT (3) predicted, because the
+pairs and parts (1)–(2) ran first: E2 consumed one spaced line, and the catalog
+entry, the dispatch entry, `command_name` and E1's two lines consumed six dotted
+ones.
 
-**G5 THE REPAIR (at C3) — REAL_EXIT=0.** Pair counts in `docs/system/architecture.md`,
-each slice compared as raw bytes including its terminal newline:
+`git diff` filtered to lines containing `job.resume_`, over the production
+commit C4: **EMPTY** (grep exit 1). No attribute access was corrupted. See
+Deviations for the one form of this gate that does not read empty.
 
-| Pair | FROM before | FROM after | TO before | TO after |
-|---|---|---|---|---|
-| A1 | 1 | 0 | 0 | 1 |
-| A2 | 1 | 0 | 0 | 1 |
+Full serial suite in the primary checkout, after C4 was committed:
+`python3 -B -m pytest tests/ -q` → **`18339 passed, 23 skipped, 1 warning in
+1292.74s (0:21:32)`**, REAL_EXIT=0 — identical to the base and to the
+reviewer's dry-run reading. Canaries: `tests/cli/test_golden_path.py` →
+`42 passed in 18.89s`, REAL_EXIT=0; `tests/docs/` → `306 passed in 0.52s`,
+REAL_EXIT=0.
 
-The fix clause's second half, evidenced not asserted. The `### Agent Loop Contract v1
-(Step 22)` section was delimited from its heading to the next `### ` heading and the
-phrase `execution loop` counted inside it: **3 before C3, 4 after C3**. Every line that
-still holds it, printed:
-
-    | defines no execution loop: that loop was deleted at F275 round 32, per
-    | The local execution loop that once drove plan → build → approve → test → repeat
-    | The execution loop invoked as `job run-loop` was DELETED at F272 round 19, and
-    | `outcome` is at the top-level RunEvent field, not in metadata.  The `agent_loop_task_exit` event was removed while the execution loop still existed, and that loop caught `SystemExit` from task runners rather than propagating it. Both are history: the loop itself was deleted at F275 round 32, so nothing in this module catches `SystemExit` today.
-
-The count RISES rather than falls, and that is the correct outcome rather than a
-regression: the one occurrence that ASSERTED a live execution loop — "and local
-execution loop for coordinating agent workflows" — is gone, and all four survivors name
-the loop only to record that it is DELETED (two of them are the authored A1-TO and
-A2-TO texts themselves). No third sentence describing execution rather than derivation
-remains in the section.
-
-**G6 THE SURFACE IS GONE AND NOTHING ELSE WENT WITH IT (at C4) — REAL_EXIT=0.** Text
-sweep over tracked files under `apps/ packages/ tests/ scripts/`:
-
-| Token | BEFORE C4 | AFTER C4 |
-|---|---|---|
-| `remedy job run-next` | 21 lines in 11 files | **0 lines in 0 files** |
-| `job run-next` | 29 lines in 15 files | **0 lines in 0 files** |
-| `job.run-next` | 5 lines in 3 files | **0 lines in 0 files** |
-
-The two ordered passes measured exactly what the block predicted: pass 1 rewrote 21
-lines in 11 files, and pass 2 then found 8 remaining lines in 6 files.
-
-THE HANDLER SURVIVED, by `ast` and not by grep. `apps/cli/commands/job.py` parsed with
-`ast.parse`; `_cmd_run_next_task_local` is still among its `FunctionDef` names (True);
-walking every function body for a `Call` to that `Name` yields exactly one caller and
-the printed enclosing function name is **`_cmd_job_run_cycles`**, at line 755.
-
-THE CATALOG, by importing `apps.cli.command_catalog` in `python3` (the `remedy` binary
-is denied here): **command count 221**, **group count 44**, **dangling `related=`
-references resolved on the DOTTED id: 0** (empty list). `'job.run-next' in ids` is
-False; `'job.resume' in ids` is True, so every advertisement now points at a live
-command. Expected 221 / 44 / 0 — read 221 / 44 / 0.
-
-**G7 THE ARGV SWEEP AND THE SUITE (at C4) — REAL_EXIT=0.** The `ast` sweep walks every
-tracked `.py` file for adjacent `Constant` string pairs `("job", <sub>)` inside any
-`List` or `Tuple`, and reports every site whose second element is `run-next`:
-
-    BEFORE C4: 65 adjacent ("job", <sub>) pairs; 2 sites with "run-next"
-        tests/cli/test_plan_approval.py:372 -> 'run-next'
-        tests/cli/test_plan_approval.py:716 -> 'run-next'
-    AFTER  C4: 65 adjacent ("job", <sub>) pairs; 0 sites with "run-next"   [EMPTY]
-
-The pair total is unchanged at 65, which is the control: the round moved two sites, it
-did not delete them.
-
-    $ python3 -B -m pytest tests/ -q          # serial, primary checkout, at C4
-    18339 passed, 23 skipped, 1 warning in 1267.63s (0:21:07)
-    REAL_EXIT=0
-
-That is 18339 passed and 23 skipped, identical to the reviewer's reading in its own
-disposable worktree, and identical to the base, as expected for a round that adds and
-removes no test. The one warning is the pre-existing `model_routing.py` undeclared-role
-`UserWarning`.
-
-    $ python3 -B -m pytest tests/cli/test_golden_path.py -q      # the canary
-    42 passed in 19.03s
-    REAL_EXIT=0
-
-    $ python3 -B -m pytest tests/docs/ -q      # owed because C3 touches a docs/ path
-    306 passed in 0.52s
-    REAL_EXIT=0
-
-**G8 NOTHING ELSE MOVED (at C4).** `.agent/STOP` read from disk with `os.path.exists`:
-**absent** (False). `git status --porcelain`: **EMPTY**, REAL_EXIT=0. `git worktree
-list`: exactly **ONE** entry, `/home/decodeux/Repos/remedy 45ed2c8c`. Branch:
-`feature/f275-one-world-completion-part-three`.
-
-`git diff --name-only 7d14e89f..45ed2c8c` against the 25 paths of the header's
-`Change:` line (which excludes `.agent/handoff.md`): 25 block paths, 25 actual paths,
-**MISSING [] and EXTRA [] — EXACT SET MATCH True**.
-
-Per-commit insertions, every commit before the handback, against the DECISION F104 D1
-cap of 500:
-
-| Commit | insertions | under 500 |
-|---|---|---|
-| C0a `5d8d4170` | 313 | yes |
-| C0b `e2d52ffd` | 259 | yes |
-| C1 `7bd2da3f` | 18 | yes |
-| C2 `750eb7e8` | 10 | yes |
-| C3 `7e61da07` | 7 | yes |
-| C4 `45ed2c8c` | 34 | yes |
-
-No oversize commit; none declared.
-
-`ruff check` over every `.py` path in the change set — SEE DEVIATION 1, this sub-gate
-is RED and was red before the round started:
-
-    $ git diff --name-only 7d14e89f..45ed2c8c | grep '\.py$' | xargs ruff check
-    Found 8 errors.
-    [*] 8 fixable with the `--fix` option.
-    REAL_EXIT=123
+**G8 NOTHING ELSE MOVED (at C4) — REAL_EXIT=0.** `.agent/STOP` read from disk and
+ABSENT. `git status --porcelain` EMPTY. `git worktree list` exactly ONE entry.
+Branch `feature/f275-one-world-completion-part-three`.
+`git diff --name-only bc77c7ac..0523aa36` is an EXACT SET MATCH against the 21
+paths in the header's `Change:` line: **MISSING [] , EXTRA []**, and no path
+containing `node_modules` appears, so constraint 7 held. Per-commit insertions,
+every commit before the handback, each under the cap of 500: C0a 388, C0b 326,
+C1 18, C2 8, C3 16, C4 70. LINT CEILING per constraint 11:
+`python3 -m pytest tests/orchestration/test_ci_budgets.py -q` → `10 passed`,
+REAL_EXIT=0; repo-wide `ruff check .` reads **26** — a number, not a verdict, and
+exactly the frozen ceiling that test pins, unchanged from the base.
 
 ## Authored-text proofs
 
-Every reviewer-authored text was extracted MECHANICALLY from the committed
-`.agent/authored/f275-r33.md` — never retyped — by a delimiter reader that asserts
-exactly one `<<<NAME` line and takes the bytes up to the closing `NAME` line inclusive
-of the last content line's newline. Disk-to-disk result per slice:
+Every slice was extracted mechanically from
+`.agent/authored/f275-r34.md` by delimiter, never retyped, and applied byte for
+byte. Disk-to-disk results:
 
-| Slice | bytes | sha256 (first 16) | applied to | proof |
-|---|---|---|---|---|
-| PLAN33 | 2270 | `00605a396157c18c` | `.agent/plan.md` | whole-file; committed blob BYTE-EQUAL, same sha256 |
-| RECORD33 | 6976 | `b223722765d96006` | `.agent/live_review.md` @ C2 | `post == pre + b'\n' + slice` True |
-| DONE33 | 1920 | `597ced5c11b997ec` | `.agent/live_review.md` @ C3 | `post == pre + b'\n' + slice` True |
-| SLIPS33 | 2265 | `066df44cecbc9e82` | `.agent/prose_slips.md` @ C2 | `post == pre + b'\n' + slice` True |
-| A1-FROM | 147 | `45f3e92af3666bfc` | `docs/system/architecture.md` | count 1 before, 0 after |
-| A1-TO | 243 | `706aeb60645d1c76` | `docs/system/architecture.md` | count 0 before, 1 after |
-| A2-FROM | 169 | `b4ed69c85de4e015` | `docs/system/architecture.md` | count 1 before, 0 after |
-| A2-TO | 347 | `3b1ad0a9bda436cd` | `docs/system/architecture.md` | count 0 before, 1 after |
+| Slice | Bytes | Target | Result |
+|---|---|---|---|
+| PLAN34 | 2261 | `.agent/plan.md` | byte-equal, sha `8f537c54…` |
+| RECORD34 | 5496 | `.agent/live_review.md` | tail identity exact after the joining newline |
+| SLIPS34 | 2623 | `.agent/prose_slips.md` | tail identity exact after the joining newline |
+| DECISION34 | 5736 | `.agent/decisions.md` | tail identity exact after the joining newline |
+| E1 | 122 → 134 | `tests/test_command_catalog.py` | FROM 1→0, TO 0→1 |
+| E2 | 74 → 77 | `docs/guides/cost-preview-user-guide-v0.md` | FROM 1→0, TO 0→1 |
+| E3 | 71 → 75 | `tests/test_command_catalog.py` | FROM 1→0, TO 0→1 |
 
-Both pairs were applied with a single-occurrence assertion before the replacement, so
-neither could have hit a second site. Nothing was reflowed, trimmed or repaired.
-
-## Deviations & assumptions
-
-**DEVIATION 1 — G8's `ruff check` sub-gate is RED at REAL_EXIT=123, and it was red at
-the base with the IDENTICAL finding multiset.** The block orders "report `ruff check`
-over every `.py` path in the change set and its exact output line" and the round 32
-verdict recorded `All checks passed!`, so a clean line was plainly expected. It is not
-clean. Nothing was edited to make it clean; instead the base was measured. `ruff check
---output-format=concise` over the same file list, run inside a disposable worktree at
-`7d14e89f` and again in the primary checkout at `45ed2c8c`, prints the SAME EIGHT
-findings — same files, same line numbers, same rule codes, same order — and exits 123
-both times:
-
-    tests/cli/test_plan_approval.py:279:29: F401 `pathlib.Path` imported but unused
-    tests/cli/test_plan_approval.py:292:9:  I001 Import block is un-sorted or un-formatted
-    tests/cli/test_plan_approval.py:337:9:  I001 Import block is un-sorted or un-formatted
-    tests/cli/test_plan_approval.py:338:52: F401 `packages.orchestration.storage.save_job` imported but unused
-    tests/cli/test_plan_approval.py:413:9:  I001 Import block is un-sorted or un-formatted
-    tests/cli/test_plan_approval.py:640:9:  I001 Import block is un-sorted or un-formatted
-    tests/orchestration/test_long_run_executor.py:885:9:  I001 Import block is un-sorted or un-formatted
-    tests/orchestration/test_long_run_executor.py:1285:9: I001 Import block is un-sorted or un-formatted
-
-So this round introduced ZERO lint findings; the delta is empty in both directions. For
-context, `ruff check` with no path argument reads 26 errors repo-wide at the base, all
-of them in `tests/`, and the two files this round happens to touch carry 8 of those 26.
-The round 32 verdict's `All checks passed!` is consistent with this: round 32's change
-set did not include either file. The eight findings are all `[*] fixable`, but fixing
-them is an unrelated edit to lines this round has no business touching (AGENTS.md Scope
-Control, "no while-I'm-here edits"), and both files are in this round's change set only
-for a two-line and a one-line substitution each. Left untouched deliberately, declared
-here.
-
-**DEVIATION 2 — G5's `execution loop` count RISES, 3 → 4, rather than falling.** The
-gate says only "report the count before and after and print every line that still holds
-it", so this is a reading and not a failure, but it reads like a regression at a glance
-and is declared so that no one has to re-derive it. The rise is caused by the authored
-TO texts themselves: A1-TO adds "defines no execution loop: that loop was deleted at
-F275 round 32", and A2-TO adds "while the execution loop still existed". Both are
-statements that the loop is GONE. The single occurrence that asserted a LIVE execution
-loop was removed. Every one of the four survivors is printed in the G5 section above.
-
-**NO OTHER DEVIATION.** No slice failed to fit its target. The commit order was exactly
-C0a, C0b, C1, C2, C3, C4, C5 as constraint 2 fixes it — no extra commit, no dropped
-commit, no reordering. No production line moved before C3 (C1 and C2 wrote only under
-`.agent/`). `.agent/decisions.md` was not touched, per constraint 4. No `Done:` or
-`Landed:` line was written by the worker for R-0874 or for anything else; the DONE33
-paragraph is reviewer-authored text applied byte for byte at C3, per constraint 9. The
-full suite ran only AFTER C4 was committed, serially, per constraint 7. The one
-disposable worktree used for the base lint comparison was created and removed under
-`.remedy-wt/`, never in the primary checkout, per constraint 6.
+Each pair's FROM was located across the whole tree set and occurred in exactly
+one file. No slice needed repair, reflow or trimming.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block | done | `shutil.copyfile`, 28569 bytes, digest matches |
-| C0b mirror the block | done | `git cat-file blob` from the committed C0a blob |
-| C1 PLAN33 | done | whole-file, byte-equal |
-| C2 RECORD33 + SLIPS33 | done | both appends `pre + \n + slice`, both controls rejected |
-| C3 DONE33 + pairs A1, A2 | done | one commit, as the fix clause requires |
-| C4 SPEC-RETIRE (a)-(e) | done | all five parts; counts 21/11, 8/6, 2, 10 lines, 2 tuples, 1 dispatch line, 1 id pin |
-| C5 the handback | done | this file |
-| R-0874 | done | registered at C2, resolved at C3, open set 87 → 88 → 87 |
-| G1 transport | done | REAL_EXIT=0, one shared blob `7285f34e` |
-| G2 the plan | done | REAL_EXIT=0, byte-equal, 41 lines |
-| G3 the record | done | REAL_EXIT=0, three appends, three rejected controls |
-| G4 the open set | done | REAL_EXIT=0, 87 / 88 / 87 |
-| G5 the repair | done | REAL_EXIT=0, both pairs 1→0 and 0→1 |
-| G6 the surface | done | REAL_EXIT=0, all three tokens ZERO, handler survives, 221 / 44 / 0 |
-| G7 argv sweep + suite | done | REAL_EXIT=0, 2→0 sites, 18339 passed 23 skipped, canary 42, docs 306 |
-| G8 nothing else moved | deviated | every sub-check passes except `ruff`, which is RED at 123 and multiset-identical to the base — DEVIATION 1 |
+| C0a save the block | done | |
+| C0b mirror the block | done | |
+| C1 the plan | done | |
+| C2 the round 33 verdict and two prose slips | done | |
+| C3 DECISION F275 D19 | done | |
+| C4 the inheritance and the retirement | done | |
+| C5 the handback | done | |
+| SPEC-INHERIT (1)(a) catalog inheritance | done | |
+| SPEC-INHERIT (1)(b) `_cmd_job_resume` signature and pass-through | done | single call site, as stated |
+| SPEC-INHERIT (1)(c) dispatch `getattr` defaults | done | |
+| SPEC-INHERIT (1)(d) `command_name` | done | occurred exactly once |
+| SPEC-INHERIT (2)(e) delete the `job.run` entry | done | measured 27 lines, as stated |
+| SPEC-INHERIT (2)(f) delete the dispatch entry | done | measured 7 lines; `_cmd_job_run_cycles` untouched |
+| Pairs E1, E2, E3 | done | applied FIRST, before both sweeps |
+| Sweep (3)(a) spaced | done | 16 lines in 11 files changed |
+| Sweep (3)(b) token-safe | done | 20 lines in 5 files changed |
+| SPEC-INHERIT (4)(a) three `TestHandOff` dicts | done | assertions stay exact equalities |
+| SPEC-INHERIT (4)(b) two escalation monkeypatches | done | only the two `COMMAND_HANDLERS` dispatch sites moved |
+| SPEC-INHERIT (4)(c) `entry.subcommand` | done | |
+| G1 … G8 | done | all eight RUN, real exit codes recorded above |
+| Findings registered / resolved | none | constraint 9: this round registers none and resolves none |
 
 ## Open findings
 
-**87 by distinct id** at the tip, over 103 registrations against 16 resolutions.
-Unchanged from the base: this round registered R-0874 and resolved R-0874. Four are
-High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+**87**, by distinct id, unchanged from the base `bc77c7ac`. Four are High —
+R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12. The next
+free id, R-0875, is unspent.
+
+## Deviations & assumptions
+
+1. **G7's `job.resume_` filter does not read empty in its literal whole-range
+   form, for a self-referential reason.** Run as
+   `git diff bc77c7ac..0523aa36 | grep "job\.resume_"` it returns **4 matches**.
+   All four are the BLOCK'S OWN WORDING, saved verbatim by C0a and C0b: the two
+   sentences in the G7 and SPEC-INHERIT (3) prose that contain the literal token
+   `job.resume_`, appearing once each in `.agent/authored/f275-r34.md` and in
+   `.agent/last_block.md`. Not one is a production line. Scoped to the change the
+   gate exists to measure — the production commit `0523aa36~1..0523aa36` — the
+   filter is **EMPTY (grep exit 1)**, and over the whole range with only those two
+   block-save paths excluded it is likewise **EMPTY**. Both readings are reported
+   above. The gate's property holds; only its unscoped form is defeated by the
+   block quoting its own marker.
+2. **SLIPS34 states a sweep figure my run measured differently, and I applied it
+   byte for byte rather than reconciling it.** Its third line says the token-safe
+   sweep leaves "22 in 5" after the catalog and dispatch edits. My run measured
+   **20 in 5**, because E1 also consumes two lines in
+   `tests/test_command_catalog.py` and that line accounts only for the four
+   catalog/dispatch lines. Non-load-bearing: the slice's actual lesson — that a
+   dry-run numeral belongs to the state that run had reached — is unaffected, and
+   the block itself states no expected sweep count and makes the ZERO readings the
+   binding half. Constraint 1 forbids repairing a slice, so it stands as authored
+   and is declared here.
+3. No other deviation. The commit order was exactly C0a, C0b, C1, C2, C3, C4, C5,
+   with no extra, dropped or reordered commit. No slice needed repair. Staging was
+   by named paths throughout; `git add -A` was never used. No production line moved
+   before C4, and the suite ran serially only after C4 was committed.
 
 ## Next
 
-The planner/reviewer re-derives every gate above against the committed range
-`7d14e89f`..`HEAD` and issues the round 33 verdict. Then round 34 books it and retires
-the `job.run` command surface, absorbing both handlers under the `job.resume` door and
-registering the `--unattended` and `--yes` surfaces DECISION F275 D18 names as
-genuinely lost — re-running the `ast` argv-list sweep as well as the text sweep, because
-`[*_CLI, "job", "run", ...]` is invisible to the second instrument exactly as
-`run-next` was.
+The planner/reviewer re-runs G1 to G8 independently against `bc77c7ac..0523aa36`
+and issues the round 34 verdict. On PASS, round 35 books that verdict in its first
+commit and takes the next T003 item: the atomic record flip DECISION F275 D17
+sized, as the one declared-oversize commit AGENTS.md permits per feature,
+re-deriving the site set at its own base.
