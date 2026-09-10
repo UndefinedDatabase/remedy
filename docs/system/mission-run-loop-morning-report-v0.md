@@ -57,7 +57,6 @@ The morning report answers:
 - Did a builder (like Claude Code) run?
 - Is there output?
 - Did output pass intake/review/test gates?
-- Is there a proposed self-repair prompt?
 - What should I do next?
 
 ## How Self-Repair Proposals fit
@@ -74,7 +73,6 @@ For full overnight autonomy, these steps still require operator action:
 
 - Starting the loop (`remedy mission run`)
 - Reviewing builder output
-- Applying approved self-repair proposals
 - Merging PRs
 
 The loop and report make the state visible. They do not act autonomously

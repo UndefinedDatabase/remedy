@@ -3206,8 +3206,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("snapshot.inspect",),
     ),
 
-    # ── dogfood ─────────────────────────────────────────────────────────
-
     # ── config ──────────────────────────────────────────────────────────
     CommandEntry(
         command_id="config.list",
