@@ -48,10 +48,12 @@ replaced it, so no command reads this file for display today.
 
 ## Planned migration path
 
-1. Core operator commands (`worker`, `mission`, `approval`) already use structured state
-2. The development command `progress` may continue reading `.agent/` files
-3. Future blocks may migrate remaining self-dogfood paths to structured event ledger
-4. No urgent migration needed — boundary is enforced for new product paths
+1. Core operator commands (`worker`, `mission`) already use structured state. The
+   `approval` group this list named beside them, and the development command
+   `progress` it gave the remaining `.agent/` reads to, were both deleted by F275
+   with the prototype cluster
+2. Future blocks may migrate remaining self-dogfood paths to structured event ledger
+3. No urgent migration needed — boundary is enforced for new product paths
 
 ---
 
