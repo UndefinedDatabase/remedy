@@ -12,29 +12,30 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 24 repairs the surviving surfaces that still offer a reader something this feature
-deleted. `remedy mission run` advertises a second mode and three options no code path
-honours; two `related=` tuples name commands that no longer exist; and the mission
-run-loop page's Quick start gives an operator a `mission report` invocation that cannot
-parse. The round lands the referential-closure test R-0859 asks for, with the mutation
-colour that proves it bites, and books the round 23 verdict.
+ROUND 25 closes the DECISION F260 D3 sequence. It retires the four cluster scaffolding
+artefacts that became gates which cannot fail once the module list emptied, repairs the
+unstarted F267 plan that names five commands this feature deleted, banners the historical
+`Groups` table in `docs/system/architecture.md` instead of maintaining a hand-written
+mirror of the catalog, and sweeps the three residues rounds 23 and 24 left behind in files
+their own change sets had already named.
 
 ## Next Steps
 
-1. Retire the cluster scaffolding R-0868 names — the deletion map, its two ratchets and
-   the order file — repair F267's plan as the round 23 measurement re-states it, and
-   banner the historical `Groups` table in `docs/system/architecture.md`.
-2. T002, the atomic record flip, alone, because every later commit's size depends on it.
-3. T003, the classic runner, which T002's ruling is the prerequisite for.
+1. T002: the DECISION F272 D7 raising-property probe over every candidate `.id` receiver,
+   giving the real site set rather than D15's upper bound, then the dated decision choosing
+   the route. No production line moves in that slice.
+2. T003, the classic runner, which T002's ruling is the prerequisite for.
+3. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
+   STATUS line and the PR.
 
 ## Risks
 
-- The open set is 92 by distinct id at this round's base `ea5f8128`, computed mechanically
-  from the record. This round registers one and resolves one, leaving 92. Four are High —
-  R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION
+- The open set is 92 by distinct id at this round's base `06dbb1c6`, computed mechanically
+  from the record. This round registers nothing and resolves two, leaving 90. Four are High
+  — R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION
   F272 D12.
-- Removing three advertised options is a user-visible narrowing of a SURVIVING command.
-  DECISION F275 D14 rules it, and R-0871 records it; nothing is wired in to replace them.
-- The advertisement guard `tests/cli/test_advertised_commands.py` is still blind to a
-  whole-group deletion, which is R-0847 and is why this page survived four rounds of
-  sweeps. Every remaining round sweeps the spaced form by hand.
+- Retiring the two ratchets removes six passing tests. DECISION F275 D15 rules it and states
+  what still holds the tree honest once they are gone: the import-reachability ratchet,
+  which F274 D1 ruled a ratchet and which this round does not touch.
+- T002 is the slice that has been deferred by three features. It needs a fresh session's
+  full context and is the reason this one should not start it late.
