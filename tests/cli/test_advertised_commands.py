@@ -244,8 +244,11 @@ KNOWN_DEAD_DOC_ADVERTISEMENTS: frozenset[tuple[str, str]] = frozenset(
     )
 )
 
-#: The measured length of the allowlist above. It may fall; it may never rise.
-_ALLOWLIST_CEILING = len(KNOWN_DEAD_DOC_ADVERTISEMENTS)
+#: The MEASURED length of the allowlist above, written as a literal on purpose.
+#: ``len(KNOWN_DEAD_DOC_ADVERTISEMENTS)`` would move with every entry added and
+#: the ratchet assertion below could then never fail — a gate that cannot fail.
+#: It may fall as the backlog is worked; it may never rise.
+_ALLOWLIST_CEILING = 43
 
 
 def test_every_advertised_command_exists_in_the_catalog() -> None:
