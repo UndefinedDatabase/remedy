@@ -219,11 +219,6 @@ KNOWN_DEAD_DOC_ADVERTISEMENTS: frozenset[tuple[str, str]] = frozenset(
         ('docs/system/architecture.md', 'token-policy'),
         ('docs/system/architecture.md', 'trust-report'),
         ('docs/system/architecture.md', 'workers'),
-        ('docs/system/core-product-spine-v0.md', 'self-repair proposal-approve'),
-        ('docs/system/core-product-spine-v0.md', 'self-repair proposal-deny'),
-        ('docs/system/core-product-spine-v0.md', 'self-repair proposal-edit'),
-        ('docs/system/core-product-spine-v0.md', 'self-repair proposal-list'),
-        ('docs/system/core-product-spine-v0.md', 'self-repair worker-prompt'),
         ('docs/system/vocabulary.md', 'absorb'),
     )
 )
@@ -232,7 +227,7 @@ KNOWN_DEAD_DOC_ADVERTISEMENTS: frozenset[tuple[str, str]] = frozenset(
 #: ``len(KNOWN_DEAD_DOC_ADVERTISEMENTS)`` would move with every entry added and
 #: the ratchet assertion below could then never fail — a gate that cannot fail.
 #: It may fall as the backlog is worked; it may never rise.
-_ALLOWLIST_CEILING = 27
+_ALLOWLIST_CEILING = 22
 
 
 def test_every_advertised_command_exists_in_the_catalog() -> None:

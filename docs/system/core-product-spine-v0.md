@@ -73,22 +73,6 @@ Before any worker can execute a command, an operator must explicitly approve
 the execution session. Approval is per-session, not blanket. The approval
 references a specific command template that constrains what the worker can do.
 
-## What self-repair proposals are
-
-Self-repair proposals are structured suggestions for improvements that
-Remedy generates based on its own evidence. They are metadata records, not
-executed actions.
-
-An operator can:
-- List proposals: `remedy self-repair proposal-list --json`
-- Approve a proposal: `remedy self-repair proposal-approve <id> --json`
-- Deny a proposal: `remedy self-repair proposal-deny <id> --json`
-- Edit a proposal: `remedy self-repair proposal-edit <id> --json`
-- Convert to worker prompt: `remedy self-repair worker-prompt <id> --json`
-
-Converting to a worker prompt creates a safe, bounded prompt for the operator
-to give to a worker. The proposal itself never executes anything.
-
 ## Command taxonomy
 
 ### Primary operator path
@@ -123,7 +107,6 @@ without prior explicit approval.
 |---------|-------------|-------------|
 | `dogfood create/step/show/stop/replay` | Mission internals | Debugging mission state |
 | `self inspect/plan/propose/reconcile` | Self-dogfood internals | Development |
-| `self-repair *` | Self-repair proposals | Development-time |
 | `local-advisor *` | Ollama advisory | Disabled by default |
 | `local-candidate *` | Local model candidate gen | Disabled by default |
 | `tournament *` | Model comparison harness | Evaluation only |
