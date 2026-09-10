@@ -13,19 +13,23 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 41 performs the WIDEN DECISION F275 D22 ruled: `TaskEntry` gains `output_artifact_ids`
-and a per-task `budget`, both carried symmetrically through `_export_job` and `_import_job`,
-with a test class pinning the defaults, the round trip through `json.dumps`, the defaulted
-read of a record written before this round, and the real writer and reader. It is green by
-construction — nothing reads the new fields yet — and it takes 427 lines out of the flip.
+ROUND 42 widens the UNIFIED STORE with the three capabilities the classic store has and it
+lacked, measured by applying the flip in a disposable worktree and running it: a jobs-root
+override, which 186 classic call sites pass and `data_paths.job_record_path` already
+accepted; corruption visibility, which four production sites read off
+`storage.load_job_safe`; and listing, which seventeen call sites use and the unified store
+did not offer at all. DECISION F275 D23 records why this precedes the flip rather than
+riding inside it. Green by construction — no consumer moves.
 
 ## Next Steps
 
-1. The flip itself, applied from the round 36 site enumeration, the round 38 seam list and
-   the round 40 task-pair list, as the one declared-oversize commit AGENTS.md permits per
-   feature, with the inseparability reason AND the real size stated in the handback BEFORE
-   review. It registers `Task.acceptance_checks`'s structured form as a finding naming the
-   feature that owns acceptance criteria, per amend0908-f275-finish rule 4.
+1. The flip itself, now that its target API exists: applied from the round 36 site
+   enumeration and the round 38 seam list, as the one declared-oversize commit AGENTS.md
+   permits per feature, with the inseparability reason AND the real size stated in the
+   handback BEFORE review. The `Job` type sites DECISION F275 D21 counts as part (c) and
+   the `Task` type sites DECISION F275 D22 counts have no committed per-site enumeration,
+   so that round either enumerates them first or states that it applied them from a
+   measurement taken in its own worktree.
 2. The resolver collapse DECISION F260 D5 places in T003 — `resolve_any_job_id`, the "TWO
    job stores" paragraph, every which-store branch and the absence test — with the classic
    store, which is the same commit range by that decision's own terms.
@@ -34,9 +38,10 @@ construction — nothing reads the new fields yet — and it takes 427 lines out
 
 ## Risks
 
-- Step 1 is the largest single commit this repository will take, and each round that
+- Step 1 is the largest single commit this repository will take, and every round that
   measures it has found it larger: DECISION F275 D17 sized it at 1766 changed lines, D21 at
-  3771 across 263 files, and D22 added a type pair worth 427 more, which this round removes.
-- The open set is 86 by distinct id at this round's base `bbede92f`. This round registers
+  3771 across 263 files, D22 added a type pair worth 427 more, and D23 found that three
+  pieces of its target API did not exist.
+- The open set is 86 by distinct id at this round's base `77a7d840`. This round registers
   none and resolves none. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's,
   per DECISION F272 D12.
