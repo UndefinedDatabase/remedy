@@ -1,306 +1,366 @@
-── STEP T001 (round 21 of n) — F275 ──────────────────────────
-Goal:        Move the five redaction names that seven SURVIVING modules import out of the
-             dying `provider_trust.py` and into a new `packages/common/public_text_redaction.py`
-             BYTE-IDENTICALLY, repoint every importer, and discharge two fix clauses that
-             bind this round. No file is deleted. The pair itself dies in round 22.
+── STEP T001 (round 22 of n) — F275 ──────────────────────────
+Goal:        Delete the LAST component of `.agent/f275_deletion_order.md` — the strongly
+             connected pair `provider_trust` and `provider_trust_verification` — with its
+             handler, its whole `provider` command group, its ContractAction members, four
+             whole test files, two documentation pages, and the survivor edits operator
+             RULE 3 forces. T001's module list becomes EMPTY.
 Bundle:      C0a save the block · C0b mirror the block · C1 the plan · C2 the record ·
-             C3 DECISION F275 D10 · C4 the move, the repoints, the pin and the two fix
-             clauses · C5 the handback.
+             C3 DECISION F275 D11 · C4 the deletion, in ONE commit · C5 the handback.
 Handback:    completion report + rewrite `.agent/handoff.md`.
 (the line below is the box rule: the character U+2500 repeated 62 times, nothing else)
 ──────────────────────────────────────────────────────────────
 
-BASE. This round's base is `3949f3c698fe5cef089ff0bd455fffac0fdd1f5a`, short `3949f3c6`.
-Every reading below was taken by the reviewer at that commit, in an applied dry run inside
-a disposable worktree, and none of it is a prediction unless it says so.
+BASE. `5178df03`, the round 21 handback commit. Every figure below was measured by the
+reviewer in an APPLIED dry run at that commit, inside a disposable worktree, and taken to
+a GREEN full suite there. Nothing below is a prediction unless it says so.
 
-WHY THIS ROUND EXISTS RATHER THAN GOING STRAIGHT TO THE DELETION. Round 22 deletes
-`packages.orchestration.provider_trust` and `packages.orchestration.provider_trust_verification`,
-the last component of `.agent/f275_deletion_order.md`. Seven modules that SURVIVE that
-deletion import `_scrub_public` from the dying module and three of them also import
-`_safe_path_label`; the DECISION21 slice below names all seven, measured by an `ast` sweep.
-Those helpers mask secrets, home-ish absolute paths and tracebacks in every publicly
-surfaced string, so deleting the call sites
-would REMOVE REDACTION from seven survivors — a weakening in the unsafe direction and the
-opposite of round 20's fail-safe degradation. Operator RULE 3 forbids a stub, a shim or a
-copy, so the answer is DECISION F275 D1's precedent: a byte-identical MOVE, done in its own
-round so the deletion commit stays a deletion.
+WHAT MAKES THIS ROUND HARD, STATED UP FRONT. The pair is not a leaf. Deleting it removes
+`remedy provider intake-repair`, and that command is the ONLY route by which an external
+candidate ever entered Remedy. THREE surviving things are built on that route: the
+self-dogfood attempt rail, which parks at `awaiting_external_candidate` and can no longer
+leave it; `repair_request_builder.py`, which prepares a package whose own printed
+instructions told the operator to import the answer; and `provider_patch_material.py`,
+which loses four imported names and most of its tests. DECISION F275 D11, committed at C3
+before the first `git rm`, rules all three, and the ruling is NOT "delete them": operator
+"Do not touch" forbids deleting a module outside F260's Design list, and DECISION F260 D3
+already maps the external builder to "none, deliberately". They degrade, honestly, and
+three findings record what was lost.
 
 # ============================ THE CHANGE SET ============================
 # Nothing outside this list is edited, created or deleted. G8 compares the set you measure
 # against it; the block states no total, so the numeral in your handback is yours.
 #
-# NEW
-#   packages/common/public_text_redaction.py            composed, see C4 step 1
+# DIES WHOLE — `git rm`, step 1. Line counts at the base, for orientation only.
+#   packages/orchestration/provider_trust.py 1058 · provider_trust_verification.py 1020
+#   apps/cli/commands/provider_cmd.py 170
+#   tests/orchestration/test_provider_trust.py 348 · test_provider_trust_verification.py 359
+#   tests/cli/test_provider_trust_cli.py 136 · test_provider_material_cli.py 125
+#   tests/cli/test_provider_verification_cli.py 118
+#   docs/system/provider-trust-gate-v0.md 97 · provider-trust-verification-v1.md 132
 #
-# REPOINTED — one import line each unless noted
-#   packages/orchestration/orchestrator_brain.py        1/1
-#   packages/orchestration/self_dogfood.py              1/1
-#   packages/orchestration/self_dogfood_execution.py    1/1
-#   packages/orchestration/repair_request_builder.py    1/1
-#   packages/orchestration/real_test_execution.py       1/1
-#   packages/orchestration/provider_patch_material.py   1/2   block import split
-#   packages/orchestration/provider_trust_verification.py 1/2 block import split
-#   packages/orchestration/token_economy.py             1/2   repoint + R-0855 fix clause
-#   packages/orchestration/provider_trust.py            8/31  the three chunks leave
-#
-# RATCHETS AND THE PIN
-#   tests/orchestration/cluster_deletion_map.txt        0/3   REGENERATED, never line-edited
-#   tests/orchestration/import_reachability_allowlist.txt 1/0
-#   tests/orchestration/test_orchestrator_brain.py      22/0  the TEST21 slice
+# EDITED. Deletion figures are fixed by their anchors; insertion figures are the
+# reviewer's dry run and are EXPECTATIONS about wording, not numbers you owe.
+#   packages/orchestration/orchestrator_brain.py            8/83   step 2
+#   packages/orchestration/self_dogfood_execution.py       24/40   step 3
+#   packages/orchestration/repair_request_builder.py       19/33   step 4
+#   packages/orchestration/provider_patch_material.py       6/24   step 5
+#   packages/orchestration/self_dogfood.py 0/13 · run_contract.py 0/19    step 6
+#   apps/cli/command_catalog.py 3/97 · commands/__init__.py 1/2           step 7
+#   apps/cli/commands/repair_cmd.py                         0/1    step 4
+#   pyproject.toml                                          0/1    step 8
+#   tests/orchestration/test_provider_patch_material.py     9/176  step 5
+#   tests/orchestration/test_repair_request_builder.py     11/68   step 4
+#   tests/orchestration/test_self_dogfood_execution.py     11/79   step 3
+#   tests/cli/test_repair_request_cli.py 7/3 · test_self_dogfood_execution_cli.py 2/1
+#   tests/orchestration/cluster_deletion_map.txt 0/5 · test_cluster_deletion_map.py 1/4
+#   tests/orchestration/import_reachability_allowlist.txt 0/3              step 8
+#   .agent/f275_deletion_order.md                           0/1    step 8
+#   docs/README.md 0/4 · system/orchestrator-brain-v0.md 6/8              step 9
+#   docs/system/self-dogfood-execution-v0.md 19/18 · provider-patch-materialization-v0.md 1/3
+#   docs/system/repair-request-builder-v0.md 0/2 · quality-baseline-v0.md 0/1
+#   docs/archive/candidate-generator-adapter-future.md      0/1    step 9
 #
 # STATE
 #   .agent/plan.md .agent/live_review.md .agent/prose_slips.md .agent/decisions.md
-#   .agent/authored/f275-r21.md .agent/last_block.md .agent/handoff.md
+#   .agent/authored/f275-r22.md .agent/last_block.md .agent/handoff.md
 #
-# Over the TRACKED paths above — that is, every path listed except the new file, which is
-# untracked at the base — the reviewer's applied dry run measured 39 insertions against 45
-# deletions. The insertion figures
-# for the two block-import splits and for `provider_trust.py` are PREDICTIONS about
-# wording, not measurements you can be held to; every deletion figure is fixed by its
-# anchor. Report what you measure.
+# The reviewer's applied dry run measured 128 insertions against 4253 deletions over the
+# non-`.agent/` paths. Deletions carry no insertions, so the DECISION F104 D1 cap of 500
+# insertions is not in play for C4.
 
 # ============================ CONSTRAINTS ============================
 1. Apply every authored slice BYTE FOR BYTE, extracted from the COMMITTED C0a blob between
-   its marker lines with the markers EXCLUDED. Never retype a slice, never edit one. If a
-   slice is wrong, apply it as given and say so in the handback.
-2. The three MOVED CHUNKS are NOT retyped either. They are extracted BY LINE SPAN from the
-   committed base blob `3949f3c6:packages/orchestration/provider_trust.py`, which is how
-   byte-identity is proved mechanically rather than claimed.
-3. C3 commits DECISION F275 D10 BEFORE C4 touches any production file, exactly as round
-   20's D9 preceded its first `git rm`.
-4. NO FILE IS DELETED THIS ROUND, and no command, catalog entry or cockpit section is
-   removed. `git rm` does not appear in this round.
-5. Two pre-existing dangling `related=` references in `apps/cli/command_catalog.py` —
-   `mission.run -> dogfood.run-loop` and `repo.status -> readiness.show` — are held by
-   R-0859 and are NOT repaired here. This round must add none.
-6. The 24 pre-existing repo-wide `ruff` errors are NOT repaired here. This round must add
-   none.
-7. You write NO verdict, NO `Done:` paragraph and NO finding. R-0862 is RESOLVED by C4, so
-   C4 writes exactly one line `Landed: R-0862 — <one line: what changed, which commit>` and
-   nothing else; the reviewer replaces it with the authored `Done:` text at the next gate.
-   R-0855 is NOT resolved — its fix clause binds every remaining deletion round of this
-   feature and this round discharges only one instance of it, so write no `Landed:` line
-   for it.
-8. All disposable work lives under the gitignored `.remedy-wt/`. `/tmp` is denied in this
-   environment. Remove every worktree and every scratch `.py` file before the final
-   `git status --porcelain`.
-9. The full suite runs in the PRIMARY CHECKOUT, serially, never `-n auto` and never in a
-   worktree: under `-n auto` the `ui_server` command-channel tests race for a port, and in
-   a fresh worktree `apps/ui/node_modules` is cold, which is the only reason the reviewer's
-   dry run reddened `TestVitestFrontendTestFoundation::test_vitest_passes` on a first pass
-   there — it passed on the second pass in that same tree.
+   its marker lines with the markers EXCLUDED. Never retype a slice, never edit one.
+2. C3 commits DECISION F275 D11 BEFORE the first `git rm`. That ordering is the whole
+   reason C3 exists.
+3. C4 IS ONE COMMIT. Operator RULE 1 in `docs/roadmap/features/T2_F275.md` T001 makes one
+   module group atomic and forbids splitting it; a half-deleted pair is the state this work
+   must not leave behind. The insertion count is small, so no cap forces a split.
+4. R-0855's fix clause binds every remaining deletion round of this feature, and this is
+   one: for EVERY definition you delete, sweep the neighbourhood in the SAME commit — the
+   callers, the constants left with no reader, and the section comment above it. Step 3
+   names one such constant the reviewer found (`_self_provider_label`) and step 7 names an
+   orphaned section comment; report anything else you find.
+5. R-0843's counter-measure, in the same commit: sweep EVERY surviving file of this change
+   set for PROSE the deletion falsified — in each file's own words, not in the deleted
+   modules' identifiers — and report the result INCLUDING "nothing" where that is the
+   answer. Steps 3, 4, 5 and 9 already order the prose the reviewer found; a second reading
+   is the point.
+6. NO stub, NO shim, NO copy of deleted code into a survivor, and no compatibility reader.
+   AGENTS.md Scope Control forbids them by name.
+7. You write NO verdict, NO `Done:` paragraph and NO finding. R-0866, R-0867 and R-0868 are
+   REGISTERED by the reviewer's LEDGER22 slice at C2, not by you. No finding is resolved
+   this round, so write NO `Landed:` line at all.
+8. Do not repair the 24 pre-existing repo-wide `ruff` findings. The dry run ends at exactly
+   24, the base figure, and G7 compares the two distributions.
+9. All disposable work lives under the gitignored `.remedy-wt/`; `/tmp` is denied. Use a
+   worktree name nothing else will collide with. Remove and prune every worktree and delete
+   every scratch file before the final `git status --porcelain`.
+10. The full suite runs in the PRIMARY CHECKOUT, serially, never `-n auto`, never in a
+    worktree. A fresh worktree has no vitest under `apps/ui/node_modules`, and
+    `TestVitestFrontendTestFoundation::test_vitest_passes` fails there for that reason
+    alone — the reviewer measured it and deselected it from the dry run for that reason.
 
 # ============================ C4 — THE ORDERED WORK ============================
 
-STEP 1 — CREATE `packages/common/public_text_redaction.py` BY COMPOSITION.
-The file is exactly, with no other bytes:
+STEP 1 — `git rm` every file listed under DIES WHOLE. Three are test files the reviewer's
+first token sweep did NOT find, because they drive the commands through a
+`run_grouped_cli(["provider", ...])` helper that splits the command name across arguments:
+`tests/cli/test_provider_trust_cli.py`, `test_provider_material_cli.py` and
+`test_provider_verification_cli.py`. The applied suite found them. If your own sweep finds
+a further such file, STOP and report it rather than widening the change set.
 
-    HEADER21  +  span(530,540)  +  "\n\n"  +  span(516,523)  +  "\n\n"  +  span(601,606)
+STEP 2 — `packages/orchestration/orchestrator_brain.py`. Delete, each anchor unique at
+`5178df03`: the `IMPORT_CANDIDATE` and `PROVIDER_TRUST_VERIFICATION` members of
+`OptionKind`; their two entries in `_BASE_SCORE`; the `"trust_accepted"` and
+`"trust_rejected"` keys from the `sig` defaults; the whole `# Provider trust + materials +
+requests.` try-block that reads `load_trust_reports` (KEEP the `load_materials` block that
+follows it — `provider_patch_material` survives, and re-title the comment so it no longer
+promises trust); the whole `# Provider Trust Verification v1 signals (Step 1554).`
+try/except block; the `# Self attempt awaiting candidate.` option block, which is the LIVE
+dead advertisement of `remedy provider intake-repair`; the two verification option blocks
+and the repeated-rejection block that follow `# Provider Trust Verification v1 (Step
+1554).`; the two trust fields in the evidence fingerprint; and the `trust_rejected >= 2`
+BLOCK branch of `_loop_guard`.
+THEN, in `_routing_plan`, NARROW `needs_candidate` to its second disjunct only — drop
+`sig.get("self_attempts_awaiting", 0) > 0` — and rewrite the tier's reason string, which
+currently promises "but only through the Trust Gate, never applied directly" and is false
+the moment the gate is gone. KEEP the `EXTERNAL_BUILDER_NEEDED` tier itself: it is pinned
+by `TestModelRouting::test_candidate_generation_external_builder`, which the reviewer
+confirmed still passes.
+KEEP `self_attempts_awaiting` everywhere else. Its store survives, so the signal, the
+`self_awaiting_candidate` situation key and the fingerprint field are all still true.
 
-where HEADER21 is the authored slice below and `span(a,b)` is lines a to b INCLUSIVE,
-1-indexed, of the committed blob `3949f3c6:packages/orchestration/provider_trust.py`, read
-with `git show` and split with `splitlines(keepends=True)`. The three spans are, at that
-commit: 530-540 the three pattern constants (580 bytes), 516-523 `_scrub_public` (416
-bytes), 601-606 `_safe_path_label` (234 bytes). Composed, the file is 2965 bytes at sha256
-`24d64ed1b093dc1e3c190164c1e85f5ae672d22adead20c30b5b680b22226d9c`. The reviewer ran this
-exact composition and it reproduced the dry run's file byte for byte.
+STEP 3 — `packages/orchestration/self_dogfood_execution.py` AND its two test files. This is
+the survivor DECISION F275 D11 part (a) rules.
+  (a) Delete, in `reconcile_self_attempt`, the local `load_trust_reports` import and the
+      whole `if not a.patch_intent_id:` candidate-linking block beneath the comment
+      beginning `# Link a materialized provider intent`. Replace the block with a
+      deliberate-absence comment naming what is gone, why, and R-0866. Do NOT touch the
+      `if a.patch_intent_id:` block that follows: it still runs for an attempt whose intent
+      is already on disk, so it is degraded reachability, not dead code.
+  (b) `_self_provider_label` loses its last production reader when (a) lands and the two
+      advertisements in (c) go. DELETE the function — this is constraint 4's readerless
+      definition, and the reviewer verified no other file calls it.
+  (c) TWO next-safe-action strings advertise the deleted command, and both are
+      user-facing: the assignment in `start_self_execution` and the
+      `AWAITING_EXTERNAL_CANDIDATE` branch of `_next_action_for`. Replace both with
+      `"remedy self status --json"`, which is catalog-backed and already used by this
+      module's attempt-not-found branch.
+  (d) Rewrite the head-docstring pipeline so it ENDS at `awaiting_external_candidate`, and
+      the docstring of `reconcile_self_attempt`, which lists "provider trust reports" among
+      the durable truths it reads.
+  (e) In `tests/orchestration/test_self_dogfood_execution.py`: delete
+      `TestEndToEnd::test_full_self_improvement_flow` and
+      `test_reconcile_does_not_mislink_foreign_intent` — both drive the deleted route, and
+      the second is R-0084's mislink guard, which is now held BY CONSTRUCTION because no
+      linking code remains. Re-pin `test_execute_awaits_candidate` and
+      `test_next_actions_catalog_backed` on the SURVIVING next action; the second is worth
+      strengthening while you are there, because it currently validates a string the test
+      itself supplies rather than the one the attempt reports.
+  (f) In `tests/cli/test_self_dogfood_execution_cli.py`, re-pin the one assertion on
+      `next_safe_action`.
 
-STEP 2 — THE SINGLE-LINE REPOINTS. Each FROM occurs EXACTLY ONCE in its file at
-`3949f3c6`; the reviewer counted each one. Every pair below is a REWRITE, not an append:
-the containment test was run per pair and printed `TO contains FROM: false` for each, so
-§4.9's append obligation does not apply and a FROM-zero count after the edit does.
+STEP 4 — `packages/orchestration/repair_request_builder.py`, its CLI and its two test
+files. DECISION F275 D11 part (b). FIVE live advertisements sit here, and one of them is
+inside the request text a human is handed:
+  (a) the head docstring's `remedy provider intake-repair ... → Trust Gate → ...` pipeline;
+  (b) `_import_next_steps`, whose steps 3 and 4 name `provider intake-repair` and
+      `provider trust-show`;
+  (c) the `intake_cmd` and `trust_cmd` locals and the `output_intake_command` /
+      `trust_gate_command` fields they fill — those fields exist on BOTH result dataclasses
+      and in BOTH `to_dict` bodies, and they are REMOVED rather than emptied, because
+      `apps/cli/commands/repair_cmd.py` PRINTS `output_intake_command` to the operator and
+      an empty print is a worse surface than none;
+  (d) the `safe_summary` that ends "import the response via provider intake-repair";
+  (e) the `CandidateGeneratorExecutionUnavailable` message that tells the caller to
+      "import it via 'remedy provider intake-repair'".
+  Delete the print line in `apps/cli/commands/repair_cmd.py`. In
+  `tests/orchestration/test_repair_request_builder.py` delete the whole simulated
+  end-to-end section at the tail of the file and re-pin
+  `TestArchitectureGuards::test_next_action_catalog_backed` so it asserts the ABSENCE of
+  both dead commands and validates every command the surviving steps still name. In
+  `tests/cli/test_repair_request_cli.py` re-pin the two assertions, one on the JSON shape
+  and one on the TEXT surface.
 
-  (a) packages/orchestration/orchestrator_brain.py
-  (b) packages/orchestration/self_dogfood.py
-  (c) packages/orchestration/self_dogfood_execution.py
-  (d) packages/orchestration/repair_request_builder.py
-      FROM (identical in all four, four leading spaces, one line):
-          from packages.orchestration.provider_trust import _scrub_public
-      TO:
-          from packages.common.public_text_redaction import _scrub_public
+STEP 5 — `packages/orchestration/provider_patch_material.py` and its test file. DECISION
+F275 D11 part (c). Delete the top-level `Severity, TrustStatus, validate_paths` import
+block and, inside `verify_provider_patch_material`, the local `get_trust_report` and
+`storage` imports together with the two checks they feed — `paths_safe` and
+`trust_report_accepted`. Put a deliberate-absence comment in their place naming R-0867: the
+function is left STRICTLY WEAKER, its `ok` strictly easier to satisfy, and that is stated
+rather than hidden. The reviewer measured that it has NO production caller anywhere under
+`packages/` or `apps/` once the pair dies, which is why RULE 3's removal is defensible here
+and why R-0867 names the feature that should reap the module.
+In `tests/orchestration/test_provider_patch_material.py`, everything that reached its
+subject through `_intake` dies with the route: `TestMaterialization`,
+`TestApplyCompatibility`, `TestRedaction` and
+`TestArchitectureGuards::test_accepted_intent_resolvable_and_catalog_backed`, plus the
+`env` fixture and the `_job` / `_intake` helpers they used. `TestConversion` and the three
+source-reading guards SURVIVE untouched. Rewrite the module docstring, which currently
+promises the coverage that just left.
 
-  (e) packages/orchestration/real_test_execution.py
-  (f) packages/orchestration/token_economy.py
-      FROM (identical in both, column zero, one line):
-      from packages.orchestration.provider_trust import _safe_path_label, _scrub_public
-      TO:
-      from packages.common.public_text_redaction import _safe_path_label, _scrub_public
+STEP 6 — the two files that lose a block each.
+`packages/orchestration/self_dogfood.py`: delete the whole `# Provider trust accepted but
+not materialized.` try-block, which is the only place it touches the pair.
+`packages/orchestration/run_contract.py`: delete the SIX provider members of
+`ContractAction` with their two comment blocks, and their six lines in the safe-action
+tuple. The reviewer resolved every one of the six against the whole tree: not one is
+referenced outside `run_contract.py` and the dying files.
 
-STEP 3 — THE BLOCK-IMPORT SPLITS. In each file the existing parenthesised
-`from packages.orchestration.provider_trust import (...)` block loses `_safe_path_label`
-and `_scrub_public` from its name list and KEEPS every other name in place and in order; a
-new single line
-`from packages.common.public_text_redaction import _safe_path_label, _scrub_public`
-is inserted DIRECTLY ABOVE the surviving block — where `ruff`'s isort rules put it, because
-`packages.common` sorts before `packages.orchestration`.
-  (g) packages/orchestration/provider_patch_material.py — the block keeps
-      `Severity`, `TrustStatus`, `validate_paths`.
-  (h) packages/orchestration/provider_trust_verification.py — the block keeps
-      `ProviderCandidateRepair`, `Severity`, `_is_docs_path`, `_is_test_path`,
-      `_read_quarantined_raw`, `parse_candidate`, `scan_secrets`.
+STEP 7 — `apps/cli/command_catalog.py` and `apps/cli/commands/__init__.py`.
+Delete the `"provider"` GroupDef and the WHOLE provider section, which runs from the
+comment line beginning `# ── provider (trust gate` up to but NOT including the comment line
+beginning `# ── self (self-dogfood planner`. It yields exactly five ids —
+`provider.intake-repair`, `provider.trust-show`, `provider.material-show`,
+`provider.verify`, `provider.verification-show`. DIRECTLY ABOVE that section sits an
+ORPHANED section comment, `# ── overnight mission contract (Review/Repair Spine v0)`, with
+no entries under it at all — a leftover from an earlier round. Delete it and its blank line
+too; that is constraint 4.
+THEN REPAIR THE THREE `related=` TUPLES that would otherwise become the FIRST dangling
+references this feature has created, which R-0859 forbids by name: two on the `repair.*`
+entries and one on a `self.*` entry, each naming `provider.intake-repair`. Drop only that
+member and keep the tuple.
+Drop `provider_cmd` from BOTH the sorted import block and the dispatcher tuple in
+`apps/cli/commands/__init__.py`.
 
-STEP 4 — `packages/orchestration/provider_trust.py` LOSES THE MOVED CHUNKS AND GAINS ONE
-IMPORT. Delete span(516,523), span(530,540) and span(601,606) TOGETHER WITH the two blank
-lines that follow each of them, so the surrounding section comments keep their usual two
-blank lines above and below and no triple blank line is created. The module still USES all
-five names — `scan_secrets` reads the three patterns, `_safe_text` calls `_scrub_public`,
-`validate_paths` calls `_safe_path_label` — so insert directly after the line
-`from uuid import UUID, uuid4`, separated from it by one blank line:
+STEP 8 — the ratchets, the order file and one line of `pyproject.toml`.
+`tests/orchestration/cluster_deletion_map.txt` is REGENERATED from the live import graph,
+never line-edited, and comes out with its comment header and NO edge lines.
+`CLUSTER_MODULES` in `tests/orchestration/test_cluster_deletion_map.py` becomes the EMPTY
+tuple — annotate it so the type is still readable. `.agent/f275_deletion_order.md` loses its
+last component line, leaving its 26-line header byte-identical.
+`tests/orchestration/import_reachability_allowlist.txt` loses exactly three entries.
+`pyproject.toml` carries a `per-file-ignores` entry for
+`packages/orchestration/provider_trust_verification.py`; delete that line, because a
+per-file ignore for a file that does not exist is a rule nothing can ever apply.
 
-    from packages.common.public_text_redaction import (
-        _ABS_PATH_RE,
-        _SECRET_PATTERNS,
-        _TRACEBACK_RE,
-        _safe_path_label,
-        _scrub_public,
-    )
-
-This is a genuine use, not a re-export shim: nothing outside this file imports those names
-from it after step 3.
-
-STEP 5 — R-0855's FIX CLAUSE ON `packages/orchestration/token_economy.py`, which binds the
-round that next edits this file, and step 2(f) does. DELETE the single line, which occurs
-exactly once at `3949f3c6` and carries four leading spaces:
-
-    # Approval: unknown context OR hard-safety floor OR over-budget OR over the approval threshold.
-
-Not one of the four disjuncts it names is a term of the expression beneath it since round
-20. The round-20 comment two lines below it already states the truth, and `over_threshold`
-directly beneath keeps its reader. THEN RUN R-0843's COUNTER-MEASURE over the OTHER eight
-surviving production files of this change set: sweep each for PROSE the move falsified — in
-the file's own words, not in the moved identifiers — and report what you found, INCLUDING
-"nothing" where that is the answer. The reviewer's dry run found nothing outside this one
-line; a second reading is the point.
-
-STEP 6 — THE TEST PIN, R-0862's FIX CLAUSE. Apply the TEST21 slice into
-`tests/orchestration/test_orchestrator_brain.py`, inserted so that it sits between
-`test_candidate_generation_external_builder` and `test_routing_never_executes` inside
-`class TestModelRouting`. The insertion point is the line `    def test_routing_never_executes(self, env):`
-which occurs exactly once in that file at `3949f3c6`; the slice goes DIRECTLY ABOVE it and
-the slice's own trailing blank line supplies the separation.
-
-STEP 7 — THE RATCHETS.
-  `tests/orchestration/cluster_deletion_map.txt` is REGENERATED from the live import graph,
-  never line-edited: import `measured_edges()` from `tests/orchestration/test_cluster_deletion_map.py`,
-  keep the file's comment header verbatim, and write one `<module> <- <consumer path>` line
-  per edge in sorted order. At `3949f3c6` the file holds EIGHT edges; after steps 2 to 4 the
-  reviewer measured FIVE, the three that leave being `provider_trust <- real_test_execution.py`,
-  `<- repair_request_builder.py` and `<- token_economy.py`. Those three modules import
-  nothing else from the dying pair; the other four still do.
-  `tests/orchestration/import_reachability_allowlist.txt` gains the single line
-  `packages.common.public_text_redaction`, in sorted position between
-  `packages.common.path_redaction` and `packages.common.secure_fs`. The new module is
-  reachable from the D11 (c) entry points through seven importers, so assertion (b) reds
-  without this line.
+STEP 9 — the documentation. R-0861's fix clause binds every remaining deletion round, so
+these are named as PAGES rather than left to a consumer map.
+`docs/README.md` loses FOUR index rows: the two deleted pages appear in both the quick-find
+table and the system table. `docs/system/quality-baseline-v0.md` loses the coverage row for
+the deleted handler. `docs/system/repair-request-builder-v0.md`,
+`docs/system/provider-patch-materialization-v0.md` and
+`docs/archive/candidate-generator-adapter-future.md` lose the links that point at the two
+deleted pages; in the materialization page the FIRST sentence carries one of them inline.
+`docs/system/orchestrator-brain-v0.md` loses the trust signals from its situation list, its
+loop-guard list, its anti-loop paragraph, its Future bullet and its two See-also links.
+`docs/system/self-dogfood-execution-v0.md` is the one that needs real prose: its Flow block,
+its "candidate output re-enters only through the existing Provider Trust Gate" rule, its
+States paragraph and its See-also link all describe a round trip that no longer exists.
+Write the deliberate absence AGENTS.md's Code Discoverability Conventions require — a
+reader will look for the import step exactly there — and name R-0866.
 
 # ============================ DONE WHEN ============================
 Run every gate as `bash -c '<cmd>; echo "REAL_EXIT=$?"'` and record the REAL exit code.
-Report ONE line per gate in the handback. Every gate below runs at or before C4, so the
-handback C5 writes can quote all of them.
+Report ONE line per gate in the handback. Every gate runs at or before C4, so the handback
+C5 writes can quote all of them.
 
 G1 TRANSPORT — one digest comparison and nothing else. The delegation source
-`.remedy-wt/f275-r21.md`, the committed `.agent/authored/f275-r21.md` and the committed
-`.agent/last_block.md` are all the same byte length at the same sha256 and compare
-BYTE-EQUAL. C0a copies with `shutil.copyfile`; C0b takes its bytes from the COMMITTED C0a
-blob via `git show`, never from the scratch file. State that per §3 item 37 this chain
-covers those three artefacts and claims nothing about the emitted bytes.
+`.remedy-wt/f275-r22.md`, the committed `.agent/authored/f275-r22.md` and the committed
+`.agent/last_block.md` are the same byte length at the same sha256 and compare BYTE-EQUAL.
+C0a copies with `shutil.copyfile`; C0b takes its bytes from the COMMITTED C0a blob via
+`git show`. State that per §3 item 37 this chain covers those three artefacts and claims
+nothing about the emitted bytes.
 
-G2 THE PLAN AND THE SLICES — `.agent/plan.md` at C1 is BYTE-IDENTICAL to the PLAN21 slice,
-under the AGENTS.md cap of 50 lines, with `## Goal` and `## Next Steps` each occurring
-exactly once. EVERY slice this block carries occurs EXACTLY ONCE in its own target, and a
-grep for every one of this block's marker strings over every one of those targets returns
-ZERO for each target. Report the slice count and the marker count YOU measured.
+G2 THE PLAN AND THE SLICES — `.agent/plan.md` at C1 is BYTE-IDENTICAL to the PLAN22 slice,
+under the AGENTS.md cap of 50 lines, with `## Goal` and `## Next Steps` each exactly once.
+EVERY slice this block carries occurs EXACTLY ONCE in its own target, and a grep for every
+one of this block's marker strings over every one of those targets returns ZERO for each
+target. Report the slice count and the marker count YOU measured.
 
 G3 THE RECORD — the three appends, each with a byte reader, a structural reader and a
-negative control. For LEDGER21, SLIPS21 and DECISION21: the committed post-blob equals
-`pre + newline + slice + newline` exactly; the structural reader COUNTS N from the slice
-itself and compares the LAST N blank-line units of the whole post-file IN ORDER against the
-slice's N paragraphs with a per-unit sha256 on both sides; the unit BEFORE that region lies
-inside the pre blob; and ONE byte is flipped in memory inside the FIRST appended paragraph
-of each append, which BOTH readers must REJECT while BOTH ACCEPT the truth. Then report
-`^Gate: ` before and after, `^Gate: F275 R20 ` exactly once, `^Note: F275 R21 ` exactly
-once, `^## DECISION F275 D10 ` exactly once, and THE OPEN SET BY DISTINCT ID at the base
-and at C2 with `Landed:` never subtracted.
+negative control. For LEDGER22, SLIPS22 and DECISION22: the committed post-blob equals the
+pre-blob, then ONE newline, then the slice exactly as extracted — read the joining byte
+back from the post blob at offset `len(pre)` and report it, rather than assuming it. The
+structural reader COUNTS N from the slice itself and compares the LAST N blank-line units
+of the whole post-file IN ORDER against the slice's N paragraphs with a per-unit sha256 on
+both sides; the unit BEFORE that region lies inside the pre blob; and ONE byte is flipped
+in memory inside the FIRST appended paragraph of each append, which BOTH readers must
+REJECT while BOTH ACCEPT the truth. Then report `^Gate: ` before and after,
+`^Gate: F275 R21 `, `^Note: F275 R22 `, `^- R-0866 — `, `^- R-0867 — `, `^- R-0868 — ` and
+`^## DECISION F275 D11 ` each exactly once, and THE OPEN SET BY DISTINCT ID at the base and
+at C2, with `Landed:` never subtracted.
 
-G4 THE MOVE IS BYTE-IDENTICAL — the load-bearing gate of this round. Re-read the three
-spans from `3949f3c6:packages/orchestration/provider_trust.py`, and show that each occurs
-EXACTLY ONCE in the new `packages/common/public_text_redaction.py` at C4 and ZERO TIMES in
-`packages/orchestration/provider_trust.py` at C4. Show that the composition of step 1
-reproduces the committed new file byte for byte. Report the committed file's byte length
-and sha256 beside the two figures this block states.
+G4 THE DELETION IS COMPLETE AND THE SWEEP IS READ AS ITS RAW LIST — R-0861's fix clause,
+and the gate this round's own guard cannot answer. Over every tracked file outside
+`.agent/` and `.data/`, sweep for the module names `provider_trust`,
+`provider_trust_verification`, `provider_cmd`, the five deleted command ids, the six deleted
+`ContractAction` values, and the SPACED advertisement forms `remedy provider intake-repair`,
+`remedy provider trust-show`, `remedy provider material-show`, `remedy provider verify` and
+`remedy provider verification-show`. PRINT THE RAW LIST IN FULL AND DO NOT TRUNCATE IT, and
+classify every line. The reviewer's dry run leaves survivors only under
+`docs/roadmap/features/`, which is history prose about `[x]` features and is the legitimate
+survivor class this feature has had since round 19; ANY hit under `docs/guides/`,
+`docs/system/`, `packages/`, `apps/`, `scripts/` or `tests/` is a defect of this round.
+The spaced forms must return ZERO everywhere.
+RUN `tests/cli/test_advertised_commands.py` separately and report it, then STATE PLAINLY
+that its pass is NOT evidence for this round: deleting the whole `provider` group removes it
+from that guard's `GROUPS` and the guard skips what it cannot resolve, which is R-0847.
 
-G5 REDACTION STILL BITES FROM ITS NEW HOME — a mutation red-proof, inside a disposable
-worktree created at C4, with `__pycache__` purged and `python3 -B` before every run.
-  (a) Show `import packages.common.public_text_redaction` resolves to the file INSIDE that
-      worktree, so no editable install shadows it.
-  (b) The revert target BY PATH is `<worktree>/packages/common/public_text_redaction.py`.
-      The mutation inserts the line `    return text` directly above the line
-      `    scrubbed = text`, which occurs exactly once in THAT file.
-  (c) CONTROL, unmutated, over this node set — the reviewer measured exit 0, 261 passed:
-      tests/orchestration/test_real_test_execution.py tests/orchestration/test_token_economy.py
-      tests/orchestration/test_repair_request_builder.py tests/orchestration/test_self_dogfood.py
-      tests/orchestration/test_self_dogfood_execution.py tests/orchestration/test_provider_patch_material.py
-      tests/orchestration/test_orchestrator_brain.py tests/orchestration/test_provider_trust.py
-      tests/test_trust_report.py
-  (d) MUTATION over the SAME node set — the reviewer measured exit 1, 5 failed, 256 passed,
-      and the five reach three different modules: two in `test_real_test_execution.py`, one
-      in `test_orchestrator_brain.py` and two in `test_provider_trust.py`. NAME the tests
-      that went red. `test_token_economy.py` does NOT go red and is not expected to.
-  (e) REVERT BY PATH, purge, re-run, and show the control figure returns and the worktree
+G5 THE SURVIVORS STILL REFUSE — the mutation red-proof, in a disposable worktree created at
+C4, `__pycache__` purged and `python3 -B` before every run. This round REMOVES safety checks
+from a survivor, so the colour that matters is that the checks which REMAIN still bite.
+  (a) Show the import of `packages.orchestration.self_dogfood_execution` resolves INSIDE
+      that worktree, so no editable install shadows it.
+  (b) CONTROL, unmutated, over `tests/orchestration/test_self_dogfood_execution.py` and
+      `tests/orchestration/test_repair_request_builder.py` — report exit code and count.
+  (c) MUTATION, by PATH, in `<worktree>/packages/orchestration/self_dogfood_execution.py`:
+      make `_transition` accept an illegal transition — return without raising instead of
+      rejecting. The bytes you change must occur EXACTLY ONCE in that file; report the
+      count before you change them. `TestStartAndIdempotency::test_transition_rejects_illegal`
+      must go RED. NAME the tests that went red.
+  (d) REVERT BY PATH, purge, re-run, and show the control figure returns and the worktree
       porcelain is EMPTY.
-STOP CONDITION: if (d) comes out GREEN, do not push. Reset the unpushed C4, hand back with
-the transcript, and say so — a green mutation there means seven survivors lost their
-masking silently.
+STOP CONDITION: if (c) comes out GREEN, do not push. Reset the unpushed C4, hand back with
+the transcript, and say so — a green mutation there means the state machine this round
+leaves in place is not guarded at all.
 
-G6 THE HUMAN-REVIEW TIER IS PINNED — R-0862's fix clause requires the colour, not just the
-test. In the same disposable worktree: the CONTROL over
-`tests/orchestration/test_orchestrator_brain.py::TestModelRouting` and
-`::TestAntiLoop` is exit 0 at 6 passed. The MUTATION replaces, in
-`<worktree>/packages/orchestration/orchestrator_brain.py`, the two-line condition opening
-`_routing_plan` — `    if s.loop_guard.status in (LoopGuardStatus.BLOCK,` and its
-continuation line ending `LoopGuardStatus.REQUIRE_HUMAN_REVIEW):` — with `    if False:`.
-That two-line form occurs EXACTLY ONCE in that file at `3949f3c6`; the similar one-line
-form near the option-scoring code is a DIFFERENT string and must not be touched. The
-reviewer measured exit 1 with EXACTLY ONE failure,
-`TestModelRouting::test_loop_guard_forces_human_review_tier`, reading
-`assert 'local_advisor_preferred' == 'human_review_required'`. Revert and show 6 passed
-again. REVERT BY THE EXACT FROM/TO STRINGS, not with `git checkout --`: at the moment this
-gate runs the file also carries this round's own repoint, and a checkout would silently
-discard it — the reviewer's dry run did exactly that and had to re-apply.
+G6 THE CATALOG AND THE REFERENTIAL CLOSURE — read the SHIPPED catalog by importing
+`_BASE_CATALOG` and `GROUPS` from `apps.cli.command_catalog`, never by grepping the source,
+and read the base the same way inside a READ-ONLY disposable worktree at `5178df03`. Report,
+at BOTH revisions: the command count, the group count, whether `"provider"` is in `GROUPS`,
+the ids beginning `provider.`, and the duplicate-id count. Then DISCHARGE R-0859's STANDING
+OBLIGATION: resolve EVERY `related=` tuple in the catalog against the LIVE id set at both
+revisions and report the dangling references at each. TWO are pre-existing —
+`mission.run -> dogfood.run-loop` and `repo.status -> readiness.show` — and constraint 8's
+sibling rule leaves them alone; this round must add NONE, and step 7 repairs the three it
+would otherwise have created.
 
-G7 THE GUARDS, THE SUITE AND RUFF.
-  (a) The ratchets and the pin — all under `tests/orchestration/`, so pass that prefix with
-      each of: `test_cluster_deletion_map.py`, `test_cluster_deletion_order.py`,
-      `test_import_reachability.py`, `test_orchestrator_brain.py`, `test_provider_trust.py`,
-      `test_provider_trust_verification.py`, `test_token_economy.py`,
-      `test_self_dogfood_execution.py`.
+G7 THE SUITE, THE GUARDS AND RUFF.
+  (a) The guards — under `tests/orchestration/`: `test_cluster_deletion_map.py`,
+      `test_cluster_deletion_order.py`, `test_import_reachability.py`,
+      `test_orchestrator_brain.py`, `test_self_dogfood_execution.py`,
+      `test_repair_request_builder.py`, `test_provider_patch_material.py`,
+      `test_self_dogfood.py`, `test_evidence_index.py`; plus `tests/docs/`,
+      `tests/test_grouped_cli.py`, `tests/cli/test_cli_ux.py`.
   (b) The canary `tests/cli/test_golden_path.py`.
   (c) THE FULL SUITE, `python3 -B -m pytest tests/ -q`, SERIALLY, in the PRIMARY CHECKOUT,
       with C4 committed. Close the arithmetic against the base by a NODE-ID SET DIFFERENCE
-      of two `--collect-only` runs, not by counting functions. The reviewer's expectation,
-      stated as an expectation: exactly ONE id is ADDED,
-      `tests/orchestration/test_orchestrator_brain.py::TestModelRouting::test_loop_guard_forces_human_review_tier`,
-      and NONE is removed. Report the measured sets.
-  (d) `python3 -B -m ruff check` over every `.py` path of the change set — the
-      reviewer measured `All checks passed!` — and the repo-wide PARITY reading over
-      `packages`, `apps` and `tests` at BOTH the base and C4, taken in a DISPOSABLE
-      READ-ONLY worktree for the base and NEVER by writing a base blob over a tracked file.
-      The per-file distributions must be identical; report a `diff` of them.
+      of two `--collect-only` runs — take the WHOLE line as the node id, because a
+      parametrized id may contain a space and splitting on it collapses distinct ids into
+      one. The reviewer measured, as an expectation: 105 ids REMOVED and 2 ADDED against a
+      base of 18478. Report the sets you measure and attribute the removals by file.
+  (d) `python3 -B -m ruff check` over every surviving `.py` path of the change set, and the
+      repo-wide PARITY reading over `packages`, `apps` and `tests` at BOTH the base and C4 —
+      the base taken in a DISPOSABLE READ-ONLY worktree, NEVER by writing a base blob over a
+      tracked file. Both revisions read `Found 24 errors.` in the dry run. Report a `diff`
+      of the two per-file distributions, and say how many findings your parser actually
+      parsed, so a silent parse failure cannot pass for agreement.
 
 G8 THE TREE — `.agent/STOP` re-read from disk; `git status --porcelain` EMPTY;
 `git worktree list` holding ONE entry; the branch correct; `git diff --name-only <C3>..<C4>`
-compared AS A SET against the C4 paths this block's change set names, with MISSING and
-EXTRA both reported and the size of each set the numeral YOU measured; and
-the per-commit insertion count with its parent count for every commit BEFORE C5, each
-against the DECISION F104 D1 cap of 500. Compare every `+/-` cell of your `## Commits`
-tables CELL BY CELL against `git show --numstat` for its commit and say whether they agree.
+compared AS A SET against the C4 paths this block's change set names, with MISSING and EXTRA
+both reported and the size of each set the numeral YOU measured; and the per-commit insertion
+count with its parent count for every commit BEFORE C5, each against the DECISION F104 D1 cap
+of 500. Compare every `+/-` cell of your `## Commits` tables CELL BY CELL against
+`git show --numstat` for its commit and say whether they agree.
 
 # ============================ THE AUTHORED SLICES ============================
 # Each slice lies between its BEGIN and END marker line; the marker lines themselves are
 # EXCLUDED from the slice and never reach any file. G2 asks you for their number.
 
-<<<BEGIN PLAN21>>>
+<<<BEGIN PLAN22>>>
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -315,175 +375,116 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 21 prepares the last deletion instead of performing it. The five redaction names that
-seven SURVIVING modules import from the dying `provider_trust.py` — `_scrub_public`,
-`_safe_path_label` and the three patterns they read — move BYTE-IDENTICALLY into the new
-`packages/common/public_text_redaction.py` under DECISION F275 D10, and nine importers
-repoint. Nothing is deleted. The round also discharges R-0862's fix clause with a positive
-pin on the human-review routing tier and R-0855's clause on `token_economy.py`, and books
-round 20's PASS verdict.
+ROUND 22 deletes the LAST component of `.agent/f275_deletion_order.md` — the strongly
+connected pair `provider_trust` and `provider_trust_verification` — with its handler, the
+whole `provider` command group, six `ContractAction` members, four whole test files and two
+documentation pages. `CLUSTER_MODULES` becomes the EMPTY tuple and T001's module list is
+exhausted. DECISION F275 D11, committed before the first `git rm`, rules the three surviving
+consumers that lose their outlet, and R-0866, R-0867 and R-0868 record what each one lost.
 
 ## Next Steps
 
-1. The `provider_trust` / `provider_trust_verification` pair itself, the last component of
-   `.agent/f275_deletion_order.md`. Its first commit is a dated DECISION on the self-dogfood
-   external-candidate rail, which loses its only entry point when `provider intake-repair`
-   dies.
-2. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it. That round
-   also discharges R-0843, R-0858, R-0859, R-0860 and R-0864.
-3. T002, the atomic record flip, alone, because every later commit's size depends on it.
-4. T003, the classic runner, which T002's ruling is the prerequisite for.
+1. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it. That round
+   also discharges R-0843, R-0858, R-0859's closure test, R-0860, R-0864 and R-0868's
+   scaffolding question, and retires the now-vacuous cluster map and order ratchets.
+2. T002, the atomic record flip, alone, because every later commit's size depends on it.
+3. T003, the classic runner, which T002's ruling is the prerequisite for.
 
 ## Risks
 
-- The open set is 88 by distinct id at this round's base `3949f3c6`. This round registers
-  none and resolves R-0862. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's
-  rather than this feature's, per DECISION F272 D12.
-- Worst on this round: seven surviving production modules keep a redaction call whose
-  definition moves, so a silent breakage removes masking from public strings. The mutation
-  red-proof over the moved definition is ordered in full and its STOP condition blocks the
-  push.
-- The full suite runs SERIALLY in the PRIMARY checkout. A fresh worktree has a cold
-  `apps/ui/node_modules` and reddens the vitest foundation test on a first pass only.
-<<<END PLAN21>>>
+- The open set is 88 by distinct id at this round's base `5178df03`. Round 22 registers
+  three and resolves none, taking it to 91. Four are High — R-0803, R-0804, R-0806 and
+  R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
+- Worst on this round: a surviving module loses a safety check and nothing notices.
+  `verify_provider_patch_material` genuinely does lose two of its seven checks, which
+  R-0867 records; the reviewer measured that it has no production caller.
+- The cluster map and order ratchets become VACUOUS the moment `CLUSTER_MODULES` empties.
+  R-0868 records it with a fix clause; this round does not widen to retire them.
+- The full suite runs SERIALLY in the PRIMARY checkout. A fresh worktree has no vitest.
+<<<END PLAN22>>>
 
-<<<BEGIN LEDGER21>>>
-Gate: F275 R20 — the F275 round 20 entry. VERDICT PASS, written by the planner and reviewer of session 11 after reading the committed range `0d18e58a`..`d991ecaa` and RE-RUNNING EVERY GATE INDEPENDENTLY against the committed blobs, and booked here by round 21 rather than by a round of its own, per operator amendment amend0827-process-diet rule 1, carried from the pushed `.agent/handoff.md` at `3949f3c6`. The worker's report was evidence for no line of it. Seven single-parent commits, per-commit insertions 483, 446, 20, 10, 72 and 45 for the six before the handback, every one under the AGENTS.md DECISION F104 D1 cap of 500. G1 IS THE PRIMARY PROOF OF §4 ITEM 9 AND NOT THE DIGEST FALLBACK: the reviewer's own delegation source and both committed copies are 40139 bytes at `1b8d1b0bf7892a84ec83b3a581267bd557de89118b5df0dfa49cbe95db84cc61` and compare BYTE-EQUAL; per §3 item 37 that chain covers those three artefacts and claims nothing about the emitted bytes. G2: `.agent/plan.md` at C1 is 2442 bytes byte-identical to the PLAN20 slice, 44 lines against the cap of 50, with `## Goal` and `## Next Steps` each exactly once; all four slices occur EXACTLY ONCE in their targets and a sweep for all eight marker strings over the four target files returns ZERO for every file. G3 HELD OVER THREE APPENDS AND WAS PROVED BY WHOLE-FILE IDENTITY RATHER THAN BY ARITHMETIC ALONE: for `.agent/live_review.md`, `.agent/prose_slips.md` and `.agent/decisions.md` the committed post-blob equals `pre + newline + slice + newline` EXACTLY; the structural reader counted N from the slice itself — 3, 2 and 7 paragraphs — and matched the last N blank-line units of each whole post-file IN ORDER; all three NEGATIVE CONTROLS were flipped inside the FIRST appended paragraph per §3 item 36 and BOTH readers rejected all three while accepting all three truths. `^Gate: ` rose 41 to 42; `^Gate: F275 R19 `, `^- R-0865 — `, `^Note: F275 R20 ` and `^## DECISION F275 D9 ` each occur EXACTLY ONCE. THE OPEN SET WENT 87 TO 88 BY DISTINCT ID against registrations 93 to 94 and resolutions 6 to 6, with 34 distinct `Landed:` ids present and never subtracted. G4 IS AGAIN THE GATE THIS ROUND'S OWN GUARD COULD NOT ANSWER, AND IT IS CLEAN: the reviewer re-ran the fifteen-token sweep with its own script over the tracked files outside `.agent/` and `.data/`, measured RAW 6, printed the list in full and not truncated, and every one of the six is history prose under `docs/roadmap/features/` — three in `T2_F260.md`, one each in `T2_F262.md`, `T2_F267.md` and `T8_F151.md`. The spaced forms `remedy route-policy` and `remedy worker registry-` return ZERO hits, so no page anywhere still instructs an operator to run a command that round deleted — the property R-0861's fix clause exists to protect and the one `tests/cli/test_advertised_commands.py` CANNOT establish here, because deleting the whole `route-policy` group removed it from that guard's `GROUPS` and the guard skips what it cannot resolve. The worker ran that guard, got exit 0, and said in its own handback that the pass is not evidence for the round — R-0847 handled correctly rather than relied on. G5's STOP CONDITION DID NOT FIRE, AND IT IS THE ROUND'S MOST LOAD-BEARING READING: in a disposable worktree at C4 the mutated bytes occur exactly ONCE in the named path, the unmutated CONTROL is exit 0 at 72 passed, forcing `d.requires_human_approval` to `False` is exit 1 at 5 failed and 67 passed, and the revert returns exit 0 at 72 passed with the worktree porcelain empty; the five named failures include `TestIntegrity::test_real_unknown_decision_is_safe_under_audit`, that module's own R-0099 audit invariant, so the fail-safe DECISION F275 D9 installs is held by tests that bite rather than by a comment, and approval is now UNCONDITIONAL, which is strictly stricter than the hard-safety floor it replaces. G6: the affected guards 548 passed, the canary 42, the documentation gate 303, and THE FULL SUITE WAS RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT and was GREEN at 18454 passed, 23 skipped and ZERO failed, with a separately measured collection of 18477 equal to 18454 plus 23; THE ARITHMETIC CLOSES BY THE ID SET, 18538 at the base against 18477 at the tip, a fall of exactly 61 being 62 ids REMOVED against 1 ADDED, the 62 being 48 across three deleted test files, 8 parametrized `[route-policy]` cases in `tests/test_grouped_cli.py` generated from the catalog `GROUPS`, 3 in `TestPlaceholderHardening`, 2 in `test_token_economy.py` and 1 in `test_dashboard_cockpit_truth.py`. Ruff is clean over the change set and reads `Found 24 errors.` at BOTH revisions with an IDENTICAL per-file distribution, none in a file that round touched. G7: the SHIPPED catalog reader gives 227 commands in 45 groups against 233 and 46 at the base, `"route-policy"` absent from `GROUPS`, the id sets beginning `route-policy.` and `worker.registry-` both EMPTY, zero duplicate ids, and exactly TWO dangling `related=` references at BOTH revisions, both pre-existing and both held by R-0859, so that round ADDED NONE. G8: no `.agent/STOP`, porcelain EMPTY, ONE worktree, the branch correct, and the C4 path set an EXACT SET MATCH on 23 paths with MISSING and EXTRA both empty. THE SEVEN DECLARED DEVIATIONS ARE ALL SUSTAINED, and the three load-bearing ones are the reviewer's own errors rather than the worker's: the block predicted `token_economy.py` at 22 insertions and 62 deletions against a real 20 and 61; the block's item 4 named only "the two head-docstring paragraphs" while the docstring of `compute_token_economy_decision` asserted Worker Registry facts the same commit falsified, so the worker rewrote it and declared the widening; and G5 ordered the proof "inside a disposable worktree at C4" while its STOP condition ordered a handback "without committing C4", which cannot both hold literally, and the worker resolved it by committing C4, proving at `1abe8ac2` and holding the option of resetting an unpushed commit the red mutation made unnecessary. NO FINDING IS RESOLVED BY THIS GATE.
+<<<BEGIN LEDGER22>>>
+Gate: F275 R21 — the F275 round 21 entry. VERDICT PASS, written by the planner and reviewer of session 12 after reading the committed range `3949f3c6`..`5178df03` and RE-RUNNING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line of it. Seven single-parent commits, per-commit insertions 489, 467, 22, 10, 66 and 98 for the six before the handback, every one under the AGENTS.md DECISION F104 D1 cap of 500. G1 IS THE PRIMARY PROOF OF §4 ITEM 9 AND NOT THE DIGEST FALLBACK: the reviewer's own delegation source and both committed copies are 41462 bytes at `77a872f3e49783abf951a5a6e84a589d85900f326c491d8ffd80b3db906f7954` and compare BYTE-EQUAL; per §3 item 37 that chain covers those three artefacts and claims nothing about the emitted bytes. G2: `.agent/plan.md` at C1 is 2422 bytes byte-identical to the PLAN21 slice, 44 lines against the cap of 50, with `## Goal` and `## Next Steps` each exactly once; all SIX slices occur EXACTLY ONCE in their targets and a sweep for all twelve marker strings over the six target files returns ZERO for every file. G3 HELD OVER THREE APPENDS: for `.agent/live_review.md`, `.agent/prose_slips.md` and `.agent/decisions.md` the committed post-blob equals `pre` plus ONE newline plus the slice EXACTLY, with the joining byte read back from the post blob rather than assumed; the structural reader counted N from the slice itself — 2, 3 and 7 paragraphs — and matched the last N blank-line units of each whole post-file IN ORDER; all three NEGATIVE CONTROLS were flipped inside the FIRST appended paragraph per §3 item 36 and BOTH readers rejected all three while accepting all three truths. The reviewer's FIRST byte reader used the wrong append formula and could not fail, which made its control vacuous; it was rewritten and re-run before this verdict was written, and the figures above are from the reader that can fail. `^Gate: ` rose 42 to 43; `^Gate: F275 R20 `, `^Note: F275 R21 ` and `^Landed: R-0862 ` each occur EXACTLY ONCE, and `^## DECISION F275 D10 ` exactly once in `.agent/decisions.md`. THE OPEN SET WAS 88 BY DISTINCT ID AT BOTH the base and C4 — registrations 94, resolutions 6 — with distinct `Landed:` ids rising 34 to 35 and never subtracted, which is the correct reading of a round that resolves a finding by a `Landed:` line the reviewer has not yet converted to `Done:`. G4, THE ROUND'S LOAD-BEARING GATE: the three moved spans are 580, 416 and 234 bytes at `b2b0a497…`, `be206d7b…` and `f05b4d33…`, each occurring EXACTLY ONCE in the new `packages/common/public_text_redaction.py` at C4 and ZERO TIMES in `packages/orchestration/provider_trust.py`, and the block's own composition recipe — the HEADER21 slice followed by the three spans read from the base blob by line number — reproduces the committed file byte for byte at 2965 bytes and `24d64ed1b093dc1e3c190164c1e85f5ae672d22adead20c30b5b680b22226d9c`, the two figures the block stated. All five moved names are defined exactly once in the new module and zero times in the old, and a sweep of every tracked `.py` file confirms no file outside `provider_trust.py` still imports them from it, so the move is byte-identical and complete rather than a copy. G5: the redaction still bites from its new home — control exit 0 at 261 passed, the mutated `_scrub_public` exit 1 at 5 failed and 256 passed reaching THREE different modules, revert exit 0 at 261 passed, worktree porcelain empty. G6 DISCHARGES R-0862's FIX CLAUSE WITH THE COLOUR IT ASKS FOR: control exit 0 at 6 passed, and forcing the loop-guard branch of `_routing_plan` unreachable gives exit 1 with EXACTLY ONE failure, the new `test_loop_guard_forces_human_review_tier`, reading `assert 'local_advisor_preferred' == 'human_review_required'`. G7: the guards 151 passed, the canary 42, and THE FULL SUITE WAS RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT and was GREEN at 18455 passed, 23 skipped and ZERO failed; the arithmetic closes by the ID SET at 18477 to 18478, EXACTLY ONE id ADDED and NONE removed, the added id being the new pin, and 18455 plus 23 equals 18478. Ruff is clean over the eleven `.py` paths of the change set and reads `Found 24 errors.` at BOTH revisions with an IDENTICAL per-file distribution over 16 files, none of them touched by this round; the reviewer's first parser matched nothing and made that comparison vacuous, so it was rewritten to parse ruff's arrow-form output and paired with a RED CONTROL that confirms the comparison can fail. G8: no `.agent/STOP`, porcelain EMPTY, ONE worktree, the branch correct, and the C3..C4 path set matching the block's change set plus `.agent/live_review.md`, whose second write in the same round the worker declared. ALL EIGHT DECLARED DEVIATIONS ARE SUSTAINED. Three are the reviewer's own and are recorded as slips rather than findings: the block's G3 append formula admits two parses, its gate listing implied G2 could run at C1 when two of its slices land at C4, and its G5 node-set note named `token_economy.py` among the modules whose tests go red when they do not. The worker's own five are sound, and the best of them is a refusal: R-0843's prose sweep turned up a comment in `real_test_execution.py` about "parity with the rest of the orchestration package", which the worker examined, judged still true because nine orchestration modules still reference those helpers, declined to edit as scope drift, and flagged for the reviewer to overrule — which is what a second reading is for. NO FINDING IS RESOLVED BY THIS GATE; R-0862's `Landed:` line awaits the reviewer's `Done:` text.
 
-Note: F275 R21 — new evidence for the OPEN finding R-0855, added rather than given an id of its own per `docs/agents/planner_reviewer_prompt.md` §3 item 30, which orders the open set searched for the DEFECT before an id is minted. R-0855 records that an ordered anchor deletes a definition without sweeping the neighbourhood that definition served, and names three instances. THIS IS A FOURTH, MEASURED BY THE REVIEWER AT `1abe8ac2` while re-gating round 20 and re-confirmed at `3949f3c6`: `packages/orchestration/token_economy.py` still carries a line reading `# Approval: unknown context OR hard-safety floor OR over-budget OR over the approval threshold.` directly above `d.requires_human_approval = True`. Not one of the four disjuncts that comment names is a term of the expression beneath it any more — `hard_safety_requires_approval` does not occur anywhere in the module after round 20, and `unknown_context` is not part of the approval expression at all — while the round's own correct comment sits two lines below it saying the opposite, so the file carries two adjacent comments about one assignment and only the lower one is true. NO GATE COULD SEE IT: `ruff` is clean, the full suite is green, and round 20's fifteen-token sweep does not match the words `hard-safety floor`, because a deletion sweep hunts IDENTIFIERS and this is prose. It is wrong state on disk under `packages/`, which amend0827-process-diet rule 2 reserves an id for, and it is folded into R-0855 rather than given one because the defect, the cause and the fix are the same. THE FIX LANDS IN ROUND 21, whose change set contains that file, together with R-0843's counter-measure — a sweep of EVERY surviving file of that change set for PROSE the change falsified, read in each file's own words rather than in the moved module's identifiers.
-<<<END LEDGER21>>>
+- R-0866 — Medium, DELETING THE PROVIDER TRUST GATE TAKES THE ONLY ROUTE BY WHICH AN EXTERNAL CANDIDATE ENTERS A SELF-IMPROVEMENT ATTEMPT, AND THE SURVIVING RAIL PARKS IN A STATE IT CANNOT LEAVE. Raised by the reviewer while authoring F275 round 22 and registered by that round's ledger commit, because operator RULE 3 in `docs/roadmap/features/T2_F275.md` T001 requires a deletion that takes away a behaviour a user could observe to register a finding naming the behaviour and the feature that inherited the idea. THE MEASUREMENT, taken at `5178df03` in an applied worktree. `packages/orchestration/self_dogfood_execution.py` SURVIVES — it is not on F260's Design list — and it is reachable from the CLI through `apps/cli/commands/self_cmd.py`, which calls both `start_self_execution` and `reconcile_self_attempt`. Its documented rail runs `approved → request_prepared → awaiting_external_candidate → [human relays the request; the candidate re-enters via provider intake-repair] → Trust Gate → materialized PENDING intent → approval → apply → proof → completed`. Round 22 deletes `remedy provider intake-repair` with the gate behind it, and the ONE piece of code that moved an attempt past `awaiting_external_candidate` was the candidate-linking block in `reconcile_self_attempt`, which read `load_trust_reports` from the dying module. After this round an attempt that reaches `awaiting_external_candidate` STAYS there: the states beyond it are not dead code, because they still run for an attempt whose `patch_intent_id` is already on disk, but no NEW attempt can acquire one. THE INHERITING FEATURE IS NONE, DELIBERATELY, and that is not this round's improvisation — DECISION F260 D3's mapping in `docs/roadmap/features/T2_F260.md` reads "external builder → none, deliberately", so the loss is what F260 planned rather than a surprise this round created. What is NOT covered by that mapping, and is why this finding exists, is the residue: a surviving, CLI-reachable state machine now has a terminal state its own vocabulary calls transitional, and two user-facing `next_safe_action` strings had to stop naming a command that no longer exists. FIX CLAUSE, binding on the round that drafts DECISION F260 D3: name this id in that paragraph, and rule whether `AttemptState`'s post-`AWAITING_EXTERNAL_CANDIDATE` members and the `self_awaiting_candidate` situation key in `orchestrator_brain.py` are kept as a degraded rail or retired with a second dated decision — this round deliberately keeps them, because retiring a surviving module's vocabulary is a product change and not a deletion.
 
-<<<BEGIN SLIPS21>>>
-2026-09-10 · F275 R20 · The round 20 block stated `packages/orchestration/token_economy.py` at 22 insertions and 62 deletions, taken from the reviewer's own applied dry run, and the worker measured 20 and 61, which made the block's bundle totals 47 and 2219 against a real 45 and 2218. Production code is SPECIFIED rather than sliced in this workflow precisely so the worker writes the prose, so a per-file insertion figure quoted from the reviewer's dry run is a PREDICTION about wording and not a measurement the worker can reproduce. The other 22 paths matched to the line, because every one of them is a deletion or a mechanical edit with no prose in it. The lesson is that a block quoting per-file `+/-` for a SPECIFIED production file quotes it as an approximate expectation and says so, or omits the insertion column for that file and keeps only the deletion count, which is determined by the anchors.
+- R-0867 — Medium, `verify_provider_patch_material` LOSES TWO OF ITS SEVEN CHECKS AND ITS `ok` BECOMES STRICTLY EASIER TO SATISFY, AND THE MODULE AROUND IT IS LEFT WITH ONE REACHABLE FUNCTION AND A THIRD OF ITS TESTS. Raised by the reviewer while authoring F275 round 22, under the same operator RULE 3. THE MEASUREMENT, taken at `5178df03`. `packages/orchestration/provider_patch_material.py` SURVIVES — it is not on F260's Design list — and takes exactly FOUR names from the dying pair, measured by resolving its import statements rather than counted from an earlier session's note, which had six because it was taken before F275 round 21 moved two redaction helpers out. All four feed checks inside `verify_provider_patch_material`: `validate_paths` with `Severity` gives `paths_safe`, and `get_trust_report` with `TrustStatus` gives `trust_report_accepted`. `v.ok` is `all(checks.values())`, so removing two checks makes it EASIER to satisfy — a weakening in the UNSAFE direction, and the opposite of the fail-safe degradation DECISION F275 D9 installed one round earlier. It is nonetheless the right move under RULE 3, because the alternative is copying the deleted module's code into a survivor, and because the function is UNREACHABLE: walking every call site in the surviving tree gives NO caller under `packages/` or `apps/`, only its own tests. The same walk shows `materialize_provider_repair`, `load_material_manifest`, `revoke_material`, `read_material_patch` and `export_materialization_result_json` have no caller at all, and that `load_materials` — called by `orchestrator_brain.py` and `ui_server.py`, and a pure read of material already on disk — is the ONE reachable function left, because the command that created material dies with the handler. Round 22 additionally deletes three of that module's five test classes, because every one of them reached its subject through `provider intake-repair`. FIX CLAUSE, binding on the round that drafts DECISION F260 D3: name this id and rule which feature reaps `provider_patch_material.py`, whose remaining job is reading material that nothing can now create; until that ruling lands, no round may treat `verify_provider_patch_material`'s weakened `ok` as a safety property.
 
-2026-09-10 · F275 R20 · The round 20 block's item 4 ordered the two module-docstring paragraphs of `token_economy.py` rewritten and never named the docstring of `compute_token_economy_decision` itself, although that docstring asserted that the function combines "the Worker Registry route policy" and that "a cheap small task under the local-preference threshold recommends a local route" — both falsified by the same commit. The reviewer's own applied dry run HAD rewritten it, as part of the same anchor that removed the imports, so the block's stated deletion figure was only reachable with it included and the worker had to widen the order to meet the number. The worker declared the widening and was right. The lesson is that when a block SPECIFIES a production edit by naming the docstrings it rewrites, it enumerates every docstring the applied dry run touched, and the surest way to enumerate them is to read the dry run's own diff rather than the reviewer's memory of it.
+- R-0868 — Low, THE CLUSTER DELETION MAP AND ORDER RATCHETS BECOME GATES THAT CANNOT FAIL THE MOMENT `CLUSTER_MODULES` EMPTIES, AND THE REPAIR-REQUEST BUILDER IS LEFT PREPARING A PACKAGE NO COMMAND CAN IMPORT. Two consequences of round 22 that share one cause — the deletion finishing — and one id, per `docs/agents/planner_reviewer_prompt.md` §3 item 30. FIRST, THE VACUOUS GATES, measured by the reviewer at `5178df03` with the deletion applied: with `CLUSTER_MODULES` set to the empty tuple, `tests/orchestration/test_cluster_deletion_map.py` and `tests/orchestration/test_cluster_deletion_order.py` pass at 4 and 2 tests, and every one of those six assertions quantifies over an empty set, so not one of them can ever go red again. That is the R-0438 class arriving through success rather than through a typo: the scaffolding F274 built to BOUND this deletion has no work left, and DECISION F274 D1's ruling that the reachability test is a RATCHET does not reach these two, which measure the cluster rather than the product. SECOND, `packages/orchestration/repair_request_builder.py` SURVIVES and its purpose is to prepare a package for an external actor whose answer re-entered through `provider intake-repair`; round 22 removes five advertisements of that command from it, including the numbered steps inside the request text a human is handed and a line `apps/cli/commands/repair_cmd.py` printed to the terminal, and what remains is a package builder with no importer. FIX CLAUSE, binding on the round that drafts DECISION F260 D3, which is the last round of this feature whose change set already contains `tests/orchestration/` and a roadmap file: retire `cluster_deletion_map.txt`, `test_cluster_deletion_map.py`, `test_cluster_deletion_order.py` and `.agent/f275_deletion_order.md` together, or record a dated decision saying why an empty ratchet is kept; and name the feature that reaps `repair_request_builder.py`. Low rather than Medium because nothing on disk is WRONG — the gates pass honestly and the builder still builds — and what is missing is only their reason to exist.
 
-2026-09-10 · F275 R20 · The round 20 block's G5 ordered the red-proof run "inside a disposable worktree at C4" and, in the same gate, ordered the worker to "hand back without committing C4" if the mutation came out green. Those two clauses cannot both be obeyed: a worktree at C4 requires C4 to exist. The worker committed C4, proved in a worktree at `1abe8ac2`, and kept the option of resetting an unpushed commit, which the red mutation made unnecessary; it declared the contradiction rather than silently picking a half. The lesson is that a STOP condition attached to a gate which itself runs at a named commit is written as an instruction to RESET that commit, not to withhold it, because the gate's own recipe already presupposes the commit exists.
-<<<END SLIPS21>>>
+Note: F275 R22 — new evidence for the OPEN finding R-0864, added rather than given an id of its own per `docs/agents/planner_reviewer_prompt.md` §3 item 30. R-0864 records that a guard's negative assertion names a test file that no longer exists, so that entry can never fail again. MEASURED AT `5178df03` by the reviewer: `CLUSTER_COMMAND_HANDLERS` in `tests/orchestration/test_cluster_deletion_map.py` names seven handler paths and FIVE of them have no file on disk — `dogfood_cmd.py`, `overnight_mission_cmd.py`, `progress_cmd.py`, `repair_loop_v2_cmd.py` and `self_repair_cmd.py`, each deleted by an earlier round of this feature. The tuple is used only as an EXCLUSION set by `_excluded_paths()`, so a stale entry never matches and nothing goes red; unlike `CLUSTER_MODULES`, which has `test_every_cluster_module_still_resolves_to_a_file_on_disk` to hold it honest, no test asserts these paths resolve. Round 22 does not repair it, because the same round's R-0868 asks whether the whole file should be retired and repairing a tuple that may be deleted is work spent twice. The fix travels with R-0868's clause on the DECISION F260 D3 round.
+<<<END LEDGER22>>>
 
-<<<BEGIN DECISION21>>>
-## DECISION F275 D10 (2026-09-10) — the shared redaction helpers MOVE to `packages/common/public_text_redaction.py`, byte-identically, in their own round
+<<<BEGIN SLIPS22>>>
+2026-09-10 · F275 R21 · The round 21 block's G3 ordered the committed post-blob to equal `pre + newline + slice + newline`. An authored slice extracted between marker lines already ENDS in a newline, so that formula admits two parses and only one of them reproduces the repository's actual append convention. The worker picked the correct parse, verified it against round 20's landed append at `85379a77` before applying anything, and declared the ambiguity; the reviewer then made the SAME wording bite in its own re-gate, where a byte reader built on the literal parse could never accept the truth, which made its negative control vacuous until it was rewritten. The lesson is that an append formula names the joining byte and the slice as extracted — "post equals pre, then one newline, then the slice exactly as extracted" — and orders the joining byte read back from the post blob rather than asserted.
+2026-09-10 · F275 R21 · The round 21 block listed its gates in the order G1 to G8 and required "every gate runs at or before C4", while its G2 covered six slices of which two, HEADER21 and TEST21, only land at C4. G2 therefore could not run at C1 as the ordering implied, and the worker ran it after C4 and declared the reordering. Nothing was measured wrongly, because G2 reads committed blobs either way. The lesson is that a gate covering slices that land at different commits names the LAST commit it can honestly run at, rather than inheriting a position from the order the gates happen to be written in.
+2026-09-10 · F275 R21 · The round 21 block's G5 said the mutation's red set "reaches at least `real_test_execution.py` and `token_economy.py`", carried over from the previous session's handoff. The reviewer's own applied dry run had already measured the five red tests and none of them is in `test_token_economy.py`; the modules that actually go red are `real_test_execution.py`, `orchestrator_brain.py` and `provider_trust.py`. The worker reproduced the correct set and the block's own later sentence named it correctly, so the round lost nothing. The lesson is that a sentence inherited from a prior session's prose is re-measured before it is repeated, even when the same block already carries the measured version of it two lines away.
+<<<END SLIPS22>>>
+
+<<<BEGIN DECISION22>>>
+## DECISION F275 D11 (2026-09-10) — the three survivors of the Provider Trust Gate degrade, and none of them is deleted, stubbed or copied into
 
 CONTEXT. Round 22 deletes `packages.orchestration.provider_trust` and
 `packages.orchestration.provider_trust_verification`, the last component of
-`.agent/f275_deletion_order.md`. Measured by the reviewer at `3949f3c6` with an `ast` sweep
-over `packages/`, `apps/`, `tests/` and `scripts/`: SEVEN modules that survive that deletion
-import `_scrub_public` from the dying module — `orchestrator_brain.py`,
-`provider_patch_material.py`, `real_test_execution.py`, `repair_request_builder.py`,
-`self_dogfood.py`, `self_dogfood_execution.py` and `token_economy.py` — and three of those
-seven also import `_safe_path_label`. `_scrub_public` masks secret-like material, home-ish
-absolute paths and stack traces in strings that reach public surfaces, which is why R-0083
-put it there in the first place.
+`.agent/f275_deletion_order.md`, together with `apps/cli/commands/provider_cmd.py` and the
+whole `provider` command group. That group carries `remedy provider intake-repair`, and the
+reviewer measured at `5178df03` that it is the ONLY command anywhere in the product by which
+an external candidate enters Remedy. Three surviving modules are built on it, and none of
+them is on F260's Design list, so "Do not touch" forbids deleting any of them.
 
-THE PROBLEM. Operator RULE 3 in `docs/roadmap/features/T2_F275.md` T001 says a surviving
-consumer LOSES THE CALL SITE and never gains a copy. Applied literally to these seven, that
-would delete REDACTION from seven survivors — a weakening in the unsafe direction, and the
-exact opposite of the fail-safe direction DECISION F275 D9 established one round earlier.
-RULE 3 exists to stop cluster CAPABILITY being smuggled into survivors under another name;
-these are shared safety utilities that happen to live in a cluster file, and the rule was
-never aimed at them.
+THE RULING, in three parts. Each is RULE 3 applied literally — the survivor loses the call
+site and never gains a copy — with a finding for what the user can no longer do.
 
-CHOSEN. A BYTE-IDENTICAL MOVE into a new module `packages/common/public_text_redaction.py`,
-performed in its own round BEFORE the deletion, following the precedent DECISION F275 D1
-already set for shared code in a dying file. Five names move: `_scrub_public`,
-`_safe_path_label`, `_SECRET_PATTERNS`, `_ABS_PATH_RE` and `_TRACEBACK_RE`. No name is
-renamed, no body is edited, and every call site is unchanged; the move is proved by
-extracting the three source spans from the committed base blob rather than by retyping them.
-The dying module itself imports them back for the one round it has left, which is a genuine
-use — `scan_secrets`, `_safe_text` and `validate_paths` all still call them — and not a
-re-export shim, because after the repoints nothing outside that file imports those names
-from it.
+(a) `self_dogfood_execution.py`. Its `reconcile_self_attempt` loses the candidate-linking
+    block that read the dying module's trust reports, and with it the only code that moved
+    an attempt past `AWAITING_EXTERNAL_CANDIDATE`. The states beyond that one are KEPT, not
+    stubbed: they still run for an attempt whose `patch_intent_id` is already on disk, so
+    this is degraded reachability rather than dead code. Two user-facing `next_safe_action`
+    strings stop naming the deleted command and report a read instead. R-0866 records the
+    loss; DECISION F260 D3 already maps the external builder to "none, deliberately", so
+    there is no inheriting feature to name and that is deliberate rather than an omission.
+
+(b) `repair_request_builder.py`. It prepares a package for an external actor and printed
+    five instructions to import the answer, one of them inside the request text a human is
+    handed and one of them printed to the terminal by `apps/cli/commands/repair_cmd.py`. All
+    five go, and the `output_intake_command` and `trust_gate_command` fields are REMOVED
+    rather than emptied, because a printed label with nothing after it is a worse surface
+    than no label. The package still packages evidence; what it no longer claims is a round
+    trip. R-0868 records that it now has no importer.
+
+(c) `provider_patch_material.py`. `verify_provider_patch_material` loses `paths_safe` and
+    `trust_report_accepted`, which makes its `ok` STRICTLY EASIER to satisfy. That is a
+    weakening in the unsafe direction and it is accepted here only because the reviewer
+    measured that the function has NO caller under `packages/` or `apps/` once the pair
+    dies, and because the alternative — copying `validate_paths` and the trust reader into a
+    survivor — is what RULE 3 and AGENTS.md's Scope Control forbid by name. R-0867 records
+    it and forbids any later round from treating that weakened `ok` as a safety property.
 
 ALTERNATIVES CONSIDERED, AND WHY EACH LOSES.
-(1) Delete the call sites, per a literal RULE 3. Rejected: it removes masking from seven
-    survivors. Safety before rule-shape.
-(2) Move into the existing `packages/common/path_redaction.py`. Rejected on a measurement:
-    that module already defines a module-level `ABS_PATH_RE`, and this move brings an
-    `_ABS_PATH_RE` with a different and much narrower regex. Two absolute-path patterns
-    whose names differ by one underscore, in one file, with different jobs, is precisely the
-    synonym drift AGENTS.md's Code Discoverability Conventions forbid, and the next reader to
-    edit the wrong one pays for it. The two modules also do different things: that one
-    reduces every path to its bare file name, this one replaces a narrow class of tokens
-    with `[redacted-...]` markers.
-(3) Move into `packages/orchestration/redaction_patterns.py`. Rejected on a measurement: it
-    already defines `_TRACEBACK_RE`, with a looser case-insensitive regex, so a
-    byte-identical move would collide and a rename would stop the move being byte-identical.
-(4) Rename the five to public names while moving them. Rejected: it changes call sites in
-    seven surviving modules, and AGENTS.md forbids mass renames as their own activity.
-(5) Do the move inside the deletion commit. Rejected: it would put a new file, nine
-    repoints and a two-thousand-line deletion in one commit, and RULE 1's "never split"
-    binds the deletion, not the preparation for it.
+(1) Delete the three survivors too. Rejected: none is on F260's Design list and "Do not
+    touch" says no module outside it is deleted. It would also be the largest unplanned
+    scope increase this feature has taken.
+(2) Keep the deleted checks by copying `validate_paths` and the trust reader into
+    `provider_patch_material.py`. Rejected: that is the copy RULE 3 exists to prevent, and
+    it would resurrect a dying module's code under a new name.
+(3) Make the lost checks permanently False so `verify_provider_patch_material` refuses —
+    the fail-safe shape DECISION F275 D9 used for `token_economy.py`. Rejected here, and the
+    difference from D9 is worth stating: D9's survivor was REACHABLE and its degraded answer
+    was consulted, so refusing was the safe answer to a live question. This function has no
+    caller, so a permanently-False check would be dead weight that reads like a guard.
+(4) Stop `start_self_execution` before `AWAITING_EXTERNAL_CANDIDATE`, so no attempt ever
+    parks in a state it cannot leave. Rejected: that is a product redesign of a surviving
+    module, not a deletion, and it would silently change what `remedy self execute` does.
+    R-0866's fix clause routes the question to the DECISION F260 D3 round instead.
 
-CONSEQUENCE. Round 21 is not a deletion round under amend0906-triage-throughput: its change
-set edits lines under `packages/` and `tests/`, so the four-measurement shortcut does not
-apply and a mutation red-proof over the moved definition is mandatory. `packages/common/`
-gains one module and `tests/orchestration/import_reachability_allowlist.txt` gains one line,
-because the new module is reachable from the D11 (c) entry points through its seven
-importers. Three of the eight edges in `tests/orchestration/cluster_deletion_map.txt`
-disappear, because `real_test_execution.py`, `repair_request_builder.py` and
-`token_economy.py` import nothing else from the dying pair.
+CONSEQUENCE. Round 22 is NOT a deletion round under amend0906-triage-throughput: its change
+set edits lines under `packages/`, `apps/` and `tests/`, so the four-measurement shortcut
+does not apply and a mutation red-proof is ordered in full. Three findings are registered
+and none is resolved. `CLUSTER_MODULES` becomes the empty tuple, which exhausts T001's
+module list and makes two ratchets vacuous — recorded as R-0868 rather than repaired here,
+because retiring them is bookkeeping that belongs with DECISION F260 D3.
 
-REVERSE THIS DECISION by moving the five names back into `packages/orchestration/provider_trust.py`
-and deleting `packages/common/public_text_redaction.py` — which is only possible while that
-file still exists, so reversing it after round 22 means choosing a different destination
-rather than restoring the old one.
-<<<END DECISION21>>>
-
-<<<BEGIN HEADER21>>>
-"""Secret, absolute-path and traceback masking for strings Remedy surfaces publicly.
-
-WHY THIS IS HERE. These three patterns and the two helpers over them were written for
-the Provider Trust Gate (`packages/orchestration/provider_trust.py`, R-0083: never echo
-a secret value or an absolute path out of untrusted provider text). Seven modules that
-have nothing to do with provider trust came to import them anyway, because masking a
-public-facing string is a repository-wide obligation rather than a trust-gate one. F275
-round 21 deletes the trust gate, so the helpers move here BYTE-IDENTICALLY — one
-implementation, no copy, no shim — and the former host's importers repoint at this
-module. DECISION F275 D10 records the move and why this file rather than an existing one.
-
-NOT `packages/common/path_redaction.py`, and the distinction is load-bearing. That module
-reduces every absolute path and `file:` URI to its bare file name, for shareable runtime
-state and post-mortems; it is about PATHS and it rewrites all of them. This module masks
-SECRET-LIKE material, a narrow set of home-ish absolute paths and stack traces, and it
-replaces them with `[redacted-...]` markers rather than shortening them. Both would have
-carried a module-level constant spelled `ABS_PATH_RE` over two different regexes with two
-different jobs, which is exactly the synonym drift AGENTS.md's Code Discoverability
-Conventions forbid.
-
-Remedy deliberately does not re-export these under public names: the leading underscore is
-the original spelling, every call site already uses it, and renaming five names across
-seven modules is the mass rename those same conventions forbid as its own activity.
-"""
-from __future__ import annotations
-
-import re
-
-<<<END HEADER21>>>
-
-<<<BEGIN TEST21>>>
-    def test_loop_guard_forces_human_review_tier(self, env):
-        """R-0862: the human-review tier had no positive pin after round 18.
-
-        Round 18 deleted `_review_state` and the two tests that pinned this tier. The
-        tier still ships and is still reachable through the loop guard, so it is pinned
-        here through the surviving durable-failure signal rather than through the
-        deleted review state."""
-        d, _ = env
-        job = _job(d)
-        from packages.orchestration import repair_loop as RL
-        j = load_job(UUID(str(job.id)), d)
-        for i in range(2):
-            att = RL.RepairAttempt(attempt_id=f"h{i}", job_id=str(job.id),
-                                   failure_artifact_id=f"f{i}", status="tested_failed",
-                                   source="cli_v1", created_at="t")
-            RL.save_repair_attempt(j, att)
-        s = OB.build_orchestrator_situation(str(job.id), d)
-        # The precondition, asserted so this test cannot pass vacuously.
-        assert s.loop_guard.status == OB.LoopGuardStatus.REQUIRE_HUMAN_REVIEW
-        assert s.model_routing_plan.tier == OB.RoutingTier.HUMAN_REVIEW_REQUIRED
-        assert s.model_routing_plan.allow_external is False
-
-<<<END TEST21>>>
-
-# HEADER21 and TEST21 each END with a blank line, which steps 1 and 6 rely on as the
-# separator before the moved chunk and before `test_routing_never_executes`. Keep it.
+REVERSE THIS DECISION by restoring the two modules and their handler from git history and
+re-pointing the three survivors at them; the findings would then be resolved as obsolete
+rather than fixed.
+<<<END DECISION22>>>
