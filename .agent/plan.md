@@ -12,20 +12,21 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 27 makes the advertisement guard see the class it was built for. Its scanner drops the
-`GROUPS` pre-filter that hid every advertisement of a deleted group, gains the single-token
-`remedy <something>` form, and counts a closing backtick as a command tail. Eight dead
-next-action strings in production code become the live group-first commands, the
-`architecture.md` banner loses the `remedy list` the reviewer invented and states the span it
-really covers, and the dead advertisements the widening exposes on operator-facing pages are
-pinned in a shrink-only allowlist as R-0872. R-0847 closes.
+ROUND 28 deletes the five pages that document capabilities F275 already deleted — the feature
+planner, the progress ledger, the dogfood run loop, and the two self-repair proposal pages —
+drops their six rows from the docs index, and cuts the dead self-repair section out of the
+core product spine. The R-0872 ratchet falls from 43 to 22 in two steps, one per commit, and
+what remains is exactly the flat pre-Step-38 CLI in `architecture.md` plus one site in
+`vocabulary.md`. R-0873 registers the wider residue an advertisement sweep cannot see.
 
 ## Next Steps
 
-1. R-0872's first half: delete the four pages that document command groups F275 deleted
-   whole, and repair `core-product-spine-v0.md`, lowering the allowlist by 21.
-2. R-0872's second half: the flat pre-Step-38 CLI in `architecture.md` and the one site in
-   `vocabulary.md`, lowering the allowlist to zero and deleting the ratchet with it.
+1. R-0872's second half: the flat pre-Step-38 CLI in `architecture.md` and the one site in
+   `vocabulary.md`, lowering the allowlist to zero and deleting the ratchet with it, which
+   resolves R-0872.
+2. R-0873: read the capability sweep's ranked list and rule, page by page, which pages die
+   and which are dated as historical. `docs/archive/` is archival by design and is expected
+   to survive the ruling.
 3. T002: the DECISION F272 D7 raising-property probe over every candidate `.id` receiver,
    giving the real site set rather than D15's upper bound, then the dated decision choosing
    the route. No production line moves in that slice.
@@ -35,10 +36,10 @@ pinned in a shrink-only allowlist as R-0872. R-0847 closes.
 
 ## Risks
 
-- The open set is 88 by distinct id at this round's base `c370dcee`, computed mechanically
-  from the record. This round registers one and resolves one, leaving 88. Four are High —
+- The open set is 88 by distinct id at this round's base `d3e35f0f`, computed mechanically
+  from the record. This round registers one and resolves none, leaving 89. Four are High —
   R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION
   F272 D12.
-- The allowlist is the first mechanism in this feature that lets a known defect sit on disk
-  under a green suite. It is bounded by two assertions rather than by intent: it may not
-  grow, and it may not keep an entry whose advertisement is gone.
+- R-0873 is measured but not scoped: 18 pages name a deleted module's concept, and several
+  are `docs/archive/` pages that SHOULD keep describing an abandoned future. The finding
+  records the measurement and defers the ruling rather than implying every hit is a defect.
