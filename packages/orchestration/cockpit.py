@@ -271,7 +271,7 @@ def _derive_attention(job: Job, signals: dict[str, Any]) -> list[str]:
     if signals["has_interrupted"]:
         tt = signals["interrupted_task_type"] or "unknown"
         items.append(
-            f"Interrupted task detected (type: {tt}) — inspect with: remedy timeline <job_id>"
+            f"Interrupted task detected (type: {tt}) — inspect with: remedy brain timeline <job_id>"
         )
 
     # workspace_write denied blocks all task execution
@@ -404,7 +404,7 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if signals["has_interrupted"] and pending:
         return (
             f"  {_NEXT} Inspect the interrupted run:\n"
-            f"      remedy timeline {job_id_str}\n"
+            f"      remedy brain timeline {job_id_str}\n"
             f"  Then resume:\n"
             f"      remedy job run-next {job_id_str}"
         )

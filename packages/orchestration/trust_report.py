@@ -245,7 +245,7 @@ def summarize_trust_report(
         if target_repo:
             parts.append(
                 f"  {_INFO} Project Constitution: not loaded"
-                f" (run: remedy constitution {job.id})"
+                f" (run: remedy brain constitution {job.id})"
             )
         else:
             parts.append(f"  {_INFO} Project Constitution: no attached repo")

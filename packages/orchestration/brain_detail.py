@@ -682,7 +682,7 @@ def _detail_run_event(
         connected_to=tuple(connected),
         evidence=tuple(evidence),
         affected_files=(),
-        next_actions=(f"remedy timeline {job_id_str}",),
+        next_actions=(f"remedy brain timeline {job_id_str}",),
         redaction_notes=(
             "Event message is not rendered.",
             "Raw command output is not rendered.",
@@ -711,7 +711,7 @@ def _detail_agent_loop(
         f"cycle: {cycle}",
     ]
 
-    next_actions = [f"remedy agent-loop {job_id_str}"]
+    next_actions = [f"remedy dev agent-loop {job_id_str}"]
 
     return BrainNodeDetail(
         job_id=job_id_str,
@@ -722,7 +722,7 @@ def _detail_agent_loop(
         risk=None,
         explanation=explanation,
         why_it_exists=(
-            "Created when remedy agent-loop was run against this job.",
+            "Created when remedy dev agent-loop was run against this job.",
             "Records the orchestration decision at a point in time.",
         ),
         connected_to=tuple(connected),
@@ -769,7 +769,7 @@ def _detail_constitution(
         connected_to=tuple(connected),
         evidence=tuple(evidence),
         affected_files=(),
-        next_actions=(f"remedy constitution {job_id_str}",),
+        next_actions=(f"remedy brain constitution {job_id_str}",),
         redaction_notes=("Full source file contents are not rendered.",),
     )
 
@@ -1193,7 +1193,7 @@ def _detail_worker_adapter(
         ),
         affected_files=(),
         next_actions=(
-            "Inspect with `remedy workers` for all provider specs.",
+            "Inspect with `remedy worker list` for all provider specs.",
         ),
         redaction_notes=("No secrets or API keys in worker specs.",),
     )
