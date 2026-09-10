@@ -12,30 +12,30 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 25 closes the DECISION F260 D3 sequence. It retires the four cluster scaffolding
-artefacts that became gates which cannot fail once the module list emptied, repairs the
-unstarted F267 plan that names five commands this feature deleted, banners the historical
-`Groups` table in `docs/system/architecture.md` instead of maintaining a hand-written
-mirror of the catalog, and sweeps the three residues rounds 23 and 24 left behind in files
-their own change sets had already named.
+ROUND 26 finishes the two documents rounds 23 to 25 repaired in parts, by sweeping each
+enclosing unit for the concept BEFORE writing a pair rather than after. `T2_F267.md` loses
+the three numerals and the dead cross-reference its earlier repair left standing, and the
+historical `Group-first CLI v0` section of `architecture.md` gets one banner at the section
+level instead of a pair per false sentence. R-0843 and R-0858 close on those sweeps.
 
 ## Next Steps
 
 1. T002: the DECISION F272 D7 raising-property probe over every candidate `.id` receiver,
    giving the real site set rather than D15's upper bound, then the dated decision choosing
-   the route. No production line moves in that slice.
+   the route. No production line moves in that slice, and it wants a fresh session.
 2. T003, the classic runner, which T002's ruling is the prerequisite for.
 3. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
    STATUS line and the PR.
 
 ## Risks
 
-- The open set is 92 by distinct id at this round's base `06dbb1c6`, computed mechanically
-  from the record. This round registers nothing and resolves two, leaving 90. Four are High
+- The open set is 90 by distinct id at this round's base `684b1b55`, computed mechanically
+  from the record. This round registers nothing and resolves two, leaving 88. Four are High
   — R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION
   F272 D12.
-- Retiring the two ratchets removes six passing tests. DECISION F275 D15 rules it and states
-  what still holds the tree honest once they are gone: the import-reachability ratchet,
-  which F274 D1 ruled a ratchet and which this round does not touch.
-- T002 is the slice that has been deferred by three features. It needs a fresh session's
-  full context and is the reason this one should not start it late.
+- R-0870's class has recurred in every round of this session, always as a region repaired
+  while its enclosing unit kept contradicting it. This round is the counter-measure applied
+  to itself; if it recurs again the clause is not working and the next session should say so
+  rather than write a fourth instance.
+- T001's remaining work is documentary only. Every module F260's Design lists is gone, the
+  deletion paragraph is recorded, and the scaffolding is retired.
