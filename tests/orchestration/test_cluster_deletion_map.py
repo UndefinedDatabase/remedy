@@ -41,10 +41,7 @@ EDGE_SEPARATOR = " <- "
 # The modules of F260's prototype cluster that are still tracked in the repo.
 # One module group leaves this tuple per deletion round, so it deliberately
 # states no count: any numeral written here is stale from the next commit on.
-CLUSTER_MODULES = (
-    "packages.orchestration.provider_trust",
-    "packages.orchestration.provider_trust_verification",
-)
+CLUSTER_MODULES: tuple[str, ...] = ()  # EMPTY since F275 T001 finished the deletion (R-0868)
 
 # The handlers of cluster COMMANDS. They die with the cluster, so their imports
 # are not blockers. Listed BY PATH and never matched by filename pattern:

@@ -227,7 +227,6 @@ def _cmd_repair_request_show(args: Any) -> None:
         return
     print(f"Repair request package {args.request_package_id}")
     print(f"  failure: {pkg.get('failure_artifact_id', '')}  target: {pkg.get('target_kind', '')}")
-    print(f"  intake: {pkg.get('output_intake_command', '')}")
     for s in pkg.get("sections", []):
         print(f"  ## {s['title']}")
 

@@ -66,14 +66,12 @@ class OptionKind:
     INSPECT = "inspect"
     PROPOSE_REPAIR = "propose_repair"
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
-    IMPORT_CANDIDATE = "import_candidate"
     APPROVE_INTENT = "approve_intent"
     CONTINUE_INTENT = "continue_intent"
     OVERNIGHT_RUN = "overnight_run"
     SELF_INSPECT = "self_inspect"
     SELF_PROPOSE = "self_propose"
     SELF_EXECUTE = "self_execute"
-    PROVIDER_TRUST_VERIFICATION = "provider_trust_verification"
     LOCAL_ADVISOR_NEEDED = "local_advisor_needed"
     HUMAN_REVIEW = "human_review"
 
@@ -300,7 +298,7 @@ def _gather_signals(job_id: str, data_dir: Path,
     sig: dict[str, Any] = {
         "unresolved_failures": 0, "failure_ids": [], "repair_attempts": 0,
         "repair_failed": 0, "pending_intents": [], "approved_intents": [],
-        "trust_accepted": 0, "trust_rejected": 0, "materialized": 0,
+        "materialized": 0,
         "request_packages": 0, "self_attempts_awaiting": 0, "self_attempts_pending": 0,
         "self_proposed_approved": [], "self_items": 0, "budget_exhausted": False,
     }
@@ -340,14 +338,8 @@ def _gather_signals(job_id: str, data_dir: Path,
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         refs.append(OrchestratorEvidenceRef("patch_intents", "unknown"))
 
-    # Provider trust + materials + requests.
-    try:
-        from packages.orchestration.provider_trust import load_trust_reports
-        reps = list(load_trust_reports(job).values())
-        sig["trust_accepted"] = sum(1 for r in reps if r.get("trust_status") == "accepted")
-        sig["trust_rejected"] = sum(1 for r in reps if r.get("trust_status") == "rejected")
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        pass
+    # Provider materials + requests. Remedy deliberately reads no trust signal here:
+    # the Provider Trust Gate was deleted with F275 T001 and nothing replaced it.
     try:
         from packages.orchestration.provider_patch_material import load_materials
         sig["materialized"] = sum(1 for m in load_materials(job).values()
@@ -355,28 +347,6 @@ def _gather_signals(job_id: str, data_dir: Path,
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
 
-    # Provider Trust Verification v1 signals (Step 1554).
-    try:
-        from packages.orchestration.provider_trust_verification import load_verification_reports
-        vreps = list(load_verification_reports(job).values())
-        sig["verification_passed"] = sum(1 for r in vreps if r.get("decision") == "verification_passed")
-        sig["verification_needs_review"] = sum(1 for r in vreps if r.get("decision") == "needs_human_review")
-        sig["verification_rejected"] = sum(1 for r in vreps if r.get("decision") == "verification_rejected")
-        sig["verification_loop_risk"] = sum(1 for r in vreps if r.get("loop_risk") == "high")
-        verified_trust_ids = {r.get("trust_report_id") for r in vreps if r.get("trust_report_id")}
-        from packages.orchestration.provider_trust import load_trust_reports as _ltr
-        accepted_reps = [r for r in _ltr(job).values() if r.get("trust_status") == "accepted"]
-        unverified = [r for r in accepted_reps if r.get("report_id") not in verified_trust_ids]
-        sig["trust_accepted_unverified"] = len(unverified)
-        sig["unverified_trust_report_id"] = str(unverified[0].get("report_id")) if unverified else ""
-        sig["verification_needs_review_id"] = next(
-            (str(r.get("verification_id")) for r in vreps
-             if r.get("decision") == "needs_human_review" and r.get("verification_id")), "")
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        sig["verification_passed"] = sig["verification_needs_review"] = 0
-        sig["verification_rejected"] = sig["verification_loop_risk"] = 0
-        sig["trust_accepted_unverified"] = 0
-        sig["unverified_trust_report_id"] = sig["verification_needs_review_id"] = ""
     try:
         from packages.orchestration.repair_request_builder import load_request_packages
         sig["request_packages"] = len(load_request_packages(job))
@@ -575,13 +545,6 @@ def _generate_options(s: OrchestratorSituation, sig: dict[str, Any], job_id: str
                              entity_ids=[fa], risk="low",
                              outcome="Creates a repair proposal (no apply).",
                              why_now="Unresolved failure with no repair attempt."))
-        # Self attempt awaiting candidate.
-        if sig.get("self_attempts_awaiting", 0) > 0:
-            opts.append(_opt(OptionKind.IMPORT_CANDIDATE, "Import an external candidate for a self attempt",
-                             command=(f"remedy provider intake-repair {job_id} --input <file> "
-                                      f"--provider self_dogfood --json"),
-                             risk="low", outcome="Candidate enters the Trust Gate.",
-                             why_now="A self attempt awaits an external candidate."))
         # Approved self ProposedTask → execute.
         for pt in sig.get("self_proposed_approved", [])[:1]:
             opts.append(_opt(OptionKind.SELF_EXECUTE, "Execute an approved self-improvement task",
@@ -596,38 +559,6 @@ def _generate_options(s: OrchestratorSituation, sig: dict[str, Any], job_id: str
                          command="remedy self plan --json", risk="low",
                          outcome="Plan improvement items for human approval.",
                          why_now="Self-improvement items exist."))
-
-    # Provider Trust Verification v1 (Step 1554).
-    if job_id:
-        # Trust accepted but not yet verified → recommend verification before any approval.
-        if sig.get("trust_accepted_unverified", 0) > 0 and sig.get("unverified_trust_report_id"):
-            trid = sig["unverified_trust_report_id"]
-            opts.append(_opt(OptionKind.PROVIDER_TRUST_VERIFICATION,
-                             "Verify an accepted-but-unverified candidate",
-                             command=f"remedy provider verify {job_id} {trid} --json",
-                             entity_ids=[trid], risk="low",
-                             outcome="Second-stage check before any pending intent (no apply).",
-                             why_now="A trust-accepted candidate has not been verified.",
-                             contract_action="provider_verify_candidate"))
-        # Verification needs review → human-gated inspection (never auto-approve).
-        if sig.get("verification_needs_review", 0) > 0 and sig.get("verification_needs_review_id"):
-            vid = sig["verification_needs_review_id"]
-            opts.append(_opt(OptionKind.HUMAN_REVIEW,
-                             "Inspect a verification report (needs review)",
-                             command=f"remedy provider verification-show {job_id} {vid} --json",
-                             entity_ids=[vid], risk="low",
-                             outcome="Human reviews the safe verification findings.",
-                             why_now="A candidate passed trust but verification needs human review."))
-            opts[-1].available = False
-
-    # Repeated verification / trust rejection → roadmap note, human-gated.
-    if sig.get("verification_rejected", 0) >= 2 or sig.get("trust_rejected", 0) >= 2:
-        opts.append(_opt(OptionKind.PROVIDER_TRUST_VERIFICATION,
-                         "Change approach (repeated rejection)",
-                         risk="medium", outcome="Revise the request/candidate (manual).",
-                         why_now="Repeated provider trust/verification rejections.",
-                         why_not="Repeated failures need a human to change approach — no auto retry."))
-        opts[-1].available = False
 
     # Ideas as roadmap hints → human review only.
     for idea in ideas[:1]:
@@ -652,12 +583,10 @@ def _generate_options(s: OrchestratorSituation, sig: dict[str, Any], job_id: str
 _BASE_SCORE = {
     OptionKind.APPROVE_INTENT: 90,
     OptionKind.CONTINUE_INTENT: 85,
-    OptionKind.IMPORT_CANDIDATE: 70,
     OptionKind.PROPOSE_REPAIR: 65,
     OptionKind.SELF_EXECUTE: 55,
     OptionKind.SELF_PROPOSE: 40,
     OptionKind.SELF_INSPECT: 20,
-    OptionKind.PROVIDER_TRUST_VERIFICATION: 60,
     OptionKind.LOCAL_ADVISOR_NEEDED: 10,
     OptionKind.HUMAN_REVIEW: 5,
 }
@@ -697,8 +626,6 @@ def _evidence_fingerprint(sig: dict[str, Any]) -> str:
         "repair_failed": sig.get("repair_failed", 0),
         "pending_intents": len(sig.get("pending_intents", [])),
         "approved_intents": len(sig.get("approved_intents", [])),
-        "trust_rejected": sig.get("trust_rejected", 0),
-        "trust_accepted": sig.get("trust_accepted", 0),
         "materialized": sig.get("materialized", 0),
         "self_attempts_awaiting": sig.get("self_attempts_awaiting", 0),
         "self_attempts_pending": sig.get("self_attempts_pending", 0),
@@ -713,10 +640,6 @@ def _loop_guard(s: OrchestratorSituation, sig: dict[str, Any], data_dir: Path) -
         return OrchestratorLoopGuard(LoopGuardStatus.REQUIRE_HUMAN_REVIEW,
                                      "Repeated repair failures for this job.",
                                      OptionKind.PROPOSE_REPAIR, sig["repair_failed"])
-    if sig.get("trust_rejected", 0) >= 2:
-        return OrchestratorLoopGuard(LoopGuardStatus.BLOCK,
-                                     "Repeated provider trust rejections.",
-                                     OptionKind.IMPORT_CANDIDATE, sig["trust_rejected"])
     # Decision-history repetition: same selected kind + same evidence fingerprint.
     prior = list_decisions(s.scope_key(), data_dir)
     same = [d for d in prior if d.get("evidence_fingerprint") == s.evidence_fingerprint
@@ -760,13 +683,13 @@ def _routing_plan(s: OrchestratorSituation,
     top = avail[0].score
     gap = top - (avail[1].score if len(avail) > 1 else 0)
     # Candidate generation needed + complete evidence + budget → external builder (PLAN).
-    needs_candidate = sig.get("self_attempts_awaiting", 0) > 0 or (
+    needs_candidate = (
         sig.get("unresolved_failures", 0) > 0 and sig.get("repair_attempts", 0) == 0)
     if needs_candidate and not sig.get("budget_exhausted") and s.evidence_status == "complete":
         return OrchestratorModelRoutingPlan(
             RoutingTier.EXTERNAL_BUILDER_NEEDED,
             "Candidate generation is the bottleneck; external builder output would help — "
-            "but only through the Trust Gate, never applied directly.", True,
+            "but Remedy has no import route for it, so a human relays it.", True,
             notes="Plan only — no model is called in v0. Output is untrusted.")
     if gap >= 30:
         return OrchestratorModelRoutingPlan(

@@ -57,16 +57,19 @@ def test_valid_request_json(env):
     d = json.loads(r.stdout)
     assert d["stop_reason"] == "ready"
     assert d["request_package_id"]
-    assert d["output_intake_command"].startswith(f"remedy provider intake-repair {job_id}")
+    # The intake fields are REMOVED, not emptied (DECISION F275 D11 (b)).
+    assert "output_intake_command" not in d
+    assert "trust_gate_command" not in d
     assert "diff --git" not in r.stdout
 
 
-def test_text_includes_request_and_intake(env):
+def test_text_surface_advertises_no_dead_command(env):
     job_id, fid = _job(env)
     r = run_grouped_cli(["repair", "request", job_id, "--failure-artifact-id", fid], env)
     assert r.returncode == 0, r.stderr
     assert "Repair request" in r.stdout
-    assert "provider intake-repair" in r.stdout
+    assert "provider intake-repair" not in r.stdout
+    assert "provider trust-show" not in r.stdout
 
 
 def test_request_show_json(env):

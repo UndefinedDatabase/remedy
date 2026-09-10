@@ -75,7 +75,6 @@ Baseline: **76.3%** (branch coverage enabled).
 | 5.9% | 127 | apps/cli/commands/test_cmds.py |
 | 6.7% | 147 | apps/cli/commands/dogfood_cmd.py |
 | 6.8% | 80 | apps/cli/commands/snapshot_cmds.py |
-| 7.6% | 99 | apps/cli/commands/provider_cmd.py |
 | 9.5% | 93 | apps/cli/commands/self_cmd.py |
 | 10.9% | 70 | apps/cli/commands/event.py |
 | 11.2% | 83 | apps/cli/commands/external_builder_cmd.py |

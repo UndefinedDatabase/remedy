@@ -295,19 +295,6 @@ def _detect_evidence_gaps(job: Any, items: list) -> None:
                     source_type="repair_loop"))
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
-    # Provider trust accepted but not materialized.
-    try:
-        from packages.orchestration.provider_trust import load_trust_reports
-        for r in load_trust_reports(job).values():
-            if r.get("trust_status") == "accepted" and not r.get("repair_intent_id"):
-                items.append(_mk_item(
-                    ItemType.EVIDENCE_GAP, Priority.MEDIUM, Confidence.MEDIUM,
-                    "Accepted provider candidate not materialized",
-                    key=f"trust_not_materialized_{r.get('report_id','')}",
-                    detail="Accepted provider trust report produced no applyable intent.",
-                    source_type="provider_trust"))
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        pass
 
 
 def _detect_roadmap(items: list) -> None:
@@ -319,9 +306,6 @@ def _detect_roadmap(items: list) -> None:
         return (pkg / mod).exists()
 
     rules = [
-        (has("provider_trust.py") and has("repair_request_builder.py"),
-         "Provider Trust Verification v1", "provider_trust.py",
-         "Trust gate + request builder exist; harden trust verification beyond regex."),
         (has("self_dogfood.py"),
          "Self-Dogfood Execution v0", "self_dogfood.py",
          "Self-dogfood planner exists; a guarded execution rail is the natural next step."),

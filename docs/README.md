@@ -40,8 +40,6 @@
 | plan / roadmap mirror | [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | system |
 | prompt cache ordering | [cache-optimal-prompt-ordering-v1.md](system/cache-optimal-prompt-ordering-v1.md) | system |
 | proof chain | [proof-chain.md](system/proof-chain.md) | system |
-| provider trust | [provider-trust-gate-v0.md](system/provider-trust-gate-v0.md) | system |
-| provider trust | [provider-trust-verification-v1.md](system/provider-trust-verification-v1.md) | system |
 | quickstart | [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | guide |
 | release / packaging | [release-capability-v1.md](system/release-capability-v1.md) | system |
 | remedy.toml | [remedy-toml-configuration-system-v0.md](system/remedy-toml-configuration-system-v0.md) | system |
@@ -95,8 +93,6 @@ Specifications and design documents for the built system.
 | [project-scoping-v0.md](system/project-scoping-v0.md) | Project-scoped job listings and creation guard |
 | [proof-chain.md](system/proof-chain.md) | Proof chain for file provenance |
 | [provider-patch-materialization-v0.md](system/provider-patch-materialization-v0.md) | Materializing accepted provider patches into intents |
-| [provider-trust-gate-v0.md](system/provider-trust-gate-v0.md) | Provider trust gate + external repair intake |
-| [provider-trust-verification-v1.md](system/provider-trust-verification-v1.md) | Second-stage verification of trusted candidates |
 | [quality-baseline-v0.md](system/quality-baseline-v0.md) | Quality baseline definitions |
 | [real-test-execution-snapshot-rollback-proof-v1.md](system/real-test-execution-snapshot-rollback-proof-v1.md) | Test execution + snapshot/rollback proof spec |
 | [real-test-execution-v1.md](system/real-test-execution-v1.md) | Real test execution service |

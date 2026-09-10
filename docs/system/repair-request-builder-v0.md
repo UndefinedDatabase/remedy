@@ -16,9 +16,7 @@ infrastructure.
       → RepairRequestPackage (safe to share)
       → hand to ANY external actor (model / worker / human)
       → external actor returns a candidate OUTSIDE Remedy
-      → remedy provider intake-repair … (Trust Gate → Materialization)
-      → remedy patch approve …
-      → remedy do continue …
+      → (nothing: Remedy has no command that imports the answer)
 
 This block never calls a provider, model, network, subprocess, browser, or IDE. It
 only prepares the request and records an offline candidate-generator record.
@@ -54,11 +52,14 @@ secrets, no protected files, no claims of having applied or tested.
 `--target external` (default), `docs_only`, `test_failure`, `markdown_only`. These add
 constraint wording to the request; they are templates, not execution.
 
-## Re-entry is mandatory
+## There is no re-entry
 
-External output re-enters ONLY through `remedy provider intake-repair`, where it is
-quarantined, trust-validated, and (if accepted + a supported single `.md` shape)
-materialized into a pending patch intent. accepted ≠ approved ≠ applied.
+**Remedy deliberately has no import route for the answer.** F275 T001 deleted the
+Provider Trust Gate and its intake command, and DECISION F260 D3 maps the external
+builder to "none, deliberately". A reader will look for the re-entry step exactly
+here, which is why the absence is written down; R-0868 records that this builder now
+has no importer. `remedy patch approve` and `remedy do continue` still apply a patch
+intent that already exists, and accepted ≠ approved ≠ applied is unchanged for those.
 
 ## Candidate generator adapter boundary (interface only)
 
@@ -75,9 +76,7 @@ package; pass `--new` to force a fresh one.
 
 ## See also
 
-- [provider-trust-gate-v0.md](provider-trust-gate-v0.md) — untrusted intake + trust gate.
 - [provider-patch-materialization-v0.md](provider-patch-materialization-v0.md) — accepted candidate → applyable intent.
 - [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply path.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
 - [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — self-improvement attempts route candidate output through the same request/intake flow.
-- [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — the request package is checked for consistency against the candidate during verification (`--request-package-id`).

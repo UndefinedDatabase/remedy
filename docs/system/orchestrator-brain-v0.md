@@ -22,18 +22,19 @@ applies/approves nothing, creates no PR, mutates no code, inserts no `Job.tasks`
 ## How it decides
 
 1. **Situation** — gather safe summaries (live review verdict, failures, repair
-   attempts, patch intents, provider trust/material, self attempts, budget, ideas).
+   attempts, patch intents, provider material, self attempts, budget, ideas).
    Unknown stays unknown; missing/malformed sources become risks.
 2. **Options** — deterministic candidate actions, each with a real entity and a
    **catalog-backed** command (fake commands / missing-entity commands are dropped).
 3. **Score** — base priority adjusted by review status, budget, risk, and loop guard.
-4. **Loop guard** — durable repeated-failure signals (repair failures, trust
-   rejections) plus decision-history repetition (same decision + same evidence
-   fingerprint) → `allow / warn / block / require_human_review`. No infinite "try again".
+4. **Loop guard** — durable repeated-failure signals (repair failures) plus
+   decision-history repetition (same decision + same evidence fingerprint)
+   → `allow / warn / block / require_human_review`. No infinite "try again".
 5. **Routing plan** — `deterministic_only` (a clear winner), `local_advisor_preferred`
    (close options; a cheap local advisor could critique — future), `external_builder_
    needed` (candidate generation is the bottleneck, evidence complete, budget allows —
-   output still only via the Trust Gate), or `human_review_required`.
+   Remedy has no import route for that output, so a human relays it), or
+   `human_review_required`.
 6. **Decision** — exactly one of: a selected option, `human_review_required`,
    `no_safe_action`, or `evidence_incomplete`, with rationale + rejected alternatives.
 
@@ -50,17 +51,15 @@ justified, targeted candidate generation (see
 
 ## Anti-loop
 
-Open blocker/high review forces `human_review_required`. Repeated repair failures or
-provider trust rejections block the retry loop. The same decision with no new evidence
-escalates warn → block. New evidence resets the guard.
+Open blocker/high review forces `human_review_required`. Repeated repair failures block
+the retry loop. The same decision with no new evidence escalates warn → block. New
+evidence resets the guard.
 
 ## Future
 
-- Provider Trust Verification v1 — stronger verification for untrusted output.
 - [Expensive Builder Routing (future)](../archive/expensive-builder-routing-future.md).
 
 ## See also
 
 - [self-dogfood-v0.md](self-dogfood-v0.md), [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md)
-- [provider-trust-gate-v0.md](provider-trust-gate-v0.md), [do-continue-v1.md](../guides/do-continue-v1.md)
-- [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — the brain now recommends `provider verify` for trust-accepted-but-unverified candidates and escalates needs-review/repeated-rejection to human review (deterministic, catalog-backed).
+- [do-continue-v1.md](../guides/do-continue-v1.md)

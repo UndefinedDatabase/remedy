@@ -1,8 +1,12 @@
 """Provider-Agnostic Repair Request Builder v0 tests (Steps 1382/1384/1385/1388).
 
-Request quality, redaction, architecture guards, adapter boundary, idempotency, and
-the simulated external-candidate end-to-end flow (request → intake → materialize →
-approve → do continue). No real provider/model/network/subprocess.
+Request quality, redaction, architecture guards, adapter boundary and idempotency.
+No real provider/model/network/subprocess.
+
+Remedy deliberately has no end-to-end flow test here any more: F275 T001 deleted the
+Provider Trust Gate and its `provider intake-repair` command, so the request → intake
+→ materialize → approve → do continue round trip the old test drove no longer exists
+(R-0868).
 """
 from __future__ import annotations
 
@@ -204,75 +208,17 @@ class TestArchitectureGuards:
         assert "intake_provider_repair" not in self.SRC
 
     def test_next_action_catalog_backed(self, env):
+        # Both halves matter. The two DEAD commands must be absent from every step the
+        # builder emits (F275 T001 deleted them), and every command that IS still named
+        # must resolve in the shipped catalog.
         from packages.orchestration.do_run import validate_next_safe_action_command
         job, fid = _job(env)
         r = RB.build_repair_request_package(str(job.id), fid, data_dir=env)
-        # The intake command is catalog-backed (strip the placeholder args).
-        base = "remedy provider intake-repair " + str(job.id) + " --json"
-        assert validate_next_safe_action_command(base)
-
-
-# ---------------------------------------------------------------------------
-# Simulated external-candidate end-to-end (Step 1388)
-# ---------------------------------------------------------------------------
-
-
-class TestEndToEnd:
-    def test_request_to_completed_verified(self, env, monkeypatch, tmp_path):
-        import packages.orchestration.test_execution_service as tes
-        from packages.orchestration import do_continue as dc
-        from packages.orchestration import provider_trust as PT
-        from packages.orchestration.approval_queue import set_approval_state
-        from packages.orchestration.permissions import Capability, set_permission
-        from packages.orchestration.run_contract import (
-            ContractAction,
-            build_default_run_contract,
-            save_contract,
-        )
-        from tests.orchestration.test_do_continue import _fake_test
-
-        repo = tmp_path / "repo"; (repo / "docs").mkdir(parents=True)
-        (repo / "docs" / "guide.md").write_text("line one\nline two\n")
-        t = Task(description="t")
-        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=t.id,
-                      metadata={"test_failure": True, "failure_kind": "test_failed",
-                                "related_task_id": str(t.id), "related_files": ["docs/guide.md"],
-                                "safe_summary": "doc gap", "command_display": "pytest x"})
-        job = Job(id=uuid4(), name="ov", tasks=[t], artifacts=[fa],
-                  metadata={"target_repo": str(repo.resolve())})
-        set_permission(job, Capability.repo_generated_write, allow=True)
-        set_permission(job, Capability.repo_test_run, allow=True)
-        c = build_default_run_contract(job)
-        c = dataclasses.replace(
-            c, allowed_actions=tuple(list(c.allowed_actions) + [ContractAction.PATCH_APPLY]),
-            denied_actions=tuple(a for a in c.denied_actions if a != ContractAction.PATCH_APPLY),
-            stop_before_apply=False, max_test_runs=1)
-        save_contract(job, c); save_job(job, root=env)
-
-        # 1. Build the repair request (no execution).
-        req = RB.build_repair_request_package(str(job.id), str(fa.id),
-                                              target_kind="markdown_only", data_dir=env)
-        assert req.stop_reason == RB.RepairRequestStopReason.READY
-
-        # 2. Simulate an EXTERNAL actor's candidate response (written by the test).
-        candidate = ("Doc fix.\n```diff\n--- a/docs/guide.md\n+++ b/docs/guide.md\n"
-                     "@@ -1,2 +1,3 @@\n line one\n+added by external actor\n line two\n```\n")
-        resp = env / "external_response.md"; resp.write_text(candidate)
-
-        # 3. Import through the existing provider intake path (trust gate + materialize).
-        ir = PT.intake_provider_repair(
-            PT.ProviderOutputIntakeRequest(job_id=str(job.id), failure_artifact_id=str(fa.id),
-                                           provider_name="external"),
-            input_path=str(resp), data_dir=env)
-        assert ir.trust_status == PT.TrustStatus.ACCEPTED
-        assert ir.repair_intent_id
-
-        # 4. Approve + do continue → snapshot → apply → completed_verified.
-        job = load_job(UUID(str(job.id)), env)
-        set_approval_state(job, ir.repair_intent_id, "approved", decided_by="human")
-        save_job(job, root=env)
-        fn, _ = _fake_test(env, status="passed")
-        monkeypatch.setattr(tes, "execute_test_run", fn)
-        res = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id), intent_id=ir.repair_intent_id), env)
-        assert res.stop_reason == "completed_verified"
-        assert "added by external actor" in (repo / "docs" / "guide.md").read_text()
+        steps = "\n".join(r.next_steps)
+        assert "provider intake-repair" not in steps
+        assert "provider trust-show" not in steps
+        named = [c for c in ("remedy patch approve", "remedy do continue")
+                 if c in steps]
+        assert named, "the surviving steps must still name at least one live command"
+        for cmd in named:
+            assert validate_next_safe_action_command(f"{cmd} {job.id} --json")

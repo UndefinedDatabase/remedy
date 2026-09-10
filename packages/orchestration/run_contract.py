@@ -53,19 +53,6 @@ class ContractAction:
     # Repair Loop v1 metadata actions (Step 1204) — safe, allowed by default.
     CREATE_REPAIR_ARTIFACT = "create_repair_artifact"
     CREATE_REPAIR_PATCH_INTENT = "create_repair_patch_intent"
-    # Provider Trust Gate v0 (Step 1321) — metadata-level intake of UNTRUSTED
-    # external output. These are NOT provider execution (that stays CLOUD_PROVIDER,
-    # denied by no_cloud). Allowed by default; create the intent still needs approval.
-    PROVIDER_INTAKE = "provider_intake"
-    PROVIDER_TRUST_REVIEW = "provider_trust_review"
-    PROVIDER_MATERIALIZE_PATCH = "provider_materialize_patch"
-    CREATE_PROVIDER_REPAIR_INTENT = "create_provider_repair_intent"
-    # Provider Trust Verification v1 (Step 1553) — second-stage SAFE verification of an
-    # already-quarantined candidate. NOT provider execution (that stays CLOUD_PROVIDER).
-    # verify is metadata-only; verification-show is read-only. Allowed by default; never
-    # applies/approves/tests/creates PRs.
-    PROVIDER_VERIFY_CANDIDATE = "provider_verify_candidate"
-    PROVIDER_VERIFICATION_SHOW = "provider_verification_show"
     # Expensive Builder Routing v0 (Step 1587) — routing/policy/planning ONLY. NOT builder/
     # provider/model execution and NOT candidate generation. decide is metadata-only (persists
     # a safe trace); report is read-only. Allowed by default.
@@ -288,12 +275,6 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.CREATE_FIX_TASK,
     ContractAction.CREATE_REPAIR_ARTIFACT,
     ContractAction.CREATE_REPAIR_PATCH_INTENT,
-    ContractAction.PROVIDER_INTAKE,
-    ContractAction.PROVIDER_TRUST_REVIEW,
-    ContractAction.PROVIDER_MATERIALIZE_PATCH,
-    ContractAction.CREATE_PROVIDER_REPAIR_INTENT,
-    ContractAction.PROVIDER_VERIFY_CANDIDATE,
-    ContractAction.PROVIDER_VERIFICATION_SHOW,
     ContractAction.BUILDER_ROUTING_DECIDE,
     ContractAction.BUILDER_ROUTING_REPORT,
     ContractAction.LOCAL_CANDIDATE_GENERATOR_STATUS,

@@ -37,14 +37,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from packages.common.public_text_redaction import _safe_path_label, _scrub_public
-from packages.orchestration.provider_trust import (
-    Severity,
-    TrustStatus,
-    validate_paths,
-)
 
 # ---------------------------------------------------------------------------
 # Limits (mirror the trust gate; materialization stays conservative)
@@ -499,10 +494,18 @@ def materialize_accepted_candidate(
 def verify_provider_patch_material(
     job_id: str, material_id: str, data_dir: Path | None = None,
 ) -> ProviderPatchMaterialVerification:
-    """Verify private patch material against its manifest + trust report. Safe."""
+    """Verify private patch material against its manifest. Safe.
+
+    STRICTLY WEAKER since F275 T001 (R-0867): two of the seven checks are gone with
+    `packages.orchestration.provider_trust` — `paths_safe`, which ran `validate_paths`
+    over the target paths, and `trust_report_accepted`, which resolved the manifest's
+    trust report. `ok` is `all(checks.values())`, so it is now EASIER to satisfy, which
+    is a weakening in the UNSAFE direction. It is accepted because the function has no
+    caller under `packages/` or `apps/` and because copying the deleted module's code
+    into this one is what AGENTS.md Scope Control forbids. No later round may treat this
+    `ok` as a safety property until R-0867's fix clause is discharged.
+    """
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.provider_trust import get_trust_report
-    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     v = ProviderPatchMaterialVerification(material_id=material_id)
@@ -530,21 +533,9 @@ def verify_provider_patch_material(
     checks["not_revoked"] = manifest.get("material_state") != MaterialState.REVOKED
     checks["single_candidate"] = manifest.get("target_path_count", 0) == 1
 
-    # Target paths still safe.
-    targets = [e.get("target_path", "") for e in manifest.get("entries", [])]
-    checks["paths_safe"] = not any(
-        f.severity in (Severity.BLOCKER, Severity.HIGH) for f in validate_paths(targets))
-
-    # Trust report exists + accepted/materialized.
-    report_ok = False
-    try:
-        job = load_job(UUID(job_id), ddir)
-        rep = get_trust_report(job, manifest.get("trust_report_id", ""))
-        report_ok = rep is not None and rep.get("trust_status") in (
-            TrustStatus.ACCEPTED, "materialized", "intent_pending_approval")
-    except (ValueError, JobNotFoundError):
-        report_ok = False
-    checks["trust_report_accepted"] = report_ok
+    # Remedy deliberately checks NEITHER the target paths NOR the trust report here any
+    # more: `validate_paths` and `get_trust_report` lived in the deleted
+    # `provider_trust` module. See this function's docstring and R-0867.
 
     v.checks = checks
     v.ok = all(checks.values())

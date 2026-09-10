@@ -36,7 +36,6 @@ apps.cli.commands.plan_cmd
 apps.cli.commands.policy
 apps.cli.commands.project
 apps.cli.commands.propose_cmd
-apps.cli.commands.provider_cmd
 apps.cli.commands.queue_cmd
 apps.cli.commands.readiness
 apps.cli.commands.real_test_execution_cmd
@@ -200,8 +199,6 @@ packages.orchestration.proposed_tasks
 packages.orchestration.provider_patch_material
 packages.orchestration.provider_timeouts
 packages.orchestration.provider_token_evidence
-packages.orchestration.provider_trust
-packages.orchestration.provider_trust_verification
 packages.orchestration.rate_governor
 packages.orchestration.real_test_execution
 packages.orchestration.redaction_patterns

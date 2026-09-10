@@ -82,7 +82,7 @@ def test_approved_execute_awaits_candidate(env, work_repo):
     assert r.returncode == 0, r.stderr
     d = json.loads(r.stdout)
     assert d["state"] == "awaiting_external_candidate"
-    assert d["next_safe_action"].startswith(f"remedy provider intake-repair {job_id}")
+    assert d["next_safe_action"] == "remedy self status --json"
 
 
 def test_execute_idempotent(env, work_repo):
