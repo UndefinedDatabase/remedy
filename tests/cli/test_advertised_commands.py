@@ -184,52 +184,6 @@ def collect_operator_facing_advertisements() -> tuple[int, list[UnresolvedAdvert
     return _sweep(paths)
 
 
-#: The dead advertisements the R-0847 widening EXPOSED on operator-facing pages
-#: and which round 27 did not repair, held by key so that every other dead
-#: advertisement in the same corpus still fails immediately. This is a RATCHET
-#: in the sense DECISION F274 D1 gave the word and deliberately not a
-#: suppression: every excused site is named here in full, the list may only ever
-#: SHRINK (``_ALLOWLIST_CEILING``), and an entry whose advertisement is gone
-#: fails too, so the list cannot go stale. It exists because widening a guard
-#: and repairing four whole pages are different commits — finding R-0872 carries
-#: the backlog and its fix clause. WHEN IT REACHES ZERO IT IS DELETED, together
-#: with ``_ALLOWLIST_CEILING`` and
-#: ``test_the_known_dead_doc_advertisement_list_only_ever_shrinks``, because a
-#: ratchet at zero is a gate that cannot fail.
-KNOWN_DEAD_DOC_ADVERTISEMENTS: frozenset[tuple[str, str]] = frozenset(
-    (
-        ('docs/system/architecture.md', 'apply-patch-intent'),
-        ('docs/system/architecture.md', 'attach-project-job'),
-        ('docs/system/architecture.md', 'attach-project-repo'),
-        ('docs/system/architecture.md', 'attach-repo'),
-        ('docs/system/architecture.md', 'brain-node'),
-        ('docs/system/architecture.md', 'brain-view'),
-        ('docs/system/architecture.md', 'cockpit'),
-        ('docs/system/architecture.md', 'constitution'),
-        ('docs/system/architecture.md', 'create-job'),
-        ('docs/system/architecture.md', 'create-project'),
-        ('docs/system/architecture.md', 'discover-commands'),
-        ('docs/system/architecture.md', 'list-patch-intents'),
-        ('docs/system/architecture.md', 'project-context'),
-        ('docs/system/architecture.md', 'run-contract'),
-        ('docs/system/architecture.md', 'run-tests-local'),
-        ('docs/system/architecture.md', 'show-permissions'),
-        ('docs/system/architecture.md', 'show-project'),
-        ('docs/system/architecture.md', 'timeline'),
-        ('docs/system/architecture.md', 'token-policy'),
-        ('docs/system/architecture.md', 'trust-report'),
-        ('docs/system/architecture.md', 'workers'),
-        ('docs/system/vocabulary.md', 'absorb'),
-    )
-)
-
-#: The MEASURED length of the allowlist above, written as a literal on purpose.
-#: ``len(KNOWN_DEAD_DOC_ADVERTISEMENTS)`` would move with every entry added and
-#: the ratchet assertion below could then never fail — a gate that cannot fail.
-#: It may fall as the backlog is worked; it may never rise.
-_ALLOWLIST_CEILING = 22
-
-
 def test_every_advertised_command_exists_in_the_catalog() -> None:
     seen, unresolved = collect_command_advertisements()
 
@@ -253,38 +207,10 @@ def test_every_operator_facing_advertised_command_exists_in_the_catalog() -> Non
     # written, so 100 is a floor with room rather than a pin on today's count.
     assert seen > 100, f"the advertisement scan went blind: only {seen} advertisements matched"
 
-    remainder = [
-        site for site in unresolved if site.key not in KNOWN_DEAD_DOC_ADVERTISEMENTS
-    ]
-    assert not remainder, (
+    assert not unresolved, (
         "an operator-facing script or page advertises commands the catalog does "
         "not carry — delete a command's advertisements in the same commit as the "
-        "command:\n" + "\n".join(str(site) for site in remainder)
-    )
-
-
-def test_the_known_dead_doc_advertisement_list_only_ever_shrinks() -> None:
-    """An allowlist that may not GROW and may not go STALE is not a suppression.
-
-    A plain skip hides a defect for as long as anyone leaves it alone. These two
-    assertions make the opposite true: the list cannot take on a new excuse
-    (``_ALLOWLIST_CEILING``), so a fresh dead advertisement anywhere in the
-    corpus goes red at once; and it cannot keep an excuse whose advertisement
-    has been repaired or deleted, so the list shrinks as the backlog is worked
-    and cannot outlive it. Finding R-0872 carries the backlog itself.
-    """
-    assert len(KNOWN_DEAD_DOC_ADVERTISEMENTS) <= _ALLOWLIST_CEILING, (
-        "the known-dead advertisement list GREW — it is a ratchet, so a new dead "
-        "advertisement is repaired, never excused"
-    )
-
-    _, unresolved = collect_operator_facing_advertisements()
-    live_keys = {site.key for site in unresolved}
-    stale = sorted(KNOWN_DEAD_DOC_ADVERTISEMENTS - live_keys)
-    assert not stale, (
-        "the known-dead advertisement list excuses advertisements that are no "
-        "longer there — delete the entry in the commit that repairs the site:\n"
-        + "\n".join(f"{path}: remedy {invocation}" for path, invocation in stale)
+        "command:\n" + "\n".join(str(site) for site in unresolved)
     )
 
 
