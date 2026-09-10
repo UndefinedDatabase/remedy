@@ -73,7 +73,7 @@ approves it. Setting `planning.granularity.enabled = false` passes the
 planner's task list through untouched.
 
 The `cycles.*` keys bound the multi-cycle loop (F046) that
-`remedy job run <id> [--cycles N]` drives. `cycles.max_cycles` defaults to
+`remedy job resume <id> [--cycles N]` drives. `cycles.max_cycles` defaults to
 `1` — an unconfigured run is still a single pass. The F075 milestone gate
 raised `CYCLE_SAFETY_CAP` in `packages/orchestration/long_run_executor.py`
 from 1 to 8 (ADR-0001, applied 2026-08-07), so the config value and the

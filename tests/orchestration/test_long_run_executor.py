@@ -808,7 +808,7 @@ class TestSinglePassRegression:
 
 
 # ---------------------------------------------------------------------------
-# T002 — `remedy job run <id> [--cycles N]`
+# T002 — `remedy job resume <id> [--cycles N]`
 # ---------------------------------------------------------------------------
 
 
@@ -827,10 +827,10 @@ class TestJobRunCommand:
         from apps.cli.command_catalog import CATALOG
         from apps.cli.commands.job import COMMAND_HANDLERS
 
-        entry = next(c for c in CATALOG if c.command_id == "job.run")
-        assert entry.subcommand == "run"
+        entry = next(c for c in CATALOG if c.command_id == "job.resume")
+        assert entry.subcommand == "resume"
         assert "--cycles" in [a.name for a in entry.args]
-        assert "job.run" in COMMAND_HANDLERS
+        assert "job.resume" in COMMAND_HANDLERS
 
     def test_one_cycle_delegates_to_the_existing_single_pass(self, monkeypatch, capsys):
         from apps.cli.commands import job as job_cmd
@@ -928,7 +928,7 @@ class TestJobRunCommand:
         job_cmd._cmd_job_run_cycles("abc12345", unattended=True)
         assert seen["estimate"].band_usd_high is None
         assert seen["yes"] is True
-        assert seen["command_name"] == "job.run"
+        assert seen["command_name"] == "job.resume"
         assert ran == ["abc12345"]
 
 

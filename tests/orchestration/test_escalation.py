@@ -959,7 +959,7 @@ class TestUnattendedRunLoopCliFlag:
 
     ``run_cycles(unattended=…)`` existed with no CLI call site passing it, so the
     A9 rule ("defaults auto-apply only under --yes/unattended") was unreachable.
-    These drive the real ``remedy job run`` handler.
+    These drive the real ``remedy job resume`` handler.
     """
 
     @pytest.fixture
@@ -977,7 +977,7 @@ class TestUnattendedRunLoopCliFlag:
 
         # The F046 rollout cap collapses every run to the single pass; the loop
         # itself is what F051 hangs off, so the cap is lifted for these tests
-        # exactly as the existing job.run multi-cycle test does.
+        # exactly as the existing job.resume multi-cycle test does.
         monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 5)
         monkeypatch.setattr(provider_mod, "OllamaBuilder", FakeBuilder)
         monkeypatch.setattr(lre, "default_task_step",
@@ -1033,7 +1033,7 @@ class TestUnattendedRunLoopCliFlag:
     def test_the_flag_is_registered_in_the_catalog(self):
         from apps.cli.command_catalog import CATALOG
 
-        entry = next(c for c in CATALOG if c.command_id == "job.run")
+        entry = next(c for c in CATALOG if c.command_id == "job.resume")
         flag = next(a for a in entry.args if a.name == "--unattended")
 
         assert flag.is_option and flag.is_flag and not flag.required
@@ -1045,7 +1045,7 @@ class TestUnattendedRunLoopCliFlag:
         from apps.cli.commands import job as job_cmd
 
         seen: dict = {}
-        monkeypatch.setattr(job_cmd, "_cmd_job_run_cycles",
+        monkeypatch.setattr(job_cmd, "_cmd_job_resume",
                             lambda job_id, **kw: seen.update(kw))
 
         class Args:
@@ -1054,7 +1054,7 @@ class TestUnattendedRunLoopCliFlag:
             unattended = True
             json = False
 
-        job_cmd.COMMAND_HANDLERS["job.run"](Args())
+        job_cmd.COMMAND_HANDLERS["job.resume"](Args())
 
         assert seen["unattended"] is True
 
@@ -1063,7 +1063,7 @@ class TestUnattendedRunLoopCliFlag:
         from apps.cli.commands import job as job_cmd
 
         seen: dict = {}
-        monkeypatch.setattr(job_cmd, "_cmd_job_run_cycles",
+        monkeypatch.setattr(job_cmd, "_cmd_job_resume",
                             lambda job_id, **kw: seen.update(kw))
 
         class OldArgs:
@@ -1071,7 +1071,7 @@ class TestUnattendedRunLoopCliFlag:
             cycles = None
             json = False
 
-        job_cmd.COMMAND_HANDLERS["job.run"](OldArgs())
+        job_cmd.COMMAND_HANDLERS["job.resume"](OldArgs())
 
         assert seen["unattended"] is False
 

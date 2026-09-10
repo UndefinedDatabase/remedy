@@ -1457,7 +1457,7 @@ def execute_dispatched_job(job: Any, *,
     campaign attempt 1 produced ten missions whose jobs all sat at ``planned``
     (R-0184). It reimplements nothing: the limits come from
     ``limits_from_config`` — so the F046 rollout cap still applies exactly as
-    it does for ``remedy job run`` — the task pipeline is ``default_task_step``,
+    it does for ``remedy job resume`` — the task pipeline is ``default_task_step``,
     and the budgets are the job's own.
 
     ``unattended=True`` because the gauntlet's whole premise is a run with no

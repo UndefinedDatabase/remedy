@@ -735,7 +735,7 @@ def _cmd_job_run_cycles(
         estimate,
         confirm_above_usd=resolve_confirm_above_usd(),
         yes=(yes or unattended),
-        command_name="job.run",
+        command_name="job.resume",
     ):
         print("Cancelled. Nothing was run.")
         return
@@ -929,6 +929,8 @@ def _cmd_job_resume(
     *,
     cycles: int | None = None,
     dry_run: bool = False,
+    unattended: bool = False,
+    yes: bool = False,
     json_output: bool = False,
 ) -> None:
     """Continue a job from its newest valid CYCLE checkpoint (F047 T002).
@@ -950,7 +952,7 @@ def _cmd_job_resume(
          edited the worktree; resume refuses and names BOTH heads.  It never
          rebases silently (P2).
       3. the PLAN-APPROVAL GATE is consulted through the same check
-         ``remedy job run`` uses — resume is not a second door around it.
+         ``remedy job resume`` uses — resume is not a second door around it.
 
     Only then does it hand off to the multi-cycle executor.
 
@@ -1037,7 +1039,7 @@ def _cmd_job_resume(
             )
             sys.exit(3)
 
-    # 3. Plan-approval gate — the same check `remedy job run` makes.
+    # 3. Plan-approval gate — the same check `remedy job resume` makes.
     block_reason = flight_plan_blocks_execution(job)
     if block_reason == "pending":
         print(
@@ -1073,7 +1075,13 @@ def _cmd_job_resume(
               f"(spent={checkpoint.budget_spent_tokens} tokens, "
               f"verify={checkpoint.verify_result or 'not_run'})")
 
-    _cmd_job_run_cycles(job_id_str, cycles=cycles, json_output=json_output)
+    _cmd_job_run_cycles(
+        job_id_str,
+        cycles=cycles,
+        unattended=unattended,
+        yes=yes,
+        json_output=json_output,
+    )
 
 
 def _cmd_job_assumptions(job_id_str: str) -> None:
@@ -1595,7 +1603,7 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
     elif state == 'completed' and truth.get('fulfillment_status') == 'completed_verified':
         next_action = f'remedy propose list {job_id_str} --json'
     elif pending_count > 0:
-        next_action = 'remedy job run <job_id> --json'
+        next_action = 'remedy job resume <job_id> --json'
     elif state in ('completed', 'failed'):
         next_action = f'remedy job report {job_id_str} --json'
     else:
@@ -2402,13 +2410,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job_id,
         json_output=getattr(args, "json", False),
     ),
-    "job.run": lambda args: _cmd_job_run_cycles(
-        args.job_id,
-        cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
-        unattended=getattr(args, "unattended", False),
-        yes=getattr(args, "yes", False),
-        json_output=getattr(args, "json", False),
-    ),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
     "job.assumptions": lambda args: _cmd_job_assumptions(args.job_id),
     "job.summary": lambda args: _cmd_job_summary(
@@ -2434,6 +2435,8 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
             args.job_id,
             cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
             dry_run=getattr(args, "dry_run", False),
+            unattended=getattr(args, "unattended", False),
+            yes=getattr(args, "yes", False),
             json_output=getattr(args, "json", False),
         )
     ),

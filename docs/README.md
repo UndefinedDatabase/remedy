@@ -119,7 +119,7 @@ User-facing guides, quickstarts, and usage documentation.
 | File | Description |
 |------|-------------|
 | [autocoder-usage.md](guides/autocoder-usage.md) | How to use the autocoder |
-| [cost-preview-user-guide-v0.md](guides/cost-preview-user-guide-v0.md) | Cost preview before an expensive command runs (`remedy job run`) |
+| [cost-preview-user-guide-v0.md](guides/cost-preview-user-guide-v0.md) | Cost preview before an expensive command runs (`remedy job resume`) |
 | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | Reading `remedy stats report` |
 | [do-continue-v1.md](guides/do-continue-v1.md) | `remedy do --continue` one-cycle apply flow |
 | [do-run-v1.md](guides/do-run-v1.md) | `remedy do` cohesive flow |

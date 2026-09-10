@@ -1,6 +1,6 @@
 # Cost preview per command — user guide (v0)
 
-Some commands can spend real money before they finish. `remedy job run` is the
+Some commands can spend real money before they finish. `remedy job resume` is the
 first one Remedy wires to a cost preview (F114): before an expensive run
 starts, it prints an estimate and, in attended mode, asks for confirmation
 above a configured threshold. For the numbers Remedy prints AFTER a run, see
@@ -10,9 +10,9 @@ about the estimate shown BEFORE.
 ## What you see
 
 ```
-$ remedy job run abc12345
+$ remedy job resume abc12345
 estimated $0.0120-$0.0480 (basis: class defaults (low/medium token bands) x price_basis_usd_per_1k_tokens=0.003)
-Continue running 'job.run'? [y/N]
+Continue running 'job.resume'? [y/N]
 ```
 
 The line always carries a `basis:` label — never a bare number — because a
@@ -22,7 +22,7 @@ the line says so instead of guessing:
 
 ```
 estimated cost unavailable (basis: estimate_unavailable)
-Continue running 'job.run'? [y/N]
+Continue running 'job.resume'? [y/N]
 ```
 
 An unavailable estimate is treated as expensive — A9 of
@@ -36,7 +36,7 @@ question at all; cheap runs never interrupt.
 - `--yes` skips the confirmation and proceeds, printing an audited line so the
   skip is visible in evidence:
   ```
-  $ remedy job run abc12345 --yes
+  $ remedy job resume abc12345 --yes
   estimated cost unavailable (basis: estimate_unavailable) - proceeding without prompt (--yes)
   ```
 - `--unattended` (the loop's unattended mode, F051) skips it the same way —
@@ -45,8 +45,8 @@ question at all; cheap runs never interrupt.
 - With neither flag, on a pipe (no terminal attached to stdin) the command
   never hangs waiting for an answer nobody can give. It exits immediately:
   ```
-  $ echo | remedy job run abc12345
-  Error: estimated cost unavailable (basis: estimate_unavailable). stdin is not a terminal, so there is nobody to confirm. Pass --yes to run 'job.run' without a prompt.
+  $ echo | remedy job resume abc12345
+  Error: estimated cost unavailable (basis: estimate_unavailable). stdin is not a terminal, so there is nobody to confirm. Pass --yes to run 'job.resume' without a prompt.
   $ echo $?
   2
   ```
@@ -71,11 +71,11 @@ limit, so a bad config value degrades safely instead of refusing every run.
 
 ## What is wired so far
 
-Only `remedy job run` carries a cost preview today; it is the command the
-catalog marks `is_expensive`. Real cost bands for `job.run` do not exist yet
+Only `remedy job resume` carries a cost preview today; it is the command the
+catalog marks `is_expensive`. Real cost bands for `job.resume` do not exist yet
 either — its estimate is always `estimate_unavailable` until a future round
 supplies real task-class data, which is why every example above shows the
-unavailable case. Marking further commands `is_expensive` and giving `job.run`
+unavailable case. Marking further commands `is_expensive` and giving `job.resume`
 a real band are both separate, later work.
 
 ## Related

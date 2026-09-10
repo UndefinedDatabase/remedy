@@ -454,7 +454,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "Maximum cycles one multi-cycle run may execute (F046). "
             "DEFAULT 1 — the rollout rule: Remedy stays single-pass until the "
             "F075 milestone gate raises the cap. Both this key and "
-            "'remedy job run --cycles' are capped by that safety default."
+            "'remedy job resume --cycles' are capped by that safety default."
         ),
         value_type=int,
         default=1,

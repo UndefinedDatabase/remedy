@@ -466,7 +466,8 @@ class TestHandOff:
         put_checkpoint(job)
         resume(job, cycles=3, json_output=True)
         _job_id, kwargs = handed_off[0]
-        assert kwargs == {"cycles": 3, "json_output": True}
+        assert kwargs == {"cycles": 3, "unattended": False, "yes": False,
+                          "json_output": True}
 
     def test_the_command_is_registered_exactly_once(self):
         from apps.cli.command_catalog import CATALOG, get_command
@@ -494,6 +495,7 @@ class TestHandOff:
 
         job_cmd.COMMAND_HANDLERS["job.resume"](_Args())
         assert seen == [("abcdef12", {"cycles": 2, "dry_run": False,
+                                      "unattended": False, "yes": False,
                                       "json_output": True})]
 
     def test_the_dispatch_passes_dry_run_through_without_a_checkpoint(
@@ -512,6 +514,7 @@ class TestHandOff:
 
         job_cmd.COMMAND_HANDLERS["job.resume"](_Args())
         assert seen == [("abcdef12", {"cycles": None, "dry_run": True,
+                                      "unattended": False, "yes": False,
                                       "json_output": False})]
 
     def test_a_checkpoint_id_still_reaches_the_event_replay_resume(self, monkeypatch):

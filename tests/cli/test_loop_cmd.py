@@ -260,7 +260,7 @@ def test_run_prints_the_next_command_naming_the_job_it_just_created(
 
     out = capsys.readouterr().out
     (stored,) = _stored_jobs()
-    assert f"remedy job run {stored.id}" in out
+    assert f"remedy job resume {stored.id}" in out
 
 
 def test_an_unknown_loop_name_is_refused_and_names_the_loops_that_exist(

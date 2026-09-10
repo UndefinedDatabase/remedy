@@ -387,33 +387,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
-        command_id="job.run",
-        group_id="job",
-        subcommand="run",
-        description="Run a job in bounded cycles (F046; one cycle until the F075 gate).",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("--cycles", "Maximum cycles for this run (capped by the rollout default)",
-                   required=False, is_option=True),
-            ArgDef("--unattended",
-                   "Run without a human present: a task decision that carries a safe "
-                   "default is auto-answered from it and recorded in the escalation "
-                   "assumption log. A question with no safe default still waits.",
-                   required=False, is_option=True, is_flag=True),
-            ArgDef("--yes", "Skip the cost-preview confirmation prompt above the "
-                            "configured threshold (F114). Never bypasses budget "
-                            "limits or the escalation log.",
-                   required=False, is_option=True, is_flag=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        may_execute_commands=True,
-        is_expensive=True,
-        related=("job.plan", "decision.list"),
-    ),
-
-    CommandEntry(
         command_id="job.plan",
         group_id="job",
         subcommand="plan",
@@ -1895,13 +1868,23 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--dry-run", "Preview resume without executing", required=False, is_option=True, default="false"),
             ArgDef("--cycles", "Maximum cycles for the resumed run (capped by the rollout default)",
                    required=False, is_option=True),
+            ArgDef("--unattended",
+                   "Run without a human present: a task decision that carries a safe "
+                   "default is auto-answered from it and recorded in the escalation "
+                   "assumption log. A question with no safe default still waits.",
+                   required=False, is_option=True, is_flag=True),
+            ArgDef("--yes", "Skip the cost-preview confirmation prompt above the "
+                            "configured threshold (F114). Never bypasses budget "
+                            "limits or the escalation log.",
+                   required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
         supports_json=True,
         may_mutate_repo=True,
         may_execute_commands=True,
         requires_permission=True,
-        related=("job.checkpoints", "job.run", "event.replay"),
+        is_expensive=True,
+        related=("job.checkpoints", "event.replay"),
     ),
 
     # ── blocker ─────────────────────────────────────────────────────────
