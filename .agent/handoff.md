@@ -368,3 +368,100 @@ slips below as dated lines in `.agent/prose_slips.md`, BLANK-LINE SEPARATED.
 2026-09-10 · F275 R31 · The round 31 block's SPEC-PROBE told the worker to attribute an access to the innermost stack frame "whose filename lies under the worktree root" without saying that the test reads the RAW `co_filename`, and a dataclass's generated `__init__` carries the literal filename `<string>`, which `os.path.abspath` resolves to a path UNDER that root. The worker's faithful implementation therefore stopped the walk at a synthetic frame and collapsed every `JobPlan` construction write into one key per field, reading the alternative route at 977 sites where the reviewer read 1201. Both instruments were correct against the words; the words admitted two readings, and the one the reviewer never considered is the one a path-normalising helper makes natural. A spec that names a PREDICATE over a filename says which string the predicate is applied to, because `<string>`, `<stdin>` and `<frozen importlib._bootstrap>` are filenames that are not paths and every one of them normalises into whatever directory happens to be current.
 
 2026-09-10 · F275 R31 · DECISION F275 D17 landed the sentence that ZERO commits on this branch exceed 500 insertions, measured with `git log --numstat`, which emits NO diff for a merge commit — so the two merges bringing `main` into this branch, at 805 and 804 insertions against their first parents, were read as zero rather than examined. The claim is true of every commit carrying authored work, where the real maximum is 498, and the ruling that rests on it is unaffected; the quantifier is simply wider than the measurement that produced it. A sweep that quantifies over COMMITS states which commits its tool can SEE, because the commit shapes a tool silently skips are exactly the ones nobody thinks to check.
+
+## Session 15 ends here — ONE delegated round, PASS, and the reason it is one and not four
+
+Round 31 only, against the amend0905-throughput target of six to eight and its FLOOR OF FOUR. THIS SESSION
+IS BELOW THE FLOOR AND SAYS SO PLAINLY RATHER THAN IMPLYING OTHERWISE. The reason is the second of the two
+amend0905 sanctions — a round that explicitly needs a fresh session — and it is claimed on measurements
+taken this session rather than on a preference or on a feeling of fatigue. The first sanction is NOT
+available and is NOT used: amend0908-f275-finish rule 5 permits "authoring errors accumulating" only after at
+least four delegated rounds, this session ran one, and the reason is therefore not cited even though this
+round's block did carry a spec defect the worker found.
+
+WHY T003'S FIRST ROUND NEEDS A FRESH SESSION, measured at `b5d207f2` and not asserted.
+
+FIRST, IT IS NOT A DELETION ROUND, so it cannot be carried by amend0906-triage-throughput's cheap four-
+measurement form. That paragraph defines a deletion round as one whose change set holds no EDITED line under
+`packages/`, `apps/` or `tests/`. T003's classic-runner slice necessarily edits such lines, because
+`_cmd_job_run_cycles` has a SECOND caller: `apps/cli/commands/job.py:1076`, inside the handler for
+`job.resume`, a command T003 does not delete and F275 has no order to touch. `job.run` itself delegates to
+`_cmd_run_next_task_local` at `apps/cli/commands/job.py:755` whenever the resolved cycle count is one, which
+is today's default under the F046 rollout cap, so the two commands T003 names are ONE coupled group and the
+group's removal reaches a surviving command's behaviour. Under amend0908-f275-finish rule 4 that surviving
+importer must lose the import and the code path in the SAME commit, and any user-observable behaviour lost is
+registered as a finding naming the inheriting feature — never a stub, shim or copy.
+
+SECOND, EVERY AVAILABLE SLICE OF T003 REQUIRES THE SAME UNMADE RULING, so there is no smaller piece to take
+first. Deleting the command surface alone still orphans its advertisements — `remedy job run-next` is printed
+as a next action at four sites in `packages/orchestration/trust_report.py` and one in
+`packages/orchestration/timeline.py` — and an advertisement can only be repaired by naming the command that
+INHERITS the capability. The catalog offers `do.run`, `do.continue`, `worker.run` and `mission.run` as
+candidates and this session did not measure which of them actually inherits a bounded-cycles run; guessing it
+in a block would be the invented-command class the round 25 slip already cost this feature. Note that the
+`related=` half of that sweep is now GUARDED and no longer needs a hand check: R-0859 is RESOLVED and
+`tests/test_command_catalog.py::TestCatalogIntegrity::test_every_related_reference_resolves_to_a_live_command`
+resolves every tuple against the live id set.
+
+THIRD, DECISION F275 D17 LANDED THIS SESSION AND DIRECTS T003 TO RE-DERIVE ITS FIGURES AT ITS OWN BASE rather
+than inherit this round's. Planning T003 inside the session that ruled it means planning against exactly the
+numbers the ruling says not to carry forward, and the coupling above is the first evidence that T003's base
+differs from T002's in ways that matter.
+
+WHAT THIS SESSION LANDED, and it is the slice three features deferred. T002 is DONE. The DECISION F272 D7
+descriptor probe was built, corrected twice against its own failures, and run over BOTH records in one suite
+run, turning DECISION F272 D15's receiver-name BOUND into a real site set: the flip is 1768 sites over 1766
+distinct changed lines, 357 in production across 68 files and 1409 in tests across 117 files, beside 586
+`Job(...)` constructions, 346 imports and 374 annotations. The method question is settled with evidence
+rather than authority — a static selection would have EXCLUDED 92 sites it positively attributes to something
+other than `Job`, and left the tree red at a commit boundary. DECISION F275 D17 rules the route: ONE commit,
+declared oversize under AGENTS.md's Commit Discipline, landing inside T003; the allowance is unspent, the
+maximum single-parent insertion count on this branch is 498, and the mandated closure rotation was measured at
+106 insertions so it does not compete for that allowance as DECISION F272 D18 assumed it would. The
+alternative route — renaming `JobPlan`'s two fields so both records agree — was measured in the same run
+rather than argued about, and is rejected only because it would spend TWO oversize commits where AGENTS.md
+permits one; it is recorded in enough detail to be taken if the operator ever permits two.
+
+THE STATE. THE OPEN SET IS 87 BY DISTINCT ID at `b5d207f2`, over 102 registrations against 15 resolutions,
+unchanged across this session, which registered none and resolved none. Four are High — R-0803, R-0804,
+R-0806 and R-0807 — and all four are F273's rather than this feature's, per DECISION F272 D12. F275 stands at
+31 rounds and 15 sessions against the operator's soft limit of 60 rounds and 20 sessions, so no scope report
+is owed. The probe reproduced across FOUR independent full-suite runs — two by the reviewer before delegation
+and two by the worker — at `18350 passed, 23 skipped` and exit 0 every time.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context is long but
+not exhausted, and exhaustion is expressly NOT the reason this session ends — it ends because the next round
+is a production-code round carrying two capability rulings that the decision landed this session tells T003 to
+make at its own base.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
+session's Phase 0 probe, was measured absent again before round 31's first commit, and is absent as this
+session ends. Then the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
+
+SECOND, round 32's FIRST substantive commit books, from this file as the durable carrier under
+amend0827-process-diet rule 1: the ROUND 31 PASS verdict above as a `Gate: F275 R31` entry in
+`.agent/live_review.md`, carrying its two corrections in that same entry rather than as separate ids, and the
+two prose slips above as dated lines in `.agent/prose_slips.md`, BLANK-LINE SEPARATED. The open set is 87 and
+the next free id after R-0873 is R-0874; that booking registers nothing and resolves nothing, so it stays 87.
+A round whose WHOLE change set is that booking is forbidden, so it rides with the round that is happening
+anyway.
+
+THIRD, T003, with a fresh context. Its first obligation is the ruling this session deliberately did not make:
+WHICH LIVE COMMAND INHERITS a bounded-cycles run and a single-pass run, resolved against the SHIPPED catalog
+by import rather than from memory, and recorded as a dated DECISION with the behaviour that is genuinely lost
+registered as a finding naming its inheriting feature, per amend0908-f275-finish rule 4. Only then the
+deletion of the coupled `job.run` and `job.run-next` group, which must also settle what `job.resume` does once
+the cycles runner is gone, since it calls that handler at `apps/cli/commands/job.py:1076`. `run_cycles` and
+`run_next_task` themselves SURVIVE that deletion and are not on its list: `run_cycles` is called from
+`orchestrator_loop.py` at line 1491 and `run_next_task` is reached by that same orchestrator path, so this is
+a deletion of a COMMAND SURFACE and not of the underlying runner. The flip DECISION F275 D17 sized lands inside T003 as
+the one declared-oversize commit, with its inseparability reason stated in the handback BEFORE review, and
+T003 re-derives the site set at its own base rather than inheriting the figures above.
+
+THE COUPLING ABOVE IS PLANNING INPUT AND NOT A FINDING, stated so the next session does not spend an id on it.
+`job.resume` calling the bounded-cycles handler is deliberate design, not a defect: nothing on disk is wrong,
+no gate is blind, and amend0827-process-diet rule 2 reserves an R-id for a defect with product effect. What
+T003 owes is a ruling about that call, and the finding it does owe is the one amend0908-f275-finish rule 4
+names — the user-observable behaviour the deletion removes, registered against its inheriting feature.
