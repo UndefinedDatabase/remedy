@@ -12582,3 +12582,78 @@ spellings of job identity are exactly what this chain of features exists to remo
 HOW TO REVERSE: delete this decision. DECISION F275 D17's route stands either way; what is
 lost by deleting this is the measured size, and the flip round would then declare D17's
 figure, which this measurement shows to be low by more than a factor of two.
+
+## DECISION F275 D22 (2026-09-10, F275 round 40) — the flip carries a SECOND type pair, `Task` to `TaskEntry`, which no decision in this chain has measured; and it is landed by WIDENING first
+
+WHAT THIS AMENDS. DECISION F275 D21, recorded one round ago, measured the flip's floor over
+three parts and named ONE reason that floor is still a floor: the sites that treat a job id
+as a UUID. It did not name this one, and this paragraph is its dated correction rather than
+a rewrite, per planner_reviewer_prompt.md §3 item 20. DECISION F272 D15 is the origin of the
+gap and is also not rewritten: it measured the two JOB records as differing in `id` and
+`name` alone and wrote that "the task vocabularies already agree because `TaskEntry(...).status
+== RunState.PENDING` evaluates True". That sentence is TRUE of the `status` FIELD and was
+read, by every decision after it, as a statement about the task RECORD. It is not one.
+
+THE MEASUREMENT, taken by the reviewer at `6537ece6` by IMPORTING the two shipped classes
+rather than reading their source, and by `ast` over the tracked `.py` files. `Job.tasks` is
+`list[Task]` and `JobPlan.tasks` is `list[TaskEntry]`, so a consumer moved from the classic
+record to the unified one moves BOTH types. `Task` declares seven fields and `TaskEntry`
+twenty-three, and they share exactly TWO names: `inputs` and `status`. The `Task` type sites
+the flip must carry are 246 constructions, 142 imports and 40 annotations over 427 distinct
+changed lines in 111 files, 15 production and 96 test — which the union DECISION F275 D21
+states does not contain, because that union was computed over `Job` alone.
+
+THE THREE FIELDS WITH NO COUNTERPART OF THE SAME MEANING, and this is why the pair is a
+migration rather than a rename. `Task.budget` is a `Budget` and `TaskEntry` has no per-task
+budget at all. `Task.output_artifact_ids` is a `list[UUID]` and `TaskEntry` has no artifact
+list; it is READ at 35 sites on task-named receivers, 15 of them production, including
+`packages/orchestration/task_runner.py`, which is the live runner, and
+`packages/orchestration/brain_detail.py`, which is the cockpit's detail panel. And
+`Task.acceptance_checks` is a `list[AcceptanceCheck]` against `TaskEntry.acceptance`, which
+is a single `str` — a structured list against a sentence, which is a lossy mapping and not a
+rename. `Task.id` maps onto `TaskEntry.task_id`, a `str` where `Task.id` is a `UUID`, which
+is the same shape change D21 records for the job id. `Task.description` has TWO candidates
+on the unified record, `TaskEntry.title` and `TaskEntry.body`, and this decision does not
+choose between them: that is a reading of what each field means to its consumers, the widen
+does not need it, and the flip round makes it against the sites it is actually moving.
+
+CHOSEN: THE PAIR IS LANDED BY WIDENING `TaskEntry` FIRST, IN ITS OWN COMMIT, BEFORE THE
+FLIP. `TaskEntry` gains the fields it lacks with defaults, and `_export_job` and `_import_job`
+gain them symmetrically, so an older job file loads unchanged and a newer one round-trips.
+That commit is GREEN BY CONSTRUCTION — nothing reads the new fields yet, no classic consumer
+moves, and the record on disk gains keys rather than losing them — and it SHRINKS the atomic
+commit that follows by everything it carries. The precedent is this chain's own: DECISION
+F272 D5, D6 and D7 staged the `state` collapse as WIDEN, then RENAME, then RETYPE, for
+exactly this reason. A widen is not the compatibility reader AGENTS.md's Scope Control
+forbids: the classic record still dies in the flip, and nothing is left alive beside its
+replacement.
+
+WHAT THE WIDEN MUST CARRY, and what it must NOT. It carries `output_artifact_ids`, because
+35 sites read it and 15 of those are production, so deleting it is a user-observable loss
+that operator amendment amend0908-f275-finish rule 4 would otherwise force this feature to
+register as a finding against an inheriting feature that does not exist. It carries the
+per-task `budget`, whose absence would silently remove a limit rather than a display. It
+does NOT carry `acceptance_checks` as a structured list: `TaskEntry.acceptance` already
+holds the acceptance text and the mapping is lossy in the direction the flip travels. The
+measurement behind that, stated as what was counted rather than as a conclusion: the name is
+read as an ATTRIBUTE at five sites, three of them production, and NOT ONE of those three is
+on a receiver named `*task*` — they read a planner output — while the single task-named
+attribute read is in a test. Its other production occurrences are keyword arguments at sites
+that CONSTRUCT a `Task`, and those die with the classic record rather than consuming the
+unified one. So the flip round registers the structured form as a finding naming the feature
+that owns acceptance criteria, per rule 4, rather than inventing a home for it here.
+
+ALTERNATIVES CONSIDERED. (i) Carry the pair inside the one oversize flip commit — rejected
+on arithmetic and on risk: it adds 427 lines to a commit DECISION F275 D21 already measures
+at 7.5 times the cap, and it puts a lossy record migration inside the one commit in this
+feature that cannot be split. (ii) Map `Task.output_artifact_ids` onto an existing
+`TaskEntry` field — rejected on the measurement: `safe_diff_files` and `apply_manifest` are
+about the DIFF a task produced, not about artifacts it registered, and re-pointing a reader
+at a differently-meaning field is the gate-that-lies class this record exists to prevent.
+(iii) Delete the three fields and register three findings — rejected for
+`output_artifact_ids` on its 35 readers, accepted for `acceptance_checks` alone, which is
+what the clause above rules.
+
+HOW TO REVERSE: delete this decision. DECISION F275 D21's union then stands as the flip's
+stated size, understating it by 427 lines and by a lossy record migration, which is the
+state this measurement was taken to end.
