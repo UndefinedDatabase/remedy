@@ -1,85 +1,86 @@
-── STEP T003 (4 of n) — F275 ─────────────────────────────────
-Goal:        Land the SECOND MEASUREMENT finding R-0832 asks for — an event-name
-             coupling ratchet beside the retired import map — so the coupling
-             the map cannot see becomes visible and stays visible.
-Bundle:      C0a save this block · C0b mirror it · C1 the plan · C2 the round 34
-             verdict and two prose slips · C3 the guard · C4 the handback.
+── STEP T003 (1 of n) — F275 ─────────────────────────────────
+Goal:        Re-derive the T002 flip site set AT T003's OWN BASE, as DECISION
+             F275 D17 orders, and ENUMERATE it file by file so the flip commit
+             is applied from a committed list; and repair the third and fourth
+             instances of R-0870.
+Bundle:      C0a save this block · C0b mirror it · C1 the plan · C2 the round 35
+             verdict and three prose slips · C3 the two R-0870 repairs · C4 the
+             flip enumeration · C5 the handback.
 Change:      exactly the paths listed here and nothing else —
-             `.agent/authored/f275-r35.md`, `.agent/last_block.md`,
+             `.agent/authored/f275-r36.md`, `.agent/last_block.md`,
              `.agent/plan.md`, `.agent/live_review.md`,
              `.agent/prose_slips.md`,
-             `tests/orchestration/test_event_name_coupling.py` (NEW),
-             plus `.agent/handoff.md` at C4.
+             `packages/common/public_text_redaction.py`,
+             `tests/cli/test_mission_cmd.py`,
+             `.agent/f275_t003_flip_sites.md` (NEW),
+             plus `.agent/handoff.md` at C5.
 Constraints: the numbered list below.
-Done when:   gates G1 to G7 below are RUN and their real exit codes recorded.
+Done when:   gates G1 to G8 below are RUN and their real exit codes recorded.
 Handback:    completion report + rewrite `.agent/handoff.md`.
+── end of frame; the single pure rule line below is exactly 62 `─` characters
 ──────────────────────────────────────────────────────────────
 
 ## Base
 
-This round's base is `df5d527f`. THE GUARD BELOW WAS WRITTEN, RUN AND
-RED-PROVED by the reviewer in a disposable worktree at that base before this
-block was authored; every numeral below is that run's.
+This round's base is `965ea50d`. EVERY NUMERAL BELOW WAS MEASURED BY THE
+REVIEWER IN A DISPOSABLE WORKTREE AT THAT BASE BEFORE THIS BLOCK WAS AUTHORED:
+the probe run, the static sweep, the union, the two repair pairs and the red
+proof were all applied and run, and the readings are that run's, not a
+prediction.
 
 ## What this round is, and what it is NOT
 
-R-0832 records that the cluster deletion map measured IMPORT edges only, so a
-consumer coupled to a deleted module by EVENT NAME is invisible to it and
-survives as dead code. Its fix clause has TWO halves and this round lands the
-FIRST: "extend the map, or add a second measurement beside it, that records
-EVENT-NAME couplings from the cluster's emitters to their non-cluster readers"
-— and then "name the event-coupled consumers in D3 so the deletion round removes
-them in the same commit as their emitter".
+DECISION F275 D17 ruled the classic-to-unified flip ONE declared-oversize commit
+inside T003, and its closing clause binds this round by name: "T003 re-derives
+the set at its own base before it commits rather than inheriting these figures
+— every count here names `0b009325`, and the tree moves between now and then."
+The tree HAS moved: rounds 32 to 35 deleted `run_agent_loop`, `job.run-next` and
+`job.run`, and the union has fallen from 1768 sites to 1753.
 
-THIS ROUND DOES NOT RESOLVE R-0832 and does not write a `Done:` paragraph for
-it. The second half belongs to the round that drafts DECISION F260 D3, which is
-where the DISPOSAL of each coupling is ruled. The reason the disposal is not
-taken here is measured rather than preferred: the one dead coupling that exists,
-`context_budget_optimized`, survives as a run-log SCHEMA entry and a UI
-action-class entry, and DECISION F275 D18 ruled four rounds ago that a schema
-for an event historical run logs still carry is KEPT rather than deleted. Which
-of those two readings governs is a ruling, and D3 is where it belongs.
+THIS ROUND MOVES NO PRODUCTION LINE OF THE FLIP. It produces the ENUMERATION the
+flip round applies, which round 31's inventory deliberately did not carry — that
+file SIZED the change and gave figures; this one NAMES every site. The reason for
+the split is the commit cap: a per-site enumeration is 1753 lines and cannot be
+one commit, while the per-FILE rendering below is 184 lines and can.
+
+THIS ROUND DOES NOT RESOLVE R-0870 and the worker writes no `Done:` paragraph
+for it. C3 repairs the third and fourth instances the `Note: F275 R24` entry
+records; the reviewer authors the resolution at the next gate, and the worker
+marks the fix `Landed:` per planner_reviewer_prompt.md §4 item 4.
 
 ## Constraints
 
-1. APPLY THE SLICE BYTE FOR BYTE. GUARD35 is a WHOLE NEW FILE: write it with
-   `shutil.copyfile` semantics from the extracted slice, never by retyping, and
-   never reflow it. If anything does not fit, DECLARE it and apply the rest.
-2. THE COMMIT ORDER IS C0a, C0b, C1, C2, C3, C4, exactly. C1 is the first
-   substantive commit, per §3 item 23.
-3. THE CHANGE SET IS THE PATH LIST IN THE HEADER'S `Change:` LINE, together with
-   `.agent/handoff.md` at C4. Stage by naming paths, never `git add -A`.
-4. EVERY APPEND IS `pre + ONE newline + slice`. At the base
-   `.agent/live_review.md` is 814121 bytes and `.agent/prose_slips.md` is 223959,
-   each ending in a single `\n`. `.agent/decisions.md` is NOT touched.
-5. NO PRODUCTION LINE MOVES AT ALL THIS ROUND. The only non-`.agent/` path is a
-   NEW test file. Nothing under `packages/`, `apps/`, `docs/` or `scripts/` is
-   edited, added or deleted, and G7 gates that.
-6. DESTRUCTIVE VERIFICATION IS ISOLATED, inside a disposable `git worktree`
-   under `.remedy-wt/`, never in the primary checkout. Remove and prune it
-   before the handback.
-7. THE FULL SUITE IS NOT ORDERED THIS ROUND. The change set holds one new test
-   file and no production line, so the round gate is the scoped set G6 names
-   plus the canary — verification tier 1 of
-   docs/agents/planner_reviewer_prompt.md §3. The reviewer nevertheless ran the
-   full serial suite over this exact change and read `18336 passed, 29 skipped`
-   with ONE failure, `TestVitestFrontendTestFoundation::test_vitest_passes`,
-   which is the known fresh-worktree artifact: `apps/ui/node_modules` did not
-   exist on that first pass, and the same class re-ran GREEN at 4 passed once it
-   did. Collection goes 18362 to 18366, the four tests this file adds.
-8. THIS ROUND REGISTERS NO FINDING AND RESOLVES NONE. The open set is 87 by
-   distinct id at the base and must read 87 at C3. R-0832 STAYS OPEN by design,
-   for the reason stated above. The next free id is R-0875 and this round does
-   not spend it.
-9. THE GUARD IS A RATCHET AND NOT A ZERO-GATE, deliberately. Its allowlist
-   `KNOWN_DEAD_EVENT_COUPLINGS` holds exactly one entry today and its ceiling
-   `_COUPLING_CEILING` is the LITERAL 1, not a length. A ceiling derived from
-   the thing it bounds cannot fail — that is the defect F275 round 27 found in
-   this reviewer's own advertisement guard, and this file does not repeat it.
+1. APPLY EVERY SLICE BYTE FOR BYTE. Extract each by its delimiter lines from the
+   committed `.agent/authored/f275-r36.md` and apply with `shutil.copyfile`
+   semantics — never by retyping, never reflowed. If anything does not fit,
+   DECLARE it in the handback and apply the rest.
+2. THE COMMIT ORDER IS C0a, C0b, C1, C2, C3, C4, C5, exactly — seven commits, no
+   extra, none dropped, no reordering. C1 is the first substantive commit and
+   makes `.agent/plan.md` current before any other change, per §3 item 23.
+3. THE APPEND BASELINES, read by the reviewer at the base: `.agent/live_review.md`
+   is 819410 bytes and `.agent/prose_slips.md` is 225483 bytes, each ending in a
+   newline. An append is pre-blob, then ONE newline, then the slice as extracted.
+4. C3 IS THE ONLY COMMIT THAT TOUCHES `packages/` OR `tests/`. C4 touches only
+   `.agent/`. No path under `apps/`, `docs/` or `scripts/` moves in this round at
+   all.
+5. THE ENUMERATION IS GENERATED, NEVER RETYPED. `.agent/f275_t003_flip_sites.md`
+   is written from the worker's OWN probe and sweep output by a script, and its
+   numerals are the worker's own readings. The figures this block states are the
+   reviewer's, carried so that a DIFFERENCE IS VISIBLE rather than reconciled
+   away: report both, and never edit a measured number to match a stated one.
+6. IDS REGISTERED THIS ROUND: none. IDS RESOLVED THIS ROUND: none. The open set
+   is 87 by distinct id at the base and must read 87 at C4.
+7. THE ROUND GATE IS TIER 1 — the scoped commands in G6 plus the canary. The full
+   suite is NOT run outside the probe run G7 orders.
+8. EACH PAIR BELOW IS A REWRITE AND NOT AN APPEND, and the containment test was
+   RUN before emission rather than judged by eye: for PAIR A `TO contains FROM:
+   false`, for PAIR B `TO contains FROM: false`. Order no "FROM 0x" whole-file
+   count for either; the obligation is FROM exactly 1x in its target before the
+   edit and 0x after, which G5 states.
 
-## SLICE PLAN35 → whole-file replacement of `.agent/plan.md`
+## SLICE PLAN36 → whole-file replacement of `.agent/plan.md`
 
-<<<PLAN35
+<<<PLAN36
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -95,288 +96,271 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 35 lands the SECOND MEASUREMENT finding R-0832 asks for: a ratchet that records
-EVENT-NAME couplings from deleted modules to surviving readers, which the retired import map
-could not see. It measures 43 deleted modules, two event names they emitted and exactly one
-dead coupling, `context_budget_optimized`. R-0832 STAYS OPEN: its second half — ruling how
-each coupling is disposed of — belongs to the round that drafts DECISION F260 D3.
+ROUND 36 re-derives the T002 flip site set AT T003's OWN BASE, which DECISION F275 D17 orders
+by name, and ENUMERATES it file by file into `.agent/f275_t003_flip_sites.md` so the flip
+commit is applied from a committed list rather than from a fresh measurement. The same round
+repairs the third and fourth instances of R-0870 — a docstring sentence falsified by a later
+deletion, and a test whose name and docstring outlived the assertion they described. R-0870
+STAYS OPEN until the reviewer's `Done:` text lands.
 
 ## Next Steps
 
-1. DECISION F260 D3: name all 43 deleted modules and the feature that inherited each one,
-   rule the disposal of every dead event coupling the round 35 ratchet reports, and delete
-   what that ruling condemns. This discharges the second half of R-0832 and is the last
-   thing T001 owes.
-2. The flip DECISION F275 D17 sized, as the one declared-oversize commit AGENTS.md permits
-   per feature, re-deriving the site set at its own base with the DECISION F272 D7
-   descriptor probe rather than inheriting round 31's figures.
-3. The resolver collapse DECISION F260 D5 places in T003 — `resolve_any_job_id`, the "TWO
+1. The flip DECISION F275 D17 sized, applied from the round 36 enumeration, as the one
+   declared-oversize commit AGENTS.md permits per feature, with the inseparability reason
+   stated in the handback BEFORE review.
+2. The resolver collapse DECISION F260 D5 places in T003 — `resolve_any_job_id`, the "TWO
    job stores" paragraph, every which-store branch and the absence test — with the classic
    store, which is the same commit range by that decision's own terms.
+3. Amend DECISION F260 D3 by APPENDING a dated correction that names the nineteen deleted
+   `apps/cli/commands/*_cmd.py` handler modules its mapping does not name, so the feature
+   file's DONE condition "names every deleted module" is met on a reading rather than on an
+   inference. D3's own landed text is NOT rewritten.
 4. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
    ledger rotation, the STATUS line and the PR.
 
 ## Risks
 
-- Step 2 is the largest single commit this repository will take and it spends the one
-  declared-oversize allowance AGENTS.md rations per feature. It needs its own session.
-- The open set is 87 by distinct id at this round's base `df5d527f`. This round registers
+- Step 1 is the largest single commit this repository will take and it spends the one
+  declared-oversize allowance AGENTS.md rations per feature.
+- The open set is 87 by distinct id at this round's base `965ea50d`. This round registers
   none and resolves none. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's,
   per DECISION F272 D12.
-PLAN35
+PLAN36
 
-## SLICE RECORD35 → append to `.agent/live_review.md`
+## SLICE RECORD36 → append to `.agent/live_review.md`
 
-<<<RECORD35
-Gate: F275 R34 — the F275 round 34 entry. VERDICT PASS, written by the planner and reviewer of session 16 after reading the committed range `bc77c7ac`..`df5d527f` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line of it. Seven single-parent commits C0a `30ccdd26`, C0b `4dcdd0b0`, C1 `e86466fa`, C2 `b92f6de7`, C3 `bd452b61`, C4 `0523aa36` and C5 `df5d527f`, per-commit insertions 388, 326, 18, 8, 16 and 70 for the six before the handback, every one far under the AGENTS.md DECISION F104 D1 cap of 500. G1: the reviewer's scratch original at `.remedy-wt/f275-r34-block.md` was written AND HASHED BEFORE delegation at `82714e2ea0dca36a5ea051e2332e4648e16ef47d825a461d810af074c9faa07c`, and both committed copies are 34579 bytes at that digest as ONE shared git blob; the chain covers those three artefacts and nothing emitted into a prompt, per §3 item 37. G2: `.agent/plan.md` byte-identical to PLAN34 at 2261 bytes, 41 lines against the cap of 50, both mandated headings exactly once. G3 over all three append targets — `.agent/live_review.md` 808624, `.agent/prose_slips.md` 221335 and `.agent/decisions.md` 1033519 bytes before — each post-blob equal to its pre-blob then ONE newline then the slice as extracted, the joining byte READ BACK at offset len(pre) reading a newline in all three, the structural reader counting N from each slice and matching the last N blank-line units IN ORDER, and every negative control flipped INSIDE THE FIRST appended paragraph and REJECTED by BOTH readers. `^Gate: F275 R33 ` and `^## DECISION F275 D19 ` each exactly 1. G4: THE OPEN SET IS 87 BY DISTINCT ID at the base and 87 at C4; this round registered none and resolved none, which is what DECISION F275 D19 makes correct — under D18's superseded reading two findings would have been owed here. G5 THE INHERITANCE LANDED AND THE REVIEWER RE-READ IT BY IMPORTING THE SHIPPED CATALOG: 220 commands in 44 groups with ZERO dangling `related=` references, the `is_expensive` set exactly `['job.resume']`, and `job.resume` carrying `job_id`, `--checkpoint`, `--dry-run`, `--cycles`, `--unattended`, `--yes` and `--json` in that order; `job.run` is ABSENT at C4 and was PRESENT at the base, where the catalog read 221 commands and the expensive set was `['job.run']` — the absence taken beside its presence, because neither reading means anything alone. G6 THE HANDLER SURVIVED, WHICH IS THE PROPERTY THE WHOLE T003 SEQUENCE TURNS ON: parsing `apps/cli/commands/job.py` with `ast` at C4 shows `_cmd_job_run_cycles` still defined with `_cmd_job_resume` as its SOLE referrer, so the one surviving door still reaches the bounded-cycles run and, under the shipped one-cycle default, the single pass beneath it. The two ordered mutations bite with named assertions: deleting the `yes=getattr(args, "yes", False),` passthrough from the dispatch lambda fires the exact-kwargs equality at `test_resume_cli.py:516`, and flipping the catalog entry's `is_expensive` to False fires both `test_command_catalog.py:105` and `:110` — which is the proof that F114's cost-preview contract genuinely MOVED to the inheriting command rather than being re-pointed at an assertion that would have passed either way. G7 IS THE GATE CONSTRAINT 8 EXISTED FOR AND IT HELD: the token-safe sweep took `job.run` from 26 lines in 7 files to ZERO and the spaced advertisement from 17 lines in 11 files to ZERO, while the ATTRIBUTE population `job.run_*` reads 34 lines BEFORE and 34 lines AFTER — untouched, which is the direct evidence that no attribute access was corrupted. The reviewer re-measured all four populations itself against the committed blobs rather than accepting the worker's reading. The full serial suite at C4 reads `18339 passed, 23 skipped` at exit 0, identical to the base, and the reviewer re-ran the canary, the catalog guards, the resume and escalation suites and the lint-ceiling test itself at 181 passed. G8: porcelain EMPTY, ONE worktree, `.agent/STOP` absent, `bc77c7ac..0523aa36` an EXACT set match over 21 paths with MISSING and EXTRA both empty and NO `node_modules` among them, and `ruff check .` at 26 against the frozen ceiling its own test pins. BOTH DECLARED DEVIATIONS ARE THE REVIEWER'S AND BOTH ARE SUSTAINED. FIRST, G7 ordered a `git diff` filtered to `job.resume_` to be EMPTY, and over the whole range it returns four matches — every one of them the block's OWN text, saved verbatim into `.agent/authored/f275-r34.md` and `.agent/last_block.md` by C0a and C0b. That is a gate quoting its own wording, and the worker did the right thing: it scoped the filter to C4, where the result is EMPTY, and reported both readings. SECOND, the SLIPS34 slice states the token-safe sweep would change "22 in 5" where the worker measured 20 in 5, because the reviewer's arithmetic subtracted the four catalog and dispatch lines but not the two lines pair E1 consumes in `tests/test_command_catalog.py`. It is non-load-bearing by the block's own construction — SPEC-INHERIT (3) states no expected sweep count and makes the ZERO readings binding — and the worker applied the slice byte for byte and declared it rather than reconciling, which is exactly right. NO FINDING IS REGISTERED AND NONE IS RESOLVED BY THIS GATE.
-RECORD35
+<<<RECORD36
+Gate: F275 R35 — the F275 round 35 entry. VERDICT PASS, ISSUED BY THE PLANNER AND REVIEWER OF SESSION 16 over the committed range `df5d527f`..`1e65661a`, and booked here by round 36 rather than by a round of its own, per operator amendment amend0827-process-diet rule 1, carried from the `.agent/handoff.md` that rule makes a durable carrier at `0626d133`. THIS PARAGRAPH IS A BOOKING AND NOT A SECOND GATE: the readings below are session 16's own, and the four re-measurements at the end are session 17's, taken at `965ea50d` and labelled as such, because a booking that quietly restates someone else's numbers as its own is the thing this record exists to prevent. WHAT SESSION 16 RE-DERIVED INDEPENDENTLY against the committed blobs, with the worker's report evidence for no line of it. Six single-parent commits C0a `36123491`, C0b `569b30d4`, C1 `02b90479`, C2 `c0de8e51`, C3 `1e65661a` and C4 `0626d133`, per-commit insertions 382, 323, 20, 6 and 145 for the five before the handback, every one far under the AGENTS.md DECISION F104 D1 cap of 500. G1: the reviewer's scratch original was written AND HASHED BEFORE delegation at `e7fd8ff1efb71ded013ff68347b7b27a1e1e8ece9c673755b958539281e8729b`, and both committed copies are 26187 bytes at that digest as ONE shared git blob `f2293206c9256476487937970a031e4eae4092d7`; per §3 item 37 that chain covers three on-disk artefacts and claims nothing about bytes emitted into a prompt. G2: `.agent/plan.md` byte-identical to PLAN35 at 2417 bytes, 43 lines against the cap of 50, both mandated headings exactly once. G3 over both append targets — `.agent/live_review.md` 814121 to 819410 and `.agent/prose_slips.md` 223959 to 225483 — each post-blob equal to its pre-blob then ONE newline then the slice as extracted, the joining byte READ BACK at offset len(pre) reading a newline in both, the structural reader counting N from each SLICE as 1 and 2 and matching the last N blank-line units IN ORDER, and both negative controls flipped INSIDE THE FIRST appended paragraph per §3 item 36 and REJECTED by BOTH readers. G4: THE OPEN SET IS 87 BY DISTINCT ID at the base and 87 at C3, over 103 registrations against 16 resolutions, with `R-0832` measured to be STILL IN that set rather than assumed to be. G5: the committed `tests/orchestration/test_event_name_coupling.py` and the GUARD35 slice are both 5951 bytes at `95997b5602ec6cc9576004f06dfbdfd75e350b2a2cefc1bf6e1068edade7f0b8` and compare BYTE-EQUAL; the path did not exist at the base, and `ruff` printed `All checks passed!`. G6 THE GUARD BITES, five mutations in a disposable worktree with `__pycache__` purged and every run under `python3 -B`, control 4 passed at exit 0: M1 emptying the allowlist fires `test_every_dead_coupling_is_declared`; M2 adding a stale entry fires BOTH the ceiling assertion and `test_no_declared_entry_is_stale`; M3 blinding `dead_event_couplings` to an empty mapping fires `test_no_declared_entry_is_stale`, which is the anti-blindness direction and the reading that matters most; M5, the real-world direction, inserts a schema entry for `context_pack_created` into `packages/orchestration/event_schemas.py` so a survivor begins reading an event only a deleted module ever emitted, and fires `test_every_dead_coupling_is_declared`. M4 IS GREEN AND WAS ORDERED KNOWING IT WOULD BE: weakening the anti-blindness floor `assert len(deleted_modules()) >= 40` to `>= 0` reddens nothing, because a test cannot detect the weakening of its own assertion, and the honest negative was reported rather than repaired. Every revert was verified byte-exact and the control is green again afterwards. G7: the change set is an EXACT set match over six paths with MISSING and EXTRA both empty, ZERO paths under `packages/`, `apps/`, `docs/` or `scripts/`, porcelain EMPTY, ONE worktree, `.agent/STOP` absent, and collection 18362 at the base to 18366 at C3 — exactly the four tests the new file adds. WHAT SESSION 17 RE-MEASURED AT `965ea50d` BEFORE WRITING THIS BOOKING, so that the entry rests on something this session ran: the open set recomputed mechanically from this file is 87 BY DISTINCT ID over 103 registrations against 16 resolutions, and `R-0832` and `R-0870` are both in it; importing `deleted_modules` and `dead_event_couplings` from the shipped guard reports 43 deleted modules and exactly ONE dead coupling, `context_budget_optimized`, with its two surviving readers `apps/ui/src/api/actionClass.ts` and `packages/orchestration/event_schemas.py`, which reproduces round 35's reading exactly; the guard's own four tests pass at exit 0; and `tests/orchestration/cluster_deletion_map.txt`, `test_cluster_deletion_map.py`, `test_cluster_deletion_order.py` and `.agent/f275_deletion_order.md` are all ABSENT from disk, which is DECISION F275 D15 landed. WHAT THIS GATE DOES NOT CLAIM: R-0832 is NOT resolved and no `Done:` line is written for it, and the reason is on the record rather than in a session — the `Note: F275 R24` entry on that finding rules that what resolves it is the residue's removal by a feature that owns the cockpit's event vocabulary, and DECISION F275 D14 (b) leaves the three surviving sites standing deliberately. NO FINDING IS REGISTERED AND NONE IS RESOLVED BY THIS GATE.
+RECORD36
 
-## SLICE SLIPS35 → append to `.agent/prose_slips.md`
+## SLICE SLIPS36 → append to `.agent/prose_slips.md`
 
-<<<SLIPS35
-2026-09-10 · F275 R34 · The round 34 block's G7 ordered a `git diff` filtered to lines containing `job.resume_` to come back EMPTY, as the direct check that no attribute access had been corrupted by the id migration. Over the whole round the filter returns four matches, and every one of them is the block's OWN prose — the constraint and the gate that name the string — saved verbatim by C0a and C0b into `.agent/authored/` and `.agent/last_block.md`. The worker scoped the filter to the production commit, where it is genuinely empty, and reported both readings. A gate that greps for a token its own text contains is measuring the block before it measures the tree, and any such gate names the commit range that excludes the two block-save commits.
+<<<SLIPS36
+2026-09-10 · F275 R35 · The session 16 handback's "Next" section and `.agent/plan.md` Next Step 1 both order the next round to draft DECISION F260 D3, while D3 was recorded at round 23 and sits in `.agent/decisions.md` under its own heading, and DECISION F275 D14 (c) then declared the D3 SEQUENCE closed after round 25. Session 17 measured this at `965ea50d` before authoring. Nothing on disk was wrong — D3 exists and is correct — but the handoff is the file AGENTS.md's Session Resume tells the next session to read, so a work order it carries is executed before anything checks whether the work is already done. A handoff that names the next round's subject re-reads the decision record for that subject first.
 
-2026-09-10 · F275 R34 · The SLIPS34 slice predicted the token-safe sweep would change 22 lines in 5 files and the worker measured 20 in 5, because the reviewer subtracted the four catalog and dispatch lines consumed by earlier parts of the spec but forgot the two lines pair E1 consumes in `tests/test_command_catalog.py`. The block itself had already been corrected to state no expected sweep count at all, for exactly this ordering reason, so the stale figure survived only in the prose slip beside it — a numeral corrected in one clause and left standing in another, which is the R-0486 and R-0488 shape. When a block withdraws a numeral because it cannot be predicted, the withdrawal sweeps every slice the block ships, not only the clause that stated it.
-SLIPS35
+2026-09-10 · F275 R35 · The same handback says the D3 round "discharges the second half of R-0832 and is the last thing T001 owes", while the `Note: F275 R24` entry on R-0832 already ruled that what resolves that finding is the residue's removal by a feature that owns the cockpit's event vocabulary, and that this feature is not that one. Both sentences are about the same id, one is in the append-only record and one is in a rewritten state file, and the rewritten one is the one a resuming session reads first. A claim about what resolves an OPEN finding is read out of the ledger paragraph that holds it, never out of the previous handback.
 
-## SLICE GUARD35 → the WHOLE NEW FILE `tests/orchestration/test_event_name_coupling.py`
+2026-09-10 · F275 R35 · `.agent/plan.md` at `965ea50d` states in its Current Step that "T001 and T002 are DONE" and in its Next Steps item 1 that the D3 round "is the last thing T001 owes", which cannot both be true of the same slice. This is the §3 item 35 shape inside a single authored file — the prose and the enumeration beside it were written in different rounds and never read against each other — and it is recorded here rather than as an id because `.agent/plan.md` is not one of the four trees amend0827-process-diet rule 2 spends an id on.
+SLIPS36
 
-<<<GUARD35
-"""The EVENT-NAME coupling ratchet — the second measurement finding R-0832 asks for.
+## The R-0870 repairs — PAIR A and PAIR B
 
-WHAT THIS GUARDS. `tests/orchestration/test_cluster_deletion_map.py` built its
-edge set from `import` statements parsed with `ast`, and DECISION F274 D2 ruled
-the prototype-cluster deletion bounded by those edges. Finding R-0832 records
-what that shape cannot see: a consumer coupled to a deleted module by EVENT NAME
-holds no import of it, so the map correctly records no edge and the consumer
-survives the deletion as dead code. R-0832's fix clause asks for a SECOND
-measurement beside the map rather than a wider import walker, because a run-log
-event name is a string literal and not an import.
+Both were APPLIED and RUN by the reviewer at the base before emission. Each FROM
+occurs EXACTLY ONCE in its target, measured; each TO does NOT contain its FROM,
+so both are REWRITES.
 
-WHAT IT MEASURES. For every `.py` module this branch deleted, the last living
-blob is recovered from git and parsed for the event names it EMITTED — a string
-literal in first-positional-argument position of a run-log emit call. Each such
-name is then looked for in the SURVIVING tree, both as an emitter and as a
-reader. A name with a surviving READER and no surviving EMITTER is a DEAD
-COUPLING: a consumer kept alive by a producer that no longer exists.
+## PAIR A → `packages/common/public_text_redaction.py`
 
-WHY AN ALLOWLIST AND NOT A ZERO. The dead couplings that exist today are real
-and their disposal is a ruling DECISION F260 D3 owes, not a repair a test may
-make. So this is a RATCHET against a declared set, in the shape this repository
-already uses for dead advertisements: the set may SHRINK and never grow, and an
-entry that stops being a dead coupling must be removed from the list in the same
-commit, or assertion (c) reds. Remedy deliberately does not delete a schema for
-an event that historical run logs still carry; what it refuses is an INVISIBLE
-coupling.
-"""
-from __future__ import annotations
+FROM is 523 bytes, sha256 `efe4162b287b2011…`; TO is 599 bytes, sha256
+`79324162ccf96633…`; TO's longest line is 91 characters against the
+`pyproject.toml` limit of 120.
 
-import ast
-import subprocess
-from collections import defaultdict
-from pathlib import Path
+<<<PAIRA_FROM
+echo a secret value or an absolute path out of untrusted provider text). Seven modules that
+have nothing to do with provider trust came to import them anyway, because masking a
+public-facing string is a repository-wide obligation rather than a trust-gate one. F275
+round 21 deletes the trust gate, so the helpers move here BYTE-IDENTICALLY — one
+implementation, no copy, no shim — and the former host's importers repoint at this
+module. DECISION F275 D10 records the move and why this file rather than an existing one.
+PAIRA_FROM
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+<<<PAIRA_TO
+echo a secret value or an absolute path out of untrusted provider text). Seven modules that
+have nothing to do with provider trust came to import them anyway, because masking a
+public-facing string is a repository-wide obligation rather than a trust-gate one. F275
+round 21 MOVED the helpers here BYTE-IDENTICALLY — one implementation, no copy, no shim —
+and repointed the former host's importers at this module; F275 round 22 then deleted that
+host at `0242c0a3`, which is the deletion the sentence above names. DECISION F275 D10
+records the move and why this file rather than an existing one.
+PAIRA_TO
 
-BRANCH_BASE = "a5bf894946ab6de053a4232109d6341a63533768"
+## PAIR B → `tests/cli/test_mission_cmd.py`
 
-EMIT_FUNCS = frozenset({"log", "_emit", "emit", "log_event", "write_event",
-                        "record_event"})
+FROM is 421 bytes, sha256 `c551206edcaf8dce…`; TO is 789 bytes, sha256
+`b912c91e5c6e9973…`; TO's longest line is 80 characters. The FROM spans the
+WHOLE enclosing unit — the `def` line and the entire docstring — because that is
+what the widened R-0870 fix clause in the `Note: F275 R24` entry requires, and
+because the name, the docstring and the assertion are the three halves that
+drifted apart. The assertion itself is NOT touched.
 
-READER_SUFFIXES = (".py", ".ts", ".tsx")
+<<<PAIRB_FROM
+    def test_the_cockpit_no_longer_imports_the_cluster_readiness_module(self):
+        """The edge this round cut. The map ratchet proves the graph; this names the file.
 
-# The dead couplings that exist today, each with the ruling that owns it.
-# THIS LIST ONLY EVER SHRINKS. DECISION F260 D3 disposes of every entry.
-KNOWN_DEAD_EVENT_COUPLINGS: tuple[str, ...] = (
-    "context_budget_optimized",
-)
+        The token is the DOTTED MODULE PATH, never the bare word: the carried
+        symbol `build_overnight_readiness` keeps its spelling by DECISION F275
+        D1, so a substring check would red on the very names the move preserves.
+        """
+PAIRB_FROM
 
-_COUPLING_CEILING = 1
+<<<PAIRB_TO
+    def test_the_cockpit_source_names_the_carried_readiness_module(self):
+        """The cockpit imports the CARRIED module, named by its dotted path.
 
+        The token is the DOTTED MODULE PATH, never the bare word: the carried
+        symbol `build_overnight_readiness` keeps its spelling by DECISION F275
+        D1, so a substring check would red on the very names the move preserves.
 
-def _git(*args: str) -> str:
-    return subprocess.run(["git", "-C", str(REPO_ROOT), *args],
-                          capture_output=True, text=True, check=False).stdout
+        The negative half — that the deleted module is not imported here —
+        carries no assertion and needs none: `overnight_readiness.py` has not
+        existed on disk since `0f19c86a`, so an import of it raises instead of
+        passing quietly. The map ratchet this test once cited was retired by
+        DECISION F275 D15, so citing it would name a guard that is gone.
+        """
+PAIRB_TO
 
+## SPEC-FLIP → the NEW file `.agent/f275_t003_flip_sites.md`, GENERATED at C4
 
-def deleted_modules() -> list[str]:
-    out = _git("log", "--diff-filter=D", "--name-only", "--pretty=format:",
-               f"{BRANCH_BASE}..HEAD", "--", "packages", "apps")
-    return sorted({p for p in out.split() if p.endswith(".py")})
+This file is not sliced. The worker PRODUCES it from its own instrument runs, in
+a disposable `git worktree` at C3, and every numeral in it is that run's.
 
+THE INSTRUMENTS ARE ALREADY ON DISK AND ARE NOT REWRITTEN. At the base
+`965ea50d` the file `.agent/f275_t002_flip_inventory.md` carries two fenced
+```python blocks and no third, measured by the reviewer: the first is
+`r31probe.py`, the second `r31_static.py`. Extract both by fenced-block
+extraction and
+write them at the WORKTREE ROOT under those two names — the probe computes its
+own `ROOT` from its file location and refuses with a `RuntimeError` if the two
+record modules resolve outside it, which is the editable-install guard.
 
-def _emitted_names(source: str, path: str) -> set[str]:
-    try:
-        tree = ast.parse(source, filename=path)
-    except SyntaxError:
-        return set()
-    found: set[str] = set()
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call) or not node.args:
-            continue
-        fn = node.func
-        name = fn.attr if isinstance(fn, ast.Attribute) else (
-            fn.id if isinstance(fn, ast.Name) else None)
-        if name not in EMIT_FUNCS:
-            continue
-        first = node.args[0]
-        if isinstance(first, ast.Constant) and isinstance(first.value, str):
-            found.add(first.value)
-    return found
+THE RUNS, in this order, with `__pycache__` purged first and every run under
+`python3 -B`:
+  (a) `python3 -B -m pytest tests/ -q -p r31probe` — the full suite, SERIALLY.
+  (b) `python3 -B r31_static.py` — the `ast` sweep over `git ls-files '*.py'`.
 
+WHAT THE REVIEWER MEASURED AT THE BASE, so a difference is visible: run (a) read
+`1 failed, 18336 passed, 29 skipped, 1 warning in 1289.85s (0:21:29)` at exit 1,
+and the single failure is
+`tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`,
+which is the fresh-worktree `apps/ui/node_modules` artifact and NOT a probe
+effect — the probe is behaviour-neutral and the golden-path canary reads 42
+passed at exit 0 under it. REPORT the real summary line and exit code whatever
+they are; do not make them match.
 
-def events_emitted_by_deleted_modules() -> dict[str, set[str]]:
-    """Event name -> the deleted modules that emitted it."""
-    emitted: dict[str, set[str]] = defaultdict(set)
-    for path in deleted_modules():
-        rev = _git("rev-list", "-n", "1", "HEAD", "--", path).strip()
-        if not rev:
-            continue
-        blob = _git("show", f"{rev}^:{path}")
-        if not blob:
-            continue
-        for name in _emitted_names(blob, path):
-            emitted[name].add(path)
-    return dict(emitted)
+THE FILE'S SECTIONS, in this order.
+  1. A banner naming the base SHA this was measured at, and stating that the file
+     ENUMERATES the flip and that no line under `packages/`, `apps/`, `tests/`,
+     `docs/` or `scripts/` moved in the round that wrote it.
+  2. The two runs: command, real summary line, real exit code, and for (b) its
+     whole stdout.
+  3. A figures table with a `measured` column, a `reviewer` column carrying the
+     numbers below, and a `verdict` column reading `same` or `differs (<n>)`.
+  4. The provably-`Job`-but-never-executed list, BY PATH AND LINE IN FULL.
+  5. THE ENUMERATION: one line per file, sorted by path, in the exact form
+     `<path> | id: <comma-separated lines or -> | name: <comma-separated lines or ->`,
+     where the lines are the sorted distinct line numbers of the UNION set for
+     that file and that field.
+  6. What the reading does not settle: the union is a FLOOR and not a ceiling,
+     because a site both unexecuted and unprovable is invisible to both
+     instruments, and that remainder is given NO numeral because none was
+     measured.
 
+THE REVIEWER'S FIGURES, measured at `965ea50d`. A site is one
+`(path, line, field)` triple and a changed line one `(path, line)` pair.
+  probe: sites 1745 · probe: distinct changed lines 1743
+  static: provably `Job`, distinct triples 312
+  UNION: sites 1753 · UNION: distinct changed lines 1751
+  UNION: production lines 349 over 68 files
+  UNION: test lines 1402 over 116 files
+  provably `Job` but never executed 8
+  tracked `.py` 991 · parsed 991 · unparsable 0
+  `Job(...)` constructions 582 — production 12, test 570
+  `Job` imports 345 — production 47, test 298
+  `Job` annotations 368 — production 151, test 217
+  the enumeration renders 184 file lines
+The eight never-executed sites are `packages/orchestration/decision_queue.py:1017`,
+`packages/orchestration/do_run.py` at 261, 285, 316 and 357,
+`tests/orchestration/test_job_fulfillment.py:1087`,
+`tests/orchestration/test_real_ollama_smoke.py:165` and
+`tests/orchestration/test_token_economy_integration.py:28`, every one `.id`.
 
-def dead_event_couplings() -> dict[str, list[str]]:
-    """Event name -> surviving readers, for names nothing surviving emits."""
-    emitted = events_emitted_by_deleted_modules()
-    if not emitted:
-        return {}
-    survivors = [p for p in _git("ls-files", "packages", "apps").split()
-                 if p.endswith(READER_SUFFIXES)]
-    still_emitted: set[str] = set()
-    readers: dict[str, list[str]] = defaultdict(list)
-    for rel in survivors:
-        try:
-            text = (REPO_ROOT / rel).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue
-        for name in emitted:
-            if name in text:
-                readers[name].append(rel)
-        if rel.endswith(".py"):
-            still_emitted |= (_emitted_names(text, rel) & set(emitted))
-    return {name: sorted(rs) for name, rs in readers.items()
-            if name not in still_emitted and rs}
+## Done when — GATES G1 to G8
 
+Run each as `bash -c '<cmd>; echo "REAL_EXIT=$?"'` and record the REAL exit code
+and the real numbers. "Green" as a word is a finding. One line per gate in the
+handback.
 
-class TestEventNameCouplingRatchet:
-    """Finding R-0832: the coupling the import map cannot see."""
+**G1 TRANSPORT (at C0b).** The committed `.agent/authored/f275-r36.md` and
+`.agent/last_block.md` have the SAME sha256 as the reviewer's delegation source,
+and resolve to ONE shared git blob. `.agent/last_block.md` is written from
+`git cat-file blob HEAD:.agent/authored/f275-r36.md`, never retyped. State that
+the chain covers those on-disk artefacts and claims nothing about emitted bytes.
 
-    def test_the_instrument_sees_the_deleted_modules_at_all(self) -> None:
-        # Anti-blindness floor: a measurement over an empty corpus proves nothing.
-        assert len(deleted_modules()) >= 40
+**G2 THE PLAN (at C1).** `.agent/plan.md` is BYTE-EQUAL to the PLAN36 slice as
+extracted — same length, same sha256. Report its line count against the
+AGENTS.md cap of 50, and `^## Goal$` and `^## Next Steps$` each exactly 1.
 
-    def test_every_dead_coupling_is_declared(self) -> None:
-        found = dead_event_couplings()
-        undeclared = sorted(set(found) - set(KNOWN_DEAD_EVENT_COUPLINGS))
-        assert not undeclared, (
-            "an event-name coupling to a deleted module is not declared: "
-            f"{ {n: found[n] for n in undeclared} }"
-        )
+**G3 THE RECORD (at C2).** For `.agent/live_review.md` and
+`.agent/prose_slips.md` separately: post-blob equals pre-blob then ONE newline
+then the slice, with the pre-blob lengths of constraint 3; READ BACK the joining
+byte at offset len(pre) and report it. Then an INDEPENDENT structural reader with
+N COUNTED FROM THE SLICE and not from this block: the last N blank-line units of
+the post-blob equal the slice's N paragraphs IN ORDER. Then one negative control
+per append, flipping a byte INSIDE THE FIRST appended paragraph, which BOTH
+readers must REJECT. `^Gate: F275 R35 ` exactly 1.
 
-    def test_the_declared_set_only_ever_shrinks(self) -> None:
-        assert len(KNOWN_DEAD_EVENT_COUPLINGS) <= _COUPLING_CEILING
+**G4 THE OPEN SET (at C4).** BY DISTINCT ID, every `^- R-\d+ — ` id minus every
+`^Done: R-\d+ — ` id, at the base `965ea50d` and at C4. Report both. Ids
+registered this round and ids resolved this round must both be `[]`. Report
+SEPARATELY that `R-0870` IS STILL IN the open set at C4 and carries NO `Done:`
+line — examined, not assumed.
 
-    def test_no_declared_entry_is_stale(self) -> None:
-        found = dead_event_couplings()
-        stale = [n for n in KNOWN_DEAD_EVENT_COUPLINGS if n not in found]
-        assert not stale, (
-            f"these are no longer dead couplings and must leave the list: {stale}"
-        )
-GUARD35
+**G5 THE TWO PAIRS ARE THE AUTHORED BYTES (at C3).** For each pair: the FROM
+occurs EXACTLY 1x in its target before the edit and EXACTLY 0x after; the TO
+occurs EXACTLY 1x after; and the applied file's post-blob equals its pre-blob
+with the FROM span replaced by the TO span and nothing else, proved by
+reconstructing the post-blob from the pre-blob and comparing sha256. Then
+`python3 -m ruff check packages/common/public_text_redaction.py tests/cli/test_mission_cmd.py`
+— the reviewer read `All checks passed!` at exit 0. Then the sweep the repair
+exists for: `round 21 deletes the trust gate` and
+`test_the_cockpit_no_longer_imports_the_cluster_readiness_module` each occur ZERO
+times under `packages/`, `apps/`, `tests/`, `docs/` and `scripts/` at C3. That
+sweep DELIBERATELY EXCLUDES `.agent/`, where both strings survive inside the
+frozen `.agent/authored/` blocks of earlier rounds and inside the `Note: F275 R24`
+ledger entry that registered them; a zero-gate over `.agent/` would be unmeetable
+by construction and this block does not order one.
 
-## Done when — GATES G1 to G7
+**G6 THE REPAIRED TEST STILL BITES — RED PROOF (at C3).** In a DISPOSABLE
+`git worktree` at C3, `__pycache__` purged, every run under `python3 -B`. The
+reviewer's own readings at the base, to be reproduced: CONTROL unmutated
+`python3 -B -m pytest tests/cli/test_mission_cmd.py -q` exit 0 at `108 passed`.
+MUTATION, revert target `packages/orchestration/ui_server.py` and the anchor
+counted 1 in THAT file before it is applied: replace the single line
+`        from packages.orchestration.mission_readiness import (` with the same
+line carrying TWO spaces before `import` — valid Python that still imports, so
+what breaks is the asserted TEXT and nothing else. The reviewer read exit 1 at
+`1 failed, 107 passed`, the failing node being
+`tests/cli/test_mission_cmd.py::TestMissionReadinessIsWiredToTheCarriedModule::test_the_cockpit_source_names_the_carried_readiness_module`
+— the RENAMED test, which is the point of the proof. Revert byte-exactly, verify
+by sha256, and report the CONTROL AGAIN reading. Then the round's scoped gate in
+the PRIMARY checkout: `python3 -B -m pytest tests/cli/test_mission_cmd.py
+tests/orchestration/test_import_reachability.py -q`, which the reviewer read at
+`111 passed`.
 
-Run every gate as `bash -c '<cmd>; echo "REAL_EXIT=$?"'` and record the REAL exit
-code and the REAL numbers. Every gate is ordered at a commit STRICTLY EARLIER
-than C4, which writes the handback, per §3 item 31.
+**G7 THE ENUMERATION (at C4).** Report run (a)'s real summary line and exit code
+and run (b)'s whole stdout. Then the figures table of SPEC-FLIP, every row with
+its measured value beside the reviewer's and a `same` or `differs (<n>)` verdict.
+Then three properties of the committed file, measured on the file itself: its
+section 5 holds exactly one line per distinct path in the union; the count of
+line numbers across all its `id:` and `name:` fields equals the UNION site count
+it reports; and every path it names resolves on disk at C4 with
+`git ls-tree C4 -- <path>`. Report the file's own line count and byte length.
 
-**G1 TRANSPORT (at C0b).** Report the sha256 and byte length of
-`.remedy-wt/f275-r35-block.md`, and show the committed
-`.agent/authored/f275-r35.md` and `.agent/last_block.md` BYTE-EQUAL to it.
-`.agent/last_block.md` comes from `git cat-file blob` of the committed C0a blob,
-never a retype. State that the chain covers three on-disk artefacts and makes no
-claim about bytes emitted into a prompt.
-
-**G2 THE PLAN (at C1).** Committed `.agent/plan.md` byte-equal to PLAN35; report
-both byte lengths, the sha256, the line count against the cap of 50, and
-`^## Goal$` and `^## Next Steps$` each exactly 1.
-
-**G3 THE RECORD (at C2).** For RECORD35 into `.agent/live_review.md` and SLIPS35
-into `.agent/prose_slips.md`: report each pre-size, confirm it equals constraint
-4's figure, show post == pre + ONE newline + slice, and read the joining byte
-BACK at offset len(pre). Then the independent structural reader: count N from
-each slice yourself, never from this block, and match the last N blank-line units
-against the slice's N paragraphs IN ORDER. One negative control per append,
-flipping a byte INSIDE THE FIRST appended paragraph, REJECTED by BOTH readers.
-Then `^Gate: F275 R34 ` exactly 1.
-
-**G4 THE OPEN SET (at C3).** BY DISTINCT ID from `.agent/live_review.md`: every
-`^- R-\d+ — ` id minus every `^Done: R-\d+ — ` id. Report the count at the base
-`df5d527f` and at C3; both must read 87. Report the ids registered and resolved
-this round; both lists must be EMPTY. Report separately that `R-0832` is in the
-OPEN set at C3 — constraint 8 requires it to stay there and an unexamined
-absence would look identical to a resolution.
-
-**G5 THE GUARD IS THE AUTHORED BYTES (at C3).** The committed
-`tests/orchestration/test_event_name_coupling.py` byte-equal to the GUARD35
-slice: report both byte lengths and the sha256 of each, and that the file did
-NOT exist at the base. Then `ruff check` that one path and report its exact
-output line.
-
-**G6 THE GUARD BITES — RED PROOF (at C3).** In a disposable worktree at C3 with
-`__pycache__` purged, run
-`python3 -B -m pytest tests/orchestration/test_event_name_coupling.py -q`
-UNMUTATED first and report the exit code and pass count as the control. Then
-FIVE mutations, each reverted byte-exactly before the next, each reported with
-WHICH assertion fired rather than only an exit code. The revert target is named
-per mutation and each anchor occurs exactly ONCE in it.
-  M1 — in the guard, delete the line `    "context_budget_optimized",` from
-       `KNOWN_DEAD_EVENT_COUPLINGS`. Expect RED: a real dead coupling becomes
-       undeclared.
-  M2 — in the guard, insert `    "no_such_event_name",` as the first entry of
-       `KNOWN_DEAD_EVENT_COUPLINGS`. Expect RED on TWO assertions: the ceiling
-       and the staleness check.
-  M3 — in the guard, replace the two-line `return {name: sorted(rs) ...}`
-       comprehension that ends `dead_event_couplings` with `    return {}`.
-       Expect RED: blinding the instrument must not read as a clean tree. This
-       is the anti-blindness direction and it is the most important of the five.
-  M4 — in the guard, weaken the floor `assert len(deleted_modules()) >= 40` to
-       `>= 0`. The reviewer measured this GREEN and ORDERS IT ANYWAY, so the
-       handback records the honest negative: a test that weakens its own
-       assertion cannot detect that, which is why the floor is a separate test
-       rather than a clause inside another one. Report the green.
-  M5 — THE REAL-WORLD DIRECTION, and its revert target is a DIFFERENT FILE. In
-       `packages/orchestration/event_schemas.py`, insert the line
-       `    "context_pack_created": frozenset({"chars"}),` immediately above the
-       line `    "context_budget_optimized": frozenset({`, which occurs exactly
-       once in that file. Expect RED: a survivor that starts reading an event
-       only a deleted module ever emitted is a NEW dead coupling and must be
-       caught. Revert and confirm the control is green again.
-
-**G7 NOTHING ELSE MOVED (at C3).** `.agent/STOP` read from disk and ABSENT.
-`git status --porcelain` EMPTY. `git worktree list` exactly ONE entry. Branch
-`feature/f275-one-world-completion-part-three`.
-`git diff --name-only df5d527f..<C3>` an EXACT SET MATCH against the path list in
-the header's `Change:` line, which does not include `.agent/handoff.md`, reported
-as MISSING and EXTRA, both empty. Report that ZERO paths under `packages/`,
-`apps/`, `docs/` or `scripts/` appear in that diff — constraint 5. Per-commit
-insertions for every commit before the handback, each under the DECISION F104 D1
-cap of 500. Then the canary `python3 -m pytest tests/cli/test_golden_path.py -q`
-and the scoped set `python3 -m pytest tests/orchestration/ -q`, both serially,
-with their real summary lines. Finally the collection count
-`python3 -B -m pytest tests/ -q --collect-only` at the base and at C3: the
-reviewer read 18362 and 18366.
+**G8 NOTHING ELSE MOVED (at C4).** `.agent/STOP` read FROM DISK: report present
+or absent. `git status --porcelain`: EMPTY. `git worktree list`: exactly ONE
+entry. `git diff --name-only 965ea50d..C4` is an EXACT SET MATCH against the
+`Change:` list above minus `.agent/handoff.md` — report MISSING and EXTRA
+explicitly. Per-commit insertions for C0a through C4, each under the DECISION
+F104 D1 cap of 500; the handback commit's own numbers are NOT ordered here,
+per §3 item 14. Canary `python3 -m pytest tests/cli/test_golden_path.py -q`.
 
 ## Handback
 
-Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It carries the
-SESSION NUMBER 16 of feature F275, round 35, ONE LINE PER GATE with real exit
-codes and real numbers, the changed-files table with the `+/-` column taken from
-`git diff --numstat` (§3 item 28), the item-status table, the open-findings
-count, and the one-sentence context self-assessment amend0905-throughput
-requires. Declare every deviation.
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It carries
+SESSION 17 of F275 and round 36, the per-commit table with `git diff --numstat`
+values in the `+/-` column, one line per gate G1 to G8 with real exit codes, the
+item-status table, the open-findings count by distinct id, and the deviations.
+State explicitly that R-0870 is NOT resolved, that its fix is marked `Landed:`
+and that the reviewer's `Done:` text is owed at the next gate. Add the one
+sentence of context self-assessment amend0905-throughput requires. No PR is
+created and nothing is merged: this round is not a closure sequence.
