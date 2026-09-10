@@ -12,34 +12,31 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 28 deletes the five pages that document capabilities F275 already deleted — the feature
-planner, the progress ledger, the dogfood run loop, and the two self-repair proposal pages —
-drops their six rows from the docs index, and cuts the dead self-repair section out of the
-core product spine. The R-0872 ratchet falls from 43 to 22 in two steps, one per commit, and
-what remains is exactly the flat pre-Step-38 CLI in `architecture.md` plus one site in
-`vocabulary.md`. R-0873 registers the wider residue an advertisement sweep cannot see.
+ROUND 29 finishes R-0872. `architecture.md` gets the flat-to-group-first rename that Steps
+38 to 40 performed on the CLI and never on the docs, every mapping resolved against the
+shipped catalog rather than guessed; `vocabulary.md` stops spelling
+F263's planned command as a runnable one. The R-0872 ratchet then falls to zero and is
+deleted with its ceiling and its test, because a ratchet at zero is a gate that cannot fail.
 
 ## Next Steps
 
-1. R-0872's second half: the flat pre-Step-38 CLI in `architecture.md` and the one site in
-   `vocabulary.md`, lowering the allowlist to zero and deleting the ratchet with it, which
-   resolves R-0872.
-2. R-0873: read the capability sweep's ranked list and rule, page by page, which pages die
-   and which are dated as historical. `docs/archive/` is archival by design and is expected
-   to survive the ruling.
-3. T002: the DECISION F272 D7 raising-property probe over every candidate `.id` receiver,
+1. R-0873's ruling, which round 29 names as declined rather than performed: read the
+   capability sweep's eighteen pages one by one and rule each DELETE, DATE or LEAVE,
+   recording the ruling as a dated DECISION. `docs/archive/` is archival by design and is
+   expected to survive it.
+2. T002: the DECISION F272 D7 raising-property probe over every candidate `.id` receiver,
    giving the real site set rather than D15's upper bound, then the dated decision choosing
    the route. No production line moves in that slice.
-4. T003, the classic runner, which T002's ruling is the prerequisite for.
-5. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
+3. T003, the classic runner, which T002's ruling is the prerequisite for.
+4. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
    STATUS line and the PR.
 
 ## Risks
 
-- The open set is 88 by distinct id at this round's base `d3e35f0f`, computed mechanically
-  from the record. This round registers one and resolves none, leaving 89. Four are High —
+- The open set is 89 by distinct id at this round's base `99e677f0`, computed mechanically
+  from the record. This round registers none and resolves one, leaving 88. Four are High —
   R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION
   F272 D12.
-- R-0873 is measured but not scoped: 18 pages name a deleted module's concept, and several
-  are `docs/archive/` pages that SHOULD keep describing an abandoned future. The finding
-  records the measurement and defers the ruling rather than implying every hit is a defect.
+- Deleting the ratchet removes the only mechanism that was counting the doc backlog. What
+  replaces it is a guard with no exceptions at all, which is stronger — but it means the
+  R-0873 residue is now carried by that finding alone, and nothing on disk counts it.
