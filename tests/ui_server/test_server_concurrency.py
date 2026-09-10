@@ -25,7 +25,7 @@ def _make_job(**overrides: object) -> Job:
     defaults = dict(
         name="test-concurrency-job",
         user_prompt="Test prompt for concurrency",
-        tasks=[Task(type="write_readme", description="Write a README")],
+        tasks=[Task(description="Write a README")],
     )
     defaults.update(overrides)
     return Job(**defaults)

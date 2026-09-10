@@ -93,7 +93,6 @@ def _make_job_s111(*, tasks=None, name="test"):
     if tasks:
         for t in tasks:
             task = Task(
-                task_type=t.get("type", "readme_draft"),
                 description=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
@@ -115,7 +114,6 @@ def _make_job_s122(*, tasks=None, name="test"):
     if tasks:
         for t in tasks:
             task = Task(
-                task_type=t.get("type", "readme_draft"),
                 description=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
@@ -137,7 +135,6 @@ def _make_job_s127(*, tasks=None, name="test"):
     if tasks:
         for t in tasks:
             task = Task(
-                task_type=t.get("type", "readme_draft"),
                 description=t.get("description", t.get("type", "task")),
             )
             if "status" in t:

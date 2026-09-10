@@ -30,7 +30,7 @@ def _make_job() -> Job:
     return Job(
         name="test-command-dispatch-job",
         user_prompt="Test prompt for the command dispatch effects",
-        tasks=[Task(type="write_readme", description="Write a README")],
+        tasks=[Task(description="Write a README")],
     )
 
 

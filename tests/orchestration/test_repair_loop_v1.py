@@ -28,7 +28,6 @@ def _make_job_with_failure(data_dir, *, failure_kind="test_failed", exit_code=1,
     task = Task(description="orig task", status=RunState.COMPLETED)
     job = Job(
         name="repair-v1", tasks=[task],
-        permissions={"repo_generated_write": "allow", "repo_test_run": "allow"},
         metadata={"target_repo": "."},
     )
     save_job(job, root=data_dir)

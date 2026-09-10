@@ -142,7 +142,7 @@ class TestWriting:
     def test_build_checkpoint_records_the_persisted_snapshot(self):
         from packages.orchestration.storage import save_job
 
-        job = Job(name="cp-job", tasks=[Task(title="t", description="d")])
+        job = Job(name="cp-job", tasks=[Task(description="d")])
         save_job(job)
         checkpoint = build_checkpoint(str(job.id), 1, now=T0)
         assert checkpoint.job_snapshot_path == f"jobs/{job.id}.json"
@@ -317,7 +317,7 @@ class TestWriteFailureIsContained:
 def _job(task_count: int = 2) -> Job:
     return Job(
         name="cp-loop-job",
-        tasks=[Task(title=f"t{i}", description="d") for i in range(task_count)],
+        tasks=[Task(description="d") for i in range(task_count)],
     )
 
 

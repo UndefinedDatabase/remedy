@@ -30,7 +30,6 @@ def _make_job_with_failure(data_dir):
     )
     job = Job(id=uuid4(), name="cli-repair", user_prompt="x", state=RunState.RUNNING,
               tasks=[task], artifacts=[fa],
-              permissions={"repo_generated_write": "allow", "repo_test_run": "allow"},
               metadata={"target_repo": "."})
     save_job(job, root=data_dir)
     return str(job.id), str(fa.id)
@@ -125,7 +124,6 @@ def _make_job_with_source_failure(data_dir):
     )
     job = Job(id=uuid4(), name="cli-repair-src", user_prompt="x", state=RunState.RUNNING,
               tasks=[task], artifacts=[fa],
-              permissions={"repo_generated_write": "allow", "repo_test_run": "allow"},
               metadata={"target_repo": "."})
     save_job(job, root=data_dir)
     return str(job.id), str(fa.id)

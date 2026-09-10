@@ -174,7 +174,7 @@ class TestBuildRunManifestDictBudgets:
         """Core Job with JobBudgets model → model_dump produces dict."""
         from packages.core.models import Job, JobBudgets
 
-        job = Job(name="test", prompt="test")
+        job = Job(name="test", user_prompt="test")
         job.budgets = JobBudgets(max_total_tokens=50000)
         dumped = job.budgets.model_dump(mode="json")
         assert dumped["max_total_tokens"] == 50000
@@ -335,7 +335,7 @@ class TestDecisionIdentity:
         from packages.core.models import Job
         from packages.orchestration.decision_queue import list_decisions
 
-        job = Job(name="test", prompt="test")
+        job = Job(name="test", user_prompt="test")
         job.metadata["budget_stop_reason"] = "budget_exhausted: max_provider_calls"
         events = [{
             "event": "job_stopped",
@@ -411,7 +411,7 @@ class TestRunContractReconciliation:
             save_contract,
         )
 
-        job = Job(name="test", prompt="test")
+        job = Job(name="test", user_prompt="test")
         old_contract = RunContract(
             version=1,
             contract_id="rc-test",
@@ -433,7 +433,7 @@ class TestRunContractReconciliation:
             save_contract,
         )
 
-        job = Job(name="test", prompt="test")
+        job = Job(name="test", user_prompt="test")
         old_contract = RunContract(
             version=1,
             contract_id="rc-test",
@@ -616,7 +616,7 @@ class TestJobplanStopCreatesDecision:
         from packages.core.models import Job
         from packages.orchestration.decision_queue import list_decisions
 
-        job = Job(name="stopjob", prompt="test")
+        job = Job(name="stopjob", user_prompt="test")
         job.metadata["budget_stop_reason"] = "budget_exhausted: max_provider_calls"
         events = [{
             "event": "job_stopped",

@@ -35,8 +35,7 @@ def env(tmp_path, monkeypatch):
 
 def _job(data_dir, *, tasks=True, perms=True):
     t = [Task(description="t")] if tasks else []
-    job = Job(id=uuid4(), name="ov", tasks=t, metadata={"target_repo": "."},
-              permissions={"repo_generated_write": "allow", "repo_test_run": "allow"} if perms else {})
+    job = Job(id=uuid4(), name="ov", tasks=t, metadata={"target_repo": "."})
     save_job(job, root=data_dir)
     return job
 

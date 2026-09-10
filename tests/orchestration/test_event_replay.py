@@ -348,7 +348,7 @@ class TestDryRunValidation:
         from packages.core.models import Job, RunState
         from packages.orchestration.event_replay import resume_dry_run
         jid = uuid4()
-        job = Job(id=jid, name="test", state=RunState.COMPLETED, permissions={})
+        job = Job(id=jid, name="test", state=RunState.COMPLETED)
         events = [
             {"event": "autorun_started", "metadata": {}},
             {"event": "patch_intent_applied", "metadata": {}},
@@ -381,7 +381,7 @@ class TestDryRunValidation:
         from packages.orchestration.event_replay import resume_dry_run
         from packages.orchestration.timeline import load_run_events
         jid = uuid4()
-        job = Job(id=jid, name="test", state=RunState.COMPLETED, permissions={})
+        job = Job(id=jid, name="test", state=RunState.COMPLETED)
         events = [{"event": "autorun_started", "metadata": {}}]
         _write_events(tmp_path, str(jid), events)
         before = load_run_events(tmp_path, str(jid))

@@ -49,7 +49,7 @@ def _make_job() -> Job:
     return Job(
         name="test-diff-endpoint-job",
         user_prompt="Test prompt for the diff endpoint",
-        tasks=[Task(type="write_readme", description="Write a README")],
+        tasks=[Task(description="Write a README")],
     )
 
 

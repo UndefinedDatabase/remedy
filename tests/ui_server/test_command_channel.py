@@ -38,7 +38,7 @@ def _make_job() -> Job:
     return Job(
         name="test-command-channel-job",
         user_prompt="Test prompt for the command channel",
-        tasks=[Task(type="write_readme", description="Write a README")],
+        tasks=[Task(description="Write a README")],
     )
 
 

@@ -60,7 +60,7 @@ def _make_job_s80(**overrides: object) -> Job:
     defaults = dict(
         name="test-ui-job",
         user_prompt="Test prompt for UI",
-        tasks=[Task(type="write_readme", description="Write a README")],
+        tasks=[Task(description="Write a README")],
     )
     defaults.update(overrides)
     return Job(**defaults)
@@ -106,7 +106,6 @@ def _make_job_s111(*, tasks=None, name="test"):
     if tasks:
         for t in tasks:
             task = Task(
-                task_type=t.get("type", "readme_draft"),
                 description=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
@@ -128,7 +127,6 @@ def _make_job_s127(*, tasks=None, name="test"):
     if tasks:
         for t in tasks:
             task = Task(
-                task_type=t.get("type", "readme_draft"),
                 description=t.get("description", t.get("type", "task")),
             )
             if "status" in t:

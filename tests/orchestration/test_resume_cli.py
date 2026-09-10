@@ -52,9 +52,9 @@ def handed_off(monkeypatch) -> list[tuple]:
 
 
 def make_job(*, pending: int = 2, completed: int = 0) -> Job:
-    tasks = [Task(title=f"done{i}", description="d", status=RunState.COMPLETED)
+    tasks = [Task(description="d", status=RunState.COMPLETED)
              for i in range(completed)]
-    tasks += [Task(title=f"todo{i}", description="d") for i in range(pending)]
+    tasks += [Task(description="d") for i in range(pending)]
     job = Job(name="resume-job", tasks=tasks)
     save_job(job)
     return job

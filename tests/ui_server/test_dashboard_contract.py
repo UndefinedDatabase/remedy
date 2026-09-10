@@ -46,7 +46,7 @@ def _make_job_s80(**overrides: object) -> Job:
     defaults = dict(
         name="test-ui-job",
         user_prompt="Test prompt for UI",
-        tasks=[Task(type="write_readme", description="Write a README")],
+        tasks=[Task(description="Write a README")],
     )
     defaults.update(overrides)
     return Job(**defaults)
