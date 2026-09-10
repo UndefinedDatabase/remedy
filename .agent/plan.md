@@ -12,31 +12,30 @@ orders T001 PERFORMED, not prepared. T001 and T002 are DONE.
 
 ## Current Step
 
-ROUND 32 opens T003. It rules the inheritance question T003 owes before any command dies —
-which live command inherits a bounded-cycles run and a single-pass run — against the shipped
-catalog by import, and records it as DECISION F275 D18. It then lands the one half of the
-classic runner that no production caller reaches: `run_agent_loop` in
-`packages/orchestration/agent_loop.py`, its three private helpers, the tests that exist only
-to drive it, and the architecture page's description of it.
+ROUND 33 continues T003. It registers and repairs R-0874, the two sentences in
+`docs/system/architecture.md` that still describe the execution loop round 32 deleted. It
+then retires the `job.run-next` command surface: the catalog entry, the dispatch line, the
+two `related=` tuples that would otherwise dangle, and all 29 advertisements of it across
+eight orchestration modules, the smoke script and seven test files, which move to
+`job resume` under DECISION F275 D18. The handler `_cmd_run_next_task_local` SURVIVES as an
+internal function; only its command door closes.
 
 ## Next Steps
 
-1. Delete the `job.run` and `job.run-next` command surface under the D18 ruling: the catalog
-   entries, the dispatch entries, the two `related=` tuples that would otherwise dangle, and
-   the advertisements in the eight orchestration modules that print them.
-2. Absorb the two handlers under the `job.resume` door, one owner and no copy, and register
-   the surfaces D18 names as genuinely lost.
-3. The flip DECISION F275 D17 sized, as the one declared-oversize commit AGENTS.md permits
+1. Retire the `job.run` command surface and absorb both handlers under the `job.resume`
+   door, one owner and no copy, registering the `--unattended` and `--yes` surfaces
+   DECISION F275 D18 names as genuinely lost.
+2. The flip DECISION F275 D17 sized, as the one declared-oversize commit AGENTS.md permits
    per feature, re-deriving the site set at its own base.
+3. The resolver collapse DECISION F260 D5 places in T003, and the classic store.
 4. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
    ledger rotation, the STATUS line and the PR.
 
 ## Risks
 
-- The open set is 87 by distinct id at this round's base `9d1788fe`, over 102 registrations
-  against 15 resolutions. This round registers none and resolves none, so it stays 87. Four
-  are High — R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per
-  DECISION F272 D12.
-- Step 1 above turns two surviving `related=` tuples dangling the moment the commands die.
-  The catalog integrity guard resolves every tuple against the live id set, so that repair
-  is not optional and belongs in the same commit as the deletion.
+- A command deletion is invisible to a text sweep wherever the CLI is invoked as an argv
+  LIST, because the group and the subcommand are separate elements. Round 33 found two such
+  sites this way and no other instrument would have. Step 1 above re-runs that sweep.
+- The open set is 87 by distinct id at this round's base `7d14e89f`. This round registers
+  R-0874 and resolves it in the same round, so it returns to 87. Four are High — R-0803,
+  R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
