@@ -1,175 +1,94 @@
-── STEP T002 — F275 — ROUND 31 ──
-(The rule line above is exactly 33 characters and the one at the end exactly 32;
-every section divider below carries a run of exactly 8 box-drawing dashes on
-each side of its title, and no line of this block is a bare run. Per §3 item 37,
-which asks that a run's length be recoverable rather than eyeballed.)
+── STEP T003 (1 of n) — F275 ─────────────────────────────────
+Goal:        Rule which live command inherits the classic runner's execution
+             path, then delete the half of that path that no production caller
+             reaches — `agent_loop.run_agent_loop` and its private helpers.
+Bundle:      C0a save this block · C0b mirror it · C1 the plan · C2 the round 31
+             verdict and two prose slips · C3 DECISION F275 D18 · C4 the
+             production deletion and its docs repair · C5 the handback.
+Change:      exactly the paths listed here and nothing else —
+             `.agent/authored/f275-r32.md`, `.agent/last_block.md`,
+             `.agent/plan.md`, `.agent/live_review.md`,
+             `.agent/prose_slips.md`, `.agent/decisions.md`,
+             `packages/orchestration/agent_loop.py`,
+             `tests/test_agent_loop_execution.py` (deleted),
+             `tests/storage/test_persistence.py`,
+             `docs/system/architecture.md`, plus `.agent/handoff.md` at C5.
+Constraints: the numbered list below.
+Done when:   gates G1 to G8 below are RUN and their real exit codes recorded.
+Handback:    completion report + rewrite `.agent/handoff.md`.
+──────────────────────────────────────────────────────────────
 
-Goal: Perform T002. Turn DECISION F272 D15's receiver-name BOUND on the
-classic-to-unified record flip into a REAL site set by running the DECISION F272
-D7 descriptor probe, and then rule, as a dated and operator-visible DECISION,
-the question D15 left open: how a change that is atomic by construction lands
-under a per-commit cap of 500 insertions that forbids it. T002 IS NOT THE FLIP.
-No line under `packages/`, `apps/`, `tests/`, `docs/` or `scripts/` moves in this
-round, and a round that starts flipping sites repeats DECISION F272 D14 part 2's
-mistake by name.
+## Base
 
-Bundle, in commit order:
-  C0a  save this block verbatim to `.agent/authored/f275-r31.md`
-  C0b  mirror the COMMITTED C0a blob into `.agent/last_block.md`
-  C1   `.agent/plan.md` <- PLAN31
-  C2   the record: RECORD31 into `.agent/live_review.md`, SLIPS31 into
-       `.agent/prose_slips.md`
-  C3   build the probe and the static sweep in a disposable worktree, run the
-       measurement, and write `.agent/f275_t002_flip_inventory.md`
-  C4   DECISION31 into `.agent/decisions.md`
-  C5   the handback
+This round's base is `9d1788fe`, the tip of
+`feature/f275-one-world-completion-part-three` at authoring time. Every reading
+this block states was taken by the reviewer at that commit, in the primary
+checkout, before delegation.
 
-Change set — exactly these paths, nothing else:
-  .agent/authored/f275-r31.md            (C0a, new file)
-  .agent/last_block.md                   (C0b)
-  .agent/plan.md                         (C1)
-  .agent/live_review.md                  (C2, append)
-  .agent/prose_slips.md                  (C2, append)
-  .agent/f275_t002_flip_inventory.md     (C3, new file)
-  .agent/decisions.md                    (C4, append)
-  .agent/handoff.md                      (C5)
+## Constraints
 
-No `docs/README.md` row is owed: the one new file lives under `.agent/`, and
-AGENTS.md's Documentation Updates rule registers `docs/` pages.
+1. APPLY EVERY SLICE BYTE FOR BYTE. A slice is never reflowed, retyped,
+   trimmed or repaired. If a slice does not fit its target, DECLARE it in the
+   handback and apply the rest; never silently reconcile.
+2. THE COMMIT ORDER IS C0a, C0b, C1, C2, C3, C4, C5, exactly. No extra commit,
+   no dropped commit, no reordering. C1 is the first substantive commit, which
+   is what §3 item 23 requires of a round that touches the finding ledger.
+3. THE CHANGE SET IS THE PATH LIST IN THE HEADER'S `Change:` LINE, together with
+   `.agent/handoff.md`, which that line names separately as C5's own target. A
+   path not named there is not written, not created and not deleted.
+4. EVERY APPEND IS `pre + ONE newline + slice`. All three append targets end in
+   a single `\n` at the base: `.agent/live_review.md` at 793191 bytes,
+   `.agent/prose_slips.md` at 217298 bytes, `.agent/decisions.md` at 1024587
+   bytes. Those three figures are the reviewer's own readings at `9d1788fe`.
+5. NO PRODUCTION LINE MOVES BEFORE C4. C1, C2 and C3 write only under `.agent/`.
+6. DESTRUCTIVE VERIFICATION IS ISOLATED. Every mutation and every red proof runs
+   inside a disposable `git worktree` under `.remedy-wt/`, never in the primary
+   checkout, per self_drive_protocol.md G5. Remove and prune it before the
+   handback; `git worktree list` must read exactly ONE entry at C5.
+7. THE SUITE RUNS SERIALLY. `python3 -B -m pytest tests/ -q`, no `-n auto`. A
+   fresh worktree has no `apps/ui/node_modules`; link it before any run that
+   collects `tests/orchestration/test_test_runner.py`, or that class fails on an
+   unresolvable `vitest/config`, which is a worktree artifact and not a result.
+8. THIS ROUND REGISTERS NO FINDING AND RESOLVES NONE. The open set is 87 by
+   distinct id at the base and must read 87 at C4. The next free id is R-0874
+   and this round does not spend it. The reason is measured, not assumed, and
+   is stated in DECISION32: the deleted function has no production caller, so
+   amend0908-f275-finish rule 4's "user-observable behaviour lost" is empty for
+   this change set.
+9. PAIR SHAPES, from the containment test the reviewer ran at `9d1788fe`, one
+   reading per pair: D1 `TO contains FROM: false` → REWRITE. D2
+   `TO contains FROM: false` → REWRITE. D3 `TO contains FROM: false` → REWRITE.
+   D4 `TO contains FROM: false` → REWRITE. All four are rewrites, so each
+   carries the §4.9 FROM-0x obligation.
+   D2 IS THE ONE EXCEPTION TO THE TO-1x HALF, and the block states it rather
+   than ordering a count no run can produce. D2 deletes a line from a
+   four-line code fence, so its TO is a strict PREFIX of its FROM and already
+   occurs once in `docs/system/architecture.md` at the base — the reviewer
+   measured `TO x1` there at `9d1788fe`. Demanding "TO 0 to 1" for D2 would be
+   unsatisfiable by every possible round. D2's honest gate is the one G7 orders:
+   FROM 1 to 0, the `run_agent_loop(job, *, max_cycles=3` signature 1 to 0, and
+   the `derive_agent_loop_state` signature line UNCHANGED at exactly 1.
+10. THE PROSE SLIPS TARGET IS READ BEFORE IT IS APPENDED TO. Round 31's own slip
+    records a booking round that trusted its carrier instead of its target.
+    Confirm that neither SLIPS32 line is already present in
+    `.agent/prose_slips.md` at the base before appending, and report the reading.
+11. THE FULL SUITE RUNS ONLY AFTER C4 IS COMMITTED, NEVER WITH THE DELETION
+    STAGED. This is not style; the reviewer hit it while dry-running this exact
+    change and it would otherwise cost the round a false red.
+    `tests/orchestration/test_evidence_index.py::TestPorcelainParsing::test_every_enumerated_path_exists_in_this_repo`
+    calls `dirty_source_test_files(root)` and asserts every path it enumerates
+    EXISTS on disk. A tracked test file that has been `git rm`-ed but not yet
+    committed is in the dirty set and is not on disk, so the guard fails with
+    `enumerated a nonexistent path: tests/test_agent_loop_execution.py` for
+    exactly as long as the working tree is dirty. Measured in the disposable
+    worktree at `9d1788fe`: with the change applied and UNCOMMITTED the suite
+    reads `1 failed, 18337 passed, 24 skipped`; with the same change COMMITTED
+    the guard's own file reads `33 passed` at exit 0. The guard is correct and
+    is not to be touched.
 
-Constraints:
- 1. Every slice is applied BYTE FOR BYTE. If a slice looks wrong, apply it anyway
-    and DECLARE the doubt in the handback. Never repair a reviewer slice.
- 2. Marker lines never reach a target file. Extract slices from the COMMITTED C0a
-    blob, never from a retype.
- 3. SLICE SHAPES, from the reviewer's own containment test, one reading per
-    slice. PLAN31 is a WHOLE-FILE REPLACEMENT: `TO contains FROM: false`, and its
-    proof is byte equality against the extracted slice, not a count. RECORD31,
-    SLIPS31 and DECISION31 are APPENDS into append-only records; no FROM-zero
-    count is ordered for any of them, and their proof is the §4.9 append
-    obligation under G3.
- 4. EVERY ONE of RECORD31, SLIPS31 and DECISION31 is a WHOLE-LINE slice, so each
-    OWNS its terminating newline and the extractor's trailing newline IS content.
-    This block ships no mid-line slice, which is the distinction round 30's W1
-    turned on.
- 5. `.agent/STOP` is re-read FROM DISK before the FIRST commit and again before
-    C3.
- 6. The probe, the static sweep and every suite run happen ONLY inside a
-    disposable `git worktree` under the gitignored `.remedy-wt/`, never in the
-    primary checkout, per self_drive_protocol G5. Neither instrument is ever
-    committed as a file; their SOURCE is embedded in the inventory at C3 so the
-    measurement is reproducible. Remove and prune the worktree before C5.
- 7. Commit subjects carry NO leading-slash token or absolute path. C3's and C4's
-    subjects name T002.
- 8. No file outside the change set is edited, and no test is deleted, skipped or
-    weakened to make a gate green.
- 9. Do not re-verify rounds 27 through 30.
-10. THE TWO R27 PROSE SLIPS DRAFTED IN `.agent/handoff.md` ARE ALREADY ON DISK
-    AND ARE NOT BOOKED AGAIN. The reviewer compared the four drafted lines
-    against `.agent/prose_slips.md` at `0b009325` mechanically: the two R27
-    drafts each have a counterpart already present sharing their first fifty
-    characters and differing later in wording, and the R29 and R30 drafts have
-    none. SLIPS31 therefore carries the R29 and R30 lines and a third line
-    recording this, and booking all four would have duplicated a landed lesson.
+## SLICE PLAN32 → whole-file replacement of `.agent/plan.md`
 
-──────── WHAT THE REVIEWER ALREADY MEASURED, by RUNNING all of it ────────
-
-Every numeral below was produced at the base `0b009325` in a disposable worktree
-by APPLYING the instruments this block specifies, not by reading code. They are
-the numbers the gates re-derive. Where the worker's run differs, the worker
-reports ITS number and DECLARES the difference; a difference is a result, not a
-failure, and G7 exists to capture it.
-
-THE INSTRUMENT WORKS AND IS BEHAVIOUR-NEUTRAL. With all four descriptors
-installed, `python3 -B -m pytest tests/ -q` in the worktree exits 0 at 18350
-passed and 23 skipped, in about 21 minutes. Both facts were earned rather than
-assumed, and each cost a correction:
-
-  (a) A GETTER-ONLY property is WRONG. `Job` is a pydantic model whose
-      `model_config` sets no `validate_assignment`, so assignment writes
-      straight through to `__dict__`; a property with no setter instead raises
-      `AttributeError: can't set attribute` at every write site. Measured: with
-      a getter-only probe, `tests/orchestration/test_test_execution_service.py`
-      goes RED at exactly two tests — `TestExecuteTestRunGates::
-      test_concurrent_run_blocked` and `TestCatalogValidation::
-      test_lease_blocked_next_action_references_catalog_command` — which are
-      GREEN both without the probe and with the both-halves probe. A probe that
-      reddens a test measures a SMALLER set than the truth, because the test
-      dies before reaching its remaining sites.
-  (b) A FIXED FRAME DEPTH mis-attributes every WRITE. Pydantic dispatches
-      assignment through its own `__setattr__` and a lambda, so the caller two
-      frames out is `pydantic/main.py`, not the line that performed the write.
-      Measured: under a fixed depth the only write the suite executes is
-      attributed to `pydantic/main.py:1089`; under the outward walk this block
-      specifies it is attributed to
-      `tests/orchestration/test_test_execution_service.py:577`, which is where
-      `job.id = job_id` really is.
-
-THE SITE SET, at `0b009325`. A site is one `(path, line, field)` triple; a
-changed line is one `(path, line)` pair, and the two differ only where one line
-carries two fields.
-
-  ROUTE-B SET — reads and writes of `Job.id` and `Job.name`:
-    probe, executed by the suite      1757 sites / 1755 lines
-                                      349 production in 68 files
-                                      1406 test in 115 files
-    static, provably `Job`             325 sites / 325 lines
-    UNION, the ruled site set         1768 sites / 1766 lines
-                                      357 production in 68 files
-                                      1409 test in 117 files
-    provably `Job` but never executed    11
-    executed but not statically provable 1443
-
-  THE REST OF THE SAME ATOMIC COMMIT, by `ast` over 991 tracked `.py`:
-    `Job(...)` constructions           586   production 12   test 574
-    `Job` imports                      346   production 47   test 299
-    `Job` annotations                  374   production 155  test 219
-
-  THE ALTERNATIVE ROUTE'S SET — reads and writes of `JobPlan.job_id` and
-  `JobPlan.job_title`, measured in the SAME run because one probe can carry four
-  descriptors:
-                                      1201 sites / 1087 lines
-                                      109 production in 9 files
-                                      978 test in 61 files
-
-WHY THE UNION AND NOT THE PROBE ALONE. A descriptor probe sees exactly what the
-suite EXECUTES, which is the blindness `.agent/live_review_archive.md` records
-against R-0822: a site no test reaches cannot raise and cannot record. The
-static sweep supplies the other side, and the two disagree in BOTH directions —
-11 sites are provably `Job` and never executed, while 1443 executed sites no
-static rule can attribute, of which the sweep calls 92 something OTHER than
-`Job`. That second number is the one that settles the method question: a static
-selection would have silently EXCLUDED 92 real sites and left the tree red, which
-is precisely the failure DECISION F272 D7 was written after. What neither
-instrument sees is a site that is both unexecuted and unprovable; that remainder
-is named in DECISION31 as a limit and is deliberately given no numeral.
-
-THE TWO FACTS THE ROUTE RULING TURNS ON, both measured rather than inherited:
-
-  (i) F275'S ONE DECLARED-OVERSIZE ALLOWANCE IS UNSPENT. Walking
-      `a5bf8949..0b009325` commit by commit and summing the insertion column of
-      `git diff --numstat`, ZERO commits on this branch exceed 500 insertions.
- (ii) THE MANDATED CLOSURE ROTATION DOES NOT NEED THAT ALLOWANCE, contradicting
-      the "by construction" clause of DECISION F272 D18 at F275's size.
-      `python3 scripts/rotate_live_review.py` applied in a worktree moves 23
-      gate records and 13 finding pairs and produces a diff of 106 insertions
-      against 106 deletions — far under the cap. So the flip and the closure do
-      not compete for the one allowance, and no operator amendment is owed for
-      that collision.
-
-AN ASIDE THAT IS MEASURED, NOT ASSUMED, and that spends no id. That same script
-prints `open findings before: 85` where the ledger's own convention reads 87.
-The difference is exact and benign: the script subtracts `Done:` LINES from
-registration LINES, and `R-0721` and `R-0725` each carry TWO `Done:` records
-while `R-0831` carries a second registration-shaped line that its em-dash
-pattern excludes. As an INVARIANT — identical before and after — the script's
-reading is sound, and the count it prints is simply a different reading from the
-one this workflow books. G4 records both so the next session does not rediscover
-it.
-
-──────── PLAN31 — the whole of `.agent/plan.md` ────────
-
-<<<BEGIN PLAN31>>>
+<<<PLAN32
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -180,202 +99,277 @@ Branch: feature/f275-one-world-completion-part-three, cut from `main` at
 Finish what F274 could not reach inside its own limit: the two carry-overs F260's Design
 names, DECISION F260 D3, the prototype-cluster deletion itself, the atomic record flip that
 T002 rules but does not perform, and the classic runner. Operator ruling amend0908-f275-finish
-orders T001 PERFORMED, not prepared.
+orders T001 PERFORMED, not prepared. T001 and T002 are DONE.
 
 ## Current Step
 
-ROUND 31 performs T002. The DECISION F272 D7 descriptor probe is run over both records the
-flip spans, in one suite run, turning DECISION F272 D15's receiver-name bound into a measured
-site set. The inventory records that set and the instruments that produced it; DECISION F275
-D17 rules the route by which an atomic change lands under a per-commit cap that forbids it.
-No production line moves in this round.
+ROUND 32 opens T003. It rules the inheritance question T003 owes before any command dies —
+which live command inherits a bounded-cycles run and a single-pass run — against the shipped
+catalog by import, and records it as DECISION F275 D18. It then lands the one half of the
+classic runner that no production caller reaches: `run_agent_loop` in
+`packages/orchestration/agent_loop.py`, its three private helpers, the tests that exist only
+to drive it, and the architecture page's description of it.
 
 ## Next Steps
 
-1. T003, the classic runner and the classic store, which DECISION F275 D17 makes landable and
-   which the T003 paragraph of the feature file scopes. The flip itself lands there, as the
-   one declared-oversize commit AGENTS.md permits per feature, with its inseparability reason
-   stated in the handback BEFORE review.
-2. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
+1. Delete the `job.run` and `job.run-next` command surface under the D18 ruling: the catalog
+   entries, the dispatch entries, the two `related=` tuples that would otherwise dangle, and
+   the advertisements in the eight orchestration modules that print them.
+2. Absorb the two handlers under the `job.resume` door, one owner and no copy, and register
+   the surfaces D18 names as genuinely lost.
+3. The flip DECISION F275 D17 sized, as the one declared-oversize commit AGENTS.md permits
+   per feature, re-deriving the site set at its own base.
+4. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
    ledger rotation, the STATUS line and the PR.
 
 ## Risks
 
-- The open set is 87 by distinct id at this round's base `0b009325`, over 102 registrations
+- The open set is 87 by distinct id at this round's base `9d1788fe`, over 102 registrations
   against 15 resolutions. This round registers none and resolves none, so it stays 87. Four
   are High — R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per
   DECISION F272 D12.
-- The flip is the largest single commit this repository will have taken. Its size is now
-  measured rather than bounded, and the route is ruled, but T003 still has to land it.
-<<<END PLAN31>>>
+- Step 1 above turns two surviving `related=` tuples dangling the moment the commands die.
+  The catalog integrity guard resolves every tuple against the live id set, so that repair
+  is not optional and belongs in the same commit as the deletion.
+PLAN32
 
-──────── RECORD31 — appended to `.agent/live_review.md` ────────
+## SLICE RECORD32 → append to `.agent/live_review.md`
 
-<<<BEGIN RECORD31>>>
-Gate: F275 R30 — the F275 round 30 entry. VERDICT PASS, written by the planner and reviewer of session 14 after reading the committed range `fa2279da`..`c88fbca6` and RE-RUNNING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line of it. Seven single-parent commits, per-commit insertions 420, 345, 15, 18, 5 and 108 for the six before the handback, every one under the DECISION F104 D1 cap of 500. G1: the reviewer's scratch original and both committed copies are 32134 bytes at `b3e08e81191c32743b217230af6b5d5f317c3dc81a9ad78b6a38c6b4fa8ff44d` and compare BYTE-EQUAL. G2: `.agent/plan.md` byte-identical to PLAN30 at 2050 bytes and 39 lines against the cap of 50. G3 over BOTH append targets: `.agent/live_review.md` 783650 to 790277 and `.agent/decisions.md` 1012375 to 1017073, each post-blob equal to its pre-blob then ONE newline then the slice, the joining byte READ BACK at offset len(pre) and reading a newline in both, the structural reader counting N from each slice — 2 and 7 paragraphs — and matching the last N blank-line units IN ORDER, with both negative controls flipped INSIDE THE FIRST appended paragraph and REJECTED by BOTH readers. THE OPEN SET FELL 88 TO 87 BY DISTINCT ID. G5 is the gate the round existed to pass: the committed blob of `tests/docs/test_named_source_paths.py` and the GUARD30 slice are both 4774 bytes at one sha256 and compare BYTE-EQUAL, and through the reviewer's OWN import `collect_named_source_paths()` reads 244 paths named and an EMPTY missing list. G6 was re-run in the reviewer's own disposable worktree and all three mutations bite: reinstating a deleted module path goes RED, emptying the corpus goes RED on the anti-blindness floor rather than passing silently with zero findings, and reversing the extension alternation so `.tsx` reads as `.ts` goes RED — that third one guarding the FALSE MISS direction, which is the opposite of the other two and is why the round ordered it. G7: `tests/docs/ tests/cli/` GREEN at 1651 passed run serially in the primary checkout, being round 29's 1648 plus exactly the three tests the new file adds; the shipped catalog UNCHANGED at 222 commands, 44 groups and ZERO dangling `related=` references; the advertisement guard still reading ZERO unresolved on BOTH corpora; no `.agent/STOP`, porcelain EMPTY, ONE worktree, and `fa2279da..c88fbca6` an EXACT set match over ten paths. THE WORKER'S FIRST DEVIATION IS A REVIEWER ERROR AND WAS RE-MEASURED RATHER THAN ACCEPTED: W1's FROM span ends MID-LINE while the block's extractor appends a terminating newline, so W1's FROM as extracted occurs ZERO times in `docs/system/vocabulary.md` and the same span without that newline occurs exactly once; the worker stripped one terminal newline from W1's FROM and its TO, applied every other slice verbatim, and declared it, which is the minimal correct repair and is sustained.
-<<<END RECORD31>>>
+<<<RECORD32
+Gate: F275 R31 — the F275 round 31 entry. VERDICT PASS, written by the planner and reviewer of session 15 after reading the committed range `0b009325`..`f605901d` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs, and booked here by round 32 rather than by a round of its own, per operator amendment amend0827-process-diet rule 1, carried from the pushed `.agent/handoff.md` at `9d1788fe`. The worker's report was evidence for no line of it. Seven single-parent commits C0a `817ba547`, C0b `184f1edc`, C1 `a53343c8`, C2 `293b54d3`, C3 `123554a5`, C4 `0ce086ae` and C5 `f605901d`, per-commit insertions 381, 326, 17, 8, 498 and 16 for the six before the handback, every one under the AGENTS.md DECISION F104 D1 cap of 500. G1 IS A REAL TRANSPORT CHAIN AND NOT MERELY A SELF-CONSISTENT ONE, which is the distinction §3 item 37 exists to force: the reviewer's scratch original at `.remedy-wt/f275-r31-block.md` was written AND HASHED BEFORE delegation at `cbd927e5268daac8557291e99fc6b50dd99ece78adf448e6bb133036f8b2bf19`, and both committed copies are 33235 bytes at that same digest, so the first link of the chain predates the worker. G2: `.agent/plan.md` byte-identical to PLAN31 at 1918 bytes, 37 lines against the cap of 50, both mandated headings exactly once. G3 over ALL THREE append targets — `.agent/live_review.md` 790277, `.agent/prose_slips.md` 215418 and `.agent/decisions.md` 1017073 bytes before — each post-blob equal to its pre-blob then ONE newline then the slice as extracted from the committed C0a blob, the joining byte READ BACK at offset len(pre) and reading a newline in all three, the structural reader counting N from each slice — 1, 3 and 8 paragraphs — and matching the last N blank-line units IN ORDER, and all three negative controls flipped INSIDE THE FIRST appended paragraph and REJECTED by BOTH readers. G4: THE OPEN SET IS 87 BY DISTINCT ID at the base and 87 at the round's tip, over 102 registrations against 15 resolutions; this round registered none and resolved none. G5 and G6 ARE THE ROUND'S REAL EVIDENCE AND THE REVIEWER RAN THE MEASUREMENT ITSELF BEFORE DELEGATING: the DECISION F272 D7 descriptor probe was built by the reviewer, corrected twice against its own failures, and the FULL SUITE was run under it TWICE at `0b009325`, reading `18350 passed, 23 skipped` at exit 0 both times and 1757 executed `Job` sites both times; the worker's two runs read the same summary line at exit 0 and its symmetric difference over `(owner, field, mode, path, line, function)` is EMPTY at 2734 records each, so the probe reproduces across FOUR independent full-suite runs. G8: porcelain EMPTY, ONE worktree, no `.agent/STOP`, the change set an EXACT set match over seven paths, and NO path under `packages/`, `apps/`, `tests/`, `docs/` or `scripts/` in the whole range — which is T002's own "no production line moves", met. TWO CORRECTIONS ARE CARRIED IN THIS ENTRY RATHER THAN AS SEPARATE IDS, because neither left a wrong state on disk under `packages/`, `apps/`, `tests/` or `docs/`. FIRST, THE LARGE DEVIATION IS A REVIEWER SPEC DEFECT AND ITS CAUSE IS MEASURED: the worker read the alternative route at 977 sites over 976 lines where the block states 1201 over 1087, because `JobPlan` is a DATACLASS whose generated `__init__` carries the literal `co_filename` `<string>`, and SPEC-PROBE clause (d) said the walk stops at the innermost frame "whose filename lies under the worktree root" without saying the test reads the RAW filename — `os.path.abspath("<string>")` resolves under that root, so the walk halted at a synthetic frame and every construction write collapsed into one key per field. The arithmetic closes exactly: 960 + 15 + 1 + 1 = 977 against 960 + 15 + 113 + 113 = 1201. For the purpose T002 states, attributing outward to the construction site is the correct reading, so the block's 1201 over 1087 stands and the inventory's figure is an undercount of the ALTERNATIVE route alone; nothing load-bearing moves, because DECISION F275 D17 rejects that route on a line count far over the 500-insertion cap and 976 is as far over as 1087. THE RULED SITE SET IS UNTOUCHED: all twelve probe and union figures agree exactly, the union at 1768 sites over 1766 distinct changed lines, 357 production in 68 files and 1409 test in 117 files, with 11 provably-`Job` sites never executed and 92 that a static sweep positively attributes to something other than `Job`. SECOND, DECISION F275 D17's SENTENCE THAT ZERO COMMITS ON THIS BRANCH EXCEED 500 INSERTIONS IS TOO WIDE BY A QUANTIFIER, and this is its dated correction rather than a rewrite of the landed text, per §3 item 20. Measured at `f605901d`: two MERGE commits do exceed it — `a1df5d70` at 805 and `b6e0f257` at 804 insertions against their first parents, both merging `main` into this branch to bring in amend0908-brainstorm-intake — and the reviewer's original walk used `git log --numstat`, which emits no diff for a merge, so those two were read as zero rather than examined. Over the commits carrying AUTHORED work the claim holds and is stronger than D17 states: the maximum single-parent insertion count across that range is 498, and it is round 31's own C3. The RULING is untouched, because a merge importing upstream history is not a commit whose diff a worker authored and it cannot spend the declared-oversize allowance AGENTS.md rations per feature. THE REMAINING DECLARED DIFFERENCES ARE SMALL, EXPLAINED AND ACCEPTED: the worker's static sweep proves 322 sites where the reviewer's proves 325 and reads 587 constructions against 586, because it additionally resolves a call whose callee is an ATTRIBUTE named `Job`, and it names the one extra site; both readings put 11 in the never-executed set and both produce the SAME union, which is the figure the ruling uses. The pilot suite run the worker discarded is correctly classified — a lint-ceiling test reddened by the worker's own untracked instruments and a vitest test reddened by a fresh worktree having no `node_modules`, with that class re-run WITHOUT the probe and green, which is exactly the discriminator G5 ordered. Trimming the inventory to 498 insertions is accepted: the worker compacted the STATIC instrument's source and verified its output `cmp`-identical after every edit rather than dropping content SPEC-INVENTORY mandates, and spending F275's one oversize allowance on an inventory would have contradicted the decision that round exists to record. NO FINDING IS REGISTERED AND NONE IS RESOLVED BY THIS GATE.
+RECORD32
 
-──────── SLIPS31 — appended to `.agent/prose_slips.md` ────────
+## SLICE SLIPS32 → append to `.agent/prose_slips.md`
 
-The blank line between entries is part of this file's record format, so this
-slice is three paragraphs separated by single blank lines and G3's structural
-reader counts N from the slice itself.
+<<<SLIPS32
+2026-09-10 · F275 R31 · The round 31 block's SPEC-PROBE told the worker to attribute an access to the innermost stack frame "whose filename lies under the worktree root" without saying that the test reads the RAW `co_filename`, and a dataclass's generated `__init__` carries the literal filename `<string>`, which `os.path.abspath` resolves to a path UNDER that root. The worker's faithful implementation therefore stopped the walk at a synthetic frame and collapsed every `JobPlan` construction write into one key per field, reading the alternative route at 977 sites where the reviewer read 1201. Both instruments were correct against the words; the words admitted two readings, and the one the reviewer never considered is the one a path-normalising helper makes natural. A spec that names a PREDICATE over a filename says which string the predicate is applied to, because `<string>`, `<stdin>` and `<frozen importlib._bootstrap>` are filenames that are not paths and every one of them normalises into whatever directory happens to be current.
 
-<<<BEGIN SLIPS31>>>
-2026-09-10 · F275 R29 · The round 29 block's rename table gave a bracketed occurrence count for each of its 22 mappings, and those counts were POST-V1 readings — taken after the sentence V1 rewrites had been masked out — while the block never said so. The worker measured `remedy create-job` at 2 before V1 and 1 after, reported both, and declared the difference rather than quietly reconciling to the bracket. A count a block states about a file is a reading taken at a moment, and the block has to name the moment when its own ordered edits move it.
+2026-09-10 · F275 R31 · DECISION F275 D17 landed the sentence that ZERO commits on this branch exceed 500 insertions, measured with `git log --numstat`, which emits NO diff for a merge commit — so the two merges bringing `main` into this branch, at 805 and 804 insertions against their first parents, were read as zero rather than examined. The claim is true of every commit carrying authored work, where the real maximum is 498, and the ruling that rests on it is unaffected; the quantifier is simply wider than the measurement that produced it. A sweep that quantifies over COMMITS states which commits its tool can SEE, because the commit shapes a tool silently skips are exactly the ones nobody thinks to check.
+SLIPS32
 
-2026-09-10 · F275 R30 · The round 30 block's W1 slice was a MID-LINE span, and the block's marker convention appends a terminating newline to every extracted slice, so W1's FROM as extracted occurred ZERO times in its target while the same span without that newline occurred once. The reviewer's dry run never met the distinction because it used a Python literal with no trailing newline, so the applied run and the emitted slice differed in exactly the byte the recipe turns on. The lesson is that a slice's terminal byte is part of the slice: a whole-line FROM owns its newline and a mid-line FROM does not, and a block that ships both shapes says which is which.
+## SLICE DECISION32 → append to `.agent/decisions.md`
 
-2026-09-10 · F275 R31 · Session 14's handoff drafted four prose slips for round 31 to book, and TWO of them were already on disk: both R27 lines had been appended by the round they describe, and the drafts were re-wordings rather than new entries. The reviewer caught it only by comparing the drafted lines against `.agent/prose_slips.md` mechanically before authoring, which §3 item 34 requires of every file a block orders a change against and which the drafting session had not done for its own carrier. A durable carrier is a place text WAITS, not a place text has necessarily not landed, so a booking round reads its target before it appends.
-<<<END SLIPS31>>>
+<<<DECISION32
+## DECISION F275 D18 (2026-09-10, F275 round 32) — T003's inheritance ruling: the classic runner's COMMAND SURFACE dies and its EXECUTION PATH is inherited by `job.resume`; `run_agent_loop` dies outright and inherits nothing
 
-──────── DECISION31 — appended to `.agent/decisions.md` ────────
+CONTEXT. `docs/roadmap/features/T2_F275.md` T003 deletes `job.run --cycles`, `job.run-next`, their handlers and their tests. Operator amendment amend0908-f275-finish rule 4 requires that a surviving importer lose the import and the code path in the SAME commit, and that any user-observable behaviour lost be registered as a finding naming the inheriting feature — never a stub, shim or copy. Session 15's handoff deferred one question to this round and named four candidate inheritors — `do.run`, `do.continue`, `worker.run` and `mission.run` — without measuring which of them actually inherits a bounded-cycles run. Every reading below was taken by the reviewer at `9d1788fe` against the SHIPPED catalog by import and against the source on disk, not from the handoff.
 
-<<<BEGIN DECISION31>>>
-## DECISION F275 D17 (2026-09-10, F275 round 31) — the classic-to-unified flip is measured over BOTH records by one descriptor probe, and it lands as F275's ONE declared-oversize commit inside T003
+WHAT THE CATALOG HOLDS, measured by importing `apps.cli.command_catalog` at `9d1788fe`: 222 commands in 44 groups, of which 27 are in the `job` group. Exactly three entries carry an argument named `--cycles`: `job.run`, `job.resume` and — as `--max-cycles` — `do.run`. `job.resume`'s own description is "Resume a job. Without --checkpoint: continue from the newest valid cycle checkpoint (F047)", its argument list carries `--cycles` with the help text "Maximum cycles for the resumed run (capped by the rollout default)", and its `related=` tuple already names `job.run`.
 
-CONTEXT. DECISION F272 D15 ruled the classic-to-unified record flip ATOMIC and bounded it with a receiver-name heuristic at 468 `<job-ish>.id` reads in 74 production files and 1545 in 137 test files over 1068 tracked `.py`, recording in its own terms that this is an UPPER BOUND and NOT a probe measurement because `.id` is polymorphic in this repository exactly as `.status` was. Its CONSEQUENCE clause left one question that neither F272 nor F274 answered: how is a change that is atomic by construction landed under a per-commit cap of 500 insertions that forbids it. F275's T002 orders the DECISION F272 D7 probe over every candidate receiver and then a dated ruling on the route. This is that measurement and that ruling. No production line moves in the round that records it.
+CHOSEN — `job.resume` INHERITS BOTH, BY ABSORPTION RATHER THAN BY REDIRECTION, and the ruling rests on three measurements rather than on the shape of the names. FIRST, `job.resume` is ALREADY the second caller of the bounded-cycles handler: `_cmd_job_resume` ends at `apps/cli/commands/job.py:1076` with `_cmd_job_run_cycles(job_id_str, cycles=cycles, json_output=json_output)`. SECOND, it already performs the identical plan-approval gate, and the source says so in its own comment at that call site's third step — "the same check `remedy job run` makes". THIRD, and this is the measurement that rules out the obvious alternative, the SINGLE PASS IS NOT A SEPARABLE SURFACE: `_cmd_job_run_cycles` delegates to `_cmd_run_next_task_local` whenever `resolved.max_cycles <= 1`, and one cycle is the SHIPPED DEFAULT under the F046 rollout cap until the F075 milestone gate raises it. Deleting `_cmd_run_next_task_local` outright would therefore leave `job.resume` a no-op under today's configuration. The two handlers move under the `job.resume` door as private functions of the surviving command, ONE OWNER AND NO COPY, which is a move and not the compatibility shim AGENTS.md's Scope Control forbids.
 
-THE INSTRUMENT, and the two ways it was wrong before it was right. D7 established that a polymorphic attribute's site set is settled by RUNTIME PROBE and never by static classification, because only a running object knows its own type. D7's disposition was a RAISING property, which suits a rename being PERFORMED and converges by iteration; a rename being SIZED needs the sites ENUMERATED in one pass, so this round installs the same class-level data descriptor in a RECORDING disposition — it attributes the access to the calling frame and returns the real value. Two corrections were forced by running it. FIRST, a getter-only property is wrong: `Job` is a pydantic model with no `validate_assignment`, so assignment writes through to `__dict__`, and a property with no setter raises `AttributeError: can't set attribute` at every write site — measured, it turned exactly two tests of `tests/orchestration/test_test_execution_service.py` red, and a probe that reddens a test measures a smaller set than the truth because the test dies before reaching its remaining sites. SECOND, a fixed frame depth mis-attributes every write, because pydantic dispatches assignment through its own `__setattr__` and a lambda: the sole executed write reads as `pydantic/main.py:1089` at a fixed depth and as `tests/orchestration/test_test_execution_service.py:577` under an outward walk to the innermost repository frame. With both corrections the full suite is GREEN under the probe at 18350 passed and 23 skipped, so the instrument distorts nothing it measures.
+WHAT IS GENUINELY LOST AND OWES A FINDING WHEN THE SURFACE DIES, stated here so the round that deletes the commands does not have to re-derive it: the `--unattended` flag and the `--yes` cost-preview skip at the `job.run` door, because `_cmd_job_resume` passes neither to the handler it calls; and `job.run-next` as a user-visible single-pass entry point. Those are the amend0908 rule 4 registrations that round owes, and they are NOT owed by this round, which deletes no command.
 
-THE MEASUREMENT, taken at `0b009325`. Counting a site as one `(path, line, field)` triple: the probe executes 1757 `Job.id`/`Job.name` sites, and an `ast` sweep over 991 tracked `.py` files proves 325 more-or-less independently; their UNION, which is the set this ruling uses, is 1768 sites over 1766 distinct changed lines — 357 in production across 68 files and 1409 in tests across 117 files. Beside those, the same atomic commit carries 586 `Job(...)` constructions, 346 `Job` imports and 374 `Job` annotations. The two instruments disagree in BOTH directions and that is the method's whole point: 11 sites are provably `Job` and never executed, while 1443 executed sites no static rule attributes, of which the sweep positively calls 92 something OTHER than `Job`. A static selection would therefore have EXCLUDED 92 real sites and left the tree red at a commit boundary, which is the failure R-0820 recorded and D7 was written after. The bound D15 stated is confirmed as a bound and replaced: the honest figure is larger in tests than D15's reachable guess and smaller in production, and it is now a list rather than an estimate.
+WHAT THE SAME ROUND MUST REPAIR IN THE SAME COMMIT, measured rather than predicted: deleting the two commands leaves TWO surviving `related=` references dangling — `job.plan` names `job.run-next` and `job.resume` names `job.run` — and `tests/test_command_catalog.py::TestCatalogIntegrity::test_every_related_reference_resolves_to_a_live_command` resolves every tuple against the live id set, so the suite goes RED unless both tuples move in that commit. `tests/test_command_catalog.py:252` additionally pins `job.run-next` in a literal id list.
 
-CHOSEN. THE FLIP LANDS AS ONE COMMIT, DECLARED OVERSIZE UNDER AGENTS.md'S COMMIT DISCIPLINE, INSIDE T003 AND NOT IN A ROUND OF ITS OWN. Three facts fix this. The change is atomic — D15 ruled it so, the only way to stage it is a helper accepting both records, and AGENTS.md's Scope Control forbids precisely that with no attic, no deprecated alias and no compatibility reader — so every intermediate commit of any split is RED, which no rule here permits. The allowance exists and is FREE: walking `a5bf8949..0b009325` and summing the insertion column, ZERO commits on this branch exceed 500 insertions, and the DECISION F274 ruling that reserved F275's one allowance for exactly this flip is honoured rather than spent elsewhere. And the allowance is NOT contested by the closure, contradicting the "by construction" clause of DECISION F272 D18 at this feature's size: `scripts/rotate_live_review.py` applied in a worktree moves 23 gate records and 13 finding pairs for a diff of 106 insertions, so the mandated rotation needs no exception at all. The commit is placed inside T003 because T003 deletes the classic store and runner that PRODUCE `Job`, the feature file already makes this ruling T003's prerequisite, and a flip landing anywhere else would be a change with no consumer waiting for it.
+THE HALF THIS ROUND LANDS, AND WHY IT INHERITS NOTHING. `packages/orchestration/agent_loop.py` carries a second, independent door to the same single pass: `_run_next_task_step` imports `_cmd_run_next_task_local` from the CLI and is called only from `run_agent_loop`. An `ast` sweep over all 991 tracked `.py` files at `9d1788fe` finds NO production caller of `run_agent_loop` anywhere: its only readers are `tests/test_agent_loop_execution.py`, which exists solely to drive it, and one test in `tests/storage/test_persistence.py`. `docs/system/architecture.md` had already recorded that state in its own prose — "which no production caller reaches; DECISION F272 D13 assigns that function to T004's classic-runner deletion" — and all six of its cycle events are already tabled there as "no live emitter". So nothing user-observable is lost, no finding is owed under amend0908 rule 4, and the open set stays at 87.
 
-ALTERNATIVES CONSIDERED, each rejected on a measurement rather than a preference. (a) One commit under the cap — impossible: 1766 changed lines before constructions, imports and annotations is more than three times 500, and no reading of the cap reaches it. (b) An operator amendment raising or suspending the cap — not sought, because AGENTS.md already provides the declared-oversize route and an amendment obtained where an existing rule applies weakens the rule it bypasses. (c) RENAME `JobPlan.job_id` AND `JobPlan.job_title` TO `id` AND `name` FIRST, so both records agree and the 1721 `.id` reads need no edit at all. This was measured in the SAME probe run rather than argued about — one probe carries four descriptors — and it is the alternative that came closest: `JobPlan`'s two fields are read and written at 1201 executed sites over 1087 distinct lines, and the record's persisted format is decoupled from its field names by explicit `_export_job`/`_import_job` functions rather than `asdict`, so the rename would not touch a single job file on disk. It is rejected on arithmetic: 1087 lines is itself far over the cap, so this route spends TWO oversize commits where AGENTS.md permits ONE per feature, and it buys a smaller flip at the price of a rule violation the first route does not need. If the operator ever permits two, this is the better route and it is recorded here in enough detail to be taken.
+THE NEIGHBOURHOOD OF THAT DELETION WAS SWEPT RATHER THAN EYEBALLED, because an anchor that leaves its helpers behind is the R-0855 shape. Of the module's 15 module-level definitions, 11 SURVIVE — `AgentRole`, `AgentAdapterSpec`, `AgentLoopStage`, `AgentLoopDecision`, `AgentLoopState`, `default_agent_loop_state`, `derive_agent_loop_state`, `summarize_agent_loop_state`, `_find_current_blocker`, `_format_blocker` and `_next_action` — because `apps/cli/commands/brain.py` reads `derive_agent_loop_state` and `summarize_agent_loop_state` for the live `dev agent-loop` command, and the rest are reachable from those two or from `tests/test_agent_loop.py`. Exactly TWO become readerless once the anchors go and are deleted in the SAME commit: `_auto_approve_low_risk_intents` and `_loop_meta`, each of whose only in-file caller is `run_agent_loop`. The first sweep the reviewer ran got this wrong and is recorded so the method is not repeated: it asked "is this definition reachable from the removed pair", which marks a helper of a SURVIVING function as an orphan whenever the removed pair also calls that survivor, and it labelled `_find_current_blocker` an orphan although `derive_agent_loop_state` calls it. The correct question is the reverse one — close the survivor set forward from the definitions a surviving FILE reads, then subtract it from the anchors' reach.
 
-WHAT THIS RULING DOES NOT SETTLE, stated because a measurement's limits are part of its result. A descriptor probe sees what the suite EXECUTES and a static sweep sees what a reader can PROVE; a site that is both unexecuted and unprovable is invisible to both, and this ruling gives that remainder NO numeral because none was measured. The union is therefore a floor on the flip's size and not a ceiling, and T003 re-derives the set at its own base before it commits rather than inheriting these figures — every count here names `0b009325`, and the tree moves between now and then. The declared-oversize commit's inseparability reason is owed in T003's handback BEFORE review, per AGENTS.md, and this decision does not discharge that obligation in advance.
+THE EVENT SCHEMAS STAY, and this is the one part of the ruling that is a judgement rather than a measurement. `agent_loop_started`, `agent_loop_cycle_started` and `agent_loop_completed` keep their entries in `packages/orchestration/event_schemas.py` and their pins in `tests/orchestration/test_event_ledger.py`, because run logs already written on disk carry those events and the ledger validates what it READS rather than only what it writes. The repository's own precedent is on disk and was measured, not recalled: `docs/system/architecture.md` already tables `agent_loop_decision`, `agent_loop_cycle_completed` and `agent_loop_paused` as "no live emitter", so a registered schema with no live emitter is an accepted state here and not a defect this round introduces.
 
-HOW TO REVERSE. Delete this paragraph and the ruling above it; the measurement paragraphs are a record of what was run and stay true whatever route is later chosen. Reversing the route without reversing the measurement means choosing (c) above, which requires the operator to permit a second oversize commit in this feature and nothing else.
-<<<END DECISION31>>>
+ONE TEST DIES WITH ITS VEHICLE AND LOSES NO COVERAGE, which was checked before it was ordered rather than after. `tests/storage/test_persistence.py::test_token_policy_applied_event_schema` calls `run_agent_loop(job, max_cycles=1)` purely to make a `token_policy_applied` event appear, then asserts that event's metadata keyset. `packages/orchestration/autonomy_loop.py` emits the SAME event from `_emit_token_policy_applied` at loop start, and the very next test in that same file already asserts it through that emitter. The property therefore keeps a test after the deletion, through the surviving emitter, and no assertion is weakened to make a deletion green.
 
-──────── SPEC-PROBE — the instrument C3 builds, runs and embeds ────────
+ALTERNATIVES CONSIDERED. (a) DELETE BOTH HANDLERS OUTRIGHT and register the lost bounded-cycles run as a finding — rejected on the third measurement above: it leaves `job.resume`, a command no deletion list names and whose whole purpose is resuming a bounded run, a no-op under the shipped default. (b) GIVE THE SINGLE PASS TO `do.continue` OR `worker.run --once` — rejected on what those commands actually do: `do.continue` runs one continuation cycle for an APPROVED INTENT and `worker.run` processes jobs off the local queue, and neither runs a job's next PENDING task through `task_runner.run_next_task`, which is what `job.run-next` means. (c) GIVE IT TO `mission.run` — rejected because that command drives the F070 orchestrator loop over a MISSION, a different record entirely. (d) KEEP `run_agent_loop` until the command deletion lands, so the whole classic runner dies in one commit — rejected because it is separable by measurement rather than by preference, it has no production caller, and F275's one declared-oversize allowance is reserved by DECISION F275 D17 for the flip.
 
-The worker builds this in the disposable worktree. It is NOT committed as a
-file; its exact source is embedded in the inventory. Behaviour required:
+HOW TO REVERSE. Delete this paragraph and the six above it. The absorption in the CHOSEN clause binds the round that deletes the command surface and nothing earlier; this round's own change set is the `run_agent_loop` half alone, which reverses by `git revert` of its single commit.
+DECISION32
 
- (a) A pytest plugin module at the worktree root, loaded with `-p <name>`. The
-     repository's `pyproject.toml` sets `pythonpath = ["."]`, so a root-level
-     module is importable that way.
- (b) On import it installs a class-level `property` over FOUR fields: `id` and
-     `name` on `packages.core.models.Job`, and `job_id` and `job_title` on
-     `packages.orchestration.pingpong_job.JobPlan`.
- (c) Each property carries BOTH a getter and a setter. The getter records the
-     access and returns `self.__dict__[<field>]`. The setter records the access,
-     writes `self.__dict__[<field>] = value`, and — for the pydantic model only
-     — adds the field name to `self.__pydantic_fields_set__`, which is what
-     pydantic's own no-`validate_assignment` path does. A getter-only property is
-     the defect measured above and may not be shipped.
- (d) Recording attributes the access to the INNERMOST STACK FRAME WHOSE FILENAME
-     LIES UNDER THE WORKTREE ROOT, walking outward from the caller, falling back
-     to the innermost frame of all when no frame qualifies. It records whether
-     the innermost frame already qualified, so attributed and direct accesses
-     stay distinguishable.
- (e) The record key is `(owner, field, mode, direct, repo-relative path, line,
-     function)` where mode is `read` or `write`; the value is the access count.
- (f) At `pytest_sessionfinish` every record is written as JSON.
+## SPEC-DELETE → the C4 production change
 
-──────── SPEC-STATIC — the second instrument, same treatment ────────
+The worker writes this code; it is DESCRIBED here, not sliced, because it is
+production code and §3 forbids the reviewer to author it. Four files move.
 
-An `ast` reading over every tracked `.py` from `git ls-files '*.py'` — enumerated
-from git and never from a shell glob, per DECISION F272 D2. Per function scope it
-binds each local NAME to a verdict on whether it holds a `Job`: `job` when a
-parameter annotation, an `AnnAssign` annotation or an assignment from a `Job(...)`
-call names `Job`; `other` when an annotation names something else; `unknown`
-otherwise. It then records every `Attribute` node whose `attr` is `id` or `name`
-and whose `value` is a bare `Name`, carrying that name's verdict, the path, the
-line and whether the context is a load or a store.
+(a) `packages/orchestration/agent_loop.py` — DELETE exactly four module-level
+    definitions and nothing else: `run_agent_loop`, `_run_next_task_step`,
+    `_auto_approve_low_risk_intents` and `_loop_meta`. The other ELEVEN
+    module-level definitions stay untouched, byte for byte. Delete also the
+    module docstring's description of the execution loop and its five emitted
+    event names, and any import that only those four functions used — `ruff` is
+    the check that catches a missed one, and it is ordered in G6 for exactly
+    that reason.
 
-──────── SPEC-INVENTORY — `.agent/f275_t002_flip_inventory.md` ────────
+(b) `tests/test_agent_loop_execution.py` — DELETE the whole file with `git rm`.
+    Its every test drives `run_agent_loop`.
 
-Generated from the two runs, never retyped. It carries, in this order: the base
-SHA the measurement was taken at; the full source of BOTH instruments; the pytest
-summary line and exit code of BOTH probe runs; the reproducibility comparison G6
-orders; the route-B table and the alternative-route table in the shapes given
-above; the two set differences with `provably Job but never executed` enumerated
-BY PATH AND LINE IN FULL, since it is small enough to list and a count alone
-would hide which sites they are; and the constructions, imports and annotations
-counts. Every figure DECISION31 also states appears here beside the reviewer's
-reading of it and a `same` or `differs` verdict.
+(c) `tests/storage/test_persistence.py` — DELETE only the method
+    `test_token_policy_applied_event_schema` and nothing else. The test
+    immediately after it, which asserts the same event through the autonomy
+    loop's emitter, STAYS and is not edited.
 
-──────── Done when ────────
+(d) `docs/system/architecture.md` — apply the four pairs D1 to D4 below.
 
-Done when — the gates below, G1 to G8, at the amend0827 rule 5 budget of eight.
-Each is run with `bash -c '<cmd>; echo "REAL_EXIT=$?"'`, with real exit codes and
-real numbers in the handback, ONE LINE PER GATE. G1 to G7 are ordered at commits
-strictly before C5, per §3 item 31.
+## PAIRS D1 to D4 → `docs/system/architecture.md`
 
-G1 TRANSPORT (at C0b). `sha256sum` of the scratch original at
-   `.remedy-wt/f275-r31-block.md`, of the committed `.agent/authored/f275-r31.md`
-   and of the committed `.agent/last_block.md` are ONE comparison and must be
-   equal.
+<<<D1-FROM
+**Purpose:** State derivation (read-only, deterministic) plus a local execution loop
+(`run_agent_loop`) that drives plan → build → approve → test → repeat cycles.
+External tools (Claude Code, Copilot CLI) are not called — execution delegates to
+existing CLI command handlers (task runner, test runner).
+D1-FROM
 
-G2 THE PLAN (at C1). `.agent/plan.md` byte-identical to PLAN31; report
-   `written == slice`. Line count under the AGENTS.md cap of 50. `^## Goal$` and
-   `^## Next Steps$` each exactly 1.
+<<<D1-TO
+**Purpose:** State derivation only — read-only, deterministic and inspect-only.
+The local execution loop that once drove plan → build → approve → test → repeat
+cycles was DELETED at F275 round 32 together with the classic-runner handler it
+delegated to, per DECISION F275 D18; it had no production caller. Nothing in
+this module executes a task, and `remedy dev agent-loop` reads derived state.
+D1-TO
 
-G3 THE RECORD, full byte forensics, THREE append targets — `.agent/live_review.md`
-   and `.agent/prose_slips.md` at C2, `.agent/decisions.md` at C4. Pre-sizes at
-   `0b009325` are 790277, 215418 and 1017073 bytes. For EACH: post == pre + ONE
-   newline + slice, with the joining byte READ BACK from the committed post-blob
-   at offset len(pre) and shown to be a newline; plus an INDEPENDENT structural
-   reader comparing the LAST N blank-line units against the slice's N paragraphs
-   IN ORDER, N COUNTED BY THE SCRIPT from the slice and never taken from this
-   block; plus a negative control flipping one byte inside the FIRST appended
-   paragraph, which BOTH readers must REJECT while both accept the truth. Then
-   `^Gate: F275 R30 ` == 1 and `^## DECISION F275 D17 ` == 1.
+<<<D2-FROM
+derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
+run_agent_loop(job, *, max_cycles=3, auto_approve_low_risk=False, run_tests=True) -> AgentLoopState
+D2-FROM
 
-G4 THE OPEN SET (at C4, after every record commit). BY DISTINCT ID it reads 87 at
-   the base `0b009325`, over 102 distinct registered ids against 15 distinct
-   resolved ids; this round registers none and resolves none, so it must still
-   read 87. Report BESIDE it the reading `scripts/rotate_live_review.py` prints,
-   which is 85, and the reason the two differ — that reading subtracts `Done:`
-   LINES from registration LINES while `R-0721` and `R-0725` each carry two
-   `Done:` records and `R-0831` carries a second registration-shaped line.
+<<<D2-TO
+derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
+D2-TO
 
-G5 THE PROBE IS BEHAVIOUR-NEUTRAL (at C3, in the disposable worktree). The full
-   suite under the probe, `python3 -B -m pytest tests/ -q -p <name>`, run
-   SERIALLY. Report the summary line and the real exit code. IT MUST BE GREEN;
-   the reviewer measured 18350 passed and 23 skipped at exit 0. Independently of
-   whether anything fails, re-run the golden-path canary
-   `pytest tests/cli/test_golden_path.py -q` and report it. For ANY test that
-   fails under the probe, re-run THAT node id WITHOUT `-p` and report both
-   colours: a test red under the probe and green without it is a PROBE DEFECT,
-   and the round stops and declares it rather than reporting the smaller site set
-   the broken probe produced.
+<<<D3-FROM
+The six cycle events below keep their schemas in
+`packages/orchestration/event_schemas.py` and are still emitted by
+`agent_loop.run_agent_loop()`, which no production caller reaches; DECISION F272
+D13 assigns that function to T004's classic-runner deletion.
+D3-FROM
 
-G6 THE MEASUREMENT REPRODUCES (at C3). Run the full suite under the probe a
-   SECOND time and compare the two site sets as sets of
-   `(owner, field, mode, path, line, function)`. Report the size of each set and
-   the FULL symmetric difference, never truncated and never summarised as a
-   count alone. Determinism is measured here, not assumed: the reviewer observed
-   the same 1757 `Job` sites across two runs whose pytest skip counts differed,
-   so a non-empty difference is a real result to record in the inventory rather
-   than a failure of the round.
+<<<D3-TO
+The six cycle events below keep their schemas in
+`packages/orchestration/event_schemas.py` and now have no emitter at all: the
+function that emitted them was DELETED at F275 round 32, per DECISION F275 D18.
+The schemas are kept deliberately, because run logs already written on disk
+carry those events and the ledger validates what it READS, not only what it
+writes.
+D3-TO
 
-G7 THE INVENTORY'S NUMERALS ARE THE RUN'S (at C3, before C4). Every figure in
-   `.agent/f275_t002_flip_inventory.md` is produced by the two instruments and
-   none is retyped from this block. For each figure DECISION31 also states,
-   report `same` or `differs` against the reviewer's reading, and DECLARE every
-   difference with the number you measured. A difference does not stop the round;
-   an undeclared one is a finding.
+<<<D4-FROM
+All `agent_loop_*` events emitted by `run_agent_loop()` use the same metadata schema:
+D4-FROM
 
-G8 NOTHING ELSE MOVED (at C4, before C5).
-   - `.agent/STOP` absent (read from disk), `git status --porcelain` EMPTY,
-     `git worktree list` exactly ONE entry after the pruning constraint 6
-     requires, branch correct.
-   - `git diff --name-only 0b009325..<C4>` an EXACT SET MATCH against the change
-     set minus `.agent/handoff.md`; report MISSING and EXTRA explicitly.
-   - No path under `packages/`, `apps/`, `tests/`, `docs/` or `scripts/` appears
-     in that diff at all, which is T002's own "no production line moves".
-   - Per-commit insertions for every commit BEFORE the handback commit, against
-     the DECISION F104 D1 cap of 500.
+<<<D4-TO
+All `agent_loop_*` execution events already recorded in run logs on disk carry
+the same metadata schema:
+D4-TO
 
-Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md —
-feature and round, SESSION 15 of F275, branch, per-commit changed-files table
-with `+/-` from `git diff --numstat` and not from file line counts (§3 item 28),
-one line per gate G1 to G8, every deviation declared, the open-findings count,
-the one-sentence context self-assessment amend0905-throughput requires, and the
-next expected action. State plainly whether the probe reproduced across the two
-runs, because that is the property T003 will rely on.
-── END STEP T002 — F275 — R31 ──
+## Done when — GATES G1 to G8
+
+Run every gate as `bash -c '<cmd>; echo "REAL_EXIT=$?"'` and record the REAL
+exit code and the REAL numbers. "Green" as a word is a finding. G1 to G4 and G6
+to G8 are ordered at commits STRICTLY EARLIER than C5, which writes the
+handback, per §3 item 31; C5's own insertion count is not gated and is not
+reported as a gate reading.
+
+**G1 TRANSPORT (at C0b).** The reviewer's scratch original is the file this
+block was read from, `.remedy-wt/f275-r32-block.md`, written and hashed BEFORE
+delegation. Report its sha256 and byte length, and show that the committed
+`.agent/authored/f275-r32.md` and the committed `.agent/last_block.md` are
+BYTE-EQUAL to it. `.agent/last_block.md` is written by `git cat-file blob` from
+the committed C0a blob, never by a retype. State what the chain covers: three
+artefacts, and not any bytes emitted into a prompt (§3 item 37).
+
+**G2 THE PLAN (at C1).** Committed `.agent/plan.md` byte-equal to the PLAN32
+slice. Report both byte lengths, the sha256, the line count against the cap of
+50, and the counts of `^## Goal$` and `^## Next Steps$`, each of which must
+read exactly 1.
+
+**G3 THE RECORD, three append targets (at C3).** For `.agent/live_review.md`,
+`.agent/prose_slips.md` and `.agent/decisions.md`: report the pre-size, confirm
+it equals constraint 4's figure, and show post == pre + ONE newline + slice.
+Read the joining byte BACK at offset len(pre) and report it. Then the
+independent structural reader: count N from each slice yourself — do not take N
+from this block — and match the last N blank-line units of the whole file
+against the slice's N paragraphs IN ORDER. Three negative controls, each
+flipping one byte INSIDE THE FIRST appended paragraph, must be REJECTED by BOTH
+readers. Finally `^Gate: F275 R31 ` must read exactly 1 and
+`^## DECISION F275 D18 ` exactly 1.
+
+**G4 THE OPEN SET (at C3).** BY DISTINCT ID, from `.agent/live_review.md`
+mechanically: every `^- R-\d+ — ` id minus every `^Done: R-\d+ — ` id. Report
+the count at the base `9d1788fe` and at C3; both must read 87. Report the ids
+registered this round and the ids resolved this round; both lists must be
+EMPTY. Report the constraint 10 reading for `.agent/prose_slips.md`: whether
+either SLIPS32 line was already present at the base.
+
+**G5 THE SURVIVORS KEEP THEIR READERS (at C4).** In the primary checkout,
+report the module-level definition names of `packages/orchestration/agent_loop.py`
+before and after C4, as two sorted lists, and the set difference. The removed
+set must be exactly `_auto_approve_low_risk_intents`, `_loop_meta`,
+`_run_next_task_step`, `run_agent_loop`; the surviving list must hold 11 names.
+Then a repo-wide sweep over `apps packages tests scripts docs` for each of
+those four names: each must read ZERO occurrences after C4. Report the counts
+BEFORE as well — an absence proves nothing without the presence beside it.
+
+**G6 THE SURVIVING PATH STILL HAS TEETH — RED PROOF (at C4).** In a disposable
+worktree at C4, with `node_modules` linked and `__pycache__` purged, run
+`python3 -B -m pytest tests/test_agent_loop.py tests/orchestration/test_event_ledger.py tests/storage/test_persistence.py -q`
+UNMUTATED FIRST and report its exit code and pass count as the control. Then
+THREE mutations, each reverted byte-exactly before the next, each reported with
+WHICH assertion fired and not merely with an exit code:
+  M1 — in `derive_agent_loop_state`, replace the single line
+       `blocked_reason = _find_current_blocker(job, events)` with
+       `blocked_reason = None`, preserving its indentation. That line occurs
+       exactly ONCE in `packages/orchestration/agent_loop.py`, which the
+       reviewer counted at `9d1788fe`; the file is the revert target and the
+       byte string is unique inside it. Expect RED in `tests/test_agent_loop.py`.
+  M2 — remove the `agent_loop_started` entry from `EVENT_METADATA_SCHEMAS` in
+       `packages/orchestration/event_schemas.py`. Expect RED in
+       `tests/orchestration/test_event_ledger.py`, which proves the schemas
+       DECISION32 keeps are still pinned after their emitter is gone.
+  M3 — in `packages/orchestration/autonomy_loop.py`, make
+       `_emit_token_policy_applied` return without emitting. Expect RED in
+       `tests/storage/test_persistence.py`, which proves the coverage
+       DECISION32 says survives the deleted test really does.
+Also run `ruff check packages/orchestration/agent_loop.py tests/storage/test_persistence.py`
+and report its exact output line; it is the only check that catches a name left
+behind by an incomplete deletion.
+THE REVIEWER RAN THIS WHOLE GATE ITSELF at `9d1788fe` before delegating, in its
+own disposable worktree, and all three mutations bite with a NAMED assertion:
+control `102 passed` at exit 0; M1 fires
+`assert state.decision == AgentLoopDecision.BLOCKED`; M2 fires
+`assert "agent_loop_started" in EVENT_METADATA_SCHEMAS`; M3 fires
+`assert len(tpa) >= 1, "must emit token_policy_applied"`. Each revert was
+verified byte-exact by sha256. Report YOUR readings, not these.
+
+**G7 THE PAIRS AND THE SUITE (at C4).** Each of D1 to D4: FROM count in
+`docs/system/architecture.md` BEFORE the edit exactly 1, AFTER exactly 0. For
+D1, D3 and D4 the TO must go 0 to 1. For D2, per constraint 9, report instead:
+the `run_agent_loop(job, *, max_cycles=3` signature 1 to 0, and the line
+`derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState`
+unchanged at exactly 1 before and after. Then, SERIALLY in the primary checkout,
+`python3 -B -m pytest tests/ -q` and report the full summary line and the exit
+code. The reviewer measured the collection delta itself at `9d1788fe`, by
+`--collect-only` before and after applying this change in a disposable
+worktree: 18373 tests collected BEFORE and 18362 AFTER, a difference of exactly
+ELEVEN, being the TEN tests in `tests/test_agent_loop_execution.py` and the ONE
+method C4 removes from `tests/storage/test_persistence.py`. Reproduce that
+delta the same way — `--collect-only` at the base and at C4 — and print the
+removed node ids, rather than asserting the number. Round 31 read 18350 passed
+and 23 skipped over 18373 collected at its own base.
+Then the canary, `python3 -m pytest tests/cli/test_golden_path.py -q`, and
+`python3 -m pytest tests/docs/ -q`, which this round owes because its change set
+holds a `docs/` path.
+
+**G8 NOTHING ELSE MOVED (at C4).** `.agent/STOP` read from disk and ABSENT.
+`git status --porcelain` EMPTY. `git worktree list` exactly ONE entry. Branch
+`feature/f275-one-world-completion-part-three`. `git diff --name-only 9d1788fe..<C4>`
+an EXACT SET MATCH against the path list in the header's `Change:` line, which
+does not include `.agent/handoff.md`, reported as MISSING and EXTRA, both of
+which must be empty. Per-commit
+insertions for every commit before the handback, each under the DECISION F104
+D1 cap of 500. Report the shipped catalog's command count, group count and its
+count of dangling `related=` references resolved on the DOTTED id: 222, 44 and
+ZERO, unchanged, because this round deletes no command. Take that reading by
+IMPORTING `apps.cli.command_catalog` in `python3`, never by invoking the
+`remedy` binary, which is denied in this environment; resolve `related=` on the
+dotted id, because round 28's worker split on whitespace and reported a false
+alarm on every reference.
+
+## Handback
+
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It carries the
+SESSION NUMBER 16 of feature F275, round 32, ONE LINE PER GATE with real exit
+codes and real numbers, the changed-files table with the `+/-` column taken from
+`git diff --numstat` and not from file line counts (§3 item 28), the
+item-status table, the open-findings count, and the one-sentence context
+self-assessment amend0905-throughput requires. Declare every deviation; a
+deviation honestly declared costs this round nothing, and a slice quietly
+reconciled costs it the verdict.
