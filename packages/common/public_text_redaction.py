@@ -5,9 +5,10 @@ the Provider Trust Gate, in a module F275 round 22 deleted at `0242c0a3` (R-0083
 echo a secret value or an absolute path out of untrusted provider text). Seven modules that
 have nothing to do with provider trust came to import them anyway, because masking a
 public-facing string is a repository-wide obligation rather than a trust-gate one. F275
-round 21 deletes the trust gate, so the helpers move here BYTE-IDENTICALLY — one
-implementation, no copy, no shim — and the former host's importers repoint at this
-module. DECISION F275 D10 records the move and why this file rather than an existing one.
+round 21 MOVED the helpers here BYTE-IDENTICALLY — one implementation, no copy, no shim —
+and repointed the former host's importers at this module; F275 round 22 then deleted that
+host at `0242c0a3`, which is the deletion the sentence above names. DECISION F275 D10
+records the move and why this file rather than an existing one.
 
 NOT `packages/common/path_redaction.py`, and the distinction is load-bearing. That module
 reduces every absolute path and `file:` URI to its bare file name, for shareable runtime
