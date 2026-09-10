@@ -2,12 +2,15 @@
 
 WHAT THIS GUARDS. `tests/orchestration/test_cluster_deletion_map.py` built its
 edge set from `import` statements parsed with `ast`, and DECISION F274 D2 ruled
-the prototype-cluster deletion bounded by those edges. Finding R-0832 records
-what that shape cannot see: a consumer coupled to a deleted module by EVENT NAME
-holds no import of it, so the map correctly records no edge and the consumer
-survives the deletion as dead code. R-0832's fix clause asks for a SECOND
-measurement beside the map rather than a wider import walker, because a run-log
-event name is a string literal and not an import.
+the prototype-cluster deletion bounded by those edges. THAT FILE NO LONGER
+EXISTS: DECISION F275 D15 retired it at round 25, together with the deletion map
+and the order ratchet, once `CLUSTER_MODULES` emptied and every assertion in the
+three of them quantified over nothing. Finding R-0832 records what its shape
+could not see: a consumer coupled to a deleted module by EVENT NAME holds no
+import of it, so the map correctly recorded no edge and the consumer survives the
+deletion as dead code. R-0832's fix clause asks for a SECOND measurement beside
+the map rather than a wider import walker, because a run-log event name is a
+string literal and not an import.
 
 WHAT IT MEASURES. For every `.py` module this branch deleted, the last living
 blob is recovered from git and parsed for the event names it EMITTED — a string
