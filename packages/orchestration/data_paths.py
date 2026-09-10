@@ -23,6 +23,7 @@ Public API::
     mint_episode_id() -> str                 # a run-episode id
     job_dir(job_id, root: Path | None = None) -> Path
     job_record_path(job_id, root: Path | None = None) -> Path
+    job_record_paths(root: Path | None = None) -> list[Path]
     job_evidence_dir(job_id, root: Path | None = None) -> Path
     runs_dir(root: Path | None = None) -> Path               # keyed by RUN id
     run_dir(run_id, root: Path | None = None) -> Path
@@ -207,6 +208,25 @@ def job_record_path(job_id: str, root: Path | None = None) -> Path:
     the one ``job_dir`` above. ``pingpong_job.load_job_plan`` reads it back.
     """
     return job_dir(job_id, root) / "job.json"
+
+
+# The SHAPE of the job store — one directory per job, the record inside it named
+# ``job.json`` — is a layout fact, and DECISION F260 D1 puts every layout fact in this
+# module, so a caller that globbed for itself would be the second place a layout change
+# has to happen.
+
+
+def job_record_paths(root: Path | None = None) -> list[Path]:
+    """Every persisted job record under ``root``, sorted by path.
+
+    The plural of ``job_record_path`` above. Returns ``[]`` when the jobs directory
+    does not exist, so no caller has to decide whether "no jobs" and "no store"
+    differ.
+    """
+    jdir = jobs_dir(root)
+    if not jdir.is_dir():
+        return []
+    return sorted(jdir.glob("*/job.json"))
 
 
 def job_evidence_dir(job_id: str, root: Path | None = None) -> Path:

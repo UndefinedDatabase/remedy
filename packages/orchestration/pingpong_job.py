@@ -441,26 +441,31 @@ class JobPlan:
 # Persistence
 # ---------------------------------------------------------------------------
 
-def _persist_job(job: JobPlan) -> Path:
+# ``root`` overrides the store's base directory for ONE call, which is how a caller
+# reads or writes a job record outside the process data root (DECISION F275 D23).
+# ``data_paths.job_record_path`` always accepted it; these three never passed it on.
+
+
+def _persist_job(job: JobPlan, root: Path | None = None) -> Path:
     # ``data_paths`` owns "where the ping-pong record lives" (DECISION F260 D1),
     # so this writer and the readers that resolve an id cannot drift apart.
     from packages.orchestration.data_paths import job_record_path
 
-    out = job_record_path(job.job_id)
+    out = job_record_path(job.job_id, root)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(_json.dumps(_export_job(job), indent=2) + "\n")
     return out
 
 
-def save_job_plan(job: JobPlan) -> Path:
+def save_job_plan(job: JobPlan, root: Path | None = None) -> Path:
     """Public API to persist a JobPlan. Returns path to job.json."""
-    return _persist_job(job)
+    return _persist_job(job, root)
 
 
-def load_job_plan(job_id: str) -> JobPlan | None:
+def load_job_plan(job_id: str, root: Path | None = None) -> JobPlan | None:
     from packages.orchestration.data_paths import job_record_path
 
-    job_file = job_record_path(job_id)
+    job_file = job_record_path(job_id, root)
     if not job_file.exists():
         return None
     try:
@@ -468,6 +473,64 @@ def load_job_plan(job_id: str) -> JobPlan | None:
         return _import_job(data)
     except (OSError, _json.JSONDecodeError, KeyError):
         return None
+
+
+# ``load_job_plan`` answers ``None`` for a record that is MISSING and for one that is
+# UNREADABLE alike, so its caller cannot tell a job that never existed from a job whose
+# record rotted; this is the unified counterpart of ``storage.load_job_safe``, which
+# carries that distinction for the classic record (DECISION F275 D23).
+
+
+def load_job_plan_safe(job_id: str, root: Path | None = None) -> tuple[JobPlan | None, bool]:
+    """Load one JobPlan, returning ``(plan, degraded)``.
+
+    ``(None, False)`` when no record exists, ``(None, True)`` when one exists and
+    cannot be read, ``(plan, False)`` on success. No input makes this raise:
+    ``OSError``, ``JSONDecodeError`` and ``KeyError`` are what ``load_job_plan``
+    already catches, and ``ValueError`` and ``TypeError`` are what ``_import_job``
+    raises on a record whose JSON parses into the wrong shapes.
+    """
+    from packages.orchestration.data_paths import job_record_path
+
+    job_file = job_record_path(job_id, root)
+    if not job_file.exists():
+        return (None, False)
+    try:
+        return (_import_job(_json.loads(job_file.read_text())), False)
+    except (OSError, _json.JSONDecodeError, KeyError, ValueError, TypeError):
+        return (None, True)
+
+
+def list_job_plans_safe(root: Path | None = None) -> tuple[list[JobPlan], bool, list[str]]:
+    """Every persisted JobPlan. Returns ``(plans, degraded, skipped_job_ids)``.
+
+    The third element names a skipped record BY JOB ID — the record's directory name
+    — where ``storage.list_jobs_safe`` names a file name, because one directory per
+    job is what makes the id the honest identifier here. Sorted by ``created_at``
+    descending, newest first, as the classic function is. No input makes this raise.
+    """
+    from packages.orchestration.data_paths import job_record_paths
+
+    plans: list[JobPlan] = []
+    skipped: list[str] = []
+    for path in job_record_paths(root):
+        try:
+            plans.append(_import_job(_json.loads(path.read_text())))
+        except (OSError, _json.JSONDecodeError, KeyError, ValueError, TypeError):
+            skipped.append(path.parent.name)
+    plans.sort(key=lambda plan: plan.created_at, reverse=True)
+    return (plans, len(skipped) > 0, skipped)
+
+
+def list_job_plans(root: Path | None = None) -> list[JobPlan]:
+    """Every persisted JobPlan, newest first; an unreadable record is skipped silently.
+
+    The plain reader over ``list_job_plans_safe``, as ``storage.list_jobs`` is the
+    plain reader over ``storage.list_jobs_safe``. Use the safe form to see which
+    records were skipped.
+    """
+    plans, _, _ = list_job_plans_safe(root)
+    return plans
 
 
 def _export_file_proof(p: AppliedFileProof) -> dict[str, Any]:
