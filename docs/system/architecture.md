@@ -2962,6 +2962,16 @@ Root help shows only the 12 groups — no old flat commands appear.
 
 ### Groups
 
+> **Status (2026-09-10): HISTORICAL SNAPSHOT, finding R-0843.** The table below
+> records the groups the grouped CLI shipped with at the step that introduced
+> it. Measured through the shipped reader at `06dbb1c6`: the catalog holds 222
+> commands in 44 groups, and only three of the twelve rows below still state a
+> command count the catalog agrees with. It is kept as the record of that step
+> rather than repaired row by row, because a hand-written mirror of the catalog
+> drifts by construction and would need repairing again after every feature
+> that adds or deletes a command. Read `apps/cli/command_catalog.py`, or run
+> `remedy list`, for what ships today.
+
 | Group     | Commands | Description |
 |-----------|----------|-------------|
 | job       | 8        | Create, inspect, manage jobs |
