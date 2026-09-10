@@ -255,3 +255,126 @@ round is step 1 of the plan: the flip itself, as the one declared-oversize commi
 AGENTS.md permits per feature, with the inseparability reason AND the real size
 stated in the handback BEFORE review. Per Phase 1 of the self-drive protocol,
 rule 1 is checked before rule 2 — `.agent/STOP` read from disk first.
+
+## Reviewer verdict on round 41 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 41: **PASS.** Written by the planner and reviewer of SESSION 17 after reading the committed
+range `bbede92f`..`17be0eb4` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 42, per amend0827-process-diet rule 1.
+
+WHAT THE REVIEWER RE-MEASURED. Six single-parent commits C0a `addded9d`, C0b `f0894ab7`, C1 `83904d14`,
+C2 `82d36d9d`, C3 `17be0eb4` and C4 `a75d72d1`, per-commit insertions 421, 356, 15, 6 and 98 for the five
+before the handback, every one far under the AGENTS.md DECISION F104 D1 cap of 500. G1: the delegation
+source was written AND HASHED BEFORE delegation at
+`0c3a56c2fee41894378b9fa042dd6493d6962641652d876783f9e818539419d4`, and both committed copies are 26383
+bytes at that digest as ONE shared git blob. G2: `.agent/plan.md` byte-identical to PLAN41 at 2441 bytes,
+42 lines against the cap of 50. G3: `.agent/live_review.md` 851931 to 855619 and `.agent/prose_slips.md`
+233188 to 234601, each post-blob equal to its pre-blob then ONE newline then the slice, both joining bytes
+newlines, and `^Gate: F275 R40 ` exactly 1. G4: the open set is 86 BY DISTINCT ID at the base and at C3,
+over 103 registrations against 17 resolutions. G8: the change set is an EXACT set match over eight paths
+with MISSING and EXTRA both empty.
+
+G5 IS THE GATE THIS ROUND TURNED ON AND IT HOLDS AS ONE CHAINED RECONSTRUCTION PER FILE, committed blob to
+committed blob. `packages/orchestration/pingpong_job.py` rebuilds from 164734 bytes to the committed 165637
+by applying pairs H, I and J in order, byte-identical at
+`8aadab4b…`; all three are APPEND-SHAPED, re-measured rather than assumed — each FROM still reads 1x AFTER
+the edit, which is why no FROM-zero count was ordered or taken, per §4.9 and §3 item 15.
+`tests/orchestration/test_job_administrative_fields.py` rebuilds from 8785 to 12481 by applying pair L and
+then appending K, with the post-L state a byte-exact PREFIX of the committed blob and K an exact SUFFIX —
+the ORDERED EQUALITY that binds a CODE append, never the per-line count that binds prose, per finding
+R-0531. `ruff` printed `All checks passed!` on both files, re-run by the reviewer.
+
+THE WIDEN WAS BUILT AND RED-PROVED BY THE REVIEWER BEFORE DELEGATION AND THE WORKER'S READINGS REPRODUCE IT
+IN ALL FOUR. Control 12 passed at exit 0; M1, deleting the export key, and M2, deleting the import keyword,
+each exit 1 at `2 failed, 10 passed` naming the SAME two assertions —
+`test_both_survive_the_round_trip_through_json` and `test_both_survive_the_real_job_record_file` — read from
+the `FAILED` lines rather than inferred from the exit code; both reverts byte-exact by sha256; control green
+again. The reviewer additionally ran the WHOLE orchestration suite with the widen applied before authoring
+and read `11879 passed, 10 skipped` with one failure,
+`tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`, which was
+then measured to fail IDENTICALLY at the unmodified base in the same worktree — the known fresh-worktree
+artefact, not this change. G7's shipped-function probe re-run by the reviewer: `TaskEntry` now declares 25
+fields, both new ones present, a bare instance reads `[]` and `None`, and the scoped gate plus the canary
+read 54 passed.
+
+THE WORKER DECLARED NO DEVIATION AND THE REVIEWER FOUND NONE. It stated two ABSENCES explicitly rather than
+leaving them to be read as omissions — no FROM-zero count for the three append-shaped pairs, and no per-line
+count for the code append — and it CHECKED a claim this block made rather than believing it, confirming
+against the source that `JobPlan.budgets` really is a serialized dict on the same record and that it is a
+distinct field from the administrative `budget` F272 T002 added. That is the round auditing the block.
+
+## Session 17 ends here — SIX delegated rounds, six PASS verdicts, and the reason it stops
+
+Rounds 36, 37, 38, 39, 40 and 41, every one a PASS, against the amend0905-throughput target of SIX TO EIGHT
+and its floor of four. THE TARGET IS MET, not merely the floor. F275 stands at 41 rounds and 17 sessions
+against the operator's soft limit of 60 rounds and 20 sessions under amend0908-f275-finish, so no scope
+report is owed.
+
+WHY IT STOPS HERE, and the reason is the second of the two amend0905-throughput sanctions — the next round
+explicitly needs a fresh session — now backed by a measurement rather than by a feeling. THE NEXT ROUND IS
+THE FLIP, and this session's whole arc was finding out how big it actually is. DECISION F275 D17 sized it at
+1766 changed lines from the `.id` and `.name` half alone and said in its own words that the figure was a
+FLOOR. Round 36 re-derived that half at its own base and ENUMERATED it, 1753 sites over 184 files. Round 38
+enumerated the classic store seam, 821 calls over 152 files, 44 of which the first list cannot see. Round 39
+recorded DECISION F275 D21: the union is 3771 changed lines across 263 files, 7.5 times the per-commit cap
+rather than the 3.5 D17 implied, and the route is unchanged because AGENTS.md permits exactly one declared
+oversize commit per feature and every alternative needs two. Round 40 then found what none of that had
+counted — DECISION F275 D22, a SECOND type pair, `Task` to `TaskEntry`, sharing two field names of seven and
+twenty-three, with three `Task` fields having no counterpart of the same meaning and one of them read at 35
+sites. Round 41 widened two of those three in, green by construction, which takes 427 lines back out of the
+flip. Planning the flip against a context that already carries six rounds of measurement is how the
+one-per-feature oversize allowance gets spent badly, and it can only be spent once.
+
+WHAT THIS SESSION LANDED. R-0870 IS RESOLVED — the finding grew from two instances to ten across five rounds
+of repair, and it is closed on the reviewer's own re-run of BOTH sweeps against the committed tree, with the
+reason no guard replaces them recorded in the resolution: 320 of the module paths named under `packages/`,
+`apps/`, `tests/` and `scripts/` do not resolve, and almost every one is a test fixture. DECISION F260 D3
+gained the nineteen deleted CLI handler modules it never named, mapped from git rather than from their
+names, so the feature's DONE condition is met on a reading instead of an inference. Two enumerations and two
+decisions now describe the flip. `TaskEntry` carries the two fields the classic record would otherwise have
+taken with it. The open set fell from 87 to 86, the only movement this session made to it.
+
+FOUR INSTRUMENTS THIS SESSION ADDED TO HOW THIS REPOSITORY MEASURES ITSELF, each found by RUNNING something
+rather than by reasoning about it. A command-surface sweep, because every sweep this feature had run looked
+for deleted MODULE STEMS and a page can advertise a dead capability without naming one — which is how a
+"Planned migration path" came to offer an operator a command deleted twenty rounds earlier. A seam
+enumerator, because a rename-shaped measurement cannot see a file that calls the store without reading the
+renamed field. A type-pair reader that imports both shipped classes instead of parsing them. And the
+arithmetic that unions three enumerations by `(path, line)` so the parts can be added without double
+counting.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context is long
+but not exhausted, and exhaustion is expressly NOT the reason this session ends — it ends because the flip
+is a single unsplittable commit of measured size that deserves a session built around it.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
+session's Phase 0 probe, was measured absent before every round's first commit, and is absent as this
+session ends. Then the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
+
+SECOND, round 42's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
+amend0827-process-diet rule 1, the ROUND 41 PASS verdict above as a `Gate: F275 R41` entry in
+`.agent/live_review.md`. No prose slip is owed for round 41: the worker declared no deviation and the
+reviewer found none. The open set is 86 and the next free id after R-0874 is R-0875; that booking registers
+nothing and resolves nothing, so it stays 86. A round whose WHOLE change set is that booking is forbidden,
+so it rides with the round that is happening anyway.
+
+THIRD, THE FLIP. It is applied from three committed lists — `.agent/f275_t003_flip_sites.md` for the `.id`
+and `.name` sites, `.agent/f275_t003_flip_seam.md` for the classic store seam, and
+`.agent/f275_t003_task_pair.md` for the second type pair — as the ONE declared-oversize commit AGENTS.md
+permits per feature. The declaration states the REAL size, which DECISION F275 D21 measures and D22
+corrects, and it states it in the handback BEFORE review, which is what AGENTS.md's Commit Discipline
+requires of an oversize commit. That round also registers `Task.acceptance_checks`'s structured form as a
+finding naming the feature that owns acceptance criteria, per operator amendment amend0908-f275-finish rule
+4, because the widen deliberately did not carry it. THE REVIEWER OF THAT SESSION SHOULD EXPECT TO SPEND
+MOST OF IT ON THE DRY RUN: this session's own attempt at a mechanical transformation established that the
+flip is not a rename — the classic `Job.id` is a `UUID` where `JobPlan.job_id` is a 16-hex `str`, and the
+store functions differ in name, in return type and in whether they can return `None`.
+
+FOURTH, the resolver collapse DECISION F260 D5 places in T003 — `resolve_any_job_id`, the "TWO job stores"
+paragraph, every which-store branch and the absence test — with the classic store, which is the same commit
+range by that decision's own terms. Then the closure sequence: the integration gate, the evidence job, a
+fresh review zip, the ledger rotation, the STATUS line and the PR.
