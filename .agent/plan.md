@@ -12,33 +12,29 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 21 prepares the last deletion instead of performing it. The five redaction names that
-seven SURVIVING modules import from the dying `provider_trust.py` — `_scrub_public`,
-`_safe_path_label` and the three patterns they read — move BYTE-IDENTICALLY into the new
-`packages/common/public_text_redaction.py` under DECISION F275 D10, and nine importers
-repoint. Nothing is deleted. The round also discharges R-0862's fix clause with a positive
-pin on the human-review routing tier and R-0855's clause on `token_economy.py`, and books
-round 20's PASS verdict.
+ROUND 22 deletes the LAST component of `.agent/f275_deletion_order.md` — the strongly
+connected pair `provider_trust` and `provider_trust_verification` — with its handler, the
+whole `provider` command group, six `ContractAction` members, four whole test files and two
+documentation pages. `CLUSTER_MODULES` becomes the EMPTY tuple and T001's module list is
+exhausted. DECISION F275 D11, committed before the first `git rm`, rules the three surviving
+consumers that lose their outlet, and R-0866, R-0867 and R-0868 record what each one lost.
 
 ## Next Steps
 
-1. The `provider_trust` / `provider_trust_verification` pair itself, the last component of
-   `.agent/f275_deletion_order.md`. Its first commit is a dated DECISION on the self-dogfood
-   external-candidate rail, which loses its only entry point when `provider intake-repair`
-   dies.
-2. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it. That round
-   also discharges R-0843, R-0858, R-0859, R-0860 and R-0864.
-3. T002, the atomic record flip, alone, because every later commit's size depends on it.
-4. T003, the classic runner, which T002's ruling is the prerequisite for.
+1. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it. That round
+   also discharges R-0843, R-0858, R-0859's closure test, R-0860, R-0864 and R-0868's
+   scaffolding question, and retires the now-vacuous cluster map and order ratchets.
+2. T002, the atomic record flip, alone, because every later commit's size depends on it.
+3. T003, the classic runner, which T002's ruling is the prerequisite for.
 
 ## Risks
 
-- The open set is 88 by distinct id at this round's base `3949f3c6`. This round registers
-  none and resolves R-0862. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's
-  rather than this feature's, per DECISION F272 D12.
-- Worst on this round: seven surviving production modules keep a redaction call whose
-  definition moves, so a silent breakage removes masking from public strings. The mutation
-  red-proof over the moved definition is ordered in full and its STOP condition blocks the
-  push.
-- The full suite runs SERIALLY in the PRIMARY checkout. A fresh worktree has a cold
-  `apps/ui/node_modules` and reddens the vitest foundation test on a first pass only.
+- The open set is 88 by distinct id at this round's base `5178df03`. Round 22 registers
+  three and resolves none, taking it to 91. Four are High — R-0803, R-0804, R-0806 and
+  R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
+- Worst on this round: a surviving module loses a safety check and nothing notices.
+  `verify_provider_patch_material` genuinely does lose two of its seven checks, which
+  R-0867 records; the reviewer measured that it has no production caller.
+- The cluster map and order ratchets become VACUOUS the moment `CLUSTER_MODULES` empties.
+  R-0868 records it with a fix clause; this round does not widen to retire them.
+- The full suite runs SERIALLY in the PRIMARY checkout. A fresh worktree has no vitest.
