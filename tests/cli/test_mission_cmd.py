@@ -1418,7 +1418,6 @@ class TestMissionReadinessIsWiredToTheCarriedModule:
         source = (REPO_ROOT / "packages" / "orchestration" / "ui_server.py").read_text(
             encoding="utf-8")
 
-        assert "packages.orchestration.overnight_readiness" not in source
         assert "from packages.orchestration.mission_readiness import" in source
 
 

@@ -1,8 +1,8 @@
 """Secret, absolute-path and traceback masking for strings Remedy surfaces publicly.
 
 WHY THIS IS HERE. These three patterns and the two helpers over them were written for
-the Provider Trust Gate (`packages/orchestration/provider_trust.py`, R-0083: never echo
-a secret value or an absolute path out of untrusted provider text). Seven modules that
+the Provider Trust Gate, in a module F275 round 22 deleted at `0242c0a3` (R-0083: never
+echo a secret value or an absolute path out of untrusted provider text). Seven modules that
 have nothing to do with provider trust came to import them anyway, because masking a
 public-facing string is a repository-wide obligation rather than a trust-gate one. F275
 round 21 deletes the trust gate, so the helpers move here BYTE-IDENTICALLY — one

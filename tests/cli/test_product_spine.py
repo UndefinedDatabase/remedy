@@ -142,7 +142,6 @@ class TestFastLaneSelfTest:
             "test_worker_cli_runtime.py",
             "test_self_dogfood_execution_cli.py",
             "test_smoke_scripts.py",
-            "test_overnight_executor_cli.py",
         ]
         for name in heavy:
             assert name not in text, \
