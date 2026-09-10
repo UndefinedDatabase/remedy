@@ -13,32 +13,30 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 40 resolves R-0870 — every instance repaired across rounds 23, 36, 37, 38 and 39, and
-both sweeps re-run by the reviewer against the committed tree — and records DECISION F275
-D22: the flip carries a SECOND type pair, `Task` to `TaskEntry`, which no decision in this
-chain has measured. The two share two field names of seven and twenty-three, and three
-`Task` fields have no counterpart of the same meaning, one of them read at 35 sites.
+ROUND 41 performs the WIDEN DECISION F275 D22 ruled: `TaskEntry` gains `output_artifact_ids`
+and a per-task `budget`, both carried symmetrically through `_export_job` and `_import_job`,
+with a test class pinning the defaults, the round trip through `json.dumps`, the defaulted
+read of a record written before this round, and the real writer and reader. It is green by
+construction — nothing reads the new fields yet — and it takes 427 lines out of the flip.
 
 ## Next Steps
 
-1. WIDEN `TaskEntry` with the fields DECISION F275 D22 names, in the shape F272's D5, D6
-   and D7 staged a record collapse: widen first, because that half is green by construction
-   and it shrinks the atomic commit that follows.
-2. The flip itself, applied from the round 36 site enumeration, the round 38 seam list and
+1. The flip itself, applied from the round 36 site enumeration, the round 38 seam list and
    the round 40 task-pair list, as the one declared-oversize commit AGENTS.md permits per
    feature, with the inseparability reason AND the real size stated in the handback BEFORE
-   review.
-3. The resolver collapse DECISION F260 D5 places in T003 — `resolve_any_job_id`, the "TWO
+   review. It registers `Task.acceptance_checks`'s structured form as a finding naming the
+   feature that owns acceptance criteria, per amend0908-f275-finish rule 4.
+2. The resolver collapse DECISION F260 D5 places in T003 — `resolve_any_job_id`, the "TWO
    job stores" paragraph, every which-store branch and the absence test — with the classic
    store, which is the same commit range by that decision's own terms.
-4. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
+3. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
    ledger rotation, the STATUS line and the PR.
 
 ## Risks
 
-- Step 2 is the largest single commit this repository will take, and each round that
+- Step 1 is the largest single commit this repository will take, and each round that
   measures it has found it larger: DECISION F275 D17 sized it at 1766 changed lines, D21 at
-  3771 across 263 files, and D22 adds a type pair worth 427 more across 111 files.
-- The open set is 87 by distinct id at this round's base `6537ece6` and 86 after this round
-  resolves R-0870. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per
-  DECISION F272 D12.
+  3771 across 263 files, and D22 added a type pair worth 427 more, which this round removes.
+- The open set is 86 by distinct id at this round's base `bbede92f`. This round registers
+  none and resolves none. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's,
+  per DECISION F272 D12.
