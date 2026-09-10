@@ -250,3 +250,159 @@ disposal of every dead event coupling this round's ratchet reports, and delete
 what that ruling condemns. That discharges the second half of R-0832 and is the
 last thing T001 owes. Phase 1 rule 1 first: re-read `.agent/STOP` from disk
 before authoring.
+
+## Reviewer verdict on round 35 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 35: **PASS.** Written by the planner and reviewer of SESSION 16 after reading the committed
+range `df5d527f`..`1e65661a` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 36, per amend0827-process-diet rule 1.
+
+WHAT THE REVIEWER RE-MEASURED. Six single-parent commits C0a `36123491`, C0b `569b30d4`, C1 `02b90479`,
+C2 `c0de8e51`, C3 `1e65661a` and C4 `0626d133`, per-commit insertions 382, 323, 20, 6 and 145 for the five
+before the handback, every one far under the AGENTS.md DECISION F104 D1 cap of 500. G1: the reviewer's
+scratch original at `.remedy-wt/f275-r35-block.md` was written AND HASHED BEFORE delegation at
+`e7fd8ff1efb71ded013ff68347b7b27a1e1e8ece9c673755b958539281e8729b`, and both committed copies are 26187
+bytes at that digest as ONE shared git blob; the chain covers those three on-disk artefacts and claims
+nothing about bytes emitted into a prompt, per §3 item 37. G2: `.agent/plan.md` byte-identical to PLAN35 at
+2417 bytes, 43 lines against the cap of 50, both mandated headings exactly once. G3 over both append
+targets: `.agent/live_review.md` 814121 to 819410 and `.agent/prose_slips.md` 223959 to 225483, each
+post-blob equal to its pre-blob then ONE newline then the slice as extracted, the joining byte READ BACK at
+offset len(pre) reading a newline in both, and the structural reader counting N from each slice — 1 and 2
+paragraphs — and matching the last N blank-line units IN ORDER; `^Gate: F275 R34 ` reads exactly 1. G4: THE
+OPEN SET IS 87 BY DISTINCT ID at the base and 87 at C3, over 103 registrations against 16 resolutions, and
+`R-0832` IS STILL IN THAT OPEN SET AT C3 — measured rather than assumed, because a finding that quietly
+left the set would look identical on the page to one deliberately kept. G5: the committed
+`tests/orchestration/test_event_name_coupling.py` and the GUARD35 slice are both 5951 bytes at
+`95997b5602ec6cc9576004f06dfbdfd75e350b2a2cefc1bf6e1068edade7f0b8` and compare BYTE-EQUAL, and the path did
+not exist at the base. G7: the change set is an EXACT set match over six paths with MISSING and EXTRA both
+empty, ZERO paths under `packages/`, `apps/`, `docs/` or `scripts/` appear in it — constraint 5's "no
+production line moves", met — porcelain is EMPTY, there is ONE worktree, `.agent/STOP` is absent, and
+collection goes 18362 to 18366, which is exactly the four tests this file adds. The reviewer re-ran the new
+guard and the canary itself at 46 passed.
+
+THE GUARD WAS BUILT AND RED-PROVED BY THE REVIEWER BEFORE DELEGATION, AND THE WORKER'S FIVE READINGS
+REPRODUCE IT EXACTLY. Control 4 passed at exit 0. M1, emptying the allowlist, fires
+`test_every_dead_coupling_is_declared`. M2, adding a stale entry, fires BOTH the ceiling assertion and
+`test_no_declared_entry_is_stale`. M3, blinding `dead_event_couplings` to return an empty mapping, fires
+`test_no_declared_entry_is_stale` — that is the anti-blindness direction and it is the reading that matters
+most, because a measurement which reports nothing must not be indistinguishable from a clean tree. M5, the
+real-world direction, inserts a schema entry for `context_pack_created` into
+`packages/orchestration/event_schemas.py` so that a survivor begins reading an event only a deleted module
+ever emitted, and it fires `test_every_dead_coupling_is_declared` — a NEW dead coupling is caught. Every
+revert was verified byte-exact and the control is green again afterwards.
+
+M4 IS GREEN AND THAT IS THE HONEST NEGATIVE THE BLOCK ORDERED RATHER THAN A FAILURE. Weakening the
+anti-blindness floor `assert len(deleted_modules()) >= 40` to `>= 0` reddens nothing, because a test that
+weakens its own assertion cannot detect that it has been weakened. The block predicted this, ordered the
+mutation anyway, and required the green to be reported; the worker reported it and did not "repair" it. It
+is recorded here because it bounds what the guard claims: the floor protects the CORPUS against an
+instrument that silently stops seeing the deleted modules, and nothing protects the floor itself except
+review of its own diff.
+
+WHAT THIS ROUND DELIBERATELY DID NOT DO, stated so a later reader does not read it as an omission. R-0832 is
+NOT resolved and no `Done:` paragraph was written for it. Its fix clause has two halves — add a second
+measurement beside the import map, and then name the event-coupled consumers in DECISION F260 D3 so the
+deletion round removes them with their emitter. This round lands the first half only. The second is a
+RULING about disposal, and it is genuinely open: the single dead coupling the instrument reports,
+`context_budget_optimized`, survives as a run-log SCHEMA entry in
+`packages/orchestration/event_schemas.py` and an action-class entry in `apps/ui/src/api/actionClass.ts`,
+while DECISION F275 D18 ruled at round 32 that a schema for an event historical run logs still carry is
+KEPT rather than deleted. Which reading governs is D3's to settle, and settling it inside a guard would have
+been a test making a ruling.
+
+WHAT THE INSTRUMENT MEASURED, recorded here because it is the input D3 needs. Over the 43 `.py` modules this
+branch has deleted since `a5bf8949`, every one parsed without error, exactly TWO event names were ever
+emitted: `context_pack_created`, from `apps/cli/commands/context_pack_cmd.py`, which now has NO surviving
+reader at all and is therefore already fully gone; and `context_budget_optimized`, from
+`apps/cli/commands/context_optimizer_cmd.py`, which has two surviving readers and no emitter. Finding
+R-0832 predicted exactly these two names and predicted a third reader,
+`apps/ui/src/api/humanizeCatalog.ts`, which no longer names the event — an earlier round cleaned it. The
+finding's larger prediction, that `_build_context_pack_node` in `packages/orchestration/project_brain.py`
+would survive as dead code, did NOT come true: no surviving file names `context_pack_created`.
+
+## Session 16 ends here — FOUR delegated rounds, four PASS verdicts, and the reason it stops at four
+
+Rounds 32, 33, 34 and 35, every one a PASS, against the amend0905-throughput target of six to eight and its
+FLOOR OF FOUR. The floor is met. The session ends because THE NEXT ROUND EXPLICITLY NEEDS A FRESH SESSION,
+which is the second of the two reasons amend0905-throughput sanctions, and the reason is measured rather
+than felt. The first sanction — authoring errors accumulating — is NOT used, and under
+amend0908-f275-finish rule 5 it would now have been available, since four delegated rounds have run.
+
+WHY THE NEXT ROUND NEEDS A FRESH SESSION. Two candidates remain and both are large; each is stated with what
+it would cost before a single line could be authored. DECISION F260 D3 must name all 43 deleted modules and
+the feature that inherited each one, which means reading 43 deletion rationales out of the ledger, and it
+must additionally rule the disposal of the dead coupling above — the last thing T001 owes. The flip that
+DECISION F275 D17 sized is the other, and D17 itself directs T003 to RE-DERIVE its site set at its own base
+rather than inherit round 31's figures, which means two instrumented full-suite runs of roughly 21 minutes
+each before authoring can begin, for a change of 1768 sites that spends the ONE declared-oversize commit
+AGENTS.md rations per feature. Planning either against a context that already carries four rounds of
+measurement is how the oversize allowance gets spent badly, and it can only be spent once.
+
+WHAT THIS SESSION LANDED. THE CLASSIC RUNNER'S COMMAND SURFACE IS GONE. Round 32 deleted `run_agent_loop`
+and its three private helpers — production code no caller reached, kept alive only by its own tests — and
+recorded DECISION F275 D18, which ruled by measurement rather than by assumption that `job.resume` inherits
+the classic runner's execution path, because `_cmd_job_run_cycles` delegates to `_cmd_run_next_task_local`
+whenever the resolved cycle count is one and one cycle is the shipped default. Round 33 retired
+`job.run-next`: its catalog entry, its dispatch line, the two `related=` tuples it would have left dangling
+and all 29 of its advertisements. Round 34 recorded DECISION F275 D19, which amends D18 on a measurement D18
+missed — three tests pin F114's cost-preview contract to `job.run` by id, so deleting that command under
+D18's reading would have ended a shipped feature's contract inside an unrelated deletion round — and then
+completed the inheritance and retired `job.run` itself. Round 35 landed the event-name coupling ratchet.
+The shipped catalog has gone from 222 commands to 220, with ZERO dangling `related=` references at every
+step, and the full serial suite reads `18339 passed, 23 skipped` at exit 0 at rounds 33 and 34 — identical
+to the reading at each round's own base, because none of this removed a capability.
+
+TWO INSTRUMENTS THIS SESSION ADDED TO HOW THIS REPOSITORY DELETES A COMMAND, both found by APPLYING a change
+in a worktree rather than by reasoning about it, and both now on disk in `.agent/prose_slips.md`. FIRST, a
+command deletion is INVISIBLE to every text sweep wherever the CLI is invoked as an argv LIST:
+`subprocess.run([*_CLI, "job", "run-next", short_id])` contains neither `remedy job run-next` nor
+`job run-next` as a substring. Round 33 found two such sites in `tests/cli/test_plan_approval.py` only
+because the full suite went red, and an `ast` sweep for the adjacent string pair then located both
+mechanically. SECOND, a catalog id that is a PREFIX of a model attribute cannot be migrated by substring:
+the bare token `job.run` matched 60 lines in 13 files, of which 34 in 6 files were real attribute access —
+`job.run_refs`, `job.run_manifest_path` — and a blind replace silently corrupted two production modules in
+the reviewer's own dry run. The token-safe form `(?<![\w.])job\.run(?![\w-])` matched 26 lines in 7 files
+and none of them an attribute.
+
+THE STATE. THE OPEN SET IS 87 BY DISTINCT ID at `0626d133`, over 103 registrations against 16 resolutions,
+unchanged across the session: round 33 registered `R-0874` and resolved it in the same round, and rounds 32,
+34 and 35 registered and resolved nothing. Four are High — R-0803, R-0804, R-0806 and R-0807 — and all four
+are F273's rather than this feature's, per DECISION F272 D12. F275 stands at 35 rounds and 16 sessions
+against the operator's soft limit of 60 rounds and 20 sessions, so no scope report is owed. Collection is
+18366 tests.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context is long
+but not exhausted, and exhaustion is expressly NOT the reason this session ends — it ends because both
+remaining rounds are large measurement campaigns that D17 and the D3 obligation each direct to be derived at
+their own base.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
+session's Phase 0 probe, was measured absent before every round's first commit, and is absent as this
+session ends. Then the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
+
+SECOND, round 36's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
+amend0827-process-diet rule 1, the ROUND 35 PASS verdict above as a `Gate: F275 R35` entry in
+`.agent/live_review.md`. No prose slip is owed for round 35: the block's one predicted-green mutation was
+ordered as such and reported as such, and nothing in that block landed false. The open set is 87 and the
+next free id after R-0874 is R-0875; that booking registers nothing and resolves nothing, so it stays 87. A
+round whose WHOLE change set is that booking is forbidden, so it rides with the round that is happening
+anyway.
+
+THIRD, DECISION F260 D3 — the recommended next round, and the reason it is preferred over the flip is that
+it is the LAST thing T001 owes and it unblocks the closure sequence, while the flip belongs to T003 and can
+follow. It names all 43 deleted modules and the feature that inherited each idea, and it rules the disposal
+of the one dead event coupling the round 35 ratchet reports. The ratchet is the instrument to read: import
+`dead_event_couplings` from `tests/orchestration/test_event_name_coupling.py` and it prints the set with its
+surviving readers. That round discharges the second half of R-0832 and may resolve it. Whatever the ruling
+condemns is deleted in the SAME commit, and `KNOWN_DEAD_EVENT_COUPLINGS` and `_COUPLING_CEILING` shrink with
+it — the ratchet reds if they do not.
+
+FOURTH, the flip DECISION F275 D17 sized, re-deriving the site set at its own base with the DECISION F272 D7
+descriptor probe rather than inheriting round 31's figures, as the one declared-oversize commit AGENTS.md
+permits per feature, with the inseparability reason stated in the handback BEFORE review. Then the resolver
+collapse and the classic store, which DECISION F260 D5 places in the same commit range, and then the closure
+sequence.
