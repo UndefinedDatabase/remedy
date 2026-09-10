@@ -206,25 +206,6 @@ class TestTokenEconomy:
         assert isinstance(exported["prohibited_payloads"], list)
         assert isinstance(exported["max_context_tokens"], int)
 
-    def test_token_policy_applied_event_schema(self, tmp_path, monkeypatch):
-        """Agent loop must emit token_policy_applied with exact metadata keys."""
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.agent_loop import run_agent_loop
-        run_agent_loop(job, max_cycles=1)
-
-        from packages.orchestration.data_paths import resolve_data_root
-        from packages.orchestration.timeline import load_run_events
-        events = load_run_events(resolve_data_root(), job.id)
-        tpa = [e for e in events if e.get("event") == "token_policy_applied"]
-        assert len(tpa) >= 1, "must emit token_policy_applied"
-        meta = tpa[0].get("metadata", {})
-        required = {"mode", "max_context_tokens", "local_first"}
-        assert required <= set(meta.keys()), f"missing: {required - set(meta.keys())}"
-        assert meta["local_first"] is True
-
 
 
 

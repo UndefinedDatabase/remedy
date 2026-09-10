@@ -836,10 +836,11 @@ The constitution is never persisted to job metadata — it is loaded fresh and r
 `packages/orchestration/agent_loop.py` defines the orchestration contract, data models,
 and local execution loop for coordinating agent workflows.
 
-**Purpose:** State derivation (read-only, deterministic) plus a local execution loop
-(`run_agent_loop`) that drives plan → build → approve → test → repeat cycles.
-External tools (Claude Code, Copilot CLI) are not called — execution delegates to
-existing CLI command handlers (task runner, test runner).
+**Purpose:** State derivation only — read-only, deterministic and inspect-only.
+The local execution loop that once drove plan → build → approve → test → repeat
+cycles was DELETED at F275 round 32 together with the classic-runner handler it
+delegated to, per DECISION F275 D18; it had no production caller. Nothing in
+this module executes a task, and `remedy dev agent-loop` reads derived state.
 
 **Models (all immutable):**
 
@@ -858,7 +859,6 @@ All `AgentAdapterSpec` instances default to `dry_run_only=True` — no execution
 default_agent_loop_state(job, *, max_cycles=3) -> AgentLoopState
 summarize_agent_loop_state(job, state) -> str
 derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
-run_agent_loop(job, *, max_cycles=3, auto_approve_low_risk=False, run_tests=True) -> AgentLoopState
 ```
 
 **State derivation (deterministic, priority order):**
@@ -929,9 +929,11 @@ the command no longer exists; the guard in
 `tests/cli/test_advertised_commands.py` is why this sentence names it without
 spelling it as an invocation.
 The six cycle events below keep their schemas in
-`packages/orchestration/event_schemas.py` and are still emitted by
-`agent_loop.run_agent_loop()`, which no production caller reaches; DECISION F272
-D13 assigns that function to T004's classic-runner deletion.
+`packages/orchestration/event_schemas.py` and now have no emitter at all: the
+function that emitted them was DELETED at F275 round 32, per DECISION F275 D18.
+The schemas are kept deliberately, because run logs already written on disk
+carry those events and the ledger validates what it READS, not only what it
+writes.
 
 **Run-log event names:**
 
@@ -947,7 +949,8 @@ D13 assigns that function to T004's classic-runner deletion.
 
 **Agent-loop execution events — 10-key metadata schema (exact keyset):**
 
-All `agent_loop_*` events emitted by `run_agent_loop()` use the same metadata schema:
+All `agent_loop_*` execution events already recorded in run logs on disk carry
+the same metadata schema:
 
 ```json
 {
