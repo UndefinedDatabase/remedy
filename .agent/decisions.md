@@ -12033,3 +12033,69 @@ REVERSE THIS DECISION by moving the five names back into `packages/orchestration
 and deleting `packages/common/public_text_redaction.py` — which is only possible while that
 file still exists, so reversing it after round 22 means choosing a different destination
 rather than restoring the old one.
+
+## DECISION F275 D11 (2026-09-10) — the three survivors of the Provider Trust Gate degrade, and none of them is deleted, stubbed or copied into
+
+CONTEXT. Round 22 deletes `packages.orchestration.provider_trust` and
+`packages.orchestration.provider_trust_verification`, the last component of
+`.agent/f275_deletion_order.md`, together with `apps/cli/commands/provider_cmd.py` and the
+whole `provider` command group. That group carries `remedy provider intake-repair`, and the
+reviewer measured at `5178df03` that it is the ONLY command anywhere in the product by which
+an external candidate enters Remedy. Three surviving modules are built on it, and none of
+them is on F260's Design list, so "Do not touch" forbids deleting any of them.
+
+THE RULING, in three parts. Each is RULE 3 applied literally — the survivor loses the call
+site and never gains a copy — with a finding for what the user can no longer do.
+
+(a) `self_dogfood_execution.py`. Its `reconcile_self_attempt` loses the candidate-linking
+    block that read the dying module's trust reports, and with it the only code that moved
+    an attempt past `AWAITING_EXTERNAL_CANDIDATE`. The states beyond that one are KEPT, not
+    stubbed: they still run for an attempt whose `patch_intent_id` is already on disk, so
+    this is degraded reachability rather than dead code. Two user-facing `next_safe_action`
+    strings stop naming the deleted command and report a read instead. R-0866 records the
+    loss; DECISION F260 D3 already maps the external builder to "none, deliberately", so
+    there is no inheriting feature to name and that is deliberate rather than an omission.
+
+(b) `repair_request_builder.py`. It prepares a package for an external actor and printed
+    five instructions to import the answer, one of them inside the request text a human is
+    handed and one of them printed to the terminal by `apps/cli/commands/repair_cmd.py`. All
+    five go, and the `output_intake_command` and `trust_gate_command` fields are REMOVED
+    rather than emptied, because a printed label with nothing after it is a worse surface
+    than no label. The package still packages evidence; what it no longer claims is a round
+    trip. R-0868 records that it now has no importer.
+
+(c) `provider_patch_material.py`. `verify_provider_patch_material` loses `paths_safe` and
+    `trust_report_accepted`, which makes its `ok` STRICTLY EASIER to satisfy. That is a
+    weakening in the unsafe direction and it is accepted here only because the reviewer
+    measured that the function has NO caller under `packages/` or `apps/` once the pair
+    dies, and because the alternative — copying `validate_paths` and the trust reader into a
+    survivor — is what RULE 3 and AGENTS.md's Scope Control forbid by name. R-0867 records
+    it and forbids any later round from treating that weakened `ok` as a safety property.
+
+ALTERNATIVES CONSIDERED, AND WHY EACH LOSES.
+(1) Delete the three survivors too. Rejected: none is on F260's Design list and "Do not
+    touch" says no module outside it is deleted. It would also be the largest unplanned
+    scope increase this feature has taken.
+(2) Keep the deleted checks by copying `validate_paths` and the trust reader into
+    `provider_patch_material.py`. Rejected: that is the copy RULE 3 exists to prevent, and
+    it would resurrect a dying module's code under a new name.
+(3) Make the lost checks permanently False so `verify_provider_patch_material` refuses —
+    the fail-safe shape DECISION F275 D9 used for `token_economy.py`. Rejected here, and the
+    difference from D9 is worth stating: D9's survivor was REACHABLE and its degraded answer
+    was consulted, so refusing was the safe answer to a live question. This function has no
+    caller, so a permanently-False check would be dead weight that reads like a guard.
+(4) Stop `start_self_execution` before `AWAITING_EXTERNAL_CANDIDATE`, so no attempt ever
+    parks in a state it cannot leave. Rejected: that is a product redesign of a surviving
+    module, not a deletion, and it would silently change what `remedy self execute` does.
+    R-0866's fix clause routes the question to the DECISION F260 D3 round instead.
+
+CONSEQUENCE. Round 22 is NOT a deletion round under amend0906-triage-throughput: its change
+set edits lines under `packages/`, `apps/` and `tests/`, so the four-measurement shortcut
+does not apply and a mutation red-proof is ordered in full. Three findings are registered
+and none is resolved. `CLUSTER_MODULES` becomes the empty tuple, which exhausts T001's
+module list and makes two ratchets vacuous — recorded as R-0868 rather than repaired here,
+because retiring them is bookkeeping that belongs with DECISION F260 D3.
+
+REVERSE THIS DECISION by restoring the two modules and their handler from git history and
+re-pointing the three survivors at them; the findings would then be resolved as obsolete
+rather than fixed.
