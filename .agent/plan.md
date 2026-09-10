@@ -13,35 +13,34 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 44 clears the tree the flip has to run over. A dry run of the flip found FORTY keyword
-arguments passed to `Job(...)` and `Task(...)` that name no field on either model: pydantic
-drops them silently, so forty test call sites have never done what they say, and four of them
-make the flip's own rewrite produce `TaskEntry(title=..., title=...)`, which does not compile.
-This round deletes 35, repoints the 5 that meant `user_prompt`, lands a source guard so the
-class cannot return, and registers R-0875. DECISION F275 D25 carries the ruling and the two
-mechanical rules the dry run had to learn: edits at `ast` columns are BYTE offsets, and the
-flip must rewrite an import's MODULE PATH and not only the name it imports.
+ROUND 45 repairs a RED BRANCH TIP the reviewer caused. The guard round 44 landed for R-0875
+sweeps every tracked `*.py` file for a keyword its model does not declare, and its own
+premise test wrote one literally, so once tracked the guard reported itself — §3 item 2, a
+zero-gate counting a string the same block writes into the file the gate reads. The premise
+now passes its keywords as a `**{...}` splat, which the sweep skips for the right reason, and
+a new test pins that this file is itself swept so no per-file exemption can arrive later.
+The round 44 FAIL verdict is booked here. No id is minted and none resolved.
 
 ## Next Steps
 
-1. THE FLIP, now that its target API exists (round 42), its record shapes are measured
-   (round 43) and its tree is clean (this round). The dry run at `c0e9dd10` measured it at
-   284 files and 4856 insertions once construction keywords are included, against DECISION
-   F275 D21's 3771 changed lines — it is DECLARED at what the round itself measures, before
-   review, as the one oversize commit AGENTS.md permits per feature. It also registers
+1. Author `Done: R-0875` at the next gate, once round 45's own gates have shown the repair
+   works — the scheduling §3 item 31 requires, and the reason the `Landed:` line still
+   stands.
+2. THE FLIP. Its target API exists (round 42), its record shapes are measured (round 43), its
+   construction mapping is ruled (DECISION F275 D25) and its tree is clean (round 44). The
+   dry run measured it at 284 files and 4856 insertions, declared before review as the one
+   oversize commit AGENTS.md permits per feature. It also registers
    `Task.acceptance_checks`'s structured form as a finding naming the feature that owns
    acceptance criteria, per amend0908-f275-finish rule 4.
-2. The resolver collapse DECISION F260 D5 places in T003 — `resolve_any_job_id`, the "TWO
-   job stores" paragraph, every which-store branch and the absence test — with the classic
-   store, which is the same commit range by that decision's own terms.
-3. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
-   ledger rotation, the STATUS line and the PR.
+3. The resolver collapse DECISION F260 D5 places in T003, with the classic store, which is
+   the same commit range by that decision's own terms. Then the closure sequence: the
+   integration gate, the evidence job, a fresh review zip, the ledger rotation, the STATUS
+   line and the PR.
 
 ## Risks
 
-- Step 1 is the largest single commit this repository will take, and the dry run's 4856
-  insertions is higher than every earlier estimate. The route is unchanged because AGENTS.md
-  permits exactly one declared-oversize commit per feature and every alternative needs two.
-- The open set is 86 by distinct id at this round's base `c0e9dd10` and 87 from C2, where
-  R-0875 is registered. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per
-  DECISION F272 D12.
+- A guard added in the same commit as the cleanup it guards must be red-proved as a TRACKED
+  file. Round 44's was proved untracked, where `git ls-files` cannot see it, and that is the
+  whole of this round's cause.
+- The open set is 87 by distinct id at this round's base `123a0c3f`. Four are High — R-0803,
+  R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
