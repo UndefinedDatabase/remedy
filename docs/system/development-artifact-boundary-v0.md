@@ -26,7 +26,6 @@ Normal Remedy users never need to read, edit, or depend on this file.
 | Parse review findings for self-dogfood execution | `packages/orchestration/self_dogfood_execution.py` | development self-test |
 | Orchestrator brain context | `packages/orchestration/orchestrator_brain.py` | development context |
 | Integrity gate checks | `packages/orchestration/integrity_gate.py` | development process health |
-| Progress command display | `apps/cli/commands/progress_cmd.py` | development progress display |
 
 ## Disallowed product/runtime uses
 

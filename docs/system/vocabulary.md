@@ -242,8 +242,8 @@ acknowledged with what was understood and from which round it applies. At budget
 with blocking criteria open, Remedy proposes a remainder contract ("these two
 criteria are unmet — start a follow-up mission?") as a decision the operator answers
 with one word. The old overnight Mission Contract prototype
-(`packages/orchestration/overnight_mission.py`, `overnight contract-create |
-contract-show | contract-readiness`) is superseded by this and deleted (F260). F269
+(the `overnight_mission` module and its `overnight contract-create |
+contract-show | contract-readiness` commands) is superseded by this and deleted (F260). F269
 builds the contract. Reverse by deleting this paragraph.
 
 ### DECISION amend0905-vocab D10 (2026-09-05, operator order amend0905-vocab-rebuild) — history apply
