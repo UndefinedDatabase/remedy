@@ -2908,15 +2908,17 @@ One node per known provider spec.
 ## Group-first CLI v0 (Steps 38–40)
 
 > **Status (2026-09-10): HISTORICAL SNAPSHOT, finding R-0843.** This whole section
-> records the CLI as it shipped at Steps 38 to 43. The group-first STRUCTURE it
-> describes is still how the CLI works and is still accurate; every COUNT and every
-> ENUMERATION in it is not. Measured through the shipped reader at `684b1b55`: the
-> catalog holds 222 commands in 44 groups, so the twelve groups listed below are 12
-> of 44; and the `action_class` list below omits `local_state_change`, which the
-> catalog uses. Read `apps/cli/command_catalog.py`, or run `remedy list`, for what
-> ships today. The section is dated rather than repaired sentence by sentence,
-> because a hand-written mirror of the catalog drifts again after the next feature
-> that adds or deletes a command.
+> records the CLI as it shipped, and it reaches further than its own heading says:
+> the heading names Steps 38 to 40, while the subsections beneath it carry Steps 41
+> to 43, 48, 50, 51, 52 and 53, and the section runs to the end of this file. The
+> group-first STRUCTURE it describes is still how the CLI works and is still
+> accurate; every COUNT and every ENUMERATION in it is not. Measured through the
+> shipped reader at `684b1b55`: the catalog holds 222 commands in 44 groups, so the
+> twelve groups listed below are 12 of 44; and the `action_class` list below omits
+> `local_state_change`, which the catalog uses. Read
+> `apps/cli/command_catalog.py` for what ships today. The section is dated rather
+> than repaired sentence by sentence, because a hand-written mirror of the catalog
+> drifts again after the next feature that adds or deletes a command.
 
 Steps 38–40 restructure the Remedy CLI from flat commands (`remedy create-job`, `remedy brain`) to a group-first layout (`remedy job create`, `remedy brain graph`).
 
@@ -2974,9 +2976,11 @@ Root help shows only the 12 groups — no old flat commands appear.
 ### Groups
 
 > **Historical, under the banner at the top of this section.** Measured through
-> the shipped reader at `06dbb1c6`, only three of the twelve rows below still
-> state a command count the catalog agrees with: `readiness`, `context` and
-> `file`. The table is kept as the record of what shipped at that step.
+> the shipped reader at `06dbb1c6` and re-measured at `c370dcee`, only three of the
+> rows below still state a command count the catalog agrees with: `readiness`,
+> `context` and `file`. The table is kept as the record of what shipped at that
+> step, and the flat commands named elsewhere in this section are dead: finding
+> R-0872 carries them.
 
 | Group     | Commands | Description |
 |-----------|----------|-------------|
