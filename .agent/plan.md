@@ -13,34 +13,35 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 45 repairs a RED BRANCH TIP the reviewer caused. The guard round 44 landed for R-0875
-sweeps every tracked `*.py` file for a keyword its model does not declare, and its own
-premise test wrote one literally, so once tracked the guard reported itself — §3 item 2, a
-zero-gate counting a string the same block writes into the file the gate reads. The premise
-now passes its keywords as a `**{...}` splat, which the sweep skips for the right reason, and
-a new test pins that this file is itself swept so no per-file exemption can arrive later.
-The round 44 FAIL verdict is booked here. No id is minted and none resolved.
+ROUND 46 books round 45's PASS verdict and the resolution of R-0875, and records what a DRY
+RUN of the flip measured at `978046fe`. Applied as a mechanical `ast` transformation the flip
+produces a parseable tree that collects 18394 tests with zero collection errors, and the suite
+then reads 2714 failed, 15551 passed and 106 errors. The failures classify into six classes,
+and the largest that no decision has ruled is the ID SHAPE: `Job.id` and `Task.id` are
+`uuid.UUID` while the unified record spells both `str`, and that type reaches `Artifact`,
+`TaskExecutionContext` and `PatchIntentSet` — three models no artefact of this feature
+enumerates. DECISION F275 D26 records the finding and the route.
 
 ## Next Steps
 
-1. Author `Done: R-0875` at the next gate, once round 45's own gates have shown the repair
-   works — the scheduling §3 item 31 requires, and the reason the `Landed:` line still
-   stands.
-2. THE FLIP. Its target API exists (round 42), its record shapes are measured (round 43), its
-   construction mapping is ruled (DECISION F275 D25) and its tree is clean (round 44). The
-   dry run measured it at 284 files and 4856 insertions, declared before review as the one
-   oversize commit AGENTS.md permits per feature. It also registers
-   `Task.acceptance_checks`'s structured form as a finding naming the feature that owns
-   acceptance criteria, per amend0908-f275-finish rule 4.
-3. The resolver collapse DECISION F260 D5 places in T003, with the classic store, which is
-   the same commit range by that decision's own terms. Then the closure sequence: the
-   integration gate, the evidence job, a fresh review zip, the ledger rotation, the STATUS
-   line and the PR.
+1. THE ID-SHAPE MIGRATION, as its own commit or commits before the flip, on the pattern
+   DECISION F275 D22 and D23 set: measure the sites, then widen. It is the prerequisite the
+   flip's three enumerations each recorded as a bound and never sized.
+2. THE FOUR TRANSFORM RULES the dry run added to DECISION F275 D25's two, all in
+   `.agent/f275_t003_flip_residue.md` section 3: the seam's own imports move with the seam,
+   a mixed import is SPLIT rather than moved, the type imports move their MODULE PATH, and a
+   construction whose keywords arrive through a `**` splat is invisible to a keyword rewrite.
+3. THE FLIP, once the classes above are gone from the dry run's residue, still as the one
+   declared-oversize commit AGENTS.md permits per feature, declared with its inseparability
+   reason before review.
+4. The resolver collapse DECISION F260 D5 places in T003, with the classic store. Then the
+   closure sequence: the integration gate, the evidence job, a fresh review zip, the ledger
+   rotation, the STATUS line and the PR.
 
 ## Risks
 
-- A guard added in the same commit as the cleanup it guards must be red-proved as a TRACKED
-  file. Round 44's was proved untracked, where `git ls-files` cannot see it, and that is the
-  whole of this round's cause.
-- The open set is 87 by distinct id at this round's base `123a0c3f`. Four are High — R-0803,
-  R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+- F275 stands at 46 rounds and 19 sessions against the operator's soft limit of 60 rounds and
+  20 sessions. The NEXT session is the twentieth and owes a scope report under
+  amend0908-f275-finish rule 1; that rule also forbids the split-and-close default here.
+- The open set is 86 by distinct id once this round books `Done: R-0875`. Four are High —
+  R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
