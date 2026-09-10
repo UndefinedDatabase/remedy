@@ -12282,3 +12282,55 @@ holds the whole mapping.
 
 HOW TO REVERSE: delete this decision; the clauses then bind whichever single round a later
 relay chooses, and nothing on disk needs to change.
+
+## DECISION F275 D14 (2026-09-10, F275 round 24) — three rulings the D3 sequence needs: what happens to a dead option, to the last event-name residue, and to the rounds the sequence still owes
+
+(a) A DEAD ADVERTISED OPTION IS REMOVED, NEVER WIRED. `remedy mission run` declares
+    `--job-id`, `--max-steps` and `--max-seconds`; `apps/cli/grouped.py` wires all three
+    into the parser and `_cmd_mission_run` reads none of them, which R-0871 measures at
+    `ea5f8128`. CHOSEN: the three `ArgDef`s and the description's second mode come OUT of
+    the catalog entry in this round, so the parser refuses what the handler cannot honour.
+    ALTERNATIVE CONSIDERED: wire them through to `_cmd_mission_run_loop` so the flags mean
+    what they say — rejected because that is building a budget feature inside a deletion
+    feature, which AGENTS.md Scope Control forbids by name, and because the F070 loop's
+    own budget belongs to the feature that owns that loop rather than to this one.
+    CONSEQUENCE, stated because it is user-visible: an operator who has been passing
+    `--max-steps` will now get an argparse error where they previously got silence. That is
+    the safer direction — the flag never did anything — and R-0871 is the record of it.
+
+(b) THE LAST EVENT-NAME RESIDUE IS LEFT STANDING, DELIBERATELY, AND RECORDED WHERE A
+    READER WILL LOOK. `context_budget_optimized` survives at three sites with no emitter
+    anywhere in the tree: a schema entry in `packages/orchestration/event_schemas.py`, a
+    bookkeeping classification in `apps/ui/src/api/actionClass.ts`, and four pinning lines
+    in `tests/orchestration/test_event_ledger.py`. CHOSEN: none of the three is touched by
+    this feature. WHY: the classification is cockpit behaviour — it decides whether a kind
+    is filtered out of the NowCard — so removing it is a product change to a surface F275
+    has not entered in twenty-four rounds, and it carries its own vitest test that this
+    workflow cannot run in the disposable worktree its guardrails require. An entry that
+    classifies an event which never arrives is inert; a cockpit filter changed by a
+    deletion feature is not. ALTERNATIVE CONSIDERED: delete all three in this round —
+    rejected on scope and on the measurement that nothing observable depends on the entry
+    existing. The `Note: F275 R24` entry on R-0832 carries the site list, so a later
+    feature that owns the cockpit's event vocabulary can find it by id.
+
+(c) THE D3 SEQUENCE RUNS ONE ROUND LONGER THAN D13 DISTRIBUTED IT. DECISION F275 D13 gave
+    "the next round" R-0832's couplings, R-0859's test and repairs, R-0858's F267 repair,
+    R-0843's `Groups` table and R-0868's retirement. MEASURED at `ea5f8128` while
+    assembling this block: R-0859's repairs sit inside the same twenty lines as R-0871,
+    which D13 could not know about because the reviewer found it while measuring R-0859;
+    and the operator page R-0847's new evidence names is a fourth repair of the same class.
+    Those three are one coherent change set — surviving surfaces that advertise deleted
+    things — and adding the retirement of four scaffolding files plus two roadmap and docs
+    repairs to them exceeds DECISION F085 D6's 490-line block cap, which DECISION F009 D16
+    makes a reason not to deliver rather than a reason to trim. CHOSEN: this round takes
+    the advertising surfaces; the round after it takes R-0868's retirement, R-0858's F267
+    repair and R-0843's banner, and the D3 sequence closes there. ALTERNATIVE CONSIDERED:
+    drop the page repair to keep D13's distribution intact — rejected because the page
+    recommends an invocation that cannot parse, which is the sharpest instance of the class
+    this whole feature has produced, and deferring it to keep a bookkeeping promise is the
+    wrong trade.
+
+HOW TO REVERSE: delete this decision. (a) is reversed by restoring the three `ArgDef`s and
+wiring them; (b) by any feature that owns the cockpit's event vocabulary sweeping the three
+sites; (c) by any later relay redistributing the remaining clauses across rounds as it
+prefers, since every one of them still names the finding it discharges.
