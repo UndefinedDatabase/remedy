@@ -24,6 +24,7 @@ import pytest
 from packages.core.models import Artifact, ArtifactKind, Budget, JobFences
 from packages.orchestration.pingpong_job import (
     JobPlan,
+    TaskEntry,
     _export_job,
     _import_job,
     load_job_plan,
@@ -208,3 +209,87 @@ class TestAdministrativeFieldsThroughTheRealWriter:
         assert loaded.artifacts == values["artifacts"]
         assert loaded.budget == values["budget"]
         assert loaded.fences == values["fences"]
+
+
+class TestTheTwoTaskFieldsWidenedInBeforeTheFlip:
+    """F275 T003 — the two fields `TaskEntry` had no counterpart for.
+
+    DECISION F275 D22 measured that the classic `Task` and the unified `TaskEntry`
+    share two field names of seven and twenty-three, and that three `Task` fields
+    have no counterpart of the same meaning. Two of those are widened in here,
+    before the flip, so that the commit moving consumers onto the unified record
+    loses nothing a caller could read; `acceptance_checks` is deliberately NOT
+    among them and its structured form is registered as a finding instead.
+
+    These pin the same three properties the eight job-level fields above pin, for
+    the same reason: `_export_job` and `_import_job` are explicit field-by-field
+    functions, so a field added to the dataclass and to neither of them vanishes
+    on the first persist/resume cycle.
+    """
+
+    @pytest.fixture
+    def isolate_data(self, tmp_path: Path, monkeypatch) -> Path:
+        """Persist jobs under tmp_path, never the repo's configured data dir.
+
+        Declared again rather than shared: the fixture above it is class-scoped,
+        and a fixture reached from another class is a fixture nobody can move.
+        """
+        data_dir = tmp_path / "remedy_data"
+        data_dir.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        return data_dir
+
+    def _task(self):
+        return TaskEntry(
+            task_id="t1",
+            title="widened",
+            output_artifact_ids=["a1", "a2"],
+            budget={"max_usd": 1.5, "max_tokens": 200},
+        )
+
+    def test_both_default_to_empty_rather_than_to_none(self):
+        """A task written before this round loads with an empty list, not `None`."""
+        fresh = TaskEntry(task_id="t0")
+        assert fresh.output_artifact_ids == []
+        assert fresh.budget is None
+
+    def test_both_survive_the_round_trip_through_json(self):
+        """Export, `json.dumps`, `json.loads`, import — the cycle a persist performs.
+
+        The `json.dumps` is the load-bearing half: it proves the exporter emitted
+        JSON-serialisable data rather than a model object, which is why `budget` is
+        a dict here and not a `Budget`.
+        """
+        plan = JobPlan(job_id="j1", job_title="widen")
+        plan.tasks.append(self._task())
+
+        revived = _import_job(json.loads(json.dumps(_export_job(plan))))
+
+        assert len(revived.tasks) == 1
+        assert revived.tasks[0].output_artifact_ids == ["a1", "a2"]
+        assert revived.tasks[0].budget == {"max_usd": 1.5, "max_tokens": 200}
+
+    def test_a_record_written_before_this_round_still_loads(self):
+        """Neither key present — the defaulted read, which is what a resume does."""
+        plan = JobPlan(job_id="j2", job_title="older")
+        plan.tasks.append(TaskEntry(task_id="t9", title="older"))
+        data = json.loads(json.dumps(_export_job(plan)))
+        data["tasks"][0].pop("output_artifact_ids", None)
+        data["tasks"][0].pop("budget", None)
+
+        revived = _import_job(data)
+
+        assert revived.tasks[0].output_artifact_ids == []
+        assert revived.tasks[0].budget is None
+
+    def test_both_survive_the_real_job_record_file(self, isolate_data):
+        """The same two survive `save_job_plan` -> job.json -> `load_job_plan`."""
+        plan = JobPlan(job_id="j3", job_title="on disk")
+        plan.tasks.append(self._task())
+        save_job_plan(plan)
+
+        loaded = load_job_plan(plan.job_id)
+
+        assert loaded is not None
+        assert loaded.tasks[0].output_artifact_ids == ["a1", "a2"]
+        assert loaded.tasks[0].budget == {"max_usd": 1.5, "max_tokens": 200}

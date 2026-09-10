@@ -184,6 +184,15 @@ class TaskEntry:
     task_start_tree_ref: str = ""     # checkpoint ref protecting that tree object
     task_start_recorded_at: str = ""
     task_attempt_state: str = ""      # "" | "active" | "complete"
+    # F275 T003, DECISION F275 D22: the two fields the classic `Task` carried and
+    # `TaskEntry` had no counterpart for. They are widened in BEFORE the flip, so the
+    # commit that moves consumers onto this record loses nothing a caller could read.
+    # `output_artifact_ids` is read at 35 sites, 15 of them production, including the
+    # live task runner and the cockpit's detail panel. `budget` is a serialized dict
+    # rather than a `Budget`, which is the shape `JobPlan.budgets` already uses on this
+    # same record for the same reason: the exporter emits JSON, never a model object.
+    output_artifact_ids: list[str] = field(default_factory=list)
+    budget: dict | None = None
 
 
 # F112 T003b2a: translates a live TaskEntry into the granularity machinery's
@@ -792,6 +801,8 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "task_start_tree_ref": t.task_start_tree_ref,
                 "task_start_recorded_at": t.task_start_recorded_at,
                 "task_attempt_state": t.task_attempt_state,
+                "output_artifact_ids": t.output_artifact_ids,
+                "budget": t.budget,
             }
             for t in job.tasks
         ],
@@ -896,6 +907,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             task_start_tree_ref=t.get("task_start_tree_ref", ""),
             task_start_recorded_at=t.get("task_start_recorded_at", ""),
             task_attempt_state=t.get("task_attempt_state", ""),
+            output_artifact_ids=list(t.get("output_artifact_ids") or []),
+            budget=t.get("budget"),
         ))
     return job
 
