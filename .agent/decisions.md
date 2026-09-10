@@ -12514,3 +12514,71 @@ because D3's subject is F260's Design list and this amendment's subject is the h
 served it — two different sets, and merging them would make D3's own arithmetic unreadable.
 
 HOW TO REVERSE: delete this decision. DECISION F260 D3 stands unedited either way.
+
+## DECISION F275 D21 (2026-09-10, F275 round 39) — the flip's COMPLETE measured floor: the route DECISION F275 D17 chose is unchanged, and the size it must be declared at is not
+
+WHAT THIS AMENDS AND WHAT IT DOES NOT. DECISION F275 D17 ruled at round 31 that the
+classic-to-unified flip lands as F275's ONE declared-oversize commit inside T003, and
+measured it with a descriptor probe and an `ast` sweep over `Job.id` and `Job.name` alone.
+Its closing clause says so in its own words: the union is "a FLOOR on the flip's size and
+not a ceiling", the remainder is given "NO numeral because none was measured", and "T003
+re-derives the set at its own base before it commits". This is that re-derivation, widened
+to the parts D17 did not measure. D17's landed text is NOT rewritten, per
+planner_reviewer_prompt.md §3 item 20; this paragraph is its dated extension.
+
+THE MEASUREMENT, taken by the reviewer at `d341806e` over the two committed enumerations and
+one `ast` pass, counting a changed line as one `(path, line)` pair so the three parts can be
+unioned without double-counting. Part (a), the `.id` and `.name` sites of
+`.agent/f275_t003_flip_sites.md`: 1751 lines in 184 files, 68 production and 116 test. Part
+(b), the classic store seam of `.agent/f275_t003_flip_seam.md` — every call of `save_job`,
+`load_job`, `load_job_safe` and `resolve_job_id`: 820 lines in 152 files, 52 production and
+100 test. Part (c), the `Job` TYPE sites, re-derived here because no committed file
+enumerates them — 582 constructions, 345 imports and 368 annotations: 1294 lines in 201
+files, 46 production and 155 test. THE UNION IS 3771 CHANGED LINES ACROSS 263 FILES, 103
+production and 160 test, with 94 lines belonging to more than one part and 79 files that
+part (a) alone cannot see at all. Against the DECISION F104 D1 cap of 500 insertions per
+commit, that is 7.5 times the cap, where D17's own figure implied 3.5.
+
+CHOSEN: THE ROUTE IS UNCHANGED. One commit, declared oversize under AGENTS.md's Commit
+Discipline, inside T003. The reasoning D17 gave survives the larger number intact and is not
+restated here except for the part the number could have broken: AGENTS.md permits exactly
+ONE declared-oversize commit per feature, and every alternative route needs two. Re-measured
+rather than recalled: D17's alternative (c), renaming `JobPlan.job_id` and `JobPlan.job_title`
+to `id` and `name` so that part (a) needs no edit, was measured by D17 at 1087 changed lines
+and still owes parts (b) and (c) afterwards, which this decision measures together at 2114
+lines minus their overlap. Two commits, each far over the cap, against one. The change also
+remains atomic for the reason DECISION F272 D15 gave and this measurement does not touch:
+the only way to stage it is a helper accepting both records, which AGENTS.md's Scope Control
+forbids by name.
+
+WHAT DOES CHANGE, AND IT IS THE POINT OF RECORDING THIS. The DECLARATION. AGENTS.md requires
+the worker to declare an oversize commit WITH its inseparability reason in the handback
+BEFORE review, and a declaration is a statement of size. The round that lands the flip
+declares 3771 changed lines across 263 files, not the 1766 D17's arithmetic implied, and it
+states the three parts separately so the reviewer can gate each against its own enumeration.
+A declaration that understates by a factor of two is not a declaration.
+
+WHAT IS STILL NOT ENUMERATED, stated as a bound because that is what was measured. The
+classic `Job.id` is a `UUID` and the unified `JobPlan.job_id` is a 16-hex `str`, so a site
+that treats a job id AS a UUID changes SHAPE and not only spelling. The reviewer measured
+three token populations at this base and every one of them is a BOUND from a token
+heuristic rather than a probe: `str(<job-ish>.id)` at 1337 occurrences in 150 files,
+`uuid4()` at 648 in 148, and `UUID(...)` at 222 in 81. Most of the first population already
+sits inside part (a), and the other two include every non-job UUID in the repository, so no
+site set is claimed and none is offered. The union above is therefore still a FLOOR, and
+this decision reduces the unmeasured remainder rather than closing it.
+
+ALTERNATIVES CONSIDERED. (i) Seek an operator amendment raising or suspending the cap for
+this commit — not sought, for the reason D17 gave and this measurement does not weaken: an
+amendment obtained where an existing rule already provides a route weakens the rule it
+bypasses, and AGENTS.md's declared-oversize route is that route. (ii) Split the flip by PART
+— (a) in one commit, (b) and (c) in another — rejected on the atomicity D15 measured rather
+than on size: a tree with the seam flipped and the field spellings not yet flipped is red at
+that commit boundary, which every gate in this workflow exists to prevent. (iii) Land the
+flip behind a temporary reader that accepts both records and remove it afterwards — rejected
+by name: that is the compatibility reader AGENTS.md's Scope Control forbids, and the two
+spellings of job identity are exactly what this chain of features exists to remove.
+
+HOW TO REVERSE: delete this decision. DECISION F275 D17's route stands either way; what is
+lost by deleting this is the measured size, and the flip round would then declare D17's
+figure, which this measurement shows to be low by more than a factor of two.
