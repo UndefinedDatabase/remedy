@@ -57,6 +57,24 @@ class TestCatalogIntegrity:
             assert group == cmd.group_id, f"command_id prefix mismatch: {cmd.command_id}"
             assert sub == cmd.subcommand, f"command_id suffix mismatch: {cmd.command_id}"
 
+    def test_every_related_reference_resolves_to_a_live_command(self) -> None:
+        """R-0859: nothing here resolved `related=` against the catalog.
+
+        A deletion round removes a command and its own entry, and the entries
+        that POINT at it keep pointing. Every other guard in this class reads
+        an entry's own fields, so a cross-reference to a command that no
+        longer exists was invisible to all of them — and `remedy list` then
+        offers the reader a sibling that resolves to nothing.
+        """
+        live = {cmd.command_id for cmd in CATALOG}
+        dangling = sorted(
+            (cmd.command_id, ref)
+            for cmd in CATALOG
+            for ref in (cmd.related or ())
+            if ref not in live
+        )
+        assert dangling == [], f"related= names commands that do not exist: {dangling}"
+
 
 class TestCatalogClassification:
     def test_every_command_has_action_class(self) -> None:

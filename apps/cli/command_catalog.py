@@ -1194,25 +1194,22 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("worker.run",),
     ),
 
-    # ── mission (facade over dogfood run-loop + morning report) ──────────
+    # ── mission (the F070 orchestrator loop, keyed on a mission id) ──────
     CommandEntry(
         command_id="mission.run",
         group_id="mission",
         subcommand="run",
-        description="Run a mission's orchestrator loop when the id is a mission (F070); otherwise the bounded dogfood run loop for that run id. Stops on a terminal move, the iteration limit, a stop request or an escalation.",
+        description="Run the F070 orchestrator loop for one mission. Stops on a terminal move, the iteration limit, a stop request or an escalation.",
         action_class="write_metadata",
         args=(
-            ArgDef("run_id", "Mission id (F070 loop) or run id (dogfood loop)"),
-            ArgDef("--job-id", "Job UUID", required=False, is_option=True),
-            ArgDef("--max-steps", "Max loop steps (default 10)", required=False, is_option=True),
-            ArgDef("--max-seconds", "Max wall-clock seconds (default 300)", required=False, is_option=True),
-            ArgDef("--iterations", "Max orchestrator iterations this run (mission id only)", required=False, is_option=True),
+            ArgDef("run_id", "Mission id (F070 loop)"),
+            ArgDef("--iterations", "Max orchestrator iterations this run", required=False, is_option=True),
             ArgDef("--no-llm", "Run without a provider — reports the honest no_provider terminal", required=False, is_option=True, is_flag=True),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("mission.report", "mission.ledger", "dogfood.run-loop"),
+        related=("mission.report", "mission.ledger"),
     ),
     CommandEntry(
         command_id="mission.ledger",
@@ -1813,7 +1810,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("readiness.show",),
+        related=("readiness.job",),
     ),
 
     CommandEntry(
