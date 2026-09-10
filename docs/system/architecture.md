@@ -833,8 +833,10 @@ The constitution is never persisted to job metadata — it is loaded fresh and r
 
 ### Agent Loop Contract v1 (Step 22)
 
-`packages/orchestration/agent_loop.py` defines the orchestration contract, data models,
-and local execution loop for coordinating agent workflows.
+`packages/orchestration/agent_loop.py` defines the orchestration contract, the
+data models and the state derivation for coordinating agent workflows. It
+defines no execution loop: that loop was deleted at F275 round 32, per
+DECISION F275 D18.
 
 **Purpose:** State derivation only — read-only, deterministic and inspect-only.
 The local execution loop that once drove plan → build → approve → test → repeat
@@ -971,7 +973,7 @@ the same metadata schema:
 }
 ```
 
-`outcome` is at the top-level RunEvent field, not in metadata.  The `agent_loop_task_exit` event has been removed — `SystemExit` from task runners is silently caught.
+`outcome` is at the top-level RunEvent field, not in metadata.  The `agent_loop_task_exit` event was removed while the execution loop still existed, and that loop caught `SystemExit` from task runners rather than propagating it. Both are history: the loop itself was deleted at F275 round 32, so nothing in this module catches `SystemExit` today.
 
 **Future adapter examples:** `claude_code_builder`, `copilot_cli_reviewer`,
 `local_model_reviewer`.  All adapters must be `dry_run_only=True` in v1.
