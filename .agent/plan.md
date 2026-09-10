@@ -13,24 +13,24 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 43 takes the reading DECISION F275 D22 took for the TASK records and nobody had taken
-for the JOB records: both shipped classes IMPORTED and compared field by field, plus the
-shape readings a name comparison cannot give. The pair is CLEAN — 13 shared names and the
-only two `Job`-only names are the renames `id` and `name` — so there is no third unmeasured
-record pair, and DECISION F272 D15's sentence holds for the job record where D22 disproved
-it for the task record. DECISION F275 D24 records that, the `created_at` shape change at six
-sites, and `budget`'s already-guarded nullability. No production line moves.
+ROUND 44 clears the tree the flip has to run over. A dry run of the flip found FORTY keyword
+arguments passed to `Job(...)` and `Task(...)` that name no field on either model: pydantic
+drops them silently, so forty test call sites have never done what they say, and four of them
+make the flip's own rewrite produce `TaskEntry(title=..., title=...)`, which does not compile.
+This round deletes 35, repoints the 5 that meant `user_prompt`, lands a source guard so the
+class cannot return, and registers R-0875. DECISION F275 D25 carries the ruling and the two
+mechanical rules the dry run had to learn: edits at `ast` columns are BYTE offsets, and the
+flip must rewrite an import's MODULE PATH and not only the name it imports.
 
 ## Next Steps
 
-1. THE FLIP. Its target API now exists (round 42) and its record shapes are now measured
-   (this round), so it applies: `.agent/f275_t003_flip_sites.md` for the `.id` and `.name`
-   sites, `.agent/f275_t003_flip_seam.md` for the classic store seam, and
-   `.agent/f275_t003_record_shapes.md` for the type sites and the `created_at` rewrite. It
-   lands as the one declared-oversize commit AGENTS.md permits per feature, with the
-   inseparability reason AND the real size stated in the handback BEFORE review, and it
-   registers `Task.acceptance_checks`'s structured form as a finding naming the feature that
-   owns acceptance criteria, per amend0908-f275-finish rule 4.
+1. THE FLIP, now that its target API exists (round 42), its record shapes are measured
+   (round 43) and its tree is clean (this round). The dry run at `c0e9dd10` measured it at
+   284 files and 4856 insertions once construction keywords are included, against DECISION
+   F275 D21's 3771 changed lines — it is DECLARED at what the round itself measures, before
+   review, as the one oversize commit AGENTS.md permits per feature. It also registers
+   `Task.acceptance_checks`'s structured form as a finding naming the feature that owns
+   acceptance criteria, per amend0908-f275-finish rule 4.
 2. The resolver collapse DECISION F260 D5 places in T003 — `resolve_any_job_id`, the "TWO
    job stores" paragraph, every which-store branch and the absence test — with the classic
    store, which is the same commit range by that decision's own terms.
@@ -39,10 +39,9 @@ sites, and `budget`'s already-guarded nullability. No production line moves.
 
 ## Risks
 
-- Step 1 is the largest single commit this repository will take. Four rounds have now
-  measured it and three found it larger: D17 sized it at 1766 changed lines, D21 at 3771
-  across 263 files, D22 added a type pair, D23 found three pieces of its target API
-  missing, and D24 is the first to find NOTHING new.
-- The open set is 86 by distinct id at this round's base `7f8724c3`. This round registers
-  none and resolves none. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's,
-  per DECISION F272 D12.
+- Step 1 is the largest single commit this repository will take, and the dry run's 4856
+  insertions is higher than every earlier estimate. The route is unchanged because AGENTS.md
+  permits exactly one declared-oversize commit per feature and every alternative needs two.
+- The open set is 86 by distinct id at this round's base `c0e9dd10` and 87 from C2, where
+  R-0875 is registered. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per
+  DECISION F272 D12.
