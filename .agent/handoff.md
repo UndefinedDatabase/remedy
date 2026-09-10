@@ -1,289 +1,232 @@
-# Handoff — F275 One world completion, part three — ROUND 27
+# Handback — F275 round 28
 
 ## Session
 
-SESSION 14 of feature F275 · round 27 · rounds so far 27
-
-Context self-assessment (amend0905-throughput): the worker context for this round stayed
-comfortable — one block, ten pairs, one described production change, two appends, eight
-gates. The wall clock was dominated by one thing only, G8's suite at 255 seconds, because
-this round is the first of the session to touch `packages/` and `tests/`. Nothing in the
-round argues for ending the session.
-
-Soft-limit note (amend0908-f275-finish): F275's limit is 20 sessions and 60 rounds, by
-operator order and by name. At session 14 and round 27 the feature is inside both.
+SESSION 14 of feature F275 · round 28 · rounds so far 28
 
 ## Range
 
-Review of `c370dcee`..`6335babf`, plus the C5 handback commit that writes this file and
-whose SHA cannot exist while it is being written (R-0149 pattern).
+Review of `d3e35f0f`..`HEAD`.
 
 ## Commits
 
-### 4ba30f28 F275 R27 C0a: save the round 27 block verbatim as the authored original.
+### 47400579 F275 R28 C0a: save the round 28 block verbatim as the authored original.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r27.md` | +421 / -0 | the round 27 block, copied with `shutil.copyfile` from `.remedy-wt/f275-r27-block.md`, never retyped |
+| `.agent/authored/f275-r28.md` | +316 / -0 | the round 28 block saved byte-verbatim as the authored original |
 
-### c2a5dca7 F275 R27 C0b: mirror the committed round 27 block into the working copy.
+### 1ec9489b F275 R28 C0b: mirror the committed round 28 block into the last-block state file.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +390 / -275 | the bytes of the COMMITTED C0a blob, read with `git show 4ba30f28:.agent/authored/f275-r27.md`, not from the working copy |
+| `.agent/last_block.md` | +253 / -358 | round 27's block replaced by the COMMITTED C0a blob |
 
-### 8fe426b3 F275 R27 C1: point the plan at the advertisement-guard widening.
+### 7769c74a F275 R28 C1: point the plan at round 28, the five dead pages and the R-0872 ratchet steps.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +21 / -18 | rewritten byte-identical to the PLAN27 slice as extracted from the committed C0a blob |
+| `.agent/plan.md` | +17 / -16 | PLAN28 applied byte-for-byte; 45 lines against the cap of 50 |
 
-### f4390b10 F275 R27 C2: book the round 26 PASS verdict, add the R-0847 evidence note, register R-0872 and resolve R-0847, record three prose slips.
+### 39d85f72 F275 R28 C2: book the round 27 PASS verdict, register R-0873 and record two prose slips.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +8 / -0 | LEDGER27 appended: the round 26 `Gate:` verdict, `Note: F275 R27`, the `- R-0872` registration, `Done: R-0847` |
-| `.agent/prose_slips.md` | +6 / -0 | SLIPS27 appended: session 13's three dated lines |
+| `.agent/live_review.md` | +4 / -0 | LEDGER28 appended: the round 27 PASS gate record and the R-0873 registration |
+| `.agent/prose_slips.md` | +4 / -0 | SLIPS28 appended: the two round 27 authoring slips |
 
-### 088e7e7d F275 R27 C3: repair the R-0843 banner residue - drop the invented catalog command and state the span the section really covers.
+### 43374b84 F275 R28 C3: delete the five pages documenting deleted capabilities, drop their index rows, and lower the R-0872 ratchet to 27.
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/system/architecture.md` | +16 / -12 | pairs U1 and U2, applied byte for byte from the committed block blob |
+| `docs/README.md` | +0 / -6 | the six index rows the five pages owned, dropped as whole rows |
+| `docs/guides/dogfood-run-user-guide.md` | +0 / -97 | `git rm` — the dogfood run loop is deleted code |
+| `docs/guides/self-repair-proposal-user-guide-v0.md` | +0 / -91 | `git rm` — DECISION F260 D3 routes the mechanism to F017's approval gate |
+| `docs/system/feature-planner-v0.md` | +0 / -60 | `git rm` — DECISION F274 D6 routes it to NONE |
+| `docs/system/progress-ledger-v1.md` | +0 / -77 | `git rm` — DECISION F260 D3 routes it to `job show --full` and `job evidence` |
+| `docs/system/run-replay-to-self-repair-proposal-v0.md` | +0 / -111 | `git rm` — the page found only by reading the capability, not by any sweep |
+| `tests/cli/test_advertised_commands.py` | +1 / -17 | the 16 allowlist entries those pages carried, and the ceiling 43 -> 27 |
 
-### 3225d876 F275 R27 C4: widen the advertisement scanner past the group pre-filter, the single-token form and the backtick tail, and repair the eight dead next-action strings it exposes, completing R-0847.
+### 7cfd213e F275 R28 C4: cut the dead self-repair section and taxonomy row from the product spine, lowering the R-0872 ratchet to 22.
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/cli/test_advertised_commands.py` | +183 / -26 | SPEC-GUARD (a) to (j): backtick tail, single-token regex, one shared tail helper, no `GROUPS` pre-filter, `_resolves`, `UnresolvedAdvertisement` records keyed without the line number, the generated 43-entry `KNOWN_DEAD_DOC_ADVERTISEMENTS`, the subtracting operator-facing assert and the new ratchet test |
-| `packages/orchestration/brain_detail.py` | +5 / -5 | pairs P4, P5, P6, P7, P8 |
-| `packages/orchestration/cockpit.py` | +2 / -2 | pairs P1 and P2 |
-| `packages/orchestration/trust_report.py` | +1 / -1 | pair P3 |
+| `docs/system/core-product-spine-v0.md` | +0 / -17 | the dead `## What self-repair proposals are` section and the `self-repair *` taxonomy row |
+| `tests/cli/test_advertised_commands.py` | +1 / -6 | the 5 allowlist entries that page carried, and the ceiling 27 -> 22 |
 
-### 6335babf F275 R27 C4b: pin the allowlist ceiling to its measured literal so the ratchet assertion can fail.
+### C5 — this handback commit
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/cli/test_advertised_commands.py` | +5 / -2 | UNORDERED EXTRA COMMIT, declared below: `_ALLOWLIST_CEILING = len(KNOWN_DEAD_DOC_ADVERTISEMENTS)` as first written could never fail, so it became the measured literal `43` |
-
-### (C5) F275 R27 C5: the round 27 handback.
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | this file | the round 27 handback; a handoff cannot table the commit that writes it (R-0149 pattern) |
+| `.agent/handoff.md` | rewritten | the round 28 handback; a handoff cannot table the commit that writes it (R-0149 pattern) |
 
 ## External actions
 
-- `git worktree add .remedy-wt/r27-g6 6335babf` — created, detached HEAD at C4b, for G6 only.
-- `git worktree remove .remedy-wt/r27-g6 --force` then `git worktree prune` — removed;
-  `git worktree list` afterwards holds exactly ONE entry.
-- `git push -u origin feature/f275-one-world-completion-part-three` — pushed at the end of
-  the round.
-- NO pull request created, NO PR edited, NO merge. F275's closure sequence is not this round.
+- `git push -u origin feature/f275-one-world-completion-part-three` — see the push line below.
+- No PR created, none edited, none merged. No `gh` command run.
+- No `git worktree add` and no `git worktree remove`: this round ordered no
+  destructive verification, so guardrail G5 required no disposable worktree and
+  `git worktree list` stayed at exactly one entry throughout.
 
 ## Verification
 
-Every gate run as `bash -c '<cmd>; echo "REAL_EXIT=$?"'`. One line per gate.
+One line per gate, each run as `bash -c '<cmd>; echo "REAL_EXIT=$?"'`.
 
-- **G1 TRANSPORT (at C0b)** — REAL_EXIT=0. `sha256sum` over the scratch original
-  `.remedy-wt/f275-r27-block.md`, the committed `.agent/authored/f275-r27.md` and the
-  committed `.agent/last_block.md` is ONE comparison and reads
-  `08809a29128b5f02856eb00f26cc40499d51f9df3c0ca53dfdd427b369ea2078` for all three, each
-  39740 bytes / 421 lines. This covers the SAVED COPY, its MIRROR and the WORKING COPY and
-  NOT the emitted bytes (§3 item 37).
-- **G2 THE PLAN (at C1)** — REAL_EXIT=0. `written == slice: True`, 2476 bytes,
-  sha256 `6f03426f137c1b4359ea80a03d3a9ef366b0b6e247b2c0b6fcfcb567841601d0`, 44 lines
-  against the AGENTS.md cap of 50; `grep -c '^## Goal$'` = 1, `grep -c '^## Next Steps$'` = 1.
-- **G3 THE RECORD (at C2)** — REAL_EXIT=0. `.agent/live_review.md` pre 755015 → post 767596,
-  `post == pre + NL + slice: True`, joining byte read back from the COMMITTED post-blob at
-  offset 755015 = `b'\n'`, N counted by the script from the slice = 4, last-4 blank-line
-  units match the slice's 4 paragraphs in order: True; negative control flipping one byte at
-  offset 755026 inside the FIRST appended paragraph → byte reader False AND structural reader
-  False. `.agent/prose_slips.md` pre 211596 → post 213983, same three readings True /
-  `b'\n'` @211596 / N=3 / True, negative control @211607 → both readers False. Whole-post-file
-  counts: `^Gate: F275 R26 ` = 1, `^Note: F275 R27 ` = 1, `^- R-0872 — ` = 1,
-  `^Done: R-0847 — ` = 1. OPEN SET BY DISTINCT ID = **88** — 101 registration lines / 101
-  distinct ids minus 15 `Done:` LINES / **13 DISTINCT** resolved ids; resolutions naming an
-  unregistered id: none; ids carrying more than one `Done:` line: `R-0721`, `R-0725`, the
-  landed state this round does not touch. 88 at the base and 88 after registering one and
-  resolving one, as the block predicted.
-- **G4 THE DOC PAIR (at C3)** — REAL_EXIT=0. U1 FROM 1 → 0 and TO 0 → 1; U2 FROM 1 → 0 and
-  TO 0 → 1, measured before and after the write. As extracted from the committed block blob:
-  U1 FROM 774 bytes `5d8888bbca907e44186d980a52518ace44ed9a6212d2ff44a11d49ba53da7ef2`, U1 TO
-  945 bytes `3d81fc9fb79e3af1913050483d96c6a572259e00cd86f2584e67bcd3d8a397af`, U2 FROM 306
-  bytes `2688ef8af6b24a3c648da9c3233a71e152fb41a60f5dab624009431597460bda`, U2 TO 426 bytes
-  `21461f9a3a1cf9ee97c2b459b33e5cc3a852bbb2bc8f074bc09984b5cd96e6ff`. TWO readings of the
-  invented command: (a) the BACKTICK-DELIMITED form 1 at `c370dcee` → **0** after C3;
-  (b) the RAW substring 3 at `c370dcee` → **2** after C3, printed with line numbers — line
-  675 `remedy list-patch-intents` and line 1897 `remedy list-projects`, both flat
-  pre-Step-38 commands that merely begin with the same eleven characters and both R-0872's.
-  `Steps 38 to 43` 1 → **0** over the whole file. `## Group-first CLI v0 (Steps 38–40)` at
-  line **2908**, file total **3076** lines (3072 at the base plus U1's +2 and U2's +2), and
-  the first `> ` after that heading is separated from it by exactly one blank line
-  (line 2909 = `''`, line 2910 = the banner).
-- **G5 THE GUARD (at C4)** — REAL_EXIT=0, through the worker's own `import` of the edited
-  module under `python3 -B` with `__pycache__` purged, not by grep. PRODUCTION sweep
-  **seen=542, unresolved=0**, `seen > 100` True. OPERATOR-FACING sweep **seen=417,
-  unresolved=68 sites over 43 DISTINCT keys across 7 paths**.
-  `len(KNOWN_DEAD_DOC_ADVERTISEMENTS)` = 43 and `_ALLOWLIST_CEILING` = 43, EQUAL. Allowlist
-  digest over the sorted keys joined as `f"{path}\t{invocation}"`, `\n`-separated, no
-  trailing newline = `364eb51c60942c14da584ce3a822a555b737c36cf54b5027d13f03586dcd64c0`,
-  the value the block ordered. `python3 -m pytest tests/cli/test_advertised_commands.py -q`
-  → **6 passed**, REAL_EXIT=0.
-- **G6 THE RED PROOFS (after C4, inside `.remedy-wt/r27-g6`, a disposable worktree at
-  `6335babf`)** — REAL_EXIT=0 for the driver; every mutation reverted byte-exactly before
-  the next; `__pycache__` purged and `python3 -B -p no:cacheprovider` on every run.
-  CONTROL first: whole guard file exit=0, **6 passed**. M1 (restore `, or run `remedy list`,`
-  into the U1 TO sentence in `docs/system/architecture.md`) → operator-facing test **exit=1,
-  1 failed** — RED. M2 (restore P1's FROM in `packages/orchestration/cockpit.py`) →
-  production test **exit=1, 1 failed** — RED. M3 (add one entry to
-  `KNOWN_DEAD_DOC_ADVERTISEMENTS`) → ratchet test **exit=1, 1 failed** — RED, first assertion
-  `the known-dead advertisement list GREW`, i.e. ON THE CEILING as ordered. M4 (add an
-  allowlist entry naming an advertisement that does NOT occur) → ratchet test **exit=1,
-  1 failed** — RED, but the first assertion is again `the known-dead advertisement list
-  GREW`: the CEILING, not staleness — see deviation 2. M4b, ADDED by the worker as the
-  discriminator M4 as written cannot be (it SWAPS one entry for a non-occurring one so the
-  count stays 43) → ratchet test **exit=1, 1 failed** — RED, first assertion `the known-dead
-  advertisement list excuses advertisements that are no longer there`, i.e. ON STALENESS.
-  CONTROL re-run: exit=0, **6 passed**; `architecture.md`, `cockpit.py` and
-  `test_advertised_commands.py` each restored BYTE-EXACTLY (True, True, True) against bytes
-  captured before the first mutation. No mutation came back green.
-- **G7 THE PRODUCTION PAIRS (at C4)** — REAL_EXIT=0. P1..P8 each **FROM 1 → 0 and TO 0 → 1**,
-  measured before and after the write, FROM/TO texts parsed out of the committed block blob
-  and never retyped. Through the SHIPPED dispatcher, in process, with NO `--help`:
-  `remedy brain timeline` exit=2 first line `Usage: remedy brain timeline JOB_ID`;
-  `remedy dev agent-loop` exit=2 `Usage: remedy dev agent-loop JOB_ID`;
-  `remedy brain constitution` exit=2 `Usage: remedy brain constitution JOB_ID`;
-  `remedy worker list` exit=**0** `Worker Adapters`. CONTROL `remedy timeline` exit=2 first
-  line `Usage: remedy [OPTIONS] COMMAND [ARGS]...` — the PARENT's usage line, never its own.
-  Each replacement therefore prints its own command or succeeds and the control does not.
-  `python3 -m ruff check` over the four edited Python files → `All checks passed!`, REAL_EXIT=0.
-- **G8 NOTHING ELSE MOVED (at C4b, before C5)** — REAL_EXIT=0.
-  `python3 -m pytest tests/docs/ tests/cli/ tests/test_timeline.py
-  tests/test_project_constitution.py tests/test_agent_loop.py tests/test_cockpit.py
-  tests/test_trust_report.py tests/test_brain_detail.py -q` → **2024 passed, 0 failed**,
-  255.42s, run SERIALLY. The canary `tests/cli/test_golden_path.py` is INSIDE `tests/cli/`
-  and collects **42 tests**, so it is inside that figure. Through the shipped reader
-  `apps.cli.command_catalog`: `len(_BASE_CATALOG)` = **222**, `len(GROUPS)` = **44**,
-  dangling `related=` references = **0** — all three unchanged from `c370dcee`, correct for
-  a round that adds and deletes no command. `.agent/STOP` ABSENT from disk (checked before
-  the first commit, again before C4, and here); `git status --porcelain` EMPTY;
-  `git worktree list` exactly ONE entry; branch
-  `feature/f275-one-world-completion-part-three`. `git diff --name-only c370dcee..6335babf`
-  is an EXACT SET MATCH against the change set minus `.agent/handoff.md` — MISSING: none;
-  EXTRA: none; the ten paths are `.agent/authored/f275-r27.md`, `.agent/last_block.md`,
-  `.agent/live_review.md`, `.agent/plan.md`, `.agent/prose_slips.md`,
-  `docs/system/architecture.md`, `packages/orchestration/brain_detail.py`,
-  `packages/orchestration/cockpit.py`, `packages/orchestration/trust_report.py`,
-  `tests/cli/test_advertised_commands.py`. Per-commit insertions before the handback commit,
-  each against the AGENTS.md DECISION F104 D1 cap of 500: C0a 421, C0b 390, C1 21, C2 14,
-  C3 16, C4 191, C4b 5. None oversize.
+- **G1 TRANSPORT (at C0b) — REAL_EXIT=0.** `sha256sum` over the scratch original
+  `.remedy-wt/f275-r28-block.md`, the committed `.agent/authored/f275-r28.md` and
+  the committed `.agent/last_block.md` yields ONE distinct digest,
+  `05026d2071b930534091721ea51244a9811f75537e53daa526011fa0485cf706`, at 28018
+  bytes and 316 lines; both `cmp` runs report byte-equality. This covers the
+  scratch original, the saved copy and the mirror. The block travelled as a FILE
+  the worker read at a path — no byte of it was retyped from a prompt.
+- **G2 THE PLAN (at C1) — REAL_EXIT=0.** `cmp .agent/plan.md .remedy-wt/plan28.txt`
+  reports `written == slice`, byte-identical at 2519 bytes. 45 lines against the
+  AGENTS.md cap of 50. `grep -c '^## Goal$'` == 1, `grep -c '^## Next Steps$'` == 1.
+- **G3 THE RECORD (at C2) — REAL_EXIT=0.** `.agent/live_review.md` pre 767596 (block
+  says 767596: True) -> post 775926, slice 8329; `767596 + 1 + 8329 == 775926` True;
+  joining byte read back from the committed post-blob at offset 767596 is `b'\n'`.
+  `.agent/prose_slips.md` pre 213983 (block says 213983: True) -> post 215418, slice
+  1434; `213983 + 1 + 1434 == 215418` True; joining byte at offset 213983 is `b'\n'`.
+  The INDEPENDENT structural reader counted N == 2 paragraphs from each slice ITSELF
+  and matched the last 2 blank-line units of each whole post-file in order. Negative
+  controls: byte 2610 of paragraph 1's 5221 (`b'a'`->`b'X'`) and byte 311 of 623
+  (`b' '`->`b'X'`), each flipped INSIDE THE FIRST appended paragraph — reader A and
+  reader B both REJECTED both while both accepted the truth. `^Gate: F275 R27 ` == 1,
+  `^- R-0873 — ` == 1. THE OPEN SET BY DISTINCT ID: base `d3e35f0f` 101 registrations
+  against 13 resolutions == 88; C2 102 against 13 == **89**, as the block requires for
+  a commit that registers one and resolves none. No resolution names an unregistered id
+  at either revision.
+- **G4 THE DELETIONS (at C3) — REAL_EXIT=0.** All five paths PRESENT at `d3e35f0f` and
+  ABSENT at `43374b84` — both readings reported per path, because an absence proves
+  nothing without the presence before it. The repo-wide basename sweep over
+  `docs tests scripts packages apps` returned **0 hits** for all five basenames, so
+  nothing survived outside `.agent/` and the round's own block and no STOP condition
+  fired. `docs/README.md` 204 -> 198 lines; the six removed rows are printed verbatim
+  in the deviations-free transcript and each was measured 1 before / 0 after.
+- **G5 THE RATCHET (at C3 and again at C4) — REAL_EXIT=0**, through the worker's own
+  import of the edited module, not by grep. At C3: `len(KNOWN_DEAD_DOC_ADVERTISEMENTS)`
+  == 27, `_ALLOWLIST_CEILING` == 27, the two EQUAL, stale entries 0. At C4: both == 22,
+  EQUAL, stale 0, and the allowlist digest reads
+  `7a6b5f4fa5b0ff693acff44b3c181f0b36df05b098d61c08641fb575c96d41d2` — the exact value
+  the block ordered. Operator-facing sweep at C4: seen 387, unresolved 38, distinct keys
+  22 over exactly TWO paths, `docs/system/architecture.md` and `docs/system/vocabulary.md`.
+  Production sweep UNCHANGED at seen 542, unresolved 0.
+- **G6 THE SPINE PAGE AND THE SUITE (at C4) — REAL_EXIT=0.** Measured against the
+  committed blobs: S2 section at C3 1 -> at C4 0; S2 row at C3 1 -> at C4 0; each
+  one-sided per constraint 3, with no TO count claimed. `self-repair` over the whole
+  page 7 -> **0**. The page still EXISTS at C4 (`git ls-tree` resolves it), so
+  `tests/cli/test_product_spine.py`'s existence pin is intact; 149 -> 132 lines.
+  `python3 -B -m pytest tests/docs/ tests/cli/ -q -p no:randomly`, run SERIALLY with no
+  `-n auto`: **1649 passed, 0 failed** in 252.08s at exit 0. The canary
+  `tests/cli/test_golden_path.py` is INSIDE `tests/cli/` — it is a real file collecting
+  42 tests and was therefore inside this run.
+- **G7 NOTHING ELSE MOVED (at C4, before C5) — REAL_EXIT=0.** Through the shipped
+  reader `apps.cli.command_catalog`: `len(_BASE_CATALOG)` == 222, `len(GROUPS)` == 44,
+  dangling `related=` references == 0 over 286 total references — the three figures the
+  block pins. UNCHANGED is proved rather than assumed: the range `d3e35f0f..7cfd213e`
+  contains NO `apps/` or `packages/` path at all, and `apps/cli/command_catalog.py` is
+  byte-identical between base and C4. `.agent/STOP` absent (read from disk),
+  `git status --porcelain` EMPTY, `git worktree list` exactly ONE entry, branch
+  `feature/f275-one-world-completion-part-three`. `git diff --name-only d3e35f0f..7cfd213e`
+  is an EXACT SET MATCH against the change set minus `.agent/handoff.md`: 13 expected,
+  13 actual, MISSING none, EXTRA none. Per-commit insertions, cap 500: C0a 316, C0b 253,
+  C1 17, C2 8, C3 1, C4 1 — every one OK, and C3 and C4 are one insertion each because a
+  deletion carries none, exactly as the block anticipated.
+- **Extra, not ordered by the block:** `python3 -m ruff check tests/cli/test_advertised_commands.py`
+  reads `All checks passed!` at exit 0. Run as part of the AGENTS.md self-review loop on
+  the round's only touched Python file.
 
 ## Authored-text proofs
 
-Every applied text was extracted from the COMMITTED C0a blob
-`4ba30f28:.agent/authored/f275-r27.md` by a marker-delimited reader, never retyped, and no
-`<<<BEGIN ...>>>` / `<<<END ...>>>` marker line reached any target file.
-
-| Text | Bytes | sha256 | Disk-to-disk result |
-|---|---|---|---|
-| PLAN27 | 2476 | `6f03426f137c1b4359ea80a03d3a9ef366b0b6e247b2c0b6fcfcb567841601d0` | `.agent/plan.md` compares BYTE-EQUAL to the slice (G2) |
-| LEDGER27 | 12580 | `392d1f26002c3d35127d263059ddfa461160d14355a138947fabfe87f08f24e5` | committed post-blob == pre + `\n` + slice (G3) |
-| SLIPS27 | 2386 | `e23426031719d72bf993a41ac54f72ba719c4663bb23153ea4fd4100e695a9cf` | committed post-blob == pre + `\n` + slice (G3) |
-| U1 FROM | 774 | `5d8888bbca907e44186d980a52518ace44ed9a6212d2ff44a11d49ba53da7ef2` | 1 → 0 occurrences (G4) |
-| U1 TO | 945 | `3d81fc9fb79e3af1913050483d96c6a572259e00cd86f2584e67bcd3d8a397af` | 0 → 1 occurrences (G4) |
-| U2 FROM | 306 | `2688ef8af6b24a3c648da9c3233a71e152fb41a60f5dab624009431597460bda` | 1 → 0 occurrences (G4) |
-| U2 TO | 426 | `21461f9a3a1cf9ee97c2b459b33e5cc3a852bbb2bc8f074bc09984b5cd96e6ff` | 0 → 1 occurrences (G4) |
-| P1..P8 FROM/TO | inline | parsed from the same blob | each FROM 1 → 0 and each TO 0 → 1 (G7) |
-
-Pair-shape readings, one per pair, from the worker's own mechanical containment test:
-`TO contains FROM: false` for U1, U2, P1, P2, P3, P4, P5, P6, P7 and P8 — ten REWRITES,
-matching constraint 3 exactly. No append-shaped pair was ordered and none was applied.
+- `.agent/authored/f275-r28.md` — the C0a original, sha256
+  `05026d2071b930534091721ea51244a9811f75537e53daa526011fa0485cf706`, byte-equal to the
+  scratch original and to the C0b mirror (G1).
+- `.agent/plan.md` vs PLAN28 — `cmp` clean, byte-identical (G2).
+- LEDGER28 and SLIPS28 — proved by the G3 append arithmetic and the independent
+  structural reader, each against the COMMITTED post-blob.
+- S1 ROWS, S2 FROM, S2 ROW — each extracted from the COMMITTED C0a blob with
+  `git show 47400579:.agent/authored/f275-r28.md`, never retyped, and applied by exact
+  whole-unit match with a measured before-count of 1 and an after-count of 0.
+- No marker line reached any target file: the extractor rejects a body containing
+  `<<<BEGIN` or `<<<END`, and no target contains either token.
 
 ## Deviations & assumptions
 
-1. **AN EXTRA, UNORDERED COMMIT: `6335babf` "C4b".** The block's ordered sequence is C0a,
-   C0b, C1, C2, C3, C4, C5 and this round has EIGHT commits, not seven. SPEC-GUARD (g) says
-   "`_ALLOWLIST_CEILING` is its measured length"; I first wrote that as
-   `_ALLOWLIST_CEILING = len(KNOWN_DEAD_DOC_ADVERTISEMENTS)`, committed it in C4, and then,
-   preparing G6, saw that it makes the ceiling assertion UNFAILABLE — adding an entry raises
-   `len` and the ceiling together, so `len(...) <= _ALLOWLIST_CEILING` is true by
-   construction and G6's M3 could never go red on it. That is precisely the "gate that
-   cannot fail" class this repository treats as a finding, so the ceiling became the
-   measured LITERAL `43`. I did NOT amend `3225d876`: guardrail G2 forbids a history
-   rewrite without qualification, so the repair is a new commit and this paragraph is its
-   declaration. Both readings are in the record above — C4 and C4b — and G5 through G8 were
-   run against the C4b state.
-2. **G6's M4 DOES NOT PROVE WHAT IT NAMES, AND I RAN AN EXTRA MUTATION SO SOMETHING DOES.**
-   M4 as written is "add an allowlist entry naming an advertisement that does NOT occur →
-   the ratchet test must go RED on staleness". With the ceiling pinned at 43, ADDING any
-   entry makes the count 44 and the CEILING assertion — which SPEC-GUARD (i) lists first —
-   fires before the staleness assertion is reached. I ran M4 exactly as ordered and report
-   its real first assertion (`the known-dead advertisement list GREW`, the ceiling), and
-   then ran M4b, which SWAPS an entry for a non-occurring one so the count stays 43; M4b
-   fires the staleness assertion by name. The two ordered mutations M3 and M4 cannot both
-   discriminate under any assertion ordering: every live unresolved key is ALREADY in the
-   43-entry allowlist, so no addition can be a key that occurs, which means with staleness
-   first M3 would hit staleness instead. Both halves of the ratchet are proved to bite —
-   M3 the ceiling, M4b the staleness — but by three mutations, not the two named.
-3. **A DOUBT I APPLIED ANYWAY, per constraint 1.** LEDGER27's `- R-0872` paragraph says the
-   next round lowers the allowlist "to 22", while PLAN27 says the same round lowers it "by
-   21" and the finding's own path breakdown sums the four dying pages plus
-   `core-product-spine-v0.md` to 6 + 7 + 2 + 1 + 5 = 21 of 43, leaving 22. The two numerals
-   agree; I record the reading because "by 21" and "to 22" are stated in different files and
-   a later round will resolve one of them without the other in view. Applied byte for byte,
-   unrepaired.
-4. **The block's line-3072 reading is a BASE reading, not a post-state one.** U1's preamble
-   says "the file ends at line 3072"; that is `c370dcee`. After U1 and U2 the file is 3076
-   lines. G4 asked for the file's total line count and I report the measured 3076; nothing
-   is wrong in the block, but a reviewer re-running G4 against the committed blob will read
-   3076 and should not read it as a mismatch.
-5. **G7's `remedy worker list` probe exits 0 and PRINTS.** The block ordered the probe with
-   no `--help`, and `worker list` is a real, read-only listing command, so running it wrote
-   `Worker Adapters` and its table to a captured buffer. No state was written; the other
-   four probes all exit 2 on a missing argument before doing anything.
-6. **No assumption was made about anything the block did not state.** The 43 allowlist
-   entries were GENERATED from the worker's own sweep per constraint 8 and never transcribed
-   from the block; the digest gate confirms them. Round 26's deleted-module sweeps were NOT
-   re-verified, per constraint 10.
+The ordered commit sequence C0a, C0b, C1, C2, C3, C4, C5 was followed exactly — no
+extra commit, no dropped commit, no reordering. Every authored slice was applied
+byte for byte and none was repaired. Deviations and declared doubts:
 
-## Open findings
+1. **DECLARED DOUBT — none of the five slices looked wrong.** Every count the block
+   predicted reproduced exactly on measurement: the five page lengths (60, 77, 97, 91,
+   111), `docs/README.md` 204 -> 198, the six index rows each occurring once, the 16 + 5
+   allowlist split across the five pages, the sweep figures 387 / 38 / 22 over two paths,
+   the production sweep 542 / 0, the suite at 1649, and the G5 digest
+   `7a6b5f4f...c96d41d2` to the character. I found nothing in this block to doubt.
+2. **My first `related=` reader was wrong and I corrected it before reporting.** G7 asks
+   for the count of dangling `related=` references. My first reader split each reference
+   on whitespace and reported **286 dangling**, which would have been a spectacular false
+   alarm. The references are DOTTED catalog ids (`job.show`), not spaced pairs, so every
+   one of the 286 was being compared against the wrong key shape. The corrected reader
+   resolves `f"{group_id}.{subcommand}"` and reports 0 dangling over 286 references. I
+   am declaring the wrong reading because it was run, not hiding it because it was wrong.
+   This is the R-0859 pattern from memory — nothing in the repository resolves `related=`
+   against the catalog, so every deletion round hand-rolls this check and every hand-rolled
+   check can pick the wrong key shape.
+3. **G7's "unchanged" was strengthened from a single reading to a comparison.** The block
+   states the catalog figures "read 222, 44 and 0 at `d3e35f0f` and must be unchanged". A
+   measurement at C4 alone shows the value, not the invariance. I added two readings that
+   close that: the range contains no `apps/` or `packages/` path at all, and
+   `apps/cli/command_catalog.py` is byte-identical between `d3e35f0f` and `7cfd213e`. No
+   disposable worktree was needed, so `git worktree list` stayed at one entry for G7.
+4. **`.remedy-wt/` scratch is gitignored and confirmed so.** `git check-ignore -v` resolves
+   it to `.gitignore:235`. The six extraction scripts and the six extracted slices live
+   there and reach no commit; `git status --porcelain` is empty at every verdict.
+5. **`__pycache__` was purged before each import-based gate** and every Python invocation
+   used `python3 -B`, so no stale bytecode could shadow an edited module in G5 or G7.
+6. **The guard file is touched by two commits by design, not by drift.** Constraint 4
+   requires it: `test_the_known_dead_doc_advertisement_list_only_ever_shrinks` fails on an
+   allowlist entry whose advertisement no longer occurs, so C3 and C4 each remove
+   advertisements, their allowlist entries and the ceiling together. I confirmed the guard
+   is green at C3 (6 passed) before committing it, so the tree is green at BOTH commits and
+   not merely at the end of the round.
+7. **Surviving allowlist entries were never retyped or reordered.** Both edits are
+   whole-line removals from the in-place line list; the C3 and C4 diffs show only `-` lines
+   inside the frozenset plus the one ceiling line changed. The G5 digest at C4 matching the
+   block's expected value is the independent confirmation.
+8. **Observation carried forward, NOT repaired this round (no scope drift).** The spine
+   page's command-taxonomy table still lists `dogfood create/step/show/stop/replay` and
+   `self inspect/plan/propose/reconcile` as development-time commands. These are not
+   `remedy <x>` advertisements, so no sweep in this round sees them and none of the seven
+   gates covers them; `dogfood` in particular names a mechanism this very round deleted the
+   user guide for. I did not touch them — the change set is exact and constraint 8 forbids
+   widening it. Flagging it as material for R-0873's page-by-page ruling.
 
-**88 open by DISTINCT id** at `6335babf`, computed mechanically from
-`.agent/live_review.md`: 101 distinct `^- R-\d+ — ` registrations minus 13 distinct
-`^Done: R-\d+ — ` resolutions. This round registered one (R-0872) and resolved one
-(R-0847), so the count is unchanged from the base `c370dcee`. Four are High — R-0803,
-R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
+## Next
+
+Review this round: re-run G1 to G7 independently against the committed blobs
+`d3e35f0f`..`HEAD` and issue the round 28 verdict. The next authored round is
+R-0872's second half — the flat pre-Step-38 CLI in `docs/system/architecture.md`
+(21 entries) and the one site in `docs/system/vocabulary.md`, taking the allowlist
+to zero and deleting the ratchet, `_ALLOWLIST_CEILING` and
+`test_the_known_dead_doc_advertisement_list_only_ever_shrinks` with it, which
+resolves R-0872. Before authoring it, re-read `.agent/STOP` from disk (Phase 1
+rule 1, before rule 2).
+
+Open findings: **89** by distinct id (102 registrations against 13 resolutions),
+four of them High — R-0803, R-0804, R-0806 and R-0807, all F273's per DECISION F272 D12.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | `4ba30f28`, block copied verbatim, digest verified three ways |
-| C0b | done | `c2a5dca7`, mirrored from the COMMITTED C0a blob |
-| C1 | done | `8fe426b3`, `.agent/plan.md` byte-identical to PLAN27 |
-| C2 | done | `f4390b10`, both appends byte-exact, open set 88 |
-| C3 | done | `088e7e7d`, U1 and U2 applied |
-| C4 | done | `3225d876`, SPEC-GUARD (a)-(j) and P1..P8 |
-| C4b | deviated | UNORDERED extra commit `6335babf`; deviation 1 |
-| C5 | done | this file |
-| U1 | done | FROM 1→0, TO 0→1; the invented `remedy list` is gone and the span is enumerated |
-| U2 | done | FROM 1→0, TO 0→1 |
-| P1 | done | `cockpit.py` — `remedy timeline` → `remedy brain timeline` |
-| P2 | done | `cockpit.py` — the next-action f-string |
-| P3 | done | `trust_report.py` — `remedy constitution` → `remedy brain constitution` |
-| P4 | done | `brain_detail.py` — run-event next action |
-| P5 | done | `brain_detail.py` — `remedy agent-loop` → `remedy dev agent-loop` |
-| P6 | done | `brain_detail.py` — the prose the widened guard does NOT reach, repaired anyway; G7's pair proof gates it |
-| P7 | done | `brain_detail.py` — constitution next action |
-| P8 | done | `brain_detail.py` — `remedy workers` → `remedy worker list` |
-| G1 | done | REAL_EXIT=0, one digest for all three copies |
-| G2 | done | REAL_EXIT=0, `written == slice: True`, 44 lines, both headings 1 |
-| G3 | done | REAL_EXIT=0, both appends, both negative controls reject, open set 88 |
-| G4 | done | REAL_EXIT=0, (a) 1→0, (b) 3→2 with line numbers, `Steps 38 to 43` 1→0 |
-| G5 | done | REAL_EXIT=0, 542/0 and 417/68/43, digest matches, 6 passed |
-| G6 | deviated | REAL_EXIT=0 and every ordered mutation RED, but M4 fires the ceiling rather than staleness and needed the added M4b; deviation 2 |
-| G7 | done | REAL_EXIT=0, eight pairs, five dispatcher probes, ruff clean |
-| G8 | done | REAL_EXIT=0, 2024 passed, 222/44/0, exact set match, all commits under 500 |
-| R-0847 | done | resolved at C4; `Done: R-0847` written at C2 under constraint 4, which fixes C4 in the same round and before the handback |
-| R-0872 | done | registered at C2 with its 43-key measurement and its two-round fix clause; the ratchet that carries it lands at C4/C4b |
-
-## Next
-
-The planner/reviewer re-runs G1 through G8 independently against the committed blobs over
-`c370dcee`..HEAD and issues the round 27 verdict; before authoring round 28 it re-reads
-`.agent/STOP` from disk (Phase 1 rule 1 before rule 2). Round 28 is R-0872's first half:
-delete the four dying pages, repair `docs/system/core-product-spine-v0.md`, and lower
-`KNOWN_DEAD_DOC_ADVERTISEMENTS` and `_ALLOWLIST_CEILING` from 43 to 22 in the same commit.
+| C0a | done | `47400579` — block saved verbatim, sha256 verified |
+| C0b | done | `1ec9489b` — mirrored from the COMMITTED C0a blob |
+| C1 | done | `7769c74a` — PLAN28 byte-identical, 45 lines |
+| C2 | done | `39d85f72` — LEDGER28 and SLIPS28 appended |
+| C3 | done | `43374b84` — five pages `git rm`'d, six rows dropped, 16 entries removed, ceiling 43 -> 27 |
+| C4 | done | `7cfd213e` — spine section and row removed, 5 entries removed, ceiling 27 -> 22 |
+| C5 | done | this commit — the handback |
+| S1 | done | six whole rows, each 1 before / 0 after; `docs/README.md` 204 -> 198 |
+| S2 | done | section and row, each 1 before / 0 after; `self-repair` 7 -> 0 on the page |
+| G1 | done | exit 0 — one digest across all three copies |
+| G2 | done | exit 0 — `written == slice`, 45 lines, both headings 1 |
+| G3 | done | exit 0 — arithmetic + structural reader + both negative controls; open set 89 |
+| G4 | done | exit 0 — five present before / absent after; sweep 0 hits; README 204 -> 198 |
+| G5 | done | exit 0 — 27/27 at C3, 22/22 at C4, digest matches, 387/38/22 over 2 paths, 542/0 |
+| G6 | done | exit 0 — 1 -> 0 both units, page exists, suite 1649 passed 0 failed serially |
+| G7 | done | exit 0 — 222/44/0 unchanged, exact set match, all insertions under 500 |
+| R-0872 | deviated | NOT resolved and not claimed resolved — the ratchet fell 43 -> 22 in two steps; its second half (`architecture.md`, `vocabulary.md`) is the next round |
+| R-0873 | done | registered in C2's LEDGER28; `^- R-0873 — ` == 1 |
