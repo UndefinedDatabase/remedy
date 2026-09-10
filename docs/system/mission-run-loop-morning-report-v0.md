@@ -16,15 +16,15 @@ is satisfied, or when it cannot safely continue.
 ## Quick start (recommended)
 
 ```bash
-# 1. Run a bounded mission loop
-remedy mission run <run_id> --job-id <job_id> --json
+# 1. Run a bounded mission loop, keyed on a MISSION id
+remedy mission run <mission_id> --json
 
-# 2. Read the morning report
-remedy mission report <run_id> --job-id <job_id> --json
+# 2. Read the morning report, keyed on a JOB id
+remedy mission report <job_id> --json
 ```
 
-These are the operator-facing commands. They call the same logic as the
-internal `dogfood` commands below.
+These are the operator-facing commands, and since F275 they are the only
+ones: the internal `dogfood` group they used to wrap is deleted.
 
 ## What makes a run stop?
 
@@ -34,12 +34,16 @@ A run stops on any of these conditions:
 - Blocked (no safe action available)
 - Waiting for approval (operator must approve managed execution)
 - Waiting for operator (builder session needs human action)
-- Budget exhausted (step, token, or wall-clock limit reached)
+- Budget exhausted (token budget reached)
 - Operator stopped (manual stop command)
-- Max loop steps reached (loop-level cap, default 10)
-- Max loop seconds reached (wall clock, default 300)
+- Iteration cap reached (`--iterations`)
 - No safe next action
 - Internal error
+
+Remedy deliberately ships no per-step or wall-clock cap on `remedy mission
+run`. The `--max-steps` and `--max-seconds` flags belonged to the deleted
+dogfood loop, were accepted and ignored by the surviving handler, and F275
+removed them rather than wiring them in — see R-0871 and DECISION F275 D14.
 
 No unbounded loop is allowed.
 
@@ -58,15 +62,11 @@ The morning report answers:
 
 ## How Self-Repair Proposals fit
 
-The morning report shows:
-
-- Whether proposals exist
-- Latest proposal status
-- How many await operator review
-- Command to inspect proposals
-
-Self-repair proposals are never auto-created by the loop. They come from
-prior analysis (replay, review, test failures).
+They do not, any more. The `self-repair` group and the proposal queue behind
+it were deleted by F275; the approval gate F017 owns inherited the idea of a
+policy-authorised approval, and no surviving command creates, lists or
+approves a self-repair proposal. The finding R-0845 records what was lost and
+DECISION F260 D3 records which feature took which idea.
 
 ## What is still manual
 
@@ -82,34 +82,15 @@ beyond evaluating state and recording checkpoints.
 
 ## Terminology note
 
-The CLI group `dogfood` is internal developer naming. Operator-facing
-documentation uses:
+The CLI group `dogfood` was internal developer naming for the prototype this
+page was written against. Operator-facing documentation uses:
 
 - **Mission Run** — the bounded loop
 - **Mission Report** — the morning report
-- **Self-Repair Proposal** — suggested fix from analysis
 
-The internal `dogfood` commands remain available for debugging and
-backwards compatibility.
-
-## Internal commands (advanced)
-
-```bash
-# Create a run
-remedy dogfood create <job_id> --json
-
-# Run the bounded loop (low-level)
-remedy dogfood run-loop <run_id> --job-id <job_id> --max-steps 10 --max-seconds 300 --json
-
-# Morning report (low-level)
-remedy dogfood morning-report <run_id> --job-id <job_id> --json
-
-# Single step (fine-grained control)
-remedy dogfood step <run_id> <job_id> --json
-
-# Replay analysis
-remedy dogfood replay <run_id> <job_id> --json
-
-# Quick status
-remedy dogfood show <run_id> <job_id> --json
-```
+Remedy deliberately ships no low-level equivalents of these two commands.
+The whole `dogfood` group — create, run-loop, morning-report, step, replay
+and show — was deleted by F275 together with the module behind it, and
+nothing stands in for it: there is no alias, no shim and no compatibility
+reader, per AGENTS.md Scope Control. The operator-facing pair above is the
+only surface, and git history is where the prototype lives now.
