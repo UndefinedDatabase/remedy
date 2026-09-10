@@ -462,14 +462,14 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
         return (
             f"  {_NEXT} Grant workspace permission, then run:\n"
             f"      remedy job permit {job.id} workspace_write allow\n"
-            f"      remedy job run-next {job.id}"
+            f"      remedy job resume {job.id}"
         )
 
     if signals["has_interrupted"] and pending:
         return (
             f"  {_NEXT} Inspect the timeline, then resume:\n"
             f"      remedy brain timeline {job.id}\n"
-            f"      remedy job run-next {job.id}"
+            f"      remedy job resume {job.id}"
         )
 
     intents = list_patch_intents(job)
@@ -484,7 +484,7 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
         return (
             f"  {_NEXT} Review and decide on patch intents, then continue:\n"
             f"      remedy patch list {job.id}\n"
-            f"      remedy job run-next {job.id}"
+            f"      remedy job resume {job.id}"
         )
 
     if n_approved and not pending and not n_pending_intents:
@@ -496,7 +496,7 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if pending:
         return (
             f"  {_NEXT} Continue execution:\n"
-            f"      remedy job run-next {job.id}"
+            f"      remedy job resume {job.id}"
         )
 
     return (

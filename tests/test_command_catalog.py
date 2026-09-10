@@ -249,7 +249,7 @@ class TestRequiredCommands:
 
     REQUIRED = (
         "job.create", "job.list", "job.show", "job.attach-repo", "job.permit",
-        "job.permissions", "job.run-next",
+        "job.permissions",
         "project.create", "project.list", "project.show", "project.attach-repo",
         "project.attach-job", "project.context",
         "patch.list", "patch.show", "patch.approve", "patch.reject", "patch.apply",

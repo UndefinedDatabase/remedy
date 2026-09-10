@@ -90,7 +90,7 @@ def build_job_dashboard(
         next_actions.append(f"remedy decision list {job_id[:8]}")
     pending = [t for t in job.tasks if t.status == RunState.PENDING]
     if pending:
-        next_actions.append(f"remedy job run-next {job_id[:8]}")
+        next_actions.append(f"remedy job resume {job_id[:8]}")
     next_actions.append(f"remedy brain graph {job_id[:8]}")
 
     return {

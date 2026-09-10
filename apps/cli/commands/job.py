@@ -2402,7 +2402,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job_id,
         json_output=getattr(args, "json", False),
     ),
-    "job.run-next": lambda args: _cmd_run_next_task_local(args.job_id),
     "job.run": lambda args: _cmd_job_run_cycles(
         args.job_id,
         cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),

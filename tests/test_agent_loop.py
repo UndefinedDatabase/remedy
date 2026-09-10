@@ -515,7 +515,7 @@ class TestSummarizeLoopState:
         job.tasks.append(_pending_task())
         state = derive_agent_loop_state(job, [])
         out = summarize_agent_loop_state(job, state)
-        assert "job run-next" in out
+        assert "job resume" in out
 
     def test_next_action_planned_suggests_plan(self):
         job = _make_job()

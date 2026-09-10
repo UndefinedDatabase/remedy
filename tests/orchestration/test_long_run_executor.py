@@ -722,7 +722,7 @@ class TestCycleConfig:
 
 
 def _single_pass(job: Job, provider) -> None:
-    """Today's single pass, exactly as `remedy job run-next` performs it."""
+    """Today's single pass, exactly as `remedy job resume` performs it."""
     from packages.orchestration.storage import save_job
     from packages.orchestration.task_runner import (
         finalize_task,

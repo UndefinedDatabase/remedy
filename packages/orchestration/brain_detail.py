@@ -312,7 +312,7 @@ def _detail_job(
 
     next_actions: list[str] = []
     if pending:
-        next_actions.append(f"remedy job run-next {job_id_str}")
+        next_actions.append(f"remedy job resume {job_id_str}")
     next_actions.append(f"remedy brain trust {job_id_str}")
     next_actions.append(f"remedy brain {job_id_str}")
 
@@ -370,7 +370,7 @@ def _detail_task(
 
     next_actions: list[str] = []
     if task.status.value == "pending":
-        next_actions.append(f"remedy job run-next {job_id_str}")
+        next_actions.append(f"remedy job resume {job_id_str}")
 
     return BrainNodeDetail(
         job_id=job_id_str,

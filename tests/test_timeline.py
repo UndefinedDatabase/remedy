@@ -714,7 +714,7 @@ class TestDeriveNextAction:
         job = _make_job()
         job.tasks.append(Task(description="t", inputs={}))
         out = summarize_timeline(job, [])
-        assert "job run-next" in out
+        assert "job resume" in out
         assert str(job.id) in out
 
     def test_permission_denied_suggests_set_permission(self):

@@ -420,7 +420,7 @@ def _derive_next_action(job: Job, events: list[dict[str, Any]]) -> str:
     if pending:
         return (
             f"  {_NEXT} Run the next pending task:\n"
-            f"      remedy job run-next {job_id_str}"
+            f"      remedy job resume {job_id_str}"
         )
 
     return (

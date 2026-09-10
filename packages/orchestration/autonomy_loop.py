@@ -181,7 +181,7 @@ def _decide(
         pending = [t for t in (job.tasks or []) if t.status == RunState.PENDING]
         if pending:
             return ("needs_approval", "pending tasks require approval (level 1: propose)",
-                    "remedy job run-next <job_id>", "")
+                    "remedy job resume <job_id>", "")
         return ("complete", "no pending tasks", "none", "")
 
     # Level 2: approved_apply — can apply approved patches
@@ -214,7 +214,7 @@ def _decide(
         if not pending:
             return ("complete", "no pending tasks (level 4: bounded_loop)", "none", "")
         return ("run_task", "bounded loop cycle (level 4: bounded_loop)",
-                "remedy job run-next <job_id>", "")
+                "remedy job resume <job_id>", "")
 
     # Level 5: revert_capable — can revert applied patches
     if autonomy_level == 5:

@@ -369,7 +369,7 @@ print(str(job.id))
         short_id = job_id[:8]
 
         run = subprocess.run(
-            [*_CLI, "job", "run-next", short_id],
+            [*_CLI, "job", "resume", short_id],
             capture_output=True, text=True, timeout=30,
             cwd=str(repo), env=env_with_data, stdin=subprocess.DEVNULL,
         )
@@ -713,7 +713,7 @@ print(json.dumps({"job_id": str(job.id)}))
 
         # 3. run attempt → expect blocked (exit 3, stderr mentions approval)
         run = subprocess.run(
-            [*_CLI, "job", "run-next", short_id],
+            [*_CLI, "job", "resume", short_id],
             capture_output=True, text=True, timeout=30,
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )

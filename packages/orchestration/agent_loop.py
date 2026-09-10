@@ -446,7 +446,7 @@ def _next_action(job: Job, state: AgentLoopState) -> str:
     if state.current_stage == AgentLoopStage.BUILD:
         return (
             f"  {_NEXT} Run next Remedy task:\n"
-            f"      remedy job run-next {full_id}"
+            f"      remedy job resume {full_id}"
         )
     return (
         f"  {_NEXT} Plan the job:\n"

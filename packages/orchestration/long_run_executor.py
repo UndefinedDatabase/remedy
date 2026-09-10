@@ -558,7 +558,7 @@ def default_task_step(job: Job, provider_call: ProviderCall,
     """Run ONE ready task through the existing single-task path.
 
     run_next_task -> materialize -> verify_task_output -> finalize_task, which
-    is exactly what ``remedy job run-next`` does.  Rollback on builder failure
+    is exactly what ``remedy job resume`` does.  Rollback on builder failure
     is ``run_next_task``'s concern; the exception is translated into a failed
     attempt so the conductor can end the cycle and record it.
 

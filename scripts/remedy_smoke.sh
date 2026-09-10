@@ -9,7 +9,7 @@
 #   ./scripts/remedy_smoke.sh
 #
 # Requirements: remedy CLI on PATH (grouped entry point), python3.
-# Optional: Ollama running locally (for job run-next).
+# Optional: Ollama running locally (for job resume).
 #
 # Overrides:
 #   REMEDY_SMOKE_REPO  — temp repo path (default: /tmp/remedy-target-repo)
@@ -332,8 +332,8 @@ print('    job state=planned, 1 task, task_type=write_readme: OK')
     # 5. Run next task (requires Ollama — skip gracefully if unavailable)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="5"
-    echo "--- 5. job run-next"
-    if remedy job run-next "${JOB_ID}"; then
+    echo "--- 5. job resume"
+    if remedy job resume "${JOB_ID}"; then
         echo "    Task run: OK"
     else
         echo "    Task run: SKIP (Ollama likely unavailable — continuing smoke)"
@@ -2530,7 +2530,7 @@ print(str(job.id)[:8])
 
     # Run attempt -> expect exit 3 + "plan awaiting approval"
     set +e
-    RUN_OUT="$(remedy job run-next "${FP_JOB_ID}" 2>&1)"
+    RUN_OUT="$(remedy job resume "${FP_JOB_ID}" 2>&1)"
     RUN_EXIT=$?
     set -e
     if [ "$RUN_EXIT" -ne 3 ]; then

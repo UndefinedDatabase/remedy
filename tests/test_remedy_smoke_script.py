@@ -334,11 +334,11 @@ class TestSmokeScriptText:
     def test_smoke_readme_seed_before_job_run(self):
         text = _script_text()
         readme_pos = text.find("README.md")
-        run_pos    = text.find("remedy job run-next")
+        run_pos    = text.find("remedy job resume")
         assert readme_pos != -1, "smoke must contain README.md seed"
-        assert run_pos    != -1, "smoke must contain remedy job run-next step"
+        assert run_pos    != -1, "smoke must contain remedy job resume step"
         assert readme_pos < run_pos, (
-            "smoke must seed README.md before job run-next so the file exists when apply runs"
+            "smoke must seed README.md before job resume so the file exists when apply runs"
         )
 
     def test_smoke_default_prompt_forces_write_readme_task(self):

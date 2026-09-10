@@ -406,7 +406,7 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
             f"  {_NEXT} Inspect the interrupted run:\n"
             f"      remedy brain timeline {job_id_str}\n"
             f"  Then resume:\n"
-            f"      remedy job run-next {job_id_str}"
+            f"      remedy job resume {job_id_str}"
         )
 
     # Patch risk with pending tasks: direct to approval queue if any decisions pending
@@ -420,18 +420,18 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
                     f"  {_NEXT} Approve or reject pending patch intents, then run next task:\n"
                     f"      remedy patch list {job_id_str}\n"
                     f"      remedy patch approve {job_id_str} <intent_id>\n"
-                    f"      remedy job run-next {job_id_str}"
+                    f"      remedy job resume {job_id_str}"
                 )
             return (
                 f"  {_NEXT} Review patch intent risk levels, then run next task:\n"
-                f"      remedy job run-next {job_id_str}"
+                f"      remedy job resume {job_id_str}"
             )
 
     # Normal: pending tasks and all permissions OK
     if pending:
         return (
             f"  {_NEXT} Run the next pending task:\n"
-            f"      remedy job run-next {job_id_str}"
+            f"      remedy job resume {job_id_str}"
         )
 
     # All patch intents approved and no pending tasks

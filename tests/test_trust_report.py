@@ -606,7 +606,7 @@ class TestNextSafeAction:
         job = _make_job()
         job.tasks.append(_make_pending_task())
         out = summarize_trust_report(job, [])
-        assert "job run-next" in out
+        assert "job resume" in out
 
     def test_workspace_denied_suggests_set_permission(self):
         job = _make_job()

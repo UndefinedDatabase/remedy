@@ -393,7 +393,7 @@ class TestNextBestAction:
         job = _make_job()
         job.tasks.append(_make_pending_task())
         out = summarize_cockpit(job, [])
-        assert "job run-next" in out
+        assert "job resume" in out
         assert str(job.id) in out
 
     def test_workspace_denied_suggests_set_permission(self):
@@ -434,7 +434,7 @@ class TestNextBestAction:
              "metadata": {"intent_count": 1, "risk_levels": ["medium"]}},
         ]
         out = summarize_cockpit(job, events)
-        assert "job run-next" in out
+        assert "job resume" in out
 
 
 # ---------------------------------------------------------------------------

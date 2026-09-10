@@ -385,16 +385,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=False,
         related=("job.show", "job.stop"),
     ),
-    CommandEntry(
-        command_id="job.run-next",
-        group_id="job",
-        subcommand="run-next",
-        description="Run the next pending task for a job.",
-        action_class="write_metadata",
-        args=(_JOB_ID,),
-        may_execute_commands=True,
-        related=("job.show", "test.run"),
-    ),
 
     CommandEntry(
         command_id="job.run",
@@ -420,7 +410,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         may_execute_commands=True,
         is_expensive=True,
-        related=("job.run-next", "job.plan", "decision.list"),
+        related=("job.plan", "decision.list"),
     ),
 
     CommandEntry(
@@ -430,7 +420,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Plan tasks for a job using local LLM.",
         action_class="write_metadata",
         args=(_JOB_ID,),
-        related=("job.create", "job.run-next"),
+        related=("job.create", "job.resume"),
     ),
 
     CommandEntry(
