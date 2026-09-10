@@ -12099,3 +12099,186 @@ because retiring them is bookkeeping that belongs with DECISION F260 D3.
 REVERSE THIS DECISION by restoring the two modules and their handler from git history and
 re-pointing the three survivors at them; the findings would then be resolved as obsolete
 rather than fixed.
+
+## DECISION F260 D3 (2026-09-10, F275 round 23) — the deletion paragraph: every module the prototype-cluster slice removed, and the feature that inherited its idea
+
+WHERE THIS WAS OWED. `docs/roadmap/features/T2_F260.md` carries D3 as a stub headed "to
+be recorded in T005" and lists the mapping it must expand. F260's Design section names the
+twenty-four modules; F275's Goal & Done makes this paragraph a closing condition of the
+feature; F275's T001 orders it drafted after the last module group and before the slice is
+called done. It is recorded here rather than in F260's file because `.agent/decisions.md`
+is where every DECISION of this chain lives, and because F260 is `[x]` and its file is kept
+unedited on purpose, as F272's, F274's and F275's own files each state.
+
+THE MEASUREMENT, taken by the reviewer at `6f865e50` by importing the SHIPPED readers —
+`apps.cli.command_catalog._BASE_CATALOG` and `GROUPS`, and
+`packages.orchestration.run_contract.ContractAction` — at F275's fork point
+`a5bf894946ab6de053a4232109d6341a63533768` in a read-only disposable worktree and at the
+tip, never by grepping source. Commands fall 339 to 222. Groups fall 59 to 44. Run-contract
+actions fall 122 to 90. Exactly ONE command id was ADDED across the whole feature,
+`mission.readiness`, which is the first carry-over. All twenty-four modules F260's Design
+lists are absent from disk, verified path by path at the same commit.
+
+THE COMMAND GROUPS DELETED WHOLE, with their ids: `approval` (policy-disable,
+policy-enable, policy-evaluate, policy-grant, policy-list, policy-show); `builder`
+(adapter-enable, adapter-list, adapter-show, integrity, package-create, session-create,
+session-intake, session-list, session-record-output, session-show); `builder-routing`
+(decide, report); `candidate-quality` (evaluate, integrity, report, scorecard, show);
+`dogfood` (brainstorm, checkpoints, create, evaluate, morning-report, next, replay,
+run-loop, show, status, step, stop); `execution` (approval-list, approval-show,
+approval-validate, approve, claude-doctor, debug-bundle, integrity, list,
+operator-runbook, run, show, template-create, template-disable, template-enable,
+template-list, template-show, template-update); `external-builder` (evaluate, integrity,
+package-create, package-list, package-show, submission-list, submission-show, submit);
+`local-advisor` (run, status); `local-candidate` (generate, status); `overnight`
+(contract-create, contract-readiness, contract-show, cycles, evaluate, integrity,
+next-action, plan, readiness, report, run); `progress` (checklist); `provider`
+(intake-repair, material-show, trust-show, verification-show, verify); `route-policy`
+(evaluate, set, show); `self-repair` (proposal-approve, proposal-create, proposal-deny,
+proposal-edit, proposal-list, proposal-show, worker-prompt); `tournament` (integrity,
+list, report, show).
+
+THE GROUPS THAT SURVIVE HAVING LOST IDS: `context` loses explain, optimize and pack;
+`repair` loses attempts, context-pack, evaluate, integrity, item-create-from-failure,
+item-create-from-review, item-list, item-show, policy-set, policy-show and route-recommend;
+`review` loses bundle; `worker` loses add, disable, doctor, explain, recommend,
+registry-integrity, registry-list and registry-show.
+
+THE MAPPING, module by module. Each entry names the feature that inherited the IDEA, and
+every one is taken from a dated finding or a dated decision rather than from a reading of
+what the module looked like it did. `provider_trust.py` and
+`provider_trust_verification.py` — the Trust Gate; NONE, deliberately, the mapping F260's
+own stub already fixes for the external builder, with R-0866 recording the residue.
+`external_builder_sandbox.py` — F085, external-worker ingress (R-0852), with the scoring
+step going to F082 (R-0849). `main_builder_adapter.py` and `managed_builder_execution.py` —
+F085 for bounded subprocess execution and F017 for human approval (R-0856, R-0860).
+`execution_approval_policy.py` — F017, policy-authorised approval (R-0851).
+`local_model_advisor.py` — F110, local-model advisory critique (R-0853).
+`local_candidate_generator.py` — NONE, deliberately (R-0848). `candidate_quality.py` and
+`model_route_tournament.py` — F082, evidence-based comparison of a candidate (R-0848).
+`builder_routing.py` — F110, routing configuration (R-0848, with R-0831 holding the
+knob-by-knob audit). `worker_registry.py` — F110, model routing (R-0865).
+`worker_recommend.py` — NONE, by DECISION F274 D7, which rules worker recommendation dies
+with the cluster; its token mode MOVED to `token_policy.py` because it never belonged to
+the cluster. `context_pack.py` and `context_optimizer.py` — F107, context compiler v2
+(R-0842). `overnight_mission.py` and `overnight_executor.py` — F269, which
+`docs/system/vocabulary.md` already records as the feature that builds the contract
+(R-0845), with the morning report carried to `mission report` in its degraded form and the
+run-keyed addressing deleted (R-0840). `overnight_readiness.py` — CARRIED, not deleted in
+idea: DECISION F275 D1 moved its measured definition set byte-identically into
+`packages/orchestration/mission_readiness.py` and it ships as `mission readiness`, the one
+command id this feature added. `repair_loop_v2.py` — F110, for the repair work item, its
+route recommendation and its policy knobs (R-0845). `self_repair_proposal.py` — F017, the
+approval gate (R-0845). `dogfood_run.py` — NONE, deliberately, because F260's Design
+deletes the prototype rather than carrying it (R-0845). `progress_ledger.py` and
+`review_bundle.py` — `job show --full` and `job evidence`, the mapping F260's stub fixes,
+with the safe per-job bundle idea itself going to the review-zip pipeline (R-0844).
+`feature_planner.py` — NONE, by DECISION F274 D6, which deletes the `feature` command
+group with its module edges and rules that nothing inherits it.
+
+THE IDEAS DELETED RATHER THAN INHERITED, each naming the finding that holds its full
+enumeration, because the record is append-only and citing a dated measurement is stronger
+than copying it into a second place where it can drift: the user-settable route-policy
+knobs, none of which has an equivalent in F110's configuration (R-0831); the five run-keyed
+dogfood fields of the old overnight report (R-0840); the three cockpit context readings —
+the context-pack brain node, the humanized `context_pack_created` event and the planner row
+of the token-budget breakdown (R-0842); the per-job review-bundle export and its doctor row
+(R-0844); the 38 ids and the second mode of `remedy mission run` (R-0845); the 13 ids and
+four groups of the builder-routing component (R-0848); `external-builder evaluate`, which
+leaves the ingress deliberately without a scoring step until F082 provides one (R-0849);
+the six ids and the `approval` group (R-0851); the seven ids and the `external-builder`
+group (R-0852); the `local-advisor` group and the `--use-local-advisor` path (R-0853); the
+seventeen commands, the `execution` group and the fourteen run-permission actions (R-0856);
+the narrowing of three surviving `worker` commands (R-0857); the thirteen ids, the `builder`
+group and six run-permission actions (R-0860); the review-state stop in three surviving
+modules, which NO feature inherits because the capability as built was a parser for a ledger
+format this repository no longer writes (R-0863); the routing recommendation and the
+`ollama_placeholder_available` cockpit key (R-0865); the only route by which an external
+candidate entered a self-improvement attempt (R-0866); and two of the seven checks of
+`verify_provider_patch_material` (R-0867).
+
+WHAT THIS PARAGRAPH DELIBERATELY DOES NOT DO. It provides no stub, no shim, no alias and no
+compatibility reader, which AGENTS.md's Scope Control forbids by name and which T001 RULE 3
+forbids again; git is the archive. It does not re-open any of the findings above, each of
+which stays as its own dated record; naming an inheritor is not resolving a finding. And it
+mints no feature: where the answer is NONE it says NONE, because "deliberately absent" is a
+supported answer in this repository and an invented owner is not.
+
+HOW TO REVERSE: delete this decision. The deletion itself is reversed only from git
+history, which is the point of recording the mapping before the branch merges.
+
+## DECISION F275 D12 (2026-09-10, F275 round 23) — the three questions the D3 fix clauses hand to this round, ruled
+
+(a) THE DEGRADED RAIL IS KEPT, which is R-0866's question. `AttemptState`'s members beyond
+    `AWAITING_EXTERNAL_CANDIDATE` and the `self_awaiting_candidate` situation key in
+    `orchestrator_brain.py` STAY. They are not dead code: they still run for an attempt
+    whose `patch_intent_id` is already on disk, and what round 22 removed was the only
+    code that could acquire a NEW one. Retiring a surviving module's vocabulary is a
+    product change, and F275's Do-not-touch forbids deleting any module outside F260's
+    Design list. ALTERNATIVE CONSIDERED: retire the post-`AWAITING_EXTERNAL_CANDIDATE`
+    members now — rejected because it would delete reachable behaviour under a deletion
+    mandate that does not cover it, and because a state machine narrowed on the way past
+    is exactly the "while I'm here" edit Scope Control names. R-0866 stays OPEN and its
+    resolution is the feature that next opens the external-candidate route.
+
+(b) `provider_patch_material.py` IS REAPED BY NO FEATURE TODAY, which is R-0867's
+    question, and the ruling is stated rather than routed to a convenient id. Its
+    remaining reachable function reads material that nothing can now create, and no
+    feature file in `docs/roadmap/features/` claims it — the reviewer checked at
+    `6f865e50`, where the only roadmap file naming it is F278, and only for its
+    atomic-write helper. The module is NOT deleted here, because F275's Do-not-touch
+    rules that no module outside F260's Design lists is deleted. TWO CONSEQUENCES BIND
+    FORWARD. FIRST, and this is the half R-0867's fix clause asks for by name: no round
+    may treat `verify_provider_patch_material`'s weakened `ok` as a safety property. It
+    lost two of seven checks and is strictly easier to satisfy than the name suggests.
+    SECOND, its retirement belongs to whichever feature next opens the external-candidate
+    route, and this decision deliberately mints no feature to hold it, because
+    registering a feature to justify a deletion is how an attic gets built.
+
+(c) `repair_request_builder.py` IS REAPED BY NO FEATURE TODAY either, which is the second
+    half of R-0868's question, and for the same reason and with the same reversal. It
+    still packages evidence for an external actor; what it no longer claims is a round
+    trip, because DECISION F275 D11 removed the five advertisements and the two result
+    fields that promised one. It is outside F260's Design list and is therefore not
+    deleted by this feature.
+
+HOW TO REVERSE: delete this decision. Any later relay may rule (a) the other way, or name
+an owner for (b) and (c), without disturbing DECISION F260 D3.
+
+## DECISION F275 D13 (2026-09-10, F275 round 23) — the fix clauses bound to "the D3 round" are discharged across two rounds, because they do not fit one block
+
+CONTEXT. The fix clauses naming "the round that drafts DECISION F260 D3" as the round that
+discharges them are R-0832's, R-0858's, R-0859's, R-0864's, R-0866's, R-0867's and
+R-0868's, together with the clause R-0870 carries in place of the resolved R-0855's.
+Between them they order the deletion paragraph itself, the rulings D12 records, an
+event-coupling measurement with the dead code it exposes, a referential-closure test with
+its catalog repairs, a roadmap-file repair, the vacuous test assertions and the retirement
+of the cluster scaffolding.
+
+MEASURED, not estimated: DECISION F085 D6 caps a step block at 490 lines TOTAL with its
+prose capped at 400 by DECISION F105 D5. The reviewer assembled the slices for all eight
+clauses at `6f865e50` and the block does not fit — the D3 slice alone runs past a hundred
+lines once the id enumerations the clauses require by name are in it, and DECISION F009 D16
+rules that a block which does not fit is not delivered, it becomes a declared deviation on
+a round that did nothing wrong.
+
+CHOSEN: "the round that drafts DECISION F260 D3" is read as the D3 SEQUENCE, which is this
+round and the one after it, and every clause above is discharged inside that sequence. This
+round takes the decision itself, the three rulings, the record, and the two repairs whose
+clauses name this round AT THE LATEST — R-0870's two comments and R-0864's two vacuous
+assertions. The next round takes R-0832's event-name couplings and the dead code path they
+left, R-0859's two dangling `related=` references and its referential-closure test,
+R-0858's F267 repair as the `Note: F275 R23` entry re-measures it, R-0843's `Groups` table
+in `docs/system/architecture.md`, and R-0868's retirement of `cluster_deletion_map.txt`,
+`test_cluster_deletion_map.py`, `test_cluster_deletion_order.py` and
+`.agent/f275_deletion_order.md`.
+
+ALTERNATIVES CONSIDERED. (i) Exceed the block cap — rejected on the cap, which is a
+measurement and not a preference. (ii) Draft D3 with the enumerations replaced by pointers
+to the findings — rejected because five of the clauses order the ids NAMED in D3, and a
+paragraph that cites where the list lives is not the list. (iii) Split D3 itself across two
+decisions — rejected because the whole value of the deletion paragraph is that one place
+holds the whole mapping.
+
+HOW TO REVERSE: delete this decision; the clauses then bind whichever single round a later
+relay chooses, and nothing on disk needs to change.
