@@ -41,8 +41,10 @@ Guard tests enforce this boundary (see
 All current `.agent/live_review.md` reads are in development/self-dogfood paths.
 No product-facing operator command depends on it for core functionality.
 
-`progress_cmd.py` reads it for developer convenience display.
-It is classified as a development command, not a core product operator command.
+`progress_cmd.py` READ it for developer convenience display, and it was classified
+as a development command rather than a core product operator command. F275 deleted
+that handler with the whole `progress` command group, and nothing product-facing
+replaced it, so no command reads this file for display today.
 
 ## Planned migration path
 

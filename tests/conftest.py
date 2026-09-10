@@ -166,7 +166,6 @@ SUBPROCESS_FILES = {
     "test_small_repo_fixtures.py",
     "test_project_brain.py",  # orchestration/
     "test_project_constitution.py",
-    "test_agent_loop_execution.py",
     "test_autonomy_readiness.py",
     "test_memory_gateway.py",
     "test_memory_learn.py",
