@@ -439,3 +439,197 @@ deviation 1 (C4 committed twice, the first unstaged unpushed) and deviation 2 (G
 `ANY hit under packages/` clause against the same block's order to write deliberate
 absences). Session 12 continues from there; Phase 1 rule 1 — re-read `.agent/STOP`
 from disk — comes before Phase 1 rule 2.
+
+## Reviewer verdict on round 22 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 22: **PASS.** Written by the planner and reviewer of SESSION 12 after reading the committed
+range `5178df03`..`67f83bdd` and RE-RUNNING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was not evidence for any line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST substantive commit of round 23, per amend0827-process-diet rule 1.
+
+WHAT THE REVIEWER RE-MEASURED. Seven single-parent commits C0a `05cdebe2`, C0b `f1d77cac`, C1 `80268fd0`,
+C2 `c9b439b3`, C3 `6992661a`, C4 `0242c0a3` and C5 `67f83bdd`, per-commit insertions 490, 419, 20, 14, 66
+and 183 for the six before the handback, every one under the AGENTS.md DECISION F104 D1 cap of 500, each
+parent count read from `git log --format=%p`. G1 IS THE PRIMARY PROOF OF §4 ITEM 9 AND NOT THE DIGEST
+FALLBACK: the reviewer's own delegation source `.remedy-wt/f275-r22.md` and both committed copies are
+49993 bytes at `101928f714785319151732c17c8758b4ded01df8221e0b7b41a7020aabff56cc` and compare BYTE-EQUAL;
+per §3 item 37 that chain covers those three artefacts and claims nothing about the emitted bytes. G2:
+`.agent/plan.md` at C1 is 2300 bytes byte-identical to the PLAN22 slice, 40 lines against the cap of 50,
+with `## Goal` and `## Next Steps` each exactly once; all FOUR slices occur EXACTLY ONCE in their targets
+and a sweep for all eight marker strings over the four target files returns ZERO for every file.
+
+G3 HELD OVER THREE APPENDS. For `.agent/live_review.md`, `.agent/prose_slips.md` and
+`.agent/decisions.md` the committed post-blob equals the pre-blob, then ONE newline, then the slice
+exactly as extracted; the joining byte was READ BACK from each post blob at offset `len(pre)` and is a
+newline in all three, rather than asserted — the correction the round 21 slip asked for. The structural
+reader counted N from the slice itself — 5, 1 and 9 paragraphs — and matched the last N blank-line units
+of each whole post-file IN ORDER, and all three NEGATIVE CONTROLS were flipped inside the FIRST appended
+paragraph per §3 item 36 and rejected by BOTH readers while both accepted all three truths. `^Gate: `
+rose 43 to 44; `^Gate: F275 R21 `, `^Note: F275 R22 `, `^- R-0866 — `, `^- R-0867 — `, `^- R-0868 — ` and
+`^## DECISION F275 D11 ` each occur EXACTLY ONCE. THE OPEN SET WENT 88 TO 91 BY DISTINCT ID against
+registrations 94 to 97 and resolutions 6 to 6, with `Landed:` unchanged at 39 lines and 35 distinct ids
+and never subtracted — correct for a round that registers three findings and resolves none.
+
+G4 IS RED, AND THE REVIEWER SUSTAINS BOTH THE COLOUR AND THE WORKER'S REFUSAL TO CHASE IT. The gate as
+the reviewer wrote it CANNOT PASS, and that is a defect of the block rather than of the round: its final
+clause makes ANY hit for a deleted module name under `packages/`, `apps/` or `tests/` a defect of the
+round, while steps 3(a), 5 and 9 of the SAME block ORDER deliberate-absence comments that name exactly
+those modules, because AGENTS.md's Code Discoverability Conventions require a deliberate absence to be
+documented where a reader would search for it. That is `docs/agents/planner_reviewer_prompt.md` §3 item 2
+verbatim — a zero-gate counting a string the same block writes into the same file — and it is registered
+below as `R-0869`, because amend0827-process-diet rule 2 reserves an id for a gate over production code
+shown to be unmeetable.
+THE HALF THAT IS MEETABLE HOLDS COMPLETELY, and it is the half R-0861's fix clause exists to protect. The
+reviewer re-ran the sweep with its own script over the **1652** tracked files outside `.agent/` and
+`.data/`: all five deleted command ids, all six deleted `ContractAction` values and all five SPACED
+advertisement forms — `remedy provider intake-repair`, `trust-show`, `material-show`, `verify` and
+`verification-show` — return **ZERO hits anywhere in the repository**, so no page and no live code path
+still gives an operator a command that cannot run. RAW over the bare module names is **20**, printed in
+full and not truncated by the worker, and the reviewer's own classification of it is: **7** are history
+prose under `docs/roadmap/features/`, the legitimate survivor class since round 19; **5** are the
+deliberate-absence notes the block itself ordered, in `self_dogfood_execution.py` and
+`provider_patch_material.py`; **5** are PERSISTED data-shape names — the `provider_trust_report_id` field
+and JSON key — which a deletion round must not change, because a stored record's shape is not a code
+reference; **2** are illustrative docstring examples inside the two cluster ratchets R-0868 already routes
+for retirement; and **1** is the stale `CLUSTER_COMMAND_HANDLERS` entry that is R-0864's own subject.
+That leaves exactly **TWO** genuinely new residues, both prose in comments and both in files the change
+set did NOT name: `packages/common/public_text_redaction.py:4`, whose provenance sentence cites a path
+that no longer exists, and `packages/orchestration/decision_evidence.py:54`, which calls
+`provider_trust_verification.ProviderVerificationEvidenceRef` one of "the two nearest existing types" and
+is now simply FALSE. The worker found both, declined to widen an exhaustive change set to reach them, and
+flagged them for the reviewer — which is the correct handling, and they are folded into R-0855 below
+rather than given an id of their own, per §3 item 30.
+
+G5's STOP CONDITION DID NOT FIRE. The reviewer re-ran the red-proof in a disposable worktree at C4
+`0242c0a3`: the import resolves inside that worktree so no editable install shadows it, the mutated bytes
+occur exactly ONCE in the named path, the unmutated CONTROL is exit 0 at 39 passed, making `_transition`
+ACCEPT an illegal transition instead of refusing is exit 1 with EXACTLY ONE failure —
+`TestStartAndIdempotency::test_transition_rejects_illegal` — and the revert returns exit 0 at 39 passed
+with the worktree porcelain EMPTY. The state machine this round leaves standing is guarded by a test that
+bites.
+
+G6 DISCHARGES R-0859's STANDING OBLIGATION BY MEASUREMENT. Reading the SHIPPED catalog by importing
+`_BASE_CATALOG` and `GROUPS`, never by grepping source, and reading the base the same way in a READ-ONLY
+disposable worktree: commands fall **227 to 222**, groups **45 to 44**, `"provider"` is ABSENT from
+`GROUPS`, the id set beginning `provider.` is EMPTY where the base held five, duplicate ids are **0** at
+both revisions, and resolving every `related=` tuple against the live id set — 165 tuples at the base, 160
+at the tip — gives EXACTLY TWO dangling references at BOTH revisions, `mission.run -> dogfood.run-loop`
+and `repo.status -> readiness.show`, both pre-existing and both held by R-0859. THIS ROUND ADDED NONE,
+which is what the standing obligation asks, and step 7 repaired the three it would otherwise have created.
+
+G7: the guards 884 passed, the canary 42, and THE FULL SUITE WAS RE-RUN BY THE REVIEWER SERIALLY IN THE
+PRIMARY CHECKOUT and was GREEN at **18352 passed, 23 skipped and ZERO failed** in 1287.83s. THE ARITHMETIC
+CLOSES BY THE ID SET, taking the WHOLE line as the node id so a parametrized id carrying a space is not
+truncated into a collision: **18478** at the base against **18375** at the tip, being **104 ids REMOVED
+against 1 ADDED**, and 18352 plus 23 equals 18375 exactly. The 104 are 61 across the two deleted module
+test files, 22 across the three deleted CLI test files, 9 in `test_provider_patch_material.py`, 8
+parametrized `[provider]` cases in `tests/test_grouped_cli.py` generated from the catalog `GROUPS`, and 4
+across three re-pinned files; the single added id is the re-pinned text-surface guard. Ruff reads
+`Found 24 errors.` at BOTH revisions with 24 findings PARSED over 16 files on each side and IDENTICAL
+per-file distributions, and the reviewer paired that comparison with a RED CONTROL confirming it can fail,
+so the agreement is a measurement rather than a silent parse failure. Not one of the 24 is in a file this
+round touched. G8: no `.agent/STOP`, porcelain EMPTY, ONE worktree, the branch correct, `C3..C4` naming
+**36** paths in an exact set match with MISSING and EXTRA both empty, exactly TEN files deleted whole, and
+every one of the **42** `+/-` cells of the handback's `## Commits` tables agreeing with
+`git show --numstat` for its commit.
+
+ALL SEVEN DECLARED DEVIATIONS ARE SUSTAINED, and the two that matter are the round rescuing the reviewer.
+FIRST, C4 was committed, found wanting by the worker's own G4 run, unstaged with `git reset --soft` while
+UNPUSHED, repaired and re-committed as ONE commit. That was correct: constraint 3 makes C4 atomic by
+operator RULE 1, so folding the repair into a second commit would have put a half-swept deletion into the
+history that rule forbids, and an unstage of an unpushed commit is not a history rewrite. What the repair
+ADDED is the reviewer's own gap: FOUR dead advertisements the block's steps had not named — the intake
+pipeline still drawn in `docs/archive/candidate-generator-adapter-future.md`, two advertised commands in
+`docs/system/provider-patch-materialization-v0.md`, the re-entry section of
+`docs/system/repair-request-builder-v0.md`, and a `_detect_roadmap` rule in `self_dogfood.py` gated on
+`has("provider_trust.py")` that could never fire again. The reviewer's applied dry run had edited those
+first two pages more narrowly and had not reached the other two at all; the spaced-form sweep reads ZERO
+because the worker went further than it was told. SECOND, three further widenings inside change-set files
+and two residues deliberately left, every one reasoned and every one flagged: a falsified sentence in the
+self-request text handed to an external actor, a permanently-False roadmap rule, a stale See-also claim,
+against a helper name `_import_next_steps` and two writerless persisted fields left alone because renaming
+and re-shaping a stored record are product changes rather than deletions. The remaining assumptions — the
+append convention verified against round 21's landed append before use, G2 run after C4 because it reads
+blobs from four commits, and one unpushed `--amend` of C5 to remove a pointer at scratch the block
+required deleting — are all sound.
+
+## Findings and corrections drafted by session 12, to be booked by round 23's first substantive commit
+
+- R-0869 — Medium, A ZERO-GATE OVER PRODUCTION CODE WAS UNMEETABLE BY CONSTRUCTION, BECAUSE THE SAME BLOCK ORDERED THE VERY TEXT IT FORBADE. Raised by the reviewer of session 12 against its own round 22 block and registered here rather than as a prose slip, because amend0827-process-diet rule 2 reserves an id for "a gate over production code shown to be blind or unmeetable" and this gate was ordered over `packages/`, `apps/` and `tests/`. THE MEASUREMENT, taken at `67f83bdd`: G4's closing clause reads that ANY hit for a deleted module name under `docs/guides/`, `docs/system/`, `packages/`, `apps/`, `scripts/` or `tests/` "is a defect of this round", while steps 3(a), 5 and 9 of the same block order deliberate-absence comments naming `provider_trust` and `provider_trust_verification` into `packages/orchestration/self_dogfood_execution.py`, `packages/orchestration/provider_patch_material.py` and `docs/system/self-dogfood-execution-v0.md` — five hits the block itself commissioned. The worker could satisfy the clause only by deleting text the same block ordered, so it ran the gate, reported exit 1, enumerated all 20 raw hits and declared the contradiction; that is the honest reading and it cost the round a deviation. `docs/agents/planner_reviewer_prompt.md` §3 item 2 states this rule exactly — "a `must be 0` done-when may not count a string that any TO slice in the same block writes into that same file" — and item 2's own note records that it had recurred six times across F104 and F105 before it was written down, so this is the class recurring under the rule rather than a new one. FIX CLAUSE, binding on the next block of this feature that orders a completeness sweep after a deletion: split the sweep into the clause that CAN be zero and the clause that cannot. The command ids, the ContractAction values and the SPACED advertisement forms are the meetable half and stay a hard zero, because nothing the block orders writes a runnable invocation; the BARE MODULE NAME half is ordered as a RAW LIST to be printed and classified, with the block naming in advance the files its own deliberate-absence notes will put a name into, so the worker reconciles against a stated expectation instead of against an impossible zero.
+
+Note: F275 R23 — new evidence for the OPEN finding R-0855, added rather than given an id of its own per `docs/agents/planner_reviewer_prompt.md` §3 item 30, which orders the open set searched for the DEFECT before an id is minted. R-0855 records that an ordered anchor deletes a definition without sweeping the neighbourhood that definition served. THESE ARE THE FIFTH AND SIXTH INSTANCES, both measured by the reviewer at `67f83bdd` while re-gating round 22, and both in files round 22's change set did NOT name, which is why the round's own sweep could only report them: `packages/common/public_text_redaction.py` line 4 cites `packages/orchestration/provider_trust.py` as the origin of the redaction helpers it now hosts, and that path no longer exists, so a reader following the provenance sentence written one round earlier lands on nothing; and `packages/orchestration/decision_evidence.py` line 54 names `provider_trust_verification.ProviderVerificationEvidenceRef` as one of "the two nearest existing types", which is not stale wording but a FALSE claim, since that type is gone and only `orchestrator_brain.OrchestratorEvidenceRef` remains. NO GATE COULD SEE EITHER: ruff is clean, the full suite is green at 18352 passed, and both lines are prose inside comments. The first is the sharper lesson, because the reviewer WROTE that provenance sentence in round 21 knowing round 22 would delete its referent. FIX CLAUSE, binding on the round that drafts DECISION F260 D3: repair both lines — the first by naming the deletion rather than the path, the second by dropping the vanished type and keeping the surviving one — and, before that round's own sweep is declared clean, run it over the files the PREVIOUS round created as well as the files it edited.
+
+Note: F275 R23 — a correction to the `Note: F275 R22 ` entry booked by round 22's C2, which states that `CLUSTER_COMMAND_HANDLERS` in `tests/orchestration/test_cluster_deletion_map.py` names seven handler paths of which FIVE have no file on disk. Measured by the reviewer at `67f83bdd`, after round 22 deleted `apps/cli/commands/provider_cmd.py`: the tuple still names seven and now SIX of them are stale — `dogfood_cmd.py`, `overnight_mission_cmd.py`, `progress_cmd.py`, `provider_cmd.py`, `repair_loop_v2_cmd.py` and `self_repair_cmd.py`, leaving `review_cmd.py` as the only entry that resolves. The earlier entry was true when it was written, at the base of the round that wrote it, and it named no commit — which is the §3 item 20 failure, not the arithmetic. The record is append-only, so that entry is NOT rewritten; this is the dated correction the checklist prescribes instead. The count is not load-bearing to R-0864, whose subject is that a stale entry can never fail, so no correction round is owed and R-0868's fix clause still carries the repair.
+
+Done: R-0862 — Resolved by F275 round 21. The human-review routing tier has a positive pin again. `tests/orchestration/test_orchestrator_brain.py::TestModelRouting::test_loop_guard_forces_human_review_tier` drives two `tested_failed` repair attempts into the loop guard, asserts `LoopGuardStatus.REQUIRE_HUMAN_REVIEW` as a PRECONDITION so the test cannot pass vacuously, and then asserts `_routing_plan` returns `RoutingTier.HUMAN_REVIEW_REQUIRED` with `allow_external` False. THE COLOUR THE FIX CLAUSE ASKED FOR WAS MEASURED, by the reviewer as well as by the worker, in a disposable worktree at `eaea1cff`: the unmutated control is exit 0 at 6 passed, replacing the two-line loop-guard condition at the top of `_routing_plan` with a constant false gives exit 1 with EXACTLY ONE failure, that test, reading `assert 'local_advisor_preferred' == 'human_review_required'`, and the revert returns exit 0 at 6 passed. R-0862's own measurement was that the same mutation left `TestAntiLoop` and `TestModelRouting` GREEN at 5 passed, so the branch went from unpinned to pinned and the finding is closed on its own terms. The tier itself never changed and no capability was inherited by another feature; only its guard was missing, which is why it was Medium.
+
+## Prose slips drafted by session 12, to be appended by round 23's ledger commit
+
+2026-09-10 · F275 R22 · The round 22 block's SLIPS22 slice carried three dated entries separated by single newlines, while every entry already in `.agent/prose_slips.md` is separated from its neighbour by a BLANK line. The three landed as one blank-line unit, so the file's own record shape is broken for them and a reader counting entries by paragraph will find one where there are three. The structural reader in that round's G3 counted N as 1 and was right to; nothing measured the SHAPE against the shape of the entries it joined, which is `docs/agents/planner_reviewer_prompt.md` §3 item 26 applied to a file other than the ledger. The record is append-only so the landed entries stay as they are. The lesson is that item 26's mechanical comparison is run for EVERY append-only target a block writes into, not only for `.agent/live_review.md`, and that the separator is part of the record format rather than presentation.
+
+2026-09-10 · F275 R22 · The round 22 block's documentation step named six pages and the reviewer's applied dry run had edited them, yet the worker's own sweep found FOUR dead advertisements the step had not reached: the intake pipeline still drawn in `docs/archive/candidate-generator-adapter-future.md`, two advertised commands in `docs/system/provider-patch-materialization-v0.md`, the re-entry section of `docs/system/repair-request-builder-v0.md`, and a `_detect_roadmap` rule in `packages/orchestration/self_dogfood.py` gated on a module file that would never exist again. The reviewer's dry run had reached those first three pages and edited only their LINKS, because the token sweep that drove it matched module names and command ids rather than the prose around them. The lesson is that a deletion round's documentation step is derived from a sweep for the CAPABILITY in the pages' own words — "re-enter", "import the response", "intake" — and not only from a sweep for the identifiers being deleted, because a page can advertise a deleted flow without naming a single deleted symbol.
+
+2026-09-10 · F275 R22 · The round 22 block's introduction said `provider_patch_material.py` "loses six of its imports", a figure inherited verbatim from session 11's handoff, and the R-0867 slice repeated it as "takes six names from the dying pair". The reviewer caught it before emission by resolving the module's import statements at the base, where the answer is FOUR — session 11 measured six before F275 round 21 moved `_scrub_public` and `_safe_path_label` out of that dependency — and corrected both occurrences. It is recorded even though nothing landed wrong, because the same session had already written a slip about re-measuring inherited prose and then reproduced the class twice in the next block it wrote. The lesson is that every numeral carried across a session boundary is re-derived from the tree, and that a slip written about a class is not evidence the class has stopped.
+
+## Session 12 ends here — TWO delegated rounds, both PASS, both independently re-gated
+
+Stated plainly, because the number is below the floor. `docs/agents/self_drive_protocol.md` G7, as amended
+by amend0905-throughput, targets SIX TO EIGHT delegated rounds per session with FOUR as the floor, and
+this session ran TWO. That is a real shortfall and it is reported as one.
+
+THE REASON IS THE ONE amend0905 SANCTIONS — a round that explicitly needs a fresh session — AND IT IS
+OFFERED AS A MEASUREMENT. Round 23 is the DECISION F260 D3 round, and it is the round on which EIGHT open
+fix clauses fall due together: R-0832's event-name coupling measurement, R-0858's F267 repair, R-0859's
+referential-closure test, R-0860's thirteen command ids and the product-spine deliberate-absence note,
+R-0864's two vacuous ratchets, R-0866's ruling on the surviving self-dogfood vocabulary, R-0867's ruling
+on which feature reaps `provider_patch_material.py`, and R-0868's retirement of the now-empty cluster
+scaffolding. Its central artefact is a paragraph that F260's own Design section requires to name EVERY
+module deleted in the slice together with the feature that inherited its idea, and F260's mapping
+paragraph supplies only seven mappings for the twenty-four modules its Design section lists, so the rest
+must be resolved from the feature files before a line of that paragraph can be written. None of that
+research is done, it lands in the append-only record where it cannot be corrected, and it is the same
+category of reason session 11 gave for round 20 and session 9 for round 18. The OTHER sanctioned reason is
+explicitly NOT claimed: operator amendment amend0908-f275-finish rule 5 permits "authoring errors
+accumulating" to end a session only after at least four delegated rounds, this session ran two, so that
+reason is unavailable — which matters, because four of this session's own authoring slips are recorded
+above and it would otherwise have been the honest one.
+
+WHAT THIS SESSION LANDED. Round 21 moved the five shared redaction names out of the dying
+`provider_trust.py` into the new `packages/common/public_text_redaction.py` BYTE-IDENTICALLY under
+DECISION F275 D10, repointed nine importers, and discharged R-0862's fix clause with the mutation colour
+that clause demanded. Round 22 then deleted the LAST component of `.agent/f275_deletion_order.md` — the
+strongly connected pair `provider_trust` and `provider_trust_verification` — in ONE commit of 36 paths and
+4284 deletions, taking its handler, the whole `provider` command group with all five commands, six
+`ContractAction` members, four whole test files and two documentation pages, and degrading three surviving
+consumers under DECISION F275 D11 rather than deleting, stubbing or copying into any of them.
+**T001's module list is now EMPTY**: `CLUSTER_MODULES` is the empty tuple, `cluster_deletion_map.txt`
+holds no edge lines, and `.agent/f275_deletion_order.md` holds no component lines. Every module F260's
+Design section named is gone from disk. Three findings — R-0866, R-0867, R-0868 — record the capabilities
+that went with the deletion, and the full suite is green at 18352 passed, 23 skipped and ZERO failed.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context is long
+but NOT exhausted and is not the reason this session ends — it ran four full serial suites, two as applied
+dry runs establishing each round's boundaries and two as independent re-gates, and it ends on round 23's
+research being unstarted rather than on the reviewer running out of room.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It does not exist as this
+session ends and was measured absent at the Phase 0 probe and again before each of the two rounds. Then
+the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
+
+SECOND, round 23's FIRST substantive commit books, from this file as the durable carrier under
+amend0827-process-diet rule 1: the ROUND 22 PASS verdict above as a `Gate: F275 R22` entry in
+`.agent/live_review.md`; the `R-0869` registration; the two `Note: F275 R23` entries, one folding two new
+instances into R-0855 and one correcting the stale-entry count of round 22's own Note; the `Done: R-0862`
+resolution, which replaces the `Landed: R-0862` line round 21 wrote; and the three prose slips above as
+dated lines in `.agent/prose_slips.md`, BLANK-LINE SEPARATED. The open set is 91 by distinct id and the
+next free id after R-0869 is R-0870; booking R-0869 and resolving R-0862 takes it to 91 again.
+
+THIRD, round 23 itself: DECISION F260 D3. Do the research BEFORE authoring — resolve every module in
+F260's Design list to the feature that inherited its idea, because F260's own mapping paragraph covers
+only seven of them. The eight fix clauses listed above all fall due in that round; R-0868's asks whether
+the empty cluster ratchets are retired or kept with a dated reason, and R-0866's and R-0867's are rulings
+rather than repairs. Order the completeness sweep in the split form R-0869's fix clause prescribes, so the
+round is not handed a gate that cannot pass. Then T002, the atomic record flip, alone, and then T003.
