@@ -283,7 +283,7 @@ target repo →  user-supplied directory       (Remedy writes selectively; only 
 **Attaching a repo** stores the resolved absolute path in `job.metadata["target_repo"]`:
 
 ```bash
-remedy attach-repo <job_id> /path/to/my-repo
+remedy job attach-repo <job_id> /path/to/my-repo
 ```
 
 No files are written during attachment — only the path is recorded. The path is validated
@@ -381,7 +381,7 @@ unconditional after the guard passes (the check cannot be reached again).
 Permissions are stored in `job.metadata["permissions"]` as `{"capability": "allow"|"deny"}`.
 Missing keys fall back to `_DEFAULTS`. Explicit `"deny"` overrides a default allow.
 
-**`show-permissions` CLI command (Steps 9.5/9.6):** `remedy show-permissions <job_id>`
+**`show-permissions` CLI command (Steps 9.5/9.6):** `remedy job permissions <job_id>`
 displays all capabilities, their effective allow/deny state, and a status label. Every
 capability is labeled `[active]` (enforced at runtime) or `[reserved]` (configurable but
 not yet enforced). The symmetric labeling makes capability status unambiguous at a glance.
@@ -519,7 +519,7 @@ the log for a specific invocation.
 ### Timeline v1 (Step 17)
 
 `packages/orchestration/timeline.py` provides the first user-facing cockpit layer
-over run-log events: `remedy timeline <job_id>`.
+over run-log events: `remedy brain timeline <job_id>`.
 
 **Public API:**
 
@@ -573,7 +573,7 @@ path, repo path, patch intent count and risk levels. Unknown events render as
 ### Cockpit v1 (Step 18)
 
 `packages/orchestration/cockpit.py` provides a decision-oriented overview of a job:
-`remedy cockpit <job_id>`.
+`remedy brain cockpit <job_id>`.
 
 **Timeline vs Cockpit:**
 - Timeline answers: *"what happened?"* — chronological audit trail of events.
@@ -672,7 +672,7 @@ be treated as equivalent to `RISK_LOW` (see patch_intent.py module docstring).
 
 **Cockpit integration (Step 19):**
 - Pending approval + medium/high/unknown risk → `Needs your attention` item with pending
-  count and `remedy list-patch-intents` command.
+  count and `remedy patch list` command.
 - Rejected intents → separate attention item with count.
 - Pending approvals + risk → `Next best action` directs to `list-patch-intents`, then
   `approve-patch-intent`, then `run-next-task-local`.
@@ -763,7 +763,7 @@ exception text, no raw artifact content, no full diff previews, no free-text app
 reasons.  The report renders only IDs, counts, labels, risk levels, approval states, and
 target paths already stored in structured metadata.
 
-**CLI command:** `remedy trust-report <job_id>` — loads job, loads run events via
+**CLI command:** `remedy brain trust <job_id>` — loads job, loads run events via
 `timeline.load_run_events`, prints the report to stdout, exits 0.  If no run logs exist,
 the report still renders (execution section says "No run logs available") and exits 0.
 
@@ -807,7 +807,7 @@ invocations.
   `token`, `.netrc`, or ends with `.key`, `.pem`, `.p12`, `.pfx`, `.crt`.
 - Max 200 lines read per file; max 10 workflow files scanned.
 
-**CLI command:** `remedy constitution <job_id>` — loads job, reads `target_repo`,
+**CLI command:** `remedy brain constitution <job_id>` — loads job, reads `target_repo`,
 calls `load_project_constitution`, prints `render_constitution` output, emits
 `project_constitution_loaded` run log event with `source_count`, `warning_count`,
 `has_test_commands` (structured counts only — no raw file content).
@@ -826,7 +826,7 @@ Important artifacts section.  No line appears when `constitution=None`.
 | `constitution` provided, sources found | `Project Constitution: available from N source file(s)` |
 | `constitution` provided, no sources, no warnings | `Project Constitution: no sources found` |
 | `constitution` provided, warnings, no sources | `Project Constitution: unavailable (attached repo missing or not a directory)` |
-| `constitution=None`, `target_repo` set in metadata | `Project Constitution: not loaded (run: remedy constitution <job_id>)` |
+| `constitution=None`, `target_repo` set in metadata | `Project Constitution: not loaded (run: remedy brain constitution <job_id>)` |
 | `constitution=None`, no `target_repo` | `Project Constitution: no attached repo` |
 
 The constitution is never persisted to job metadata — it is loaded fresh and read-only each time.
@@ -1396,7 +1396,7 @@ No frontend, AG-UI, Three.js, or MCP integration is present in Steps 23/23.1.
 | View | Purpose |
 |------|---------|
 | Project Brain (`remedy brain`) | Full graph map — all nodes and edges for a job |
-| **Brain Node Detail (`remedy brain-node`)** | **Drill into one node — explanation, connections, evidence, actions** |
+| **Brain Node Detail (`remedy brain node`)** | **Drill into one node — explanation, connections, evidence, actions** |
 | Cockpit | Current decision/status overview |
 | Timeline | Chronological run-log history |
 | Trust Report | Full audit/provenance report |
@@ -1465,8 +1465,8 @@ The following are **never** surfaced in any field, summary string, JSON export, 
 ### CLI
 
 ```
-remedy brain-node <job_id> <node_id>           # text detail (default)
-remedy brain-node <job_id> <node_id> --json    # JSON export
+remedy brain node <job_id> <node_id>           # text detail (default)
+remedy brain node <job_id> <node_id> --json    # JSON export
 ```
 
 Loads the job, run events, and Project Constitution; builds the graph; calls `build_brain_node_detail`; prints text or `--json`; emits a `brain_node_inspected` run-log event.
@@ -1489,7 +1489,7 @@ Step 24.1 hardens the machine-readable contract for the two brain CLI commands a
 | Command | `--json` contract | Future consumer |
 |---|---|---|
 | `remedy brain <job_id> --json` | `export_project_brain_json` schema (version, job_id, nodes, edges) | 2D / 3D graph visualisation |
-| `remedy brain-node <job_id> <node_id> --json` | `export_brain_node_detail_json` schema (13 keys) | Click-detail panel for a selected node |
+| `remedy brain node <job_id> <node_id> --json` | `export_brain_node_detail_json` schema (13 keys) | Click-detail panel for a selected node |
 
 **Invariants enforced and smoke-tested:**
 
@@ -1505,7 +1505,7 @@ Step 24.1 hardens the machine-readable contract for the two brain CLI commands a
 { "node_count": N, "edge_count": N, "task_count": N, "patch_intent_count": N }
 ```
 
-`brain_node_inspected` metadata (set by `remedy brain-node`):
+`brain_node_inspected` metadata (set by `remedy brain node`):
 ```json
 { "node_id": "...", "node_type": "...", "connected_count": N, "evidence_count": N }
 ```
@@ -1514,7 +1514,7 @@ Both schemas hold regardless of whether `--json` is used.
 
 ### Future frontend priority (Step 24+)
 
-1. **2D graph** via `remedy brain --json` + `remedy brain-node --json` — these JSON contracts are the integration surface for a React Flow / AG-UI / A2UI canvas.
+1. **2D graph** via `remedy brain --json` + `remedy brain node --json` — these JSON contracts are the integration surface for a React Flow / AG-UI / A2UI canvas.
 2. **3D** — Three.js / WebGL rendering of the same graph JSON contract.
 3. **MemPalace** — `memory_placeholder` nodes become live semantic memory nodes when the MemPalace layer is implemented (Step 24+).
 4. **MCP Quarantine** — `mcp_placeholder` nodes become live MCP tool nodes when the MCP integration layer is implemented (Step 24+).
@@ -1525,7 +1525,7 @@ No frontend rendering exists in Steps 23–24.1.  The `--json` contracts are the
 
 **Step 24.3** is the final pre-frontend smoke hardening pass (redaction target alignment, raw-stdout sentinel checks, docstring polish).  After Step 24.3 the JSON contract is fully locked.
 
-**Step 25** starts the read-only local Brain Viewer v0.  The viewer must consume only `remedy brain --json` (graph data) and `remedy brain-node --json` (node detail data).  It must not call any other CLI output mode, shell command, or internal Python API directly.
+**Step 25** starts the read-only local Brain Viewer v0.  The viewer must consume only `remedy brain --json` (graph data) and `remedy brain node --json` (node detail data).  It must not call any other CLI output mode, shell command, or internal Python API directly.
 
 ## Brain Viewer v0 (Steps 25 / 25.1)
 
@@ -1536,7 +1536,7 @@ No frontend rendering exists in Steps 23–24.1.  The `--json` contracts are the
 ### CLI
 
 ```
-remedy brain-view <job_id>
+remedy brain view <job_id>
 ```
 
 Writes files under `REMEDY_DATA_DIR/viewers/<job_id>/`:
@@ -1893,20 +1893,20 @@ export_project_json(project, jobs) -> dict
 ### CLI commands
 
 ```
-remedy create-project <name> [--description <desc>]   — create and print project ID
-remedy list-projects                                  — list all projects (newest first)
-remedy attach-project-repo <project_id> <repo_path>  — attach a repo to a project
-remedy attach-project-job <project_id> <job_id>      — link a job to a project
+remedy project create <name> [--description <desc>]   — create and print project ID
+remedy project list                                  — list all projects (newest first)
+remedy project attach-repo <project_id> <repo_path>  — attach a repo to a project
+remedy project attach-job <project_id> <job_id>      — link a job to a project
 remedy project <project_id> [--json]                 — show project summary (user-facing alias)
-remedy show-project <project_id> [--json]            — show project summary (backward-compat)
-remedy create-job "<prompt>" [--project <project_id>]
+remedy project show <project_id> [--json]            — show project summary (backward-compat)
+remedy job create "<prompt>" [--project <project_id>]
     [--task-type <type>] [--task-description "<desc>"]
                                                        — create job and optionally link;
                                                          --task-type creates one Task immediately
                                                          and sets state=PLANNED (bypasses plan-job)
 ```
 
-`remedy project` is the primary user-facing alias.  `remedy show-project` remains for backward compatibility; both call the same implementation.
+`remedy project` is the primary user-facing alias.  `remedy project show` remains for backward compatibility; both call the same implementation.
 
 When `--project` is passed to `create-job`:
 - The project is **validated and loaded first**.
@@ -2010,8 +2010,8 @@ export_project_context_coverage_json(snapshot) -> dict[str, Any]
 ### CLI
 
 ```
-remedy project-context <project_id>
-remedy project-context <project_id> --json
+remedy project context <project_id>
+remedy project context <project_id> --json
 ```
 
 Loads the project and all linked jobs, derives the snapshot, and prints the summary or JSON.  Emits a `project_context_coverage_inspected` run-log event to the first linked job's run log (skipped if no jobs are linked).
@@ -2066,7 +2066,7 @@ No raw prompts, artifact content, approval reasons, event messages, diff preview
 }
 ```
 
-Full signal details are available only via `remedy project-context <project_id> --json`.
+Full signal details are available only via `remedy project context <project_id> --json`.
 
 ### Not implemented in v0
 
@@ -2264,8 +2264,8 @@ No raw artifact content, approval reasons, or diff text is stored.
 ### CLI command
 
 ```
-remedy apply-patch-intent <job_id> <intent_id>
-remedy apply-patch-intent <job_id> <intent_id> --json
+remedy patch apply <job_id> <intent_id>
+remedy patch apply <job_id> <intent_id> --json
 ```
 
 Exit codes: `0` on applied or noop; `1` on blocked (error message to stderr, no traceback).
@@ -2509,7 +2509,7 @@ The following items are explicitly **not** done in Step 32:
 
 ### Command
 
-    remedy run-tests-local <job_id>
+    remedy test run <job_id>
 
 ### Behavior
 
@@ -2737,8 +2737,8 @@ command_source_type, command_source_path, command_purpose, command_confidence
 
 ### CLI
 
-- `remedy discover-commands <job_id>` — text summary of all discovered candidates.
-- `remedy discover-commands <job_id> --json` — pure JSON (schema v1 above).
+- `remedy test discover <job_id>` — text summary of all discovered candidates.
+- `remedy test discover <job_id> --json` — pure JSON (schema v1 above).
 
 ### Intentional deferrals (Step 34)
 
@@ -2785,8 +2785,8 @@ It is an execution boundary, not a capability promise.
 
 ### CLI
 
-- `remedy run-contract <job_id>` — text summary.
-- `remedy run-contract <job_id> --json` — pure JSON.
+- `remedy policy contract <job_id>` — text summary.
+- `remedy policy contract <job_id> --json` — pure JSON.
 
 ### Run-log event
 
@@ -2838,8 +2838,8 @@ A `TokenPolicy` classifies job steps by token cost tier:
 
 ### CLI
 
-- `remedy token-policy <job_id>` — text summary.
-- `remedy token-policy <job_id> --json` — pure JSON.
+- `remedy policy token <job_id>` — text summary.
+- `remedy policy token <job_id> --json` — pure JSON.
 
 ### Run-log event
 
@@ -2884,8 +2884,8 @@ no secrets, no shell, no actual provider connections — pure data only.
 
 ### CLI
 
-- `remedy workers` — text summary.
-- `remedy workers --json` — pure JSON.
+- `remedy worker list` — text summary.
+- `remedy worker list --json` — pure JSON.
 
 ### Brain integration
 
@@ -2920,7 +2920,7 @@ One node per known provider spec.
 > than repaired sentence by sentence, because a hand-written mirror of the catalog
 > drifts again after the next feature that adds or deletes a command.
 
-Steps 38–40 restructure the Remedy CLI from flat commands (`remedy create-job`, `remedy brain`) to a group-first layout (`remedy job create`, `remedy brain graph`).
+Steps 38–40 restructure the Remedy CLI from flat commands, spelled `create-job` and `brain`, to a group-first layout: `remedy job create`, `remedy brain graph`. The flat spellings are shown without the `remedy` prefix because they no longer run.
 
 ### Command Catalog (`apps/cli/command_catalog.py`)
 

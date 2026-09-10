@@ -261,7 +261,7 @@ The candidates were `absorb`, `sync`, `refresh`. `sync` claims a two-way
 operation the feature does not perform (nothing flows from Remedy INTO the
 human's edit); `refresh` describes the effect on a view, not on the evidence
 chain. `absorb` says what happens: the human change is taken into the run as a
-certified fact. F263 ships `remedy absorb`; T2_F263.md carries the final name.
+certified fact. F263 ships the command named `absorb`; T2_F263.md carries the final name.
 Reverse by deleting this paragraph.
 
 ### DECISION F259 D2 (2026-09-05, operator order amend0905-vocab-rebuild) — `task-file` and `job-file` collapse into `order`
