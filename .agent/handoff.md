@@ -304,3 +304,111 @@ the `Landed: R-0875` line still stands alone. Then THE FLIP, whose target API,
 record shapes, construction mapping (DECISION F275 D25) and now-green tree are
 all in place. Before authoring, re-read `.agent/STOP` from disk (Phase 1 rule 1
 before rule 2).
+
+## Reviewer verdict on round 45 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 45: **PASS.** Written by the planner and reviewer of SESSION 18 after reading the committed
+range `123a0c3f`..`9310dc30` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 46, per amend0827-process-diet rule 1.
+
+THE BRANCH TIP IS GREEN AGAIN AND THE REVIEWER CONFIRMED IT FIRST: `tests/test_model_construction_keywords.py`
+reads `6 passed` at exit 0 in the primary checkout, against `1 failed, 4 passed` at exit 1 before this round.
+G1 is the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback — the reviewer's scratch
+original survived, was hashed BEFORE delegation at
+`e5b409f47c13ca3beba1ffd738428a2d887b7b58336cb5698d47bb2b267c3ecd`, and is byte-identical to both committed
+copies at 23302 bytes. G2: `.agent/plan.md` byte-identical to PLAN45 at 2642 bytes over 46 lines. G3: both
+appends reconstruct exactly — `.agent/live_review.md` 874338 to 878949 and `.agent/prose_slips.md` 236456 to
+237582 — with reader B true at N counted from each slice and both negative controls rejected by BOTH readers
+with the flipped byte inside the FIRST appended paragraph; `^Gate: F275 R44 ` reads 1, `^Landed: R-0875 `
+reads 1 UNCHANGED, and `^Done: R-0875 ` reads 0. G4: the open set is 87 BY DISTINCT ID at the base, at C3 and
+at the tip, over 104 registrations against 17 resolutions, with nothing registered and nothing resolved.
+
+G5 IS THE GATE THIS ROUND EXISTS FOR AND IT HOLDS AT THE STRENGTH THE PAIR DESERVES. The containment test's
+own output reads `TO contains FROM: False`, so PAIR45 is a REWRITE and the FROM-zero count applies: FROM reads
+exactly 1 in the committed BASE blob and 0 in the committed C3 blob, TO reads exactly 1, and the reviewer
+rebuilt the C3 blob from the BASE blob by applying the pair alone — byte-identical at 5498 bytes, 134 lines
+and sha256 `e0b29143eb63dba5723570a02cf694c40a242fe8dbad13d1351621db18ed0016`, every one of the three figures
+the block stated. G6's TWO red proofs were re-run by the reviewer in its own disposable worktree at C3 and
+they separate exactly as ordered: the control reads `6 passed` at exit 0, M1 putting a real offender back
+reddens `test_no_tracked_file_passes_an_undeclared_keyword`, M2 introducing the per-file exemption the repair
+rejected reddens `test_the_sweep_reads_this_file_too`, THE TWO NODE-ID SETS ARE DISJOINT, both reverts are
+byte-exact by sha256, the control is green again, and the PRIMARY checkout's porcelain read EMPTY in the same
+command sequence as every mutation. G7: the change set is an EXACT set match over six paths with MISSING and
+EXTRA both empty, nothing outside `.agent/` and `tests/`, and insertions 272, 186, 23, 4 and 21.
+
+THE REPAIR IS THE RIGHT SHAPE AND NOT MERELY A GREEN ONE. An exemption for the guard's own file was the
+obvious fix and was rejected on the record: it would make the sweep PARTIAL and hand a later reader a hole to
+widen instead of an offender to fix. Passing the premise keywords as a `**{...}` splat keeps the sweep TOTAL,
+and it is not a dodge — the sweep's subject is the LITERAL keyword a reader sees and believes, a splat carries
+no `keyword.arg`, and M2 proves the new self-coverage test closes the exemption route the repair declined.
+
+## Authored text for round 46 to book — the resolution of R-0875
+
+Done: R-0875 — RESOLVED at F275 rounds 44 and 45, in two commits because the first was defective, and the resolution says so rather than reading as one clean landing. The DEFECT: forty keyword arguments passed to `Job(...)` and `Task(...)` named no field on either model, so pydantic's default `extra="ignore"` dropped every one, and forty call sites under `tests/` had never established the state their own keyword named — `Job(permissions=...)` at 6 sites, `Job(prompt=...)` at 5, `Task(task_type=...)` at 17, `Task(type=...)` at 8 and `Task(title=...)` at 4, with zero in production. THE FIX, at round 44's C3 `be83dc4c`: 35 keywords deleted and the 5 `prompt` keywords REPOINTED onto `user_prompt`, the field they plainly meant, which is a behaviour change ordered because it was measured green rather than because it read better. The reviewer re-ran the 24 cleaned files itself and read `1083 passed, 10 skipped` at exit 0, the figure the block stated, and confirmed by reading the BASE bytes through `ruff check --stdin-filename` that the two surviving `I001` findings both pre-date the round. THE GUARD, and why it took two commits: a runtime test cannot catch this class at all — the keyword is dropped silently, which is the whole defect — so the guard is a SOURCE sweep over every tracked `*.py` file, reading each model's declared field set by IMPORTING the shipped class rather than from a list of its own. As first landed that guard reported ITSELF, because its premise test wrote `Task(description="d", type="write_readme")` literally and the sweep reads the file it lives in; that is planner_reviewer_prompt.md §3 item 2, the reviewer's own defect, it left the branch tip RED for one round, and it is recorded as a dated line in `.agent/prose_slips.md` rather than a second id. Round 45's C3 `9310dc30` repaired it by passing those keywords as a `**{...}` splat — which the sweep skips for the right reason, its subject being the literal keyword a reader believes — and ADDED a test asserting the guard's own file is among the files the sweep reads, so the per-file exemption that was the tempting repair cannot arrive later by accident. Both halves are red-proved on the reviewer's own runs, over disjoint node ids: re-adding one deleted keyword reddens `test_no_tracked_file_passes_an_undeclared_keyword`, and introducing the exemption reddens `test_the_sweep_reads_this_file_too`. The guard reads `6 passed` at exit 0 at `9310dc30`.
+
+## Session 18 ends here — FOUR delegated rounds, and the honest reason it stops
+
+Rounds 42, 43, 44 and 45. THREE PASS AND ONE FAIL, and the FAIL was caused by the reviewer's own block
+rather than by the round that executed it. That is the floor amend0905-throughput sets and not the six-to-eight
+target, so the reason is owed in full rather than in a sentence.
+
+WHY IT STOPS AT FOUR: THE SECOND SANCTION amend0905-throughput NAMES — the reviewer noticing its own
+authoring errors accumulating — and operator amendment amend0908-f275-finish rule 5 permits F275 to cite it
+only AFTER at least four delegated rounds, which is exactly where this session is. The count is not a feeling.
+THREE of the reviewer's own authoring defects landed in four rounds: round 42's G3(b) ordered a structural
+reader that cannot pass on correct bytes, round 44's GUARD44 slice violated §3 item 2 and left the branch tip
+RED for a whole round, and that same block's pre-emission check reported a 4419-byte file as 4413 by counting
+characters where it claimed bytes. Two are recorded in `.agent/prose_slips.md`; the third cost the FAIL.
+THE NEXT ROUND IS THE FLIP — 284 files and 4856 insertions measured, the single largest and least reversible
+commit this repository will take, spending the one declared-oversize allowance AGENTS.md permits per feature,
+which can be spent exactly once. A reviewer shipping one block defect every two rounds should not author that
+commit today, and stopping here is cheaper than the round that would repair it.
+
+WHAT THIS SESSION LANDED, and the through-line is that a DRY RUN found every one of them before a worker did.
+THE FLIP WAS NOT EXECUTABLE AS RULED and three rounds of this session are the proof and the repair. DECISION
+F275 D23: the unified store lacked three capabilities the classic store has — a jobs-root override 186 call
+sites pass, the corruption visibility four production sites read off `load_job_safe`, and any listing function
+at all — so the one unsplittable commit would have had to INVENT production API together with its tests.
+Those are now widened in, green by construction, with `data_paths.job_record_paths` owning the store's shape
+because a guard measured that `pingpong_job` may not. DECISION F275 D24: the JOB record pair is CLEAN — 13
+shared names, the only two `Job`-only names being the renames already tracked, the orphan set EMPTY — so
+DECISION F272 D15's sentence holds for the job record exactly where D22 disproved it for the task record, and
+there is no third unmeasured record pair waiting in the flip. DECISION F275 D25: `Task.description` maps onto
+`TaskEntry.title`, ruled on three readings rather than on the names, and the two mechanical rules the dry run
+learned by failing — `ast` columns are UTF-8 BYTE offsets, and the flip must move an import's MODULE PATH and
+not only the name it imports. R-0875 is registered and fixed. The open set moved 86 to 87.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context is
+comfortable and exhaustion is expressly NOT the reason this session ends — it ends on the authoring-error
+signal, measured above, with the flip deliberately left to a session that has not just spent one.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
+session's Phase 0 probe, was measured absent before every round's first commit, and is absent as this session
+ends. Then the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
+
+SECOND, round 46's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
+amend0827-process-diet rule 1, the ROUND 45 PASS verdict above as a `Gate: F275 R45` entry in
+`.agent/live_review.md`, AND the authored `Done: R-0875` paragraph above. Booking that resolution takes the
+open set from 87 to 86 by distinct id; the next free id is R-0876. No prose slip is owed for round 45 — the
+worker declared five deviations, every one procedural, and the reviewer found no defect in its block.
+
+THIRD, THE FLIP, and it is now a mechanical transformation with every prerequisite measured. Apply it from
+`.agent/f275_t003_flip_sites.md` for the `.id` and `.name` sites, `.agent/f275_t003_flip_seam.md` for the
+classic store seam, and `.agent/f275_t003_record_shapes.md` for the type sites and the `created_at` rewrite.
+The dry run at `c0e9dd10` measured 284 files and 4856 insertions, which is what the handback DECLARES before
+review, with the inseparability reason, as the one oversize commit AGENTS.md permits per feature. Four
+mechanical rules bind it and all four were learned by running it: edits are applied at `ast` spans IN BYTES;
+an import's MODULE PATH moves with the name, since the unified record lives in
+`packages.orchestration.pingpong_job`; `Task.description` becomes `title` and `Task.id` becomes `task_id`;
+and `<job>.created_at.isoformat()` becomes `<job>.created_at` at the six sites DECISION F275 D24 enumerates.
+That round also registers `Task.acceptance_checks`'s structured form as a finding naming the feature that owns
+acceptance criteria, per amend0908-f275-finish rule 4, because the widen deliberately did not carry it.
+
+FOURTH, the resolver collapse DECISION F260 D5 places in T003 — `resolve_any_job_id`, the "TWO job stores"
+paragraph, every which-store branch and the absence test — with the classic store, which is the same commit
+range by that decision's own terms. Then the closure sequence: the integration gate, the evidence job, a fresh
+review zip, the ledger rotation, the STATUS line and the PR.
