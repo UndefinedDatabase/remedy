@@ -274,3 +274,97 @@ The reviewer books the round 31 verdict, and then T003 lands the classic runner 
 classic store with the flip as F275's one declared-oversize commit — re-deriving the site
 set at its own base rather than inheriting the figures above, and stating the
 inseparability reason in its handback BEFORE review, per AGENTS.md.
+
+## Reviewer verdict on round 31 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 31: **PASS.** Written by the planner and reviewer of SESSION 15 after reading the committed
+range `0b009325`..`f605901d` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST substantive commit of round 32, per amend0827-process-diet rule 1.
+
+WHAT THE REVIEWER RE-MEASURED. Seven single-parent commits C0a `817ba547`, C0b `184f1edc`, C1 `a53343c8`,
+C2 `293b54d3`, C3 `123554a5`, C4 `0ce086ae` and C5 `f605901d`, per-commit insertions 381, 326, 17, 8, 498
+and 16 for the six before the handback, every one under the AGENTS.md DECISION F104 D1 cap of 500. G1 IS A
+REAL TRANSPORT CHAIN AND NOT MERELY A SELF-CONSISTENT ONE, which is the distinction §3 item 37 exists to
+force: the reviewer's scratch original at `.remedy-wt/f275-r31-block.md` was written AND HASHED BEFORE
+delegation at `cbd927e5268daac8557291e99fc6b50dd99ece78adf448e6bb133036f8b2bf19`, and the committed
+`.agent/authored/f275-r31.md` and `.agent/last_block.md` are both 33235 bytes at that same digest — so the
+first link of this chain predates the worker and the proof covers those three artefacts, never the bytes
+emitted into a prompt. G2: `.agent/plan.md` byte-identical to PLAN31 at 1918 bytes, 37 lines against the cap
+of 50, both mandated headings exactly once. G3 over ALL THREE append targets — `.agent/live_review.md`
+790277, `.agent/prose_slips.md` 215418 and `.agent/decisions.md` 1017073 bytes before — each post-blob equal
+to its pre-blob then ONE newline then the slice exactly as extracted from the committed C0a blob, the joining
+byte READ BACK at offset len(pre) and reading a newline in all three, and the structural reader counting N
+from each slice — 1, 3 and 8 paragraphs — and matching the last N blank-line units IN ORDER, with all three
+negative controls flipped INSIDE THE FIRST appended paragraph and REJECTED by BOTH readers. `^Gate: F275 R30 `
+and `^## DECISION F275 D17 ` each read exactly 1. G4: THE OPEN SET IS 87 BY DISTINCT ID at the base and 87 at
+the round's tip, over 102 registrations against 15 resolutions; this round registered none and resolved none.
+G8: `git status --porcelain` EMPTY, ONE worktree, no `.agent/STOP`, the change set an EXACT set match over
+seven paths, and NO path under `packages/`, `apps/`, `tests/`, `docs/` or `scripts/` in the whole range —
+which is T002's own "no production line moves", met.
+
+THE MEASUREMENT ITSELF WAS RUN BY THE REVIEWER TOO, BEFORE DELEGATION, AND THAT IS WHY THIS VERDICT CAN
+SETTLE ITS DISAGREEMENTS. The reviewer built the descriptor probe, corrected it twice, and ran the FULL SUITE
+under it TWICE at `0b009325`, reading `18350 passed, 23 skipped` at exit 0 both times and 1757 executed `Job`
+sites both times. The worker's two runs read the same summary line at exit 0 and its G6 symmetric difference
+is EMPTY, so the probe reproduces across four independent full-suite runs. The reviewer re-ran the canary at
+the round's tip: `tests/cli/test_golden_path.py` GREEN at 42 passed.
+
+THE LARGE DEVIATION IS A REVIEWER SPEC DEFECT AND ITS CAUSE IS MEASURED, NOT ARGUED. The alternative-route
+figures disagree — the worker reads 977 sites over 976 lines where the block states 1201 over 1087 — and the
+worker was right to declare it rather than reconcile. The cause: `JobPlan` is a DATACLASS, so its generated
+`__init__` performs `self.job_id = ...` from a frame whose `co_filename` is the literal `<string>`.
+SPEC-PROBE clause (d) said the walk stops at the innermost frame "whose filename lies under the worktree
+root" and never said that test reads the RAW filename; the worker implemented it with `os.path.abspath`, and
+`os.path.abspath("<string>")` resolves to `<root>/<string>`, which qualifies — so the walk halts at the
+synthetic frame and every construction write collapses into one key per field instead of being attributed
+outward to the construction site. The arithmetic closes exactly and was checked: 960 + 15 + 1 + 1 = 977
+against the reviewer's 960 + 15 + 113 + 113 = 1201. For the purpose T002 states — counting the LINES A FLIP
+MUST CHANGE — attributing outward to the construction site is the correct reading, because a
+`JobPlan(job_title=...)` line is a line the rename edits, so the block's 1201 over 1087 STANDS and the
+inventory's 977 over 976 is an undercount of the ALTERNATIVE route alone. Nothing load-bearing moves: D17
+rejects that route because its line count is far over the 500-insertion cap, and 976 is as far over as 1087,
+which the inventory's own section 8 says. The RULED site set is untouched — all twelve probe and union
+figures agree exactly, the union at 1768 sites over 1766 lines, 357 production in 68 files and 1409 test in
+117 files, with 11 provably-`Job` sites never executed and 92 that a static sweep positively calls something
+other than `Job`.
+
+THE SECOND DEVIATION IS SUSTAINED AND IS ALSO THE REVIEWER'S SENTENCE. DECISION F275 D17 states that walking
+`a5bf8949`..`0b009325` and summing the insertion column, ZERO commits on this branch exceed 500 insertions.
+Measured at `f605901d`: TWO MERGE COMMITS DO — `a1df5d70` at 805 and `b6e0f257` at 804 insertions against
+their first parents, both of them merging `main` into this branch to bring in amend0908-brainstorm-intake.
+The reviewer's original walk used `git log --numstat`, which emits no diff for a merge, so those two were
+read as zero rather than examined. Over the commits that carry AUTHORED work the claim holds and is in fact
+stronger than D17 states: the maximum single-parent insertion count across that whole range is 498, and it is
+this round's own C3. The RULING is untouched, because a merge that imports upstream history is not a commit
+whose diff a worker authored and it cannot spend the declared-oversize allowance AGENTS.md rations per
+feature. The sentence in the record is too wide by a quantifier, and this paragraph is its dated correction;
+the landed text is NOT rewritten, per §3 item 20.
+
+THE REMAINING DECLARED DIFFERENCES ARE SMALL, EXPLAINED AND ACCEPTED. The worker's static sweep proves 322
+sites where the reviewer's proves 325, and its executed-but-not-provable count is 1446 against 1443, because
+that sweep additionally resolves a construction whose callee is an ATTRIBUTE named `Job` rather than a bare
+name; both readings put 11 sites in the never-executed set and both produce the SAME union, which is the
+figure the ruling uses. Constructions read 587 against 586 for the same reason, and the worker names the one
+extra site. The pilot suite run the worker discarded is correctly classified: a lint-ceiling test reddened by
+the worker's own untracked instruments and a vitest test reddened by a fresh worktree having no
+`node_modules` — the second is the known artifact, and the worker re-ran that class WITHOUT the probe and got
+green, which is exactly the discriminator G5 ordered. The inventory being trimmed to 498 insertions to stay
+under the cap is accepted: the worker compacted the STATIC instrument's source and verified its output
+`cmp`-identical after every edit, rather than dropping any content SPEC-INVENTORY mandates, and spending
+F275's one oversize allowance on an inventory would have contradicted the decision that round exists to
+record.
+
+## Findings and corrections drafted by session 15, to be booked by round 32's first substantive commit
+
+Nothing is registered and nothing is resolved by this verdict. The open set is 87 by distinct id and the next
+free id after R-0873 is R-0874. Round 32's first substantive commit books, from this file as the durable
+carrier under amend0827-process-diet rule 1: the ROUND 31 PASS verdict above as a `Gate: F275 R31` entry in
+`.agent/live_review.md`, carrying the two corrections above in the same entry rather than as separate ids
+because neither left a wrong state on disk under `packages/`, `apps/`, `tests/` or `docs/`; and the two prose
+slips below as dated lines in `.agent/prose_slips.md`, BLANK-LINE SEPARATED.
+
+2026-09-10 · F275 R31 · The round 31 block's SPEC-PROBE told the worker to attribute an access to the innermost stack frame "whose filename lies under the worktree root" without saying that the test reads the RAW `co_filename`, and a dataclass's generated `__init__` carries the literal filename `<string>`, which `os.path.abspath` resolves to a path UNDER that root. The worker's faithful implementation therefore stopped the walk at a synthetic frame and collapsed every `JobPlan` construction write into one key per field, reading the alternative route at 977 sites where the reviewer read 1201. Both instruments were correct against the words; the words admitted two readings, and the one the reviewer never considered is the one a path-normalising helper makes natural. A spec that names a PREDICATE over a filename says which string the predicate is applied to, because `<string>`, `<stdin>` and `<frozen importlib._bootstrap>` are filenames that are not paths and every one of them normalises into whatever directory happens to be current.
+
+2026-09-10 · F275 R31 · DECISION F275 D17 landed the sentence that ZERO commits on this branch exceed 500 insertions, measured with `git log --numstat`, which emits NO diff for a merge commit — so the two merges bringing `main` into this branch, at 805 and 804 insertions against their first parents, were read as zero rather than examined. The claim is true of every commit carrying authored work, where the real maximum is 498, and the ruling that rests on it is unaffected; the quantifier is simply wider than the measurement that produced it. A sweep that quantifies over COMMITS states which commits its tool can SEE, because the commit shapes a tool silently skips are exactly the ones nobody thinks to check.
