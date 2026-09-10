@@ -12,32 +12,29 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 23 drafts DECISION F260 D3, the deletion paragraph T001 names as its last item and
-F275's Goal & Done makes a closing condition: every module F260's Design listed, the feature
-that inherited its idea, and the ideas deleted rather than inherited, with the finding ids
-that hold each enumeration. DECISION F275 D12 rules the three questions R-0866, R-0867 and
-R-0868 hand to this round; DECISION F275 D13 records that the fix clauses bound to "the D3
-round" are discharged across this round and the next, because they do not fit one block.
-The round also books session 12's pending record and repairs two stale comments and two
-vacuous test assertions.
+ROUND 24 repairs the surviving surfaces that still offer a reader something this feature
+deleted. `remedy mission run` advertises a second mode and three options no code path
+honours; two `related=` tuples name commands that no longer exist; and the mission
+run-loop page's Quick start gives an operator a `mission report` invocation that cannot
+parse. The round lands the referential-closure test R-0859 asks for, with the mutation
+colour that proves it bites, and books the round 23 verdict.
 
 ## Next Steps
 
-1. The repairs the D3 fix clauses leave outstanding: R-0832's event-name couplings and the
-   dead code they left, R-0859's two dangling `related=` references and its
-   referential-closure test, R-0858's F267 repair, R-0843's `Groups` table, and R-0868's
-   retirement of the four now-vacuous cluster scaffolding artefacts.
+1. Retire the cluster scaffolding R-0868 names — the deletion map, its two ratchets and
+   the order file — repair F267's plan as the round 23 measurement re-states it, and
+   banner the historical `Groups` table in `docs/system/architecture.md`.
 2. T002, the atomic record flip, alone, because every later commit's size depends on it.
 3. T003, the classic runner, which T002's ruling is the prerequisite for.
 
 ## Risks
 
-- The open set is 91 by distinct id at this round's base `6f865e50`, computed mechanically
-  from the record. This round registers two and resolves one, leaving 92. Four are High —
+- The open set is 92 by distinct id at this round's base `ea5f8128`, computed mechanically
+  from the record. This round registers one and resolves one, leaving 92. Four are High —
   R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION
   F272 D12.
-- DECISION F260 D3 lands in an append-only file and cannot be corrected, only superseded, so
-  every module-to-feature mapping in it is taken from a dated finding or a dated decision
-  rather than from the reviewer's reading of what a module looked like it did.
-- R-0855 is RESOLVED, not open. Session 12's handoff routed two new residues to it as an open
-  finding; they are registered as R-0870 instead.
+- Removing three advertised options is a user-visible narrowing of a SURVIVING command.
+  DECISION F275 D14 rules it, and R-0871 records it; nothing is wired in to replace them.
+- The advertisement guard `tests/cli/test_advertised_commands.py` is still blind to a
+  whole-group deletion, which is R-0847 and is why this page survived four rounds of
+  sweeps. Every remaining round sweeps the spaced form by hand.
