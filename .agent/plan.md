@@ -13,23 +13,24 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 42 widens the UNIFIED STORE with the three capabilities the classic store has and it
-lacked, measured by applying the flip in a disposable worktree and running it: a jobs-root
-override, which 186 classic call sites pass and `data_paths.job_record_path` already
-accepted; corruption visibility, which four production sites read off
-`storage.load_job_safe`; and listing, which seventeen call sites use and the unified store
-did not offer at all. DECISION F275 D23 records why this precedes the flip rather than
-riding inside it. Green by construction — no consumer moves.
+ROUND 43 takes the reading DECISION F275 D22 took for the TASK records and nobody had taken
+for the JOB records: both shipped classes IMPORTED and compared field by field, plus the
+shape readings a name comparison cannot give. The pair is CLEAN — 13 shared names and the
+only two `Job`-only names are the renames `id` and `name` — so there is no third unmeasured
+record pair, and DECISION F272 D15's sentence holds for the job record where D22 disproved
+it for the task record. DECISION F275 D24 records that, the `created_at` shape change at six
+sites, and `budget`'s already-guarded nullability. No production line moves.
 
 ## Next Steps
 
-1. The flip itself, now that its target API exists: applied from the round 36 site
-   enumeration and the round 38 seam list, as the one declared-oversize commit AGENTS.md
-   permits per feature, with the inseparability reason AND the real size stated in the
-   handback BEFORE review. The `Job` type sites DECISION F275 D21 counts as part (c) and
-   the `Task` type sites DECISION F275 D22 counts have no committed per-site enumeration,
-   so that round either enumerates them first or states that it applied them from a
-   measurement taken in its own worktree.
+1. THE FLIP. Its target API now exists (round 42) and its record shapes are now measured
+   (this round), so it applies: `.agent/f275_t003_flip_sites.md` for the `.id` and `.name`
+   sites, `.agent/f275_t003_flip_seam.md` for the classic store seam, and
+   `.agent/f275_t003_record_shapes.md` for the type sites and the `created_at` rewrite. It
+   lands as the one declared-oversize commit AGENTS.md permits per feature, with the
+   inseparability reason AND the real size stated in the handback BEFORE review, and it
+   registers `Task.acceptance_checks`'s structured form as a finding naming the feature that
+   owns acceptance criteria, per amend0908-f275-finish rule 4.
 2. The resolver collapse DECISION F260 D5 places in T003 — `resolve_any_job_id`, the "TWO
    job stores" paragraph, every which-store branch and the absence test — with the classic
    store, which is the same commit range by that decision's own terms.
@@ -38,10 +39,10 @@ riding inside it. Green by construction — no consumer moves.
 
 ## Risks
 
-- Step 1 is the largest single commit this repository will take, and every round that
-  measures it has found it larger: DECISION F275 D17 sized it at 1766 changed lines, D21 at
-  3771 across 263 files, D22 added a type pair worth 427 more, and D23 found that three
-  pieces of its target API did not exist.
-- The open set is 86 by distinct id at this round's base `77a7d840`. This round registers
+- Step 1 is the largest single commit this repository will take. Four rounds have now
+  measured it and three found it larger: D17 sized it at 1766 changed lines, D21 at 3771
+  across 263 files, D22 added a type pair, D23 found three pieces of its target API
+  missing, and D24 is the first to find NOTHING new.
+- The open set is 86 by distinct id at this round's base `7f8724c3`. This round registers
   none and resolves none. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's,
   per DECISION F272 D12.
