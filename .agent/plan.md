@@ -12,30 +12,33 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 26 finishes the two documents rounds 23 to 25 repaired in parts, by sweeping each
-enclosing unit for the concept BEFORE writing a pair rather than after. `T2_F267.md` loses
-the three numerals and the dead cross-reference its earlier repair left standing, and the
-historical `Group-first CLI v0` section of `architecture.md` gets one banner at the section
-level instead of a pair per false sentence. R-0843 and R-0858 close on those sweeps.
+ROUND 27 makes the advertisement guard see the class it was built for. Its scanner drops the
+`GROUPS` pre-filter that hid every advertisement of a deleted group, gains the single-token
+`remedy <something>` form, and counts a closing backtick as a command tail. Eight dead
+next-action strings in production code become the live group-first commands, the
+`architecture.md` banner loses the `remedy list` the reviewer invented and states the span it
+really covers, and the dead advertisements the widening exposes on operator-facing pages are
+pinned in a shrink-only allowlist as R-0872. R-0847 closes.
 
 ## Next Steps
 
-1. T002: the DECISION F272 D7 raising-property probe over every candidate `.id` receiver,
+1. R-0872's first half: delete the four pages that document command groups F275 deleted
+   whole, and repair `core-product-spine-v0.md`, lowering the allowlist by 21.
+2. R-0872's second half: the flat pre-Step-38 CLI in `architecture.md` and the one site in
+   `vocabulary.md`, lowering the allowlist to zero and deleting the ratchet with it.
+3. T002: the DECISION F272 D7 raising-property probe over every candidate `.id` receiver,
    giving the real site set rather than D15's upper bound, then the dated decision choosing
-   the route. No production line moves in that slice, and it wants a fresh session.
-2. T003, the classic runner, which T002's ruling is the prerequisite for.
-3. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
+   the route. No production line moves in that slice.
+4. T003, the classic runner, which T002's ruling is the prerequisite for.
+5. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
    STATUS line and the PR.
 
 ## Risks
 
-- The open set is 90 by distinct id at this round's base `684b1b55`, computed mechanically
-  from the record. This round registers nothing and resolves two, leaving 88. Four are High
-  — R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION
+- The open set is 88 by distinct id at this round's base `c370dcee`, computed mechanically
+  from the record. This round registers one and resolves one, leaving 88. Four are High —
+  R-0803, R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION
   F272 D12.
-- R-0870's class has recurred in every round of this session, always as a region repaired
-  while its enclosing unit kept contradicting it. This round is the counter-measure applied
-  to itself; if it recurs again the clause is not working and the next session should say so
-  rather than write a fourth instance.
-- T001's remaining work is documentary only. Every module F260's Design lists is gone, the
-  deletion paragraph is recorded, and the scaffolding is retired.
+- The allowlist is the first mechanism in this feature that lets a known defect sit on disk
+  under a green suite. It is bounded by two assertions rather than by intent: it may not
+  grow, and it may not keep an entry whose advertisement is gone.
