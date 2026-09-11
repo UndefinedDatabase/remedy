@@ -253,7 +253,7 @@ class BrainEdge:
 class ProjectBrainGraph:
     """Immutable snapshot of the Project Brain Graph for a job."""
 
-    job_id: UUID
+    job_id: str
     nodes: tuple[BrainNode, ...]
     edges: tuple[BrainEdge, ...]
     degraded: tuple[str, ...] = ()
