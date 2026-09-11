@@ -13,25 +13,23 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 51 lands the first group of DECISION F275 D29's P2 and registers `R-0877`, the defect
-it repairs. `timeline.append_run_event` and `test_failure_artifact.emit_failure_events`
-coerced their `job_id` with `UUID(str(job_id))`, which rejects the sixteen hex characters
-`data_paths.mint_job_id` produces — and for an unhyphenated 32-hex id wrote a directory the
-reader in the same module never looked in. Both now join the id verbatim, as
-`data_paths.run_log_dir` already did. The round 50 PASS verdict is booked here.
+ROUND 52 completes `R-0877`. Round 51 made the run-log seam join its id verbatim; 26 call
+sites in 12 files still wrapped that id in `UUID(...)`, so one job's run log landed in two
+directories and each reader saw only its own half — measured at `87d76c66` as two
+directories for one id, with neither reader seeing both events. All 26 wraps are removed by
+one `ast` pass, the six imports it orphans go with it, and a repo-wide sweep test keeps the
+count at zero. The round 51 PASS verdict is booked here.
 
 ## Next Steps
 
-1. P2's remaining groups — the surviving `UUID(...)` coercions over a job or task id that
-   are NOT dual-shape normalisers, landed one assignment-connected component per commit as
-   DECISION F275 D28 rules for an id widen.
+1. The reviewer's authored `Done: R-0877`, covering both halves, at the next gate.
 2. P1 — replace the transform's receiver-NAME heuristic with the DECISION F272 D7
    raising-property probe `docs/roadmap/features/T2_F275.md` T002 already orders. The probe
    and its site set exist at `0b009325` in `.agent/f275_t002_flip_inventory.md`; T003
    re-derives them at its own base, as that file says it must.
 3. P3 — the `**` splat call-graph pass over the test helper factories.
-4. Re-run the dry run, then THE FLIP as the one declared-oversize commit AGENTS.md permits
-   per feature, declared with its inseparability reason before review.
+4. Re-run the flip dry run, then THE FLIP as the one declared-oversize commit AGENTS.md
+   permits per feature, declared with its inseparability reason before review.
 5. The resolver collapse DECISION F260 D5 places in T003, with the classic store.
 6. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
    ledger rotation, the STATUS line and the PR.
@@ -39,6 +37,8 @@ reader in the same module never looked in. Both now join the id verbatim, as
 ## Risks
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
-  split-and-close default BY NAME: the session writes the scope report and CONTINUES.
-- The open set is 87 by distinct id once this round registers `R-0877`. Four are High —
-  R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+  split-and-close default BY NAME: a session writes the scope report and CONTINUES.
+- The remaining `UUID(...)` sites are NOT this class: they hold a value that is legitimately
+  a `uuid.UUID` in the classic record, so they move WITH the flip and not before it.
+- The open set is 87 by distinct id. Four are High — R-0803, R-0804, R-0806 and R-0807 —
+  all F273's, per DECISION F272 D12.
