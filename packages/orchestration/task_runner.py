@@ -50,7 +50,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from uuid import UUID
 
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.artifact_index import planning_artifact
@@ -65,16 +64,16 @@ class RunTaskResult:
     """Result of a run_next_task call.
 
     job:      the (possibly mutated) job after attempting execution.
-    task_id:  UUID of the task that was executed, or None if no task was run.
+    task_id:  id of the task that was executed, or None if no task was run.
     changed:  True if a task was executed; False if no pending task was found.
     """
 
     job: Job
-    task_id: UUID | None
+    task_id: str | None
     changed: bool
 
 
-def _find_next_pending(job: Job, *, task_id: UUID | None = None) -> Task | None:
+def _find_next_pending(job: Job, *, task_id: str | None = None) -> Task | None:
     """Return the first task with status PENDING, or None.
 
     With *task_id*, return that task only if it is PENDING — the caller has
@@ -157,7 +156,7 @@ def run_next_task(
     job: Job,
     call_builder: Callable[[TaskExecutionContext], BuilderOutput],
     *,
-    task_id: UUID | None = None,
+    task_id: str | None = None,
 ) -> RunTaskResult:
     """Execute the next pending task using the injected builder callable.
 
@@ -416,10 +415,10 @@ def materialize_task_output(
     where:
         <index>      0-based position of the task in job.tasks, zero-padded to 3 digits
         <safe_type>  task_type with unsafe characters replaced by underscores (max 48 chars)
-        <short_id>   first 8 hex characters of the task UUID
+        <short_id>   first 8 characters of the task id
 
     This naming is:
-        - collision-safe: index + task UUID fragment make every file unique
+        - collision-safe: index + task id fragment make every file unique
         - deterministic: same task always produces the same filename
         - path-safe: sanitized type prevents traversal; no raw user data in paths
 
@@ -476,7 +475,7 @@ def materialize_task_output(
     task_type = artifact.metadata.get("task_type", "unknown")
     summary = artifact.metadata.get("summary", "")
     safe_type = sanitize_path_component(task_type)
-    short_id = result.task_id.hex[:8]
+    short_id = str(result.task_id)[:8]
 
     changes = _extract_proposed_changes(artifact.content)
 
