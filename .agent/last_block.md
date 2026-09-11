@@ -1,153 +1,189 @@
-── STEP T003 / round 58 — F275 ────────────────────────────────
-Goal:        Record what building DECISION F275 D32's FIRST retype rule family measured,
-             rule the task-id half it turned on, and register the defect the run exposed in
-             the ruled site set itself. The artefact is the reviewer's dry run, transported
-             as a whole file. NO LINE UNDER `packages/`, `apps/`, `tests/`, `docs/` OR
-             `scripts/` MOVES.
+── STEP T003 / round 59 — F275 ────────────────────────────────
+Goal:        Land the re-keyed ruled site set, its refusal precondition and the dry run
+             they made possible, as DECISION F275 D34 part two orders; book the round 58
+             verdict, the dated slip and the `R-0878` resolution the previous session left
+             on the carrier; and register the mirror defect the run exposed. The artefact
+             and the instrument are reviewer texts transported as whole files. NO LINE
+             UNDER `packages/`, `apps/`, `tests/`, `docs/` OR `scripts/` MOVES.
 
-Bundle:      C0a  save this block verbatim as `.agent/authored/f275-r58.md`
-             C0b  save the artefact text verbatim as `.agent/authored/f275-r58-artefact.md`
-             C0c  mirror the C0a blob into `.agent/last_block.md`
-             C1   `.agent/plan.md` <- slice PLAN58, whole-file replacement
-             C2   `.agent/live_review.md` <- slices RECORD58 then FIND58, both appended
-             C3   `.agent/prose_slips.md` <- slice SLIPS58 appended
-             C4   `.agent/f275_t003_flip_residue_r58.md` <- a copy of the C0b blob
-             C5   `.agent/decisions.md` <- slice DEC58 appended
-             C6   `.agent/handoff.md` rewritten — the handback
+Bundle:      C0a  save this block verbatim as `.agent/authored/f275-r59.md`
+             C0b  save the artefact text verbatim as `.agent/authored/f275-r59-artefact.md`
+             C0c  save the re-key instrument verbatim as
+                  `.agent/authored/f275-r59-rekey.py.md`
+             C0d  mirror the C0a blob into `.agent/last_block.md`
+             C1   `.agent/plan.md` <- slice PLAN59, whole-file replacement
+             C2   `.agent/live_review.md` <- slices RECORD59, then DONE59, then FIND59,
+                  all three appended as ONE ordered region in ONE commit
+             C3   `.agent/prose_slips.md` <- slice SLIPS59 appended
+             C4   `.agent/f275_t003_flip_residue_r59.md` <- a copy of the C0b blob
+             C5   `.agent/handoff.md` rewritten — the handback
 
 Change:      EXACTLY these paths and nothing else.
-               .agent/authored/f275-r58.md                NEW
-               .agent/authored/f275-r58-artefact.md       NEW
+               .agent/authored/f275-r59.md                NEW
+               .agent/authored/f275-r59-artefact.md       NEW
+               .agent/authored/f275-r59-rekey.py.md       NEW
                .agent/last_block.md
                .agent/plan.md
                .agent/live_review.md
                .agent/prose_slips.md
-               .agent/f275_t003_flip_residue_r58.md       NEW
-               .agent/decisions.md
+               .agent/f275_t003_flip_residue_r59.md       NEW
                .agent/handoff.md
-             The three paths marked NEW do not exist at the base: `git ls-tree bf5ec6a4 --`
-             over all three prints nothing, so each is an ADDITION and not a rewrite.
+             The four paths marked NEW do not exist at the base: `git ls-tree bf692757 --`
+             over all four prints nothing at exit 0, so each is an ADDITION and not a
+             rewrite. `.agent/decisions.md` is NOT in this set — DECISION F275 D34 already
+             rules this round's work and a decision restated is a decision edited.
 
 Constraints:
   1. EVERY authored slice is applied BYTE FOR BYTE. Do not reflow, re-wrap, correct,
      improve or re-indent one character, including text you believe is wrong. A slice you
      disagree with is applied as written and the disagreement goes in the deviations.
-  2. Extract each slice from the COMMITTED blob of `.agent/authored/f275-r58.md` at C0a by
+  2. Extract each slice from the COMMITTED blob of `.agent/authored/f275-r59.md` at C0a by
      its `BEGIN-`/`END-` marker-line prefix, marker lines EXCLUDED, never from this prompt
-     and never from memory. The artefact is a WHOLE FILE: copy it with `shutil.copyfile`
-     and never open it in an editor.
-  3. The commit order above is FIXED. `.agent/plan.md` therefore names round 57 across
-     C0a, C0b and C0c and becomes current at C1, which is the first SUBSTANTIVE commit and
-     is what item 23 of §3 of `docs/agents/planner_reviewer_prompt.md` requires of a round
-     that registers a finding.
-  4. This round creates NO `git worktree` and runs nothing destructive.
+     and never from memory. The artefact and the instrument are WHOLE FILES: copy each
+     with `shutil.copyfile` and never open either in an editor.
+  3. The commit order above is FIXED. `.agent/plan.md` therefore names round 58 across
+     C0a, C0b, C0c and C0d and becomes current at C1, which is the first SUBSTANTIVE
+     commit and is what item 23 of §3 of `docs/agents/planner_reviewer_prompt.md` requires
+     of a round that registers and resolves a finding.
+  4. This round creates NO `git worktree` and runs nothing destructive. The reviewer's own
+     four worktrees were created, used and removed BEFORE this block was written, and
+     `git worktree list` shows the primary checkout alone at the base.
   5. Nothing is written to `/tmp`. All scratch lives under the gitignored `.remedy-wt/`.
   6. No `remedy` CLI command and no `gh` command is run. No pull request is created,
      edited or merged.
-  7. Re-read `.agent/STOP` FROM DISK before the first commit and again before C6, and
+  7. Re-read `.agent/STOP` FROM DISK before the first commit and again before C5, and
      report both readings literally. It does not exist at the reviewer's base reading.
-  8. This block is 260 lines TOTAL and 187 PROSE, measured on its final bytes.
-  9. EXACTLY ONE finding id is registered this round and none is resolved. The open set is
-     87 by distinct id at the base and must read 88 at C5, with `R-0879` the only id added.
-     `R-0878` keeps its `Landed:` line and gains no `Done:` here — the reviewer's
-     resolution text for it is owed at a later gate and is not part of this round.
+  8. This block is 277 lines TOTAL and 220 PROSE, measured on its final bytes.
+  9. EXACTLY ONE finding id is registered this round and EXACTLY ONE is resolved. The open
+     set is 88 by distinct id at the base and must read 88 at C4 — the COUNT does not move
+     and the MEMBERSHIP does, so the gate checks both: `R-0880` must be the only id added
+     and `R-0878` the only id resolved. `R-0878`'s existing `Landed:` line is NOT deleted,
+     edited or moved; DONE59 is appended beside it, because this record is append-only.
+ 10. `.agent/authored/f275-r59-rekey.py.md` is a `.md` and its extension is load-bearing:
+     a `.py` file anywhere `ruff check .` scans is counted by
+     `tests/orchestration/test_ci_budgets.py`, whose ceiling G6(c) reads. Do not rename it,
+     and do not land a runnable copy of it anywhere in the tree.
 
 Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
              "REAL_EXIT=$?"'`, with the REAL exit code and the real output reported. A
              gate whose command you did not run is a finding, and the word "green" is not
-             a reading. Every gate runs at a commit STRICTLY EARLIER than C6.
+             a reading. Every gate runs at a commit STRICTLY EARLIER than C5.
 
-  G1 TRANSPORT. For each of the two authored blobs, compare the COMMITTED blob against the
-     reviewer's scratch original by size and sha256:
-       .agent/authored/f275-r58.md          @C0a  vs  .remedy-wt/f275-r58.block.md
-       .agent/authored/f275-r58-artefact.md @C0b  vs  .remedy-wt/f275-r58-artefact.md
-     Then `.agent/last_block.md` @C0c against the C0a blob. Report all three EQUAL
-     verdicts. Re-measure on the COMMITTED C0a blob: TOTAL lines, the summed lines of the
-     five slices BODY, PROSE = TOTAL - BODY, and whether either exceeds 490 and 400. Report
-     both numerals beside constraint 8's and say whether they agree.
+  G1 TRANSPORT. For each of the three authored blobs, compare the COMMITTED blob against
+     the reviewer's scratch original by size and sha256:
+       .agent/authored/f275-r59.md           @C0a  vs  .remedy-wt/f275-r59.block.md
+       .agent/authored/f275-r59-artefact.md  @C0b  vs  .remedy-wt/f275-r59-artefact.md
+       .agent/authored/f275-r59-rekey.py.md  @C0c  vs  .remedy-wt/f275-r59-rekey.py.md
+     Then `.agent/last_block.md` @C0d against the C0a blob. Report all four EQUAL verdicts.
+     Re-measure on the COMMITTED C0a blob: TOTAL lines, the summed lines of every slice's
+     BODY, PROSE = TOTAL - BODY, and whether either exceeds 490 and 400. Report both
+     numerals beside constraint 8's and say whether they agree. The block states no count
+     of its own slices: the extraction is the sweep and its cardinality is your output.
 
-  G2 THE PLAN. `.agent/plan.md` at C1 byte-identical to slice PLAN58: report both sizes
+  G2 THE PLAN. `.agent/plan.md` at C1 byte-identical to slice PLAN59: report both sizes
      and both sha256. Report its line count against the AGENTS.md cap of 50, and the count
      of `^## Goal$` and of `^## Next Steps$`, each of which must be 1.
 
   G3 THE RECORD. Both appends, each proved by TWO readers and a negative control. C2
-     appends RECORD58 and then FIND58 into one file in one commit, so treat the two slices
-     as one appended region in that order.
+     appends RECORD59, DONE59 and FIND59 into one file in one commit, so treat the three
+     slices as ONE appended region in that order.
      (i)  READER A, over a BYTE stream: the post-commit blob equals the pre-commit blob
           followed, for each slice in order, by one newline and that slice's body.
-            .agent/live_review.md   pre 956303 at the base, RECORD58 7015, FIND58 3369
-            .agent/prose_slips.md   pre 250959 at the base, SLIPS58 1099
-          Report each pre size, each post size and each delta.
+            .agent/live_review.md   pre 966689 at the base
+            .agent/prose_slips.md   pre 252059 at the base
+          Report each pre size, each post size and each delta. The slice body sizes are
+          NOT stated here: each is the length of what you extracted, and a body size this
+          block asserts is a numeral standing beside a measurement.
      (ii) READER B, structural and independent: the LAST N blank-line-separated units of
           the whole post-commit file equal the appended slices' N paragraphs IN ORDER,
           where N is a value your script COUNTS from the slices. Report the N for each.
-     (iii) NEGATIVE CONTROL, one per file: flip a single ASCII letter inside the FIRST
-          appended paragraph and report that BOTH readers reject it.
-     (iv) RECORD58 must carry no interior line beginning with any of `Gate: `, `- R-`,
-          `Done: R-`, `Landed: R-`, `Recurrence: R-` or `DECISION F`; report that count,
-          which must be 0. FIND58 must begin with `- R-0879 — ` and carry no second line
-          beginning with `- R-`; report both readings. Report also `^Done: R-0878 ` at C2,
-          which must be 0, and `^Landed: R-0878 `, which must be 1 and untouched.
-     (v)  Report RECORD58's first line beside every line in `.agent/live_review.md` at
-          `bf5ec6a4` already matching `^Gate: F275 R5\d — the F275 round \d+ entry\.`, and
-          whether the new first line matches that same pattern. Report the number your
-          script counted; this block states none.
+     (iii) NEGATIVE CONTROL, one per file: flip a single ASCII letter — a byte b with
+          `b < 128 and chr(b).isalpha()` — inside the FIRST appended paragraph, and report
+          that BOTH readers reject it. The predicate is narrowed here because round 58's
+          first attempt selected the lead byte of a UTF-8 `·` and was not testing what the
+          gate said.
+     (iv) RECORD59 and DONE59 must each carry no interior line beginning with any of
+          `Gate: `, `- R-`, `Done: R-`, `Landed: R-`, `Recurrence: R-` or `DECISION F`;
+          report both counts, each of which must be 0. FIND59 must begin with
+          `- R-0880 — ` and carry no second line beginning with `- R-`; report both
+          readings. Report also, at C2, the count of lines matching `^Landed: R-0878 `,
+          which must be 1 and byte-identical to the same line at the base, and the count
+          matching `^Done: R-0878 `, which must be 1 where it was 0 at the base.
+     (v)  Report RECORD59's first line beside every line in `.agent/live_review.md` at
+          `bf692757` already matching `^Gate: F275 R5\d — the F275 round \d+ entry\.`, and
+          whether the new first line matches that same pattern and duplicates none of
+          them. Report the number your script counted; this block states none.
 
-  G4 THE ARTEFACT IS THE AUTHORED BLOB AND NOTHING ELSE.
-     `.agent/f275_t003_flip_residue_r58.md` at C4 must be byte-identical to the
-     `.agent/authored/f275-r58-artefact.md` blob at C0b — report both sizes and both
+  G4 THE ARTEFACT AND THE INSTRUMENT ARE THE AUTHORED BLOBS AND NOTHING ELSE.
+     `.agent/f275_t003_flip_residue_r59.md` at C4 must be byte-identical to the
+     `.agent/authored/f275-r59-artefact.md` blob at C0b — report both sizes and both
      sha256. Report the exit code of
-     `git show bf5ec6a4:.agent/f275_t003_flip_residue_r58.md`, which must be non-zero,
+     `git show bf692757:.agent/f275_t003_flip_residue_r59.md`, which must be non-zero,
      because that is what makes C4 an ADDITION. Report the artefact's line count against
-     the DECISION F104 D1 cap of 500 insertions.
+     the DECISION F104 D1 cap of 500 insertions, and the instrument blob's line count
+     against the same cap.
 
-  G5 THE ARTEFACT'S CLAIMS ABOUT THE SHIPPED CODE ARE STILL TRUE AT THIS COMMIT. The
-     artefact's section 1 rests on two readings of the repository, and both are cheap to
-     re-take. Run, from the repository root:
-     (a) `python3 -B -c "from packages.orchestration.data_paths import mint_job_id;
-         v = mint_job_id(); print(repr(v), len(v))"` and report its output. The artefact
-         states this is the sixteen-hex shape.
-     (b) `python3 -B -c "import dataclasses;
-         from packages.orchestration.pingpong_job import TaskEntry;
-         print([f.type for f in dataclasses.fields(TaskEntry) if f.name == 'task_id'])"`
-         and report its output.
-     (c) Report the literal lines of `packages/orchestration/pingpong_job.py` that contain
-         `Deterministic ID by parse order` and `T001, T002`, with their line numbers. Those
-         two comments are the whole basis on which DEC58 rules a task id an ORDINAL, so a
-         round that records that ruling reads them rather than citing them.
+  G5 THE CLAIMS THE ARTEFACT AND THE RESOLUTION REST ON ARE STILL TRUE AT THIS COMMIT.
+     Four readings, all cheap, all from the repository root.
+     (a) For each of `packages.orchestration.verifier.VerificationResult` (`task_id`),
+         `packages.orchestration.long_run_executor.TaskAttempt` (`task_id`),
+         `packages.orchestration.task_runner.RunTaskResult` (`task_id`),
+         `packages.orchestration.dag_schedule.TaskNode` (`task_id`),
+         `packages.orchestration.agent_loop.AgentLoopState` (`job_id`),
+         `packages.orchestration.project_brain.ProjectBrainGraph` (`job_id`) and
+         `packages.orchestration.workspace.Workspace` (`job_id`), import the LIVE class
+         and report `[f.type for f in dataclasses.fields(C) if f.name == <field>]`.
+         Report all seven literally. DONE59 states five read `str` and two read
+         `str | None`; say whether your reading agrees, naming which is which.
+     (b) `python3 -m pytest tests/orchestration/test_uuid_record_ratchet.py -q` and report
+         its count and REAL exit code. DONE59 states 7 passed at exit 0.
+     (c) Import `packages.orchestration.mission_state.Mission` and report the full list of
+         its `dataclasses.fields` names. The artefact's section 7 and FIND59 both rest on
+         `Mission` carrying `id` and NOT carrying `job_id`; report whether each of those
+         two readings holds.
+     (d) Report the literal lines 284 through 287 of `packages/orchestration/loop_run.py`
+         with their line numbers. The artefact and FIND59 both quote line 285 as the
+         clearest instance of the defect and both state that the traceback frame reads 286
+         because the transform inserts an import above it — so the round that lands those
+         claims READS the line rather than citing it. Report what you found even if it
+         differs from the quoted `-` side, and say explicitly which of 285 and 286 holds
+         the `link_job_to_mission` call at this commit.
 
   G6 THE TREE DID NOT MOVE.
      (a) Report the git object id of each of `packages`, `apps`, `tests`, `docs` and
-         `scripts` at `bf5ec6a4` and at C5, and whether all five are EQUAL.
+         `scripts` at `bf692757` and at C4, and whether all five are EQUAL.
      (b) THE CANARY: `python3 -m pytest tests/cli/test_golden_path.py -q`. It reads
          42 passed at exit 0 at the base.
      (c) `python3 -m ruff check . --output-format concise`. Its exit code is 1 whenever
          any finding remains, so the GATE IS THE COUNT: report the number of rows matching
          `^\S+:\d+:\d+: `, which is 26 at the base and is the ceiling
          `tests/orchestration/test_ci_budgets.py` freezes. Report rows under `.remedy-wt/`
-         separately. Do not use `grep -c` for a count you expect to be zero.
+         separately, and report rows whose path ends `.py` under `.agent/`, which
+         constraint 10 is the reason to expect at zero. Do not use `grep -c` for a count
+         you expect to be zero.
 
   G7 NOTHING ELSE MOVED.
      (a) Report whether `.agent/STOP` exists on disk, the literal output of
-         `git status --porcelain`, and the literal output of `git worktree list`. The
-         first must be absent and the second the empty string. The third is REPORTED, not
-         gated: state instead whether THIS ROUND created or removed any worktree, which
-         constraint 4 fixes at neither.
-     (b) The changed-path set over `bf5ec6a4`..C5 must be exactly the Change section's
+         `git status --porcelain` piped through `cat -A`, and the literal output of
+         `git worktree list`. The first must be absent and the second the empty string.
+         The third is REPORTED, not gated: state instead whether THIS ROUND created or
+         removed any worktree, which constraint 4 fixes at neither.
+     (b) The changed-path set over `bf692757`..C4 must be exactly the Change section's
          paths other than `.agent/handoff.md`. Report MISSING and EXTRA, both of which
          must be empty, and the count of paths under `docs/`, `scripts/`, `packages/`,
          `apps/` or `tests/`, which must be 0.
      (c) The open set BY DISTINCT ID, derived as every `^- R-\d+ — ` paragraph minus every
-         `^Done: R-\d+ — ` line, at `bf5ec6a4` and at C5. Report both, the ids registered
-         and the ids resolved. Registered must be exactly `R-0879` and resolved must be
-         empty. Report the highest id in the record at each end.
-     (d) Per-commit insertions from `git show --numstat <sha>` for C0a through C5, each
+         `^Done: R-\d+ — ` line, at `bf692757` and at C4. Report both, the ids registered
+         and the ids resolved. Registered must be exactly `R-0880` and resolved exactly
+         `R-0878`. Report the highest id in the record at each end. The COUNT is 88 at
+         both ends and that is not by itself the gate; the membership is.
+     (d) Per-commit insertions from `git show --numstat <sha>` for C0a through C4, each
          against the AGENTS.md DECISION F104 D1 cap of 500, and the maximum over them.
-         C6's own numbers are NOT ordered here: they cannot exist while C6 is being
+         C5's own numbers are NOT ordered here: they cannot exist while C5 is being
          written, and the reviewer records them at the next gate.
 
-Handback:    completion report + rewrite `.agent/handoff.md`. Carry SESSION 22 of F275 and
-             round 58, the one-sentence context self-assessment amend0905-throughput
+Handback:    completion report + rewrite `.agent/handoff.md`. Carry SESSION 23 of F275 and
+             round 59, the one-sentence context self-assessment amend0905-throughput
              requires, the changed-files table with every `+/-` taken from
              `git show --numstat` and no other source, one line per gate with its REAL
              exit code, the item-status table covering every C and every G exactly once,
@@ -156,10 +192,7 @@ Handback:    completion report + rewrite `.agent/handoff.md`. Carry SESSION 22 o
              round 51's handback STANDS and is not restated, rule 2 forbids the
              split-and-close default BY NAME, and this round closes nothing, registers no
              feature and does not touch `docs/roadmap/STATUS.md`. Carry the operator
-             banner exactly as `docs/agents/self_drive_protocol.md` spells it. THIS IS THE
-             LAST DELEGATED ROUND OF SESSION 22: say so in the Session section, and state
-             that the reviewer's round 58 verdict and the session close are appended to
-             this file afterwards, so the next session reads them there. Then push.
+             banner exactly as `docs/agents/self_drive_protocol.md` spells it. Then push.
 ──────────────────────────────────────────────────────────────
 
 The three separators in this block carry runs of the box-drawing character U+2500, whose
@@ -171,7 +204,7 @@ spaces, and 10 more.
 
 ────────── SLICES ──────────
 
-BEGIN-PLAN58 sha256=71c3b75fca3fc9d695efa5f1f2ff1a68245abd2c5dd94bb7748827babc6b9cb0
+BEGIN-PLAN59 sha256=a866e2836792b54c6d739526174717b568bf50279ac55ce063cd27e3a7a358be
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -187,22 +220,22 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 58 builds the FIRST of DECISION F275 D32's three retype rule families, the id VALUE
-at a target construction, and measures it against a control at the same commit. The job
-half is the shipped minter; the task half is an ORDINAL, which DECISION F275 D34 rules
-after enumerating all fifteen sites. The run also found the defect the round is really
-about: the ruled site set is keyed by LINE NUMBER and round 57's own migration drifted 54
-of its sites, which is finding `R-0879`. The artefact is
-`.agent/f275_t003_flip_residue_r58.md`. The round 57 PASS verdict and one dated prose slip
-are booked here.
+ROUND 59 re-keys the ruled site set off line numbers as DECISION F275 D34 orders, gives the
+transform a precondition that REFUSES on a stale set, and re-runs the dry run against a
+control at the same commit. The re-key recovers 2198 of 2198 sites where the line key
+recovers 2144, and the run's failures fall from 1476 to 1240 with the `JobPlan`-receiver
+attribute class down from 255 lines to 18. The run exposed the mirror defect, finding
+`R-0880`: the same set OVER-selects, renaming a field on records the flip does not touch.
+The artefact is `.agent/f275_t003_flip_residue_r59.md`. The round 58 verdict, one dated
+prose slip and the `R-0878` resolution are booked here.
 
 ## Next Steps
 
-1. Re-key the ruled site set off line numbers as DECISION F275 D34 orders, give the
-   transform its refuse-on-stale precondition, and re-run the dry run with its control.
-2. Resolve the `.status` field by type, in a round of round 53's shape — the descriptor
-   probe run twice, unioned with a static sweep — because its 76 sites sit on ten receiver
-   names and five of them decide nothing by name. Then D32's remaining rule family.
+1. Resolve the `.status` field by type, in a round of round 53's shape — the descriptor
+   probe run twice, unioned with a static sweep — then build DECISION F275 D32's third
+   rule family, which this run leaves as the largest cleanly attributed unbuilt rule.
+2. Bound `R-0880` statically: read the ruled set against the live record classes, so the
+   over-selected sites are known rather than only the ones the suite happens to execute.
 3. THE FLIP as the one declared-oversize commit AGENTS.md permits per feature, registering
    the `acceptance_checks` finding DECISION F275 D22 places with it.
 4. The resolver collapse DECISION F260 D5 places in T003, with the classic store, then the
@@ -212,49 +245,33 @@ are booked here.
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
   split-and-close default BY NAME: a session writes the scope report and CONTINUES.
-- Re-keying recovers the SITES; no run has yet shown it recovers the residue.
-- The residue is classified, not exhausted, and the 42 errors are undiagnosed.
-- The open set is 88 by distinct id, with `R-0878` and `R-0879` both awaiting a reviewer
-  `Done:`. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION
-  F272 D12.
-END-PLAN58
+- The three largest residue classes are attributed to an id SHAPE change rather than to a
+  rename, and no rule family this chain has written covers them.
+- The 42 errors did not move between the two runs and are still undiagnosed.
+- The open set is 88 by distinct id, with `R-0879` and `R-0880` both open. Four are High —
+  R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+END-PLAN59
 
-BEGIN-RECORD58 sha256=150b317bb549b1069d67f9151cbb42b5bddf688e06a1b18129b1e7653b5ea992
-Gate: F275 R57 — the F275 round 57 entry. VERDICT PASS. Written by the planner and reviewer of session 22 after reading the committed range `00b88a2f`..`bf5ec6a4` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line below. THIS IS THE FIRST ROUND OF THIS SESSION TO MOVE A PRODUCTION LINE, and it moved thirty-five of them across seven modules without one being typed by hand. G1: all three authored blobs are byte-identical to the reviewer's own scratch originals — the block at 27790 bytes and sha256 `48abea6e03bd3d989071e694a3c23373a103ea261952b1bee9313f3ea0b45f62`, the migrator wrapper at 9392 and the ratchet wrapper at 7793 — `.agent/last_block.md` equals the block blob, and all four slices matched the sha256 on their own BEGIN markers. Re-measured on the committed blob the block is 294 lines TOTAL and 235 PROSE, agreeing with its own constraint 9. G2: `.agent/plan.md` byte-identical to PLAN57 at 2659 bytes over 46 lines, both headings exactly once.
+BEGIN-RECORD59 sha256=1734a32e7448e2bc408a4b49da2f0a373fe54a3d0d10da7626447a5415897550
+Gate: F275 R58 — the F275 round 58 entry. VERDICT PASS. Written by the planner and reviewer of session 22 after reading the committed range `bf5ec6a4`..`8e845a94` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line below. It is booked here by the FIRST SUBSTANTIVE COMMIT of round 59, from `.agent/handoff.md` as the durable carrier, per operator amendment amend0827-process-diet rule 1 — a verdict does not buy a round of its own, and under `docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost.
 
-G3: three appends, all exact under reader A — `.agent/live_review.md` 949132 to 955452 for RECORD57, `.agent/prose_slips.md` 250044 to 250959 for SLIPS57, and `.agent/live_review.md` again 955452 to 956303 for LANDED57 at C11 — with reader B true at N counted from each slice, 6, 1 and 1, and all three negative controls rejected by BOTH readers. `^Landed: R-0878 ` goes 0 at C10 to 1 at C11 while `^Done: R-0878 ` is 0 at both, which is the append-only record holding an unreviewed fix in exactly the shape §4 item 4 requires: the worker wrote no `Done:` of its own, and the reviewer's is owed at the next gate.
+G1 is the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback: both authored blobs are byte-identical to the reviewer's own scratch originals, the block at 32358 bytes and sha256 `7e2789f4daa41333f57dc909588ce1d9fd540838d737a1f2afd1ddba9d430e39` and the artefact at 9622, and `.agent/last_block.md` equals the block blob. All five slices additionally matched the sha256 on their own BEGIN markers. Re-measured on the committed blob the block is 260 lines TOTAL and 187 PROSE, agreeing with its own constraint 8. G2: `.agent/plan.md` is byte-identical to PLAN58 at 2505 bytes over 45 lines, both mandated headings exactly once. G3: `.agent/live_review.md` goes 956303 to 966689 across RECORD58 and FIND58 as one ordered region and `.agent/prose_slips.md` 250959 to 252059, both exact under reader A; reader B holds for both at N counted from the slices, 8 and 1; both negative controls are rejected by BOTH readers; the `Done:` prefix for `R-0878` reads 0 at C2 while its `Landed:` prefix reads 1 and untouched, which is the append-only record still holding round 57's fix as unreviewed, exactly as it should look.
 
-G4 IS THE GATE THIS ROUND EXISTS FOR AND IT PROVES MORE THAN THAT THE EDITS WERE MADE. All seven production files at C11 are byte-identical to the size and sha256 the block STATED IN ADVANCE — `verifier.py` 13383, `long_run_executor.py` 69768, `task_runner.py` 19989, `dag_schedule.py` 7437, `agent_loop.py` 16708, `project_brain.py` 47386 and `workspace.py` 3918 — and those seven values are the ones the REVIEWER's own dry run produced before the block was authored, running the same migrator over a disposable worktree. So the committed tree is byte-for-byte a tree the reviewer had already run the FULL SUITE against at 18386 passed and exit 0, which is a stronger statement than any gate the round itself could make. The landed ratchet equals the C0c fenced body exactly at 7283 bytes, and exactly seven files under `packages/` changed over the range.
+G4: the artefact at C4 is byte-identical to the C0b blob at 9622 bytes, the path does not resolve at the base, and it is 163 lines against the 500 cap. G5: the reviewer re-ran both readings itself — `mint_job_id()` returns sixteen hex characters and `dataclasses.fields(TaskEntry)` gives `task_id` the type `str` — which are the two facts the round's own decision turns on. G6: all five of `packages`, `apps`, `tests`, `docs` and `scripts` are byte-identical trees at the base and at C5, the canary reads 42 passed at exit 0, and `ruff check .` reads 26 finding rows with 0 under `.remedy-wt/`. G7: eight changed paths with MISSING and EXTRA both empty and ZERO production paths; the open set goes 87 to 88 with `R-0879` the only id added; every per-commit insertion count is under the cap, so F275's one declared-oversize allowance is STILL UNSPENT at 58 rounds.
 
-G5 AND G6 ARE WHAT MAKE THE SEVEN COMMITS A SEQUENCE RATHER THAN A BATCH. Six of the seven DELETE a now-orphaned `from uuid import UUID`, and a module with a surviving use of that name fails at import and at no earlier point, so each commit's module was imported and the canary run before the next was made: fourteen readings, every one exit 0. G6 is the red-proof, and THE REVIEWER RE-RAN IT IN ITS OWN DISPOSABLE WORKTREE detached at `00b88a2f`: the ratchet reads `2 failed, 5 passed`, the two being exactly `test_no_uuid_typed_job_or_task_id_survives` and `test_no_uuid_only_method_is_read_off_a_job_or_task_id`, while both discriminators, the exemption test and both allowlist tests stay GREEN — which is what distinguishes an absent property from a broken matcher. The worker also proved the worktree imported its own tree rather than the primary checkout, by printing `packages.__path__`, the resolved module path and the live annotation before running; the editable install puts the primary checkout on `sys.path` unconditionally and that is a live route to a false green. The reviewer reproduced the same two-failure reading independently.
+THE WORKER DECLARED FIVE DEVIATIONS AND TWO OF THEM IMPROVED ON THE ORDER. G3's negative control says "a single ASCII letter", and the worker's first predicate `chr(b).isalpha()` selected byte 11 of the prose-slips paragraph, which is the lead byte of the UTF-8 encoding of `·` and not an ASCII letter at all. The worker narrowed the predicate to `b < 128 and chr(b).isalpha()`, RE-RAN THE WHOLE GATE rather than the one clause, and reported the second run while declaring that the first had not done what the gate said. That is the right handling of a probe that was accidentally testing something else, and the reviewer's own re-derivation uses the same narrowed predicate. The fifth deviation is of the same quality: G4's absence probe exits 128 with a stderr clause reading "exists on disk", which is git describing the WORKING TREE after C4 rather than contradicting the absence at the base, and the worker had also run `git ls-tree bf5ec6a4` over all three NEW paths before the first commit — the cleaner reading of the same fact, and the one the Change section actually asserts.
 
-G7: the reviewer re-ran the scoped selection itself at `742 passed` exit 0, which is the base's 735 plus the ratchet's 7 and nothing else; `ruff check .` reads 26 finding rows, the frozen ceiling, with 0 in the new file; and `tests/orchestration/test_ci_budgets.py` passes, which is the test that ceiling belongs to and without which the 26 is a number rather than a gate. The full suite was deliberately NOT ordered — verification tier 3 reserves it for the integration gate and closure — and the reviewer's own pre-authoring run over the identical tree stands in its place. G8: the changed-path set over `00b88a2f`..C11 is exactly fifteen paths with MISSING and EXTRA both empty and ZERO under `apps/`, `docs/` or `scripts/`; the open set is 87 by distinct id at both ends with nothing registered and nothing resolved; and per-commit insertions over C0a..C11 are 294, 172, 167, 200, 21, 12, 2, 3, 11, 7, 9, 1, 1, 160 and 2, every one under the AGENTS.md DECISION F104 D1 cap of 500, so F275's one declared-oversize allowance is still UNSPENT at 57 rounds. All sixteen cells of the handback's `## Commits` table match `git show --numstat`.
+THE SECOND DEVIATION IS THE REVIEWER'S AND IT IS THE THIRD OF ITS CLASS IN FOUR ROUNDS. G5(c) named two comments in `packages/orchestration/pingpong_job.py` and the sweep it ordered returns THREE lines: the field declaration at 153, the docstring at 992 and the parser comment at 1066. The worker reported all three, as a sweep should be. Nothing on disk is wrong and the two lines the gate names are present and carry the round's ruling basis, so it is a dated line in `.agent/prose_slips.md` and not an id, per operator amendment amend0827-process-diet rule 2. The remaining two deviations are sustained: `.agent/plan.md` named round 57 across the block-save commits, which constraint 3 requires and which the worker measured rather than assumed, and ruff's own exit code is 1 by design while the gate is the count.
+END-RECORD59
 
-THE WORKER DECLARED SIX DEVIATIONS AND THE SECOND IS THE REVIEWER'S. G8(b) called the Change section's enumeration "fifteen paths" where it lists SIXTEEN, the sixteenth being `.agent/handoff.md` — a hand-counted numeral beside a list, which is item 16's class and the third time this reviewer has spent one in five rounds. The worker re-derived the set from the block's own text instead of from the numeral, so the substantive reading is exactly right and unaffected: fifteen changed paths, MISSING and EXTRA empty. It is a dated line in `.agent/prose_slips.md`, not an id. The other five are sustained and three of them improve on their order: the plan named round 56 across the block-save commits, which constraint 5 requires and which the worker MEASURED rather than assumed; the seven imports were each run twice, once pre-commit as AGENTS.md's File Editing Safety Rules require and once as G5 orders; a malformed inline probe that wrote nothing was declared anyway, because that shape CAN hide a partial write and the porcelain was read back before proceeding; C12's 711 insertions are the verbatim rewrite of a single `.agent/**` state file, which DECISION F104 D1 exempts entirely and which therefore spends no allowance; and the first `git worktree remove` exited 128 on the untracked ratchet copy the gate itself had placed, which the worker cleared by EXACT PATH and never by glob before removing without `--force`.
+BEGIN-DONE59 sha256=ada665a9064ab0be39d777934e2656ec8ceb94d2f05ba582e583a47a79fe1338
+Done: R-0878 — RESOLVED at F275 round 57, across the seven commits `b72b9fe1`, `a1858c30`, `c82092d0`, `816eb6c4`, `5d9d80d6`, `7adbed8d` and `5b722083`, one record per commit in the order the artefact's construction counts fixed, and marked `Landed:` by the worker at `deed710e`. The `Landed:` line above is NOT removed: this record is append-only, and a resolution that erased the fix's own landing would erase the only trace that the fix preceded its review. THE FIX: all seven dataclasses the pydantic-only sweep could not see — `VerificationResult.task_id`, `TaskAttempt.task_id`, `RunTaskResult.task_id`, `TaskNode.task_id`, `AgentLoopState.job_id`, `ProjectBrainGraph.job_id` and `Workspace.job_id` — are retyped to `str`, and not one of the thirty-five changed lines was typed by hand: every commit is the output of the instrument committed at `.agent/authored/f275-r57-migrate.py.md`, which applies an edit only where its FROM matches byte for byte and writes nothing when any misses. THE REVIEWER OF SESSION 23 RE-TOOK THE READING ITSELF at `bf692757` rather than accepting either the worker's report or the round 57 verdict, by importing the live classes and reading `dataclasses.fields` on each: `VerificationResult.task_id`, `AgentLoopState.job_id`, `TaskNode.task_id`, `ProjectBrainGraph.job_id` and `Workspace.job_id` read `str`, and `RunTaskResult.task_id` and `TaskAttempt.task_id` read `str | None`, the two that were optional before the migration and stayed optional through it. Seven of seven, with the nullability preserved rather than silently widened or narrowed. THE RATCHET IS THE HALF THAT MAKES THIS A RESOLUTION RATHER THAN A REPAIR, because the defect was never the seven records but the sweep that could not see them: `tests/orchestration/test_uuid_record_ratchet.py` landed in the last of the seven commits, reads the LIVE class objects rather than source text, fails if any class under `packages.` or `apps.` declares a UUID-typed `job_id`, `task_id` or `id` outside the classic record's own two modules, and carries its own discriminator proving the matcher can see such a field at all. The reviewer ran it at `bf692757` and it reads 7 passed at exit 0. An eighth record cannot now arrive the way these seven did — invisibly, because the sweep that would have found it was never run again. WHAT THIS RESOLUTION DOES NOT CLAIM: it does not claim the id-shape migration is finished, only that the record set is now enumerated by an instrument that can see every class kind. The one behaviour change the migration carried, `task_runner.py`'s `result.task_id.hex[:8]` becoming `str(result.task_id)[:8]`, is correct for a `UUID` today and for a `str` after the flip and was red-proved as fifteen reddened tests at the round that landed it; it is named here because a resolution that hides its one behavioural edit inside a mechanical one is the shape this record exists to prevent.
+END-DONE59
 
-WHAT ROUND 57 ACHIEVED. Finding `R-0878` is fixed on disk: the seven records DECISION F275 D26's pydantic-only premise could not see now spell their job and task ids as `str`, the six imports that retype orphaned are gone, and the one behaviour change in the whole migration — `result.task_id.hex[:8]` becoming `str(result.task_id)[:8]` — is correct for a `UUID` today and for a `str` after the flip, which the reviewer measured over 10000 `uuid4()` samples and red-proved as 15 reddened tests. The ratchet that lands with it is the reason this is a migration rather than seven edits: it reads the live class objects, carries its own discriminator, and checks each allowlist entry still matches something, so the eighth such record cannot arrive the way these seven did.
-END-RECORD58
+BEGIN-FIND59 sha256=28d3cdb1623fc42a94d4de56cad3d851e1a9d605c699965246a2f0feb1a02ed4
+- R-0880 — Medium. THE RULED SITE SET THE FLIP CONSUMES OVER-SELECTS: IT RULES READS WHOSE RECEIVER IS NOT A JOB OR A TASK RECORD AT ALL, AND THE FLIP WOULD RENAME THEM INSIDE THE ONE COMMIT THIS FEATURE CANNOT SPLIT. Raised by the reviewer of session 23 at `bf692757`, from the re-keyed dry run recorded in `.agent/f275_t003_flip_residue_r59.md`, and it is the MIRROR of `R-0879` rather than a second report of it: `R-0879` is the same set reaching TOO FEW sites because its keys are line numbers that drift, this is the same set reaching TOO MANY because its owner verdict says `Job` where the runtime receiver is another record entirely. Both are open, neither resolves the other, and a fix for one does nothing for the other — which is why this takes an id rather than being added to `R-0879`, per item 30 of `docs/agents/planner_reviewer_prompt.md` §3, whose search over the open set was run before the id was minted and returned no finding describing this defect. THE MEASUREMENT: with `R-0879`'s drift class gone the over-selected renames are no longer masked and stand out as the second-largest attribute-error class of the run — `Mission.job_id` 33 exception lines, `Artifact.job_id` 25, `QueueEntry.job_id` 5, and `BrainNode.task_id`, `BrainNode.job_id` and `_FakeJob.job_id` at one each, 66 lines in all, at 13 located frames of which 12 are in this repository and the thirteenth is pydantic's own `main.py:1042`. THE CLEAREST INSTANCE IS ONE LINE CARRYING BOTH A CORRECT RENAME AND AN INCORRECT ONE, in `packages/orchestration/loop_run.py` at line 285 of `bf692757` — the traceback frame reads 286 because rule I5 inserts a minter import above it, and both numbers are given because a residue attributed by line number is attributed in the TRANSFORMED tree's coordinates — where `link_job_to_mission(project_id, mission.id, str(job.id), ...)` becomes `link_job_to_mission(project_id, mission.job_id, str(job.job_id), ...)`: the second rename is right and the first is wrong, because `Mission` is a dataclass whose id field is `id`, read off the live class at `bf692757`, and it is not a record the flip touches. WHY NO GATE SAW IT: every gate this chain has run over the site set has asked whether the set is internally consistent, whether it reproduces across two probe runs, and since `R-0879` whether its keys still RESOLVE — and none has ever asked whether the RECORD the set names as a site's owner is the record the receiver actually holds at run time. A key that resolves to a real attribute node on a real line is still wrong if the node belongs to a `Mission`. THE CAUSE IS ATTRIBUTED, NOT DIAGNOSED, and this finding says so rather than guessing: what is measured is that the set holds these sites with an owner verdict of `Job` while the runtime receiver is another record; whether that verdict came from the static sweep, from the probe's line, or from the receiver-name fallback the transform consults third is NOT established, and the round that fixes this owes that reading before it edits anything. THE FIX THIS FINDING BINDS ON THE ROUND THAT TAKES IT, and it is two obligations rather than one: FIRST, bound the class STATICALLY by reading every ruled site's owner verdict against the live record classes, because a dry run can only ever show the sites the suite executes and 12 located frames is a floor rather than a count; SECOND, give the transform the same shape of refusal `R-0879` gave it, so that a ruled site whose owner verdict cannot be confirmed against the receiver's own record STOPS the run and is named, rather than being renamed quietly. THE REASON THE SEVERITY IS MEDIUM AND NOT LOW: the flip is one commit that AGENTS.md's declared-oversize allowance lets this feature land exactly once, so a wrong rename inside it has no cheap second chance, and the three records already named are live production records rather than test fixtures.
+END-FIND59
 
-BEGIN-FIND58 sha256=e24d6df760b16a0fd7a38d367ace8057567a749df260f32c6c31dcf05837d662
-- R-0879 — Medium. THE RULED SITE SET THE FLIP CONSUMES IS KEYED BY LINE NUMBER, SO EVERY LATER COMMIT OF THIS BRANCH SILENTLY UNPICKS PART OF IT — AND ONE ALREADY HAS. Raised by the reviewer at `bf5ec6a4` from a dry run, not from a reading of the artefact. THE DEFECT: `.agent/f275_t003_descriptor_sites.md` records the ruled set R as 2198 sites keyed by `(path, line, col, attr)`, measured at `a815c9a3`, and DECISION F275 D30 rules that set as what the transform consumes. A line number is not an identity. Round 57's migration — ordered by DECISION F275 D33 and correct in itself — deleted six now-orphaned `from uuid import UUID` lines and rewrote thirty-five lines across seven modules under `packages/orchestration/`, so every ruled site BELOW one of those deletions moved and the transform then renamed nothing there. MEASURED, by re-resolving every ruled site against the tree at `bf5ec6a4`: 2144 still resolve, 54 DRIFTED, and all 54 are in five of the seven files round 57 edited — `long_run_executor.py` 21, `task_runner.py` 12, `agent_loop.py` 11, `dag_schedule.py` 7, `verifier.py` 3 — with ZERO drifted anywhere else. THE CONSEQUENCE IS NOT HYPOTHETICAL AND IS THE LARGEST CLASS OF THAT RUN: the flip dry run recorded in `.agent/f275_t003_flip_residue_r58.md` produced 255 attribute-error lines on a `JobPlan` receiver, of which 235 are attributed to a source line inside three of those five files — 109 at `long_run_executor.py:1355`, 65 at `task_runner.py:127` and 53 spread over five lines of `agent_loop.py` — and the `AttributeError` class went from 127 at the previous run to 424. Fifty-four unrenamed reads in code every test exercises is what that costs. WHY NO GATE SAW IT: every gate this chain has run over the site set measured the set's own internal consistency — its counts, its reproducibility across two probe runs, its agreement with a heuristic control — and none of them asked whether its keys still RESOLVE against the tree the transform is about to edit. The set was generated once, three rounds ago, and has been consumed at three different commits since. THE FIX, and it is measured rather than proposed: re-key each site by `(path, enclosing function, attr, occurrence index of that attr within that function)`, a key that carries no line number. Re-keyed at `a815c9a3` and resolved at `bf5ec6a4` it recovers 2198 of 2198 with NONE lost, against the line key's 2144 and 54 on the same two trees — the line key run as the control, which is what makes the first number a reading. THE GUARD THIS NEEDS: the transform REFUSES TO RUN when any ruled site fails to resolve at the commit it is running on, reporting the count and the files; a site set that has gone stale must stop a run rather than quietly edit less of the tree than it says it does. That guard is the whole finding, because the defect is not that a key drifted — keys drift — but that nothing noticed. THE RULE THIS LEAVES BEHIND, and it is item 9 of `docs/agents/planner_reviewer_prompt.md` §3 arriving through a DATA FILE instead of through a block's prose: a `file:line` citation is re-measured against this branch's own edits before it is used, and that binds a generated site set exactly as it binds a sentence in a block — a set of two thousand line numbers is two thousand citations, and it goes stale the same way and more quietly.
-END-FIND58
-
-BEGIN-SLIPS58 sha256=79fae069b37f8745559baf04a6695ce336c397d23f3161343f2c596cccebc818
-2026-09-11 · F275 R57 · The round 57 block's G8(b) ordered the changed-path set to be "exactly the Change section's fifteen paths minus `.agent/handoff.md`", while that section enumerates SIXTEEN — the sixteenth being `.agent/handoff.md` itself, so the numeral is wrong by one in the clause that then subtracts it. This is item 16 of `docs/agents/planner_reviewer_prompt.md` §3, a hand-counted numeral standing beside a list the reader can count, and it is the third such numeral this reviewer has spent in five rounds. The worker re-derived the set from the block's own enumeration rather than from the numeral and reported fifteen changed paths with MISSING and EXTRA both empty, so the substantive reading is exactly right and nothing on disk is wrong. THE RULE THAT FOLLOWS, and it is narrower than "do not count": where a gate must subtract one named item from a list, it says "the Change section's paths other than `X`" and gives NO cardinality at all — the subtraction is the instruction, the count adds nothing a worker needs, and it is the half that goes stale when a path is added.
-END-SLIPS58
-
-BEGIN-DEC58 sha256=36e28e548a250c75cb1ca5529444e9d22c9b1958d997602213597bdba431e15a
-## DECISION F275 D34 (2026-09-11, F275 round 58) — a unified task id is an ORDINAL and the mapping is mechanical after all; and the ruled site set is re-keyed off line numbers before the flip consumes it again
-
-CONTEXT. DECISION F275 D32 named three retype rule families and left one question under the first of them that no decision in this chain had asked: what does `Task(id=uuid4())` become? For a JOB the answer was already on disk — `data_paths.mint_job_id()` returns `uuid4().hex[:16]`, the sixteen-hex shape DECISION F260 D2 rules — and this round implemented it at 74 direct sites, 11 through a local bound to `uuid4()`, and 6 by unwrapping a `UUID(x)` coercion, with rule I5 carrying the minter's import exactly as I3 carries the seam's. For a TASK there is no minter at all. `TaskEntry.task_id` is assigned `f"T{parse_idx + 1:03d}"` in `packages/orchestration/pingpong_job.py`, under a comment reading "Deterministic ID by parse order, not heading number", and the field's declaration carries `# T001, T002, ... (by parse order)`. The unified task id is an ORDINAL SCOPED TO ITS JOB. The flip is therefore not retyping a value there; it is replacing an identity with a position.
-
-CHOSEN, PART ONE: THE TASK ORDINAL IS RESOLVED FROM THE CONSTRUCTION'S OWN POSITION, AND THE CLASS IS SMALL ENOUGH TO HAVE BEEN READ IN FULL. All 15 `Task(id=...)` sites were enumerated, 14 in test helper factories and one in production, and every one has exactly ONE such construction in its enclosing function. Twelve sit in a list literal, where the element index IS the position; two sit in a comprehension over `range(task_count)`, where the loop variable is the position; and one is a lone `append` in `packages/orchestration/continue_from_node.py`, which builds a child job holding a single task and is therefore `T001` by construction and not by judgement. The transform resolves all fifteen and reports, rather than guesses, anything it cannot. NOTHING HERE INVENTS A MINTER: a task id that is an ordinal stays an ordinal, and this chain does not add a `mint_task_id` the unified record has no place for.
-
-CHOSEN, PART TWO: THE RULED SITE SET IS RE-KEYED BEFORE IT IS CONSUMED AGAIN, AND THE TRANSFORM REFUSES TO RUN ON A STALE ONE. This is finding `R-0879`. The set is 2198 sites keyed by `(path, line, col, attr)`, measured at `a815c9a3`, and round 57's migration moved 54 of them — all 54 inside the seven files that round edited, none anywhere else. The transform renamed nothing at those 54, and 235 of the run's 255 `JobPlan`-receiver attribute errors are attributed to three of the five affected files. The remedy was measured with its own control: re-keyed by `(path, enclosing function, attr, occurrence index within that function)` the set recovers 2198 of 2198 across the same two trees, where the line key recovers 2144. The transform gains a precondition — every ruled site must RESOLVE at the commit it is running on, or the run stops and names the count and the files — because the defect is not that a key drifted but that nothing noticed for three rounds.
-
-WHY ONLY ONE OF D32'S THREE FAMILIES WAS BUILT. The `.status.value` family is 76 sites over ten receiver names, of which `record` at 18, `latest`, `c`, `held` and `released` decide nothing by name, and `status` was never in the ruled set, which covers `id`, `name` and `description` only. Resolving it by receiver name is the heuristic D29's P1 exists to have killed, so it needs its own descriptor-probe round of exactly round 53's shape. The `.hex`/`.int` family turned out smaller than it looked: round 57 already removed its one production reader and added a ratchet keeping the shape out, and what remains is three test sites the flip rewrites anyway. Building one family properly is worth more than three approximately, and the run this decision rests on could attribute its residue only because the other two did not move.
-
-ALTERNATIVES CONSIDERED. (i) Give a flipped task a fresh unique string rather than its ordinal — rejected: it would put a value in the field that the unified record's own parser never produces, so a reader that assumes ordinals would be wrong in a way no test constructs, which is the class `.agent/f275_t003_descriptor_sites.md` already records as undecidable by execution. (ii) Drop the task id keyword and let `TaskEntry.task_id` default to the empty string — rejected on the measurement: task ids are compared with `==` at 308 sites and used as dict keys at 16, so an empty id collides across every task in a job. (iii) RE-DERIVE the ruled site set at the flip's own base instead of re-keying it — not rejected, and explicitly still open: it costs the two twenty-one-minute probe runs `.agent/f275_t003_descriptor_sites.md` section 3 records, and it is the stronger answer wherever the set must also pick up sites that did not exist when it was measured. Re-keying is what this decision ORDERS because it is cheap, measured, and sufficient for a tree whose edits so far only MOVE sites; the moment a round adds a candidate receiver, re-derivation becomes owed and this clause is the record of that condition. (iv) Pin the site set to a commit and forbid any intervening production commit — rejected as unworkable: D33's migration was correctly ordered between the measurement and its use, and a rule that forbids necessary work to protect a stale artefact protects the wrong thing.
-
-HOW TO REVERSE: delete this decision and `R-0879`'s registration. The task-id half of D32's first rule family then has no ruling and the next dry run reproduces the 54-site drift, at a cost of roughly 235 exception lines it cannot attribute — which is what this round spent two suite runs learning.
-END-DEC58
+BEGIN-SLIPS59 sha256=0b85f1ac82dd350a791baee6b17b8f32194fe2c2ddd77547db93ab2032e2e65b
+2026-09-11 · F275 R58 · The round 58 block's G5(c) ordered a sweep for two comment texts in `packages/orchestration/pingpong_job.py` and described them as "those two comments", while the sweep it actually orders returns THREE lines — the field declaration at 153, a docstring at 992 and the parser comment at 1066. The worker reported all three, which is what a sweep is for, and the two the gate names are present and carry DECISION F275 D34's basis, so nothing on disk is wrong. THIS IS THE THIRD NUMERAL OF THIS CLASS THIS REVIEWER SPENT IN FOUR ROUNDS — round 56's "run it twice" over a generator a committing round necessarily runs three times, round 57's "fifteen paths" over an enumeration of sixteen, and now this — and all three share one shape: a hand-counted figure standing beside a category the block orders MEASURED. THE RULE THAT FOLLOWS: where a gate orders a sweep, it names the PATTERN and orders the worker to report what it found, and it gives no cardinality at all; the count is the sweep's output, never the block's claim about it.
+END-SLIPS59
