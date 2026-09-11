@@ -524,3 +524,152 @@ The reviewer writes the round 58 verdict and the session 22 close, appending bot
 so the next session reads them here. The next round's work, per PLAN58's first Next Step, is to
 re-key the ruled site set off line numbers as DECISION F275 D34 orders, give the transform its
 refuse-on-stale precondition, and re-run the dry run with its control.
+
+## Reviewer verdict on round 58 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 58: **PASS.** Written by the planner and reviewer of SESSION 22 after reading the committed
+range `bf5ec6a4`..`8e845a94` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 59, per amend0827-process-diet rule 1.
+
+G1 is the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback: both authored blobs are
+byte-identical to the reviewer's own scratch originals, the block at 32358 bytes and sha256
+`7e2789f4daa41333f57dc909588ce1d9fd540838d737a1f2afd1ddba9d430e39` and the artefact at 9622, and
+`.agent/last_block.md` equals the block blob. All five slices additionally matched the sha256 on their own
+BEGIN markers. Re-measured on the committed blob the block is 260 lines TOTAL and 187 PROSE, agreeing with
+its own constraint 8. G2: `.agent/plan.md` byte-identical to PLAN58 at 2505 bytes over 45 lines, both
+mandated headings exactly once. G3: `.agent/live_review.md` goes 956303 to 966689 across RECORD58 and
+FIND58 as one ordered region and `.agent/prose_slips.md` 250959 to 252059, both exact under reader A;
+reader B holds for both at N counted from the slices, 8 and 1; both negative controls are rejected by BOTH
+readers; `^Done: R-0878 ` reads 0 at C2 while `^Landed: R-0878 ` reads 1 and untouched, which is the
+append-only record still holding round 57's fix as unreviewed, exactly as it should look. G4: the artefact
+at C4 is byte-identical to the C0b blob at 9622 bytes, the path does not resolve at the base, and it is 163
+lines against the 500 cap. G5: the reviewer re-ran both readings itself — `mint_job_id()` returns sixteen
+hex characters and `dataclasses.fields(TaskEntry)` gives `task_id` the type `str` — which are the two facts
+DECISION F275 D34 turns on. G6: all five of `packages`, `apps`, `tests`, `docs` and `scripts` are
+byte-identical trees at the base and at C5, the canary reads 42 passed at exit 0, and `ruff check .` reads
+26 finding rows with 0 under `.remedy-wt/`. G7: eight changed paths with MISSING and EXTRA both empty and
+ZERO production paths; the open set goes 87 to 88 with `R-0879` the only id added; per-commit insertions
+are 260, 163, 171, 22, 16, 2, 163, 14 and 385, every one under the cap, so F275's one declared-oversize
+allowance is STILL UNSPENT at 58 rounds.
+
+THE WORKER DECLARED FIVE DEVIATIONS AND TWO OF THEM IMPROVED ON THE ORDER. G3's negative control says "a
+single ASCII letter", and the worker's first predicate `chr(b).isalpha()` selected byte 11 of the
+prose-slips paragraph, which is the lead byte of the UTF-8 encoding of `·` and not an ASCII letter at all.
+The worker narrowed the predicate to `b < 128 and chr(b).isalpha()`, RE-RAN THE WHOLE GATE rather than the
+one clause, and reported the second run while declaring that the first had not done what the gate said.
+That is the right handling of a probe that was accidentally testing something else, and the reviewer's own
+re-derivation uses the same narrowed predicate. The fifth deviation is of the same quality: G4's absence
+probe exits 128 with a stderr clause reading "exists on disk", which is git describing the WORKING TREE
+after C4 rather than contradicting the absence at the base, and the worker had also run
+`git ls-tree bf5ec6a4` over all three NEW paths before the first commit — the cleaner reading of the same
+fact, and the one the Change section actually asserts.
+
+THE SECOND DEVIATION IS THE REVIEWER'S AND IT IS THE THIRD OF ITS CLASS IN FOUR ROUNDS. G5(c) named two
+comments in `packages/orchestration/pingpong_job.py` and the sweep it ordered returns THREE lines: the
+field declaration at 153, the docstring at 992 and the parser comment at 1066. The worker reported all
+three, as a sweep should be. Nothing on disk is wrong and the two lines the gate names are present and
+carry DECISION F275 D34's basis, so it is a dated line in `.agent/prose_slips.md` and not an id, per
+amend0827-process-diet rule 2. The remaining two deviations are sustained: `.agent/plan.md` named round 57
+across the block-save commits, which constraint 3 requires and which the worker measured rather than
+assumed, and ruff's own exit code is 1 by design while the gate is the count.
+
+## Authored text for round 59 to book — one dated line for `.agent/prose_slips.md`
+
+2026-09-11 · F275 R58 · The round 58 block's G5(c) ordered a sweep for two comment texts in `packages/orchestration/pingpong_job.py` and described them as "those two comments", while the sweep it actually orders returns THREE lines — the field declaration at 153, a docstring at 992 and the parser comment at 1066. The worker reported all three, which is what a sweep is for, and the two the gate names are present and carry DECISION F275 D34's basis, so nothing on disk is wrong. THIS IS THE THIRD NUMERAL OF THIS CLASS THIS REVIEWER SPENT IN FOUR ROUNDS — round 56's "run it twice" over a generator a committing round necessarily runs three times, round 57's "fifteen paths" over an enumeration of sixteen, and now this — and all three share one shape: a hand-counted figure standing beside a category the block orders MEASURED. THE RULE THAT FOLLOWS: where a gate orders a sweep, it names the PATTERN and orders the worker to report what it found, and it gives no cardinality at all; the count is the sweep's output, never the block's claim about it.
+
+## Session 22 ends here — FOUR delegated rounds, all four PASS
+
+Rounds 55, 56, 57 and 58. THE THROUGH-LINE IS THAT EVERY ROUND MEASURED SOMETHING THE PREVIOUS ONE HAD
+ASSUMED, AND TWO OF THE FOUR FOUND THE DEFECT IN THIS CHAIN'S OWN METHOD RATHER THAN IN THE REPOSITORY.
+
+THIS SESSION STATED ITS CAPS UP FRONT, which session 21's own close records itself as having failed to do:
+six delegated rounds and the operator's wall clock. It ends at four, above the amend0905-throughput floor
+and below the six-to-eight target, and the reason is neither exhausted context nor a nice seam. It is that
+the next round is a re-run of a dry run whose transform must first be re-keyed, and the round after it
+needs a twenty-one-minute descriptor probe run twice — work that wants a session's whole budget rather than
+its tail. CONTEXT IS NOT THE REASON AND IS NOT CLAIMED: the reviewer's context is comfortable.
+
+ROUND 55 ANSWERED THE QUESTION DECISION F275 D29 HAD LEFT OPEN FOR THREE ROUNDS. With all three
+prerequisites implemented the flip still does not converge, and the cause is not a fourth rule of the same
+kind: the two records disagree about field TYPES as well as names, and `JobPlan` is a dataclass that
+neither coerces nor complains. The prerequisites did exactly what they were ordered to do — the `JobPlan`
+constructor-keyword class went from 867 exception lines to ZERO — and DECISION F275 D32 rules the flip one
+commit still, because the classic record REJECTS the shipped id shape with a `pydantic ValidationError`, so
+the value and the field must change in the same instant. That round also found three defects in its own
+instrument before it found any in the flip, and the largest of them is a rule worth keeping: a mechanical
+edit that DELETES a line may not name that line by INDEX when another rule of the same pass changes the
+line count.
+
+ROUND 56 FOUND A PREMISE THREE DECISIONS RESTED ON TO BE SHORT. DECISION F275 D26's P2 selected records
+with `issubclass(obj, BaseModel)`, so it saw six pydantic models and D27 and D28 migrated three, in the
+belief the class was enumerated. A sweep over the live objects of every class kind found thirteen records
+carrying a UUID-typed field, EIGHT of them dataclasses, seven of those fed by the flip. That is `R-0878`.
+
+ROUND 57 FIXED IT, and it is this session's only production change: thirty-five lines across seven modules,
+one record per commit, not one of them typed by hand — every commit is the output of a migrator that
+applies an edit only where its FROM matches byte for byte and writes nothing when any misses. The one
+behaviour change in the whole migration is `result.task_id.hex[:8]` becoming `str(result.task_id)[:8]`,
+which is correct for a `UUID` today and a `str` after the flip, measured over 10000 samples and red-proved
+as fifteen reddened tests. The ratchet that lands with it reads the live class objects and carries its own
+discriminator, so the eighth such record cannot arrive the way these seven did.
+
+ROUND 58 BUILT D32'S FIRST RULE FAMILY AND WAS IMMEDIATELY TAUGHT SOMETHING BY IT. The id-value family
+works — the `unsupported operand` class falls from 379 to 90 — and the task half turned out not to be a
+mint at all: `TaskEntry.task_id` is an ORDINAL by parse order, which DECISION F275 D34 rules after
+enumerating all fifteen sites and finding every one positionally resolvable. But the run's residue went UP,
+and the cause is `R-0879`: the ruled site set is keyed by LINE NUMBER, and round 57's own correct migration
+drifted 54 of its 2198 sites, all 54 inside the seven files that round edited and none anywhere else. 235
+of the run's 255 `JobPlan`-receiver attribute errors are attributed to three of those files. The remedy was
+measured with its own control — a key of (path, enclosing function, attr, occurrence) recovers 2198 of
+2198 where the line key recovers 2144 — and the deeper finding is that no gate this chain has run over that
+set ever asked whether its keys still RESOLVE against the tree the transform was about to edit.
+
+THE REVIEWER'S OWN ERROR RATE IS THE ONE THING THIS SESSION GOT WORSE AT, and it is recorded here rather
+than left to be noticed. Three of the four rounds carried a reviewer prose slip and all three are ONE
+class: a hand-counted numeral standing beside a category the block itself orders measured. Each was caught
+by the worker, none damaged anything on disk, and none is an id. The counter-measure is in the round 58
+slip above and it is narrow: a gate that orders a sweep names the pattern and orders the count REPORTED,
+and states no cardinality of its own.
+
+THE BRANCH IS GREEN AT READINGS THIS SESSION TOOK. The full suite ran EIGHT times, every run in a
+disposable worktree and never in the primary checkout: four in round 55, two in round 57 and two in round
+58. Round 57's migrated tree read 18386 passed at exit 0 with nothing failing at all, and the committed
+seven files are byte-identical to that tree, which is how this session's one production change is backed by
+a full-suite reading without a full suite ever being a round gate. The canary reads 42 passed and
+`ruff check .` reads 26 findings, the frozen ceiling, at the branch tip.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
+session's Phase 0 probe, was measured absent before every round's first commit and before every handback,
+and is absent as this session ends. Then the Open PR Gate: no pull request is open, and none is owed until
+the closure sequence.
+
+SECOND, round 59's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
+amend0827-process-diet rule 1, the ROUND 58 PASS verdict above as a `Gate: F275 R58` entry in
+`.agent/live_review.md`, and the one dated line above into `.agent/prose_slips.md`. It also owes the
+reviewer's authored `Done:` text for `R-0878`, which has carried a `Landed:` line since round 57 and whose
+resolution is the reviewer's to write; booking that resolution moves the open set from 88 to 87 by distinct
+id, and `R-0879` stays open.
+
+THIRD, F275 IS PAST THE SOFT LIMIT amend0908-f275-finish rule 1 names, at 58 of 60 rounds and 22 of 20
+sessions. The SCOPE REPORT that rule obliges was written in round 51's handback and STANDS; nothing this
+session measured changes any of its three parts, and it is not restated here because a report restated is a
+report edited. Rule 2 forbids the split-and-close default BY NAME, so the next session continues rather
+than closing. TWO ROUNDS REMAIN AGAINST THAT LIMIT and the work left is the re-key, the `.status` probe,
+the flip, the resolver collapse and the closure sequence — so the operator's ruling on round 51's scope
+report item (c), an EXTENSION of the 60-round limit against a SPLIT carrying the flip into a successor
+feature, is now the binding question and this session's measurements have sharpened it rather than
+answered it.
+
+FOURTH, THE WORK ITSELF, in the order DECISION F275 D34 fixes. Re-key the ruled site set off line numbers
+by `(path, enclosing function, attr, occurrence index within that function)`, which recovers 2198 of 2198
+across round 57's drift and was measured against the line key as its control; give the transform the
+precondition D34 orders, that it REFUSES TO RUN when any ruled site fails to resolve at the commit it is
+running on, reporting the count and the files; then re-run the dry run with its control at the same commit.
+Only after that is the `.status` family worth starting, and it needs a round of round 53's shape — the
+DECISION F272 D7 descriptor probe run twice and unioned with a static sweep — because its 76 sites sit on
+ten receiver names of which `record` at 18, `latest`, `c`, `held` and `released` decide nothing by name,
+and resolving them by name would reintroduce the exact heuristic D29's P1 was written to kill.
