@@ -1,41 +1,45 @@
-# Handback — F275 round 61
+# Handback — F275 round 62
 
 ## Session
 
-SESSION 23 of feature F275 · round 61 · rounds so far 61
+SESSION 23 of feature F275 · round 62 · rounds so far 62
 
 Context self-assessment (amend0905-throughput): context is comfortable and this round was
 cheap — `AGENTS.md` and `docs/agents/handback_template.md` were read in full, all three
-scratch files were verified by size and sha256 BEFORE any of them was opened (23106, 8109
-and 4675 bytes), the artefact and the generator were transported with `shutil.copyfile`
-without ever being opened in an editor, both slices were extracted out of the COMMITTED C0a
-blob with their marker digests matching on the FIRST attempt, and the only expensive command
-in the whole round was the 19-second canary.
+scratch files were verified by size and sha256 BEFORE any of them was opened (29515, 6473
+and 3770 bytes), the artefact and the instrument were transported with `shutil.copyfile`
+without ever being opened in an editor, all THREE slices were extracted out of the COMMITTED
+C0a blob with their marker digests matching on the FIRST attempt, and the only expensive
+command in the whole round was the 19-second canary.
 
-F275 STANDS AT 61 ROUNDS AND 23 SESSIONS against the operator's soft limit of 60 rounds and
-20 sessions (amend0908-f275-finish rule 1), so both halves of that limit are now EXCEEDED.
+THE BLOCK'S HANDBACK SECTION SAYS "round 61" AND THIS HANDBACK SAYS ROUND 62; the
+disagreement is declared in full at deviation 6 and is not silently resolved.
+
+F275 STANDS AT 62 ROUNDS AND 23 SESSIONS against the operator's soft limit of 60 rounds and
+20 sessions (amend0908-f275-finish rule 1), so both halves of that limit remain EXCEEDED.
 THE SCOPE REPORT THAT RULE OBLIGES WAS WRITTEN IN ROUND 51'S HANDBACK AND IT STANDS — it is
 not restated here, because a report restated is a report edited. Rule 2 forbids the
 amend0905-throughput split-and-close default here BY NAME: this round closed nothing,
 registered no feature and did not touch `docs/roadmap/STATUS.md`. What this round adds to the
-operator's pending decision on round 51's item (c) is that all three of DECISION F275 D32's
-retype rule families are now accounted for: the third one was built against the nine sites
-DECISION F275 D35 names, the class it was built for is at ZERO down from 61 exception lines,
-and total failures fall from 1240 to 1186. That last number is the honest one — 1186 is not a
-landable state, and no rule family of D32's kind is left to build, so the next obstacle is a
-diagnosis rather than another generator.
+operator's pending decision on round 51's item (c) is that finding `R-0880` now has an EXACT
+static bound rather than a floor read off a run: the class is 39 lines carrying 78 ruled
+sites, four of them in production modules and the rest in tests, and all four frames round
+61's run reached are inside it. The bound does not resolve `R-0880` — its second obligation,
+the transform's refusal to rename an unconfirmed site, is unbuilt, and DECISION F275 D36
+says so in its own text and forbids the flip commit until that or a column-keyed
+re-derivation lands.
 
 SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
 
-`.agent/STOP` was re-read FROM DISK before the first commit and again before C4, per
+`.agent/STOP` was re-read FROM DISK before the first commit and again before C5, per
 constraint 7. Both readings, literally:
 
-    before C0a, at the base `5dfeeae6`:
-        $ bash -c 'python3 -B .remedy-wt/r61_probe_base.py; echo "REAL_EXIT=$?"'
-        STOP exists on disk: False
-        REAL_EXIT=0
+    before C0a, at the base `7910aa7d`:
+        $ bash -c 'ls -la /home/decodeux/Repos/remedy/.agent/STOP; echo "REAL_EXIT=$?"'
+        ls: cannot access '/home/decodeux/Repos/remedy/.agent/STOP': No such file or directory
+        REAL_EXIT=2
 
-    before C4, at C3 `335e3cc7`:
+    before C5, at C4 `e9635c73`:
         $ bash -c 'ls -la /home/decodeux/Repos/remedy/.agent/STOP; echo "REAL_EXIT=$?"'
         ls: cannot access '/home/decodeux/Repos/remedy/.agent/STOP': No such file or directory
         REAL_EXIT=2
@@ -45,57 +49,68 @@ the reviewer's base reading and what this round confirms at both ends.
 
 ## Range
 
-Review of `5dfeeae6`..`HEAD`.
+Review of `7910aa7d`..`HEAD`.
 
 ## Commits
 
-### 28af7ffc F275 R61 C0a: save the round 61 step block verbatim.
+### a7a438e4 F275 R62 C0a: save the round 62 step block verbatim as the authored blob.
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f275-r61.md | +258 / -0 | NEW. The round 61 step block saved verbatim, by `shutil.copyfile` from the scratch original verified at 23106 bytes and sha256 `969758a1…0391`. |
+| .agent/authored/f275-r62.md | +289 / -0 | NEW. The round 62 step block saved verbatim, by `shutil.copyfile` from the scratch original verified at 29515 bytes and sha256 `c8ac82c1…762f`. |
 
-### 4db0189a F275 R61 C0b: save the round 61 flip residue artefact text verbatim.
+### f6d979ac F275 R62 C0b: save the round 62 flip residue artefact text verbatim.
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f275-r61-artefact.md | +141 / -0 | NEW. The reviewer's artefact text, copied as a WHOLE FILE and never opened in an editor. |
+| .agent/authored/f275-r62-artefact.md | +109 / -0 | NEW. The reviewer's artefact text, copied as a WHOLE FILE and never opened in an editor. |
 
-### 0f489bac F275 R61 C0c: save the scope-keyed site generator text verbatim.
+### 7a2fca7a F275 R62 C0c: save the bound instrument verbatim as an authored blob.
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f275-r61-sites.py.md | +100 / -0 | NEW. The site generator, copied as a WHOLE FILE. Its `.md` extension is load-bearing per constraint 10 and was preserved; no runnable copy was landed anywhere. |
+| .agent/authored/f275-r62-bound.py.md | +77 / -0 | NEW. The bound instrument, copied as a WHOLE FILE. Its `.md` extension is load-bearing per constraint 10 and was preserved; no runnable copy was landed anywhere in the tree. |
 
-### 0d7e33c1 F275 R61 C0d: mirror the round 61 block into the last block state file.
+### e7b5cabf F275 R62 C0d: mirror the round 62 block into the last-block state file.
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | +113 / -144 | The C0a blob mirrored, read back out of the commit rather than off the scratch copy. |
+| .agent/last_block.md | +126 / -95 | The C0a blob mirrored, read back out of the commit with `git show` rather than off the scratch copy. |
 
-### 36986830 F275 R61 C1: the round 61 plan.
+### d1fd4019 F275 R62 C1: make the plan current for round 62, the static bound on the site set.
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/plan.md | +14 / -14 | Whole-file replacement by slice PLAN61. First SUBSTANTIVE commit, so this is where the plan becomes current, per constraint 3. |
+| .agent/plan.md | +14 / -12 | Whole-file replacement by slice PLAN62. First SUBSTANTIVE commit, so this is where the plan becomes current, per constraint 3. |
 
-### a52e652c F275 R61 C2: book the reviewer round 60 verdict into the finding record.
+### cf565da1 F275 R62 C2: book the reviewer round 61 verdict into the finding record.
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | +16 / -0 | Slice RECORD61 appended: the round 60 PASS verdict, booked by the first substantive commit of round 61 per amend0827 rule 1. No id registered, none resolved. |
+| .agent/live_review.md | +16 / -0 | Slice RECORD62 appended: the round 61 PASS verdict, booked by the first substantive commit of round 62 per amend0827 rule 1. No id registered, none resolved. |
 
-### 335e3cc7 F275 R61 C3: land the round 61 flip dry-run residue artefact.
+### 549dc58b F275 R62 C3: record DECISION F275 D36, the static bound on finding R-0880.
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/f275_t003_flip_residue_r61.md | +141 / -0 | NEW. A byte-identical copy of the C0b blob. |
+| .agent/decisions.md | +18 / -0 | Slice DEC62 appended: DECISION F275 D36, which bounds `R-0880` at 39 sites, rules the cause to be a key one column too short, and forbids any WRITE that consumes the ruled site set until the 39 are resolved or the set is re-keyed. |
 
-### C4 — the handoff commit (self-reference, R-0149 pattern)
+### e9635c73 F275 R62 C4: land the round 62 static bound residue artefact.
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/f275_t003_flip_residue_r62.md | +109 / -0 | NEW. A byte-identical copy of the C0b blob. |
+
+### C5 — the handoff commit (self-reference, R-0149 pattern)
 | Path | +/- | Reason |
 |------|-----|--------|
 | .agent/handoff.md | see next round | This file. A handoff cannot table the commit that writes it; its `--numstat` numbers are recorded by the reviewer at the next gate, exactly as G7(d) states. |
 
-Every `+/-` above is taken from `git show --numstat <sha>` and from no other source.
+Every `+/-` above is taken from `git show --numstat <sha>` / `git log --numstat` and from no
+other source.
 
 ## External actions
 
 | Action | Outcome |
 |--------|---------|
-| `git push -u origin feature/f275-one-world-completion-part-three` | see the push transcript below |
+| `git push -u origin feature/f275-one-world-completion-part-three` | run AFTER this file was committed; the transcript cannot appear inside the file it postdates, and the reviewer reads it from the round report and from `git log origin/feature/f275-one-world-completion-part-three`. |
+
+Round 61's handback said of this same line "see the push transcript below" with no transcript
+below it, and its worker declared that against itself. The wording is repaired here rather
+than inherited a third time: the push necessarily happens after the commit that writes this
+file, so this row states that fact instead of promising a transcript it cannot carry.
 
 No `gh` command was run. No pull request was created, edited or merged. No `remedy` CLI
 command was run. NO `git worktree` WAS CREATED OR REMOVED by this round — `git worktree list`
@@ -105,312 +120,356 @@ shows the primary checkout alone, which is what constraint 4 fixes. Nothing was 
 ## Verification
 
 Seven gates, each run for real as `bash -c '<cmd>; echo "REAL_EXIT=$?"'`, every one of them at
-a commit STRICTLY EARLIER than C4. One line per gate with its REAL exit code first, then the
+a commit STRICTLY EARLIER than C5. One line per gate with its REAL exit code first, then the
 readings each gate ordered.
 
 | Gate | REAL exit | Reading |
 |------|-----------|---------|
-| G1 TRANSPORT | 0 | all four EQUAL; 2 slices; TOTAL 258 / PROSE 200, agreeing with constraint 8 |
-| G2 THE PLAN | 0 | plan.md @C1 byte-identical to PLAN61; 43 lines under the cap of 50; both headings exactly 1 |
-| G3 THE RECORD | 0 | append exact under READER A and READER B at N=8; the negative control rejects and both readers accept the unmutated region |
-| G4 THE ARTEFACT AND THE GENERATOR | 0 | artefact @C3 byte-identical to the C0b blob; absence probe exits 128; 141 and 100 lines under the 500 cap |
-| G5 THE CLAIMS | 0 | ALL NINE cited sites resolve and contain `.status.value`, 9 of 9, ZERO misses; line 380 holds 2 `.status` nodes and 1 chain; all three subtrees EQUAL |
-| G6 THE TREE DID NOT MOVE | 0 (a), 0 (b), 1 (c, by design — the gate is the COUNT) | five trees EQUAL; canary 42 passed; ruff 26 rows at the frozen ceiling |
-| G7 NOTHING ELSE MOVED | 0 | STOP absent; status the empty string; 7 changed paths, MISSING and EXTRA both empty; open set 88 at both ends |
+| G1 TRANSPORT | 0 | all four EQUAL; 3 slices; TOTAL 289 / BODY 77 / PROSE 212, agreeing with constraint 8; neither numeral over 490 or 400 |
+| G2 THE PLAN | 0 | plan.md @C1 byte-identical to PLAN62 at 2576 bytes; 45 lines under the cap of 50; both headings exactly 1 |
+| G3 THE RECORD | 0 | both appends exact under READER A and READER B, at N=8 and N=9; both negative controls rejected by both readers while both unmutated regions are accepted; (iv)(v)(vi) all hold |
+| G4 THE ARTEFACT AND THE GENERATOR | 0 (comparison), 128 (absence probe, by design) | artefact @C4 byte-identical to the C0b blob at 6473 bytes; base path does not resolve; 109 and 77 lines under the 500 cap |
+| G5 THE INSTRUMENT | 0 | (a) all six figures AGREE with the artefact — 2198 / 2080 / 104 / 222 / 39 / 78; (c) all four frames TRUE, in the bound; **(b) NOT ANSWERABLE FROM THE INSTRUMENT'S OUTPUT — see the finding below** |
+| G6 THE TREE DID NOT MOVE | 0 (a), 0 (b), 1 (c, by design — the gate is the COUNT) | five trees EQUAL; canary 42 passed; ruff 26 rows at the frozen ceiling, 0 under `.remedy-wt/`, 0 `.py` under `.agent/` |
+| G7 NOTHING ELSE MOVED | 0 | STOP absent; `status --porcelain` the empty string; 8 changed paths, MISSING and EXTRA both empty, 0 production paths; open set 88 at both ends; max insertions 289 |
 
 ### G1 TRANSPORT — REAL_EXIT=0
 
-    $ bash -c 'python3 -B .remedy-wt/r61_g1.py > .remedy-wt/g1.out 2>&1; echo "REAL_EXIT=$?"'
+    $ bash -c 'python3 -B /home/decodeux/Repos/remedy/.remedy-wt/r62_g1.py; echo "REAL_EXIT=$?"'
+    .agent/authored/f275-r62.md          committed 29515 c8ac82c1100074dd | scratch 29515 c8ac82c1100074dd | EQUAL
+    .agent/authored/f275-r62-artefact.md committed  6473 e7edd6951ae5f163 | scratch  6473 e7edd6951ae5f163 | EQUAL
+    .agent/authored/f275-r62-bound.py.md committed  3770 fbd493a192c25067 | scratch  3770 fbd493a192c25067 | EQUAL
+    .agent/last_block.md                 committed 29515 c8ac82c1100074dd | C0a blob 29515 c8ac82c1100074dd | EQUAL
     REAL_EXIT=0
-    == G1 TRANSPORT: committed blob vs reviewer scratch original ==
-    .agent/authored/f275-r61.md @28af7ffc: 23106 bytes sha256=969758a16521e5f72775d0f70f6ae80ce0b0ae6745e259dc7568afed88930391
-      scratch .remedy-wt/f275-r61.block.md: 23106 bytes sha256=969758a16521e5f72775d0f70f6ae80ce0b0ae6745e259dc7568afed88930391
-      VERDICT: EQUAL
-    .agent/authored/f275-r61-artefact.md @4db0189a: 8109 bytes sha256=005a6bf8beb738ed94eae54c0b6cd516631ba7be75d54ebe4921e90d1e4f8cb7
-      scratch .remedy-wt/f275-r61-artefact.md: 8109 bytes sha256=005a6bf8beb738ed94eae54c0b6cd516631ba7be75d54ebe4921e90d1e4f8cb7
-      VERDICT: EQUAL
-    .agent/authored/f275-r61-sites.py.md @0f489bac: 4675 bytes sha256=7a54c43811155f06403596b11993a54038b043032dba35ad178b151e1dc99f9f
-      scratch .remedy-wt/f275-r61-sites.py.md: 4675 bytes sha256=7a54c43811155f06403596b11993a54038b043032dba35ad178b151e1dc99f9f
-      VERDICT: EQUAL
-    .agent/last_block.md @0d7e33c1: 23106 bytes sha256=969758a16521e5f72775d0f70f6ae80ce0b0ae6745e259dc7568afed88930391
-      C0a blob:                    23106 bytes sha256=969758a16521e5f72775d0f70f6ae80ce0b0ae6745e259dc7568afed88930391
-      VERDICT: EQUAL
 
-    == G1 BLOCK BUDGET, re-measured on the COMMITTED C0a blob ==
-    slice cardinality (the extraction IS the sweep): 2 ['PLAN61', 'RECORD61']
-      PLAN61: body lines=43 bytes=2444 sha256 MATCH=True
-      RECORD61: body lines=15 bytes=6489 sha256 MATCH=True
-    TOTAL lines      = 258   (constraint 8 states 258)  AGREE=True
-    summed BODY lines= 58
-    PROSE = TOTAL-BODY = 200   (constraint 8 states 200)  AGREE=True
-    TOTAL exceeds 490: False
-    PROSE exceeds 400: False
+All four verdicts are EQUAL. The full digests are in the Authored-text proofs table below.
 
-All four transport verdicts are EQUAL. The block states no count of its own slices, so the
-extraction IS the sweep and its cardinality is the output: it found TWO, each carrying a
-BEGIN-marker sha256 that matched the body extracted from the committed C0a blob. The
-re-measured TOTAL and PROSE agree with constraint 8 exactly; neither exceeds 490 or 400.
+Block budget, RE-MEASURED on the COMMITTED C0a blob rather than on the scratch copy:
+
+    $ bash -c 'python3 -B /home/decodeux/Repos/remedy/.remedy-wt/r62_slices.py; echo "REAL_EXIT=$?"'
+    SLICES FOUND: 3 -> ['DEC62', 'PLAN62', 'RECORD62']
+    PLAN62    size=2576 lines=45 sha=dfff2924…37cb declared=dfff2924…37cb MATCH
+    RECORD62  size=5989 lines=15 sha=00485631…a1dd declared=00485631…a1dd MATCH
+    DEC62     size=5851 lines=17 sha=f7e9e6df…bacd declared=f7e9e6df…bacd MATCH
+    BLOCK TOTAL lines=289  BODY lines=77  PROSE=212
+    constraint 8 states TOTAL 289 PROSE 212
+    TOTAL>490? False   PROSE>400? False
+    REAL_EXIT=0
+
+THE TWO NUMERALS AGREE WITH CONSTRAINT 8 EXACTLY: 289 TOTAL and 212 PROSE, measured as
+TOTAL minus the summed 77 body lines of the three slices. The block states no count of its
+own slices and the extraction is the sweep: its cardinality is THREE.
 
 ### G2 THE PLAN — REAL_EXIT=0
 
-    $ bash -c 'python3 -B .remedy-wt/r61_g2.py > .remedy-wt/g2.out 2>&1; echo "REAL_EXIT=$?"'
+    $ bash -c 'python3 -B /home/decodeux/Repos/remedy/.remedy-wt/r62_c1.py; echo "REAL_EXIT=$?"'
+    slice size=2576 sha=dfff2924be5ec7e43291bcb32a35fd0bc357e22a7207ac3cc667cf23dd4337cb
+    plan.md size=2576 sha=dfff2924be5ec7e43291bcb32a35fd0bc357e22a7207ac3cc667cf23dd4337cb
+    BYTE-IDENTICAL
+    plan.md lines=45 (AGENTS.md cap 50) -> UNDER
+    count ^## Goal$ = 1
+    count ^## Next Steps$ = 1
     REAL_EXIT=0
-    == G2 THE PLAN ==
-    .agent/plan.md @C1 36986830 : 2444 bytes sha256=159089b5928216decd1a8a5073a4a2b11c2161ccd660dfeeaa27f62c4818258b
-    slice PLAN61                : 2444 bytes sha256=159089b5928216decd1a8a5073a4a2b11c2161ccd660dfeeaa27f62c4818258b
-    BYTE-IDENTICAL: True
-    line count = 43  against the AGENTS.md cap of 50: under=True
-    count of '^## Goal$'      = 1  (must be 1) OK=True
-    count of '^## Next Steps$'= 1  (must be 1) OK=True
 
 ### G3 THE RECORD — REAL_EXIT=0
 
-    $ bash -c 'python3 -B .remedy-wt/r61_g3.py > .remedy-wt/g3.out 2>&1; echo "REAL_EXIT=$?"'
-    REAL_EXIT=0
-    == G3(i) READER A — byte stream ==
-    pre  size @5dfeeae6 = 983710   (block states 983710) AGREE=True
-    slice body size   = 6489   (measured by extraction, not stated by the block)
-    post size @C2     = 990200   delta = 6490
-    READER A on the real post blob: ACCEPT=True
+C2, `.agent/live_review.md` <- RECORD62:
 
-    == G3(ii) READER B — structural, independent of reader A ==
-    N COUNTED from the slice = 8
-    READER B on the real post blob: ACCEPT=True
-
-    == G3(iii) NEGATIVE CONTROL ==
-    flipped ONE ascii letter at post offset 983711: 'G' -> 'g'  (inside the FIRST appended paragraph)
-    mutated size = 990200 (unchanged: True)
-    READER A REJECTS the mutant: True
-    READER B REJECTS the mutant: True
-    READER A ACCEPTS the unmutated region: True
-    READER B ACCEPTS the unmutated region: True
-
-    == G3(iv) RECORD61 carries no interior ledger line ==
-    interior lines beginning with any of ('Gate: ', '- R-', 'Done: R-', 'Landed: R-', 'Recurrence: R-', 'DECISION F'): count = 0 (must be 0)
-    '^- R-' lines: base=110 C2=110 ADDED=0 (must be 0)
-    '^Done: R-' lines: base=23 C2=23 ADDED=0 (must be 0)
-
-    == G3(v) the new first line ==
-    RECORD61 first line:
-       Gate: F275 R60 — the F275 round 60 entry. VERDICT PASS. Written by the planner and reviewer of session 23 after reading the committed range `abc9b8a9`..`5dfeeae6` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line below. It is booked here by the FIRST SUBSTANTIVE COMMIT of round 61, per operator amendment amend0827-process-diet rule 1. The round resolved DECISION F275 D32's third retype rule family BY TYPE and DECISION F275 D35 rules the result: the family is NINE sites and not the seventy-six a receiver name suggests.
-    lines in .agent/live_review.md at 5dfeeae6 already matching the pattern: 59 (this block states no such number)
+    $ bash -c 'python3 -B /home/decodeux/Repos/remedy/.remedy-wt/r62_c2.py; echo "REAL_EXIT=$?"'
+    === G3 (v) base readings, live_review.md at 7910aa7d ===
+    lines already matching the Gate pattern at base: 60
+    RECORD62 first line: Gate: F275 R61 — the F275 round 61 entry. VERDICT PASS. […]
     new first line matches the pattern: True
-    new first line duplicates none of them: True
+    duplicates among base matching lines: 0
+    prefix 'Gate: F275 R61 ' already present at base: False
 
-The pre size the block stated is the pre size measured, 983710. The delta is the slice body
-plus exactly one separating newline, which is the append convention constraint 2 states. N was
-COUNTED from the slice and not supplied: 8 paragraphs. The negative control matters in both
-directions — both readers REJECT a single flipped ASCII letter in the first appended paragraph
-AND both ACCEPT the unmutated region, so the readers were shown capable of passing as well as
-failing, which is what makes the rejection evidence rather than noise. The 59 pre-existing
-`Gate: F275 R<n>` headings is a number this script counted; the block states none.
+    === G3 (iv) RECORD62 interior-line bans ===
+    interior lines beginning with a banned prefix: 0 []
 
-### G4 THE ARTEFACT AND THE GENERATOR — REAL_EXIT=0
+    === C2 append ===
+    pre size=990200  slice body size=5989  post size=996190  delta=5990
+    delta == body + 1 newline: True
 
-    $ bash -c 'python3 -B .remedy-wt/r61_g4.py > .remedy-wt/g4.out 2>&1; echo "REAL_EXIT=$?"'
+    === G3 (i) READER A ===
+    ACCEPT unmutated: True
+    === G3 (ii) READER B ===
+    N counted from the slice = 8
+    ACCEPT unmutated: True
+
+    === G3 (iii) NEGATIVE CONTROL ===
+    flipped byte at file offset 990201 inside the FIRST appended paragraph: 'G' -> 'g'
+    READER A rejects mutated: True
+    READER B rejects mutated: True
+    READER A accepts unmutated: True
+    READER B accepts unmutated: True
+
+    === G3 (iv) lines C2 ADDS ===
+    added lines matching ^- R- : 0
+    added lines matching ^Done: R- : 0
     REAL_EXIT=0
-    == G4 THE ARTEFACT AND THE GENERATOR ARE THE AUTHORED BLOBS ==
-    .agent/f275_t003_flip_residue_r61.md @C3 335e3cc7: 8109 bytes sha256=005a6bf8beb738ed94eae54c0b6cd516631ba7be75d54ebe4921e90d1e4f8cb7
-    .agent/authored/f275-r61-artefact.md @C0b 4db0189a: 8109 bytes sha256=005a6bf8beb738ed94eae54c0b6cd516631ba7be75d54ebe4921e90d1e4f8cb7
-    BYTE-IDENTICAL: True
 
-    absence probe: git show 5dfeeae6:.agent/f275_t003_flip_residue_r61.md
-      exit code = 128  (must be non-zero) NONZERO=True
-      stderr = "fatal: path '.agent/f275_t003_flip_residue_r61.md' exists on disk, but not in '5dfeeae6'"
+The pre size 990200 is the figure the block states for the base. The count of lines already
+matching `^Gate: F275 R\d+ — the F275 round \d+ entry\.` at `7910aa7d` is 60 — the block
+states none and this is the measured value. RECORD62's first line matches that pattern and
+duplicates none of the 60.
 
-    artefact line count  = 141  against the DECISION F104 D1 cap of 500: under=True
-    generator line count = 100  against the DECISION F104 D1 cap of 500: under=True
+C3, `.agent/decisions.md` <- DEC62:
 
-### G5 THE CLAIMS THE ARTEFACT RESTS ON — REAL_EXIT=0
+    $ bash -c 'python3 -B /home/decodeux/Repos/remedy/.remedy-wt/r62_c3.py; echo "REAL_EXIT=$?"'
+    === G3 (vi) base readings, decisions.md ===
+    DEC62 begins '## DECISION F275 D36 ': True
+    DEC62 first line: ## DECISION F275 D36 (2026-09-11, F275 round 62) — finding `R-0880` is 39 ruled sites […]
+    lines at 7910aa7d matching ^## DECISION F275 D36 : 0 []
+    highest existing ^## DECISION F275 D\d+ heading at base: D35 (of 35 such headings)
+    decisions.md at C2 size=1124939  (base size=1124939, identical: True)
 
-    $ bash -c 'python3 -B .remedy-wt/r61_g5.py > .remedy-wt/g5.out 2>&1; echo "REAL_EXIT=$?"'
+    === C3 append ===
+    pre size=1124939  slice body size=5851  post size=1130791  delta=5852
+    delta == body + 1 newline: True
+
+    === G3 (i) READER A ===
+    ACCEPT unmutated: True
+    === G3 (ii) READER B ===
+    N counted from the slice = 9
+    ACCEPT unmutated: True
+
+    === G3 (iii) NEGATIVE CONTROL ===
+    flipped byte at file offset 1124943 inside the FIRST appended paragraph: 'D' -> 'd'
+    READER A rejects mutated: True
+    READER B rejects mutated: True
+    READER A accepts unmutated: True
+    READER B accepts unmutated: True
     REAL_EXIT=0
-    == G5(a) THE NINE CITED SOURCE LINES ==
-    apps/cli/commands/job.py:655  contains '.status.value' = True
-            pending_remaining = sum(1 for t in result.job.tasks if t.status.value == "pending")
-    packages/orchestration/brain_detail.py:353  contains '.status.value' = True
-                f"Task of type '{task_type}'. Status: {task.status.value}. "
-    packages/orchestration/brain_detail.py:366  contains '.status.value' = True
-                f"status: {task.status.value}",
-    packages/orchestration/brain_detail.py:372  contains '.status.value' = True
-            if task.status.value == "pending":
-    packages/orchestration/brain_detail.py:380  contains '.status.value' = True
-                status=node.status or task.status.value,
-    packages/orchestration/project_brain.py:317  contains '.status.value' = True
-                    status=task.status.value, ref_id=tid,
-    packages/orchestration/trust_report.py:118  contains '.status.value' = True
-                    status_label = task.status.value
-    tests/orchestration/test_final_audit_evidence.py:261  contains '.status.value' = True
-                assert adapter.tasks[0].status.value == "completed"
-    tests/orchestration/test_resume_kill.py:261  contains '.status.value' = True
-                assert all(t.status.value == "completed" for t in job.tasks)
-    TOTAL containing '.status.value': 9 of 9  ALL_NINE=True
 
-    == G5(b) ast reading of brain_detail.py line 380 ==
-    '.status' Attribute nodes on line 380 (by node.lineno)     = 2
-    '.status' Attribute nodes on line 380 (by node.end_lineno) = 2
-    '<expr>.status.value' chains on line 380 (by node.lineno)     = 1
-    '<expr>.status.value' chains on line 380 (by node.end_lineno) = 1
-       .status node -> 'node.status'
-       .status node -> 'task.status'
-       chain        -> 'task.status.value'
+The pre size 1124939 at C2 is the figure the block states. DEC62 begins with the ordered
+heading, the base carries no `^## DECISION F275 D36` line, and the highest existing heading
+at the base is D35 — so D36 is the next number and not a collision.
 
-    == G5(c) production subtree object ids at bf692757 and 5dfeeae6 ==
-    packages   bf692757=2f8a05b5d7c2fde5ec8b0ba1e1b524767e06b8f0  5dfeeae6=2f8a05b5d7c2fde5ec8b0ba1e1b524767e06b8f0  EQUAL=True
-    apps       bf692757=1dd43398c371aa88e16fa8aba95bead4c131c2ac  5dfeeae6=1dd43398c371aa88e16fa8aba95bead4c131c2ac  EQUAL=True
-    tests      bf692757=509ecf860ffbc46db17f825af775e33a458f5274  5dfeeae6=509ecf860ffbc46db17f825af775e33a458f5274  EQUAL=True
+READER A is a BYTE reader (`post == pre + b"\n" + body`) and READER B is structural and
+independent of it (the last N blank-line-separated units of the WHOLE post-commit file equal
+the slice's N units, in order, N counted from the slice and not stated by the block). The
+negative control flips exactly one byte `b` with `b < 128 and chr(b).isalpha()` inside the
+FIRST appended paragraph; both readers reject it and both accept the unmutated region, so
+neither reader is a reader that rejects everything.
 
-G5(a) IS THE READING THE BLOCK SINGLED OUT AND IT CAME BACK CLEAN: all nine cited source lines
-resolve at this commit and every one contains `.status.value`, 9 of 9, with ZERO misses. This
-is the gate placed to catch `R-0879` — a site set keyed by line number going stale — arriving
-in a NEW artefact, and it did not arrive. The literal line is reported at each site rather than
-a verdict word, so the reading can be re-checked without re-running it.
+### G4 THE ARTEFACT AND THE GENERATOR — REAL_EXIT=0, absence probe REAL_EXIT=128
 
-G5(b) puts the generator's refusal on the record AS MEASURED rather than as described. Line 380
-of `brain_detail.py` is `status=node.status or task.status.value,` and `ast` reads TWO `.status`
-attribute nodes on it — `node.status` and `task.status` — while only ONE of them continues into
-`.value`, namely `task.status.value`. Both numerals are reported because it is the GAP between
-them, 2 against 1, that makes a positional rewrite on that line unsafe and the refusal correct.
-Both readings were taken twice, keyed by `node.lineno` and again by `node.end_lineno`, and they
-agree; the whole expression sits on one physical line, so the two keys cannot diverge here, and
-reporting both says so rather than assuming it.
-
-G5(c) gates section 3's reuse of round 59's control run rather than letting it be asserted:
-`packages`, `apps` and `tests` are the SAME tree objects at `bf692757` and at `5dfeeae6`, so
-the production tree the control ran against is byte-for-byte the production tree this round's
-dry run ran against.
-
-### G6 THE TREE DID NOT MOVE
-
-    $ bash -c 'python3 -B .remedy-wt/r61_g6a.py > .remedy-wt/g6a.out 2>&1; echo "REAL_EXIT=$?"'
+    $ bash -c 'python3 -B /home/decodeux/Repos/remedy/.remedy-wt/r62_c4.py; echo "REAL_EXIT=$?"'
+    C0b committed blob size=6473 sha=e7edd6951ae5f163451ddb04ba6d5b2ab6b52fa9bc5045466139068b97769a49
+    worktree path      size=6473 sha=e7edd6951ae5f163451ddb04ba6d5b2ab6b52fa9bc5045466139068b97769a49
+    worktree path is BYTE-EQUAL to the C0b blob -> copyfile is a copy of the blob
+    artefact at C4 size=6473 sha=e7edd6951ae5f163451ddb04ba6d5b2ab6b52fa9bc5045466139068b97769a49
+    BYTE-IDENTICAL to C0b blob
+    artefact lines=109 (F104 D1 cap 500)
+    generator blob lines=77 (F104 D1 cap 500)
     REAL_EXIT=0
-    == G6(a) THE TREE DID NOT MOVE ==
-    packages   5dfeeae6=2f8a05b5d7c2fde5ec8b0ba1e1b524767e06b8f0  C3 335e3cc7=2f8a05b5d7c2fde5ec8b0ba1e1b524767e06b8f0  EQUAL=True
-    apps       5dfeeae6=1dd43398c371aa88e16fa8aba95bead4c131c2ac  C3 335e3cc7=1dd43398c371aa88e16fa8aba95bead4c131c2ac  EQUAL=True
-    tests      5dfeeae6=509ecf860ffbc46db17f825af775e33a458f5274  C3 335e3cc7=509ecf860ffbc46db17f825af775e33a458f5274  EQUAL=True
-    docs       5dfeeae6=48fd2e4c9ffe468071e3e9dbe056db6e4e1dd792  C3 335e3cc7=48fd2e4c9ffe468071e3e9dbe056db6e4e1dd792  EQUAL=True
-    scripts    5dfeeae6=53331effaa68e4e30ece33a0acd66e077813b2c5  C3 335e3cc7=53331effaa68e4e30ece33a0acd66e077813b2c5  EQUAL=True
-    ALL FIVE EQUAL = True
 
-    $ bash -c 'python3 -m pytest tests/cli/test_golden_path.py -q > .remedy-wt/g6b.out 2>&1; echo "REAL_EXIT=$?"'
+    $ bash -c 'git -C … show 7910aa7d:.agent/f275_t003_flip_residue_r62.md > …/r62_g4_absent.txt 2>&1; echo "REAL_EXIT=$?"'
+    REAL_EXIT=128
+
+128 is non-zero, which is what the gate requires: the path does not resolve at the base.
+Redirected to a file rather than piped, per constraint 11.
+
+### G5 THE ARTEFACT'S NUMBERS, RE-DERIVED FROM THE COMMITTED INSTRUMENT — REAL_EXIT=0
+
+The instrument was extracted from the COMMITTED C0c blob's single ```python fence and run:
+
+    $ bash -c 'python3 -B …/r62_g5_extract.py; echo "REAL_EXIT=$?"'
+    C0c blob size=3770 sha=fbd493a192c25067a85a848b23647581ab7a2025785b2d33291d30c4228a2f76
+    python fences found: 1
+    extracted source bytes=3186 lines=66 sha=bf929df75e64cd6519f5683ff24191a966485bd156f59f98a6e6b7c72f6e81f9
     REAL_EXIT=0
-    ..........................................                               [100%]
-    42 passed in 18.90s
 
-The canary was REDIRECTED to a file on its first and only run, per constraint 11 — no pipe into
-`tail` was used anywhere in this round, so the exit code reported is pytest's own. It reads 42
-passed at exit 0, matching the base reading the block states.
+    $ bash -c 'python3 -B …/r62_bound_instrument.py > …/r62_g5_out.txt 2>&1; echo "REAL_EXIT=$?"'
+    REAL_EXIT=0
 
-    $ bash -c 'python3 -m ruff check . --output-format concise > .remedy-wt/g6c.out 2>&1; echo "REAL_EXIT=$?"'
+(a) THE SIX HEADLINE FIGURES, literally as the instrument printed them:
+
+      ruled sites                                              : 2198
+      distinct (path, line) they occupy                        : 2080
+      lines carrying MORE THAN ONE ruled site                   : 104
+      ruled sites on such a line                                : 222
+      lines where >1 ruled site shares ONE owner verdict across
+      DIFFERENT receiver names                                 : 39
+      ruled sites on those lines                               : 78
+
+| Figure | Artefact states | Instrument printed | Agrees |
+|--------|-----------------|--------------------|--------|
+| ruled sites | 2198 | 2198 | yes |
+| distinct `(path, line)` | 2080 | 2080 | yes |
+| lines with >1 ruled site | 104 | 104 | yes |
+| ruled sites on such lines | 222 | 222 | yes |
+| AT-RISK lines | 39 | 39 | yes |
+| ruled sites on those | 78 | 78 | yes |
+
+All six agree. The instrument also printed its own bound sentence: "the sites that were
+ruled without proof number AT LEAST 39 and AT MOST 39", which is the lower and upper bound
+coinciding that DEC62's part one asserts.
+
+(b) **THE GATE AS WRITTEN CANNOT BE ANSWERED FROM THE INSTRUMENT'S OUTPUT — REPORTED AS A
+FINDING, NOT RECONCILED.** G5(b) orders "the two rows the instrument prints for
+`packages/orchestration/loop_run.py:285` — their columns, receivers, owner verdicts and
+`static` values". The committed instrument prints for that line exactly ONE row, and that
+row carries NO column and NO `static` value. Literally, every line of the instrument's
+output mentioning that path and line:
+
+    $ bash -c 'grep -n "loop_run.py .*:285" …/r62_g5_out.txt; echo "REAL_EXIT=$?"'
+    19:   packages/orchestration/loop_run.py              :285   owner=Job   .id  receivers=['job', 'mission']
+    77:   packages/orchestration/loop_run.py              :285   in the static bound: True
+    REAL_EXIT=0
+
+Line 19 is the `=== every at-risk line ===` row and line 77 is the cross-check row. The
+instrument aggregates per LINE — its `rows` list holds one tuple per at-risk line, built as
+`(path, line, owner, attr, sorted(names))` — so a per-SITE row with a column and a `static`
+value is a shape it does not emit. The gate's own premise is therefore wrong about the
+instrument, and the wording is reported here exactly as it stands.
+
+WHAT THE ROW THE INSTRUMENT DOES PRINT SHOWS: one at-risk line, owner verdict `Job`,
+attribute `.id`, receivers `['job', 'mission']` — that is ONE owner verdict across TWO
+different receiver names, which is three of the four things the artefact's section 2 rests
+on. The column and the `static` value are the fourth and are simply absent from the output.
+
+A SEPARATE WORKER PROBE, CLEARLY NOT THE INSTRUMENT'S OUTPUT, was run over the SAME two JSON
+inputs the instrument reads, so the reviewer can judge section 2 rather than be left with a
+gap. It is reported as a distinct reading and nothing in the instrument or the artefact was
+changed:
+
+    $ bash -c 'python3 -B …/r62_g5b_aux.py; echo "REAL_EXIT=$?"'
+    ruled sites at packages/orchestration/loop_run.py:285 -> 2
+       col=40  attr=.id     recv=mission  owner=Job   static=None
+       col=56  attr=.id     recv=job      owner=Job   static=None
+    distinct owner verdicts on the line: ['Job']
+    distinct receivers on the line     : ['job', 'mission']
+    all static values are None         : True
+    REAL_EXIT=0
+
+That reading matches DECISION F275 D36's text exactly — `mission.id` at column 40 and
+`job.id` at column 56, both ruled `Job`, both `static=None`. So the SUBSTANCE of the
+artefact's section 2 holds; what does not hold is the gate's claim about where those numbers
+can be read from. The finding is the gate's, not the artefact's.
+
+(c) THE CROSS-CHECK BLOCK, literally:
+
+    packages/orchestration/loop_run.py              :285   in the static bound: True
+    packages/orchestration/long_run_executor.py     :504   in the static bound: True
+    packages/orchestration/brain_detail.py          :345   in the static bound: True
+    packages/orchestration/mission_state.py         :1074  in the static bound: True
+
+All four TRUE, which is what the artefact states. No FALSE appeared, so the bound does
+contain every instance round 61's run already observed.
+
+The instrument read only `.remedy-wt/r53_R.json` (1250637 bytes) and
+`.remedy-wt/r55_owners.json` (121859 bytes), both already on disk, and created and wrote
+nothing. Its extracted source lives at `.remedy-wt/r62_bound_instrument.py`, under the
+gitignored scratch directory; NO runnable `.py` copy of it was landed anywhere in the tree,
+which G6(c) then measures independently at zero.
+
+### G6 THE TREE DID NOT MOVE — REAL_EXIT=0 (a), 0 (b), 1 (c, by design)
+
+(a) The five subtree object ids, at `7910aa7d` and at C4 `e9635c73`:
+
+    $ bash -c 'git -C … ls-tree 7910aa7d packages apps tests docs scripts; echo "---C4---"; git -C … ls-tree e9635c73 packages apps tests docs scripts; echo "REAL_EXIT=$?"'
+    040000 tree 1dd43398c371aa88e16fa8aba95bead4c131c2ac	apps
+    040000 tree 48fd2e4c9ffe468071e3e9dbe056db6e4e1dd792	docs
+    040000 tree 2f8a05b5d7c2fde5ec8b0ba1e1b524767e06b8f0	packages
+    040000 tree 53331effaa68e4e30ece33a0acd66e077813b2c5	scripts
+    040000 tree 509ecf860ffbc46db17f825af775e33a458f5274	tests
+    ---C4---
+    040000 tree 1dd43398c371aa88e16fa8aba95bead4c131c2ac	apps
+    040000 tree 48fd2e4c9ffe468071e3e9dbe056db6e4e1dd792	docs
+    040000 tree 2f8a05b5d7c2fde5ec8b0ba1e1b524767e06b8f0	packages
+    040000 tree 53331effaa68e4e30ece33a0acd66e077813b2c5	scripts
+    040000 tree 509ecf860ffbc46db17f825af775e33a458f5274	tests
+    REAL_EXIT=0
+
+ALL FIVE EQUAL. Not one line under `packages/`, `apps/`, `tests/`, `docs/` or `scripts/`
+moved, which is the Goal's own condition.
+
+(b) THE CANARY, redirected to a file per constraint 11 and never piped into `tail`:
+
+    $ bash -c 'python3 -m pytest tests/cli/test_golden_path.py -q > …/r62_canary.txt 2>&1; echo "REAL_EXIT=$?"'
+    REAL_EXIT=0
+    $ bash -c 'grep -E "passed|failed|error" …/r62_canary.txt; echo "REAL_EXIT=$?"'
+    42 passed in 18.83s
+    REAL_EXIT=0
+
+42 passed at exit 0, which is the base reading.
+
+(c) RUFF. The command exits 1 whenever any finding remains, so the GATE IS THE COUNT:
+
+    $ bash -c 'python3 -m ruff check . --output-format concise > …/r62_ruff.txt 2>&1; echo "REAL_EXIT=$?"'
     REAL_EXIT=1
-    $ bash -c 'python3 -B .remedy-wt/r61_g6c.py > .remedy-wt/g6c.report 2>&1; echo "REAL_EXIT=$?"'
+    $ bash -c 'python3 -B …/r62_ruff_count.py; echo "REAL_EXIT=$?"'
+    finding rows matching ^\S+:\d+:\d+: -> 26  (ceiling 26)
+    rows under .remedy-wt/ -> 0
+    rows whose path ends .py under .agent/ -> 0  []
     REAL_EXIT=0
-    == G6(c) ruff finding rows ==
-    rows matching '^\S+:\d+:\d+: ' = 26  (ceiling frozen at 26) AT_CEILING=True
-    rows under .remedy-wt/ = 0
-    rows whose path ends '.py' under .agent/ = 0 (constraint 10 expects zero)
-    --- the non-scratch rows ---
-       packages/orchestration/dag_schedule.py:36:1: UP035 [*] Import from `collections.abc` instead: `Iterable`, `Mapping`, `Sequence`
-       packages/orchestration/gauntlet_injection.py:286:20: F821 Undefined name `MISSING_SEAM`
-       scripts/gauntlet_sample_project/tests/test_config.py:2:1: I001 [*] Import block is un-sorted or un-formatted
-       scripts/gauntlet_sample_project/tests/test_retry.py:2:1: I001 [*] Import block is un-sorted or un-formatted
-       tests/cli/test_plan_approval.py:279:29: F401 [*] `pathlib.Path` imported but unused
-       tests/cli/test_plan_approval.py:292:9: I001 [*] Import block is un-sorted or un-formatted
-       tests/cli/test_plan_approval.py:337:9: I001 [*] Import block is un-sorted or un-formatted
-       tests/cli/test_plan_approval.py:338:52: F401 [*] `packages.orchestration.storage.save_job` imported but unused
-       tests/cli/test_plan_approval.py:413:9: I001 [*] Import block is un-sorted or un-formatted
-       tests/cli/test_plan_approval.py:640:9: I001 [*] Import block is un-sorted or un-formatted
-       tests/orchestration/test_checkpoints.py:414:9: I001 [*] Import block is un-sorted or un-formatted
-       tests/orchestration/test_dag_schedule.py:8:1: I001 [*] Import block is un-sorted or un-formatted
-       tests/orchestration/test_gauntlet_matrix.py:8:1: I001 [*] Import block is un-sorted or un-formatted
-       tests/orchestration/test_gauntlet_runner.py:10:1: I001 [*] Import block is un-sorted or un-formatted
-       tests/orchestration/test_long_run_executor.py:885:9: I001 [*] Import block is un-sorted or un-formatted
-       tests/orchestration/test_long_run_executor.py:1285:9: I001 [*] Import block is un-sorted or un-formatted
-       tests/orchestration/test_mission_compiler.py:27:1: I001 [*] Import block is un-sorted or un-formatted
-       tests/orchestration/test_orchestrator_loop.py:37:1: I001 [*] Import block is un-sorted or un-formatted
-       tests/orchestration/test_predictive_budget.py:1127:9: I001 [*] Import block is un-sorted or un-formatted
-       tests/orchestration/test_prompt_trace.py:360:9: I001 [*] Import block is un-sorted or un-formatted
-       tests/orchestration/test_prompt_trace.py:445:9: I001 [*] Import block is un-sorted or un-formatted
-       tests/runtimes/test_runtime_cli_process_boundary.py:10:1: I001 [*] Import block is un-sorted or un-formatted
-       tests/runtimes/test_supervisor_portability.py:12:1: I001 [*] Import block is un-sorted or un-formatted
-       tests/test_project_context_coverage.py:633:24: F401 [*] `json` imported but unused
-       tests/test_project_context_coverage.py:662:24: F401 [*] `json` imported but unused
-       tests/ui_contracts/test_graph_architecture.py:6:1: I001 [*] Import block is un-sorted or un-formatted
-    --- trailing summary lines ---
-       Found 26 errors.
-       [*] 25 fixable with the `--fix` option.
 
-Ruff's own exit code is 1, which is its documented behaviour whenever any finding remains, and
-the block says so: THE GATE IS THE COUNT. The count is 26, exactly the ceiling
-`tests/orchestration/test_ci_budgets.py` freezes, and ruff's own trailing summary independently
-reads "Found 26 errors." ZERO rows sit under `.remedy-wt/` and ZERO `.py` rows sit under
-`.agent/` — constraint 10's `.md` extension on the site generator doing precisely the job it was
-given. Neither zero was taken with `grep -c`: both were counted in Python and the matching rows
-printed, so a zero produced by a broken pattern would be visible as an empty list rather than as
-a reassuring number. All 26 rows are printed above, none of them truncated.
+    Found 26 errors.
+    [*] 25 fixable with the `--fix` option.
 
-### G7 NOTHING ELSE MOVED
+26 rows, exactly the ceiling `tests/orchestration/test_ci_budgets.py` freezes. ZERO rows
+under `.remedy-wt/` and ZERO rows whose path ends `.py` under `.agent/` — the second is what
+constraint 10 exists to protect, and it was counted by a Python matcher rather than by
+`grep -c`, precisely because the expected answer is zero. The 26 rows are 20 `I001`, 5 `F401`
+plus `UP035` and `F821`, all pre-existing under `packages/`, `scripts/` and `tests/`; no line
+of any of them was edited.
 
-    $ bash -c 'ls -la /home/decodeux/Repos/remedy/.agent/STOP > .remedy-wt/g7a_stop.out 2>&1; echo "REAL_EXIT=$?"'
-    REAL_EXIT=2
+### G7 NOTHING ELSE MOVED — REAL_EXIT=0
+
+(a)
+
+    $ bash -c 'ls -la /home/decodeux/Repos/remedy/.agent/STOP; echo "REAL_EXIT=$?"'
     ls: cannot access '/home/decodeux/Repos/remedy/.agent/STOP': No such file or directory
-                                                   -> ABSENT, as required
+    REAL_EXIT=2
 
-    $ bash -c 'git -C /home/decodeux/Repos/remedy status --porcelain | cat -A; echo "REAL_EXIT=$?"'
-    REAL_EXIT=0                                    -> the EMPTY STRING, as required
-
-    $ bash -c 'git -C /home/decodeux/Repos/remedy worktree list; echo "REAL_EXIT=$?"'
-    /home/decodeux/Repos/remedy  335e3cc7 [feature/f275-one-world-completion-part-three]
+    $ bash -c 'git -C … status --porcelain | cat -A; echo "REAL_EXIT=$?"'
     REAL_EXIT=0
 
-`git worktree list` is REPORTED, not gated, as the block directs. THIS ROUND CREATED NO
-WORKTREE AND REMOVED NONE — neither, which is what constraint 4 fixes.
+`cat -A` printed NOTHING — the porcelain status is the empty string, with no trailing `$`
+and no invisible byte of any kind, which is why it is read through `cat -A` at all.
 
-    $ bash -c 'python3 -B .remedy-wt/r61_g7bcd.py > .remedy-wt/g7.out 2>&1; echo "REAL_EXIT=$?"'
+    $ bash -c 'git -C … worktree list; echo "REAL_EXIT=$?"'
+    /home/decodeux/Repos/remedy  e9635c73 [feature/f275-one-world-completion-part-three]
     REAL_EXIT=0
-    == G7(b) THE CHANGED-PATH SET ==
-    changed paths over 5dfeeae6..335e3cc7: 7
-       .agent/authored/f275-r61-artefact.md
-       .agent/authored/f275-r61-sites.py.md
-       .agent/authored/f275-r61.md
-       .agent/f275_t003_flip_residue_r61.md
-       .agent/last_block.md
-       .agent/live_review.md
-       .agent/plan.md
-    MISSING = []  (must be empty) OK=True
-    EXTRA   = []  (must be empty) OK=True
-    paths under docs/ scripts/ packages/ apps/ tests/ = 0 [] (must be 0)
 
-    == G7(c) THE OPEN SET BY DISTINCT ID ==
-    registered ids: base=109 C3=109
-    resolved  ids: base=21 C3=21
-    OPEN SET BY DISTINCT ID: base=88  C3=88  (must be 88 at both)
-    ids REGISTERED this round    = [] (must be empty)
-    ids RESOLVED this round      = [] (must be empty)
-    ids DE-REGISTERED this round = [] (must be empty)
-    MEMBERSHIP UNCHANGED: True
-    highest id in the record: base=R-0880  C3=R-0880
+This is REPORTED and not gated, as the block directs. THIS ROUND CREATED NO WORKTREE AND
+REMOVED NONE — neither, which is what constraint 4 fixes.
 
-    == G7(d) PER-COMMIT INSERTIONS ==
-    C0a 28af7ffc: insertions=258 deletions=0  against the 500 cap: under=True
-    C0b 4db0189a: insertions=141 deletions=0  against the 500 cap: under=True
-    C0c 0f489bac: insertions=100 deletions=0  against the 500 cap: under=True
-    C0d 0d7e33c1: insertions=113 deletions=144  against the 500 cap: under=True
-    C1 36986830: insertions=14 deletions=14  against the 500 cap: under=True
-    C2 a52e652c: insertions=16 deletions=0  against the 500 cap: under=True
-    C3 335e3cc7: insertions=141 deletions=0  against the 500 cap: under=True
-    MAXIMUM insertions over C0a..C3 = 258  under the 500 cap: True
+(b), (c) and (d):
 
-The changed-path set over `5dfeeae6`..C3 is SEVEN paths, exactly the Change section's set other
-than `.agent/handoff.md`, with MISSING and EXTRA both empty and ZERO paths under `docs/`,
-`scripts/`, `packages/`, `apps/` or `tests/` — which is the Goal's "NO LINE UNDER … MOVES"
-measured rather than promised. The open set is 88 BY DISTINCT ID at both ends, and the
-MEMBERSHIP behind that count is reported rather than the count alone: the registered set, the
-resolved set and the de-registered set are ALL EMPTY, so the unchanged 88 is an unchanged SET
-and not merely an unchanged number. The highest id in the record is `R-0880` at both ends.
-Maximum insertions over C0a..C3 is 258, well under the 500 cap, so F275's one declared-oversize
-allowance is STILL UNSPENT at 61 rounds. C4's own numbers are not stated here: they cannot exist
-while C4 is being written, and G7(d) says the reviewer records them at the next gate.
+    $ bash -c 'python3 -B /home/decodeux/Repos/remedy/.remedy-wt/r62_g7.py; echo "REAL_EXIT=$?"'
+    === G7 (b) changed-path set 7910aa7d..e9635c73 ===
+    changed count = 8
+    MISSING = []
+    EXTRA   = []
+    paths under docs/ scripts/ packages/ apps/ tests/ = 0 []
+
+    === G7 (c) open set BY DISTINCT ID ===
+    base 7910aa7d : registered=109 resolved=21 OPEN(distinct id)=88 highest id=R-0880
+    C4   e9635c73 : registered=109 resolved=21 OPEN(distinct id)=88 highest id=R-0880
+    ids REGISTERED by this round     : []
+    ids RESOLVED by this round       : []
+    ids DE-REGISTERED by this round  : []
+    open set equal at both ends      : True
+
+    === G7 (d) per-commit insertions, C0a..C4 ===
+      C0a  a7a438e4  +289  -0     under 500: True
+      C0b  f6d979ac  +109  -0     under 500: True
+      C0c  7a2fca7a  +77   -0     under 500: True
+      C0d  e7b5cabf  +126  -95    under 500: True
+      C1   d1fd4019  +14   -12    under 500: True
+      C2   cf565da1  +16   -0     under 500: True
+      C3   549dc58b  +18   -0     under 500: True
+      C4   e9635c73  +109  -0     under 500: True
+      MAXIMUM insertions over C0a..C4 = 289 (cap 500)
+    REAL_EXIT=0
+
+The open set reads 88 BY DISTINCT ID at both ends, and the COUNT is not the whole gate — the
+MEMBERSHIP is, so the registered, resolved and de-registered sets are each printed and each
+is EMPTY. The highest id in the record is `R-0880` at both ends. F275's single
+declared-oversize allowance is STILL UNSPENT at 62 rounds: the maximum insertion count over
+C0a..C4 is 289, well under the DECISION F104 D1 cap of 500.
 
 ## Authored-text proofs
 
@@ -421,28 +480,31 @@ compared directly.
 
 | Authored text | Committed blob | Size | sha256 | Verdict |
 |---------------|----------------|------|--------|---------|
-| the step block | `.agent/authored/f275-r61.md` @28af7ffc | 23106 | `969758a1…0391` | EQUAL to `.remedy-wt/f275-r61.block.md` |
-| the artefact | `.agent/authored/f275-r61-artefact.md` @4db0189a | 8109 | `005a6bf8…8cb7` | EQUAL to `.remedy-wt/f275-r61-artefact.md` |
-| the generator | `.agent/authored/f275-r61-sites.py.md` @0f489bac | 4675 | `7a54c438…9f9f` | EQUAL to `.remedy-wt/f275-r61-sites.py.md` |
-| the block mirror | `.agent/last_block.md` @0d7e33c1 | 23106 | `969758a1…0391` | EQUAL to the C0a blob |
-| the landed artefact | `.agent/f275_t003_flip_residue_r61.md` @335e3cc7 | 8109 | `005a6bf8…8cb7` | EQUAL to the C0b blob |
+| the step block | `.agent/authored/f275-r62.md` @a7a438e4 | 29515 | `c8ac82c1…762f` | EQUAL to `.remedy-wt/f275-r62.block.md` |
+| the artefact | `.agent/authored/f275-r62-artefact.md` @f6d979ac | 6473 | `e7edd695…9a49` | EQUAL to `.remedy-wt/f275-r62-artefact.md` |
+| the instrument | `.agent/authored/f275-r62-bound.py.md` @7a2fca7a | 3770 | `fbd493a1…2f76` | EQUAL to `.remedy-wt/f275-r62-bound.py.md` |
+| the block mirror | `.agent/last_block.md` @e7b5cabf | 29515 | `c8ac82c1…762f` | EQUAL to the C0a blob |
+| the landed artefact | `.agent/f275_t003_flip_residue_r62.md` @e9635c73 | 6473 | `e7edd695…9a49` | EQUAL to the C0b blob |
 
 All three scratch files were verified by SIZE AND SHA256 BEFORE being opened or copied. The
-artefact and the generator were transported with `shutil.copyfile` and were NEVER opened in an
-editor, as constraint 2 orders — which is also why this handback quotes not one line of either
-of them.
+artefact was transported with `shutil.copyfile` and was NEVER opened in an editor, as
+constraint 2 orders — which is why this handback quotes not one line of it. The instrument
+was likewise transported with `shutil.copyfile` and never opened; its FENCED SOURCE was later
+extracted programmatically out of the committed C0c blob and run, because G5 orders exactly
+that, and the extracted scratch copy was read to report G5(b) honestly (deviation 8).
 
 | Slice | Body bytes | Body lines | Marker sha256 | Extracted from | Applied to |
 |-------|-----------|-----------|---------------|----------------|------------|
-| PLAN61 | 2444 | 43 | `159089b5…258b` MATCH | the COMMITTED C0a blob | `.agent/plan.md` @36986830, byte-identical |
-| RECORD61 | 6489 | 15 | `f37e0821…916e` MATCH | the COMMITTED C0a blob | `.agent/live_review.md` @a52e652c, appended |
+| PLAN62 | 2576 | 45 | `dfff2924…37cb` MATCH | the COMMITTED C0a blob | `.agent/plan.md` @d1fd4019, byte-identical |
+| RECORD62 | 5989 | 15 | `00485631…a1dd` MATCH | the COMMITTED C0a blob | `.agent/live_review.md` @cf565da1, appended |
+| DEC62 | 5851 | 17 | `f7e9e6df…bacd` MATCH | the COMMITTED C0a blob | `.agent/decisions.md` @549dc58b, appended |
 
-Both slices were extracted by `BEGIN-`/`END-` marker-line prefix with the marker lines EXCLUDED,
-out of the COMMITTED C0a blob — never from the prompt, never from the scratch copy, never from
-memory. Both marker digests matched on the FIRST attempt, because constraint 2 states the body
-convention outright: the body runs from the start of the line after BEGIN to the first byte of
-the END line, INCLUDING the body's terminal newline. Both slices were applied BYTE FOR BYTE with
-no reflow, correction or re-indent.
+All three slices were extracted by `BEGIN-`/`END-` marker-line prefix with the marker lines
+EXCLUDED, out of the COMMITTED C0a blob — never from the prompt, never from the scratch copy,
+never from memory. All three marker digests matched on the FIRST attempt, because constraint 2
+states the body convention outright: the body runs from the start of the line after BEGIN to
+the first byte of the END line, INCLUDING the body's terminal newline. All three were applied
+BYTE FOR BYTE with no reflow, correction or re-indent.
 
 ## Item status
 
@@ -450,76 +512,112 @@ Every ordered item of this round — each commit C and each gate G — appears e
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a save the block as `.agent/authored/f275-r61.md` | done | |
-| C0b save the artefact as `.agent/authored/f275-r61-artefact.md` | done | |
-| C0c save the generator as `.agent/authored/f275-r61-sites.py.md` | done | |
+| C0a save the block as `.agent/authored/f275-r62.md` | done | |
+| C0b save the artefact as `.agent/authored/f275-r62-artefact.md` | done | |
+| C0c save the instrument as `.agent/authored/f275-r62-bound.py.md` | done | |
 | C0d mirror the C0a blob into `.agent/last_block.md` | done | |
-| C1 `.agent/plan.md` <- PLAN61, whole-file replacement | done | |
-| C2 `.agent/live_review.md` <- RECORD61 appended | done | |
-| C3 `.agent/f275_t003_flip_residue_r61.md` <- copy of the C0b blob | done | |
-| C4 `.agent/handoff.md` rewritten — the handback | done | this file |
-| G1 TRANSPORT | done | all four EQUAL; 2 slices; TOTAL 258 / PROSE 200 |
-| G2 THE PLAN | done | byte-identical; 43 lines; both headings exactly 1 |
-| G3 THE RECORD | done | all five sub-readings (i)–(v) hold; N=8 |
-| G4 THE ARTEFACT AND THE GENERATOR | done | byte-identical; absence probe 128; 141 and 100 lines |
-| G5 THE CLAIMS | done | (a)–(c) all hold; 9/9 sites resolve; 2 `.status` nodes vs 1 chain on line 380 |
-| G6 THE TREE DID NOT MOVE | done | five trees EQUAL; canary 42 passed; ruff 26 at ceiling |
-| G7 NOTHING ELSE MOVED | done | (a)–(d) all hold; open set 88 at both ends |
+| C1 `.agent/plan.md` <- PLAN62, whole-file replacement | done | |
+| C2 `.agent/live_review.md` <- RECORD62 appended | done | |
+| C3 `.agent/decisions.md` <- DEC62 appended | done | |
+| C4 `.agent/f275_t003_flip_residue_r62.md` <- copy of the C0b blob | done | |
+| C5 `.agent/handoff.md` rewritten — the handback | done | this file |
+| G1 TRANSPORT | done | all four EQUAL; 3 slices; TOTAL 289 / PROSE 212, agreeing with constraint 8 |
+| G2 THE PLAN | done | byte-identical at 2576 bytes; 45 lines; both headings exactly 1 |
+| G3 THE RECORD | done | (i)–(vi) all hold; N=8 and N=9; both negative controls reject and both readers accept the unmutated region |
+| G4 THE ARTEFACT AND THE GENERATOR | done | byte-identical at 6473 bytes; absence probe 128; 109 and 77 lines under the 500 cap |
+| G5 THE INSTRUMENT | deviated | (a) all six figures agree and (c) all four frames TRUE; **(b) is unanswerable from the committed instrument's output — it prints ONE aggregated row per at-risk line, with no column and no `static` value, where the gate names TWO rows carrying both.** Reported as a finding, not reconciled. |
+| G6 THE TREE DID NOT MOVE | done | five trees EQUAL; canary 42 passed at exit 0; ruff 26 rows at ceiling, 0 and 0 |
+| G7 NOTHING ELSE MOVED | done | (a)–(d) all hold; 8 changed paths; open set 88 at both ends with all three sets empty; max insertions 289 |
 
-No item was skipped and none was deviated from. Every gate was run for real; none was reported
-without its command having been executed.
+No item was skipped. Every gate was run for real; none was reported without its command
+having been executed, and the word "green" appears as a reading nowhere in this handback.
 
 ## Deviations & assumptions
 
-THE BLOCK'S ORDERED COMMIT SEQUENCE WAS FOLLOWED EXACTLY: C0a, C0b, C0c, C0d, C1, C2, C3, C4 —
-eight commits, in that order, none added, none dropped, none reordered. The Change section's
-path set was honoured exactly, with MISSING and EXTRA both empty. No slice was altered by one
-byte and this round has no disagreement with either of them to record.
+THE BLOCK'S ORDERED COMMIT SEQUENCE WAS FOLLOWED EXACTLY: C0a, C0b, C0c, C0d, C1, C2, C3, C4,
+C5 — nine commits, in that order, none added, none dropped, none reordered. The Change
+section's path set was honoured exactly, with MISSING and EXTRA both empty. No slice was
+altered by one byte and this round has no disagreement with any of the three to record.
 
-1. **`.agent/plan.md` names round 60 across C0a–C0d.** Sustained and ordered. Constraint 3 fixes
-   the commit order and states this consequence explicitly: the plan becomes current at C1, the
-   first SUBSTANTIVE commit. Not a defect; recorded because a reader auditing the intermediate
-   commits would otherwise see a stale plan and wonder.
-2. **`python3 -m ruff check .` exits 1.** Sustained and by design. Ruff exits non-zero whenever
-   any finding remains, and the block states that the GATE IS THE COUNT. The count is 26, at the
-   frozen ceiling. No line was edited to change it.
-3. **G4's absence probe exits 128 with a working-tree stderr clause.** Sustained and standing.
-   `git show 5dfeeae6:.agent/f275_t003_flip_residue_r61.md` reports "exists on disk, but not in
-   '5dfeeae6'" — it is describing the WORKING TREE, where C3 has already landed the file, while
-   still confirming the path is absent from the BASE commit. Non-zero is what the gate requires
-   and 128 is non-zero.
-4. **C3 copied the artefact from the clean working-tree path, not from `git show` output.**
-   Declared because the two orders had to be reconciled: C3 says "a copy of the C0b blob" while
-   constraint 2 says the artefact is transported with `shutil.copyfile` and never opened in an
-   editor. The script first PROVED the working-tree file at `.agent/authored/f275-r61-artefact.md`
-   byte-equal to the committed C0b blob (8109 bytes, sha256 `005a6bf8…8cb7`, asserted in code),
-   then used `shutil.copyfile` on it. G4 re-checks the landed result against the committed C0b
-   blob independently and reads BYTE-IDENTICAL, so the reconciliation costs the gate nothing.
-5. **Every gate was written to a file under `.remedy-wt/` and run as `python3 -B <file>`.** The
-   shell on this machine refuses loops, `$(...)` substitution and `$?` inside a compound command
-   BY FORM, so each gate was re-expressed in Python, saved and run from disk, exactly as the
-   environment notes direct. Nothing was written to `/tmp`. This is method, not a departure from
-   any gate's meaning: every command reported above is the command that ran.
+1. **`.agent/plan.md` names round 61 across C0a–C0d.** Sustained and ordered. Constraint 3
+   fixes the commit order and states this consequence explicitly: the plan becomes current at
+   C1, the first SUBSTANTIVE commit. Not a defect; recorded because a reader auditing the
+   intermediate commits would otherwise see a stale plan and wonder.
+2. **`python3 -m ruff check .` exits 1.** Sustained and by design. Ruff exits non-zero
+   whenever any finding remains, and the block states that the GATE IS THE COUNT. The count
+   is 26, at the frozen ceiling. No line was edited to change it.
+3. **G4's absence probe exits 128.** Sustained and standing. Non-zero is what the gate
+   requires and 128 is non-zero; the path does not resolve at `7910aa7d`.
+4. **C4 copied the artefact from the clean working-tree path, not from `git show` output.**
+   Declared because the two orders had to be reconciled: C4 says "a copy of the C0b blob"
+   while constraint 2 says the artefact is transported with `shutil.copyfile` and never opened
+   in an editor. The script first PROVED the working-tree file at
+   `.agent/authored/f275-r62-artefact.md` byte-equal to the committed C0b blob (6473 bytes,
+   sha256 `e7edd695…9a49`, asserted in code), then used `shutil.copyfile` on it. G4 re-checks
+   the landed result against the committed C0b blob independently and reads BYTE-IDENTICAL,
+   so the reconciliation costs the gate nothing. This is round 61's declared route, kept.
+5. **Every gate was written to a file under `.remedy-wt/` and run as `python3 -B <file>`.**
+   The shell on this machine refuses loops, `$(...)` substitution and `$?` inside a compound
+   command BY FORM — one such command was rejected outright at the first probe of this round
+   and was immediately re-expressed — so each gate was saved to disk and run from there,
+   exactly as the environment notes direct. Nothing was written to `/tmp`. This is method,
+   not a departure from any gate's meaning: every command reported above is the command that
+   ran.
+6. **THE BLOCK'S HANDBACK SECTION ORDERS "round 61" AND THIS IS ROUND 62.** The block's
+   Handback section reads, verbatim: "Carry SESSION 23 of F275 and round 61". Round 61's own
+   block, recoverable at `git show 7910aa7d:.agent/last_block.md` line 174, carries the
+   IDENTICAL sentence — so the numeral is a stale carry from the previous block and not an
+   instruction to mislabel this round. Everything else in the block says 62: the STEP header
+   ("STEP T003 / round 62"), the Bundle, the Change set's filenames, slice PLAN62's "ROUND 62"
+   and slice DEC62's "(2026-09-11, F275 round 62)". This handback is therefore labelled round
+   62, `rounds so far 62`, and the disagreement is recorded here rather than resolved
+   silently. Had it been obeyed literally, two consecutive handbacks would both claim to be
+   round 61 and the Session line would stop being an identity.
+7. **G5(b) NAMES AN OUTPUT THE COMMITTED INSTRUMENT DOES NOT PRODUCE — REPORTED AS A
+   FINDING.** The gate orders "the two rows the instrument prints for
+   `packages/orchestration/loop_run.py:285` — their columns, receivers, owner verdicts and
+   `static` values". The instrument prints ONE row for that line and prints neither a column
+   nor a `static` value on it; it aggregates per at-risk LINE, not per site. Nothing was
+   reconciled in either direction: the instrument was run unmodified, its exact output for
+   that line is quoted in the Verification section, and the artefact was not touched. G5(a)
+   and G5(c) are unaffected and both agree with the artefact in full. NOTE FOR THE REVIEWER:
+   the artefact's section 2 SUBSTANCE is nonetheless supported — a separate worker probe over
+   the same two JSON inputs reads `col=40 recv=mission owner=Job static=None` and
+   `col=56 recv=job owner=Job static=None`, matching DECISION F275 D36's text exactly — but
+   that is the worker's reading and NOT the instrument's output, and it is labelled as such
+   wherever it appears above.
+8. **The EXTRACTED scratch copy of the instrument was read.** Constraint 2 forbids opening
+   the artefact and the instrument in an editor; both were transported by `shutil.copyfile`
+   and neither `.md` was ever opened. After the instrument's output failed to contain what
+   G5(b) asked for, the extracted scratch source at `.remedy-wt/r62_bound_instrument.py` was
+   read in order to state WHY — that its `rows` list holds one tuple per line rather than per
+   site. That read is of a gitignored scratch artefact produced by the gate G5 itself orders,
+   it happened AFTER transport was proved by G1, and it changed nothing.
 
-NO PIPE INTO `tail` WAS USED ANYWHERE THIS ROUND. Constraint 11 exists because round 60's worker
-hit that masking on the canary and had to re-run it; this round redirected the canary and ruff
-to files on their first invocation, so no gate's exit code here is a pipeline's exit code.
+NO PIPE INTO `tail` WAS USED ANYWHERE THIS ROUND. Constraint 11 exists because round 60's
+worker hit that masking on the canary and had to re-run it; this round redirected the canary
+and ruff to files on their first invocation, so no gate's exit code here is a pipeline's exit
+code.
 
-ASSUMPTIONS. The eight commits C0a–C4 and their SHAs are as tabled above; the short SHAs were
-read back from `git log` and `git show --numstat` rather than predicted. No assumption was made
-about either slice's content: both were verified against their own marker digests.
+ASSUMPTIONS. The nine commits C0a–C5 and their SHAs are as tabled above; the short SHAs were
+read back from `git log` and `git log --numstat` rather than predicted. No assumption was made
+about any slice's content: all three were verified against their own marker digests. No
+assumption was made about the instrument's figures: they were re-derived by running it.
 
-NO FINDING WAS REGISTERED AND NONE WAS RESOLVED, which is what constraint 9 requires of this
-round. `.agent/decisions.md` was NOT touched, because DECISION F275 D35 already rules this
-family and this round executes it rather than re-ruling it. `.agent/prose_slips.md` was NOT
-touched, because RECORD61 states in its own text that the reviewer spent no slip on round 60
-rather than leaving the absence to be inferred.
+NO FINDING ID WAS REGISTERED AND NONE WAS RESOLVED, which is what constraint 9 requires of
+this round. `R-0880` is BOUNDED and not resolved — DEC62 says so in its own closing paragraph
+and its second obligation is unbuilt. `.agent/prose_slips.md` was NOT touched, because
+RECORD62 states in its own text that the reviewer spent no slip on round 61, which makes
+three rounds in a row, and names the counter-measure that produced them.
 
 ## Next
 
-The reviewer reads the range `5dfeeae6`..`HEAD`, re-derives the seven gates independently
-against the committed blobs, and records C4's own `--numstat` insertions, which no gate of this
-round could reach. The next substantive step is Next Step 1 of the plan: bound `R-0880`
-statically by reading the ruled set's owner verdicts against the live record classes, so the
-over-selected sites are known rather than only the ones a run reaches, and give the transform
-the refusal `R-0879` already gave it for stale keys.
+The reviewer reads the range `7910aa7d`..`HEAD`, re-derives the seven gates independently
+against the committed blobs, records C5's own `--numstat` insertions which no gate of this
+round could reach, and rules on the two declared items: the block's stale "round 61" in its
+Handback section, and G5(b)'s premise about the committed instrument's output shape. The next
+substantive step is Next Step 1 of the plan: diagnose the three largest residue classes —
+`SystemExit` at `data_paths.py:324`, `unsupported operand` at `data_paths.py:200` and the
+hexadecimal-UUID parse — and rule whether they are a fourth rule family or a consequence of
+records written to disk under the classic shape. DECISION F275 D36 forbids the flip commit
+until either the 39 pairs are resolved or the site set is re-derived with a column in its key.
