@@ -151,10 +151,9 @@ class TestNoRawMemoryLeaks:
         job_id = str(uuid4())
         emit_memory_recalled_event(ctx, data_dir=str(tmp_path), job_id=job_id, stage="test")
 
-        from uuid import UUID
 
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(tmp_path, UUID(job_id))
+        events = load_run_events(tmp_path, job_id)
         all_text = json.dumps(events)
         assert "Do not leak this" not in all_text
 

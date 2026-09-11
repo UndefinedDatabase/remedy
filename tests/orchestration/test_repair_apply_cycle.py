@@ -116,7 +116,7 @@ class TestProofAwareness:
         from packages.orchestration.proof_chain import PROOF_VERIFIED, build_proof_chain
         from packages.orchestration.timeline import load_run_events
         job2 = load_job(UUID(str(job.id)), data_dir)
-        events = load_run_events(data_dir, UUID(str(job.id)))
+        events = load_run_events(data_dir, str(job.id))
         chain = build_proof_chain(job2, events, data_dir=data_dir)
         for c in chain.changes:
             if c.intent_id == iid:

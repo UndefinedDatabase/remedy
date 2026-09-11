@@ -88,7 +88,7 @@ class TestReadinessTruth:
         job = _job(env)
         # Inject events claiming snapshot/test/proof — must not change durable truth.
         for ev in ("snapshot_create_completed", "test_run_completed", "proof_collected"):
-            append_run_event(env, UUID(str(job.id)), event=ev, metadata={"exit_code": 0})
+            append_run_event(env, str(job.id), event=ev, metadata={"exit_code": 0})
         rep = OV.build_overnight_readiness(str(job.id), env)
         assert rep.can_run_unattended is False
         snap = next(i for i in rep.checklist if i.id == "snapshot_verified")

@@ -637,7 +637,7 @@ def run_job_fulfill(
     job = load_job(UUID(job_id), data_dir)
     record.repo_safe_name = repo_root.name
 
-    append_run_event(data_dir, UUID(job_id), event="fulfillment_started", metadata={
+    append_run_event(data_dir, job_id, event="fulfillment_started", metadata={
         "fulfillment_id": record.fulfillment_id, "mode": "fixture_demo",
     })
 
@@ -793,7 +793,7 @@ def run_job_fulfill(
     # NO metadata mutation — target_repo stays as real repo
     # Apply uses target_repo_override instead
 
-    append_run_event(data_dir, UUID(job_id), event="staging_created", metadata={
+    append_run_event(data_dir, job_id, event="staging_created", metadata={
         "fulfillment_id": record.fulfillment_id,
         "files_copied": staging_ws.files_copied,
         "excluded_count": len(staging_ws.excluded_dirs),
@@ -874,7 +874,7 @@ def run_job_fulfill(
         record.staged_files = [r.relative_path for r in staged_changes]
         staging_result.apply_records = staged_changes
 
-        append_run_event(data_dir, UUID(job_id), event="fulfillment_staged_apply", metadata={
+        append_run_event(data_dir, job_id, event="fulfillment_staged_apply", metadata={
             "fulfillment_id": record.fulfillment_id,
             "changed_files": record.changed_files,
             "staged_files": record.staged_files,
@@ -924,7 +924,7 @@ def run_job_fulfill(
             from packages.orchestration.proof_chain import build_proof_chain
             from packages.orchestration.timeline import load_run_events
             job = load_job(UUID(job_id), data_dir)
-            events = load_run_events(data_dir, UUID(job_id))
+            events = load_run_events(data_dir, job_id)
             chain = build_proof_chain(job, events, data_dir=data_dir)
             record.proof_status = chain.overall_status
         except Exception:
@@ -940,7 +940,7 @@ def run_job_fulfill(
 
         staging_result.proof_status = record.proof_status
 
-        append_run_event(data_dir, UUID(job_id), event="fulfillment_proof_built", metadata={
+        append_run_event(data_dir, job_id, event="fulfillment_proof_built", metadata={
             "fulfillment_id": record.fulfillment_id,
             "proof_status": record.proof_status,
             "proof_accepted_reason": record.proof_accepted_reason,
@@ -977,7 +977,7 @@ def run_job_fulfill(
             if promotion.blockers:
                 record.contract_blockers = list(promotion.blockers)
 
-            append_run_event(data_dir, UUID(job_id), event="staging_promoted", metadata={
+            append_run_event(data_dir, job_id, event="staging_promoted", metadata={
                 "fulfillment_id": record.fulfillment_id,
                 "promoted": promotion.promoted,
                 "files_promoted": promotion.files_promoted,
@@ -1005,7 +1005,7 @@ def run_job_fulfill(
             record.dod_released = dod_result.released
             record.dod_blocking_red = list(dod_result.blocking_red)
             record.dod_reported_red = list(dod_result.reported_red)
-            append_run_event(data_dir, UUID(job_id), event="dod_gate_evaluated",
+            append_run_event(data_dir, job_id, event="dod_gate_evaluated",
                              metadata={
                                  "fulfillment_id": record.fulfillment_id,
                                  "released": dod_result.released,
@@ -1033,7 +1033,7 @@ def run_job_fulfill(
             record.next_suggestion_ids = suggestion_ids
             record.next_safe_action = f"remedy propose list {job_id} --json"
 
-            append_run_event(data_dir, UUID(job_id), event="fulfillment_completed", metadata={
+            append_run_event(data_dir, job_id, event="fulfillment_completed", metadata={
                 "fulfillment_id": record.fulfillment_id,
                 "status": "completed_verified",
                 "contract_id": record.contract_id,

@@ -215,16 +215,16 @@ def start_repair_loop_v0(
 
     # --- Phase: emit events (idempotent — skip if already emitted for this failure) ---
     from packages.orchestration.timeline import load_run_events
-    existing_events = load_run_events(data_dir, UUID(job_id))
+    existing_events = load_run_events(data_dir, job_id)
     already_emitted = any(
         e.get("event") == "test_failure_artifact_created"
         and e.get("artifact_id") == failure_artifact_id
         for e in existing_events
     )
     if not already_emitted:
-        emit_failure_events(data_dir, UUID(job_id), failure, fix_task_id=str(fix_task.id))
+        emit_failure_events(data_dir, job_id, failure, fix_task_id=str(fix_task.id))
 
-    append_run_event(data_dir, UUID(job_id), event="repair_loop_stopped", metadata={
+    append_run_event(data_dir, job_id, event="repair_loop_stopped", metadata={
         "job_id": job_id,
         "fix_task_id": str(fix_task.id),
         "failure_artifact_id": failure_artifact_id,
@@ -238,7 +238,7 @@ def start_repair_loop_v0(
     usage.loops_used += 1
     save_usage(job, usage)
 
-    append_run_event(data_dir, UUID(job_id), event="contract_decision", metadata={
+    append_run_event(data_dir, job_id, event="contract_decision", metadata={
         "action": "repair_loop_complete",
         "loops_used": usage.loops_used,
         "contract_id": repair_contract.contract_id,
@@ -680,7 +680,7 @@ def build_repair_context(
 def _load_events_safe(data_dir: Path, job_id: str) -> list[dict[str, Any]]:
     try:
         from packages.orchestration.timeline import load_run_events
-        return load_run_events(data_dir, UUID(job_id))
+        return load_run_events(data_dir, job_id)
     except (ImportError, OSError, ValueError, KeyError, TypeError):
         return []
 

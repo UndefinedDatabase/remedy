@@ -20,7 +20,7 @@ import json
 import sys
 import tempfile
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -1150,7 +1150,7 @@ class TestTrustReport:
 class TestTimeline:
     def _load_events(self, tmp_path: Path, job_id: str) -> list[dict]:
         from packages.orchestration.timeline import load_run_events
-        return load_run_events(tmp_path, UUID(job_id))
+        return load_run_events(tmp_path, job_id)
 
     def test_patch_intent_applied_appears_in_timeline(self, tmp_path):
         from packages.orchestration.timeline import summarize_timeline
@@ -1712,7 +1712,7 @@ class TestTimelineProof:
 
     def _load_events(self, tmp_path: Path, job_id: str) -> list[dict]:
         from packages.orchestration.timeline import load_run_events
-        return load_run_events(tmp_path, UUID(job_id))
+        return load_run_events(tmp_path, job_id)
 
     def test_proof_event_appears_in_timeline(self, tmp_path):
         from packages.orchestration.timeline import summarize_timeline

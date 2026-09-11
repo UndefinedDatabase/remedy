@@ -60,7 +60,7 @@ def _cmd_dashboard_project(project_id_str: str, *, json_output: bool = False) ->
         try:
             j = load_job(UUID(jid))
             jobs.append(j)
-            all_events[jid] = load_run_events(data_dir, UUID(jid))
+            all_events[jid] = load_run_events(data_dir, jid)
         except Exception:
             pass
 

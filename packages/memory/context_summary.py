@@ -200,10 +200,9 @@ def emit_memory_recalled_event(
     if not data_dir or not job_id or summary.item_count == 0:
         return
     try:
-        from uuid import UUID
 
         from packages.orchestration.timeline import append_run_event
-        append_run_event(data_dir, UUID(job_id), event="project_memory_recalled", metadata={
+        append_run_event(data_dir, job_id, event="project_memory_recalled", metadata={
             "stage": stage,
             "item_count": summary.item_count,
             "estimated_tokens": summary.estimated_tokens,

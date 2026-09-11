@@ -804,7 +804,7 @@ def run_do_continue(
         from packages.orchestration.proof_chain import build_proof_chain
         from packages.orchestration.timeline import load_run_events
         job = load_job(UUID(request.job_id), data_dir)
-        events = load_run_events(data_dir, UUID(request.job_id))
+        events = load_run_events(data_dir, request.job_id)
         chain = build_proof_chain(job, events, data_dir=data_dir)
         target_change = next((c for c in chain.changes if c.intent_id == iid), None)
         result.proof_status = target_change.proof_status if target_change else chain.overall_status

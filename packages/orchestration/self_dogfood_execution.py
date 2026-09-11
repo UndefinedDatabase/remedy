@@ -704,7 +704,7 @@ def _intent_proof_status(job: Any, intent_id: str, data_dir: Path) -> str:
     try:
         from packages.orchestration.proof_chain import build_proof_chain
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(data_dir, UUID(str(job.id)))
+        events = load_run_events(data_dir, str(job.id))
         chain = build_proof_chain(job, events, data_dir=data_dir)
         change = next((c for c in chain.changes if c.intent_id == intent_id), None)
         if change is not None:

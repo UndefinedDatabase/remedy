@@ -25,10 +25,9 @@ class TestMemoryEventEmission:
         emit_memory_recalled_event(ctx, data_dir=str(tmp_path), job_id=job_id, stage="planning")
 
         # Read event from timeline
-        from uuid import UUID
 
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(tmp_path, UUID(job_id))
+        events = load_run_events(tmp_path, job_id)
         mem_events = [e for e in events if e.get("event") == "project_memory_recalled"]
         assert len(mem_events) == 1
         meta = mem_events[0]["metadata"]
@@ -49,10 +48,9 @@ class TestMemoryEventEmission:
         job_id = str(uuid4())
         emit_memory_recalled_event(ctx, data_dir=str(tmp_path), job_id=job_id, stage="planning")
 
-        from uuid import UUID
 
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(tmp_path, UUID(job_id))
+        events = load_run_events(tmp_path, job_id)
         mem_events = [e for e in events if e.get("event") == "project_memory_recalled"]
         assert len(mem_events) == 0
 
@@ -72,10 +70,9 @@ class TestMemoryEventEmission:
         job_id = str(uuid4())
         emit_memory_recalled_event(ctx, data_dir=str(tmp_path), job_id=job_id, stage="execution")
 
-        from uuid import UUID
 
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(tmp_path, UUID(job_id))
+        events = load_run_events(tmp_path, job_id)
         meta = events[0]["metadata"]
         meta_str = json.dumps(meta)
         # No raw memory content

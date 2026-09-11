@@ -905,3 +905,92 @@ class TestRunEventsAcceptTheShippedJobIdShape:
         append_run_event(str(tmp_path), job_id, event="probe", metadata={})
 
         assert len(load_run_events(tmp_path, job_id)) == 1
+
+
+class TestTheRunLogSeamHasOneIdSpelling:
+    """No call site re-shapes the id the run-log seam joins verbatim.
+
+    `append_run_event`, `emit_failure_events` and `load_run_events` join their
+    `job_id` VERBATIM (finding R-0877), as `data_paths.run_log_dir` always did. A
+    caller that wraps the id in `UUID(...)` therefore names the canonical hyphenated
+    directory while a caller that does not names the raw one — two directories for
+    one job's run log, each reader blind to the other's half — and it raises outright
+    on the sixteen hex characters `data_paths.mint_job_id` produces.
+    """
+
+    SEAM = ("append_run_event", "emit_failure_events", "load_run_events")
+
+    def _wrapped_id_arguments(self):
+        """Every call site handing one of the seam functions a `UUID(...)` id.
+
+        Resolved with `ast` over the tracked `.py` files, never by grep: a name in a
+        comment or a string is not a call site.
+        """
+        import ast
+        import subprocess
+
+        root = Path(__file__).resolve().parent.parent
+        tracked = subprocess.run(
+            ["git", "ls-files", "*.py"], cwd=str(root),
+            capture_output=True, text=True, check=True).stdout.split()
+
+        hits = []
+        for rel in tracked:
+            try:
+                tree = ast.parse((root / rel).read_bytes(), filename=rel)
+            except (SyntaxError, OSError):
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call) or len(node.args) < 2:
+                    continue
+                func = node.func
+                called = func.id if isinstance(func, ast.Name) else (
+                    func.attr if isinstance(func, ast.Attribute) else None)
+                if called not in self.SEAM:
+                    continue
+                arg = node.args[1]
+                if (isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name)
+                        and arg.func.id == "UUID"):
+                    hits.append(f"{rel}:{node.lineno} {called}")
+        return sorted(hits)
+
+    def test_no_call_site_wraps_the_run_log_id_in_a_uuid(self):
+        hits = self._wrapped_id_arguments()
+        assert hits == [], (
+            "these call sites re-shape an id the seam joins verbatim, so their run "
+            "log lands in a second directory: " + ", ".join(hits))
+
+    def test_the_sweep_can_see_a_wrap_at_all(self):
+        """The discriminator: a zero-gate nobody can trip protects nothing."""
+        import ast
+
+        sample = "append_run_event(data_dir, UUID(job_id), event='x')"
+        node = ast.parse(sample).body[0].value
+        assert isinstance(node.args[1], ast.Call)
+        assert node.args[1].func.id == "UUID"
+        assert node.func.id in self.SEAM
+
+    def test_a_recalled_memory_event_is_readable_by_the_shipped_reader(
+            self, tmp_path, monkeypatch):
+        """The behaviour the sweep exists to protect, through the REAL functions."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        from packages.memory.context_summary import (
+            build_memory_context,
+            emit_memory_recalled_event,
+        )
+        from packages.memory.local_gateway import store_memory
+        from packages.orchestration.data_paths import mint_job_id
+        from packages.orchestration.timeline import load_run_events
+
+        store_memory(key="tip", value="Use fixtures", project_id="proj1", approved=True)
+        ctx = build_memory_context(project_id="proj1")
+
+        job_id = mint_job_id()
+        assert len(job_id) == 16
+
+        emit_memory_recalled_event(
+            ctx, data_dir=str(tmp_path), job_id=job_id, stage="planning")
+
+        events = load_run_events(tmp_path, job_id)
+        assert [e["event"] for e in events] == ["project_memory_recalled"]

@@ -216,7 +216,7 @@ def _gather_inputs(job_id: str, data_dir: Path) -> _Inputs | None:
     try:
         from packages.orchestration.proof_chain import build_proof_chain
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(data_dir, UUID(job_id))
+        events = load_run_events(data_dir, job_id)
         chain = build_proof_chain(job, events, data_dir=data_dir)
         proof_status = chain.overall_status if chain.changes else "none"
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
