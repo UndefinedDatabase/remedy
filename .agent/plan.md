@@ -13,22 +13,24 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 54 performs DECISION F275 D29's P3, the last of the three prerequisites that decision
-places before the flip. A construction keyword arriving through `**defaults` is not a
-`keyword.arg`, so the transform never sees it; the instrument resolves every `Job(**...)` and
-`Task(**...)` site to the dict literals that feed it AND resolves the helper factories'
-callers, then rules each key against the field sets of the shipped records, read by importing
-them. The result is `.agent/f275_t003_splat_sites.md` and DECISION F275 D31. The round 53 PASS
-verdict and that round's dated prose slips are booked here.
+ROUND 55 records the flip dry run DECISION F275 D29's CONSEQUENCE clause places after all
+three of its prerequisites, now that all three are landed — P1 at round 53, P2 at rounds 51
+and 52, P3 at round 54. The transform consumed the ruled site set and the splat rules, the
+run was taken against a control at the same commit, and the residue fell from 2557
+attributed failures to 1331. The artefact is `.agent/f275_t003_flip_residue_r55.md` and the
+ruling is DECISION F275 D32: the flip is a RENAME AND A RETYPE, the two records disagree
+about field TYPES, and the classic record cannot hold the unified id shape, so the change
+stays one commit and the transform gains the retype rules. The round 54 PASS verdict and its
+dated prose slip are booked here.
 
 ## Next Steps
 
-1. Re-run the flip dry run, with the transform consuming the ruled site set of round 53 and
-   the splat rules of this round, and attribute its residue against the undecided sites the
-   round 53 artefact reports. DECISION F275 D29's CONSEQUENCE clause places this AFTER all
-   three prerequisites, which this round completes.
+1. Build the three retype rule families DECISION F275 D32 names — the id VALUE at a target
+   construction, a `.hex` or `.int` read on a now-`str` id, and a `.value` read on a
+   now-`str` status — and re-run the dry run with its control at the same commit.
 2. THE FLIP as the one declared-oversize commit AGENTS.md permits per feature, declared with
-   its inseparability reason before review.
+   its inseparability reason before review, registering the `acceptance_checks` finding
+   DECISION F275 D22 places with it.
 3. The resolver collapse DECISION F260 D5 places in T003, with the classic store.
 4. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
    ledger rotation, the STATUS line and the PR.
@@ -37,9 +39,8 @@ verdict and that round's dated prose slips are booked here.
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
   split-and-close default BY NAME: a session writes the scope report and CONTINUES.
-- The round 53 ruled set leaves an undecided residue in code the suite never executes, and a
-  green dry run cannot speak for it.
-- The splat resolution is partial by construction: a dict built by a merge the reader cannot
-  evaluate is reported opaque, not empty.
+- Nothing proves the type table exhausts the cause; only another dry run can say so.
+- The ruled site set is line-granular on its probe half, so a line holding two owners is
+  resolved by receiver name and one site by nothing at all.
 - The open set is 86 by distinct id. Four are High — R-0803, R-0804, R-0806 and R-0807 — all
   F273's, per DECISION F272 D12.
