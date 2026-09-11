@@ -153,8 +153,8 @@ def test_user_message_includes_memory_context():
     from packages.orchestration.builder_models import TaskExecutionContext
     from packages.providers.ollama_builder.provider import _build_user_message
     ctx = TaskExecutionContext(
-        job_id=uuid4(),
-        task_id=uuid4(),
+        job_id=str(uuid4()),
+        task_id=str(uuid4()),
         job_prompt="Fix calc",
         task_type="code_change",
         task_description="Fix addition",
@@ -171,8 +171,8 @@ def test_user_message_omits_memory_when_none():
     from packages.orchestration.builder_models import TaskExecutionContext
     from packages.providers.ollama_builder.provider import _build_user_message
     ctx = TaskExecutionContext(
-        job_id=uuid4(),
-        task_id=uuid4(),
+        job_id=str(uuid4()),
+        task_id=str(uuid4()),
         job_prompt="Fix calc",
         task_type="code_change",
         task_description="Fix addition",

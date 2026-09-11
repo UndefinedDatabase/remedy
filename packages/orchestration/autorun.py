@@ -640,8 +640,8 @@ def _run_ollama_builder(
     # Build TaskExecutionContext
     from packages.orchestration.builder_models import TaskExecutionContext
     context = TaskExecutionContext(
-        job_id=job.id,
-        task_id=uuid4(),
+        job_id=str(job.id),
+        task_id=str(uuid4()),
         job_prompt=goal,
         task_type="code_change",
         task_description=goal,

@@ -141,9 +141,9 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
         pass
 
     return TaskExecutionContext(
-        job_id=job.id,
+        job_id=str(job.id),
         job_prompt=job.user_prompt,
-        task_id=task.id,
+        task_id=str(task.id),
         task_type=task_type,
         task_description=task.description,
         planning_summary=planning_summary,

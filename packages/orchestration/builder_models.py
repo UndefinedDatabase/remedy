@@ -8,7 +8,6 @@ imports and transforms them — providers depend on these, not the other way aro
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -31,9 +30,9 @@ class TaskExecutionContext(BaseModel):
     memory_metadata:      Safe metadata about memory injection (counts, hash, no raw text).
     """
 
-    job_id: UUID
+    job_id: str
     job_prompt: str | None
-    task_id: UUID
+    task_id: str
     task_type: str
     task_description: str
     planning_summary: str | None = None

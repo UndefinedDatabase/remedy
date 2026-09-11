@@ -101,9 +101,9 @@ def test_context_fields_populated_correctly():
     run_next_task(job, capturing_builder)
     ctx = received[0]
 
-    assert ctx.job_id == job.id
+    assert ctx.job_id == str(job.id)
     assert ctx.job_prompt == "do something cool"
-    assert ctx.task_id == task.id
+    assert ctx.task_id == str(task.id)
     assert ctx.task_type == "type_0"
     assert ctx.task_description == "Task 0"
 

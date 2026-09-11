@@ -110,8 +110,8 @@ class TestRealOllamaSmoke:
         repo = create_missing_function_repo(tmp_path / "repo")
         builder = OllamaBuilder()
         context = TaskExecutionContext(
-            job_id=uuid4(),
-            task_id=uuid4(),
+            job_id=str(uuid4()),
+            task_id=str(uuid4()),
             job_prompt="Add a hello() function that returns 'hello'",
             task_type="code_change",
             task_description="Write hello() in app.py that returns the string 'hello'",
@@ -147,8 +147,8 @@ class TestRealOllamaSmoke:
         repo = create_missing_function_repo(tmp_path / "repo")
         builder = OllamaBuilder()
         context = TaskExecutionContext(
-            job_id=uuid4(),
-            task_id=uuid4(),
+            job_id=str(uuid4()),
+            task_id=str(uuid4()),
             job_prompt="Add a hello() function",
             task_type="code_change",
             task_description="Write hello() in app.py",

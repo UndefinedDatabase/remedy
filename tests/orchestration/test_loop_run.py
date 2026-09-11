@@ -434,9 +434,9 @@ def _completing_step(job: Job, provider_call) -> TaskAttempt:
         return TaskAttempt()
     provider_call(
         TaskExecutionContext(
-            job_id=job.id,
+            job_id=str(job.id),
             job_prompt=job.user_prompt,
-            task_id=task.id,
+            task_id=str(task.id),
             task_type=task.inputs.get("task_type", "unknown"),
             task_description=task.description,
         )

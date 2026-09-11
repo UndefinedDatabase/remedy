@@ -593,7 +593,7 @@ class EscalatingStep:
             )
 
         provider_call(TaskExecutionContext(
-            job_id=job.id, job_prompt=job.user_prompt, task_id=task.id,
+            job_id=str(job.id), job_prompt=job.user_prompt, task_id=str(task.id),
             task_type=task.inputs.get("task_type", "unknown"),
             task_description=task.description))
         self.executed.append(planned_id)
@@ -1105,7 +1105,7 @@ class LinearStep:
         if task is None:
             return TaskAttempt()
         provider_call(TaskExecutionContext(
-            job_id=job.id, job_prompt=job.user_prompt, task_id=task.id,
+            job_id=str(job.id), job_prompt=job.user_prompt, task_id=str(task.id),
             task_type="documentation", task_description=task.description))
         self.executed.append(task.description)
         task.status = RunState.COMPLETED

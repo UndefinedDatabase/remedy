@@ -127,8 +127,8 @@ class TestRealOllamaSmoke:
 
         builder = OllamaBuilder()
         context = TaskExecutionContext(
-            job_id=uuid4(),
-            task_id=uuid4(),
+            job_id=str(uuid4()),
+            task_id=str(uuid4()),
             job_prompt="Create a Python function that adds two numbers",
             task_type="code_change",
             task_description="Write an add function in calc.py",

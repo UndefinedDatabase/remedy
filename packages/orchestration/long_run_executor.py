@@ -1161,9 +1161,9 @@ def default_repair_step(job: Job, cycle_index: int, findings: dict[str, Any],
 
     def build_fn(repair_context: dict[str, Any] | None) -> BuilderOutput:
         return provider_call(TaskExecutionContext(
-            job_id=job.id,
+            job_id=str(job.id),
             job_prompt=job.user_prompt,
-            task_id=task.id,
+            task_id=str(task.id),
             task_type=task.inputs.get("task_type", "unknown"),
             task_description=task.description,
             prior_task_summaries=[json.dumps(repair_context or findings,

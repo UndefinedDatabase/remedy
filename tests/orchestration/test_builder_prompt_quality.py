@@ -36,7 +36,7 @@ class TestPromptContent:
         from packages.orchestration.builder_models import TaskExecutionContext
         from packages.providers.ollama_builder.provider import _build_user_message
         ctx = TaskExecutionContext(
-            job_id=uuid4(), task_id=uuid4(),
+            job_id=str(uuid4()), task_id=str(uuid4()),
             job_prompt="add hello function",
             task_type="code_change",
             task_description="Write hello() in app.py",
@@ -51,7 +51,7 @@ class TestPromptContent:
         from packages.orchestration.builder_models import TaskExecutionContext
         from packages.providers.ollama_builder.provider import _build_user_message
         ctx = TaskExecutionContext(
-            job_id=uuid4(), task_id=uuid4(),
+            job_id=str(uuid4()), task_id=str(uuid4()),
             job_prompt="fix",
             task_type="code_change",
             task_description="Fix the bug",
