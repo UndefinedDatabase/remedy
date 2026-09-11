@@ -1,467 +1,405 @@
-# Handback — F275 round 48
+# Handback — F275 round 49
 
 ## Session
 
-SESSION 19 of feature F275 · round 48 · rounds so far 48
+SESSION 19 of feature F275 · round 49 · rounds so far 49
 
-Context self-assessment (amend0905-throughput): context is comfortable — this
-round read AGENTS.md, the 280-line self-drive protocol and the 105-line handback
-template, verified and copied a 34051-byte block, ran TWO generators over 52 code
-paths, and spent the rest on eight gate runs including a scoped selection reading
-480 passed and 2 skipped, a 42-test canary and a four-reading mutation red proof
-in a disposable worktree; there is room for at least one more round this session.
+Context self-assessment (amend0905-throughput): context is comfortable — this round
+read AGENTS.md, the 280-line self-drive protocol and the 105-line handback template,
+copied and verified a 28474-byte block, applied nine slices, and spent the rest on
+eight gate runs including a two-mutation red proof in a disposable worktree; there is
+room for at least one more round this session.
 
-F275 stands at 48 rounds and 19 sessions against the operator's soft limit of 60
-rounds and 20 sessions (amend0908-f275-finish rule 1), so no scope report is owed
-by THIS session. The NEXT session is the twentieth and owes one.
-
-## THE ONE THING THE REVIEWER MUST READ FIRST
-
-**I RAN EIGHT GATES, G1 THROUGH G8, ALL GREEN.** The block states no gate count;
-eight is my own count of the gates it orders. Both subtree digests reproduce the
-reviewer's own replay EXACTLY — `C3:packages` is
-`18aadcb1ca69b2aa25a14044750bbe2e0883d2d0` and `C3:tests` is
-`67b33dc0be4345b55badd92b1af6b1af105cfffd`, checked against the STAGED index
-BEFORE C3 was committed, so no adjustment was ever possible or needed. Neither
-generator's assertion fired: WIDEN48 rewrote 48 files in 112 edits and skipped no
-multiline writer, FIXES48 applied 20 sites over 12 files with every expected
-occurrence count met.
-
-**ONE DECLARED SLICE CONCERN, APPLIED AS GIVEN AND NOT EDITED** (constraint 1).
-WIDEN48 wraps two construction keywords whose value can be `None`, turning a
-`None` into the four-character string `"None"`:
-
-- `packages/orchestration/do_run.py`:
-  `task_id=str(job.tasks[0].id if job.tasks else None)` — was `None` when the job
-  carries no task, is now `"None"`.
-- `packages/orchestration/test_failure_artifact.py`:
-  `task_id=str(UUID(failure.task_id) if failure.task_id else None)` — same shape.
-
-The field's declared annotation is `str | None`, so `None` remains representable
-and the wrap removes the only way to reach it at these two sites. I did NOT edit
-the generator: constraint 1 binds, G6(b) proves my tree is byte-identical to the
-tree the reviewer measured at `18371 passed`, and both sites are inside fixture
-paths. Declared here for the reviewer to rule on.
+F275 stands at 49 rounds and 19 sessions against the operator's soft limit of 60 rounds
+and 20 sessions (amend0908-f275-finish rule 1). The limit is NOT reached; no scope
+report is owed by this round. The NEXT session is the twentieth.
 
 ## Range
 
-Review of `05631ba3`..C5, where C4 is `dc6a621c` and C5 is the commit that writes
-this file. C5's own SHA is NOT stated here: it does not exist while this file is
-being written, and an unmeasured SHA is never written into the record. `git log`
-on the branch tip resolves it.
+Review of `70d6c8e6`..C5, where C4 is `31e37b27` and C5 is the commit that writes this
+file. C5's own SHA is NOT stated here: it does not exist while this file is being
+written, and no SHA is written that was not measured.
 
 ## Commits
 
-### c5ee58fc F275 R48 C0a: save the round 48 step block as the authored original.
+### 67209157 F275 R49 C0a: save the round 49 block as the authored source of every slice.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r48.md` | +425 / -0 | the block, `shutil.copyfile`d byte-exact from `.remedy-wt/f275-r48.block.md`, never retyped |
+| `.agent/authored/f275-r49.md` | +314 / -0 | the round 49 block, saved by `shutil.copyfile` from `.remedy-wt/f275-r49.block.md`, never retyped; every slice this round applies is extracted from THIS file's committed blob |
 
-### ebcecaff F275 R48 C0b: mirror the round 48 block into the last-block state file.
+### 17d602ad F275 R49 C0b: mirror the round 49 block into the last-block state file.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +238 / -185 | written from `git cat-file blob c5ee58fc:.agent/authored/f275-r48.md`, never retyped |
+| `.agent/last_block.md` | +247 / -358 | written from `git cat-file blob 67209157:.agent/authored/f275-r49.md`, not retyped; replaces the round 48 block |
 
-### ba1889ad F275 R48 C1: the round 48 plan.
+### 365c4cf4 F275 R49 C1: the round 49 plan.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +20 / -19 | whole-file replacement by slice PLAN48 |
+| `.agent/plan.md` | +17 / -17 | whole-file replacement by slice PLAN49; Current Step becomes round 49, Risks re-state the open set at 87 and the nullability rule |
 
-### 5cff5789 F275 R48 C2: book the round 47 PASS verdict and the round 47 reviewer slip.
+### 509f3180 F275 R49 C2: book the round 48 FAIL verdict, register R-0876 and record one reviewer slip.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2 / -0 | append of slice RECORD48, the round 47 PASS verdict |
-| `.agent/prose_slips.md` | +2 / -0 | append of slice SLIPS48, the one slip round 47 declared |
+| `.agent/live_review.md` | +4 / -0 | appends RECORD49 (the round 48 FAIL verdict) then FIND49 (the `R-0876` registration), in that order |
+| `.agent/prose_slips.md` | +2 / -0 | appends SLIPS49, one dated line on DECISION F275 D28's unmeasured attribution |
 
-### 2b395e02 F275 R48 C3: widen Artifact.task_id and PatchIntentSet.task_id to str at every construction site.
-Grouped by directory, as the block's Handback line permits — 52 files, +132 / -132.
-
+### 9df09805 F275 R49 C3: keep task_id absent when there is no task, and guard both sites.
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/core/` (1 file) | +1 / -1 | `Artifact.task_id: UUID \| None` → `str \| None` |
-| `packages/orchestration/` (11 files) | +17 / -17 | `PatchIntentSet.task_id: UUID` → `str`; construction keywords wrapped in `str(...)`; the six hand fixes FIXES48 applies under `packages/` |
-| `tests/` (18 files) | +88 / -88 | construction keywords wrapped; the assertions FIXES48 rewrites |
-| `tests/cli/` (7 files) | +8 / -8 | construction keywords wrapped |
-| `tests/orchestration/` (15 files) | +18 / -18 | construction keywords wrapped; the one alias site `_A(...)` in `test_repair_loop_v1.py` FIXES48 names |
+| `packages/orchestration/do_run.py` | +1 / -1 | PAIR49A — the `str(...)` moves inside the conditional's true branch in `_run_build_phase`, so a job with no tasks yields `task_id=None` |
+| `packages/orchestration/test_failure_artifact.py` | +1 / -1 | PAIR49B — the same move in `persist_failure_artifact`, so an empty `failure.task_id` yields `task_id=None` |
+| `tests/orchestration/test_do_run.py` | +21 / -0 | GUARD49A appended — `TestSystemArtifactKeepsTaskIdAbsent` over `_run_build_phase` |
+| `tests/orchestration/test_test_failure_repair.py` | +26 / -0 | GUARD49B appended — `TestSystemArtifactKeepsTaskIdAbsent` over `persist_failure_artifact` |
 
-Neither generator is committed: both were written to the gitignored `.remedy-wt/`
-as `widen48.py` and `fixes48.py` and run ONCE each, in that order, from the
-repository root against the primary checkout.
-
-### dc6a621c F275 R48 C4: record DECISION F275 D28, the two task_id fields widen as one commit.
+### 31e37b27 F275 R49 C4: book the R-0876 landing line.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | +14 / -0 | append of slice DECIDE48, DECISION F275 D28 |
+| `.agent/live_review.md` | +2 / -0 | appends LANDED49, the `Landed: R-0876` line, AFTER the fix it describes is committed |
 
-### C5 (SHA unmeasurable from inside itself) F275 R48 C5: the round 48 handback.
+### C5 (SHA unmeasurable from inside itself) F275 R49 C5: the round 49 handback.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | whole-file rewrite | this handback; a handoff cannot table the commit that writes it, nor state that commit's SHA (R-0149 self-reference pattern) |
+| `.agent/handoff.md` | whole-file rewrite | this file; a handoff cannot table the commit that writes it, nor state its own insertion count (R-0149 pattern). AGENTS.md exempts a single-`.agent/` state-file rewrite from the 500-line counting rule by construction |
 
-## Item status
+## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a  | done | `.agent/authored/f275-r48.md`, copyfile, digest re-verified |
-| C0b  | done | `.agent/last_block.md` from the committed blob |
-| C1   | done | slice PLAN48 |
-| C2   | done | slices RECORD48 + SLIPS48 |
-| C3   | done | WIDEN48 then FIXES48, result committed, generators not |
-| C4   | done | slice DECIDE48 |
-| C5   | done | this handback |
-| G1   | done | transport, four blobs one digest |
-| G2   | done | plan byte-equal, 45 lines, both headings 1x |
-| G3   | done | both appends, reader A + reader B + negative control |
-| G4   | done | decisions append, all three readings |
-| G5   | done | open set 86 by distinct id at base and at C4 |
-| G6   | done | (a) import, (b) both subtree digests, (c) 52/132/132/12/40, (d) scoped + canary |
-| G7   | done | red proof, M1 separates 52 passed → 2 failed, 50 passed |
-| G8   | done | STOP absent, porcelain empty, 58 paths, every insertion count under 500 |
+| C0a | done | |
+| C0b | done | |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | |
+| C5 | done | |
+| G1 | done | |
+| G2 | done | |
+| G3 | done | |
+| G4 | done | |
+| G5 | done | |
+| G6 | deviated | (a) and (c) exactly as stated; (b)'s "exactly four rows" is FALSE for the range the gate names — see Deviations |
+| G7 | done | |
+| G8 | done | |
+| R-0876 | registered | resolved by nobody this round; only reviewer-authored text sets a resolution |
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `gh pr list --state open --json number,headRefName,baseRefName,isDraft` | `[]` — no open PR; the Open PR Gate is satisfied and no branch was created |
-| `git worktree add --detach .remedy-wt/g7-r48 2b395e02` | created, detached at C3, never `cd`-ed into |
-| `git worktree remove --force .remedy-wt/g7-r48` then `git worktree prune` | removed; `git worktree list` reads ONE entry: `/home/decodeux/Repos/remedy 2b395e02 [feature/f275-one-world-completion-part-three]` |
-| `git push -u origin feature/f275-one-world-completion-part-three` (after C4) | `05631ba3..dc6a621c` — ok, exit 0, MEASURED |
-| `git push origin feature/f275-one-world-completion-part-three` (after C5) | ordered and executed immediately AFTER this commit. Its outcome is by construction unrecordable here — a handback cannot report a push that follows it — so no outcome is claimed; the reviewer reads it from `git log origin/feature/f275-one-world-completion-part-three`. |
+| `git worktree add --detach .remedy-wt/r49-wt 9df09805` | exit 0 — "HEAD is now at 9df09805" |
+| `git worktree remove --force .remedy-wt/r49-wt` | exit 0 |
+| `git worktree prune` | exit 0 |
+| `git worktree list` | ONE entry: `/home/decodeux/Repos/remedy 9df09805 [feature/f275-one-world-completion-part-three]` |
+| `git push -u origin feature/f275-one-world-completion-part-three` | ordered and executed immediately AFTER C5. Its outcome is by construction unrecordable here — a handback cannot report a push that follows it — so no outcome is claimed; the reviewer reads it from `git log origin/feature/f275-one-world-completion-part-three` |
 
-No PR created, none edited, none merged. No force-push, no history rewrite, no
-branch deleted, no work on `main`.
+No PR created, edited or merged. No force-push, no history rewrite, no branch deleted.
 
 ## Verification
 
-Every gate run as `bash -c '<cmd>; echo "REAL_EXIT=$?"'`. I ran EIGHT gates.
+EIGHT gates run, G1 through G8 — the number is the worker's own count; the block
+states none. Every one run for real as `bash -c '<cmd>; echo "REAL_EXIT=$?"'`.
 
-**Constraint 8 — `.agent/STOP` re-read FROM DISK before the first commit:
-ABSENT.** `ls /home/decodeux/Repos/remedy/.agent/STOP` → exit 2, "No such file or
-directory". Re-read again at C4 under G8: `os.path.exists(...)` → `False`.
+**G1 TRANSPORT, at C0b — PASS, exit 0.** The chain the proof walked has four links
+and no retyped byte: `.remedy-wt/f275-r49.block.md` → (`shutil.copyfile`) →
+`.agent/authored/f275-r49.md` on disk → (`git commit`) → the committed blob at
+`67209157` → (`git cat-file blob`/`git show`) → `.agent/last_block.md`. All four read
+**28474 bytes** at sha256
+`37081bec7b73c5e7d4de0fbf52ac2dc249a2dccc62ace4d6f92f7b37afadb113`, which is the digest
+the delegation message states; `all four identical: True`. The block carries
+`BEGIN-`/`END-` marker lines for its SLICES only and no BEGIN marker of its own, so the
+digest is the whole identity. Nothing is claimed about the bytes emitted into the
+worker's prompt — the proof never reads them.
 
-### G1 TRANSPORT, at C0b — REAL_EXIT=0
-
-The chain the proof walked is four links, all one blob at **34051 bytes**,
-sha256 **`47750c3be1aab6831d8eaec0f9fa19685065cbf3e12901b474d3bf5183e82e14`**,
-which is the digest the delegation order states:
-
-| Link | bytes | sha256 |
-|---|---|---|
-| the saved copy `.agent/authored/f275-r48.md` | 34051 | `47750c3b…82e14` |
-| the committed blob `c5ee58fc:.agent/authored/f275-r48.md` | 34051 | `47750c3b…82e14` |
-| its mirror `.agent/last_block.md` | 34051 | `47750c3b…82e14` |
-| the working copy `.remedy-wt/f275-r48.block.md` | 34051 | `47750c3b…82e14` |
-
-`all four equal: True`. The digest was verified over the working copy BEFORE the
-file was read for content, and `.agent/authored/f275-r48.md` was produced by
-`shutil.copyfile`, never a retype. `.agent/last_block.md` was produced by
-`git cat-file blob c5ee58fc:.agent/authored/f275-r48.md`, never a retype;
-`cmp .agent/authored/f275-r48.md .agent/last_block.md` → REAL_EXIT=0.
-I claim NOTHING about the bytes emitted into my prompt — nothing here measures
-those, and the block carries marker lines for its six slices only and no BEGIN
-marker of its own.
-
-### G2 THE PLAN, at C1 — REAL_EXIT=0
-
+**G2 THE PLAN, at C1 — PASS, exit 0.**
 ```
-PLAN48 slice  bytes 2600 sha256 27443d1812121bc062952126cdb04dada2fe8a5e8d3f2a9b2eaa4670fbd6a5da
-plan.md @C1   bytes 2600 sha256 27443d1812121bc062952126cdb04dada2fe8a5e8d3f2a9b2eaa4670fbd6a5da
+PLAN49  slice: bytes=2557 sha256=abf50111b70af3357478ee0f27cf582d9642a9f2097552a6b37c1e23bf3d2ea6
+plan.md  disk: bytes=2557 sha256=abf50111b70af3357478ee0f27cf582d9642a9f2097552a6b37c1e23bf3d2ea6
 byte-equal: True
-line count 45 / AGENTS.md cap 50 -> OK
-^## Goal$ count         1
-^## Next Steps$ count   1
+line count: 45 | AGENTS.md cap 50 | under cap: True
+^## Goal$ count: 1
+^## Next Steps$ count: 1
 ```
 
-### G3 THE RECORD AND THE SLIPS, at C2 — REAL_EXIT=0 (both)
+**G3 THE RECORD AND THE SLIPS — PASS, exit 0.** Every pre and post blob read with
+`git show <sha>:<path>` INTO MEMORY; no non-current revision was ever written over a
+tracked file.
 
-Every pre and post blob read with `git show <sha>:<path>` INTO MEMORY; no
-non-current revision was written over a tracked file.
-
-`.agent/live_review.md` ← RECORD48, pre at C1 `ba1889ad`, post at C2 `5cff5789`:
-
+(i) `.agent/live_review.md` ← RECORD49 then FIND49, inside C2:
 ```
-   pre  @ba1889ad bytes 888735 sha ff40e48db81641eebd2dcdfc0fd92caae46e3935ab91119215b1b22fcadd7f63
-   slice        bytes 3661 sha 6a14b0a31d6ab20e8852b8c2088401018cdd277b2cded6191aa3e75d0d0da6cf
-   post @5cff5789 bytes 892396 sha 649d06a2b9e0a0ad0f61b9bd1a7129315c3bb20e5e8e48501df8866223ffef23
-   (a) reader A pre_bytes + slice_bytes == post_bytes -> identical: True
-   (b) reader B: N counted IN THE SLICE = 1; last 1 blank-line units of post equal the slice paragraphs in order -> True
-   (c) negative control: byte 888776 of the post blob, inside the FIRST appended paragraph, 'r' -> 'Z'
-       reader A on the mutated copy -> identical: False (rejects: True)
-       reader B on the mutated copy -> False (rejects: True)
-   G3 ALL READINGS OK: True
+pre  @C1: 892396 649d06a2b9e0a0ad0f61b9bd1a7129315c3bb20e5e8e48501df8866223ffef23
+post @C2: 898518 a75524fd81467897219cb4726412575cc7e08abafa0083ca3df3980da360bd04
+RECORD49 bytes: 3921   FIND49 bytes: 2201
+(a) reader A  identical: True
+(b) reader B  N counted from the slices: 2   last-N units equal, in order: True
+(c) negative control: one byte flipped inside the FIRST appended paragraph
+    reader A on mutated: False (must be False)
+    reader B on mutated: False (must be False)  N: 2
+    re-run against the ORIGINAL slices -> reader A: True  reader B: True
 ```
+N = 2 is COUNTED by the script across the two slices (one blank-line-separated
+paragraph each); no number from the block was asserted.
 
-N = 1 is COUNTED by the script in the slice, not asserted by the block. Both
-readers reject the negative control, each re-run against the ORIGINAL slice.
-
-`.agent/prose_slips.md` ← SLIPS48, reading (a) alone:
-
+(ii) `.agent/prose_slips.md` ← SLIPS49, inside C2, reading (a) alone:
 ```
-   pre  @ba1889ad bytes 239271 sha ac877bba9352f7f0c7389d74bcf02cd490593ece49a2b04022f0a62fffd0b052
-   slice        bytes 1182 sha 73c8d6698d288b4309ab13719a6535f912bf79bd5412e944d25a942c11703de9
-   post @5cff5789 bytes 240453 sha 1dc6ccf4cecd90b5d0d1e6685c0d5b00f5ccd2219f6e5f3dae6baaa0d42b06fc
-   (a) reader A pre_bytes + slice_bytes == post_bytes -> identical: True
+pre  @C1: 240453 1dc6ccf4cecd90b5d0d1e6685c0d5b00f5ccd2219f6e5f3dae6baaa0d42b06fc
+post @C2: 241765 b8e2e3f9107755d751d9c7ad3819f4524d2df6344ce65bab2dc5beaac1c3b5d9
+SLIPS49 bytes: 1312
+(a) reader A  identical: True
 ```
 
-All three appends were applied as `old_bytes + slice_bytes` in Python. All three
-pre-blobs were asserted to end in a newline and none was added; each slice owns
-its own leading blank line.
-
-### G4 THE DECISIONS, at C4 — REAL_EXIT=0
-
+(iii) `.agent/live_review.md` ← LANDED49, pre at C3 and post at C4, reading (a) alone:
 ```
-   pre  @2b395e02 bytes 1080309 sha 7e88e49ade1ce2ca3b0bf4a2276ec7929be4789bbe70048b9f47979657ef9201
-   slice        bytes 4744 sha 76ceaf079a0ca86e7d0c7e27e26d958230c40ca72ab6fba69f4e7534ba54dbfb
-   post @dc6a621c bytes 1085053 sha 3c854cf35a8494e7d277eecf4e1df2e9f9498f139edbe9e0c0cbda74e2fbd347
-   (a) reader A pre_bytes + slice_bytes == post_bytes -> identical: True
-   (b) reader B: N counted IN THE SLICE = 7; last 7 blank-line units of post equal the slice paragraphs in order -> True
-   (c) negative control: byte 1080350 of the post blob, inside the FIRST appended paragraph, 'o' -> 'Z'
-       reader A on the mutated copy -> identical: False (rejects: True)
-       reader B on the mutated copy -> False (rejects: True)
-   G4 ALL READINGS OK: True
+pre  @C3: 898518 a75524fd81467897219cb4726412575cc7e08abafa0083ca3df3980da360bd04
+post @C4: 898808 fe28f08b0f9b76869bb4b5a5117514da36c5a8aae08cc4821a777ef6f7e3fb14
+LANDED49 bytes: 290 sha256=1c64b978b69282cbffd68f1d489807451f80f7b90e4e6393c4161b5e30a61231
+(a) reader A identical: True
 ```
+All four appends are `old_bytes + slice_bytes`; each slice's own leading blank line
+is inside the slice, all pre-blobs ended in a newline and none was added.
 
-### G5 THE OPEN SET, at C4 — REAL_EXIT=0
-
+**G4 THE TWO PAIRS, at C3, against COMMITTED blobs — PASS, exit 0.**
 ```
-BASE 05631ba3: distinct registrations 104 - distinct resolutions 18 = OPEN 86
-C4   dc6a621c: distinct registrations 104 - distinct resolutions 18 = OPEN 86
-ids REGISTERED by this round: [] (none)
-ids RESOLVED  by this round: [] (none)
-C1 ba1889ad: ^Gate: F275 R47  count 0   ^- R-0876 —  count 0   (bare token R-0876 anywhere: 1)
-C4 dc6a621c: ^Gate: F275 R47  count 1   ^- R-0876 —  count 0   (bare token R-0876 anywhere: 2)
+--- PAIR49A  packages/orchestration/do_run.py
+    containment test output: TO contains FROM: false
+    FROM count in base blob 70d6c8e6: 1   (block states 1)
+    FROM count in C3 blob   9df09805: 0   (must be 0)
+    TO   count in C3 blob   9df09805: 1   (must be 1)
+    REBUILD base+pair == C3 blob: True  (both 22986 B, sha256 61630d22f64d30423b5efee4ebd80911da2cf584afe0c17e28e47886ba7de198)
+--- PAIR49B  packages/orchestration/test_failure_artifact.py
+    containment test output: TO contains FROM: false
+    FROM count in base blob 70d6c8e6: 1   (block states 1)
+    FROM count in C3 blob   9df09805: 0   (must be 0)
+    TO   count in C3 blob   9df09805: 1   (must be 1)
+    REBUILD base+pair == C3 blob: True  (both 15581 B, sha256 4ee467981534ea3032e42e874ec5d9545e211550dee91ece476120d37e0fedbd)
 ```
+FROM and TO were each extracted as their own slice from the committed authored blob;
+neither side was retyped. FROM/TO byte counts and digests: PAIR49A 61 B
+`66917cd9…` → 61 B `21832456…`; PAIR49B 73 B `28ecd8ba…` → 73 B `25448b6d…`.
 
-86 by distinct id at the base and 86 at C4, as ordered. `^Gate: F275 R47 ` goes 0
-→ 1. `^- R-0876 — ` reads 0 at BOTH readings, so the next free id is still
-UNREGISTERED — and the contrast the block predicted is visible: the BARE token
-`R-0876` goes 1 → 2, the new occurrence being RECORD48's own prose quoting the
-gate, which is a quotation and not a registration.
-
-### G6 THE WIDEN IS EXACTLY WHAT WAS ORDERED, at C3
-
-Generator runs, each ONCE, from the repository root, in the ordered sequence:
-
+**G5 THE TWO GUARDS, at C3, by ORDERED EQUALITY — PASS, exit 0.**
 ```
-$ python3 .remedy-wt/widen48.py                                   REAL_EXIT=0
-files rewritten: 48
-  decl Artifact.task_id                  1
-  decl PatchIntentSet.task_id            1
-  writer Artifact.task_id                84
-  writer PatchIntentSet.task_id          26
-total edits: 112
+--- GUARD49A  tests/orchestration/test_do_run.py
+    base blob 70d6c8e6 is a byte-exact PREFIX of the C3 blob: True  (base 25968 B, C3 26829 B)
+    slice is a byte-exact SUFFIX of the C3 blob: True  (slice 861 B sha256 e1f8019398900197dd28341b28d9fe9aa8a87c55860c1cfd40095b37be4f7c6c)
+    C3 diff ADDS 21 lines for this path; slice has 21; equal IN ORDER: True
+    whole-blob identity base+slice == C3: True
+--- GUARD49B  tests/orchestration/test_test_failure_repair.py
+    base blob 70d6c8e6 is a byte-exact PREFIX of the C3 blob: True  (base 33134 B, C3 34242 B)
+    slice is a byte-exact SUFFIX of the C3 blob: True  (slice 1108 B sha256 c6947d4803d90fa1e9dc9e298500c41e42d17416aff433b306e86815de4f6eb4)
+    C3 diff ADDS 26 lines for this path; slice has 26; equal IN ORDER: True
+    whole-blob identity base+slice == C3: True
 ```
+No per-line multiplicity count was attempted; both slices repeat blank lines and
+`assert` lines structurally, so multiplicity is unattainable by construction.
 
-No `writer SKIPPED multiline` line appeared and no `BROKE <rel>` line appeared,
-so every rewritten file re-parsed.
+**G6 THE REPAIR WORKS AND NOTHING NEAR IT MOVED, at C3 — (a) PASS, (b) CONTRADICTION
+DECLARED, (c) PASS.**
 
+(a) exit 0, all four digests equal the reviewer's own measurement:
 ```
-$ python3 .remedy-wt/fixes48.py                                   REAL_EXIT=0
-  packages/orchestration/brain_detail.py: 1x
-  packages/orchestration/task_runner.py: 1x
-  packages/orchestration/task_runner.py: 1x
-  packages/orchestration/verifier.py: 1x
-  packages/orchestration/artifact_index.py: 1x
-  packages/orchestration/patch_intent.py: 1x
-  tests/test_imports.py: 1x
-  tests/test_task_runner.py: 1x
-  tests/test_task_runner.py: 3x
-  tests/test_patch_intent.py: 1x
-  tests/test_verifier.py: 3x
-  tests/test_verifier.py: 1x
-  tests/test_artifact_kinds.py: 1x
-  tests/test_workspace.py: 2x
-  tests/orchestration/test_repair_loop_v1.py: 1x
-fix sites applied: 20 over 12 files
+C3   packages: 1f1a040413f8045a9e53ec8dece733ddb1d0c0ac   (block: 1f1a0404…)
+C3   tests:    b33e3ac3ed64ebd1d6fa4e0b86c9f8614c4d07ee   (block: b33e3ac3…)
+BASE packages: 18aadcb1ca69b2aa25a14044750bbe2e0883d2d0   (block: 18aadcb1…)
+BASE tests:    67b33dc0be4345b55badd92b1af6b1af105cfffd   (block: 67b33dc0…)
 ```
 
-NO assertion fired — every one of the fifteen entries met its expected occurrence
-count, so no site had moved and nothing was edited in the slice.
-
-#### G6(a)+(b)+(c) — REAL_EXIT=0
-
+(b) exit 0, but the reading CONTRADICTS the block — every row measured is reported:
 ```
-== G6(a) BY IMPORT, not by reading source
-   packages.core.models.__file__             /home/decodeux/Repos/remedy/packages/core/models.py
-   packages.orchestration.patch_intent.__file__ /home/decodeux/Repos/remedy/packages/orchestration/patch_intent.py
-   Artifact.model_fields['task_id'].annotation       str | None
-   PatchIntentSet.model_fields['task_id'].annotation <class 'str'>
-== G6(b) SUBTREE DIGESTS
-   C3   packages  18aadcb1ca69b2aa25a14044750bbe2e0883d2d0  ordered 18aadcb1ca69b2aa25a14044750bbe2e0883d2d0  MATCH True
-   C3   tests     67b33dc0be4345b55badd92b1af6b1af105cfffd  ordered 67b33dc0be4345b55badd92b1af6b1af105cfffd  MATCH True
-   BASE packages  2a8d0db21e42fda785746a76602185329bb9c4f4  ordered 2a8d0db21e42fda785746a76602185329bb9c4f4  MATCH True
-   BASE tests     681ea3c4c01a512d50a6d2097dd03c55dc709424  ordered 681ea3c4c01a512d50a6d2097dd03c55dc709424  MATCH True
-== G6(c) git diff --numstat 05631ba3..C3 over the code paths
-   files 52  insertions 132  deletions 132  under packages/ 12  under tests/ 40
-   ordered: 52 / 132 / 132 / 12 / 40  -> MATCH True
+$ git diff --numstat 70d6c8e6..9df09805        # the command the gate names
+314   0   .agent/authored/f275-r49.md
+247 358   .agent/last_block.md
+  4   0   .agent/live_review.md
+ 17  17   .agent/plan.md
+  2   0   .agent/prose_slips.md
+  1   1   packages/orchestration/do_run.py
+  1   1   packages/orchestration/test_failure_artifact.py
+ 21   0   tests/orchestration/test_do_run.py
+ 26   0   tests/orchestration/test_test_failure_repair.py
+                                               # NINE rows, not four
+$ git diff --numstat 9df09805^..9df09805       # C3's OWN diff
+  1   1   packages/orchestration/do_run.py
+  1   1   packages/orchestration/test_failure_artifact.py
+ 21   0   tests/orchestration/test_do_run.py
+ 26   0   tests/orchestration/test_test_failure_repair.py
+                                               # exactly the four rows, with the four stated numerals
 ```
+Nothing was edited to make the two agree. See Deviations.
 
-Both module paths were printed BEFORE either annotation was believed, and both
-resolve inside the primary checkout. The four numbers I measured for G6(c) are
-**52 files, 132 insertions, 132 deletions, 12 under `packages/` and 40 under
-`tests/`** — the ordered values exactly. Note on method: the two C3 subtree
-digests were ALSO checked against the STAGED index (`git write-tree` →
-`52b238b0f82a1a0267ab46a9aa66b22cecd0069f`) BEFORE C3 was committed, and matched
-there, so at no point was there anything to adjust.
-
-#### G6(d) THE SCOPED ROUND GATE, in the primary checkout at C3
-
+(c) the SCOPED round gate and the canary, in the PRIMARY checkout at C3, porcelain
+empty before both:
 ```
-$ python3 -m pytest tests/test_artifact_kinds.py tests/test_patch_intent.py \
-    tests/test_imports.py tests/test_verifier.py tests/test_brain_detail.py \
-    tests/test_task_runner.py tests/test_workspace.py \
-    tests/orchestration/test_repair_loop_v1.py tests/ui_contracts/test_ux_quality.py \
+$ python3 -m pytest tests/orchestration/test_do_run.py tests/orchestration/test_test_failure_repair.py \
+    tests/orchestration/test_repair_loop_v1.py tests/cli/test_repair_runtime.py \
     tests/orchestration/test_ci_budgets.py -q
-480 passed, 2 skipped in 2.29s
+175 passed in 2.93s
 REAL_EXIT=0
 
-$ python3 -m pytest tests/cli/test_golden_path.py -q                  # the canary
-42 passed in 18.90s
+$ python3 -m pytest tests/cli/test_golden_path.py -q
+42 passed in 18.83s
 REAL_EXIT=0
 ```
+`175 passed` and `42 passed` are exactly the figures the block's "WHAT THE REVIEWER
+ALREADY MEASURED" paragraph states. `test_ci_budgets.py` is inside the green
+selection, so the ruff count is still at its frozen ceiling of 26.
 
-`test_ci_budgets.py` is green, so the ruff count is still frozen at 26 after this
-round's production import and expression changes. `test_ux_quality.py` is green
-against the COMMITTED tree, which is the condition DECISION F275 D28 records.
-
-### G7 THE RED PROOF, at C3 — REAL_EXIT=0
-
-Disposable worktree `/home/decodeux/Repos/remedy/.remedy-wt/g7-r48`, detached at
-C3 `2b395e02`, NEVER `cd`-ed into: every command ran as
-`subprocess.run([...], cwd=<abs worktree>)`, under `python3 -B`, with
-`__pycache__` purged before every run.
-
+**G7 THE RED PROOF, at C3, in a disposable worktree — PASS, exit 0, TWO MUTATIONS,
+NODE-ID SETS DISJOINT.** Worktree `.remedy-wt/r49-wt`, detached at `9df09805`, never
+`cd`-ed into: every command ran as `subprocess.run([...], cwd=<abs worktree>)` under
+`python3 -B` with `-p no:cacheprovider`, `__pycache__` purged before every run (0 dirs
+found each time — the worktree was freshly checked out and `-B` writes none), and the
+imported module path PRINTED before any result was believed. It resolved to the
+WORKTREE, not to an install or to the primary checkout:
 ```
-WORKTREE /home/decodeux/Repos/remedy/.remedy-wt/g7-r48
-IMPORTED MODULE PATH (before believing anything): /home/decodeux/Repos/remedy/.remedy-wt/g7-r48/packages/orchestration/artifact_index.py  exit 0
-pre-mutation sha256 of packages/orchestration/artifact_index.py: b8193ec3af4763dc6cfa03db2faf81669815d808391ffaf020a37a3b58683b62
--- 1. CONTROL, unmutated, selection tests/test_artifact_kinds.py
-   __pycache__ dirs purged 0; exit 0; last line: 52 passed in 0.25s
--- 2. MUTATION M1
-   occurrences of the exact byte string in THAT FILE: 1 (must be 1)
-   applied: 'if a.task_id == str(task_id) and a.kind == kind]' -> 'if a.task_id == task_id and a.kind == kind]'
-   __pycache__ dirs purged 0; exit 1; last line: 2 failed, 50 passed in 0.27s
-   FAILED node ids (2):
-      tests/test_artifact_kinds.py::TestTaskArtifactsByKind::test_returns_matching_task_and_kind
-      tests/test_artifact_kinds.py::TestTaskArtifactsByKind::test_returns_multiple_matching
--- 3. REVERT, proved by sha256 against the digest recorded BEFORE the mutation
-   post-revert sha256 b8193ec3af4763dc6cfa03db2faf81669815d808391ffaf020a37a3b58683b62  equals pre True
--- 4. CONTROL again
-   __pycache__ dirs purged 0; exit 0; last line: 52 passed in 0.25s
+do_run                -> /home/decodeux/Repos/remedy/.remedy-wt/r49-wt/packages/orchestration/do_run.py
+test_failure_artifact -> /home/decodeux/Repos/remedy/.remedy-wt/r49-wt/packages/orchestration/test_failure_artifact.py
 ```
+Selection for EVERY run, both node ids together:
+`tests/orchestration/test_do_run.py::TestSystemArtifactKeepsTaskIdAbsent` and
+`tests/orchestration/test_test_failure_repair.py::TestSystemArtifactKeepsTaskIdAbsent`.
 
-The imported module's path was PRINTED and asserted to lie inside the worktree
-before any result was believed, so no editable install shadowed it. The exact
-byte string was COUNTED in that file first and read 1. M1 goes RED: exit 1,
-`2 failed, 50 passed`, over the two FAILED node ids above — each taken as the
-token after the FIRST space of its `FAILED` line. The revert is byte-exact by
-sha256 against a digest recorded before the mutation, and the control is green
-again at `52 passed`. `__pycache__` reads 0 dirs purged on every run because
-`python3 -B` writes none in the first place.
+| # | Run | Exit | Last line | FAILED node ids |
+|---|---|---|---|---|
+| 1 | CONTROL, unmutated | 0 | `2 passed in 1.08s` | `[]` |
+| 2 | M1 — PAIR49A TO→FROM in `do_run.py` (TO count in THAT FILE first: **1**) | 1 | `1 failed, 1 passed in 0.34s` | `tests/orchestration/test_do_run.py::TestSystemArtifactKeepsTaskIdAbsent::test_the_build_phase_on_a_task_less_job_leaves_task_id_absent` |
+| 3 | REVERT M1 | — | sha256 before `61630d22f64d30423b5efee4ebd80911da2cf584afe0c17e28e47886ba7de198`, after `61630d22f64d30423b5efee4ebd80911da2cf584afe0c17e28e47886ba7de198` | byte-exact: True |
+| 4 | M2 — PAIR49B TO→FROM in `test_failure_artifact.py` (TO count in THAT FILE first: **1**) | 1 | `1 failed, 1 passed in 0.33s` | `tests/orchestration/test_test_failure_repair.py::TestSystemArtifactKeepsTaskIdAbsent::test_a_failure_without_a_task_leaves_task_id_absent` |
+| 5 | REVERT M2 | — | sha256 before `4ee467981534ea3032e42e874ec5d9545e211550dee91ece476120d37e0fedbd`, after `4ee467981534ea3032e42e874ec5d9545e211550dee91ece476120d37e0fedbd` | byte-exact: True |
+| 6 | CONTROL again | 0 | `2 passed in 0.31s` | `[]` |
 
-Worktree removed and pruned; `git worktree list` reads ONE entry:
-
+Both digests were recorded BEFORE their mutation, against the file on disk, and the
+revert was proved against that recorded digest.
 ```
-/home/decodeux/Repos/remedy  2b395e02 [feature/f275-one-world-completion-part-three]
+intersection : []
+DISJOINT     : True
 ```
-
-### G8 NOTHING ELSE MOVED, at C4 — REAL_EXIT=0
-
+M1 reddens the `test_do_run.py` guard and M2 the `test_test_failure_repair.py` guard,
+each and only its own — which is what makes TWO mutations necessary: neither alone
+proves the other fix. The assertion both go red on, captured from a run with BOTH
+sites mutated, is the defect in the assertion's own words:
 ```
-STOP sentinel, re-read FROM DISK, not remembered: .agent/STOP exists -> False
-git status --porcelain -> ''  EMPTY: True
-changed paths over 05631ba3..C4: 58
-   present True  .agent/authored/f275-r48.md
-   present True  .agent/last_block.md
-   present True  .agent/plan.md
-   present True  .agent/live_review.md
-   present True  .agent/prose_slips.md
-   present True  .agent/decisions.md
-   ABSENT  True  .agent/handoff.md (C5 writes it after C4)
-   paths under apps/ docs/ scripts/: 0 []
-   paths under packages/: 12  under tests/: 40  under .agent/: 6
-insertions per commit, from git show --numstat, against the F104 D1 cap of 500:
-   C0a  c5ee58fc  +425   -0     over  1 file(s)  cap 500 -> OK
-   C0b  ebcecaff  +238   -185   over  1 file(s)  cap 500 -> OK
-   C1   ba1889ad  +20    -19    over  1 file(s)  cap 500 -> OK
-   C2   5cff5789  +4     -0     over  2 file(s)  cap 500 -> OK
-   C3   2b395e02  +132   -132   over 52 file(s)  cap 500 -> OK
-   C4   dc6a621c  +14    -0     over  1 file(s)  cap 500 -> OK
+E       AssertionError: assert 'None' is None
+E        +  where 'None' = Artifact(… name='fixture-build-output' …).task_id
+E       AssertionError: assert 'None' is None
+E        +  where 'None' = Artifact(… name='test-failure-temp' …).task_id
+2 failed in 0.36s
 ```
+Worktree removed and pruned before this handback; `git worktree list` reads ONE entry.
 
-`git status --porcelain` reads the literal empty string `''` — the primary
-checkout is clean at every commit, and the destructive verification never touched
-it. All six `.agent/` paths of the Change list other than `.agent/handoff.md` are
-present, `.agent/handoff.md` is absent from `05631ba3`..C4, and ZERO paths lie
-under `apps/`, `docs/` or `scripts/`. Every commit is under the F104 D1 cap of
-500 insertions; the same `git show --numstat` derivation feeds the `+/-` column
-of the `## Commits` table above. No oversize-commit exception is claimed.
+**G8 NOTHING ELSE MOVED, at C4 — PASS, exit 0.**
+```
+.agent/STOP exists on disk (re-read from disk, not remembered): False
+git status --porcelain == '' : True   literal: ''
+changed-path set over 70d6c8e6..31e37b27, size: 9
+MISSING: []
+EXTRA  : []
+paths under apps/ docs/ scripts/: []
+.agent/decisions.md in set: False
+```
+THE OPEN SET, BY DISTINCT ID over `.agent/live_review.md` — distinct `^- R-\d+ — `
+minus distinct `^Done: R-\d+ — `:
+```
+base 70d6c8e6: 104 - 18 = 86
+C4   31e37b27: 105 - 18 = 87
+ids registered this round: ['R-0876']
+ids resolved  this round: []
+C3: ^Landed: R-0876  count = 0    ^Done: R-0876  count = 0
+C4: ^Landed: R-0876  count = 1    ^Done: R-0876  count = 0
+```
+Per-commit insertions against the F104 D1 cap of 500, derived ONCE from
+`git show --numstat <sha>` and reused in the `## Commits` tables above:
+```
+C0a 67209157: insertions=314 deletions=0    under 500: True
+C0b 17d602ad: insertions=247 deletions=358  under 500: True
+C1  365c4cf4: insertions=17  deletions=17   under 500: True
+C2  509f3180: insertions=6   deletions=0    under 500: True
+C3  9df09805: insertions=49  deletions=2    under 500: True
+C4  31e37b27: insertions=2   deletions=0    under 500: True
+```
+No commit is oversize; no oversize declaration is made or needed this round.
+
+**Push.** Ordered after C5, so its exit code cannot be recorded inside the file C5
+commits. No outcome is claimed; the reviewer reads it from
+`git log origin/feature/f275-one-world-completion-part-three`.
 
 ## Authored-text proofs
 
-Every slice was extracted MECHANICALLY from the COMMITTED blob
-`ebcecaff:.agent/authored/f275-r48.md` by its `BEGIN-<name> ` / `END-<name> `
-marker-line PREFIX (`.remedy-wt/r48_extract.py`, which asserts exactly one BEGIN
-and one END per name and that BEGIN precedes END). No slice was retyped,
-reflowed or edited.
+Every slice was extracted MECHANICALLY from the COMMITTED blob of
+`.agent/authored/f275-r49.md` at `67209157`, by its `BEGIN-<name> ` / `END-<name> `
+marker-line PREFIX, with the marker lines excluded and each body line carrying its own
+trailing newline. The extractor asserts exactly one BEGIN and one END per name and
+that BEGIN precedes END. No slice was retyped, reflowed or edited.
 
-| Slice | bytes | sha256 | applied to | disk-to-disk proof |
+| Slice | Bytes | sha256 | Applied to | Disk-to-disk result |
 |---|---|---|---|---|
-| PLAN48 | 2600 | `27443d18…a5da` | `.agent/plan.md` (whole-file) | `cmp .agent/plan.md .remedy-wt/plan48.extracted` → REAL_EXIT=0; G2 byte-equal True |
-| RECORD48 | 3661 | `6a14b0a3…a6cf` | `.agent/live_review.md` (append) | G3 reader A True, reader B True at N=1, both negative controls reject |
-| SLIPS48 | 1182 | `73c8d669…3de9` | `.agent/prose_slips.md` (append) | G3 reader A True |
-| WIDEN48 | 3892 | `fba54ceb…b047` | `.remedy-wt/widen48.py`, run once, NOT committed | G6(b) both subtree digests match the reviewer's replay |
-| FIXES48 | 3608 | `42fd86a8…aec9` | `.remedy-wt/fixes48.py`, run once, NOT committed | G6(b) both subtree digests match; no assertion fired |
-| DECIDE48 | 4744 | `76ceaf07…dbfb` | `.agent/decisions.md` (append) | G4 reader A True, reader B True at N=7, both negative controls reject |
+| PLAN49 | 2557 | `abf50111b70af3357478ee0f27cf582d9642a9f2097552a6b37c1e23bf3d2ea6` | `.agent/plan.md` (whole-file) | byte-equal: True |
+| RECORD49 | 3921 | `814f40b17b1f05c42a23a6502cdd4f11278d85fc3da733517d7fa6baceba500a` | `.agent/live_review.md` (append) | reader A + reader B True, control rejected |
+| FIND49 | 2201 | `30a39a40433a4f49f82f5751be98b3ac41678fc92a516cfbd8e75625221dc499` | `.agent/live_review.md` (append) | reader A + reader B True, control rejected |
+| SLIPS49 | 1312 | `1b7c5ece0821d95f73b3d933c84d2342f1053ef5fadf68b059687ae3efb7784f` | `.agent/prose_slips.md` (append) | reader A True |
+| PAIR49A_FROM | 61 | `66917cd91aa615c8baef94b9360b71b2d3e867145f6a3ab587d93e28ebee4790` | `packages/orchestration/do_run.py` | FROM 1 → 0 |
+| PAIR49A_TO | 61 | `21832456e7a4e1911d351f1be92035ab0532f43d7b41804212c47d7bb69e31e7` | `packages/orchestration/do_run.py` | TO 0 → 1, rebuild identical |
+| PAIR49B_FROM | 73 | `28ecd8baf68fae0e8a8749ffc9d612523dcdc889b8ee5778b882f626f9ba9431` | `packages/orchestration/test_failure_artifact.py` | FROM 1 → 0 |
+| PAIR49B_TO | 73 | `25448b6dbd68d16f938667191dc3b86ccce87d0189f480654febcdda41e23f65` | `packages/orchestration/test_failure_artifact.py` | TO 0 → 1, rebuild identical |
+| GUARD49A | 861 | `e1f8019398900197dd28341b28d9fe9aa8a87c55860c1cfd40095b37be4f7c6c` | `tests/orchestration/test_do_run.py` (code append) | prefix + suffix + ordered-line equality True |
+| GUARD49B | 1108 | `c6947d4803d90fa1e9dc9e298500c41e42d17416aff433b306e86815de4f6eb4` | `tests/orchestration/test_test_failure_repair.py` (code append) | prefix + suffix + ordered-line equality True |
+| LANDED49 | 290 | `1c64b978b69282cbffd68f1d489807451f80f7b90e4e6393c4161b5e30a61231` | `.agent/live_review.md` (append) | reader A True |
 
-The block itself: `cmp .agent/authored/f275-r48.md .agent/last_block.md` →
-REAL_EXIT=0, and both equal the `.remedy-wt/f275-r48.block.md` working copy and
-the ordered digest (G1).
+Transport of the block itself: `.agent/authored/f275-r49.md` and
+`.agent/last_block.md` are both 28474 bytes at
+`37081bec7b73c5e7d4de0fbf52ac2dc249a2dccc62ace4d6f92f7b37afadb113`, identical to
+`.remedy-wt/f275-r49.block.md` and to the ordered digest.
 
 ## Deviations & assumptions
 
-**The ordered commit sequence C0a, C0b, C1, C2, C3, C4, C5 was followed exactly:
-seven commits, none merged, none reordered, none added, none dropped.** No
-departure from it to report.
+1. **G6(b) contradicts its own reading — declared, nothing edited.** The gate says
+   "`git diff --numstat 70d6c8e6..C3` reads exactly four rows". It reads NINE. The
+   range `70d6c8e6..C3` spans C0a, C0b, C1, C2 AND C3, so it necessarily also carries
+   the five `.agent/` state rows those four commits wrote. Both readings are reported
+   in full in Verification. The gate's SUBSTANCE holds exactly as stated: C3's own
+   diff (`9df09805^..9df09805`) is exactly four rows and exactly the four stated
+   numerals — 1/1 `do_run.py`, 1/1 `test_failure_artifact.py`, 21/0 `test_do_run.py`,
+   26/0 `test_test_failure_repair.py`. Only the COMMAND and its row count disagree.
+   Per the order, no file was changed to make the two agree.
+2. **`.agent/STOP` re-read from disk before the first commit (constraint 8):** ABSENT.
+   `ls .agent/STOP` → "No such file or directory"; re-read again at G8 via
+   `Path(...).exists()` → False.
+3. **The commit sequence C0a, C0b, C1, C2, C3, C4, C5 was followed exactly** — none
+   merged, none reordered, none added, none dropped. C4 was written only after C3 was
+   committed, as constraint 2 requires of a `Landed:` line.
+4. **A worker-side probe defect, found and fixed inside the round, no file affected.**
+   The first G7 run parsed a pytest node id as `line.split(" ")[0]`, which yields the
+   literal token `FAILED` for every failure and therefore reported the two mutation
+   sets as NON-disjoint. The parser was corrected to take what follows the FIRST space
+   of a `FAILED <nodeid> - <msg>` line and G7 was re-run in full from the control. Both
+   runs are real; only the corrected one is reported as the gate, and the defect was in
+   the throwaway probe under `.remedy-wt/`, never in a committed file.
+5. **No `Done:` paragraph was written** (constraint 5). This round REGISTERS `R-0876`
+   and RESOLVES nothing: the open set goes 86 → 87. The `Landed: R-0876` line at C4 is
+   the worker's record that the fix is committed; the reviewer's authored `Done:` is
+   owed at the next gate.
+6. **`.agent/decisions.md` was not touched**, and no path under `apps/`, `docs/` or
+   `scripts/` moved. This round makes no new decision — it repairs a defect an existing
+   one caused.
+7. **Scratch.** All probe scripts live under the gitignored `.remedy-wt/r49/`, and the
+   G7 worktree lived under `.remedy-wt/r49-wt`. Nothing under `.remedy-wt/` is
+   committed; `git status --porcelain` is empty.
+8. No PR was created, edited or merged. No `remedy` CLI command was run.
+9. **No SHA is written that was not measured.** C5's own SHA and the push result do
+   not exist while this file is being written, so the Range line, the C5 commit table
+   heading and the push row all name the fact instead of a numeral. Every other SHA in
+   this handback came from `git log`, `git rev-parse` or `git show`.
 
-1. **DECLARED, NOT EDITED — WIDEN48 converts two possible `None`s to the string
-   `"None"`.** At `packages/orchestration/do_run.py`
-   (`task_id=str(job.tasks[0].id if job.tasks else None)`) and
-   `packages/orchestration/test_failure_artifact.py`
-   (`task_id=str(UUID(failure.task_id) if failure.task_id else None)`), the
-   generator wraps a conditional whose false branch is `None`, so a construction
-   that previously stored `None` now stores `"None"`. The field is declared
-   `str | None`, so `None` stays representable and these two sites lose the only
-   route to it. Constraint 1 binds — a slice that looks wrong is applied as given
-   and DECLARED — and G6(b) shows my tree is byte-identical to the tree the
-   reviewer measured at `18371 passed`, so editing it would have broken the
-   digest that proves the replay. Raised for the reviewer's ruling.
-2. **No contradiction between a gate's reading and the block was found.** Every
-   asserted numeral the block states — both C3 subtree digests, both base subtree
-   digests, 52/132/132/12/40, 104 − 18 = 86, the `^Gate: F275 R47 ` 0→1 and
-   `^- R-0876 — ` 0→0 readings — reproduced on my own runs.
-3. **Two pushes, not one.** The branch was pushed after C4, MEASURED at
-   `05631ba3..dc6a621c`, per the AGENTS.md push discipline, and is pushed again
-   immediately after C5. The second push's outcome is not claimed here: a
-   handback cannot report an action that follows the commit writing it. Both are
-   in External actions.
-4. **No SHA is written that was not measured.** C5's SHA and the C5 push result
-   do not exist while this file is being written, so the Range line, the C5
-   commit heading and the second push row state the fact instead of a guess.
-5. **`.remedy-wt/` scratch retained.** `r48_extract.py`, `widen48.py`,
-   `fixes48.py`, `g2.py`, `c2_apply.py`, `g3g4.py`, `g5.py`, `g6.py`, `g7.py` and
-   `plan48.extracted` remain under the gitignored `.remedy-wt/` as the round's
-   evidence. NOTHING under it is committed; `git check-ignore -v` confirms
-   `.gitignore:235:.remedy-wt/`. The G7 worktree is the one thing removed.
-6. **Open PR Gate.** `gh pr list --state open` → `[]`. No PR was created, edited
-   or merged this round, as ordered.
+## Open findings
+
+87 by distinct id (105 registrations − 18 `Done:`), up one from the base's 86:
+`R-0876` registered this round, none resolved. Four are High — R-0803, R-0804,
+R-0806 and R-0807 — all F273's, per DECISION F272 D12.
 
 ## Next
 
-The single expected next action: the planner/reviewer re-derives all eight gates
-independently from the committed range `05631ba3`..C5 and issues the
-round 48 verdict — ruling in particular on the declared `str(None)` concern at
-`do_run.py` and `test_failure_artifact.py`. On PASS, round 49 is the FLIP DRY RUN
-re-run against a tree whose id shape is now one spelling, re-classifying the 2714
-failures `.agent/f275_t003_flip_residue.md` records; the 256 hexadecimal-UUID and
-369 model-validation classes should be gone.
+The reviewer re-derives round 49's eight gates from the committed range
+`70d6c8e6`..C5 and issues its verdict, which includes the authored `Done:
+R-0876` paragraph this round is forbidden to write. Before authoring anything it
+re-reads `.agent/STOP` from disk (Phase 1 rule 1) and then runs the Open PR Gate
+(rule 2). The next production step is plan step 1: RE-RUN THE FLIP DRY RUN against a
+tree whose id shape is now one spelling, and re-classify the residue
+`.agent/f275_t003_flip_residue.md` records at 2714 failures.
