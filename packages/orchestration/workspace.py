@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from uuid import UUID
 
 from packages.orchestration.data_paths import workspaces_dir as _workspaces_dir
 
@@ -44,12 +43,12 @@ class MaterializedFile:
 class Workspace:
     """Runtime-backed working area for a single Job.
 
-    job_id:             UUID of the owning job.
+    job_id:             id of the owning job.
     root:               root directory of the workspace on disk.
     materialized_files: files written during the current session, in order.
     """
 
-    job_id: UUID
+    job_id: str
     root: Path
     materialized_files: list[MaterializedFile] = field(default_factory=list)
 
@@ -68,7 +67,7 @@ class LocalWorkspaceRuntime:
     imported directly by providers.
     """
 
-    def __init__(self, job_id: UUID) -> None:
+    def __init__(self, job_id: str) -> None:
         self._job_id = job_id
         root = (_workspaces_dir() / str(job_id)).resolve()
         root.mkdir(parents=True, exist_ok=True)
