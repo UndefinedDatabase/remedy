@@ -1,78 +1,79 @@
-── STEP T003 / round 66 — F275 ────────────────────────────────
-Goal:        Land the RULING on the three sites DECISION F275 D39 held the write shut on,
-             and the decision that records it. They rule three different ways, and the
-             third of them has a systematic cause — pytest's assertion rewriting — that
-             reaches 22 of the 52 drops, so the re-derived set is NOT safe to consume. A
-             second and independent defect is measured beside it: 54 ruled keys resolve to
-             no `ast` node at their recorded position. The artefact and the instrument are
-             reviewer texts transported as whole files. The round 65 verdict and its prose
-             slip are booked. NO LINE UNDER `packages/`, `apps/`, `tests/`, `docs/` OR
-             `scripts/` MOVES.
+── STEP T003 / round 67 — F275 ────────────────────────────────
+Goal:        Land the PLAIN re-derivation DECISION F275 D40 ordered, and the decision that
+             rules it. The probe is unmodified and only the pytest invocation gained
+             `--assert=plain`: the synthetic receivers go 24 to ZERO, the receiver-joined
+             set 2116 to 2138, its drop list 52 to 30, with 22 sites recovered and NONE
+             newly dropped. Both remaining unexplained drops were already ruled a round
+             ago, so the plain set carries no unruled drop. The artefact and the instrument
+             are reviewer texts transported as whole files. The round 66 verdict and its
+             two prose slips are booked. NO LINE UNDER `packages/`, `apps/`, `tests/`,
+             `docs/` OR `scripts/` MOVES.
 
-Bundle:      C0a  save this block verbatim as `.agent/authored/f275-r66.md`
-             C0b  save the artefact text verbatim as `.agent/authored/f275-r66-artefact.md`
-             C0c  save the ruling instrument verbatim as
-                  `.agent/authored/f275-r66-rule.py.md`
+Bundle:      C0a  save this block verbatim as `.agent/authored/f275-r67.md`
+             C0b  save the artefact text verbatim as `.agent/authored/f275-r67-artefact.md`
+             C0c  save the plain-run instrument verbatim as
+                  `.agent/authored/f275-r67-plain.py.md`
              C0d  mirror the C0a blob into `.agent/last_block.md`
-             C1   `.agent/plan.md` <- slice PLAN66, whole-file replacement
-             C2   `.agent/live_review.md` <- slice RECORD66 appended
-             C3   `.agent/prose_slips.md` <- slice SLIPS66 appended
-             C4   `.agent/decisions.md` <- slice DEC66 appended
-             C5   `.agent/f275_t003_flip_residue_r66.md` <- a copy of the C0b blob
+             C1   `.agent/plan.md` <- slice PLAN67, whole-file replacement
+             C2   `.agent/live_review.md` <- slice RECORD67 appended
+             C3   `.agent/prose_slips.md` <- slice SLIPS67 appended
+             C4   `.agent/decisions.md` <- slice DEC67 appended
+             C5   `.agent/f275_t003_flip_residue_r67.md` <- a copy of the C0b blob
              C6   `.agent/handoff.md` rewritten — the handback
 
 Change:      EXACTLY these paths and nothing else.
-               .agent/authored/f275-r66.md                NEW
-               .agent/authored/f275-r66-artefact.md       NEW
-               .agent/authored/f275-r66-rule.py.md        NEW
+               .agent/authored/f275-r67.md                NEW
+               .agent/authored/f275-r67-artefact.md       NEW
+               .agent/authored/f275-r67-plain.py.md       NEW
                .agent/last_block.md
                .agent/plan.md
                .agent/live_review.md
                .agent/prose_slips.md
                .agent/decisions.md
-               .agent/f275_t003_flip_residue_r66.md       NEW
+               .agent/f275_t003_flip_residue_r67.md       NEW
                .agent/handoff.md
-             The four paths marked NEW do not exist at the base: `git ls-tree 4de28049 --`
+             The four paths marked NEW do not exist at the base: `git ls-tree 39647827 --`
              over all four prints nothing at exit 0.
 
 Constraints:
   1. EVERY authored slice is applied BYTE FOR BYTE. Do not reflow, re-wrap, correct,
      improve or re-indent one character, including text you believe is wrong. A slice you
      disagree with is applied as written and the disagreement goes in the deviations.
-  2. Extract each slice from the COMMITTED blob of `.agent/authored/f275-r66.md` at C0a by
+  2. Extract each slice from the COMMITTED blob of `.agent/authored/f275-r67.md` at C0a by
      its `BEGIN-`/`END-` marker-line prefix, marker lines EXCLUDED, never from this prompt
      and never from memory. A slice's BODY is the bytes from the start of the line after
      its BEGIN marker to the first byte of its END marker line, INCLUDING the terminal
      newline of the body's last line. Each BEGIN marker carries its slice's own sha256;
      check it. The artefact and the instrument are WHOLE FILES: copy each with
      `shutil.copyfile` and never open either in an editor.
-  3. The commit order above is FIXED. `.agent/plan.md` therefore names round 65 across
+  3. The commit order above is FIXED. `.agent/plan.md` therefore names round 66 across
      C0a, C0b, C0c and C0d and becomes current at C1, which is the first SUBSTANTIVE
      commit and is what item 23 of §3 of `docs/agents/planner_reviewer_prompt.md` requires
      of a round that touches the finding ledger.
   4. This round creates NO `git worktree` and runs nothing destructive. The reviewer's own
-     worktree was created, used for the paired probe run of the artefact's section 7 and
-     removed BEFORE this block was written, and `git worktree list` shows the primary
-     checkout alone at the base.
+     worktree was created, used for the two plain probe runs and removed BEFORE this block
+     was written, and `git worktree list` shows the primary checkout alone at the base.
   5. Nothing is written to `/tmp`. All scratch lives under the gitignored `.remedy-wt/`.
   6. No `remedy` CLI command and no `gh` command is run. No pull request is created,
      edited or merged.
   7. Re-read `.agent/STOP` FROM DISK before the first commit and again before C6, and
      report both readings literally. It does not exist at the reviewer's base reading.
-  8. This block is 320 lines TOTAL and 241 PROSE, measured on its final bytes.
+  8. This block is 332 lines TOTAL and 253 PROSE, measured on its final bytes.
   9. NO finding id is registered this round and NONE is resolved. The open set is 88 by
      distinct id at the base and must read 88 at C5, with the registered set, the resolved
      set and the de-registered set ALL EMPTY. The COUNT alone is not the gate; the
-     membership is. `R-0880`'s SECOND obligation stays unbuilt and DEC66 says so. The
-     prose slip SLIPS66 books is NOT an id, per amend0827-process-diet rule 2.
- 10. `.agent/authored/f275-r66-rule.py.md` is a `.md` and its extension is load-bearing:
+     membership is. `R-0880`'s SECOND obligation stays unbuilt and DEC67 says so. The two
+     prose slips SLIPS67 books are NOT ids, per amend0827-process-diet rule 2.
+ 10. `.agent/authored/f275-r67-plain.py.md` is a `.md` and its extension is load-bearing:
      a `.py` file anywhere `ruff check .` scans is counted by
      `tests/orchestration/test_ci_budgets.py`, whose ceiling G6(c) reads. Do not rename it,
      and do not land a runnable copy of it anywhere in the tree.
  11. A pipe into `tail` MASKS the real exit code. Redirect to a file and read the file
      instead, for every gate whose exit code you report.
- 12. The instrument reads only `.remedy-wt/r53_R.json`, `.remedy-wt/r65_probe1.json` and
-     the tracked source files it parses. It writes nothing and installs nothing.
+ 12. The instrument reads JSON files under `.remedy-wt/` and nothing else — this block
+     states no count of them, because the count is the instrument's to report and not the
+     author's to recall. It writes nothing, installs nothing, runs no test and prints
+     nothing on stderr.
 
 Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
              "REAL_EXIT=$?"'`, with the REAL exit code and the real output reported. A
@@ -81,30 +82,30 @@ Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
 
   G1 TRANSPORT. For each of the three authored blobs, compare the COMMITTED blob against
      the reviewer's scratch original by size and sha256:
-       .agent/authored/f275-r66.md           @C0a  vs  .remedy-wt/f275-r66.block.md
-       .agent/authored/f275-r66-artefact.md  @C0b  vs  .remedy-wt/f275-r66-artefact.md
-       .agent/authored/f275-r66-rule.py.md   @C0c  vs  .remedy-wt/f275-r66-rule.py.md
+       .agent/authored/f275-r67.md           @C0a  vs  .remedy-wt/f275-r67.block.md
+       .agent/authored/f275-r67-artefact.md  @C0b  vs  .remedy-wt/f275-r67-artefact.md
+       .agent/authored/f275-r67-plain.py.md  @C0c  vs  .remedy-wt/f275-r67-plain.py.md
      Then `.agent/last_block.md` @C0d against the C0a blob. Report all four EQUAL verdicts.
      Re-measure on the COMMITTED C0a blob: TOTAL lines, the summed lines of every slice's
      BODY, PROSE = TOTAL - BODY, and whether either exceeds 490 and 400. Report both
      numerals beside constraint 8's and say whether they agree. The block states no count
      of its own slices: the extraction is the sweep and its cardinality is your output.
 
-  G2 THE PLAN. `.agent/plan.md` at C1 byte-identical to slice PLAN66: report both sizes
+  G2 THE PLAN. `.agent/plan.md` at C1 byte-identical to slice PLAN67: report both sizes
      and both sha256. Report its line count against the AGENTS.md cap of 50, and the count
      of `^## Goal$` and of `^## Next Steps$`, each of which must be 1.
 
   G3 THE RECORD. THREE appends in three commits, each proved by TWO readers and a negative
-     control: C2 appends RECORD66 to `.agent/live_review.md`, C3 appends SLIPS66 to
-     `.agent/prose_slips.md` and C4 appends DEC66 to `.agent/decisions.md`.
+     control: C2 appends RECORD67 to `.agent/live_review.md`, C3 appends SLIPS67 to
+     `.agent/prose_slips.md` and C4 appends DEC67 to `.agent/decisions.md`.
      (i)  READER A, over a BYTE stream: the post-commit blob equals the pre-commit blob
           followed by one newline and the slice's body. All three target files end with a
           single newline and no trailing blank line at the base, and all three separate
           their entries by a blank line, which is why the inserted newline is the same for
           each.
-            .agent/live_review.md   pre 1011627 at the base, slice RECORD66
-            .agent/prose_slips.md   pre  258183 at C2,       slice SLIPS66
-            .agent/decisions.md     pre 1146996 at C3,       slice DEC66
+            .agent/live_review.md   pre 1016632 at the base, slice RECORD67
+            .agent/prose_slips.md   pre  259093 at C2,       slice SLIPS67
+            .agent/decisions.md     pre 1152295 at C3,       slice DEC67
           Report each pre size, each post size and each delta. The slice body sizes are
           NOT stated here: each is the length of what you extracted.
      (ii) READER B, structural and independent: the LAST N blank-line-separated units of
@@ -114,65 +115,76 @@ Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
           `b < 128 and chr(b).isalpha()` — inside the FIRST appended paragraph, and report
           that BOTH readers reject it. Report ALSO that both readers ACCEPT the unmutated
           region, because a reader that rejects everything proves nothing by rejecting.
-     (iv) RECORD66 must carry no interior line beginning with any of `Gate: `, `- R-`,
+     (iv) RECORD67 must carry no interior line beginning with any of `Gate: `, `- R-`,
           `Done: R-`, `Landed: R-`, `Recurrence: R-` or `DECISION F`; report that count,
           which must be 0. Report the count of `^- R-` and of `^Done: R-` lines that C2
           ADDS, both of which must be 0.
-     (v)  Report RECORD66's first line beside the count of lines in `.agent/live_review.md`
-          at `4de28049` already matching `^Gate: F275 R\d+ — the F275 round \d+ entry\.`,
+     (v)  Report RECORD67's first line beside the count of lines in `.agent/live_review.md`
+          at `39647827` already matching `^Gate: F275 R\d+ — the F275 round \d+ entry\.`,
           and whether the new first line matches that pattern and duplicates none of them.
           Report the number your script counted; this block states none.
-     (vi) DEC66 must begin `## DECISION F275 D40 ` and `.agent/decisions.md` at the base
-          must contain NO line matching `^## DECISION F275 D40`. Report both readings, and
+     (vi) DEC67 must begin `## DECISION F275 D41 ` and `.agent/decisions.md` at the base
+          must contain NO line matching `^## DECISION F275 D41`. Report both readings, and
           report the highest existing `^## DECISION F275 D\d+` heading at the base.
-     (vii) The paragraph SLIPS66 adds must begin `2026-09-11 · F275 R65 · `. Report the
-          count of lines in `.agent/prose_slips.md` at `4de28049` already beginning with
+     (vii) Both paragraphs SLIPS67 adds must begin `2026-09-12 · F275 R66 · `. Report the
+          count of lines in `.agent/prose_slips.md` at `39647827` already beginning with
           that exact prefix, and the count C3 adds.
 
   G4 THE ARTEFACT AND THE INSTRUMENT ARE THE AUTHORED BLOBS AND NOTHING ELSE.
-     `.agent/f275_t003_flip_residue_r66.md` at C5 must be byte-identical to the
-     `.agent/authored/f275-r66-artefact.md` blob at C0b — report both sizes and both
+     `.agent/f275_t003_flip_residue_r67.md` at C5 must be byte-identical to the
+     `.agent/authored/f275-r67-artefact.md` blob at C0b — report both sizes and both
      sha256. Report the exit code of
-     `git show 4de28049:.agent/f275_t003_flip_residue_r66.md`, which must be non-zero.
+     `git show 39647827:.agent/f275_t003_flip_residue_r67.md`, which must be non-zero.
      Report the artefact's line count and the instrument blob's line count, each against
      the DECISION F104 D1 cap of 500 insertions.
 
   G5 THE ARTEFACT'S NUMBERS AND ITS QUOTED TRANSCRIPT ARE RE-DERIVED FROM THE COMMITTED
-     INSTRUMENT. The instrument is committed at `.agent/authored/f275-r66-rule.py.md` at
+     INSTRUMENT. The instrument is committed at `.agent/authored/f275-r67-plain.py.md` at
      C0c, inside a ```python fence. Report the number of fences found, extract that source
      into `.remedy-wt/` and RUN it with `python3 -B`, REDIRECTED to a file per constraint
-     11. It prints four banners; report every line of all four.
-     (a) THE FIGURES. Say whether each of these agrees with what the instrument printed.
-         The artefact's section 4 states 2198 ruled keys, 2144 resolving to an `ast`
-         Attribute at that exact position and 54 not. Section 6 states 24 probe rows with
-         a synthetic receiver, on 24 distinct lines, all 24 of which begin `assert ` in the
-         source, and 22 of the 52 drops sitting on such a line. Sections 2, 3 and 5 state
-         the per-site blocks for `test_repair_loop_v1.py:56`, `long_run_executor.py:505`
-         and `test_loop_run.py:285`, and section 4 the block for
-         `long_run_executor.py:504`.
-     (b) THE TRANSCRIPT, VERBATIM. Every line inside the artefact's fenced blocks that
-         begins — after its leading whitespace is stripped — with any of `sweep `, `probe `,
-         `ast `, `source:`, `ruled keys`, `resolving `, `NOT resolving`, `probe rows whose`,
-         `distinct synthetic`, `distinct lines`, `of those lines`, `dropped sites` or
-         `of them on a line` must appear, with ITS OWN leading whitespace stripped, as a
-         line of the instrument's output. Report the count checked and the count that
-         failed; the second must be 0. This is a CONTENT comparison after stripping, not a
-         byte comparison, because a fenced block is indented and the instrument's own lines
-         are not — and it exists because a transcript re-wrapped to fit a page is a
-         transcript that no longer says what the tool said.
-     (c) DETERMINISM. Run the SAME extracted file twice more and report whether all three
+     11. It prints five banners; report every line of all five.
+     (a) THE FIGURES. Say whether each agrees with what the instrument printed. The
+         artefact's section 2 states 2195 rows in each plain run and symmetric difference 0
+         under both keys at 2145 and 2195. Section 3 states 24 synthetic rows on 24 lines
+         in the rewritten CONTROL against 0 in the plain run. Section 4 states 2082 against
+         2058 resolved and 113 against 137 refused, and on the 24 lines 24 REFUSED beside 4
+         resolved. Section 5 states the control at 2198 and SET-EQUAL True, the rewritten
+         probe at LINE 2168 and RECEIVER 2116 for 52 drops, the plain probe at LINE 2168
+         and RECEIVER 2138 for 30 drops, the two LINE joins agreeing, 22 sites kept that
+         the rewritten join dropped and 0 dropped that it kept. Section 6 states 30 dropped
+         as 27 at-risk, 4 with no sweep receiver, 3 both, 0 on a synthetic line and 2
+         NEITHER, and names those two.
+     (b) THE TRANSCRIPT. The artefact carries its tool output in MARKDOWN INDENTED blocks
+         and NOT in fenced blocks; report the count of lines in it that consist of three
+         backticks, which is 0. Every line of the artefact that begins with whitespace and
+         whose STRIPPED form begins with any of `as the ROUND`, `CONTROL`, `the PLAIN run`,
+         `rewritten:`, `plain    :`, `REFUSED:`, `resolved:`, `rewritten probe`,
+         `plain probe`, `the two LINE joins`, `sites the PLAIN`, `dropped total`,
+         `on one of the 39`, `the sweep recorded`, `both of the above`, `on a line still`,
+         `NEITHER` or `packages/orchestration/long_run_executor.py:505` must appear, in its
+         STRIPPED form, as a stripped line of the instrument's output. Report the count
+         checked and the count that failed; the second must be 0. This is a CONTENT
+         comparison after stripping on BOTH sides, never a byte comparison.
+     (c) EXCERPTS ARE PERMITTED AND THIS IS WHAT MAKES ONE HONEST. The artefact quotes
+         SOME of the instrument's lines and not all of them, which satisfies (b) as
+         written. Where a block is an excerpt, the three properties that must hold are:
+         every quoted line verbatim after stripping, in the SAME ORDER as the output, and
+         no line present in the artefact that the output does not contain. Report whether
+         the ORDER property holds over the lines (b) checked.
+     (d) DETERMINISM. Run the SAME extracted file twice more and report whether all three
          outputs are byte-identical.
      A figure the instrument prints that DISAGREES with the artefact is reported as it
      read and is a finding; do not reconcile it in either direction. A figure the artefact
-     states that the instrument does NOT print is likewise reported as absent rather than
-     supplied from elsewhere — EXCEPT the reading the artefact's PROVENANCE list names as
-     the reviewer's, which is the paired probe run of section 7. Two standing exceptions
-     apply to any numeral sweep you run: digits inside an IDENTIFIER such as a SHA or a
-     path, and numerals inside a CITATION of a named prior artefact, are not readings.
+     states that the instrument does NOT print is reported as absent rather than supplied
+     from elsewhere — EXCEPT the readings the artefact's PROVENANCE list names as the
+     reviewer's, which are the two pytest summary lines of section 2 and the probe sha256
+     of section 1, and EXCEPT the two standing exceptions any numeral sweep carries:
+     digits inside an IDENTIFIER such as a SHA or a path, and numerals inside a CITATION
+     of a named prior artefact or decision.
 
   G6 THE TREE DID NOT MOVE.
      (a) Report the git object id of each of `packages`, `apps`, `tests`, `docs` and
-         `scripts` at `4de28049` and at C5, and whether all five are EQUAL.
+         `scripts` at `39647827` and at C5, and whether all five are EQUAL.
      (b) THE CANARY: `python3 -m pytest tests/cli/test_golden_path.py -q`, REDIRECTED to a
          file per constraint 11. It reads 42 passed at exit 0 at the base.
      (c) `python3 -m ruff check . --output-format concise`. Its exit code is 1 whenever
@@ -189,12 +201,12 @@ Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
          `git worktree list`. The first must be absent and the second the empty string.
          The third is REPORTED, not gated: state instead whether THIS ROUND created or
          removed any worktree, which constraint 4 fixes at neither.
-     (b) The changed-path set over `4de28049`..C5 must be exactly the Change section's
+     (b) The changed-path set over `39647827`..C5 must be exactly the Change section's
          paths other than `.agent/handoff.md`. Report MISSING and EXTRA, both of which
          must be empty, and the count of paths under `docs/`, `scripts/`, `packages/`,
          `apps/` or `tests/`, which must be 0.
      (c) The open set BY DISTINCT ID, derived as every `^- R-\d+ — ` paragraph minus every
-         `^Done: R-\d+ — ` line, at `4de28049` and at C5. Report both, the ids registered,
+         `^Done: R-\d+ — ` line, at `39647827` and at C5. Report both, the ids registered,
          the ids resolved and the ids de-registered, all three of which must be empty.
          Report the highest id in the record at each end.
      (d) Per-commit insertions from `git show --numstat <sha>` for C0a through C5, each
@@ -207,7 +219,7 @@ Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
          asserted.
 
 Handback:    completion report + rewrite `.agent/handoff.md`. Carry SESSION 24 of F275 and
-             round 66, the one-sentence context self-assessment amend0905-throughput
+             round 67, the one-sentence context self-assessment amend0905-throughput
              requires, the changed-files table with every `+/-` taken from
              `git show --numstat` and no other source, one line per gate with its REAL
              exit code, the item-status table covering every C and every G exactly once,
@@ -228,7 +240,7 @@ spaces, and 10 more.
 
 ────────── SLICES ──────────
 
-BEGIN-PLAN66 sha256=0bb5e779029f581c41ebde2433fafe71d81d251a1cbc84c68c794b5bb9ba0374
+BEGIN-PLAN67 sha256=ad6d26cbd22452b3a03952045112f3c3cf9584b6652b63ce13a2be25521b5caf
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -244,23 +256,23 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 66 RULES the three sites DECISION F275 D39 held the write shut on, and DECISION F275
-D40 records the result. They rule three ways: one correct drop, one site that was never in
-the committed set, and one wrong drop whose cause is pytest's assertion rewriting — which
-reaches 22 of the 52 drops, so the re-derived set is NOT safe to consume. A second and
-independent defect is measured beside it: 54 of the 2198 ruled keys resolve to no `ast`
-node at their recorded position, which is what the `long_run_executor.py:504` disagreement
-round 64 reported turns out to be. The artefact is `.agent/f275_t003_flip_residue_r66.md`.
-The round 65 verdict and its prose slip are booked here. No production line moves.
+ROUND 67 SPENDS the `--assert=plain` route DECISION F275 D40 chose, and DECISION F275 D41
+rules the result. The probe was not modified; only the pytest invocation changed. The
+synthetic receivers go from 24 to ZERO, the receiver-joined set goes from 2116 to 2138, its
+drop list from 52 to 30, and 22 sites come back with NONE newly dropped. Both remaining
+unexplained drops were already ruled by D40 a round ago, so the plain set carries no unruled
+drop and half of D40's condition is discharged. The artefact is
+`.agent/f275_t003_flip_residue_r67.md`. The round 66 verdict and its two prose slips are
+booked here. No production line moves.
 
 ## Next Steps
 
-1. RE-DERIVE from a PLAIN run: two suite passes under the committed probe with
-   `--assert=plain`, rebuild the set, and confirm the 22 rewriting drops become refusals
-   that the join keeps. That is the first half of what DECISION F275 D40 holds shut.
-2. RULE THE 54 ruled keys that resolve to no `ast` node, and measure whether the
-   transform's own consumption already loses them — which decides whether they are a
-   reporting defect or a live under-selection in every dry run taken so far.
+1. RULE THE 54 ruled keys that resolve to no `ast` node at their recorded position, and
+   answer first whether the transform's own consumption already loses them — which decides
+   whether they are a reporting defect or a live under-selection in every dry run so far.
+   That is the whole of what DECISION F275 D41 still holds the write shut on.
+2. Point the transform at the plain re-derived set and re-run the flip's dry run, which is
+   the first reading of what the re-keying costs or saves in failures rather than in sites.
 3. The resolver collapse DECISION F260 D5 places in T003, which DECISION F275 D37 names as
    the home of the id-SHAPE seam behind the three largest residue classes. Production code,
    so a SPLIT round with mutation red-proofs.
@@ -270,51 +282,51 @@ The round 65 verdict and its prose slip are booked here. No production line move
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
   split-and-close default BY NAME: a session writes the scope report and CONTINUES.
-- The site set has now yielded three distinct position defects in four rounds — the line
-  key, the rewriting and the sweep's own columns — and each was invisible to the gate that
-  preceded it.
+- The site set has yielded four distinct position defects in five rounds — the line key, the
+  assertion rewriting, the sweep's own columns and the 54 non-resolving keys — and each was
+  invisible to the gate that preceded it.
 - `R-0880`'s SECOND obligation is still unbuilt, and the largest residue classes still need
   PRODUCTION-CODE work rather than another transform rule.
 - The open set is 88 by distinct id, with `R-0879` and `R-0880` both open. Four are High —
   R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
-END-PLAN66
+END-PLAN67
 
-BEGIN-RECORD66 sha256=73de51b131a365cae3188f0d9216b53a53333195f69ce081be01935c28c12b22
-Gate: F275 R65 — the F275 round 65 entry. VERDICT PASS. Written by the planner and reviewer of session 24 after reading the committed range `98a67f4f`..`4de28049` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line below. It is booked here by the FIRST SUBSTANTIVE COMMIT of round 66, per operator amendment amend0827-process-diet rule 1. The round SPENT the route DECISION F275 D38 ruled: the descriptor probe was re-keyed, the suite ran under it twice, and the ruled site set was re-derived, which the decision recorded at `95990d1e` rules.
+BEGIN-RECORD67 sha256=9544278ae2614bcd141e4f84b443acc7cc0d4be1248b2542b11d800183a85f5b
+Gate: F275 R66 — the F275 round 66 entry. VERDICT PASS. Written by the planner and reviewer of session 24 after reading the committed range `4de28049`..`39647827` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line below. It is booked here by the FIRST SUBSTANTIVE COMMIT of round 67, per operator amendment amend0827-process-diet rule 1. The round RULED the three sites DECISION F275 D39 held the write shut on, and the decision recorded at `dc0fb7f1` records the result.
 
-G1 is the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback: all four authored blobs are byte-identical to the reviewer's own scratch originals — the block at 32736 bytes, the artefact at 8531, the re-keyed probe at 6684 and the re-derivation instrument at 8499 — and `.agent/last_block.md` equals the block blob. All four slices matched the sha256 on their own BEGIN markers. Re-measured on the committed blob the block is 329 lines TOTAL and 249 PROSE, agreeing with its own constraint 8. G2: `.agent/plan.md` is byte-identical to its slice at 2728 bytes over 47 lines, both mandated headings exactly once.
+G1 is the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback: all three authored blobs are byte-identical to the reviewer's own scratch originals — the block at 31424 bytes, the artefact at 8788 and the ruling instrument at 5991 — and `.agent/last_block.md` equals the block blob. All four slices matched the sha256 on their own BEGIN markers. Re-measured on the committed blob the block is 320 lines TOTAL and 241 PROSE, agreeing with its own constraint 8. G2: `.agent/plan.md` is byte-identical to its slice at 2860 bytes over 48 lines, both mandated headings exactly once.
 
-G3: `.agent/live_review.md` goes 1006423 to 1011627, `.agent/prose_slips.md` 256246 to 258183 and `.agent/decisions.md` 1142043 to 1146996, every one exact under reader A, with reader B holding at N counted from the slice as 7, 2 and 9, and all three of the reviewer's own negative controls REJECTED by both readers while all three unmutated regions are ACCEPTED. The D39 heading reads 0 at the base against a highest existing D38. G4: the artefact at C5 is byte-identical to the C0b blob at 8531 bytes and the path does not resolve at the base. G6 and G7: five trees byte-identical; canary 42 passed at exit 0; ruff 26 rows at the frozen ceiling with zero under `.remedy-wt/` and zero `.py` under `.agent/`; ten changed paths with MISSING and EXTRA empty and zero production paths; the open set 88 at both ends with all three sets empty; per-commit insertions peak at 329 and every commit including the handback is under the cap, each touching exactly one path.
+G3: `.agent/live_review.md` goes 1011627 to 1016632, `.agent/prose_slips.md` 258183 to 259093 and `.agent/decisions.md` 1146996 to 1152295, every one exact under reader A, with reader B holding at N counted from the slice as 7, 1 and 9, and all three of the reviewer's own negative controls REJECTED by both readers while all three unmutated regions are ACCEPTED. The D40 heading reads 0 at the base against a highest existing D39. G4: the artefact at C5 is byte-identical to the C0b blob at 8788 bytes and the path does not resolve at the base. G6 and G7: five trees byte-identical; canary 42 passed at exit 0; ruff 26 rows at the frozen ceiling with zero under `.remedy-wt/` and zero `.py` under `.agent/`; nine changed paths with MISSING and EXTRA empty and zero production paths; the open set 88 at both ends with all three sets empty; per-commit insertions peak at 320 and every commit including the handback is under the cap at one path each.
 
-G5 CARRIED TWO INSTRUMENTS WITH DIFFERENT ORDERS AND BOTH HELD. The probe's fence was extracted and COMPILED and deliberately not run, at 6398 bytes; the re-derivation instrument was extracted and run THREE times to byte-identical 3606-byte captures. Every figure the block named agrees: 2195 probe rows in each run with symmetric difference 0 under both keys, 2082 receivers resolved against 113 refused, TWELVE round 53 keys covering more than one resolved receiver, the control rebuilding round 53's committed set SET-EQUAL at 2198, and the re-derivation reading 2168 under the line join against 2116 under the receiver join for 52 drops and no adds.
+G5 CARRIED A VERBATIM-TRANSCRIPT CLAUSE FOR THE FIRST TIME AND BOTH HALVES HELD. The instrument extracted from one fence and ran three times to byte-identical 5676-byte captures with empty stderr. The reviewer re-ran the same comparison the gate orders — every in-scope quoted line of the landed artefact against the instrument's own output, compared as content after each side's leading whitespace is stripped — and read 29 lines checked with 0 failed. Every figure agrees: 2198 ruled keys with 2144 resolving to an `ast` Attribute at their exact recorded position and 54 not, 24 probe rows carrying a synthetic `@py_assert` receiver on 24 lines every one of which begins `assert ` in the source, and 22 of the 52 drops sitting on such a line.
 
-THE CONTROL IS THE PART OF THAT ROUND WORTH RECORDING, BECAUSE IT WAS ADDED AFTER A FAILURE RATHER THAN BY FORESIGHT. The reviewer's first rebuild did not reproduce round 53's set and read 2168 against 2198, and the cause was the INPUT rather than the logic — the new probe run compared against the old committed set, which is a two-variable comparison wearing a one-variable face. Feeding the rebuild round 53's OWN probe output makes it reproduce that set exactly, and only with that reading does the 2168-against-2116 comparison mean what it says. A rebuild that cannot reproduce the set it claims to re-derive is not a re-derivation, and this one could not until it was made to.
+THE SUBSTANCE, RE-DERIVED RATHER THAN ACCEPTED, IS THAT THE THREE SITES RULE THREE DIFFERENT WAYS AND ONLY ONE IS THE DROP D39 SUPPOSED. `test_repair_loop_v1.py:56` at column 28 is an Artifact's id ruled only by sharing a line with a job's and a task's, so its drop is the over-selection being fixed. `long_run_executor.py:505` reads `RULED False` against round 53's committed set and its recorded column and receiver both disagree with the source, which makes it a defect of the SWEEP rather than a drop at all — and the same defect explains the `:504` disagreement round 64 reported and could not diagnose, where two sites at columns 19 and 40 sit over one attribute node at column 30 inside a call spanning two lines. `test_loop_run.py:285` is a WRONG drop whose cause is pytest rewriting `assert` statements before compiling them, so the name the probe recovers by disassembly is one pytest invented and can match no sweep receiver ever.
 
-THE WORKER DECLARED TEN DEVIATIONS AND THE TWO SUBSTANTIVE ONES ARE SWEEP ARTEFACTS RATHER THAN PROVENANCE FAILURES, WHICH IT JUDGED CORRECTLY. Running the artefact's numerals against the instrument's output it found two survivors: the digits `98` and `67`, which are fragments of the base SHA in the header banner, and `504`, which the artefact cites in two places and attributes in both to the round 64 artefact and to round 64 by name. Neither is an undeclared reviewer reading — one is an identifier and the other a citation of a prior committed artefact — and the worker reported both as absent rather than supplying them from elsewhere, which is what the gate orders. The lesson is the sweep's rather than the artefact's and is booked as a dated line: a numeral sweep over prose flags digit-substrings of identifiers and numerals inside citations, so it needs an exception list of those two kinds or it will spend a deviation every round.
+THE WORKER DECLARED TEN DEVIATIONS AND THE TWO NEW ONES ARE BOTH THE REVIEWER'S WORDING, BOOKED AS DATED LINES BY THIS SAME ROUND. G5(a) named the artefact's per-site blocks without saying whether a quoted EXCERPT satisfies it, and the artefact quotes six of nine lines for one site; the worker's first implementation demanded block equality, went red, and it then applied the excerpt reading and printed the three unquoted lines in full rather than resolving the ambiguity silently. G5(b) said "the artefact's fenced blocks" while that artefact carries ZERO fence lines and uses the indented form throughout, so the worker scoped the sweep to indented lines and reported that a prose line at column zero fell outside the stated scope. Both are gate text that did not match the artefact it was written about, neither left anything wrong on disk, and the worker's handling of each was to report rather than to reconcile.
+END-RECORD67
 
-THE PROVENANCE PARAGRAPH WAS WRITTEN AS A LIST THIS ROUND AND THE LIST HELD, which is the rule the round before it booked being applied on its first opportunity and surviving contact with the sweep that broke its predecessor. The remaining eight deviations are the standing ones plus the probe's compiled-not-run asymmetry, which the block's constraint 12 orders and explains, and the note that G5's extraction leaves a real `.py` under `.remedy-wt/` which G6(c) independently measures at zero ruff rows.
-END-RECORD66
+BEGIN-SLIPS67 sha256=8ea66b70492453fa9729a46817dcf9be22ed020d1a551a5eb76bb48e08901965
+2026-09-12 · F275 R66 · The round 66 block's G5(b) ordered a verbatim comparison over "every line inside the artefact's fenced blocks", and that artefact carries ZERO ``` fence lines — every transcript block in it is the markdown INDENTED form. The worker scoped the sweep to indented lines, which is what the clause plainly meant, and reported that one prose line at column zero fell outside the stated scope rather than silently widening it. The clause was written while the reviewer was looking at the instrument's output rather than at the artefact's own markup, one paragraph after adding the clause because a re-wrapped transcript had nearly shipped. THE RULE THAT FOLLOWS: a gate that quantifies over a REGION of an authored document names that region by a property measured in the document itself — count the fence lines, or say "indented block" — because "fenced" and "indented" are the same thing to a reader and different things to a script.
 
-BEGIN-SLIPS66 sha256=d7bd91dac885db97d945816894bafb6185a0ba30d88a41efbcbdb4b4e3ef9192
-2026-09-11 · F275 R65 · The round 65 block's G5 ordered every figure the artefact states to be re-derived from the instrument, and the worker's numeral sweep over the artefact returned two survivors that are not readings at all: `98` and `67`, which are digit fragments of the base SHA `98a67f4f` in the header banner, and `504`, which the artefact cites twice and attributes in both places to `.agent/f275_t003_flip_residue_r64.md` and to round 64 by name. The round 64 block had excused the base SHA explicitly and the round 65 block, adapted from it, dropped that clause while keeping the sweep. THE RULE THAT FOLLOWS: a numeral sweep over prose is a tokeniser and not a reader, so the gate that orders one names its two standing exceptions — digits inside an IDENTIFIER such as a SHA or a path, and numerals inside a CITATION of a named prior artefact — and anything outside those two is a finding.
-END-SLIPS66
+2026-09-12 · F275 R66 · The round 66 block's G5(a) ordered the artefact's per-site blocks reported and said nothing about whether a quoted EXCERPT satisfies it, while the artefact quotes six of the instrument's nine lines for `tests/orchestration/test_repair_loop_v1.py:56`, omitting the three `ast` lines. The worker's first implementation demanded block equality and went red, and it then applied the reading that an excerpt agrees when every quoted line is verbatim and in order with none invented, and printed the three unquoted lines in full. That reading is right and the gate should have stated it. THE RULE THAT FOLLOWS: where an artefact quotes part of a tool's output, the gate says whether it is comparing an EXCERPT or a BLOCK, and for an excerpt it states the three properties that make one honest — every quoted line verbatim, in order, and nothing invented — because a gate that leaves the reader to choose has two possible results and only one of them is a pass.
+END-SLIPS67
 
-BEGIN-DEC66 sha256=eef61db96891071a9a43339b0a218588a12873bfff92169ae13defc66a5eb7c5
-## DECISION F275 D40 (2026-09-11, F275 round 66) — the three sites are ruled, the re-derived set is NOT safe to consume, and two independent defects hold the write shut
+BEGIN-DEC67 sha256=d850ecccb777681921e629b007fffa4c7f52f97e5927508cb1b74d01f3dcd6e8
+## DECISION F275 D41 (2026-09-12, F275 round 67) — the plain re-derivation stands, and the write is shut on the 54 non-resolving keys alone
 
-CONTEXT. DECISION F275 D39 re-derived the ruled site set with a receiver in its key and held the write shut on three sites its own evidence could not justify. This round rules them. The measurement is in `.agent/f275_t003_flip_residue_r66.md` and the instrument that produced it is committed at `.agent/authored/f275-r66-rule.py.md`.
+CONTEXT. DECISION F275 D40 ruled that pytest's assertion rewriting caused 22 of the 52 drops the round 65 re-derivation made, named `--assert=plain` as the route, and held the write shut on that and on 54 ruled keys that resolve to no `ast` node. This round spends the route. The measurement is in `.agent/f275_t003_flip_residue_r67.md` and the instrument is committed at `.agent/authored/f275-r67-plain.py.md`.
 
-CHOSEN, PART ONE: THE THREE RULE THREE DIFFERENT WAYS, AND ONLY ONE OF THEM IS THE DROP D39 THOUGHT IT WAS. `tests/orchestration/test_repair_loop_v1.py:56` is a CORRECT drop: three `.id` reads share the line, the probe resolves `job` and `task`, and `art` is an Artifact the probe never installs a descriptor on, so the third site was ruled only by sharing a line — which is finding `R-0880`'s over-selection being fixed exactly as designed. `packages/orchestration/long_run_executor.py:505` is NOT A DROP AT ALL: its site reads `RULED False` against round 53's committed set, and it reached the drop list only because this round's rebuild recomputes from the sweep's raw sites. `tests/orchestration/test_loop_run.py:285` is a WRONG drop, and its cause is not local.
+CHOSEN, PART ONE: THE ROUTE WORKS AND ITS PREDICTED FIGURE IS MET EXACTLY. The probe was NOT modified — the file run here is byte-identical to the one committed at round 65 — and only the pytest invocation gained `--assert=plain`, so the comparison moves one variable. Both plain runs hold 2195 rows and are set-equal under both keys. The synthetic `@py_assert` receivers go from 24, which is the rewritten run's own figure standing as the control, to ZERO. The plain run resolves 24 fewer receivers and refuses 24 more, which is the whole of the difference and is the direction D40 predicted: a wrong name became an honest absence.
 
-CHOSEN, PART TWO: PYTEST'S ASSERTION REWRITING MAKES THE PROBE RESOLVE A NAME THAT DOES NOT EXIST, AND IT REACHES 22 OF THE 52 DROPS. Pytest rewrites `assert` statements into temporaries before compiling them, and the re-keyed probe reads the frame of that rewritten code, so the name its disassembly recovers is one pytest invented. Twenty-four probe rows resolve to a synthetic `@py_assert<n>` name, every one of the twenty-four on a line beginning `assert ` in the source, and twenty-two of the fifty-two drops sit on such a line. Those twenty-two are UNDER-selections, which is finding `R-0879`'s class arriving through the new key rather than through the old one. THE RE-DERIVED SET OF D39 IS THEREFORE NOT SAFE TO CONSUME, and this decision says so before any round spends it.
+CHOSEN, PART TWO: 22 SITES COME BACK AND NOT ONE IS NEWLY DROPPED. Rebuilt under the same join and the same control that reproduces round 53's committed set at 2198, the receiver join reads 2138 against the rewritten run's 2116, and its drop list is 30 against 52. Twenty-two sites the rewritten run dropped are kept, which is exactly the count D40 attributed to the rewriting arriving from the other direction, and ZERO sites are dropped that the rewritten run kept — so the plain run is strictly better rather than differently wrong. The two LINE joins agreeing at 2168 is the control on that claim: a join that reads no receiver must not move when the receivers change.
 
-CHOSEN, PART THREE: A SECOND AND INDEPENDENT DEFECT IS MEASURED IN THE SWEEP'S OWN POSITIONS. Of 2198 ruled keys, 2144 resolve to an `ast` Attribute node at their exact recorded line and column and 54 DO NOT. `long_run_executor.py:504` is the instance round 64 reported and could not diagnose: the sweep placed two sites on that line, at columns 19 and 40, over ONE attribute node at column 30, and gave the second of them a receiver belonging to the NEXT line inside the same multi-line call. A key that resolves to no node is missed silently by any consumer that walks the tree, because a lookup finding nothing is indistinguishable from a site that was never ruled. This defect is independent of the receiver key and of the rewriting, and it is an under-selection too.
+CHOSEN, PART THREE: THE PLAIN SET HAS NO UNRULED DROP, SO HALF OF D40's CONDITION IS DISCHARGED. Of its 30 drops, 27 are on the at-risk lines DECISION F275 D36 bounded, 4 are sites the sweep recorded no receiver for, 3 are both, NONE sits on a line still carrying a synthetic name, and 2 are neither — and both of those two were ruled a round ago by D40: `packages/orchestration/long_run_executor.py:505`, which reads `RULED False` against round 53's set and whose recorded column and receiver both disagree with the source, and `tests/orchestration/test_repair_loop_v1.py:56` at column 28, which is an Artifact's id ruled only by sharing a line. The third site DECISION F275 D39 held the write shut on is not in the list at all: the plain run recovered it, which is what D40 predicted for it by name.
 
-CHOSEN, PART FOUR: THE ROUTE IS `--assert=plain`, AND WHAT IT BUYS IS AN HONEST REFUSAL RATHER THAN A RECOVERED NAME. Run over one file twice, the same committed probe resolves four synthetic receivers as round 65 ran it and FOUR NONES with rewriting disabled, at an unchanged row count. That is the right direction and the reason is worth stating: the receiver in those asserts is a subscript, so the correct answer was always a refusal, and under the join a refusal keeps the site's old standing. A wrong name became an honest absence, which cannot cause an under-selection. THE WRITE STAYS SHUT until the set is re-derived from a plain run AND the 54 non-resolving keys are ruled.
+CHOSEN, PART FOUR: THE WRITE STAYS SHUT ON THE 54 NON-RESOLVING KEYS AND ON NOTHING ELSE. D40 part three measured that 54 of the 2198 ruled keys resolve to no `ast` Attribute at their recorded line and column, and nothing since has ruled them. A consumer that walks the tree and looks a node up by that triple misses every one of them silently, which is an under-selection. NO ROUND MAY CONSUME THE RE-DERIVED SET FOR A WRITE UNTIL THOSE 54 ARE RULED, and the ruling must answer one question first: whether the transform's own consumption already loses them, which decides whether they are a reporting defect or a live under-selection in every dry run this chain has taken. That is the whole of the remaining condition, and it replaces the two halves D40 carried.
 
-ALTERNATIVES CONSIDERED. (i) Consume the D39 set and repair the 22 afterwards — rejected: 22 under-selections in a set that drives a rename are 22 renames that silently do not happen, and a missed rename fails at run time in a place that does not name the cause. (ii) Special-case the `@py_assert` prefix in the resolution and treat it as a refusal — not rejected on correctness and rejected on honesty: it patches the symptom in the instrument while the probe still measures rewritten code, and the next rewriting pytest invents would be invisible. `--assert=plain` removes the cause. (iii) Rule only the three D39 named and leave the class — rejected on this round's own arithmetic: the third of the three is one of twenty-two, and ruling it without its class would have closed the decision on a number known to be wrong. (iv) Repair the sweep's 54 positions in the same round — rejected as scope: it is a separate instrument with a separate proof, and DECISION F275 D39's write is already shut for the other reason.
+ALTERNATIVES CONSIDERED. (i) Consume the plain set now and rule the 54 afterwards — rejected for the reason the 22 exist: a set that drives a rename is consumed once, and a defect measured but unruled is a defect that ships. (ii) Modify the probe to ignore `@py_assert` names instead of disabling the rewriting — rejected in D40 and re-rejected here on this round's evidence: the plain run recovered four resolutions on the same lines that a prefix filter would have thrown away, so removing the cause was also the more accurate route. (iii) Re-run the flip's dry run against the plain set this round — not rejected and deliberately deferred: it costs twenty-one minutes and its reading is only meaningful once the 54 are ruled, because a dry run over a set with a known under-selection measures the under-selection too. (iv) Rule the 54 in this round — rejected as scope: two suite passes were already spent here, and the 54 need a separate instrument and a separate proof.
 
-WHAT THIS DECISION DOES NOT RULE. It does not re-derive anything; the plain run is the next round and costs two more suite passes. It does not repair the 54 non-resolving keys, and it does not ask whether the transform's own consumption already loses them — that question is now on the plan and nothing has measured it. It does not resolve `R-0880`, whose second obligation is still unbuilt, and it registers no id: nothing measured here is wrong on disk under `packages/`, `apps/`, `tests/` or `docs/`.
+WHAT THIS DECISION DOES NOT RULE. It does not rule the 54, and it does not point the transform at the plain set. It does not re-run the dry run. It does not resolve `R-0880`, whose SECOND obligation — the transform's refusal to rename a site whose owner verdict cannot be confirmed — is still unbuilt, though the probe's own refusal behaviour, now at 137 rows, remains the model for it. And it registers no id: nothing measured here is wrong on disk under `packages/`, `apps/`, `tests/` or `docs/`.
 
-HOW TO REVERSE: delete this decision. DECISION F275 D39's condition then stands at its three named sites with no ruling on any of them, and the 22 rewriting drops and the 54 non-resolving keys go back to being unmeasured rather than untouched.
-END-DEC66
+HOW TO REVERSE: delete this decision. DECISION F275 D40's condition then stands with both of its halves open, the two plain runs and this artefact stay on disk, and the next session re-reads the 22-and-0 reading out of the artefact rather than re-measuring it in forty-two minutes.
+END-DEC67
