@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from packages.orchestration.data_paths import run_log_dir
 
@@ -105,7 +105,7 @@ class RunLogWriter:
     # The job-keyed join lives in data_paths.run_log_dir, so DECISION F260 D1's re-key changes one function body.
     def __init__(
         self,
-        job_id: UUID,
+        job_id: str,
         run_id: str | None = None,
         *,
         data_root: Path | None = None,

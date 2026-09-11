@@ -352,14 +352,14 @@ def persist_failure_artifact(job: Any, failure: TestFailureArtifact) -> Any:
 
 
 def emit_failure_events(
-    data_dir: Path, job_id: UUID | str,
+    data_dir: Path, job_id: str,
     failure: TestFailureArtifact,
     fix_task_id: str = "",
 ) -> None:
     """Emit safe failure + repair events. No raw output."""
     from packages.orchestration.timeline import append_run_event
 
-    jid = UUID(str(job_id)) if not isinstance(job_id, UUID) else job_id
+    jid = str(job_id)
 
     append_run_event(data_dir, jid, event="test_failure_artifact_created", metadata={
         "artifact_id": failure.artifact_id,

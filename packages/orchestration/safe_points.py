@@ -650,11 +650,11 @@ def _emit_budget_tick(job_id: str, evaluation: Any) -> None:
     money it spent.
 
     The writer is `RunLogWriter` and NOT `timeline.append_run_event` (DECISION F022
-    D2, clause one): `append_run_event` resolves its id with `UUID(str(job_id))`,
-    while a JobPlan's `job_id` is `uuid4().hex[:16]` — sixteen hex characters, which
-    `UUID()` rejects. The short route would raise on every ping-pong safe point and
-    the soft failure below would swallow it, leaving the ticker silently dead on the
-    one job shape that runs long enough to need it.
+    D2, clause one). The CAUSE D2 recorded is gone: `append_run_event` resolved its
+    id with `UUID(str(job_id))`, which rejects the sixteen hex characters a
+    JobPlan's `job_id` carries, and F275's finding R-0877 removed that coercion, so
+    the short route no longer raises. The ruling stands on its other reason — this
+    writer names its own run id — and the route is not changed here.
 
     The event name is an INLINE string literal (DECISION F022 D2, clause two):
     `tests/ui_contracts/test_humanize_catalog.py` derives the Python stream

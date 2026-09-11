@@ -853,3 +853,55 @@ class TestCmdTimeline:
 
         out = capsys.readouterr().out
         assert "Next suggested action" in out
+
+
+class TestRunEventsAcceptTheShippedJobIdShape:
+    """The run-log pair takes the id shape `mint_job_id` actually produces.
+
+    DECISION F260 D2 rules a job id sixteen hex characters, and `mint_job_id`
+    produces exactly that. `append_run_event` and `emit_failure_events` used to
+    coerce with `UUID(str(job_id))`, which rejects it — a defect
+    `safe_points._emit_budget_tick` documents and routes around rather than fixes.
+    """
+
+    def test_append_run_event_takes_the_shipped_job_id_shape(self, tmp_path):
+        from packages.orchestration.data_paths import mint_job_id
+        from packages.orchestration.timeline import append_run_event, load_run_events
+
+        job_id = mint_job_id()
+        assert len(job_id) == 16
+
+        append_run_event(str(tmp_path), job_id, event="probe", metadata={"k": "v"})
+
+        assert len(load_run_events(tmp_path, job_id)) == 1
+
+    def test_emit_failure_events_takes_the_shipped_job_id_shape(self, tmp_path):
+        from packages.orchestration.data_paths import mint_job_id
+        from packages.orchestration.test_failure_artifact import (
+            TestFailureArtifact,
+            emit_failure_events,
+        )
+        from packages.orchestration.timeline import load_run_events
+
+        job_id = mint_job_id()
+        failure = TestFailureArtifact(job_id=job_id, safe_summary="one failing test")
+
+        emit_failure_events(tmp_path, job_id, failure)
+
+        events = load_run_events(tmp_path, job_id)
+        assert [e["event"] for e in events] == ["test_failure_artifact_created"]
+
+    def test_a_run_event_is_readable_by_the_reader_in_its_own_module(self, tmp_path):
+        """The writer and the reader must name the SAME directory.
+
+        `run_log_dir` joins `str(job_id)` verbatim, so a writer that normalises an
+        unhyphenated 32-hex id to its canonical form writes where this module's own
+        reader does not look.
+        """
+        from packages.orchestration.timeline import append_run_event, load_run_events
+
+        job_id = "0" * 32
+
+        append_run_event(str(tmp_path), job_id, event="probe", metadata={})
+
+        assert len(load_run_events(tmp_path, job_id)) == 1
