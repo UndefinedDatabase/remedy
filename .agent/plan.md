@@ -13,33 +13,33 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 49 repairs `R-0876`, which round 48's id-shape widen landed and its worker declared.
-The generator wrapped two construction keywords in `str(...)` whose value can be `None`, so
-an artifact produced by orchestration rather than by a task recorded the string `"None"`
-instead of the absence `packages/core/models.py` documents — a truthy value no lookup
-matches. Both sites move the `str(...)` inside the conditional's true branch, and both gain
-a test that goes red without the fix on `assert 'None' is None`. The round 48 FAIL verdict
-is booked here.
+ROUND 50 re-runs the flip dry run against a tree whose id shape is one spelling, and records
+what it measured in `.agent/f275_t003_flip_residue_r50.md`. The migration DECISIONs F275 D26,
+D27 and D28 performed removed 369 failures and nothing else: measured against a control taken
+at the same commit, the flip still causes 2557 failures and 106 errors. Three prerequisites
+are diagnosed and ruled in DECISION F275 D29. The round 49 PASS verdict and the resolution of
+`R-0876` are booked here.
 
 ## Next Steps
 
-1. RE-RUN THE FLIP DRY RUN against a tree whose id shape is one spelling, and re-classify
-   the residue `.agent/f275_t003_flip_residue.md` records at 2714 failures. The 256
-   hexadecimal-UUID and 369 model-validation failures should be gone; what remains is the
-   transform rules section 3 of that artefact enumerates.
-2. THE FLIP, still as the one declared-oversize commit AGENTS.md permits per feature,
-   declared with its inseparability reason before review.
-3. The resolver collapse DECISION F260 D5 places in T003, with the classic store.
-4. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
+1. P1 — replace the transform's receiver-NAME heuristic with the DECISION F272 D7
+   raising-property probe that `docs/roadmap/features/T2_F275.md` T002 already orders, and
+   measure the real site set.
+2. P2 — migrate the surviving `UUID(...)` coercions over a job or task id, one
+   assignment-connected component per commit, as DECISION F275 D28 rules for an id widen.
+3. P3 — the `**` splat call-graph pass over the test helper factories.
+4. Re-run the dry run, then THE FLIP as the one declared-oversize commit AGENTS.md permits
+   per feature, declared with its inseparability reason before review.
+5. The resolver collapse DECISION F260 D5 places in T003, with the classic store.
+6. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
    ledger rotation, the STATUS line and the PR.
 
 ## Risks
 
-- F275 stands at 49 rounds and 19 sessions against the operator's soft limit of 60 rounds
-  and 20 sessions. The NEXT session is the twentieth and owes a scope report under
-  amend0908-f275-finish rule 1, which also forbids the split-and-close default here.
-- A mechanical wrap applied to a construction keyword is only safe where the value cannot
-  be `None`. `R-0876` is that class; the flip's own transform wraps nothing, but its
-  `**`-splat rule will face the same question.
-- The open set is 87 by distinct id once this round registers `R-0876`. Four are High —
+- F275 reaches the soft limit amend0908-f275-finish rule 1 names — 20 sessions — in this
+  session, at 50 of its 60 rounds. Rule 2 forbids the split-and-close default here BY NAME:
+  the session writes the scope report and CONTINUES.
+- The three prerequisites are the diagnosed causes of MEASURED classes; nothing establishes
+  that a fourth does not appear once they are fixed, and only another dry run settles it.
+- The open set is 86 by distinct id once this round books `Done: R-0876`. Four are High —
   R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
