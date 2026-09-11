@@ -13,21 +13,23 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 61 builds DECISION F275 D32's THIRD retype rule family against the nine sites
-DECISION F275 D35 names, and re-runs the dry run against a control at the same production
-tree. Rule T8 fires exactly nine times and no other rule count moves. The class it was
-built for is at ZERO, down from 61 exception lines, and total failures fall from 1240 to
-1186. All three of D32's rule families are now accounted for. The artefact is
-`.agent/f275_t003_flip_residue_r61.md`. The round 60 verdict is booked here.
+ROUND 62 bounds finding `R-0880` STATICALLY, which is the first of the two obligations its
+own fix clause binds, and DECISION F275 D36 rules the result. The class is 39 ruled sites
+and the bound is exact: the descriptor probe records a LINE and no COLUMN, so on 39 lines
+one proof ruled two receivers. All four frames the previous run reached are inside the
+bound. The artefact is `.agent/f275_t003_flip_residue_r62.md`. The round 61 verdict is
+booked here. No worktree was created and no suite was run.
 
 ## Next Steps
 
-1. Bound `R-0880` statically: read the ruled set's owner verdicts against the live record
-   classes, so the over-selected sites are known rather than only the ones a run reaches,
-   and give the transform the refusal `R-0879` already gave it for stale keys.
-2. Diagnose the three largest residue classes, which are reads of an id whose SHAPE
-   changed rather than renames, and rule whether they are a fourth rule family or a
-   consequence of records written to disk under the classic shape.
+1. Diagnose the three largest residue classes, which are reads of an id whose SHAPE
+   changed rather than renames: `SystemExit` at `data_paths.py:324`, `unsupported operand`
+   at `data_paths.py:200` and the hexadecimal-UUID parse. Rule whether they are a fourth
+   rule family or a consequence of records written to disk under the classic shape.
+2. Build `R-0880`'s second obligation, the transform's refusal to rename a site whose
+   owner verdict cannot be confirmed, and resolve the 39 pairs or re-derive the site set
+   with a column in its key. DECISION F275 D36 forbids the flip commit until one of those
+   two lands.
 3. THE FLIP as the one declared-oversize commit AGENTS.md permits per feature, registering
    the `acceptance_checks` finding DECISION F275 D22 places with it.
 4. The resolver collapse DECISION F260 D5 places in T003, with the classic store, then the
