@@ -44,7 +44,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -110,12 +109,12 @@ class VerificationCheckResult:
 class VerificationResult:
     """Aggregate result of verifying a task execution against its contract.
 
-    task_id: UUID of the task that was verified.
+    task_id: id of the task that was verified.
     passed:  True only if all checks passed.
     checks:  Ordered list of individual check results.
     """
 
-    task_id: UUID
+    task_id: str
     passed: bool
     checks: list[VerificationCheckResult] = field(default_factory=list)
 
@@ -127,7 +126,7 @@ class VerificationResult:
 
 def verify_task_output(
     job: Job,
-    task_id: UUID,
+    task_id: str,
     contract: TaskContract | None = None,
 ) -> VerificationResult:
     """Run Task Contract v1 checks against the output of an executed task.
