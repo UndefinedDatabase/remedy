@@ -70,7 +70,6 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID
 
 from packages.core.models import Job, JobBudgets, RunState
 from packages.orchestration.budget_guard import BudgetCounters
@@ -278,7 +277,7 @@ class RepairOutcome:
 class TaskAttempt:
     """Outcome of one single-task step inside a cycle."""
 
-    task_id: UUID | None = None
+    task_id: str | None = None
     executed: bool = False
     verified: bool = False
     error: str = ""
@@ -554,7 +553,7 @@ class CycleLoopResult:
 
 
 def default_task_step(job: Job, provider_call: ProviderCall,
-                      task_id: UUID | None = None) -> TaskAttempt:
+                      task_id: str | None = None) -> TaskAttempt:
     """Run ONE ready task through the existing single-task path.
 
     run_next_task -> materialize -> verify_task_output -> finalize_task, which
@@ -769,8 +768,8 @@ def limits_from_config(config: Any = None, *, cycles_flag: int | None = None,
 
 
 def ready_tasks(job: Job, batch_size: int, *,
-                blocked_ids: Collection[UUID] = (),
-                awaiting_ids: Collection[UUID] = ()) -> list[UUID]:
+                blocked_ids: Collection[str] = (),
+                awaiting_ids: Collection[str] = ()) -> list[str]:
     """The ready batch: the DAG ready set in plan order, capped at batch_size.
 
     F050: a task is ready when every dependency it declares in its Flight Plan
@@ -797,7 +796,7 @@ def ready_tasks(job: Job, batch_size: int, *,
 
 
 def skipped_blocked_tasks(job: Job,
-                          blocked_ids: Collection[UUID]) -> list[UUID]:
+                          blocked_ids: Collection[str]) -> list[str]:
     """Ids withheld only because something upstream is blocked, in plan order.
 
     This is what the cycle record names so a report can say WHY nothing
@@ -810,7 +809,7 @@ def skipped_blocked_tasks(job: Job,
 
 
 def awaiting_downstream_tasks(job: Job,
-                              awaiting_ids: Collection[UUID]) -> list[UUID]:
+                              awaiting_ids: Collection[str]) -> list[str]:
     """Ids withheld only because something upstream awaits a decision (F051).
 
     Same traversal as ``skipped_blocked_tasks``, reported under its own name so
@@ -940,8 +939,8 @@ def _apply_terminal(job: Job, terminal_status: str, stop_reason: str, *,
 
 def _write_cycle_checkpoint(job: Job, record: CycleRecord,
                             limits: CycleLimits, *,
-                            blocked_ids: Collection[UUID] = (),
-                            awaiting_ids: Collection[UUID] = ()) -> None:
+                            blocked_ids: Collection[str] = (),
+                            awaiting_ids: Collection[str] = ()) -> None:
     """Write this cycle's checkpoint (F047).  Never raises into the loop.
 
     The next intent is derived from what the job still has READY at this
@@ -989,7 +988,7 @@ def _open_decision_ids(job: Job) -> tuple[str, ...]:
                  for record in open_task_decisions(job))
 
 
-def _escalate_task(job: Job, attempt: TaskAttempt, target: UUID, *,
+def _escalate_task(job: Job, attempt: TaskAttempt, target: str, *,
                    now: datetime, unattended: bool,
                    log: Any = None) -> dict[str, Any]:
     """Enqueue ONE decision for the task that raised ``needs_decision`` (F051).
@@ -1362,12 +1361,12 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
     #: PENDING (there is no persistent task-level FAILED), so only this loop
     #: knows which attempts it made and lost.  Ids accumulate for the whole
     #: run: a branch that failed stays blocked until a new run retries it.
-    blocked_ids: set[UUID] = set()
+    blocked_ids: set[str] = set()
     #: F051 awaiting tracking.  DERIVED from the job's open escalation records
     #: at every batch boundary, never stored twice: answering a decision removes
     #: the task from this set with no bookkeeping here, which is exactly how an
     #: answered branch gets picked up mid-run.
-    awaiting_ids: set[UUID] = set()
+    awaiting_ids: set[str] = set()
     awaiting_checks = 0
     step_takes_target = _step_target_argument(task_step or default_task_step)
 
