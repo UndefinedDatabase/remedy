@@ -853,3 +853,29 @@ class TestProofAlignment:
             assert data["proof_status"] == "incomplete"
         finally:
             _cleanup_env(old)
+
+
+class TestSystemArtifactKeepsTaskIdAbsent:
+    """A system-produced artifact carries `task_id = None`, never the string "None".
+
+    `packages/core/models.py` states the convention every artifact lookup relies on:
+    `task_id = None` means the artifact came from orchestration rather than from a Task,
+    and `artifact_index.task_artifacts_by_kind` matches on equality. F275 round 48's
+    id-shape widen wrapped the whole conditional in `str(...)`, which turned that absence
+    into the truthy string `"None"` that no lookup matches and no reader expects.
+    """
+
+    def test_a_failure_without_a_task_leaves_task_id_absent(self, tmp_path):
+        job, _task, _data_dir, old = _make_job(tmp_path)
+        try:
+            failure = TestFailureArtifact(
+                artifact_id="temp",
+                job_id=str(job.id),
+                task_id="",
+                failure_kind="test_failed",
+                safe_summary="1 test failed",
+            )
+            art = persist_failure_artifact(job, failure)
+            assert art.task_id is None
+        finally:
+            _cleanup_env(old)

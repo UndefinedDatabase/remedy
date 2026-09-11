@@ -321,7 +321,7 @@ def persist_failure_artifact(job: Any, failure: TestFailureArtifact) -> Any:
         name=f"test-failure-{failure.artifact_id}",
         content=safe_content,
         kind=ArtifactKind.VERIFICATION,
-        task_id=str(UUID(failure.task_id) if failure.task_id else None),
+        task_id=str(UUID(failure.task_id)) if failure.task_id else None,
         metadata={
             "test_failure": True,
             "failure_kind": failure.failure_kind,

@@ -670,3 +670,24 @@ class TestAutonomyTruth:
         result = _run_with_tmp(tmp_path, autonomy=1)
         assert result.autonomy_level == 1
         assert result.autonomy_capped is False
+
+
+class TestSystemArtifactKeepsTaskIdAbsent:
+    """The same convention at the other site F275 round 48's id-shape widen reached.
+
+    `_run_build_phase` attributes its artifact to the job's first task, and a job with no
+    tasks has none to attribute it to — which the artifact records as an ABSENT `task_id`,
+    not as the string "None".
+    """
+
+    def test_the_build_phase_on_a_task_less_job_leaves_task_id_absent(
+        self, tmp_path, monkeypatch
+    ):
+        from packages.orchestration.do_run import _run_build_phase
+        data_dir = tmp_path / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        job = Job(name="no-tasks")
+        assert job.tasks == []
+        artifact = _run_build_phase(job, "a goal", tmp_path, data_dir)
+        assert artifact.task_id is None
