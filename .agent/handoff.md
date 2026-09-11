@@ -471,3 +471,161 @@ round 54 splat rules together, and attribute its residue against the undecided s
 round 53 artefact reports. DECISION F275 D29's CONSEQUENCE clause places this AFTER all three
 prerequisites, and P1, P2 and P3 are now all landed — so this is the reading that decides
 whether the flip can be one atomic commit.
+
+## Reviewer verdict on round 54 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 54: **PASS.** Written by the planner and reviewer of SESSION 21 after reading the committed
+range `7e2e92e3`..`fc749c9b` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 55, per amend0827-process-diet rule 1.
+
+G1 is the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback: both authored blobs are
+byte-identical to the reviewer's own scratch originals, the block at 26668 bytes and sha256
+`01c7b9b78013b00caadf39e8af7c1fd41519e52a5ac517554d0ae4638e9b9024` and the instrument wrapper at 16078
+bytes, and `.agent/last_block.md` equals the C0a blob exactly. Re-measured on the committed blob the block
+is 246 lines TOTAL and 172 PROSE, matching its own constraint 9 and inside both DECISION F085 D6 caps.
+G2: `.agent/plan.md` byte-identical to PLAN54 at 2524 bytes over 45 lines, both mandated headings exactly
+once. G3: `.agent/live_review.md` goes 926541 to 931514 and `.agent/prose_slips.md` 243843 to 246973, both
+exact under reader A; reader B holds for BOTH files at N counted from the slices, 5 and 4; BOTH negative
+controls, each flipping one ASCII letter inside the FIRST appended paragraph of its file, are rejected by
+BOTH readers; RECORD54 carries no interior line that would split it into a second ledger record; and its
+header matches the two entries above it.
+
+G4 THROUGH G6 WERE RE-DERIVED BY REGENERATING THE ARTEFACT FROM THE COMMITTED INSTRUMENT, which is a
+stronger reading than re-running the gates. The reviewer extracted the instrument from the committed blob
+of `.agent/authored/f275-r54-splat.py.md`, confirmed it byte-identical to its own scratch original, and ran
+it. The output differs from the committed `.agent/f275_t003_splat_sites.md` in EXACTLY ONE LINE of 87 — the
+measurement-base line, which names `903bf6ba` in the committed artefact because C4 generated it at C3's
+HEAD and `fc749c9b` in the reviewer's regeneration because the reviewer ran it at the branch tip — and is
+byte-identical everywhere else, including every bucket line, every key disposition and both halves of rule
+I4's call-graph pass. The `UNRULED` count in the committed artefact is ZERO, which is the reading DECISION
+F275 D31 turns on. G7: all five of `packages`, `apps`, `tests`, `docs` and `scripts` are byte-identical
+trees at the base and at C5, which is how a round claiming to move no production line proves it rather than
+asserting it; the canary reads 42 passed at exit 0 and ruff reads 26 finding rows, the frozen ceiling.
+
+G8 IS RED AS WRITTEN AND THE FAULT IS THE REVIEWER'S, NOT THE ROUND'S. Clause (a) required
+`git worktree list` to hold the primary checkout alone, and it held three entries: the primary plus
+`.remedy-wt/v53-wt-a` and `.remedy-wt/v53-wt-b`, both created by the REVIEWER while verifying round 53 and
+both still present when round 54 began. `docs/agents/planner_reviewer_prompt.md` §4 item 10 requires the
+reviewer's throwaway worktrees to be removed and pruned BEFORE the verdict, and they were not. The worker
+declined to remove them, correctly and on two grounds it stated: the removal is destructive and the block
+ordered it nowhere, and the paths sit outside the round's change set. That refusal is the round behaving
+exactly as it should when a reviewer's gate contradicts a reviewer's constraint. The reviewer removed both
+worktrees after the verdict was derived and `git worktree list` now holds the primary alone. Clauses (b),
+(c) and (d) hold on the reviewer's own reading: nine changed paths, every one under `.agent/`, MISSING and
+EXTRA both empty; the open set is 86 by distinct id at both ends with nothing registered and nothing
+resolved; and per-commit insertions are 246, 343, 176, 20, 10, 8, 87, 14 and 415, every one under the
+AGENTS.md DECISION F104 D1 cap of 500, so F275's one declared-oversize allowance is STILL UNSPENT at 54
+rounds. The underlying property clause (a) exists to protect — this round created no worktree and left the
+primary checkout clean — holds and was measured; what failed is the reviewer's own housekeeping, which is
+why this is a PASS with a dated slip rather than a FAIL.
+
+THE WORKER DECLARED FIVE DEVIATIONS AND TWO MORE OF THEM ARE ALSO THE REVIEWER'S. G3(v) named "the two"
+ledger headers where three match at `7e2e92e3`; the worker applied the gate as written and reported all
+three, which is the same hand-counted-numeral-beside-a-measured-category class as round 53's header-line
+slip, one round later and under the rule written to stop it. The remaining three are sustained and are not
+defects: `.agent/plan.md` described round 53 across the block-save commits, which the block's own fixed
+order requires; both instrument runs were taken at the identical HEAD before C4, which buys an exact byte
+equality instead of a one-line exemption and is better than what the gate asked for; and the worker's own
+probe script raised once and was fixed by the worker, while the reviewer's instrument was run and never
+edited and raised nothing.
+
+## Authored text for round 55 to book — one dated line for `.agent/prose_slips.md`
+
+2026-09-11 · F275 R54 · The round 54 block's G8(a) required `git worktree list` to hold the primary checkout alone, and it held three entries: the two disposable worktrees the REVIEWER created while verifying round 53 and never removed, contrary to `docs/agents/planner_reviewer_prompt.md` §4 item 10, which requires them removed and pruned before the verdict. The gate was therefore unmeetable by any correct round, and the worker was right to report it red as written and to refuse the removal as destructive, unordered and outside its change set. Nothing on disk is wrong and the property the clause protects — the round created no worktree and left the primary checkout clean — was measured and holds; the reviewer removed both worktrees after deriving the verdict. THE RULE THAT FOLLOWS: a gate over `git worktree list` asserts what THIS ROUND created and removed, never the absolute contents of the list, because that list also carries the reviewer's own verification scratch and a round cannot be held to the state of a window it does not control.
+
+## Session 21 ends here — TWO delegated rounds, both PASS
+
+Rounds 53 and 54. THE THROUGH-LINE IS THAT BOTH PREREQUISITES WERE SETTLED BY RUNNING SOMETHING, AND BOTH
+INSTRUMENTS FOUND DEFECTS IN THEMSELVES BEFORE THEY FOUND ANY IN THE REPOSITORY.
+
+ROUND 53 PERFORMED DECISION F275 D29's P1, the type-resolved field rename that
+`docs/roadmap/features/T2_F275.md` T002 ordered at registration and that every dry run of this chain had
+substituted a receiver-NAME heuristic for. The DECISION F272 D7 descriptor probe was widened from round
+31's `Job` pair to the `Task` pair, run twice over the full suite, and unioned with a static sweep that
+re-implements the heuristic as its own control. The heuristic selects 2428 attribute nodes and the
+type-resolved union 2198; it ADDS 359 and MISSES 129. THAT IT ADDS WAS KNOWN AND THAT IT MISSES WAS NOT:
+76 of the 129 have a receiver that is a subscript or a call and therefore has no spelled name at all, so no
+name test could ever have matched them. DECISION F275 D30 rules the union as what the transform consumes
+and names the 317-site undecided residue rather than guessing at it, because a rename of code the suite
+never executes cannot be decided by executing it.
+
+ROUND 54 PERFORMED P3, AND THE CLASS TURNED OUT TO BE SOMETHING OTHER THAN ITS NAME. Rule I4 and D29 both
+read the `**` splat as a rename the transform cannot see. The larger half, measured by CONSTRUCTING both
+records rather than by reading either, is that `Job` is a pydantic model whose `extra` is left at its
+default and so ACCEPTS `permissions=` and `description=` while storing nothing, and `JobPlan` is a
+dataclass that raises `TypeError: JobPlan.__init__() got an unexpected keyword argument` on the same input
+— verbatim the largest residue class DECISION F275 D26 measured at 867 lines. DECISION F275 D31 rules every
+resolved key into renamed, carried or dropped, on both halves rule I4 names, and the count of keys left
+unruled is ZERO.
+
+WHY THIS SESSION ENDS AT TWO DELEGATED ROUNDS, WHICH IS BELOW THE SIX-TO-EIGHT TARGET amend0905-throughput
+SETS AND BELOW ITS FLOOR OF FOUR. The reason is the one
+`docs/agents/self_drive_protocol.md` G7 names beside exhausted context: THE NEXT ROUND EXPLICITLY NEEDS A
+FRESH SESSION. Round 55 is the flip dry run, and its block cannot be authored until the transform is
+rebuilt — it does not exist as committed source anywhere, only as rules spread across DECISIONs F275 D17,
+D21, D22, D23, D24, D25, D26, D30 and D31 together with the four mechanical I-rules of
+`.agent/f275_t003_flip_residue.md` section 3. That is ten rules over roughly 280 files, several of them
+requiring byte-span arithmetic inside call argument lists, feeding a site set of 2198 nodes; the round 46
+dry run needed four rules learned by failing and the round 50 re-run needed more. Authoring it is a larger
+piece of work than either round this session completed, and it wants a session whose whole budget is
+available to it. CONTEXT EXHAUSTION IS EXPRESSLY NOT THE REASON and is not claimed: the reviewer's context
+is comfortable, which is why this paragraph names the real cause instead.
+
+TWO SLIPS OF THIS SESSION'S OWN PROCESS ARE RECORDED HERE RATHER THAN LEFT TO BE NOTICED. FIRST, this
+session never stated its round cap and wall-clock cap up front, which `docs/agents/self_drive_protocol.md`
+G7 requires of every session in its first sentence; the cap it would have stated, had it stated one, is the
+six-to-eight rounds amend0905-throughput sets, and the session is ending under it for the reason above
+rather than at it. SECOND, three of round 53's declared deviations and two of round 54's were the
+reviewer's own block defects rather than the workers' — an omitted canary, two hand-counted numerals beside
+generated categories, a gate over state the round did not control, and evidence routed into a worktree the
+same block ordered destroyed. All five are dated lines in `.agent/prose_slips.md` or are booked as such by
+round 55, none damaged anything on disk, and none is an id, per amend0827-process-diet rule 2. They are
+named together because the pattern is one pattern: a gate that quotes a number or a state the reviewer did
+not measure at emission.
+
+THE BRANCH IS GREEN AT READINGS THIS SESSION TOOK. The full suite ran FOUR times across the session, twice
+by the reviewer before delegating and twice by the round 53 worker, every run in a disposable worktree at
+`a815c9a3`; the only failing node id in any of them is
+`tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`, which needs
+the gitignored `apps/ui/node_modules`, and one run went fully green once that dependency resolved. All four
+runs produced ONE site set of 2145, symmetric difference zero. The canary reads 42 passed and `ruff check .`
+reads 26 findings, the frozen ceiling, at the branch tip. NEITHER ROUND MOVED A PRODUCTION LINE, which the
+reviewer proved rather than asserted by reading `packages`, `apps`, `tests`, `docs` and `scripts` as
+byte-identical trees at each round's base and tip.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
+session's Phase 0 probe, was measured absent before every round's first commit, and is absent as this
+session ends. Then the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
+
+SECOND, round 55's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
+amend0827-process-diet rule 1, the ROUND 54 PASS verdict above as a `Gate: F275 R54` entry in
+`.agent/live_review.md`, and the one dated line above into `.agent/prose_slips.md`. Booking them registers
+nothing and resolves nothing, so the open set stays at 86 by distinct id and the next free id is `R-0878`.
+
+THIRD, F275 IS PAST THE SOFT LIMIT amend0908-f275-finish rule 1 names, at 54 of 60 rounds and 21 of 20
+sessions. The SCOPE REPORT that rule obliges was written in round 51's handback and STANDS; nothing either
+round of this session measured changes any of its three parts, and it is not restated here because a report
+restated is a report edited. Rule 2 forbids the amend0905-throughput split-and-close default here BY NAME,
+so the next session continues rather than closing. SIX ROUNDS REMAIN AGAINST THAT LIMIT and the work left
+is the flip, the resolver collapse and the closure sequence, so the operator's ruling on round 51's scope
+report item (c) — an EXTENSION of the 60-round limit against a SPLIT carrying the flip into a successor
+feature — is now the binding question rather than a pending one.
+
+FOURTH, THE WORK ITSELF, which is the flip dry run and the last thing DECISION F275 D29's CONSEQUENCE
+clause places before the flip. All three prerequisites are now landed: P1 at round 53, P2 at rounds 51 and
+52, P3 at round 54. BUILD THE TRANSFORM FIRST AND MEASURE IT AS AN EDIT BEFORE MEASURING IT AS A CHANGE —
+files rewritten, zero left unparsable, and `pytest --co` collecting with zero collection errors — because
+that loop costs seconds per iteration while the residue measurement costs twenty-two minutes. The rules it
+must carry are T1 through T6 of `.agent/f275_t003_flip_residue.md` section 2, the four I-rules of its
+section 3, the ruled site set of `.agent/f275_t003_descriptor_sites.md` in place of `is_jobish` and
+`is_taskish`, and the three dispositions of `.agent/f275_t003_splat_sites.md`. The store seam DECISION F275
+D23 widened is a call-name and import-module mapping only: `save_job`, `load_job`, `load_job_safe`,
+`list_jobs` and `list_jobs_safe` become `save_job_plan`, `load_job_plan`, `load_job_plan_safe`,
+`list_job_plans` and `list_job_plans_safe`, moving from `packages.orchestration.storage` to
+`packages.orchestration.pingpong_job`, and every one of them already exists. Then the dry run with its
+CONTROL at the same commit in a second fresh worktree, as round 50 established, and only then the flip
+itself as the one declared-oversize commit AGENTS.md permits per feature.
