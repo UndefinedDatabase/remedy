@@ -1,456 +1,467 @@
-# Handback — F275 round 47
+# Handback — F275 round 48
 
 ## Session
 
-SESSION 19 of feature F275 · round 47 · rounds so far 47
+SESSION 19 of feature F275 · round 48 · rounds so far 48
 
 Context self-assessment (amend0905-throughput): context is comfortable — this
 round read AGENTS.md, the 280-line self-drive protocol and the 105-line handback
-template, verified and copied a 31417-byte block, ran a generator plus two hand
-fixes over fourteen code paths, and spent the rest on eight gate runs including a
-scoped 376-test selection, a 42-test canary and a four-reading mutation red proof
-in a disposable worktree, so there is room for at least one more round this
-session.
+template, verified and copied a 34051-byte block, ran TWO generators over 52 code
+paths, and spent the rest on eight gate runs including a scoped selection reading
+480 passed and 2 skipped, a 42-test canary and a four-reading mutation red proof
+in a disposable worktree; there is room for at least one more round this session.
 
-F275 stands at 47 rounds and 19 sessions against the operator's soft limit of 60
+F275 stands at 48 rounds and 19 sessions against the operator's soft limit of 60
 rounds and 20 sessions (amend0908-f275-finish rule 1), so no scope report is owed
 by THIS session. The NEXT session is the twentieth and owes one.
 
 ## THE ONE THING THE REVIEWER MUST READ FIRST
 
-**EIGHT GATES RUN — I RAN EIGHT, G1 THROUGH G8 — ALL GREEN, AND THE PRODUCTION
-CHANGE IS PROVEN REACHED: mutation M1 turns `tests/test_task_runner.py` from 45
-passed to 40 failed, 5 passed.** `TaskExecutionContext.job_id` and `.task_id` now
-read `<class 'str'>` when the shipped class is IMPORTED, all 34 construction
-sites pass `str(...)`, and the fourteen-path `git diff --numstat` table matches
-the block cell for cell, including `builder_models.py` at 2/3 where FIX A deleted
-the now-unused `from uuid import UUID`.
+**I RAN EIGHT GATES, G1 THROUGH G8, ALL GREEN.** The block states no gate count;
+eight is my own count of the gates it orders. Both subtree digests reproduce the
+reviewer's own replay EXACTLY — `C3:packages` is
+`18aadcb1ca69b2aa25a14044750bbe2e0883d2d0` and `C3:tests` is
+`67b33dc0be4345b55badd92b1af6b1af105cfffd`, checked against the STAGED index
+BEFORE C3 was committed, so no adjustment was ever possible or needed. Neither
+generator's assertion fired: WIDEN48 rewrote 48 files in 112 edits and skipped no
+multiline writer, FIXES48 applied 20 sites over 12 files with every expected
+occurrence count met.
 
-**ONE SLICE FACT DOES NOT REPRODUCE AND IS DECLARED, NOT EDITED.** Slice DECIDE47
-states the widen is "34 construction sites across 14 files, 32 insertions". The
-34 sites reproduce exactly (17 `job_id` + 17 `task_id`, from the generator's own
-counter). The insertion count does NOT: C3 is **34 insertions, 35 deletions**, not
-32. 32 is the GENERATOR-ONLY figure — the thirteen files it rewrites sum to 2×10
-+ 4×3 = 32 insertions — measured before the two hand fixes the same block orders,
-which add `tests/test_task_runner.py` at 2/2 and one further deletion in
-`builder_models.py`. "14 files" is likewise the post-fix change-set count, while
-the 34 construction sites live in THIRTEEN files; the fourteenth carries only FIX
-B's two assertions. Constraint 1 says a slice that looks wrong is applied as given
-and declared, so DECIDE47 is committed byte for byte and this paragraph is the
-declaration. Nothing on disk is wrong: G6(b)'s table is the post-fix reading and
-it matched exactly.
+**ONE DECLARED SLICE CONCERN, APPLIED AS GIVEN AND NOT EDITED** (constraint 1).
+WIDEN48 wraps two construction keywords whose value can be `None`, turning a
+`None` into the four-character string `"None"`:
 
-The open set is unchanged at **86 by distinct id** (104 registrations − 18
-resolutions), identical at the base `013e5517` and at C4. No id registered, none
-resolved. `R-0876` is still UNREGISTERED — `^- R-0876 — ` reads 0 at C1 and 0 at
-C4, while the bare token occurs once at C4 inside RECORD47's own prose, exactly
-as the block predicted.
+- `packages/orchestration/do_run.py`:
+  `task_id=str(job.tasks[0].id if job.tasks else None)` — was `None` when the job
+  carries no task, is now `"None"`.
+- `packages/orchestration/test_failure_artifact.py`:
+  `task_id=str(UUID(failure.task_id) if failure.task_id else None)` — same shape.
+
+The field's declared annotation is `str | None`, so `None` remains representable
+and the wrap removes the only way to reach it at these two sites. I did NOT edit
+the generator: constraint 1 binds, G6(b) proves my tree is byte-identical to the
+tree the reviewer measured at `18371 passed`, and both sites are inside fixture
+paths. Declared here for the reviewer to rule on.
 
 ## Range
 
-Review of `013e5517`..`HEAD` — C0a through C5. C5 is the commit that writes this
-file and cannot table itself.
+Review of `05631ba3`..C5, where C4 is `dc6a621c` and C5 is the commit that writes
+this file. C5's own SHA is NOT stated here: it does not exist while this file is
+being written, and an unmeasured SHA is never written into the record. `git log`
+on the branch tip resolves it.
 
 ## Commits
 
-### 3bdaaac1 F275 R47 C0a: save the round 47 step block verbatim.
+### c5ee58fc F275 R48 C0a: save the round 48 step block as the authored original.
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f275-r48.md` | +425 / -0 | the block, `shutil.copyfile`d byte-exact from `.remedy-wt/f275-r48.block.md`, never retyped |
+
+### ebcecaff F275 R48 C0b: mirror the round 48 block into the last-block state file.
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/last_block.md` | +238 / -185 | written from `git cat-file blob c5ee58fc:.agent/authored/f275-r48.md`, never retyped |
+
+### ba1889ad F275 R48 C1: the round 48 plan.
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/plan.md` | +20 / -19 | whole-file replacement by slice PLAN48 |
+
+### 5cff5789 F275 R48 C2: book the round 47 PASS verdict and the round 47 reviewer slip.
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/live_review.md` | +2 / -0 | append of slice RECORD48, the round 47 PASS verdict |
+| `.agent/prose_slips.md` | +2 / -0 | append of slice SLIPS48, the one slip round 47 declared |
+
+### 2b395e02 F275 R48 C3: widen Artifact.task_id and PatchIntentSet.task_id to str at every construction site.
+Grouped by directory, as the block's Handback line permits — 52 files, +132 / -132.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r47.md` | +372 / -0 | the step block, `shutil.copyfile` from `.remedy-wt/f275-r47.block.md`, never retyped |
+| `packages/core/` (1 file) | +1 / -1 | `Artifact.task_id: UUID \| None` → `str \| None` |
+| `packages/orchestration/` (11 files) | +17 / -17 | `PatchIntentSet.task_id: UUID` → `str`; construction keywords wrapped in `str(...)`; the six hand fixes FIXES48 applies under `packages/` |
+| `tests/` (18 files) | +88 / -88 | construction keywords wrapped; the assertions FIXES48 rewrites |
+| `tests/cli/` (7 files) | +8 / -8 | construction keywords wrapped |
+| `tests/orchestration/` (15 files) | +18 / -18 | construction keywords wrapped; the one alias site `_A(...)` in `test_repair_loop_v1.py` FIXES48 names |
 
-### 8a6d6ebb F275 R47 C0b: mirror the round 47 block into last_block.md.
+Neither generator is committed: both were written to the gitignored `.remedy-wt/`
+as `widen48.py` and `fixes48.py` and run ONCE each, in that order, from the
+repository root against the primary checkout.
 
+### dc6a621c F275 R48 C4: record DECISION F275 D28, the two task_id fields widen as one commit.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +310 / -400 | written from `git cat-file blob 3bdaaac1:.agent/authored/f275-r47.md` |
+| `.agent/decisions.md` | +14 / -0 | append of slice DECIDE48, DECISION F275 D28 |
 
-### ffac7c43 F275 R47 C1: the round 47 plan.
-
+### C5 (SHA unmeasurable from inside itself) F275 R48 C5: the round 48 handback.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +20 / -23 | whole-file replacement by slice PLAN47 |
+| `.agent/handoff.md` | whole-file rewrite | this handback; a handoff cannot table the commit that writes it, nor state that commit's SHA (R-0149 self-reference pattern) |
 
-### 8d2784b3 F275 R47 C2: book the round 46 PASS verdict and the two round 46 reviewer slips.
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +2 / -0 | append of slice RECORD47 — the round 46 PASS verdict |
-| `.agent/prose_slips.md` | +4 / -0 | append of slice SLIPS47 — the two dated reviewer slips |
-
-### 3295d184 F275 R47 C3: widen TaskExecutionContext job_id and task_id to str at every construction site.
-
-| Path | +/- | Reason |
-|---|---|---|
-| `packages/orchestration/autorun.py` | +2 / -2 | generator: two construction sites take `str(...)` |
-| `packages/orchestration/builder_models.py` | +2 / -3 | generator: the two annotations become `str`; FIX A deletes `from uuid import UUID` |
-| `packages/orchestration/long_run_executor.py` | +2 / -2 | generator: two construction sites |
-| `packages/orchestration/task_runner.py` | +2 / -2 | generator: two construction sites in `_build_execution_context` |
-| `tests/orchestration/test_builder_bridge_smoke.py` | +2 / -2 | generator: two construction sites |
-| `tests/orchestration/test_builder_eval.py` | +2 / -2 | generator: two construction sites |
-| `tests/orchestration/test_builder_prompt_quality.py` | +2 / -2 | generator: four construction sites on two lines |
-| `tests/orchestration/test_escalation.py` | +2 / -2 | generator: four construction sites on two lines |
-| `tests/orchestration/test_long_run_executor.py` | +4 / -4 | generator: four construction sites |
-| `tests/orchestration/test_loop_run.py` | +2 / -2 | generator: two construction sites |
-| `tests/orchestration/test_real_ollama_smoke.py` | +4 / -4 | generator: four construction sites |
-| `tests/orchestration/test_self_healing_cycles.py` | +2 / -2 | generator: two construction sites |
-| `tests/test_ollama_builder.py` | +4 / -4 | generator: four construction sites |
-| `tests/test_task_runner.py` | +2 / -2 | FIX B: both assertions compare against `str(...)` |
-
-Commit total: +34 / -35. The generator itself was written to the gitignored
-`.remedy-wt/widen47.py`, run once from the repository root, and is NOT committed.
-
-### a1f948e7 F275 R47 C4: record DECISION F275 D27, the id shape migrates one model at a time.
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/decisions.md` | +14 / -0 | append of slice DECIDE47 — DECISION F275 D27 |
-
-### C5 (this commit) F275 R47 C5: the round 47 handback.
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | rewritten | this handback (R-0149 self-reference exception) |
-
-## Item-status table
+## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block verbatim | done | `shutil.copyfile`, digest re-verified on the destination |
-| C0b mirror into last_block.md | done | from the committed blob of C0a |
-| C1 slice PLAN47 | done | whole-file replacement, byte-equal |
-| C2 slices RECORD47 + SLIPS47 | done | two appends, `old_bytes + slice_bytes` |
-| C3 THE WIDEN (WIDEN47 + FIX A + FIX B) | done | generator run once; both hand fixes applied |
-| C4 slice DECIDE47 | done | append, three readings green |
-| C5 the handback | done | this file |
-| G1 transport | done | PASS |
-| G2 the plan | done | PASS |
-| G3 the record and the slips | done | PASS |
-| G4 the decisions | done | PASS |
-| G5 the open set | done | PASS |
-| G6 the widen is exactly what was ordered | done | PASS |
-| G7 the red proof | done | PASS — M1 went red |
-| G8 nothing else moved | done | PASS |
-| FIX A delete `from uuid import UUID` | done | 0 occurrences at C3 |
-| FIX B the two `test_task_runner.py` assertions | done | both sides one spelling |
-| Constraint 8 re-read `.agent/STOP` from disk | done | ABSENT — `ls` exits 2, `Path.exists()` False |
+| C0a  | done | `.agent/authored/f275-r48.md`, copyfile, digest re-verified |
+| C0b  | done | `.agent/last_block.md` from the committed blob |
+| C1   | done | slice PLAN48 |
+| C2   | done | slices RECORD48 + SLIPS48 |
+| C3   | done | WIDEN48 then FIXES48, result committed, generators not |
+| C4   | done | slice DECIDE48 |
+| C5   | done | this handback |
+| G1   | done | transport, four blobs one digest |
+| G2   | done | plan byte-equal, 45 lines, both headings 1x |
+| G3   | done | both appends, reader A + reader B + negative control |
+| G4   | done | decisions append, all three readings |
+| G5   | done | open set 86 by distinct id at base and at C4 |
+| G6   | done | (a) import, (b) both subtree digests, (c) 52/132/132/12/40, (d) scoped + canary |
+| G7   | done | red proof, M1 separates 52 passed → 2 failed, 50 passed |
+| G8   | done | STOP absent, porcelain empty, 58 paths, every insertion count under 500 |
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git worktree add --detach /home/decodeux/Repos/remedy/.remedy-wt/g7-r47 3295d184` | exit 0, worktree HEAD `3295d18413cd373b9cf6d786b2a1389a3b2924a2` |
-| `git worktree remove --force .remedy-wt/g7-r47` then `git worktree prune` | exit 0; `git worktree list` reads ONE entry |
-| `git push -u origin feature/f275-one-world-completion-part-three` | exit 0, `013e5517..a1f948e7` |
-| `gh pr list --state open --json number,headRefName,baseRefName,isDraft` | `[]` — no open PR; none created, edited or merged this round |
+| `gh pr list --state open --json number,headRefName,baseRefName,isDraft` | `[]` — no open PR; the Open PR Gate is satisfied and no branch was created |
+| `git worktree add --detach .remedy-wt/g7-r48 2b395e02` | created, detached at C3, never `cd`-ed into |
+| `git worktree remove --force .remedy-wt/g7-r48` then `git worktree prune` | removed; `git worktree list` reads ONE entry: `/home/decodeux/Repos/remedy 2b395e02 [feature/f275-one-world-completion-part-three]` |
+| `git push -u origin feature/f275-one-world-completion-part-three` (after C4) | `05631ba3..dc6a621c` — ok, exit 0, MEASURED |
+| `git push origin feature/f275-one-world-completion-part-three` (after C5) | ordered and executed immediately AFTER this commit. Its outcome is by construction unrecordable here — a handback cannot report a push that follows it — so no outcome is claimed; the reviewer reads it from `git log origin/feature/f275-one-world-completion-part-three`. |
 
-No pull request was created, edited or merged. No force-push, no history rewrite,
-no branch deletion.
+No PR created, none edited, none merged. No force-push, no history rewrite, no
+branch deleted, no work on `main`.
 
 ## Verification
 
-Eight gates, each run for real as `bash -c '<cmd>; echo "REAL_EXIT=$?"'` or as a
-Python driver whose own exit code was echoed the same way. I ran EIGHT gates.
+Every gate run as `bash -c '<cmd>; echo "REAL_EXIT=$?"'`. I ran EIGHT gates.
 
-**G1 TRANSPORT, at C0b — PASS.** The chain the proof walked: the scratch order
-`.remedy-wt/f275-r47.block.md` → the saved copy `.agent/authored/f275-r47.md`
-(`shutil.copyfile`, never retyped) → its committed blob at C0a → the mirror
-`.agent/last_block.md` (`git cat-file blob 3bdaaac1:.agent/authored/f275-r47.md`,
-never retyped) → the working copy on disk. All four readings:
+**Constraint 8 — `.agent/STOP` re-read FROM DISK before the first commit:
+ABSENT.** `ls /home/decodeux/Repos/remedy/.agent/STOP` → exit 2, "No such file or
+directory". Re-read again at C4 under G8: `os.path.exists(...)` → `False`.
 
-    committed blob    31417 bytes  def622533158a25f4002b15cc7e8ee4ecc4a31c7ab812e48e9e972f17dcc7f31
-    last_block.md     31417 bytes  def622533158a25f4002b15cc7e8ee4ecc4a31c7ab812e48e9e972f17dcc7f31
-    authored (disk)   31417 bytes  def622533158a25f4002b15cc7e8ee4ecc4a31c7ab812e48e9e972f17dcc7f31
-    scratch order     31417 bytes  def622533158a25f4002b15cc7e8ee4ecc4a31c7ab812e48e9e972f17dcc7f31
-    ORDERED DIGEST                 def622533158a25f4002b15cc7e8ee4ecc4a31c7ab812e48e9e972f17dcc7f31
-    all four equal: True
+### G1 TRANSPORT, at C0b — REAL_EXIT=0
 
-The digest was verified over the file's bytes BEFORE the block was read for
-content. I claim nothing about the bytes emitted into my prompt; nothing here can
-measure those. Every slice was extracted from the COMMITTED blob by marker-line
-PREFIX (`.remedy-wt/r47_slice.py`), with an assertion that each `BEGIN-`/`END-`
-prefix matches exactly one line.
+The chain the proof walked is four links, all one blob at **34051 bytes**,
+sha256 **`47750c3be1aab6831d8eaec0f9fa19685065cbf3e12901b474d3bf5183e82e14`**,
+which is the digest the delegation order states:
 
-**G2 THE PLAN, at C1 — PASS.**
+| Link | bytes | sha256 |
+|---|---|---|
+| the saved copy `.agent/authored/f275-r48.md` | 34051 | `47750c3b…82e14` |
+| the committed blob `c5ee58fc:.agent/authored/f275-r48.md` | 34051 | `47750c3b…82e14` |
+| its mirror `.agent/last_block.md` | 34051 | `47750c3b…82e14` |
+| the working copy `.remedy-wt/f275-r48.block.md` | 34051 | `47750c3b…82e14` |
 
-    slice PLAN47       2586 bytes  sha256 41bbe0fbac63acb1738bdfff1135f7dc7393e9410e1f5395c81c4ddaadea2dc2
-    .agent/plan.md     2586 bytes  sha256 41bbe0fbac63acb1738bdfff1135f7dc7393e9410e1f5395c81c4ddaadea2dc2
-    byte-equal: True
-    line count: 44   AGENTS.md cap 50 -> OK
-    ^## Goal$        count: 1
-    ^## Next Steps$  count: 1
+`all four equal: True`. The digest was verified over the working copy BEFORE the
+file was read for content, and `.agent/authored/f275-r48.md` was produced by
+`shutil.copyfile`, never a retype. `.agent/last_block.md` was produced by
+`git cat-file blob c5ee58fc:.agent/authored/f275-r48.md`, never a retype;
+`cmp .agent/authored/f275-r48.md .agent/last_block.md` → REAL_EXIT=0.
+I claim NOTHING about the bytes emitted into my prompt — nothing here measures
+those, and the block carries marker lines for its six slices only and no BEGIN
+marker of its own.
 
-**G3 THE RECORD AND THE SLIPS, at C2 — PASS.** Every pre and post blob read with
-`git show <sha>:<path>` INTO MEMORY; no non-current revision was written over a
-tracked file. Pre blobs asserted equal to the C1 revision.
+### G2 THE PLAN, at C1 — REAL_EXIT=0
 
-    --- RECORD47 -> .agent/live_review.md
-        pre bytes 884856  slice bytes 3879  post bytes 888735
-        pre sha 28dfab14d56a6b0a  post sha ff40e48db81641ee
-        (a) reader A pre+slice == post -> identical: True
-        (b) reader B: N counted in slice = 1; last 1 units equal, in order: True
-        (c) control: flipped byte at offset 886795, inside the FIRST appended
-            paragraph of the in-memory copy
-            reader A rejects: True
-            reader B rejects: True  (N still 1, yardstick = ORIGINAL slice)
-    --- SLIPS47 -> .agent/prose_slips.md
-        pre bytes 237582  slice bytes 1689  post bytes 239271
-        pre sha 727b5780d01f56c8  post sha ac877bba9352f7f0
-        (a) reader A pre+slice == post -> identical: True
+```
+PLAN48 slice  bytes 2600 sha256 27443d1812121bc062952126cdb04dada2fe8a5e8d3f2a9b2eaa4670fbd6a5da
+plan.md @C1   bytes 2600 sha256 27443d1812121bc062952126cdb04dada2fe8a5e8d3f2a9b2eaa4670fbd6a5da
+byte-equal: True
+line count 45 / AGENTS.md cap 50 -> OK
+^## Goal$ count         1
+^## Next Steps$ count   1
+```
 
-N is counted by the script from the slice, never asserted by the block. Both
-controls flip one byte in the IN-MEMORY copy only and are re-run against the
-ORIGINAL slice, so the yardstick stays clean.
+### G3 THE RECORD AND THE SLIPS, at C2 — REAL_EXIT=0 (both)
 
-**G4 THE DECISIONS, at C4 — PASS.** Pre blob asserted equal to the C3 revision.
+Every pre and post blob read with `git show <sha>:<path>` INTO MEMORY; no
+non-current revision was written over a tracked file.
 
-    --- DECIDE47 -> .agent/decisions.md
-        pre bytes 1076187  slice bytes 4122  post bytes 1080309
-        pre sha 4e1f89ae51d0ffbb  post sha 7e88e49ade1ce2ca
-        (a) reader A pre+slice == post -> identical: True
-        (b) reader B: N counted in slice = 7; last 7 units equal, in order: True
-        (c) control: flipped byte at offset 1076304, inside the FIRST appended
-            paragraph of the in-memory copy
-            reader A rejects: True
-            reader B rejects: True  (N still 7, yardstick = ORIGINAL slice)
+`.agent/live_review.md` ← RECORD48, pre at C1 `ba1889ad`, post at C2 `5cff5789`:
 
-**G5 THE OPEN SET, at C4, BY DISTINCT ID — PASS.**
+```
+   pre  @ba1889ad bytes 888735 sha ff40e48db81641eebd2dcdfc0fd92caae46e3935ab91119215b1b22fcadd7f63
+   slice        bytes 3661 sha 6a14b0a31d6ab20e8852b8c2088401018cdd277b2cded6191aa3e75d0d0da6cf
+   post @5cff5789 bytes 892396 sha 649d06a2b9e0a0ad0f61b9bd1a7129315c3bb20e5e8e48501df8866223ffef23
+   (a) reader A pre_bytes + slice_bytes == post_bytes -> identical: True
+   (b) reader B: N counted IN THE SLICE = 1; last 1 blank-line units of post equal the slice paragraphs in order -> True
+   (c) negative control: byte 888776 of the post blob, inside the FIRST appended paragraph, 'r' -> 'Z'
+       reader A on the mutated copy -> identical: False (rejects: True)
+       reader B on the mutated copy -> False (rejects: True)
+   G3 ALL READINGS OK: True
+```
 
-    distinct registrations: 104   distinct resolutions: 18
-    open set = 104 - 18 = 86          (ordered: 104 - 18 = 86)
-    at base 013e5517: 104 - 18 = 86
-    ids REGISTERED this round: []
-    ids RESOLVED   this round: []
-      '^Gate: F275 R46 ' at C1: 0        at C4: 1
-      '^- R-0876 — '    at C1: 0        at C4: 0
-      bare token 'R-0876' anywhere: 0 at C1, 1 at C4
+N = 1 is COUNTED by the script in the slice, not asserted by the block. Both
+readers reject the negative control, each re-run against the ORIGINAL slice.
 
-The bare-token line is reported only to show why the gate is anchored on the
-REGISTRATION form: the one occurrence at C4 is RECORD47's own quotation.
+`.agent/prose_slips.md` ← SLIPS48, reading (a) alone:
 
-**G6 THE WIDEN IS EXACTLY WHAT WAS ORDERED, at C3 — PASS.**
+```
+   pre  @ba1889ad bytes 239271 sha ac877bba9352f7f0c7389d74bcf02cd490593ece49a2b04022f0a62fffd0b052
+   slice        bytes 1182 sha 73c8d6698d288b4309ab13719a6535f912bf79bd5412e944d25a942c11703de9
+   post @5cff5789 bytes 240453 sha 1dc6ccf4cecd90b5d0d1e6685c0d5b00f5ccd2219f6e5f3dae6baaa0d42b06fc
+   (a) reader A pre_bytes + slice_bytes == post_bytes -> identical: True
+```
 
-(a) By IMPORTING the shipped class, not by reading its source; the import path is
-printed so nothing is believed on faith:
+All three appends were applied as `old_bytes + slice_bytes` in Python. All three
+pre-blobs were asserted to end in a newline and none was added; each slice owns
+its own leading blank line.
 
-    module: packages.orchestration.builder_models
-    file  : /home/decodeux/Repos/remedy/packages/orchestration/builder_models.py
-    job_id annotation : <class 'str'>
-    task_id annotation: <class 'str'>
-    REAL_EXIT=0
+### G4 THE DECISIONS, at C4 — REAL_EXIT=0
 
-(b) `git diff --numstat 013e5517..3295d184 -- <the fourteen code paths>`,
-REAL_EXIT=0. Every row equals the ordered table, cell for cell; no row differs:
+```
+   pre  @2b395e02 bytes 1080309 sha 7e88e49ade1ce2ca3b0bf4a2276ec7929be4789bbe70048b9f47979657ef9201
+   slice        bytes 4744 sha 76ceaf079a0ca86e7d0c7e27e26d958230c40ca72ab6fba69f4e7534ba54dbfb
+   post @dc6a621c bytes 1085053 sha 3c854cf35a8494e7d277eecf4e1df2e9f9498f139edbe9e0c0cbda74e2fbd347
+   (a) reader A pre_bytes + slice_bytes == post_bytes -> identical: True
+   (b) reader B: N counted IN THE SLICE = 7; last 7 blank-line units of post equal the slice paragraphs in order -> True
+   (c) negative control: byte 1080350 of the post blob, inside the FIRST appended paragraph, 'o' -> 'Z'
+       reader A on the mutated copy -> identical: False (rejects: True)
+       reader B on the mutated copy -> False (rejects: True)
+   G4 ALL READINGS OK: True
+```
 
-    2  2  packages/orchestration/autorun.py
-    2  3  packages/orchestration/builder_models.py
-    2  2  packages/orchestration/long_run_executor.py
-    2  2  packages/orchestration/task_runner.py
-    2  2  tests/orchestration/test_builder_bridge_smoke.py
-    2  2  tests/orchestration/test_builder_eval.py
-    2  2  tests/orchestration/test_builder_prompt_quality.py
-    2  2  tests/orchestration/test_escalation.py
-    4  4  tests/orchestration/test_long_run_executor.py
-    2  2  tests/orchestration/test_loop_run.py
-    4  4  tests/orchestration/test_real_ollama_smoke.py
-    2  2  tests/orchestration/test_self_healing_cycles.py
-    4  4  tests/test_ollama_builder.py
-    2  2  tests/test_task_runner.py
+### G5 THE OPEN SET, at C4 — REAL_EXIT=0
 
-(c) `git show 3295d184:packages/orchestration/builder_models.py | grep -c "from
-uuid import UUID"` prints `0`, REAL_EXIT=1 (grep's zero-match exit). FIX A landed.
+```
+BASE 05631ba3: distinct registrations 104 - distinct resolutions 18 = OPEN 86
+C4   dc6a621c: distinct registrations 104 - distinct resolutions 18 = OPEN 86
+ids REGISTERED by this round: [] (none)
+ids RESOLVED  by this round: [] (none)
+C1 ba1889ad: ^Gate: F275 R47  count 0   ^- R-0876 —  count 0   (bare token R-0876 anywhere: 1)
+C4 dc6a621c: ^Gate: F275 R47  count 1   ^- R-0876 —  count 0   (bare token R-0876 anywhere: 2)
+```
 
-(d) The SCOPED round gate, in the primary checkout at C3:
+86 by distinct id at the base and 86 at C4, as ordered. `^Gate: F275 R47 ` goes 0
+→ 1. `^- R-0876 — ` reads 0 at BOTH readings, so the next free id is still
+UNREGISTERED — and the contrast the block predicted is visible: the BARE token
+`R-0876` goes 1 → 2, the new occurrence being RECORD48's own prose quoting the
+gate, which is a quotation and not a registration.
 
-    python3 -m pytest tests/orchestration/test_builder_bridge_smoke.py \
-      tests/orchestration/test_builder_eval.py \
-      tests/orchestration/test_builder_prompt_quality.py \
-      tests/orchestration/test_escalation.py \
-      tests/orchestration/test_long_run_executor.py \
-      tests/orchestration/test_loop_run.py \
-      tests/orchestration/test_self_healing_cycles.py tests/test_ollama_builder.py \
-      tests/test_task_runner.py tests/orchestration/test_ci_budgets.py -q
-    376 passed, 2 skipped in 2.10s
-    REAL_EXIT=0
+### G6 THE WIDEN IS EXACTLY WHAT WAS ORDERED, at C3
 
-    python3 -m pytest tests/cli/test_golden_path.py -q
-    42 passed in 18.89s
-    REAL_EXIT=0
+Generator runs, each ONCE, from the repository root, in the ordered sequence:
 
-`tests/orchestration/test_ci_budgets.py` is inside that selection and passes, so
-the ruff ceiling of 26 that FIX A exists for is measured, not assumed.
+```
+$ python3 .remedy-wt/widen48.py                                   REAL_EXIT=0
+files rewritten: 48
+  decl Artifact.task_id                  1
+  decl PatchIntentSet.task_id            1
+  writer Artifact.task_id                84
+  writer PatchIntentSet.task_id          26
+total edits: 112
+```
 
-**G7 THE RED PROOF, at C3 — PASS, M1 GOES RED.** A disposable worktree at
-`.remedy-wt/g7-r47`, detached at `3295d184`, never `cd`-ed into: every command ran
-as `subprocess.run([...], cwd=<abs worktree>)` under `python3 -B`, with
-`__pycache__` purged before every run. The imported module's path was printed
-BEFORE any result was believed, and asserted to start with the worktree path, so
-no editable install could shadow it. Four readings, in order:
+No `writer SKIPPED multiline` line appeared and no `BROKE <rel>` line appeared,
+so every rewritten file re-parsed.
 
-    import path: /home/decodeux/Repos/remedy/.remedy-wt/g7-r47/packages/orchestration/task_runner.py  exit 0
-    pristine sha256: b89977a0ee8f76788c9de197ee2f336b16c01d04c86b753e49780fd0c1019297
+```
+$ python3 .remedy-wt/fixes48.py                                   REAL_EXIT=0
+  packages/orchestration/brain_detail.py: 1x
+  packages/orchestration/task_runner.py: 1x
+  packages/orchestration/task_runner.py: 1x
+  packages/orchestration/verifier.py: 1x
+  packages/orchestration/artifact_index.py: 1x
+  packages/orchestration/patch_intent.py: 1x
+  tests/test_imports.py: 1x
+  tests/test_task_runner.py: 1x
+  tests/test_task_runner.py: 3x
+  tests/test_patch_intent.py: 1x
+  tests/test_verifier.py: 3x
+  tests/test_verifier.py: 1x
+  tests/test_artifact_kinds.py: 1x
+  tests/test_workspace.py: 2x
+  tests/orchestration/test_repair_loop_v1.py: 1x
+fix sites applied: 20 over 12 files
+```
 
-    1. CONTROL, unmutated, tests/test_task_runner.py
-       REAL_EXIT=0   last line: 45 passed in 0.24s
+NO assertion fired — every one of the fifteen entries met its expected occurrence
+count, so no site had moved and nothing was edited in the slice.
 
-    2. MUTATION M1 — count of 'job_id=str(job.id),' in
-       packages/orchestration/task_runner.py: 1  (required 1 before applying)
-       reverted that ONE occurrence to 'job_id=job.id,'
-       REAL_EXIT=1   last line: 40 failed, 5 passed in 0.64s
-       FAILED node ids (40), the token after the FIRST space of each FAILED line:
-         tests/test_task_runner.py::test_run_next_task_changed_true
-         tests/test_task_runner.py::test_run_next_task_executes_first_pending
-         tests/test_task_runner.py::test_run_next_task_skips_non_pending
-         tests/test_task_runner.py::test_provider_receives_task_execution_context
-         tests/test_task_runner.py::test_context_fields_populated_correctly
-         tests/test_task_runner.py::test_context_includes_prior_task_summaries
-         tests/test_task_runner.py::test_context_no_planning_summary_when_absent
-         tests/test_task_runner.py::test_context_planning_summary_from_explicit_kind
-         tests/test_task_runner.py::test_context_planning_summary_from_legacy_artifact
-         tests/test_task_runner.py::test_artifact_task_id_matches_executed_task
-         tests/test_task_runner.py::test_output_artifact_ids_updated
-         tests/test_task_runner.py::test_artifact_name_contains_task_type
-         tests/test_task_runner.py::test_artifact_content_contains_summary
-         tests/test_task_runner.py::test_artifact_metadata_has_no_legacy_builder_key
-         tests/test_task_runner.py::test_artifact_metadata_has_task_type_and_summary
-         tests/test_task_runner.py::test_task_running_after_run_next_task
-         tests/test_task_runner.py::test_job_running_while_tasks_remain
-         tests/test_task_runner.py::test_job_not_completed_until_finalize_task_called
-         tests/test_task_runner.py::test_sequential_execution_advances_through_tasks
-         tests/test_task_runner.py::test_builder_failure_rolls_task_back_to_pending
-         tests/test_task_runner.py::test_builder_failure_restores_job_state
-         tests/test_task_runner.py::test_builder_failure_on_partially_executed_job_preserves_running
-         tests/test_task_runner.py::test_builder_error_propagates
-         tests/test_task_runner.py::test_annotate_task_result_adds_metadata
-         tests/test_task_runner.py::test_annotate_task_result_raises_if_changed_but_no_artifact
-         tests/test_task_runner.py::test_annotate_task_result_finds_by_task_id_not_index
-         tests/test_task_runner.py::test_finalize_task_marks_completed_when_verified
-         tests/test_task_runner.py::test_finalize_task_advances_job_to_completed
-         tests/test_task_runner.py::test_finalize_task_does_not_complete_job_while_tasks_remain
-         tests/test_task_runner.py::test_finalize_task_rolls_back_to_pending_on_failure
-         tests/test_task_runner.py::test_finalize_task_clears_output_artifact_ids_on_failure
-         tests/test_task_runner.py::test_finalize_task_failed_artifact_remains_in_job_artifacts
-         tests/test_task_runner.py::test_finalize_task_records_failure_in_artifact_metadata
-         tests/test_task_runner.py::test_retry_after_failure_uses_new_artifact_not_stale
-         tests/test_task_runner.py::test_consecutive_failures_annotate_each_artifact_separately
-         tests/test_task_runner.py::test_consecutive_failures_each_clear_output_artifact_ids
-         tests/test_task_runner.py::test_consecutive_failures_both_artifacts_preserved_in_job
-         tests/test_task_runner.py::test_finalize_task_raises_if_task_not_in_job
-         tests/test_task_runner.py::test_finalize_task_raises_if_no_output_artifact_ids_on_failure
-         tests/test_task_runner.py::test_finalize_task_raises_if_artifact_not_found_in_job_artifacts
+#### G6(a)+(b)+(c) — REAL_EXIT=0
 
-    3. REVERT, proved by sha256:
-       post-revert sha256: b89977a0ee8f76788c9de197ee2f336b16c01d04c86b753e49780fd0c1019297
-       equals pristine: True
+```
+== G6(a) BY IMPORT, not by reading source
+   packages.core.models.__file__             /home/decodeux/Repos/remedy/packages/core/models.py
+   packages.orchestration.patch_intent.__file__ /home/decodeux/Repos/remedy/packages/orchestration/patch_intent.py
+   Artifact.model_fields['task_id'].annotation       str | None
+   PatchIntentSet.model_fields['task_id'].annotation <class 'str'>
+== G6(b) SUBTREE DIGESTS
+   C3   packages  18aadcb1ca69b2aa25a14044750bbe2e0883d2d0  ordered 18aadcb1ca69b2aa25a14044750bbe2e0883d2d0  MATCH True
+   C3   tests     67b33dc0be4345b55badd92b1af6b1af105cfffd  ordered 67b33dc0be4345b55badd92b1af6b1af105cfffd  MATCH True
+   BASE packages  2a8d0db21e42fda785746a76602185329bb9c4f4  ordered 2a8d0db21e42fda785746a76602185329bb9c4f4  MATCH True
+   BASE tests     681ea3c4c01a512d50a6d2097dd03c55dc709424  ordered 681ea3c4c01a512d50a6d2097dd03c55dc709424  MATCH True
+== G6(c) git diff --numstat 05631ba3..C3 over the code paths
+   files 52  insertions 132  deletions 132  under packages/ 12  under tests/ 40
+   ordered: 52 / 132 / 132 / 12 / 40  -> MATCH True
+```
 
-    4. CONTROL again
-       REAL_EXIT=0   last line: 45 passed in 0.24s
+Both module paths were printed BEFORE either annotation was believed, and both
+resolve inside the primary checkout. The four numbers I measured for G6(c) are
+**52 files, 132 insertions, 132 deletions, 12 under `packages/` and 40 under
+`tests/`** — the ordered values exactly. Note on method: the two C3 subtree
+digests were ALSO checked against the STAGED index (`git write-tree` →
+`52b238b0f82a1a0267ab46a9aa66b22cecd0069f`) BEFORE C3 was committed, and matched
+there, so at no point was there anything to adjust.
 
-Then `git worktree remove --force` + `git worktree prune`, REAL_EXIT=0, and
-`git worktree list` reads ONE entry:
+#### G6(d) THE SCOPED ROUND GATE, in the primary checkout at C3
 
-    /home/decodeux/Repos/remedy  3295d184 [feature/f275-one-world-completion-part-three]
+```
+$ python3 -m pytest tests/test_artifact_kinds.py tests/test_patch_intent.py \
+    tests/test_imports.py tests/test_verifier.py tests/test_brain_detail.py \
+    tests/test_task_runner.py tests/test_workspace.py \
+    tests/orchestration/test_repair_loop_v1.py tests/ui_contracts/test_ux_quality.py \
+    tests/orchestration/test_ci_budgets.py -q
+480 passed, 2 skipped in 2.29s
+REAL_EXIT=0
 
-Reading the result: the mutation reaches far more than the one assertion FIX B
-edits, because `TaskExecutionContext` is now a pydantic model whose `job_id` is
-`str` — feeding it a `uuid.UUID` raises a validation error inside
-`_build_execution_context`, so every test that runs a task fails. That is a
-strictly stronger reachability claim than the two assertions alone would give.
+$ python3 -m pytest tests/cli/test_golden_path.py -q                  # the canary
+42 passed in 18.90s
+REAL_EXIT=0
+```
 
-**G8 NOTHING ELSE MOVED, at C4 — PASS.**
+`test_ci_budgets.py` is green, so the ruff count is still frozen at 26 after this
+round's production import and expression changes. `test_ux_quality.py` is green
+against the COMMITTED tree, which is the condition DECISION F275 D28 records.
 
-    STOP exists on disk (re-read, not remembered): False
-    git status --porcelain literal: ''   exit 0
-    changed paths 013e5517..a1f948e7: 20
-    MISSING (vs Change list MINUS .agent/handoff.md): []
-    EXTRA   (vs Change list MINUS .agent/handoff.md): []
-    paths under apps/, docs/, scripts/: []
+### G7 THE RED PROOF, at C3 — REAL_EXIT=0
 
-Insertions per commit against the F104 D1 cap of 500, derived ONCE from
-`git show --numstat <sha>` and reused in the `## Commits` tables above:
+Disposable worktree `/home/decodeux/Repos/remedy/.remedy-wt/g7-r48`, detached at
+C3 `2b395e02`, NEVER `cd`-ed into: every command ran as
+`subprocess.run([...], cwd=<abs worktree>)`, under `python3 -B`, with
+`__pycache__` purged before every run.
 
-    C0a 3bdaaac1: +372  -0     OK
-    C0b 8a6d6ebb: +310  -400   OK
-    C1  ffac7c43: +20   -23    OK
-    C2  8d2784b3: +6    -0     OK
-    C3  3295d184: +34   -35    OK
-    C4  a1f948e7: +14   -0     OK
+```
+WORKTREE /home/decodeux/Repos/remedy/.remedy-wt/g7-r48
+IMPORTED MODULE PATH (before believing anything): /home/decodeux/Repos/remedy/.remedy-wt/g7-r48/packages/orchestration/artifact_index.py  exit 0
+pre-mutation sha256 of packages/orchestration/artifact_index.py: b8193ec3af4763dc6cfa03db2faf81669815d808391ffaf020a37a3b58683b62
+-- 1. CONTROL, unmutated, selection tests/test_artifact_kinds.py
+   __pycache__ dirs purged 0; exit 0; last line: 52 passed in 0.25s
+-- 2. MUTATION M1
+   occurrences of the exact byte string in THAT FILE: 1 (must be 1)
+   applied: 'if a.task_id == str(task_id) and a.kind == kind]' -> 'if a.task_id == task_id and a.kind == kind]'
+   __pycache__ dirs purged 0; exit 1; last line: 2 failed, 50 passed in 0.27s
+   FAILED node ids (2):
+      tests/test_artifact_kinds.py::TestTaskArtifactsByKind::test_returns_matching_task_and_kind
+      tests/test_artifact_kinds.py::TestTaskArtifactsByKind::test_returns_multiple_matching
+-- 3. REVERT, proved by sha256 against the digest recorded BEFORE the mutation
+   post-revert sha256 b8193ec3af4763dc6cfa03db2faf81669815d808391ffaf020a37a3b58683b62  equals pre True
+-- 4. CONTROL again
+   __pycache__ dirs purged 0; exit 0; last line: 52 passed in 0.25s
+```
 
-No commit is oversize; no declaration under the AGENTS.md oversize exception is
-needed or made.
+The imported module's path was PRINTED and asserted to lie inside the worktree
+before any result was believed, so no editable install shadowed it. The exact
+byte string was COUNTED in that file first and read 1. M1 goes RED: exit 1,
+`2 failed, 50 passed`, over the two FAILED node ids above — each taken as the
+token after the FIRST space of its `FAILED` line. The revert is byte-exact by
+sha256 against a digest recorded before the mutation, and the control is green
+again at `52 passed`. `__pycache__` reads 0 dirs purged on every run because
+`python3 -B` writes none in the first place.
 
-**Generator transcript (C3), for the record.** `.remedy-wt/widen47.py`, 4032
-bytes, sha256 `9a17ee4f78f97f74e632111016ced556a0f77081f87ad420d6a272bf9da86fcc`,
-extracted from the committed blob, confirmed ignored by
-`git check-ignore -v` (`.gitignore:235:.remedy-wt/`), run ONCE from the repository
-root:
+Worktree removed and pruned; `git worktree list` reads ONE entry:
 
-    files rewritten: 13
-      decl TaskExecutionContext.job_id       1
-      decl TaskExecutionContext.task_id      1
-      writer TaskExecutionContext.job_id     17
-      writer TaskExecutionContext.task_id    17
-    total edits: 36
+```
+/home/decodeux/Repos/remedy  2b395e02 [feature/f275-one-world-completion-part-three]
+```
 
-No `writer SKIPPED multiline` line appeared and no `BROKE` line appeared, so every
-site was single-line and every rewritten file re-parsed.
+### G8 NOTHING ELSE MOVED, at C4 — REAL_EXIT=0
+
+```
+STOP sentinel, re-read FROM DISK, not remembered: .agent/STOP exists -> False
+git status --porcelain -> ''  EMPTY: True
+changed paths over 05631ba3..C4: 58
+   present True  .agent/authored/f275-r48.md
+   present True  .agent/last_block.md
+   present True  .agent/plan.md
+   present True  .agent/live_review.md
+   present True  .agent/prose_slips.md
+   present True  .agent/decisions.md
+   ABSENT  True  .agent/handoff.md (C5 writes it after C4)
+   paths under apps/ docs/ scripts/: 0 []
+   paths under packages/: 12  under tests/: 40  under .agent/: 6
+insertions per commit, from git show --numstat, against the F104 D1 cap of 500:
+   C0a  c5ee58fc  +425   -0     over  1 file(s)  cap 500 -> OK
+   C0b  ebcecaff  +238   -185   over  1 file(s)  cap 500 -> OK
+   C1   ba1889ad  +20    -19    over  1 file(s)  cap 500 -> OK
+   C2   5cff5789  +4     -0     over  2 file(s)  cap 500 -> OK
+   C3   2b395e02  +132   -132   over 52 file(s)  cap 500 -> OK
+   C4   dc6a621c  +14    -0     over  1 file(s)  cap 500 -> OK
+```
+
+`git status --porcelain` reads the literal empty string `''` — the primary
+checkout is clean at every commit, and the destructive verification never touched
+it. All six `.agent/` paths of the Change list other than `.agent/handoff.md` are
+present, `.agent/handoff.md` is absent from `05631ba3`..C4, and ZERO paths lie
+under `apps/`, `docs/` or `scripts/`. Every commit is under the F104 D1 cap of
+500 insertions; the same `git show --numstat` derivation feeds the `+/-` column
+of the `## Commits` table above. No oversize-commit exception is claimed.
 
 ## Authored-text proofs
 
-Every slice was extracted mechanically from the COMMITTED blob of
-`.agent/authored/f275-r47.md` by `BEGIN-<name> ` / `END-<name> ` marker-line
-PREFIX. None was retyped, reflowed or edited.
+Every slice was extracted MECHANICALLY from the COMMITTED blob
+`ebcecaff:.agent/authored/f275-r48.md` by its `BEGIN-<name> ` / `END-<name> `
+marker-line PREFIX (`.remedy-wt/r48_extract.py`, which asserts exactly one BEGIN
+and one END per name and that BEGIN precedes END). No slice was retyped,
+reflowed or edited.
 
-| Slice | Target | Proof | Result |
-|---|---|---|---|
-| PLAN47 | `.agent/plan.md` | whole-file byte equality, both sha256 | identical, 2586 bytes |
-| RECORD47 | `.agent/live_review.md` | reader A + reader B + negative control | identical: True |
-| SLIPS47 | `.agent/prose_slips.md` | reader A | identical: True |
-| WIDEN47 | `.remedy-wt/widen47.py` (scratch, never committed) | extracted from the C2 blob, sha256 recorded, `git check-ignore` confirms | run once, exit 0 |
-| DECIDE47 | `.agent/decisions.md` | reader A + reader B + negative control | identical: True |
+| Slice | bytes | sha256 | applied to | disk-to-disk proof |
+|---|---|---|---|---|
+| PLAN48 | 2600 | `27443d18…a5da` | `.agent/plan.md` (whole-file) | `cmp .agent/plan.md .remedy-wt/plan48.extracted` → REAL_EXIT=0; G2 byte-equal True |
+| RECORD48 | 3661 | `6a14b0a3…a6cf` | `.agent/live_review.md` (append) | G3 reader A True, reader B True at N=1, both negative controls reject |
+| SLIPS48 | 1182 | `73c8d669…3de9` | `.agent/prose_slips.md` (append) | G3 reader A True |
+| WIDEN48 | 3892 | `fba54ceb…b047` | `.remedy-wt/widen48.py`, run once, NOT committed | G6(b) both subtree digests match the reviewer's replay |
+| FIXES48 | 3608 | `42fd86a8…aec9` | `.remedy-wt/fixes48.py`, run once, NOT committed | G6(b) both subtree digests match; no assertion fired |
+| DECIDE48 | 4744 | `76ceaf07…dbfb` | `.agent/decisions.md` (append) | G4 reader A True, reader B True at N=7, both negative controls reject |
 
-`.agent/authored/f275-r47.md` itself is byte-identical to the delegation order's
-stated digest (G1).
+The block itself: `cmp .agent/authored/f275-r48.md .agent/last_block.md` →
+REAL_EXIT=0, and both equal the `.remedy-wt/f275-r48.block.md` working copy and
+the ordered digest (G1).
 
 ## Deviations & assumptions
 
-1. **DECLARED SLICE FACT THAT DOES NOT REPRODUCE — DECIDE47's "32 insertions".**
-   Slice DECIDE47 says the widen "is 34 construction sites across 14 files, 32
-   insertions". The measured C3 commit is **34 insertions / 35 deletions**. 32 is
-   the generator-only figure (thirteen files, 2×10 + 4×3); the two hand fixes the
-   same block orders add `tests/test_task_runner.py` at +2/-2 and one further
-   deletion in `builder_models.py`. Likewise the 34 construction sites live in
-   THIRTEEN files, not fourteen — the fourteenth path carries only FIX B's
-   assertions. Under Constraint 1 the slice was applied byte for byte and is
-   declared here rather than edited. G6(b)'s fourteen-row table is the correct
-   post-fix reading and matched exactly, so nothing on disk is wrong.
-2. **No departure from the ordered commit sequence.** C0a, C0b, C1, C2, C3, C4,
-   C5 ran in exactly that order; none merged, none reordered, none added, none
-   dropped. Seven commits, seven ordered items.
-3. **`.agent/plan.md` at C0a and C0b.** The block fixes the plan slice at C1, so
-   C0a and C0b were committed while `.agent/plan.md` still described round 46.
-   This is the block's own ordered sequence (Constraint 2), not a choice of mine;
-   noting it because the AGENTS.md Commit Gate asks for a current plan before
-   EVERY commit and the two block-transport commits are the standing exception
-   this feature has used in every round.
-4. **G6(c)'s exit code.** The absence check is `grep -c`, which exits 1 when it
-   matches nothing. REAL_EXIT=1 is the PASSING reading for that gate and is
-   reported as measured rather than smoothed into a 0.
-5. **No finding registered, none resolved**, as Constraint 5 requires. The open
-   set reads 86 by distinct id at the base and 86 at C4.
-6. **Constraint 8**: `.agent/STOP` was re-read from disk before the first commit
-   — `ls` exited 2 ("No such file or directory") and `pathlib.Path(...).exists()`
-   returned False. It was re-read again at G8 with the same result.
-7. Scratch drivers `r47_slice.py`, `r47_append.py`, `r47_c2.py`, `r47_c4.py`,
-   `r47_g5g8.py`, `r47_g7.py` and `widen47.py` all live under the gitignored
-   `.remedy-wt/` and none is committed. The G7 worktree was removed and pruned.
-8. No path under `apps/`, `docs/` or `scripts/` moved. No `.py` file outside the
-   block's fourteen named code paths was committed.
+**The ordered commit sequence C0a, C0b, C1, C2, C3, C4, C5 was followed exactly:
+seven commits, none merged, none reordered, none added, none dropped.** No
+departure from it to report.
+
+1. **DECLARED, NOT EDITED — WIDEN48 converts two possible `None`s to the string
+   `"None"`.** At `packages/orchestration/do_run.py`
+   (`task_id=str(job.tasks[0].id if job.tasks else None)`) and
+   `packages/orchestration/test_failure_artifact.py`
+   (`task_id=str(UUID(failure.task_id) if failure.task_id else None)`), the
+   generator wraps a conditional whose false branch is `None`, so a construction
+   that previously stored `None` now stores `"None"`. The field is declared
+   `str | None`, so `None` stays representable and these two sites lose the only
+   route to it. Constraint 1 binds — a slice that looks wrong is applied as given
+   and DECLARED — and G6(b) shows my tree is byte-identical to the tree the
+   reviewer measured at `18371 passed`, so editing it would have broken the
+   digest that proves the replay. Raised for the reviewer's ruling.
+2. **No contradiction between a gate's reading and the block was found.** Every
+   asserted numeral the block states — both C3 subtree digests, both base subtree
+   digests, 52/132/132/12/40, 104 − 18 = 86, the `^Gate: F275 R47 ` 0→1 and
+   `^- R-0876 — ` 0→0 readings — reproduced on my own runs.
+3. **Two pushes, not one.** The branch was pushed after C4, MEASURED at
+   `05631ba3..dc6a621c`, per the AGENTS.md push discipline, and is pushed again
+   immediately after C5. The second push's outcome is not claimed here: a
+   handback cannot report an action that follows the commit writing it. Both are
+   in External actions.
+4. **No SHA is written that was not measured.** C5's SHA and the C5 push result
+   do not exist while this file is being written, so the Range line, the C5
+   commit heading and the second push row state the fact instead of a guess.
+5. **`.remedy-wt/` scratch retained.** `r48_extract.py`, `widen48.py`,
+   `fixes48.py`, `g2.py`, `c2_apply.py`, `g3g4.py`, `g5.py`, `g6.py`, `g7.py` and
+   `plan48.extracted` remain under the gitignored `.remedy-wt/` as the round's
+   evidence. NOTHING under it is committed; `git check-ignore -v` confirms
+   `.gitignore:235:.remedy-wt/`. The G7 worktree is the one thing removed.
+6. **Open PR Gate.** `gh pr list --state open` → `[]`. No PR was created, edited
+   or merged this round, as ordered.
 
 ## Next
 
-The planner/reviewer re-derives all eight gates from the committed range
-`013e5517`..`HEAD` and issues the round 47 verdict. On PASS, the next round is
-the DIAGNOSIS of `PatchIntentSet.task_id` — the four `tests/test_grouped_cli.py`
-tests that fail `Error: Job not found` only under full-suite ordering — before
-that field is widened; Phase 1 rule 1 (`.agent/STOP`) is checked before rule 2.
+The single expected next action: the planner/reviewer re-derives all eight gates
+independently from the committed range `05631ba3`..C5 and issues the
+round 48 verdict — ruling in particular on the declared `str(None)` concern at
+`do_run.py` and `test_failure_artifact.py`. On PASS, round 49 is the FLIP DRY RUN
+re-run against a tree whose id shape is now one spelling, re-classifying the 2714
+failures `.agent/f275_t003_flip_residue.md` records; the 256 hexadecimal-UUID and
+369 model-validation classes should be gone.
