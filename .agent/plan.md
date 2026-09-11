@@ -13,34 +13,34 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 55 records the flip dry run DECISION F275 D29's CONSEQUENCE clause places after all
-three of its prerequisites, now that all three are landed — P1 at round 53, P2 at rounds 51
-and 52, P3 at round 54. The transform consumed the ruled site set and the splat rules, the
-run was taken against a control at the same commit, and the residue fell from 2557
-attributed failures to 1331. The artefact is `.agent/f275_t003_flip_residue_r55.md` and the
-ruling is DECISION F275 D32: the flip is a RENAME AND A RETYPE, the two records disagree
-about field TYPES, and the classic record cannot hold the unified id shape, so the change
-stays one commit and the transform gains the retype rules. The round 54 PASS verdict and its
-dated prose slip are booked here.
+ROUND 56 sizes a premise underneath DECISION F275 D32's three retype rule families and finds
+it short. D26's premise P2 selects records by `issubclass(obj, BaseModel)`, so it never saw a
+dataclass; a sweep over the live objects of every class kind reads 13 records carrying a
+UUID-typed field, 8 of them dataclasses, and SEVEN are fed by the flip. That is finding
+`R-0878`, the artefact is `.agent/f275_t003_uuid_records.md`, and DECISION F275 D33 rules the
+seven migrated one record per commit BEFORE any of D32's rule families is written. The round
+55 PASS verdict and its dated prose slip are booked here.
 
 ## Next Steps
 
-1. Build the three retype rule families DECISION F275 D32 names — the id VALUE at a target
-   construction, a `.hex` or `.int` read on a now-`str` id, and a `.value` read on a
-   now-`str` status — and re-run the dry run with its control at the same commit.
-2. THE FLIP as the one declared-oversize commit AGENTS.md permits per feature, declared with
+1. Migrate the seven records `R-0878` names, one per commit, in the order the artefact's
+   construction counts give, with the ratchet DECISION F275 D33 requires as the last of them.
+2. Build DECISION F275 D32's three retype rule families and re-run the flip dry run with its
+   control at the same commit. The task-id half needs its own ruling first: the unified task
+   id is an ORDINAL, not a minted identifier.
+3. THE FLIP as the one declared-oversize commit AGENTS.md permits per feature, declared with
    its inseparability reason before review, registering the `acceptance_checks` finding
    DECISION F275 D22 places with it.
-3. The resolver collapse DECISION F260 D5 places in T003, with the classic store.
-4. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
-   ledger rotation, the STATUS line and the PR.
+4. The resolver collapse DECISION F260 D5 places in T003, with the classic store, then the
+   closure sequence.
 
 ## Risks
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
   split-and-close default BY NAME: a session writes the scope report and CONTINUES.
-- Nothing proves the type table exhausts the cause; only another dry run can say so.
-- The ruled site set is line-granular on its probe half, so a line holding two owners is
-  resolved by receiver name and one site by nothing at all.
-- The open set is 86 by distinct id. Four are High — R-0803, R-0804, R-0806 and R-0807 — all
+- The sweep behind `R-0878` reads a CONSTRUCTION; a field assigned after construction is not
+  one, and that reading has not been taken.
+- Three of the seven records are fed only by code the suite never executes, so a green run
+  cannot speak for them.
+- The open set is 87 by distinct id. Four are High — R-0803, R-0804, R-0806 and R-0807 — all
   F273's, per DECISION F272 D12.
