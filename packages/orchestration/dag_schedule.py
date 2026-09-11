@@ -34,7 +34,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
-from uuid import UUID
 
 from packages.core.models import RunState, Task
 
@@ -57,11 +56,11 @@ __all__ = [
 class TaskNode:
     """One task's resolved position in the dependency graph."""
 
-    task_id: UUID
+    task_id: str
     #: Position in plan order — the stable tie-break for every ordering here.
     index: int
     #: Task ids this task waits for, in the order they were declared.
-    depends_on: tuple[UUID, ...]
+    depends_on: tuple[str, ...]
     #: True when at least one declared dependency named no task in the plan.
     #: Such a task is never ready (see module docstring).
     has_unresolved_dependency: bool = False
@@ -80,7 +79,7 @@ def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
     ``depends_on`` planned ids through the plan; a task without it depends on
     its predecessor.
     """
-    by_planned: dict[str, UUID] = {}
+    by_planned: dict[str, str] = {}
     for task in tasks:
         flight = _flight_meta(task)
         if flight is None:
@@ -103,7 +102,7 @@ def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
             continue
 
         declared = flight.get("depends_on") or []
-        resolved: list[UUID] = []
+        resolved: list[str] = []
         unresolved = False
         for dep in declared:
             target = by_planned.get(str(dep))
@@ -123,7 +122,7 @@ def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
     return tuple(nodes)
 
 
-def ready_set(tasks: Sequence[Task]) -> list[UUID]:
+def ready_set(tasks: Sequence[Task]) -> list[str]:
     """Ids of the PENDING tasks whose dependencies are ALL completed.
 
     Returned in plan order — stable and deterministic, with no timestamp or
@@ -132,7 +131,7 @@ def ready_set(tasks: Sequence[Task]) -> list[UUID]:
     pending, running, failed, or unresolvable.
     """
     status_by_id = {task.id: task.status for task in tasks}
-    ready: list[UUID] = []
+    ready: list[str] = []
     for node in build_graph(tasks):
         if status_by_id.get(node.task_id) != RunState.PENDING:
             continue
@@ -145,7 +144,7 @@ def ready_set(tasks: Sequence[Task]) -> list[UUID]:
 
 
 def blocked_downstream(tasks: Sequence[Task],
-                       blocked_ids: Iterable[UUID]) -> set[UUID]:
+                       blocked_ids: Iterable[str]) -> set[str]:
     """Transitive dependents of ``blocked_ids`` — the skipped-blocked set.
 
     The seeds themselves are NOT included: they are blocked for their own
@@ -161,13 +160,13 @@ def blocked_downstream(tasks: Sequence[Task],
         return set()
 
     nodes = build_graph(tasks)
-    dependents: dict[UUID, list[UUID]] = {}
+    dependents: dict[str, list[str]] = {}
     for node in nodes:
         for dep in node.depends_on:
             dependents.setdefault(dep, []).append(node.task_id)
 
     status_by_id = {task.id: task.status for task in tasks}
-    blocked: set[UUID] = set()
+    blocked: set[str] = set()
     # Plan-order queue: deterministic traversal, though the result is a set.
     queue = [seed for seed in (node.task_id for node in nodes)
              if seed in seeds]
