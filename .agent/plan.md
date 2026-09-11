@@ -13,33 +13,33 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 48 finishes the id-shape migration DECISION F275 D26 placed before the flip.
-`Artifact.task_id` and `PatchIntentSet.task_id` become `str` in ONE commit, because
-`derive_patch_intents` assigns the first to the second and widening either alone leaves the
-two spellings straddling that assignment. With round 47's `TaskExecutionContext`, all four
-fields the flip feeds now hold one spelling. The reviewer measured the result at
-`05631ba3`: 18371 passed, the base's own figure.
+ROUND 49 repairs `R-0876`, which round 48's id-shape widen landed and its worker declared.
+The generator wrapped two construction keywords in `str(...)` whose value can be `None`, so
+an artifact produced by orchestration rather than by a task recorded the string `"None"`
+instead of the absence `packages/core/models.py` documents — a truthy value no lookup
+matches. Both sites move the `str(...)` inside the conditional's true branch, and both gain
+a test that goes red without the fix on `assert 'None' is None`. The round 48 FAIL verdict
+is booked here.
 
 ## Next Steps
 
 1. RE-RUN THE FLIP DRY RUN against a tree whose id shape is one spelling, and re-classify
    the residue `.agent/f275_t003_flip_residue.md` records at 2714 failures. The 256
-   hexadecimal-UUID failures and the 369 model-validation failures should be gone; the
-   remaining classes — 867 splat constructions, 493 attribute errors, 271 path operands —
-   are transform rules and are enumerated in section 3 of that artefact.
-2. THE FLIP itself, still as the one declared-oversize commit AGENTS.md permits per
-   feature, declared with its inseparability reason before review.
+   hexadecimal-UUID and 369 model-validation failures should be gone; what remains is the
+   transform rules section 3 of that artefact enumerates.
+2. THE FLIP, still as the one declared-oversize commit AGENTS.md permits per feature,
+   declared with its inseparability reason before review.
 3. The resolver collapse DECISION F260 D5 places in T003, with the classic store.
 4. The closure sequence: the integration gate, the evidence job, a fresh review zip, the
    ledger rotation, the STATUS line and the PR.
 
 ## Risks
 
-- F275 stands at 48 rounds and 19 sessions against the operator's soft limit of 60 rounds
+- F275 stands at 49 rounds and 19 sessions against the operator's soft limit of 60 rounds
   and 20 sessions. The NEXT session is the twentieth and owes a scope report under
   amend0908-f275-finish rule 1, which also forbids the split-and-close default here.
-- A dry run of a change this size must be COMMITTED inside its worktree before its suite is
-  read: `tests/ui_contracts/test_ux_quality.py` asks the repository for its own changed-file
-  count and a dirty worktree reddens it. DECISION F275 D28 records the instance.
-- The open set is 86 by distinct id. Four are High — R-0803, R-0804, R-0806 and R-0807 —
-  all F273's, per DECISION F272 D12.
+- A mechanical wrap applied to a construction keyword is only safe where the value cannot
+  be `None`. `R-0876` is that class; the flip's own transform wraps nothing, but its
+  `**`-splat rule will face the same question.
+- The open set is 87 by distinct id once this round registers `R-0876`. Four are High —
+  R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
