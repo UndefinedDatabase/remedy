@@ -1,605 +1,403 @@
-# Handback — F275 round 52
+# Handback — F275 round 53
 
 ## Session
 
-SESSION 20 of feature F275 · round 52 · rounds so far 52
+SESSION 21 of feature F275 · round 53 · rounds so far 53
 
-Context self-assessment (amend0905-throughput): context is comfortable — this round read
-AGENTS.md in full, verified and copied a 34889-byte block, applied six slices (PLAN52,
-RECORD52, NOTE52, UNWRAP52, GUARD52, LANDED52) of which one is a GENERATOR that was RUN
-rather than transcribed, and spent the rest on eight gate runs including a four-run red
-proof in a disposable worktree; there is room for at least one more round in a fresh session.
+Context self-assessment (amend0905-throughput): context is comfortable. This round read
+AGENTS.md in full, verified and copied three scratch files by digest (23122, 4974 and 18350
+bytes), applied three slices (PLAN53, HEADER53, D30), extracted three authored texts out of a
+committed blob rather than retyping them, ran the full suite TWICE at twenty-one minutes each
+inside a disposable worktree, ran the generator twice and ran the eight gates. Room remains
+for another round in a fresh session, but the next one carries another full-suite dry run.
 
-THE SESSION'S SCOPE REPORT WAS WRITTEN IN ROUND 51'S HANDBACK AND IT STANDS — nothing this
-round measured changes any of its three parts, and it is not restated here because a report
-restated is a report edited.
-
-F275 stands at 52 rounds and 20 sessions against the operator's soft limit of 60 rounds and
-20 SESSIONS (amend0908-f275-finish rule 1). Rule 2 forbids the amend0905-throughput
+F275 STANDS AT 53 ROUNDS AND 21 SESSIONS against the operator's soft limit of 60 rounds and
+20 sessions (amend0908-f275-finish rule 1), so the session limit is now EXCEEDED rather than
+merely reached. THE SCOPE REPORT THAT RULE OBLIGES WAS WRITTEN IN ROUND 51'S HANDBACK AND IT
+STANDS — nothing this round measured changes any of its three parts, and it is not restated
+here because a report restated is a report edited. Rule 2 forbids the amend0905-throughput
 split-and-close default here BY NAME: this round closed nothing, registered no follow-up
-feature and did not touch `docs/roadmap/STATUS.md`.
+feature and did not touch `docs/roadmap/STATUS.md`. The operator's ruling on round 51's scope
+report item (c) — an EXTENSION of the 60-round limit against a SPLIT carrying the flip into a
+successor feature — is still owed.
 
-`.agent/STOP` was re-read FROM DISK before the first commit and again at C4: it does not
-exist at either reading (`pathlib.Path('.agent/STOP').exists()` → `False`).
+SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
+
+`.agent/STOP` was re-read FROM DISK before the first commit and again before C6. It does not
+exist at either reading: `pathlib.Path('.agent/STOP').exists()` → `False`, both times, and
+G8(a)'s own third reading agrees.
 
 ## Range
 
-Review of `87d76c66`..C5, where C4 is `18a9ddd1bce61b8fd46543bfe86d999d00546e03` and C5 is
-the commit that writes this file. C5's own SHA is NOT stated here: it does not exist while
+Review of `a815c9a3`..C6, where C5 is `8200e1661143e0d340a47cad12b9d183ade93592` and C6 is
+the commit that writes this file. C6's own SHA is NOT stated here: it does not exist while
 this file is being written, and no SHA is written that was not measured.
 
 ## Commits
 
-### 95dff48f7d9a9ececad25e862a43c18c3a629872 F275 R52 C0a: save the round 52 step block verbatim.
+### 9c30a4d8 F275 R53 C0a: save the round 53 step block verbatim.
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r52.md` | +490 / -0 | the round 52 block, saved by `shutil.copyfile` from `.remedy-wt/f275-r52.block.md`, never retyped; every slice this round applies is extracted from THIS file's committed blob by its `BEGIN-`/`END-` marker-line prefix |
+| `.agent/authored/f275-r53.md` | +282 / -0 | the step block, saved by `shutil.copyfile` from the scratch original; every slice this round applies is extracted from THIS committed blob |
 
-### 67667f7b731bc5f381d9099f8308dabd733a600a F275 R52 C0b: mirror the round 52 block into the last-block record.
+### c3d33f6a F275 R53 C0b: save the widened descriptor probe instrument verbatim.
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +387 / -362 | written from `git cat-file blob 95dff48f:.agent/authored/f275-r52.md` read into memory, not retyped; replaces the round 51 block |
+| `.agent/authored/f275-r53-probe.py.md` | +120 / -0 | the DECISION F272 D7 descriptor probe, widened to the `Task` pair; a `.md` and not a `.py` because `tests/orchestration/test_ci_budgets.py` counts every `.py` that `ruff check .` scans |
 
-### 4137c7183802feec444a3d156e55faca05abd4f4 F275 R52 C1: advance the plan to round 52 and the call-site unwrap.
+### a8ba85cf F275 R53 C0c: save the static sweep and artefact generator instrument verbatim.
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +14 / -14 | whole-file replacement by slice PLAN52; Current Step becomes round 52 and the 26-call-site unwrap, Next Steps put the reviewer's owed `Done: R-0877` first, Risks state why the REMAINING `UUID(...)` sites are not this class |
+| `.agent/authored/f275-r53-sites.py.md` | +403 / -0 | the `ast` sweep, the re-implemented heuristic control and the artefact generator, same `.md` reason |
 
-### f244262d61d228b4e0f591a786bceeca5890793d F275 R52 C2: book the round 51 PASS verdict and settle its first declared deviation.
+### 56edf326 F275 R53 C0d: mirror the round 53 step block into the last-block state file.
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +4 / -0 | appends RECORD52 (the round 51 PASS verdict) then NOTE52 (the record note settling that round's first declared deviation), in that order |
+| `.agent/last_block.md` | +257 / -465 | the AGENTS.md `.agent/**` state mirror of the block; single-state-file rewrite, so churn-exempt under DECISION F104 D1 |
 
-### 88304e59180be38c43a8bd6067f476358a4e987c F275 R52 C3: unwrap the run-log id at every call site and guard the count at zero.
+### d70bf6f5 F275 R53 C1: rewrite the plan for round 53, the type-resolved site set.
+
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/commands/dashboard_cmd.py` | +1 / -1 | generator UNWRAP52 removed 1 wrap: `load_run_events(data_dir, UUID(jid))` → `jid`. The module's `UUID` import STAYS — `load_job(UUID(jid))` on the line above still uses it |
-| `packages/memory/context_summary.py` | +1 / -2 | 1 wrap removed in `emit_memory_recalled_event`'s `append_run_event`; the local `from uuid import UUID` it orphaned was MEASURED unused and removed with it |
-| `packages/orchestration/do_continue.py` | +1 / -1 | 1 wrap removed on `load_run_events`; `UUID` stays, used by `load_job` on the line above |
-| `packages/orchestration/job_fulfillment.py` | +8 / -8 | 8 wraps removed — 7 `append_run_event` writers and 1 `load_run_events` reader, the write/read pair that DECISION F275 D28 makes one atomic unit; `UUID` stays for `load_job` |
-| `packages/orchestration/mission_readiness.py` | +1 / -1 | 1 wrap removed on `load_run_events` in `_gather_inputs` |
-| `packages/orchestration/repair_loop.py` | +5 / -5 | 5 wraps removed — 2 readers and 3 writers (`emit_failure_events`, two `append_run_event`), again one write/read pair |
-| `packages/orchestration/self_dogfood_execution.py` | +1 / -1 | 1 wrap removed: `load_run_events(data_dir, UUID(str(job.id)))` → `str(job.id)` |
-| `tests/orchestration/test_memory_events.py` | +3 / -6 | 3 wraps removed plus the 3 local `from uuid import UUID` lines they orphaned |
-| `tests/orchestration/test_memory_safety.py` | +1 / -2 | 1 wrap plus 1 orphaned local import |
-| `tests/orchestration/test_mission_readiness.py` | +1 / -1 | 1 wrap removed on `append_run_event`; `UUID` stays, used elsewhere in the file |
-| `tests/orchestration/test_repair_apply_cycle.py` | +1 / -1 | 1 wrap removed on `load_run_events`; `UUID` stays for `load_job` |
-| `tests/test_patch_apply.py` | +3 / -3 | 2 wraps removed, and the module import NARROWED from `from uuid import UUID, uuid4` to `from uuid import uuid4` — `uuid4` survives, so the line is rewritten rather than deleted |
-| `tests/test_timeline.py` | +89 / -0 | GUARD52, a CODE APPEND: class `TestTheRunLogSeamHasOneIdSpelling` with three tests — the repo-wide `ast` zero-sweep, its discriminator, and the behavioural round trip through the REAL `emit_memory_recalled_event` and `load_run_events` |
+| `.agent/plan.md` | +19 / -20 | whole-file replacement by slice PLAN53, byte-identical to the slice |
 
-26 wraps and 6 orphaned imports, in 12 files, all produced by ONE run of the generator
-UNWRAP52 — no file was hand-edited. The generator itself lives at
-`.remedy-wt/f275_r52_unwrap.py`, is gitignored SCRATCH and is NOT committed; its committed
-record is its slice inside `.agent/authored/f275-r52.md`.
+### 12bb8f6d F275 R53 C2: book the round 52 PASS verdict and the R-0877 resolution.
 
-### 18a9ddd1bce61b8fd46543bfe86d999d00546e03 F275 R52 C4: book the second R-0877 landing line.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2 / -0 | appends LANDED52, the SECOND `Landed: R-0877` line. Round 51's is NOT deleted or rewritten, and NO `Done:` paragraph is written — only reviewer-authored text sets a resolution |
+| `.agent/live_review.md` | +54 / -0 | RECORD53 then DONE53, appended in that order; the reviewer's round 52 PASS verdict under the `Gate: F275 R52` key, then the authored `Done: R-0877` |
 
-### C5 (SHA unmeasurable from inside itself) F275 R52 C5: the round 52 handback.
+### da372b22 F275 R53 C3: append the dated round 52 prose slip.
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | whole-file rewrite | this file; a handoff cannot table the commit that writes it, nor state its own insertion count (R-0149 pattern). AGENTS.md exempts a single-`.agent/` state-file rewrite from the 500-line counting rule by construction |
+| `.agent/prose_slips.md` | +2 / -0 | SLIP53, the one dated line the reviewer authored for the round 52 G4(b) recipe defect |
+
+### a25fef5d F275 R53 C4: generate the type-resolved descriptor site set artefact.
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/f275_t003_descriptor_sites.md` | +365 / -0 | GENERATED by running the two instruments, never typed; regenerating it a second time reproduces it byte for byte |
+
+### 8200e166 F275 R53 C5: record DECISION F275 D30, the type-resolved rename set.
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/decisions.md` | +16 / -0 | slice D30, appended after C4 so the decision describes an artefact that already exists |
+
+### C6 — the commit that writes this file (self-reference exception, R-0149 pattern)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | not stated | a handback cannot table its own commit or state its own insertion count |
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | |
-| C5 | done | |
-| G1 | done | |
-| G2 | done | |
-| G3 | done | |
-| G4 | done | deviation 1: G4(b)'s `tests` digest needs GUARD52 applied beside the generator; both readings reported |
-| G5 | done | |
-| G6 | done | |
-| G7 | done | |
-| G8 | done | deviation 3: my first (b) expectation over-read the Change section by two negated paths; corrected and re-run |
-| PLAN52 | done | whole-file replacement, byte-equal under G2 |
-| RECORD52 | done | append, reader A and reader B under G3(i) |
-| NOTE52 | done | append, same gate |
-| UNWRAP52 | done | RUN, not transcribed; extracted to gitignored scratch and executed once against the repository root |
-| GUARD52 | done | code append, ordered equality under G5 |
-| LANDED52 | done | append, reader A under G3(ii) |
-| R-0877 | landed, NOT resolved | second `Landed:` line at C4; the reviewer's authored `Done:` covering BOTH halves is owed at the next gate |
-| Scope report | stands | written in round 51's handback; nothing this round measured changes it |
+| C0a save the block verbatim | done | |
+| C0b save the probe instrument verbatim | done | |
+| C0c save the sweep instrument verbatim | done | |
+| C0d mirror the block into `.agent/last_block.md` | done | |
+| C1 `.agent/plan.md`, slice PLAN53 | done | |
+| C2 `.agent/live_review.md`, RECORD53 then DONE53 | done | |
+| C3 `.agent/prose_slips.md`, SLIP53 | done | |
+| C4 `.agent/f275_t003_descriptor_sites.md`, generated | done | |
+| C5 `.agent/decisions.md`, slice D30 | done | |
+| C6 `.agent/handoff.md`, this file | done | |
+| VERDICT52 extracted and booked | done | 4833 bytes, re-measured; matches the reviewer's stated figure |
+| DONE52 extracted and booked | done | 3394 bytes, re-measured; matches |
+| SLIP52 extracted and booked | done | 1112 bytes, re-measured; matches |
+| G1 TRANSPORT | done | PASS, exit 0 |
+| G2 THE PLAN | done | PASS, exit 0 |
+| G3 THE RECORD | done | PASS, exit 0 |
+| G4 PROBE BEHAVIOUR-NEUTRAL AND RESOLVING INSIDE THE WORKTREE | done | PASS, exit 0; see deviation 2 on the header-line count and deviation 3 on run 2's summary |
+| G5 REPRODUCIBILITY | done | PASS, exit 0; symmetric difference ZERO |
+| G6 THE HEURISTIC CONTROL | done | PASS, exit 0; 1896 / 532 at both readings |
+| G7 THE ARTEFACT IS GENERATED, NOT TYPED | done | PASS, exit 0; zero differing rows |
+| G8 NOTHING ELSE MOVED | done | PASS, exit 0 |
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git worktree add --detach .remedy-wt/wt-base 87d76c66` | created for G4(b)'s reproducibility replay and G7(b)'s base ruff reading; removed and pruned before the handback |
-| `git worktree add --detach .remedy-wt/wt-c3 88304e59` | created for G6's red proof; never `cd`-ed into, every command run as `subprocess.run([...], cwd=<abs worktree>)`; removed and pruned before the handback |
-| `git worktree list` | after the removals: ONE entry, `/home/decodeux/Repos/remedy 18a9ddd1 [feature/f275-one-world-completion-part-three]` (read at C4) |
-| `git push -u origin feature/f275-one-world-completion-part-three` | ordered and executed immediately AFTER C5. Its outcome is by construction unrecordable here — a handback cannot report a push that follows it — so no outcome is claimed; the reviewer reads it from `git log origin/feature/f275-one-world-completion-part-three` |
+| `git worktree add --detach .remedy-wt/wt-r53a a815c9a3` | exit 0, "HEAD is now at a815c9a3" |
+| `git worktree add --detach .remedy-wt/wt-r53b 020b1d57` | exit 0, "HEAD is now at 020b1d57" |
+| `git worktree remove --force .remedy-wt/wt-r53a` | exit 0, no output |
+| `git worktree remove --force .remedy-wt/wt-r53b` | exit 0, no output |
+| `git worktree prune` | exit 0, no output |
+| `git worktree list` | one line, the primary checkout only |
+| `git push -u origin feature/f275-one-world-completion-part-three` (after C5) | exit 0, `a815c9a3..8200e166` |
 
-No PR created, edited or merged. No force-push, no history rewrite, no branch deleted.
-No `remedy` CLI command was run. `/tmp` was not written; all scratch lives under the
-gitignored `.remedy-wt/`.
+No pull request was created, edited or merged. No `gh` command was run. No `remedy` CLI command
+was run. All scratch lived under the gitignored `.remedy-wt/`; nothing was written to `/tmp`.
+The branch is pushed again after C6.
 
 ## Verification
 
-EIGHT gates run, G1 through G8 — the number is the worker's own count; the block states
-none. Every one run for real as `bash -c '<cmd>; echo "REAL_EXIT=$?"'`.
+Every gate was run as `bash -c '<cmd>; echo "REAL_EXIT=$?"'`. Exit codes below are the real
+`REAL_EXIT` readings.
 
-**G1 TRANSPORT, at C0b — PASS, exit 0.** The chain the proof walked has four links and no
-retyped byte: `.remedy-wt/f275-r52.block.md` → (`shutil.copyfile`) →
-`.agent/authored/f275-r52.md` on disk → (`git commit`) → the committed blob at `95dff48f` →
-(`git cat-file blob` into memory) → `.agent/last_block.md`.
-```
-scratch       bytes 34889 sha256 28756d5a7798eb066e2300bd31a91b3e48d977461c2f8038233f7e57490cf052
-authored      bytes 34889 sha256 28756d5a7798eb066e2300bd31a91b3e48d977461c2f8038233f7e57490cf052
-committed blob bytes 34889 sha256 28756d5a7798eb066e2300bd31a91b3e48d977461c2f8038233f7e57490cf052
-last_block    bytes 34889 sha256 28756d5a7798eb066e2300bd31a91b3e48d977461c2f8038233f7e57490cf052
-blob==mirror: True
-REAL_EXIT=0
-```
-The digest the delegation message states is
-`28756d5a7798eb066e2300bd31a91b3e48d977461c2f8038233f7e57490cf052` and the byte count it
-states is 34889; both were verified BEFORE the file was used. The block carries
-`BEGIN-`/`END-` marker lines for its SLICES only and no BEGIN marker of its own, so the
-digest is the whole identity. Nothing is claimed about the bytes emitted into the worker's
-prompt — the proof never reads them.
+### The measurement itself (C4 recipe steps 3 and 4)
 
-**G2 THE PLAN, at C1 — PASS, exit 0.**
-```
-slice bytes 2518 sha 5ea079a50ff73b8593313bb7edc6e1d43cb4f643d9347cabd99c74db9abf639e
-file  bytes 2518 sha 5ea079a50ff73b8593313bb7edc6e1d43cb4f643d9347cabd99c74db9abf639e
-byte-equal: True
-lines: 44 cap 50
-^## Goal$ count: 1
-^## Next Steps$ count: 1
-REAL_EXIT=0
-```
+    RUN 1: python3 -B -m pytest tests/ -q -p f275_r53_probe -p no:cacheprovider
+      cwd=.remedy-wt/wt-r53a, PYTHONPATH=<wt>/.remedy-wt, R53_ROOT=<wt>,
+      R53_PROBE_OUT=<wt>/.remedy-wt/probe1.json
+      EXIT=1
+      1 failed, 18372 passed, 29 skipped, 1 warning in 1278.25s (0:21:18)
+      FAILED tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes
 
-**G3 THE RECORD, at C2 and again at C4 — PASS, exit 0 both times.** Every pre and post blob
-was read with `git show <sha>:<path>` INTO MEMORY; no non-current revision was ever written
-over a tracked file.
-```
-[G3(i)] pre=4137c718 912896B  post=f244262d 917772B  slices=[('RECORD52', 3754), ('NOTE52', 1122)]
-[G3(i)] reader A: identical: True
-[G3(i)] reader B: N counted from the slices = 2; last 2 blank-line units equal them IN ORDER: True
-[G3(i)] negative control: flipped byte 1 'G'->'B' in the FIRST appended paragraph; reader A rejects: True; reader B rejects: True
-[G3(ii)] pre=88304e59 917772B  post=18a9ddd1 918266B  slices=[('LANDED52', 494)]
-[G3(ii)] reader A: identical: True
-REAL_EXIT=0
-```
-N = 2 is COUNTED by the script across RECORD52 and NOTE52 (one blank-line-separated
-paragraph each); no number from the block was asserted. The control flips byte 1 of
-RECORD52 — the `G` of `Gate: F275 R51 …`, the first ASCII letter of the FIRST appended
-paragraph, RECORD52's leading blank line being byte 0 — to `B`, so the mutated copy stays
-decodable; both readers were re-run against the ORIGINAL slices, the mutated blob being the
-post side in both. All three appends are `old_bytes + slice_bytes` in Python; each slice's
-leading byte is `\n` and each pre-blob already ended in a newline, so none was added. Every
-length is `len(<bytes>)` over a byte stream, never `len()` over a decoded `str`.
+    RUN 2: same command, R53_PROBE_OUT=<wt>/.remedy-wt/probe2.json
+      EXIT=0
+      18379 passed, 23 skipped, 1 warning in 1313.98s (0:21:53)
+      (no FAILED lines)
 
-**G4 WHAT THE GENERATOR DID, at C3 — PASS.** The generator's OWN stdout, in full, from
-`python3 -B .remedy-wt/f275_r52_unwrap.py .` run from the repository root:
-```
-files rewritten: 12 | wraps removed: 26
-      1  apps/cli/commands/dashboard_cmd.py
-      1  packages/memory/context_summary.py
-      1  packages/orchestration/do_continue.py
-      8  packages/orchestration/job_fulfillment.py
-      1  packages/orchestration/mission_readiness.py
-      5  packages/orchestration/repair_loop.py
-      1  packages/orchestration/self_dogfood_execution.py
-      3  tests/orchestration/test_memory_events.py
-      1  tests/orchestration/test_memory_safety.py
-      1  tests/orchestration/test_mission_readiness.py
-      1  tests/orchestration/test_repair_apply_cycle.py
-      2  tests/test_patch_apply.py
+    probe1.json exitstatus 1, rows 2145 ; probe2.json exitstatus 0, rows 2145
 
-`UUID` imports orphaned by the rewrite and removed with it:
-    packages/memory/context_summary.py:203  line removed
-    tests/orchestration/test_memory_events.py:75  line removed
-    tests/orchestration/test_memory_events.py:52  line removed
-    tests/orchestration/test_memory_events.py:28  line removed
-    tests/orchestration/test_memory_safety.py:154  line removed
-    tests/test_patch_apply.py:23  narrowed to `from uuid import uuid4`
-REAL_EXIT=0
-```
-That stdout is EVIDENCE OF INTENT, not of result, and the three readings below verify the
-result independently of it.
+    GENERATOR (cwd = primary checkout), COMPLETE stdout, exit 0:
+      tracked 993 | scanned 989 | universe 5276
+      H 2428 | S 407 | P 2145 | R 2198
+      H-R 359 (A 6, B 36, C 317) | R-H 129 (expr 76)
+      probe reproducibility: symmetric difference 0
+      control: job 1896 task 532
+      wrote .agent/f275_t003_descriptor_sites.md (19635 bytes)
 
-(a) `git diff --numstat 88304e59^..88304e59` — thirteen rows, every one measured against the
-block's list and every one equal:
-```
-1	1	apps/cli/commands/dashboard_cmd.py
-1	2	packages/memory/context_summary.py
-1	1	packages/orchestration/do_continue.py
-8	8	packages/orchestration/job_fulfillment.py
-1	1	packages/orchestration/mission_readiness.py
-5	5	packages/orchestration/repair_loop.py
-1	1	packages/orchestration/self_dogfood_execution.py
-3	6	tests/orchestration/test_memory_events.py
-1	2	tests/orchestration/test_memory_safety.py
-1	1	tests/orchestration/test_mission_readiness.py
-1	1	tests/orchestration/test_repair_apply_cycle.py
-3	3	tests/test_patch_apply.py
-89	0	tests/test_timeline.py
-REAL_EXIT=0
-```
-`tests/test_patch_apply.py` reads 3/3 against 2 wraps because its orphaned import was
-NARROWED rather than deleted, which is one changed line on each side.
+### G1 TRANSPORT — REAL_EXIT=0, PASS
 
-(b) REPRODUCIBILITY. The generator was re-run against a disposable worktree detached at the
-base `87d76c66` and the worktree's subtree digests read with `git add -A; git write-tree`
-(a worktree has its own index, so the primary checkout was untouched):
-```
-generator alone:          apps 1dd43398c371aa88e16fa8aba95bead4c131c2ac
-                      packages ff6cebaf9e41cbcd813399fb022940c47ca7180b
-                         tests e7f7a003dbde77e77d551121c285a363d780aa12
-generator + GUARD52:      apps 1dd43398c371aa88e16fa8aba95bead4c131c2ac
-                      packages ff6cebaf9e41cbcd813399fb022940c47ca7180b
-                         tests 1d425fe0f1a27848b0cec31fce0c92077ce28d12
-C3:                       apps 1dd43398c371aa88e16fa8aba95bead4c131c2ac
-                      packages ff6cebaf9e41cbcd813399fb022940c47ca7180b
-                         tests 1d425fe0f1a27848b0cec31fce0c92077ce28d12
-REAL_EXIT=0
-```
-`apps` and `packages` are equal to C3's from the GENERATOR ALONE, which is the reproducibility
-claim for the production side. `tests` needs GUARD52 applied beside it, because the guard is
-part of C3 and is not something the generator produces; the two readings are reported
-separately rather than folded together. See deviation 1.
+    CHAIN: reviewer scratch file on disk -> shutil.copyfile -> committed blob.
+    Nothing here reads bytes emitted into a prompt.
+      .agent/authored/f275-r53.md @ 9c30a4d8 : 23122 bytes sha256 ca661622cac11bafc3df43c376cd2cd5d0a78ee4205e3a54728fa99bdccd8a8f
+      .remedy-wt/f275-r53.block.md            : 23122 bytes, same sha256, EQUAL=True
+      .agent/authored/f275-r53-probe.py.md @ c3d33f6a : 4974 bytes sha256 a5487407ade9b73aa2c68ba54fee9afe1c947ac4bc85a765b8d9624b6f290939
+      .remedy-wt/f275-r53-probe.py.md         : 4974 bytes, same sha256, EQUAL=True
+      .agent/authored/f275-r53-sites.py.md @ a8ba85cf : 18350 bytes sha256 a8af9184f49379071322d02dc95f6539a7ea8fc98f38fa38b48646f27310ad76
+      .remedy-wt/f275-r53-sites.py.md         : 18350 bytes, same sha256, EQUAL=True
+      .agent/last_block.md @ 56edf326 == .agent/authored/f275-r53.md @ 9c30a4d8 : EQUAL=True
+      BLOCK TOTAL lines 282 (cap 490) -> within
+      BLOCK PROSE lines 223 (cap 400) -> within
+      constraint 9 claims TOTAL 282 / PROSE 223: both match
 
-(c) THE `ast` SWEEP for a seam call whose SECOND positional argument is a `UUID(...)` call,
-over the tracked `.py` files:
-```
-root=/home/decodeux/Repos/remedy (C3)  tracked .py files=993  wrapped-id call sites=0
-root=.remedy-wt/wt-base (87d76c66)     tracked .py files=993  wrapped-id call sites=26
-      1  apps/cli/commands/dashboard_cmd.py
-      1  packages/memory/context_summary.py
-      1  packages/orchestration/do_continue.py
-      8  packages/orchestration/job_fulfillment.py
-      1  packages/orchestration/mission_readiness.py
-      5  packages/orchestration/repair_loop.py
-      1  packages/orchestration/self_dogfood_execution.py
-      3  tests/orchestration/test_memory_events.py
-      1  tests/orchestration/test_memory_safety.py
-      1  tests/orchestration/test_mission_readiness.py
-      1  tests/orchestration/test_repair_apply_cycle.py
-      2  tests/test_patch_apply.py
-REAL_EXIT=0
-```
-**26 at the base, 0 at C3**, and the base file counts are the twelve rows above. The sweep is
-an independent implementation, not a call into the generator.
+NEITHER CAP IS EXCEEDED, stated plainly as G1 requires.
 
-**G5 THE GUARD, at C3, by ORDERED EQUALITY — PASS, exit 0.**
-```
-base 37184 C3 40996 slice 3812 sum 40996
-base is byte-exact PREFIX of C3: True
-slice is byte-exact SUFFIX of C3: True
-prefix+suffix == C3: True
-diff added lines: 89 slice lines: 89
-ORDERED EQUALITY added == slice lines: True
-REAL_EXIT=0
-```
-Not a per-line multiplicity count: GUARD52 repeats blank lines and `assert` lines
-structurally, so multiplicity is unattainable by construction. The three clauses together
-pin the append exactly — a prefix, a suffix, and the added-line sequence IN ORDER.
+### G2 THE PLAN — REAL_EXIT=0, PASS
 
-**G6 THE RED PROOF, at C3 — PASS, exit 0.** Run in the disposable worktree
-`.remedy-wt/wt-c3`, detached at `88304e59`, NEVER `cd`-ed into: every command ran as
-`subprocess.run([...], cwd="/home/decodeux/Repos/remedy/.remedy-wt/wt-c3")` under
-`python3 -B` with `-p no:cacheprovider`, `__pycache__` purged before every run, and the
-module resolution PRINTED and checked before any result was believed. Selection for EVERY
-run was all three node ids of `TestTheRunLogSeamHasOneIdSpelling` together. FAILED node ids
-are parsed as what follows the FIRST space of a `FAILED <nodeid> - <msg>` line, reported as
-a SET (leaf names shown; the class path is identical in every row):
-```
-== control (unmutated), FIRST ==
-  purged 0 __pycache__ directories
-  packages.orchestration.timeline.__file__ = /home/decodeux/Repos/remedy/.remedy-wt/wt-c3/packages/orchestration/timeline.py
-  inside the worktree: True
-  [control] exit=0  last line: '3 passed in 2.63s'
-  [control] FAILED node ids (set, 0): []
-  [control] sweep assertion message names: (no sweep failure)
+    .agent/plan.md @ d70bf6f5 : 2418 bytes
+    slice PLAN53 from the committed block blob : 2418 bytes
+    BYTE-IDENTICAL = True
+    line count 43 (AGENTS.md cap 50) -> within
+    ^## Goal$ = 1   ^## Next Steps$ = 1
 
-== M1: re-wrap the fulfillment_started id in job_fulfillment.py ==
-  [M1] packages/orchestration/job_fulfillment.py sha256 BEFORE = a4595a69051b032b0c76f86e5112ac73da41dd89b83b015a59c17d0f4558bb20
-  packages.orchestration.timeline.__file__ = /home/decodeux/Repos/remedy/.remedy-wt/wt-c3/packages/orchestration/timeline.py
-  inside the worktree: True
-  [M1] exit=1  last line: '1 failed, 2 passed in 2.65s'
-  [M1] FAILED node ids (set, 1): ['test_no_call_site_wraps_the_run_log_id_in_a_uuid']
-  [M1] sweep assertion message names: packages/orchestration/job_fulfillment.py:640 append_run_event
-  [M1] control exit for comparison = 0
-  [M1] revert byte-exact against the recorded digest: True
+### G3 THE RECORD — REAL_EXIT=0, PASS
 
-== M2: re-wrap in context_summary.py and restore its local UUID import ==
-  [M2] packages/memory/context_summary.py sha256 BEFORE = e678360968ed71312c3d61c95c1ccebd9badd6198a412e2e90537dcfd5e47a4e
-  packages.orchestration.timeline.__file__ = /home/decodeux/Repos/remedy/.remedy-wt/wt-c3/packages/orchestration/timeline.py
-  inside the worktree: True
-  [M2] exit=1  last line: '2 failed, 1 passed in 2.66s'
-  [M2] FAILED node ids (set, 2): ['test_a_recalled_memory_event_is_readable_by_the_shipped_reader', 'test_no_call_site_wraps_the_run_log_id_in_a_uuid']
-  [M2] sweep assertion message names: packages/memory/context_summary.py:206 append_run_event
-  [M2] control exit for comparison = 0
-  [M2] revert byte-exact against the recorded digest: True
+Every pre and post blob was read with `git show <sha>:<path>` INTO MEMORY; no non-current
+revision was written over a tracked file.
 
-M1 set is a SUBSET of M2 set: True; M2 adds: ['test_a_recalled_memory_event_is_readable_by_the_shipped_reader']
+    (i) heading counts in a815c9a3:.agent/handoff.md, H1..H4 = [1, 1, 1, 1]
+        VERDICT52 4833 bytes | DONE52 3394 bytes | SLIP52 1112 bytes
+        re-extracted spans byte-identical to the span rule = True
+        RECORD53 4879 bytes | DONE53 3396 bytes | SLIP53 1114 bytes
+    (ii) reader A live_review  : pre 918266 + 4879 + 3396 == post 926541 -> True
+         reader A prose_slips  : pre 242729 + 1114 == post 243843 -> True
+         (compared as bytes with len() over a byte stream, never over a decoded str)
+    (iii) reader B live_review : N counted from the slices = 6 ; the last 6
+          blank-line-separated units of the post blob equal the appended paragraphs
+          IN ORDER -> True
+    (iv) negative control: the `G` of `Gate: F275 R52` in the FIRST appended paragraph
+         flipped to `X`
+         reader A accepts the corruption = False   (rejected)
+         reader B accepts the corruption = False   (rejected)
+    (v) RECORD53: 51 lines, interior strong-start lines = 0
+        DONE53:    1 line,  interior strong-start lines = 0
+        (patterns `Gate: `, `- R-`, `Done: R-`, `Landed: R-`, `Recurrence: R-`, `DECISION F`)
 
-== control again, LAST ==
-  [control-again] exit=0  last line: '3 passed in 2.61s'
-  [control-again] FAILED node ids (set, 0): []
-worktree git status --porcelain after the proof: ''
-REAL_EXIT=0
-```
-The module resolves INSIDE the worktree at every run, not in the primary checkout and not in
-an install. THE DISCRIMINATOR IS THE ASSERTION MESSAGE, not the exit code: under M1 the sweep
-names `packages/orchestration/job_fulfillment.py:640` and NO other site, under M2 it names
-`packages/memory/context_summary.py:206` and no other — each message names the site that was
-mutated and only that one. The containment the block stated in advance HOLDS: M1's set is a
-SUBSET of M2's, M2 adding the behavioural node
-`test_a_recalled_memory_event_is_readable_by_the_shipped_reader`, which exercises
-`emit_memory_recalled_event` → `load_run_events` through the REAL functions. What M1
-therefore establishes is the sweep's own reach: it reddens on a file that NO behavioural test
-in this selection executes, which is exactly the coverage a repo-wide zero-gate exists to
-buy. Each file's sha256 was recorded BEFORE its mutation and both reverts are byte-exact
-against the recorded digest; the worktree's own `git status --porcelain` is `''` at the end.
-Both worktrees were removed and pruned before this handback.
+HEADER53 against the headers it joins, as a PATTERN MATCH and not an opinion —
+`^Gate: F275 R(\d+) — the F275 round (\d+) entry\.` over the `a815c9a3` blob matches 51
+times, every one with n == m, the last two being R51 then R50; HEADER53 matches the same
+pattern as a FULL line with n == m == 52 and carries no trailing whitespace; at C5 the
+pattern matches 52 times, the last three being R50, R51, R52. SHAPE NOTE, declared rather
+than reconciled: the R50 and R51 entries carry their verdict on the SAME line as the header,
+while RECORD53 puts VERDICT52 on the NEXT line with no blank line between them, which is
+exactly what the block's RECORD53 rule orders and which keeps the two as ONE ledger record
+under the `_STRONG_START` reader of `scripts/rotate_live_review.py`.
 
-**G7 NOTHING NEAR IT MOVED, at C3 — PASS.**
+### G4 THE PROBE IS BEHAVIOUR-NEUTRAL AND RESOLVES INSIDE THE WORKTREE — REAL_EXIT=0, PASS
 
-(a) Tree digests, exit 0. ALL SIX MATCH the block's stated values, so this tree IS the tree
-the reviewer measured:
-```
-C3:packages  ff6cebaf9e41cbcd813399fb022940c47ca7180b
-base:packages  6d2ec62e10948175e3c338aa951f3bca3cb4ddc5
-C3:apps  1dd43398c371aa88e16fa8aba95bead4c131c2ac
-base:apps  6d3dba7c11f6586682d8c55f0628f330742df584
-C3:tests  1d425fe0f1a27848b0cec31fce0c92077ce28d12
-base:tests  b104a5acd66ce6c1c1482e7deaf4c862b0bcda52
-REAL_EXIT=0
-```
+    RUN 1: exit=1
+      FINAL summary line verbatim: 1 failed, 18372 passed, 29 skipped, 1 warning in 1278.25s (0:21:18)
+      present verbatim in the committed artefact section 3 = True
+      FAILED node id set = {tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes}
+      SUBSET of the allowed single-element set = True
+    RUN 2: exit=0
+      FINAL summary line verbatim: 18379 passed, 23 skipped, 1 warning in 1313.98s (0:21:53)
+      present verbatim in the committed artefact section 3 = True
+      FAILED node id set = (empty set)
+      SUBSET of the allowed single-element set = True
 
-(b) THE RUFF CEILING. `python3 -m ruff check . --output-format concise`, run with the
-worktree as `cwd` for the base reading so no base byte was ever written over a tracked file:
-```
-C3 exit 1 | ['Found 26 errors.'] | counted findings: 26
-base exit 1 | ['Found 26 errors.'] | counted findings: 26
-REAL_EXIT=0
-```
-**26 at both.** Ruff exits 1 whenever findings remain, so the gate is the COUNT and not the
-exit code; both exit codes are 1 and both counts are 26, which is the ceiling
-`tests/orchestration/test_ci_budgets.py` freezes. The six removed or narrowed imports do not
-move it because they were removed rather than left unused.
+    collect-only resolution run, exit 0:
+      python3 -B -m pytest tests/test_task_runner.py -p f275_r53_probe -p no:cacheprovider --co
+      f275_r53_probe: root=/home/decodeux/Repos/remedy/.remedy-wt/wt-r53a
+      f275_r53_probe: models=/home/decodeux/Repos/remedy/.remedy-wt/wt-r53a/packages/core/models.py
+      f275_r53_probe: inside_root=True
+      f275_r53_probe: out=/home/decodeux/Repos/remedy/.remedy-wt/wt-r53a/.remedy-wt/probe_co.json
+      last line: 45 tests collected in 0.03s
 
-(c) THE SCOPED ROUND GATE, in the primary checkout at C3:
-```
-419 passed in 13.29s
-REAL_EXIT=0
-```
-and the canary `python3 -m pytest tests/cli/test_golden_path.py -q`:
-```
-42 passed in 18.75s
-REAL_EXIT=0
-```
-Both figures equal the block's pre-measured readings exactly. The selection includes
-`tests/test_run_log.py` and `tests/orchestration/test_budget_tick.py` — the round 51 seam's
-own suites — so this round's call-site change is shown not to have re-broken it.
+`inside_root` reads True and `models=` names a path under `wt-r53a`, so the probe installed
+over the worktree's own `packages.core.models` and not over an editable install.
 
-**G8 NOTHING ELSE MOVED, at C4 — PASS, exit 0.**
-```
-(a) .agent/STOP re-read from disk: exists=False -> 'ABSENT, no stop order'
-(a) git status --porcelain == ''
-(a) git worktree list entries = 1: ['/home/decodeux/Repos/remedy  18a9ddd1 [feature/f275-one-world-completion-part-three]']
-(b) expected 17 paths, actual 17
-(b) MISSING = []
-(b) EXTRA   = []
-(b) paths under docs/ or scripts/ = 0
-(b) f275_r52_unwrap.py present in the set: False
-(c) open set BY DISTINCT ID: base=87  C4=87
-(c) ids registered this round = []
-(c) ids resolved this round   = []
-(c) '(?m)^Landed: R-0877 ': C3=1  C4=2
-(c) '(?m)^Done: R-0877 ': C3=0  C4=0
-(d) per-commit insertions against the F104 D1 cap of 500:
-    C0a  95dff48f  +490 -0  files=1  under 500: True
-    C0b  67667f7b  +387 -362  files=1  under 500: True
-    C1   4137c718  +14 -14  files=1  under 500: True
-    C2   f244262d  +4 -0  files=1  under 500: True
-    C3   88304e59  +116 -32  files=13  under 500: True
-    C4   18a9ddd1  +2 -0  files=1  under 500: True
-REAL_EXIT=0
-```
-The (b) expectation was resolved against the block's Change section ITSELF — its backticked
-paths, minus `.agent/handoff.md` which C5 writes, minus `.remedy-wt/f275_r52_unwrap.py` which
-is gitignored scratch, and minus `.agent/decisions.md` and `.agent/prose_slips.md`, which the
-Change section names only to say they are NOT touched (see deviation 3) — and NOT against any
-number stated anywhere in the block. The gitignored generator does NOT appear in the changed
-set, as the gate requires. The `.agent/STOP` literal result is that the path does not exist;
-the porcelain literal string is `''`. The open set is 87 at the base and 87 at C4: this round
-RESOLVES nothing and REGISTERS nothing, and the second `Landed: R-0877` line sits beside
-round 51's, which was neither deleted nor rewritten. Per-commit insertions in (d) were
-derived ONCE from `git show --numstat <sha>` and the same numbers fill the `+/-` column of
-`## Commits` above. Every one is under 500, so F275's one oversize allowance is STILL UNSPENT
-at 52 rounds.
+### G5 REPRODUCIBILITY — REAL_EXIT=0, PASS
+
+    generator line: probe reproducibility: symmetric difference 0
+    committed artefact section 3: run 2 holds 2145, SYMMETRIC DIFFERENCE 0
+    symmetric difference is ZERO = True
+
+The property `.agent/f275_t002_flip_inventory.md` section 3 records for round 31's narrower
+probe reproduces at this base for the widened one.
+
+### G6 THE HEURISTIC CONTROL — REAL_EXIT=0, PASS
+
+    generator line: control: job 1896 task 532
+    .agent/f275_t003_flip_residue_r50.md section 6 recorded output at 020b1d57:
+      D1 T2 JOB-FIELD edits: 1896 ; D1 T3 TASK-FIELD edits: 532
+    EQUAL = True
+
+The sweep's re-implemented `is_jobish` / `is_taskish`, run over the SAME node selection it
+type-resolves, reproduces the R50 instrument at the same commit, so every difference in the
+artefact is a difference of VERDICT and not of scope.
+
+### G7 THE ARTEFACT IS GENERATED, NOT TYPED — REAL_EXIT=0, PASS
+
+    committed .agent/f275_t003_descriptor_sites.md @ a25fef5d : 19635 bytes
+      sha256 dd0c914998e07f457880e3aab19e006d0cb2e4046384f0b3f880a11cfeb2be77
+    second generator run -> .remedy-wt/regen-check.md         : 19635 bytes, same sha256
+    EQUAL = True
+    artefact line count 365 against the DECISION F104 D1 cap of 500 insertions -> within
+    comparison-table rows total 15 ; rows whose verdict column is not `same`: 0
+      THERE ARE NONE.
+
+All fifteen rows of the four comparison tables read `same`: 993, 989, 5276, 1896, 532, 315,
+92, 2145, 2198, 359, 129 in section 1; 1896 and 532 in section 4; 129 and 76 in section 6.
+
+### G8 NOTHING ELSE MOVED — REAL_EXIT=0, PASS
+
+    (a) .agent/STOP re-read from disk: exists=False
+        git status --porcelain = ''      (the literal empty string)
+        git worktree list, after remove + prune:
+          /home/decodeux/Repos/remedy  8200e166 [feature/f275-one-world-completion-part-three]
+    (b) changed paths over a815c9a3..C5 = 9
+          .agent/authored/f275-r53-probe.py.md
+          .agent/authored/f275-r53-sites.py.md
+          .agent/authored/f275-r53.md
+          .agent/decisions.md
+          .agent/f275_t003_descriptor_sites.md
+          .agent/last_block.md
+          .agent/live_review.md
+          .agent/plan.md
+          .agent/prose_slips.md
+        MISSING = []   EXTRA = []
+        paths under docs/, scripts/, packages/, apps/ or tests/ = 0
+    (c) at a815c9a3: registered ids 106, resolved ids 19, OPEN BY DISTINCT ID 87
+        at C5 8200e166: registered ids 106, resolved ids 20, OPEN BY DISTINCT ID 86
+        ids REGISTERED this round = []            (must be [])
+        ids RESOLVED   this round = ['R-0877']    (must be ['R-0877'])
+        a815c9a3: ^Landed: R-0877  = 2 ; ^Done: R-0877  = 0
+        C5:        ^Landed: R-0877  = 2 ; ^Done: R-0877  = 1
+        ^Done: R-0877  goes 0 -> 1
+    (d) per-commit insertions from git show --numstat, against the cap of 500:
+          C0a 9c30a4d8  282  within
+          C0b c3d33f6a  120  within
+          C0c a8ba85cf  403  within
+          C0d 56edf326  257  within
+          C1  d70bf6f5   19  within
+          C2  12bb8f6d   54  within
+          C3  da372b22    2  within
+          C4  a25fef5d  365  within
+          C5  8200e166   16  within
+        commits exceeding the cap: NONE. F275's one DECISION F275 D17 declared-oversize
+        allowance is STILL UNSPENT at 53 rounds.
+
+## Authored-text proofs
+
+| Text | Source | Proof |
+|---|---|---|
+| the step block | `.remedy-wt/f275-r53.block.md` | `shutil.copyfile` to `.agent/authored/f275-r53.md`; disk-to-disk equal at 23122 bytes, sha256 `ca661622…`, and the committed blob equals the scratch original (G1) |
+| the probe instrument | `.remedy-wt/f275-r53-probe.py.md` | `shutil.copyfile` to `.agent/authored/f275-r53-probe.py.md`; 4974 bytes, sha256 `a5487407…`, committed blob equals scratch (G1) |
+| the sweep instrument | `.remedy-wt/f275-r53-sites.py.md` | `shutil.copyfile` to `.agent/authored/f275-r53-sites.py.md`; 18350 bytes, sha256 `a8af9184…`, committed blob equals scratch (G1) |
+| PLAN53 | slice of the committed block blob | `.agent/plan.md` byte-identical at 2418 bytes (G2) |
+| HEADER53 | slice of the committed block blob | 44 bytes with its newline; the header line carries no trailing whitespace and matches the ledger's key pattern (G3) |
+| D30 | slice of the committed block blob | 5438 bytes appended verbatim behind one blank line; +16 lines at C5 |
+| VERDICT52 | span of `a815c9a3:.agent/handoff.md` | extracted by heading rule, 4833 bytes re-measured; readers A and B both accept, both reject the one-letter control (G3) |
+| DONE52 | span of the same blob | 3394 bytes re-measured; reader A accepts (G3) |
+| SLIP52 | span of the same blob | 1112 bytes re-measured; reader A accepts (G3) |
+
+No text was retyped, reflowed or corrected. Nothing was keyed in by hand.
+
+## Deviations & assumptions
+
+THE ORDERED COMMIT SEQUENCE WAS FOLLOWED EXACTLY: C0a, C0b, C0c, C0d, C1, C2, C3, C4, C5, C6,
+ten commits, none merged, none reordered, none added, none dropped. C4 precedes C5 as
+constraint 3 requires.
+
+1. THE TWO SUITE RUNS' RAW LOGS DIED WITH THE WORKTREE. `run1.txt`, `run2.txt`,
+   `probe1.json` and `probe2.json` lived in `<wt-r53a>/.remedy-wt/`, which constraint 4
+   required be removed and pruned before this handback, so `git worktree remove --force`
+   took them with it. Their content is not lost: the generator read both run files and both
+   probe files, and the committed `.agent/f275_t003_descriptor_sites.md` section 3 carries
+   both summary lines VERBATIM and both row counts, which is what G4 cross-checks against.
+   The exit codes and the FAILED node-id sets above are this session's real captured output.
+   A future block that wants those logs to survive should order them copied OUT of the
+   worktree before the removal.
+
+2. G4 SAYS "the three `f275_r53_probe:` header lines" AND THE INSTRUMENT EMITS FOUR.
+   `pytest_report_header` returns `root=`, `models=`, `inside_root=` and `out=`. Applied as
+   written — the instrument was RUN and not edited, per constraint 5 — and all four are
+   reported above. The two the gate names by property, `inside_root` and `models=`, read
+   True and a path under `wt-r53a`.
+
+3. RUN 2'S SUMMARY LINE DIFFERS FROM THE REVIEWER'S RECORDED READING and the block says
+   in advance that it may. The block recorded `1 failed, 18372 passed, 29 skipped` then
+   `1 failed, 18378 passed, 23 skipped`; this worker measured `1 failed, 18372 passed,
+   29 skipped, 1 warning` at exit 1 then `18379 passed, 23 skipped, 1 warning` at exit 0 —
+   run 2 went fully green rather than carrying the vitest failure a second time. The empty
+   FAILED set is still a SUBSET of the allowed single-element set, which is the property
+   G4 gates. Declared, not reconciled.
+
+4. `.agent/plan.md` DESCRIBED ROUND 52 ACROSS C0a THROUGH C0d. The block's fixed commit
+   order puts the plan rewrite at C1, after the four save/mirror commits, so for four
+   commits the AGENTS.md "plan.md reflects the current state" gate was met only by the
+   round-52 text. The four are pure transport of this round's own authored inputs and
+   change nothing else; the plan is current from C1 onward. This is the ordering every
+   round of this feature has used and it is declared here rather than silently kept.
+
+5. NO PRODUCTION LINE MOVED, which is the round's intent rather than a deviation, and it is
+   recorded because a reader auditing the change set should see it stated: zero paths under
+   `packages/`, `apps/`, `tests/`, `docs/` or `scripts/`, and `docs/roadmap/STATUS.md`
+   untouched. The suite was therefore not re-run against the branch tip — the branch tip
+   differs from `a815c9a3` only in `.agent/**`, and `a815c9a3` is the tree both suite runs
+   measured.
+
+6. ASSUMPTION, stated because the block does not name the number: "rounds so far" is 53 and
+   the SESSION NUMBER is 21, read from round 52's handback line `SESSION 20 … rounds so far
+   52` and incremented by one each. The block states the session number is 21, which agrees.
 
 ## Open findings
 
-**87 by distinct id at C4**, unchanged from 87 at the base `87d76c66`. NOTHING was registered
-and NOTHING was resolved this round. Four of the 87 are High — R-0803, R-0804, R-0806 and
-R-0807 — all F273's, per DECISION F272 D12. `R-0877` now carries TWO `Landed:` lines and zero
-`Done:` lines; the reviewer's authored `Done:` covering both halves is owed at the next gate.
-
-## Deviations
-
-1. **G4(b)'s `tests` digest is reproducible only from the generator PLUS GUARD52, and both
-   readings are reported rather than one.** The gate says "re-run the generator … and compare
-   that worktree's `packages`, `apps` and `tests` tree digests against C3's". `apps` and
-   `packages` match C3 from the generator alone. `tests` cannot: C3's `tests` tree also
-   carries GUARD52's 89-line append to `tests/test_timeline.py`, which is a slice, not
-   something the generator produces. I report the generator-alone `tests` digest
-   (`e7f7a003dbde77e77d551121c285a363d780aa12`) beside the generator-plus-guard one
-   (`1d425fe0f1a27848b0cec31fce0c92077ce28d12`, equal to C3's) rather than quietly applying
-   the guard and calling it the generator's output. Nothing on disk is affected; the
-   reproducibility claim the gate exists for — this change applied to a clean checkout yields
-   C3's trees — is established.
-2. **G7(b)'s ruff runs exit 1, not 0**, at BOTH readings. Ruff exits non-zero whenever any
-   finding remains, and 26 remain at the base and at C3; the gate measures the COUNT and the
-   count is equal, so this is the expected exit and not a failure. The block states this
-   itself; it is repeated here so the exit code in the transcript is not read as a red gate.
-3. **My first G8(b) expectation was wrong and I corrected it before reading the result as a
-   verdict.** My extractor pulled every backticked path out of the Change section, which
-   includes `.agent/decisions.md` and `.agent/prose_slips.md` — the two paths that section
-   names precisely to say they are NOT touched. The first run therefore reported them as
-   MISSING. I narrowed the expectation to exclude them and re-ran; MISSING and EXTRA are both
-   empty. No commit was made against the wrong expectation and nothing on disk changed; the
-   slip is in my own measurement script, which is gitignored scratch.
-4. **The generator's import deletion leaves a blank line where the import stood**, e.g. in
-   `packages/memory/context_summary.py` the `try:` is now followed by a blank line before
-   `from packages.orchestration.timeline import append_run_event`. Constraint 5 forbids
-   hand-editing a site the generator produced, so it stands. Ruff's count is unchanged at 26,
-   so this is cosmetic and not a lint regression.
-5. **The FULL suite was NOT run.** No round gate orders it — the block reports its expected
-   reading (`1 failed, 18369 passed, 29 skipped`, the failure being the `node_modules`-
-   dependent vitest foundation test) as context rather than ordering it — and G7(c)'s scoped
-   selection plus the canary are what this round is gated on. Both ran green.
-
-Nothing else deviates. All six slices were extracted mechanically from the COMMITTED blob of
-`.agent/authored/f275-r52.md` by their `BEGIN-`/`END-` marker-line PREFIX, marker lines
-excluded, and none was retyped or reflowed. UNWRAP52 was RUN, not transcribed, exactly once
-against the repository root, and its file is gitignored scratch that no commit carries. The
-commit order C0a, C0b, C1, C2, C3, C4, C5 was kept exactly: none merged, none reordered, and
-C4 comes after C3. `.agent/decisions.md`, `.agent/prose_slips.md` and
-`docs/roadmap/STATUS.md` were NOT touched.
+86 by distinct id at C5, down from 87 at `a815c9a3` — `Done: R-0877` is the only resolution
+and nothing was registered. Four are High: R-0803, R-0804, R-0806 and R-0807, all F273's,
+per DECISION F272 D12. The next free id is `R-0878`.
 
 ## Next expected action
 
 The planner and reviewer of the next session re-derive every gate above against the committed
-range `87d76c66`..C5 and write the round 52 verdict, and — if that verdict is PASS — the
-authored `Done: R-0877` paragraph covering round 51's seam fix and this round's 26 call sites
-together, which only reviewer-authored text may set. Both `Landed: R-0877` lines survive
-beside it. The operator's ruling on round 51's scope report item (c) — an EXTENSION of the
-60-round limit against a SPLIT carrying the flip into a successor feature — is still owed
-before the next session plans past DECISION F275 D29's P2.
-
-## Reviewer verdict on round 52 — appended after the handback, by the reviewer's authored text
-
-VERDICT ROUND 52: **PASS.** Written by the planner and reviewer of SESSION 20 after reading the committed
-range `87d76c66`..`18a9ddd1` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
-worker's report was evidence for no line below. It is carried here because under
-`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
-`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 53, per amend0827-process-diet rule 1.
-
-G1 is the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback: the reviewer's scratch
-original, the saved copy at C0a `95dff48f` and the mirror at C0b `67667f7b` are one blob at 34889 bytes and
-sha256 `28756d5a7798eb066e2300bd31a91b3e48d977461c2f8038233f7e57490cf052`. G2: `.agent/plan.md` byte-identical
-to slice PLAN52 at 2518 bytes over 44 lines, both mandated headings exactly once. G3: `.agent/live_review.md`
-912896 to 917772 across RECORD52 and NOTE52 and 917772 to 918266 for LANDED52 at C4, reader A identical in
-both, reader B true at N counted from the slices — 2 then 1 — and the negative control, flipping one ASCII
-letter inside the FIRST appended paragraph, rejected by BOTH readers.
-
-G4 IS THE GATE THIS ROUND EXISTS FOR AND THE REVIEWER RAN THE SWEEP ITSELF over the COMMITTED blobs of both
-commits, resolving every site with `ast` rather than grep: at the base `87d76c66` a call to
-`append_run_event`, `emit_failure_events` or `load_run_events` whose second positional argument is a
-`UUID(...)` occurs at 26 sites in 12 files, and at C3 `88304e59` it occurs at ZERO sites in ZERO files. G5:
-GUARD52 is a CODE APPEND proved by ordered equality — the base blob is a byte-exact PREFIX at 37184 bytes, the
-slice a byte-exact SUFFIX at 3812, the sum exactly the C3 blob's 40996, and the 89 lines C3's diff adds are
-the slice's 89 lines IN ORDER. G7: all three subtree digests equal the reviewer's own replay of this change on
-a clean checkout — `packages` at `ff6cebaf9e41cbcd813399fb022940c47ca7180b`, `apps` at
-`1dd43398c371aa88e16fa8aba95bead4c131c2ac` and `tests` at `1d425fe0f1a27848b0cec31fce0c92077ce28d12` — `ruff
-check .` reads 26 findings, unchanged from the base, and the reviewer re-ran the scoped selection itself at
-`419 passed` and the canary at `42 passed`, both exit 0.
-
-G6 WAS RE-RUN IN THE REVIEWER'S OWN DISPOSABLE WORKTREE DETACHED AT C3, with `timeline.__file__` printed and
-resolving inside it. The control reads `3 passed` at exit 0. M1, re-wrapping the `fulfillment_started`
-emission, reddens the sweep alone AND ITS ASSERTION MESSAGE NAMES `packages/orchestration/job_fulfillment.py:640` —
-the site mutated and no other. M2, re-wrapping `context_summary.py` and restoring its local import, reddens
-the sweep, whose message names `packages/memory/context_summary.py:206`, AND the behavioural test. Both
-reverts are byte-exact against a digest recorded before each mutation and the control is green again. M1's set
-is a proper SUBSET of M2's, which the block stated in advance rather than claiming a disjointness that does not
-hold. G8: the changed-path set over `87d76c66`..C4 is exactly the seventeen paths with MISSING and EXTRA both
-empty, ZERO under `docs/` or `scripts/`, and the gitignored generator correctly absent from it; the open set
-holds at 87 by distinct id with nothing registered and nothing resolved; `^Landed: R-0877 ` goes 1 to 2 while
-`^Done: R-0877 ` is 0 at both; and per-commit insertions are 490, 387, 14, 4, 116 and 2, every one under the
-AGENTS.md DECISION F104 D1 cap of 500, so F275's one oversize allowance is still unspent at 52 rounds.
-
-THE WORKER DECLARED FIVE DEVIATIONS AND THE FIRST IS THE REVIEWER'S OWN DEFECT. G4(b) ordered the generator
-re-run against a base worktree and the resulting `packages`, `apps` AND `tests` tree digests compared against
-C3's. That is unmeetable for `tests` by construction: C3's `tests` tree also carries GUARD52's 89-line append,
-which is a SLICE and not generator output, so the generator alone can never reproduce it. The worker did not
-reconcile the two — it reported the generator-only `tests` digest and the with-guard digest separately, and
-only the second equals C3's. Nothing on disk is wrong, so this is a dated line in `.agent/prose_slips.md` and
-not an id, per amend0827-process-diet rule 2. Its fourth deviation is sustained and is COSMETIC: the generator
-leaves a blank line where a deleted import stood, inside `emit_memory_recalled_event`'s `try:` and inside one
-test body. Both are valid Python, ruff is unchanged at 26, and constraint 5 forbade the worker to hand-edit
-generator output — correctly, because a hand edit beside a generated one is exactly what makes a generated
-change unreproducible. Any later round that touches those lines for another reason may close them up.
-
-## Authored text for round 53 to book — the resolution of R-0877
-
-Done: R-0877 — RESOLVED across F275 rounds 51 and 52, at C3 `133ccd53` and C3 `88304e59`. THE DEFECT HAD TWO HALVES AND THE SECOND WAS INVISIBLE FROM THE SIGNATURE. FIRST, `packages/orchestration/timeline.py`'s `append_run_event` and `packages/orchestration/test_failure_artifact.py`'s `emit_failure_events` were annotated `job_id: UUID | str` and coerced with `UUID(str(job_id))`, which rejects the sixteen hex characters `data_paths.mint_job_id` produces — the shape DECISION F260 D2 rules — so calling either with a shipped job id raised `ValueError: badly formed hexadecimal UUID string`. This repository had known that since F022 and routed ONE emission around it: `safe_points._emit_budget_tick` carries a docstring paragraph explaining why it writes through `RunLogWriter` instead, with `tests/orchestration/test_budget_tick.py` as its regression test. SECOND, and this is the half no annotation shows, `data_paths.run_log_dir` joins `str(job_id)` VERBATIM, so the coercion made the WRITER name the canonical hyphenated directory while the reader four lines below named the raw one — measured at `17d3f513` as one event written and zero read back under the id it was written with. THE FIX, in two rounds because the unit demanded it. Round 51 removed both coercions, so the seam joins the id verbatim on every path, and corrected the two neighbourhood paragraphs whose stated CAUSE the fix removed — DECISION F022 D2 clause one is NOT reversed, only its reason brought back into agreement with the code. That left 26 CALL SITES still wrapping the id in `UUID(...)`, which round 52 measured as the same defect from the other side: one job's run log in TWO directories, `job_logs/00000000-0000-0000-0000-000000000000/` and `job_logs/00000000000000000000000000000000/`, with neither reader seeing both events. Round 52 removed all 26 by one `ast` pass over the tracked `.py` files, together with the six `UUID` imports that pass orphaned — which is not tidiness but arithmetic, since leaving them took the repository's ruff count from 26 to 28 and `tests/orchestration/test_ci_budgets.py` freezes it at 26. THE GUARDS, and why there are two kinds. Round 51 added three behavioural tests in `tests/test_timeline.py`, each constructing through the REAL function on the shape that used to raise; reverting the `timeline.py` line reddens all three and reverting the `test_failure_artifact.py` line reddens only its own, which is the containment the block stated in advance. Round 52 added a RATCHET beside them: an `ast` sweep over every tracked `.py` file asserting that no call site hands the three seam functions a `UUID(...)` id, with its own discriminator test proving the matcher can see a wrap at all, and a failure message that names the offending `path:line` — the reviewer measured it naming `job_fulfillment.py:640` and `context_summary.py:206` under two separate mutations. THE RULE THIS LEAVES BEHIND, and it is the one the annotation hid: a parameter annotated `A | B` states what it ACCEPTS, and a body that narrows to one of them makes the annotation a promise the function does not keep — so where two shapes meet, the seam is measured by CALLING it with each shape, never by reading its signature. The corollary the second half adds: a WRITER and a READER of the same store are one unit, and a fix that moves one without the other trades a raise for a silence.
-
-## Authored text for round 53 to book — one dated line for `.agent/prose_slips.md`
-
-2026-09-11 · F275 R52 · The round 52 block's G4(b) ordered the generator re-run against a base worktree and the resulting `packages`, `apps` AND `tests` tree digests compared against C3's, requiring all three equal. That is unmeetable for `tests` by construction, because C3's `tests` tree also carries GUARD52's 89-line code append, which is a SLICE the worker applies and not generator output — so the generator alone can never reproduce it, and the gate as written demanded a value no correct round could produce. The worker declared it and reported both readings separately rather than folding them together, and the with-guard digest does equal C3's. This is §3 item 18's class, an ordered RECIPE read against the property it is ordered to establish: the recipe reproduces the generator's contribution and the property was stated over the whole commit. THE RULE THAT FOLLOWS: where a commit carries BOTH generated and sliced changes, a reproducibility gate names the subtrees the GENERATOR alone determines, and states the sliced contribution as a separate reading rather than inside the same equality.
-
-## Session 20 ends here — THREE delegated rounds, all PASS
-
-Rounds 50, 51 and 52. THE THROUGH-LINE IS THAT A MEASUREMENT TAKEN BEFORE AUTHORING CHANGED THE PLAN TWICE.
-
-ROUND 50 RE-RAN THE FLIP DRY RUN against a tree whose id shape is one spelling, and this time WITH A CONTROL —
-the same commit, a second fresh worktree, the same flags — which the round 46 run did not have. The migration
-DECISIONs F275 D26, D27 and D28 performed did exactly what it was performed to do and nothing more: the two
-pydantic classes vanished in full, 369 exception lines to 0, and the whole flipped run now carries two
-`ValidationError` lines, both against the classic record the flip excludes. It bought 157 failures, not the
-625 the previous session predicted, because every other class was never the id shape. Differencing the node-id
-sets attributes 2557 failures and all 106 errors TO THE FLIP against a control whose single failure is the
-vitest foundation test every fresh worktree fails. `.agent/f275_t003_flip_residue_r50.md` records that run with
-an instrument that reproduces its own numerals, and DECISION F275 D29 rules the three prerequisites it found:
-the field rename must be TYPE-RESOLVED rather than decided by a receiver-NAME heuristic, the surviving
-`UUID(...)` coercions must move, and the `**` splat needs a call-graph pass.
-
-ROUNDS 51 AND 52 LANDED THE SECOND OF THOSE, AND IT TURNED OUT TO BE A LIVE DEFECT RATHER THAN FLIP SCAFFOLDING.
-`R-0877` is the whole of it and its resolution is above. What is worth carrying forward is how it was found: not
-by reading the source, but by CALLING the shipped functions with the shape the shipped minter produces. The
-signature said `UUID | str` and the body accepted one of them.
-
-THE BRANCH IS GREEN AT A READING THIS SESSION TOOK: the full suite on the round 51 tree reads `18369 passed, 29
-skipped` at exit 1 with the single failure being the vitest foundation test, which needs the gitignored
-`apps/ui/node_modules` and fails in every fresh worktree; `ruff check .` reads 26 findings at every commit of
-this session, the frozen ceiling. Every round's scoped gate and canary were re-run by the reviewer itself.
-
-CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context is
-comfortable and exhaustion is expressly NOT why this session ends — it ends below the six-to-eight round target
-because each of its three rounds carried a full-suite measurement of twenty-one minutes or more, six of them in
-all, and the next step is a fresh twenty-minute descriptor-probe run whose site set is a new measurement rather
-than a continuation of this session's.
-
-## What the next session owes, in order
-
-FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
-session's Phase 0 probe, was measured absent before every round's first commit, and is absent as this session
-ends. Then the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
-
-SECOND, round 53's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
-amend0827-process-diet rule 1, the ROUND 52 PASS verdict above as a `Gate: F275 R52` entry in
-`.agent/live_review.md`, the authored `Done: R-0877` paragraph, and the one dated line above into
-`.agent/prose_slips.md`. Booking that resolution takes the open set from 87 to 86 by distinct id; the next free
-id is `R-0878`. Both `Landed: R-0877` lines stay where they are — the record is append-only.
-
-THIRD, F275 IS PAST THE SOFT LIMIT amend0908-f275-finish rule 1 names, at 52 of 60 rounds and 20 of 20
-sessions. The SCOPE REPORT that rule obliges was written in round 51's handback and STANDS; rule 2 forbids the
-amend0905-throughput split-and-close default here BY NAME, so the next session continues rather than closing.
-The banner line it carried is not re-earned by continuing; it is re-stated if a session output would otherwise
-leave the limit invisible.
-
-FOURTH, THE WORK ITSELF, which is DECISION F275 D29's P1. Replace the flip transform's receiver-NAME heuristic
-with the DECISION F272 D7 raising-property probe that `docs/roadmap/features/T2_F275.md` T002 already orders.
-DO NOT BUILD THAT PROBE FROM SCRATCH: it exists, with both instruments embedded verbatim and reproducible from
-the file itself, in `.agent/f275_t002_flip_inventory.md`, whose section 2 records the full suite GREEN under it
-at 18350 passed and whose section 3 records a symmetric difference of ZERO between two runs — the property
-T003 was told to rely on when it re-derives the set at its own base. That file measured `Job.id` and `Job.name`
-only; the transform also renames `Task.id` and `Task.description`, so the descriptor set is WIDENED before the
-run, not after it. The union of the probe's executed sites and the static sweep's provable ones is the site
-list the corrected transform consumes INSTEAD of `is_jobish` and `is_taskish`, and the honest test of whether
-it fixes the 551 attribute misses is another dry run. Then P3, the `**` splat call-graph pass, then the dry run
-again, then THE FLIP as the one declared-oversize commit AGENTS.md permits per feature, declared with its
-inseparability reason before review — still unspent at 52 rounds.
+range `a815c9a3`..C6 and write the round 53 verdict. Then, if that verdict is PASS, the work
+itself: DECISION F275 D29's P2 and P3, and the flip dry run re-run with the transform
+consuming `.agent/f275_t003_descriptor_sites.md`'s ruled set — R, the union of the probe's
+2145 executed sites and the sweep's provable ones, 2198 nodes — INSTEAD of `is_jobish` and
+`is_taskish`, attributing its residue against the 317 undecided sites section 5 of that file
+enumerates by receiver and by file. DECISION F275 D30 states plainly that a green dry run
+proves nothing about those 317, because unexecuted code cannot redden; the next round must
+not read their silence as a verdict. The operator's ruling on round 51's scope report item
+(c) is still owed before any session plans the flip itself.
