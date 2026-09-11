@@ -13,23 +13,23 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 66 RULES the three sites DECISION F275 D39 held the write shut on, and DECISION F275
-D40 records the result. They rule three ways: one correct drop, one site that was never in
-the committed set, and one wrong drop whose cause is pytest's assertion rewriting — which
-reaches 22 of the 52 drops, so the re-derived set is NOT safe to consume. A second and
-independent defect is measured beside it: 54 of the 2198 ruled keys resolve to no `ast`
-node at their recorded position, which is what the `long_run_executor.py:504` disagreement
-round 64 reported turns out to be. The artefact is `.agent/f275_t003_flip_residue_r66.md`.
-The round 65 verdict and its prose slip are booked here. No production line moves.
+ROUND 67 SPENDS the `--assert=plain` route DECISION F275 D40 chose, and DECISION F275 D41
+rules the result. The probe was not modified; only the pytest invocation changed. The
+synthetic receivers go from 24 to ZERO, the receiver-joined set goes from 2116 to 2138, its
+drop list from 52 to 30, and 22 sites come back with NONE newly dropped. Both remaining
+unexplained drops were already ruled by D40 a round ago, so the plain set carries no unruled
+drop and half of D40's condition is discharged. The artefact is
+`.agent/f275_t003_flip_residue_r67.md`. The round 66 verdict and its two prose slips are
+booked here. No production line moves.
 
 ## Next Steps
 
-1. RE-DERIVE from a PLAIN run: two suite passes under the committed probe with
-   `--assert=plain`, rebuild the set, and confirm the 22 rewriting drops become refusals
-   that the join keeps. That is the first half of what DECISION F275 D40 holds shut.
-2. RULE THE 54 ruled keys that resolve to no `ast` node, and measure whether the
-   transform's own consumption already loses them — which decides whether they are a
-   reporting defect or a live under-selection in every dry run taken so far.
+1. RULE THE 54 ruled keys that resolve to no `ast` node at their recorded position, and
+   answer first whether the transform's own consumption already loses them — which decides
+   whether they are a reporting defect or a live under-selection in every dry run so far.
+   That is the whole of what DECISION F275 D41 still holds the write shut on.
+2. Point the transform at the plain re-derived set and re-run the flip's dry run, which is
+   the first reading of what the re-keying costs or saves in failures rather than in sites.
 3. The resolver collapse DECISION F260 D5 places in T003, which DECISION F275 D37 names as
    the home of the id-SHAPE seam behind the three largest residue classes. Production code,
    so a SPLIT round with mutation red-proofs.
@@ -39,9 +39,9 @@ The round 65 verdict and its prose slip are booked here. No production line move
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
   split-and-close default BY NAME: a session writes the scope report and CONTINUES.
-- The site set has now yielded three distinct position defects in four rounds — the line
-  key, the rewriting and the sweep's own columns — and each was invisible to the gate that
-  preceded it.
+- The site set has yielded four distinct position defects in five rounds — the line key, the
+  assertion rewriting, the sweep's own columns and the 54 non-resolving keys — and each was
+  invisible to the gate that preceded it.
 - `R-0880`'s SECOND obligation is still unbuilt, and the largest residue classes still need
   PRODUCTION-CODE work rather than another transform rule.
 - The open set is 88 by distinct id, with `R-0879` and `R-0880` both open. Four are High —
