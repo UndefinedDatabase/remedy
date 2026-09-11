@@ -36,7 +36,6 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass, field
 from typing import Any
-from uuid import UUID
 
 from packages.core.models import Job, RunState
 from packages.orchestration._symbols import (
@@ -114,7 +113,7 @@ class AgentAdapterSpec:
 class AgentLoopState:
     """Immutable snapshot of the current agent loop state for a job."""
 
-    job_id: UUID
+    job_id: str
     current_stage: AgentLoopStage
     cycle: int
     max_cycles: int
