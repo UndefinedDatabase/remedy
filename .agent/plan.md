@@ -13,35 +13,32 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 46 books round 45's PASS verdict and the resolution of R-0875, and records what a DRY
-RUN of the flip measured at `978046fe`. Applied as a mechanical `ast` transformation the flip
-produces a parseable tree that collects 18394 tests with zero collection errors, and the suite
-then reads 2714 failed, 15551 passed and 106 errors. The failures classify into six classes,
-and the largest that no decision has ruled is the ID SHAPE: `Job.id` and `Task.id` are
-`uuid.UUID` while the unified record spells both `str`, and that type reaches `Artifact`,
-`TaskExecutionContext` and `PatchIntentSet` — three models no artefact of this feature
-enumerates. DECISION F275 D26 records the finding and the route.
+ROUND 47 lands the FIRST slice of the id-shape migration DECISION F275 D26 places before the
+flip. `TaskExecutionContext.job_id` and `.task_id` become `str`, and the 34 construction
+sites that fill them pass `str(...)` — a no-op once the flip lands, correct before it. The
+reviewer measured the result at `013e5517`: the full suite reads 18371 passed, the base's
+own figure, so the change moves no test in either direction. DECISION F275 D27 records the
+scope and the two fields deliberately left for later.
 
 ## Next Steps
 
-1. THE ID-SHAPE MIGRATION, as its own commit or commits before the flip, on the pattern
-   DECISION F275 D22 and D23 set: measure the sites, then widen. It is the prerequisite the
-   flip's three enumerations each recorded as a bound and never sized.
-2. THE FOUR TRANSFORM RULES the dry run added to DECISION F275 D25's two, all in
-   `.agent/f275_t003_flip_residue.md` section 3: the seam's own imports move with the seam,
-   a mixed import is SPLIT rather than moved, the type imports move their MODULE PATH, and a
-   construction whose keywords arrive through a `**` splat is invisible to a keyword rewrite.
-3. THE FLIP, once the classes above are gone from the dry run's residue, still as the one
-   declared-oversize commit AGENTS.md permits per feature, declared with its inseparability
-   reason before review.
+1. `PatchIntentSet.task_id`, MEASURED AND NOT YET SAFE. Widening it alongside this slice
+   left four `tests/test_grouped_cli.py` tests failing with `Error: Job not found`, ONLY
+   under full-suite ordering, against a base the reviewer measured fully green. The cause
+   is undiagnosed and the next round diagnoses it before widening that field.
+2. `Artifact.task_id`, the largest of the three at 84 construction sites. Widened alone it
+   left 70 failures in four classes — an artifact lookup that compares the two spellings,
+   three test assertions, and the ruff ceiling. Each is enumerated and none is unknown.
+3. THE FLIP, once the id shape is one spelling, still as the one declared-oversize commit
+   AGENTS.md permits per feature, declared with its inseparability reason before review.
 4. The resolver collapse DECISION F260 D5 places in T003, with the classic store. Then the
    closure sequence: the integration gate, the evidence job, a fresh review zip, the ledger
    rotation, the STATUS line and the PR.
 
 ## Risks
 
-- F275 stands at 46 rounds and 19 sessions against the operator's soft limit of 60 rounds and
-  20 sessions. The NEXT session is the twentieth and owes a scope report under
-  amend0908-f275-finish rule 1; that rule also forbids the split-and-close default here.
-- The open set is 86 by distinct id once this round books `Done: R-0875`. Four are High —
-  R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+- F275 stands at 47 rounds and 19 sessions against the operator's soft limit of 60 rounds
+  and 20 sessions. The NEXT session is the twentieth and owes a scope report under
+  amend0908-f275-finish rule 1, which also forbids the split-and-close default here.
+- The open set is 86 by distinct id. Four are High — R-0803, R-0804, R-0806 and R-0807 —
+  all F273's, per DECISION F272 D12.
