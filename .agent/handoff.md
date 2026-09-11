@@ -403,3 +403,119 @@ re-reads `.agent/STOP` from disk (Phase 1 rule 1) and then runs the Open PR Gate
 (rule 2). The next production step is plan step 1: RE-RUN THE FLIP DRY RUN against a
 tree whose id shape is now one spelling, and re-classify the residue
 `.agent/f275_t003_flip_residue.md` records at 2714 failures.
+
+## Reviewer verdict on round 49 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 49: **PASS.** Written by the planner and reviewer of SESSION 19 after reading the committed
+range `70d6c8e6`..`31e37b27` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 50, per amend0827-process-diet rule 1.
+
+THE REPAIR IS RIGHT AND BOTH HALVES ARE PROVED SEPARATELY. G1 is the PRIMARY cmp-against-scratchpad proof
+and not the §4.9 digest fallback: the reviewer's scratch original survived and the saved copy, its mirror and
+that original are one blob at 28474 bytes and sha256
+`37081bec7b73c5e7d4de0fbf52ac2dc249a2dccc62ace4d6f92f7b37afadb113`. G2: `.agent/plan.md` byte-identical to
+PLAN49 at 2557 bytes over 45 lines. G3: all four appends reconstruct exactly — `.agent/live_review.md`
+892396 to 898518 across RECORD49 and FIND49 together, `.agent/prose_slips.md` 240453 to 241765, and
+`.agent/live_review.md` again 898518 to 898808 for LANDED49 at C4 — with reader B true at N counted from the
+slices, N being 2, and the negative control rejected by BOTH readers with the flipped byte inside the FIRST
+appended paragraph. G4: both pairs are REWRITES on the containment test's own output, FROM reads 1 in each
+base blob and 0 in each C3 blob, TO reads 1, and the reviewer rebuilt each C3 blob from its base blob by
+applying that pair alone — byte-identical both times. G5: both guards are CODE APPENDS proved by ordered
+equality rather than by a multiplicity count — each base blob is a byte-exact PREFIX of its C3 blob, each
+slice a byte-exact SUFFIX, and `base + slice == C3` exactly at 25968+861 and 33134+1108. G6: both subtree
+digests equal the reviewer's own replay of this repair on a clean checkout — `packages` at
+`1f1a040413f8045a9e53ec8dece733ddb1d0c0ac` and `tests` at `b33e3ac3ed64ebd1d6fa4e0b86c9f8614c4d07ee` — and
+C3's own diff is exactly the four ordered rows. The reviewer re-ran the scoped selection itself at
+`175 passed` and the canary at `42 passed`, both exit 0. G8: the changed-path set matches exactly with
+MISSING and EXTRA both empty, `.agent/decisions.md` untouched, zero paths under `apps/`, `docs/` or
+`scripts/`, the open set 86 to 87 with `R-0876` the only id registered and none resolved, and
+`^Landed: R-0876 ` 0 at C3 and 1 at C4 against `^Done: R-0876 ` 0 at both.
+
+G7 IS THE GATE THIS ROUND EXISTS FOR AND THE REVIEWER RE-RAN IT AT THE COMMITTED C3. The control reads
+`2 passed` at exit 0; M1 reverting PAIR49A reddens ONLY the `test_do_run.py` guard; M2 reverting PAIR49B
+reddens ONLY the `test_test_failure_repair.py` guard; THE TWO NODE-ID SETS ARE DISJOINT, which is why two
+mutations were ordered rather than one — neither fix's proof covers the other. Both reverts are byte-exact by
+sha256, the control is green again, and the PRIMARY checkout's porcelain read empty in the same command
+sequence as every mutation.
+
+THE WORKER DECLARED ONE CONTRADICTION AND IT WAS THE REVIEWER'S. G6(b) named the command
+`git diff --numstat 70d6c8e6..C3` and asserted it "reads exactly four rows"; that range spans C0a through C3,
+so it necessarily also carries the five `.agent/` rows those earlier commits wrote, and it reads NINE. The
+worker reported both readings, measured C3's OWN diff at exactly the four stated rows with exactly the four
+stated numerals, and edited nothing. It also found and fixed a node-id parser defect in its own throwaway
+probe before reporting G7, which is the difference between a gate and a number. Nothing on disk is wrong, so
+the reviewer's range error is a dated line in `.agent/prose_slips.md` and not an id.
+
+## Authored text for round 50 to book — the resolution of R-0876
+
+Done: R-0876 — RESOLVED at F275 round 49's C3 `9df09805`. THE DEFECT: round 48's slice WIDEN48 wrapped every construction keyword it rewrote in `str(...)` unconditionally, because `ast` gives a generator no way to know whether an expression is nullable, and at two production sites the wrapped expression could evaluate to `None` — `packages/orchestration/do_run.py` in `_run_build_phase`, where a job with no tasks has no task to attribute its artifact to, and `packages/orchestration/test_failure_artifact.py` in `persist_failure_artifact`, where `TestFailureArtifact.task_id` defaults to the empty string. Both wrote the string `"None"` where `packages/core/models.py` documents an absence in the `Artifact` docstring itself, and `artifact_index.task_artifacts_by_kind` matches that field by equality, so the stored value was a truthy string no lookup could ever match. THE FIX moves the `str(...)` inside each conditional's true branch, so the false branch yields `None` again; it is one line per site and it changes nothing on the populated branch, where `str(UUID)` is what the widened field already required. THE GUARD, and why there are two: each site gained a test that constructs the artifact through the REAL function on the absent branch and asserts `task_id is None`, and the two are red-proved SEPARATELY because one mutation cannot establish two fixes — reverting the `do_run.py` line reddens only `tests/orchestration/test_do_run.py::TestSystemArtifactKeepsTaskIdAbsent`, reverting the `test_failure_artifact.py` line reddens only `tests/orchestration/test_test_failure_repair.py::TestSystemArtifactKeepsTaskIdAbsent`, and the reviewer measured the two FAILED node-id sets DISJOINT in its own disposable worktree at `9df09805`. Both guards fail on `assert 'None' is None`, which states the defect in the assertion's own words. THE RULE THIS LEAVES BEHIND, and it is the reason the finding was worth an id rather than a quiet fix: a mechanical rewrite that wraps an expression states what it assumes about that expression's NULLABILITY, and where the generator cannot know, the BLOCK sweeps for the conditional form before emission. No gate round 48 ordered could see this — the subtree digests matched, the scoped suite read 480 passed and the canary 42 passed — because no test reached either branch, which is exactly the class `.agent/f275_t003_flip_sites.md` section 3 names as invisible to both of the flip's instruments.
+
+## Authored text for round 50 to book — one dated line for `.agent/prose_slips.md`
+
+2026-09-11 · F275 R49 · The round 49 block's G6(b) named the command `git diff --numstat 70d6c8e6..C3` and asserted that it "reads exactly four rows". That range spans C0a, C0b, C1, C2 AND C3, so it necessarily also carries the five `.agent/` state rows those earlier commits wrote, and it reads NINE. The four production rows and all four of their numerals are correct — they are C3's OWN diff, which the worker measured at `9df09805^..9df09805` and reported beside the nine-row reading, editing nothing. This is §3 item 22's class, a sentence quantifying across COMMITS that was written against the commit it meant rather than the range it named, and it is the second range-versus-commit slip of this session after round 46's G8. THE RULE THAT FOLLOWS: a gate that means ONE commit's diff names that commit's own range as `<sha>^..<sha>`, and a gate that means the round's cumulative change says so and states the row count it expects for the whole of it.
+
+## Session 19 ends here — FOUR delegated rounds, three PASS and one FAIL
+
+Rounds 46, 47, 48 and 49. THE FAIL WAS THE REVIEWER'S OWN SLICE, not the round that executed it, and it was
+found by the worker rather than by any gate the block ordered.
+
+WHAT THIS SESSION LANDED, and the through-line is that a DRY RUN THAT IS ACTUALLY RUN decides the plan.
+Session 18 closed naming THE FLIP as the next round's work and calling it "a mechanical transformation with
+every prerequisite measured". Before authoring it the reviewer applied it in a disposable worktree at
+`978046fe` and ran it. IT CONVERGES AS AN EDIT AND NOT AS A CHANGE: 282 files rewritten, 5388 insertions,
+zero left unparsable, 18394 tests collected with zero collection errors — and then 2714 failed, 15551 passed
+and 106 errors at exit 1. `.agent/f275_t003_flip_residue.md` records that run with its instrument and its
+classification. The largest class no decision had ruled was THE ID SHAPE: `Job.id` and `Task.id` are
+`uuid.UUID` while the unified record spells both `str`, and three models the flip never touches — `Artifact`,
+`TaskExecutionContext` and `PatchIntentSet` — declare that type on fields the flip feeds. DECISION F275 D26
+ruled the shape migrated first. D27 ruled it landed one model at a time and measured the order. D28 corrected
+D27's unit: `PatchIntentSet.task_id` is assigned FROM `Artifact.task_id` at one production site, so the two
+are one commit and not two, and the atomic unit of an id-shape widen is the assignment-connected component
+rather than the model. ALL FOUR FIELDS THE FLIP FEEDS NOW HOLD ONE SPELLING, and R-0876 — the one defect that
+migration landed — is fixed and guarded twice over.
+
+THE BRANCH IS GREEN AT A READING THIS SESSION TOOK AND NOTHING ON IT HAD TAKEN BEFORE: the FULL suite at
+`013e5517` reads `18371 passed, 23 skipped, 1 warning` at exit 0, and the same figure holds on the round 47
+and round 48 trees. That reading is the control every dry-run figure in this session is quoted against, and it
+is why the four `tests/test_grouped_cli.py` failures D27 records could be called caused rather than flake.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context is
+comfortable and exhaustion is expressly NOT why this session ends — it ends at the four-round floor because
+the next step is a full re-run of the flip dry run against the new id shape, which is a fresh measurement
+rather than a continuation of this session's, and because two of this session's four blocks carried a
+range-versus-commit slip, which is the authoring signal amend0908-f275-finish rule 5 permits F275 to cite only
+after four delegated rounds — exactly where this session is.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
+session's Phase 0 probe, was measured absent before every round's first commit, and is absent as this session
+ends. Then the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
+
+SECOND, round 50's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
+amend0827-process-diet rule 1, the ROUND 49 PASS verdict above as a `Gate: F275 R49` entry in
+`.agent/live_review.md`, the authored `Done: R-0876` paragraph, and the one dated line above into
+`.agent/prose_slips.md`. Booking that resolution takes the open set from 87 to 86 by distinct id; the next
+free id is `R-0877`.
+
+THIRD, SESSION 20 IS F275's TWENTIETH AND THE SOFT LIMIT amend0908-f275-finish rule 1 names is 20 SESSIONS
+and 60 ROUNDS. The session therefore owes a SCOPE REPORT in its handback — what is finished, what is missing,
+and a proposal — and it carries the unmissable line `SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER
+ÜBERGABE`. That same rule 2 forbids the amend0905-throughput split-and-close default here BY NAME: on
+reaching the limit the session writes the report and CONTINUES, and the only permitted early close is the old
+hard stop with an operator question, and only when a module group is genuinely undeletable under the three
+rules in `docs/roadmap/features/T2_F275.md` T001. Write the report, then keep going.
+
+FOURTH, THE WORK ITSELF: re-run the flip dry run against a tree whose id shape is one spelling, and
+re-classify the residue. `.agent/f275_t003_flip_residue.md` records 2714 failures in six classes measured
+BEFORE the migration; the 256 hexadecimal-UUID failures and the 369 model-validation failures against
+`Artifact` and `TaskExecutionContext` are the ones the migration was performed to remove, and whether they
+are gone is a measurement and not a prediction — take it before authoring anything. What remains after that
+are transform rules, and section 3 of that artefact enumerates four of them already: the type imports move
+their MODULE PATH, a MIXED import is SPLIT rather than moved, the seam's own imports move with the seam, and
+a construction whose keywords arrive through a `**` splat is invisible to a keyword rewrite. Round 48 found a
+fifth by failing: a generator that resolves a constructor by its CALLED NAME is blind to an import ALIAS.
+Then THE FLIP, still as the one declared-oversize commit AGENTS.md permits per feature, declared with its
+inseparability reason before review — and F275's one such allowance is still unspent at 49 rounds.
