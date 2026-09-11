@@ -46,7 +46,7 @@ def _approved_task(data_dir, *, failure=True, repo="."):
     t = Task(description="t")
     arts = []
     if failure:
-        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=t.id,
+        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.id),
                       metadata={"test_failure": True, "failure_kind": "test_failed",
                                 "related_task_id": str(t.id), "related_files": ["docs/guide.md"],
                                 "safe_summary": "doc gap"})

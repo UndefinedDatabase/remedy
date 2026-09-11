@@ -684,7 +684,7 @@ def run_job_fulfill(
             name=wo["artifact_name"],
             content=wo["content"],
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=UUID(td["model_task_id"]),
+            task_id=str(UUID(td["model_task_id"])),
             metadata={
                 "patch_intent_count": 1,
                 "source": "fixture_worker",
@@ -749,7 +749,7 @@ def run_job_fulfill(
                 name="fixture_repair_output",
                 content="[fixture repair metadata]",
                 kind=ArtifactKind.BUILDER_PROPOSAL,
-                task_id=repair_task.id,
+                task_id=str(repair_task.id),
                 metadata={
                     "source": "fixture_repair",
                     "origin_finding": finding.get("code", ""),

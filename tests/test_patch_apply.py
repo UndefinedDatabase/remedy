@@ -75,7 +75,7 @@ def _add_artifact(
         name="test artifact",
         content=content,
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         metadata={
             "patch_intent_explanations": [
                 {
@@ -188,7 +188,7 @@ class TestPathSafety:
             name="symlink test artifact",
             content="Summary:\n  test\nProposed Changes:\n  - bullet\n",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={
                 "patch_intent_explanations": [{
                     "file": "escape/file.md",

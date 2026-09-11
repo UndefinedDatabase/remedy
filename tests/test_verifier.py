@@ -148,7 +148,7 @@ def test_verify_fails_when_artifact_task_id_does_not_match():
         name="task_output_write_code",
         content="some content",
         mime_type="text/plain",
-        task_id=uuid4(),  # wrong task_id — not task.id
+        task_id=str(uuid4()),  # wrong task_id — not task.id
         metadata={},
     )
     job.artifacts.append(wrong_artifact)
@@ -172,7 +172,7 @@ def test_verify_fails_when_workspace_file_key_missing():
         name="task_output_write_code",
         content="Builder Execution Output\n\nProposed Changes:\n  - Add foo()\n",
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.id),
         metadata={"task_type": "write_code", "summary": "done"},
         # no 'workspace_file' key
     )
@@ -198,7 +198,7 @@ def test_verify_fails_when_workspace_file_does_not_exist(tmp_path):
         name="task_output_write_code",
         content="...",
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.id),
         metadata={
             "task_type": "write_code",
             "summary": "done",
@@ -229,7 +229,7 @@ def test_verify_fails_when_workspace_file_is_empty(tmp_path):
         name="task_output_write_code",
         content="...",
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.id),
         metadata={
             "task_type": "write_code",
             "summary": "done",
@@ -260,7 +260,7 @@ def test_verify_fails_when_no_proposed_change_lines(tmp_path):
         name="task_output_write_code",
         content="...",
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.id),
         metadata={
             "task_type": "write_code",
             "summary": "done",
@@ -309,7 +309,7 @@ def test_failed_verification_leaves_task_pending(tmp_path, monkeypatch):
     assert job.tasks[0].status == RunState.RUNNING
 
     # Force verification to fail by pointing workspace_file at a non-existent path
-    artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in job.artifacts if a.task_id == str(result.task_id))
     artifact.metadata["workspace_file"] = str(tmp_path / "ghost.txt")
 
     vr = verify_task_output(result.job, result.task_id)
@@ -325,7 +325,7 @@ def test_failed_verification_records_failures_in_artifact_metadata(tmp_path, mon
     job = _make_planned_job()
     result = run_next_task(job, _stub_builder)
 
-    artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in job.artifacts if a.task_id == str(result.task_id))
     artifact.metadata["workspace_file"] = str(tmp_path / "ghost.txt")
 
     vr = verify_task_output(result.job, result.task_id)
@@ -343,7 +343,7 @@ def test_failed_verification_clears_output_artifact_ids(tmp_path, monkeypatch):
     result = run_next_task(job, _stub_builder)
     assert len(job.tasks[0].output_artifact_ids) == 1
 
-    artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in job.artifacts if a.task_id == str(result.task_id))
     artifact.metadata["workspace_file"] = str(tmp_path / "ghost.txt")
 
     vr = verify_task_output(result.job, result.task_id)
@@ -360,7 +360,7 @@ def test_retry_verify_uses_new_artifact_not_stale(tmp_path, monkeypatch):
     # First attempt: verification fails (point workspace_file at non-existent path)
     result1 = run_next_task(job, _stub_builder)
     stale_artifact_id = job.tasks[0].output_artifact_ids[0]
-    artifact1 = next(a for a in job.artifacts if a.task_id == result1.task_id)
+    artifact1 = next(a for a in job.artifacts if a.task_id == str(result1.task_id))
     artifact1.metadata["workspace_file"] = str(tmp_path / "ghost.txt")
     vr1 = verify_task_output(result1.job, result1.task_id)
     assert vr1.passed is False
@@ -443,7 +443,7 @@ def _setup_artifact_with_content(
         name=f"task_output_{task_type}",
         content=content,
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.id),
         kind=ArtifactKind.BUILDER_PROPOSAL,
         metadata={
             "task_type": task_type,
@@ -502,7 +502,7 @@ class TestGenericProfileVerification:
             name="task_output_write_readme",
             content=content,
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.id),
             kind=ArtifactKind.BUILDER_PROPOSAL,
             metadata={"task_type": "write_readme", "summary": "done"},
         )

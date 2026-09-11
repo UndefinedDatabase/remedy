@@ -41,7 +41,7 @@ def _make_job_with_failure(data_dir, *, failure_kind="test_failed", exit_code=1,
     from packages.core.models import Artifact as _A
     art = _A(
         name=f"test-failure-{fail.artifact_id}", content=fail.safe_summary[:500],
-        kind=ArtifactKind.VERIFICATION, task_id=task.id,
+        kind=ArtifactKind.VERIFICATION, task_id=str(task.id),
         metadata={
             "test_failure": True, "failure_kind": fail.failure_kind,
             "related_test_run_id": fail.related_test_run_id,

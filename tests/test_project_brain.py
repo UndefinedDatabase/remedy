@@ -129,7 +129,7 @@ def _add_patch_artifact(job: Job, *, risk: str = RISK_MEDIUM, task_id=None) -> s
         name="builder proposal",
         content="ARTIFACT_CONTENT_MUST_NOT_RENDER",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=task_id,
+        task_id=str(task_id),
         metadata={"patch_intent_explanations": explanations},
     )
     job.artifacts.append(artifact)
@@ -309,7 +309,7 @@ class TestBuildProjectBrain:
             name="proposal",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.id),
         )
         job.artifacts.append(artifact)
         graph = build_project_brain(job, [])
@@ -500,7 +500,7 @@ class TestBuildProjectBrain:
         task = _pending_task()
         job.tasks.append(task)
         artifact = Artifact(
-            name="plan", content="x", kind=ArtifactKind.PLANNING, task_id=task.id
+            name="plan", content="x", kind=ArtifactKind.PLANNING, task_id=str(task.id)
         )
         job.artifacts.append(artifact)
         graph = build_project_brain(job, [])
@@ -543,7 +543,7 @@ class TestBuildProjectBrain:
             job.tasks.append(_pending_task())
         for task in job.tasks:
             job.artifacts.append(
-                Artifact(name="a", content="x", kind=ArtifactKind.BUILDER_PROPOSAL, task_id=task.id)
+                Artifact(name="a", content="x", kind=ArtifactKind.BUILDER_PROPOSAL, task_id=str(task.id))
             )
         graph = build_project_brain(job, [])
         assert sum(1 for n in graph.nodes if n.type == NT_TASK) == 3
@@ -711,7 +711,7 @@ class TestRedactionHardening:
             name="proposal",
             content=ARTIFACT_CONTENT_MUST_NOT_RENDER,
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.id),
             metadata={
                 "patch_intent_explanations": [
                     {
@@ -885,7 +885,7 @@ class TestCLIBrain:
             name="proposal",
             content=ARTIFACT_CONTENT_MUST_NOT_RENDER,
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.id),
         )
         job.artifacts.append(artifact)
         save_job(job)
@@ -948,7 +948,7 @@ class TestCLIBrain:
             name="proposal",
             content=ARTIFACT_CONTENT_MUST_NOT_RENDER,
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.id),
             metadata={
                 "patch_intent_explanations": [
                     {

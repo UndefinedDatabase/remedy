@@ -88,7 +88,7 @@ def _make_approved_job() -> tuple[Job, str]:
 
     job = _make_job_s261()
     set_permission(job, Capability.repo_generated_write, allow=True)
-    artifact = Artifact(task_id=uuid4(), name="test-intent", content_type="patch", content="")
+    artifact = Artifact(task_id=str(uuid4()), name="test-intent", content_type="patch", content="")
     artifact.metadata["patch_intent_explanations"] = [
         {"file": "fixture", "action": "create", "risk": "low",
          "reason": "test", "summary": "test fixture"}

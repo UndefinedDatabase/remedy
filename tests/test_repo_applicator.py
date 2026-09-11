@@ -49,7 +49,7 @@ def _make_artifact(task_type: str, summary: str = "Test summary.") -> Artifact:
         name=f"task_output_{task_type}",
         content="\n".join(content_lines),
         mime_type="text/plain",
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         metadata={"task_type": task_type, "summary": summary},
     )
 

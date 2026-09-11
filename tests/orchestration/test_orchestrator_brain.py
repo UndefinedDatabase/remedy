@@ -31,7 +31,7 @@ def _job(data_dir, *, failure=True, related=("docs/guide.md",)):
     t = Task(description="t")
     arts = []
     if failure:
-        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=t.id,
+        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.id),
                       metadata={"test_failure": True, "failure_kind": "test_failed",
                                 "related_task_id": str(t.id), "related_files": list(related),
                                 "safe_summary": "boom"})
@@ -68,7 +68,7 @@ class TestDecisionQuality:
         # Build a job with a pending patch intent (beats other options).
         t = Task(description="t")
         art = Artifact(name="b", content="Proposed Changes:\n  - x", kind=ArtifactKind.BUILDER_PROPOSAL,
-                       task_id=t.id, metadata={"patch_intent_explanations": [
+                       task_id=str(t.id), metadata={"patch_intent_explanations": [
                            {"file": "docs/x.md", "action": "create", "risk": "low",
                             "reason": "", "summary": "s"}], "patch_intent_approvals": {}})
         job = Job(id=uuid4(), name="ov", tasks=[t], artifacts=[art], metadata={"target_repo": "."})
@@ -84,7 +84,7 @@ class TestDecisionQuality:
         d, _ = env
         t = Task(description="t")
         art = Artifact(name="b", content="Proposed Changes:\n  - x", kind=ArtifactKind.BUILDER_PROPOSAL,
-                       task_id=t.id, metadata={"patch_intent_explanations": [
+                       task_id=str(t.id), metadata={"patch_intent_explanations": [
                            {"file": "docs/x.md", "action": "create", "risk": "low",
                             "reason": "", "summary": "s"}], "patch_intent_approvals": {}})
         job = Job(id=uuid4(), name="ov", tasks=[t], artifacts=[art], metadata={"target_repo": "."})
@@ -154,7 +154,7 @@ class TestAntiLoop:
         _job(d) if False else None
         j = load_job(UUID(str(job.id)), d)
         j.artifacts.append(Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION,
-                                    task_id=j.tasks[0].id,
+                                    task_id=str(j.tasks[0].id),
                                     metadata={"test_failure": True, "failure_kind": "test_failed",
                                               "related_task_id": str(j.tasks[0].id), "safe_summary": "n"}))
         save_job(j, root=d)

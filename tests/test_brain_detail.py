@@ -133,7 +133,7 @@ def _add_patch_artifact(
         name="builder proposal",
         content=content,
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=task_id,
+        task_id=str(task_id),
         metadata={
             "patch_intent_explanations": [
                 {
@@ -299,7 +299,7 @@ class TestBuildBrainNodeDetail:
             name="a",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.id),
             metadata={"repo_applied_files": ["docs/README.md", "docs/API.md"]},
         )
         job.artifacts.append(artifact)
@@ -660,7 +660,7 @@ class TestRedactionHardening:
             name="proposal",
             content=ARTIFACT_CONTENT_MUST_NOT_RENDER,
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.id),
             metadata={
                 "patch_intent_explanations": [
                     {

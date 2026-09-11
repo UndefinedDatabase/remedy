@@ -279,7 +279,7 @@ def _create_and_approve_intent(job: Any, parse_result: BuilderPatchResult) -> st
         })
 
     artifact = Artifact(
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         name="builder-bridge-intent",
         content="",
     )

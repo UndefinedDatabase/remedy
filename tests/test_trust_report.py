@@ -83,7 +83,7 @@ def _add_patch_artifact(
         name="builder_proposal",
         content="",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         metadata={
             "patch_intent_explanations": explanations,
             "patch_intent_risks": [risk] * intent_count,

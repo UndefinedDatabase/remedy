@@ -19,7 +19,7 @@ def _make_job_with_failure(data_dir):
     task = Task(description="orig")
     fa = Artifact(
         name="test-failure", content="Test test_failed: exit 1",
-        kind=ArtifactKind.VERIFICATION, task_id=task.id,
+        kind=ArtifactKind.VERIFICATION, task_id=str(task.id),
         metadata={
             "test_failure": True, "failure_kind": "test_failed",
             "related_test_run_id": "tr-abc12345", "related_apply_id": "ap-1",
@@ -112,7 +112,7 @@ def _make_job_with_source_failure(data_dir):
     task = Task(description="orig")
     fa = Artifact(
         name="test-failure", content="Test test_failed: exit 1",
-        kind=ArtifactKind.VERIFICATION, task_id=task.id,
+        kind=ArtifactKind.VERIFICATION, task_id=str(task.id),
         metadata={
             "test_failure": True, "failure_kind": "test_failed",
             "related_test_run_id": "tr-abc12345", "related_apply_id": "ap-1",

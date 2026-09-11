@@ -13,7 +13,7 @@ def _job_with_intents(count: int = 1):
         name="patch-intent",
         content="",
         kind=ArtifactKind.PATCH_INTENT,
-        task_id=task.id,
+        task_id=str(task.id),
         metadata={
             "patch_intent_explanations": [
                 {"file": f"src/file_{idx}.py", "action": "modify", "risk": "medium"}

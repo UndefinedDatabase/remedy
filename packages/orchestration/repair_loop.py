@@ -182,7 +182,7 @@ def start_repair_loop_v0(
             name=f"fixture-repair-{failure.artifact_id[:8]}",
             content=f"Fixture repair proposal for: {failure.safe_summary[:100]}",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=fix_task.id,
+            task_id=str(fix_task.id),
             metadata={
                 "fixture": True,
                 "repair": True,
@@ -983,7 +983,7 @@ def build_fixture_repair(
         name=f"repair-v1-{fa_short}",
         content=f"Repair proposal for failure {fa_short} ({ctx.failure_kind}).",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=fix_task.id,
+        task_id=str(fix_task.id),
         metadata={
             "repair_v1": True,
             "fixture": True,

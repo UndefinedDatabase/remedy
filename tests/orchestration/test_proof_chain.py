@@ -69,7 +69,7 @@ def _make_artifact_with_intents(task_id, explanations, *, approvals=None):
         name="patch-intent",
         content="",
         kind=ArtifactKind.PATCH_INTENT,
-        task_id=task_id,
+        task_id=str(task_id),
         metadata={
             "patch_intent_explanations": explanations,
             "patch_intent_approvals": approvals or {},

@@ -39,7 +39,7 @@ def _job(data_dir, *, failure=True, failures=1):
     arts = []
     if failure:
         for n in range(failures):
-            fa = Artifact(name=f"tf{n}", content="x", kind=ArtifactKind.VERIFICATION, task_id=t.id,
+            fa = Artifact(name=f"tf{n}", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.id),
                           metadata={"test_failure": True, "failure_kind": "test_failed",
                                     "related_task_id": str(t.id), "safe_summary": "boom"})
             arts.append(fa)

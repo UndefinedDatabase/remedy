@@ -357,7 +357,7 @@ def _detail_task(
     # Collect affected files from linked artifact metadata (repo_applied_files only).
     affected: list[str] = []
     for art in job.artifacts:
-        if art.task_id == task.id:
+        if art.task_id == str(task.id):
             files = art.metadata.get("repo_applied_files", [])
             if isinstance(files, list):
                 affected.extend(str(f) for f in files[:20])

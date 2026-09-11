@@ -17,7 +17,7 @@ def _job(data_dir):
     from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
     from packages.orchestration.storage import save_job
     task = Task(description="t")
-    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=task.id,
+    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",
                             "related_task_id": str(task.id), "safe_summary": "boom"})
     job = Job(id=uuid4(), name="ov-orch", user_prompt="x", state=RunState.RUNNING,

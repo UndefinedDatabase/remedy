@@ -103,7 +103,7 @@ def _add_patch_artifact(job: Job, *, risk: str = RISK_MEDIUM, intent_count: int 
         name="proposal",
         content="",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         metadata={
             "patch_intent_explanations": explanations,
             "patch_intent_risks": [risk] * intent_count,
@@ -668,7 +668,7 @@ class TestRedactionHardening:
             name="proposal",
             content="ARTIFACT_CONTENT_MUST_NOT_RENDER",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={
                 "patch_intent_explanations": [
                     {

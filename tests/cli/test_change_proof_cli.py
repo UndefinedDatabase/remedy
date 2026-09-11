@@ -56,7 +56,7 @@ def _make_test_job(*, approved=True, with_apply=False, with_test=False):
     explanations = [{"file": "src/auth.py", "action": "modify", "risk": "medium", "reason": "", "summary": ""}]
     art = Artifact(
         name="patch-intent", content="", kind=ArtifactKind.PATCH_INTENT,
-        task_id=task.id,
+        task_id=str(task.id),
         metadata={"patch_intent_explanations": explanations, "patch_intent_approvals": {}},
     )
     intent_id = make_intent_id(art.id, 0)

@@ -199,7 +199,7 @@ def verify_task_output(
             return VerificationResult(task_id=task_id, passed=False, checks=checks)
 
         # Check 3: artifact.task_id matches task.id
-        task_id_matches = artifact.task_id == task.id
+        task_id_matches = artifact.task_id == str(task.id)
         checks.append(
             VerificationCheckResult(
                 check="artifact_task_id_matches",

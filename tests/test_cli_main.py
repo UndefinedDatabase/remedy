@@ -323,7 +323,7 @@ class TestPatchIntentErrorsCLI:
             name="task_output_write_readme",
             content="Proposed Changes:\n  - Update readme",
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.id),
             metadata={"task_type": "write_readme", "summary": "Update readme"},
         )
         task.output_artifact_ids.append(artifact.id)
@@ -422,7 +422,7 @@ class TestPatchIntentErrorsCLI:
             name="task_output_write_readme",
             content="Proposed Changes:\n  - Update readme",
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.id),
             metadata={"task_type": "write_readme", "summary": "Update readme"},
         )
         task.output_artifact_ids.append(artifact.id)
@@ -554,7 +554,7 @@ class TestPatchIntentRisksCLI:
             name="task_output_write_readme",
             content="Proposed Changes:\n  - Update readme\n  - Add installation",
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.id),
             metadata={"task_type": "write_readme", "summary": "Update readme"},
         )
         task.output_artifact_ids.append(artifact.id)

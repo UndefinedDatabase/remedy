@@ -245,7 +245,7 @@ def _create_and_approve_fixture_intent(job: Any, patch_summary: str) -> str:
     )
 
     artifact = Artifact(
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         name="fixture-intent",
         content="",
     )

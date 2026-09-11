@@ -221,7 +221,7 @@ def test_materialize_sets_workspace_file_in_artifact_metadata(tmp_path, monkeypa
     result = run_next_task(job, _stub_builder)
     runtime = LocalWorkspaceRuntime(job_id=job.id)
     mf = materialize_task_output(result, runtime)
-    artifact = next(a for a in result.job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in result.job.artifacts if a.task_id == str(result.task_id))
     assert "workspace_file" in artifact.metadata
     assert artifact.metadata["workspace_file"] == str(mf.path)
 
@@ -232,7 +232,7 @@ def test_materialize_workspace_file_path_is_absolute(tmp_path, monkeypatch):
     result = run_next_task(job, _stub_builder)
     runtime = LocalWorkspaceRuntime(job_id=job.id)
     materialize_task_output(result, runtime)
-    artifact = next(a for a in result.job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in result.job.artifacts if a.task_id == str(result.task_id))
     assert Path(artifact.metadata["workspace_file"]).is_absolute()
 
 
@@ -585,7 +585,7 @@ def test_materialize_raises_when_task_id_not_in_job_tasks(tmp_path, monkeypatch)
             name="task_output_fake",
             content="Builder Execution Output\n\nProposed Changes:\n  - x\n",
             mime_type="text/plain",
-            task_id=orphan_task_id,
+            task_id=str(orphan_task_id),
             metadata={"task_type": "fake", "summary": "s"},
         )
     )

@@ -113,7 +113,7 @@ class Artifact(BaseModel):
     name: str
     content: str
     mime_type: str = "text/plain"
-    task_id: UUID | None = None
+    task_id: str | None = None
     kind: ArtifactKind = ArtifactKind.UNKNOWN
     metadata: dict[str, Any] = Field(default_factory=dict)
 

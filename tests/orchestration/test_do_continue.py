@@ -48,7 +48,7 @@ def make_continue_job(
         )
     art = Artifact(
         name="build", content=ARTIFACT_CONTENT, kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=task.id,
+        task_id=str(task.id),
         metadata={"patch_intent_explanations": explanations, "patch_intent_approvals": {}},
     )
     job = Job(

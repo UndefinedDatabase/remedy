@@ -494,7 +494,7 @@ def _run_build_phase(job: Any, goal: str, repo: Path, data_dir: Path) -> Any:
         name="fixture-build-output",
         content=safe_summary,
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=job.tasks[0].id if job.tasks else None,
+        task_id=str(job.tasks[0].id if job.tasks else None),
         metadata={"fixture": True, "safe_summary": safe_summary},
     )
     job.artifacts.append(artifact)

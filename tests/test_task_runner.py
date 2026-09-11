@@ -131,7 +131,7 @@ def test_context_includes_prior_task_summaries():
         art = Artifact(
             name=f"task_output_type_{i}",
             content="...",
-            task_id=t.id,
+            task_id=str(t.id),
             metadata={"task_type": f"type_{i}", "summary": f"done task {i + 1}"},
         )
         job.artifacts.append(art)
@@ -215,7 +215,7 @@ def test_artifact_task_id_matches_executed_task():
     run_next_task(job, _stub_builder)
     task_artifacts = [a for a in job.artifacts if a.task_id is not None]
     assert len(task_artifacts) == 1
-    assert task_artifacts[0].task_id == task_id
+    assert task_artifacts[0].task_id == str(task_id)
 
 
 def test_output_artifact_ids_updated():
@@ -387,7 +387,7 @@ def test_annotate_task_result_adds_metadata():
     job = _make_job(1)
     result = run_next_task(job, _stub_builder)
     annotate_task_result(result, provider="ollama", role="builder", model="m1", elapsed_ms=750.0)
-    artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in job.artifacts if a.task_id == str(result.task_id))
     assert artifact.metadata["provider"] == "ollama"
     assert artifact.metadata["role"] == "builder"
     assert artifact.metadata["model"] == "m1"
@@ -430,7 +430,7 @@ def test_annotate_task_result_finds_by_task_id_not_index():
     # The orchestration artifact at index 0 must NOT have been annotated
     assert "provider" not in job.artifacts[0].metadata
     # The task artifact must have been annotated
-    task_artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
+    task_artifact = next(a for a in job.artifacts if a.task_id == str(result.task_id))
     assert task_artifact.metadata["provider"] == "ollama"
 
 
@@ -525,7 +525,7 @@ def test_finalize_task_records_failure_in_artifact_metadata():
     result = run_next_task(job, _stub_builder)
     finalize_task(result, _failing_vr(result.task_id, "workspace_file missing"))
 
-    artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in job.artifacts if a.task_id == str(result.task_id))
     assert artifact.metadata["verification_passed"] is False
     assert any(
         "workspace_file missing" in f for f in artifact.metadata["verification_failures"]

@@ -116,7 +116,7 @@ def _add_patch_artifact(
         name="builder proposal",
         content=content,
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=task_id,
+        task_id=str(task_id),
         metadata={
             "patch_intent_explanations": [
                 {
@@ -644,7 +644,7 @@ class TestBrainRedactionHardening:
             name="proposal",
             content=ARTIFACT_CONTENT_MUST_NOT_RENDER,
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.id),
             metadata={
                 "patch_intent_explanations": [
                     {

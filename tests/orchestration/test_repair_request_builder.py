@@ -31,7 +31,7 @@ def env(tmp_path, monkeypatch):
 def _job(data_dir, *, related=("docs/guide.md",), safe_summary="assertion failed",
          command_display="pytest tests/x.py"):
     t = Task(description="t")
-    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=t.id,
+    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",
                             "related_task_id": str(t.id), "related_test_run_id": "tr",
                             "related_apply_id": "ap", "related_files": list(related),

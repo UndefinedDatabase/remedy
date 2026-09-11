@@ -103,7 +103,7 @@ class PatchIntentSet(BaseModel):
     intents:     ordered list of PatchIntent proposals; may be empty.
     """
 
-    task_id: UUID
+    task_id: str
     artifact_id: UUID
     intents: list[PatchIntent] = Field(default_factory=list)
 
@@ -171,7 +171,7 @@ def derive_patch_intents(artifact: Artifact, task_type: str) -> PatchIntentSet:
         )
 
     return PatchIntentSet(
-        task_id=artifact.task_id,
+        task_id=str(artifact.task_id),
         artifact_id=artifact.id,
         intents=intents,
     )
@@ -246,7 +246,7 @@ def materialize_patch_intents(
         return None
 
     safe_type = sanitize_path_component(task_type)
-    short_id = pis.task_id.hex[:8]
+    short_id = pis.task_id[:8]
     relative_path = f"patch_intents/{task_index:03d}_{safe_type}_{short_id}.json"
     content = pis.model_dump_json(indent=2)
     return runtime.write(relative_path, content)

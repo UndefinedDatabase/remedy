@@ -297,7 +297,7 @@ def _build_success_mocks(tmp_path, job: Job, task: Task):
             "  - Change A\n  - Change B\n\nNotes:\n  - None\n"
         ),
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.id),
         kind=ArtifactKind.BUILDER_PROPOSAL,
         metadata={"task_type": task.inputs.get("task_type", "unknown"), "summary": "done"},
     )
@@ -437,7 +437,7 @@ class TestRunNextTaskVerificationFailure:
             name="task_output_write_readme",
             content="Missing sections",
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.id),
             kind=ArtifactKind.BUILDER_PROPOSAL,
             metadata={"task_type": "write_readme", "summary": "done"},
         )
@@ -557,7 +557,7 @@ class TestRunNextTaskRepoPermissionDenied:
                 "  - Change A\n  - Change B\n\nNotes:\n  - None\n"
             ),
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.id),
             kind=ArtifactKind.BUILDER_PROPOSAL,
             metadata={"task_type": "write_readme", "summary": "done"},
         )
@@ -645,7 +645,7 @@ class TestRunNextTaskPatchIntentCreated:
                 "  - Change A\n  - Change B\n\nNotes:\n  - None\n"
             ),
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.id),
             kind=ArtifactKind.BUILDER_PROPOSAL,
             metadata={"task_type": "write_readme", "summary": "done"},
         )
@@ -670,7 +670,7 @@ class TestRunNextTaskPatchIntentCreated:
         fake_mf = MaterializedFile(path=ws_file, content="  - Change A\n", size=14)
 
         fake_pis = PatchIntentSet(
-            task_id=task.id,
+            task_id=str(task.id),
             artifact_id=artifact.id,
             intents=[
                 PatchIntent(
@@ -761,7 +761,7 @@ class TestRunNextTaskPatchIntentCreated:
                 "  - Change A\n  - Change B\n\nNotes:\n  - None\n"
             ),
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.id),
             kind=ArtifactKind.BUILDER_PROPOSAL,
             metadata={"task_type": "write_readme", "summary": "done"},
         )
@@ -787,7 +787,7 @@ class TestRunNextTaskPatchIntentCreated:
         fake_mf = MaterializedFile(path=ws_file, content="  - Change A\n", size=14)
 
         fake_pis = PatchIntentSet(
-            task_id=task.id,
+            task_id=str(task.id),
             artifact_id=artifact.id,
             intents=[
                 PatchIntent(

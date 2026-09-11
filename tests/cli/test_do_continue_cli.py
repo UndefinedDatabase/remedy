@@ -22,7 +22,7 @@ def _make_ineligible_job(data_dir):
 
     task = Task(description="t")
     art = Artifact(
-        name="b", content="", kind=ArtifactKind.BUILDER_PROPOSAL, task_id=task.id,
+        name="b", content="", kind=ArtifactKind.BUILDER_PROPOSAL, task_id=str(task.id),
         metadata={
             "patch_intent_explanations": [
                 {"file": "docs/X.md", "action": "create", "risk": "low",

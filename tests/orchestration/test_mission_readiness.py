@@ -42,7 +42,7 @@ def _job(data_dir, *, tasks=True, perms=True):
 
 def _add_failure(data_dir, job, *, resolved=False, related_files=None, safe_summary="fail"):
     t = job.tasks[0]
-    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=t.id,
+    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",
                             "related_test_run_id": "tr", "related_apply_id": "ap",
                             "related_task_id": str(t.id), "exit_code": 1,

@@ -209,7 +209,7 @@ class TestBuilderArtifactKind:
         result = run_next_task(job, fake_builder)
         assert result.changed is True
         task_artifact = next(
-            (a for a in result.job.artifacts if a.task_id == result.task_id),
+            (a for a in result.job.artifacts if a.task_id == str(result.task_id)),
             None,
         )
         assert task_artifact is not None
@@ -226,7 +226,7 @@ def _make_artifact(
     task_id: UUID | None = None,
     name: str = "x",
 ) -> Artifact:
-    return Artifact(name=name, content="c", kind=kind, task_id=task_id)
+    return Artifact(name=name, content="c", kind=kind, task_id=str(task_id))
 
 
 class TestArtifactsByKind:
@@ -363,7 +363,7 @@ class TestPlanningArtifact:
         a = Artifact(
             name="planning_output",
             content="x",
-            task_id=tid,
+            task_id=str(tid),
             kind=ArtifactKind.UNKNOWN,
         )
         assert planning_artifact([a]) is None

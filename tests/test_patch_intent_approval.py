@@ -83,7 +83,7 @@ def _add_patch_artifact(job: Job, *, risk: str = RISK_MEDIUM, intent_count: int 
         name="builder_proposal",
         content="",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         metadata={
             "patch_intent_explanations": explanations,
             "patch_intent_risks": [risk] * intent_count,
@@ -339,7 +339,7 @@ class TestFormatHelpers:
             name="builder_proposal",
             content="",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={
                 "patch_intent_explanations": [
                     {"file": "docs/file_0.md", "action": "modify", "risk": RISK_MEDIUM,

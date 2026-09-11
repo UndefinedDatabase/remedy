@@ -108,7 +108,7 @@ def _poisoned_job() -> Job:
         name="poisoned",
         content=content,
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         metadata={
             "patch_intent_diff_preview": "DIFF_PREVIEW_MUST_NOT_RENDER",
             "approval_reason": "APPROVAL_REASON_MUST_NOT_RENDER",

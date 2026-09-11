@@ -174,7 +174,7 @@ def _add_builder_artifact(job: Job) -> Artifact:
         name="builder output",
         content="some content",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=uuid4(),
+        task_id=str(uuid4()),
     )
     job.artifacts.append(a)
     return a
@@ -185,7 +185,7 @@ def _add_patch_intent_artifact(job: Job) -> Artifact:
         name="builder output",
         content="some content",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         metadata={"patch_intent_count": 1},
     )
     job.artifacts.append(a)
@@ -924,7 +924,7 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": "1"},
         )
         job.artifacts.append(a)
@@ -938,7 +938,7 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": "not-an-int"},
         )
         job.artifacts.append(a)
@@ -952,7 +952,7 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": []},
         )
         job.artifacts.append(a)
@@ -966,7 +966,7 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": None},
         )
         job.artifacts.append(a)
@@ -980,7 +980,7 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": "bad"},
         )
         job.artifacts.append(a)
@@ -1000,7 +1000,7 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": "not-a-number"},
         )
         job.artifacts.append(a)

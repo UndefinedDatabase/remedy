@@ -110,7 +110,7 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
     for t in job.tasks:
         if t.status == RunState.COMPLETED:
             for artifact in job.artifacts:
-                if artifact.task_id == t.id:
+                if artifact.task_id == str(t.id):
                     s = artifact.metadata.get("summary")
                     if s:
                         prior_summaries.append(s)
@@ -234,7 +234,7 @@ def run_next_task(
         name=f"task_output_{task_type}",
         content="\n".join(content_lines),
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.id),
         kind=ArtifactKind.BUILDER_PROPOSAL,
         metadata={
             "task_type": task_type,
@@ -275,7 +275,7 @@ def annotate_task_result(
     if not result.changed or result.task_id is None:
         return
     artifact = next(
-        (a for a in result.job.artifacts if a.task_id == result.task_id),
+        (a for a in result.job.artifacts if a.task_id == str(result.task_id)),
         None,
     )
     if artifact is None:

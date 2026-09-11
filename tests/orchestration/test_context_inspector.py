@@ -428,7 +428,7 @@ class TestInspectContext:
         task = Task(description="Fix bug")
         art = Artifact(
             name="patch-intent", content="", kind=ArtifactKind.PATCH_INTENT,
-            task_id=task.id,
+            task_id=str(task.id),
             metadata={
                 "patch_intent_explanations": [{"file": "src/fix.py", "action": "modify", "risk": "low"}],
                 "patch_intent_approvals": {},

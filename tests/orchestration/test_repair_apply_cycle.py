@@ -22,7 +22,7 @@ def _attach_repair(data_dir, job, intent_id, *, expected_effect):
     from packages.core.models import Artifact, ArtifactKind
     task_id = str(job.tasks[0].id)
     fa = Artifact(
-        name="tf", content="fail", kind=ArtifactKind.VERIFICATION, task_id=job.tasks[0].id,
+        name="tf", content="fail", kind=ArtifactKind.VERIFICATION, task_id=str(job.tasks[0].id),
         metadata={
             "test_failure": True, "failure_kind": "test_failed",
             "related_test_run_id": "tr-orig", "related_apply_id": "ap-orig",

@@ -46,7 +46,7 @@ def _make_approved_job(tmp_path, monkeypatch):
     job = Job(name="diff-repair-apply-test")
     set_permission(job, Capability.repo_generated_write, allow=True)
 
-    artifact = Artifact(task_id=uuid4(), name="test-patch", content="")
+    artifact = Artifact(task_id=str(uuid4()), name="test-patch", content="")
     artifact.metadata = {"patch_intent_explanations": [
         {"file": "test", "action": "modify", "risk": "low",
          "reason": "test", "summary": "test patch"}

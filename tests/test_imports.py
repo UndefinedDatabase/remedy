@@ -63,8 +63,8 @@ def test_artifact_provenance():
     # With task_id
     from uuid import uuid4
     tid = uuid4()
-    b = Artifact(name="out2", content="world", task_id=tid)
-    assert b.task_id == tid
+    b = Artifact(name="out2", content="world", task_id=str(tid))
+    assert b.task_id == str(tid)
 
 
 def test_interfaces_are_protocols():

@@ -131,7 +131,7 @@ class TestDoContinueFenceEnforcement:
         ]
         art = Artifact(
             name="build", content=content, kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.id),
             metadata={"patch_intent_explanations": explanations, "patch_intent_approvals": {}},
         )
         job = Job(
