@@ -341,3 +341,145 @@ itself and issues the round 67 verdict. Phase 1 rule 1 first: re-read `.agent/ST
 disk. Then round 68, whose ordered next step is DECISION F275 D41's remaining condition —
 RULE THE 54 ruled keys that resolve to no `ast` node at their recorded position, answering
 first whether the transform's own consumption already loses them.
+
+## Reviewer verdict on round 67 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 67: **PASS.** Written by the planner and reviewer of SESSION 24 after reading the committed
+range `39647827`..`a3c479d6` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 68, per amend0827-process-diet rule 1.
+
+G1 is the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback: all three authored blobs
+are byte-identical to the reviewer's own scratch originals — the block at 33102 bytes, the artefact at 6395
+and the plain-run instrument at 6846 — and `.agent/last_block.md` equals the block blob. All four slices
+matched the sha256 on their own BEGIN markers. Re-measured on the committed blob the block is 332 lines
+TOTAL and 253 PROSE, agreeing with its own constraint 8. G2: `.agent/plan.md` is byte-identical to PLAN67
+at 2853 bytes over 48 lines, both mandated headings exactly once. G3: `.agent/live_review.md` goes 1016632
+to 1021338, `.agent/prose_slips.md` 259093 to 261041 and `.agent/decisions.md` 1152295 to 1157506, every one
+exact under reader A, with reader B holding at N counted as 6, 2 and 9; the reviewer ran its own negative
+control on each and all three are REJECTED by both readers while all three unmutated regions are ACCEPTED.
+`## DECISION F275 D41` reads 0 at the base against a highest existing D40. G4: the artefact at C5 is
+byte-identical to the C0b blob and the path does not resolve at the base. G6: five top-level trees
+byte-identical, canary 42 passed at exit 0, `ruff check .` 26 rows at the frozen ceiling with zero under
+`.remedy-wt/` and zero `.py` rows under `.agent/`. G7: nine changed paths with MISSING and EXTRA empty and
+zero production paths; the open set 88 at both ends with registered, resolved and de-registered ALL EMPTY;
+per-commit insertions peak at 332. The handback commit's own numbers, which no gate of that round could
+reach, are 264 insertions and 399 deletions over ONE path.
+
+G5 IS THE GATE THAT CARRIED THIS ROUND AND THE REVIEWER RE-TOOK EVERY PART OF IT. The instrument extracted
+from one fence and ran three times to byte-identical 1710-byte captures. The landed artefact carries ZERO
+three-backtick lines, which is what G5(b)'s premise about the indented form asserts. Every figure agrees:
+2195 rows in each plain run with symmetric difference 0 under both keys, the synthetic receivers 24 in the
+rewritten control against 0 in the plain run, 2082 against 2058 resolved and 113 against 137 refused, the
+control rebuilding round 53's committed set SET-EQUAL at 2198, and the plain probe reading LINE 2168 against
+RECEIVER 2138 for 30 drops where the rewritten one read 52 — with 22 sites recovered and ZERO newly dropped.
+
+THE SUBSTANCE IS THAT A PREDICTION MADE ONE ROUND EARLIER WAS MET EXACTLY, WHICH IS RARER HERE THAN A
+MEASUREMENT. DECISION F275 D40 attributed 22 of the 52 drops to pytest's assertion rewriting and named
+`--assert=plain` as the route; the plain run recovers 22 and drops nothing new. The two LINE joins agreeing
+at 2168 is the control that makes that a one-variable reading: a join that reads no receiver must not move
+when the receivers change, and it does not. Both remaining unexplained drops were already ruled by D40 a
+round ago, so the plain re-derived set carries no unruled drop, and the write is now shut on the 54
+non-resolving sweep keys alone.
+
+THE WORKER DECLARED TEN DEVIATIONS AND THE ONE THAT MATTERS IS THE REVIEWER'S. G5(b)'s prefix list named
+`packages/orchestration/long_run_executor.py:505` but not `tests/orchestration/test_repair_loop_v1.py:56`,
+so one of the artefact's two NEITHER-site lines fell outside the scope the gate stated — even though G5(a)
+covers that same pair by name. The worker reported the gap rather than silently widening the list, which is
+right. THE REVIEWER RE-RAN THE COMPARISON WITH BOTH SPELLINGS: 22 lines checked, 0 failed, and the ORDER
+property holds, so the line the gate missed is verbatim too and nothing on disk is wrong. It is one dated
+line below. The remaining nine are the standing ones plus the note that the instrument prints
+`pytest exitstatus 1` for both plain runs, reported as it reads and matching the artefact's own table.
+
+## Authored text for round 68 to book — one dated line for `.agent/prose_slips.md`
+
+2026-09-12 · F275 R67 · The round 67 block's G5(b) enumerated the line prefixes its verbatim comparison covers and the list omitted one of the two sites the artefact's own section 6 names: it carried `packages/orchestration/long_run_executor.py:505` and not `tests/orchestration/test_repair_loop_v1.py:56`, so one transcript line fell outside the stated scope. G5(a) covered the same pair by name, and the reviewer's re-run with both spellings reads 22 checked and 0 failed, so nothing on disk is wrong. The list was written by copying the shape of the artefact's section 6 block and stopping at the first of its two named sites. THE RULE THAT FOLLOWS: a gate that enumerates prefixes to scope a sweep DERIVES that enumeration from the document it will sweep — extract the distinct line starts once and paste the result — because an enumeration written from memory of a document is exactly the hand-counted numeral beside a measured category that item 16 of §3 already forbids, wearing a list's clothes instead of a number's.
+
+## Session 24 ends here — FIVE delegated rounds, all five PASS
+
+Rounds 63, 64, 65, 66 and 67. THE THROUGH-LINE IS THAT THE SESSION TOOK ONE QUESTION — WHY DOES THE FLIP'S
+DRY RUN NOT CONVERGE — AND SPLIT IT INTO TWO ANSWERS THAT ARE NOW BOTH ON THE RECORD, one of which is a
+piece of production work nobody had named and the other a chain of four position defects in the site set.
+
+ROUND 63 ANSWERED THE QUESTION THE PLAN HAD CARRIED SINCE ROUND 61. The three largest residue classes —
+337 `SystemExit`, 223 hexadecimal-UUID and 90 `unsupported operand` E-lines — are ONE id-SHAPE seam and
+neither a fourth transform rule family nor a data migration. All three reproduce by calling the shipped
+functions against a root that does not exist, so no record on disk participates; and the narrowest rewrite
+that could close them was BUILT, APPLIED and RUN against a control at a real exit 0 and 1345 passed, where
+it fixed 16, BROKE 2 and left 247 of 263. The two it broke assert the guard the rewrite deletes, which is
+what makes the answer a ruling rather than an opinion: a parse in a handler is a VALIDATION, and no rule of
+DECISION F275 D32's kind can remove one. DECISION F275 D37 routes the work to the resolver collapse
+DECISION F260 D5 already places in T003.
+
+ROUNDS 64 THROUGH 67 ARE ONE ARC AND EACH FOUND THE DEFECT THE ROUND BEFORE IT COULD NOT SEE. Round 64
+measured that DECISION F275 D36's own remedy is unimplementable here — this interpreter is CPython 3.10.12
+and PEP 657 column information arrived in 3.11 — and ruled `f_lasti` plus a disassembly in its place, with
+its coverage over the 39 at-risk lines counted at 68 of 77 nodes and the nine refusals enumerated. Round 65
+spent that route: the probe was re-keyed, the suite ran twice, and the set was re-derived at 2116 against
+2168 under a control that reproduces round 53's committed set exactly. Round 66 ruled the three sites that
+re-derivation could not justify and found that one of them was an instance of pytest's assertion rewriting
+reaching 22 of the 52 drops — so the set round 65 produced was NOT safe — and measured a second, independent
+defect beside it, 54 ruled keys that resolve to no `ast` node at their recorded position. Round 67 spent
+`--assert=plain` and met round 66's prediction exactly.
+
+THE PATTERN WORTH CARRYING FORWARD IS THAT EVERY ONE OF THOSE FOUR DEFECTS WAS INVISIBLE TO THE GATE THAT
+PRECEDED IT. The line key, the assertion rewriting, the sweep's own columns and the 54 non-resolving keys
+are four different ways for a position to be wrong in the same data structure, and each was found only by a
+round that went looking for the previous one. The 54 are the only one still unruled, and DECISION F275 D41
+holds the write shut on them alone.
+
+THE BRANCH IS GREEN AT READINGS THIS SESSION TOOK. The full suite ran SIX times, every run in a disposable
+worktree and never in the primary checkout: two scoped `tests/cli/` control-and-flip pairs in round 63 plus
+its candidate-rule run, and two probe pairs in rounds 65 and 67. The `tests/cli/` control read a REAL exit 0
+at 1345 passed, which is the reading that makes round 63's negative result a difference rather than a
+constant. The canary reads 42 passed and `ruff check .` reads 26 findings, the frozen ceiling, at the branch
+tip. NOT ONE LINE UNDER `packages/`, `apps/`, `tests/`, `docs/` OR `scripts/` MOVED IN ANY OF THE FIVE
+ROUNDS, which each round's G6(a) proves by tree object id rather than by diff.
+
+THIS SESSION ENDS AT FIVE ROUNDS AND THE REASON IS THE REVIEWER'S OWN ERROR RATE, NOT ITS CONTEXT. Context
+was comfortable throughout and is comfortable now; naming it would be false. `.agent/prose_slips.md` gained
+EIGHT dated lines across this session, of which two were inherited from round 62 and SIX are against rounds
+63 to 66, and the line above makes a seventh against round 67. Every one of the seven is the same shape: a
+GATE or an ARTEFACT PROVENANCE CLAUSE whose words did not match the artefact or the instrument they were
+written about, and every one was caught by the WORKER rather than by the reviewer's own pre-emission sweep.
+The last three rounds each produced one in the same clause, G5, while that clause was being tightened
+specifically to prevent them. That is the signal amend0905-throughput names — a run of prose-slip lines in
+one session — and operator amendment amend0908-f275-finish rule 5 permits F275 to cite it only after at
+least four delegated rounds, which five satisfies. It is below the six-to-eight target and above the floor
+of four, and it is not "a nice seam": the next round is ordinary work any session can pick up.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
+session's Phase 0 probe, was measured absent before every round's first commit and before every handback,
+and is absent as this session ends. Then the Open PR Gate: no pull request is open, and none is owed until
+the closure sequence.
+
+SECOND, round 68's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
+amend0827-process-diet rule 1, the ROUND 67 PASS verdict above as a `Gate: F275 R67` entry in
+`.agent/live_review.md`, and the ONE dated line above into `.agent/prose_slips.md`.
+
+THIRD, F275 IS PAST THE SOFT LIMIT amend0908-f275-finish rule 1 names, at 67 of 60 rounds and 24 of 20
+sessions. The SCOPE REPORT that rule obliges was written in round 51's handback and STANDS; nothing this
+session measured changes any of its three parts, and it is not restated here because a report restated is a
+report edited. Rule 2 forbids the split-and-close default BY NAME, so the next session continues rather
+than closing. What this session adds to the operator's pending decision on round 51's item (c) is that the
+flip's largest residue class is now known to be PRODUCTION work in T003 rather than another transform rule,
+which makes the remaining scope larger in effort and smaller in uncertainty than round 51 could state.
+
+FOURTH, THE WORK ITSELF, in the order `.agent/plan.md` fixes. Rule the 54 ruled keys that resolve to no
+`ast` node, and answer first whether the transform's own consumption already loses them — that decides
+whether they are a reporting defect or a live under-selection in every dry run this chain has taken, and it
+is the whole of what DECISION F275 D41 still holds the write shut on. Then point the transform at the plain
+re-derived set and re-run the dry run. Then the resolver collapse, which is production code and a SPLIT
+round with mutation red-proofs. Then the flip, the classic store and the closure sequence.
+
+A NOTE ON THE REVIEWER'S OWN PRACTICE, FOR WHOEVER PICKS THIS UP. The counter-measure that works is the one
+round 65 added and round 67 kept: before emitting, extract the instrument's ACTUAL output and grep it for
+every token the gate names, and sweep the artefact's own numerals against that same output. It caught the
+transcript re-wrap in round 66 before it shipped. What it does not catch is a gate clause that is wrong
+about the artefact's MARKUP or about its own enumeration, because both are properties of the document
+rather than of the tool — and that is where all three of the last three slips landed. The narrow fix is in
+the dated lines; the general one is that a gate's every claim about a document should be derived from that
+document by a script, never written from having just read it.
