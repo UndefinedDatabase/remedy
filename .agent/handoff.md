@@ -479,3 +479,127 @@ together, which only reviewer-authored text may set. Both `Landed: R-0877` lines
 beside it. The operator's ruling on round 51's scope report item (c) — an EXTENSION of the
 60-round limit against a SPLIT carrying the flip into a successor feature — is still owed
 before the next session plans past DECISION F275 D29's P2.
+
+## Reviewer verdict on round 52 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 52: **PASS.** Written by the planner and reviewer of SESSION 20 after reading the committed
+range `87d76c66`..`18a9ddd1` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 53, per amend0827-process-diet rule 1.
+
+G1 is the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback: the reviewer's scratch
+original, the saved copy at C0a `95dff48f` and the mirror at C0b `67667f7b` are one blob at 34889 bytes and
+sha256 `28756d5a7798eb066e2300bd31a91b3e48d977461c2f8038233f7e57490cf052`. G2: `.agent/plan.md` byte-identical
+to slice PLAN52 at 2518 bytes over 44 lines, both mandated headings exactly once. G3: `.agent/live_review.md`
+912896 to 917772 across RECORD52 and NOTE52 and 917772 to 918266 for LANDED52 at C4, reader A identical in
+both, reader B true at N counted from the slices — 2 then 1 — and the negative control, flipping one ASCII
+letter inside the FIRST appended paragraph, rejected by BOTH readers.
+
+G4 IS THE GATE THIS ROUND EXISTS FOR AND THE REVIEWER RAN THE SWEEP ITSELF over the COMMITTED blobs of both
+commits, resolving every site with `ast` rather than grep: at the base `87d76c66` a call to
+`append_run_event`, `emit_failure_events` or `load_run_events` whose second positional argument is a
+`UUID(...)` occurs at 26 sites in 12 files, and at C3 `88304e59` it occurs at ZERO sites in ZERO files. G5:
+GUARD52 is a CODE APPEND proved by ordered equality — the base blob is a byte-exact PREFIX at 37184 bytes, the
+slice a byte-exact SUFFIX at 3812, the sum exactly the C3 blob's 40996, and the 89 lines C3's diff adds are
+the slice's 89 lines IN ORDER. G7: all three subtree digests equal the reviewer's own replay of this change on
+a clean checkout — `packages` at `ff6cebaf9e41cbcd813399fb022940c47ca7180b`, `apps` at
+`1dd43398c371aa88e16fa8aba95bead4c131c2ac` and `tests` at `1d425fe0f1a27848b0cec31fce0c92077ce28d12` — `ruff
+check .` reads 26 findings, unchanged from the base, and the reviewer re-ran the scoped selection itself at
+`419 passed` and the canary at `42 passed`, both exit 0.
+
+G6 WAS RE-RUN IN THE REVIEWER'S OWN DISPOSABLE WORKTREE DETACHED AT C3, with `timeline.__file__` printed and
+resolving inside it. The control reads `3 passed` at exit 0. M1, re-wrapping the `fulfillment_started`
+emission, reddens the sweep alone AND ITS ASSERTION MESSAGE NAMES `packages/orchestration/job_fulfillment.py:640` —
+the site mutated and no other. M2, re-wrapping `context_summary.py` and restoring its local import, reddens
+the sweep, whose message names `packages/memory/context_summary.py:206`, AND the behavioural test. Both
+reverts are byte-exact against a digest recorded before each mutation and the control is green again. M1's set
+is a proper SUBSET of M2's, which the block stated in advance rather than claiming a disjointness that does not
+hold. G8: the changed-path set over `87d76c66`..C4 is exactly the seventeen paths with MISSING and EXTRA both
+empty, ZERO under `docs/` or `scripts/`, and the gitignored generator correctly absent from it; the open set
+holds at 87 by distinct id with nothing registered and nothing resolved; `^Landed: R-0877 ` goes 1 to 2 while
+`^Done: R-0877 ` is 0 at both; and per-commit insertions are 490, 387, 14, 4, 116 and 2, every one under the
+AGENTS.md DECISION F104 D1 cap of 500, so F275's one oversize allowance is still unspent at 52 rounds.
+
+THE WORKER DECLARED FIVE DEVIATIONS AND THE FIRST IS THE REVIEWER'S OWN DEFECT. G4(b) ordered the generator
+re-run against a base worktree and the resulting `packages`, `apps` AND `tests` tree digests compared against
+C3's. That is unmeetable for `tests` by construction: C3's `tests` tree also carries GUARD52's 89-line append,
+which is a SLICE and not generator output, so the generator alone can never reproduce it. The worker did not
+reconcile the two — it reported the generator-only `tests` digest and the with-guard digest separately, and
+only the second equals C3's. Nothing on disk is wrong, so this is a dated line in `.agent/prose_slips.md` and
+not an id, per amend0827-process-diet rule 2. Its fourth deviation is sustained and is COSMETIC: the generator
+leaves a blank line where a deleted import stood, inside `emit_memory_recalled_event`'s `try:` and inside one
+test body. Both are valid Python, ruff is unchanged at 26, and constraint 5 forbade the worker to hand-edit
+generator output — correctly, because a hand edit beside a generated one is exactly what makes a generated
+change unreproducible. Any later round that touches those lines for another reason may close them up.
+
+## Authored text for round 53 to book — the resolution of R-0877
+
+Done: R-0877 — RESOLVED across F275 rounds 51 and 52, at C3 `133ccd53` and C3 `88304e59`. THE DEFECT HAD TWO HALVES AND THE SECOND WAS INVISIBLE FROM THE SIGNATURE. FIRST, `packages/orchestration/timeline.py`'s `append_run_event` and `packages/orchestration/test_failure_artifact.py`'s `emit_failure_events` were annotated `job_id: UUID | str` and coerced with `UUID(str(job_id))`, which rejects the sixteen hex characters `data_paths.mint_job_id` produces — the shape DECISION F260 D2 rules — so calling either with a shipped job id raised `ValueError: badly formed hexadecimal UUID string`. This repository had known that since F022 and routed ONE emission around it: `safe_points._emit_budget_tick` carries a docstring paragraph explaining why it writes through `RunLogWriter` instead, with `tests/orchestration/test_budget_tick.py` as its regression test. SECOND, and this is the half no annotation shows, `data_paths.run_log_dir` joins `str(job_id)` VERBATIM, so the coercion made the WRITER name the canonical hyphenated directory while the reader four lines below named the raw one — measured at `17d3f513` as one event written and zero read back under the id it was written with. THE FIX, in two rounds because the unit demanded it. Round 51 removed both coercions, so the seam joins the id verbatim on every path, and corrected the two neighbourhood paragraphs whose stated CAUSE the fix removed — DECISION F022 D2 clause one is NOT reversed, only its reason brought back into agreement with the code. That left 26 CALL SITES still wrapping the id in `UUID(...)`, which round 52 measured as the same defect from the other side: one job's run log in TWO directories, `job_logs/00000000-0000-0000-0000-000000000000/` and `job_logs/00000000000000000000000000000000/`, with neither reader seeing both events. Round 52 removed all 26 by one `ast` pass over the tracked `.py` files, together with the six `UUID` imports that pass orphaned — which is not tidiness but arithmetic, since leaving them took the repository's ruff count from 26 to 28 and `tests/orchestration/test_ci_budgets.py` freezes it at 26. THE GUARDS, and why there are two kinds. Round 51 added three behavioural tests in `tests/test_timeline.py`, each constructing through the REAL function on the shape that used to raise; reverting the `timeline.py` line reddens all three and reverting the `test_failure_artifact.py` line reddens only its own, which is the containment the block stated in advance. Round 52 added a RATCHET beside them: an `ast` sweep over every tracked `.py` file asserting that no call site hands the three seam functions a `UUID(...)` id, with its own discriminator test proving the matcher can see a wrap at all, and a failure message that names the offending `path:line` — the reviewer measured it naming `job_fulfillment.py:640` and `context_summary.py:206` under two separate mutations. THE RULE THIS LEAVES BEHIND, and it is the one the annotation hid: a parameter annotated `A | B` states what it ACCEPTS, and a body that narrows to one of them makes the annotation a promise the function does not keep — so where two shapes meet, the seam is measured by CALLING it with each shape, never by reading its signature. The corollary the second half adds: a WRITER and a READER of the same store are one unit, and a fix that moves one without the other trades a raise for a silence.
+
+## Authored text for round 53 to book — one dated line for `.agent/prose_slips.md`
+
+2026-09-11 · F275 R52 · The round 52 block's G4(b) ordered the generator re-run against a base worktree and the resulting `packages`, `apps` AND `tests` tree digests compared against C3's, requiring all three equal. That is unmeetable for `tests` by construction, because C3's `tests` tree also carries GUARD52's 89-line code append, which is a SLICE the worker applies and not generator output — so the generator alone can never reproduce it, and the gate as written demanded a value no correct round could produce. The worker declared it and reported both readings separately rather than folding them together, and the with-guard digest does equal C3's. This is §3 item 18's class, an ordered RECIPE read against the property it is ordered to establish: the recipe reproduces the generator's contribution and the property was stated over the whole commit. THE RULE THAT FOLLOWS: where a commit carries BOTH generated and sliced changes, a reproducibility gate names the subtrees the GENERATOR alone determines, and states the sliced contribution as a separate reading rather than inside the same equality.
+
+## Session 20 ends here — THREE delegated rounds, all PASS
+
+Rounds 50, 51 and 52. THE THROUGH-LINE IS THAT A MEASUREMENT TAKEN BEFORE AUTHORING CHANGED THE PLAN TWICE.
+
+ROUND 50 RE-RAN THE FLIP DRY RUN against a tree whose id shape is one spelling, and this time WITH A CONTROL —
+the same commit, a second fresh worktree, the same flags — which the round 46 run did not have. The migration
+DECISIONs F275 D26, D27 and D28 performed did exactly what it was performed to do and nothing more: the two
+pydantic classes vanished in full, 369 exception lines to 0, and the whole flipped run now carries two
+`ValidationError` lines, both against the classic record the flip excludes. It bought 157 failures, not the
+625 the previous session predicted, because every other class was never the id shape. Differencing the node-id
+sets attributes 2557 failures and all 106 errors TO THE FLIP against a control whose single failure is the
+vitest foundation test every fresh worktree fails. `.agent/f275_t003_flip_residue_r50.md` records that run with
+an instrument that reproduces its own numerals, and DECISION F275 D29 rules the three prerequisites it found:
+the field rename must be TYPE-RESOLVED rather than decided by a receiver-NAME heuristic, the surviving
+`UUID(...)` coercions must move, and the `**` splat needs a call-graph pass.
+
+ROUNDS 51 AND 52 LANDED THE SECOND OF THOSE, AND IT TURNED OUT TO BE A LIVE DEFECT RATHER THAN FLIP SCAFFOLDING.
+`R-0877` is the whole of it and its resolution is above. What is worth carrying forward is how it was found: not
+by reading the source, but by CALLING the shipped functions with the shape the shipped minter produces. The
+signature said `UUID | str` and the body accepted one of them.
+
+THE BRANCH IS GREEN AT A READING THIS SESSION TOOK: the full suite on the round 51 tree reads `18369 passed, 29
+skipped` at exit 1 with the single failure being the vitest foundation test, which needs the gitignored
+`apps/ui/node_modules` and fails in every fresh worktree; `ruff check .` reads 26 findings at every commit of
+this session, the frozen ceiling. Every round's scoped gate and canary were re-run by the reviewer itself.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the reviewer's context is
+comfortable and exhaustion is expressly NOT why this session ends — it ends below the six-to-eight round target
+because each of its three rounds carried a full-suite measurement of twenty-one minutes or more, six of them in
+all, and the next step is a fresh twenty-minute descriptor-probe run whose site set is a new measurement rather
+than a continuation of this session's.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
+session's Phase 0 probe, was measured absent before every round's first commit, and is absent as this session
+ends. Then the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
+
+SECOND, round 53's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
+amend0827-process-diet rule 1, the ROUND 52 PASS verdict above as a `Gate: F275 R52` entry in
+`.agent/live_review.md`, the authored `Done: R-0877` paragraph, and the one dated line above into
+`.agent/prose_slips.md`. Booking that resolution takes the open set from 87 to 86 by distinct id; the next free
+id is `R-0878`. Both `Landed: R-0877` lines stay where they are — the record is append-only.
+
+THIRD, F275 IS PAST THE SOFT LIMIT amend0908-f275-finish rule 1 names, at 52 of 60 rounds and 20 of 20
+sessions. The SCOPE REPORT that rule obliges was written in round 51's handback and STANDS; rule 2 forbids the
+amend0905-throughput split-and-close default here BY NAME, so the next session continues rather than closing.
+The banner line it carried is not re-earned by continuing; it is re-stated if a session output would otherwise
+leave the limit invisible.
+
+FOURTH, THE WORK ITSELF, which is DECISION F275 D29's P1. Replace the flip transform's receiver-NAME heuristic
+with the DECISION F272 D7 raising-property probe that `docs/roadmap/features/T2_F275.md` T002 already orders.
+DO NOT BUILD THAT PROBE FROM SCRATCH: it exists, with both instruments embedded verbatim and reproducible from
+the file itself, in `.agent/f275_t002_flip_inventory.md`, whose section 2 records the full suite GREEN under it
+at 18350 passed and whose section 3 records a symmetric difference of ZERO between two runs — the property
+T003 was told to rely on when it re-derives the set at its own base. That file measured `Job.id` and `Job.name`
+only; the transform also renames `Task.id` and `Task.description`, so the descriptor set is WIDENED before the
+run, not after it. The union of the probe's executed sites and the static sweep's provable ones is the site
+list the corrected transform consumes INSTEAD of `is_jobish` and `is_taskish`, and the honest test of whether
+it fixes the 551 attribute misses is another dry run. Then P3, the `**` splat call-graph pass, then the dry run
+again, then THE FLIP as the one declared-oversize commit AGENTS.md permits per feature, declared with its
+inseparability reason before review — still unspent at 52 rounds.
