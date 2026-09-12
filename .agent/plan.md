@@ -13,19 +13,19 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 83 COLLAPSES THE TWO JOB-ID RESOLVERS INTO ONE. `resolve_job_id` now searches both job
-stores and `resolve_any_job_id` is an alias of it rather than a second copy, which is the half
-of DECISION F275 D37's seam that F260 T004 named. Three tests pin it, and the round red-proves
-each against its own mutation. The round also measures how far that carries a ping-pong id
-through `job status`; the reviewer's dry run before authoring found it is one step — the
-resolver finds the id and the handler then fails loading it from the classic store. The round
-82 verdict and its prose slips are booked.
+ROUND 84 GIVES THE JOB-ID RESOLVER A RAISING FORM AND ROUTES THE HANDLERS THAT KEEP THEIR ID.
+`lookup_job_id` raises a `ValueError` subclass where `resolve_job_id` exits, so a handler that
+guards its parse keeps its own documented path; `resolve_job_id` becomes its wrapper with the
+same messages and exit codes. The handler statements that bind a parsed job id are routed
+through it. The ones that pass the parse straight into `load_job` are left, because the
+reviewer's dry run found `job stop` losing a stop request when one of them was routed without
+reading it. The round 83 verdict, its prose slips and one comment round 83 falsified are booked.
 
 ## Next Steps
 
-1. THE HANDLER LAYER, the other half of DECISION F275 D37: the `UUID(...)` parses in
-   `apps/cli/` whose argument names a job, and the classic-only load behind them. Production
-   code, so a SPLIT round with mutation red-proofs, and likely more than one.
+1. THE REMAINING HANDLER PARSES, each `load_job(UUID(...))` read for whether its caller keeps
+   using the raw argument as a key, starting with `job stop`'s loader and its caller's
+   normalisation. Production code, so a SPLIT round with mutation red-proofs.
 2. THE FLIP, carrying DECISION F275 D48's obligations: the full suite is the backstop, the input
    is re-derived by round 82's committed generator at the flip's own base, and any site fallen
    to zero witnesses is a stop. The stale test double at
@@ -36,9 +36,8 @@ resolver finds the id and the handler then fails loading it from the classic sto
 
 - THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20
   sessions and 60 rounds without a replacement, so this feature closes only at full scope.
-- A RESOLVER THAT FINDS AN ID IS NOT A COMMAND THAT WORKS. `job status`, the one handler
-  probed, fails one step later for a ping-pong id with a different message; the other handlers
-  that load through the classic store were not probed.
+- A HANDLER THAT DISCARDS ITS RESOLVED ID CAN KEY ON THE RAW ONE. The dry run caught one such
+  site through a test; untested sites of that shape are not seen by any run.
 - THE INPUT SET IS REPRODUCIBLE ONLY FROM ROUND 77's TWO SCRATCH JSON FILES, and the re-key
   cannot see a deleted ruled site.
 - The open set is 87 by distinct id at this round's base, with `R-0809` and `R-0880` open. Four
