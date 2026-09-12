@@ -13,37 +13,37 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 68 DISCHARGES DECISION F275 D41's remaining condition and answers its ordering question
-NO: the transform does NOT lose the 54 non-resolving keys, because it does not consume the set
-those keys belong to. The round 53 committed set resolves 2198 of 2198 at `a25fef5d` and 2144
-at the tip, each of the 54 off by exactly one line under round 57's own retype commits; the set
-the transform has consumed since round 61 is whole at the tip; and a paired transform run
-differing in the ruled set ALONE reads 54 renames and 54 undecided sites apart. The 54 are
-finding `R-0879`, already open. No new id is minted. DECISION F275 D42 rules the result and
-corrects D40 part three, which named the sweep's columns for a defect that is staleness. The
-round 67 verdict and its one prose slip are booked. No production line moves.
+ROUND 69 RESOLVES `R-0879` by LANDING the fix that had been sitting in scratch since round
+59, and by closing the gap round 68's control walked through. Both of the finding's halves
+are now committed authored texts and each is demonstrated beside the case that must fail: the
+re-key stage recovers 2198 of 2198 sites against the line key's 2144 and refuses at exit 3
+with no output written when one enclosing scope is renamed; the transform gains the same
+refusal, lands the same 6091 rewrites over the same 263 files when its set is whole, and on
+the round 53 stale set names all five files, exits 4 and modifies ZERO files. That file count
+against 263 is the discriminator. The round 68 verdict and its two prose slips are booked.
+No production line moves.
 
 ## Next Steps
 
-1. LAND `R-0879`'s FIX WHERE A READER FINDS IT. The re-key stage lives only in scratch and the
-   committed site-set artefact still carries the stale keys, so the fix works and the record
-   does not show it. That gap is what keeps `R-0879` open.
-2. `R-0880`'s TWO obligations, both still unbuilt: bound the over-selection STATICALLY against
-   the live record classes, and give the transform the refusal `R-0879`'s stage already has.
-3. Point the transform at the round 67 plain re-derived set and re-run the flip's dry run,
-   which is the first reading of what the re-keying costs in failures rather than in sites.
-4. The resolver collapse DECISION F260 D5 places in T003, which DECISION F275 D37 names as the
-   home of the id-SHAPE seam behind the three largest residue classes. Production code, so a
-   SPLIT round with mutation red-proofs.
-5. THE FLIP, then the classic store, then the closure sequence.
+1. `R-0880`, the MIRROR finding, and both its obligations are unbuilt: bound the
+   over-selection STATICALLY by reading every ruled site's owner verdict against the live
+   record classes, and give the transform a second refusal for a site whose owner cannot be
+   confirmed against the receiver's own record.
+2. Re-run the flip's dry run against the re-keyed set and the round 67 plain re-derivation
+   together, which is the first reading of what both corrections cost in FAILURES rather
+   than in sites.
+3. The resolver collapse DECISION F260 D5 places in T003, which DECISION F275 D37 names as
+   the home of the id-SHAPE seam behind the three largest residue classes. Production code,
+   so a SPLIT round with mutation red-proofs.
+4. THE FLIP, then the classic store, then the closure sequence.
 
 ## Risks
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
   split-and-close default BY NAME: a session writes the scope report and CONTINUES.
-- The site set has now yielded FIVE position defects, and the fifth is a DECISION naming the
-  wrong mechanism for the fourth — so a ruling already in the record is not evidence either.
-- The flip's one declared-oversize allowance is still UNSPENT, and the largest residue class is
-  production work in T003 that no round has started.
-- The open set is 88 by distinct id, with `R-0879` and `R-0880` both open. Four are High —
-  R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+- The guard this round lands has NO test in `tests/` behind it, because the flip is unlanded
+  and there is no production surface to pin it to. A later round may delete it unnoticed.
+- The flip's one declared-oversize allowance is still UNSPENT, and the largest residue class
+  is production work in T003 that no round has started.
+- The open set is 87 by distinct id once `R-0879` resolves, with `R-0880` still open. Four
+  are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
