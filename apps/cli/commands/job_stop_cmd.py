@@ -45,11 +45,9 @@ def _load_job(job_id: str):
         return plan
 
     try:
-        from uuid import UUID
-
         from packages.orchestration.storage import load_job
 
-        core = load_job(UUID(job_id))
+        core = load_job(job_id)
         return _CoreJobAdapter(core)
     except Exception:
         return None

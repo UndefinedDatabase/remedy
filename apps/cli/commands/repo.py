@@ -7,7 +7,6 @@ import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
-from uuid import UUID
 
 from packages.orchestration.data_paths import lookup_job_id
 
@@ -171,7 +170,7 @@ def _cmd_commit_readiness(
     from packages.orchestration.timeline import load_run_events
 
     try:
-        job = load_job(UUID(job_id_str))
+        job = load_job(lookup_job_id(job_id_str))
     except Exception:
         print(f"Error: job not found: {job_id_str}", file=sys.stderr)
         sys.exit(1)

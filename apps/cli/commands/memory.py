@@ -299,12 +299,10 @@ def _cmd_memory_candidates(
     json_output: bool = False,
 ) -> None:
     """List memory candidates for a job."""
-    from uuid import UUID
-
     from packages.orchestration.memory_candidates import list_candidates
     from packages.orchestration.storage import load_job
 
-    job = load_job(UUID(job_id_str))
+    job = load_job(lookup_job_id(job_id_str))
     candidates = list_candidates(job)
 
     if json_output:
@@ -332,12 +330,10 @@ def _cmd_memory_approve_candidate(
     json_output: bool = False,
 ) -> None:
     """Approve a memory candidate."""
-    from uuid import UUID
-
     from packages.orchestration.memory_candidates import approve_candidate
     from packages.orchestration.storage import load_job, save_job
 
-    job = load_job(UUID(job_id_str))
+    job = load_job(lookup_job_id(job_id_str))
     ok = approve_candidate(job, candidate_id)
     if ok:
         save_job(job)
@@ -373,12 +369,10 @@ def _cmd_memory_reject_candidate(
     json_output: bool = False,
 ) -> None:
     """Reject a memory candidate."""
-    from uuid import UUID
-
     from packages.orchestration.memory_candidates import reject_candidate
     from packages.orchestration.storage import load_job, save_job
 
-    job = load_job(UUID(job_id_str))
+    job = load_job(lookup_job_id(job_id_str))
     ok = reject_candidate(job, candidate_id)
     if ok:
         save_job(job)

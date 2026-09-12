@@ -9,7 +9,8 @@ from __future__ import annotations
 import json
 import sys
 from typing import Any
-from uuid import UUID
+
+from packages.orchestration.data_paths import lookup_job_id
 
 
 def _cmd_review_run(args: Any) -> None:
@@ -21,7 +22,7 @@ def _cmd_review_run(args: Any) -> None:
     )
     from packages.orchestration.storage import load_job, save_job
 
-    job = load_job(UUID(args.job_id))
+    job = load_job(lookup_job_id(args.job_id))
     after_task = getattr(args, "after_task", None)
 
     # Use fixture reviewer if requested
@@ -67,7 +68,7 @@ def _cmd_review_list(args: Any) -> None:
     from packages.orchestration.reviewer import list_recommendations
     from packages.orchestration.storage import load_job
 
-    job = load_job(UUID(args.job_id))
+    job = load_job(lookup_job_id(args.job_id))
     recs = list_recommendations(job)
     try:
         recs = apply_list_options(
@@ -109,7 +110,7 @@ def _cmd_review_accept(args: Any) -> None:
     from packages.orchestration.reviewer import accept_recommendation
     from packages.orchestration.storage import load_job, save_job
 
-    job = load_job(UUID(args.job_id))
+    job = load_job(lookup_job_id(args.job_id))
     ok = accept_recommendation(job, args.recommendation_id)
     if ok:
         save_job(job)
@@ -143,7 +144,7 @@ def _cmd_review_reject(args: Any) -> None:
     from packages.orchestration.reviewer import reject_recommendation
     from packages.orchestration.storage import load_job, save_job
 
-    job = load_job(UUID(args.job_id))
+    job = load_job(lookup_job_id(args.job_id))
     ok = reject_recommendation(job, args.recommendation_id)
     if ok:
         save_job(job)

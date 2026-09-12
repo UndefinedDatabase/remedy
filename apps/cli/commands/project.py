@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+from packages.orchestration.data_paths import lookup_job_id
 from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job, save_job
 
 if TYPE_CHECKING:
@@ -153,17 +154,18 @@ def _cmd_attach_project_job(project_id_str: str, job_id_str: str) -> None:
         print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(UUID(job_id_str))
+        job_id = lookup_job_id(job_id_str)
+        job = load_job(job_id)
     except (ValueError, JobNotFoundError):
         print(f"ERROR: job not found: {job_id_str}", file=sys.stderr)
         sys.exit(1)
-    added = attach_job(project, job_id_str)
+    added = attach_job(project, job_id)
     save_project(project)
     if job.metadata.get("project_id") != project_id_str:
         job.metadata["project_id"] = project_id_str
         save_job(job)
     if added:
-        print(f"Attached job {job_id_str[:8]} to project {str(pid)[:8]}")
+        print(f"Attached job {job_id[:8]} to project {str(pid)[:8]}")
     else:
         print(f"Job already attached to project {str(pid)[:8]} (no-op)")
 

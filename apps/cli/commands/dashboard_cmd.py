@@ -6,7 +6,6 @@ import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from packages.orchestration.data_paths import lookup_job_id
 
@@ -60,7 +59,7 @@ def _cmd_dashboard_project(project_id_str: str, *, json_output: bool = False) ->
     all_events: dict[str, list] = {}
     for jid in project.get("job_ids", []):
         try:
-            j = load_job(UUID(jid))
+            j = load_job(lookup_job_id(jid))
             jobs.append(j)
             all_events[jid] = load_run_events(data_dir, jid)
         except Exception:

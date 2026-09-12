@@ -85,7 +85,7 @@ def _cmd_readiness_project(project_id_str: str, *, json_output: bool = False) ->
     all_events: dict[str, list] = {}
     for jid in project.job_ids:
         try:
-            j = load_job(UUID(jid))
+            j = load_job(lookup_job_id(jid))
             jobs.append(j)
             all_events[jid] = load_run_events(data_dir, j.id)
         except Exception:
