@@ -445,3 +445,137 @@ the route DECISION F275 D45 names as the precondition on the flip round: SHRINK 
 where 787 of the 999 are receivers no binding in scope resolves — or rule the residual
 acceptable in a dated decision that states the count it accepts. Phase 1 rule 1 first: re-read
 `.agent/STOP` from disk before anything else.
+
+## Reviewer verdict on round 71 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 71: **PASS.** Written by the planner and reviewer of SESSION 25 after reading the committed
+range `3c59e51b`..`5e7114e6` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 72, per amend0827-process-diet rule 1.
+
+WHAT THE TRANSPORT PROOF COVERS, STATED BEFORE THE FIGURES. G1 is the PRIMARY cmp-against-scratchpad
+proof and not the §4.9 digest fallback: the chain it walks is the reviewer's own scratch original, the
+committed `.agent/authored/` blob, and the working copy — three artefacts, of which the first is the
+reviewer's and the other two the worker's. It does not and cannot establish what bytes the worker
+RECEIVED, and no claim below reaches that far. All four authored blobs are byte-identical to the
+reviewer's originals — the block at 34906 bytes, the artefact at 6699, the owner-check stage carrier at
+8812 and the instrument carrier at 5234 — and `.agent/last_block.md` equals the block blob. Four slices
+matched the sha256 on their own BEGIN markers. Re-measured on the committed blob the block is 348 lines
+TOTAL and 274 PROSE, agreeing with its own constraint 8. Both `.py.md` carriers round-trip through their
+own fence and re-wrapping each extracted source reproduces the committed blob byte for byte — the check
+round 69 lacked, held for a second round.
+
+G2: `.agent/plan.md` byte-identical to PLAN71 at 3039 bytes over 49 lines, both mandated headings exactly
+once. G3: `.agent/live_review.md` goes 1040150 to 1045796, `.agent/prose_slips.md` 265750 to 267150 and
+`.agent/decisions.md` 1175806 to 1180370, every one exact under reader A, with reader B holding at N
+counted from the slice as 7, 1 and 6, and all three of the reviewer's own negative controls — each placed
+on the FIRST appended paragraph — REJECTED by both readers while every unmutated region is ACCEPTED. Zero
+reserved-prefix lines after the entry header; the new header duplicates none of the 69 already matching
+the neighbours' pattern; `## DECISION F275 D45` reads 0 at the base against a highest existing D44. G4:
+the artefact at C5 is byte-identical to the C0b blob at 6699 bytes and the path does not resolve at the
+base. G6: five top-level trees byte-identical, canary 42 passed at exit 0, `ruff check .` 26 rows at the
+frozen ceiling. G7: ten changed paths with MISSING and EXTRA empty and zero production paths; the open set
+87 at both ends with IDENTICAL MEMBERSHIP and registered, resolved and de-registered ALL EMPTY, `R-0880`
+open and `R-0879` resolved at each end; per-commit insertions peak at 348. The handback commit's own
+numbers, which no gate of that round could reach, are 377 insertions over ONE path, so DECISION F104 D1's
+exclusion applies by that decision's own wording.
+
+G5 CARRIED THE ROUND AND ITS DECISIVE READING IS A PAIR OF EXIT CODES. The instrument extracted from one
+fence at 4563 bytes and ran to byte-identical 2533-byte captures with ZERO stderr at exit 0. The
+owner-check stage, over the set the pipeline holds, names FOUR ruled sites whose receiver statically
+resolves to a record its owner verdict does not name — one `Mission` and three `Artifact` — and exits 5.
+Over the same tree and the same stage, given that set with exactly those four removed, it exits 0. THE
+CONTROL THAT MAKES THAT A READING IS THAT CONFIRMED IS 1195 IN BOTH RUNS: removing four contradicted
+sites must not change what the method confirms, and it does not. The artefact's 25 quoted lines verify
+with 0 failed, 0 unmatchable under the monotone matching, indices strictly increasing, and zero
+three-backtick lines.
+
+THE SUBSTANCE IS THAT A FINDING'S OWN FIX CLAUSE WAS MEASURED AND FOUND UNMEETABLE, AND THE ROUND SAID SO
+INSTEAD OF QUIETLY SHRINKING IT. `R-0880` asks for a run to stop on any ruled site whose owner verdict
+CANNOT BE CONFIRMED; the static method cannot confirm 999 of 2198, so that guard stops every run it is
+ever given — the gate that cannot pass, which item 33 of §3 names as the twin of the gate that cannot
+fail. DECISION F275 D45 narrows the obligation to sites the code CONTRADICTS, records what the narrowing
+costs, and makes the 999 a PRECONDITION ON THE FLIP ROUND rather than a silent inheritance: the flip may
+not be taken until the refusal set is shrunk or the residual is ruled acceptable in a dated decision that
+states the count it accepts. `R-0880` STAYS OPEN, which is the right disk state — the defect it names
+remains reachable among the 999, and a resolved finding is invisible while an open one is not.
+
+ONE WORDING SLIP OF THE REVIEWER'S, WHICH THE WORKER REPORTED RATHER THAN RESOLVED. G4 ordered "the line
+count of every blob this round lands, each against the DECISION F104 D1 cap of 500 insertions". For the
+five NEW files a line count and an insertion count coincide; for the three ledger files this round
+APPENDS to they do not, and read widely the clause compares whole-file line counts of 1128, 891 and 13009
+against a cap on insertions that are 14, 2 and 12. The worker reported both readings and reconciled
+neither, which is right. It is one dated line below and not an id, per amend0827-process-diet rule 2:
+nothing on disk is wrong.
+
+## Authored text for round 72 to book — one dated line for `.agent/prose_slips.md`
+
+2026-09-12 · F275 R71 · The round 71 block's G4 ordered "the line count of every blob this round lands, each against the DECISION F104 D1 cap of 500 insertions", and for the three ledger files the round APPENDS to, a blob's line count is not that commit's insertion count: read widely the clause sets 1128, 891 and 13009 against a cap whose real subject is 14, 2 and 12. For the five NEW files the two coincide, which is why the clause reads correctly for most of what it names and wrongly for the rest. The worker reported both readings and reconciled neither, and nothing on disk is wrong. THE RULE THAT FOLLOWS: a clause that bounds a COMMIT names the quantity the commit produces — insertions, from `git show --numstat` — and never a property of the FILE the commit touched, because the two coincide only for a file the commit creates, and a cap stated against the wrong quantity is unmeetable exactly where the file is oldest and largest.
+
+## Session 25 ends here — FOUR delegated rounds, 68 through 71, three PASS and one FAIL
+
+THE SESSION'S THROUGH-LINE IS THAT IT CLOSED ONE FINDING, BOUNDED ANOTHER, AND SPENT A ROUND REPAIRING
+ITS OWN REVIEWER. Round 68 answered the question DECISION F275 D41 held the flip's write shut on, and
+answered it NO: the transform does not lose the 54 non-resolving keys, because it consumes a re-keyed set
+that resolves whole. That reading also overturned DECISION F275 D40 part three, which had named the
+sweep's own columns for a defect that is staleness, and the correction is a dated decision rather than an
+edit. Round 69 resolved `R-0879` by building the half of it nothing had built — the transform's own
+refusal — and landed the transform itself, which had never been committed at all. Round 69 also FAILED
+its G5, because the reviewer shipped an artefact beside an instrument blob that could not reproduce five
+of its lines. Round 70 repaired that, demonstrated the defect against the stale blob rather than merely
+describing it, and carried `R-0880`'s first obligation. Round 71 built `R-0880`'s second obligation at the
+reach its method has and recorded why the literal form is unmeetable.
+
+THE BRANCH IS GREEN AT EVERY READING THIS SESSION TOOK. NOT ONE LINE UNDER `packages/`, `apps/`,
+`tests/`, `docs/` OR `scripts/` MOVED IN ANY OF THE FOUR ROUNDS, which each round's G6(a) proves by tree
+object id rather than by diff. The canary reads 42 passed and `ruff check .` reads 26 findings, the frozen
+ceiling, at the branch tip. Every destructive run happened in a disposable worktree that its own
+instrument removed, and `git status --porcelain` is the empty string at every verdict.
+
+THIS SESSION ENDS AT FOUR ROUNDS AND THE REASON IS THE REVIEWER'S OWN ERROR RATE, NOT ITS CONTEXT.
+Context is comfortable and naming it would be false. `.agent/prose_slips.md` gained FOUR dated lines
+across this session — two against round 68, one against round 69 and one against round 70 — and the line
+above makes a fifth against round 71. Every one is the same shape: a gate clause or a provenance sentence
+whose words did not match the document or the instrument it was written about, and every one was caught
+by the WORKER rather than by the reviewer's own pre-emission sweep. One of them was not merely prose: the
+round 69 mismatch cost a full repair round and produced this feature's fourth FAIL verdict. That is the
+signal amend0905-throughput names, and operator amendment amend0908-f275-finish rule 5 permits F275 to
+cite it only after at least four delegated rounds, which this session satisfies exactly.
+
+WHAT THE COUNTER-MEASURE LOOKS LIKE, FOR WHOEVER PICKS THIS UP. The one that worked is round 70's and it
+is a tool rather than a habit: every derived carrier is REGENERATED by the same script that verifies its
+round-trip, in one step, so there is no state in which a carrier exists and has not just been checked
+against its source. It held for rounds 70 and 71. What it does not catch is a clause that is wrong about
+the UNIT it bounds — the round 71 slip above — or a provenance sentence that quantifies over a REGION
+rather than over a SHAPE, which is the round 70 slip. Both of those are properties of the reviewer's own
+sentences, and the only thing that has ever caught them here is a worker reading the gate against the
+document.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
+session's Phase 0 probe, was measured absent before every round's first commit and before every handback,
+and is absent as this session ends. Then the Open PR Gate: no pull request is open, and none is owed
+until the closure sequence.
+
+SECOND, round 72's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
+amend0827-process-diet rule 1, the ROUND 71 PASS verdict above as a `Gate: F275 R71` entry in
+`.agent/live_review.md`, and the ONE dated line above into `.agent/prose_slips.md`. The open set is 87 by
+distinct id and the next free id is `R-0881`.
+
+THIRD, F275 IS PAST THE SOFT LIMIT amend0908-f275-finish rule 1 names, at 71 of 60 rounds and 25 of 20
+sessions. The SCOPE REPORT that rule obliges was written in round 51's handback and STANDS; nothing this
+session measured changes any of its three parts, and it is not restated here because a report restated is
+a report edited. Rule 2 forbids the split-and-close default BY NAME, so the next session continues rather
+than closing.
+
+FOURTH, THE WORK ITSELF, in the order `.agent/plan.md` fixes. Shrink the owner check's refusal set, which
+is what DECISION F275 D45 makes a precondition on the flip: 787 of the 999 are receivers no binding in
+scope resolves, so the gain is there and not in a new rule family. Then re-run the flip's dry run against
+the corrected inputs of rounds 67 and 69 together — the plain re-derivation and the re-keyed set — which
+is the first reading of what both corrections cost in FAILURES rather than in sites. Then the resolver
+collapse, which is production code and a SPLIT round with mutation red-proofs. Then the flip, which D45
+now forbids until the residual is shrunk or ruled, then the classic store and the closure sequence.
+
+SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
