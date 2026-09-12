@@ -58,11 +58,12 @@ def _cmd_teach_narrate(job_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.timeline import load_run_events
 
     # BOTH job stores, not just the classic one: `remedy do job-run` files its
-    # jobs under `jobs/<16hex>/` with 16-hex ids, and `resolve_job_id`
-    # searches `jobs/*.json` and returns a UUID. The teacher answered "no job
-    # matches prefix" for every job-based run, whose run log was on disk the
-    # whole time (operator dogfooding, 2026-08-25). Still read-only: the
-    # resolver opens directories and writes nothing.
+    # jobs under `jobs/<16hex>/` with 16-hex ids. Until F275 T003 collapsed the
+    # two resolvers, `resolve_job_id` searched `jobs/*.json` alone and returned
+    # a UUID, so the teacher answered "no job matches prefix" for every
+    # job-based run, whose run log was on disk the whole time (operator
+    # dogfooding, 2026-08-25); the two names are now one function. Still
+    # read-only: the resolver opens directories and writes nothing.
     job_id = resolve_any_job_id(job_id_str)
     events = load_run_events(resolve_data_root(), job_id)
     sentences = narrate_run_events(events)
