@@ -813,3 +813,142 @@ corrected set does not remove those sites because the owner check REFUSES rather
 on their receivers, and that residue is what `R-0880`'s second obligation still names.
 DECISION F275 D51 has fixed the flip's input set, so the flip itself is unblocked on its
 input and still carries DECISION F275 D48's obligations as corrected by D49.
+
+## Reviewer verdict on round 77 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 77: **PASS.** Written by the planner and reviewer of SESSION 27 after reading the committed
+range `75cc221e`..`8b02f1e8` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 78, per amend0827-process-diet rule 1.
+
+WHAT THE TRANSPORT PROOF COVERS, STATED BEFORE THE FIGURES, per item 37 of §3. G1 is the PRIMARY
+cmp-against-scratchpad proof and not the §4.9 digest fallback: the chain it walks is the reviewer's own
+scratch original, the committed `.agent/authored/` blob and the working copy — three artefacts, of which
+the first is the reviewer's and the other two the worker's. It does not and cannot establish what bytes
+the worker RECEIVED. All three authored blobs are byte-identical to the reviewer's originals — the block
+at 39315 bytes, the artefact at 11738 and the instrument carrier at 15578 — and `.agent/last_block.md`
+equals the committed block blob. Four slices matched the sha256 on their own BEGIN markers, the block
+re-measures at 397 lines TOTAL and 316 PROSE as its constraint 8 states, and it carries zero
+repeated-character lines under both the length-two and the length-one reading.
+
+EVERY GATE HOLDS AND THE REVIEWER RE-RAN ALL SEVEN. G2: `.agent/plan.md` byte-identical to its slice at
+48 lines against the cap of 50. G3: the three appends exact under reader A, reader B holding over the
+whole appended region at N counted from the slice as 6, 3 and 9, and all three negative controls placed
+on the FIRST appended paragraph REJECTED by both readers; C4's deletion column is ZERO, so DECISION F275
+D50 is not rewritten, and the new ledger header matches the repeating format and duplicates none of the
+75 already there. G4: the artefact byte-identical to the C0b blob, absent at the base at exit 128, its 62
+quoted lines all present in the instrument's output with the matching monotone and nothing unmatchable,
+zero quoted lines carrying a wall-clock duration and zero three-backtick lines. G5: the instrument
+extracted from the COMMITTED carrier is byte-stable across three runs, reports zero MISMATCH, and every
+one of its 19 cross-checks reads MATCH. G6 and G7: five top-level tree object ids identical at the base
+and at C5, the canary 42 passed, `ruff check .` 26 rows against the frozen ceiling of 26, one worktree,
+nine changed paths with MISSING and EXTRA both empty and zero production paths, and the open set 87 by
+distinct id with identical membership at the base, at C5 and at the tip with `R-0880` open at each.
+
+THE HANDBACK'S OWN COMMITS TABLE WAS COMPARED CELL BY CELL AGAINST `git show --numstat`, which is item
+28's obligation for a value the worker writes twice, and all nine cells agree. The handback commit's own
+numbers, which no gate of the round could reach, are 627 insertions and 526 deletions over
+`.agent/handoff.md` alone, exempt entirely under AGENTS.md DECISION F104 D1 as the verbatim rewrite of a
+single `.agent/**` state file.
+
+THE ROUND'S SUBSTANCE IS THAT THE FLIP NOW HAS AN INPUT SET AND IT IS BETTER THAN THE ONE THE TRANSFORM
+CONSUMES. The shipped owner check names 13 ruled sites whose receiver holds another record; every one of
+them is among the 60 the plain re-derivation drops and none survives in the plain set, which is the
+containment DECISION F275 D50 could only infer. The corrected set is the round 53 re-keyed set minus
+exactly those 13, at 2185 sites, and it is that difference as a SET and not merely at that count. The
+same owner check exits with 13 contradictions over the round 53 set and ZERO over the corrected one,
+which is the discriminator a guard needs at both ends. Run as a third arm at the same commit against the
+same control, differing in the ruled site set alone, it FIXES 23 test nodes and BREAKS NONE — a set
+difference rather than a smaller total, so nothing is traded — and `Mission.job_id` and `QueueEntry.job_id`
+leave the residue entirely.
+
+AND THE LIMIT IS STATED RATHER THAN SOFTENED. 19 over-selection frames survive the corrected set, on
+classes the owner check REFUSES rather than decides, which is the 277-site blind spot DECISION F275 D45
+ruled acceptable showing through exactly where it said it would. `R-0880` stays OPEN for that reason and
+no id was minted for the 19, per item 30. 1204 bad nodes is the best reading this chain has taken and it
+is not near green.
+
+## Authored text for round 78 to book — two dated lines for `.agent/prose_slips.md`
+
+2026-09-12 · F275 R77 · The round 76 instrument's section 8 opens its explanatory prose with the word `PARTITION`, which is also the prefix its own partition records are keyed by, so a gate counting records by line prefix reads one more than the tool's own summary. Round 77 carried that instrument section forward unchanged and therefore carried the collision with it, and the round 77 block ordered the worker to report the prefix count and the summary count SIDE BY SIDE rather than reconciling them. That was the right call for a round whose readings did not turn on the number, and it is not a fix: the collision is still in the shipped instrument and the next instrument to carry that section inherits it. THE RULE THAT FOLLOWS: a wording defect that a block routes around by ordering two readings instead of one is recorded as still-open at the moment it is routed around, because a gate worded to tolerate a defect is the thing most likely to carry it into the next round unnoticed.
+
+2026-09-12 · F275 R77 · The reviewer's own round 77 re-derivation script was produced from the round 76 one by textual substitution, and the substitution reached the dictionary keys it looks slices up by while missing the LABELS it prints them under: the output reads "plan.md at C1 is byte-identical to slice PLAN76" over a comparison that correctly used PLAN77, and five further labels carry the old round's slice names. No reading moved and nothing false was landed, because the labels are in reviewer scratch that no file keeps and the verdict states the measured property in its own words rather than quoting them. THE RULE THAT FOLLOWS: this is the same class as the round 75 block's bare "74" one level further out — a retarget that fixes what the code USES and not what the code SAYS — and the counter-measure is the same sweep, run over the reviewer's own tooling before its output is read, because an output line that names the wrong artefact is indistinguishable from a wrong measurement to anyone who later quotes it.
+
+## Session 27 ends here — TWO delegated rounds, 76 and 77, both PASS, ended by `.agent/STOP` under guardrail G6
+
+WHY THIS SESSION ENDS BELOW THE ROUND TARGET, STATED FIRST BECAUSE IT IS THE PART A LATER READER WILL
+CHECK. `.agent/STOP` appeared on disk at 10:03:36 while round 77's C6 was being composed. It is a
+zero-byte untracked file that no step of either round wrote. Guardrail G6 of
+`docs/agents/self_drive_protocol.md` says that when it appears the current commit is finished and the
+session hands off and ends, and that is exactly what happened: the worker completed C6, recorded the
+sentinel with both readings, pushed, and stopped without staging, deleting or committing it. The round
+target of six to eight is not cited and is not met; G6 overrides it, and the two-round count is the
+sentinel's doing rather than a judgement about context, which remains comfortable. THE SENTINEL IS LEFT
+EXACTLY WHERE IT IS. Removing it is the operator's call, not this session's, and `git status --porcelain`
+therefore reads one line, `?? .agent/STOP`, with every tracked path clean.
+
+WHAT THE SESSION DID. Round 76 took the flip's dry run that DECISIONs F275 D41, D42 and D44 had each
+deferred by name, against the corrected inputs of rounds 67 and 69 together, in three full suite passes
+at one commit differing in the ruled site set alone. It found that the plain re-derivation costs 134
+additional bad test nodes — breaking 172 and fixing 38 — because it removes every production record class
+`R-0880` names while introducing 231 under-selection frames the round 53 set does not have. DECISION F275
+D50 ruled the flip's input to be neither set. Round 77 constructed the set that lies between them, in a
+fourth suite pass, and DECISION F275 D51 rules it the flip's input: strictly better than the set the
+transform consumes today, fixing 23 nodes and breaking none.
+
+THE CONTROLS ARE WHY THOSE READINGS ARE WORTH ANYTHING. The five top-level tree object ids are identical
+at `bf692757`, round 59's base, and at `ef75e213`, so round 59's run and these are comparable at all; the
+994 tracked `.py` files are identical between them. The re-key stage reproduces `.remedy-wt/r69_rekeyed.json`
+byte for byte. The round 53 arm reproduces round 69's own 263 files and 6091 rewrites. The unflipped
+control reproduces round 59's summary to the unit, at one failure, and that failure is the node needing
+the gitignored `apps/ui/node_modules`.
+
+AND ONE GATE OF THE REVIEWER'S OWN WAS FOUND UNABLE TO FAIL AND WAS REPAIRED MID-SESSION, which is worth
+more than either reading it protects. Round 76's instrument first printed only PARTITIONS — sums of a
+set's own parts against that set — and a control that deleted a single `FAILED` line from a transcript
+left every one of them reading MATCH. Cross-checks between independently derived numbers were added, and
+the first run of them found a real defect in the instrument's own parser: the transform's rule table was
+being split at a two-space gap that three of the longest rule names do not have, so three rows worth 19
+rewrites were silently dropped, and only the comparison against the transform's own printed total saw it.
+The same design caught a second parser defect in round 77's instrument before emission, a missing
+multiline flag that read zero contradicted rows where the stage prints 13. Both were the reviewer's, both
+were caught by a check built because the previous one could not fail, and both are recorded here rather
+than as findings because nothing wrong ever reached disk.
+
+THE BRANCH IS GREEN AT EVERY READING THIS SESSION TOOK. Not one line under `packages/`, `apps/`, `tests/`,
+`docs/` or `scripts/` moved in either round, which each round's tree gate proves by object id rather than
+by diff. The canary reads 42 passed and `ruff check .` reads 26 findings, the frozen ceiling, at the
+branch tip. Every destructive run happened in a disposable worktree that was removed and pruned, and
+`git worktree list` reads one entry at both verdicts. The open set is 87 by distinct id and unchanged all
+session; `R-0880` is open and the next free id is `R-0881`.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk BEFORE the Open PR Gate. It EXISTS as this session
+ends, at zero bytes and untracked, and this session did not remove it. A session that finds it still there
+writes the handoff and ends without a round, per G6; only the operator's removal of that file reopens the
+loop. Then the Open PR Gate: no pull request is open, and none is owed until the closure sequence.
+
+SECOND, round 78's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
+amend0827-process-diet rule 1, the ROUND 77 PASS verdict above as a `Gate: F275 R77` entry in
+`.agent/live_review.md`, and the TWO dated lines above into `.agent/prose_slips.md`. The open set is 87 by
+distinct id and the next free id is `R-0881`.
+
+THIRD, F275 IS PAST THE SOFT LIMIT amend0908-f275-finish rule 1 names, at 77 of 60 rounds and 27 of 20
+sessions. The SCOPE REPORT that rule obliges was written in round 51's handback and STANDS; nothing this
+session measured changes any of its three parts, and it is not restated here because a report restated is
+a report edited. Rule 2 forbids the split-and-close default BY NAME, so the next session continues.
+
+FOURTH, THE WORK ITSELF, in the order `.agent/plan.md` now fixes. The flip's input set exists and is ruled,
+so the route is open: carry the 19 surviving over-selection frames back to the ruled sites that produce
+them, which the corrected set does not remove because the owner check refuses rather than decides on their
+receivers — that is the residue `R-0880`'s second obligation still names, and the carry-back probe for it
+was written and works. Then the resolver collapse DECISION F260 D5 places in T003, which is PRODUCTION
+CODE and therefore a SPLIT round with mutation red-proofs, and which DECISION F275 D37 names as the home
+of the id-SHAPE seam behind the three largest residue classes. Then THE FLIP, on the corrected set,
+carrying DECISION F275 D48's two obligations as corrected by D49: the full suite is the backstop and is
+read for its failures rather than its exit code, and the thin set is re-derived before the flip with any
+site fallen to zero witnesses treated as a stop. Then the classic store, then the closure sequence.
+
+SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
