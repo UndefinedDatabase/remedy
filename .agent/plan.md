@@ -13,13 +13,14 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 73 DISCHARGES DECISION F275 D45's PRECONDITION BY ITS SECOND ROUTE. RULE H widens the
-owner check to receiver EXPRESSIONS and carries refusals 324 to 277, and the reading that
-decides the round is that it finds ZERO new contradictions where round 72 found nine — the
-resolver route is spent. So the residual is measured as a RISK instead: of the 324, 148 sit in
-tests that break themselves, and all 176 production sites are EXECUTED by the suite, so the
-unexecuted set is zero. A wrong rename at two of them reddens 46 and 1 tests, attributed by
-name. DECISION F275 D47 rules the residual acceptable at that count and lets the flip proceed.
+ROUND 74 REPAIRS ROUND 73, WHICH FAILED. D47 discharged D45's precondition on a coverage
+reading taken inside a fresh worktree; re-run there it gives 23 unexecuted rather than 0,
+because a worktree has no built UI dist. The reading moves to the PRIMARY CHECKOUT, where the
+suite runs, and the question sharpens from "is the line executed" to "how many tests witness
+it": zero for none, exactly one for eleven, a median of seventeen, over 7065 site-and-test
+pairs. Each of the eleven thin sites is red-proved against its own single witness, mutating
+the ATTRIBUTE NODE the ruled set records rather than the first textual match. DECISION F275
+D48 corrects D47 by appending, never by rewriting.
 
 ## Next Steps
 
@@ -29,19 +30,19 @@ name. DECISION F275 D47 rules the residual acceptable at that count and lets the
 2. The resolver collapse DECISION F260 D5 places in T003, which DECISION F275 D37 names as
    the home of the id-SHAPE seam behind the three largest residue classes. Production code,
    so a SPLIT round with mutation red-proofs.
-3. THE FLIP, which D47 now permits, carrying D47's one obligation: the full suite is the
-   backstop for the 277 the guard cannot decide, so it runs and is read.
+3. THE FLIP, which D48 permits on D47's corrected footing, carrying D48's obligations: the
+   full suite is the backstop, and the eleven thin sites are named rather than averaged.
 4. Then the classic store, then the closure sequence.
 
 ## Risks
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
   split-and-close default BY NAME: a session writes the scope report and CONTINUES.
-- THE FLIP'S BACKSTOP IS THE SUITE, AND ITS MARGIN VARIES. One probed site reddens 46 tests
-  and another reddens 1; a residual site whose only witness is a single test is one deletion
-  away from unguarded. Stated as a limitation inside D47, not absorbed and not given an id:
-  nothing on disk is wrong, so amend0827-process-diet rule 2 spends none.
-- A fresh worktree is NOT green: no `apps/ui/node_modules`, no built dist, ten failures
-  before anything is mutated. Every colour taken there is a set difference against that.
+- A MEASUREMENT TAKEN IN A WORKTREE IS A MEASUREMENT OF THAT WORKTREE. The UI dist and
+  `node_modules` are absent there, so any suite-wide reading taken in one is about the
+  environment. Round 73 shipped a decision on such a reading.
+- THE SUITE HAS ENVIRONMENT-SENSITIVE TESTS. A perf budget and a workspace-identity pair go
+  red or green by load under coverage, and pass in isolation. No gate may demand a green
+  full-suite run as its pass condition.
 - The open set is 87 by distinct id, with `R-0880` open. Four are High — R-0803, R-0804,
   R-0806 and R-0807 — all F273's, per DECISION F272 D12.
