@@ -1,10 +1,10 @@
-── STEP T003 — F275 — ROUND 85 ──
-Goal: Register and repair the crash round 83 introduced in `remedy project adopt`, prove the
-repair against the input that crashes, and correct round 84's count of the remaining handler
-parses with a census keyed on what each parsed value flows into.
+── STEP T003 — F275 — ROUND 86 ──
+Goal: Route the last handler job-id parses under `apps/cli/` so that no `UUID(...)` call feeds
+`load_job`, without letting any handler file a job under an id it did not resolve; pin every
+reachable site with a test its own restored parse fails; register the crash found beside them.
 
-Base commit: `53659062`. Round type: SPLIT, and a REPAIR round: the finding persists in its own
-commit before any repair commit, per §4 item 4 of `docs/agents/planner_reviewer_prompt.md`.
+Base commit: `b0ef6ab4`. Round type: SPLIT. Production code changes, so the red-proofs of G6 are
+mandatory in full.
 
 THE FRAME RULE, per item 37 of §3, stated as the property MEASURED over the final bytes: NO LINE
 of this block is a run of a single repeated character, and every box-drawing rule inside the
@@ -12,158 +12,195 @@ STEP and SLICE header lines is exactly two characters long.
 
 ## Bundle — the ordered commit sequence
 
-C0a `.agent/authored/f275-r85.md`             the block, saved verbatim
+C0a `.agent/authored/f275-r86.md`             the block, saved verbatim
 C0b `.agent/last_block.md`                    mirrored FROM THE COMMITTED C0a BLOB
-C1  `.agent/plan.md`                          slice PLAN85, a full replacement
-C2  `.agent/live_review.md`                   slice RECORD85 appended, the round 84 verdict
-C3  `.agent/live_review.md`                   slice FIND85 appended, registering `R-0882`
-C4  `.agent/prose_slips.md`                   slice SLIPS85 appended
-C5  `apps/cli/commands/project.py`            the repair, SPEC F
-C6  `tests/cli/test_scoped_listings.py`       the regression test, SPEC T
-C7  `.agent/live_review.md`                   slice DONE85 appended, resolving `R-0882`
-C8  `.agent/decisions.md`                     slice DEC85 appended
-C9  `.agent/handoff.md`                       the handback
+C1  `.agent/plan.md`                          slice PLAN86, a full replacement
+C2  `.agent/live_review.md`                   slice RECORD86 appended, the round 85 verdict
+C3  `.agent/live_review.md`                   slice FIND86 appended, registering `R-0883`
+C4  `.agent/prose_slips.md`                   slice SLIPS86 appended
+C5  the handler files F1 to F7 of SPEC F       the production change, ONE commit
+C6  `tests/test_data_paths.py`                SPEC T
+C7  `.agent/decisions.md`                     slice DEC86 appended
+C8  `.agent/handoff.md`                       the handback
 
-C1 is the FIRST SUBSTANTIVE COMMIT, per item 23 of §3. C3 lands `R-0882` before C5 repairs it,
-so a session that dies between them leaves an open finding on disk and not a silent fix.
+C1 is the FIRST SUBSTANTIVE COMMIT, per item 23 of §3. RECORD86 and SLIPS86 are the round 85
+verdict and the slip lines carried in `.agent/handoff.md` at `b0ef6ab4`, extracted by bytes.
 
 ## Change — exactly these paths and no others
 
-The Bundle's paths. Under `apps/` and `tests/` exactly the two paths of C5 and C6. NOTHING under
-`packages/`, `docs/` or `scripts/`.
+The Bundle's paths. Under `apps/` exactly the paths F1 to F7 of SPEC F name; under `tests/` exactly
+`tests/test_data_paths.py`. NOTHING under `packages/`, `docs/` or `scripts/`.
 
-## The defect, as the reviewer measured it before authoring
+## What the reviewer measured before authoring, at `b0ef6ab4`
 
-`_cmd_project_adopt` in `apps/cli/commands/project.py` resolves its argument with
-`resolved_id = resolve_job_id(job_id_str)` and then calls `load_job(UUID(resolved_id))` inside a
-`try` that catches only `JobNotFoundError`. Before round 83 the resolver searched the classic
-store alone and always returned a UUID-shaped string. Round 83 made it search both stores, so it
-now returns a 16-hex id for a ping-pong job, `UUID(...)` of that raises `ValueError`, and nothing
-catches it. The reviewer ran `remedy project adopt 0123456789abcdef` through the real CLI against
-a data root holding one ping-pong record, in one worktree at `afffd7cc` and one at `53659062`:
-the first exits 1 with `Error: no job matches prefix '0123456789abcdef'`; the second exits 1
-with an uncaught traceback ending `ValueError: badly formed hexadecimal UUID string`.
+A census of every `UUID(...)` call under `apps/cli/` by what its value flows into reads 21: 12
+are the argument of `load_job`, 8 parse a project id, 1 validates a task id. The twelve are
+`dashboard_cmd.py` `_cmd_dashboard_project`, `job_stop_cmd.py` `_load_job`, `memory.py`
+`_cmd_memory_candidates`, `_cmd_memory_approve_candidate` and `_cmd_memory_reject_candidate`,
+`project.py` `_cmd_attach_project_job`, `readiness.py` `_cmd_readiness_project`, `repo.py`
+`_cmd_commit_readiness`, and `review_cmd.py` `_cmd_review_run`, `_cmd_review_list`,
+`_cmd_review_accept` and `_cmd_review_reject`. The reviewer applied SPEC F and SPEC T in a
+disposable worktree: `ruff check` passed on every path of SPEC F and SPEC T, the scoped suite there read 13260
+passed, 10 skipped and 1 failed, the failure being
+`tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`,
+which needs the gitignored `apps/ui/node_modules` a worktree lacks, and every mutation of G6
+gave the colours G6 requires. `remedy dashboard project` crashes at its first import, which is
+FIND86. `remedy job stop <32 unhyphenated hex>` on a classic job filed the stop under that
+spelling, which DEC86 records.
 
-## SPEC F — `apps/cli/commands/project.py`, at C5
+## SPEC F — the handler files, at C5, and nothing else in them
 
-In `_cmd_project_adopt`, the line `        job = load_job(UUID(resolved_id))` becomes EXACTLY
-`        job = load_job(resolved_id)`. `storage.load_job` already accepts a `str`, and for an id
-the classic store does not hold it raises `JobNotFoundError`, which that `try` already turns
-into `Error: job not found: <first eight characters>` and exit 3. Nothing else in the file
-changes. The file's `UUID` import stays: the reviewer counted seven other references to `UUID`
-in that file at `53659062`.
+F1 `apps/cli/commands/review_cmd.py`: delete `from uuid import UUID`; add
+`from packages.orchestration.data_paths import lookup_job_id` as its own import group directly
+after the standard-library group; each of the four lines `    job = load_job(UUID(args.job_id))`
+becomes `    job = load_job(lookup_job_id(args.job_id))`.
+F2 `apps/cli/commands/memory.py`: in each of the three memory-candidate handlers delete the
+local `    from uuid import UUID` line and the blank line after it, and
+`    job = load_job(UUID(job_id_str))` becomes `    job = load_job(lookup_job_id(job_id_str))`.
+The module already imports `lookup_job_id`.
+F3 `apps/cli/commands/repo.py`: delete `from uuid import UUID`, which nothing else uses;
+`        job = load_job(UUID(job_id_str))` becomes `        job = load_job(lookup_job_id(job_id_str))`.
+F4 `apps/cli/commands/dashboard_cmd.py`: delete `from uuid import UUID`, which nothing else uses;
+`            j = load_job(UUID(jid))` becomes `            j = load_job(lookup_job_id(jid))`.
+F5 `apps/cli/commands/readiness.py`: `            j = load_job(UUID(jid))` becomes
+`            j = load_job(lookup_job_id(jid))`. The `UUID` import stays; the project id uses it.
+F6 `apps/cli/commands/project.py`: add `from packages.orchestration.data_paths import lookup_job_id`
+directly above the module's `from packages.orchestration.storage import` line. In
+`_cmd_attach_project_job` the line `        job = load_job(UUID(job_id_str))` becomes the two lines
+`        job_id = lookup_job_id(job_id_str)` and `        job = load_job(job_id)`;
+`    added = attach_job(project, job_id_str)` becomes `    added = attach_job(project, job_id)`;
+in the `Attached job` message `{job_id_str[:8]}` becomes `{job_id[:8]}`. The `job not found`
+message keeps `job_id_str`. The `UUID` import stays.
+F7 `apps/cli/commands/job_stop_cmd.py`: in `_load_job` delete `        from uuid import UUID` and the
+blank line after it; `        core = load_job(UUID(job_id))` becomes `        core = load_job(job_id)`.
+`_load_job` is NOT routed through the resolver: DECISION F275 D58 measured that doing so lets
+a short id skip its caller's normalisation.
 
-## SPEC T — `tests/cli/test_scoped_listings.py`, at C6
+## SPEC T — `tests/test_data_paths.py`, at C6
 
-One test in the existing class `TestScopedListingsCLI`, named EXACTLY
-`test_adopting_a_pingpong_job_id_exits_cleanly_instead_of_crashing`, IN-PROCESS rather than
-through a CLI subprocess. It builds a git repository with that file's `_git_repo` helper and
-initialises a project in it with `_init_project`, writes a ping-pong record `job.json` inside
-`<data root>/jobs/0123456789abcdef/`, sets `REMEDY_DATA_DIR` and changes directory into the
-repository through `monkeypatch`, then calls `_cmd_project_adopt("0123456789abcdef")` inside
-`pytest.raises(SystemExit)` and asserts the code is 3 and that captured stderr contains
-`job not found`. In-process is ordered because that file's `_env` sets `PYTHONPATH` to the
-working directory pytest was launched from, so a subprocess imports whichever tree the run
-started in, and a red-proof that mutates one tree while importing another cannot fail.
+Tests added to the existing class `TestRoutedHandler`, IN-PROCESS, each setting
+`REMEDY_DATA_DIR` to `tmp_path` through `monkeypatch`; no existing test is edited or deleted.
+T1 `test_a_loading_handler_hands_load_job_the_id_a_short_prefix_resolves_to`, parametrized with
+the ids EXACTLY `review-run`, `review-list`, `review-accept`, `review-reject`,
+`memory-candidates`, `memory-approve`, `memory-reject`, `commit-readiness`, one per F1 to F3
+handler in that order. It writes `jobs/abcd1234-0000-0000-0000-000000000001.json`, replaces
+`packages.orchestration.storage.load_job` through `monkeypatch.setattr` with a spy that records
+`str()` of its first argument and raises a test-local exception, calls the handler with
+`abcd1234` while suppressing that exception and `SystemExit`, and asserts the recorded list is
+exactly the full id. The handlers import `load_job` inside the function, which is why the
+module attribute is the one to replace.
+T2 `test_project_readiness_hands_a_stored_pingpong_id_to_load_job`: a ping-pong record
+`<jobs_dir>/<minted id>/job.json`, a `RemyProject` saved with that id in `job_ids`, the same spy,
+and `_cmd_readiness_project(str(project.id), json_output=True)`; the recorded list is exactly
+the minted id.
+T3 `test_attaching_by_short_prefix_stores_the_full_job_id`: a saved classic `Job` and a saved
+`RemyProject`; `_cmd_attach_project_job(str(project.id), <first eight characters of the job id>)`;
+the reloaded project's `job_ids` equals `[str(job.id)]` and stdout names the first eight.
+T4 `test_stopping_by_an_unhyphenated_id_files_the_stop_under_the_canonical_id`: a saved classic
+`Job`; `_cmd_job_stop(job.id.hex)`; `stop_requested(str(job.id))` is not None and
+`stop_requested(job.id.hex)` is None.
+Module-level imports the tests need are added in the file's import block, sorted as ruff requires.
 
 ## Constraints
 
-1. NO SLICE IS EDITED. PLAN85, RECORD85, FIND85, SLIPS85, DONE85 and DEC85 land byte for byte; a
+1. NO SLICE IS EDITED. PLAN86, RECORD86, FIND86, SLIPS86 and DEC86 land byte for byte; a
    discrepancy inside one is DECLARED, never repaired.
-2. C5 and C6 are the worker's OWN code from the SPECs. The reviewer's candidate is deleted.
-3. READ `.agent/STOP` before C0a and before C9, with real exit codes. If it appears, finish the
+2. C5 and C6 are the worker's OWN code from the SPECs. The reviewer's dry-run files under
+   `.remedy-wt/r86/` are not opened.
+3. READ `.agent/STOP` before C0a and before C8, with real exit codes. If it appears, finish the
    commit in hand, write the handoff and end.
-4. Every commit stages EXACTLY ONE path and stays under 500 insertions.
-5. No `.py` under `.agent/`; scratch under `.remedy-wt/`, uncommitted.
-6. No landed record is rewritten: every `.agent/live_review.md` and `.agent/decisions.md` commit
-   is an APPEND with a ZERO deletion column. DECISION F275 D58's figure of ten is corrected by
-   DEC85 beside it, not by editing it.
+4. Every commit stages EXACTLY ONE path, except C5, which stages the paths F1 to F7 name; every
+   commit stays under 500 insertions.
+5. No `.py` under `.agent/`; scratch under `.remedy-wt/r86w/`, uncommitted.
+6. No landed record is rewritten: every `.agent/live_review.md`, `.agent/prose_slips.md` and
+   `.agent/decisions.md` commit is an APPEND with a ZERO deletion column.
 7. No `gh`, no `remedy` command outside a scratch probe, no pull request, no branch created or
    deleted, no merge, NEVER a force-push, no history rewrite.
 8. The red-proof worktree is created with `git worktree add --detach` at C6 and REMOVED AND
    PRUNED before C7. The scoped suite runs in the PRIMARY checkout.
-9. THE BLOCK'S OWN SIZE, measured on its final bytes: 261 lines TOTAL and 187 lines of PROSE,
-   against the caps of 490 and 400.
-10. THE GATES RUN AT TWO COMMITS. G4, G5 and G6 run at C6, because DONE85 at C7 and DEC85 at C8
-    carry their results and item 31 of §3 requires such a gate to run STRICTLY EARLIER. G1, G2,
-    G3, G7 and G8 run at C8. No gate runs after C9; C9's own numbers are the reviewer's.
-11. DONE85 describes this round's own repair, so under the carve-out of item 20 of §3 it names
-    this constraint's ordering instead of a SHA: the repair is C5, its test C6, and every gate
-    DONE85 quotes runs at C6.
+9. THE BLOCK'S OWN SIZE, measured on its final bytes: 291 lines TOTAL and 220 lines of
+   PROSE, against the caps of 490 and 400.
+10. THE GATES RUN AT TWO COMMITS. G4, G5 and G6 run at C6, because DEC86 at C7 carries their
+    results and item 31 of §3 requires such a gate to run STRICTLY EARLIER. G1, G2, G3, G7 and
+    G8 run at C7. No gate runs after C8; C8's own numbers are the reviewer's.
 
 ## Done when — the gates, each run for real and its exit code recorded
 
-G1 TRANSPORT, BUDGET, SLICES. `.agent/authored/f275-r85.md` at C0a against the block as received,
+G1 TRANSPORT, BUDGET, SLICES. `.agent/authored/f275-r86.md` at C0a against the block as received,
 by `cmp`; `.agent/last_block.md` at C0b byte-identical to the COMMITTED C0a blob. Extract the
 slices by their markers, report how many were FOUND, check each against its BEGIN-marker
 sha256, and re-measure TOTAL and PROSE against constraint 9.
 
-G2 THE PLAN. `.agent/plan.md` at C1 byte-identical to PLAN85 from the COMMITTED C0a blob; at
+G2 THE PLAN. `.agent/plan.md` at C1 byte-identical to PLAN86 from the COMMITTED C0a blob; at
 most 50 lines; one `## Goal` and one `## Next Steps`.
 
-G3 THE RECORD, FULL FORENSICS, for each of the four record appends: C2, C3 and C7 into
-`.agent/live_review.md` and C8 into `.agent/decisions.md`. For each, read its pre-commit blob
-with `git show` at that commit's PARENT and print its length; the first is 1107652 and the
-decisions pre-commit length is 1257440. READER A with the arithmetic printed; READER B over the
+G3 THE RECORD, FULL FORENSICS, for each record append: C2 and C3 into
+`.agent/live_review.md` and C7 into `.agent/decisions.md`. For each, read its pre-commit blob
+with `git show` at that commit's PARENT and print its length; the first is 1114453 and the
+decisions pre-commit length is 1260475. READER A with the arithmetic printed; READER B over the
 file's LAST N blank-line units against the slice's N paragraphs IN ORDER, N counted by the
 script; a letter flipped in the FIRST appended paragraph of each, REJECTED by both readers;
-every deletion column 0. `.agent/prose_slips.md` at C4 equals its 294305-byte pre-commit blob
-followed by exactly SLIPS85. Derive the ledger's `Gate:` header pattern from the file, report
-how many it matches and that RECORD85's header matches and duplicates none. Report that after
-C3 exactly one line starts `- R-0882 — ` and after C7 exactly one line starts `Done: R-0882 — `.
+every deletion column 0. `.agent/prose_slips.md` at C4 equals its 295435-byte pre-commit blob
+followed by exactly SLIPS86. Derive the ledger's `Gate:` header pattern from the file, report
+how many heads it matches and that RECORD86's header matches it and duplicates none. Report
+that after C3 exactly one line starts `- R-0883 — `.
 
-G4 THE REPAIR, STRUCTURALLY, at C6, with `ast`. In `_cmd_project_adopt`: no `Call` to `UUID`
-whose argument is the name `resolved_id`; the whole-line count of SPEC F's new line, 1. Under
-`apps/cli/`, every `UUID(...)` call classified by what its value flows into — an argument of
-`load_job`, a value whose argument's source names a project, anything else — with the counts
-at `53659062` and at C6. The reviewer measured 22 calls at `53659062`: 13 into `load_job`, 8
-naming a project and 1 other; at C6 the `load_job` count must be one lower and the others
-unchanged. Then, over `apps/` and `packages/` with `data_paths.py` excluded, every call of
-`resolve_job_id`, `resolve_any_job_id` or `lookup_job_id` whose result is bound to a name that a
-LATER `UUID(...)` call in the same function takes as its argument: the reviewer measured 1 at
-`53659062`, this site; at C6 it must be 0. Before trusting that 0, plant one such use in a
-scratch copy and show the same instrument reports it. `ruff check` over C5's and C6's paths
-exits 0.
+G4 THE CHANGE, STRUCTURALLY, at C6, with `ast`. Under `apps/cli/`, every `UUID(...)` call
+classified by what its value flows into — an argument of `load_job`, an argument whose source
+names a project, anything else — with the counts at `b0ef6ab4`, read with `git show` into memory, and at C6; the reviewer measured
+21 = 12 + 8 + 1 at `b0ef6ab4`, and at C6 the `load_job` count must be 0 and the others
+unchanged. The number of `load_job(lookup_job_id(...))` calls under `apps/cli/`: 0 at
+`b0ef6ab4`, 10 at C6. In each function the round changes, every LATER read of the
+argument the load consumed at `b0ef6ab4`, listed by line at C6 with what reads it. `ruff check`
+over every path C5 and C6 stage exits 0.
 
-G5 THE BEHAVIOUR, at C6. (a) SPEC T's test by node id, PASSED, in the primary checkout. (b) The
+G5 THE BEHAVIOUR, at C6. (a) Every node id SPEC T adds PASSED, in the primary checkout, their count reported. (b) The
 scoped suite `python3 -B -m pytest tests/test_data_paths.py tests/cli/ tests/orchestration/ -q -p no:randomly`
 in the primary checkout, totals REPORTED AS MEASURED, failure set EMPTY; the reviewer measured
-it at `53659062` at 13260 passed, 10 skipped and 0 failed; state and account for the difference.
-(c) THE CLI PROBE, both arms, each in a scratch tree built with `git archive`: at `53659062`
-and at C6, run `remedy project adopt 0123456789abcdef` as `python3 -m apps.cli.grouped` with
-`PYTHONPATH` set to that scratch tree and `REMEDY_DATA_DIR` to a data root holding one project
-and one ping-pong record, and report each arm's exit code, whether stderr holds `Traceback`,
-and its last stderr line verbatim.
+it in the primary checkout at `b0ef6ab4` at 13261 passed, 10 skipped and 0 failed; state and account for the difference.
+(c) THE CLI PROBE of FIND86, in a scratch tree built with `git archive` at C6: run
+`python3 -B -m apps.cli.grouped dashboard project 11111111-1111-1111-1111-111111111111` with
+the working directory and `PYTHONPATH` both set to that tree and `REMEDY_DATA_DIR` to an empty
+scratch directory; report the
+exit code, the module `__file__` it imported, and the last stderr line verbatim.
 
-G6 THE MUTATION RED-PROOF, in the worktree of constraint 8, at C6. PRINT the `__file__` of
+G6 THE MUTATION RED-PROOFS, in the worktree of constraint 8, at C6. PRINT the `__file__` of
 `apps.cli.commands.project` imported inside the worktree; it must lie inside it. Purge
-`__pycache__` before each run. Select the class `TestScopedListingsCLI`. CONTROL, unmutated:
-every test PASSES. M1: the one line EXACTLY equal to SPEC F's new line becomes
-`        job = load_job(UUID(resolved_id))`, its whole-line count reported as 1 first. Required:
-ONLY `test_adopting_a_pingpong_job_id_exits_cleanly_instead_of_crashing` FAILS, and its first
-error line names `ValueError`. Report every colour and exit code, restore, remove and prune.
+`__pycache__` before each run. Selection: `tests/test_data_paths.py::TestRoutedHandler`,
+`tests/cli/test_job_stop.py`, `tests/cli/test_golden_path.py::TestShortIdResolution` and
+`tests/cli/test_review_cmd.py`. CONTROL, unmutated: every test PASSES. Then ONE mutation at a
+time, each restored before the next, its target's occurrence count in the file reported first.
+M1 to M4: the first, second, third, fourth `load_job(lookup_job_id(` in `review_cmd.py`; M5 to
+M7: the first, second, third in `memory.py`; M8: the one in `repo.py`; M9: the one in
+`readiness.py`; M10: the one in `dashboard_cmd.py` — each becomes `load_job(__import__("uuid").UUID(`.
+M11: `job_id = lookup_job_id(job_id_str)` in `project.py` becomes
+`job_id = str(__import__("uuid").UUID(job_id_str))`. M12: `attach_job(project, job_id)` in
+`project.py` becomes `attach_job(project, job_id_str)`. M13: `core = load_job(job_id)` in
+`job_stop_cmd.py` becomes `core = load_job(__import__("uuid").UUID(job_id))`.
+REQUIRED: M1 to M8 each fail ONLY the T1 parameter of the same position; M9 fails only T2; M11
+and M12 each fail only T3; M13 fails only T4; M10 fails NOTHING, because the handler dies at its
+import before the load, which is FIND86. Report every failing node id and exit code per run.
 
-G7 TREE, CANARY, LINT, PATH SET, OPEN SET, at C8. `git status --porcelain` prints `''`;
+G7 TREE, CANARY, LINT, PATH SET, OPEN SET, at C7. `git status --porcelain` prints `''`;
 `git worktree list` one row; the canary `python3 -B -m pytest tests/cli/test_golden_path.py -q`
-exit 0, 42 at `53659062`; `ruff check .` exit 1 with its rows cross-checked against its own
-`Found <n> errors.` line, 26 at `53659062`. The changed-path set of `53659062`..C8 against the
+exit 0, 42 at `b0ef6ab4`; `ruff check .` exit 1 with its rows cross-checked against its own
+`Found <n> errors.` line, 26 at `b0ef6ab4`. The changed-path set of `b0ef6ab4`..C7 against the
 Bundle's paths MINUS `.agent/handoff.md`, MISSING and EXTRA by name. The open set BY DISTINCT ID
-at `53659062`, after C3 and at C8: the reviewer measured 87 at `53659062`; after C3 it must be 88
-with `R-0882` the only id added; at C8 87 again with `R-0882` the only id resolved; `R-0809` and
-`R-0880` open throughout.
+at `b0ef6ab4`, after C3 and at C7: the reviewer measured 87 at `b0ef6ab4`; after C3 and at C7 it
+must be 88 with `R-0883` the only id added; `R-0809` and `R-0880` open throughout.
 
-G8 THE INSERTION CAP over `53659062`..C8: one row per commit with insertions, deletions and
+G8 THE INSERTION CAP over `b0ef6ab4`..C7: one row per commit with insertions, deletions and
 staged path count, and the number of commits reaching 500 insertions.
 
 Handback: `.agent/handoff.md` per `docs/agents/handback_template.md`, Session line
-`SESSION 29 of feature F275 · round 85 · rounds so far 85`; the Commits table read from
-`git show --numstat` and compared cell by cell against G8, C9's row carrying no numbers and
+`SESSION 30 of feature F275 · round 86 · rounds so far 86`; the Commits table read from
+`git show --numstat` and compared cell by cell against G8, C8's row carrying no numbers and
 saying why; one Verification line per gate with its REAL exit code; External actions;
 Authored-text proofs; Item-status; Deviations; `## Next` stating `Operator questions open: 0`.
 NO SCOPE REPORT AND NO SESSION-LIMIT BANNER, by amendment amend0911-f275-to-scope.
 
-── SLICE PLAN85 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
-BEGIN PLAN85 sha256=bc6516c9d26fc7d6c5ffa564caee5e182280c673e777ed2f0066d36073edaefc
+── SLICE PLAN86 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
+BEGIN PLAN86 sha256=4e7bff4bd9145799caeb9a1b367153bafa4119f8ca838181697c479b3ee569ce
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -179,83 +216,76 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 85 REPAIRS A CRASH ROUND 83 INTRODUCED. Once the resolver searched both job stores it could
-return a 16-hex ping-pong id, and `remedy project adopt` passed that straight to `UUID(...)`,
-which raised an uncaught `ValueError`. The round registers that as `R-0882`, drops the parse so
-the command takes its own `job not found` path, pins it with an in-process test red-proved
-against the parse, and resolves the finding. It also replaces round 84's count of the remaining
-handler parses, keyed on the argument's name, with a census keyed on what each value flows into.
-The round 84 verdict and its prose slips are booked.
+ROUND 86 ROUTES THE LAST HANDLER JOB-ID PARSES. The twelve `load_job(UUID(...))` calls left under
+`apps/cli/` stop parsing. Ten hand `load_job` what `lookup_job_id` resolves; `project attach-job`
+resolves once and files the resolved id in the project; `job stop`'s loader loads the id exactly
+as given, so its caller's normalisation still runs. Eleven of the twelve are pinned by a test
+that fails when that site's parse is restored. The round registers `R-0883`, `dashboard project`
+crashing on a module that never existed, for the findings paydown, and books the round 85
+verdict and its prose slips.
 
 ## Next Steps
 
-1. THE REMAINING `load_job(UUID(...))` PARSES under `apps/cli/`, counted by flow, each read for
-   whether its caller keeps using the raw argument as a key, starting with `job stop`'s loader
-   and its caller's normalisation. Production code, so a SPLIT round with mutation red-proofs.
-2. THE FLIP, carrying DECISION F275 D48's obligations: the full suite is the backstop, the input
+1. THE FLIP, carrying DECISION F275 D48's obligations: the full suite is the backstop, the input
    is re-derived by round 82's committed generator at the flip's own base, and any site fallen
    to zero witnesses is a stop. The stale test double at
    `packages/orchestration/project_registry.py:856` is updated in the flip's own commit.
-3. Then the classic store, then the closure sequence.
+2. Then the classic store, then the closure sequence.
 
 ## Risks
 
 - THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20
   sessions and 60 rounds without a replacement, so this feature closes only at full scope.
-- A WIDER RETURN DOMAIN REACHES EVERY CALLER. The sweep behind this round follows a returned id
-  one hop inside its own function; a callee that parses it further down is not followed.
+- ONE ROUTED LOAD IS REACHED BY NO TEST. `dashboard project` dies at its first import, so its
+  load stays unproven until `R-0883` is repaired.
 - THE INPUT SET IS REPRODUCIBLE ONLY FROM ROUND 77's TWO SCRATCH JSON FILES, and the re-key
   cannot see a deleted ruled site.
 - The open set is 87 by distinct id at this round's base, with `R-0809` and `R-0880` open. Four
   are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
-END PLAN85
+END PLAN86
 
-── SLICE RECORD85 ── target `.agent/live_review.md` ── APPEND ──
-BEGIN RECORD85 sha256=3982ca823f7ce7e7282ae61d6324a26d1d9798db151c9ec26ccbcb11ca904c96
+── SLICE RECORD86 ── target `.agent/live_review.md` ── APPEND ──
+BEGIN RECORD86 sha256=e2966bb0789a29b28efb099eace555f3512d14f2e5d47b85a5595162ac07ba71
 
-Gate: F275 R84 — the F275 round 84 entry. VERDICT PASS. Written by the planner and reviewer of session 29 after reading the committed range `dd92a035`..`53659062` and RE-DERIVING EVERY GATE AND EVERY RED-PROOF INDEPENDENTLY; the worker's report and its transcripts were evidence for no line below. It is booked here by the FIRST SUBSTANTIVE COMMIT of round 85 that writes the record, per operator amendment amend0827-process-diet rule 1. The round changed production code and the reviewer ran its own four mutations in its own worktree before writing this.
+Gate: F275 R85 — the F275 round 85 entry. VERDICT PASS. Written by the planner and reviewer of session 29 after reading the committed range `53659062`..`21b184c4` and RE-DERIVING EVERY GATE AND THE RED-PROOF INDEPENDENTLY; the worker's report and its transcripts were evidence for no line below. It is carried here because a verdict that stays in the session is lost, and it is booked into `.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 86 that writes the record, per operator amendment amend0827-process-diet rule 1.
 
-WHAT THE TRANSPORT PROOF COVERS, per item 37 of §3. The committed `.agent/authored/` blob was identical by `cmp` to the reviewer's original at 26831 bytes, `.agent/last_block.md` equalled it, all four slices matched their BEGIN-marker digests, and the block re-measured at 293 lines TOTAL and 219 PROSE. `.agent/plan.md` equalled its slice at 44 lines. The three appends were exact under reader A — 1104567 plus 3085, 292291 plus 2014 and 1253148 plus 4292 — with reader B holding at N counted from the slice as 4, 3 and 8, and a letter flipped in each FIRST appended paragraph rejected by both readers. Twenty-two paths changed; every commit staged one path except C5, which staged the thirteen handler files, and the largest commit was 293 insertions.
+WHAT THE TRANSPORT PROOF COVERS, per item 37 of §3. The committed `.agent/authored/` blob was identical by `cmp` to the reviewer's own original at 26157 bytes, `.agent/last_block.md` equalled it, all six slices matched their BEGIN-marker digests, and the block re-measured at 261 lines TOTAL and 187 PROSE. `.agent/plan.md` equalled its slice at 44 lines. All five appends were exact under reader A — 1107652 plus 3119, then plus 2322, then plus 1360 into the review record, 294305 plus 1130 into the prose slips and 1257440 plus 3035 into the decisions — with reader B holding at N counted from each slice as 4, 1, 1, 2 and 7, and a letter flipped in each FIRST appended paragraph rejected by both readers. Eight paths changed, every commit staging one, the largest 261 insertions.
 
-THE PRODUCTION CHANGE HOLDS UNDER THE REVIEWER'S OWN RE-RUN. Read with `ast` at C7, `data_paths.py` defines `JobIdError` on `ValueError` and its three subclasses on it, one `lookup_job_id` and one `resolve_job_id`, and each of the three lines the block quoted once. Every line C5 changed falls in three classes — 27 parses replaced, import lines, blank lines — plus the one `_make_writer` docstring the worker declared, and nothing else. Measured by the argument's name the handler parses went from 27 bound statements and 10 `load_job` arguments to 0 and 10. In a worktree whose module the reviewer printed as resolving inside it, the six selected tests pass unmutated; a plain `Exception` base fails the not-found test and `propose`'s missing-job test; an exiting lookup fails the not-found and message tests; a changed wrapper message fails only the message test; restoring `guide`'s parse fails only the routed-handler test. The scoped suite in the primary checkout read 13260 passed, 10 skipped and 0 failed, the base's 13255 plus exactly the five new tests; `ruff check .` rows at C7 and at the base compared as a multiset differ by nothing; the canary read 42 and the open set stayed 87.
+THE REPAIR HOLDS UNDER THE REVIEWER'S OWN RE-RUN. The production change is the one line SPEC F ordered: `_cmd_project_adopt` passes the resolved id to `load_job` as a string, and no `UUID(resolved_id)` call remains in it. Through the real CLI over trees built with `git archive`, `remedy project adopt 0123456789abcdef` exits 1 with an uncaught traceback ending `ValueError: badly formed hexadecimal UUID string` at `53659062` and exits 3 with `Error: job not found: 01234567` and no traceback at `86b86e23`. In a worktree whose module the reviewer printed as resolving inside it, the test class passes unmutated, and restoring `UUID(resolved_id)` fails only `test_adopting_a_pingpong_job_id_exits_cleanly_instead_of_crashing`, with `ValueError`. The census by flow reads 22 `UUID(...)` calls under `apps/cli/` at the base — 13 into `load_job`, 8 naming a project, 1 other — and 21 at C6 with the `load_job` count one lower. The scoped suite in the primary checkout read 13261 passed, 10 skipped and 0 failed, the base's 13260 plus the one new test; `ruff check .` rows compared as a multiset at the base and the tip differ by nothing; the canary read 42; and the open set went 87, then 88 with `R-0882` the only id added, then 87 with `R-0882` the only id resolved, `R-0809` and `R-0880` open throughout.
 
-TWO THINGS THE REVIEWER FOUND AFTER THE VERDICT, AND NEITHER UNDOES IT. First, round 84's own count was keyed on whether the argument's source names a job, and a census keyed on what the value flows into finds 13 `load_job(UUID(...))` calls rather than 10, because three pass `jid` or `resolved_id`; the worker had already flagged two of them. Second, following one of those three found a crash round 83 introduced in `remedy project adopt`, which round 85 registers as `R-0882` in its own commit. Round 84 routed exactly the statements its SPEC defined and neither discovery is in its change set.
-END RECORD85
+ONE FIGURE THE WORKER COULD NOT REPRODUCE, AND BOTH READINGS ARE TRUE. DECISION F275 D59 says the resolver sweep finds 64 calls; the worker, counting the three function names the same block's G4 names, measured 62. The reviewer measured both at `53659062`: 32 calls of `resolve_job_id`, 27 of `lookup_job_id` and 3 of `resolve_any_job_id` make 62, and `apps/cli/commands/decision.py` imports `resolve_job_id` under the alias `_rji` and calls it twice, which the reviewer's instrument followed and the worker's did not, making 64. The load-bearing figure — exactly one resolver result passed to a later `UUID(...)`, this site — agrees under both. D59 stays as landed; this entry is where its unit is stated.
+END RECORD86
 
-── SLICE FIND85 ── target `.agent/live_review.md` ── APPEND ──
-BEGIN FIND85 sha256=ba714fa8c316af951b4a733d784186a2839e47a38d79ded392c28e60815e9f92
+── SLICE FIND86 ── target `.agent/live_review.md` ── APPEND ──
+BEGIN FIND86 sha256=984db7b72773e68337ab377ab8158c7b4a9cee0f4040b0edf6b8c52ea03ad188
 
-- R-0882 — Medium, `remedy project adopt` CRASHES WITH AN UNCAUGHT `ValueError` FOR A PING-PONG JOB ID, A REGRESSION THIS FEATURE INTRODUCED. Raised by the planner and reviewer of session 29 while preparing round 85, from a census of the handler parses keyed on what each value flows into. THE DEFECT: `_cmd_project_adopt` in `apps/cli/commands/project.py` binds `resolved_id = resolve_job_id(job_id_str)` and then calls `load_job(UUID(resolved_id))` inside a `try` that catches only `JobNotFoundError`. Until round 83 the resolver searched the classic store alone and always returned a UUID-shaped string; round 83 made it search both stores, so for a ping-pong job it returns sixteen hex characters, `UUID(...)` of those raises `ValueError`, and nothing catches it. MEASURED through the real CLI against a data root holding one project and one ping-pong record `0123456789abcdef`: in a worktree at `afffd7cc`, before round 83, the command exits 1 with `Error: no job matches prefix '0123456789abcdef'`; in a worktree at `53659062` it exits 1 with an uncaught traceback ending `ValueError: badly formed hexadecimal UUID string`. WHY NO GATE SAW IT: round 83's blast-radius reading listed every CALLER of `resolve_job_id` and never followed what each caller DID with the value it returned, and no test adopts a ping-pong job, so the scoped suite stayed green; round 83's verdict is not wrong in anything it measured and is not reopened. A sweep over every resolver call under `apps/` and `packages/`, following the returned name one hop inside its own function to a later `UUID(...)`, finds this site and no other at `53659062`; the same instrument also looks for a UUID-only attribute or a comparison with a record's `.id` on the returned name, finds none in the tree, and reported both when the reviewer planted one of each in a scratch copy. WHY MEDIUM AND NOT LOW: no state is corrupted and the exit stays non-zero, but after the flip every job id is sixteen hex characters, so the command would crash for every job rather than for one kind. FIX: pass the resolved id to `load_job` as the string it already accepts, so an id the classic store does not hold takes the handler's own `job not found` path and exit 3; pin it with an in-process test that fails with `ValueError` when the parse is restored. Owner: F275.
-END FIND85
+- R-0883 — Medium, `remedy dashboard project` CRASHES ON EVERY CALL WITH `ModuleNotFoundError`, BECAUSE ITS HANDLER IMPORTS A MODULE THIS REPOSITORY HAS NEVER HELD. Raised by the planner and reviewer of session 30 of F275 while preparing round 86, from reading the handler whose job-id load that round routes. THE DEFECT: the first statement of `_cmd_dashboard_project` in `apps/cli/commands/dashboard_cmd.py` is `from packages.orchestration.project_store import load_project`; at `b0ef6ab4` no such file exists, and `git log --all -- packages/orchestration/project_store.py` lists no commit, so it never did. The import arrived with commit `007f7454`, and the catalog registers the handler as `dashboard.project`. MEASURED at `b0ef6ab4` through the real CLI against an empty data root: `python3 -B -m apps.cli.grouped dashboard project 11111111-1111-1111-1111-111111111111` exits 1 with an uncaught traceback ending `ModuleNotFoundError: No module named 'packages.orchestration.project_store'`. No other outcome is reachable, because the import runs before anything reads the argument. At `b0ef6ab4` no file under `tests/` names `_cmd_dashboard_project` or `dashboard.project`, which is why the suite is green. The body below the import is also written against a dictionary, `project.get("job_ids", [])`, while the project store this repository does hold, `packages/orchestration/project_registry.py`, has a `load_project` that takes a `UUID` and returns a `RemyProject` model, so the repair is more than the import line. WHY MEDIUM: a catalogued command that no input can make succeed; nothing is written and the exit is non-zero. WHY NOT F275's: its scope is the job-id seam and the record flip, and round 86 only routes the handler's job-id load like its neighbours', a routing no test can reach while the handler dies first. FIX: load the project through `project_registry` and read the model's `job_ids`, and pin the command with a test that runs the handler against a saved project holding one job. Owner: F273.
+END FIND86
 
-── SLICE SLIPS85 ── target `.agent/prose_slips.md` ── APPEND ──
-BEGIN SLIPS85 sha256=f268d4dafb58ee32b3af579c16a570102afeee450dfe5ada1480897972697428
+── SLICE SLIPS86 ── target `.agent/prose_slips.md` ── APPEND ──
+BEGIN SLIPS86 sha256=347e9cae0d9f4e356c790eb497dbd77a0f3b6057c29066ddc70a6b79fe4789f8
 
-2026-09-12 · F275 R84 · The round 84 block counted the handler parses still to route by whether each `UUID(...)` argument's SOURCE TEXT contains "job", and so reported ten `load_job(UUID(...))` calls where a census by flow finds thirteen: two pass `jid` and one passes `resolved_id`. The worker flagged two before the reviewer measured the third. THE RULE THAT FOLLOWS: a set of call sites is defined by what the value FLOWS INTO — the function that consumes it — and never by what the variable happens to be called, because a name is a convention and the flow is the fact.
+2026-09-12 · F275 R85 · Constraint 2 of the round 85 block told the worker "The reviewer's candidate is deleted", and the disposable worktree holding it was, but the scratch scripts that had applied the fix and inserted the test stayed on disk under `.remedy-wt/r85/`; the worker neither opened nor deleted them and declared it. THE RULE THAT FOLLOWS: a block asserts a state of the filesystem only after measuring it, and "deleted" names every path that carried the thing, not only the one that was removed.
 
-2026-09-12 · F275 R83 · The round 83 block widened what `resolve_job_id` can return and measured its blast radius as the list of its callers, without following what any caller did with the returned value; one of them passed it to `UUID(...)`, and the resulting crash shipped under a PASS and is `R-0882`. THE RULE THAT FOLLOWS: when a change widens a function's RETURN DOMAIN, every caller's USE of the returned value is swept, one hop at least and with a planted control, because the callers list says who is affected and only the uses say how.
-END SLIPS85
+2026-09-12 · F275 R85 · DECISION F275 D59 says the resolver sweep "finds 64 calls" while G4 of the same block defines the sweep over three literal function names, under which the count is 62; the difference is two calls through an import alias the reviewer's instrument followed and the definition did not mention. THE RULE THAT FOLLOWS: a count states its definition beside it — here, whether import aliases are followed — because two correct instruments disagreeing on an unstated definition is indistinguishable, on the page, from one of them being wrong.
+END SLIPS86
 
-── SLICE DONE85 ── target `.agent/live_review.md` ── APPEND ──
-BEGIN DONE85 sha256=6d68a4867d8f22e33c6946ed7a236a42affb0ff6b0411de921d31de1a460b6bb
+── SLICE DEC86 ── target `.agent/decisions.md` ── APPEND ──
+BEGIN DEC86 sha256=c5fb18281405f656bb31a5e40111f081d67b6642ab5acb2beb8f3c3878285cb4
 
-Done: R-0882 — RESOLVED in the round that registered it. `_cmd_project_adopt` passes the resolved id to `load_job` as a string instead of through `UUID(...)`, so an id the classic store does not hold raises `JobNotFoundError`, which the handler already turns into `Error: job not found:` with the id's first eight characters and exit 3. The repair and its test land at the commits constraint 10 of round 85's block fixes as C5 and C6, and every reading below is taken at C6, before this paragraph's commit. THE REPAIR IS PINNED BY A DISCRIMINATOR: `test_adopting_a_pingpong_job_id_exits_cleanly_instead_of_crashing` runs the handler in-process against a ping-pong record and requires exit 3 with `job not found`; restoring `UUID(resolved_id)` fails that test alone, with `ValueError`, and leaves every other test of its class green. Through the real CLI the same input now exits 3 without a traceback, where at the round's base it exited 1 with one. The sweep that found the site reports no other resolver result passed to a later `UUID(...)` under `apps/` or `packages/`. WHAT IS NOT CLAIMED: a ping-pong job still cannot be ADOPTED, because adopting writes the project id into a classic record and the ping-pong store is the flip's; and the sweep follows a returned id only inside its own function, so a callee that parses it further down is not covered.
-END DONE85
+## DECISION F275 D60 (2026-09-13, F275 round 86) — the last handler job-id parses stop parsing: ten load what the raising lookup resolves, `project attach-job` files the id it resolved, and `job stop`'s loader loads exactly what it is given
 
-── SLICE DEC85 ── target `.agent/decisions.md` ── APPEND ──
-BEGIN DEC85 sha256=59d541e9d2f837cf5d1a0c13c0585b399f8950f72cf935de0ecf15fba5ee4b95
+CONTEXT. DECISION F275 D59 counted twelve `load_job(UUID(...))` calls left under `apps/cli/` by flow, and DECISION F275 D58 had held them back because routing `job stop`'s loader let a short id skip its caller's normalisation. Before this round was authored the reviewer applied the change below in a disposable worktree at `b0ef6ab4`, ran the scoped suite there, and restored each changed site's parse one at a time against the new tests; the choices below rest on those runs.
 
-## DECISION F275 D59 (2026-09-12, F275 round 85) — the adopt crash is repaired by dropping a parse rather than by making adopt reach the ping-pong store, and the remaining handler parses are counted by flow, correcting D58's figure beside it
+CHOSEN, FIRST: TEN CALLS BECOME `load_job(lookup_job_id(...))`. They are the four `review` handlers, the three memory-candidate handlers, `commit-readiness`, and the two project handlers that load each job id their project stores. For any string `UUID(...)` accepts, `lookup_job_id` returns `str(UUID(...))` without touching the disk, and `load_job` builds the same path from that string as from the `UUID`, so everything that loaded before loads the same record. A string the parse refused now either raises a `JobIdError`, a `ValueError` like the parse's, or resolves: a short classic prefix to its job, a ping-pong id to itself. ALTERNATIVE: `load_job` on the raw string, rejected for these ten because an unhyphenated or upper-case UUID that loads today would stop loading.
 
-CONTEXT. Round 83 widened what `resolve_job_id` returns and round 84 routed 27 handler parses through a raising lookup, counting the rest by whether each argument's source names a job. Preparing this round, the reviewer took a census of every `UUID(...)` call under `apps/cli/` by what its value flows into, and following one of the calls that census added found `R-0882`: `remedy project adopt` now crashes on a ping-pong job id.
+CHOSEN, SECOND: `project attach-job` RESOLVES ONCE AND FILES THE RESOLVED ID. Routing the load alone would let a short prefix load its job and then be appended to the project's `job_ids` as the prefix, a key every later reader must resolve again and may resolve differently once a second job shares it. The handler binds the resolved id and uses it for the attach and for its message; its error message keeps the argument as typed. ALTERNATIVE: route the load and keep the raw key, rejected for that reason.
 
-CHOSEN, FIRST: THE REPAIR DROPS THE PARSE. `load_job` already accepts a string, and the handler's `try` already turns `JobNotFoundError` into its own message and exit 3, so removing `UUID(...)` restores a clean exit with no new path. ALTERNATIVE: make adopt WORK for a ping-pong job by resolving through the unified store, rejected as scope — adopting writes the project id into the job record through the classic store's `save_job`, and writing into a ping-pong record is the flip's world, not a repair's.
+CHOSEN, THIRD: `job stop`'s LOADER DROPS THE PARSE INSTEAD OF ROUTING IT. `_load_job` answers whether this exact id names a job, and its caller normalises through `resolve_job_id` only when the answer is no. Routing made the answer yes for a short id, which is D58's measured defect. Loading the string as given keeps that answer no, and gives the same answer for an unhyphenated full id, so the caller now normalises that one too. The reviewer measured the difference at `b0ef6ab4`: stopping a classic job by its 32 unhyphenated hex characters filed the stop under that spelling, and a pending-stop check under the canonical id found none. ALTERNATIVE: route inside the loader and hand the resolved id back, rejected as a wider change to a helper with three call sites in its file.
 
-CHOSEN, SECOND: THE REMAINING PARSES ARE COUNTED BY FLOW, AND DECISION F275 D58's FIGURE IS CORRECTED HERE RATHER THAN EDITED. At `53659062` the census finds 22 `UUID(...)` calls under `apps/cli/`: 13 whose value is an argument of `load_job`, 8 whose argument names a project and so are outside the job-id seam, and 1 validating a task id. D58 said ten `load_job` parses remained because its rule keyed on the argument's name, and three pass `jid` or `resolved_id`. D58's paragraph stays as landed; this is the figure the next round works from, one lower once this round's repair removes the adopt site.
+CHOSEN, FOURTH: ONE ROUTED LOAD IS PROVED BY NO TEST, AND THAT IS REGISTERED RATHER THAN HIDDEN. `dashboard project` dies at its first import, which is `R-0883`, so nothing reaches its load, and restoring its parse changed no test's colour in the dry run. Each of the other eleven sites is pinned by a test that fails when that site's parse is restored.
 
-CHOSEN, THIRD: A RETURN DOMAIN THAT WIDENS IS SWEPT BY USE, NOT BY CALLER. Over `apps/` and `packages/` with `data_paths.py` excluded, the sweep follows each resolver call's bound result to a later `UUID(...)` in the same function. It finds 64 calls and exactly one such use at `53659062`, this site. The same instrument also looks for a UUID-only attribute or a comparison with a record's `.id` on the returned name, finds none in the tree, and reported one of each when the reviewer planted them in a scratch copy; its `UUID(...)` branch is shown working by the real site it found. Its reach is one hop inside a function, and that limit is stated rather than widened here.
+CONSEQUENCE. No `UUID(...)` call under `apps/cli/` feeds `load_job` any more; the calls that parse a project id and the one that validates a task id remain, outside the job-id seam. `R-0883` is registered with owner F273, and `R-0809` and `R-0880` stay open. The readings behind this paragraph are the gates constraint 10 of round 86's block runs at C6, before the commit that lands it.
 
-CONSEQUENCE. `R-0882` is registered and resolved in this round with the crash measured before and the clean exit measured after. Twelve `load_job(UUID(...))` parses remain under `apps/cli/` by flow, and the next production round reads each for whether its caller keys on the raw argument. `R-0809` and `R-0880` stay open.
-
-HOW TO REVERSE. Restore `apps/cli/commands/project.py` and `tests/cli/test_scoped_listings.py` from `53659062` and delete this paragraph block; the adopt command then crashes on a ping-pong id again, and `R-0882`'s resolution no longer holds.
-END DEC85
+HOW TO REVERSE. Restore the seven handler files and `tests/test_data_paths.py` from `b0ef6ab4` and delete this paragraph block. The handlers then parse with `UUID(...)` again and refuse a short prefix.
+END DEC86
