@@ -16,8 +16,7 @@ Public API::
 
     resolve_data_root() -> Path
     jobs_dir(root: Path | None = None) -> Path
-    resolve_job_id(raw) -> str               # the classic store
-    resolve_any_job_id(raw) -> str           # both stores
+    resolve_job_id(raw) -> str               # both job stores; resolve_any_job_id is an alias
     mint_job_id() -> str                     # a job id (16-hex, DECISION F260 D2)
     mint_run_id() -> str                     # a run id
     mint_episode_id() -> str                 # a run-episode id
@@ -293,39 +292,7 @@ def _exit_ambiguous(raw: str, matches: list[str]) -> None:
 
 
 def resolve_job_id(raw: str) -> str:
-    """Parse a full UUID or resolve a short hex prefix to a unique job id.
-
-    Searches the CLASSIC job store ONLY — that restriction is now carried by
-    the SEARCH, not by the return type, since a ``str`` could hold either id
-    shape. Callers that must reach both stores use :func:`resolve_any_job_id`.
-
-    Returns the canonical id as a string: lowercase, hyphenated, the form
-    ``str(UUID(...))`` produces. F260 T004 is where this function and
-    :func:`resolve_any_job_id` become one.
-
-    Exits with code 1 on invalid input, code 2 on ambiguous prefix.
-    """
-    try:
-        return str(UUID(raw))
-    except ValueError:
-        pass
-
-    if not _SHORT_HEX_RE.fullmatch(raw):
-        print(f"Error: invalid job ID: {raw!r}", file=sys.stderr)
-        sys.exit(1)
-
-    matches = _classic_job_id_matches(raw)
-    if len(matches) == 1:
-        return matches[0]
-    if len(matches) > 1:
-        _exit_ambiguous(raw, matches)
-
-    print(f"Error: no job matches prefix {raw!r}", file=sys.stderr)
-    sys.exit(1)
-
-
-def resolve_any_job_id(raw: str) -> str:
-    """Resolve a job id across BOTH job stores, and return it as a string.
+    """Resolve a full job id or a short hex prefix across BOTH job stores.
 
     Remedy runs jobs into two stores. ``<data_root>/jobs/<uuid>.json`` is the
     classic one; ``<data_root>/jobs/<16hex>/job.json`` is the one
@@ -334,25 +301,23 @@ def resolve_any_job_id(raw: str) -> str:
     id is a ``.json`` file's stem, the ping-pong id is a directory holding a
     ``job.json``. Both file their run logs the same way, under
     ``<data_root>/job_logs/<job-id>/``, so ``timeline.load_run_events`` reaches
-    either — but :func:`resolve_job_id` SEARCHES only the classic store, where a
-    16-hex task-job id can never match. Both now return a ``str``; F260 T004 is
-    where the two become one.
+    either. This function searches both stores. Until F275 T003 it searched the
+    classic store alone, where a 16-hex ping-pong id can never match — which is
+    why `remedy teach narrate <task-job-id>` answered "no job matches prefix"
+    for a job whose run log was sitting on disk the whole time (operator
+    dogfooding, 2026-08-25). The two searches are unioned and deduplicated, so
+    an id that is present in both stores is one match rather than a false
+    ambiguity.
 
-    That is why `remedy teach narrate <task-job-id>` answered "no job matches
-    prefix" for a job whose run log was sitting on disk the whole time
-    (operator dogfooding, 2026-08-25). The teacher was built against the
-    classic store and could not see a job-based run at all.
-
-    The return type is ``str`` because the two stores mint different id shapes
-    and only one of them is a UUID. Callers print it or join it onto a path;
-    nothing needs the parsed form.
+    Returns a ``str`` because the two stores mint different id shapes and only
+    one of them is a UUID. A full UUID comes back in the form ``str(UUID(...))``
+    produces; a prefix comes back as the matching file stem or directory name.
 
     READ-ONLY: this opens directories and stats files, and writes nothing —
     which is what lets the teacher, whose whole stance is passivity, use it.
 
     Exits with code 1 on invalid input or no match, code 2 on an ambiguous
-    prefix — the same codes, and the same messages, :func:`resolve_job_id`
-    uses, so no caller gains a new exit path by switching.
+    prefix.
     """
     try:
         return str(UUID(raw))
@@ -363,8 +328,6 @@ def resolve_any_job_id(raw: str) -> str:
         print(f"Error: invalid job ID: {raw!r}", file=sys.stderr)
         sys.exit(1)
 
-    # A single id could in principle live in both stores; dedupe so that is a
-    # match rather than a false ambiguity.
     matches = sorted(set(_classic_job_id_matches(raw)) | set(_task_job_id_matches(raw)))
     if len(matches) == 1:
         return matches[0]
@@ -373,3 +336,11 @@ def resolve_any_job_id(raw: str) -> str:
 
     print(f"Error: no job matches prefix {raw!r}", file=sys.stderr)
     sys.exit(1)
+
+
+# ``resolve_any_job_id`` is an ALIAS of ``resolve_job_id``, not a copy: F275 T003
+# collapsed the two resolvers, which had differed in one statement, and an alias is
+# one function under two names, so the two cannot drift apart again. The name is
+# kept because the callers under ``apps/cli/`` read it as saying they need both job
+# stores. ``tests/test_data_paths.py`` pins the identity.
+resolve_any_job_id = resolve_job_id
