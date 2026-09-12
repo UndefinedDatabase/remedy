@@ -235,3 +235,111 @@ home of the id-SHAPE seam — production code, so a SPLIT round with mutation re
 THE FLIP, in whose own commit the stale `_FakeJob` double at `packages/orchestration/project_registry.py:856`
 is updated. `R-0880` stays OPEN: this round adds the first behavioural measurement of what the
 fallback costs and two sites removed by name, and builds no refusal into the transform.
+
+## Reviewer verdict on round 81 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 81: **PASS.** Written by the planner and reviewer of SESSION 28 after reading the
+committed range `89d4772a`..`cba25b45` and RE-DERIVING EVERY GATE INDEPENDENTLY against the
+committed blobs; the worker's report and its transcripts were evidence for no line below. It is
+carried here because under `docs/agents/self_drive_protocol.md` a verdict that stays in the
+session is lost, and it is booked into `.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT
+of round 82, per amend0827-process-diet rule 1.
+
+WHAT THE TRANSPORT PROOF COVERS, STATED BEFORE THE FIGURES, per item 37 of §3. G1 is the PRIMARY
+cmp-against-scratchpad proof and not the §4.9 digest fallback: the chain it walks is the
+reviewer's own scratch original, the committed `.agent/authored/` blob and the working copy. It
+does not and cannot establish what bytes the worker RECEIVED. The block blob is byte-identical
+to the reviewer's original at 28740 bytes, `.agent/last_block.md` equals the committed block
+blob, all four slices match the sha256 on their own BEGIN markers, and the block re-measures at
+343 lines TOTAL and 267 PROSE as its constraint 10 states.
+
+EVERY GATE HOLDS AND THE REVIEWER RE-RAN ALL EIGHT. `.agent/plan.md` is byte-identical to its
+slice. The two record appends are exact under reader A with reader B holding over the whole
+appended region at N counted from the slice as 4 and 9, and every deletion column is ZERO. The
+round 79 and round 80 artefacts are byte-identical at the base and at the tip, so no landed
+reading was rewritten. The artefact's 155 indented lines all appear verbatim in the instrument's
+output with the matching monotone and nothing unmatchable, and it carries no wall-clock duration.
+The canary reads 42, `ruff check .` 26 rows against the frozen ceiling of 26, zero `.py` files
+under `.agent/`, one worktree, the changed-path set exactly the Change section with MISSING and
+EXTRA empty and zero paths under `packages/`, `apps/`, `tests/` or `docs/`, and the open set 87
+by distinct id at both ends with identical membership and `R-0880` open at each.
+
+THE ROUND'S SUBSTANCE, AND IT IS A DIAGNOSIS RATHER THAN A COUNT. Every ruled column the
+seventeen attributed frames blame is a column the SHIPPED owner check REFUSES rather than
+decides, and the reviewer re-derived all five verdicts independently: `job` and `t` CONFIRMED,
+`art`, `node` and `j` absent from the decided set. The transform renames them anyway on the
+fallback its P1 rule describes, so on a line carrying one owner verdict a refused column takes
+the verdict of the column beside it. The class that puts at risk re-derives exactly as the
+artefact reports it — 2185 ruled sites over 2080 distinct lines, 91 carrying more than one site,
+58 of those agreeing on one verdict and 33 not, and 26 of the 58 spanning receivers with
+different names — and both lines behind sixteen of the seventeen frames are in the 26. DECISION
+F275 D55 takes two sites out of the flip's input BY NAME and leaves the third in with its stale
+test double routed to the flip's own commit, which is the right cut: refusal is not evidence of
+error, and dropping all 277 refusals would trade a measured defect for an unmeasured one.
+
+THE LIMIT OF THE READING IS STATED IN THE ARTEFACT AND IS WORTH REPEATING HERE. Only what a test
+exercises produced a frame, so the fallback certainly reaches sites no reading in this chain can
+see, and 26 is an upper bound on the suspect set rather than a defect count. `R-0880` stays OPEN
+for exactly that reason.
+
+## Authored text for round 82 to book — one dated line for `.agent/prose_slips.md`
+
+2026-09-12 · F275 R81 · Two rounds running, a freshly written gate script counted ruff rows with a pattern for an output format this ruff does not emit, read ZERO rows against a ceiling of 26, and reported a pass; both times the author caught it only because the block also ordered a cross-check against the tool's own `Found <n> errors.` tally. The recurrence is the finding: the second script was written after the first had failed the same way, by a different author, because nothing on disk records what this repository's ruff prints. THE RULE THAT FOLLOWS: where a gate parses a TOOL'S OUTPUT FORMAT, it never takes the count from the parse alone — it takes the tool's own stated total beside it and compares the two, because a parser that matches nothing is indistinguishable from a repository that is clean, and that is the failure direction nobody investigates.
+
+## Session 28 ends here — FOUR delegated rounds, 78 through 81, three PASS and one FAIL repaired
+
+WHY THIS SESSION ENDS AT FOUR, STATED FIRST BECAUSE IT IS THE PART A LATER READER WILL CHECK.
+The reason is the one amend0905-throughput names and amend0908-f275-finish rule 5 permits only
+after at least four delegated rounds, which this session has now run: THE REVIEWER'S OWN
+AUTHORING ERRORS ARE ACCUMULATING. Round 78's block miscounted its own slices in a gate and
+ordered a path-set reading at a commit that could not carry it; round 79's block defined a set
+by a TYPE and then qualified it by a STRING, and the predicate that resulted admitted six
+records of the wrong exception class — that one cost a FAIL and a repair round; round 80's
+block repeated the path-set ordering tension and stated a record count whose unit it never
+named. Five dated lines in `.agent/prose_slips.md` across four rounds, one of them material
+enough to fail a round, is the run of slips that rule describes. Context is NOT the reason and
+is not claimed as one: it remains comfortable, and a fifth round would have started from a
+healthy margin.
+
+WHAT THE SESSION DID. It opened on a Phase 0 probe that found something no round had planned
+for: the operator's merge `e262f420` had brought eleven of amendment amend0911-feedback's twelve
+files onto this branch and resolved the twelfth, `docs/agents/self_drive_protocol.md`, in favour
+of the branch — dropping finding ownership, rolling paydown, the operator questions file, and
+the lifting of this feature's own session and round limit, while the branch carried DECISIONs
+naming that document as their home. Because the merge base now includes `main`'s commit, a later
+merge of this branch would have deleted those four paragraphs FROM `main`. Round 78 restored
+them by DERIVATION from two committed blobs rather than by retyping, proved by two round-trip
+identities measured against four deliberate mutations, and registered and resolved `R-0881`.
+
+Rounds 79 through 81 then took `R-0880`'s second obligation as far as measurement can currently
+carry it. Round 79 rebuilt the corrected arm under a transform control that reproduced round
+77's output byte for byte and captured full tracebacks; it was FAILED for the predicate defect
+above. Round 80 repaired the predicate, and the corrected named-class count came back at 19 —
+exactly what round 77 had recorded, so that round's reading had never needed explaining away.
+Round 81 read the three sites the seventeen surviving frames attribute to and found the cause is
+a FALLBACK rather than a wrong verdict, measured the class it puts at risk, and ruled two sites
+out of the flip's input by name.
+
+NOTHING UNDER `packages/`, `apps/`, `tests/` OR `docs/` MOVED IN ROUNDS 79 THROUGH 81, and the
+only production-adjacent change of the whole session is round 78's restoration of operator text
+under `docs/agents/`. No pull request was created, edited or merged; no branch was created or
+deleted; no merge, no force-push, no history rewrite. `.agent/STOP` was read before and after
+every round of this session and was absent at every reading.
+
+WHAT THE NEXT SESSION DOES FIRST. Phase 1 rule 1 BEFORE rule 2: read `.agent/STOP` from disk. If
+it is absent, there is no open pull request to gate on, `.agent/candidates.md` is EMPTY, and this
+verdict plus the prose-slip line above are the pending bookings that round 82's first
+substantive commit carries. Round 82 itself is the first item of `.agent/plan.md`: drop the two
+sites DECISION F275 D55 names from the flip's input and re-derive the corrected set, which is a
+set subtraction and a re-key rather than a new measurement. The trees and transcripts rounds 79
+and 81 built are left on disk under `.remedy-wt/` and are pinned by sha256 in their artefacts,
+so nothing there needs re-taking.
+
+OPERATOR QUESTIONS OPEN: 0. `.agent/operator_questions.md` reads `EMPTY — nothing is waiting on
+the operator.` This session wrote nothing to it: round 78 restored the operator's own text
+rather than deciding anything on the operator's behalf, and DECISION F275 D55's cut is recorded
+as a reversible DECISION in the ordinary way.
+
+NO SCOPE REPORT AND NO SESSION-LIMIT BANNER IS OWED. Amendment amend0911-f275-to-scope, restored
+to the protocol by round 78 of this session, lifts F275's soft limit of 20 sessions and 60 rounds
+without a replacement number: the feature closes only at full scope.
