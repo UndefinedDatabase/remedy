@@ -1,65 +1,67 @@
-# STEP T003 — F275 ROUND 74 — repair round 73, and rule the residual on a reading that reproduces
+# STEP T003 — F275 ROUND 75 — a SITE is not a LINE, and DECISION F275 D48 is corrected
 
 ## Goal
 
-Repair the round 73 FAIL. Move the coverage reading out of a `git worktree`, where the
-`ui_server` suite cannot run, into the PRIMARY CHECKOUT where it can; replace "is the line
-executed" with "how many tests witness it"; red-prove every thin site against its own single
-witness, mutating the ATTRIBUTE NODE the ruled set records rather than the first textual
-match; and correct DECISION F275 D47 by APPENDING DECISION F275 D48, never by rewriting a
-landed paragraph. Restore the three artefact gates round 73 dropped. Book the round 73 FAIL
-verdict and its four prose slips. NO PRODUCTION LINE MOVES.
+Correct the three descriptive numerals DECISION F275 D48 carries and the unit confusion behind
+them, which the round 74 worker found by adding a banner's own buckets up. Coverage resolves a
+context per LINE; the ruled set is keyed per SITE, and nine refused production sites share a
+line with another, so round 74's instrument counted sites in one section and lines in the next
+under the same word. This edition prints the unit on every count and prints both bucket sums
+beside the totals they partition. DECISION F275 D49 records the corrected figures by
+APPENDING; D48 is not rewritten and its ruling is unchanged, because the two readings it rests
+on — an empty risk set and a thin set of eleven — are the same in both units. Book the round 74
+PASS verdict and its two prose slips. NO PRODUCTION LINE MOVES.
 
 ## Bundle — the ordered commit sequence
 
 The sequence is EXACTLY this. Nothing is added, dropped or reordered. Each commit stages
 exactly ONE path.
 
-- C0a save the block as authored text — `.agent/authored/f275-r74.md`
-- C0b save the artefact as authored text — `.agent/authored/f275-r74-artefact.md`
-- C0c save the witness-instrument carrier — `.agent/authored/f275-r74-witness.py.md`
+- C0a save the block as authored text — `.agent/authored/f275-r75.md`
+- C0b save the artefact as authored text — `.agent/authored/f275-r75-artefact.md`
+- C0c save the witness-instrument carrier — `.agent/authored/f275-r75-witness.py.md`
 - C0d mirror the block into the last-block state file — `.agent/last_block.md`
-- C1 make the plan current for round 74 — `.agent/plan.md` — THE FIRST SUBSTANTIVE COMMIT
-- C2 book the round 73 reviewer verdict — `.agent/live_review.md`
-- C3 append the round 73 prose slips — `.agent/prose_slips.md`
-- C4 record DECISION F275 D48 — `.agent/decisions.md`
-- C5 land the witness artefact — `.agent/f275_t003_witness_r74.md`
-- C6 the round 74 handback — `.agent/handoff.md`
+- C1 make the plan current for round 75 — `.agent/plan.md` — THE FIRST SUBSTANTIVE COMMIT
+- C2 book the round 74 reviewer verdict — `.agent/live_review.md`
+- C3 append the round 74 prose slips — `.agent/prose_slips.md`
+- C4 record DECISION F275 D49 — `.agent/decisions.md`
+- C5 land the units artefact — `.agent/f275_t003_units_r75.md`
+- C6 the round 75 handback — `.agent/handoff.md`
 
 ## Change — the exact path set
 
 These paths and NOTHING ELSE:
 
-    .agent/authored/f275-r74.md
-    .agent/authored/f275-r74-artefact.md
-    .agent/authored/f275-r74-witness.py.md
+    .agent/authored/f275-r75.md
+    .agent/authored/f275-r75-artefact.md
+    .agent/authored/f275-r75-witness.py.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
     .agent/prose_slips.md
     .agent/decisions.md
-    .agent/f275_t003_witness_r74.md
+    .agent/f275_t003_units_r75.md
     .agent/handoff.md
 
 No path under `packages/`, `apps/`, `tests/`, `docs/` or `scripts/` is touched. This is not a
-deletion round and no file is removed. NOTHING LANDED BY ROUND 73 IS REWRITTEN OR REVERTED:
-DECISION F275 D47 stays exactly as it is on disk and is corrected by the append at C4.
+deletion round and no file is removed. NOTHING LANDED BY ROUND 74 IS REWRITTEN OR REVERTED:
+DECISION F275 D48 stays exactly as it is on disk and is corrected by the append at C4.
 
 ## The reviewer's texts on disk, and how they travel
 
 Every reviewer-authored text of this round exists as a file under the gitignored `.remedy-wt/`
 at this round's base, and each is of one of two kinds. A SLICE is carried verbatim in this
 block between a BEGIN and an END marker, the BEGIN marker stating the sha256 of the bytes
-between them; the slices are PLAN74, RECORD74, SLIPS74 and DEC74, each under its own heading
+between them; the slices are PLAN75, RECORD75, SLIPS75 and DEC75, each under its own heading
 below. A WHOLE TEXT is too long to retype and is never retyped: it is transported with
 `shutil.copyfile` and never opened in an editor. The whole texts, with their scratch paths and
 digests:
 
-    .remedy-wt/f275-r74-artefact.md        9578 bytes  c914420ef60576b0429a87a20cfc38d30acbc06c0851c74628dbfa28f23228c2
-    .remedy-wt/f275-r74-witness.py.md     12539 bytes  1ae814a0af76fff846f936ebf7844484f7cf039dddf3717ed841eaf4a4297806
+    .remedy-wt/f275-r75-artefact.md         4739 bytes  0e2078f5c5e7907bc39149d968d0b35c0186ba4b819f0819795958eaa619852e
+    .remedy-wt/f275-r75-witness.py.md     14692 bytes  fa7a54de28e31875c13bac66f7308596f18bfb73d0d11bbaad164bd918d73529
 
-The block travels the same way: read `.remedy-wt/f275-r74.block.md` from disk, verify its
-sha256 against the one the delegation wrapper states, and copy it to `.agent/authored/f275-r74.md`
+The block travels the same way: read `.remedy-wt/f275-r75.block.md` from disk, verify its
+sha256 against the one the delegation wrapper states, and copy it to `.agent/authored/f275-r75.md`
 at C0a and to `.agent/last_block.md` at C0d. A slice is applied BYTE FOR BYTE: nothing is
 reflowed, re-wrapped, re-indented or corrected, and a slice that looks wrong is APPLIED AS
 WRITTEN and declared in the handback.
@@ -69,7 +71,7 @@ WRITTEN and declared in the handback.
 1. APPLY EVERY SLICE VERBATIM. Extract each by its BEGIN and END marker prefixes, markers
    EXCLUDED, from the COMMITTED C0a blob — never from the delegation prompt and never from
    memory — and check each against the sha256 its own BEGIN marker carries before applying it.
-2. PLAN74 is a WHOLE-FILE REPLACEMENT of `.agent/plan.md`. RECORD74, SLIPS74 and DEC74 are
+2. PLAN75 is a WHOLE-FILE REPLACEMENT of `.agent/plan.md`. RECORD75, SLIPS75 and DEC75 are
    APPENDS: the pre-commit blob is a byte-exact PREFIX of the post-commit file and the slice
    is an exact SUFFIX of it, separated by exactly one newline.
 3. ONE PATH PER COMMIT, in the Bundle's order. Run the AGENTS.md self-review loop before every
@@ -93,13 +95,13 @@ WRITTEN and declared in the handback.
    `os.path.exists` and `glob`, and report both readings literally in the handback. If it
    exists, finish the commit in hand, write the handback and stop.
 8. THIS BLOCK'S OWN SIZE. Measured by the reviewer on the FINAL bytes of
-   `.remedy-wt/f275-r74.block.md`: TOTAL 382 lines, PROSE 299 lines, where PROSE is TOTAL
+   `.remedy-wt/f275-r75.block.md`: TOTAL 378 lines, PROSE 305 lines, where PROSE is TOTAL
    minus the lines lying between BEGIN and END markers, markers themselves counted as PROSE.
    This clause is the ONLY place either numeral appears; G1 names this clause rather than
    restating them.
 9. `R-0880` STAYS OPEN. No finding id is registered, resolved or de-registered this round. Do
    not write a `Done:` or a `Landed:` paragraph of your own; `Done:` is reviewer-authored text
-   only. The SLIPS74 lines are not ids, per amend0827-process-diet rule 2.
+   only. The SLIPS75 lines are not ids, per amend0827-process-diet rule 2.
 10. NO `.py` FILE IS CREATED ANYWHERE UNDER `.agent/`. The instrument ships as a `.py.md`
     carrier, because a `.py` file inside the tree is counted by the `ruff` ceiling that
     `tests/orchestration/test_ci_budgets.py` freezes and G6(c) reads.
@@ -152,13 +154,13 @@ number, and round 73 landed a 529-line carrier because nobody counted one. Final
 which must be 1; extract the source; and confirm that re-wrapping it in the carrier's own
 header and fence reproduces the committed blob BYTE FOR BYTE.
 
-**G2 THE PLAN.** `.agent/plan.md` at C1 is byte-identical to slice PLAN74 — report both sizes
+**G2 THE PLAN.** `.agent/plan.md` at C1 is byte-identical to slice PLAN75 — report both sizes
 and both sha256 values. Report its line count against the AGENTS.md cap of 50, and the count of
 lines matching `^## Goal$` and of lines matching `^## Next Steps$`, both of which are 1.
 
 **G3 THE RECORD.** Three appends, three commits, and for each one TWO INDEPENDENT READERS and
 a NEGATIVE CONTROL. Wherever a reading below is taken AT THE BASE, read those bytes with
-`git show 0d47205d:<path>` into scratch or into memory; nothing is written over a tracked file
+`git show dac50bcd:<path>` into scratch or into memory; nothing is written over a tracked file
 to take a base reading.
 
   (i)  READER A, the byte stream: post == pre + one newline + the slice body. Report pre, post,
@@ -172,27 +174,27 @@ to take a base reading.
        appended paragraph of each file and confirm BOTH readers REJECT; then confirm both
        readers ACCEPT the unmutated region. Report the byte offset and the letter for each.
        Choose an ASCII letter, so the flip cannot land inside a multi-byte sequence.
-  (iv) Over RECORD74: report its line count, the number of lines AFTER THE FIRST carrying a
+  (iv) Over RECORD75: report its line count, the number of lines AFTER THE FIRST carrying a
        reserved prefix (`- R-`, `Done: R-`, `Landed: R-`, `Gate: `), which is 0, and the number
        of lines C2 ADDS matching `^- R-` and matching `^Done: R-`, both of which are 0.
-  (v)  RECORD74's first line joins a repeating record format, so compare it MECHANICALLY
+  (v)  RECORD75's first line joins a repeating record format, so compare it MECHANICALLY
        against its neighbours: report how many lines at the base already match
        `^Gate: F275 R\d+ — the F275 round \d+ entry\.`, whether the new first line matches that
        same pattern, and whether it duplicates any of them.
-  (vi) Over DEC74: confirm it begins `## DECISION F275 D48 `, report how many lines at the base
-       match `^## DECISION F275 D48` (which is 0), and report the highest existing
+  (vi) Over DEC75: confirm it begins `## DECISION F275 D49 `, report how many lines at the base
+       match `^## DECISION F275 D49` (which is 0), and report the highest existing
        `^## DECISION F275 D\d+` at the base. Then confirm that C4 REMOVES NO LINE — that its
        `git show --numstat` deletion column is 0 — which is what makes this a correction by
-       append rather than a rewrite of DECISION F275 D47.
-  (vii) Over SLIPS74: report the number of paragraphs it adds, how many begin
-       `2026-09-12 · F275 R73 · `, and how many lines at the base already begin with that exact
+       append rather than a rewrite of DECISION F275 D48.
+  (vii) Over SLIPS75: report the number of paragraphs it adds, how many begin
+       `2026-09-12 · F275 R74 · `, and how many lines at the base already begin with that exact
        prefix.
 
-**G4 THE ARTEFACT, AND THE THREE CHECKS ROUND 73 DROPPED.**
+**G4 THE ARTEFACT AND ITS TRANSCRIPT.**
 
-  (a) `.agent/f275_t003_witness_r74.md` at C5 is byte-identical to the C0b blob — report both
+  (a) `.agent/f275_t003_units_r75.md` at C5 is byte-identical to the C0b blob — report both
       sizes and both sha256 values — and the path does not resolve at the base with
-      `git show 0d47205d:.agent/f275_t003_witness_r74.md`, whose non-zero exit is the expected
+      `git show dac50bcd:.agent/f275_t003_units_r75.md`, whose non-zero exit is the expected
       reading.
   (b) THE TRANSCRIPT. In the C0b artefact blob, report the number of lines consisting of three
       backticks, which is 0; then check EVERY line that begins with whitespace and is not blank
@@ -216,25 +218,29 @@ to take a base reading.
 
 **G5 THE INSTRUMENT.** Read constraints 12, 13 and 14 before starting this one.
 
-  (a) Extract the single fence of the COMMITTED C0c carrier to `.remedy-wt/f275-r74-witness.py`
+  (a) Extract the single fence of the COMMITTED C0c carrier to `.remedy-wt/f275-r75-witness.py`
       and report the extracted size and sha256.
-  (b) Run `python3 -B .remedy-wt/f275-r74-witness.py . 0d47205d` and REPRODUCE EVERY LINE OF
+  (b) Run `python3 -B .remedy-wt/f275-r75-witness.py . dac50bcd` and REPRODUCE EVERY LINE OF
       EVERY BANNER in the handback.
-  (c) THE READINGS THIS GATE TURNS ON, each reported with whether it holds: in section 2, that
+  (c) THE READINGS THIS GATE TURNS ON, each reported with whether it holds. In section 2, that
       `git status --porcelain` is the empty string AFTER the coverage run, which is what makes
-      running it in the primary checkout legal; in section 4, that the risk set — refused sites
-      witnessed by NO test — is 0; in section 5, that every thin site's control is green and its
-      mutation red, that the summary reads as many proved as the thin set holds, and that every
-      mutated file reverted byte-identically. A thin site whose control is not green, or whose
-      mutation is not red, or whose revert is not byte-identical, is a RED gate: stop and hand
-      back. THE COLOUR OF SECTION 2's OWN SUITE RUN IS NOT A READING and is not a red condition,
-      per constraint 13.
+      running it in the primary checkout legal. In section 3, THE ARITHMETIC THIS ROUND EXISTS
+      FOR: that the bucket LINE counts sum to the distinct-line total the same section states,
+      and that the bucket SITE counts sum to the production-site total, both reported as the
+      numbers you measured rather than as numbers this block names. A sum that does not match
+      its stated total is a RED gate — it is the defect round 74 shipped, and it is invisible to
+      every digest and byte-equality gate this workflow has. In section 4, that the risk set is
+      0 in BOTH units. In section 5, that every thin site's control is green and its mutation
+      red, that the summary reads as many proved as the thin set holds, and that every mutated
+      file reverted byte-identically; any one of those failing is a RED gate. On any red here,
+      stop and hand back. THE COLOUR OF SECTION 2's OWN SUITE RUN IS NOT A READING and is not a
+      red condition, per constraint 13.
   (d) Report `git status --porcelain` and `git worktree list` AFTER this gate.
 
 **G6 THE TREE DID NOT MOVE.**
 
   (a) Report the `git rev-parse` object id of `packages`, `apps`, `tests`, `docs` and `scripts`
-      at the base `0d47205d` and at C5, and whether each pair is EQUAL. This is the gate that
+      at the base `dac50bcd` and at C5, and whether each pair is EQUAL. This is the gate that
       proves G5's eleven mutations left nothing behind.
   (b) THE CANARY: `python3 -m pytest tests/cli/test_golden_path.py -q`, reporting the tail of
       its output and its real exit code.
@@ -250,7 +256,7 @@ to take a base reading.
   (a) `.agent/STOP` exists on disk: report the boolean. `git status --porcelain | cat -A`:
       report it literally. `git worktree list`: report every entry and their number, which is
       1, the primary checkout alone.
-  (b) The changed paths over `0d47205d`..C5: report how many, and report MISSING and EXTRA
+  (b) The changed paths over `dac50bcd`..C5: report how many, and report MISSING and EXTRA
       against the Change section's path set MINUS `.agent/handoff.md`, both of which are empty.
       That path is excluded by construction: every gate runs at C5 and C6 writes it, so a
       comparison including it is unmeetable for every possible round, and the reviewer measures
@@ -278,9 +284,9 @@ carries the line `SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE`
 REPORT that rule obliges was written in round 51's handback and STANDS — do not restate it.
 Push after C6.
 
-## SLICE PLAN74 — whole-file replacement of `.agent/plan.md`, applied at C1
+## SLICE PLAN75 — whole-file replacement of `.agent/plan.md`, applied at C1
 
-BEGIN PLAN74 sha256=38f8dd5538b9a33806e0119d1f8d7aa069c4a17da7fd2329e7da99054240f23c
+BEGIN PLAN75 sha256=262030673090ba31f14b401c7066fa2dc8b07440c29a0fa4fa1ec26117928816
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -296,14 +302,14 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 74 REPAIRS ROUND 73, WHICH FAILED. D47 discharged D45's precondition on a coverage
-reading taken inside a fresh worktree; re-run there it gives 23 unexecuted rather than 0,
-because a worktree has no built UI dist. The reading moves to the PRIMARY CHECKOUT, where the
-suite runs, and the question sharpens from "is the line executed" to "how many tests witness
-it": zero for none, exactly one for eleven, a median of seventeen, over 7065 site-and-test
-pairs. Each of the eleven thin sites is red-proved against its own single witness, mutating
-the ATTRIBUTE NODE the ruled set records rather than the first textual match. DECISION F275
-D48 corrects D47 by appending, never by rewriting.
+ROUND 75 CORRECTS DECISION F275 D48's THREE NUMERALS AND THE UNIT CONFUSION BEHIND THEM.
+Coverage resolves a context per LINE; the ruled set is keyed per SITE. Round 74's instrument
+printed a site count in one section and a line distribution in the next without naming either,
+so its buckets summed to fewer than its own site total. Both units are now printed with both
+sums visible: 175 sites on 166 lines, 9 sharing. D48's two load-bearing readings are the same
+in both units — the risk set is empty and the thin set is eleven lines carrying eleven sites,
+all eleven still red-proved — so the ruling stands and DECISION F275 D49 records the
+correction by appending. The round 74 verdict and its prose slips are booked.
 
 ## Next Steps
 
@@ -313,70 +319,60 @@ D48 corrects D47 by appending, never by rewriting.
 2. The resolver collapse DECISION F260 D5 places in T003, which DECISION F275 D37 names as
    the home of the id-SHAPE seam behind the three largest residue classes. Production code,
    so a SPLIT round with mutation red-proofs.
-3. THE FLIP, which D48 permits on D47's corrected footing, carrying D48's obligations: the
-   full suite is the backstop, and the eleven thin sites are named rather than averaged.
+3. THE FLIP, which D48 permits, carrying its obligations: the full suite is the backstop, and
+   the thin set is re-derived before the flip and any site that has dropped to zero witnesses
+   is a stop.
 4. Then the classic store, then the closure sequence.
 
 ## Risks
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
   split-and-close default BY NAME: a session writes the scope report and CONTINUES.
-- A MEASUREMENT TAKEN IN A WORKTREE IS A MEASUREMENT OF THAT WORKTREE. The UI dist and
-  `node_modules` are absent there, so any suite-wide reading taken in one is about the
-  environment. Round 73 shipped a decision on such a reading.
-- THE SUITE HAS ENVIRONMENT-SENSITIVE TESTS. A perf budget and a workspace-identity pair go
-  red or green by load under coverage, and pass in isolation. No gate may demand a green
-  full-suite run as its pass condition.
+- THE REVIEWER'S ERROR RATE IS THE LIVE RISK AND IT ROSE THIS SESSION: round 73 FAILED on
+  five reviewer defects, and rounds 72, 73 and 74 each landed stale or mis-united numerals a
+  WORKER found. Ten dated lines went into `.agent/prose_slips.md` across four rounds.
+- A UNIT IS PART OF A NUMBER. Coverage counts lines, the ruled set counts sites, and a
+  document that prints one and names the other is wrong even when its arithmetic is right.
 - The open set is 87 by distinct id, with `R-0880` open. Four are High — R-0803, R-0804,
   R-0806 and R-0807 — all F273's, per DECISION F272 D12.
-END PLAN74
+END PLAN75
 
-## SLICE RECORD74 — appended to `.agent/live_review.md` at C2
+## SLICE RECORD75 — appended to `.agent/live_review.md` at C2
 
-BEGIN RECORD74 sha256=33273af4a01f491a2f669cc570660bcb6fddb7f5ffc5a69719b701f0aa553920
-Gate: F275 R73 — the F275 round 73 entry. VERDICT FAIL. Written by the planner and reviewer of session 26 after reading the committed range `f8fbe3b6`..`0d47205d` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line below. It is booked here by the FIRST SUBSTANTIVE COMMIT of round 74, per operator amendment amend0827-process-diet rule 1. EVERY DEFECT BELOW IS THE REVIEWER'S. The worker followed the block exactly, landed all twelve commits in order, stopped where the block told it to stop, and surfaced four of the five defects itself with measurements; nothing it did contributed to this verdict.
+BEGIN RECORD75 sha256=94ccfc769116de12326463b8375618c3f8d7dd300e0361ebe1df2db1d8d868ec
+Gate: F275 R74 — the F275 round 74 entry. VERDICT PASS. Written by the planner and reviewer of session 26 after reading the committed range `0d47205d`..`dac50bcd` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line below. It is booked here by the FIRST SUBSTANTIVE COMMIT of round 75, per operator amendment amend0827-process-diet rule 1. The round repaired the round 73 FAIL and it repaired it in the right place: not by re-taking a reading in a better mood, but by moving the measurement to where the suite actually runs and sharpening the question it answers.
 
-WHAT THE TRANSPORT PROOF COVERS, STATED BEFORE THE FIGURES, per item 37 of §3. G1 is the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback, and the chain it walks is the reviewer's own scratch original, the committed `.agent/authored/` blob and the working copy — three artefacts, of which the first is the reviewer's and the other two the worker's. It does not and cannot establish what bytes the worker RECEIVED. All five authored blobs are byte-identical to the reviewer's originals — the block at 36880 bytes, the artefact at 12291, the owner-check stage carrier at 24929, instrument A's carrier at 8095 and instrument B's at 8661 — and `.agent/last_block.md` equals the block blob. Four slices matched the sha256 on their own BEGIN markers, the block re-measures at 362 lines TOTAL and 286 PROSE as its constraint 8 states, it carries zero repeated-character lines, and all three `.py.md` carriers round-trip through their own fence byte for byte.
+WHAT THE TRANSPORT PROOF COVERS, STATED BEFORE THE FIGURES, per item 37 of §3. G1 is the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback, and the chain it walks is the reviewer's own scratch original, the committed `.agent/authored/` blob and the working copy. It does not and cannot establish what bytes the worker RECEIVED. All three authored blobs are byte-identical to the reviewer's originals — the block at 38127 bytes, the artefact at 9578 and the witness-instrument carrier at 12539 — and `.agent/last_block.md` equals the block blob. Four slices matched the sha256 on their own BEGIN markers, the block re-measures at 382 lines TOTAL and 299 PROSE as its constraint 8 states, it carries zero repeated-character lines, and the carrier round-trips through its own fence byte for byte.
 
-WHAT WAS RIGHT, AND IT IS MOST OF THE ROUND. G2: `.agent/plan.md` byte-identical to PLAN73 at 2837 bytes over 47 lines. G3: the three appends each exact under reader A with the slice an exact suffix after one newline, reader B holding at N counted from the slice as 6, 3 and 7, and all three of the reviewer's negative controls on the FIRST appended paragraph REJECTED by both readers. G4: the artefact byte-identical to the C0b blob and absent at the base. G8: eleven changed paths with MISSING and EXTRA empty and zero production paths, the open set 87 with identical membership at the base, at C5 and at the tip, and `R-0880` open at each. G5 reproduced in full from the committed carriers: `--narrow` still equals the round 71 figures class for class, the shipped stage's 1874 decisions are ZERO undecided and ZERO different under Rule H, the contradicted site lists are identical, and 47 sites move out of the blind spot as confirmations. Every substantive numeral of the round reproduced.
+THE THREE GATES ROUND 73 DROPPED WERE RESTORED AND ALL THREE HOLD, which is the half of this round that answers the previous verdict directly. The artefact's 24 quoted lines all appear in the instrument's output, the matching is monotone with indices strictly increasing, zero lines are unmatchable, and the count of quoted lines carrying a wall-clock duration is ZERO — the defect that made round 73 a FAIL, now stated as a gate and measured at nothing. G2: `.agent/plan.md` byte-identical to PLAN74 at 48 lines against the cap of 50. G3: the three appends each exact under reader A with the slice an exact suffix after one newline, reader B holding at N counted from the slice as 9, 4 and 6, and all three of the reviewer's negative controls on the FIRST appended paragraph REJECTED by both readers; C4's deletion column is 0, so DECISION F275 D47 is corrected by APPEND and not rewritten, which is the property the round was built around. G4: the artefact byte-identical to the C0b blob, absent at the base, every commit staging exactly ONE path with insertions peaking at 382 and none at or over the 500 cap — the round 73 overage is not repeated. G6 and G7: five top-level trees byte-identical across the round's eleven mutations, `git status --porcelain` the empty string, one worktree, nine changed paths with MISSING and EXTRA empty and zero production paths, and the open set 87 with identical membership at the base, at C5 and at the tip with `R-0880` open at each.
 
-THE FIRST DEFECT IS THAT THE ARTEFACT QUOTES OUTPUT THAT DOES NOT REPRODUCE. Nine of its fifty-one quoted lines have no stripped-equal line in the worker's own run of the same instrument, and one of the nine — `18416 passed, 23 skipped, 1 warning in 222.78s (0:03:42)` — carries a WALL-CLOCK DURATION and therefore cannot reproduce in any run by any worker on any machine. A document whose evidentiary claim is "these are verbatim excerpts" is false for those nine lines. This is the class that cost round 69 a FAIL, arriving through a quoted duration rather than a stale blob.
+G5 CARRIED THE ROUND. The measurement moved into the PRIMARY CHECKOUT, where `apps/ui/node_modules` and a built dist exist and the `ui_server` suite can run at all, and `git status --porcelain` reads empty immediately after the coverage pass, which is what makes that legal under G5 of the protocol: a coverage run writes no tracked file. The question moved from "is the line executed" to "how many tests witness it", which is answerable for every refused site at once instead of by spot-check. The risk set — refused and witnessed by nothing — is EMPTY. The thin set is ELEVEN, and every one of the eleven is red-proved individually against its own single witness: eleven controls green, eleven mutations red, every file reverted byte-identically. The probe mutates the ATTRIBUTE NODE the ruled set records rather than the first textual match, which a draft of the same instrument got wrong at `packages/orchestration/verifier.py`, where the first textual `.id` sits inside an f-string literal and a naive replace edited a message instead of an attribute access — that draft read 10 of 11 and the defect was the instrument's, not the repository's.
 
-THE SECOND DEFECT IS WHY NOTHING CAUGHT THE FIRST. Round 72's block ordered the artefact's every indented line checked against the instrument's output, the matching checked as monotone, and every prose figure swept and classified. Round 73's block ordered none of those three. The gate that would have seen the defect was dropped by the reviewer between one round and the next, on the same branch, for an artefact of the same kind.
+AND THE ROUND'S OWN GATE SET NOW REFUSES TO DEMAND A COLOUR IT CANNOT GUARANTEE. Round 73 made a green full-suite control a pass condition and went red on a load-sensitive perf test. This block states in its own text that no gate demands a green whole-suite run, names why — this suite has at least three environment-sensitive tests, a wall-clock perf budget and a workspace-identity pair, each observed red in one invocation and green in the next and passing in isolation — and states the bias that makes the colour unnecessary: a failing test executes FEWER lines, so it can only UNDERSTATE a witness count, which makes the risk and thin sets too large rather than too small.
 
-THE THIRD DEFECT IS A GATE THAT CANNOT RELIABLY PASS. G6(b) made a GREEN control run a pass condition, while the same block's PLAN73 risk bullet, its DEC73 CONSEQUENCE paragraph and instrument B's own docstring all state that a fresh worktree is NOT green and that its failures are SUBTRACTED rather than required to be absent. The control went red on one wall-clock perf test that the round's own artefact names as load-sensitive, so the worker stopped, as ordered, on a gate the block contradicted three times over. Item 33 of §3 names this shape and DECISION F275 D45 named it in this very feature.
+THREE NUMERALS OF THE REVIEWER'S DID NOT REPRODUCE, AND THE WORKER FOUND THEM BY ARITHMETIC RATHER THAN BY READING. DEC74 says the distribution runs "over all 176 at once", gives "98 by ten or more" and totals "7065 site-and-test pairs"; PLAN74 repeats the last. The instrument reports 175 production sites, 97 in that bucket and 6966 pairs. The cause is a unit the reviewer never named: coverage resolves a context per LINE while the ruled set is keyed per SITE, and nine of the 175 sites share a line with another, so round 74's banner counted sites in one section and lines in the next and its buckets summed to 166. The worker applied both slices as written, as constraint 1 requires, and declared the discrepancy with the arithmetic that shows it. THE READINGS DECISION F275 D48 ACTUALLY RESTS ON ARE THE SAME IN BOTH UNITS — the risk set is empty either way, and the eleven thin LINES carry exactly eleven SITES — so the ruling stands and round 75 corrects the numerals by appending DECISION F275 D49 rather than by rewriting a landed paragraph. Two dated lines in `.agent/prose_slips.md` and no id, per amend0827-process-diet rule 2: nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong.
+END RECORD75
 
-THE FOURTH DEFECT IS THAT THE MEASUREMENT ITSELF DOES NOT REPRODUCE, AND IT IS THE ONE THAT MATTERS. Re-run by the reviewer at this round's base, round 73's instrument B read 23 refused production sites UNEXECUTED and 126 control failures, where the round's own run read 0 and 0. A `git worktree` carries no `apps/ui/node_modules` and no built dist, so the `ui_server` suite fails there and never reaches the `ui_server` lines; round 73's worktree had been warmed by an earlier invocation and the next was not. DECISION F275 D47 discharged DECISION F275 D45's precondition on the reading that moved. A measurement taken in an environment the suite cannot run in is a measurement of that environment.
+## SLICE SLIPS75 — appended to `.agent/prose_slips.md` at C3
 
-THE FIFTH IS THAT C0c LANDED AT 529 INSERTIONS, over AGENTS.md's 500-line cap, because the reviewer authored a 529-line carrier and never counted it. The worker declared it with an inseparability reason and MEASURED that it is the only such commit in F275 — of 603 commits since the fork point, five exceed 500, two being `main` merges and three being `.agent/handoff.md` rewrites that DECISION F104 D1 exempts entirely — so the once-per-feature exception AGENTS.md's Commit Discipline allows is correctly invoked and is now SPENT for this feature. That is the honest disposition: the commit stands, and no second oversize commit may be declared in F275.
+BEGIN SLIPS75 sha256=5b80d81a839e0313d36f4e7189c6150d70937220f6fb1086074f0500449a37f9
+2026-09-12 · F275 R74 · The round 74 DEC74 slice states that the witness distribution runs "over all 176 at once", gives "98 by ten or more" and totals "7065 site-and-test pairs", and PLAN74 repeats the last; the committed instrument reports 175 production sites, 97 in that bucket and 6966 pairs. The three numerals are the reviewer's stale copies from a DISCARDED draft of that instrument, which derived its refusal set from round 72's decision map rather than from the shipped Rule H stage. The artefact was corrected to the shipped guard's figures and the decision and the plan were not, so the round landed a document that reproduces beside two that do not. THE RULE THAT FOLLOWS: when an instrument is re-pointed at a different input, every authored text of that round is re-swept against its NEW output before emission, not only the one the gate checks — a figure sweep that covers the gated artefact and nothing else leaves the decision, which is the append-only half, unprotected.
 
-LAST_REVIEWED_SHA DOES NOT ADVANCE. Round 74 is the repair: it moves the coverage reading to the primary checkout, replaces "is the line executed" with "how many tests witness it", red-proves every thin site against its own witness, restores the artefact transcript and figure gates, and corrects D47 by appending DECISION F275 D48 rather than by rewriting a landed paragraph. No finding id is minted: every defect above sits in `.agent/` prose or in a reviewer-authored gate, and amend0827-process-diet rule 2 reserves an id for a defect with product effect on disk.
-END RECORD74
+2026-09-12 · F275 R74 · The deeper cause of the numerals above is a UNIT the round 74 instrument never named. Coverage resolves a context per LINE; the ruled set is keyed per SITE — path, line, column and attribute — and nine of the 175 refused production sites share a line with another. The instrument printed a site count in its first section and a line distribution in its third, calling both by the same word, so its buckets summed to 166 against a stated total of 175, and DECISION F275 D48 restated the two as one number. The worker found it by adding the buckets up, which is a check the prose could not pass by accident. Nothing on disk is wrong beyond the numerals, because the two readings D48 rests on are identical in both units: the risk set is empty either way, and the eleven thin LINES carry exactly eleven SITES. THE RULE THAT FOLLOWS: a banner that reports a distribution prints the SUM of its own buckets beside the total it claims to partition, and every count states the unit it is in, because a wrong unit is invisible to every digest, byte-equality and transcript gate this workflow has — only arithmetic sees it.
+END SLIPS75
 
-## SLICE SLIPS74 — appended to `.agent/prose_slips.md` at C3
+## SLICE DEC75 — appended to `.agent/decisions.md` at C4
 
-BEGIN SLIPS74 sha256=a9caa25d73b203073868cb4b58bbd44031437bbf7d3ed2046bd7cb472d812471
-2026-09-12 · F275 R73 · The round 73 artefact quoted a pytest summary line — `18416 passed, 23 skipped, 1 warning in 222.78s (0:03:42)` — into a document whose provenance clause claims every indented line is a verbatim excerpt of an instrument's output. That line carries a WALL-CLOCK DURATION, so it cannot reproduce in any run, on any machine, ever; nine of the artefact's fifty-one quoted lines failed to reproduce in the worker's own execution and this one is unreproducible by construction. THE RULE THAT FOLLOWS: an instrument that feeds a quoted artefact returns the REPRODUCIBLE part of a tool's output and never the tool's own summary line — parse the counts out and print those — because a duration, a timestamp, a temporary path and a process id are all of that class, and a document that quotes one has made a claim no gate can ever satisfy.
+BEGIN DEC75 sha256=ea708b73fc634b90043b1a12a79bdf6b3e46fcc4052ee7bd95765d87918f38c9
+## DECISION F275 D49 (2026-09-12, F275 round 75) — DECISION F275 D48's three descriptive numerals are CORRECTED by appending, the SITE-versus-LINE unit is now printed by the instrument, and D48's ruling is unchanged because the readings it rests on are the same in both units
 
-2026-09-12 · F275 R73 · The round 72 block ordered three checks over its artefact — every indented line checked against the instrument's output, the matching checked as MONOTONE, and every prose figure swept and classified against a declared list of kinds — and the round 73 block, on the same branch and for an artefact of the same kind, ordered none of them. The defect above was therefore invisible to every gate the round ran, and the worker reported eight deviations without being able to see it. THE RULE THAT FOLLOWS: the gate set of a round that ships an artefact of a kind already shipped is DIFFED against the gate set of the round that shipped the last one, and any gate dropped is either restored or the block says why in its own text. A gate that exists only in a previous block is a gate that protects only a previous round.
+CONTEXT. DECISION F275 D48 discharged DECISION F275 D45's precondition on a witness measurement and described it as "a distribution over all 176 at once", with "98 by ten or more" and "7065 site-and-test pairs". The committed instrument reports 175 production sites, 97 lines in that bucket and 6966 pairs. Two things went wrong and only one of them is a numeral. The three figures were stale copies from a DISCARDED draft of that instrument, which derived its refusal set from round 72's decision map rather than from the shipped Rule H stage; the artefact was corrected to the shipped guard and the decision was not. Underneath that sits a UNIT the instrument never named: coverage resolves a context per LINE, the ruled set is keyed per SITE — path, line, column and attribute — and nine of the 175 refused production sites share a line with another, so one banner counted sites and the next counted lines under the same word, and the buckets summed to 166 against a stated 175.
 
-2026-09-12 · F275 R73 · The round 73 block's G6(b) made a GREEN full-suite control run a pass condition and a non-green control an explicit RED, while the same block's PLAN73 risk bullet, its DEC73 CONSEQUENCE paragraph and instrument B's own docstring all stated that a fresh worktree is NOT green and that its failures are SUBTRACTED rather than required to be absent. The control went red on a single wall-clock perf test that the round's own artefact names as load-sensitive, and the worker stopped on a gate its own block contradicted three times over. Item 33 of `docs/agents/planner_reviewer_prompt.md` §3 names this shape, and DECISION F275 D45 named it inside this very feature two rounds earlier. THE RULE THAT FOLLOWS: a gate over a whole-suite run asserts a property of the DIFFERENCE between two runs, never the colour of one of them, because a suite with any environment-sensitive test has no colour that a gate can demand — and this suite has at least three, a perf budget and a workspace-identity pair, each observed red in one invocation, green in the next, and passing in isolation.
+CHOSEN. (1) THE CORRECTED FIGURES, measured by this round's instrument at its own base and stated here once: the shipped guard refuses 277 ruled sites, of which 102 are in test files and 175 are production sites; those 175 sit on 166 DISTINCT LINES, with 9 sites sharing a line with another; the witness buckets are 0 lines carrying 0 sites, 11 lines carrying 11 sites, 58 lines carrying 60 sites, and 97 lines carrying 104 sites; the bucket sums are 166 lines and 175 sites, both printed; the median is 17 witnesses per LINE; and the total is 6966 LINE-and-test pairs, which is what the instrument has always computed and D48 called site-and-test pairs. (2) THE INSTRUMENT NOW PRINTS THE UNIT ON EVERY COUNT and prints both bucket sums beside the totals they partition, so the arithmetic that exposed this is visible in the output rather than left to a reader. (3) D48 IS NOT REWRITTEN. The record is append-only, item 20 of `docs/agents/planner_reviewer_prompt.md` §3 forbids repairing a landed sentence, and a dated correction beside a wrong paragraph is worth more to a later reader than a clean paragraph with no history. (4) D48's RULING IS UNCHANGED, and this is a measurement rather than a concession: the risk set is empty in BOTH units, and the eleven thin LINES carry exactly eleven SITES, so "the eleven thin sites" was right as written and all eleven remain red-proved against their own single witnesses. The discharge of D45's precondition therefore stands on the readings it actually rests on, and the corrected numerals were descriptive throughout.
 
-2026-09-12 · F275 R73 · The round 73 block ordered a carrier the reviewer had authored at 529 lines into a single commit, under AGENTS.md's Commit Discipline cap of 500 INSERTIONS, and the reviewer never counted it: the block's own G4 orders every commit's insertions reported "under 500" and C0c could not meet it. The worker declared the overage with an inseparability reason and measured that it is the only such commit in F275, so the once-per-feature exception is correctly invoked and is now SPENT. THE RULE THAT FOLLOWS: every authored blob a block orders into a commit is counted in LINES against the 500-insertion cap at emission, in the same sweep that counts the block itself, because a new file's line count IS its commit's insertion count and the reviewer already has the bytes on disk.
-END SLIPS74
+ALTERNATIVES CONSIDERED. Retracting D48 and re-ruling from scratch was rejected: nothing it rests on moved, and a retraction would tell a later reader that the ruling was unsound when only its scenery was. Leaving the numerals uncorrected as a prose slip was rejected for the opposite reason — a slip line is the right vehicle for a miscount that damaged nothing, and these numerals sit in the append-only record where the next reader will take them as measured. Both are recorded: the slip lines carry the lesson, this decision carries the figures.
 
-## SLICE DEC74 — appended to `.agent/decisions.md` at C4
+CONSEQUENCE, AND IT IS SMALL BY DESIGN. Nothing about the flip round's obligations changes: the full suite remains the backstop, and the thin set is still re-derived before the flip with any site fallen to zero witnesses treated as a stop. What changes is that the thin set is now expressed in both units wherever it is stated, because a set of lines and a set of sites can diverge even when they do not happen to here. `R-0880` STAYS OPEN and the guard is still silent on 277 sites. Nothing here touches the id-SHAPE seam DECISION F275 D37 routed into T003's resolver collapse, which is production work no round has started.
 
-BEGIN DEC74 sha256=248674db62844db80efd1cecd635bfb1560fbb11f6b96ee02dbdfad225725482
-## DECISION F275 D48 (2026-09-12, F275 round 74) — DECISION F275 D47 rested on a reading that does not reproduce, and is CORRECTED by appending rather than rewritten; the residual is ruled acceptable again, on a witness measurement taken where the suite actually runs
-
-CONTEXT, AND IT IS A CORRECTION. DECISION F275 D47 discharged DECISION F275 D45's precondition on the flip round by measuring that all 176 refused production sites are executed by the suite and that the unexecuted set is zero. That measurement was taken inside a fresh `git worktree`. Re-run by the reviewer at this round's base, the identical instrument in the identical kind of worktree reads 23 sites UNEXECUTED and 126 control failures: a worktree carries no `apps/ui/node_modules` and no built dist, so the `ui_server` suite fails there and never reaches the `ui_server` lines, and round 73's worktree had been warmed by an earlier invocation while the next one was not. D47's central reading is therefore a property of an environment rather than of the tree. D47 IS NOT REWRITTEN — the record is append-only and a dated correction is how it stays honest — and this decision supersedes its CHOSEN paragraph (3) and its discharge of D45.
-
-CHOSEN. (1) THE COVERAGE READING MOVES TO THE PRIMARY CHECKOUT, where the suite actually runs. This is not a guardrail violation: `docs/agents/self_drive_protocol.md` G5 isolates DESTRUCTIVE verification, and a coverage run writes no tracked file — `.coverage` is gitignored and the instrument reports `git status --porcelain` afterwards to prove it. Mutations still happen only inside a disposable worktree. (2) THE QUESTION IS SHARPENED FROM EXECUTION TO WITNESS. "Is the line executed" cannot distinguish a site one test reaches from a site forty tests reach, and D47 could only name that difference as an unmeasured caveat after spot-checking two sites. Coverage records WHICH test executed each line, so the reading is now a distribution over all 176 at once: ZERO sites are witnessed by no test, ELEVEN by exactly one, 58 by two to nine and 98 by ten or more, at a median of seventeen and 7065 site-and-test pairs in total. (3) EVERY THIN SITE IS RED-PROVED INDIVIDUALLY rather than averaged into a reassurance. Each of the eleven has its single witness run unmutated in a worktree and then run again with the flip's own rename applied to that exact site: eleven controls green, eleven mutations red, every file reverted byte-identically. (4) THE PROBE MUTATES THE ATTRIBUTE NODE, NOT THE FIRST TEXTUAL MATCH, and this is recorded because a draft got it wrong: at `packages/orchestration/verifier.py` the first textual `.id` on the ruled line sits inside an f-string LITERAL, so a naive replace edited a message rather than an attribute access, the witness stayed green, and the site read as the one unguarded member of the thin set. Located instead by the line, the byte column and the attribute name the ruled set already records, the reading goes from 10 of 11 to 11 of 11. (5) THE RESIDUAL IS RULED ACCEPTABLE at 277 sites under Rule H, on this footing rather than D47's.
-
-WHAT THIS RULING NOW OBLIGES THE FLIP ROUND TO DO, AND IT IS MORE THAN D47 ASKED. The full suite remains the backstop and must be read for its failures rather than its exit code. In addition, THE ELEVEN THIN SITES ARE CARRIED BY NAME into the flip round rather than as a percentage: a witness set of size one is a fact about today's suite, not a property of the code, so the flip round re-derives the thin set before it flips and treats any site that has dropped to zero witnesses as a stop. Nothing in this decision claims the residual is empty; `R-0880` STAYS OPEN and the guard is still silent on all 277.
-
-ALTERNATIVES CONSIDERED. Rewriting D47 was rejected outright — the record is append-only, item 20 of `docs/agents/planner_reviewer_prompt.md` §3 forbids repairing a landed sentence, and a dated correction beside a wrong paragraph is worth more to a later reader than a clean paragraph with no history. Re-taking the round 73 measurement in a worktree made usable, by copying `apps/ui/node_modules` in with symlinks preserved, was considered and rejected as the more expensive way to a weaker answer: 305 MB and 44839 entries per run, to reproduce an environment the primary checkout already is. Withholding any ruling until the guard decides every site was rejected for the reason D45 itself gave — the remaining classes cannot be reached by binding rules, so that condition is unreachable and would block the flip forever.
-
-HOW TO REVERSE. Delete this paragraph block; D47 then stands alone, and with it the reading this decision has shown does not reproduce, so the flip would be proceeding on an environment's accident. Every figure above is re-derivable by the committed instrument `.agent/authored/f275-r74-witness.py.md` at this round's base, except the two this decision explicitly attributes elsewhere: the 23 and the 126 come from the reviewer's re-run of round 73's own instrument, and the 10 of 11 comes from the discarded draft described in CHOSEN (4).
-END DEC74
+HOW TO REVERSE. Delete this paragraph block; D48 then stands alone with three numerals that its own instrument contradicts, and the unit distinction returns to being invisible. Every figure above is re-derivable by the committed instrument `.agent/authored/f275-r75-witness.py.md` at this round's base, except the three this decision QUOTES from D48 in order to correct them, which come from D48 itself.
+END DEC75
