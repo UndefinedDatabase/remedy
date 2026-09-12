@@ -449,7 +449,7 @@ def _cmd_project_adopt(
     resolved_id = resolve_job_id(job_id_str)
 
     try:
-        job = load_job(UUID(resolved_id))
+        job = load_job(resolved_id)
     except JobNotFoundError:
         print(f"Error: job not found: {resolved_id[:8]}", file=sys.stderr)
         sys.exit(3)
