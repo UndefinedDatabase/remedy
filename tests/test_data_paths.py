@@ -239,6 +239,83 @@ class TestResolveJobId:
         assert data_paths.resolve_job_id is data_paths.resolve_any_job_id
 
 
+class TestLookupJobId:
+    """F275 T003: the RAISING form of the resolver, for handlers that guard their parse."""
+
+    def test_an_unmatched_prefix_raises_not_found_which_is_a_value_error(
+        self, monkeypatch, tmp_path
+    ):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import JobIdNotFound, lookup_job_id
+        (tmp_path / "jobs").mkdir(parents=True)
+        with pytest.raises(JobIdNotFound):
+            lookup_job_id("deadbeef")
+        # A handler's existing ``except ValueError`` guard must catch it.
+        with pytest.raises(ValueError):
+            lookup_job_id("deadbeef")
+
+    def test_a_non_hex_string_raises_invalid(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import JobIdInvalid, lookup_job_id
+        with pytest.raises(JobIdInvalid):
+            lookup_job_id("not-a-hex")
+
+    def test_an_ambiguous_prefix_raises_with_the_sorted_matches(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import JobIdAmbiguous, lookup_job_id
+        jobs_path = tmp_path / "jobs"
+        jobs_path.mkdir(parents=True)
+        for job_id in (
+            "aaaa1111-0000-0000-0000-000000000002",
+            "aaaa1111-0000-0000-0000-000000000001",
+        ):
+            (jobs_path / f"{job_id}.json").write_text(json.dumps({"id": job_id}))
+        with pytest.raises(JobIdAmbiguous) as exc_info:
+            lookup_job_id("aaaa1111")
+        assert exc_info.value.matches == [
+            "aaaa1111-0000-0000-0000-000000000001",
+            "aaaa1111-0000-0000-0000-000000000002",
+        ]
+
+    def test_resolve_job_id_keeps_its_exit_codes_and_its_exact_messages(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import resolve_job_id
+        (tmp_path / "jobs").mkdir(parents=True)
+        with pytest.raises(SystemExit) as exc_info:
+            resolve_job_id("not-a-hex")
+        assert exc_info.value.code == 1
+        assert capsys.readouterr().err == "Error: invalid job ID: 'not-a-hex'\n"
+        with pytest.raises(SystemExit) as exc_info:
+            resolve_job_id("deadbeef")
+        assert exc_info.value.code == 1
+        assert capsys.readouterr().err == "Error: no job matches prefix 'deadbeef'\n"
+
+
+class TestRoutedHandler:
+    """A handler routed through ``lookup_job_id`` accepts what its ``UUID(...)`` parse refused."""
+
+    def test_a_routed_handler_accepts_a_short_classic_prefix(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.guide import _cmd_guide_job
+        from packages.core.models import Job
+        from packages.orchestration.storage import save_job
+        job = Job(id=uuid4(), name="routed-handler")
+        save_job(job)
+        exit_code = None
+        try:
+            _cmd_guide_job(str(job.id)[:8], json_output=True)
+        except SystemExit as exc:
+            exit_code = exc.code
+        captured = capsys.readouterr()
+        assert "invalid job ID" not in captured.err
+        assert exit_code is None
+        json.loads(captured.out)
+
+
 class TestSingleReaderInvariant:
     """Verify data_paths.py is the only production Python file reading REMEDY_DATA_DIR."""
 
