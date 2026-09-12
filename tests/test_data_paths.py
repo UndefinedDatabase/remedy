@@ -11,9 +11,12 @@ Verifies:
 
 from __future__ import annotations
 
+import contextlib
+import importlib
 import json
 import re
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -314,6 +317,112 @@ class TestRoutedHandler:
         assert "invalid job ID" not in captured.err
         assert exit_code is None
         json.loads(captured.out)
+
+    class _LoadJobReached(Exception):
+        """Raised by the ``load_job`` spy, so a handler stops right after its load."""
+
+    def _spy_on_load_job(self, monkeypatch) -> list[str]:
+        """Replace the storage ``load_job`` with a spy recording ``str()`` of each id it is handed.
+
+        The handlers import ``load_job`` inside the function, so the module attribute
+        is the one they read at call time.
+        """
+        from packages.orchestration import storage
+
+        seen: list[str] = []
+
+        def spy(job_id, *args, **kwargs):
+            seen.append(str(job_id))
+            raise self._LoadJobReached(str(job_id))
+
+        monkeypatch.setattr(storage, "load_job", spy)
+        return seen
+
+    @pytest.mark.parametrize(
+        ("module_name", "handler_name", "extra_args"),
+        [
+            pytest.param("review_cmd", "_cmd_review_run", None, id="review-run"),
+            pytest.param("review_cmd", "_cmd_review_list", None, id="review-list"),
+            pytest.param("review_cmd", "_cmd_review_accept", None, id="review-accept"),
+            pytest.param("review_cmd", "_cmd_review_reject", None, id="review-reject"),
+            pytest.param("memory", "_cmd_memory_candidates", (), id="memory-candidates"),
+            pytest.param("memory", "_cmd_memory_approve_candidate", ("cand-1",), id="memory-approve"),
+            pytest.param("memory", "_cmd_memory_reject_candidate", ("cand-1",), id="memory-reject"),
+            pytest.param("repo", "_cmd_commit_readiness", (), id="commit-readiness"),
+        ],
+    )
+    def test_a_loading_handler_hands_load_job_the_id_a_short_prefix_resolves_to(
+        self, monkeypatch, tmp_path, module_name, handler_name, extra_args
+    ):
+        """F275 R86: each handler loads what ``lookup_job_id`` resolves, not a ``UUID(...)`` parse.
+
+        ``extra_args`` is ``None`` for a handler taking an ``argparse`` namespace, and
+        otherwise the positional arguments that follow the job id.
+        """
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        full_id = "abcd1234-0000-0000-0000-000000000001"
+        jobs_path = tmp_path / "jobs"
+        jobs_path.mkdir(parents=True)
+        (jobs_path / f"{full_id}.json").write_text(json.dumps({"id": full_id}))
+        seen = self._spy_on_load_job(monkeypatch)
+        handler = getattr(importlib.import_module(f"apps.cli.commands.{module_name}"), handler_name)
+        with contextlib.suppress(self._LoadJobReached, SystemExit):
+            if extra_args is None:
+                handler(SimpleNamespace(job_id="abcd1234", recommendation_id="rec-1"))
+            else:
+                handler("abcd1234", *extra_args)
+        assert seen == [full_id]
+
+    def test_project_readiness_hands_a_stored_pingpong_id_to_load_job(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """A ping-pong id a project stores reaches ``load_job`` instead of dying in a ``UUID(...)`` parse."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.readiness import _cmd_readiness_project
+        from packages.orchestration.data_paths import jobs_dir, mint_job_id
+        from packages.orchestration.project_registry import RemyProject, save_project
+        job_id = mint_job_id()
+        record_dir = jobs_dir() / job_id
+        record_dir.mkdir(parents=True)
+        (record_dir / "job.json").write_text(json.dumps({"id": job_id}))
+        project = RemyProject(name="pingpong-readiness", job_ids=[job_id])
+        save_project(project)
+        seen = self._spy_on_load_job(monkeypatch)
+        _cmd_readiness_project(str(project.id), json_output=True)
+        assert seen == [job_id]
+
+    def test_attaching_by_short_prefix_stores_the_full_job_id(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """``project attach-job`` files the id it resolved, never the prefix it was typed as."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.project import _cmd_attach_project_job
+        from packages.core.models import Job
+        from packages.orchestration.project_registry import RemyProject, load_project, save_project
+        from packages.orchestration.storage import save_job
+        job = Job(id=uuid4(), name="attach-by-prefix")
+        save_job(job)
+        project = RemyProject(name="attach-by-prefix")
+        save_project(project)
+        short = str(job.id)[:8]
+        _cmd_attach_project_job(str(project.id), short)
+        assert load_project(project.id).job_ids == [str(job.id)]
+        assert f"Attached job {short} " in capsys.readouterr().out
+
+    def test_stopping_by_an_unhyphenated_id_files_the_stop_under_the_canonical_id(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """``job stop``'s loader loads the id as given, so its caller normalises an unhyphenated one."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.job_stop_cmd import _cmd_job_stop
+        from packages.core.models import Job
+        from packages.orchestration.safe_points import stop_requested
+        from packages.orchestration.storage import save_job
+        job = Job(id=uuid4(), name="stop-by-hex")
+        save_job(job)
+        _cmd_job_stop(job.id.hex)
+        assert stop_requested(str(job.id)) is not None
+        assert stop_requested(job.id.hex) is None
 
 
 class TestSingleReaderInvariant:
