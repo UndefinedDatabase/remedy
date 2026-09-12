@@ -13,25 +13,24 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 69 RESOLVES `R-0879` by LANDING the fix that had been sitting in scratch since round
-59, and by closing the gap round 68's control walked through. Both of the finding's halves
-are now committed authored texts and each is demonstrated beside the case that must fail: the
-re-key stage recovers 2198 of 2198 sites against the line key's 2144 and refuses at exit 3
-with no output written when one enclosing scope is renamed; the transform gains the same
-refusal, lands the same 6091 rewrites over the same 263 files when its set is whole, and on
-the round 53 stale set names all five files, exits 4 and modifies ZERO files. That file count
-against 263 is the discriminator. The round 68 verdict and its two prose slips are booked.
-No production line moves.
+ROUND 70 REPAIRS ROUND 69's RED GATE AND CARRIES `R-0880`'s FIRST OBLIGATION BESIDE IT. Round
+69 landed an instrument blob that cannot reproduce five of the 34 lines its artefact quotes,
+because the carrier was generated before two banners were added to the source and never
+regenerated; the artefact was right and the blob was stale. This round lands a corrected blob
+and reproduces the defect against the stale one, reading 5 lines absent against 0. `R-0879`
+stays RESOLVED — the defect is in the evidence's carrier, not in the evidence. Beside that,
+the static bound `R-0880` asks for: over 994 files and 71 record classes it confirms 1010 job
+and 157 task reads, finds FOUR over-selected sites in two classes already on that finding's
+list, and REFUSES 973, which is the honest half of the reading. No production line moves.
 
 ## Next Steps
 
-1. `R-0880`, the MIRROR finding, and both its obligations are unbuilt: bound the
-   over-selection STATICALLY by reading every ruled site's owner verdict against the live
-   record classes, and give the transform a second refusal for a site whose owner cannot be
-   confirmed against the receiver's own record.
-2. Re-run the flip's dry run against the re-keyed set and the round 67 plain re-derivation
-   together, which is the first reading of what both corrections cost in FAILURES rather
-   than in sites.
+1. `R-0880`'s SECOND obligation, now stated in tractable terms: a refusal keyed on a method
+   that refuses 973 of 2198 sites would stop every run, so it must fire only on the sites the
+   static pass CONFIRMS, or rest on a procedure with a far smaller refusal set.
+2. Re-run the flip's dry run against the corrected inputs of rounds 67 and 69 together — the
+   plain re-derivation and the re-keyed set — which is the first reading of what both
+   corrections cost in FAILURES rather than in sites.
 3. The resolver collapse DECISION F260 D5 places in T003, which DECISION F275 D37 names as
    the home of the id-SHAPE seam behind the three largest residue classes. Production code,
    so a SPLIT round with mutation red-proofs.
@@ -41,9 +40,10 @@ No production line moves.
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
   split-and-close default BY NAME: a session writes the scope report and CONTINUES.
-- The guard this round lands has NO test in `tests/` behind it, because the flip is unlanded
+- THE REVIEWER'S ERROR RATE THIS SESSION IS THE LIVE RISK: two wording slips in round 68 and
+  a shipped artefact-and-instrument mismatch in round 69, all three caught by the worker
+  rather than by the reviewer's own pre-emission sweep.
+- The guard round 69 landed has NO test in `tests/` behind it, because the flip is unlanded
   and there is no production surface to pin it to. A later round may delete it unnoticed.
-- The flip's one declared-oversize allowance is still UNSPENT, and the largest residue class
-  is production work in T003 that no round has started.
-- The open set is 87 by distinct id once `R-0879` resolves, with `R-0880` still open. Four
-  are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+- The open set is 87 by distinct id, with `R-0880` open. Four are High — R-0803, R-0804,
+  R-0806 and R-0807 — all F273's, per DECISION F272 D12.
