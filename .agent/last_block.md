@@ -1,84 +1,83 @@
-── STEP T003 / round 69 — F275 ────────────────────────────────
-Goal:        Resolve finding `R-0879` by building the half of it nothing had built, and land
-             the instrument that half belongs to. The re-key was landed at round 59 and this
-             round measures that rather than assuming it; what was missing is that the
-             refusal guarded the STAGE's output while the finding names the TRANSFORM, and
-             that the transform had never been committed at all — a tracked-file sweep for
-             its name returns the empty list, so every flip dry run from round 46 to round 68
-             ran a file existing only in gitignored scratch. The transform gains the refusal
-             and is landed as TWO authored blobs that rejoin byte for byte, split only
-             because one blob would exceed the insertion cap. Both halves are demonstrated
-             beside the case that must fail: 2198 against the line key's 2144 and exit 3 with
-             no output written; 263 files rewritten against ZERO modified on the stale set.
-             The round 68 verdict and its two prose slips are booked. NO LINE UNDER
+── STEP T003 / round 70 — F275 ────────────────────────────────
+Goal:        Repair round 69's red gate and carry finding `R-0880`'s FIRST obligation beside
+             it. Round 69 landed an instrument blob that cannot reproduce five of the 34
+             lines its artefact quotes, because the `.md` carrier was generated before two
+             banners were added to the source and never regenerated; the artefact was right
+             and the blob was stale. This round lands a corrected blob and REPRODUCES the
+             defect against the stale one, reading 5 lines absent against 0 over the same
+             artefact and the same sweep. `R-0879` STAYS RESOLVED — the defect is in the
+             carrier of the evidence, not in the evidence. Beside that, the static bound
+             `R-0880` asks for: 1010 job reads and 157 task reads confirmed, FOUR
+             over-selected sites in two classes already on that finding's list, and 973
+             sites REFUSED, which is the honest half of the reading. NO LINE UNDER
              `packages/`, `apps/`, `tests/`, `docs/` OR `scripts/` MOVES.
 
-Bundle:      C0a  save this block verbatim as `.agent/authored/f275-r69.md`
-             C0b  save the artefact text verbatim as `.agent/authored/f275-r69-artefact.md`
-             C0c  save the instrument verbatim as
-                  `.agent/authored/f275-r69-instrument.py.md`
-             C0d  save transform part 1 verbatim as
-                  `.agent/authored/f275-r69-transform-guarded.part1.py.md`
-             C0e  save transform part 2 verbatim as
-                  `.agent/authored/f275-r69-transform-guarded.part2.py.md`
+Bundle:      C0a  save this block verbatim as `.agent/authored/f275-r70.md`
+             C0b  save the artefact text verbatim as `.agent/authored/f275-r70-artefact.md`
+             C0c  save the CORRECTED round 69 instrument verbatim as
+                  `.agent/authored/f275-r70-instrument-r69.py.md`
+             C0d  save this round's instrument verbatim as
+                  `.agent/authored/f275-r70-instrument.py.md`
+             C0e  save the static-bound probe verbatim as
+                  `.agent/authored/f275-r70-bound.py.md`
              C0f  mirror the C0a blob into `.agent/last_block.md`
-             C1   `.agent/plan.md` <- slice PLAN69, whole-file replacement
-             C2   `.agent/live_review.md` <- slice RECORD69 appended
-             C3   `.agent/prose_slips.md` <- slice SLIPS69 appended
-             C4   `.agent/decisions.md` <- slice DEC69 appended
-             C5   `.agent/f275_t003_rekey_r69.md` <- a copy of the C0b blob
+             C1   `.agent/plan.md` <- slice PLAN70, whole-file replacement
+             C2   `.agent/live_review.md` <- slice RECORD70 appended
+             C3   `.agent/prose_slips.md` <- slice SLIPS70 appended
+             C4   `.agent/decisions.md` <- slice DEC70 appended
+             C5   `.agent/f275_t003_r880_bound_r70.md` <- a copy of the C0b blob
              C6   `.agent/handoff.md` rewritten — the handback
 
 Change:      EXACTLY these paths and nothing else.
-               .agent/authored/f275-r69.md                              NEW
-               .agent/authored/f275-r69-artefact.md                     NEW
-               .agent/authored/f275-r69-instrument.py.md                NEW
-               .agent/authored/f275-r69-transform-guarded.part1.py.md   NEW
-               .agent/authored/f275-r69-transform-guarded.part2.py.md   NEW
+               .agent/authored/f275-r70.md                       NEW
+               .agent/authored/f275-r70-artefact.md              NEW
+               .agent/authored/f275-r70-instrument-r69.py.md     NEW
+               .agent/authored/f275-r70-instrument.py.md         NEW
+               .agent/authored/f275-r70-bound.py.md              NEW
                .agent/last_block.md
                .agent/plan.md
                .agent/live_review.md
                .agent/prose_slips.md
                .agent/decisions.md
-               .agent/f275_t003_rekey_r69.md                            NEW
+               .agent/f275_t003_r880_bound_r70.md                NEW
                .agent/handoff.md
-             The six paths marked NEW do not exist at the base: `git ls-tree 7ac6ec87 --`
+             The six paths marked NEW do not exist at the base: `git ls-tree aa200600 --`
              over all six prints nothing at exit 0.
 
 Constraints:
   1. EVERY authored slice is applied BYTE FOR BYTE. Do not reflow, re-wrap, correct,
      improve or re-indent one character, including text you believe is wrong. A slice you
      disagree with is applied as written and the disagreement goes in the deviations.
-  2. Extract each slice from the COMMITTED blob of `.agent/authored/f275-r69.md` at C0a by
+  2. Extract each slice from the COMMITTED blob of `.agent/authored/f275-r70.md` at C0a by
      its `BEGIN-`/`END-` marker-line prefix, marker lines EXCLUDED, never from this prompt
      and never from memory. A slice's BODY is the bytes from the start of the line after
      its BEGIN marker to the first byte of its END marker line, INCLUDING the terminal
      newline of the body's last line. Each BEGIN marker carries its slice's own sha256;
-     check it. The artefact, the instrument and the two transform parts are WHOLE FILES:
-     copy each with `shutil.copyfile` and never open any of them in an editor.
-  3. The commit order above is FIXED. `.agent/plan.md` therefore names round 68 across
+     check it. The artefact and the three `.py.md` carriers are WHOLE FILES: copy each with
+     `shutil.copyfile` and never open any of them in an editor.
+  3. The commit order above is FIXED. `.agent/plan.md` therefore names round 69 across
      C0a through C0f and becomes current at C1, which is the first SUBSTANTIVE commit and
      is what item 23 of §3 of `docs/agents/planner_reviewer_prompt.md` requires of a round
      that touches the finding ledger.
-  4. THIS ROUND'S G5 CREATES DISPOSABLE WORKTREES AND THE INSTRUMENT REMOVES THEM ITSELF.
-     All of them live under the gitignored `.remedy-wt/`, and the instrument's last banner
-     reads `git worktree list` and `git status --porcelain` back after removing and pruning
-     them. That is the only destructive verification this round runs and it never touches
-     the primary checkout, which is what `docs/agents/self_drive_protocol.md` G5 requires.
-     The instrument states no count of the worktrees it makes: the count is its own to
-     report. The reviewer's runs were taken and cleaned up before this block was written,
-     and `git worktree list` shows the primary checkout alone at the base.
+  4. THIS ROUND'S G5 CREATES DISPOSABLE WORKTREES AND THE INSTRUMENTS REMOVE THEM
+     THEMSELVES. All of them live under the gitignored `.remedy-wt/`, and the round 70
+     instrument's last banner reads `git worktree list` and `git status --porcelain` back
+     after pruning. That is the only destructive verification this round runs and it never
+     touches the primary checkout, which is what `docs/agents/self_drive_protocol.md` G5
+     requires. This block states no count of the worktrees made: the count is the
+     instruments' to report. The reviewer's runs were taken and cleaned up before this block
+     was written, and `git worktree list` shows the primary checkout alone at the base.
   5. Nothing is written to `/tmp`. All scratch lives under the gitignored `.remedy-wt/`.
   6. No `remedy` CLI command and no `gh` command is run. No pull request is created,
      edited or merged.
   7. Re-read `.agent/STOP` FROM DISK before the first commit and again before C6, and
      report both readings literally. It does not exist at the reviewer's base reading.
-  8. This block is 372 lines TOTAL and 294 PROSE, measured on its final bytes.
-  9. NO finding id is registered this round and EXACTLY ONE is resolved, `R-0879`. The open
-     set is 88 by distinct id at the base and must read 87 at C5, with the registered set
-     EMPTY, the resolved set exactly {`R-0879`} and the de-registered set EMPTY. The COUNT
-     alone is not the gate; the membership is. `R-0880` stays OPEN and DEC69 says so. The
-     two prose slips SLIPS69 books are NOT ids, per amend0827-process-diet rule 2.
+  8. This block is 361 lines TOTAL and 285 PROSE, measured on its final bytes.
+  9. NO finding id is registered this round and NONE is resolved. The open set is 87 by
+     distinct id at the base and must read 87 at C5, with the registered set, the resolved
+     set and the de-registered set ALL EMPTY. The COUNT alone is not the gate; the
+     membership is. `R-0879` STAYS RESOLVED and `R-0880` STAYS OPEN; DEC70 says why for
+     each. The prose slip SLIPS70 books is NOT an id, per amend0827-process-diet rule 2.
  10. EVERY `.py.md` THIS ROUND LANDS IS A `.md` AND THE EXTENSION IS LOAD-BEARING: a `.py`
      file anywhere `ruff check .` scans is counted by
      `tests/orchestration/test_ci_budgets.py`, whose ceiling G6(c) reads. Do not rename any
@@ -86,24 +85,21 @@ Constraints:
      into `.remedy-wt/`, which is outside the tree and which G6(c) measures separately.
  11. A pipe into `tail` MASKS the real exit code. Redirect to a file and read the file
      instead, for every gate whose exit code you report.
- 12. The instrument reads files under `.remedy-wt/` that this round does not create and
+ 12. The instruments read files under `.remedy-wt/` that this round does not create and
      must not rebuild; if any is missing, STOP and report which, rather than regenerating
-     it. This block states no count of them, because the count is the instrument's to
-     report and not the author's to recall. It installs nothing, runs no test, and prints
+     it. This block states no count of them, because the count is the instruments' to
+     report and not the author's to recall. They install nothing, run no test, and print
      nothing on stderr.
- 13. THE TWO TRANSFORM PARTS ARE ONE FILE SPLIT BY A CAP, NOT TWO MODULES. Their fence
-     contents CONCATENATE, part 1 then part 2, byte for byte, to the transform the
-     instrument runs, and G4(b) re-derives that join. The cut falls at a top-level `def`
-     boundary, so each part happens to PARSE on its own; that is a consequence of where the
-     cut fell and not a property either part is required to have. Neither part is runnable
-     alone — part 2 ends in the call to `main()` and closes over names part 1 binds — so do
-     not run either, do not edit either to make it self-contained, and do not reorder them.
- 14. `R-0879`'s RESOLUTION IS WRITTEN AT C2 AND ITS EVIDENCE ARTEFACT LANDS AT C5. RECORD69
-     names this constraint rather than asserting the artefact already exists, because at C2
-     it does not — the R-0524 carve-out of item 20 of §3, which permits an ordering
-     constraint in place of a SHA only for a claim about the round's OWN commits. The FIX
-     the resolution rests on is the two transform parts, which land at C0d and C0e, strictly
-     before C2.
+ 13. THE STALE BLOB IS EVIDENCE AND IS NOT REPAIRED. `.agent/authored/f275-r69-instrument.py.md`
+     stays exactly as round 69 landed it, and `.agent/f275_t003_rekey_r69.md` is not
+     amended. G5 RUNS the stale blob on purpose, to reproduce the defect against the
+     corrected one; a repair that only showed the fix would not show the defect was real.
+     Do not edit, delete or rewrite either path — neither is in this round's change set.
+ 14. THE ROUND 69 VERDICT BOOKED BY RECORD70 IS A FAIL. That is deliberate and is not an
+     error in the slice, and it is not this feature's first: `Gate: F275 R16`, `R44` and
+     `R48` are also FAIL entries, and the last two also attribute the fault to the REVIEWER
+     rather than to the round. The FAIL is scoped to G5 and the entry says so; `R-0879` is
+     not un-resolved by it, and this round neither registers nor resolves any id.
 
 Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
              "REAL_EXIT=$?"'`, with the REAL exit code and the real output reported. A
@@ -112,33 +108,37 @@ Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
 
   G1 TRANSPORT. For each of the five authored blobs, compare the COMMITTED blob against the
      reviewer's scratch original by size and sha256, the scratch name being the committed
-     basename under `.remedy-wt/` except for the block, which is `f275-r69.block.md`:
-       .agent/authored/f275-r69.md                              @C0a
-       .agent/authored/f275-r69-artefact.md                     @C0b
-       .agent/authored/f275-r69-instrument.py.md                @C0c
-       .agent/authored/f275-r69-transform-guarded.part1.py.md   @C0d
-       .agent/authored/f275-r69-transform-guarded.part2.py.md   @C0e
+     basename under `.remedy-wt/` except for the block, which is `f275-r70.block.md`:
+       .agent/authored/f275-r70.md                     @C0a
+       .agent/authored/f275-r70-artefact.md            @C0b
+       .agent/authored/f275-r70-instrument-r69.py.md   @C0c
+       .agent/authored/f275-r70-instrument.py.md       @C0d
+       .agent/authored/f275-r70-bound.py.md            @C0e
      Then `.agent/last_block.md` @C0f against the C0a blob. Report all six EQUAL verdicts.
      Re-measure on the COMMITTED C0a blob: TOTAL lines, the summed lines of every slice's
      BODY, PROSE = TOTAL - BODY, and whether either exceeds 490 and 400. Report both
      numerals beside constraint 8's and say whether they agree. The block states no count
      of its own slices: the extraction is the sweep and its cardinality is your output.
+     ADDITIONALLY, AND THIS IS THE CHECK ROUND 69 LACKED: for each of the three `.py.md`
+     carriers, extract its single ```python fence and report whether the extraction
+     round-trips — that is, whether re-wrapping that extracted source in the same header and
+     fence reproduces the committed blob byte for byte. Report the three verdicts.
 
-  G2 THE PLAN. `.agent/plan.md` at C1 byte-identical to slice PLAN69: report both sizes
+  G2 THE PLAN. `.agent/plan.md` at C1 byte-identical to slice PLAN70: report both sizes
      and both sha256. Report its line count against the AGENTS.md cap of 50, and the count
      of `^## Goal$` and of `^## Next Steps$`, each of which must be 1.
 
   G3 THE RECORD. THREE appends in three commits, each proved by TWO readers and a negative
-     control: C2 appends RECORD69 to `.agent/live_review.md`, C3 appends SLIPS69 to
-     `.agent/prose_slips.md` and C4 appends DEC69 to `.agent/decisions.md`.
+     control: C2 appends RECORD70 to `.agent/live_review.md`, C3 appends SLIPS70 to
+     `.agent/prose_slips.md` and C4 appends DEC70 to `.agent/decisions.md`.
      (i)  READER A, over a BYTE stream: the post-commit blob equals the pre-commit blob
           followed by one newline and the slice's body. All three target files end with a
           single newline and no trailing blank line at the base, and all three separate
           their entries by a blank line, which is why the inserted newline is the same for
           each.
-            .agent/live_review.md   pre 1026747 at the base, slice RECORD69
-            .agent/prose_slips.md   pre  262075 at C2,       slice SLIPS69
-            .agent/decisions.md     pre 1163669 at C3,       slice DEC69
+            .agent/live_review.md   pre 1035516 at the base, slice RECORD70
+            .agent/prose_slips.md   pre  264262 at C2,       slice SLIPS70
+            .agent/decisions.md     pre 1170195 at C3,       slice DEC70
           Report each pre size, each post size and each delta. The slice body sizes are
           NOT stated here: each is the length of what you extracted.
      (ii) READER B, structural and independent: the LAST N blank-line-separated units of
@@ -149,48 +149,37 @@ Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
           that BOTH readers reject it. Report ALSO that both readers ACCEPT the unmutated
           region, because a reader that rejects everything proves nothing by rejecting.
      (iv) RESERVED PREFIXES, scoped by a property rather than by an adjective. Over every
-          line of RECORD69 EXCEPT ITS FIRST — the first being the entry header, which
+          line of RECORD70 EXCEPT ITS FIRST — the first being the entry header, which
           begins `Gate: ` by the format it joins — count the lines beginning `Gate: `,
-          `- R-`, `Landed: R-`, `Recurrence: R-` or `DECISION F`; that count must be 0.
-          Count separately the lines beginning `Done: R-` over the SAME range; that count
-          must be exactly 1 and the line must begin `Done: R-0879 — `. Report the count of
-          `^- R-` lines C2 ADDS, which must be 0, and of `^Done: R-` lines C2 adds, which
-          must be 1.
-     (v)  Report RECORD69's first line beside the count of lines in `.agent/live_review.md`
-          at `7ac6ec87` already matching `^Gate: F275 R\d+ — the F275 round \d+ entry\.`,
+          `- R-`, `Done: R-`, `Landed: R-`, `Recurrence: R-` or `DECISION F`; that count
+          must be 0. Report the count of `^- R-` and of `^Done: R-` lines C2 ADDS, both of
+          which must be 0.
+     (v)  Report RECORD70's first line beside the count of lines in `.agent/live_review.md`
+          at `aa200600` already matching `^Gate: F275 R\d+ — the F275 round \d+ entry\.`,
           and whether the new first line matches that pattern and duplicates none of them.
           Report the number your script counted; this block states none.
-     (vi) DEC69 must begin `## DECISION F275 D43 ` and `.agent/decisions.md` at the base
-          must contain NO line matching `^## DECISION F275 D43`. Report both readings, and
+     (vi) DEC70 must begin `## DECISION F275 D44 ` and `.agent/decisions.md` at the base
+          must contain NO line matching `^## DECISION F275 D44`. Report both readings, and
           report the highest existing `^## DECISION F275 D\d+` heading at the base.
-     (vii) Every paragraph SLIPS69 adds must begin `2026-09-12 · F275 R68 · `. Report the
+     (vii) Every paragraph SLIPS70 adds must begin `2026-09-12 · F275 R69 · `. Report the
           count your script measured, the count of lines in `.agent/prose_slips.md` at
-          `7ac6ec87` already beginning with that exact prefix, and the count C3 adds.
+          `aa200600` already beginning with that exact prefix, and the count C3 adds.
 
-  G4 THE ARTEFACT, AND THE JOIN THE TWO TRANSFORM PARTS MAKE.
-     (a) `.agent/f275_t003_rekey_r69.md` at C5 must be byte-identical to the
-         `.agent/authored/f275-r69-artefact.md` blob at C0b — report both sizes and both
-         sha256. Report the exit code of `git show 7ac6ec87:.agent/f275_t003_rekey_r69.md`,
-         which must be non-zero.
-     (b) THE JOIN. Extract the single ```python fence from each of the two COMMITTED
-         transform parts, concatenate part 1 then part 2, and report the sha256 and byte
-         length of the result beside those of `.remedy-wt/f275-r69-transform-guarded.py`,
-         the file the instrument runs. They must be EQUAL, and the joined source must
-         PARSE under `ast.parse`. Report ALSO, as a reading and not as a requirement,
-         whether each part parses on its own: the cut falls at a top-level `def` boundary,
-         so BOTH do, and that is why the join and not a parse failure is what proves the
-         two are one file. Report the line count of each part and of the join, and whether
-         the two line counts sum to the join's.
-     (c) Report the line count of every blob this round lands, each against the DECISION
-         F104 D1 cap of 500 insertions, and say for each whether it is under.
+  G4 THE ARTEFACT. `.agent/f275_t003_r880_bound_r70.md` at C5 must be byte-identical to the
+     `.agent/authored/f275-r70-artefact.md` blob at C0b — report both sizes and both
+     sha256. Report the exit code of
+     `git show aa200600:.agent/f275_t003_r880_bound_r70.md`, which must be non-zero. Report
+     the line count of every blob this round lands, each against the DECISION F104 D1 cap of
+     500 insertions, and say for each whether it is under.
 
   G5 THE ARTEFACT'S NUMBERS AND ITS QUOTED TRANSCRIPT ARE RE-DERIVED FROM THE COMMITTED
-     INSTRUMENT. The instrument is committed at `.agent/authored/f275-r69-instrument.py.md`
-     at C0c, inside a ```python fence. Report the number of fences found, extract that
+     INSTRUMENT. The instrument is committed at `.agent/authored/f275-r70-instrument.py.md`
+     at C0d, inside a ```python fence. Report the number of fences found, extract that
      source into `.remedy-wt/` and RUN it, REDIRECTED to a file per constraint 11, as
-       python3 -B <extracted> . a25fef5d 7ac6ec87
-     Report every line of every banner it prints. It creates and removes worktrees per
-     constraint 4 and takes roughly half a minute per run.
+       python3 -B <extracted> . a25fef5d aa200600 4cda8fab
+     The fourth argument is the round 69 commit whose blob the first banner deliberately
+     runs, per constraint 13. Report every line of every banner it prints. It creates and
+     removes worktrees per constraint 4 and takes roughly a minute per run.
      (a) THE FIGURES. Sweep the artefact's PROSE — its lines that do NOT begin with
          whitespace — for every maximal run of digits, and report which of those runs does
          not occur anywhere in the instrument's output. This block enumerates no figure:
@@ -223,7 +212,7 @@ Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
 
   G6 THE TREE DID NOT MOVE.
      (a) Report the git object id of each of `packages`, `apps`, `tests`, `docs` and
-         `scripts` at `7ac6ec87` and at C5, and whether all five are EQUAL.
+         `scripts` at `aa200600` and at C5, and whether all five are EQUAL.
      (b) THE CANARY: `python3 -m pytest tests/cli/test_golden_path.py -q`, REDIRECTED to a
          file per constraint 11. It reads 42 passed at exit 0 at the base.
      (c) `python3 -m ruff check . --output-format concise`. Its exit code is 1 whenever
@@ -241,15 +230,17 @@ Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
          `git worktree list`. The first must be absent, the second the empty string and
          the third the primary checkout alone — constraint 4 fixes G5's worktrees as
          created and removed WITHIN that gate, so any worktree surviving here is a finding.
-     (b) The changed-path set over `7ac6ec87`..C5 must be exactly the Change section's
+     (b) The changed-path set over `aa200600`..C5 must be exactly the Change section's
          paths other than `.agent/handoff.md`. Report MISSING and EXTRA, both of which
          must be empty, and the count of paths under `docs/`, `scripts/`, `packages/`,
-         `apps/` or `tests/`, which must be 0.
+         `apps/` or `tests/`, which must be 0. Report SEPARATELY that neither
+         `.agent/authored/f275-r69-instrument.py.md` nor `.agent/f275_t003_rekey_r69.md`
+         is in that set, which is what constraint 13 fixes.
      (c) The open set BY DISTINCT ID, derived as every `^- R-\d+ — ` paragraph minus every
-         `^Done: R-\d+ — ` line, at `7ac6ec87` and at C5. Report both, the ids registered,
-         the ids resolved and the ids de-registered. The first and third must be empty and
-         the second must be exactly `R-0879`. Report the highest id at each end, and
-         whether `R-0880` is open at both.
+         `^Done: R-\d+ — ` line, at `aa200600` and at C5. Report both, the ids registered,
+         the ids resolved and the ids de-registered, all three of which must be empty.
+         Report the highest id at each end, and whether `R-0880` is open and `R-0879`
+         resolved at both.
      (d) Per-commit insertions from `git show --numstat <sha>` for C0a through C5, each
          against the AGENTS.md DECISION F104 D1 cap of 500, and the maximum over them.
          C6's own numbers are NOT ordered here: they cannot exist while C6 is being
@@ -260,7 +251,7 @@ Done when:   the seven gates below, each run for real as `bash -c '<cmd>; echo
          asserted.
 
 Handback:    completion report + rewrite `.agent/handoff.md`. Carry SESSION 25 of F275 and
-             round 69, the one-sentence context self-assessment amend0905-throughput
+             round 70, the one-sentence context self-assessment amend0905-throughput
              requires, the changed-files table with every `+/-` taken from
              `git show --numstat` and no other source, one line per gate with its REAL
              exit code, the item-status table covering every C and every G exactly once,
@@ -281,7 +272,7 @@ spaces, and 10 more.
 
 ────────── SLICES ──────────
 
-BEGIN-PLAN69 sha256=16c89142f8f993a66f94678574d065390da8caa68e030bc57a31468784889b07
+BEGIN-PLAN70 sha256=fed9c56ea2956dab38fe34b4cd6eb56e245166ed817b42116784e160c56e5b6f
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -297,25 +288,24 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 69 RESOLVES `R-0879` by LANDING the fix that had been sitting in scratch since round
-59, and by closing the gap round 68's control walked through. Both of the finding's halves
-are now committed authored texts and each is demonstrated beside the case that must fail: the
-re-key stage recovers 2198 of 2198 sites against the line key's 2144 and refuses at exit 3
-with no output written when one enclosing scope is renamed; the transform gains the same
-refusal, lands the same 6091 rewrites over the same 263 files when its set is whole, and on
-the round 53 stale set names all five files, exits 4 and modifies ZERO files. That file count
-against 263 is the discriminator. The round 68 verdict and its two prose slips are booked.
-No production line moves.
+ROUND 70 REPAIRS ROUND 69's RED GATE AND CARRIES `R-0880`'s FIRST OBLIGATION BESIDE IT. Round
+69 landed an instrument blob that cannot reproduce five of the 34 lines its artefact quotes,
+because the carrier was generated before two banners were added to the source and never
+regenerated; the artefact was right and the blob was stale. This round lands a corrected blob
+and reproduces the defect against the stale one, reading 5 lines absent against 0. `R-0879`
+stays RESOLVED — the defect is in the evidence's carrier, not in the evidence. Beside that,
+the static bound `R-0880` asks for: over 994 files and 71 record classes it confirms 1010 job
+and 157 task reads, finds FOUR over-selected sites in two classes already on that finding's
+list, and REFUSES 973, which is the honest half of the reading. No production line moves.
 
 ## Next Steps
 
-1. `R-0880`, the MIRROR finding, and both its obligations are unbuilt: bound the
-   over-selection STATICALLY by reading every ruled site's owner verdict against the live
-   record classes, and give the transform a second refusal for a site whose owner cannot be
-   confirmed against the receiver's own record.
-2. Re-run the flip's dry run against the re-keyed set and the round 67 plain re-derivation
-   together, which is the first reading of what both corrections cost in FAILURES rather
-   than in sites.
+1. `R-0880`'s SECOND obligation, now stated in tractable terms: a refusal keyed on a method
+   that refuses 973 of 2198 sites would stop every run, so it must fire only on the sites the
+   static pass CONFIRMS, or rest on a procedure with a far smaller refusal set.
+2. Re-run the flip's dry run against the corrected inputs of rounds 67 and 69 together — the
+   plain re-derivation and the re-keyed set — which is the first reading of what both
+   corrections cost in FAILURES rather than in sites.
 3. The resolver collapse DECISION F260 D5 places in T003, which DECISION F275 D37 names as
    the home of the id-SHAPE seam behind the three largest residue classes. Production code,
    so a SPLIT round with mutation red-proofs.
@@ -325,48 +315,47 @@ No production line moves.
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
   split-and-close default BY NAME: a session writes the scope report and CONTINUES.
-- The guard this round lands has NO test in `tests/` behind it, because the flip is unlanded
+- THE REVIEWER'S ERROR RATE THIS SESSION IS THE LIVE RISK: two wording slips in round 68 and
+  a shipped artefact-and-instrument mismatch in round 69, all three caught by the worker
+  rather than by the reviewer's own pre-emission sweep.
+- The guard round 69 landed has NO test in `tests/` behind it, because the flip is unlanded
   and there is no production surface to pin it to. A later round may delete it unnoticed.
-- The flip's one declared-oversize allowance is still UNSPENT, and the largest residue class
-  is production work in T003 that no round has started.
-- The open set is 87 by distinct id once `R-0879` resolves, with `R-0880` still open. Four
-  are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
-END-PLAN69
+- The open set is 87 by distinct id, with `R-0880` open. Four are High — R-0803, R-0804,
+  R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+END-PLAN70
 
-BEGIN-RECORD69 sha256=efa6e1267fb61fb38f343cebc627eb6a7ca2ab56e50963e7dadf7025d6ebe121
-Gate: F275 R68 — the F275 round 68 entry. VERDICT PASS. Written by the planner and reviewer of session 25 after reading the committed range `1f48b99a`..`7ac6ec87` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line below. It is booked here by the FIRST SUBSTANTIVE COMMIT of round 69, per operator amendment amend0827-process-diet rule 1. The round DISCHARGED DECISION F275 D41's remaining condition and the decision recorded at C4 of round 68 rules the result.
+BEGIN-RECORD70 sha256=bf20b9f8702e0fb4ddd77b42db95ed9c2e66a35d5a4622ecb655b185549099ac
+Gate: F275 R69 — the F275 round 69 entry. VERDICT FAIL, on G5 alone, and the cause is the reviewer's authored text rather than anything the worker did. Written by the planner and reviewer of session 25 after reading the committed range `7ac6ec87`..`aa200600` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report was evidence for no line below. It is booked here by the FIRST SUBSTANTIVE COMMIT of round 70, per operator amendment amend0827-process-diet rule 1.
 
-G1 IS THE PRIMARY CMP-AGAINST-SCRATCHPAD PROOF AND NOT THE §4.9 DIGEST FALLBACK: all three authored blobs are byte-identical to the reviewer's own scratch originals — the block at 34897 bytes, the artefact at 10958 and the measurement instrument at 10189 — and `.agent/last_block.md` equals the block blob. Four slices were extracted and all four matched the sha256 on their own BEGIN markers. Re-measured on the committed blob the block is 339 lines TOTAL and 263 PROSE, agreeing with its own constraint 8, and neither exceeds 490 or 400. G2: `.agent/plan.md` is byte-identical to PLAN68 at 3076 bytes over 49 lines against the cap of 50, both mandated headings exactly once.
+THE FAILURE, MEASURED. The artefact `.agent/f275_t003_rekey_r69.md` quotes 34 indented lines of instrument output. The instrument blob landed beside it at `.agent/authored/f275-r69-instrument.py.md` carries a 5887-byte fence over 136 lines and prints FIVE banners; the source the artefact was measured with carries 7336 bytes over 166 lines and prints SEVEN. The blob therefore cannot produce five of the 34 lines, and G5(b) and G5(c) as ordered are unmeetable against the pair the block shipped. The mechanism: the `.md` carrier was generated once, two banners were then added to the source, and the carrier was never regenerated. The reviewer re-ran the sweep against both and reads 5 lines absent from the landed blob against 0 from the corrected one, over the same artefact and the same comparison.
 
-G3: `.agent/live_review.md` goes 1021338 to 1026747, `.agent/prose_slips.md` 261041 to 262075 and `.agent/decisions.md` 1157506 to 1163669, every one exact under reader A, with reader B holding at N counted from the slice as 7, 1 and 7. The reviewer ran its own negative control on the FIRST appended paragraph of each, per item 36 of §3, and all three are REJECTED by both readers while all three unmutated regions are ACCEPTED. The `## DECISION F275 D42` heading reads 0 at the base against a highest existing D41, and the new ledger header duplicates none of the 66 already matching the neighbours' pattern. G4: the artefact at C5 is byte-identical to the C0b blob at 10958 bytes, `git show` of that path at the base exits 128, and the artefact and instrument are 178 and 232 lines against the 500 cap. G6 and G7: five top-level trees byte-identical; canary 42 passed at exit 0; `ruff check .` 26 rows at the frozen ceiling with zero under `.remedy-wt/` and zero `.py` rows under `.agent/`; nine changed paths with MISSING and EXTRA empty and zero production paths; the open set 88 at both ends with IDENTICAL MEMBERSHIP and registered, resolved and de-registered all empty; per-commit insertions peak at 339. The handback commit's own numbers, which no gate of that round could reach, are 553 insertions and 424 deletions over ONE path, so DECISION F104 D1's exclusion applies by that decision's own wording.
+WHAT IS NOT WRONG, AND THIS MATTERS FOR WHAT THE FAIL DOES NOT UNDO. The artefact is correct: all 34 of its quoted lines reproduce, in strictly increasing order, against the corrected instrument. Every figure `R-0879`'s resolution rests on was re-derived by the reviewer at this round's base — 2198 sites recovered by the scope key against 2144 by the line key, exit 3 with no output written under the renamed scope, 263 files rewritten against ZERO modified on the stale set — and all of it holds. The two banners the landed blob lacks cover the re-key stage's prior landing and the part-join, and the part-join is independently proved by G4(b), which passed. So `R-0879` STAYS RESOLVED: the defect is in the blob shipped as evidence, not in the evidence.
 
-G5 CARRIED THE ROUND AND THE REVIEWER RE-TOOK EVERY PART OF IT FROM THE COMMITTED BLOB. One fence; the extracted source hashes to the reviewer's own original; three runs byte-identical at 5981 bytes with ZERO stderr at exit 0. The landed artefact carries zero three-backtick lines. Its transcript clause was ordered over EVERY indented non-blank line rather than over a list of prefixes — the counter-measure the 2026-09-12 prose slip asks for — and reads 42 lines checked with 0 failed, with the order property holding. The numeral sweep over the artefact's prose left one digit run unresolved and it is a round citation.
+THE OTHER SIX GATES PASSED AND THE REVIEWER RE-TOOK THEM. G1: six EQUAL transport verdicts against the reviewer's own scratch originals, four slices each matching the sha256 on its own BEGIN marker, and the block re-measured at 372 lines TOTAL and 294 PROSE agreeing with its own constraint 8. G2: `.agent/plan.md` byte-identical to PLAN69 over 49 lines against the cap of 50, both mandated headings exactly once. G3: the three appends exact under reader A, reader B holding at N counted from each slice, and all three negative controls placed on the FIRST appended paragraph REJECTED by both readers while every unmutated region is ACCEPTED; zero reserved-prefix lines after the entry header and exactly one `Done: R-0879 — `. G4: the artefact byte-identical to its authored blob, the path absent at the base, and the two transform parts rejoining byte for byte to the file the instrument runs, at 327 plus 325 summing to 652. G6: five top-level trees byte-identical, canary 42 passed at exit 0, ruff 26 rows at the frozen ceiling with zero under `.remedy-wt/` and zero `.py` rows under `.agent/`. G7: eleven changed paths with MISSING and EXTRA empty and zero production paths, and the open set 88 to 87 with the registered and de-registered sets EMPTY and the resolved set exactly `R-0879`.
 
-THE SUBSTANCE IS THAT THE ROUND ANSWERED ITS ORDERING QUESTION IN THE NEGATIVE AND THEREBY OVERTURNED A DECISION OF ITS OWN RECORD. The transform does NOT lose the 54 non-resolving keys, because it does not consume the set those keys belong to: the round 53 committed set resolves 2198 of 2198 at `a25fef5d` and 2144 at the tip, every one of the 54 off by exactly one line under this branch's own round 57 retype commits, while the set the transform has consumed since round 61 resolves whole. The reading that settles it is behavioural rather than textual — the same transform, at one commit, in two fresh worktrees, differing in the ruled set ALONE, reads 6091 rewrites against 6037 and 3084 undecided sites against 3138, a difference of exactly 54 landing on 49 lines of 5 files out of 994 compared with zero differing lines anywhere else.
+THE WORKER'S CONDUCT IS THE PART WORTH RECORDING. Constraint 1 binds every reviewer slice byte for byte, so making G5 green would have meant editing a reviewer text; the worker did not, declared the red gate, named the five absent lines exactly, quoted the artefact's own provenance sentence as the clause both halves of the contradiction falsify, and stopped. That is what guardrail G8 asks for and it is why the defect reached this entry in one round instead of surviving as a quietly-passed gate. The worker additionally declared seven deviations and flagged one judgement rather than burying it — whether the digit run 500 falls under the citation exception — reporting the narrower reading beside the wider one it applied.
 
-AND IT CORRECTED DECISION F275 D40 PART THREE, WHICH HAD NAMED THE SWEEP'S OWN COLUMNS. At the commit the sweep ran on, the line D40 cited carries exactly the two `.id` nodes at the two columns the round 53 set records; the node at the third column belongs to the next statement and stands on that line only at the tip. D40 compared the round 53 keys against the tip's source and attributed the mismatch to the instrument that produced the keys — the same class it was diagnosing, one level up — and minted a second explanation for a defect `R-0879` already held with the identical five-file breakdown. No new id was minted, which is item 30 of §3 applied correctly.
+THE REPAIR IS ROUND 70, WHICH IS ALSO WHERE THIS ENTRY IS BOOKED. That round lands a corrected instrument blob, reproduces the defect against the stale one so the fix is demonstrated rather than asserted, and carries real new work beside the correction as amend0827-process-diet rule 1 requires of any round that is not a closure sequence. The landed round 69 blob is NOT rewritten and the round 69 artefact is NOT amended: this record is append-only and a superseding blob with a dated explanation is what it takes instead of an edit.
+END-RECORD70
 
-THE WORKER DECLARED TEN DEVIATIONS AND THE ONE THAT MATTERS IS THE REVIEWER'S. G3(iv) ordered RECORD68 to carry no INTERIOR line beginning with a reserved prefix and never defined the word, while that slice's own first line begins `Gate: `; the count is 0 on one reading and 1 on the other. The worker applied the satisfiable reading and declared the alternative rather than hiding it, which is right, and the reviewer confirms 0 interior lines under the reading the round 67 block established for the same clause. A second wording slip is the round 68 instrument's docstring counting six readings where seven banners print. Both are dated lines in `.agent/prose_slips.md` booked by this same commit's round and neither is an id, per amend0827-process-diet rule 2: nothing on disk is wrong in either case.
+BEGIN-SLIPS70 sha256=c0276e20fb0308d08764385746e3318e26299b2ce359d429f25e4b7df6c9d825
+2026-09-12 · F275 R69 · The round 69 block shipped an artefact and an instrument blob that do not match: the artefact quotes 34 indented lines of instrument output and the committed `.agent/authored/f275-r69-instrument.py.md` can produce only 29 of them, because the `.md` carrier was generated from the instrument source BEFORE two banners were added to that source and was never regenerated afterwards. G5(b) and G5(c) were therefore unmeetable against the pair the block shipped, and the worker was right to declare the red gate rather than edit either reviewer text to make it green. The artefact was correct throughout — all 34 lines reproduce against the source — so nothing measured was wrong and no figure moved; what landed wrong is the blob. The reviewer's own pre-emission sweep passed because it compared the artefact against the SOURCE'S OUTPUT, which is the right comparison for the figures and the wrong one for the carrier: nothing in the round ever compared the carrier against the source it was made from. THE RULE THAT FOLLOWS: a derived artefact is REGENERATED at emission time by the same script that verifies it, in one step, so that generating and checking cannot drift apart — and where the derivation can be defeated by the source's own content, as here, where the instrument carried a literal markdown fence and so could not be re-wrapped without a manual edit, the SOURCE is changed to remove that obstacle rather than the wrapping being done by hand.
+END-SLIPS70
 
-Done: R-0879 — RESOLVED at round 69. The finding asked for two things and named the second as the whole of it: re-key the ruled site set off line numbers, and make the run REFUSE when its set has gone stale, "because the defect is not that a key drifted — keys drift — but that nothing noticed". THE FIRST HALF WAS ALREADY DONE and this round measured that rather than assuming it: DECISION F275 D34 part two ordered the re-key, and round 59 both built it and LANDED it at `.agent/authored/f275-r59-rekey.py.md`, a blob the stage exercised this round is byte-identical to. THE SECOND HALF WAS NOT, and the reason is sharper than "unfinished": the refusal round 59 built guards the STAGE's output, while the finding's own words are "the TRANSFORM refuses to run" — so a run that SKIPPED the stage and handed the committed set straight to the transform reintroduced the defect in full, which is not hypothetical because round 68 took exactly that route as a control and measured 54 renames lost with nothing said. And the transform was in no position to be fixed, because a tracked-file sweep for the name returns the EMPTY LIST: the most load-bearing instrument of T003 had never been committed, and every flip dry run from round 46 to round 68 ran a file that existed only in gitignored scratch. Round 69 ends both: the transform gains the same shape of refusal and is LANDED, as two authored blobs whose fence contents concatenate byte for byte to the file the measurements were taken with, split only because a single blob would exceed the DECISION F104 D1 insertion cap that exempts the five `.agent/` state files and not `.agent/authored/**`. The two guards now stand at different doors — the stage refuses to EMIT a stale set, the transform refuses to CONSUME one. Each is demonstrated beside the case that must fail, which is what makes this a resolution rather than a claim. THE REPAIR: 2198 of 2198 sites recovered by the scope key against 2144 by the line key, the two run over the same trees in the same pass, and the result SET-EQUAL to the set the transform has consumed since round 61. ITS RED CONTROL: renaming the one scope enclosing the most ruled sites drives 20 to unresolved, exits 3, and writes no output set at all. THE REFUSAL: given the whole set the guarded transform reports its precondition and lands the same 6091 rewrites over the same 263 files, so the guard costs the passing case nothing. ITS RED CONTROL: given the round 53 committed set it names all five files with their counts, exits 4, and modifies ZERO files where the unguarded run modified 263 — and that file count, not the message, is what distinguishes a refusal from a warning. WHAT IS NOT CLAIMED, stated rather than covered: the guarded transform is a scratch instrument and no test in `tests/` will notice if a later round deletes the guard, because the flip itself is still unlanded and a guard over an unlanded change has no production surface to pin it to. The mirror finding `R-0880` stays OPEN with both its obligations unbuilt, and nothing here touches it. The evidence is `.agent/f275_t003_rekey_r69.md`, landed by the commit constraint 14 of round 69's block fixes as C5.
-END-RECORD69
+BEGIN-DEC70 sha256=1f24f2b912e0de6def3370f0f128255d135658f597935d6405ddb01d0d053343
+## DECISION F275 D44 (2026-09-12, F275 round 70) — a derived carrier is regenerated by the script that verifies it, and `R-0880`'s first obligation has a result with its blind spot stated
 
-BEGIN-SLIPS69 sha256=534a5e27f0930732130122455e443123f4aff92c39f47c229a94795e7daca836
-2026-09-12 · F275 R68 · The round 68 block's G3(iv) ordered RECORD68 to "carry no interior line beginning with any of `Gate: `, `- R-`, `Done: R-`, `Landed: R-`, `Recurrence: R-` or `DECISION F`" and never defined "interior", while RECORD68's own FIRST line begins `Gate: F275 R67 —` and the same gate's clause (v) orders that very line reported and pattern-matched. Under "every body line other than the first" the count is 0 and under "every body line" it is 1, so the gate is satisfiable on one reading and unmeetable on the other; the worker applied the satisfiable one, declared the alternative rather than hiding it, and nothing on disk is wrong. The wording was inherited unchanged from the round 67 block, where the same slice shape made it equally ambiguous and nobody noticed. THE RULE THAT FOLLOWS: a gate that excludes part of its own target names the excluded part by a property the target carries — "every line after the first", "every line that is not the entry header" — and never by a positional adjective, because an adjective is a word the author and the worker resolve separately and a property is one they resolve the same way.
+CONTEXT, PART ONE — THE REPAIR. Round 69 failed G5 because the instrument blob it landed cannot reproduce five of the 34 lines the artefact beside it quotes. The `.md` carrier was generated from the instrument source once, two banners were added to that source afterwards, and the carrier was never regenerated. Every check the round ran compared the artefact against the SOURCE'S OUTPUT — the right comparison for the figures, and one that says nothing about the carrier. The artefact was correct and the blob was stale, which is the least visible shape this can take: the stale blob runs at exit 0 with an empty stderr and prints a perfectly good report of five banners instead of seven, so nothing fails and the only symptom is an absence.
 
-2026-09-12 · F275 R68 · The round 68 instrument's module docstring opened "Six readings, each printed under its own banner" while the instrument prints SEVEN banners, the seventh being the worktree-and-porcelain readback that proves its own cleanup. The block's G5 correctly ordered "It prints seven banners; report every line of all seven", so the two halves of the round disagreed and the gate was the half that was right; nothing on disk is wrong and no figure moved. The numeral was written when the instrument had six banners and the cleanup readback was added afterwards, which is the ordinary way a count about a document's own parts goes stale. THE RULE THAT FOLLOWS: item 11 of §3 of `docs/agents/planner_reviewer_prompt.md` forbids a hand-counted numeral about the block's own parts, and the same prohibition binds an INSTRUMENT the block ships — a docstring is prose about a document too, it is written first and edited last, and the one place its count is never re-read is the line above the code that changed.
-END-SLIPS69
+CONTEXT, PART TWO — WHY IT COULD NOT SIMPLY BE REGENERATED. The instrument carried a literal markdown fence in two of its own lines, so wrapping it inside a fence required a hand edit and the obvious repair — re-run the wrapper — would have failed an assertion rather than produced a correct carrier. That is the reason the carrier was written by hand once and never again.
 
-BEGIN-DEC69 sha256=e6fb1410655a9671cd594a16e8a77ea2c35574dbc08c2c5fd11311fdbc7a2771
-## DECISION F275 D43 (2026-09-12, F275 round 69) — the flip transform is LANDED and carries `R-0879`'s refusal, which is the half of that finding nothing had built
+CHOSEN. (1) A DERIVED CARRIER IS REGENERATED AT EMISSION BY THE SAME SCRIPT THAT VERIFIES IT, in one step, so that generating and checking cannot drift apart. The round's tooling now rebuilds every `.py.md` from its source and asserts that extracting the fence round-trips to that source, immediately before any digest is taken. (2) WHERE THE SOURCE'S OWN CONTENT DEFEATS THE DERIVATION, THE SOURCE CHANGES. The instrument now builds its fence marker from a character code rather than writing it out, so it contains no literal fence and can be carried inside one forever after. Changing the tool rather than the procedure is the point: a procedure that requires a hand edit will get one. (3) THE LANDED ROUND 69 BLOB AND THE ROUND 69 ARTEFACT ARE LEFT EXACTLY AS THEY ARE. This record is append-only; a superseding blob with a dated explanation is what it takes instead of an edit, per item 20 of `docs/agents/planner_reviewer_prompt.md` §3. (4) `R-0879` STAYS RESOLVED. The defect is in the blob shipped as evidence, not in the evidence: every figure the resolution rests on was re-derived at this round's base and holds, and the part-join that one of the missing banners reports was independently proved by round 69's G4(b), which passed.
 
-CONTEXT. Finding `R-0879` opened at round 58 and stayed open for eleven rounds, which is the fact this decision exists to explain rather than to excuse. Its fix clause asked for two things and called the second the whole of the finding: re-key the ruled site set off line numbers, and make the run REFUSE when its set has gone stale, "because the defect is not that a key drifted — keys drift — but that nothing noticed". THE FIRST HALF WAS ALREADY DONE, and this round measured that instead of assuming it: DECISION F275 D34 part two ordered the re-key, and round 59 both built it AND landed it at `.agent/authored/f275-r59-rekey.py.md`, which the stage exercised this round is byte-identical to. An earlier draft of this decision asserted that the stage lived only in scratch; it does not, the reading is in the round's artefact, and the correction is recorded here rather than quietly applied. THE SECOND HALF WAS NOT DONE. The refusal round 59 built guards the STAGE's OUTPUT, while the finding names the TRANSFORM, so a run that skipped the stage and handed the committed set straight to the transform reintroduced the defect in full — the route round 68 took as a control, reading 54 renames lost with nothing said. And the transform could not be fixed where it stood, because a tracked-file sweep for its name returns the EMPTY LIST: the most load-bearing instrument of T003 had never been committed, and every flip dry run from round 46 to round 68 ran a file existing only under the gitignored `.remedy-wt/`.
+CHOSEN, PART TWO — `R-0880`'s FIRST OBLIGATION. It asked for the over-selection to be bounded STATICALLY, because a dry run only ever shows the sites the suite executes. The probe resolves each ruled site's receiver to a class by the three bindings that carry one statically — an annotation, a direct construction, and a `for` target over a resolved iterable — and REFUSES anywhere none of them does. Over 994 tracked files it finds 71 classes carrying `id`, `name` or `description`, of which 69 are neither a job nor a task record. Of the 2198 ruled sites it CONFIRMS 1010 as job reads agreeing with their owner verdict and 157 as task reads, finds FOUR statically confirmed over-selected — three `Artifact` and one `Mission`, both classes already on `R-0880`'s own list from the dry run — and REFUSES 973: 763 whose receiver no binding in scope resolves, 111 whose receiver is not a bare name, and 99 annotated with something carrying no class identity, `Any` above all. THE BLIND SPOT IS THE READING, NOT A CAVEAT ON IT. `R-0880` wanted a bound because a dry run undercounts; a static pass that refuses 44 percent of its input undercounts too, in a different direction, so what this produces is a CONFIRMATION by a second and independent route and not an upper bound. It is recorded as that and as nothing more.
 
-CHOSEN. (1) THE TRANSFORM IS LANDED, as two authored blobs whose fence contents concatenate byte for byte to the file the measurements were taken with, the gate re-deriving that join rather than trusting it. It travels split because at 652 source lines one blob would be a commit of over 500 insertions, which AGENTS.md DECISION F104 D1 forbids and whose exemption list names the five `.agent/` state files and not `.agent/authored/**`; the cut falls at a top-level `def` boundary so each part reads as a unit, and this spends none of the feature's one declared-oversize allowance, which the flip itself still needs. (2) THE TRANSFORM GAINS THE REFUSAL ITSELF. It differs from the round 61 transform by one function and one call to it and nothing else moves: before any file is read for editing, every ruled key is resolved against the tree the run is about to edit, and a key that resolves to no attribute node stops the run with its file and its count named. The two guards now stand at DIFFERENT doors — the stage refuses to EMIT a stale set, the transform refuses to CONSUME one — so skipping the stage cannot reintroduce the defect, which is precisely the route round 68's control took. The finding's own words are "the transform REFUSES TO RUN", and until now the refusal lived one stage upstream of the transform. (3) EACH HALF IS DEMONSTRATED BESIDE THE CASE THAT MUST FAIL, because a guard that only ever passes is not evidence. The repair recovers 2198 of 2198 sites by the scope key against 2144 by the line key, the two run over the same two trees in the same pass so the difference is measured rather than asserted, and the result is SET-EQUAL to the set the transform has consumed since round 61; renaming the single scope that encloses the most ruled sites of any function drives 20 to unresolved, exits 3, and writes NO output set at all. The refusal, given the whole set, reports its precondition and lands the same 6091 rewrites over the same 263 files the unguarded run produced, so it costs the passing case nothing; given the round 53 set it names all five files with their counts, exits 4, and modifies ZERO files. (4) `R-0879` IS RESOLVED on that evidence.
+ALTERNATIVES CONSIDERED. Amending the round 69 artefact to drop the five quoted lines was rejected outright: the artefact is correct and the blob is not, so amending the correct half to match the incorrect one would have destroyed the evidence rather than repaired it. Re-running round 69 from a corrected block was rejected because its twelve commits are landed and pushed and a rewrite is forbidden; a superseding blob costs one commit and leaves the history readable. Building `R-0880`'s SECOND obligation in this round was rejected on the probe's own numbers: a refusal keyed on a method that refuses 973 of 2198 sites would stop every run it is given, which is a guard that cannot pass rather than one that cannot fail — the same defect wearing the other face, and item 33 of §3 names both.
 
-ALTERNATIVES CONSIDERED. Resolving `R-0879` at round 68, on the ground that the re-key stage already existed and already worked, was rejected: the finding's fix clause binds the TRANSFORM and round 68's own control had just demonstrated that the transform would consume a stale set without a word, so a resolution then would have closed a finding whose defect was still reachable by the shortest path to it. Leaving the refusal in the stage alone and documenting "always run the stage first" was rejected under AGENTS.md Scope Control and this feature's own history: a rule that lives in prose beside a tool is a rule the next round does not read, which is the class item 33 and item 34 of `docs/agents/planner_reviewer_prompt.md` §3 both record. Landing the transform WITHOUT the guard, as a separate reproducibility fix, was rejected because the two are one change: an unguarded transform committed to the repository is a stale-set run made easier to reach, not harder. Spending the feature's declared-oversize allowance to land it in one blob was rejected because the flip needs that allowance and a split with a re-derived join costs nothing. Adding a test under `tests/` to pin the guard was rejected as premature rather than unnecessary — see the consequence below.
+CONSEQUENCE. `R-0880` stays OPEN with its second obligation unbuilt and now stated in tractable terms: the refusal needs either a decision procedure with a far smaller refusal set, or it must fire only on the sites the static pass CONFIRMS. Nothing here touches the id-SHAPE seam DECISION F275 D37 routed into T003's resolver collapse, which is production work no round has started, and the flip's dry run has still not been re-run against the corrected inputs of rounds 67 and 69 together.
 
-CONSEQUENCE, INCLUDING WHAT IS NOT CLAIMED. The guarded transform is a scratch instrument, not production code, and this round adds no test: nothing in the suite will notice if a later round deletes the guard. That is a real limit and it is stated rather than covered, because the flip is still unlanded and a guard over an unlanded change has no production surface to pin a test to. When the flip lands, the guard lands with it and a test becomes both possible and owed. `R-0880` — the MIRROR defect, the same set reaching too MANY sites where `R-0879` was it reaching too FEW — stays OPEN with both its obligations unbuilt, and is the next round's work. Nothing here touches the id-SHAPE seam DECISION F275 D37 routed into T003's resolver collapse.
-
-HOW TO REVERSE. Delete this paragraph block and the `Done: R-0879` paragraph in `.agent/live_review.md`, which re-opens the finding. The two transform parts are left in place by that reversal and no figure changes, because every figure above is re-derivable by the committed instrument against `a25fef5d` and this round's base. To reverse the LANDING as well, delete the two `.agent/authored/f275-r69-transform-guarded.part*.py.md` blobs; that returns the transform to scratch-only and restores the reproducibility gap this decision closed, which is the cost of doing so and is stated here so the choice is visible.
-END-DEC69
+HOW TO REVERSE. Delete this paragraph block. The corrected instrument blob and the bound probe stay landed and no figure changes, because every figure above is re-derivable by the committed instrument against `a25fef5d` and this round's base. Reversing part (2) additionally means restoring the literal fence in the instrument source, which re-creates the condition that made the round 69 defect unrepairable by its own tooling.
+END-DEC70
