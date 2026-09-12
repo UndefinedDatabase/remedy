@@ -13,6 +13,8 @@ import sys
 from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
+
 from packages.core.models import Job
 from packages.orchestration.project_scope import ProjectScope, job_in_scope, scoped_jobs
 
@@ -200,6 +202,38 @@ class TestScopedListingsCLI:
         assert result.returncode == 0
         assert "orphan-to-adopt" in result.stdout
         assert "(unscoped)" not in result.stdout
+
+    def test_adopting_a_pingpong_job_id_exits_cleanly_instead_of_crashing(
+        self, tmp_path, monkeypatch, capsys,
+    ):
+        """R-0882: adopt passed a resolved 16-hex id to ``UUID(...)`` and crashed.
+
+        IN-PROCESS on purpose: ``_env`` points a subprocess's PYTHONPATH at the
+        directory pytest was launched from, so a subprocess could import a
+        different tree than the one under test, and a red-proof that mutates
+        one tree while importing another cannot fail.
+        """
+        from apps.cli.commands.project import _cmd_project_adopt
+
+        data_dir = tmp_path / "data"
+        env = _env(data_dir)
+        repo_a = _git_repo(tmp_path, "alpha")
+        _init_project(repo_a, env)
+
+        pingpong_id = "0123456789abcdef"
+        record_dir = data_dir / "jobs" / pingpong_id
+        record_dir.mkdir(parents=True)
+        (record_dir / "job.json").write_text(json.dumps({"id": pingpong_id}))
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        monkeypatch.chdir(repo_a)
+        capsys.readouterr()
+
+        with pytest.raises(SystemExit) as exc_info:
+            _cmd_project_adopt(pingpong_id)
+
+        assert exc_info.value.code == 3
+        assert "job not found" in capsys.readouterr().err
 
     def test_orphaned_label_on_deleted_project(self, tmp_path):
         data_dir = tmp_path / "data"
