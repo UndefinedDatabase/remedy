@@ -1,345 +1,264 @@
-# Handback — F275 round 81
+# Handback — F275 round 82
 
 ## Session
 
-`SESSION 28 of feature F275 · round 81 · rounds so far 81`
+`SESSION 29 of feature F275 · round 82 · rounds so far 82`
 
 NO SCOPE REPORT AND NO SESSION-LIMIT BANNER IS OWED. Amendment amend0911-f275-to-scope lifts
-F275's soft limit of 20 sessions and 60 rounds without a replacement number, so this round prints
-no `SITZUNGS-LIMIT` line.
+F275's soft limit of 20 sessions and 60 rounds without a replacement number, so this round
+prints no `SITZUNGS-LIMIT` line.
 
-Context self-assessment: this worker ran one reading round, spent one canary pass and one `ruff`
-pass and no other suite, and has ample context left; nothing about the session boundary is forced
-by this round.
+Context self-assessment: this worker ran one measurement round over four scratch trees, spent
+one canary pass and one `ruff` pass and no other suite, and has ample context left; nothing
+about the session boundary is forced by this round.
 
 ## Range
 
-Review of `89d4772a`..`HEAD` (the seven commits C0a–C5 plus this handback commit C6).
+Review of `d7cf5d58`..`HEAD` (the eight commits C0a–C6 plus this handback commit C7).
 
 ## Commits
 
-### c7c856f8 F275 R81 C0a: save the round 81 block as authored text
+### b30a7726 F275 R82 C0a: save the round 82 block as authored text
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r81.md` | +343 / -0 | the block transported with `shutil.copyfile`, byte-identical to `.remedy-wt/r81_block.md` |
+| `.agent/authored/f275-r82.md` | +392 / -0 | the block transported with `shutil.copyfile`, byte-identical to `.remedy-wt/r82_block.md` at 33528 bytes |
 
-### 79360bcd F275 R81 C0b: mirror the round 81 block into the last-block state file
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | +207 / -217 | rewritten from the COMMITTED C0a blob, not from any working copy |
-
-### 2b63c899 F275 R81 C1: make the plan current for round 81
+### 11e8b4f9 F275 R82 C0b: mirror the round 82 block into the last-block state file
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +20 / -22 | replaced by slice PLAN81, byte for byte; the first substantive commit, per constraint 6 |
+| `.agent/last_block.md` | +345 / -296 | rewritten from the COMMITTED C0a blob read back with `git show`, not from any working copy |
 
-### 8c559176 F275 R81 C2: book the round 80 reviewer verdict
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +8 / -0 | slice RECORD81 appended; the round 80 PASS booked by the first substantive commit of round 81 |
-
-### 0ed1f625 F275 R81 C3: append the round 80 prose slips
+### 2acef18a F275 R82 C1: make the plan current for round 82
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/prose_slips.md` | +4 / -0 | slice SLIPS81 appended; two dated lines and no id, per amend0827 rule 2 |
+| `.agent/plan.md` | +24 / -25 | replaced by slice PLAN82, byte for byte; the FIRST SUBSTANTIVE COMMIT, per item 23 of §3 |
 
-### 8213456a F275 R81 C4: land the fallback-class artefact
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/f275_t003_owner_fallback_r81.md` | +300 / -0 | written by the worker from its own run; a NEW document, absent at this round's base |
-
-### 3f4ca0b8 F275 R81 C5: record DECISION F275 D55
+### ade3ffb7 F275 R82 C2: book the round 81 reviewer verdict
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | +18 / -0 | slice DEC81 APPENDED; no landed DECISION is rewritten and the deletion column is zero |
+| `.agent/live_review.md` | +8 / -0 | slice RECORD82 appended; the round 81 PASS booked by the first substantive commit of round 82 |
 
-### C6 — this commit (self-reference, R-0149 pattern)
+### 630caf17 F275 R82 C3: append the round 81 prose slip
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | measured by the next gate | the round 81 handback; a handoff cannot table the commit that writes it |
+| `.agent/prose_slips.md` | +2 / -0 | slice SLIPS82 appended; one dated line and no id, per amend0827 rule 2 |
 
-THE `+/-` CELLS ABOVE WERE READ FROM `git show --numstat` AND COMPARED CELL BY CELL AGAINST G8's
-OWN NUMBERS. The comparison, printed: C0a 343/0 against 343/0 EQUAL; C0b 207/217 against 207/217
-EQUAL; C1 20/22 against 20/22 EQUAL; C2 8/0 against 8/0 EQUAL; C3 4/0 against 4/0 EQUAL; C4 300/0
-against 300/0 EQUAL; C5 18/0 against 18/0 EQUAL. Seven of seven cell pairs equal, zero differ.
-Every commit staged exactly ONE path and every insertion count is under 500.
+### 300cf0c4 F275 R82 C4: land the generator that builds the flip input set
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f275-r82-input.py.md` | +286 / -0 | the worker's own text, written to the block's SPEC; a `.py.md` carrier, so no `.py` file enters the tracked tree |
+
+### 37e92fe3 F275 R82 C5: land the flip-input artefact produced by the C4 blob
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/f275_t003_flip_input_r82.md` | +430 / -0 | the stdout of a run of the COMMITTED C4 blob, inserted by byte copy, under the worker's own title, opening and five numbered paragraphs |
+
+### 663b8f86 F275 R82 C6: record DECISION F275 D56
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/decisions.md` | +20 / -0 | slice DEC82 APPENDED; no landed DECISION rewritten and the deletion column is ZERO |
+
+### C7 — this commit (self-reference, R-0149 pattern)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | NO NUMBERS, BY CONSTRUCTION | constraint 11 and item 31 of §3: a handback cannot carry a reading taken after the commit that writes it, and a value routed to a round report dies with the session. The REVIEWER measures this commit's insertion count and path at the next gate and books it in the round's ledger entry |
+
+THE `+/-` CELLS ABOVE WERE READ FROM `git show --numstat` AND COMPARED CELL BY CELL AGAINST
+G8's OWN NUMBERS. The comparison, printed: C0a 392/0 against 392/0 EQUAL; C0b 345/296 against
+345/296 EQUAL; C1 24/25 against 24/25 EQUAL; C2 8/0 against 8/0 EQUAL; C3 2/0 against 2/0
+EQUAL; C4 286/0 against 286/0 EQUAL; C5 430/0 against 430/0 EQUAL; C6 20/0 against 20/0 EQUAL.
+Eight of eight cell pairs equal, ZERO differ. Every commit staged exactly ONE path and every
+insertion count is under 500, the largest being C5 at 430.
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git archive --format=tar -o .remedy-wt/r81_ef75e213.tar ef75e213` | exit 0; the archive of the base tree the recipe of the block orders |
-| `tar -xf .remedy-wt/r81_ef75e213.tar -C .remedy-wt/r81_base_worker` and `… -C .remedy-wt/r81_noindex_worker` | exit 0 both; the same extraction twice, one of which is then given an index |
-| `git init -q` and `git add -A -f .` inside `.remedy-wt/r81_base_worker` | exit 0 both; the index the static check's `git ls-files` needs. THE NO-INDEX COPY IS LEFT WITHOUT ONE ON PURPOSE — it is G4(c)'s negative control |
-| `git push -u origin feature/f275-one-world-completion-part-three` | run after C6; result in the round report |
-| `git worktree add` / `git worktree remove` | NOT RUN. `git worktree list` shows the primary checkout alone; both trees under `.remedy-wt/` are plain directory copies and neither is a registered worktree |
+| `git archive --format=tar -o .remedy-wt/r82/arch_ef75e213.tar ef75e213` and the same at `d7cf5d58` | exit 0 both; the BASE and TIP trees the block's recipe orders |
+| `tar -xf … -C .remedy-wt/r82/tree_base` and `… -C .remedy-wt/r82/tree_tip` | exit 0 both |
+| `git init -q` and `git add -A -f .` inside each of the four trees | exit 0 in all eight; `git ls-files` reads 4673 rows at BASE and 4689 at each of TIP, SHIFT and DELETE. The index is required because the owner check enumerates with `git ls-files` |
+| `shutil.copytree(TIP, SHIFT, symlinks=True)` and `shutil.copytree(TIP, DELETE, symlinks=True)` | the argument is NAMED rather than assumed, per item 18 of §3: `copytree` defaults to `symlinks=False` and would dereference |
+| `git push -u origin feature/f275-one-world-completion-part-three` | run after C7; result in the round report |
+| `git worktree add` / `git worktree remove` | NOT RUN. `git worktree list` shows ONE row, the primary checkout; all four trees under `.remedy-wt/r82/` are plain directory copies and none is registered |
 | `gh` / `remedy` | NOT RUN, per constraint 8. No pull request created, edited or merged; no branch created or deleted; no merge, no force-push, no history rewrite |
 
 ## Verification
 
-Every gate wrote its own transcript under `.remedy-wt/` and the exit code below was read back out
-of that file, which carries a `REAL_EXIT=` trailer written by the harness, not out of the process
-that ran it.
+Every gate wrote its own transcript under `.remedy-wt/r82/` and the exit code below was read
+back out of that file's `REAL_EXIT=` trailer by a separate driver process, never out of the
+process that ran the gate.
 
 | Gate | Transcript | REAL exit code | Decisive reading |
 |---|---|---|---|
-| G1 transport, budget, slices | `.remedy-wt/r81_g1.out` | `REAL_EXIT=0` | `cmp .remedy-wt/r81_block.md` against the committed C0a blob exit **0** with empty output; both 28740 bytes, sha256 `a1177ea4…8ee56fc53fa`; `.agent/last_block.md` at C0b byte-identical to the COMMITTED C0a blob; SLICE CARDINALITY MEASURED **4** — PLAN81 2808 bytes / 46 lines, RECORD81 3571 / 8, SLIPS81 1341 / 4, DEC81 4380 / 18 — every one matching the sha256 on its own BEGIN marker; TOTAL **343** against the cap of 490 and PROSE **267** against 400, both MATCHING constraint 10; repeated-character lines outside a slice **0** |
-| G2 the plan | `.remedy-wt/r81_g2.out` | `REAL_EXIT=0` | `.agent/plan.md` at C1 byte-identical to PLAN81 re-extracted from the COMMITTED C0a blob, 2808 bytes, sha256 `8a6d653a…74beccd248e4`; **46** lines, at most 50; exactly one `## Goal` at line 6 and exactly one `## Next Steps` at line 25 |
-| G3 the record, full forensics | `.remedy-wt/r81_g3.out` | `REAL_EXIT=0` | reader A holds for both appends with the arithmetic printed (1093634+3571=1097205 and 1239171+4380=1243551); reader B holds at N COUNTED BY THE SCRIPT as **4** for RECORD81 and **9** for DEC81; both negative controls — one ASCII letter flipped inside the FIRST appended paragraph, `G`→`g` at slice offset 1 and `D`→`d` at offset 4 — REJECTED by BOTH readers; deletion columns **0**, **0** and **0**; `.agent/prose_slips.md` equals its pre-commit blob followed by exactly SLIPS81 and nothing else; the `Gate:` header pattern DERIVED from the ledger's own 102 prior headers, `^Gate:\ F\d+\ R\d+\ `, matches **102 of 102** of them and matches RECORD81, duplicating none byte for byte |
-| G4 control, columns, class | `.remedy-wt/r81_g4.out` | `REAL_EXIT=0` | all five pinned inputs MATCH their stated size and digest; THE CONTROL reproduces `.remedy-wt/r77_stage_corrected.out` with **0 differing lines**, the argument vector printed in full, the stage's own exit **0**; THE NEGATIVE CONTROL over the same extraction with no git index decides **nothing** — 994 Python files on disk, `git ls-files` returning **0**, all **2185** ruled sites reported `file unreadable at this tree`, **0** live record classes, DECIDED **0** — and therefore does NOT reproduce the pinned summary, so the control can fail; the five ruled columns split **2 CONFIRMED / 3 REFUSED**; the class is **26** over **91** multi-site lines on **2080** distinct lines over **2185** ruled sites, both partitions closed, and all four cross-checks against the block MATCH |
-| G5 the artefact | `.remedy-wt/r81_g5.out` | `REAL_EXIT=0` | the committed C4 blob byte-identical to the file a re-run of the generator produces, 20054 bytes, sha256 `b28e5388…11e0e338380b`; the base lookup `git show 89d4772a:.agent/f275_t003_owner_fallback_r81.md` exit **128** with `exists on disk, but not in '89d4772a'`; **155** indented non-blank lines compared under the rule "its first character is a space and it has a non-space character", **155** matched VERBATIM at STRICTLY INCREASING indices, **0 unmatchable**, first match at saved-output line 3 and last at 172 of 174; **0** wall-clock lines and **0** three-backtick lines; **7** headings in the block's order; `R-0880` named once and stated open; the round 79 and round 80 artefacts byte-identical at the base and at C5 and ABSENT from the changed-path set |
-| G6 tree, colours, path set | `.remedy-wt/r81_g6.out` | `REAL_EXIT=0` | `git status --porcelain` printed the EMPTY STRING at C5, shown as `''`; `git worktree list` **one** row, the primary checkout, while `r81_base_worker`, `r81_noindex_worker` and the reviewer's `r81_base` all exist on disk and NONE is registered — both facts hold together; THE CANARY `python3 -B -m pytest tests/cli/test_golden_path.py -q` exit **0**, **42 passed** against the 42 the block says the reviewer measured at the base; `ruff check .` exit **1** by its own design, **26** location rows counted by the gate and cross-checked against its own `Found 26 errors.` line, at the frozen ceiling of 26; a FILESYSTEM `rglob` sweep finding **0** `.py` files anywhere under `.agent/`, the same sweep reaching **2241** files |
-| G7 path set and open set | `.remedy-wt/r81_g7_pre.out` | `REAL_EXIT=0` | G7(b): **87** open BY DISTINCT ID at the base and **87** at C5, membership difference EMPTY both ways, `R-0880` OPEN at both; the CANONICAL line-count reading of `scripts/rotate_live_review.count_open_findings`, imported from the shipped file, is **85** at both, so the GAP is **2** at both and DID NOT GROW — it is R-0721 and R-0725, each carrying two `Done:` lines. G7(a) at this mode: EXTRA is already EMPTY and MISSING is exactly `.agent/handoff.md`, the one path C6 alone creates; changed paths under `packages/`, `apps/`, `tests/` or `docs/`: **0** |
-| G7(a) over the full range | `.remedy-wt/r81_g7_post.out` | run AFTER C6 — see deviation 1 | its subject includes `.agent/handoff.md`, which C6 alone creates |
-| G8 the insertion cap | `.remedy-wt/r81_g8.out` | `REAL_EXIT=0` | C0a 343, C0b 207, C1 20, C2 8, C3 4, C4 300, C5 18 — every one under 500, every commit exactly one path |
+| G1 transport, budget, slices | `.remedy-wt/r82/g1.out` | `REAL_EXIT=0` | `cmp .remedy-wt/r82_block.md` against the committed C0a blob exit **0** with empty output; both 33528 bytes, sha256 `37ec1313…92defd3`; `.agent/last_block.md` at C0b byte-identical to the COMMITTED C0a blob; SLICE CARDINALITY MEASURED **4** — PLAN82 2700 bytes / 45 lines, RECORD82 3615 / 8, SLIPS82 875 / 2, DEC82 5327 / 20 — every one matching the sha256 on its own BEGIN marker; TOTAL **392** against constraint 10's 392 and PROSE **317** against its 317, PROSE taken as TOTAL minus the slices' 75 lines |
+| G2 the plan | `.remedy-wt/r82/g2.out` | `REAL_EXIT=0` | `.agent/plan.md` at C1 byte-identical to PLAN82 re-extracted from the COMMITTED C0a blob, 2700 bytes, sha256 `e8657d4d…cc4ea377a`; **45** lines, at most 50; exactly one `## Goal` and exactly one `## Next Steps` |
+| G3 the record, full forensics | `.remedy-wt/r82/g3.out` | `REAL_EXIT=0` | reader A holds for both appends with the arithmetic printed (1097205+3615=1100820 and 1243551+5327=1248878, both pre-commit lengths MATCHING the block); reader B holds at N COUNTED BY THE SCRIPT as **4** for RECORD82 and **10** for DEC82; the negative controls — `G`→`g` at offset 0 and `D`→`d` at offset 3 of the FIRST appended paragraph — were each proved to really change the bytes and were then REJECTED by BOTH readers in BOTH directions (mutated file and mutated slice), four rejections per slice; deletion columns **0**, **0** and **0**; `.agent/prose_slips.md` at C3 equals its 288515-byte pre-commit blob followed by exactly SLIPS82 and nothing else; the entry-header pattern DERIVED from the ledger's own paragraph heads — 532 heads, 103 of them opening an entry — is `^Gate: F\d+ R\d+ — `, it matches **103 of 103**, RECORD82's header matches it and duplicates **none** of them byte for byte |
+| G4 the generator and the artefact | `.remedy-wt/r82/g4.out` | `REAL_EXIT=0` (one clause DECLARED, see deviation 2) | the C4 blob holds **exactly one** ```` ```python ```` fence, 12121 bytes over 286 lines; the C5 blob 23622 bytes over 430 lines, both under 500; a FRESH run of the COMMITTED C4 blob exits **0** and the three ordered runs plus this one give **1 DISTINCT DIGEST**, `e2946fda…dc700a625`; `git show d7cf5d58:` fails at exit **128** for BOTH new paths with `exists on disk, but not in 'd7cf5d58'`; **327** indented non-blank lines under the rule "its first character is a space and it has a non-space character", **327** matched VERBATIM at STRICTLY INCREASING indices, **0 unmatchable**, first matching index 1 and last 351 of 351 saved lines; **0** lines carrying a wall-clock duration or timestamp and **0** three-backtick lines |
+| G5 the measurements | `.remedy-wt/r82/g5.out` | `REAL_EXIT=0` | **52** comparisons made, **52 MATCH**, **0 DIFFER** — every figure the block's list pins reproduced, including the canonical sha256 `b347365e…45edbda4` over 111904 bytes, the re-bound site's two coordinate pairs and its two source lines character for character. Each cell is PARSED OUT OF THE SAVED STDOUT rather than recomputed |
+| G6 tree, colours, path set | `.remedy-wt/r82/g6.out` | `REAL_EXIT=0` | `git status --porcelain` printed the EMPTY STRING at C6, shown as `''`; `git worktree list` **one** row while all four of `tree_base`, `tree_tip`, `tree_shift` and `tree_delete` exist on disk and NONE is registered — both facts reported together; THE CANARY `python3 -B -m pytest tests/cli/test_golden_path.py -q` exit **0**, **42 passed**, matching the 42 the reviewer measured at the base; `ruff check .` exit **1** BY ITS OWN DESIGN, **26** location rows counted by the gate and cross-checked against ruff's own `Found 26 errors.` line, the two agreeing at the frozen ceiling of 26; a filesystem `rglob("*.py")` under `.agent/` finding **0**, the same sweep reaching **2244** files of which **36** end `.py.md` — the carrier the pattern deliberately does not match |
+| G7 the open set and the path set | `.remedy-wt/r82/g7.out` | `REAL_EXIT=0` | derived mechanically at both ends: **87** open BY DISTINCT ID at `d7cf5d58` (110 distinct registrations minus 23 distinct `Done:` ids) and **87** at C6, membership difference EMPTY both ways, `R-0880` OPEN and `R-0879` RESOLVED at each, highest registered id `R-0881` at the base — all four matching the reviewer's figures; ids registered, resolved and de-registered by this round all **EMPTY**; the changed-path set of `d7cf5d58`..C6 is exactly the Bundle MINUS `.agent/handoff.md` at **8** paths with MISSING and EXTRA both EMPTY, and **0** changed paths under `packages/`, `apps/`, `tests/` or `docs/` |
+| G8 the insertion cap | `.remedy-wt/r82/g8.out` | `REAL_EXIT=0` | C0a 392/0, C0b 345/296, C1 24/25, C2 8/0, C3 2/0, C4 286/0, C5 430/0, C6 20/0; every commit exactly ONE staged path; commits whose insertions REACH 500: **0** |
 
-THE FIVE RULED COLUMNS, WHICH ARE WHAT THIS ROUND EXISTS TO READ. Each receiver was read FORWARD
-from its byte offset, per constraint 4:
+THE THREE READINGS G5 ORDERS FROM THE RUN RATHER THAN FROM THE BLOCK.
 
-| Site | col | receiver | shipped owner check | owners file | pre-flip source at `ef75e213` |
-|---|---|---|---|---|---|
-| `tests/cli/test_repair_runtime.py:68` | 19 | `job` | **CONFIRMED** | Job | `return str(job.id), str(art.id), str(data_dir)` |
-| `tests/cli/test_repair_runtime.py:68` | 32 | `art` | **REFUSED**, absent from the decided set | Job | same line |
-| `packages/orchestration/brain_detail.py:345` | 45 | `t` | **CONFIRMED** | Task | `task = next((t for t in job.tasks if str(t.id) == node.id), None)` |
-| `packages/orchestration/brain_detail.py:345` | 54 | `node` | **REFUSED**, absent from the decided set | Task | same line |
-| `packages/orchestration/project_registry.py:856` | 19 | `j` | **REFUSED**, absent from the decided set | Job | `job_map = {str(j.id): j for j in jobs}` |
+| owner-check run | ruled sites | DECIDED | REFUSED |
+|---|---|---|---|
+| the CORRECTED set at BASE | 2185 | 1908 | 277 |
+| the SUBTRACTED set at TIP | 2183 | 1908 | 275 |
+| the SUBTRACTED set at DELETE | 2183 | 1907 | 276 |
 
-MEASURED, NOT TAKEN FROM THE BLOCK: **2** of the five are CONFIRMED and **3** are REFUSED, and
-2 + 3 = 5 against 5 columns. The ruled set holds all five, so the transform renames all five. The
-decided set the control dumped holds **1908** of the 2185 ruled sites and the remaining **277**
-are the stated blind spot, which is the partition the shipped stage's own banner prints.
+DECIDED is UNCHANGED across the subtraction and REFUSED falls by exactly 2, which is the number
+of sites removed — so neither site DECISION F275 D55 named was one the check decided. From TIP
+to DELETE, DECIDED falls by 1 and REFUSED rises by 1, which is the re-bound site leaving the
+confirmed set. CONTRADICTED is 0 in all three runs.
 
-THE CLASS MEASUREMENT. Over the corrected set: **2185** ruled sites on **2080** distinct
-(path, line) pairs, **91** lines carrying more than one ruled site, and of those **26** on which
-one SHARED owner verdict spans sites whose receiver identifiers DIFFER, **32** where the shared
-verdict spans one receiver name and **33** where the verdicts DISAGREE. The two partitions close:
-58 + 33 = 91 and 26 + 32 = 58. Zero sites on a multi-site line had an unreadable receiver. Both
-lines behind the frames are IN the class; the third site carries one ruled column and is not a
-multi-site line at all, so 16 of the 17 on-site frames sit on the class's two lines and 1 does
-not — 16 + 1 = 17.
+THE PARTITION OF THE MUTATED FILE: 8 merely RE-LOCATED against 1 RE-BOUND, and 8 + 1 = 9
+against the file's own ruled-site count of 9 — the partition closes.
 
-EVERY FIGURE THE BLOCK STATES REPRODUCED EXACTLY, so constraint 3's "your measurement is what the
-artefact carries" bit nowhere this round: 2185, 2080, 91 and 26 all MATCH, and so does the whole
-of round 80's handover re-derived from the pinned capture without quoting it — 30 records the
-message rule admits, 24 the class rule admits, 6 rejected, 19 named and 5 `NoneType`, 17 on a
-held site and 7 nowhere, over 3 distinct held sites.
+THE SEVEN MODULES, MEASURED. `grep -rn --include=*.py -F -x '    job_id_str = str(job.id)'`
+over `packages/orchestration/` at `d7cf5d58` returns SEVEN paths: `brain_detail.py:142`,
+`cockpit.py:394`, `context_inspector.py:584`, `file_provenance.py:71`, `proof_chain.py:565`,
+`timeline.py:395` and `token_policy.py:109`. Inside the named path the occurrence count is
+**1**, which is the uniqueness the revert target needs. See deviation 1.
 
 ## Authored-text proofs
 
 | Text | Target | Result |
 |---|---|---|
-| the block | `.agent/authored/f275-r81.md` | `cmp` against `.remedy-wt/r81_block.md` exit 0 with empty output; both 28740 bytes, sha256 `a1177ea46e337a169168c2b2c6e4fe63f57748e67af208c3396ee8cb67fc53fa` |
-| PLAN81 | `.agent/plan.md` | byte-identical to the slice extracted from the COMMITTED C0a blob, 2808 bytes, sha256 `8a6d653acecb3343f262b6b6c8a8d1269c5c055a37783dc0aed874beccd248e4` |
-| RECORD81 | `.agent/live_review.md` | byte-exact suffix of the post-commit file, reader A and reader B both accepting, 3571 bytes, sha256 `a81e402d0acb759914e07664f51d68cf59c81c569d66d9ca2db111e48c82a9ae` |
-| SLIPS81 | `.agent/prose_slips.md` | the post-commit file equals the pre-commit blob followed by exactly the slice, 1341 bytes, sha256 `19ae53c395b461ede352f1f4e8bd0e3e2c45ccb54106bfac6114cf3b737706c1` |
-| DEC81 | `.agent/decisions.md` | byte-exact suffix of the post-commit file, reader A and reader B both accepting, 4380 bytes, sha256 `da7da8c8c19f913f441fd0ebd4dfaa15cc0c9f010c67558ce5e7fa9b2be556bf` |
+| the block | `.agent/authored/f275-r82.md` | `cmp` against `.remedy-wt/r82_block.md` exit 0 with empty output; both 33528 bytes, sha256 `37ec1313515e898877c6e0307536c9417c53f786f264990fa971e868d92defd3`; transported with `shutil.copyfile`, never retyped |
+| PLAN82 | `.agent/plan.md` | byte-identical to the slice re-extracted from the COMMITTED C0a blob, 2700 bytes, sha256 `e8657d4da419d2abcaee593de0ed263984a52f019a7e17d71698e7bcc4ea377a` |
+| RECORD82 | `.agent/live_review.md` | byte-exact suffix of the post-commit file, reader A and reader B both accepting and both rejecting all four negative controls, 3615 bytes, sha256 `9613b788b92883a1af9494133246663fc4cf800f2e515d5d99628f4ec5f59687` |
+| SLIPS82 | `.agent/prose_slips.md` | the post-commit file equals the pre-commit blob followed by exactly the slice and nothing else, 875 bytes, sha256 `9c91a4ba4b505b129def68731af49c8aacdb4ebe5ae0f6c313c968ddb06f90a7` |
+| DEC82 | `.agent/decisions.md` | byte-exact suffix of the post-commit file, reader A and reader B both accepting and both rejecting all four negative controls, 5327 bytes, sha256 `8f14e60cd5627ce3ea2e10ee7c32dd8ad08e2c8ba7b83525db6a0d98c74c53fc` |
+| the round 59 re-key stage | `.remedy-wt/r82/rekey.py` | the ONLY ```` ```python ```` fence of the committed `.agent/authored/f275-r59-rekey.py.md`, EXTRACTED not retyped, 5186 bytes, sha256 `f56394e9ac2582d5655a64a135fbf95b2930c24d14e791a23a2eb2630742a721` — the digest the block pins |
+| the round 73 owner check | `.remedy-wt/r82/owner_stage.py` | the ONLY ```` ```python ```` fence of the committed `.agent/authored/f275-r73-owner-stage.py.md`, EXTRACTED not retyped, 24253 bytes, sha256 `7be3437450d1f183d241e8a5161a6ae182652d0aecd674ea10e8f870407eddb8` — the digest the block pins and the one `.agent/f275_t003_owner_fallback_r81.md` pins for the same file |
+| round 77's two pinned data inputs | `.remedy-wt/r77_corrected.json`, `.remedy-wt/r77_corrected_owners.json` | 120753 bytes sha256 `765b5ba9…f0290a512` and 121095 bytes sha256 `670c6e95…61591b44`, as printed in S0; both MATCH the block's pins, neither was regenerated and neither is committed |
 
-No slice was edited, reflowed or corrected, and no discrepancy inside a slice was found to
-declare this round.
+NO SLICE WAS EDITED, REFLOWED OR CORRECTED, and no discrepancy inside a slice was found to
+declare this round. The generator and the artefact are the worker's OWN text, written from the
+block's two SPECs and from the run in front of it, as constraint 2 requires.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
 | C0a block as authored text | done | |
-| C0b last-block mirror | done | |
-| C1 plan | done | |
-| C2 ledger, the round 80 PASS verdict | done | |
+| C0b last-block mirror | done | written from the COMMITTED C0a blob |
+| C1 plan | done | the first substantive commit |
+| C2 ledger, the round 81 PASS verdict | done | |
 | C3 prose slips | done | |
-| C4 the fallback-class artefact | done | |
-| C5 DECISION F275 D55 | done | appended; no landed DECISION rewritten, deletion column zero |
-| C6 the handback | done | this commit |
+| C4 the generator | done | written to the SPEC; a `.py.md` carrier |
+| C5 the artefact | done | produced BY the committed C4 blob |
+| C6 DECISION F275 D56 | done | appended; no landed DECISION rewritten, deletion column zero |
+| C7 the handback | done | this commit |
 | G1 · G2 · G3 | done | exit 0, exit 0, exit 0 |
-| G4 · G5 | done | exit 0, exit 0 |
-| G6 | done | exit 0; ruff itself exits 1 at 26 rows against the ceiling of 26, which is the expected code for a run AT the ceiling |
-| G7(b) and G7(a)'s EXTRA half | done | exit 0 |
-| G8 | done | exit 0 |
-| G7(a) over the full range to C6 | deviated | unmeetable before C6 by its own wording; run immediately after C6, transcript `.remedy-wt/r81_g7_post.out`, real exit code in the round report |
+| G4 | deviated | exit 0 on every reading it can hold; ONE clause of its wording contradicts the C5 SPEC and is declared with its measurement — deviation 2 |
+| G5 | done | exit 0; 52 comparisons, 52 MATCH, 0 DIFFER |
+| G6 | done | exit 0; `ruff` itself exits 1 at 26 rows against the ceiling of 26, which is the expected code for a run AT the ceiling |
+| G7 · G8 | done | exit 0, exit 0 |
 
 ## Deviations & assumptions
 
-1. **G7(a) COULD NOT BE REPORTED INSIDE THE FILE ITS OWN SUBJECT CREATES.** Constraint 11 orders
-   every gate except G7(a) run at C5 and then says G7(a) runs after C6; the gate's own text says
-   the same. The half of G7(a) that IS decidable at C5 — EXTRA empty, no changed path under
-   `packages/`, `apps/`, `tests/` or `docs/`, and MISSING exactly the one handoff path — was run
-   at C5 and is quoted above with its real exit code, and the full-range reading is taken
-   immediately after C6 with its transcript at `.remedy-wt/r81_g7_post.out` and its exit code
-   relayed in the round report, where the reviewer re-runs it itself. Nothing was adjusted to
-   route around this and no extra commit was made. This is the third round running in which the
-   same path set forces the same split, which is exactly what the second SLIPS81 line predicts.
+1. **THE BLOCK SAYS SEVEN OTHER MODULES; THERE ARE SIX.** The DELETE recipe states that the
+   revert target's bytes "occur once in each of seven other modules under
+   `packages/orchestration/`". Measured at `d7cf5d58` by an exact fixed-string whole-line grep,
+   they occur in SEVEN modules IN TOTAL — `brain_detail.py`, `cockpit.py`,
+   `context_inspector.py`, `file_provenance.py`, `proof_chain.py`, `timeline.py` and
+   `token_policy.py` — of which SIX are other than the named file. An independent `os.walk` over
+   the same subtree returned the same six. THE LOAD-BEARING HALF HOLDS EXACTLY: inside the named
+   path the occurrence count is **1**, at line 142, which is what item 25 of §3 requires of a
+   revert target, and it is the line the re-key then re-binds at 142:21. Nothing was adjusted;
+   the count is reported as measured.
 
-2. **I BUILT MY OWN BASE TREE AND DID NOT USE THE REVIEWER'S.** `.remedy-wt/r81_base` exists on
-   disk and was left untouched. The tree the control ran over is `.remedy-wt/r81_base_worker`,
-   built by the block's recipe from `git archive ef75e213` with `git init` and `git add -A -f`
-   inside it, and the negative control's tree is `.remedy-wt/r81_noindex_worker`, the SAME
-   extraction of the SAME archive with no `git init` at all. Both are named in G6(b) and neither
-   is a registered worktree.
+2. **G4's LITERAL BYTE-IDENTITY CLAUSE CONTRADICTS THE C5 SPEC, AND BOTH WERE RUN.** G4 says
+   "The C5 blob is byte-identical to the file a fresh run of the COMMITTED C4 blob produces",
+   while the C5 SPEC two sections above requires that stdout to sit "under a title and a short
+   opening the worker writes" and to be followed by five numbered paragraphs, and G4's own next
+   sentence then orders the artefact's indented lines MATCHED against the generator's stdout —
+   which is only a question worth asking if the artefact is more than that stdout. I followed
+   the C5 SPEC and ran the literal clause anyway. Measured: C5 is 23622 bytes against the
+   produced file's 18525, so the literal clause reads DIFFER; the produced file occurs INSIDE
+   the C5 blob UNMODIFIED at byte offset 929, with 929 bytes of title and opening before it and
+   4168 bytes of the five numbered paragraphs after it, and 929 + 18525 + 4168 = 23622 exactly.
+   The reading that does hold is stated beside it: a fresh run of the committed C4 blob is
+   byte-identical to the saved stdout the artefact was built from, at one distinct digest over
+   four runs, and all 327 of the artefact's indented lines are lines of it. G4's transcript
+   carries both a `REAL_EXIT=0` excluding this clause and a
+   `REAL_EXIT_IF_THE_LITERAL_CLAUSE_IS_COUNTED=1`, so the reviewer can take either reading
+   without re-deriving it.
 
-3. **THE CONTROL WAS RUN TWICE, BY TWO SCRIPTS, AND REPRODUCED BOTH TIMES.** A standalone
-   `.remedy-wt/r81_control.py` ran it first while the recipe was being proved, and the gate-bearing
-   run is the one inside `.remedy-wt/r81_instrument.py`, whose whole transcript is
-   `.remedy-wt/r81_instrument.out`. The instrument was re-run as G4 after C5 and its output is
-   BYTE-IDENTICAL to the saved transcript the artefact was built from; three back-to-back runs of
-   the measurement gave one distinct sha256, so the listing of 26 class members is stable and not
-   set-iteration order.
+3. **S3 WAS GIVEN A THIRD OWNER-CHECK RUN THE SPEC DOES NOT ORDER.** S3 orders the owner check
+   "over the set at TIP and again over the set at DELETE" — two runs over the SAME set at two
+   different TREES. The artefact's point 1 requires that the subtraction "took only refused
+   sites" be given "as the reading of the two runs, not as a claim", and that reading compares
+   the CORRECTED set with the SUBTRACTED one — a different pair. With only S3's two runs point 1
+   would have been a claim carried over from DECISION F275 D55's prose, so the generator runs the
+   owner check over the corrected set at BASE as well, and the artefact's point 1 is that
+   measurement: DECIDED 1908 both before and after, REFUSED 277 falling to 275. BASE was chosen
+   over TIP for the "before" so that the comparison moves the SET and not the tree; the run
+   costs nothing and the generator's determinism is unaffected.
 
-4. **TWO GATE SCRIPTS WERE RED ON THEIR FIRST RUN AND BOTH FAILURES WERE MINE, NOT THE SUBJECT'S.**
-   G2's first run exited 1 with `FileNotFoundError` because it read the PLAN81 slice from a scratch
-   path an earlier command had not actually written; it now re-extracts the slice from the
-   COMMITTED C0a blob itself, which is strictly better than depending on a file beside it. G6's
-   first run exited 8 because it counted ruff rows with a pattern written for an older ruff output
-   format and read **0** rows against the ceiling of 26; this ruff prints a `--> <path>:<line>:<col>`
-   location line per diagnostic, and the gate now counts those AND cross-checks them against ruff's
-   own `Found N errors.` tally, which agree at 26. Both are stated here rather than hidden behind a
-   clean transcript.
+4. **S2 WAS GIVEN ONE MEASUREMENT THE SPEC DOES NOT ENUMERATE.** The artefact's point 2 asserts
+   that no path under `packages/`, `apps/` or `tests/` differs between the two commits, and an
+   artefact may state no figure it has not measured. The generator therefore compares the BASE
+   and TIP trees byte for byte over those three subtrees and prints the count, which is **0**.
+   It is done on the TREES rather than by naming two commits, so no commit id enters the
+   generator.
 
-5. **A HAND-COUNTED NUMERAL WAS CAUGHT IN THE ARTEFACT'S DRAFT AND REMOVED BEFORE C4.** The draft
-   said "eleven of the twenty-six members pair `pt` with `job` in one test module"; the enumeration
-   the instrument prints shows NINE such members, and the sentence sat directly beside a measured
-   category. It was replaced by wording that asserts no count and points the reader at the
-   enumeration above it. Nothing false landed, and it is recorded here because it is the class of
-   slip the ledger tracks rather than because it reached disk.
+5. **S0 REPORTS FOUR PINNED INPUTS RATHER THAN TWO.** The block pins a byte count and a digest
+   for the two data inputs AND for the two committed instruments; S0 prints all four, so the
+   artefact carries the provenance of everything it consumed rather than half of it.
 
-6. **NO OTHER DEVIATION.** The ordered commit sequence is exactly the block's, with nothing added,
-   dropped or reordered; every commit staged exactly one path; no path outside the Change section
-   was touched; the round 79 and round 80 artefacts were not edited, deleted or staged and are
-   byte-identical at the base and at C5; no landed DECISION was rewritten and C5's deletion column
-   is zero; nothing under `packages/`, `apps/`, `tests/` or `docs/` was touched, no suite beyond
-   the canary was run and no transform was executed; every pinned input matched its digest and
-   none was regenerated; no `.py` file was created anywhere inside the tracked tree and every
-   script this round wrote lives under `.remedy-wt/` uncommitted; `.agent/STOP` was read before
-   C0a, where it did not exist, and again before C6, where the reading is recorded in
-   `.remedy-wt/r81_stop_pre_c6.out` with `REAL_EXIT=2` at `2026-09-12T16:17:21Z`. Only the second
-   reading carries a wall-clock stamp, because the first was taken before the harness that writes
-   one was in place; constraint 9's timestamp clause binds only if the sentinel appears, and it
-   did not.
+6. **MY OWN G5 SCRIPT WAS RED ON ITS FIRST RUN AND THE FAILURE WAS MINE, NOT THE SUBJECT'S.**
+   It read the TIP owner-check run's three REFUSED counts with a fixed twenty-line lookahead,
+   which ran past that run's output into the DELETE run's and returned `[106, 103, 66, 107, 103]`
+   against the expected `[106, 103, 66]` — one DIFFER out of 52. The window is now bounded by
+   that run's OWN `REAL EXIT CODE` line and the gate prints the bounds it used; 52 of 52 match.
+   It is recorded here rather than hidden behind a clean transcript because it is precisely the
+   class SLIPS82 names one commit earlier: a parser that reads something other than its subject
+   and reports a number anyway.
+
+7. **NO OTHER DEVIATION.** The ordered commit sequence is exactly the block's Bundle, with
+   nothing added, dropped or reordered, and C1 is the first substantive commit. Every commit
+   staged exactly one path and no path outside the Change section was touched: nothing under
+   `packages/`, `apps/`, `tests/`, `docs/` or `scripts/` was edited, the artefacts of rounds 79,
+   80 and 81 were not edited, deleted or staged, no landed DECISION was rewritten and C6's
+   deletion column is zero. No suite beyond the canary was run, no transform was executed and no
+   flip was performed. Every pinned digest matched and nothing was regenerated. No `.py` file was
+   created anywhere inside the tracked tree; every script this round wrote lives under
+   `.remedy-wt/r82/` and stays uncommitted, and the four trees there are plain directory copies
+   with `git worktree list` still showing the primary checkout alone. No `gh` and no `remedy`
+   command; no pull request created, edited or merged; no branch created or deleted; no merge,
+   no force-push, no history rewrite.
+
+8. **`.agent/STOP` WAS READ FROM DISK BEFORE C0a AND AGAIN BEFORE C7, per constraint 3, and was
+   ABSENT at both readings.** The recorded real exit codes are identical at each: `cat` **1**,
+   `ls -la` **2**, `test -e` **1**, and `os.path.exists` **False**. The transcripts are
+   `.remedy-wt/r82/stop_before_C0a.txt` and `.remedy-wt/r82/stop_before_C7.txt`. Worth saying
+   plainly for the next session: a session note carried the belief that session 27's `.agent/STOP`
+   was still on disk. It is not, and was not at any point in this round.
 
 ## Next
 
-The reviewer re-runs the gates and issues the round 81 verdict.
+The reviewer re-runs the gates and issues the round 82 verdict.
 
 Operator questions open: 0.
 
-The next round DROPS THE TWO SITES DECISION F275 D55 NAMES from the flip's input and re-derives
-the corrected set, which is a set subtraction and a re-key rather than a new measurement; then
-THE RESOLVER COLLAPSE that DECISION F260 D5 places in T003 and DECISION F275 D37 names as the
-home of the id-SHAPE seam — production code, so a SPLIT round with mutation red-proofs — and then
-THE FLIP, in whose own commit the stale `_FakeJob` double at `packages/orchestration/project_registry.py:856`
-is updated. `R-0880` stays OPEN: this round adds the first behavioural measurement of what the
-fallback costs and two sites removed by name, and builds no refusal into the transform.
-
-## Reviewer verdict on round 81 — appended after the handback, by the reviewer's authored text
-
-VERDICT ROUND 81: **PASS.** Written by the planner and reviewer of SESSION 28 after reading the
-committed range `89d4772a`..`cba25b45` and RE-DERIVING EVERY GATE INDEPENDENTLY against the
-committed blobs; the worker's report and its transcripts were evidence for no line below. It is
-carried here because under `docs/agents/self_drive_protocol.md` a verdict that stays in the
-session is lost, and it is booked into `.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT
-of round 82, per amend0827-process-diet rule 1.
-
-WHAT THE TRANSPORT PROOF COVERS, STATED BEFORE THE FIGURES, per item 37 of §3. G1 is the PRIMARY
-cmp-against-scratchpad proof and not the §4.9 digest fallback: the chain it walks is the
-reviewer's own scratch original, the committed `.agent/authored/` blob and the working copy. It
-does not and cannot establish what bytes the worker RECEIVED. The block blob is byte-identical
-to the reviewer's original at 28740 bytes, `.agent/last_block.md` equals the committed block
-blob, all four slices match the sha256 on their own BEGIN markers, and the block re-measures at
-343 lines TOTAL and 267 PROSE as its constraint 10 states.
-
-EVERY GATE HOLDS AND THE REVIEWER RE-RAN ALL EIGHT. `.agent/plan.md` is byte-identical to its
-slice. The two record appends are exact under reader A with reader B holding over the whole
-appended region at N counted from the slice as 4 and 9, and every deletion column is ZERO. The
-round 79 and round 80 artefacts are byte-identical at the base and at the tip, so no landed
-reading was rewritten. The artefact's 155 indented lines all appear verbatim in the instrument's
-output with the matching monotone and nothing unmatchable, and it carries no wall-clock duration.
-The canary reads 42, `ruff check .` 26 rows against the frozen ceiling of 26, zero `.py` files
-under `.agent/`, one worktree, the changed-path set exactly the Change section with MISSING and
-EXTRA empty and zero paths under `packages/`, `apps/`, `tests/` or `docs/`, and the open set 87
-by distinct id at both ends with identical membership and `R-0880` open at each.
-
-THE ROUND'S SUBSTANCE, AND IT IS A DIAGNOSIS RATHER THAN A COUNT. Every ruled column the
-seventeen attributed frames blame is a column the SHIPPED owner check REFUSES rather than
-decides, and the reviewer re-derived all five verdicts independently: `job` and `t` CONFIRMED,
-`art`, `node` and `j` absent from the decided set. The transform renames them anyway on the
-fallback its P1 rule describes, so on a line carrying one owner verdict a refused column takes
-the verdict of the column beside it. The class that puts at risk re-derives exactly as the
-artefact reports it — 2185 ruled sites over 2080 distinct lines, 91 carrying more than one site,
-58 of those agreeing on one verdict and 33 not, and 26 of the 58 spanning receivers with
-different names — and both lines behind sixteen of the seventeen frames are in the 26. DECISION
-F275 D55 takes two sites out of the flip's input BY NAME and leaves the third in with its stale
-test double routed to the flip's own commit, which is the right cut: refusal is not evidence of
-error, and dropping all 277 refusals would trade a measured defect for an unmeasured one.
-
-THE LIMIT OF THE READING IS STATED IN THE ARTEFACT AND IS WORTH REPEATING HERE. Only what a test
-exercises produced a frame, so the fallback certainly reaches sites no reading in this chain can
-see, and 26 is an upper bound on the suspect set rather than a defect count. `R-0880` stays OPEN
-for exactly that reason.
-
-## Authored text for round 82 to book — one dated line for `.agent/prose_slips.md`
-
-2026-09-12 · F275 R81 · Two rounds running, a freshly written gate script counted ruff rows with a pattern for an output format this ruff does not emit, read ZERO rows against a ceiling of 26, and reported a pass; both times the author caught it only because the block also ordered a cross-check against the tool's own `Found <n> errors.` tally. The recurrence is the finding: the second script was written after the first had failed the same way, by a different author, because nothing on disk records what this repository's ruff prints. THE RULE THAT FOLLOWS: where a gate parses a TOOL'S OUTPUT FORMAT, it never takes the count from the parse alone — it takes the tool's own stated total beside it and compares the two, because a parser that matches nothing is indistinguishable from a repository that is clean, and that is the failure direction nobody investigates.
-
-## Session 28 ends here — FOUR delegated rounds, 78 through 81, three PASS and one FAIL repaired
-
-WHY THIS SESSION ENDS AT FOUR, STATED FIRST BECAUSE IT IS THE PART A LATER READER WILL CHECK.
-The reason is the one amend0905-throughput names and amend0908-f275-finish rule 5 permits only
-after at least four delegated rounds, which this session has now run: THE REVIEWER'S OWN
-AUTHORING ERRORS ARE ACCUMULATING. Round 78's block miscounted its own slices in a gate and
-ordered a path-set reading at a commit that could not carry it; round 79's block defined a set
-by a TYPE and then qualified it by a STRING, and the predicate that resulted admitted six
-records of the wrong exception class — that one cost a FAIL and a repair round; round 80's
-block repeated the path-set ordering tension and stated a record count whose unit it never
-named. Five dated lines in `.agent/prose_slips.md` across four rounds, one of them material
-enough to fail a round, is the run of slips that rule describes. Context is NOT the reason and
-is not claimed as one: it remains comfortable, and a fifth round would have started from a
-healthy margin.
-
-WHAT THE SESSION DID. It opened on a Phase 0 probe that found something no round had planned
-for: the operator's merge `e262f420` had brought eleven of amendment amend0911-feedback's twelve
-files onto this branch and resolved the twelfth, `docs/agents/self_drive_protocol.md`, in favour
-of the branch — dropping finding ownership, rolling paydown, the operator questions file, and
-the lifting of this feature's own session and round limit, while the branch carried DECISIONs
-naming that document as their home. Because the merge base now includes `main`'s commit, a later
-merge of this branch would have deleted those four paragraphs FROM `main`. Round 78 restored
-them by DERIVATION from two committed blobs rather than by retyping, proved by two round-trip
-identities measured against four deliberate mutations, and registered and resolved `R-0881`.
-
-Rounds 79 through 81 then took `R-0880`'s second obligation as far as measurement can currently
-carry it. Round 79 rebuilt the corrected arm under a transform control that reproduced round
-77's output byte for byte and captured full tracebacks; it was FAILED for the predicate defect
-above. Round 80 repaired the predicate, and the corrected named-class count came back at 19 —
-exactly what round 77 had recorded, so that round's reading had never needed explaining away.
-Round 81 read the three sites the seventeen surviving frames attribute to and found the cause is
-a FALLBACK rather than a wrong verdict, measured the class it puts at risk, and ruled two sites
-out of the flip's input by name.
-
-NOTHING UNDER `packages/`, `apps/`, `tests/` OR `docs/` MOVED IN ROUNDS 79 THROUGH 81, and the
-only production-adjacent change of the whole session is round 78's restoration of operator text
-under `docs/agents/`. No pull request was created, edited or merged; no branch was created or
-deleted; no merge, no force-push, no history rewrite. `.agent/STOP` was read before and after
-every round of this session and was absent at every reading.
-
-WHAT THE NEXT SESSION DOES FIRST. Phase 1 rule 1 BEFORE rule 2: read `.agent/STOP` from disk. If
-it is absent, there is no open pull request to gate on, `.agent/candidates.md` is EMPTY, and this
-verdict plus the prose-slip line above are the pending bookings that round 82's first
-substantive commit carries. Round 82 itself is the first item of `.agent/plan.md`: drop the two
-sites DECISION F275 D55 names from the flip's input and re-derive the corrected set, which is a
-set subtraction and a re-key rather than a new measurement. The trees and transcripts rounds 79
-and 81 built are left on disk under `.remedy-wt/` and are pinned by sha256 in their artefacts,
-so nothing there needs re-taking.
-
-OPERATOR QUESTIONS OPEN: 0. `.agent/operator_questions.md` reads `EMPTY — nothing is waiting on
-the operator.` This session wrote nothing to it: round 78 restored the operator's own text
-rather than deciding anything on the operator's behalf, and DECISION F275 D55's cut is recorded
-as a reversible DECISION in the ordinary way.
-
-NO SCOPE REPORT AND NO SESSION-LIMIT BANNER IS OWED. Amendment amend0911-f275-to-scope, restored
-to the protocol by round 78 of this session, lifts F275's soft limit of 20 sessions and 60 rounds
-without a replacement number: the feature closes only at full scope.
+The next round is THE RESOLVER COLLAPSE that DECISION F260 D5 places in T003 and DECISION F275
+D37 names as the home of the id-SHAPE seam behind the three largest residue classes — production
+code, so a SPLIT round with mutation red-proofs — and then THE FLIP, which under DECISION F275
+D56 re-derives its input at its own base by running this round's committed generator rather than
+inheriting the 2183-site set measured here, and in whose own commit the stale `_FakeJob` double
+at `packages/orchestration/project_registry.py:856` is updated. `R-0880` stays OPEN and gains a
+second reachability path in evidence rather than a second id: the re-key stage is blind to a
+DELETED ruled site, so any round between here and the flip that removes a ruled read moves that
+site's owner verdict onto its neighbour with nothing said.
