@@ -751,3 +751,137 @@ candidate `.agent/prose_slips.md` line the next round's SLIPS slice could carry;
 3, the FORM of the pre-first-commit STOP reading. The substantive next step is unchanged and
 is PLAN75's item 1: re-run the flip's dry run against the corrected inputs of rounds 67 and 69
 together, for the first reading of what both corrections cost in FAILURES rather than in sites.
+
+## Reviewer verdict on round 75 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 75: **PASS.** Written by the planner and reviewer of SESSION 26 after reading the committed
+range `dac50bcd`..`90c81f42` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
+worker's report was evidence for no line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
+`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 76, per amend0827-process-diet rule 1.
+
+WHAT THE TRANSPORT PROOF COVERS, STATED BEFORE THE FIGURES, per item 37 of §3. G1 is the PRIMARY
+cmp-against-scratchpad proof and not the §4.9 digest fallback: the chain it walks is the reviewer's own
+scratch original, the committed `.agent/authored/` blob and the working copy — three artefacts, of which
+the first is the reviewer's and the other two the worker's. It does not and cannot establish what bytes
+the worker RECEIVED. All three authored blobs are byte-identical to the reviewer's originals — the block
+at 36374 bytes, the artefact at 4739 and the instrument carrier at 14692 — and `.agent/last_block.md`
+equals the block blob. Four slices matched the sha256 on their own BEGIN markers, the block re-measures
+at 378 lines TOTAL and 305 PROSE as its constraint 8 states, it carries zero repeated-character lines,
+and the carrier round-trips through its own fence byte for byte.
+
+G2: `.agent/plan.md` byte-identical to PLAN75 at 48 lines against the cap of 50. G3: the three appends
+exact under reader A with the slice an exact suffix after one newline, reader B holding at N counted from
+the slice as 6, 2 and 6, all three of the reviewer's negative controls on the FIRST appended paragraph
+REJECTED by both readers, and C4's deletion column ZERO — so DECISION F275 D48 is corrected by APPEND and
+not rewritten, which is the property this round was built around. G4: the artefact byte-identical to the
+C0b blob and absent at the base, its 15 quoted lines all present in the instrument's output, the matching
+monotone with indices strictly increasing, zero unmatchable, zero lines carrying a wall-clock duration,
+zero three-backtick lines; every commit stages exactly ONE path with insertions peaking at 378 and none
+at or over the 500 cap. G6 and G7: five top-level trees byte-identical across the round's eleven
+mutations, `git status --porcelain` the empty string, one worktree, nine changed paths with MISSING and
+EXTRA empty and zero production paths, the open set 87 with identical membership at the base, at C5 and
+at the tip, and `R-0880` open at each.
+
+THE READING THE ROUND EXISTS FOR IS ARITHMETIC AND IT HOLDS IN BOTH UNITS. The witness buckets sum to 166
+against a stated distinct-LINE total of 166, and to 175 against a stated production-SITE total of 175,
+with the difference of 9 matching the separately printed count of sites sharing a line. That is the check
+nothing else in this workflow can make: a wrong unit is invisible to every digest, byte-equality and
+transcript gate, and only adding the numbers up sees it. The risk set is 0 in both units, the thin set is
+11 lines carrying 11 sites, and all eleven are still red-proved against their own single witnesses.
+
+TWO SLIPS OF THE REVIEWER'S, BOTH FOUND BY THE WORKER. The block's Handback section said "the round,
+which is 74" while the block's own title, its C6 bundle line and its PLAN75 slice all say 75 and the
+round's base commit is itself round 74's handback; the worker wrote 75, which is right, and declared the
+block's numeral with the measurements that show it rather than fixing it silently. And G4(d) listed the
+artefact's citation kinds as "section, commit or source line" while the artefact's own provenance clause
+says "round or section", so the gate is wider than the document it checks — one digit run was affected,
+`50`, out of the commit id `dac50bcd`. Both are dated lines for round 76 and neither is an id: nothing
+under `packages/`, `apps/`, `tests/` or `docs/` is wrong.
+
+## Authored text for round 76 to book — two dated lines for `.agent/prose_slips.md`
+
+2026-09-12 · F275 R75 · The round 75 block was retargeted from the round 74 block by textual substitution, and its Handback section kept "the round, which is 74" because that numeral is bare — the substitution matched the phrase "round 74" and a lone "74" after a comma is not that phrase. The block's title, its C6 bundle line and its own PLAN75 slice all said 75, and the round's base commit is itself the round 74 handback, so three independent readings contradicted the fourth. The worker wrote 75 and declared the block's numeral rather than fixing it silently, which is right. THE RULE THAT FOLLOWS: a block derived from a previous block by substitution is swept for EVERY BARE NUMERAL of the old round before emission, not only for the phrases that name it — the retarget's own diff against its source is the sweep, read hunk by hunk, because a substitution's misses are exactly the places the diff stays unchanged.
+
+2026-09-12 · F275 R75 · The round 75 block's G4(d) ordered every unresolved prose figure classified as "a CITATION of a named decision, finding, round, section, commit or source line", while the artefact's own provenance clause names only "a named decision, finding, round or section". The gate is therefore WIDER than the document it checks, and a figure the gate would accept as a commit citation is one the artefact never licensed itself to carry; one digit run was affected, `50` out of `dac50bcd`. This is the third round in four whose defect is a provenance enumeration disagreeing with something — twice the artefact's list was short of its own contents, and now the gate's list is long of the artefact's. THE RULE THAT FOLLOWS: the gate that checks a provenance clause QUOTES that clause's own words for its list of kinds rather than restating them, so the two cannot drift; where the gate must paraphrase, the block says which document is authoritative.
+
+## Session 26 ends here — FOUR delegated rounds, 72 through 75, three PASS and one FAIL
+
+WHAT THE SESSION DID. Round 72 shrank the owner check's refusal set from 999 to 324 by seven
+ambiguity-refusing resolution rules and gated the widening by a PER-SITE decision-map diff rather than by
+its own counts — a discarded draft had passed every count-shaped check while destroying 327 correct
+decisions to buy 585 new ones, and only the per-site reading saw it. Round 73 added Rule H, carrying the
+refusal set to 277, and established the reading that ends the resolver route: Rule H finds 47 more
+confirmations and NOT ONE new contradiction, where round 72's widening had found nine. Round 73 then
+FAILED. Round 74 repaired it and round 75 corrected round 74. The feature's substantive position is that
+DECISION F275 D45's precondition on the flip is DISCHARGED, by D48 as corrected by D49, and the flip
+round may proceed.
+
+WHY ROUND 73 FAILED, IN ONE SENTENCE EACH, BECAUSE ALL FIVE DEFECTS WERE THE REVIEWER'S. Its artefact
+quoted a pytest summary line carrying a WALL-CLOCK DURATION, which cannot reproduce in any run on any
+machine, and nine of its fifty-one quoted lines did not reproduce in the worker's execution. Its block
+dropped the three artefact gates round 72 had ordered, so nothing it ran could see that. Its G6(b) made a
+GREEN full-suite control a pass condition while the same block's plan slice, its decision slice and its
+own instrument docstring all said a fresh worktree is not green — the gate that cannot reliably pass,
+which this feature's own DECISION F275 D45 had named two rounds earlier. Its central coverage measurement
+was taken inside a `git worktree`, where `apps/ui/node_modules` and the built dist do not exist, so the
+`ui_server` suite fails there and never reaches the `ui_server` lines: re-run, the same instrument read 23
+UNEXECUTED where the round had read 0. And it landed a 529-line carrier under a 500-insertion cap because
+the reviewer never counted it, spending this feature's once-per-feature oversize exception.
+
+THE BRANCH IS GREEN AT EVERY READING THIS SESSION TOOK. Not one line under `packages/`, `apps/`, `tests/`,
+`docs/` or `scripts/` moved in any of the four rounds, which each round's tree gate proves by object id
+rather than by diff. The canary reads 42 passed and `ruff check .` reads 26 findings, the frozen ceiling,
+at the branch tip. The full suite in the primary checkout reads 18416 passed. Every destructive run
+happened in a disposable worktree that its own instrument removed, and `git status --porcelain` is the
+empty string at every verdict. The open set is 87 by distinct id and unchanged all session; `R-0880` is
+open and the next free id is `R-0881`.
+
+THIS SESSION ENDS AT FOUR ROUNDS AND THE REASON IS THE REVIEWER'S OWN ERROR RATE. Context is comfortable
+and naming it would be false. `.agent/prose_slips.md` gained NINE dated lines across this session — three
+against round 72's block, four against round 73's and two against round 74's — and the two lines above
+make eleven against round 75. One of them was not prose: round 73's defects cost a FAIL and a full repair
+round. EVERY ONE OF THE ELEVEN WAS FOUND BY A WORKER, not by the reviewer's own pre-emission sweep, and
+three of the four rounds landed a numeral that a worker had to measure and declare. That is the signal
+amend0905-throughput names, and operator amendment amend0908-f275-finish rule 5 permits F275 to cite it
+only after at least four delegated rounds, which this session satisfies exactly.
+
+WHAT THE COUNTER-MEASURES LOOK LIKE, FOR WHOEVER PICKS THIS UP. Three of this session's defects share one
+shape: a document's own account of itself drifted from the document. Round 72's and round 74's artefacts
+enumerated the kinds of figure they carry and got the enumeration short; round 75's gate enumerated them
+and got it long. The only thing that has ever caught that class here is running the round's own figure
+sweep against its own provenance clause before emission and widening the list until the residue is empty
+— round 74's block did exactly that and round 74's artefact is the one document of the session that
+reproduced on the first attempt. The second shape is a numeral that survived an edit: round 72's block
+budget, round 74's three decision figures, round 75's bare "74". The counter-measure for that one is the
+retarget diff itself, read hunk by hunk, because a substitution's misses are precisely where the diff
+shows nothing.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
+session's Phase 0 probe, was measured absent before every round's first commit and before every handback,
+and is absent as this session ends. Then the Open PR Gate: no pull request is open, and none is owed
+until the closure sequence.
+
+SECOND, round 76's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
+amend0827-process-diet rule 1, the ROUND 75 PASS verdict above as a `Gate: F275 R75` entry in
+`.agent/live_review.md`, and the TWO dated lines above into `.agent/prose_slips.md`. The open set is 87 by
+distinct id and the next free id is `R-0881`.
+
+THIRD, F275 IS PAST THE SOFT LIMIT amend0908-f275-finish rule 1 names, at 75 of 60 rounds and 26 of 20
+sessions. The SCOPE REPORT that rule obliges was written in round 51's handback and STANDS; nothing this
+session measured changes any of its three parts, and it is not restated here because a report restated is
+a report edited. Rule 2 forbids the split-and-close default BY NAME, so the next session continues.
+
+FOURTH, THE WORK ITSELF, in the order `.agent/plan.md` fixes. The flip's precondition is discharged, so
+the route is open: re-run the flip's dry run against the corrected inputs of rounds 67 and 69 together —
+the plain re-derivation and the re-keyed set — which is the first reading of what both corrections cost in
+FAILURES rather than in sites. Then the resolver collapse DECISION F260 D5 places in T003, which is
+PRODUCTION CODE and therefore a SPLIT round with mutation red-proofs, and which DECISION F275 D37 names as
+the home of the id-SHAPE seam behind the three largest residue classes. Then THE FLIP, carrying DECISION
+F275 D48's two obligations: the full suite is the backstop and is read for its failures rather than its
+exit code, and the thin set is re-derived before the flip with any site fallen to zero witnesses treated
+as a stop. Then the classic store, then the closure sequence.
+
+SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
