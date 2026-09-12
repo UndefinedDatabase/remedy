@@ -17,6 +17,7 @@ Public API::
     resolve_data_root() -> Path
     jobs_dir(root: Path | None = None) -> Path
     resolve_job_id(raw) -> str               # both job stores; resolve_any_job_id is an alias
+    lookup_job_id(raw) -> str                # the same search, raising JobIdError instead of exiting
     mint_job_id() -> str                     # a job id (16-hex, DECISION F260 D2)
     mint_run_id() -> str                     # a run id
     mint_episode_id() -> str                 # a run-episode id
@@ -39,6 +40,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import NoReturn
 from uuid import UUID, uuid4
 
 
@@ -283,12 +285,70 @@ def _task_job_id_matches(prefix: str) -> list[str]:
     ]
 
 
-def _exit_ambiguous(raw: str, matches: list[str]) -> None:
+def _exit_ambiguous(raw: str, matches: list[str]) -> NoReturn:
     print(f"Error: ambiguous job id prefix '{raw}' matches "
           f"{len(matches)} jobs:", file=sys.stderr)
     for m in sorted(matches):
         print(f"  {m[:8]}", file=sys.stderr)
     sys.exit(2)
+
+
+class JobIdError(ValueError):
+    """A job id string that does not name exactly one job.
+
+    It is a ``ValueError`` ON PURPOSE. The CLI handlers parsed a job id with
+    ``UUID(...)``, which raises ``ValueError``, and they guard that parse with
+    ``except ValueError`` or wider; several of those guards select a documented
+    path of their own — a JSON error payload, a ``job_not_found`` document —
+    instead of ending the process. A handler that routes its parse through
+    :func:`lookup_job_id` therefore keeps that path, which a ``SystemExit`` from
+    :func:`resolve_job_id` would escape.
+    """
+
+
+class JobIdInvalid(JobIdError):
+    """The string is neither a full UUID nor a short hex prefix."""
+
+
+class JobIdNotFound(JobIdError):
+    """A well-formed prefix that matches no job in either store."""
+
+
+class JobIdAmbiguous(JobIdError):
+    """A prefix that matches more than one job; ``matches`` lists them, sorted."""
+
+    def __init__(self, raw: str, matches: list[str]) -> None:
+        self.raw = raw
+        self.matches = sorted(matches)
+        super().__init__(
+            f"ambiguous job id prefix {raw!r} matches {len(self.matches)} jobs"
+        )
+
+
+def lookup_job_id(raw: str) -> str:
+    """Resolve a full job id or a short hex prefix across BOTH job stores, or RAISE.
+
+    The search :func:`resolve_job_id` documents, and the same return values, but a
+    failure raises a :class:`JobIdError` instead of ending the process:
+    :class:`JobIdInvalid` for a string that is neither a UUID nor a hex prefix,
+    :class:`JobIdNotFound` for a prefix no job matches, :class:`JobIdAmbiguous`
+    for a prefix more than one job matches. A full UUID returns without touching
+    the disk. READ-ONLY, like :func:`resolve_job_id`.
+    """
+    try:
+        return str(UUID(raw))
+    except ValueError:
+        pass
+
+    if not _SHORT_HEX_RE.fullmatch(raw):
+        raise JobIdInvalid(f"invalid job ID: {raw!r}")
+
+    matches = sorted(set(_classic_job_id_matches(raw)) | set(_task_job_id_matches(raw)))
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise JobIdAmbiguous(raw, matches)
+    raise JobIdNotFound(f"no job matches prefix {raw!r}")
 
 
 def resolve_job_id(raw: str) -> str:
@@ -318,24 +378,18 @@ def resolve_job_id(raw: str) -> str:
 
     Exits with code 1 on invalid input or no match, code 2 on an ambiguous
     prefix.
+
+    The search itself is :func:`lookup_job_id`; this function is its EXITING
+    form, for a command that has no failure path of its own. A handler that
+    guards its parse calls :func:`lookup_job_id` and catches the ``ValueError``.
     """
     try:
-        return str(UUID(raw))
-    except ValueError:
-        pass
-
-    if not _SHORT_HEX_RE.fullmatch(raw):
-        print(f"Error: invalid job ID: {raw!r}", file=sys.stderr)
+        return lookup_job_id(raw)
+    except JobIdAmbiguous as exc:
+        _exit_ambiguous(raw, exc.matches)
+    except JobIdError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
-
-    matches = sorted(set(_classic_job_id_matches(raw)) | set(_task_job_id_matches(raw)))
-    if len(matches) == 1:
-        return matches[0]
-    if len(matches) > 1:
-        _exit_ambiguous(raw, matches)
-
-    print(f"Error: no job matches prefix {raw!r}", file=sys.stderr)
-    sys.exit(1)
 
 
 # ``resolve_any_job_id`` is an ALIAS of ``resolve_job_id``, not a copy: F275 T003
