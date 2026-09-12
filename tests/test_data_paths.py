@@ -204,6 +204,40 @@ class TestResolveJobId:
         result = resolve_job_id(str(uid))
         assert result == str(uid)
 
+    def test_a_pingpong_job_id_resolves_through_the_one_resolver(
+        self, monkeypatch, tmp_path
+    ):
+        """F275 T003: ``resolve_job_id`` searches the ping-pong store too.
+
+        Before the collapse it searched the classic ``<uuid>.json`` files alone,
+        so a 16-hex id held in a ``<16hex>/job.json`` directory never matched.
+        """
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import jobs_dir, mint_job_id, resolve_job_id
+        job_id = mint_job_id()
+        record_dir = jobs_dir() / job_id
+        record_dir.mkdir(parents=True)
+        (record_dir / "job.json").write_text(json.dumps({"id": job_id}))
+        assert resolve_job_id(job_id) == job_id
+        assert resolve_job_id(job_id[:8]) == job_id
+
+    def test_a_prefix_matching_both_stores_is_ambiguous(self, monkeypatch, tmp_path):
+        """One prefix naming a classic record AND a ping-pong record exits 2."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import jobs_dir, resolve_job_id
+        self._make_job_file(jobs_dir(), "abcd1234-0000-0000-0000-000000000001")
+        pingpong_dir = jobs_dir() / "abcd12340000beef"
+        pingpong_dir.mkdir(parents=True)
+        (pingpong_dir / "job.json").write_text(json.dumps({"id": "abcd12340000beef"}))
+        with pytest.raises(SystemExit) as exc_info:
+            resolve_job_id("abcd1234")
+        assert exc_info.value.code == 2
+
+    def test_the_two_resolver_names_are_one_function(self):
+        """``resolve_any_job_id`` is an alias, so the two names cannot drift apart."""
+        from packages.orchestration import data_paths
+        assert data_paths.resolve_job_id is data_paths.resolve_any_job_id
+
 
 class TestSingleReaderInvariant:
     """Verify data_paths.py is the only production Python file reading REMEDY_DATA_DIR."""
