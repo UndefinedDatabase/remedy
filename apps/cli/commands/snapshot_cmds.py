@@ -7,20 +7,21 @@ import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from packages.orchestration.data_paths import lookup_job_id
+
 if TYPE_CHECKING:
     import argparse
 
 
 def _cmd_snapshot_inspect(job_id_str: str, snapshot_id: str, *, as_json: bool = False) -> None:
     """Show snapshot metadata. Safe fields only — no recovery content, no blob data."""
-    from uuid import UUID
 
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.repository_snapshot import load_snapshot
     from packages.orchestration.storage import JobNotFoundError, load_job
 
     try:
-        job_id = UUID(job_id_str)
+        job_id = lookup_job_id(job_id_str)
     except ValueError:
         if as_json:
             print(_json.dumps({"error": "invalid_job_id", "job_id": job_id_str}))
@@ -90,14 +91,13 @@ def _cmd_snapshot_inspect(job_id_str: str, snapshot_id: str, *, as_json: bool = 
 
 def _cmd_snapshot_list_applies(job_id_str: str, *, as_json: bool = False) -> None:
     """List durable apply records for a job. Safe fields only."""
-    from uuid import UUID
 
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.repository_snapshot import load_durable_apply_record
     from packages.orchestration.storage import JobNotFoundError, load_job
 
     try:
-        job_id = UUID(job_id_str)
+        job_id = lookup_job_id(job_id_str)
     except ValueError:
         if as_json:
             print(_json.dumps({"error": "invalid_job_id", "job_id": job_id_str}))

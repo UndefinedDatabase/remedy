@@ -6,7 +6,8 @@ import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
-from uuid import UUID
+
+from packages.orchestration.data_paths import lookup_job_id
 
 if TYPE_CHECKING:
     import argparse
@@ -19,7 +20,7 @@ def _load_job_events(job_id_str: str):
     from packages.orchestration.timeline import load_run_events
 
     try:
-        job_id = UUID(job_id_str)
+        job_id = lookup_job_id(job_id_str)
     except ValueError:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)

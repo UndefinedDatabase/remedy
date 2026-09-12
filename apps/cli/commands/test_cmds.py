@@ -6,7 +6,8 @@ import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
-from uuid import UUID
+
+from packages.orchestration.data_paths import lookup_job_id
 
 if TYPE_CHECKING:
     import argparse
@@ -96,7 +97,7 @@ def _print_result_text(result: object, *, out=None) -> None:
 
 def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
     try:
-        job_id = UUID(job_id_str)
+        job_id = lookup_job_id(job_id_str)
     except ValueError:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
@@ -176,14 +177,13 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
 def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
     """Show lease state, latest test run, and usage for a job. Read-only."""
     import json as _json
-    from uuid import UUID
 
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.run_contract import ensure_contract, export_usage_json, load_usage
     from packages.orchestration.storage import JobNotFoundError, load_job
 
     try:
-        job_id = UUID(job_id_str)
+        job_id = lookup_job_id(job_id_str)
     except ValueError:
         if as_json:
             print(_json.dumps({"error": "invalid_job_id", "job_id": job_id_str}))

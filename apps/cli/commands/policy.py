@@ -6,8 +6,8 @@ import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
-from uuid import UUID
 
+from packages.orchestration.data_paths import lookup_job_id
 from packages.orchestration.storage import JobNotFoundError, load_job
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 def _cmd_run_contract(job_id_str: str, *, json_output: bool = False) -> None:
     try:
-        job_id = UUID(job_id_str)
+        job_id = lookup_job_id(job_id_str)
     except ValueError:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
@@ -51,7 +51,7 @@ def _cmd_run_contract(job_id_str: str, *, json_output: bool = False) -> None:
 
 def _cmd_token_policy(job_id_str: str, *, json_output: bool = False) -> None:
     try:
-        job_id = UUID(job_id_str)
+        job_id = lookup_job_id(job_id_str)
     except ValueError:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)

@@ -9,6 +9,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+from packages.orchestration.data_paths import lookup_job_id
+
 if TYPE_CHECKING:
     import argparse
 
@@ -54,7 +56,7 @@ def _cmd_repo_status(
     if job_id_str:
         from packages.orchestration.storage import JobNotFoundError, load_job
         try:
-            job_id = UUID(job_id_str)
+            job_id = lookup_job_id(job_id_str)
         except ValueError:
             print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
             sys.exit(1)
