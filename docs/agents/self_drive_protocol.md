@@ -244,6 +244,72 @@ still applies at 12/40. (3) The session round target of 6 to 8 stands; a session
 ending below it states the reason in one sentence in its handoff. Reverse by
 deleting this paragraph.
 
+Operator amendment amend0911-feedback (2026-09-11), rule A — FINDINGS ARE NEVER
+WITHOUT AN OWNER AND ARE NEVER LOST. Every open finding has exactly one owner:
+the feature it was found in (when the repair is in that feature's scope), a named
+future feature (when the repair is inside that feature's planned scope — the
+reviewer writes `Owner: F<n>` at the end of the registration line and the owning
+feature's file gets ONE Acceptance line naming the id, in the same commit), or,
+by default, the next findings-paydown feature. Assignment never resolves a
+finding; only the owning feature's closure resolves it, with evidence. A finding
+whose owner closes without it is re-assigned to the next paydown feature in that
+closure's own commit, never silently carried. Reverse by deleting this paragraph.
+
+Operator amendment amend0911-feedback (2026-09-11), rule B — ROLLING PAYDOWN,
+ONE PER FIVE FEATURES. There is always exactly one unclaimed findings-paydown
+feature in `docs/roadmap/STATUS.md`. When a paydown feature closes, its closure
+sequence registers the next one, `F<next id> — Findings paydown v<N+1>`, placed
+exactly five `[ ]` lines below the position the closing feature held (after the
+next five unaccepted features), under a `## Tier 2` heading — inserting a heading
+`## Tier 2 — Findings paydown (rolling, operator rule amend0911-feedback)` directly
+above the line when the fifth slot falls under another tier — with the
+`TOTAL_FEATURES` pin in `tests/docs/test_docs_consistency.py` and the README
+counter in the SAME commit, as its own step before the STATUS `[x]` flip. A
+paydown feature's file is registered THIN and filled at CLAIM: its first round
+reads the open set and writes the slice list (one slice per module, the finding
+text is the spec) from every open finding registered before the claim date whose
+text describes a repair that fits one round; what does not fit stays open, keeps
+its owner line pointing at the next paydown, and is named in the file as carried.
+A paydown feature's soft limit is 8 sessions; at the limit it closes with what is
+resolved and carries the rest, which is not a split and registers nothing extra.
+F273 is v1 and closes F273 as written plus its T016; the first rolling
+registration happens at F273's closure. Reverse by deleting this paragraph.
+
+Operator amendment amend0911-feedback (2026-09-11), rule C — THE OPERATOR
+QUESTIONS FILE. `.agent/operator_questions.md` is the one place a session puts
+what it needs the operator to know or decide; it is read by the operator with one
+command and by the orchestrator at every relay. Two kinds of entry: (A) a question
+the session could not decide under decide-and-proceed — the old "hard stop with an
+operator question" and every carried doubt; (B) a REVERSIBLE ruling the session
+DID make that changes user-visible behaviour, priority order, budget or a safety
+gate, and that the operator may overturn. Each entry: a heading
+`### Q<n> — <five-word title> (<date>, F<n>, round <n>)` for the record, then a
+body that stands alone — "What needs deciding", "Why it matters", "My
+recommendation", "What happens if you say nothing" — in plain full sentences,
+without finding ids, round numbers, decision ids or file paths inside the body;
+a reader who knows nothing about the round must be able to decide from the body.
+Soft cap FIVE: above five, the session first condenses the entries of lowest
+impact into one and never drops one; urgency is the reason the cap is soft. A
+session writes or updates the file in its handback commit through the worker
+(the reviewer stays read-only), and the handoff's `## Next` states the count
+("Operator questions open: <n>"). Entries leave the file only by the operator's
+answer: the operator's next amendment records the answer as a dated DECISION and
+deletes the entry in the same commit. The empty file reads exactly
+`EMPTY — nothing is waiting on the operator.` under its header. The §3 checklist
+of `docs/agents/planner_reviewer_prompt.md` is untouched by this rule (amend0827
+rule 4). Reverse by deleting this paragraph and the file.
+
+Operator amendment amend0911-f275-to-scope (2026-09-11, folded into
+amend0911-feedback) — F275's soft limit of 20 sessions and 60 rounds
+(amend0908-f275-finish rule 1) is LIFTED without a replacement number, by
+operator ruling of 2026-09-11: F275 closes only at full scope (the atomic record
+flip, the resolver collapse, the closure sequence), however long that takes. No
+scope report, no session-limit banner and no limit line is owed any more; rules 2
+to 5 of amend0908-f275-finish stand unchanged. This paragraph overrides the two
+amend0908 paragraphs in `docs/roadmap/features/T2_F275.md` wherever they state the
+numbers; those paragraphs stay byte-identical as history. Reverse by deleting this
+paragraph.
+
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN
 while a feature is open. A lesson learned mid-feature goes into
