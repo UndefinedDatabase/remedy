@@ -1,254 +1,307 @@
-# STEP T003 — F275 ROUND 81 — the frames name a FALLBACK, and the class it puts at risk
+── STEP T003 — F275 — ROUND 82 ──
+Goal: Fix the flip's input set on disk and make it reproducible — the corrected set minus
+the two sites DECISION F275 D55 names, re-keyed onto the tree the flip will run on, and
+re-checked by the shipped owner check — and measure what the re-key's refusal does NOT
+catch.
 
-## Goal
+Base commit: `d7cf5d58`. Every gate below runs at a commit this block names.
 
-Round 80's corrected attribution sends seventeen frames to three ruled sites. Read those sites
-against the SHIPPED owner check and against their own source, measure the class they belong to
-across the whole corrected set, and rule which sites come out of the flip's input. Book the
-round 80 PASS verdict and its prose slips. NO PRODUCTION LINE MOVES.
+THE FRAME RULE, per item 37 of `docs/agents/planner_reviewer_prompt.md` §3, stated as the
+property that was MEASURED over the final bytes: NO LINE of this block is a run of a single
+repeated character, and every box-drawing rule inside the STEP and SLICE header lines is
+exactly two characters long. Nothing appliable travels in the frame; the appliable bytes
+are the slices below, each proved against its own target.
 
 ## Bundle — the ordered commit sequence
 
-The sequence is EXACTLY this. Nothing is added, dropped or reordered. Each commit stages
-exactly ONE path.
+C0a  `.agent/authored/f275-r82.md`            the block, saved verbatim
+C0b  `.agent/last_block.md`                   mirrored FROM THE COMMITTED C0a BLOB
+C1   `.agent/plan.md`                         slice PLAN82, a full replacement
+C2   `.agent/live_review.md`                  slice RECORD82 appended
+C3   `.agent/prose_slips.md`                  slice SLIPS82 appended
+C4   `.agent/authored/f275-r82-input.py.md`   the generator, written to the SPEC below
+C5   `.agent/f275_t003_flip_input_r82.md`     the artefact, produced BY the C4 blob
+C6   `.agent/decisions.md`                    slice DEC82 appended
+C7   `.agent/handoff.md`                      the handback
 
-- C0a save the block as authored text — `.agent/authored/f275-r81.md`
-- C0b mirror the block into the last-block state file — `.agent/last_block.md`
-- C1 make the plan current for round 81 — `.agent/plan.md` — THE FIRST SUBSTANTIVE COMMIT
-- C2 book the round 80 reviewer verdict — `.agent/live_review.md`
-- C3 append the round 80 prose slips — `.agent/prose_slips.md`
-- C4 land the fallback-class artefact — `.agent/f275_t003_owner_fallback_r81.md`
-- C5 record DECISION F275 D55 — `.agent/decisions.md`
-- C6 the round 81 handback — `.agent/handoff.md`
+C1 is the FIRST SUBSTANTIVE COMMIT because this round touches the finding ledger, per item
+23 of §3. Only C0a and C0b may precede it.
 
-## Change — the exact path set
+## Change — exactly these paths and no others
 
-These paths and NOTHING ELSE:
+The paths listed in the Bundle are the whole change set. NOTHING under `packages/`, `apps/`,
+`tests/`, `docs/` or `scripts/` is touched by this round. No suite beyond the canary is
+run. The flip itself is NOT performed here.
 
-    .agent/authored/f275-r81.md
-    .agent/last_block.md
-    .agent/plan.md
-    .agent/live_review.md
-    .agent/prose_slips.md
-    .agent/f275_t003_owner_fallback_r81.md
-    .agent/decisions.md
-    .agent/handoff.md
+## Why the generator is SPECIFIED and not shipped as a slice
 
-The round 79 and round 80 artefacts are NOT edited, NOT deleted and NOT staged, and no landed
-DECISION is rewritten: C5 APPENDS D55 and its deletion column is ZERO.
+Under `docs/agents/self_drive_protocol.md` a block travels inside the worker's prompt and
+the worker retypes it, so an authored source slice is the one link no gate in this
+repository can prove — item 37 again. A generator is different from prose: its correctness
+is decidable by what it COMPUTES. So this block describes what the generator must measure
+and pins the reviewer's own independently measured figures beside it, and the gate is that
+the worker's run reproduces them. Two implementations agreeing on a set-theoretic reading
+is a stronger proof than a byte copy of one of them, and the committed generator still
+makes the artefact reproducible for the flip round.
 
-NOTHING under `packages/`, `apps/`, `tests/` or `docs/` is touched. No suite is run and no
-transform is executed. The only tree this round builds is a read-only copy of `ef75e213` used to
-run a static check, and it is built by the recipe below.
+## The trees this round needs
 
-## What the reviewer measured before authoring this
+Build all four under `.remedy-wt/`, never as a registered `git worktree`, and leave the
+primary checkout untouched:
 
-Round 80's corrected set is 24 records — 19 on a named receiver class and 5 on `NoneType` — and
-17 of them land on a ruled site the corrected set holds, at three sites carrying five ruled
-columns between them. The reviewer read all five at `ef75e213` and ran the SHIPPED owner check
-of DECISION F275 D47 over them, at `89d4772a`:
+ BASE   `git archive ef75e213` extracted, then `git init -q` and `git add -A -f .` inside
+        it. The index is required: the owner stage enumerates with `git ls-files`.
+ TIP    the same recipe at `d7cf5d58`, this round's base.
+ SHIFT  a copy of TIP with THREE BLANK LINES inserted after line 1 of
+        `packages/orchestration/brain_detail.py`, so every ruled site in that file moves by
+        three. Line 1 of that file is the opening `"""` of its module docstring, so the
+        insertion lands inside the docstring and the file still parses.
+ DELETE a copy of TIP with the single line `    job_id_str = str(job.id)` removed from
+        `packages/orchestration/brain_detail.py`. THE REVERT TARGET IS NAMED BY PATH AND IS
+        UNIQUE INSIDE IT, per item 25 of §3: those bytes occur EXACTLY ONCE in that file,
+        measured at `d7cf5d58`. They also occur once in each of seven other modules under
+        `packages/orchestration/`, which is why the path is named and the count is taken in
+        the named file. SHIFT and DELETE each need their own index too.
 
-    tests/cli/test_repair_runtime.py:68    return str(job.id), str(art.id), str(data_dir)
-      col 19  receiver job    CONFIRMED Job
-      col 32  receiver art    REFUSED — absent from the decided set
-    packages/orchestration/brain_detail.py:345
-                              task = next((t for t in job.tasks if str(t.id) == node.id), None)
-      col 45  receiver t      CONFIRMED Task
-      col 54  receiver node   REFUSED — absent from the decided set
-    packages/orchestration/project_registry.py:856   job_map = {str(j.id): j for j in jobs}
-      col 19  receiver j      REFUSED — absent from the decided set
+Copy TIP with `shutil.copytree(..., symlinks=True)`. The argument is named rather than
+assumed, per item 18 of §3: `copytree` defaults to `symlinks=False` and dereferences.
 
-THE OWNER CHECK IS NOT WRONG ANYWHERE HERE; IT DECLINES, AND THE TRANSFORM RENAMES ANYWAY. Every
-column the frames blame is a column the check REFUSES, and the rename happens on the fallback
-the transform's P1 rule describes — the owner comes from the static verdict where there is one,
-else from the probe's line, else from the receiver name. On these two lines the line carries one
-verdict and both columns take it, so `art` is renamed as a Job and `node` as a Task. That is the
-277-site blind spot DECISION F275 D45 ruled acceptable, and these seventeen frames are the first
-BEHAVIOURAL measurement of what it costs.
+## The committed instruments, extracted not retyped
 
-THE THIRD SITE IS DIFFERENT AND MUST NOT BE SWEPT IN WITH THE OTHER TWO. At
-`project_registry.py:856` the receiver `j` iterates `jobs`, so the rename is right for the
-production record and the single frame comes from a `_FakeJob` double in the test that lacks the
-unified field. A site whose rename is correct and whose test double is stale is a test to update
-with the flip, not a site to drop.
+Both already exist on this branch and neither is edited. Extract each one's ONLY
+```python fence — the bytes between the first fence opener and its closing fence — into
+`.remedy-wt/`, and check the digest before use:
 
-THE CLASS, MEASURED ACROSS THE WHOLE CORRECTED SET rather than at these three sites: of 2185
-ruled sites over 2080 distinct lines, 91 lines carry more than one ruled site, and on 26 of
-those a single shared owner verdict spans sites whose receivers are DIFFERENT NAMES. Both lines
-behind sixteen of the seventeen frames are in that 26. The block states these figures because
-the reviewer measured them; G4 orders every one of them MEASURED AGAIN and reports the
-comparison, and a difference is declared rather than reconciled.
+ `.agent/authored/f275-r59-rekey.py.md`        ->   5186 bytes
+   sha256 `f56394e9ac2582d5655a64a135fbf95b2930c24d14e791a23a2eb2630742a721`
+ `.agent/authored/f275-r73-owner-stage.py.md`  ->  24253 bytes
+   sha256 `7be3437450d1f183d241e8a5161a6ae182652d0aecd674ea10e8f870407eddb8`
 
-A SHARED VERDICT OVER DIFFERING RECEIVERS IS NOT AUTOMATICALLY WRONG — `job_one` and `job_two`
-on one line are both Jobs — so 26 is an upper bound on the suspect set and this round does not
-treat it as a defect count. What it is, is the population the fallback can reach.
+The second digest is the one `.agent/f275_t003_owner_fallback_r81.md` pins for the same
+file, so the extraction rule is the one round 81 already used.
 
-## The base tree, and the control that proves the recipe
+## The pinned data inputs
 
-The static check needs the UNFLIPPED tree and it enumerates its files with `git ls-files`, so a
-plain extraction is not enough: build it as an archive of `ef75e213` extracted into a scratch
-directory, then `git init` and `git add -A -f` inside it so the index exists. The reviewer
-measured that without the index the check reports every site as unreadable and decides nothing,
-which is a gate that cannot fail wearing the face of a gate that cannot pass.
+Neither is regenerated and neither is committed — they are round 77's, and this round
+consumes them exactly as rounds 79, 80 and 81 did:
 
-THE CONTROL: run the shipped stage over that tree with the corrected set and its owners file and
-require its summary to reproduce `.remedy-wt/r77_stage_corrected.out` — 2185 ruled sites, 71
-live record classes, 1908 CONFIRMED, 277 REFUSED across the three stated reasons, and 0
-CONTRADICTED. If it does not reproduce, STOP and hand back with the difference rather than
-proceeding on a tree that is not round 77's.
+ `.remedy-wt/r77_corrected.json`         120753 bytes
+   sha256 `765b5ba99f2c92765349c3a013f4074c62ece893cb50b373450927af0290a512`
+ `.remedy-wt/r77_corrected_owners.json`  121095 bytes
+   sha256 `670c6e952667b7c52b6c5a9ffd832dcc9f096aedfba114b83bc28ca061591b44`
+
+If either digest fails to match, STOP and report; do not regenerate.
+
+## SPEC — what `.agent/authored/f275-r82-input.py.md` must do
+
+A `.md` carrying one ```python fence, because a `.py` anywhere `ruff check .` scans is
+counted by `tests/orchestration/test_ci_budgets.py`. It takes BASE, TIP, SHIFT, DELETE, the
+two pinned JSON paths, the two extracted instrument paths and a scratch directory AS
+ARGUMENTS — no path and no commit is embedded in it. It prints, in this order, and its
+stdout IS the artefact's body:
+
+ S0  Each pinned input's byte count and sha256.
+ S1  THE SUBTRACTION. The corrected set's site count and its distinct-tuple count; the
+     owners map's key count; the ruled sites the owners map does NOT name, listed; for each
+     of the two sites DECISION F275 D55 drops, its number of occurrences in the set and its
+     owner in the owners map; the site and owner-key counts after the subtraction; a
+     CROSS-CHECK that exactly two sites and exactly two owner keys went and that no
+     dropped site survives; and the sha256 of the surviving set in a canonical form the
+     generator states (sorted, `json.dumps` with `separators=(",", ":")`), with that
+     payload's byte length beside it.
+ S2  THE RE-KEY AND ITS TWO CONTROLS. The re-key stage run BASE to TIP, its whole stdout
+     and its REAL exit code, and a CROSS-CHECK that its output is equal to the subtracted
+     set both as a set and in order. Then the same stage run BASE to SHIFT, and BASE to
+     DELETE, each with its whole stdout and REAL exit code. For DELETE, compare the set it
+     emits against the TIP set and PARTITION the ruled sites of the mutated file into those
+     whose STATEMENT TEXT is unchanged and those re-bound to a different statement,
+     printing for each re-bound one its old and new coordinates, the old and new source
+     lines, and the owner the owners map carries across.
+ S3  THE SHIPPED OWNER CHECK, run over the set at TIP and again over the set at DELETE,
+     each with its whole stdout and REAL exit code.
+ S4  THE SET BY FILE. The distinct-file count, the site total, the counts by attribute, and
+     then one line per file reading the count and the path, SORTED BY PATH.
+
+A LISTING OVER A SET SORTS BEFORE IT IS EMITTED, and the generator is run three times with
+its output compared byte for byte across the three before C5 is made. Report the number of
+distinct digests; it must be 1.
+
+THE GENERATOR PRINTS NO WALL-CLOCK VALUE of any kind — no duration, no timestamp — because
+the artefact is compared byte for byte against a later re-run.
+
+## The figures the reviewer measured, which the run must reproduce
+
+Measured by the reviewer at `d7cf5d58` over the same four trees and the same two
+instruments, and stated here so a disagreement SHOWS rather than being reconciled away:
+
+ the corrected set                                         2185 sites, 2185 distinct
+ its owners map                                            2184 keys
+ ruled sites the owners map does not name                  1
+   and it is `tests/orchestration/test_repair_loop_v1.py|56|28|id`
+ `tests/cli/test_repair_runtime.py` 68:32 `id`             1 occurrence, owner `Job`
+ `packages/orchestration/brain_detail.py` 345:54 `id`      1 occurrence, owner `Task`
+ after the subtraction                                     2183 sites, 2182 owner keys
+ canonical sha256 of the surviving set
+   `b347365ec9f7f17462c69a5c11c89d01fd3418fda350661fc2fa6e3545edbda4` over 111904 bytes
+ re-key BASE to TIP        2183 recovered, line-key control 2183, unresolved 0, exit 0
+   and its output equal to the subtracted set as a set AND in order
+ re-key BASE to SHIFT      2183 recovered, line-key control 2174, unresolved 0, exit 0
+ re-key BASE to DELETE     2183 recovered, line-key control 2174, unresolved 0, exit 0
+ ruled sites in the mutated file                           9
+ of them merely re-located                                 8
+ of them RE-BOUND to a different statement                 1
+   from 142:21 to 144:16, `    job_id_str = str(job.id)` to
+   `    node_map = {n.id: n for n in graph.nodes}`, with the owner `Job` carried across
+ owner check at TIP        2183 sites, 71 record classes, 1908 confirmed,
+                           106 + 103 + 66 refused, CONTRADICTED 0, exit 0
+ owner check at DELETE     1907 confirmed, 107 + 103 + 66 refused, CONTRADICTED 0, exit 0
+ the set by file           191 files, 2183 sites, `id` 2100, `name` 44, `description` 39
+
+## SPEC — what `.agent/f275_t003_flip_input_r82.md` must say
+
+The generator's stdout, under a title and a short opening the worker writes, which states
+that this round performs no flip, moves no production line and runs no suite beyond the
+canary. Every indented line of the artefact is a line of that stdout, VERBATIM. The
+artefact additionally states, in prose the worker writes from the run in front of it:
+
+ 1. THAT THE SUBTRACTION TOOK ONLY REFUSED SITES. The owner check's DECIDED count is
+    unchanged at 1908 across the two sets while its REFUSED count falls by exactly two, so
+    the two sites DECISION F275 D55 removed were both in the refused blind spot and no
+    decided site left the input. Give that as the reading of the two runs, not as a claim.
+ 2. THAT THE RE-KEY ONTO THIS TIP IS AN IDENTITY, AND WHY THAT IS NOT A PASSING GATE ON ITS
+    OWN. No path under `packages/`, `apps/` or `tests/` differs between `ef75e213` and
+    `d7cf5d58`, so the line-key control recovers as much as the scope key and the stage's
+    discriminating power is untested by this tree pair. The SHIFT control is what tests it:
+    there the scope key holds all 2183 while the line key loses exactly the sites of the
+    shifted file.
+ 3. THAT THE DELETE CONTROL IS THE ONE THAT FOUND SOMETHING. The stage did NOT refuse. Its
+    key is an occurrence index within an enclosing scope, so removing a ruled statement
+    makes the NEXT attribute of that name in that scope answer to the key, and the owners
+    map carries the old verdict onto it. State the receiver by reading it: `graph.nodes` is
+    annotated `tuple[BrainNode, ...]` at `packages/orchestration/project_brain.py`, so the
+    re-bound site's receiver is a `BrainNode` while the owner carried across is `Job`.
+ 4. THAT THIS IS `R-0880`'s DEFECT REACHED BY A SECOND ROUTE AND NOT A NEW ONE. `R-0880`
+    names `BrainNode` among the receivers the set already mis-owns, and its second
+    obligation — the transform refuses a site whose owner verdict cannot be CONFIRMED —
+    would stop this run too, because the owner check moves the re-bound site out of
+    CONFIRMED and into the refused blind spot. Item 30 of §3 was applied before any id was
+    considered and the search returned `R-0880` itself, so NO NEW ID IS MINTED.
+ 5. WHAT IS NOT CLAIMED. The two pinned JSON inputs are round 77's and live in gitignored
+    scratch; this round makes the SUBTRACTION and the RE-KEY reproducible and does not make
+    the corrected set itself reproducible from committed bytes, which needs the round 53
+    probe run and is not this round's work. And the DELETE control is a synthetic mutation:
+    no commit of this branch has yet removed a ruled statement.
 
 ## Constraints
 
-1. EVERY SLICE IS APPLIED BYTE FOR BYTE. A slice is never edited, reflowed, re-wrapped or
-   corrected, not even where it is wrong. A discrepancy is DECLARED in the handback with the
-   measurement that shows it, and the slice still lands as written.
-2. THE INPUTS ARE PINNED AND NONE IS REGENERATED. Check each against its digest before running
-   anything; if any is missing or differs, STOP and hand back rather than rebuilding it.
+1. NO SLICE IS EDITED. Apply PLAN82, RECORD82, SLIPS82 and DEC82 byte for byte. A
+   discrepancy inside a slice is DECLARED in the handback, never repaired.
+2. The generator and the artefact are the worker's OWN text, written from the SPECs above
+   and from the run in front of it. They are the only two files of this round that are not
+   slices.
+3. READ `.agent/STOP` FROM DISK before C0a and again before C7, and record both readings
+   with their real exit codes. If it appears, finish the commit in hand, write the handoff
+   and end.
+4. Every commit stages EXACTLY ONE path and every insertion count stays under 500.
+5. No `.py` file is created anywhere inside the tracked tree. Every script this round
+   writes lives under `.remedy-wt/` and stays uncommitted.
+6. Nothing under `packages/`, `apps/`, `tests/`, `docs/` or `scripts/` is edited, and the
+   artefacts of rounds 79, 80 and 81 are not edited, deleted or staged.
+7. No landed DECISION is rewritten. DEC82 is an APPEND and C6's deletion column is ZERO.
+8. No `gh` and no `remedy` command. No pull request created, edited or merged; no branch
+   created or deleted; no merge; NEVER a force-push; no history rewrite.
+9. `git worktree add` is not used. The four trees are plain directories under
+   `.remedy-wt/`, and `git worktree list` must still show the primary checkout alone.
+10. THE BLOCK'S OWN SIZE, measured on its final bytes: 392 lines TOTAL and 317 lines of
+    PROSE, against the caps of 490 and 400.
+11. EVERY GATE RUNS AT C6, after every substantive commit and before the handback, and no
+    gate is ordered after C7. This ends the split the last three rounds each had to make.
+    C7's OWN insertion count and its OWN path go nowhere in this round: under item 31 of §3
+    a handback cannot carry a reading taken after the commit that writes it, and under
+    `docs/agents/self_drive_protocol.md` a value routed to a round report is written to a
+    channel that ends with the session. The REVIEWER measures C7's numbers at the next gate
+    and books them in the round's ledger entry. G7 and G8 are therefore both scoped to
+    `d7cf5d58`..C6, and G7 compares against the Bundle's paths MINUS `.agent/handoff.md`.
 
-    .remedy-wt/f275-r73-owner-stage.py      24253 bytes  sha256 7be3437450d1f183d241e8a5161a6ae182652d0aecd674ea10e8f870407eddb8
-    .remedy-wt/r77_corrected.json          120753 bytes  sha256 765b5ba99f2c92765349c3a013f4074c62ece893cb50b373450927af0290a512
-    .remedy-wt/r77_corrected_owners.json   121095 bytes  sha256 670c6e952667b7c52b6c5a9ffd832dcc9f096aedfba114b83bc28ca061591b44
-    .remedy-wt/r77_stage_corrected.out        447 bytes  sha256 86ecf97aa7c6a522427e2f137782594546a2f330d7a87f2242ec37bee2e56fc6
-    .remedy-wt/r79_frames.jsonl           3638751 bytes  sha256 16d876503e3c790cde16943d802116d305b15921268ed05ab43812ce1842bc43
+## Done when — the gates, each run for real and its exit code recorded
 
-3. THE ARTEFACT AT C4 IS WRITTEN BY YOU, FROM YOUR OWN RUN. This block states figures the
-   reviewer measured; the artefact states the figures YOUR run produced, and where the two
-   differ the artefact carries yours and the handback declares the difference.
-4. AN `ast` COLUMN IS A BYTE OFFSET INTO ITS LINE, and the receiver is the identifier that
-   STARTS at that offset — not the text before it. The reviewer's first extraction read
-   backwards from the column and found nothing, which is how a real class came within one
-   measurement of being reported as empty.
-5. NO `.py` FILE IS CREATED UNDER `.agent/` OR ANYWHERE INSIDE THE PRIMARY CHECKOUT'S TRACKED
-   TREE. Scripts live under `.remedy-wt/` and are never committed. G6(d) reads the FILESYSTEM.
-6. C1 IS THE FIRST SUBSTANTIVE COMMIT, per item 23 of §3.
-7. NO COMMIT EXCEEDS 500 INSERTIONS, measured per commit with `git show --numstat`.
-8. NO `gh` COMMAND AND NO `remedy` CLI COMMAND IS RUN. No pull request is created, edited or
-   merged. No branch is created or deleted. No merge. No force-push. No history rewrite.
-9. READ `.agent/STOP` BEFORE C0a AND AGAIN BEFORE C6. It does not exist at this round's base.
-   If it appears, finish the commit in hand, write the handback recording both readings with
-   their timestamps, push, and stop — do not stage it, do not delete it.
-10. THE BLOCK'S OWN SIZE: this block is 343 lines TOTAL and 267 of them are PROSE, against the
-    caps DECISION F085 D6 and D5 set at 490 and 400. Report both numbers as measured.
-11. EVERY GATE EXCEPT G7(a) RUNS AT C5, STRICTLY BEFORE C6. G7(a)'s subject includes a path C6
-    alone creates, so it runs after C6 and the handback says so. Each gate writes its transcript
-    under `.remedy-wt/` and the handback reports the REAL exit code read back out of that file.
+G1 TRANSPORT, BUDGET, SLICES. `.agent/authored/f275-r82.md` at C0a compared with `cmp`
+against the block as received; `.agent/last_block.md` at C0b byte-identical to the COMMITTED
+C0a blob. Extract each slice by its BEGIN and END markers, report the number of slices the
+extraction FOUND, and check each one's bytes against the sha256 written on its own BEGIN
+marker. Re-measure the block's TOTAL and PROSE line counts and compare against constraint
+10. PROSE is TOTAL minus the lines of the slices.
 
-## Done when — the gates
+G2 THE PLAN. `.agent/plan.md` at C1 byte-identical to PLAN82 re-extracted from the
+COMMITTED C0a blob. At most 50 lines. Exactly one `## Goal` and exactly one `## Next Steps`.
 
-### G1 — transport, the block budget, the insertion cap
+G3 THE RECORD, FULL FORENSICS, for `.agent/live_review.md` at C2 and `.agent/decisions.md`
+at C6. READER A: the post-commit file equals the pre-commit blob followed by exactly the
+slice, with the byte arithmetic printed — the pre-commit lengths are 1097205 and 1243551.
+READER B, INDEPENDENT AND STRUCTURAL: the file's LAST N blank-line-separated units equal the
+slice's N paragraphs IN ORDER, where N is COUNTED BY THE SCRIPT from the slice and is no
+number this block states. For each append run a NEGATIVE CONTROL that flips one ASCII letter
+inside the FIRST appended paragraph and require BOTH readers to REJECT it. Both deletion
+columns must read 0. Separately: `.agent/prose_slips.md` at C3 equals its pre-commit blob of
+288515 bytes followed by exactly SLIPS82 and nothing else, and C3's deletion column is 0.
+Finally, DERIVE the ledger's entry-header pattern from the headers already in the file
+rather than asserting one, report how many of them it matches, and report that RECORD82's
+header matches it and duplicates none of them byte for byte.
 
-(a) `.agent/authored/f275-r81.md` at C0a is byte-identical to the reviewer's scratch original at
-`.remedy-wt/r81_block.md`, by `cmp`. This is the PRIMARY proof, not the §4.9 digest fallback.
-(b) `.agent/last_block.md` at C0b is byte-identical to the COMMITTED C0a blob.
-(c) Extract every BEGIN/END slice from the committed C0a blob, report the CARDINALITY YOU
-MEASURED — this block states no numeral for it — and for each slice its byte size, its line
-count and whether its content matches the sha256 on its own BEGIN marker, computed over the
-bytes strictly between the BEGIN line and the END line with the trailing newline kept.
-(d) Re-measure TOTAL and PROSE as constraint 10 defines them and report both.
-(e) Report the number of block lines outside a slice that are a run of a single repeated
-character. The expected number is zero, per item 37 of §3.
+G4 THE GENERATOR AND THE ARTEFACT. The C4 blob holds exactly one ```python fence. The C5
+blob is byte-identical to the file a fresh run of the COMMITTED C4 blob produces, and the
+three-run digest count is 1. `git show d7cf5d58:.agent/f275_t003_flip_input_r82.md` and
+`git show d7cf5d58:.agent/authored/f275-r82-input.py.md` both fail, which is how a NEW path
+is proved new. Count the artefact's indented non-blank lines under the rule "its first
+character is a space and it has a non-space character", match every one VERBATIM and at
+STRICTLY INCREASING indices against the generator's saved stdout, and report the matched
+count, the unmatchable count and the first and last matching indices. Report the artefact's
+count of lines carrying a wall-clock duration and of three-backtick lines; both must be 0.
+Both must be under 500 lines.
 
-### G2 — the plan
+G5 THE MEASUREMENTS. Compare every figure of the run against the reviewer's list above,
+one printed comparison per figure with its own MATCH or DIFFER, and report how many
+comparisons were made and how many differ. A DIFFER is not repaired: it is reported.
+Report also, from the run rather than from this block: the two owner-check runs' DECIDED
+counts and REFUSED counts side by side, and the partition of the mutated file's ruled sites
+into re-located and re-bound with its sum against the file's site count.
 
-`.agent/plan.md` at C1 is byte-identical to slice PLAN81; it is at most 50 lines; it carries
-exactly one `## Goal` and exactly one `## Next Steps`.
+G6 TREE, COLOURS, PATH SET. `git status --porcelain` prints the EMPTY STRING at C6, shown
+as `''`. `git worktree list` has exactly one row and the four scratch trees exist on disk
+and none is registered — report both facts together. THE CANARY
+`python3 -B -m pytest tests/cli/test_golden_path.py -q`, whose real exit code must be 0 at
+42 passed, which is what the reviewer measured at `d7cf5d58`. `ruff check .` exits 1 BY ITS
+OWN DESIGN at the frozen ceiling: count its location rows AND cross-check that count against
+its own `Found <n> errors.` line, and the two must agree at 26. A filesystem
+`rglob("*.py")` anywhere under `.agent/` must find 0 — that pattern does NOT match the
+`.py.md` carrier C4 writes, which is the point of the carrier — and report how many files
+the same sweep reached.
 
-### G3 — the record, with full forensics
+G7 THE OPEN SET AND THE PATH SET. Derive the open set mechanically at `d7cf5d58` and at C6 —
+every `^- R-\d+ — ` registration minus every `^Done: R-\d+ — ` line, BY DISTINCT ID — and
+report both counts, the membership difference each way, and whether `R-0880` is open and
+`R-0879` resolved at each. The reviewer measured 87 open at the base with `R-0881` the
+highest registered id. Report the ids registered, resolved and de-registered by this round;
+all three sets must be EMPTY. Then the changed-path set of `d7cf5d58`..C6 against the
+Bundle's paths MINUS `.agent/handoff.md`, reporting MISSING and EXTRA by name, and the count
+of changed paths under `packages/`, `apps/`, `tests/` or `docs/`, which must be 0.
 
-For each of the record appends — RECORD81 at C2 and DEC81 at C5:
-(i) READER A: the pre-commit blob is a byte-exact PREFIX of the post-commit file and the slice
-is a byte-exact SUFFIX of it.
-(ii) READER B: the LAST N blank-line-separated units of the post-commit file equal the slice's N
-paragraphs IN ORDER, where N is COUNTED by your script and is never a number this block asserts.
-(iii) NEGATIVE CONTROL: flip one byte inside the FIRST appended paragraph, in the ASCII letter
-range `A`-`Z` or `a`-`z`, and require BOTH readers to REJECT.
-(iv) The DELETION column of both commits is ZERO.
-(v) `.agent/prose_slips.md` at C3 is the pre-commit blob followed by exactly slice SLIPS81 and
-nothing else, a byte-equality check with no arithmetic; its deletion column is ZERO.
-(vi) RECORD81's `Gate:` header is compared against a pattern DERIVED from the headers already in
-`.agent/live_review.md`; report how many prior headers that pattern matches, and require that
-RECORD81's header matches it and duplicates none of them byte for byte.
+G8 THE INSERTION CAP. Per-commit insertion and deletion counts over `d7cf5d58`..C6, one row
+per commit, each commit's staged path count, and the number of commits whose insertions
+reach 500.
 
-### G4 — the control, the five columns and the class
+Handback: `.agent/handoff.md` per `docs/agents/handback_template.md` — the Session line
+reading `SESSION 29 of feature F275 · round 82 · rounds so far 82`, the Commits table with
+its `+/-` cells READ FROM `git show --numstat` and compared cell by cell against G8's own
+numbers with the comparison printed — and C7's own row carries no numbers, per constraint
+11 and item 31 of §3, saying so in the cell — the Verification table at one line per gate with its
+REAL exit code, the External-actions table, the Authored-text proofs table, the Item-status
+table, the Deviations section, and a `## Next` stating `Operator questions open: 0`. NO
+SCOPE REPORT AND NO SESSION-LIMIT BANNER IS OWED: amendment amend0911-f275-to-scope lifts
+this feature's limit without a replacement number.
 
-(a) Every input of constraint 2 matches its stated digest. Report each comparison.
-(b) THE CONTROL: the shipped stage's summary over the rebuilt base tree reproduces
-`.remedy-wt/r77_stage_corrected.out`. Report the comparison as a per-line diff of the two
-summaries, ignoring any wrapper line your own harness adds, and report the argument vector used.
-If it does not reproduce, STOP.
-(c) THE NEGATIVE CONTROL ON THE RECIPE: run the same stage over a copy of the tree with NO git
-index and report what it decides. The reviewer measured that it decides nothing and calls every
-site unreadable; report what you measure. This exists so the control in (b) is known to be
-capable of failing.
-(d) For each of the five ruled columns the reviewer lists above, report: the receiver identifier
-read at that byte offset, the owner verdict the shipped stage gives it or REFUSED if the site is
-absent from the decided set, and the pre-flip source line read from `ef75e213`. Report also how
-many of the five are CONFIRMED and how many REFUSED — MEASURED, not taken from this block.
-(e) THE CLASS: over the corrected set report the number of ruled sites, the number of distinct
-lines, the number of lines carrying more than one ruled site, and among those the number on
-which one shared owner verdict spans sites whose receiver identifiers differ. PARTITION the
-multi-site lines by whether their sites' verdicts agree, and report the parts and the total.
-(f) CROSS-CHECK, against numbers nothing in this round produced: the counts in (e) are compared
-against the figures this block states, and the two lines behind the frames are checked for
-membership in the class set. Report each as MATCH or as a difference with its size. A cross-check
-between independently derived numbers can fail; a partition cannot, and both are labelled.
-
-### G5 — the artefact
-
-(a) `.agent/f275_t003_owner_fallback_r81.md` at C4 is byte-identical to the file your run
-produced, and it did not exist at this round's base — report the base lookup's exit code.
-(b) Every INDENTED non-blank line of the artefact appears verbatim in your instrument's saved
-output, the matching is MONOTONE with strictly increasing indices, and the count of unmatchable
-lines is ZERO. Report the number of lines compared and the rule you used to decide a line is
-indented.
-(c) The count of artefact lines carrying a wall-clock duration is ZERO, and so is the count of
-three-backtick lines.
-(d) The artefact carries, in order and under headings of your own wording: what round 80 handed
-it; the control and its negative control; the five columns with their verdicts; the class with
-its partition; the ruling and which sites it names; and a closing section on what the reading
-does NOT settle, stating in its own words that `R-0880` remains open. Report the headings found.
-(e) The round 79 and round 80 artefacts are byte-identical at this round's base and at C5, and
-neither appears in the round's changed-path set.
-
-### G6 — the tree, the colours and the path set
-
-(a) `git status --porcelain` is the EMPTY STRING at C5.
-(b) `git worktree list` shows the primary checkout alone. The trees under `.remedy-wt/` are
-copies rather than registered worktrees; report that both facts hold together.
-(c) THE CANARY: `python3 -B -m pytest tests/cli/test_golden_path.py -q` in the PRIMARY checkout
-at C5. The reviewer measured 42 passed at this round's base.
-(d) `ruff check .` at C5 reports 26 rows against the frozen ceiling of 26 — count the rows
-yourself and cross-check your count against the tool's own `Found <n> errors.` line — and a
-filesystem sweep reports ZERO `.py` files anywhere under `.agent/`.
-
-### G7 — the path set and the open set
-
-(a) The changed-path set of the range from this round's base to C6 equals the path set the
-Change section names, with MISSING and EXTRA both empty, and the count of changed paths under
-`packages/`, `apps/`, `tests/` or `docs/` is ZERO. Taken after C6 per constraint 11.
-(b) The open set BY DISTINCT ID is reported at this round's base and at C5 with the membership
-difference, which must be empty; `R-0880` is OPEN at both. Report also the canonical line-count
-reading of `scripts/rotate_live_review.py` at both and the gap between the two readings, which
-is a pre-existing property of two ids carrying two resolution lines each and must not grow.
-
-### G8 — the per-commit insertion counts
-
-`git show --numstat` for each of C0a through C5, one line per commit, each under 500. The
-handback commit C6 is NOT covered: its own numbers cannot exist while its text is written
-(item 14), and the reviewer measures them at the next gate (item 31).
-
-## Handback
-
-Rewrite `.agent/handoff.md` per `docs/agents/handback_template.md`: the state block with the
-SESSION NUMBER, which is 28, and the round, which is 81; the range; the per-commit table whose
-`+/-` cells are compared CELL BY CELL against G8's numbers with the comparison printed; external
-actions; one line per gate with the REAL exit code read back out of its transcript; the
-item-status table; deviations; next steps. No scope report and no session-limit banner is owed.
-State the operator-questions count in `## Next` as rule C requires.
-
-## SLICE PLAN81 — replaces `.agent/plan.md` at C1
-
-BEGIN PLAN81 sha256=8a6d653acecb3343f262b6b6c8a8d1269c5c055a37783dc0aed874beccd248e4
+── SLICE PLAN82 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
+BEGIN PLAN82 sha256=e8657d4da419d2abcaee593de0ed263984a52f019a7e17d71698e7bcc4ea377a
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -264,80 +317,76 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 81 READS THE THREE SITES ROUND 80's ATTRIBUTION NAMES AND FINDS A FALLBACK BEHIND THEM.
-Every ruled column the seventeen frames blame is a column the shipped owner check REFUSES rather
-than decides, and the transform renames it anyway on the fallback its P1 rule describes, so on a
-line carrying one owner verdict both columns take it and a receiver of another record is renamed
-with the record the line names. Two of the three sites are that shape; the third is a correct
-rename whose test double is stale. The class those two belong to is the lines where one shared
-verdict spans differing receivers, and the round measures it across the whole corrected set. The
-round 80 verdict and its prose slips are booked.
+ROUND 82 FIXES THE FLIP'S INPUT SET ON DISK AND MAKES IT REPRODUCIBLE. The corrected set
+loses the two sites DECISION F275 D55 names, is re-keyed onto the tree the flip will run on
+by the committed round 59 stage, and is re-checked by the committed round 73 owner check;
+the generator that does all three is committed with the artefact it writes. Two controls sit
+beside the re-key, and the second one found something: removing a ruled statement does not
+make the stage refuse, it makes the next attribute of that name in that scope answer to the
+key and carries the old owner verdict onto it. That is `R-0880`'s defect by a second route,
+so no id is minted. The round 81 verdict and its prose slip are booked.
 
 ## Next Steps
 
-1. Drop the sites DECISION F275 D55 names from the flip's input and re-derive the corrected set,
-   which is a set subtraction and a re-key, not a new measurement.
-2. The resolver collapse DECISION F260 D5 places in T003, which DECISION F275 D37 names as the
-   home of the id-SHAPE seam behind the three largest residue classes. Production code, so a
-   SPLIT round with mutation red-proofs.
-3. THE FLIP, carrying DECISION F275 D48's obligations: the full suite is the backstop, and the
-   thin set is re-derived before the flip with any site fallen to zero witnesses treated as a
-   stop. The stale test double at `project_registry.py:856` is updated in the flip's own commit.
-4. Then the classic store, then the closure sequence.
+1. The resolver collapse DECISION F260 D5 places in T003, which DECISION F275 D37 names as
+   the home of the id-SHAPE seam behind the three largest residue classes. Production code,
+   so a SPLIT round with mutation red-proofs.
+2. THE FLIP, carrying DECISION F275 D48's obligations: the full suite is the backstop, the
+   input is re-derived by round 82's committed generator at the flip's own base, and any
+   site fallen to zero witnesses is a stop. The stale test double at
+   `packages/orchestration/project_registry.py:856` is updated in the flip's own commit.
+3. Then the classic store, then the closure sequence.
 
 ## Risks
 
-- THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20 sessions
-  and 60 rounds without a replacement, so this feature closes only at full scope.
-- THE CLASS IS AN UPPER BOUND, NOT A DEFECT COUNT. A shared verdict over differing receivers can
-  be right for both, and only the two sites with behavioural evidence are ruled out.
-- ONLY WHAT A TEST EXERCISES PRODUCED A FRAME. The fallback reaches sites no test reaches, and
-  those are invisible to every reading this chain has taken.
-- The open set is 87 by distinct id at this round's base, with `R-0880` open. Four are High —
-  R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
-END PLAN81
+- THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20
+  sessions and 60 rounds without a replacement, so this feature closes only at full scope.
+- THE INPUT SET IS REPRODUCIBLE ONLY FROM ROUND 77's TWO SCRATCH JSON FILES, which are
+  gitignored. Rebuilding those needs the round 53 probe run, which no round has re-taken.
+- THE RE-KEY CANNOT SEE A DELETED RULED SITE. Any round between here and the flip that
+  removes a ruled read moves that site's verdict onto its neighbour with nothing said.
+- The open set is 87 by distinct id at this round's base, with `R-0880` open. Four are High
+  — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+END PLAN82
 
-## SLICE RECORD81 — appended to `.agent/live_review.md` at C2
+── SLICE RECORD82 ── target `.agent/live_review.md` ── APPEND ──
+BEGIN RECORD82 sha256=9613b788b92883a1af9494133246663fc4cf800f2e515d5d99628f4ec5f59687
 
-BEGIN RECORD81 sha256=a81e402d0acb759914e07664f51d68cf59c81c569d66d9ca2db111e48c82a9ae
+Gate: F275 R81 — the F275 round 81 entry. VERDICT PASS. Written by the planner and reviewer of session 28 after reading the committed range `89d4772a`..`cba25b45` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the worker's report and its transcripts were evidence for no line below. It is booked here by the FIRST SUBSTANTIVE COMMIT of round 82, per operator amendment amend0827-process-diet rule 1.
 
-Gate: F275 R80 — the F275 round 80 entry. VERDICT PASS. Written by the planner and reviewer of session 28 after reading the committed range `c7ac5e00`..`89d4772a` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs and against the capture's own records; the worker's report and its transcripts were evidence for no line below. It is booked here by the FIRST SUBSTANTIVE COMMIT of round 81, per operator amendment amend0827-process-diet rule 1. The round repaired the round 79 FAIL and it repaired it at the predicate rather than at the number: the selection now requires the record's exception CLASS to be `AttributeError` as well as its message to name a unified attribute, and everything downstream is round 79's, unchanged.
+WHAT THE TRANSPORT PROOF COVERS, STATED BEFORE THE FIGURES, per item 37 of §3. G1 was the PRIMARY cmp-against-scratchpad proof and not the §4.9 digest fallback, and the chain it walked is the reviewer's own scratch original, the committed `.agent/authored/` blob and the working copy — three artefacts that are all downstream of what the worker received, so it establishes self-consistency and not receipt. The block blob was byte-identical to the reviewer's original at 28740 bytes, `.agent/last_block.md` equalled the committed block blob, all four slices matched the sha256 on their own BEGIN markers, and the block re-measured at 343 lines TOTAL and 267 PROSE as its constraint 10 states.
 
-THE CORRECTED READING REPRODUCES UNDER THE REVIEWER'S OWN DERIVATION, taken over `.remedy-wt/r79_frames.jsonl` without using the instrument. Of the records the message rule admits, 24 carry the class `AttributeError` — 19 on a named receiver class and 5 on `NoneType` — and 6 carry `AssertionError`, every one of them a node of `tests/orchestration/test_orchestrator_loop.py` naming `_FakeJob.job_id` inside assertion text. The named-class count of 19 matches what `.agent/f275_t003_flip_residue_r77.md` records for that class, and it matches PER KIND as well: `Artifact.job_id` 12, `BrainNode.task_id` 5, `BrainNode.job_id` 1, `_FakeJob.job_id` 1. The attribution split re-derives at 17 frames landing on a ruled site the corrected set holds and 7 landing nowhere, against round 79's published 17 and 13, so the six rows that moved are exactly the six mis-selected records and the actionable half did not move.
+EVERY GATE HOLDS AND THE REVIEWER RE-RAN ALL EIGHT. `.agent/plan.md` was byte-identical to its slice at 46 lines. The two record appends were exact under reader A with reader B holding over the whole appended region at N counted from each slice as 4 and 9, every negative control on the FIRST appended paragraph was rejected by both readers, and every deletion column was ZERO. The round 79 and round 80 artefacts were byte-identical at the base and at the tip, so no landed reading was rewritten. The artefact's 155 indented lines all appeared verbatim in the instrument's output at strictly increasing indices with nothing unmatchable, and it carries no wall-clock duration. The canary read 42, `ruff check .` 26 rows against the frozen ceiling of 26, zero `.py` files under `.agent/`, one worktree, the changed-path set exactly the Change section with MISSING and EXTRA empty and zero paths under `packages/`, `apps/`, `tests/` or `docs/`, and the open set 87 by distinct id at both ends with identical membership and `R-0880` open at each.
 
-EVERY GATE HOLDS AND THE REVIEWER RE-RAN ALL EIGHT. The block was byte-identical to the reviewer's scratch original, `.agent/last_block.md` equalled the committed block blob, all four slices matched the sha256 on their own BEGIN markers, and the block re-measured at 353 lines TOTAL and 275 PROSE. `.agent/plan.md` was byte-identical to its slice at 48 lines. The two record appends were exact under reader A, reader B held over the whole appended region at N counted from the slice as 5 and 8, both negative controls on the FIRST appended paragraph were rejected by both readers, and every deletion column was ZERO. THE LANDED TEXTS WERE NOT REWRITTEN, which is the property this round was built around: the round 79 artefact is byte-identical at the base and at the tip and absent from the changed-path set, and the DECISION F275 D53 paragraph block is byte-identical after the commit that appends D54. The canary read 42, `ruff check .` 26 rows against the frozen ceiling of 26, zero `.py` files under `.agent/`, and the open set 87 by distinct id at both ends with identical membership and `R-0880` open.
+THE ROUND'S SUBSTANCE, AND IT IS A DIAGNOSIS RATHER THAN A COUNT. Every ruled column the seventeen attributed frames blame is a column the SHIPPED owner check REFUSES rather than decides, and the reviewer re-derived all five verdicts independently: `job` and `t` CONFIRMED, `art`, `node` and `j` absent from the decided set. The transform renames them anyway on the fallback its P1 rule describes, so on a line carrying one owner verdict a refused column takes the verdict of the column beside it. The class that puts at risk re-derives exactly as the artefact reports it — 2185 ruled sites over 2080 distinct lines, 91 carrying more than one site, 58 of those agreeing on one verdict and 33 not, and 26 of the 58 spanning receivers with different names — and both lines behind sixteen of the seventeen frames are in the 26. DECISION F275 D55 takes two sites out of the flip's input BY NAME and leaves the third in with its stale test double routed to the flip's own commit, which is the right cut: refusal is not evidence of error, and dropping all 277 refusals would trade a measured defect for an unmeasured one. The limit of the reading is stated in the artefact and is worth repeating in the record: only what a test exercises produced a frame, so the fallback certainly reaches sites no reading in this chain can see, and 26 is an upper bound on the suspect set rather than a defect count. `R-0880` stays OPEN for exactly that reason.
+END RECORD82
 
-THE ONE JUDGEMENT CALL WAS THE WORKER'S AND IT WAS THE RIGHT ONE. Constraint 2 ordered the instrument changed no further than the added condition requires, and the worker also removed five hard-coded lines that printed round 79's false explanation of its own larger count — replacing them with a check that PARSES round 77's artefact for the number it recorded and compares against it. Leaving those lines would have put a false paragraph into the very file the artefact gate quotes against, and replacing a hard-coded narrative with a measurement against an independent document is strictly stronger than the sentence it removed. The worker declared it as the deviation to look at hardest rather than letting it pass, which is how a constraint should be stretched when it is stretched at all.
-END RECORD81
+── SLICE SLIPS82 ── target `.agent/prose_slips.md` ── APPEND ──
+BEGIN SLIPS82 sha256=9c91a4ba4b505b129def68731af49c8aacdb4ebe5ae0f6c313c968ddb06f90a7
 
-## SLICE SLIPS81 — appended to `.agent/prose_slips.md` at C3
+2026-09-12 · F275 R81 · Two rounds running, a freshly written gate script counted ruff rows with a pattern for an output format this ruff does not emit, read ZERO rows against a ceiling of 26, and reported a pass; both times the author caught it only because the block also ordered a cross-check against the tool's own `Found <n> errors.` tally. The recurrence is the finding: the second script was written after the first had failed the same way, by a different author, because nothing on disk records what this repository's ruff prints. THE RULE THAT FOLLOWS: where a gate parses a TOOL'S OUTPUT FORMAT, it never takes the count from the parse alone — it takes the tool's own stated total beside it and compares the two, because a parser that matches nothing is indistinguishable from a repository that is clean, and that is the failure direction nobody investigates.
+END SLIPS82
 
-BEGIN SLIPS81 sha256=19ae53c395b461ede352f1f4e8bd0e3e2c45ccb54106bfac6114cf3b737706c1
+── SLICE DEC82 ── target `.agent/decisions.md` ── APPEND ──
+BEGIN DEC82 sha256=8f14e60cd5627ce3ea2e10ee7c32dd8ad08e2c8ba7b83525db6a0d98c74c53fc
 
-2026-09-12 · F275 R80 · The round 80 block's slices RECORD80 and DEC80 both say "of 1238 captured records", and the capture file holds 1238 JSON lines of which 1237 are per-node records and one is a session-level record, so the rule the sentence describes runs over 1237 of them. Every figure downstream is unaffected and the worker declared the nuance rather than adjusting a slice constraint 1 forbids it to touch. THE RULE THAT FOLLOWS: a count of "records" in a file of newline-delimited JSON names which KIND of record it counts, because a capture format that carries one summary line among its per-item lines makes the file's line count and the population's size differ by exactly the amount nobody checks.
+## DECISION F275 D56 (2026-09-12, F275 round 82) — the flip's input is the corrected set minus DECISION F275 D55's two sites, re-keyed onto the flip's own tree by a COMMITTED generator; and the re-key's refusal is measured blind to a deleted ruled site
 
-2026-09-12 · F275 R80 · The round 80 block put every gate at C5 in constraint 11 and then wrote G7(a) to measure a path set whose subject includes a path C6 alone creates, saying inside the gate that the reading is taken after C6. Both sentences are true and they contradict each other's scope, and the worker split the gate to satisfy them. THE RULE THAT FOLLOWS: an exception to a blanket ordering constraint belongs IN that constraint, not only in the gate that needs it — a reader checking the constraint never reaches the gate, and this is the second round running in which the same path set forced the same split.
-END SLIPS81
+CONTEXT. DECISION F275 D51 ruled the corrected set the flip's input at 2185 sites and DECISION F275 D55 named two of them to drop. Both rulings live in prose while the set itself lives in two gitignored JSON files round 77 wrote, and the flip is the one commit this feature cannot split. This round performs the subtraction, re-keys the result onto the tree the flip will run on, re-checks it with the shipped owner check of DECISION F275 D47, and lands the generator that does all three beside the artefact it writes.
 
-## SLICE DEC81 — appended to `.agent/decisions.md` at C5
+THE MEASUREMENT. The corrected set holds 2185 sites on 2185 distinct tuples against an owners map of 2184 keys, so ONE ruled site has no owner at all — `tests/orchestration/test_repair_loop_v1.py` line 56 column 28 — which no previous round recorded. Each of DECISION F275 D55's two sites occurs exactly once, with the owners `Job` and `Task`, and the subtraction leaves 2183 sites and 2182 owner keys. Re-keyed from `ef75e213` onto `d7cf5d58` by the committed round 59 stage, all 2183 resolve with none lost and the result is equal to its input both as a set and in order. The committed round 73 owner check reads 1908 CONFIRMED, 275 REFUSED and ZERO CONTRADICTED over it.
 
-BEGIN DEC81 sha256=da7da8c8c19f913f441fd0ebd4dfaa15cc0c9f010c67558ce5e7fa9b2be556bf
+CHOSEN, FIRST: THE SUBTRACTION IS RULED TO HAVE TAKEN ONLY REFUSED SITES, AND THAT IS MEASURED RATHER THAN ASSUMED. The owner check's DECIDED count is 1908 both before and after, while its REFUSED count falls from 277 to 275, so neither removed site was one the check decided and the corrected set's zero-contradiction property is untouched. ALTERNATIVE: take the count on trust from DECISION F275 D55's reading of the same two columns, rejected because that reading was taken over three sites by hand and this one is taken over the whole set by the shipped instrument.
 
-## DECISION F275 D55 (2026-09-12, F275 round 81) — the seventeen attributed frames blame a FALLBACK rather than a wrong verdict, two ruled sites come out of the flip's input by name, and the third is a stale test double
+CHOSEN, SECOND: THE GENERATOR IS COMMITTED AND TAKES EVERY TREE AND FILE AS AN ARGUMENT. `.agent/authored/f275-r82-input.py.md` embeds no commit and no path, so the flip round re-derives the input at ITS OWN base rather than inheriting a set measured here. ALTERNATIVE: commit the 2183-site list itself, rejected because it is a 2183-line insertion against a 500-line cap whose one declared-oversize allowance this feature must keep for the flip commit; the artefact carries the per-file rendering and the canonical digest instead.
 
-CONTEXT. DECISION F275 D54 corrected round 79's selection and left a reading its own round did not act on: 17 of the 24 records land on a ruled site the corrected set holds, at three sites. DECISION F275 D45 ruled the owner check's 277 refusals an acceptable blind spot, and DECISION F275 D51 ruled the corrected set the flip's input while leaving `R-0880` open on exactly this residue. This decision reads those three sites and rules on them.
+CHOSEN, THIRD: THE RE-KEY'S IDENTITY ON THIS TREE PAIR IS NOT ACCEPTED AS A PASSING GATE. No path under `packages/`, `apps/` or `tests/` differs between the two commits, so the line-key control recovers as much as the scope key and nothing about the stage is under test. A shift control supplies the discriminator: with three blank lines inserted in one module the scope key holds all 2183 while the line key falls to 2174, which is exactly that module's nine sites.
 
-THE MEASUREMENT. The five ruled columns at the three sites were read at `ef75e213` and put through the SHIPPED owner check of DECISION F275 D47. Two are CONFIRMED — `job` at `tests/cli/test_repair_runtime.py:68` column 19, and `t` at `packages/orchestration/brain_detail.py:345` column 45. Three are REFUSED, absent from the decided set entirely: `art` at column 32 of the first line, `node` at column 54 of the second, and `j` at `packages/orchestration/project_registry.py:856` column 19. The check is wrong at none of the five; it declines at three, and the transform renames all five because the ruled set holds them.
+CHOSEN, FOURTH, AND IT IS WHAT THE ROUND FOUND: THE STAGE IS BLIND TO A DELETED RULED SITE, AND THE BLINDNESS IS RECORDED RATHER THAN REPAIRED HERE. Removing one ruled statement does not raise the stage's refusal. Its key is an occurrence index inside an enclosing scope, so the next attribute of that name in that scope answers to the key: the site at `packages/orchestration/brain_detail.py` 142:21, `job_id_str = str(job.id)`, re-binds to 144:16, `node_map = {n.id: n for n in graph.nodes}`, and the owners map carries `Job` onto a receiver the tree annotates `BrainNode`. Eight of that file's nine sites merely re-locate; this one does not.
 
-CHOSEN, FIRST: THE DEFECT IS NAMED AS A FALLBACK, NOT AS A WRONG VERDICT. The transform's P1 rule takes the owner from the static verdict where there is one, else from the probe's line, else from the receiver name. On both of the first two lines the line carries a single verdict, so a refused column takes the verdict of the column beside it — `art` is renamed as a Job because `job` shares its line, and `node` as a Task because `t` shares its line. Calling this an owner-check error would send the next round to repair a component that is behaving exactly as specified.
+CHOSEN, FIFTH: NO NEW FINDING ID IS MINTED FOR IT. Item 30 of `docs/agents/planner_reviewer_prompt.md` §3 requires the open set to be searched for the DEFECT before an id is spent, and the search returns `R-0880`, which already names `BrainNode` among the receivers this set mis-owns. Its second obligation — the transform refuses a site whose owner verdict cannot be CONFIRMED — would stop this run as well, because the owner check moves the re-bound site out of CONFIRMED and into the refused blind spot, which is measured here and not reasoned to. A fix for `R-0880` fixes this instance, so by the test that minted `R-0880` itself the two are not independent. ALTERNATIVE: mint an id against the round 59 stage, rejected under that test and under item 30.
 
-CHOSEN, SECOND: TWO SITES COME OUT OF THE FLIP'S INPUT BY NAME — `tests/cli/test_repair_runtime.py` line 68 column 32 attribute `id`, and `packages/orchestration/brain_detail.py` line 345 column 54 attribute `id`. Both carry behavioural evidence: a rename at each produces failing nodes whose exception is an `AttributeError` naming a unified attribute on a receiver of another record. ALTERNATIVE: drop every site the check refuses, all 277 of them, rejected because refusal is not evidence of error and DECISION F275 D45 already weighed and accepted that set; dropping it wholesale trades a measured defect for an unmeasured one.
+CONSEQUENCE. The flip's input set is fixed at 2183 sites with a canonical digest and a committed producer, and the flip round re-derives it at its own base instead of inheriting it. `R-0880` stays OPEN and gains a second reachability path in evidence rather than a second id. The round 69 resolution of `R-0879` is NOT reopened and NOT rewritten: its claim about the stage is true of a vanished scope, which is what its own red control exercised, and this round adds the case that control did not reach. No production line moved, no suite beyond the canary was run, and no transform was executed.
 
-CHOSEN, THIRD: THE THIRD SITE STAYS AND ITS TEST DOUBLE MOVES INSTEAD. At `project_registry.py:856` the receiver `j` iterates `jobs` and the rename is right for the production record; the single frame comes from a `_FakeJob` double in the test that lacks the unified field. The site stays in the input and the double is updated in the flip's own commit, per the rule that a deletion or a rename never leaves a stub — the test follows the record, not the other way round.
-
-CHOSEN, FOURTH: THE CLASS IS RECORDED AS AN UPPER BOUND AND NOT AS A DEFECT COUNT. Across the corrected set, lines carrying more than one ruled site on which a single shared verdict spans differing receiver identifiers are the population the fallback can reach, and both lines behind sixteen of the seventeen frames are in it. A shared verdict over differing receivers can be right for both — two locals both holding Jobs is the ordinary case — so no site is dropped on membership alone, and the artefact reports the class with its partition rather than a verdict on it.
-
-CONSEQUENCE. `R-0880` stays OPEN. Its second obligation asks the transform to REFUSE a site whose owner verdict cannot be confirmed, and this round neither builds that refusal nor closes the case for it: what it adds is the first behavioural measurement of what the fallback costs, and two sites removed by name. ONLY WHAT A TEST EXERCISES PRODUCED A FRAME, so the fallback certainly reaches sites no reading here can see. No production line moved, no suite was run and no transform was executed.
-
-HOW TO REVERSE. Delete this paragraph block. The flip's input is then DECISION F275 D51's corrected set with both named sites still in it, the two renames land inside the one commit this feature cannot split, and the seventeen frames stand measured in `.agent/f275_t003_frame_attribution_r80.md` with nothing ruled about them.
-END DEC81
+HOW TO REVERSE. Delete this paragraph block, the artefact and the generator. The flip's input is then DECISION F275 D55's ruling in prose over round 77's two scratch JSON files, with no committed producer, no canonical digest, and the re-key's blindness to a deleted ruled site unmeasured.
+END DEC82
