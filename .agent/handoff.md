@@ -1,581 +1,553 @@
-# Handback — F275 round 71
+# Handback — F275 round 72
+
+SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
 
 ## Session
 
-SESSION 25 of feature F275 · round 71 · rounds so far 71
+SESSION 26 of feature F275 · round 72 · rounds so far 72
 
-Context self-assessment (amend0905-throughput): context is comfortable — `AGENTS.md`,
-`docs/agents/self_drive_protocol.md` and `docs/agents/handback_template.md` were read in full
-before anything else, all four reviewer scratch texts were verified by byte size, line count
-and sha256 BEFORE any of them was used (34906, 6699, 8812 and 5234 bytes over 348, 109, 197
-and 126 lines), the artefact and both `.py.md` carriers were transported whole with
-`shutil.copyfile` and never opened in an editor for transport, all four slices came out of the
-COMMITTED C0a blob with their BEGIN-marker digests matching on the first attempt, and the only
-expensive commands were three instrument runs of a few seconds each, the 19-second canary and
-the ruff scan.
+F275 stands past the soft limit `amend0908-f275-finish` rule 1 names (20 sessions, 60 rounds).
+Rule 2 of that amendment forbids the split-and-close default BY NAME, so the session writes the
+report and CONTINUES. The SCOPE REPORT the limit obliges was written in round 51's handback and
+STANDS unchanged; this round does not restate it.
 
-F275 STANDS AT 71 ROUNDS AND 25 SESSIONS against the operator's soft limit of 60 rounds and 20
-sessions (amend0908-f275-finish rule 1), so both halves of that limit remain EXCEEDED. THE
-SCOPE REPORT THAT RULE OBLIGES WAS WRITTEN IN ROUND 51'S HANDBACK AND IT STANDS — it is not
-restated here, because a report restated is a report edited. Rule 2 forbids the
-amend0905-throughput split-and-close default here BY NAME: this round closed nothing,
-registered no feature and did not touch `docs/roadmap/STATUS.md`.
-
-SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
+CONTEXT SELF-ASSESSMENT (amend0905-throughput): context was comfortable throughout this round —
+the block, the three whole texts and the seven gates fit with wide margin, and nothing was
+dropped, deferred or skimmed for room.
 
 ## Range
 
-Review of 3c59e51b..HEAD
+Review of `ae84d89c`..`HEAD`.
 
 ## Commits
 
-Every `+/-` below is read from `git show --numstat <sha>` and from no other source. Each of the
-ten commits below touches exactly ONE path.
+The `+/-` column below is read from `git show --numstat <sha>` and from no other source; it is
+an INSERTION and DELETION count, never a file's line count. Each insertion cell for C0a through
+C5 is compared against the number G4 reports for that same commit, cell by cell, in the
+right-hand column.
 
-### ce26929b F275 R71 C0a: save the round 71 step block as authored text.
+### 1d4af239 F275 R72 C0a: save the round 72 step block as authored text.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f275-r71.md | +348 / -0 | the round 71 step block, transported whole |
+| `.agent/authored/f275-r72.md` | +349 / -0 | the block transported by `shutil.copyfile` from `.remedy-wt/f275-r72.block.md`; G4 reports 349 insertions — EQUAL |
 
-### 5b7627eb F275 R71 C0b: save the round 71 owner-check artefact as authored text.
+### ba3b19ab F275 R72 C0b: save the owner-widening artefact as authored text.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f275-r71-artefact.md | +109 / -0 | the artefact text, transported whole |
+| `.agent/authored/f275-r72-artefact.md` | +164 / -0 | whole text copied from `.remedy-wt/f275-r72-artefact.md`; G4 reports 164 insertions — EQUAL |
 
-### ac7fa202 F275 R71 C0c: save the round 71 owner-check stage as authored text.
+### d60a0cd4 F275 R72 C0c: save the widened owner-check stage carrier.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f275-r71-owner-stage.py.md | +197 / -0 | the owner-check stage carrier, `.md` by constraint 10 |
+| `.agent/authored/f275-r72-owner-stage.py.md` | +431 / -0 | whole text copied from `.remedy-wt/f275-r72-owner-stage.py.md`; G4 reports 431 insertions — EQUAL |
 
-### 961b0ae0 F275 R71 C0d: save the round 71 instrument as authored text.
+### af08f327 F275 R72 C0d: save the round 72 measurement instrument carrier.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f275-r71-instrument.py.md | +126 / -0 | this round's instrument carrier, `.md` by constraint 10 |
+| `.agent/authored/f275-r72-instrument.py.md` | +196 / -0 | whole text copied from `.remedy-wt/f275-r72-instrument.py.md`; G4 reports 196 insertions — EQUAL |
 
-### e8cb0b3f F275 R71 C0e: mirror the round 71 step block into the last-block state file.
+### a7200d11 F275 R72 C0e: mirror the round 72 block into the last-block state file.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +145 / -158 | the round 70 block replaced by the C0a blob, byte for byte |
+| `.agent/last_block.md` | +305 / -304 | the round 72 block replaces the round 71 block; the resulting blob is byte-equal to the COMMITTED C0a blob; G4 reports 305 insertions — EQUAL |
 
-### 949efba2 F275 R71 C1: make the plan current for round 71.
+### 0c8f5476 F275 R72 C1: make the plan current for round 72.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +18 / -18 | slice PLAN71, whole-file replacement; the first SUBSTANTIVE commit |
+| `.agent/plan.md` | +19 / -19 | whole-file replacement by slice PLAN72; G4 reports 19 insertions — EQUAL |
 
-### 483f41ae F275 R71 C2: book the round 70 reviewer verdict into the finding record.
+### 798fe74a F275 R72 C2: book the round 71 reviewer verdict.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +14 / -0 | slice RECORD71 appended — the round 70 PASS verdict |
+| `.agent/live_review.md` | +12 / -0 | slice RECORD72 appended, the round 71 PASS booked by the first substantive commit of round 72; G4 reports 12 insertions — EQUAL |
 
-### e6282a2f F275 R71 C3: append the round 70 provenance prose slip.
+### 1b18231f F275 R72 C3: append the round 71 prose slip.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/prose_slips.md | +2 / -0 | slice SLIPS71 appended — one dated line, no id |
+| `.agent/prose_slips.md` | +2 / -0 | slice SLIPS72 appended, one dated line, no id; G4 reports 2 insertions — EQUAL |
 
-### 4f890511 F275 R71 C4: record DECISION F275 D45, the narrowed owner-check obligation.
+### ea33e449 F275 R72 C4: record DECISION F275 D46, the shrunk owner-check refusal set.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +12 / -0 | slice DEC71 appended — DECISION F275 D45 |
+| `.agent/decisions.md` | +12 / -0 | slice DEC72 appended; G4 reports 12 insertions — EQUAL |
 
-### e2b48f9c F275 R71 C5: land the owner-check guard artefact for the R-0880 second obligation.
+### 9023a722 F275 R72 C5: land the owner-widening artefact for round 72.
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/f275_t003_owner_guard_r71.md | +109 / -0 | a byte copy of the C0b blob |
+| `.agent/f275_t003_owner_widening_r72.md` | +164 / -0 | the artefact lands, byte-identical to the C0b blob; G4 reports 164 insertions — EQUAL |
 
-### C6 (this commit) F275 R71 C6: the round 71 handback.
+### C6 — the commit that writes this file
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | see below | this handback; a handoff cannot table the commit that writes it (R-0149 pattern) |
+| `.agent/handoff.md` | not quotable here | R-0149 self-reference: a handback cannot table the commit that writes it. The block's "Done when" preamble states that the handback commit's own numbers are NOT a gate of this round and that the reviewer measures them at the next gate. It stages ONE path and is the verbatim rewrite of a single `.agent/**` state file, so DECISION F104 D1's exclusion applies by that decision's own wording. |
 
-C6 stages exactly ONE path, `.agent/handoff.md`, so its `--numstat` PATH COUNT is 1 BY
-CONSTRUCTION — the numeral cannot be measured from inside the commit that writes it, and the
-reviewer re-measures it at the next gate. DECISION F104 D1 excludes entirely a commit whose
-diff is the verbatim rewrite of a SINGLE `.agent/**` state file, which is what this is.
+No path under `packages/`, `apps/`, `tests/`, `docs/` or `scripts/` was touched. Nothing was
+deleted.
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/r71_i_wt 3c59e51b` and
-  `git worktree remove --force .remedy-wt/r71_i_wt` followed by `git worktree prune` — created
-  and removed by the G5 instrument ITSELF, three times (once per run), each time inside the
-  gitignored `.remedy-wt/`. `git worktree list` at G7(a) shows the primary checkout alone.
-- `git push -u origin feature/f275-one-world-completion-part-three` after C6.
-- NO `gh` command and NO `remedy` CLI command was run (constraint 6). No pull request was
-  created, edited or merged. No branch was created; no merge; no force-push.
+| Command | Outcome |
+|---|---|
+| `git worktree add --detach .remedy-wt/nc72 HEAD` | created, for G3(iii)'s negative control |
+| `git worktree remove --force .remedy-wt/nc72` + `git worktree prune` | removed and pruned; `os.path.exists` False afterwards |
+| `git worktree add --detach .remedy-wt/r72_i_wt ae84d89c` ×4 | created by the instrument itself (G5(b) once, G5(f) three times) |
+| `git worktree remove --force .remedy-wt/r72_i_wt` + `git worktree prune` ×4 | removed and pruned by the instrument's own section 6, each run |
+| `git push -u origin feature/f275-one-world-completion-part-three` | run after C6 — see the note at the end of Verification |
+
+No `gh` command was run. No `remedy` CLI command was run. No pull request was created, edited or
+merged. No branch was created. No merge. No force-push. (Constraint 6.)
 
 ## Verification
 
-Every gate was run as `bash -c '<cmd> > <out> 2>&1; echo "REAL_EXIT=$?" >> <out>'` and the exit
-code was read back OUT OF THE FILE, per constraint 11. All seven ran at C5 = `e2b48f9c`, which
-is strictly earlier than C6. Transcripts are under `.remedy-wt/r71w_g*.out`.
+Every gate was run as `bash -c '<cmd> > <out> 2>&1; echo "REAL_EXIT=$?" >> <out>'` and its exit
+code READ BACK OUT OF THE TRANSCRIPT FILE (constraint 11). One line per gate, then the detail.
 
-**G1 TRANSPORT AND THE BLOCK BUDGET — REAL_EXIT=0.**
+| Gate | Transcript | REAL_EXIT |
+|---|---|---|
+| G1 transport and the block budget | `.remedy-wt/g1.txt` | **0** |
+| G2 the plan | `.remedy-wt/g2.txt` | **0** |
+| G3 the record | `.remedy-wt/g3.txt` | **0** |
+| G4 the artefact | `.remedy-wt/g4.txt` | **0** |
+| G5(a) the round 71 anchor | `.remedy-wt/g5a.txt` | **0** |
+| G5(b) the instrument's run | `.remedy-wt/g5b.txt` | **0** |
+| G5(d)(e)(f)(g) transcript, order, determinism, figures | `.remedy-wt/g5defg.txt` | **0** |
+| G6(a) the five top-level trees | `.remedy-wt/g6a.txt` | **0** |
+| G6(b) the canary | `.remedy-wt/g6b.txt` | **0** |
+| G6(c) the ruff count | `.remedy-wt/g6c.txt` (raw ruff: `.remedy-wt/g6c_raw.txt`, ruff's own exit **1**) | **0** |
+| G7 nothing else moved | `.remedy-wt/g7.txt` | **0** |
 
-    .agent/authored/f275-r71.md                @ce26929b  34906 / 8f3b921b62a7e6bf  EQUAL
-    .agent/authored/f275-r71-artefact.md       @5b7627eb   6699 / e6e00e62ba5d6f2b  EQUAL
-    .agent/authored/f275-r71-owner-stage.py.md @ac7fa202   8812 / b345528750b44cc0  EQUAL
-    .agent/authored/f275-r71-instrument.py.md  @961b0ae0   5234 / 1e1a1a0937184bd4  EQUAL
-    .agent/last_block.md                       @e8cb0b3f  34906 / 8f3b921b62a7e6bf  EQUAL to the C0a blob
-    all five EQUAL: True
+Slice extraction ran first, from the COMMITTED C0a blob: `.remedy-wt/t_slices.txt`, REAL_EXIT=0.
+The three append transcripts are `.remedy-wt/t_c2.txt`, `t_c3.txt`, `t_c4.txt`, all REAL_EXIT=0.
 
-Slice sweep over the COMMITTED C0a blob — the extraction IS the sweep, and its cardinality is
-4: PLAN71 3039 bytes / 49 lines, RECORD71 5645 / 13, SLIPS71 1399 / 1, DEC71 4563 / 11, every
-one matching the sha256 on its own BEGIN marker. TOTAL 348, BODY 74, PROSE 274. TOTAL exceeds
-490: False. PROSE exceeds 400: False. Constraint 8 states 348 and 274; measured 348 and 274;
-THEY AGREE. Carrier round-trip, the check round 70's G1 established: each `.py.md` holds
-exactly one ```python fence and one bare ``` line; re-wrapping the extracted source (8134 and
-4563 bytes) in the carrier's own header and fence reproduces the committed blob BYTE FOR BYTE
-for both.
+### G1 — transport and the block budget
 
-**G2 THE PLAN — REAL_EXIT=0.**
+Committed blob against the reviewer's scratch original, by size and sha256:
 
-    .agent/plan.md @C1 949efba2 : 3039 bytes  sha256 28f5c15bb44aafacfbaf913f391f2ca5a1ba270a924864904e743211918bd287
-    slice PLAN71                : 3039 bytes  sha256 28f5c15bb44aafacfbaf913f391f2ca5a1ba270a924864904e743211918bd287
-    byte-identical: True
-    line count 49 against the AGENTS.md cap of 50: under = True
-    count of '^## Goal$' = 1 ; count of '^## Next Steps$' = 1
+    C0a .agent/authored/f275-r72.md               @1d4af239 34189 2417970a…cbea77 vs .remedy-wt/f275-r72.block.md              -> EQUAL
+    C0b .agent/authored/f275-r72-artefact.md      @ba3b19ab 11207 c30b23bb…7c5bd2 vs .remedy-wt/f275-r72-artefact.md          -> EQUAL
+    C0c .agent/authored/f275-r72-owner-stage.py.md @d60a0cd4 19931 f876cc40…089aab vs .remedy-wt/f275-r72-owner-stage.py.md   -> EQUAL
+    C0d .agent/authored/f275-r72-instrument.py.md @af08f327  9089 1f81ad4c…eab3894 vs .remedy-wt/f275-r72-instrument.py.md    -> EQUAL
+    C0e .agent/last_block.md                      @a7200d11 34189 2417970a…cbea77 vs the COMMITTED C0a blob                   -> EQUAL
 
-**G3 THE RECORD — REAL_EXIT=0.** Three appends, three commits, two readers and a negative
-control each.
+Slices inside the committed C0a blob — CARDINALITY MEASURED: **4** (the block states no numeral
+for it). Each digest MATCHES the sha256 on its own BEGIN marker:
 
-    (i)  READER A, byte stream: post == pre + one newline + slice body
-         .agent/live_review.md   pre 1040150  post 1045796  delta 5646  body 5645  ACCEPT
-         .agent/prose_slips.md   pre  265750  post  267150  delta 1400  body 1399  ACCEPT
-         .agent/decisions.md     pre 1175806  post 1180370  delta 4564  body 4563  ACCEPT
-    (ii) READER B, structural, N COUNTED FROM THE SLICE:
-         live_review N=7 ACCEPT · prose_slips N=1 ACCEPT · decisions N=6 ACCEPT
-    (iii) NEGATIVE CONTROL, one flipped ASCII letter in the FIRST appended paragraph:
-         live_review byte 1040151 'G' -> READER A REJECT, READER B REJECT
-         prose_slips byte  265765 'F' -> READER A REJECT, READER B REJECT
-         decisions   byte 1175810 'D' -> READER A REJECT, READER B REJECT
-         and on the UNMUTATED region all three: READER A ACCEPT, READER B ACCEPT
-    (iv) RECORD71 has 13 lines; lines AFTER THE FIRST carrying a reserved prefix: 0.
-         Lines C2 ADDS matching '^- R-': 0. Matching '^Done: R-': 0.
-    (v)  RECORD71 first line: "Gate: F275 R70 — the F275 round 70 entry. VERDICT PASS. ..."
-         lines at 3c59e51b already matching '^Gate: F275 R\d+ — the F275 round \d+ entry\.': 69
-         the new first line matches that pattern: True; duplicates none of them: True
-    (vi) DEC71 begins '## DECISION F275 D45 ': True
-         lines at 3c59e51b matching '^## DECISION F275 D45': 0
-         highest existing '^## DECISION F275 D\d+' at the base: D44 (over 44 such headings)
-    (vii) paragraphs SLIPS71 adds: 1; beginning '2026-09-12 · F275 R70 · ': 1
-         lines at 3c59e51b already beginning with that exact prefix: 0
-         lines C3 ADDS beginning with that exact prefix: 1
+    PLAN72   bytes=3032 lines=49 BEGIN@261 END@311  56bf032d…ddc060  MATCHES
+    RECORD72 bytes=5571 lines=11 BEGIN@315 END@327  c3efee67…1ab949  MATCHES
+    SLIPS72  bytes=950  lines=1  BEGIN@331 END@333  70224833…4e757c  MATCHES
+    DEC72    bytes=5980 lines=11 BEGIN@337 END@349  71e595e5…cc4940  MATCHES
 
-**G4 THE ARTEFACT — REAL_EXIT=0.**
+The block budget, re-measured on the committed blob per constraint 8: TOTAL measured **349**,
+lines between BEGIN and END markers (markers excluded) **72**, PROSE measured **277**. Constraint
+8 states 349 and 277 — both EQUAL.
 
-    .agent/f275_t003_owner_guard_r71.md  @C5  e2b48f9c : 6699 bytes  sha256 e6e00e62ba5d6f2b9c86fe2b5af18881b8b0d21023c20ddd0e93d2763e76d3fc
-    .agent/authored/f275-r71-artefact.md @C0b 5b7627eb : 6699 bytes  sha256 e6e00e62ba5d6f2b9c86fe2b5af18881b8b0d21023c20ddd0e93d2763e76d3fc
-    byte-identical: True
-    git show 3c59e51b:.agent/f275_t003_owner_guard_r71.md -> exit 128 (non-zero, as ordered)
-      fatal: path '.agent/f275_t003_owner_guard_r71.md' exists on disk, but not in '3c59e51b'
+Lines that are a run of a single repeated character (constraint 15 fixes this at zero), measured
+under two readings so the count does not turn on a definition: length ≥ 2 with all characters
+identical → **0**; length ≥ 1 with all characters identical → **0**. HOLDS.
 
-Line count of every blob this round lands, as the gate words it, each against 500: the block at
-348, the artefact at 109, the stage carrier at 197, the instrument carrier at 126, last_block at
-348, plan at 49 and the landed artefact at 109 are ALL UNDER. The three ledger blobs are NOT:
-`.agent/live_review.md` 1128 lines, `.agent/prose_slips.md` 891 and `.agent/decisions.md` 13009.
-See deviation 1 — DECISION F104 D1 caps INSERTIONS, and the insertions those three commits make
-are 14, 2 and 12; both readings are reported rather than reconciled.
+The `.py.md` carriers:
 
-**G5 THE INSTRUMENT — REAL_EXIT=0.** One ```python fence found in the C0d carrier; the source
-extracted to `.remedy-wt/r71w_instrument_extracted.py` (4563 bytes, sha256
-7f1ca2aa01a0513b126f66d1166668004b3e0315c95d2af07cb986f13cdae58f) and run as
-`python3 -B .remedy-wt/r71w_instrument_extracted.py . 3c59e51b`. EVERY LINE OF EVERY BANNER:
+    C0c f275-r72-owner-stage.py.md  '```python' lines=1, bare '```' lines=1; source 19258 bytes b0108e5e…e18676;
+                                    re-wrap in the carrier's own header and fence -> BYTE FOR BYTE EQUAL
+    C0d f275-r72-instrument.py.md   '```python' lines=1, bare '```' lines=1; source  8418 bytes a56f9b2d…f69dbb;
+                                    re-wrap in the carrier's own header and fence -> BYTE FOR BYTE EQUAL
 
-    === 1. THE REFUSE CASE — the ruled set as the pipeline holds it ===
-          ruled sites                 : 2198
-          live record classes         : 71
-          1195  CONFIRMED: the owner verdict matches the receiver's record
-          787  REFUSED to decide: receiver's class not statically bound
-          113  REFUSED to decide: receiver is not a bare name
-          99  REFUSED to decide: annotation carries no class identity
-          4  CONTRADICTED: the receiver holds another record entirely
-          DECIDED                     : 1199
-          REFUSED, the stated blind spot: 999
-          CONTRADICTED                : 4
-          THE OWNER CHECK REFUSES. These ruled sites name an owner the code contradicts, and the flip is one commit that cannot be split, so a wrong rename inside it has no cheap second chance. Finding R-0880.
-          exit 5
-          packages/orchestration/mission_state.py:1074 col 36 .id  receiver 'mission' holds Mission  owner verdict Job
-          tests/cli/test_repair_request_cli.py:27 col 28 .id  receiver 'fa' holds Artifact  owner verdict Job
-          tests/cli/test_repair_v1_cli.py:35 col 28 .id  receiver 'fa' holds Artifact  owner verdict Job
-          tests/cli/test_repair_v1_cli.py:129 col 28 .id  receiver 'fa' holds Artifact  owner verdict Job
+### G2 — the plan
 
-    === 2. THE PASS SET, BUILT FROM THE STAGE'S OWN REPORT ===
-          contradicted sites parsed from the report: 4
-          ruled set goes from 2198 to 2194
-          owner table goes from 2197 to 2193
+    plan.md @C1 0c8f5476 : 3032 56bf032d7de0034c1c0e7d5a9c59816763f827d0a51c89c4238854d3f8ddc060
+    slice PLAN72         : 3032 56bf032d7de0034c1c0e7d5a9c59816763f827d0a51c89c4238854d3f8ddc060
+    BYTE-IDENTICAL       : True
+    line count           : 49 | AGENTS.md cap 50 -> UNDER CAP
+    lines matching ^## Goal$       : 1
+    lines matching ^## Next Steps$ : 1
 
-    === 3. THE PASS CASE — the same stage, the same tree, the cleaned set ===
-          ruled sites                 : 2194
-          live record classes         : 71
-          1195  CONFIRMED: the owner verdict matches the receiver's record
-          787  REFUSED to decide: receiver's class not statically bound
-          113  REFUSED to decide: receiver is not a bare name
-          99  REFUSED to decide: annotation carries no class identity
-          DECIDED                     : 1195
-          REFUSED, the stated blind spot: 999
-          CONTRADICTED                : 0
-          exit 0
+### G3 — the record
+
+(i) READER A, the byte stream — post == pre + one newline + the slice body:
+
+    C2 .agent/live_review.md   pre=1045796 post=1051368 delta=5572 body=5571 -> ACCEPT
+    C3 .agent/prose_slips.md   pre=267150  post=268101  delta=951  body=950  -> ACCEPT
+    C4 .agent/decisions.md     pre=1180370 post=1186351 delta=5981 body=5980 -> ACCEPT
+
+All pre-readings were taken with `git show ae84d89c:<path>`; nothing was written over a tracked
+file to take a base reading.
+
+(ii) READER B, structural, over the WHOLE appended region — the post-commit file split into
+blank-line-separated units, its last N units compared against the slice's N paragraphs IN ORDER,
+N COUNTED BY THE SCRIPT from the slice:
+
+    C2 .agent/live_review.md   N counted from the slice = 6 -> ACCEPT
+    C3 .agent/prose_slips.md   N counted from the slice = 1 -> ACCEPT
+    C4 .agent/decisions.md     N counted from the slice = 6 -> ACCEPT
+
+(iii) NEGATIVE CONTROL, inside the disposable worktree `.remedy-wt/nc72`, one ASCII letter
+flipped inside the FIRST appended paragraph of each file:
+
+    C2 .agent/live_review.md  byte offset 1045797  'G' -> 'g'
+         MUTATED  : reader A REJECT | reader B (N=6) REJECT
+         UNMUTATED: reader A ACCEPT | reader B (N=6) ACCEPT
+    C3 .agent/prose_slips.md  byte offset 267165   'F' -> 'f'
+         MUTATED  : reader A REJECT | reader B (N=1) REJECT
+         UNMUTATED: reader A ACCEPT | reader B (N=1) ACCEPT
+    C4 .agent/decisions.md    byte offset 1180374  'D' -> 'd'
+         MUTATED  : reader A REJECT | reader B (N=6) REJECT
+         UNMUTATED: reader A ACCEPT | reader B (N=6) ACCEPT
+
+    worktree removed and pruned; exists on disk: False
+
+(iv) RECORD72: line count **11**; lines AFTER THE FIRST carrying a reserved prefix (`- R-`,
+`Done: R-`, `Landed: R-`, `Gate: `) **0**; lines C2 ADDS matching `^- R-` **0** and matching
+`^Done: R-` **0**.
+
+(v) RECORD72's first line against the repeating record format: lines at the base `ae84d89c`
+already matching `^Gate: F275 R\d+ — the F275 round \d+ entry\.` **70**; the new first line
+matches that same pattern **True**; its header `Gate: F275 R71 — the F275 round 71 entry.`
+duplicates none of them **False (no duplicate)**; it is not a full-line duplicate of any base
+line.
+
+(vi) DEC72 begins `## DECISION F275 D46 ` **True**; lines at the base matching
+`^## DECISION F275 D46` **0**; highest existing `^## DECISION F275 D\d+` at the base **D45**.
+
+(vii) SLIPS72 adds **1** paragraph; **1** of them begins `2026-09-12 · F275 R71 · `; lines at the
+base already beginning with that exact prefix **0**.
+
+### G4 — the artefact
+
+    C0b blob       : 11207 c30b23bb8d794ece0ffadfdb3ea06615bdbe3cf46357488228481667957c5bd2
+    artefact at C5 : 11207 c30b23bb8d794ece0ffadfdb3ea06615bdbe3cf46357488228481667957c5bd2
+    BYTE-IDENTICAL : True
+    git show ae84d89c:.agent/f275_t003_owner_widening_r72.md -> exit 128 (non-zero, the expected reading)
+
+Per-commit insertions from `git show --numstat`, against the DECISION F104 D1 cap of 500, and the
+number of paths each commit stages:
+
+    C0a 1d4af239 insertions=349 deletions=0   paths=1 UNDER
+    C0b ba3b19ab insertions=164 deletions=0   paths=1 UNDER
+    C0c d60a0cd4 insertions=431 deletions=0   paths=1 UNDER
+    C0d af08f327 insertions=196 deletions=0   paths=1 UNDER
+    C0e a7200d11 insertions=305 deletions=304 paths=1 UNDER
+    C1  0c8f5476 insertions=19  deletions=19  paths=1 UNDER
+    C2  798fe74a insertions=12  deletions=0   paths=1 UNDER
+    C3  1b18231f insertions=2   deletions=0   paths=1 UNDER
+    C4  ea33e449 insertions=12  deletions=0   paths=1 UNDER
+    C5  9023a722 insertions=164 deletions=0   paths=1 UNDER
+
+### G5 — the instrument, this round's measurement
+
+(a) THE ANCHOR. The single fence of the COMMITTED round 71 carrier at
+`ac7fa202:.agent/authored/f275-r71-owner-stage.py.md` extracted to
+`.remedy-wt/f275-r71-owner-stage.py`: **8134 bytes**, sha256
+`dabbdf6657c1fe444eacb1f41d22aa33bd1e290560422eaacf0d0bb341079d81`. G5(a) states 8134 and that
+same digest — MATCHES.
+
+(b) The C0d carrier extracted to `.remedy-wt/f275-r72-instrument.py`: **8418 bytes**, sha256
+`a56f9b2d86963e9bf9b375f56140bb8c73cdf9f3df31efe7bfce7edf00f69dbb`. The C0c carrier extracted to
+`.remedy-wt/f275-r72-owner-stage.py`: **19258 bytes**, sha256
+`b0108e5e316af922e411a8ca7be16c892f69e15de8e6b9623ca0078da8e18676`. Then
+`python3 -B .remedy-wt/f275-r72-instrument.py . ae84d89c`, REAL_EXIT **0**, EVERY LINE OF EVERY
+BANNER reproduced:
+
+    === 1. IS `--narrow` THE R71 METHOD? measured against the committed R71 stage ===
+                                                          committed   --narrow
+          CONFIRMED: the owner verdict matches the recei       1195       1195
+          CONTRADICTED: the receiver holds another recor          4          4
+          REFUSED to decide: receiver's class not static        787        787
+          REFUSED to decide: receiver is not a bare name        113        113
+          REFUSED to decide: annotation carries no class         99         99
+          DECIDED                                              1199       1199
+          REFUSED, the stated blind spot                        999        999
+          every class EQUAL                              : True
+          the contradicted SITE LISTS are identical      : True
+          (so every figure below in the R71 column is the committed stage's own)
+
+    === 2. THE TWO STAGES OVER THE SAME TREE AND THE SAME RULED SET ===
+                                                              R71      R72    delta
+          ruled sites                                        2198     2198       +0
+          CONFIRMED                                          1195     1861     +666
+          CONTRADICTED                                          4       13       +9
+          DECIDED                                            1199     1874     +675
+          REFUSED, the stated blind spot                      999      324     -675
+            of which: class not statically bound              787      107     -680
+            of which: receiver is not a bare name             113      113       +0
+            of which: annotation carries no class id           99      104       +5
+
+    === 3. THE SOUNDNESS CONTROL — the two PER-SITE decision maps, diffed ===
+          sites the R71 method DECIDED                     : 1199
+          sites the R72 method DECIDED                     : 1874
+          of R71's decisions, sites R72 no longer decides  : 0
+          of R71's decisions, sites R72 decides DIFFERENTLY: 0
+          EVERY SITE R71 DECIDED, R72 DECIDES THE SAME WAY : True
+          sites R72 decides that R71 refused               : 675
+          that count equals the fall in REFUSED            : True
+
+    === 4. WHAT THE WIDENING FOUND — contradictions R71 COULD NOT SEE ===
+          NEW contradicted sites                           : 9
+            packages/orchestration/long_run_executor.py:503 col 19 .id  receiver 'entry' holds QueueEntry  owner verdict Job
+            packages/orchestration/loop_run.py:285 col 40 .id  receiver 'mission' holds Mission  owner verdict Job
+            tests/orchestration/test_mission_state.py:420 col 47 .id  receiver 'mission' holds Mission  owner verdict Job
+            tests/orchestration/test_mission_state.py:435 col 47 .id  receiver 'mission' holds Mission  owner verdict Job
+            tests/orchestration/test_mission_state.py:450 col 47 .id  receiver 'mission' holds Mission  owner verdict Job
+            tests/orchestration/test_mission_state.py:735 col 38 .id  receiver 'mission' holds Mission  owner verdict Job
+            tests/orchestration/test_mission_state.py:885 col 38 .id  receiver 'mission' holds Mission  owner verdict Job
+            tests/orchestration/test_watchdog.py:472 col 40 .id  receiver 'mission' holds Mission  owner verdict Job
+            tests/orchestration/test_watchdog.py:890 col 38 .id  receiver 'mission' holds Mission  owner verdict Job
+          each was REFUSED by R71, never CONFIRMED         : True
+
+    === 5. THE DISCRIMINATOR — the guard still refuses, and still passes ===
+          contradicted sites parsed from the stage's own report: 13
+          ruled set goes from 2198 to 2185
           THE DISCRIMINATOR, refuse against pass: exit 5 against exit 0
+          CONFIRMED in the refuse case 1861 ; in the pass case 1861 ; EQUAL: True
+          CONTRADICTED in the pass case: 0
 
-    === 4. THE BLIND SPOT, STATED AS A COUNT ===
-            787  REFUSED to decide: receiver's class not statically bound
-            113  REFUSED to decide: receiver is not a bare name
-             99  REFUSED to decide: annotation carries no class identity
-          the guard decides 1199 of 2198 and refuses 999
-
-    === 5. THE SCRATCH IS GONE ===
-          git worktree list -> /home/decodeux/Repos/remedy  e2b48f9c [feature/f275-one-world-completion-part-three]
+    === 6. THE SCRATCH IS GONE ===
+          git worktree list -> /home/decodeux/Repos/remedy  9023a722 [feature/f275-one-world-completion-part-three]
           git status --porcelain -> ''
 
-CONSTRAINT 13 AS READ: banner 1's `exit 5` is the OWNER-CHECK STAGE's own exit and is the PASS
-reading — the refusal is the deliverable. The GATE's exit code is the instrument's, REAL_EXIT=0.
-No ruled set was altered to make the stage exit 0; the cleaned set of banner 3 is built by the
-instrument from the stage's own report, and CONFIRMED reads 1195 in BOTH runs, which is the
-control the block names.
+The stage's exit 5 in the refuse case is the PASS reading, not a red gate (constraint 14); the
+GATE's exit code is the instrument's, which is 0.
 
-    (b) THE TRANSCRIPT: lines in the artefact consisting of three backticks: 0.
-        Quoted lines checked (EVERY line beginning with whitespace and not blank): 25.
-        Quoted lines whose stripped form is NOT a stripped line of the output: 0.
-    (c) THE ORDER PROPERTY as a MONOTONE MATCHING: matched in order 25, unmatchable in
-        order 0, every quoted line matched: True, matched indices strictly increase: True.
-    (d) DETERMINISM: three runs, instrument stdout 2533 bytes each, ALL THREE BYTE-IDENTICAL;
-        stderr byte count 0, 0 and 0. (The run-1 capture file reads 2545 because this gate's
-        own `REAL_EXIT=0` line was appended to it; the instrument's own stdout is 2533.)
-    (a) THE FIGURES: 56 maximal digit runs swept over the artefact's PROSE — its lines that do
-        NOT begin with whitespace. 32 occur as a digit run in the instrument's output; 24 do
-        not. READING USED: THE ARTEFACT AS A WHOLE, not line by line, so a backtick span or a
-        citation may open on an earlier line than the digits it encloses — which is load-bearing
-        here, because "item" ends line 28 and "33 of `docs/agents/planner_reviewer_prompt.md`
-        §3" opens line 29, and a line-scoped reader calls that 33 unexplained.
+(c) THE READING THE ROUND TURNS ON, section 3, four lines:
 
-        Of the 24, SEVENTEEN fall under the three standing exceptions the block names:
-          · backtick-quoted spans (tokens the artefact QUOTES, not uses): 59 and 51 inside
-            `3c59e51b` on line 3, and 0879 inside `R-0879` on lines 21 and 91;
-          · CITATIONS of a named prior decision, round, finding, slice or feature: 003 in
-            "F275 T003" (line 1) and in "T003's resolver collapse" (line 108), 45 in
-            "DECISION F275 D45" (lines 32 and 105), 37 in "DECISION F275 D37" (line 108),
-            70 in "ROUND 70 WROTE" (line 9), "round 70's artefact" (line 12), "round 70's
-            provenance sentence" (line 13), "at round 70" (line 20), "round 70's bound"
-            (line 87) and "Round 70's probe" (line 89), 53 in "the ROUND 53 committed set"
-            (line 89), and 33 in the line-spanning "item / 33 of ... §3" (lines 28-29).
+| Line | Value | Holds? |
+|---|---|---|
+| of R71's decisions, sites R72 no longer decides | **0** | YES — the block requires zero |
+| of R71's decisions, sites R72 decides DIFFERENTLY | **0** | YES — the block requires zero |
+| sites R72 decides that R71 refused | **675** | YES |
+| that count equals the fall in REFUSED (999 − 324 = 675) | **True** | YES |
 
-        SEVEN ARE REPORTED AS ABSENT rather than supplied from elsewhere, which is what the
-        block orders. NONE OF THEM DISAGREES with a figure the instrument prints:
-          · 33 (line 52) and 25 (line 53) — `Mission.job_id` and `Artifact.job_id`, which the
-            artefact states in the same sentence come "from that registration and not from
-            this instrument", i.e. from `R-0880`'s own dry run;
-          · 763 and 111 (line 89) — round 70's probe over the ROUND 53 committed set, named in
-            the sentence that uses them;
-          · 54 (line 90) — the sites `R-0879` covered, from the prior record;
-          · 45 (line 83) — "45 percent of the ruled set", DERIVED: 999/2198 = 45.45%;
-          · 26 (line 92) — DERIVED: (787-763) + (113-111) = 26, and 1195 - 1167 = 28 for the
-            confirmed side, whose sum 28 + 26 = 54 is the line-90 figure.
-        The artefact's own provenance clause (lines 9-13) declares exactly this shape: every
-        INDENTED line is instrument output, and the PROSE "additionally cites figures from
-        `R-0880`'s own registration and from round 70's artefact, and names that source in the
-        sentence that uses it". All 25 indented lines verify, so that clause holds as written.
-        See deviation 3 for the one weakness I am declaring in my own sweep.
+Neither of the first two is non-zero, so the gate is not red and the round continues.
 
-**G6 THE TREE DID NOT MOVE.**
+(d) THE TRANSCRIPT. Lines in the C0b artefact blob consisting of three backticks: **0**. Lines
+that begin with whitespace and are not blank, CHECKED against the instrument's output: **34**.
+With NO stripped-equal line in that output: **0**.
 
-    (a) REAL_EXIT=0 — git object ids at 3c59e51b and at C5 e2b48f9c:
-        packages 2f8a05b5d7c2fde5ec8b0ba1e1b524767e06b8f0  EQUAL
-        apps     1dd43398c371aa88e16fa8aba95bead4c131c2ac  EQUAL
-        tests    509ecf860ffbc46db17f825af775e33a458f5274  EQUAL
-        docs     48fd2e4c9ffe468071e3e9dbe056db6e4e1dd792  EQUAL
-        scripts  53331effaa68e4e30ece33a0acd66e077813b2c5  EQUAL
-        all five EQUAL: True
-    (b) THE CANARY — REAL_EXIT=0:
-        python3 -m pytest tests/cli/test_golden_path.py -q
-        .......................................... [100%]
-        42 passed in 18.92s
-    (c) python3 -m ruff check . --output-format concise — REAL_EXIT=1, which is the tool's
-        own exit whenever any finding remains, so THE GATE IS THE COUNT:
-        rows matching '^\S+:\d+:\d+: ' = 26, exactly the ceiling
-        `tests/orchestration/test_ci_budgets.py` freezes;
-        rows under .remedy-wt/ = 0 (counted, not grepped);
-        rows whose path ends .py under .agent/ = 0, which is constraint 10 holding;
-        the tool's own trailer reads "Found 26 errors." and "[*] 25 fixable".
-        Run AFTER G5 had removed and pruned its worktree, so no worktree was in the scan.
+(e) THE ORDER PROPERTY, a monotone matching over those same 34 quoted lines: matched in order
+**34**, unmatchable **0**, every quoted line matched **True**, matched indices strictly increase
+**True**.
 
-**G7 NOTHING ELSE MOVED — REAL_EXIT=0.**
+(f) DETERMINISM, three runs of the committed instrument:
 
-    (a) .agent/STOP exists on disk: False
-        git status --porcelain | cat -A  ->  '' (the empty string)
-        git worktree list -> /home/decodeux/Repos/remedy  e2b48f9c [feature/...part-three]
-        worktree entries: 1 — the primary checkout ALONE
-    (b) changed paths over 3c59e51b..e2b48f9c: 10
-        MISSING: []   EXTRA: []
-        paths under docs/, scripts/, packages/, apps/ or tests/: 0
-    (c) OPEN SET BY DISTINCT ID — '^- R-\d+ — ' paragraphs minus '^Done: R-\d+ — ' lines:
-        base 3c59e51b: registered 109, resolved 22, OPEN 87
-        C5   e2b48f9c: registered 109, resolved 22, OPEN 87
-        ids REGISTERED: []   ids RESOLVED: []   ids DE-REGISTERED: []
-        open membership IDENTICAL at both ends: True
-        highest open id: R-0880 at the base and R-0880 at C5
-        R-0880 open at base: True — open at C5: True (constraint 9 holding)
-    (d) per-commit insertions, all under the cap of 500, each over ONE path:
-        C0a +348 -0 · C0b +109 -0 · C0c +197 -0 · C0d +126 -0 · C0e +145 -158 ·
-        C1 +18 -18 · C2 +14 -0 · C3 +2 -0 · C4 +12 -0 · C5 +109 -0
-        maximum over C0a..C5: 348
+    run 1: stdout 3957 bytes sha256 2200fb61…bd1285 | stderr 0 bytes | exit 0
+    run 2: stdout 3957 bytes sha256 2200fb61…bd1285 | stderr 0 bytes | exit 0
+    run 3: stdout 3957 bytes sha256 2200fb61…bd1285 | stderr 0 bytes | exit 0
+    all three stdout captures byte-identical: True
 
-Constraint 7, both readings reported literally: `.agent/STOP` read FROM DISK before the first
-commit — `os.path.exists('.agent/STOP') -> False`, `glob('.agent/STOP') -> []` — and again
-before C6 — `os.path.exists('.agent/STOP') -> False`, `glob('.agent/STOP') -> []`. It does not
-exist at either reading.
+(g) THE FIGURES. Maximal digit runs swept over the artefact's PROSE — its lines that do NOT begin
+with whitespace — reading the artefact AS A WHOLE rather than line by line: **61** runs (33
+distinct values). Occurring as a digit run in the instrument's output: **35**. NOT occurring:
+**26**. Each of the 26, with the line that uses it and which of the artefact's two declared kinds
+it is:
 
-Constraint 12: the instrument's scratch inputs were checked for existence BEFORE it was run and
-none was regenerated — `.remedy-wt/r69_rekeyed.json` (121516 B), `.remedy-wt/r69_rekeyed_owners.json`
-(121858 B) and `.remedy-wt/f275-r71-owner-stage.py` (8134 B, which is byte-for-byte the size G1
-extracted from the C0c carrier's fence) all existed. Nothing was missing, so the STOP clause of
-constraint 12 never fired.
+| Run | Line | Kind |
+|---|---|---|
+| `003` | 1 — `# F275 T003 — the owner check's refusal set…` | CITATION — the named T-slice |
+| `84` | 3 — `> Measured by the reviewer at \`ae84d89c\`…` | CITATION — see the deviation below |
+| `89` | 3 — same line, same backtick span | CITATION — see the deviation below |
+| `45` | 17 — `## 1. What DECISION F275 D45 left owed` | CITATION — a named decision |
+| `45` | 19 — `D45 narrowed \`R-0880\`'s second obligation…` | CITATION — a named decision |
+| `0880` | 19 — `D45 narrowed \`R-0880\`'s second obligation…` | CITATION — a named finding |
+| `45` | 23 — `…D45 also named the route…` | CITATION — a named decision |
+| `604` | 56 — `…PEP 604 unions and mapping subscripts…` | CITATION — a named specification |
+| `327` | 81 — `…a loss of 327 correct decisions against a gain of` | DISCARDED DRAFT — the second |
+| `585` | 82 — `585 reports as "decided grew by exactly what refused lost"…` | DISCARDED DRAFT — the second |
+| `7` | 82 — `…which is section 7's second` | CITATION — a named section |
+| `0880` | 106 — `…exactly the defect \`R-0880\` names…` | CITATION — a named finding |
+| `7` | 122 — `## 7. Two drafts that measured better and were wrong` | CITATION — a named section |
+| `297` | 127 — `THE FIRST DRAFT REPORTED A REFUSAL SET OF 297…` | DISCARDED DRAFT — the first |
+| `741` | 137 — `THE SECOND DRAFT REPAIRED THE SCOPING AND REPORTED 741…` | DISCARDED DRAFT — the second |
+| `327` | 138 — `KEEPING. Sound scoping cost 327 sites…` | DISCARDED DRAFT — the second |
+| `585` | 140 — `…Against 585 newly decided sites…` | DISCARDED DRAFT — the second |
+| `258` | 140 — `…the net was +258…` | DISCARDED DRAFT — the second |
+| `327` | 142 — `showed that 327 decisions had been destroyed…` | DISCARDED DRAFT — the second |
+| `721` | 144 — `…\`proposed_tasks.py\` line 721 is REFUSED under it…` | see the deviation below |
+| `297` | 149 — `reduction. 297 is a better-looking result than 324…` | DISCARDED DRAFT — the first |
+| `8` | 152 — `## 8. What this settles, and what it does not` | CITATION — a named section |
+| `0880` | 158 — `NOT SETTLED, AND \`R-0880\` STAYS OPEN…` | CITATION — a named finding |
+| `45` | 159 — `…DECISION F275 D45's precondition…` | CITATION — a named decision |
+| `37` | 163 — `id-SHAPE seam DECISION F275 D37 routed into T003's…` | CITATION — a named decision |
+| `003` | 163 — same line, `T003's resolver collapse` | CITATION — the named T-slice |
 
-## Authored-text proofs
+23 of the 26 fall cleanly inside the artefact's two declared kinds: 14 CITATIONS and 9 figures of
+the two discarded drafts. The remaining 3 are declared as deviations below.
 
-All four reviewer-authored texts were verified by size, line count and sha256 against the
-reviewer's scratch originals BEFORE use, and the COMMITTED blobs were then compared back to
-those originals at G1:
+### G6 — the tree did not move
 
-| Authored text | Committed at | Bytes | sha256 | Verdict |
-|---|---|---|---|---|
-| `.agent/authored/f275-r71.md` | C0a ce26929b | 34906 | 8f3b921b62a7e6bf852460a0d3e1e0b12dc5347411f3f27a390a5c350754fa74 | EQUAL to `.remedy-wt/f275-r71.block.md` |
-| `.agent/authored/f275-r71-artefact.md` | C0b 5b7627eb | 6699 | e6e00e62ba5d6f2b9c86fe2b5af18881b8b0d21023c20ddd0e93d2763e76d3fc | EQUAL to `.remedy-wt/f275-r71-artefact.md` |
-| `.agent/authored/f275-r71-owner-stage.py.md` | C0c ac7fa202 | 8812 | b345528750b44cc096fda0e525e487bcc7e20b0d5a95490a1e4f0cf887f1f332 | EQUAL to `.remedy-wt/f275-r71-owner-stage.py.md` |
-| `.agent/authored/f275-r71-instrument.py.md` | C0d 961b0ae0 | 5234 | 1e1a1a0937184bd4dff3946356876c2e0912db1fe4bbae4b74a56c0bb4b81e22 | EQUAL to `.remedy-wt/f275-r71-instrument.py.md` |
-| `.agent/last_block.md` | C0e e8cb0b3f | 34906 | 8f3b921b62a7e6bf852460a0d3e1e0b12dc5347411f3f27a390a5c350754fa74 | EQUAL to the committed C0a blob |
-| `.agent/f275_t003_owner_guard_r71.md` | C5 e2b48f9c | 6699 | e6e00e62ba5d6f2b9c86fe2b5af18881b8b0d21023c20ddd0e93d2763e76d3fc | EQUAL to the committed C0b blob |
+(a) `git rev-parse` object ids at the base `ae84d89c` and at C5 `9023a722`:
 
-The four slices were extracted from the COMMITTED C0a blob by BEGIN/END marker prefix, markers
-EXCLUDED, never from the delegation prompt and never from memory, and each matched the sha256
-carried on its own BEGIN marker on the first attempt: PLAN71 28f5c15bb44aafac… (3039 B),
-RECORD71 c646ecc2be125fd0… (5645 B), SLIPS71 2624d0de7ae86ad7… (1399 B), DEC71
-1c7bdea3ceb3ed53… (4563 B). Every slice was applied BYTE FOR BYTE; nothing was reflowed,
-re-wrapped, re-indented or corrected. The artefact and both `.py.md` carriers were transported
-whole with `shutil.copyfile` and were never opened in an editor for transport.
+    packages  2f8a05b5d7c2fde5ec8b0ba1e1b524767e06b8f0  ==  2f8a05b5d7c2fde5ec8b0ba1e1b524767e06b8f0  EQUAL
+    apps      1dd43398c371aa88e16fa8aba95bead4c131c2ac  ==  1dd43398c371aa88e16fa8aba95bead4c131c2ac  EQUAL
+    tests     509ecf860ffbc46db17f825af775e33a458f5274  ==  509ecf860ffbc46db17f825af775e33a458f5274  EQUAL
+    docs      48fd2e4c9ffe468071e3e9dbe056db6e4e1dd792  ==  48fd2e4c9ffe468071e3e9dbe056db6e4e1dd792  EQUAL
+    scripts   53331effaa68e4e30ece33a0acd66e077813b2c5  ==  53331effaa68e4e30ece33a0acd66e077813b2c5  EQUAL
 
-## Deviations & assumptions
+(b) THE CANARY, `python3 -m pytest tests/cli/test_golden_path.py -q`, REAL_EXIT **0**:
 
-The ordered commit sequence was followed EXACTLY: C0a, C0b, C0c, C0d, C0e, C1, C2, C3, C4, C5,
-C6 — eleven commits, none added, none dropped, none reordered.
+    ..........................................                               [100%]
+    42 passed in 18.82s
 
-1. **G4's literal instrument is not the cap's unit, and I report both readings rather than
-   choose one.** G4 orders "the line count of every blob this round lands, each against the
-   DECISION F104 D1 cap of 500 insertions". Read literally on whole-blob line counts, the three
-   ledger files exceed 500 — live_review 1128, prose_slips 891, decisions 13009 — because they
-   are append-only ledgers that were already far past 500 at the base. F104 D1 caps INSERTIONS
-   (the `+` column), and the insertions those commits make are 14, 2 and 12. No cap is breached
-   under the decision's own unit; the gate's wording just points its instrument at a different
-   quantity for the three append targets. Reported, not reconciled.
-2. **Constraint 13's reading is the one I applied, deliberately.** The owner-check stage exits 5
-   in banner 1 and I recorded that as the PASS reading, not as a red gate. No ruled set was
-   touched to make it 0. The block's own control — CONFIRMED 1195 in both runs — is what makes
-   the pair readable, and it held.
-3. **One weakness in my own G5(a) sweep, declared rather than hidden.** The sweep resolves a
-   figure by asking whether the digit run occurs anywhere in the instrument's output, so a short
-   run can resolve by coincidence: "28" on line 92 is a DERIVED figure the instrument never
-   states as such, and it counted as resolved only because the output line
-   `tests/cli/test_repair_request_cli.py:27 col 28 .id …` contains the token 28. I verified its
-   arithmetic by hand instead — 1195 − 1167 = 28 on the confirmed side, (787−763)+(113−111) = 26
-   on the refused side, 28 + 26 = 54 — and report it here so the reviewer does not read my "32
-   resolved" as 32 independent confirmations. My first mechanical classifier also missed two
-   exception cases a human reading catches: "ROUND 70"/"Round 70" (its citation pattern was
-   case-sensitive) and the line-spanning "item / 33", which is exactly the whole-document
-   reading the block warns about. I re-classified all 24 unresolved runs by hand, and the
-   enumeration above is the hand classification, not the regex's.
-4. **The self-review loop ran before every commit, with the diff read structurally for the two
-   large transport commits.** `git diff --cached --stat`, `--numstat` and the full
-   `git diff --cached` were run for all ten commits and saved under `.remedy-wt/r71w_c*.diff`.
-   For C0a and C0e — 348-line blobs — I reviewed the diff by its structure (exactly one path, a
-   single hunk header, every content line an addition, and the resulting blob byte-equal to the
-   authored original by sha256) rather than by printing 35 KB into the session transcript. The
-   C1 plan diff was read in full, line by line. C2, C3 and C4 were confirmed to contain ZERO
-   removal lines, i.e. pure appends.
-5. **No `.agent/context.md` update.** The Commit Gate asks whether one is needed; the block's
-   Change section fixes the change set and does not include it, so scope was not widened.
-   DEC71 at C4 is this round's decision record.
-6. **G6(c)'s tool exit is 1 and that is not a red gate.** The block states it: ruff exits 1
-   whenever any finding remains, so the gate is the COUNT, which read 26 against a ceiling of 26.
-7. **C6's own `--numstat` path count is stated by construction, not measured.** It is 1,
-   `.agent/handoff.md`, because that is the only file C6 stages; the numeral cannot be measured
-   from inside the commit that writes it.
-8. **Nothing the block got wrong was found.** Every stated precondition reproduced exactly at
-   the base: the five NEW paths absent under `git ls-tree 3c59e51b` at exit 0 with empty output,
-   the three pre-append sizes 1040150 / 265750 / 1175806, the open set at 87, `git worktree list`
-   showing the primary checkout alone, `.agent/STOP` absent, the canary at 42 passed and ruff at
-   26 rows. Constraint 8's 348 and 274 re-measured to 348 and 274 on the final bytes.
-9. **`R-0880` STAYS OPEN, per constraint 9.** No id was registered, resolved or de-registered;
-   the open set is 87 with IDENTICAL membership at both ends; no `Done:` or `Landed:` paragraph
-   of my own was written; and the SLIPS71 line is not an id, per amend0827-process-diet rule 2.
+(c) `python3 -m ruff check . --output-format concise`, run AFTER G5 removed and pruned its
+worktree (`git worktree list` showed the primary checkout alone before the run). The gate is the
+COUNT, not ruff's process exit:
 
-## Item status
+    rows matching ^\S+:\d+:\d+:                        : 26
+    the ceiling tests/orchestration/test_ci_budgets.py freezes : 26  (LINT_ERROR_CEILING in packages/orchestration/ci_budgets.py)
+    EQUAL                                              : True
+    rows whose path lies under .remedy-wt/ (counted)   : 0
+    rows whose path ends .py under .agent/ (constraint 10 fixes at 0) : 0
+    ruff's own tail: "Found 26 errors." / "[*] 25 fixable with the `--fix` option."
+    ruff's own process exit: 1 (expected whenever any finding remains); the measuring gate's REAL_EXIT: 0
+
+### G7 — nothing else moved
+
+(a) `.agent/STOP` — `os.path.exists` **False**, `glob.glob('.agent/STOP')` **[]**.
+`git status --porcelain | cat -A` → `''` (the empty string, literally).
+`git worktree list` → one entry, `/home/decodeux/Repos/remedy  9023a722 [feature/f275-one-world-completion-part-three]`; number of entries **1**, the primary checkout alone.
+
+(b) Changed paths over `ae84d89c`..C5: **10**.
+
+    .agent/authored/f275-r72-artefact.md
+    .agent/authored/f275-r72-instrument.py.md
+    .agent/authored/f275-r72-owner-stage.py.md
+    .agent/authored/f275-r72.md
+    .agent/decisions.md
+    .agent/f275_t003_owner_widening_r72.md
+    .agent/last_block.md
+    .agent/live_review.md
+    .agent/plan.md
+    .agent/prose_slips.md
+
+Against the Change section's 11-path set, LITERALLY: MISSING `['.agent/handoff.md']`, EXTRA `[]`.
+Against the same set minus the C6 path, which is the reading the block's own "Done when" preamble
+supplies: MISSING `[]`, EXTRA `[]`. See the deviation below. Paths under `docs/`, `scripts/`,
+`packages/`, `apps/` or `tests/`: **0**.
+
+(c) THE OPEN SET BY DISTINCT ID — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — `
+line:
+
+    at the base ae84d89c : registered 109  resolved 22  open 87
+    at C5       9023a722 : registered 109  resolved 22  open 87
+    ids REGISTERED    : []
+    ids RESOLVED      : []
+    ids DE-REGISTERED : []
+    open membership IDENTICAL at both ends : True
+    highest open id at the base : R-0880
+    highest open id at C5       : R-0880
+    R-0880 open at the base     : True
+    R-0880 open at C5           : True
+
+Constraint 9 is met: `R-0880` stays open, no id was registered, resolved or de-registered, and no
+`Done:` or `Landed:` paragraph was written by the worker.
+
+### Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | `.agent/authored/f275-r71.md`, 34906 B, EQUAL to the scratch original |
-| C0b | done | `.agent/authored/f275-r71-artefact.md`, 6699 B, EQUAL |
-| C0c | done | `.agent/authored/f275-r71-owner-stage.py.md`, 8812 B, EQUAL |
-| C0d | done | `.agent/authored/f275-r71-instrument.py.md`, 5234 B, EQUAL |
-| C0e | done | `.agent/last_block.md` EQUAL to the committed C0a blob |
-| C1 | done | `.agent/plan.md` byte-identical to PLAN71, 49 lines |
-| C2 | done | RECORD71 appended, +5646 bytes, both readers ACCEPT |
-| C3 | done | SLIPS71 appended, +1400 bytes, both readers ACCEPT |
-| C4 | done | DEC71 appended, +4564 bytes, both readers ACCEPT |
-| C5 | done | artefact landed byte-identical to the C0b blob |
-| C6 | done | this handback |
-| G1 | done | REAL_EXIT=0 — five EQUAL, 4 slices, 348/274 agreeing with constraint 8, both carriers round-trip |
-| G2 | done | REAL_EXIT=0 — byte-identical, 49 lines, both headings once |
-| G3 | done | REAL_EXIT=0 — three appends, two readers, three negative controls rejected, unmutated accepted |
-| G4 | done | REAL_EXIT=0 — artefact identical, absent at base (exit 128); see deviation 1 on the line-count reading |
-| G5 | done | REAL_EXIT=0 — stage 5 against 0 with CONFIRMED 1195 in both, 25/25 quoted lines, 0 unmatchable, three identical runs |
-| G6 | done | (a) five trees EQUAL, (b) 42 passed at exit 0, (c) 26 ruff rows at the ceiling, 0 under `.remedy-wt/`, 0 `.py` under `.agent/` |
-| G7 | done | REAL_EXIT=0 — STOP absent, status empty, one worktree, 10 paths with MISSING and EXTRA empty, open set 87 = 87, max insertions 348 |
+| C0a | done | |
+| C0b | done | |
+| C0c | done | |
+| C0d | done | |
+| C0e | done | |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | |
+| C5 | done | |
+| C6 | done | this file |
+| G1 | done | REAL_EXIT 0; TOTAL 349 and PROSE 277 both EQUAL to constraint 8 |
+| G2 | done | REAL_EXIT 0; byte-identical to PLAN72, 49 lines under the cap of 50 |
+| G3 | done | REAL_EXIT 0; both readers ACCEPT all three, all three negative controls REJECT |
+| G4 | done | REAL_EXIT 0; artefact byte-identical to C0b, base path exit 128, every commit under 500 insertions over 1 path |
+| G5 | done | REAL_EXIT 0 for (a), (b) and (d)(e)(f)(g); section 3's two zeroes hold, so not red |
+| G6 | done | REAL_EXIT 0; five trees EQUAL, canary 42 passed at exit 0, ruff 26 rows at the frozen ceiling of 26 |
+| G7 | done | REAL_EXIT 0; clean tree, one worktree, 0 production paths, open set 87 and identical at both ends |
+
+## Authored-text proofs
+
+Every reviewer-authored text of this round travelled without being opened in an editor: the four
+whole texts and the block by `shutil.copyfile`, the four slices by extraction from the COMMITTED
+C0a blob (never from the delegation prompt, never from memory), each checked against the sha256
+its own BEGIN marker carries BEFORE it was applied.
+
+| Text | Route | Disk-to-disk result |
+|---|---|---|
+| the block → `.agent/authored/f275-r72.md` | `shutil.copyfile` | EQUAL by size and sha256 to `.remedy-wt/f275-r72.block.md` (34189, `2417970a…cbea77`) |
+| the block → `.agent/last_block.md` | `shutil.copyfile` | EQUAL to the COMMITTED C0a blob |
+| the artefact → `.agent/authored/f275-r72-artefact.md` | `shutil.copyfile` | EQUAL (11207, `c30b23bb…7c5bd2`) |
+| the owner-check stage carrier → `.agent/authored/f275-r72-owner-stage.py.md` | `shutil.copyfile` | EQUAL (19931, `f876cc40…089aab`) |
+| the instrument carrier → `.agent/authored/f275-r72-instrument.py.md` | `shutil.copyfile` | EQUAL (9089, `1f81ad4c…eab3894`) |
+| the artefact → `.agent/f275_t003_owner_widening_r72.md` | `shutil.copyfile` from the authored copy | byte-identical to the COMMITTED C0b blob |
+| PLAN72 → `.agent/plan.md` | extracted from the committed C0a blob | digest MATCHES its BEGIN marker; `.agent/plan.md` byte-identical to it |
+| RECORD72 → `.agent/live_review.md` | extracted from the committed C0a blob | digest MATCHES; appended, both readers ACCEPT |
+| SLIPS72 → `.agent/prose_slips.md` | extracted from the committed C0a blob | digest MATCHES; appended, both readers ACCEPT |
+| DEC72 → `.agent/decisions.md` | extracted from the committed C0a blob | digest MATCHES; appended, both readers ACCEPT |
+
+The digests the block's whole-text table and constraint 12 state were verified on disk BEFORE any
+transport: all five matched exactly, and no instrument input was regenerated.
+
+## Deviations & assumptions
+
+The block's ORDERED COMMIT SEQUENCE was followed exactly: C0a, C0b, C0c, C0d, C0e, C1, C2, C3, C4,
+C5, C6, eleven commits, each staging exactly ONE path, nothing added, dropped or reordered. No
+slice was edited. No production path moved. No gate went red.
+
+1. **G7(b) — the Change section's 11-path set cannot be satisfied by a range that ends at C5.**
+   The block lists `.agent/handoff.md` in its path set, requires that MISSING and EXTRA both be
+   empty over `ae84d89c`..C5, and separately states in its "Done when" preamble that every gate
+   runs at C5, "which is strictly earlier than the commit that writes the handback". C6 writes
+   `.agent/handoff.md`, so under a LITERAL reading MISSING is `['.agent/handoff.md']` and the
+   clause is unmeetable by construction. Both readings are reported above and NEITHER is
+   reconciled here: literally MISSING is one path; against the set minus the C6 path — the reading
+   the preamble supplies, and the reading round 71's own booked verdict used when it recorded "ten
+   changed paths with MISSING and EXTRA empty" — MISSING and EXTRA are both empty. Nothing on disk
+   is wrong either way; this is a wording matter for the reviewer.
+2. **G5(g) — two digit runs come from a COMMIT SHA, which is not one of the provenance clause's
+   four nouns.** `84` and `89` at line 3 are the digits inside the backtick span `` `ae84d89c` ``,
+   the round's base commit, in the sentence "Measured by the reviewer at `ae84d89c`, this round's
+   base". The sentence names its own source, and G5(g)'s own wording anticipates backtick spans,
+   so the reading applied above is CITATION. Declared because the artefact's provenance clause
+   enumerates "a named decision, finding, section or specification" and a COMMIT is literally none
+   of those four. The artefact was not edited.
+3. **G5(g) — `721` at line 144 is attributed to the SHIPPED rule, not to a discarded draft.** The
+   sentence is "…and `proposed_tasks.py` line 721 is REFUSED under it rather than decided
+   wrongly", where "it" is Rule G, one of the seven rules the round SHIPS. So the figure is
+   neither printed by the instrument nor a figure OF a discarded draft; it is a reviewer dry-run
+   measurement of shipped code, sitting inside section 7, whose own preamble declares "THE FIGURES
+   IN THIS SECTION ALONE ARE THE REVIEWER'S DRY RUNS OF DISCARDED CODE". Under that section-level
+   blanket it is kind 2; under the narrow reading of the provenance clause it is neither kind. The
+   cited location does resolve — `packages/orchestration/proposed_tasks.py` is 947 lines — but
+   whether line 721 is REFUSED under Rule G is not re-derivable from the committed instrument's
+   output, which is the point being declared. The artefact was not edited.
+4. **C0e's diff carries TWO hunk headers, not one.** Constraint 3's structural-review recipe
+   describes "one path, one hunk header, every content line an addition", which fits the four NEW
+   blobs of C0a through C0d exactly (each: 1 path, `@@ -0,0 +1,N @@`, all content lines `+`). C0e
+   REPLACES the round 71 block in `.agent/last_block.md`, so its diff is 1 path, 2 hunk headers,
+   305 insertions and 304 deletions. It was reviewed structurally on that basis and the decisive
+   check — the resulting blob byte-equal to the COMMITTED C0a blob by sha256 — passed. Declared
+   because the recipe's literal words do not describe a replacement.
+5. **`ruff check .` exits 1 and that is not a red gate.** G6(c) states this itself ("Its exit is 1
+   whenever any finding remains, so THE GATE IS THE COUNT"). Both numbers are recorded above so
+   that the 1 is never read as red: ruff's own process exit 1, the measuring gate's REAL_EXIT 0,
+   26 rows against a frozen ceiling of 26.
+6. **The stage's exit 5 is recorded as the PASS reading**, per constraint 14, and the gate's exit
+   code is the instrument's 0. No ruled set was altered to make the stage exit 0; the cleaned set
+   was built by the instrument from the stage's own report.
+7. **G1's repeated-character count was measured under two definitions.** "A line that is a run of
+   a single repeated character" does not fix a minimum length, so both length ≥ 2 and length ≥ 1
+   were swept; both are 0, so the reading does not turn on the choice.
+8. **G3(v)'s base count is 70, where round 71's booked verdict says 69.** These are different
+   bases: 69 was measured at round 71's base, and round 71 itself appended one more matching
+   header, so 70 at `ae84d89c` is the consistent successor. No contradiction; noted so the reader
+   does not have to re-derive it.
+
+Assumptions: none beyond the block's own text. No question the rules do not answer arose.
 
 ## Next
 
-The single expected next action: the planner and reviewer re-runs every gate independently
-against the committed range `3c59e51b`..HEAD and issues the round 71 verdict. Its decisive
-reading is G5's PAIR — the owner-check stage exits 5 on the set the pipeline holds, naming four
-contradicted sites with both classes, and exits 0 on the same set with exactly those four
-removed, with CONFIRMED reading 1195 in BOTH runs as the control, so the difference is the four
-sites and nothing else. Worth the reviewer's attention beside it: deviation 1, where G4's
-line-count instrument and DECISION F104 D1's insertion unit disagree for the three ledger
-files, and deviation 3, where I declare that my figure sweep resolves "28" only by coincidence
-and that the seven genuinely absent figures are each either named to their source in the
-sentence that uses them or derived by arithmetic from figures the instrument does print. Then
-the route DECISION F275 D45 names as the precondition on the flip round: SHRINK THE REFUSAL SET,
-where 787 of the 999 are receivers no binding in scope resolves — or rule the residual
-acceptable in a dated decision that states the count it accepts. Phase 1 rule 1 first: re-read
-`.agent/STOP` from disk before anything else.
-
-## Reviewer verdict on round 71 — appended after the handback, by the reviewer's authored text
-
-VERDICT ROUND 71: **PASS.** Written by the planner and reviewer of SESSION 25 after reading the committed
-range `3c59e51b`..`5e7114e6` and RE-DERIVING EVERY GATE INDEPENDENTLY against the committed blobs; the
-worker's report was evidence for no line below. It is carried here because under
-`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is booked into
-`.agent/live_review.md` by the FIRST SUBSTANTIVE COMMIT of round 72, per amend0827-process-diet rule 1.
-
-WHAT THE TRANSPORT PROOF COVERS, STATED BEFORE THE FIGURES. G1 is the PRIMARY cmp-against-scratchpad
-proof and not the §4.9 digest fallback: the chain it walks is the reviewer's own scratch original, the
-committed `.agent/authored/` blob, and the working copy — three artefacts, of which the first is the
-reviewer's and the other two the worker's. It does not and cannot establish what bytes the worker
-RECEIVED, and no claim below reaches that far. All four authored blobs are byte-identical to the
-reviewer's originals — the block at 34906 bytes, the artefact at 6699, the owner-check stage carrier at
-8812 and the instrument carrier at 5234 — and `.agent/last_block.md` equals the block blob. Four slices
-matched the sha256 on their own BEGIN markers. Re-measured on the committed blob the block is 348 lines
-TOTAL and 274 PROSE, agreeing with its own constraint 8. Both `.py.md` carriers round-trip through their
-own fence and re-wrapping each extracted source reproduces the committed blob byte for byte — the check
-round 69 lacked, held for a second round.
-
-G2: `.agent/plan.md` byte-identical to PLAN71 at 3039 bytes over 49 lines, both mandated headings exactly
-once. G3: `.agent/live_review.md` goes 1040150 to 1045796, `.agent/prose_slips.md` 265750 to 267150 and
-`.agent/decisions.md` 1175806 to 1180370, every one exact under reader A, with reader B holding at N
-counted from the slice as 7, 1 and 6, and all three of the reviewer's own negative controls — each placed
-on the FIRST appended paragraph — REJECTED by both readers while every unmutated region is ACCEPTED. Zero
-reserved-prefix lines after the entry header; the new header duplicates none of the 69 already matching
-the neighbours' pattern; `## DECISION F275 D45` reads 0 at the base against a highest existing D44. G4:
-the artefact at C5 is byte-identical to the C0b blob at 6699 bytes and the path does not resolve at the
-base. G6: five top-level trees byte-identical, canary 42 passed at exit 0, `ruff check .` 26 rows at the
-frozen ceiling. G7: ten changed paths with MISSING and EXTRA empty and zero production paths; the open set
-87 at both ends with IDENTICAL MEMBERSHIP and registered, resolved and de-registered ALL EMPTY, `R-0880`
-open and `R-0879` resolved at each end; per-commit insertions peak at 348. The handback commit's own
-numbers, which no gate of that round could reach, are 377 insertions over ONE path, so DECISION F104 D1's
-exclusion applies by that decision's own wording.
-
-G5 CARRIED THE ROUND AND ITS DECISIVE READING IS A PAIR OF EXIT CODES. The instrument extracted from one
-fence at 4563 bytes and ran to byte-identical 2533-byte captures with ZERO stderr at exit 0. The
-owner-check stage, over the set the pipeline holds, names FOUR ruled sites whose receiver statically
-resolves to a record its owner verdict does not name — one `Mission` and three `Artifact` — and exits 5.
-Over the same tree and the same stage, given that set with exactly those four removed, it exits 0. THE
-CONTROL THAT MAKES THAT A READING IS THAT CONFIRMED IS 1195 IN BOTH RUNS: removing four contradicted
-sites must not change what the method confirms, and it does not. The artefact's 25 quoted lines verify
-with 0 failed, 0 unmatchable under the monotone matching, indices strictly increasing, and zero
-three-backtick lines.
-
-THE SUBSTANCE IS THAT A FINDING'S OWN FIX CLAUSE WAS MEASURED AND FOUND UNMEETABLE, AND THE ROUND SAID SO
-INSTEAD OF QUIETLY SHRINKING IT. `R-0880` asks for a run to stop on any ruled site whose owner verdict
-CANNOT BE CONFIRMED; the static method cannot confirm 999 of 2198, so that guard stops every run it is
-ever given — the gate that cannot pass, which item 33 of §3 names as the twin of the gate that cannot
-fail. DECISION F275 D45 narrows the obligation to sites the code CONTRADICTS, records what the narrowing
-costs, and makes the 999 a PRECONDITION ON THE FLIP ROUND rather than a silent inheritance: the flip may
-not be taken until the refusal set is shrunk or the residual is ruled acceptable in a dated decision that
-states the count it accepts. `R-0880` STAYS OPEN, which is the right disk state — the defect it names
-remains reachable among the 999, and a resolved finding is invisible while an open one is not.
-
-ONE WORDING SLIP OF THE REVIEWER'S, WHICH THE WORKER REPORTED RATHER THAN RESOLVED. G4 ordered "the line
-count of every blob this round lands, each against the DECISION F104 D1 cap of 500 insertions". For the
-five NEW files a line count and an insertion count coincide; for the three ledger files this round
-APPENDS to they do not, and read widely the clause compares whole-file line counts of 1128, 891 and 13009
-against a cap on insertions that are 14, 2 and 12. The worker reported both readings and reconciled
-neither, which is right. It is one dated line below and not an id, per amend0827-process-diet rule 2:
-nothing on disk is wrong.
-
-## Authored text for round 72 to book — one dated line for `.agent/prose_slips.md`
-
-2026-09-12 · F275 R71 · The round 71 block's G4 ordered "the line count of every blob this round lands, each against the DECISION F104 D1 cap of 500 insertions", and for the three ledger files the round APPENDS to, a blob's line count is not that commit's insertion count: read widely the clause sets 1128, 891 and 13009 against a cap whose real subject is 14, 2 and 12. For the five NEW files the two coincide, which is why the clause reads correctly for most of what it names and wrongly for the rest. The worker reported both readings and reconciled neither, and nothing on disk is wrong. THE RULE THAT FOLLOWS: a clause that bounds a COMMIT names the quantity the commit produces — insertions, from `git show --numstat` — and never a property of the FILE the commit touched, because the two coincide only for a file the commit creates, and a cap stated against the wrong quantity is unmeetable exactly where the file is oldest and largest.
-
-## Session 25 ends here — FOUR delegated rounds, 68 through 71, three PASS and one FAIL
-
-THE SESSION'S THROUGH-LINE IS THAT IT CLOSED ONE FINDING, BOUNDED ANOTHER, AND SPENT A ROUND REPAIRING
-ITS OWN REVIEWER. Round 68 answered the question DECISION F275 D41 held the flip's write shut on, and
-answered it NO: the transform does not lose the 54 non-resolving keys, because it consumes a re-keyed set
-that resolves whole. That reading also overturned DECISION F275 D40 part three, which had named the
-sweep's own columns for a defect that is staleness, and the correction is a dated decision rather than an
-edit. Round 69 resolved `R-0879` by building the half of it nothing had built — the transform's own
-refusal — and landed the transform itself, which had never been committed at all. Round 69 also FAILED
-its G5, because the reviewer shipped an artefact beside an instrument blob that could not reproduce five
-of its lines. Round 70 repaired that, demonstrated the defect against the stale blob rather than merely
-describing it, and carried `R-0880`'s first obligation. Round 71 built `R-0880`'s second obligation at the
-reach its method has and recorded why the literal form is unmeetable.
-
-THE BRANCH IS GREEN AT EVERY READING THIS SESSION TOOK. NOT ONE LINE UNDER `packages/`, `apps/`,
-`tests/`, `docs/` OR `scripts/` MOVED IN ANY OF THE FOUR ROUNDS, which each round's G6(a) proves by tree
-object id rather than by diff. The canary reads 42 passed and `ruff check .` reads 26 findings, the frozen
-ceiling, at the branch tip. Every destructive run happened in a disposable worktree that its own
-instrument removed, and `git status --porcelain` is the empty string at every verdict.
-
-THIS SESSION ENDS AT FOUR ROUNDS AND THE REASON IS THE REVIEWER'S OWN ERROR RATE, NOT ITS CONTEXT.
-Context is comfortable and naming it would be false. `.agent/prose_slips.md` gained FOUR dated lines
-across this session — two against round 68, one against round 69 and one against round 70 — and the line
-above makes a fifth against round 71. Every one is the same shape: a gate clause or a provenance sentence
-whose words did not match the document or the instrument it was written about, and every one was caught
-by the WORKER rather than by the reviewer's own pre-emission sweep. One of them was not merely prose: the
-round 69 mismatch cost a full repair round and produced this feature's fourth FAIL verdict. That is the
-signal amend0905-throughput names, and operator amendment amend0908-f275-finish rule 5 permits F275 to
-cite it only after at least four delegated rounds, which this session satisfies exactly.
-
-WHAT THE COUNTER-MEASURE LOOKS LIKE, FOR WHOEVER PICKS THIS UP. The one that worked is round 70's and it
-is a tool rather than a habit: every derived carrier is REGENERATED by the same script that verifies its
-round-trip, in one step, so there is no state in which a carrier exists and has not just been checked
-against its source. It held for rounds 70 and 71. What it does not catch is a clause that is wrong about
-the UNIT it bounds — the round 71 slip above — or a provenance sentence that quantifies over a REGION
-rather than over a SHAPE, which is the round 70 slip. Both of those are properties of the reviewer's own
-sentences, and the only thing that has ever caught them here is a worker reading the gate against the
-document.
-
-## What the next session owes, in order
-
-FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It did not exist at this
-session's Phase 0 probe, was measured absent before every round's first commit and before every handback,
-and is absent as this session ends. Then the Open PR Gate: no pull request is open, and none is owed
-until the closure sequence.
-
-SECOND, round 72's FIRST SUBSTANTIVE COMMIT books, from this file as the durable carrier under
-amend0827-process-diet rule 1, the ROUND 71 PASS verdict above as a `Gate: F275 R71` entry in
-`.agent/live_review.md`, and the ONE dated line above into `.agent/prose_slips.md`. The open set is 87 by
-distinct id and the next free id is `R-0881`.
-
-THIRD, F275 IS PAST THE SOFT LIMIT amend0908-f275-finish rule 1 names, at 71 of 60 rounds and 25 of 20
-sessions. The SCOPE REPORT that rule obliges was written in round 51's handback and STANDS; nothing this
-session measured changes any of its three parts, and it is not restated here because a report restated is
-a report edited. Rule 2 forbids the split-and-close default BY NAME, so the next session continues rather
-than closing.
-
-FOURTH, THE WORK ITSELF, in the order `.agent/plan.md` fixes. Shrink the owner check's refusal set, which
-is what DECISION F275 D45 makes a precondition on the flip: 787 of the 999 are receivers no binding in
-scope resolves, so the gain is there and not in a new rule family. Then re-run the flip's dry run against
-the corrected inputs of rounds 67 and 69 together — the plain re-derivation and the re-keyed set — which
-is the first reading of what both corrections cost in FAILURES rather than in sites. Then the resolver
-collapse, which is production code and a SPLIT round with mutation red-proofs. Then the flip, which D45
-now forbids until the residual is shrunk or ruled, then the classic store and the closure sequence.
-
-SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
+The reviewer reads `git diff ae84d89c..HEAD` bottom-up and re-runs all seven gates against the
+committed diff, then issues the round 72 verdict. Its first action is Phase 1 rule 1 — re-read
+`.agent/STOP` from disk — before Phase 1 rule 2, the Open PR Gate. On PASS the two deviations
+G7(b) and G5(g) are the reviewer's to rule on, and the next round takes one of DECISION F275 D45's
+two remaining routes for the flip: shrink the residual of 324 again by a different method, since
+its largest class is 113 receivers that are not a bare name and no binding rule reaches them, or
+rule that residual acceptable in a dated decision stating the count it accepts.
