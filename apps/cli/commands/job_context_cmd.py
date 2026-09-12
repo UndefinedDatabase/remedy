@@ -265,9 +265,12 @@ def _cmd_job_context(
 
     try:
         # Resolving across BOTH stores is what lets this command answer for a
-        # job `remedy do job-run` created; `resolve_job_id` searched the classic
-        # store alone and so answered "no job matches prefix" for every one of
-        # them. WHY the unified record is read FIRST: it is the same order
+        # job `remedy do job-run` created. Until F275 T003 collapsed the two
+        # resolvers, `resolve_job_id` searched the classic store alone and so
+        # answered "no job matches prefix" for every one of them; the two names
+        # are now one function, and this call site keeps `resolve_any_job_id`
+        # because that name states what it needs. WHY the unified record is read
+        # FIRST: it is the same order
         # `apps/cli/commands/job_stop_cmd.py::_load_job` already reads in.
         resolved = resolve_any_job_id(job_id_str)
         job = load_job_plan(resolved)
