@@ -13,14 +13,14 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 74 REPAIRS ROUND 73, WHICH FAILED. D47 discharged D45's precondition on a coverage
-reading taken inside a fresh worktree; re-run there it gives 23 unexecuted rather than 0,
-because a worktree has no built UI dist. The reading moves to the PRIMARY CHECKOUT, where the
-suite runs, and the question sharpens from "is the line executed" to "how many tests witness
-it": zero for none, exactly one for eleven, a median of seventeen, over 7065 site-and-test
-pairs. Each of the eleven thin sites is red-proved against its own single witness, mutating
-the ATTRIBUTE NODE the ruled set records rather than the first textual match. DECISION F275
-D48 corrects D47 by appending, never by rewriting.
+ROUND 75 CORRECTS DECISION F275 D48's THREE NUMERALS AND THE UNIT CONFUSION BEHIND THEM.
+Coverage resolves a context per LINE; the ruled set is keyed per SITE. Round 74's instrument
+printed a site count in one section and a line distribution in the next without naming either,
+so its buckets summed to fewer than its own site total. Both units are now printed with both
+sums visible: 175 sites on 166 lines, 9 sharing. D48's two load-bearing readings are the same
+in both units — the risk set is empty and the thin set is eleven lines carrying eleven sites,
+all eleven still red-proved — so the ruling stands and DECISION F275 D49 records the
+correction by appending. The round 74 verdict and its prose slips are booked.
 
 ## Next Steps
 
@@ -30,19 +30,19 @@ D48 corrects D47 by appending, never by rewriting.
 2. The resolver collapse DECISION F260 D5 places in T003, which DECISION F275 D37 names as
    the home of the id-SHAPE seam behind the three largest residue classes. Production code,
    so a SPLIT round with mutation red-proofs.
-3. THE FLIP, which D48 permits on D47's corrected footing, carrying D48's obligations: the
-   full suite is the backstop, and the eleven thin sites are named rather than averaged.
+3. THE FLIP, which D48 permits, carrying its obligations: the full suite is the backstop, and
+   the thin set is re-derived before the flip and any site that has dropped to zero witnesses
+   is a stop.
 4. Then the classic store, then the closure sequence.
 
 ## Risks
 
 - F275 is past the soft limit amend0908-f275-finish rule 1 names. Rule 2 forbids the
   split-and-close default BY NAME: a session writes the scope report and CONTINUES.
-- A MEASUREMENT TAKEN IN A WORKTREE IS A MEASUREMENT OF THAT WORKTREE. The UI dist and
-  `node_modules` are absent there, so any suite-wide reading taken in one is about the
-  environment. Round 73 shipped a decision on such a reading.
-- THE SUITE HAS ENVIRONMENT-SENSITIVE TESTS. A perf budget and a workspace-identity pair go
-  red or green by load under coverage, and pass in isolation. No gate may demand a green
-  full-suite run as its pass condition.
+- THE REVIEWER'S ERROR RATE IS THE LIVE RISK AND IT ROSE THIS SESSION: round 73 FAILED on
+  five reviewer defects, and rounds 72, 73 and 74 each landed stale or mis-united numerals a
+  WORKER found. Ten dated lines went into `.agent/prose_slips.md` across four rounds.
+- A UNIT IS PART OF A NUMBER. Coverage counts lines, the ruled set counts sites, and a
+  document that prints one and names the other is wrong even when its arithmetic is right.
 - The open set is 87 by distinct id, with `R-0880` open. Four are High — R-0803, R-0804,
   R-0806 and R-0807 — all F273's, per DECISION F272 D12.
