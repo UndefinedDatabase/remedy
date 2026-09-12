@@ -11646,6 +11646,178 @@ Two further execution deviations, neither of them a measurement:
 REVERSE: re-measure at `3068e9c1` and restore the amendment's original numerals, recording which
 commit each was measured at.
 
+## DECISION amend0911-feedback D1 — `teach` becomes `teacher`; the visible order is eighteen slots with `absorb` and `chat` reserved as slots, not as empty groups (2026-09-11)
+
+CONTEXT: `teach` was the only verb among the sixteen visible groups D4 (amend0905-vocab) named; every
+sibling group is a noun (`worker`, `doctor`). The operator also wants the eventual eighteen-slot
+visible order fixed now, before F263 (`absorb`) and F264 (`chat`) ship, so neither addition reorders
+the help output later.
+
+CHOSEN: the group is renamed `teacher`; its commands are unchanged. F261 performs the rename as one
+rename-per-commit and deletes the old word per Rule A6 (Replacing is deleting) — no alias, no
+compatibility reader. The visible order is fixed as the sixteen D4 groups in their existing order,
+then `absorb` (F263), then `chat` (F264). The two reserved slots are NOT registered as empty catalog
+groups — an empty group is an orphan definition every catalog guard passes blind, the class R-0853
+records — the help renders only groups that exist; F263/F264 fill their slot without touching the
+order.
+
+REVERSE: delete the clarification paragraph in `docs/system/vocabulary.md` and the corresponding
+bullets in `docs/roadmap/features/T2_F261.md`; F261's own rename commit is reversed by renaming
+`teacher` back to `teach` in one commit, per Rule A6.
+
+## DECISION amend0911-feedback D2 — `study` is its own `role_config` role, with its own budget pot (2026-09-11)
+
+CONTEXT: F266's Design left the role question open — reuse `teacher`'s role, or give `study` its
+own — because reading and explaining a repository plausibly need different budgets and different
+model tiers.
+
+CHOSEN: `study` is its own `role_config` role with its own budget pot. Its default model is whatever
+the F110 routing policy assigns to the cheapest task class capable of reading a repository, measured
+once in F266 and written into the config default alongside the measurement; the operator can
+override it per project like every other role. The role itself is not open for further debate.
+
+REVERSE: fold `study`'s budget pot back into `teacher`'s and delete the role-specific config default,
+recording the fold as its own dated decision.
+
+## DECISION amend0911-feedback D3 — task count is bounded by deliverables, never by order length; the `do` sequence is a named data list (2026-09-11)
+
+CONTEXT: F268's planner-facing acceptance line bounded task count against `planning.granularity.*`
+ceilings without stating what a task must PRODUCE, which lets a short order under-produce and a
+long, deliverable-dense order get truncated. Separately, `do`'s step sequence (`init`, `study`,
+`plan`, `shape`, `run`, `ui`, `apply`) was prose-order code, which blocks a future `--sequence <name>`
+selector.
+
+CHOSEN: every task names the deliverable it produces (a file, a command, a contract criterion); the
+planner's validator rejects a plan holding a task without one; inspection/reading is never a task of
+its own (it is context, F107). The `do` sequence becomes DATA — one ordered, named list of step names
+in one module — and `do` walks the list; nothing else changes now. `--sequence <name>` is recorded as
+an idea in F268's Design, not registered or implemented.
+
+REVERSE: delete the deliverable-naming validator rule and the two Acceptance/Design bullets in
+`docs/roadmap/features/T2_F268.md`; reverting the sequence-as-data bullet requires no code reversal
+since nothing implements it yet.
+
+## DECISION amend0911-feedback D4 — the commit and push flag family; `--with-history` is deleted (2026-09-11)
+
+CONTEXT: F270's single `--with-history` flag conflated three distinct operator intents (a named
+commit message, an auto-generated one, and a full per-task history merge) and had no push mechanism,
+so `do`'s Design in F268 could not describe a full "apply, commit, push" pass-through without
+inventing new vocabulary ad hoc.
+
+CHOSEN: the flag family `--commit "<message>"`, `--commit-auto`, `--commit-with-history` and `--push`
+replaces `--with-history`, which is deleted, never aliased, per Rule A6. Every `--commit…` flag
+implies `--apply`, refuses on a dirty operator tree, and commits only the files apply copied.
+Commits on the operator's branch use the operator's own git identity plus the trailers `Remedy-Job:`
+and `Co-authored-by: Remedy <remedy@local>`; messages are human sentences, never an id alone.
+`--push` only runs together with a `--commit…` flag, never force-pushes, never touches a branch other
+than the one committed to, and refuses when a blocking contract criterion is red; it is a
+mission-level act. The config key `apply.push_after_mission` (default `false`) makes unattended runs
+push exactly as `--push` would. The iron rule survives in its generalized form: "Remedy never commits
+on the operator's branch without an explicit flag or a config key the operator set."
+
+REVERSE: restore `--with-history` in `docs/roadmap/features/T2_F268.md` and `T2_F270.md` from git
+history at this amendment's base (`b6e0f257`), and delete the flag-family and push Design bullets,
+the T004 sections and their Acceptance lines.
+
+## DECISION amend0911-feedback D5 — the contract template is the floor; the compiled contract is template ∪ planner criteria, with provenance (2026-09-11)
+
+CONTEXT: F269's Design let `--contract <name>` supply a fixed set of criteria with no stated relation
+to whatever the planner would otherwise derive from the order, so a template could silently DROP a
+criterion the order's own text demanded, and a builder proposal that left dead files or replaced code
+behind had no rule to reject it.
+
+CHOSEN: the compiled contract is the UNION of the template's criteria and the criteria the planner
+derives from the order; the planner always adds, never drops a template criterion; every criterion
+carries `origin` ∈ {`template`, `planner`, `amendment`}. Every template also ships blocking hygiene
+criteria — no unreferenced added file, no replaced implementation left beside its replacement, no
+stub/placeholder/TODO body — and the reviewer role's prompt gets the matching rejection rule, the
+product-side twin of F271's orphan test.
+
+REVERSE: delete the two new Design bullets and the Acceptance bullet in
+`docs/roadmap/features/T2_F269.md`; a template's criteria again stand alone once deleted.
+
+## DECISION amend0911-feedback D6 — `builder_eval.py` is deleted; its idea inherits F082 (2026-09-11)
+
+CONTEXT: F271's T004 named `builder_eval.py` as one of nine orphan modules and deferred its
+disposition ("needs a dated DECISION before either") because it is a builder-prompt evaluation
+harness nothing reaches, while F082 already owns benchmark measurements.
+
+CHOSEN: `builder_eval.py`, `tests/orchestration/test_builder_eval.py` and
+`scripts/remedy_builder_eval.sh` are deleted in one commit with a grep-to-zero proof; no stub, no
+copy. The idea — measuring patch quality across prompt variants — is inherited by F082 and by the
+harness-tuning idea in `REMEDY_EINSTIEG_v2_ERGAENZUNG.md` Teil 24 (Idee 10) when that is registered.
+
+REVERSE: restore the three deleted paths from git history at this amendment's base and remove the
+inheritance sentences from F082 and F271.
+
+## DECISION amend0911-feedback D7 — F273 T005 clears every ruff finding and lands a zero-finding lint stage (2026-09-11)
+
+CONTEXT: T005 left open whether to clear the repository's ruff findings or land a stage against a
+recorded baseline; the count drifted from 24 to 26 between two features unnoticed, because the
+reviewer's parity gate compares a round's tip against that round's OWN base, so a rise landing inside
+one round becomes the next round's base.
+
+CHOSEN: the round clears EVERY ruff finding in the repository — 26 at this amendment's base
+(`ruff check . --output-format concise | grep -c ':'`) — and lands a CI stage that runs
+`ruff check .` and fails on any finding; no baseline, no ceiling. A stage at zero has no base to
+drift from.
+
+REVERSE: restore the baseline-or-clear open question in `docs/roadmap/features/T2_F273.md` T005 from
+git history at this amendment's base, and remove the zero-finding CI stage.
+
+## DECISION amend0911-feedback D8 — findings ownership (rule A) and rolling paydown (rule B) bind as written in the protocol (2026-09-11)
+
+CONTEXT: findings accumulated in `.agent/live_review.md` with no owning-feature field, so a closing
+feature's unresolved findings had no destination, and there was no standing mechanism to register the
+next findings-paydown feature once one closed.
+
+CHOSEN: `docs/agents/self_drive_protocol.md` amendment amend0911-feedback rules A, B and C (finding
+ownership, rolling paydown, the operator questions file) bind from 2026-09-11, and
+`docs/roadmap/STATUS_closure_protocol.md` Algorithm step 5 gains the matching closure-sequence steps.
+The ~40 findings registered after 2026-09-06 that F273's text excludes default to the next paydown
+feature (v2), except the F275-owned findings F275 resolves itself and F273 T016's three items.
+
+REVERSE: delete the three rule paragraphs from `docs/agents/self_drive_protocol.md` and the matching
+paragraph from `docs/roadmap/STATUS_closure_protocol.md`; findings already assigned an `Owner:` line
+keep it as history.
+
+## DECISION amend0911-feedback D9 — the operator questions file (2026-09-11)
+
+CONTEXT: with no self-drive loop session and no paste relay, the operator had no single place to read
+what a session could not decide, or what reversible ruling a session made on the operator's behalf.
+
+CHOSEN: `.agent/operator_questions.md` is created per
+`docs/agents/self_drive_protocol.md` amendment amend0911-feedback rule C, empty at creation
+(`EMPTY — nothing is waiting on the operator.`).
+
+REVERSE: delete `.agent/operator_questions.md` and rule C's paragraph.
+
+## DECISION amend0911-feedback D10 — this amendment mints no finding ids; every numeral was re-measured at base `b6e0f257` (2026-09-11)
+
+CONTEXT: this amendment's source text stated numerals measured at commit `335e3cc7`, on a branch
+(F275) that had not merged into `main` by this amendment's base. `origin/main` at this amendment's
+base is `b6e0f257` (PR #247, amend0908-brainstorm-intake, merged).
+
+CHOSEN: every numeral was re-measured at `b6e0f257` before it was written:
+- RUFF_COUNT: 26 (`ruff check . --output-format concise | grep -c ':'`; matches the source text's own
+  count of 26, no drift measured).
+- F-STRING SITES reading `.state` without `.value`: 13
+  (`grep -rnE 'f".*\{[a-z_\.]*\.state\}' packages apps | grep -v '\.value' | wc -l`).
+- OPEN SET: 63 by the canonical reader (`scripts/rotate_live_review.py::count_open_findings`,
+  registration lines minus `Done:` lines) and 65 by distinct id (registered ids minus ids carrying at
+  least one `Done:` line); three ids (`R-0721`, `R-0725`, `R-0837`) each carry two `Done:` lines,
+  which the line-count formula subtracts twice, accounting for the 2-count gap between the two
+  readings — the same gap shape the source text described at 86/88.
+- The source text's own anchor paragraph `amend0908-f275-finish` does not exist anywhere in this
+  repository at `b6e0f257` (it lives, if at all, only on the unmerged F275 branch); the nearest
+  equivalent by meaning in `docs/agents/self_drive_protocol.md` is the amend0906-triage-throughput
+  paragraph (F272's session/round soft limit), and the new `amend0911-feedback` rules A/B/C plus the
+  `amend0911-f275-to-scope` paragraph were inserted directly after it, since it was absent and needed
+  insertion rather than being skipped.
+
+REVERSE: none needed; re-measuring at any later base and updating the numerals above is the ordinary
+maintenance this decision anticipates.
+
 ## DECISION F275 D1 — the first carry-over lands in a NEW `mission_readiness` module, as a BYTE-IDENTICAL move of a measured definition set, staged and unwired (2026-09-08)
 
 CONTEXT. F260's Design section orders two carry-overs before the first `git rm`, and DECISION F274 D2 measured the first of them — the read-only overnight readiness and report views — as a move of "25 of the 29 top-level definitions" and "650 of its 894 lines" of `packages/orchestration/overnight_readiness.py` "into a surviving module". D2 did not NAME that module, did not fix which definitions move, and did not settle whether the moved symbols keep their names. Those three questions block the round that performs the move, and none of them is answered by any text on disk.

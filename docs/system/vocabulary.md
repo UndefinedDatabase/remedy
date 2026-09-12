@@ -186,6 +186,24 @@ The commands per surviving group:
 - All other surviving groups keep their commands minus anything that imports a
   deleted module.
 
+Clarification 2026-09-11 (operator ruling amend0911-feedback, decided from the
+Ergänzungs-Datei review; DECISION amend0911-feedback D1 in `.agent/decisions.md`):
+(1) The group written `teach` above is named `teacher` — a noun like `worker` and
+`doctor`; `teach` was the only verb among the visible groups. Its commands are
+unchanged (`ask`, and whatever F255 shipped); F261 performs the rename as one
+rename-per-commit and deletes the old word per D-B (no alias). Every later
+feature file that says `teach` as the group name reads `teacher`. (2) The visible
+order is fixed once as EIGHTEEN slots: the sixteen above, in that order, then
+`absorb` (F263) and `chat` (F264). The two reserved slots are NOT registered as
+empty catalog groups — an empty group is an orphan definition that every catalog
+guard passes blind (the finding class R-0853 records) — the help renders only
+groups that exist, and F263/F264 fill their slot without touching the order. (3)
+Wherever this ruling writes `--with-history`, read `--commit-with-history`; the
+flag family `--commit "<message>"`, `--commit-auto`, `--commit-with-history` and
+`--push` is added to `do` and to `job apply`, built by F270 and passed through by
+F268, with the semantics DECISION amend0911-feedback D4 fixes. Reverse by deleting
+this clarification.
+
 Reverse by deleting this paragraph.
 
 ### DECISION amend0905-vocab D5 (2026-09-05, operator order amend0905-vocab-rebuild) — apply replaces promote everywhere

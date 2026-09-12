@@ -176,6 +176,16 @@
    next block's byte-append arithmetic re-baselines on the post-rotation
    length; the archive is read only on demand, by id, never at session
    start. Reverse by deleting this paragraph.
+   Operator amendment amend0911-feedback (2026-09-11) — ROLLING PAYDOWN
+   REGISTRATION AND FINDING OWNERSHIP ARE STEPS OF THIS SEQUENCE. After the
+   rotation and BEFORE the STATUS `[x]` flip: (i) the worker re-assigns every open
+   finding this feature owned and did not resolve to the next findings-paydown
+   feature (`Owner:` line rewritten, same commit as the verdict bookings); (ii) if
+   the closing feature is a findings-paydown feature, the worker registers the
+   next one as its OWN commit exactly as `docs/agents/self_drive_protocol.md`
+   amend0911-feedback rule B states (feature file, STATUS line and heading, pin,
+   README counter; nothing else in that commit). Reverse by deleting this
+   paragraph.
 6. **Merge — deferred to the next feature.** The closure PR is NOT merged
    in this session. It merges at the next feature's start via the Open PR
    Gate on Window 1's instruction; the gap is the operator's manual-review
