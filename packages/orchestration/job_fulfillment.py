@@ -686,7 +686,7 @@ def run_job_fulfill(
             name=wo["artifact_name"],
             content=wo["content"],
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=str(UUID(td["model_task_id"])),
+            task_id=td["model_task_id"],
             metadata={
                 "patch_intent_count": 1,
                 "source": "fixture_worker",
