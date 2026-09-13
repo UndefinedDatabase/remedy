@@ -13,33 +13,36 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 89 CLEARS TWO RESIDUE GROUPS THE FLIP'S DRY RUN NAMED, BOTH INVISIBLE BEFORE THE FLIP.
-`run_job_fulfill` stops passing a task id it wrote itself through `UUID(...)` and back, and the
-tests that hand a job-store load or `append_run_event` a `UUID(...)` parse of a job id take
-`normalize_job_id` instead. Before the flip both changes are value-identical, so they are proved
-in flipped trees: the touched test files flipped at the base and at the change, and the round
-trip restored inside the flipped change. The round books the round 88 verdict and its slip.
+ROUND 90 STARTS THE FLIP'S OVERLAY. An edit that is right only once the classic record is gone
+no longer waits for the flip round: it is committed as a unified diff under `.agent/authored/`,
+applied after the transform to a flipped tree at `844a7f21`, and proved by the full suite in
+that tree against the transform alone. The first overlay makes the cockpit's `_load_job` load
+every well-formed id from the one store, and renames the string `getattr` reads of a job or task
+field that the transform cannot see. No path under `packages/`, `apps/` or `tests/` moves. The
+round books the round 89 verdict and records the method as a dated decision.
 
 ## Next Steps
 
-1. THE NEXT RESIDUE GROUPS OF THE FLIP'S DRY RUN, each a pre-flip production round, a
-   transform rule or a flip-time edit: `ui_server`'s which-store loader and its adapter;
-   members the unified records lack, such as `TaskEntry`'s `acceptance_checks` and
-   `JobPlan`'s `model_dump_json`; `UUID` values reaching the unified record; and what is left
-   of the classic runner under `job resume`.
-2. THE FLIP'S DRY RUN AGAIN after them, read for what remains.
-3. THE FLIP, carrying DECISION F275 D48's obligations, as a series of commits each under the
-   500-insertion cap inside one round, unless the operator allows one more oversized commit.
-   The stale test double at `packages/orchestration/project_registry.py:856` moves with it.
-4. Then the classic store, then the closure sequence.
+1. MORE OVERLAYS, one residue group each, every one applied on top of those before it: the
+   pydantic calls made on the unified records, such as `TaskEntry.model_validate` and
+   `JobPlan.model_dump_json`; the classic `Task` constructions that pass `acceptance_checks`;
+   `UUID` values reaching the unified record; what is left of the classic runner under
+   `job resume`; and the duck-typed test doubles, including the `_FakeJob` behind the ruled
+   site at `packages/orchestration/project_registry.py:856`.
+2. THE FLIP: the transform, then every overlay in round order, landed as a series of commits
+   each under the 500-insertion cap inside one round, carrying DECISION F275 D48's obligations,
+   unless the operator allows one more oversized commit.
+3. Then the classic store, with the which-store branches and adapters in `ui_server.py` the
+   first overlay leaves unreached, then the closure sequence.
 
 ## Risks
 
 - THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20
   sessions and 60 rounds without a replacement, so this feature closes only at full scope.
-- THE FLIP IS NOT CLOSE: DECISION F275 D62's flipped full suite had 752 bad nodes.
-- A CHANGE PROVED ONLY IN A FLIPPED TREE depends on the generator and transform staying
-  reproducible from round 77's two scratch JSON files.
+- THE FLIP IS NOT CLOSE: several hundred test nodes still fail in the flipped tree.
+- AN OVERLAY IS A DIFF AGAINST A FIXED TREE: it holds only while the production tree stays at
+  `844a7f21`, and it depends on the generator and transform staying reproducible from round
+  77's two scratch JSON files.
 - ONE ROUTED LOAD IS REACHED BY NO TEST until `R-0883` is repaired.
 - The open set is 88 by distinct id at this round's base, with `R-0809`, `R-0880` and `R-0883`
   open. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
