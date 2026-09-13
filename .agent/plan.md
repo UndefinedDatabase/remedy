@@ -13,26 +13,26 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 93 ADDS THE FLIP'S FOURTH OVERLAY, on top of the first three, under DECISION F275 D64's
-method. It touches tests only: a test double installed by name, or a unified function read off
-the classic `storage` module, is pointed at the name the flipped code really calls, and the
-guard against reading the retired `status` off a loaded plan also covers `require_job_plan`,
-which the third overlay put out of its reach. The diff is carried in consecutive carriers. No
-path under `packages/`, `apps/` or `tests/` moves. The round books the round 92 verdict and its
-two prose slips.
+ROUND 94 ADDS THE FLIP'S FIFTH OVERLAY, on top of the first four, under DECISION F275 D64's
+method. A task record built without an id mints one, as the classic `Task` did; a task id is
+read as a string wherever code parsed it as a `UUID`; the classic `acceptance_checks` list
+becomes acceptance text; no pydantic call is made on a task record; and the proposed-task
+tests point the data root at their own directory. The diff is carried in consecutive
+carriers, so no path under `packages/`, `apps/` or `tests/` moves; the round books the round
+93 verdict and its slip.
 
 ## Next Steps
 
-1. MORE OVERLAYS, one residue group each, every one applied on top of those before it: task
-   records built without an id, which the classic `Task` minted by default; handlers resolving
-   a minted id no store holds; the pydantic calls made on the unified records, such as
-   `TaskEntry.model_validate` and `JobPlan.model_dump_json`; the classic `Task` constructions
-   that pass `acceptance_checks`; what is left of the classic runner under `job resume`; and
-   duck-typed test doubles, including the `_FakeJob` behind the ruled site at
-   `packages/orchestration/project_registry.py:856`.
+1. MORE OVERLAYS, one residue group each, every one applied on top of those before it: tests
+   that still redirect the classic store's `_DATA_DIR`; handlers resolving a minted job id no
+   store holds; the pydantic calls made on a `JobPlan`, such as `model_dump_json`; the mission
+   end-to-end fixture that never reaches its decision job; what is left of the classic runner
+   under `job resume`; and duck-typed test doubles, such as the `_FakeJob` behind a ruled site
+   in `packages/orchestration/project_registry.py`.
 2. THE FLIP: the transform, then every overlay in round order, landed as a series of commits
-   each under the 500-insertion cap inside one round, carrying DECISION F275 D48's obligations,
-   unless the operator allows one more oversized commit.
+   each under the 500-insertion cap inside one round, carrying DECISION F275 D48's obligations
+   and registering the structured acceptance form DECISION F275 D22 leaves to it, unless the
+   operator allows one more oversized commit.
 3. Then the classic store, with the which-store branches and adapters the overlays leave
    unreached, then the closure sequence.
 
@@ -40,7 +40,7 @@ two prose slips.
 
 - THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20
   sessions and 60 rounds without a replacement, so this feature closes only at full scope.
-- THE FLIP IS NOT CLOSE: several hundred test nodes still fail in the flipped tree.
+- THE FLIP IS NOT CLOSE: many test nodes still fail in the flipped tree.
 - AN OVERLAY IS A DIFF AGAINST A FIXED TREE: it holds only while the production tree stays at
   `844a7f21`, and it depends on the generator and transform staying reproducible from round
   77's two scratch JSON files.
