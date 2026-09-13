@@ -9,10 +9,10 @@ Reuses the do_continue tmp-repo harness.
 from __future__ import annotations
 
 from pathlib import Path
-from uuid import UUID
 
 from packages.orchestration import do_continue as dc
 from packages.orchestration import repair_loop as RL
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.storage import load_job, save_job
 from tests.orchestration.test_do_continue import _fake_test, env, make_continue_job  # noqa: F401
 
@@ -67,7 +67,7 @@ class TestRepairApplyCycle:
         assert result.repair_status == "tested_passed"
         assert result.repair_resolved_failure is True
         assert calls["n"] == 1
-        job2 = load_job(UUID(str(job.id)), data_dir)
+        job2 = load_job(normalize_job_id(str(job.id)), data_dir)
         fa = next(a for a in job2.artifacts if str(a.id) == fa_id)
         assert fa.metadata.get("failure_resolved") is True
         assert fa.metadata.get("resolved_by_repair_attempt_id") == att_id
@@ -80,7 +80,7 @@ class TestRepairApplyCycle:
         assert result.is_repair is True
         assert result.repair_status == "tested_passed"
         assert result.repair_resolved_failure is False  # no overclaim
-        job2 = load_job(UUID(str(job.id)), data_dir)
+        job2 = load_job(normalize_job_id(str(job.id)), data_dir)
         fa = next(a for a in job2.artifacts if str(a.id) == fa_id)
         assert not fa.metadata.get("failure_resolved")
 
@@ -91,7 +91,7 @@ class TestRepairApplyCycle:
         result, _ = _run(data_dir, job, monkeypatch, status="failed", fa_id="new-fa")
         assert result.repair_status == "tested_failed"
         assert result.repair_resolved_failure is False
-        job2 = load_job(UUID(str(job.id)), data_dir)
+        job2 = load_job(normalize_job_id(str(job.id)), data_dir)
         fa = next(a for a in job2.artifacts if str(a.id) == fa_id)
         assert not fa.metadata.get("failure_resolved")
 
@@ -115,7 +115,7 @@ class TestProofAwareness:
         _attach_repair(data_dir, job, iid, expected_effect="source_fix")
         from packages.orchestration.proof_chain import PROOF_VERIFIED, build_proof_chain
         from packages.orchestration.timeline import load_run_events
-        job2 = load_job(UUID(str(job.id)), data_dir)
+        job2 = load_job(normalize_job_id(str(job.id)), data_dir)
         events = load_run_events(data_dir, str(job.id))
         chain = build_proof_chain(job2, events, data_dir=data_dir)
         for c in chain.changes:
@@ -140,7 +140,7 @@ class TestIdempotency:
         r2, c2 = _run(data_dir, job, monkeypatch, status="passed")
         assert c2["n"] == 0  # test not re-run
         assert r2.repair_status == "tested_passed"
-        job2 = load_job(UUID(str(job.id)), data_dir)
+        job2 = load_job(normalize_job_id(str(job.id)), data_dir)
         attempts = RL.load_repair_attempts(job2)
         assert len(attempts) == 1
         fa = next(a for a in job2.artifacts if str(a.id) == fa_id)

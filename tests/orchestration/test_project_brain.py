@@ -23,6 +23,7 @@ from packages.core.models import (
     Task,
 )
 from packages.memory.models import MemoryEntry
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.storage import save_job
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -1056,7 +1057,7 @@ class TestContinueRoundtripAggregate:
         parent_graph = build_project_brain(parent, [])
         result = continue_from_node(parent, parent_graph, parent_graph.nodes[0].id, "child task")
 
-        child = load_job(UUID(result.child_job_id))
+        child = load_job(normalize_job_id(result.child_job_id))
 
         # Load events for both jobs
         data_root = resolve_data_root()

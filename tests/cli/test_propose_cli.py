@@ -10,6 +10,7 @@ import pytest
 
 from apps.cli.command_catalog import CATALOG, get_commands_for_group
 from apps.cli.commands import collect_all_handlers
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.proposed_tasks import (
     ProposedTask,
     ProposedTaskStatus,
@@ -279,10 +280,9 @@ class TestProposeMaterializeHandler:
         data = json.loads(capsys.readouterr().out)
         assert data["materialized_count"] == 1
         assert data["tasks"][0]["materialized_task_id"] != ""
-        from uuid import UUID
 
         from packages.orchestration.storage import load_job
-        job = load_job(UUID(REAL_JOB_UUID))
+        job = load_job(normalize_job_id(REAL_JOB_UUID))
         assert len(job.tasks) == 1
 
     def test_materialize_all(self, tmp_store_with_job, capsys):
@@ -295,10 +295,9 @@ class TestProposeMaterializeHandler:
         handlers["propose.materialize"](args)
         data = json.loads(capsys.readouterr().out)
         assert data["materialized_count"] == 2
-        from uuid import UUID
 
         from packages.orchestration.storage import load_job
-        job = load_job(UUID(REAL_JOB_UUID))
+        job = load_job(normalize_job_id(REAL_JOB_UUID))
         assert len(job.tasks) == 2
 
     def test_materialize_non_approved_fails(self, tmp_store_with_job):

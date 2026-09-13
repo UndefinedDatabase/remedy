@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.dod_gate import (
     BLOCKER_PREFIX,
     DOD_FILENAME,
@@ -298,10 +299,8 @@ class TestEndToEnd:
         return run_job_fulfill(job_id, repo, data_dir=tmp_path)
 
     def _job_state(self, job_id: str, tmp_path: Path) -> str:
-        from uuid import UUID
-
         from packages.orchestration.storage import load_job
-        job = load_job(UUID(job_id), tmp_path)
+        job = load_job(normalize_job_id(job_id), tmp_path)
         return job.state.value if hasattr(job.state, "value") else str(job.state)
 
     def test_a_job_without_a_dod_still_ends_green(self, tmp_path, monkeypatch):

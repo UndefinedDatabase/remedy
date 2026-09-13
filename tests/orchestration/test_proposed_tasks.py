@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.proposed_tasks import (
     TERMINAL_STATUSES,
     UNRESOLVED_STATUSES,
@@ -558,10 +559,9 @@ class TestMaterialization:
         assert result is not None
         assert result.materialized_task_id != ""
         assert result.materialized_at is not None
-        from uuid import UUID
 
         from packages.orchestration.storage import load_job
-        job = load_job(UUID(REAL_JOB_UUID))
+        job = load_job(normalize_job_id(REAL_JOB_UUID))
         assert any(str(task.id) == result.materialized_task_id for task in job.tasks)
 
     def test_do_materialize_rejects_non_approved(self, tmp_path, monkeypatch):
@@ -649,10 +649,9 @@ class TestEndToEndFlow:
         assert list_approved_not_materialized(REAL_JOB_UUID) == []
         ok, _ = can_finalize(REAL_JOB_UUID)
         assert ok is True
-        from uuid import UUID
 
         from packages.orchestration.storage import load_job
-        job = load_job(UUID(REAL_JOB_UUID))
+        job = load_job(normalize_job_id(REAL_JOB_UUID))
         assert len(job.tasks) == 1
         assert str(job.tasks[0].id) == materialized.materialized_task_id
 

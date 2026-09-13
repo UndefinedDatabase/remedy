@@ -38,11 +38,11 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from uuid import UUID
 
 import pytest
 
 from packages.core.models import RunState
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.dod_compiler import compile_dod
 from packages.orchestration.dod_gate import GateResult, save_gate_result, store_dod
 from packages.orchestration.escalation import (
@@ -151,7 +151,7 @@ def _finish_job_with_dod_met(job_id: str) -> None:
     records it. The gate's check EXECUTION is not re-run here; what this test
     exercises is the loop READING a recorded verdict back.
     """
-    job = load_job(UUID(job_id))
+    job = load_job(normalize_job_id(job_id))
     job.state = RunState.COMPLETED
     for task in job.tasks:
         task.status = RunState.COMPLETED
@@ -171,7 +171,7 @@ def _finish_job_with_dod_met(job_id: str) -> None:
 
 def _raise_one_decision(job_id: str, question: str) -> str:
     """Raise ONE open decision on a job, through the existing escalation verb."""
-    job = load_job(UUID(job_id))
+    job = load_job(normalize_job_id(job_id))
     record = enqueue_task_decision(
         job,
         task_id=job.tasks[-1].id,
@@ -185,7 +185,7 @@ def _raise_one_decision(job_id: str, question: str) -> str:
 
 def _answer_the_decision(job_id: str, decision_id: str, answer: str) -> None:
     """A human's move: answer through the same verb the CLI uses."""
-    job = load_job(UUID(job_id))
+    job = load_job(normalize_job_id(job_id))
     record = answer_task_decision(
         job, decision_id, answer=answer,
         now=datetime(2026, 8, 3, 12, 5, tzinfo=timezone.utc))
@@ -346,7 +346,7 @@ class TestTheEscalatedDecision:
         job_ids = [link.job_id for link in e2e["final"].job_links]
         still_open = []
         for job_id in job_ids:
-            still_open.extend(open_task_decisions(load_job(UUID(job_id))))
+            still_open.extend(open_task_decisions(load_job(normalize_job_id(job_id))))
         assert still_open == []
 
     def test_the_second_run_started_only_after_the_answer(self, e2e):

@@ -10,6 +10,7 @@ import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
 from packages.orchestration.approval_queue import make_intent_id, set_approval_state
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.permissions import Capability, set_permission
 from packages.orchestration.run_contract import (
     ContractAction,
@@ -196,7 +197,6 @@ class TestEligibility:
 
 def _fake_test(data_dir, *, status="passed", evidence="complete", fa_id=""):
     """Build a fake execute_test_run that emits a linked test event."""
-    from uuid import UUID as _UUID
 
     from packages.orchestration.test_execution_service import TestExecutionResult
     from packages.orchestration.timeline import append_run_event
@@ -204,7 +204,7 @@ def _fake_test(data_dir, *, status="passed", evidence="complete", fa_id=""):
 
     def _fn(request):
         calls["n"] += 1
-        append_run_event(data_dir, _UUID(request.job_id), event="test_run_completed",
+        append_run_event(data_dir, normalize_job_id(request.job_id), event="test_run_completed",
                          metadata={"intent_id": request.intent_id, "status": status,
                                    "exit_code": 0 if status == "passed" else 1,
                                    "timestamp": "2030-01-01T00:00:00+00:00"})
@@ -295,11 +295,10 @@ class TestRunDoContinue:
         data_dir, repo = env
         job, iid = make_continue_job(data_dir, repo)
         # Apply manually (simulate crash after apply, before test).
-        from uuid import UUID
 
         from packages.orchestration.patch_apply import apply_patch_intent
         from packages.orchestration.storage import load_job
-        apply_patch_intent(load_job(UUID(str(job.id)), data_dir), iid, data_dir=data_dir)
+        apply_patch_intent(load_job(normalize_job_id(str(job.id)), data_dir), iid, data_dir=data_dir)
         # Now continue — should resume apply, run test exactly once.
         result, calls = self._run(data_dir, job, monkeypatch)
         assert calls["n"] == 1
@@ -399,11 +398,10 @@ class TestCrashAtomicTestPhase:
         data_dir, repo = env
         job, iid = make_continue_job(data_dir, repo)
         # Apply first so the test phase is the one in flight.
-        from uuid import UUID
 
         from packages.orchestration.patch_apply import apply_patch_intent
         from packages.orchestration.storage import load_job
-        apply_patch_intent(load_job(UUID(str(job.id)), data_dir), iid, data_dir=data_dir)
+        apply_patch_intent(load_job(normalize_job_id(str(job.id)), data_dir), iid, data_dir=data_dir)
         # Simulate a crash mid-test: an in_flight TEST checkpoint with no completion.
         from packages.orchestration import do_continue as dc
         dc.save_checkpoint(str(job.id), data_dir, dc.ContinueCheckpoint(

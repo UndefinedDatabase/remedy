@@ -13,6 +13,7 @@ import pytest
 from packages.core.models import ArtifactKind, Job, RunState, Task
 from packages.orchestration import repair_loop as RL
 from packages.orchestration.approval_queue import get_patch_intent
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.storage import load_job, save_job
 from packages.orchestration.test_failure_artifact import (
     TestFailureArtifact,
@@ -150,7 +151,7 @@ class TestProposeFixtureBuilder:
         assert r.status == "approval_required"
         assert r.stop_reason == "approval_required"
         assert r.repair_intent_id
-        job = load_job(__import__("uuid").UUID(jid), data_dir)
+        job = load_job(normalize_job_id(jid), data_dir)
         assert get_patch_intent(job, r.repair_intent_id) is not None
         assert r.next_safe_action.command == f"remedy patch approve {jid} {r.repair_intent_id}"
 
@@ -190,12 +191,11 @@ class TestIdempotency:
         assert r2.resumed is True
 
     def test_no_duplicate_task_artifact_intent(self, data_dir):
-        import uuid
         jid, fa, _ = _make_job_with_failure(data_dir)
         RL.run_repair_attempt(jid, fa, fixture_builder=True, data_dir=data_dir)
         RL.run_repair_attempt(jid, fa, fixture_builder=True, data_dir=data_dir)
         RL.run_repair_attempt(jid, fa, fixture_builder=True, data_dir=data_dir)
-        job = load_job(uuid.UUID(jid), data_dir)
+        job = load_job(normalize_job_id(jid), data_dir)
         fix_tasks = [t for t in job.tasks if (t.inputs or {}).get("repair_fix_task")]
         repair_arts = [a for a in job.artifacts if (a.metadata or {}).get("repair_v1")]
         attempts = RL.load_repair_attempts(job)
@@ -226,7 +226,7 @@ class TestProofAlignment:
         import uuid
         jid, fa, _ = _make_job_with_failure(data_dir)
         r = RL.run_repair_attempt(jid, fa, fixture_builder=True, data_dir=data_dir)
-        job = load_job(uuid.UUID(jid), data_dir)
+        job = load_job(normalize_job_id(jid), data_dir)
         intent = get_patch_intent(job, r.repair_intent_id)
         assert intent is not None
         assert intent.get("state") == "pending"  # not approved, not applied

@@ -16,13 +16,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
 from packages.orchestration import mission_readiness as OV
 from packages.orchestration import repair_loop as RL
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.storage import load_job, save_job
 
 
@@ -119,7 +120,7 @@ class TestReadinessTruth:
     def test_repair_pending_blocks_unattended(self, env):
         job = _job(env)
         fa = _add_failure(env, job)
-        job2 = load_job(UUID(str(job.id)), env)
+        job2 = load_job(normalize_job_id(str(job.id)), env)
         att = RL.RepairAttempt(attempt_id="a1", job_id=str(job.id), failure_artifact_id=fa,
                                repair_intent_id="ri-1", status="approval_required",
                                source="cli_v1", created_at="t")

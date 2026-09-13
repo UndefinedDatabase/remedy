@@ -12,12 +12,13 @@ from __future__ import annotations
 
 import dataclasses
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
 from packages.orchestration import repair_request_builder as RB
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.storage import load_job, save_job
 
 
@@ -66,14 +67,14 @@ class TestBuilder:
     def test_idempotent(self, env):
         job, fid = _job(env)
         r1 = RB.build_repair_request_package(str(job.id), fid, data_dir=env)
-        r2 = RB.build_repair_request_package(str(load_job(UUID(str(job.id)), env).id), fid, data_dir=env)
+        r2 = RB.build_repair_request_package(str(load_job(normalize_job_id(str(job.id)), env).id), fid, data_dir=env)
         assert r1.request_package_id == r2.request_package_id
-        assert len(RB.load_request_packages(load_job(UUID(str(job.id)), env))) == 1
+        assert len(RB.load_request_packages(load_job(normalize_job_id(str(job.id)), env))) == 1
 
     def test_new_forces_fresh(self, env):
         job, fid = _job(env)
         r1 = RB.build_repair_request_package(str(job.id), fid, data_dir=env)
-        r2 = RB.build_repair_request_package(str(load_job(UUID(str(job.id)), env).id), fid, new=True, data_dir=env)
+        r2 = RB.build_repair_request_package(str(load_job(normalize_job_id(str(job.id)), env).id), fid, new=True, data_dir=env)
         assert r1.request_package_id != r2.request_package_id
 
     def test_missing_job(self, env):
@@ -107,44 +108,44 @@ class TestRequestQuality:
     def test_contains_required_schema(self, env):
         job, fid = _job(env)
         r = RB.build_repair_request_package(str(job.id), fid, data_dir=env)
-        text = _rendered(load_job(UUID(str(job.id)), env), r.request_package_id)
+        text = _rendered(load_job(normalize_job_id(str(job.id)), env), r.request_package_id)
         assert "unified_diff" in text and "target_files" in text and "patch_format" in text
 
     def test_says_one_candidate(self, env):
         job, fid = _job(env)
         r = RB.build_repair_request_package(str(job.id), fid, data_dir=env)
-        text = _rendered(load_job(UUID(str(job.id)), env), r.request_package_id)
+        text = _rendered(load_job(normalize_job_id(str(job.id)), env), r.request_package_id)
         assert "EXACTLY ONE" in text
 
     def test_says_no_apply_or_test_claims(self, env):
         job, fid = _job(env)
         r = RB.build_repair_request_package(str(job.id), fid, data_dir=env)
-        text = _rendered(load_job(UUID(str(job.id)), env), r.request_package_id).lower()
+        text = _rendered(load_job(normalize_job_id(str(job.id)), env), r.request_package_id).lower()
         assert "applied or tested" in text
 
     def test_says_relative_paths_only(self, env):
         job, fid = _job(env)
         r = RB.build_repair_request_package(str(job.id), fid, data_dir=env)
-        text = _rendered(load_job(UUID(str(job.id)), env), r.request_package_id).lower()
+        text = _rendered(load_job(normalize_job_id(str(job.id)), env), r.request_package_id).lower()
         assert "relative" in text and "no absolute" in text
 
     def test_says_no_secrets_protected(self, env):
         job, fid = _job(env)
         r = RB.build_repair_request_package(str(job.id), fid, data_dir=env)
-        text = _rendered(load_job(UUID(str(job.id)), env), r.request_package_id).lower()
+        text = _rendered(load_job(normalize_job_id(str(job.id)), env), r.request_package_id).lower()
         assert "secret" in text and "protected" in text
 
     def test_includes_safe_failure_summary(self, env):
         job, fid = _job(env, safe_summary="parser drops trailing newline")
         r = RB.build_repair_request_package(str(job.id), fid, data_dir=env)
-        text = _rendered(load_job(UUID(str(job.id)), env), r.request_package_id)
+        text = _rendered(load_job(normalize_job_id(str(job.id)), env), r.request_package_id)
         assert "parser drops trailing newline" in text
 
     def test_no_subscription_account_ide_assumption(self, env):
         # Provider-agnostic: request must not require any subscription/account/IDE.
         job, fid = _job(env)
         r = RB.build_repair_request_package(str(job.id), fid, data_dir=env)
-        text = _rendered(load_job(UUID(str(job.id)), env), r.request_package_id).lower()
+        text = _rendered(load_job(normalize_job_id(str(job.id)), env), r.request_package_id).lower()
         for bad in ("subscription", "claude max", "account required", "vs code", "jetbrains"):
             assert bad not in text
 

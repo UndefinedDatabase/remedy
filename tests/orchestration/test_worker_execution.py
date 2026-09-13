@@ -6,6 +6,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from packages.core.models import Job, RunState, Task
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.proposed_tasks import (
     ProposedTask,
     add_proposed_task,
@@ -47,7 +48,7 @@ class TestWorkerExecutesRealTask:
         result = run_worker_once(root, job_id=jid, provider="fixture")
         assert result.action_taken == "task_completed"
 
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         completed = [t for t in job.tasks if t.status == RunState.COMPLETED]
         assert len(completed) == 1
 
@@ -79,7 +80,7 @@ class TestWorkerExecutesRealTask:
         r1 = run_worker_once(root, job_id=jid, provider="fixture")
         assert r1.action_taken == "task_completed"
 
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         completed = [t for t in job.tasks if t.status == RunState.COMPLETED]
         pending = [t for t in job.tasks if t.status == RunState.PENDING]
         assert len(completed) == 1
@@ -89,7 +90,7 @@ class TestWorkerExecutesRealTask:
         r2 = run_worker_once(root, job_id=jid, provider="fixture")
         assert r2.action_taken == "task_completed"
 
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         assert all(t.status == RunState.COMPLETED for t in job.tasks)
 
     def test_provider_none_no_work(self, tmp_path, monkeypatch):
@@ -115,14 +116,14 @@ class TestWorkerExecutesRealTask:
         enqueue_job(jid, root)
         run_worker_once(root, job_id=jid, provider="fixture")
 
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         assert job.tasks[0].status == RunState.COMPLETED
 
         enqueue_job(jid, root)
         r2 = run_worker_once(root, job_id=jid, provider="fixture")
         assert r2.action_taken == "no_pending_tasks"
 
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         assert len(job.tasks) == 1
 
 
@@ -138,7 +139,7 @@ class TestExecutionPersistence:
         enqueue_job(jid, root)
         run_worker_once(root, job_id=jid, provider="fixture")
 
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         assert job.tasks[0].status == RunState.COMPLETED
         assert job.tasks[0].inputs.get("execution_provider") == "fixture"
         assert job.tasks[0].inputs.get("execution_summary")
@@ -154,7 +155,7 @@ class TestExecutionPersistence:
         enqueue_job(jid, root)
         run_worker_once(root, job_id=jid, provider="fixture")
 
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         assert job.tasks[0].inputs.get("execution_artifact_ids")
 
 
@@ -276,7 +277,7 @@ class TestFullBackendLoop:
         wr = run_worker_once(root, job_id=jid, provider="fixture")
         assert wr.action_taken == "task_completed"
 
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         assert len(job.tasks) == 1
         assert job.tasks[0].status == RunState.COMPLETED
         assert str(job.tasks[0].id) == mat.materialized_task_id
@@ -349,7 +350,7 @@ class TestBlockedFixturePersistence:
     def test_blocked_task_persists_failed(self, tmp_path, monkeypatch):
         root, jid = _setup(tmp_path, monkeypatch)
         from packages.core.models import RunState
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         task = Task(description="Will block", inputs={"task_type": "blocked_fixture"})
         job.tasks.append(task)
         save_job(job, root)
@@ -359,13 +360,13 @@ class TestBlockedFixturePersistence:
         assert result.task_status == "blocked"
         assert result.blocked_reason != ""
 
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         assert job.tasks[0].status == RunState.FAILED
         assert job.tasks[0].inputs.get("blocked_reason") != ""
 
     def test_blocked_task_finalize_false(self, tmp_path, monkeypatch):
         root, jid = _setup(tmp_path, monkeypatch)
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         task = Task(description="Blocked", inputs={"task_type": "blocked_fixture"})
         job.tasks.append(task)
         save_job(job, root)
@@ -398,7 +399,7 @@ class TestStartedCompletedEvents:
 
     def test_blocked_event_written(self, tmp_path, monkeypatch):
         root, jid = _setup(tmp_path, monkeypatch)
-        job = load_job(UUID(jid), root)
+        job = load_job(normalize_job_id(jid), root)
         task = Task(description="Blocked event", inputs={"task_type": "blocked_fixture"})
         job.tasks.append(task)
         save_job(job, root)

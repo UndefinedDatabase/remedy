@@ -7,12 +7,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
 from packages.orchestration import orchestrator_brain as OB
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.storage import load_job, save_job
 
 
@@ -91,7 +92,7 @@ class TestDecisionQuality:
         save_job(job, root=d)
         from packages.orchestration.approval_queue import make_intent_id
         iid = make_intent_id(art.id, 0)
-        j = load_job(UUID(str(job.id)), d)
+        j = load_job(normalize_job_id(str(job.id)), d)
         set_approval_state(j, iid, "approved", decided_by="human")
         save_job(j, root=d)  # default contract denies PATCH_APPLY
         s = OB.build_orchestrator_situation(str(job.id), d)
@@ -136,7 +137,7 @@ class TestAntiLoop:
         job = _job(d)
         # Inject two failed repair attempts.
         from packages.orchestration import repair_loop as RL
-        j = load_job(UUID(str(job.id)), d)
+        j = load_job(normalize_job_id(str(job.id)), d)
         for i in range(2):
             att = RL.RepairAttempt(attempt_id=f"a{i}", job_id=str(job.id),
                                    failure_artifact_id=f"f{i}", status="tested_failed",
@@ -152,7 +153,7 @@ class TestAntiLoop:
         OB.select_orchestrator_decision(OB.build_orchestrator_situation(str(job.id), d), d, persist=True)
         # New evidence (a failure) → different fingerprint → loop resets to allow.
         _job(d) if False else None
-        j = load_job(UUID(str(job.id)), d)
+        j = load_job(normalize_job_id(str(job.id)), d)
         j.artifacts.append(Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION,
                                     task_id=str(j.tasks[0].id),
                                     metadata={"test_failure": True, "failure_kind": "test_failed",
@@ -192,7 +193,7 @@ class TestModelRouting:
         d, _ = env
         job = _job(d)
         from packages.orchestration import repair_loop as RL
-        j = load_job(UUID(str(job.id)), d)
+        j = load_job(normalize_job_id(str(job.id)), d)
         for i in range(2):
             att = RL.RepairAttempt(attempt_id=f"h{i}", job_id=str(job.id),
                                    failure_artifact_id=f"f{i}", status="tested_failed",

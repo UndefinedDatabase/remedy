@@ -37,6 +37,8 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration.data_paths import normalize_job_id
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 #: Cycles the fixture job is allowed, and the cycle whose task is killed.
@@ -253,11 +255,10 @@ class TestKillAndResume:
         assert set(before).issubset(set(after))     # pre-kill work was not redone
 
         # And the job really is finished.
-        from uuid import UUID
 
         from packages.orchestration.storage import load_job
 
-        job = load_job(UUID(job_id))
+        job = load_job(normalize_job_id(job_id))
         assert all(t.status.value == "completed" for t in job.tasks)
 
     def test_the_f047_resume_path_accepts_the_killed_job(

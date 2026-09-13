@@ -16,13 +16,13 @@ reason, rather than `claimed` by a consumer that has moved on.
 from __future__ import annotations
 
 from pathlib import Path
-from uuid import UUID
 
 import pytest
 
 from packages.core.models import Job, RunState
 from packages.orchestration import job_queue as queue
 from packages.orchestration.config import reset_config
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.long_run_executor import (
     QUEUE_PULL_FAILED,
     QUEUE_PULL_PLANNED,
@@ -112,7 +112,7 @@ class TestEndToEnd:
         assert queue.claim_holder(PROJECT, entry.id) == ""
 
         # The job exists, is a normal job for this project, and has a plan.
-        queued_job = load_job(UUID(result.queue_pull.job_id))
+        queued_job = load_job(normalize_job_id(result.queue_pull.job_id))
         assert queued_job.project_id == PROJECT
         assert queued_job.user_prompt == "write the queue docs"
         assert queued_job.tasks, "a pulled goal must arrive planned, not empty"
@@ -151,7 +151,7 @@ class TestEndToEnd:
 
         assert result.queue_pull is not None
         assert result.queue_pull.status == QUEUE_PULL_PLANNED
-        queued_job = load_job(UUID(result.queue_pull.job_id))
+        queued_job = load_job(normalize_job_id(result.queue_pull.job_id))
         assert queued_job.user_prompt == "Ship the executor binding."
         assert queue.load_entry(PROJECT, entry.id).status == queue.STATUS_DONE
 
@@ -164,7 +164,7 @@ class TestApprovalIsUnchanged:
         result = _run_idle(_idle_job())
 
         assert result.queue_pull is not None
-        queued_job = load_job(UUID(result.queue_pull.job_id))
+        queued_job = load_job(normalize_job_id(result.queue_pull.job_id))
         assert queued_job.state == RunState.PLANNED
         assert all(task.status == RunState.PENDING for task in queued_job.tasks)
         # _never_called would have raised; asserting it plainly documents the rule.

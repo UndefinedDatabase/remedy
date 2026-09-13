@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 
+from packages.orchestration.data_paths import normalize_job_id
 from tests.cli.runtime_helpers import run_grouped_cli
 
 
@@ -90,7 +91,6 @@ def test_propose_explicit_item(env):
 
 def test_propose_contract_denied(env):
     import dataclasses
-    from uuid import UUID
 
     from packages.orchestration.run_contract import (
         ContractAction,
@@ -99,7 +99,7 @@ def test_propose_contract_denied(env):
     )
     from packages.orchestration.storage import load_job, save_job
     job_id = _job(env)
-    job = load_job(UUID(job_id), env)
+    job = load_job(normalize_job_id(job_id), env)
     c = build_default_run_contract(job)
     c = dataclasses.replace(c, allowed_actions=tuple(
         a for a in c.allowed_actions if a != ContractAction.SELF_PROPOSE_TASK))

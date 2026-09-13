@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from unittest.mock import MagicMock
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -19,6 +19,7 @@ from packages.core.models import (
     RunState,
     Task,
 )
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.storage import save_job
 
 
@@ -231,7 +232,7 @@ class TestContinueFromNodeProjectLinking:
         result = continue_from_node(job, graph, graph.nodes[0].id, "test")
 
         from packages.orchestration.storage import load_job
-        child = load_job(UUID(result.child_job_id))
+        child = load_job(normalize_job_id(result.child_job_id))
         assert child.metadata["project_id"] == str(project.id)
 
     def test_parent_gets_continued_event(self, tmp_path, monkeypatch):
@@ -377,7 +378,7 @@ class TestContinueFromNodeIntegration:
         # Load child and build its brain
         from packages.orchestration.storage import load_job
 
-        child = load_job(UUID(result.child_job_id))
+        child = load_job(normalize_job_id(result.child_job_id))
         child_graph = build_project_brain(child, [])
         assert len(child_graph.nodes) >= 1
         assert child_graph.job_id == child.id

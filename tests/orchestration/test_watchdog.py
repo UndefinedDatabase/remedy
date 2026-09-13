@@ -38,11 +38,11 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from typing import Any
-from uuid import UUID
 
 import pytest
 
 from packages.core.models import Job, RunState, Task
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.escalation import (
     answer_task_decision,
     open_task_decisions,
@@ -765,7 +765,7 @@ def _open_questions(mission_id: str, data_root: Any) -> list[str]:
     questions: list[str] = []
     for link in mission.job_links:
         questions.extend(str(record["question"]) for record
-                         in open_task_decisions(load_job(UUID(link.job_id))))
+                         in open_task_decisions(load_job(normalize_job_id(link.job_id))))
     return questions
 
 

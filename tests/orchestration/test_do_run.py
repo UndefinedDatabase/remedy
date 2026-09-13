@@ -25,6 +25,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from packages.core.models import Job
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.do_run import (
     DO_PHASES,
     DoRunNextAction,
@@ -138,13 +139,11 @@ class TestDoRunFlow:
         assert result.patch_intent_id
 
     def test_patch_intent_created_has_created_at(self, tmp_path):
-        from uuid import UUID
-
         from packages.orchestration.approval_queue import list_patch_intents
         from packages.orchestration.storage import load_job
 
         result = _run_with_tmp(tmp_path, autonomy=3)
-        job = load_job(UUID(result.job_id), root=tmp_path / "data")
+        job = load_job(normalize_job_id(result.job_id), root=tmp_path / "data")
         intents = list_patch_intents(job)
         assert intents[0]["created_at"]
 

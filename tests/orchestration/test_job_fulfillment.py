@@ -16,6 +16,8 @@ from uuid import uuid4
 
 import pytest
 
+from packages.orchestration.data_paths import normalize_job_id
+
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
@@ -988,7 +990,6 @@ class TestStagedFulfillment:
 
     def test_target_repo_restored_after_staging(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from uuid import UUID
 
         from packages.orchestration.job_fulfillment import run_job_fulfill
         from packages.orchestration.storage import load_job
@@ -997,7 +998,7 @@ class TestStagedFulfillment:
         record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
 
         # After fulfillment, target_repo should point to real repo, not staging
-        final_job = load_job(UUID(str(job.id)), tmp_path)
+        final_job = load_job(normalize_job_id(str(job.id)), tmp_path)
         assert final_job.metadata["target_repo"] == str(repo.resolve())
         assert "staging" not in final_job.metadata["target_repo"]
 
@@ -1015,7 +1016,6 @@ class TestStagedFulfillment:
     def test_staging_discarded_on_test_failure(self, tmp_path, monkeypatch):
         """Target repo must be untouched when tests fail in staging."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from uuid import UUID
 
         from packages.core.models import Job
         from packages.orchestration.job_fulfillment import run_job_fulfill
@@ -1046,7 +1046,7 @@ class TestStagedFulfillment:
         assert record.staging_promoted is False
 
         # target_repo restored to real repo
-        final_job = load_job(UUID(str(job.id)), tmp_path)
+        final_job = load_job(normalize_job_id(str(job.id)), tmp_path)
         assert final_job.metadata["target_repo"] == str(repo.resolve())
 
     def test_export_includes_staging_fields(self, tmp_path, monkeypatch):
