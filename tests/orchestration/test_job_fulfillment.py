@@ -14,6 +14,8 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
+import pytest
+
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
@@ -403,6 +405,16 @@ class TestJobFulfillFixturePass:
         assert record.test_passed is True
         assert len(record.test_run_ids) > 0
         assert record.test_run_ids[0] != ""
+
+    def test_a_pingpong_job_id_reaches_the_store_instead_of_a_uuid_parse(self, tmp_path, monkeypatch):
+        """F275 R88: a minted sixteen-hex id is looked up and not found, not refused by ``UUID(...)``."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.storage import JobNotFoundError
+
+        repo = create_demo_repo(tmp_path)
+        with pytest.raises(JobNotFoundError):
+            run_job_fulfill("0123456789abcdef", repo, data_dir=tmp_path)
 
 
 # ---------------------------------------------------------------------------
