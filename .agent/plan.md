@@ -13,21 +13,21 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 87 MEASURES THE FLIP AT ITS OWN BASE AFTER THE SEAM WORK, AND CORRECTS HOW IT CAN LAND.
-The committed generator re-derives the flip's input at `bd2a75d5`, the guarded transform flips
-a worktree, and a committed instrument classifies the full-suite transcripts the reviewer took
-there into the failures the flip alone causes. The round records that F275's one declared
-oversize commit was spent in round 73, rules that the flip lands as a series of commits each
-under the cap, and asks the operator whether to allow one more oversized commit instead. It
-books the round 86 verdict and its prose slips.
+ROUND 88 ROUTES THE JOB-STORE LOADS UNDER `packages/` AWAY FROM `UUID(...)`. A new disk-free
+`normalize_job_id` returns a UUID in canonical form or a sixteen-hex job id unchanged, and
+raises `JobIdInvalid` for anything else. The parses that hand a job id to `load_job`,
+`load_job_safe` or `_lj` go through it, except in `ui_server._load_job` and `execute_test_run`,
+which keep theirs for reasons the guard names. A guard test pins the census by shape, one
+behaviour test pins `run_job_fulfill`'s load, and the round books the round 87 verdict and
+its prose slips.
 
 ## Next Steps
 
-1. THE `UUID(...)` PARSES UNDER `packages/` THAT FEED THE JOB STORE, counted by flow and each
-   read for how its caller uses the raw value. The largest residue groups raise at the store's
-   path join and at `run_job_fulfill`'s parse. Production code, so a SPLIT round with mutation
-   red-proofs.
-2. THE FLIP'S DRY RUN AGAIN, at the base that round leaves, read for the groups that remain.
+1. THE NEXT RESIDUE GROUPS OF THE FLIP'S DRY RUN, each a pre-flip production round or a
+   transform rule: the task-id parses that feed `TaskEntry`, the `UUID` values
+   `pingpong_job._persist_job` cannot serialise, and `ui_server`'s which-store loader and its
+   adapter.
+2. THE FLIP'S DRY RUN AGAIN after them, read for what remains.
 3. THE FLIP, carrying DECISION F275 D48's obligations, as a series of commits each under the
    500-insertion cap inside one round, unless the operator allows one more oversized commit.
    The stale test double at `packages/orchestration/project_registry.py:856` moves with it.
@@ -37,9 +37,9 @@ books the round 86 verdict and its prose slips.
 
 - THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20
   sessions and 60 rounds without a replacement, so this feature closes only at full scope.
-- THE FLIP IS NOT CLOSE: at `bd2a75d5` it breaks 826 test nodes the unflipped tree passes.
+- THE FLIP IS NOT CLOSE: flipped on this round's candidate the full suite has 752 bad nodes.
+- MOST ROUTED LOADS ARE PINNED BY A SHAPE GUARD ALONE; only `run_job_fulfill`'s first load
+  also has a behaviour test.
 - ONE ROUTED LOAD IS REACHED BY NO TEST until `R-0883` is repaired.
-- THE INPUT SET IS REPRODUCIBLE ONLY FROM ROUND 77's TWO SCRATCH JSON FILES, and the re-key
-  cannot see a deleted ruled site.
 - The open set is 88 by distinct id at this round's base, with `R-0809`, `R-0880` and `R-0883`
   open. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
