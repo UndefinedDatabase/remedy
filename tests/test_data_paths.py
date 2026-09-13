@@ -11,6 +11,7 @@ Verifies:
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import importlib
 import json
@@ -294,6 +295,33 @@ class TestLookupJobId:
             resolve_job_id("deadbeef")
         assert exc_info.value.code == 1
         assert capsys.readouterr().err == "Error: no job matches prefix 'deadbeef'\n"
+
+
+class TestNormalizeJobId:
+    """F275 R88: the disk-free SHAPE check a job-store load takes its id through."""
+
+    def test_a_uuid_comes_back_in_its_canonical_string_form(self):
+        from packages.orchestration.data_paths import normalize_job_id
+        uid = uuid4()
+        assert normalize_job_id(str(uid).upper()) == str(uid)
+        assert normalize_job_id(uid.hex) == str(uid)
+
+    def test_a_minted_job_id_comes_back_unchanged_without_a_record_on_disk(
+        self, monkeypatch, tmp_path
+    ):
+        data_root = tmp_path / "no-such-data-root"
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_root))
+        from packages.orchestration.data_paths import mint_job_id, normalize_job_id
+        job_id = mint_job_id()
+        assert normalize_job_id(job_id) == job_id
+        assert not data_root.exists()
+
+    def test_a_short_prefix_is_not_a_job_id_and_raises_invalid(self):
+        from packages.orchestration.data_paths import JobIdInvalid, normalize_job_id
+        with pytest.raises(JobIdInvalid):
+            normalize_job_id("abcd1234")
+        with pytest.raises(ValueError):
+            normalize_job_id("not-a-job-id")
 
 
 class TestRoutedHandler:
@@ -925,3 +953,100 @@ class TestJobAndRunLayout:
             "hasattr found nothing at all on pingpong_loop; the absence above "
             "would then be measuring an import failure, not a deleted helper"
         )
+
+
+# The census DECISION F275 D62 pins by shape: a job id parsed with ``UUID(...)`` on its way into the job store.
+def _uuid_parses_fed_to_a_job_load(source: str) -> list[tuple[int, str]]:
+    """Sorted ``(line, function name)`` pairs of ``UUID(...)`` parses handed to a job-store loader.
+
+    Inside each function, two shapes count: a ``UUID(...)`` call that is a positional
+    argument of ``load_job``, ``load_job_safe`` or ``_lj`` (``self_dogfood``'s local
+    alias of ``load_job``), and a bare name passed positionally to one of them that the
+    same function assigned from a ``UUID(...)`` call. The line is the argument's.
+    """
+    loader_names = {"load_job", "load_job_safe", "_lj"}
+
+    def is_uuid_parse(node: ast.AST) -> bool:
+        return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "UUID"
+
+    def nodes_of_this_function(function: ast.AST) -> list[ast.AST]:
+        nodes, pending = [], list(ast.iter_child_nodes(function))
+        while pending:
+            node = pending.pop()
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue
+            nodes.append(node)
+            pending.extend(ast.iter_child_nodes(node))
+        return nodes
+
+    pairs: list[tuple[int, str]] = []
+    for function in ast.walk(ast.parse(source)):
+        if not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        nodes = nodes_of_this_function(function)
+        parsed_names = {
+            target.id
+            for node in nodes
+            if isinstance(node, ast.Assign) and is_uuid_parse(node.value)
+            for target in node.targets
+            if isinstance(target, ast.Name)
+        }
+        for node in nodes:
+            if not isinstance(node, ast.Call):
+                continue
+            callee = getattr(node.func, "id", None) or getattr(node.func, "attr", None)
+            if callee not in loader_names:
+                continue
+            for arg in node.args:
+                if is_uuid_parse(arg):
+                    pairs.append((arg.lineno, function.name))
+                elif isinstance(arg, ast.Name) and arg.id in parsed_names:
+                    pairs.append((arg.lineno, function.name))
+    return sorted(pairs)
+
+
+class TestJobStoreLoadsDoNotParseTheirIdWithUuid:
+    """F275 R88: a job-store load under ``packages/`` takes its id through ``normalize_job_id``.
+
+    ``UUID(...)`` refuses the sixteen-hex id ``mint_job_id`` mints, so a load that parses
+    with it dies before the store is asked. For every id the classic store holds the
+    routing is behaviour-neutral, which is why the pin is a reading of the source.
+    """
+
+    # DECISION F275 D62 keeps exactly two parses, each for its own reason.
+    # ``ui_server._load_job``: the parse IS its which-store switch; routed, a sixteen-hex id
+    # would be tried against the classic store and answered 404 before the ping-pong branch ran.
+    # ``execute_test_run``: the parsed ``UUID`` goes on to event writers and a lease, a return
+    # domain this round does not widen.
+    _EXEMPT_LOADS = frozenset({
+        ("packages/orchestration/ui_server.py", "_load_job"),
+        ("packages/orchestration/test_execution_service.py", "execute_test_run"),
+    })
+
+    def test_no_job_store_load_under_packages_is_handed_a_uuid_parse(self):
+        from packages.orchestration import data_paths
+        repo = Path(data_paths.__file__).resolve().parents[2]
+        findings = []
+        for path in sorted((repo / "packages").rglob("*.py")):
+            relative = path.relative_to(repo).as_posix()
+            for line, function in _uuid_parses_fed_to_a_job_load(path.read_text(encoding="utf-8")):
+                if (relative, function) not in self._EXEMPT_LOADS:
+                    findings.append(f"{relative}:{line} in {function}")
+        assert findings == [], (
+            f"job-store loads handed a UUID(...) parse instead of normalize_job_id: {findings}"
+        )
+
+    def test_the_guard_sees_both_shapes_it_forbids(self):
+        planted = (
+            "def loads_a_direct_parse(job_id):\n"
+            "    return load_job(UUID(job_id), None)\n"
+            "\n"
+            "\n"
+            "def loads_a_named_parse(job_id):\n"
+            "    parsed = UUID(job_id)\n"
+            "    return load_job_safe(parsed)\n"
+        )
+        assert _uuid_parses_fed_to_a_job_load(planted) == [
+            (2, "loads_a_direct_parse"),
+            (7, "loads_a_named_parse"),
+        ]
