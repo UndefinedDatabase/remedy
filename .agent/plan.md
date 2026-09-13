@@ -13,28 +13,28 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 91 ADDS THE FLIP'S SECOND OVERLAY, on top of the first, under DECISION F275 D64's method.
-An artifact id the unified task record holds becomes the artifact's id as a string, and every
-lookup of an artifact by such an id compares string forms; tests that hand the unified record a
-`UUID` object where it declares a string hand it the string. No path under `packages/`, `apps/`
-or `tests/` moves. The round books the round 90 verdict and its three prose slips.
+ROUND 92 ADDS THE FLIP'S THIRD OVERLAY, on top of the first two, under DECISION F275 D64's
+method. The unified store gains `require_job_plan`, which raises what the classic loader raised,
+and every load that catches `JobNotFoundError` calls it; the last two `UUID(...)` parses of a
+loaded id take `normalize_job_id`; and the two prefix assertions round 91 left comparing an
+empty task id compare a real one again. The diff is carried in several consecutive carriers.
+No path under `packages/`, `apps/` or `tests/` moves. The round books the round 91 verdict and
+its prose slip.
 
 ## Next Steps
 
-1. MORE OVERLAYS, one residue group each, every one applied on top of those before it: the
-   loader's contract, where callers parse an id with `UUID(...)` or catch the
-   `JobNotFoundError` that `load_job_plan` never raises, as in
-   `repository_snapshot.revert_repository_apply` and `test_execution_service.execute_test_run`;
-   the pydantic calls made on the unified records, such as `TaskEntry.model_validate` and
+1. MORE OVERLAYS, one residue group each, every one applied on top of those before it: task
+   records built without an id, which the classic `Task` minted by default; the pydantic calls
+   made on the unified records, such as `TaskEntry.model_validate` and
    `JobPlan.model_dump_json`; the classic `Task` constructions that pass `acceptance_checks`;
-   what is left of the classic runner under `job resume`; and the duck-typed test doubles,
-   including the `_FakeJob` behind the ruled site at
-   `packages/orchestration/project_registry.py:856`.
+   test doubles patched in by a name the flip renamed; what is left of the classic runner
+   under `job resume`; and the duck-typed test doubles, including the `_FakeJob` behind the
+   ruled site at `packages/orchestration/project_registry.py:856`.
 2. THE FLIP: the transform, then every overlay in round order, landed as a series of commits
    each under the 500-insertion cap inside one round, carrying DECISION F275 D48's obligations,
    unless the operator allows one more oversized commit.
-3. Then the classic store, with the which-store branches and adapters in `ui_server.py` the
-   first overlay leaves unreached, then the closure sequence.
+3. Then the classic store, with the which-store branches and adapters the overlays leave
+   unreached, then the closure sequence.
 
 ## Risks
 
