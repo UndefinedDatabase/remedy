@@ -13,22 +13,21 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 94 ADDS THE FLIP'S FIFTH OVERLAY, on top of the first four, under DECISION F275 D64's
-method. A task record built without an id mints one, as the classic `Task` did; a task id is
-read as a string wherever code parsed it as a `UUID`; the classic `acceptance_checks` list
-becomes acceptance text; no pydantic call is made on a task record; and the proposed-task
-tests point the data root at their own directory. The diff is carried in consecutive
-carriers, so no path under `packages/`, `apps/` or `tests/` moves; the round books the round
-93 verdict and its slip.
+ROUND 95 ADDS THE FLIP'S SIXTH OVERLAY, on top of the first five, under DECISION F275 D64's
+method. Production code reading `.id` or `.name` off a job it loaded reads the unified
+record's `job_id` and `job_title`; the job doubles tests hand that code spell the same; and a
+handler test that doubles the job loader also doubles the resolver the handler's module binds.
+The diff is carried in consecutive carriers, so no path under `packages/`, `apps/` or `tests/`
+moves; the round books the round 94 verdict and its two prose slips.
 
 ## Next Steps
 
-1. MORE OVERLAYS, one residue group each, every one applied on top of those before it: tests
-   that still redirect the classic store's `_DATA_DIR`; handlers resolving a minted job id no
-   store holds; the pydantic calls made on a `JobPlan`, such as `model_dump_json`; the mission
-   end-to-end fixture that never reaches its decision job; what is left of the classic runner
-   under `job resume`; and duck-typed test doubles, such as the `_FakeJob` behind a ruled site
-   in `packages/orchestration/project_registry.py`.
+1. MORE OVERLAYS, one residue group each, every one applied on top of those before it: the
+   pydantic calls tests still make on a `JobPlan`, such as `model_dump_json`, and the `job show`
+   handler that prints one; tests that give a record's `created_at` a `datetime`; classic
+   spellings read off job records under other local names; the mission end-to-end fixture that
+   never reaches its decision job; tests that still redirect the classic store's `_DATA_DIR`;
+   and what is left of the classic runner under `job resume`, which still builds a classic job.
 2. THE FLIP: the transform, then every overlay in round order, landed as a series of commits
    each under the 500-insertion cap inside one round, carrying DECISION F275 D48's obligations
    and registering the structured acceptance form DECISION F275 D22 leaves to it, unless the
