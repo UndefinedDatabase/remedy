@@ -13,20 +13,20 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 88 ROUTES THE JOB-STORE LOADS UNDER `packages/` AWAY FROM `UUID(...)`. A new disk-free
-`normalize_job_id` returns a UUID in canonical form or a sixteen-hex job id unchanged, and
-raises `JobIdInvalid` for anything else. The parses that hand a job id to `load_job`,
-`load_job_safe` or `_lj` go through it, except in `ui_server._load_job` and `execute_test_run`,
-which keep theirs for reasons the guard names. A guard test pins the census by shape, one
-behaviour test pins `run_job_fulfill`'s load, and the round books the round 87 verdict and
-its prose slips.
+ROUND 89 CLEARS TWO RESIDUE GROUPS THE FLIP'S DRY RUN NAMED, BOTH INVISIBLE BEFORE THE FLIP.
+`run_job_fulfill` stops passing a task id it wrote itself through `UUID(...)` and back, and the
+tests that hand a job-store load or `append_run_event` a `UUID(...)` parse of a job id take
+`normalize_job_id` instead. Before the flip both changes are value-identical, so they are proved
+in flipped trees: the touched test files flipped at the base and at the change, and the round
+trip restored inside the flipped change. The round books the round 88 verdict and its slip.
 
 ## Next Steps
 
-1. THE NEXT RESIDUE GROUPS OF THE FLIP'S DRY RUN, each a pre-flip production round or a
-   transform rule: the task-id parses that feed `TaskEntry`, the `UUID` values
-   `pingpong_job._persist_job` cannot serialise, and `ui_server`'s which-store loader and its
-   adapter.
+1. THE NEXT RESIDUE GROUPS OF THE FLIP'S DRY RUN, each a pre-flip production round, a
+   transform rule or a flip-time edit: `ui_server`'s which-store loader and its adapter;
+   members the unified records lack, such as `TaskEntry`'s `acceptance_checks` and
+   `JobPlan`'s `model_dump_json`; `UUID` values reaching the unified record; and what is left
+   of the classic runner under `job resume`.
 2. THE FLIP'S DRY RUN AGAIN after them, read for what remains.
 3. THE FLIP, carrying DECISION F275 D48's obligations, as a series of commits each under the
    500-insertion cap inside one round, unless the operator allows one more oversized commit.
@@ -37,9 +37,9 @@ its prose slips.
 
 - THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20
   sessions and 60 rounds without a replacement, so this feature closes only at full scope.
-- THE FLIP IS NOT CLOSE: flipped on this round's candidate the full suite has 752 bad nodes.
-- MOST ROUTED LOADS ARE PINNED BY A SHAPE GUARD ALONE; only `run_job_fulfill`'s first load
-  also has a behaviour test.
+- THE FLIP IS NOT CLOSE: DECISION F275 D62's flipped full suite had 752 bad nodes.
+- A CHANGE PROVED ONLY IN A FLIPPED TREE depends on the generator and transform staying
+  reproducible from round 77's two scratch JSON files.
 - ONE ROUTED LOAD IS REACHED BY NO TEST until `R-0883` is repaired.
 - The open set is 88 by distinct id at this round's base, with `R-0809`, `R-0880` and `R-0883`
   open. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
