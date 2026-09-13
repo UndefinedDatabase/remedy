@@ -1,78 +1,72 @@
-# Handback — F275 round 86
+# Handback — F275 round 87
 
 ## Session
 
-`SESSION 30 of feature F275 · round 86 · rounds so far 86`
+`SESSION 30 of feature F275 · round 87 · rounds so far 87`
 
-Context self-assessment: this worker ran one scoped suite, one canary, one CLI probe and one CONTROL
-plus thirteen mutation runs, and has ample context left; nothing about the session boundary is forced
-by this round.
+Context self-assessment: this worker ran one generator over four scratch trees, one transform over one
+detached worktree, one instrument five times over pinned transcripts, and one canary; it ran no suite and
+has ample context left. Nothing about the session boundary is forced by this round.
 
 ## Range
 
-Review of `b0ef6ab4`..`HEAD` (the nine commits C0a–C7 plus this handback commit C8).
+Review of `bd2a75d5`..`HEAD` (the nine commits C0a–C7 plus this handback commit C8).
 
 ## Commits
 
-### ed3d68e7 F275 R86 C0a: save the round 86 block as authored text
+### 19202ba3 F275 R87 C0a: save the round 87 block as authored text
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r86.md` | +291 / -0 | the block transported with `shutil.copyfile`, byte-identical to `.remedy-wt/r86_block.md` at 27925 bytes |
+| `.agent/authored/f275-r87.md` | +300 / -0 | the block transported with `shutil.copyfile`, byte-identical to `.remedy-wt/r87_block.md` at 29430 bytes |
 
-### a43850aa F275 R86 C0b: mirror the round 86 block into the last-block state file
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | +197 / -167 | written from the COMMITTED C0a blob read back with `git show` |
-
-### 47c53487 F275 R86 C1: make the plan current for round 86
+### 2890f9ca F275 R87 C0b: mirror the round 87 block into the last-block state file
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +11 / -14 | slice PLAN86, a full replacement, byte for byte; the FIRST SUBSTANTIVE COMMIT |
+| `.agent/last_block.md` | +214 / -205 | written from the COMMITTED C0a blob read back with `git show` |
 
-### 482b41bd F275 R86 C2: book the round 85 reviewer verdict
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +8 / -0 | slice RECORD86 appended |
-
-### 50d4c278 F275 R86 C3: register R-0883, the dashboard project import crash
+### a67d18dc F275 R87 C1: make the plan current for round 87
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2 / -0 | slice FIND86 appended |
+| `.agent/plan.md` | +20 / -16 | slice PLAN87, a full replacement, byte for byte; the FIRST SUBSTANTIVE COMMIT |
 
-### 9ce7551c F275 R86 C4: append the round 85 prose slips
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/prose_slips.md` | +4 / -0 | slice SLIPS86 appended |
-
-### ad4d8bd4 F275 R86 C5: route the last handler job-id parses away from UUID
+### 5123721f F275 R87 C2: book the round 86 reviewer verdict
 
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/commands/review_cmd.py` | +6 / -5 | F1: module `from uuid import UUID` deleted; `lookup_job_id` imported as its own group after the standard library; four `load_job(lookup_job_id(args.job_id))` |
-| `apps/cli/commands/memory.py` | +3 / -9 | F2: three local `from uuid import UUID` lines and their blank lines deleted; three `load_job(lookup_job_id(job_id_str))` |
-| `apps/cli/commands/repo.py` | +1 / -2 | F3: `from uuid import UUID` deleted; `load_job(lookup_job_id(job_id_str))` |
-| `apps/cli/commands/dashboard_cmd.py` | +1 / -2 | F4: `from uuid import UUID` deleted; `load_job(lookup_job_id(jid))` |
-| `apps/cli/commands/readiness.py` | +1 / -1 | F5: `load_job(lookup_job_id(jid))`; the `UUID` import stays for the project id |
-| `apps/cli/commands/project.py` | +5 / -3 | F6: `lookup_job_id` imported above the storage import; `job_id = lookup_job_id(job_id_str)` then `job = load_job(job_id)`; `attach_job(project, job_id)`; message `{job_id[:8]}`; the `job not found` message keeps `job_id_str` |
-| `apps/cli/commands/job_stop_cmd.py` | +1 / -3 | F7: local `from uuid import UUID` and its blank line deleted; `core = load_job(job_id)`, NOT routed |
+| `.agent/live_review.md` | +8 / -0 | slice RECORD87 appended |
 
-### 2129a67b F275 R86 C6: pin every reachable routed load with an in-process test
+### ec7a051f F275 R87 C3: append the round 86 prose slips
 
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/test_data_paths.py` | +109 / -0 | SPEC T: T1 (eight parameters), T2, T3, T4 added to `TestRoutedHandler`, plus the spy helper they share; `contextlib`, `importlib` and `types.SimpleNamespace` imported at module level; no existing test edited or deleted. The worker's own code |
+| `.agent/prose_slips.md` | +6 / -0 | slice SLIPS87 appended |
 
-### a214fd8c F275 R86 C7: record DECISION F275 D60
+### 09373353 F275 R87 C4: commit the residue instrument over the pinned transcripts
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | +16 / -0 | slice DEC86 APPENDED after G4, G5 and G6 ran at C6; deletion column ZERO |
+| `.agent/authored/f275-r87-residue.py.md` | +203 / -0 | SPEC I: the worker's own instrument, one `python` fence of 5468 bytes, sha256 `d42fbd3c8b8c3048c31f877bef4f9ddc898a19c0522b4171745424fc94907317`; the carrier was generated from the scratch source and its extraction verified to round-trip before staging |
+
+### 75afa4fa F275 R87 C5: land the flip residue reading at its own base
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/f275_t003_flip_residue_r87.md` | +166 / -0 | SPEC A: scope paragraph, G4 generator and transform readings beside the reviewer's, the committed C4 fence's stdout verbatim |
+
+### 7f242191 F275 R87 C6: record DECISION F275 D61
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/decisions.md` | +18 / -0 | slice DEC87 APPENDED after G4, G5 and G6 ran; deletion column ZERO |
+
+### 9776de2f F275 R87 C7: file the operator question on how the flip lands
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/operator_questions.md` | +9 / -1 | slice OPQ87, a full replacement, byte for byte; the one deleted line is `EMPTY — nothing is waiting on the operator.` |
 
 ### C8 — this commit (self-reference, R-0149 pattern)
 
@@ -81,59 +75,60 @@ Review of `b0ef6ab4`..`HEAD` (the nine commits C0a–C7 plus this handback commi
 | `.agent/handoff.md` | NO NUMBERS, BY CONSTRUCTION | constraint 10: no gate runs after C8, and a handback cannot carry a reading of the commit that writes it; the REVIEWER measures this commit |
 
 THE `+/-` CELLS ABOVE WERE READ FROM `git show --numstat` AND COMPARED CELL BY CELL AGAINST G8:
-C0a 291/0 = 291/0; C0b 197/167 = 197/167; C1 11/14 = 11/14; C2 8/0 = 8/0; C3 2/0 = 2/0; C4 4/0 = 4/0;
-C5 18/25 = 18/25 (the seven per-path rows sum to 18/25); C6 109/0 = 109/0; C7 16/0 = 16/0. Nine of nine
-pairs EQUAL, zero differ. Every commit staged exactly ONE path except C5, which staged the seven paths
-of F1 to F7; the largest insertion count is C0a at 291.
+C0a 300/0 = 300/0; C0b 214/205 = 214/205; C1 20/16 = 20/16; C2 8/0 = 8/0; C3 6/0 = 6/0; C4 203/0 = 203/0;
+C5 166/0 = 166/0; C6 18/0 = 18/0; C7 9/1 = 9/1. Nine of nine pairs EQUAL, zero differ. Every commit staged
+exactly ONE path; the largest insertion count is C0a at 300.
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git archive 2129a67b`, extracted by `tarfile` into `.remedy-wt/r86w/tree_c6` (G5(c)) | the scratch tree; a plain directory, never registered |
-| `git worktree add --detach .remedy-wt/r86w/wt 2129a67b` (G6) | exit **0**, `HEAD is now at 2129a67b`; `git worktree list` then showed two rows |
-| `git worktree remove .remedy-wt/r86w/wt` then `git worktree prune -v` | WITHOUT `--force`, before C7; exit **0** and exit **0**, both read through `subprocess`; afterwards the path does not exist and `git worktree list` shows one row |
+| `git archive ef75e213` and `git archive bd2a75d5`, extracted by `tarfile` into `.remedy-wt/r87w/tree_base` and `tree_tip`, each `git init -q` + `git add -A -f .`; `tree_shift` and `tree_delete` by `shutil.copytree(..., symlinks=True)` and re-indexed | all exit **0**; plain directories, never registered worktrees |
+| `git worktree add --detach .remedy-wt/r87w/wt bd2a75d5` (G4) | exit **0**, `HEAD is now at bd2a75d5`; `git worktree list` then showed two rows |
+| `git checkout -- .` inside that worktree, then `git worktree remove .remedy-wt/r87w/wt`, then `git worktree prune -v` | exit **0**, **0**, **0**, all BEFORE C4 and WITHOUT `--force`; the worktree's `status --porcelain` read `''` before the remove; afterwards the path does not exist and `git worktree list` shows one row (deviation 2) |
 | `git push -u origin feature/f275-one-world-completion-part-three` | run after C8; its result is in the round report |
-| `gh` / `remedy` | NOT RUN. The CLI ran only as `python3 -B -m apps.cli.grouped` inside the G5(c) scratch probe. No pull request, no branch created or deleted, no merge, no force-push, no history rewrite |
+| `gh` / `remedy` | NOT RUN. No pull request, no branch created or deleted, no merge, no force-push, no history rewrite, NO SUITE RUN |
 
 ## Verification
 
-Each gate ran through `.remedy-wt/r86w/run.py`. It saves the output to `.remedy-wt/r86w/<gate>.out`
-and appends `PROCESS_EXIT=` from the subprocess's own return code.
+Each gate ran through `.remedy-wt/r87w/run.py`, which saves the output to `.remedy-wt/r87w/<name>.out` and
+appends `PROCESS_EXIT=` from the subprocess's own return code. No reading below differs from the reviewer's
+figure.
 
 | Gate | At | REAL exit | Decisive reading |
 |---|---|---|---|
-| G1 transport, budget, slices | C7 | 0 | `cmp` of `.remedy-wt/r86_block.md` against the COMMITTED C0a blob exit **0**, empty output, both 27925 bytes, sha256 `787d48f9…52f9a6` (equal to the digest the delegation stated); `.agent/last_block.md` at C0b equals the C0a blob; slices FOUND **5**: PLAN86 2296 bytes / 41 lines, RECORD86 3351 / 8, FIND86 2022 / 2, SLIPS86 1078 / 4, DEC86 3741 / 16, each MATCHING the sha256 on its BEGIN marker; TOTAL **291**, slice lines 71, PROSE **220**, as constraint 9 states; no line is a run of one repeated character; all 6 STEP/SLICE header lines carry only two-character rules |
-| G2 the plan | C7 | 0 | `.agent/plan.md` at C1 byte-identical to PLAN86 from the committed C0a blob, 2296 bytes; **41** lines; one `## Goal`, one `## Next Steps` |
-| G3 the record | C7 | 0 | pre-commit blobs read at each commit's PARENT. C2 RECORD86: **1114453** (MATCHES the block) + 3351 = 1117804; C3 FIND86: 1117804 + 2022 = 1119826; C7 DEC86: **1260475** (MATCHES the block) + 3741 = 1264216. READER A exact for all three; READER B holds at N counted by the script as **4**, **1**, **8**. Negative controls: a letter flipped in each FIRST appended paragraph (`G`→`g` at 1114454, `R`→`r` at 1117807, `D`→`d` at 1260479) REJECTED by BOTH readers, all three. Deletion columns **0 / 0 / 0**. prose_slips at C4 = its **295435**-byte pre-commit blob + SLIPS86 exactly (296513), deletion column 0. Header pattern DERIVED from the pre-commit ledger (prefix to the first ` — `, digit runs generalised): one shape, `^Gate: F\d+ R\d+ — `, matching **107 of 107** `Gate:` heads (550 paragraphs); RECORD86's header matches it as `Gate: F275 R85 — `, no earlier head has that prefix, byte-duplicate first lines 0. Lines starting `- R-0883 — `: 0 at C2, **1** at C3, 1 at C7 |
-| G4 the change, structurally | C6 | 0 / 0 | by `ast` over blobs read with `git show` (`g4.out`). Census of `UUID(...)` under `apps/cli/`: at `b0ef6ab4` **21 = 12 into `load_job` + 8 naming a project + 1 other** (`context.py:38`, `task_id`); at C6 **9 = 0 + 8 + 1**, the project and other rows unchanged. `load_job(lookup_job_id(...))` calls: **0** at `b0ef6ab4`, **10** at C6 (review_cmd 25/71/113/147, memory 305/336/375, repo 173, readiness 88, dashboard_cmd 62). LATER READS at C6 of the argument each load consumed at the base: the four review handlers, the three memory handlers and `_load_job` **0**; `_cmd_commit_readiness` line 175 `job_id_str` in the f-string of `Error: job not found`; `_cmd_dashboard_project` line 64 `jid` twice, as the key of `all_events` and as the argument of `load_run_events()`; `_cmd_readiness_project` line 90 `jid` as the key of `all_events`; `_cmd_attach_project_job` line 160 `job_id_str` in the f-string of `ERROR: job not found`. `ruff check` over the eight paths C5 and C6 stage exit **0**, `All checks passed!` (`g4_ruff.out`) |
-| G5 the behaviour | C6 | 0 / 0 / 0 | (a) the **11** node ids SPEC T adds (T1's eight parameters, T2, T3, T4) all **PASSED**, `11 passed`, pytest exit 0, primary checkout (`g5a.out`). (b) the scoped suite in the PRIMARY checkout at C6, exit **0**: **13272 passed, 10 skipped, 0 failed**, 1 warning, 972.13s; zero `FAILED` and zero `ERROR` lines, so the failure set is EMPTY. Against the reviewer's 13261 at `b0ef6ab4` the difference is **+11**: exactly the eleven node ids C6 adds, whose deletion column is 0. Skipped stays 10. (c) THE CLI PROBE (`g5c.out`) in a tree from `git archive 2129a67b`, working directory and `PYTHONPATH` both that tree, `REMEDY_DATA_DIR` an empty scratch directory: `apps.cli.grouped.__file__` = `.remedy-wt/r86w/tree_c6/apps/cli/grouped.py` and `apps.cli.commands.dashboard_cmd.__file__` = `.remedy-wt/r86w/tree_c6/apps/cli/commands/dashboard_cmd.py`, both inside it; exit code **1**; stdout empty; stderr holds a traceback; last stderr line verbatim `ModuleNotFoundError: No module named 'packages.orchestration.project_store'` |
-| G6 mutation red-proofs | C6 | 0 | worktree at `2129a67b`. Before every run `apps.cli.commands.project.__file__` printed as `/home/decodeux/Repos/remedy/.remedy-wt/r86w/wt/apps/cli/commands/project.py`, INSIDE the worktree; pytest `rootdir` the worktree every run; `__pycache__` purged before each run (0 before CONTROL, 8 before each mutation run). Selection: 49 tests. CONTROL pytest exit **0**, `49 passed`. Target occurrence counts: `load_job(lookup_job_id(` 4 in review_cmd, 3 in memory, 1 in repo, 1 in readiness, 1 in dashboard_cmd; `job_id = lookup_job_id(job_id_str)` 1; `attach_job(project, job_id)` 1; `core = load_job(job_id)` 1. Every mutation numstat 1/1. M1 exit 1 fails only `…[review-run]`; M2 exit 1 only `…[review-list]`; M3 exit 1 only `…[review-accept]`; M4 exit 1 only `…[review-reject]`; M5 exit 1 only `…[memory-candidates]`; M6 exit 1 only `…[memory-approve]`; M7 exit 1 only `…[memory-reject]`; M8 exit 1 only `…[commit-readiness]` (each `tests/test_data_paths.py::TestRoutedHandler::test_a_loading_handler_hands_load_job_the_id_a_short_prefix_resolves_to[…]`); M9 exit 1 only `…::test_project_readiness_hands_a_stored_pingpong_id_to_load_job`; M10 exit **0**, `49 passed`, fails NOTHING; M11 exit 1 only `…::test_attaching_by_short_prefix_stores_the_full_job_id`; M12 exit 1 only the same T3; M13 exit 1 only `…::test_stopping_by_an_unhyphenated_id_files_the_stop_under_the_canonical_id`. Each failing run read `1 failed, 48 passed`. EVERY REQUIRED COLOUR MET. Each restore wrote the original bytes back and `git diff --quiet` in the worktree exited 0; worktree `status --porcelain` `''`; removed and pruned before C7 |
-| G7 tree, canary, lint, path set, open set | C7 | 0 | `git status --porcelain` exit 0 `''`; `git worktree list` **1** row; CANARY exit **0**, **42 passed**; `ruff check .` exit **1** by design, **26** `-->` rows against ruff's own `Found 26 errors.`; changed paths `b0ef6ab4`..C7 **14** against the Bundle minus handoff **14**, MISSING `[]`, EXTRA `[]`. Open set BY DISTINCT ID: **87** at `b0ef6ab4` (111 registered − 24 Done), **88** after C3 (112 − 24), added exactly `['R-0883']`, removed none; **88** at C7 (112 − 24), unchanged from C3; base-to-C7 membership difference exactly `['R-0883']`; `R-0809` and `R-0880` OPEN at all three points |
-| G8 insertion cap | C7 | 0 | C0a 291/0 1 path, C0b 197/167 1, C1 11/14 1, C2 8/0 1, C3 2/0 1, C4 4/0 1, C5 18/25 **7**, C6 109/0 1, C7 16/0 1; commits reaching 500 insertions **0** |
+| G1 transport, budget, slices | C7 | 0 | `cmp` of `.remedy-wt/r87_block.md` against the COMMITTED C0a blob exit **0**, empty output, both 29430 bytes, sha256 `277ccb94…159697` (equal to the digest the delegation stated); `.agent/last_block.md` at C0b equals the C0a blob; slices FOUND **5**: PLAN87 2657 bytes / 45 lines, RECORD87 3278 / 8, SLIPS87 1352 / 6, DEC87 5854 / 18, OPQ87 2100 / 18, each MATCHING the sha256 on its BEGIN marker; TOTAL **300**, slice lines 95, PROSE **205**, as constraint 9 states; no line is a run of one repeated character; all 6 STEP/SLICE header lines carry only two-character rules |
+| G2 the plan | C7 | 0 | `.agent/plan.md` at C1 byte-identical to PLAN87 from the committed C0a blob, 2657 bytes; **45** lines; one `## Goal`, one `## Next Steps`; unchanged at C7 |
+| G3 the record | C7 | 0 | pre-commit blobs read with `git show` at each commit's PARENT. C2 RECORD87: **1119826** (MATCHES the block) + 3278 = 1123104; C6 DEC87: **1264216** (MATCHES the block) + 5854 = 1270070. READER A exact for both; READER B holds at N counted by the script as **4** and **9**, in order. Negative controls: a letter flipped in each FIRST appended paragraph (`G`→`g` at 1119827, `D`→`d` at 1264220) REJECTED by BOTH readers, both. Deletion columns **0 / 0**. prose_slips at C3 = its **296513**-byte pre-commit blob + SLIPS87 exactly (297865), deletion column 0. `.agent/operator_questions.md` at C7 byte-identical to OPQ87, 2100 bytes. Header pattern DERIVED from the pre-commit ledger (prefix to the first ` — `, digit runs generalised): one shape, `^Gate: F\d+ R\d+ — `, matching **108 of 108** `Gate:` heads (555 paragraphs); RECORD87's header matches it as `Gate: F275 R86 — `, no earlier head has that prefix, byte-duplicate first lines 0 |
+| G4 the re-derivation | before C4 | 0 / 0 / 0 | three processes: `g4_trees` exit 0, `g4_gen` exit 0, `g4_flip` exit 0. FENCES from the carriers at `bd2a75d5`: re-key 5186 bytes `f56394e9…`, owner check 24253 `7be34374…`, generator 10580 `c50da973…`, transform part1+part2 29032 `075bc0dc…`, all four MATCH. DELETE: the line's count in `brain_detail.py` read **1** (line 142) before removal. GENERATOR (inner re-key and owner runs each REAL EXIT 0): **21** differing paths; **2183** ruled sites after the subtraction; recovered by the scope key **2183 / 2183 / 2183** at TIP / SHIFT / DELETE, UNRESOLVED **0 / 0 / 0**; line-key control **2157 / 2148 / 2148**; owner check at TIP **1908** CONFIRMED, **275** REFUSED, **0** CONTRADICTED. TRANSFORM exit 0: PRECONDITION **2183** resolving, **0** not; **264** files rewritten; **6097** total rewrites; **0** broken. `git diff --numstat` in the worktree: **264** files, **5252** insertions, **5079** deletions, **4177** under `tests/`, **1075** elsewhere, largest **141** (`tests/orchestration/test_job_fulfillment.py`); untracked files 0. CENSUS by `ast` over 269 `.py` files under `packages/` at `bd2a75d5`: **55** `UUID(...)` calls, **29** of `load_job`, **4** of `load_job_safe` (the rest: 13 no call, 3 `str`, 2 `load_project`, 1 each `_lj`, `_mii`, `add`, `make_intent_id`) |
+| G5 the residue | C5 | 0 | the three pinned digests MATCH. The committed C4 fence (5468 bytes, `d42fbd3c…`) ran TWICE, exit 0 / 0, no stderr, stdouts BYTE-IDENTICAL at 5266 bytes, sha256 `3752f7a1…775a53`. Tallies `1 failed, 18429 passed, 29 skipped, 1 warning`, `796 failed, 17603 passed, 29 skipped, 1 warning, 31 errors`, `795 failed, 17610 passed, 23 skipped, 1 warning, 31 errors`; distinct bad nodes **1 / 827 / 826**; flip-only **826**, control-only **0**; symmetric difference exactly `tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes` (only in the one-line flipped run); **826** sections; AssertionError **233**, TypeError **142**, AttributeError **114**, ValueError **85**, `http.client.RemoteDisconnected` **80**, `<none>` **74**; deepest frames production **237**, test **589**, unattributable **0**; pairs `data_paths.py::job_dir` TypeError **80**, `job_fulfillment.py::run_job_fulfill` ValueError **46**, `pingpong_job.py::_persist_job` TypeError **31**, `flight_plan.py::map_flight_plan_to_tasks` TypeError **12**. All 22 compared figures MATCH. At C5, read from the COMMITTED blob `75afa4fa`: all **85** stdout lines found in the artefact in order, 0 missing |
+| G6 the instrument can fail | C5 | 0 | scratch copies only. (a) the exact `FAILED …::test_staged_apply_has_staged_scope` line counted **1** in the flipped copy, removed: flip-only reads **825**, instrument exit 0. (b) the `FAILED tests/test_data_paths.py::TestLookupJobId::test_a_non_hex_string_raises_invalid` line appended after the control copy's last `FAILED` line (line 297): control-only reads **1**, exit 0. (c) lines ENDING `packages/orchestration/data_paths.py:201: in job_dir` removed from the short copy: **80** (equal to the reviewer's copy); no output row names `data_paths.py::job_dir`, the pair is ABSENT, exit 0 |
+| G7 tree, canary, lint, path set, open set | C7 | 0 | `git status --porcelain` exit 0 `''`; `git worktree list` **1** row; CANARY `python3 -B -m pytest tests/cli/test_golden_path.py -q` exit **0**, **42 passed**; `ruff check .` exit **1**, **26** `-->` rows against ruff's own `Found 26 errors.`; `.py` files under `.agent/` on the filesystem **0**; changed paths `bd2a75d5`..C7 **9** against the Bundle minus handoff **9**, MISSING `[]`, EXTRA `[]`. Open set BY DISTINCT ID: **88** at `bd2a75d5` (112 registered − 24 Done) and **88** at C7 (112 − 24), membership IDENTICAL; `R-0809`, `R-0880` and `R-0883` OPEN at both |
+| G8 insertion cap | C7 | 0 | C0a 300/0 1 path, C0b 214/205 1, C1 20/16 1, C2 8/0 1, C3 6/0 1, C4 203/0 1, C5 166/0 1, C6 18/0 1, C7 9/1 1; commits reaching 500 insertions **0**. Over `a5bf8949`..`bd2a75d5`, non-merge commits above 500 insertions: **8** — `8b02f1e8` 627, `75cc221e` 636, `dac50bcd` 609, `0d47205d` 551, `7ac6ec87` 553, `30072048` 515, `bf5ec6a4` 711, each `.agent/handoff.md` alone (**7**), and `78e5c18c` **529**, `.agent/authored/f275-r73-owner-stage.py.md` |
 
-THE READINGS DEC86 STATES WERE CHECKED AT C6 BEFORE C7 LANDED: ten `load_job(lookup_job_id(...))`; no `UUID(...)`
-under `apps/cli/` feeding `load_job`, with the project and task-id calls remaining; eleven sites each pinned
-by a test its restored parse fails; restoring the dashboard parse changes no colour; `_load_job` has three
-call sites in `job_stop_cmd.py` (lines 59, 114, 127 at C6). All matched.
+THE READINGS DEC87 STATES WERE CHECKED BEFORE C6 LANDED (`.remedy-wt/r87w/pre_c6.out`): beyond G4–G6, the 80
+`RemoteDisconnected` sections' last captured server-side traceback line reads
+`AttributeError: '_JobPlanAdapter' object has no attribute 'job_id'` **73** times and
+`TypeError: unsupported operand type(s) for /: 'PosixPath' and 'UUID'` **7** times, and the eight oversize
+commits above were listed by the same command G8 later ran. All matched.
 
 STOP READINGS, per constraint 3: before C0a and before C8, `.agent/STOP` ABSENT at both — `test -e`
-exit 1, `ls -la` exit 2, `os.path.exists` False — transcripts `.remedy-wt/r86w/stop_before_C0a.txt`
-and `.remedy-wt/r86w/stop_before_C8.txt`.
+exit 1, `ls -la` exit 2, `os.path.exists` False — transcripts `.remedy-wt/r87w/stop_before_C0a.txt`
+and `.remedy-wt/r87w/stop_before_C8.txt`.
 
 ## Authored-text proofs
 
 | Text | Target | Result |
 |---|---|---|
-| the block | `.agent/authored/f275-r86.md` | `cmp` exit 0 against `.remedy-wt/r86_block.md`, 27925 bytes, sha256 `787d48f959127b504d1cae8496b1f8532996b84ab0bd4210da63ab06fc52f9a6` |
-| PLAN86 | `.agent/plan.md` | byte-identical, 2296 bytes, sha256 `4e7bff4bd9145799caeb9a1b367153bafa4119f8ca838181697c479b3ee569ce` |
-| RECORD86 | `.agent/live_review.md` | exact suffix at C2 under readers A and B, 3351 bytes, sha256 `e2966bb0789a29b28efb099eace555f3512d14f2e5d47b85a5595162ac07ba71` |
-| FIND86 | `.agent/live_review.md` | exact suffix at C3 under readers A and B, 2022 bytes, sha256 `984db7b72773e68337ab377ab8158c7b4a9cee0f4040b0edf6b8c52ea03ad188` |
-| SLIPS86 | `.agent/prose_slips.md` | exact suffix at C4, 1078 bytes, sha256 `347e9cae0d9f4e356c790eb497dbd77a0f3b6057c29066ddc70a6b79fe4789f8` |
-| DEC86 | `.agent/decisions.md` | exact suffix at C7 under readers A and B, 3741 bytes, sha256 `c5fb18281405f656bb31a5e40111f081d67b6642ab5acb2beb8f3c3878285cb4` |
+| the block | `.agent/authored/f275-r87.md` | `cmp` exit 0 against `.remedy-wt/r87_block.md`, 29430 bytes, sha256 `277ccb94802280d8e23b70d4680258c2f4e97ee81aa5b2345ddf36275e159697` |
+| PLAN87 | `.agent/plan.md` | byte-identical, 2657 bytes, sha256 `12dfff71d180b560b1aa305c0e092e6766b9dfe7f07e8838ab97804ae4b00e3c` |
+| RECORD87 | `.agent/live_review.md` | exact suffix at C2 under readers A and B, 3278 bytes, sha256 `770e942105badf349aea56de206a5dc223f6de5f8ead80b60f4755e9c3ab148f` |
+| SLIPS87 | `.agent/prose_slips.md` | exact suffix at C3, 1352 bytes, sha256 `74e778bdb8e80c782a0abdbeeb816566ce67cde8f1f5f3f5fd8850ebbed39d86` |
+| DEC87 | `.agent/decisions.md` | exact suffix at C6 under readers A and B, 5854 bytes, sha256 `435031a68f9b24c9392e857e234b1e30d10f570428821c101537efcc409421cf` |
+| OPQ87 | `.agent/operator_questions.md` | byte-identical, 2100 bytes, sha256 `f009f1512642ce5d5950a08032e1bd58595b022ba071178ec8caa231c887b762` |
 
-Every slice was applied by bytes from the COMMITTED C0a blob, and NO SLICE WAS EDITED. C5 and C6 are the
-worker's own code, written from SPEC F and SPEC T.
+Every slice was applied by bytes from the COMMITTED C0a blob, and NO SLICE WAS EDITED. C4 and C5 are the
+worker's own text, written from SPEC I and SPEC A.
 
 ## Item-status table
 
@@ -142,68 +137,72 @@ worker's own code, written from SPEC F and SPEC T.
 | C0a block | done | |
 | C0b last-block mirror | done | from the committed C0a blob |
 | C1 plan | done | first substantive commit |
-| C2 round 85 verdict | done | |
-| C3 register R-0883 | done | |
-| C4 prose slips | done | |
-| C5 SPEC F1–F7 | done | one commit, seven paths |
-| C6 SPEC T1–T4 | done | in-process; shared spy helper added inside the class (deviation 1) |
-| C7 DECISION F275 D60 | done | after the DEC86 readings reproduced at C6 |
+| C2 round 86 verdict | done | |
+| C3 prose slips | done | |
+| C4 SPEC I instrument | done | definitions stated in the carrier (deviation 3) |
+| C5 SPEC A artefact | done | empty stdout lines left unindented (deviation 1) |
+| C6 DECISION F275 D61 | done | after G4, G5 and G6 ran |
+| C7 operator question | done | |
 | C8 handback | done | this commit |
-| G1 · G2 · G3 | done | exit 0 · 0 · 0, at C7 |
-| G4 · G5 · G6 | done | exit 0 · 0 · 0, at C6 |
-| G7 · G8 | done | exit 0 · 0, at C7 |
+| G4 | done | exit 0 · 0 · 0, before C4 |
+| G5 · G6 | done | exit 0, at C5 |
+| G1 · G2 · G3 · G7 · G8 | done | exit 0 · 0, at C7 |
 
 ## Deviations & assumptions
 
-1. **SPEC T's FOUR TESTS SHARE A HELPER THE SPEC DOES NOT NAME.** Inside `TestRoutedHandler` sit a nested
-   exception class `_LoadJobReached` and a method `_spy_on_load_job`. The method replaces
-   `packages.orchestration.storage.load_job` with a spy that records `str()` of its first argument and
-   raises that exception. T1 and T2 use it; pytest collects neither helper. T1 takes the handler as a
-   module name plus a function name, imported with `importlib`. The review handlers get a
-   `SimpleNamespace(job_id="abcd1234", recommendation_id="rec-1")`; the memory handlers get `"cand-1"` as the
-   candidate id. The call runs under `contextlib.suppress(_LoadJobReached, SystemExit)`. T2, T3 and T4 request
-   `capsys`, and only T3 reads it.
+1. **SPEC A's "EVERY STDOUT LINE INDENTED BY ONE SPACE" IS MET FOR EVERY NON-EMPTY LINE ONLY.** The instrument's
+   stdout has three empty lines, the separators between I1, I2, I3 and I4. In the artefact they stay empty
+   rather than becoming a lone space, because a line of nothing but a space is trailing whitespace in a committed
+   document. Round 82's generator made the same choice, and no `f275_t003_*` artefact from rounds 70 to 82 has a
+   whitespace-only line. The artefact says so in the sentence before the stdout. The in-order check treats an
+   empty stdout line as an empty artefact line, and the artefact's last 85 lines, unindented, EQUAL the stdout
+   lines.
 
-2. **INSTRUMENT DEFINITIONS OF G4, STATED BESIDE THE COUNTS.** "An argument of `load_job`" is a `UUID(...)`
-   node that is a positional argument of a call whose callee name, bare or attribute, is `load_job`.
-   "An argument whose source names a project" is the substring `project` in the source text of the
-   `UUID(...)` call's first argument. Import aliases are NOT followed. `apps/cli/` imports no alias of `UUID`.
-   It holds one alias of `load_job`, `apps/cli/commands/patch.py:201`, `load_job as _load_job`, and no
-   `UUID(...)` call in `patch.py` is among the 21, so the alias hides nothing. The base count reproduces
-   the reviewer's 21 = 12 + 8 + 1. A
-   "later read" is a load of the same name, or the same `args.job_id` attribute, on a line after the
-   function's first `load_job` call at C6.
+2. **THE G4 WORKTREE WAS RESTORED BEFORE IT WAS REMOVED.** The transform rewrites 264 tracked files, and
+   `git worktree remove` refuses a modified worktree without `--force`. So `git checkout -- .` ran inside the
+   detached worktree after the numstat was read. It left `status --porcelain` at `''` and 0 untracked files, and
+   the remove and prune then ran without `--force`. No branch or commit was touched.
 
-3. **SCRATCH WORK RAN BESIDE THE SUITE, NO SECOND SUITE DID.** While G5(b) ran in the primary checkout,
-   this worker ran G4, which parses `git show` blobs and runs no tests, and G5(c), one CLI process in the
-   `git archive` tree with its own data directory. G6 and G5(a) started only after G5(b) had finished.
+3. **INSTRUMENT DEFINITIONS SPEC I LEFT OPEN, STATED IN THE C4 CARRIER.** "Pytest's final tally line" is the LAST
+   line that is a comma-separated run of `<n> <word>` counts followed by ` in <seconds>s (<clock>)`, and only the
+   counts are printed. PREFIX and one `/` are stripped only when the frame path starts with PREFIX. The section
+   region starts at the first line containing `= ERRORS =` or `= FAILURES =` and ends at the first later line
+   containing `short test summary info`. Lines before the first section header in that region belong to no
+   section. "Sorted" for a count listing means count descending and then key ascending, which is a total order.
+   The symmetric difference is sorted by node id, and each row names the transcript it appears in.
 
-4. **FLAGS AND ENVIRONMENT NOT IN THE BLOCK'S COMMAND TEXT.** In G6 pytest ran as `python3 -B -m pytest`
-   with `-v -p no:randomly -p no:cacheprovider`. `-v` gives the per-test colours, and `no:cacheprovider` keeps
-   `.pytest_cache` out of the worktree so it could be removed without `--force`. The `PYTHONPATH` was set to
-   the worktree. G5(c) and G6 removed any inherited `PYTHONPATH`, `REMEDY_PROJECT` and `REMEDY_DATA_DIR`
-   before setting their own. The 8 `__pycache__` directories purged before each mutation run were written
-   by subprocesses the selection's tests spawn, which do not run with `-B`.
+4. **G4 CENSUS DEFINITION.** A `UUID(...)` call is an `ast.Call` whose callee is the bare `Name` `UUID`. The
+   attribute form `<x>.UUID(...)` occurs 0 times under `packages/`. Each call is counted by the callee name,
+   bare `Name` id or `Attribute` attr, of the call whose positional arguments contain it. Import aliases are NOT
+   followed, so the one call into `_lj` and the one into `_mii` count under those names, not under
+   `load_job` or `make_intent_id`. Under this definition the reviewer's 55 / 29 / 4 reproduce.
 
-5. **THE STATE-FILE ORDER.** C0a and C0b land before C1 updates `.agent/plan.md`, as the Bundle orders and as
-   item 23 of §3 names C1 the first substantive commit. That is AGENTS.md's plan-before-commit rule applied
-   per the block, not a departure from the block.
+5. **ONE GATE READING WAS TAKEN LATER THAN THE DECISION THAT QUOTES IT.** DEC87 at C6 quotes the eight-commit
+   oversize history, which constraint 10 assigns to G8 at C7. The same command ran before C6 as a scratch check
+   (`pre_c6.py`), and G8 re-ran it at C7. The two listings are identical. The 73 / 7 split of the server-side
+   tracebacks DEC87 states belongs to no gate. It was read from the pinned short transcript before C6 and
+   matched.
 
-6. **OBSERVED, NOT ACTED ON.** G4's later-reads listing shows that `_cmd_dashboard_project` and
-   `_cmd_readiness_project` still key `all_events` by the raw stored `jid`, and the dashboard handler also
-   passes it to `load_run_events`. A stored id is normally already canonical. No SPEC line names these
-   reads, so they are unchanged.
+6. **OBSERVED, NOT ACTED ON.** The generator's CROSS-CHECK lines "re-key BASE to TIP equals the subtracted set"
+   read `False` as a set and in order. This is expected rather than a failure, because 21 paths differ between
+   BASE and TIP and a line-keyed tuple moves when its file changes. The ordered reading is the scope-key
+   recovery, and it is 2183 of 2183. The owner check over DELETE, which no gate asks for, read 1907 / 276 / 0.
 
-7. **NO OTHER DEVIATION.** The commit sequence is exactly the Bundle. Nothing under `packages/`, `docs/` or
-   `scripts/` was touched, no landed record was rewritten, and no `.py` file was created under `.agent/`.
-   The reviewer's `.remedy-wt/r86/` was not opened. All of this worker's scratch is under
-   `.remedy-wt/r86w/`, uncommitted.
+7. **THE STATE-FILE ORDER.** C0a and C0b land before C1 updates `.agent/plan.md`, as the Bundle orders and as
+   item 23 of §3 names C1 the first substantive commit.
+
+8. **NO OTHER DEVIATION.** The commit sequence is exactly the Bundle. Nothing under `packages/`, `apps/`,
+   `tests/`, `docs/` or `scripts/` was touched. No landed record was rewritten and no `.py` file was created
+   under `.agent/`. Of the reviewer's `.remedy-wt/r87/`, only the three pinned transcripts were opened, plus one
+   directory listing while their digests were checked. All of this worker's scratch is under `.remedy-wt/r87w/`,
+   uncommitted.
 
 ## Next
 
-The reviewer re-runs the gates and the red-proofs and issues the round 86 verdict.
+The reviewer re-runs the gates and issues the round 87 verdict.
 
-Operator questions open: 0
+Operator questions open: 1
 
-After that, per `.agent/plan.md`: THE FLIP, carrying DECISION F275 D48's obligations; then the classic
-store, then the closure sequence. `R-0883` stays open for the findings paydown, owner F273.
+After that, per `.agent/plan.md`: the `UUID(...)` parses under `packages/` that feed the job store, a SPLIT
+production round with mutation red-proofs; then the flip's dry run again; then the flip as a series of commits
+under the cap unless the operator answers Q1 otherwise; then the classic store and the closure sequence.
