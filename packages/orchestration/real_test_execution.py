@@ -44,9 +44,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from packages.common.public_text_redaction import _safe_path_label, _scrub_public
+from packages.orchestration.data_paths import normalize_job_id
 
 SCHEMA_VERSION = "real-test-execution-v1"
 _RTE_DIRNAME = "real_test_execution"
@@ -225,7 +226,7 @@ def resolve_allowed_command(
     try:
         from packages.orchestration.command_discovery import discover_commands
         from packages.orchestration.storage import load_job
-        job = load_job(UUID(job_id), ddir)
+        job = load_job(normalize_job_id(job_id), ddir)
     except Exception:
         return False, None, "job not found or unloadable"
     repo = (job.metadata or {}).get("target_repo", "")
@@ -320,7 +321,7 @@ def list_test_runs(job_id: str, data_dir: Path | None = None) -> list[dict]:
     ddir = _resolve_ddir(data_dir)
     try:
         from packages.orchestration.storage import load_job
-        job = load_job(UUID(job_id), ddir)
+        job = load_job(normalize_job_id(job_id), ddir)
     except Exception:
         return []
     runs = (job.metadata or {}).get("test_runs", [])
@@ -337,7 +338,7 @@ def get_test_run(test_run_id: str, data_dir: Path | None = None) -> dict | None:
             if jid is None:
                 continue
             try:
-                job = load_job(UUID(str(jid)), ddir)
+                job = load_job(normalize_job_id(str(jid)), ddir)
             except Exception:
                 continue
             for r in (job.metadata or {}).get("test_runs", []):
@@ -425,7 +426,7 @@ def create_snapshot_proof(job_id: str, *, data_dir: Path | None = None) -> Snaps
     proof = SnapshotProof(snapshot_id=f"snap-{uuid4().hex[:12]}", job_id=job_id, created_at=_now())
     try:
         from packages.orchestration.storage import load_job
-        job = load_job(UUID(job_id), ddir)
+        job = load_job(normalize_job_id(job_id), ddir)
         repo = (job.metadata or {}).get("target_repo", "")
     except Exception:
         repo = ""

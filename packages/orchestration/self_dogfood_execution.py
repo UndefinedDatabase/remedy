@@ -41,7 +41,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
+
+from packages.orchestration.data_paths import normalize_job_id
 
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1430/1434)
@@ -469,7 +471,7 @@ def evaluate_self_execution_eligibility(
 
     # Contract gate.
     try:
-        job = load_job(UUID(jid), ddir)
+        job = load_job(normalize_job_id(jid), ddir)
     except (ValueError, JobNotFoundError):
         elig.blockers.append("no_job")
         elig.stop_reason = StopReason.NO_JOB
@@ -660,7 +662,7 @@ def reconcile_self_attempt(
         return _result_from_attempt(a)
 
     try:
-        job = load_job(UUID(a.job_id), ddir)
+        job = load_job(normalize_job_id(a.job_id), ddir)
     except (ValueError, JobNotFoundError):
         a.stop_reason = StopReason.NO_JOB
         save_attempt(a, ddir)

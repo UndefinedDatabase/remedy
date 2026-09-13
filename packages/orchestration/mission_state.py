@@ -53,9 +53,9 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-from packages.orchestration.data_paths import missions_dir
+from packages.orchestration.data_paths import missions_dir, normalize_job_id
 from packages.orchestration.exec_guard import run_guarded_test_command
 from packages.orchestration.storage import _atomic_write_job as _atomic_write
 
@@ -655,7 +655,7 @@ def mission_job_state_label(job_id: str) -> str:
     from packages.orchestration.storage import load_job_safe
 
     try:
-        uuid = UUID(str(job_id))
+        uuid = normalize_job_id(str(job_id))
     except (AttributeError, TypeError, ValueError):
         return MISSING_JOB_LABEL
     try:
@@ -1043,7 +1043,7 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
         role = MISSION_ROLE_INITIAL
     else:
         try:
-            previous_job = load_job(UUID(previous.job_id))
+            previous_job = load_job(normalize_job_id(previous.job_id))
         except (ValueError, JobNotFoundError) as exc:
             raise MissionError(
                 f"the previous job {previous.job_id} is gone, so its Definition "

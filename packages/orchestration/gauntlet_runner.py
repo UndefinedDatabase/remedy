@@ -43,6 +43,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.era_integrity import DEFECT_FINDING_CLASSES
 from packages.orchestration.gauntlet_evidence import (
     DOD_RESULT_FILENAME,
@@ -348,9 +349,7 @@ def collect_open_decisions(mission: Any) -> list[dict[str, Any]]:
     open_records: list[dict[str, Any]] = []
     for link in getattr(mission, "job_links", ()) or ():
         try:
-            from uuid import UUID
-
-            job, _ = load_job_safe(UUID(str(link.job_id)))
+            job, _ = load_job_safe(normalize_job_id(str(link.job_id)))
         except (ValueError, OSError):
             continue
         if job is None:

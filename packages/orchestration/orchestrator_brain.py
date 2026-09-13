@@ -33,7 +33,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
+
+from packages.orchestration.data_paths import normalize_job_id
 
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1466/1470/1471/1472)
@@ -304,7 +306,7 @@ def _gather_signals(job_id: str, data_dir: Path,
     }
     from packages.orchestration.storage import JobNotFoundError, load_job
     try:
-        job = load_job(UUID(job_id), data_dir)
+        job = load_job(normalize_job_id(job_id), data_dir)
     except (ValueError, JobNotFoundError):
         refs.append(OrchestratorEvidenceRef("job", "missing"))
         return sig

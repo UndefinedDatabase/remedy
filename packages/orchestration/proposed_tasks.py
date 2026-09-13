@@ -28,11 +28,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from packages.orchestration.data_paths import proposed_tasks_dir
+from packages.orchestration.data_paths import normalize_job_id, proposed_tasks_dir
 
 
 def _utcnow() -> datetime:
@@ -647,7 +647,7 @@ def do_materialize(job_id: str, task_id: str, root: Path | None = None) -> Propo
     from packages.core.models import Task
     from packages.orchestration.storage import load_job, save_job
 
-    job_uuid = UUID(job_id)
+    job_uuid = normalize_job_id(job_id)
 
     with _file_lock(job_id, root):
         job = load_job(job_uuid, root)
@@ -695,7 +695,7 @@ def reconcile_materialized(job_id: str, root: Path | None = None) -> dict[str, A
     """
     from packages.orchestration.storage import load_job_safe
 
-    job_uuid = UUID(job_id)
+    job_uuid = normalize_job_id(job_id)
     job, job_degraded = load_job_safe(job_uuid, root)
 
     try:
@@ -823,7 +823,7 @@ def backend_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
     """Structured readiness report: storage, build, finalize, execution, overnight sections."""
     from packages.orchestration.storage import list_jobs_safe, load_job_safe
 
-    job, job_degraded = load_job_safe(UUID(job_id), root)
+    job, job_degraded = load_job_safe(normalize_job_id(job_id), root)
     proposals, proposals_degraded = load_proposed_tasks_safe(job_id, root)
     recon = reconcile_materialized(job_id, root)
     _, jobs_degraded, skipped_files = list_jobs_safe(root)

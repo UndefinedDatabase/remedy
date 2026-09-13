@@ -59,6 +59,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.mission_state import (
     Mission,
     list_missions_safe,
@@ -247,12 +248,10 @@ def _dossier_section(mission: Mission, root: Path | None,
 
 def _load_job_for_decisions(job_id: str) -> Any:
     """The persisted job, or None. A job that cannot be read is a gap, not a raise."""
-    from uuid import UUID
-
     from packages.orchestration.storage import load_job_safe
 
     try:
-        job, _degraded = load_job_safe(UUID(str(job_id)))
+        job, _degraded = load_job_safe(normalize_job_id(str(job_id)))
     except (ValueError, TypeError):
         return None
     if job is not None:

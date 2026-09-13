@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 
 from pydantic import BaseModel, Field
 
+from packages.orchestration.data_paths import normalize_job_id
+
 # ---------------------------------------------------------------------------
 # JobFulfillmentStatus
 # ---------------------------------------------------------------------------
@@ -601,7 +603,7 @@ def _approve_and_apply_intent(
         record.changed_files.append(apply_result.target_path)
 
     # Reload job after apply mutated metadata
-    job = load_job(UUID(record.job_id), data_dir)
+    job = load_job(normalize_job_id(record.job_id), data_dir)
     return job, True
 
 
@@ -634,7 +636,7 @@ def run_job_fulfill(
     data_dir = Path(data_dir)
 
     record = JobFulfillmentRecord(job_id=job_id, mode="fixture_demo")
-    job = load_job(UUID(job_id), data_dir)
+    job = load_job(normalize_job_id(job_id), data_dir)
     record.repo_safe_name = repo_root.name
 
     append_run_event(data_dir, job_id, event="fulfillment_started", metadata={
@@ -923,7 +925,7 @@ def run_job_fulfill(
         try:
             from packages.orchestration.proof_chain import build_proof_chain
             from packages.orchestration.timeline import load_run_events
-            job = load_job(UUID(job_id), data_dir)
+            job = load_job(normalize_job_id(job_id), data_dir)
             events = load_run_events(data_dir, job_id)
             chain = build_proof_chain(job, events, data_dir=data_dir)
             record.proof_status = chain.overall_status
@@ -948,7 +950,7 @@ def run_job_fulfill(
 
         # ── FINAL REVIEW ──────────────────────────────────────────────
         record.status = JobFulfillmentStatus.FINAL_REVIEW
-        job = load_job(UUID(job_id), data_dir)
+        job = load_job(normalize_job_id(job_id), data_dir)
 
         all_tasks_done = all(
             (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed"
@@ -1025,7 +1027,7 @@ def run_job_fulfill(
             record.status = JobFulfillmentStatus.COMPLETED_VERIFIED
             record.stop_reason = "completed_verified"
 
-            job = load_job(UUID(job_id), data_dir)
+            job = load_job(normalize_job_id(job_id), data_dir)
             job.state = RunState.COMPLETED
             save_job(job, root=data_dir)
 

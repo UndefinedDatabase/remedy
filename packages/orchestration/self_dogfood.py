@@ -30,7 +30,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID
+
+from packages.orchestration.data_paths import normalize_job_id
 
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1400/1401/1407)
@@ -370,7 +371,7 @@ def build_self_dogfood_inspection(
     if job_id:
         try:
             from packages.orchestration.storage import JobNotFoundError, load_job
-            job = load_job(UUID(job_id), ddir)
+            job = load_job(normalize_job_id(job_id), ddir)
             insp.sources_checked.append(SelfImprovementSource("job", SourceStatus.AVAILABLE))
         except (ValueError, JobNotFoundError):
             insp.sources_checked.append(SelfImprovementSource("job", SourceStatus.MISSING))
@@ -467,7 +468,7 @@ def propose_self_improvement(
     result = SelfDogfoodResult(job_id=job_id)
 
     try:
-        load_job(UUID(job_id), ddir)
+        load_job(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         result.stop_reason = "job_not_found"
         result.evidence_status = "unknown"
@@ -476,7 +477,7 @@ def propose_self_improvement(
         return result
 
     from packages.orchestration.storage import load_job as _lj
-    job = _lj(UUID(job_id), ddir)
+    job = _lj(normalize_job_id(job_id), ddir)
     contract = ensure_contract(job)
     if not evaluate_run_action(contract, ContractAction.SELF_PROPOSE_TASK).allowed:
         result.stop_reason = "contract_blocked"

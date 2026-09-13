@@ -17,8 +17,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID
 
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.do_run import (
     DoRunNextAction,
 )
@@ -608,7 +608,7 @@ def build_repair_context(
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
 
     try:
-        job = load_job(UUID(job_id), ddir)
+        job = load_job(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         ctx.status = "blocked"
         ctx.blocker = "job_not_found"
@@ -790,7 +790,7 @@ def evaluate_repair_eligibility(
 
     # 1. Job exists.
     try:
-        job = load_job(UUID(job_id), ddir)
+        job = load_job(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         elig.blockers.append("job_not_found")
         elig.next_safe_action = _na("List jobs", "remedy job list --json", "Job not found.")
@@ -1101,7 +1101,7 @@ def run_repair_attempt(
         )
 
     try:
-        job = load_job(UUID(job_id), ddir)
+        job = load_job(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         return RepairAttemptResult(
             job_id=job_id, failure_artifact_id=failure_artifact_id,
@@ -1407,7 +1407,7 @@ def reconcile_repair_after_continue(
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     out = RepairReconcileResult()
     try:
-        job = load_job(UUID(job_id), ddir)
+        job = load_job(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         return out
 

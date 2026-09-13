@@ -55,6 +55,7 @@ from typing import Any
 from uuid import uuid4
 
 from packages.common.public_text_redaction import _safe_path_label, _scrub_public
+from packages.orchestration.data_paths import normalize_job_id
 
 # ---------------------------------------------------------------------------
 # Constants / vocabularies
@@ -334,12 +335,10 @@ def export_context_budget_estimate_json(e: ContextBudgetEstimate) -> dict[str, A
 def _inspect(job_id: str, task_id: str, data_dir: Path) -> Any:
     """Run the existing safe context inspection for a job. Returns ContextInspection or None."""
     try:
-        from uuid import UUID
-
         from packages.orchestration.context_inspector import inspect_context
         from packages.orchestration.storage import load_job
         from packages.orchestration.timeline import load_run_events
-        job = load_job(UUID(job_id), data_dir)
+        job = load_job(normalize_job_id(job_id), data_dir)
         events = load_run_events(data_dir, job.id)
         return inspect_context(job, events, task_id=task_id or None)
     except Exception:

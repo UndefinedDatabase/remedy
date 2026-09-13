@@ -38,7 +38,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
+
+from packages.orchestration.data_paths import normalize_job_id
 
 MAX_REQUEST_BYTES = 256 * 1024
 _REQUESTS_META_KEY = "repair_request_packages_v0"
@@ -462,7 +464,7 @@ def build_repair_request_package(
         model_hint=hint, generator_label=label)
 
     try:
-        job = load_job(UUID(job_id), ddir)
+        job = load_job(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         result.stop_reason = RepairRequestStopReason.JOB_NOT_FOUND
         result.evidence_status = "unknown"
