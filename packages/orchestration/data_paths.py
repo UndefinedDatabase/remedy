@@ -325,6 +325,27 @@ class JobIdAmbiguous(JobIdError):
         )
 
 
+# UUID(...) was the id-shape check while every job id was a UUID, and it refuses the sixteen-hex id mint_job_id mints.
+_JOB_ID_HEX16_RE = re.compile(r"[0-9a-f]{16}")
+
+
+def normalize_job_id(raw: str) -> str:
+    """Check a job id's SHAPE and return its canonical spelling, or RAISE.
+
+    A string ``UUID(...)`` accepts comes back as ``str(UUID(raw))``; sixteen
+    lowercase hex characters, the shape :func:`mint_job_id` mints, come back
+    unchanged; anything else raises :class:`JobIdInvalid`. It reads no disk and
+    resolves no prefix — :func:`lookup_job_id` is the function that does.
+    """
+    try:
+        return str(UUID(raw))
+    except ValueError:
+        pass
+    if _JOB_ID_HEX16_RE.fullmatch(raw):
+        return raw
+    raise JobIdInvalid(f"invalid job ID: {raw!r}")
+
+
 def lookup_job_id(raw: str) -> str:
     """Resolve a full job id or a short hex prefix across BOTH job stores, or RAISE.
 
