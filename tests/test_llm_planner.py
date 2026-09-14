@@ -10,13 +10,13 @@ import pytest
 from pydantic import ValidationError
 
 from packages.core.models import Artifact, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.job_runner import PlanJobResult
 from packages.orchestration.llm_planner import (
     annotate_planning_result,
     compose_planner_prompt,
     plan_job_with_llm,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 from packages.orchestration.prompt_segments import (
     PROMPT_SEGMENT_DELIMITER,

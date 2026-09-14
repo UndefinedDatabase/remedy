@@ -28,7 +28,6 @@ from pathlib import Path
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration import budget_guard, decision_inbox
 from packages.orchestration.budget_guard import (
     BudgetCounters,
@@ -49,7 +48,7 @@ from packages.orchestration.job_digest import (
     OPEN_CARD_STATUS,
     build_job_digest,
 )
-from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.run_report import (
     build_report_sources,
     recommended_next_action,

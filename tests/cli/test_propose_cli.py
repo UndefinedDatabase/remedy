@@ -38,10 +38,8 @@ def tmp_store_with_job(tmp_path, monkeypatch):
         "packages.orchestration.storage._DATA_DIR",
         tmp_path / "jobs",
     )
-    from uuid import UUID
 
-    from packages.orchestration.pingpong_job import JobPlan
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
     job = JobPlan(job_id=REAL_JOB_UUID, job_title="cli-test")
     save_job_plan(job)
     return tmp_path
@@ -327,9 +325,8 @@ class TestAuditEvents:
         )
         from uuid import UUID
 
-        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.run_log import RunLogWriter
-        from packages.orchestration.pingpong_job import save_job_plan
         job_uuid = "12345678-1234-1234-1234-123456789012"
         save_job_plan(JobPlan(job_id=job_uuid, job_title="audit-test"))
         t = ProposedTask(title="Test", risk="medium")

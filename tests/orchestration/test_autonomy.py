@@ -16,8 +16,8 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -273,8 +273,7 @@ class TestCommitReadinessPreviewReadOnly:
 
     def test_readiness_not_ready_no_tests(self):
         """Missing tests -> not ready."""
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         job = JobPlan(job_title="readiness-test")
         save_job_plan(job)
@@ -288,8 +287,7 @@ class TestCommitReadinessPreviewReadOnly:
             assert any("tests" in r for r in data["reasons"])
 
     def test_readiness_schema(self):
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         job = JobPlan(job_title="schema-test")
         save_job_plan(job)
@@ -309,8 +307,7 @@ class TestCommitReadinessPreviewReadOnly:
             assert not missing, f"Missing: {missing}"
 
     def test_readiness_no_proof(self):
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         job = JobPlan(job_title="no-proof")
         save_job_plan(job)
@@ -342,8 +339,7 @@ class TestCommitReadinessPreviewReadOnly:
 
     def test_suggested_message_safe(self):
         """Suggested commit message should not contain raw content."""
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         job = JobPlan(job_title="msg-test")
         save_job_plan(job)
@@ -421,8 +417,7 @@ class TestCommitReadinessNextActionSurface:
     """Commit-readiness must include grounded next_action."""
 
     def test_next_action_schema(self):
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job = JobPlan(job_title="na-schema")
         save_job_plan(job)
 
@@ -641,8 +636,8 @@ class TestGeneratedCommandCatalogConsistency:
         valid_commands = {f"{c.group_id} {c.subcommand}" for c in CATALOG}
 
         # Check readiness next_actions
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autonomy_readiness import assess_job_readiness
+        from packages.orchestration.pingpong_job import JobPlan
 
         job = JobPlan(job_title="test", user_prompt="test")
         report = assess_job_readiness(job, [])
@@ -677,8 +672,8 @@ class TestAutonomyLevelSingleSourceOfTruth:
 
     def test_loop_respects_readiness(self):
         """Loop blocks if requested level exceeds readiness or has blockers."""
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autonomy_loop import run_autonomy_loop
+        from packages.orchestration.pingpong_job import JobPlan
 
         job = JobPlan(job_title="test", user_prompt="test")
         # Request level 4 (bounded_loop) but job has no signals → blocked
@@ -690,8 +685,8 @@ class TestAutonomyLevelSingleSourceOfTruth:
 
     def test_levels_6_7_blocked(self):
         """Levels 6-7 must be blocked (future only)."""
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autonomy_readiness import assess_job_readiness
+        from packages.orchestration.pingpong_job import JobPlan
 
         job = JobPlan(job_title="test", user_prompt="test")
         report = assess_job_readiness(job, [])

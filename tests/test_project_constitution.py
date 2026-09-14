@@ -45,8 +45,8 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.cockpit import summarize_cockpit
+from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.project_constitution import (
     ProjectConstitution,
     _is_safe_path,
@@ -54,7 +54,6 @@ from packages.orchestration.project_constitution import (
     load_project_constitution,
     render_constitution,
 )
-from packages.orchestration.pingpong_job import save_job_plan
 from packages.orchestration.trust_report import summarize_trust_report
 
 # ---------------------------------------------------------------------------

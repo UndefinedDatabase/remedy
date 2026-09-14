@@ -18,7 +18,6 @@ import json
 from pathlib import Path
 
 from packages.core.models import Artifact, ArtifactKind
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.context_inspector import (
     BUDGET_NEAR,
     BUDGET_OVER,
@@ -39,6 +38,7 @@ from packages.orchestration.context_inspector import (
     inspect_context,
     summarize_context_inspection,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 # ---------------------------------------------------------------------------
 # Helpers

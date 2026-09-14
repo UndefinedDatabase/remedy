@@ -187,8 +187,8 @@ class TestDecisionQueueDerivation:
     """list_decisions derives token_budget from job state."""
 
     def test_budget_exhausted_produces_decision(self):
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.pingpong_job import JobPlan
         job = JobPlan(job_title="budget-test", metadata={"error": "budget_exhausted: max_provider_calls"})
         decisions = list_decisions(job, [])
         budget_decisions = [d for d in decisions if d.type == "token_budget"]
@@ -197,8 +197,8 @@ class TestDecisionQueueDerivation:
         assert "budget_exhausted" in budget_decisions[0].safe_summary
 
     def test_no_budget_error_no_decision(self):
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.pingpong_job import JobPlan
         job = JobPlan(job_title="ok-test")
         decisions = list_decisions(job, [])
         budget_decisions = [d for d in decisions if d.type == "token_budget"]
@@ -335,8 +335,8 @@ class TestDecisionQueueBudgetEvents:
     """Decision queue detects budget stops from events."""
 
     def test_job_stopped_event_produces_decision(self):
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.pingpong_job import JobPlan
         job = JobPlan(job_title="event-test")
         events = [{
             "event": "job_stopped",
@@ -352,8 +352,8 @@ class TestDecisionQueueBudgetEvents:
         assert "budget" in budget_decisions[0].safe_summary
 
     def test_metadata_budget_stop_produces_decision(self):
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.pingpong_job import JobPlan
         job = JobPlan(
             job_title="meta-budget-test",
             metadata={"budget_stop_reason": "budget_exhausted:max_total_tokens"},

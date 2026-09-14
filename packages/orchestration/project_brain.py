@@ -75,7 +75,6 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration._symbols import (
     FAIL as _FAIL,
 )
@@ -103,6 +102,7 @@ from packages.orchestration.autonomy_readiness import assess_job_readiness
 from packages.orchestration.change_set import derive_change_set
 from packages.orchestration.context_coverage import derive_context_coverage
 from packages.orchestration.data_paths import resolve_data_root
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.run_contract import build_default_run_contract
 from packages.orchestration.timeline import load_run_events
 from packages.orchestration.token_policy import build_default_token_policy

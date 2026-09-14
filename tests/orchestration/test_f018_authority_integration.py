@@ -333,8 +333,8 @@ class TestDecisionIdentity:
     """Finding #10: decision ID derived from event request_id."""
 
     def test_budget_decision_uses_event_request_id(self):
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.pingpong_job import JobPlan
 
         job = JobPlan(job_title="test", user_prompt="test")
         job.metadata["budget_stop_reason"] = "budget_exhausted: max_provider_calls"
@@ -615,8 +615,8 @@ class TestJobplanStopCreatesDecision:
 
     def test_jobplan_stop_creates_decision(self):
         """Core Job with budget stop fields → list_decisions creates budget decision."""
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.pingpong_job import JobPlan
 
         job = JobPlan(job_title="stopjob", user_prompt="test")
         job.metadata["budget_stop_reason"] = "budget_exhausted: max_provider_calls"

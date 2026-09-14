@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration._symbols import (
     FAIL as _FAIL,
 )
@@ -41,6 +40,7 @@ from packages.orchestration._symbols import (
     section,
 )
 from packages.orchestration.data_paths import run_log_dir
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.run_log import RunLogWriter, new_run_id
 
 # One run per PROCESS: every event one invocation appends to a job belongs to the

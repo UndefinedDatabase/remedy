@@ -15,7 +15,6 @@ import pytest
 
 from apps.cli.commands.job import _cmd_job_report, _cmd_job_status
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.decision_queue import (
     HumanDecision,
     list_decisions,
@@ -29,7 +28,7 @@ from packages.orchestration.escalation import (
     enqueue_task_decision,
     task_decision_answer_command,
 )
-from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 UTC = timezone.utc
 T0 = datetime(2026, 7, 30, 12, 0, 0, tzinfo=UTC)

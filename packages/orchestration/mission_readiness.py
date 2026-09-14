@@ -179,11 +179,11 @@ class _Inputs:
 
 def _gather_inputs(job_id: str, data_dir: Path) -> _Inputs | None:
     from packages.orchestration.approval_queue import APPROVAL_APPROVED, APPROVAL_PENDING, list_patch_intents
+    from packages.orchestration.pingpong_job import require_job_plan
     from packages.orchestration.repair_loop import load_repair_attempts
     from packages.orchestration.repository_snapshot import build_snapshot_truth, list_durable_apply_ids
     from packages.orchestration.run_contract import ensure_contract, load_usage
     from packages.orchestration.storage import JobNotFoundError
-    from packages.orchestration.pingpong_job import require_job_plan
 
     try:
         job = require_job_plan(normalize_job_id(job_id), data_dir)

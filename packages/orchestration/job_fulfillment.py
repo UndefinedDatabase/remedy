@@ -626,10 +626,9 @@ def run_job_fulfill(
     Completion decided by JobFulfillmentContract.check().
     """
     from packages.core.models import Artifact, ArtifactKind, RunState
-    from packages.orchestration.pingpong_job import TaskEntry
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.permissions import Capability, set_permission
-    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+    from packages.orchestration.pingpong_job import TaskEntry, load_job_plan, save_job_plan
     from packages.orchestration.timeline import append_run_event
 
     if data_dir is None:

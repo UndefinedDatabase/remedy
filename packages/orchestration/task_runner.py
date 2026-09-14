@@ -52,10 +52,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from packages.core.models import Artifact, ArtifactKind, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.artifact_index import planning_artifact
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.path_utils import sanitize_path_component
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.verifier import VerificationResult
 from packages.orchestration.workspace import LocalWorkspaceRuntime, MaterializedFile
 

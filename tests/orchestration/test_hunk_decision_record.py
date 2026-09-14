@@ -41,7 +41,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
+from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.diff_parser import (
     DIFF_VIEW_MAX_FILES,
     parse_unified_diff_to_view,
@@ -65,7 +65,7 @@ from packages.orchestration.hunk_ledger import (
     HUNK_STATE_REJECTED,
     export_hunk_ledger,
 )
-from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan
 
 ORIGINAL = "\n".join(f"line {number:02d}" for number in range(1, 21)) + "\n"
 

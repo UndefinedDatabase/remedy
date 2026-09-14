@@ -36,11 +36,11 @@ from html import escape as _html_esc
 from pathlib import Path
 from typing import Any
 
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.brain_detail import (
     build_brain_node_detail,
     export_brain_node_detail_json,
 )
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.project_brain import (
     ProjectBrainGraph,
     export_project_brain_json,

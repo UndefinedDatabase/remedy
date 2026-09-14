@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from uuid import uuid4
 
+from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.task_execution import (
     ALLOWED_PROVIDERS,
     BudgetGate,
@@ -15,7 +15,6 @@ from packages.orchestration.task_execution import (
     execute_task,
     get_executor,
 )
-from packages.orchestration.data_paths import mint_job_id
 
 
 class TestTaskExecutionRequest:

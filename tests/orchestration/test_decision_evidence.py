@@ -17,7 +17,6 @@ from datetime import datetime, timezone
 import pytest
 
 from packages.core.models import Artifact
-from packages.orchestration.pingpong_job import JobPlan
 from packages.memory import local_gateway
 from packages.memory.models import MemoryEntry
 from packages.orchestration import decision_evidence, stop_reasons
@@ -44,6 +43,7 @@ from packages.orchestration.escalation import (
     answer_task_decision,
     enqueue_task_decision,
 )
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.stop_reasons import StopReason
 
 OPTIONS = ["postgres", "sqlite"]

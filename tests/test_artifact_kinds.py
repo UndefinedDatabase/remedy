@@ -22,7 +22,6 @@ import json
 from uuid import UUID, uuid4
 
 from packages.core.models import Artifact, ArtifactKind
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.artifact_index import (
     artifacts_by_kind,
     first_artifact_by_kind,
@@ -31,6 +30,7 @@ from packages.orchestration.artifact_index import (
 )
 from packages.orchestration.job_runner import plan_job
 from packages.orchestration.llm_planner import annotate_planning_result, plan_job_with_llm
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 
 # ---------------------------------------------------------------------------

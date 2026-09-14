@@ -53,8 +53,8 @@ def _cmd_repo_status(
     # Job-aware: load target_repo from job metadata
     job = None
     if job_id_str:
-        from packages.orchestration.storage import JobNotFoundError
         from packages.orchestration.pingpong_job import require_job_plan
+        from packages.orchestration.storage import JobNotFoundError
         try:
             job_id = lookup_job_id(job_id_str)
         except ValueError:

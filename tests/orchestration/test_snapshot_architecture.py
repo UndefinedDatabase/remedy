@@ -133,8 +133,8 @@ class TestDefaultDenyInvariants:
     def test_repo_revert_denied_by_default(self):
         """Capability.repo_revert must be denied by default."""
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.permissions import Capability, is_allowed
+        from packages.orchestration.pingpong_job import JobPlan
         job = JobPlan(job_title="test", state=RunState.PENDING)
         assert is_allowed(job, Capability.repo_revert) is False
 

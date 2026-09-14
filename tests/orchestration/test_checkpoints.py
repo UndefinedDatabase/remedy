@@ -21,7 +21,6 @@ import pytest
 
 import packages.orchestration.checkpoints as cp
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.checkpoints import (
     DEFAULT_RETENTION,
     INTENT_CYCLE,
@@ -41,6 +40,7 @@ from packages.orchestration.checkpoints import (
     verify_digest_for,
     write_checkpoint,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 UTC = timezone.utc
 T0 = datetime(2026, 7, 26, 12, 0, 0, tzinfo=UTC)
@@ -412,8 +412,7 @@ class TestCycleBoundaryWiring:
         assert next_cycle_index(JOB_ID) == 1
 
     def test_the_default_single_pass_still_writes_exactly_one_checkpoint(self):
-        from packages.orchestration.long_run_executor import (
-            CYCLE_SAFETY_CAP, DEFAULT_MAX_CYCLES)
+        from packages.orchestration.long_run_executor import CYCLE_SAFETY_CAP, DEFAULT_MAX_CYCLES
 
         assert CYCLE_SAFETY_CAP == 8        # ADR-0001 raised the ceiling ...
         assert DEFAULT_MAX_CYCLES == 1      # ... the rollout default is untouched

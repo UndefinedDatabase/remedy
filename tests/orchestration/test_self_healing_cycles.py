@@ -22,7 +22,6 @@ import pytest
 
 import packages.orchestration.long_run_executor as lre
 from packages.core.models import JobBudgets, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.config import get_key_spec
 from packages.orchestration.long_run_executor import (
@@ -50,6 +49,7 @@ from packages.orchestration.long_run_executor import (
     render_cycle_summary_line,
     run_cycles,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.safe_points import request_stop
 
 UTC = timezone.utc

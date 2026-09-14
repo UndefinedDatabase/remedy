@@ -332,8 +332,7 @@ class TestRoutedHandler:
     ):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.guide import _cmd_guide_job
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job = JobPlan(job_id=mint_job_id(), job_title="routed-handler")
         save_job_plan(job)
         exit_code = None
@@ -426,9 +425,8 @@ class TestRoutedHandler:
         """``project attach-job`` files the id it resolved, never the prefix it was typed as."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.project import _cmd_attach_project_job
-        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.project_registry import RemyProject, load_project, save_project
-        from packages.orchestration.pingpong_job import save_job_plan
         job = JobPlan(job_id=mint_job_id(), job_title="attach-by-prefix")
         save_job_plan(job)
         project = RemyProject(name="attach-by-prefix")
@@ -444,9 +442,8 @@ class TestRoutedHandler:
         """``job stop``'s loader loads the id as given, so its caller normalises an unhyphenated one."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.job_stop_cmd import _cmd_job_stop
-        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.safe_points import stop_requested
-        from packages.orchestration.pingpong_job import save_job_plan
         job = JobPlan(job_id=mint_job_id(), job_title="stop-by-hex")
         save_job_plan(job)
         _cmd_job_stop(job.id.hex)

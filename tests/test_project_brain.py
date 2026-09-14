@@ -49,7 +49,6 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_REJECTED,
@@ -57,6 +56,7 @@ from packages.orchestration.approval_queue import (
     set_approval_state,
 )
 from packages.orchestration.patch_intent import RISK_HIGH, RISK_LOW, RISK_MEDIUM
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.project_brain import (
     ET_BELONGS_TO_PROJECT,
     ET_BLOCKED,
@@ -91,7 +91,6 @@ from packages.orchestration.project_brain import (
     export_project_brain_json,
     summarize_project_brain,
 )
-from packages.orchestration.pingpong_job import save_job_plan
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -11,11 +11,10 @@ from pathlib import Path
 import pytest
 
 from packages.core.models import ArtifactKind, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration import repair_loop as RL
 from packages.orchestration.approval_queue import get_patch_intent
 from packages.orchestration.data_paths import normalize_job_id
-from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, load_job_plan, save_job_plan
 from packages.orchestration.test_failure_artifact import (
     TestFailureArtifact,
 )

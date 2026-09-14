@@ -19,8 +19,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.approval_queue import list_patch_intents
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Data model

@@ -21,8 +21,8 @@ from apps.cli.commands.decision import (
     parse_answer_options,
 )
 from apps.cli.commands.job import _cmd_job_assumptions
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.flight_plan import carry_intake_clarifications
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.schemas.models import FlightPlan
 
 _QUESTIONS = [

@@ -55,19 +55,18 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.context_coverage import (
     ContextCoverageSnapshot,
     derive_context_coverage,
     export_context_coverage_json,
     summarize_context_coverage,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.project_brain import (
     ET_HAS_CONTEXT_SNAPSHOT,
     NT_CONTEXT_COVERAGE,
     build_project_brain,
 )
-from packages.orchestration.pingpong_job import save_job_plan
 
 # ---------------------------------------------------------------------------
 # Constants

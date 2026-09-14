@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.llm_planner import plan_job_with_llm
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 
 

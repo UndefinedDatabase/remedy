@@ -429,8 +429,8 @@ def _run_via_task_execution(
 ) -> WorkerResult:
     """Execute one pending Job.tasks item through the modular task_execution port."""
     from packages.core.models import RunState
-    from packages.orchestration.storage import JobNotFoundError, JobStoreError
     from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
+    from packages.orchestration.storage import JobNotFoundError, JobStoreError
     from packages.orchestration.task_execution import BudgetGate, TaskExecutionRequest, execute_task
 
     root = Path(data_dir)
@@ -581,8 +581,8 @@ def _run_via_legacy_autorun(
     """Legacy autorun path for providers not yet on task_execution port."""
     try:
         from packages.orchestration.autorun import run_autorun
-        from packages.orchestration.storage import JobNotFoundError
         from packages.orchestration.pingpong_job import require_job_plan
+        from packages.orchestration.storage import JobNotFoundError
         job = require_job_plan(entry.job_id)
         ar = run_autorun(job, builder_provider=provider, data_dir=str(data_dir))
         stage = ar.stage if hasattr(ar, "stage") else ""

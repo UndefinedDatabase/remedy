@@ -13,9 +13,9 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from packages.core.models import Artifact, ArtifactKind, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.artifact_index import planning_artifact
 from packages.orchestration.job_runner import PlanJobResult
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 from packages.orchestration.prompt_segments import (
     ComposedPrompt,

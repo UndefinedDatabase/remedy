@@ -19,8 +19,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.job_digest import JOB_DIGEST_VERSION, build_job_digest
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.ui_server import _load_events
 
 #: The envelope's top-level contract, from ``job_digest.build_job_digest``.  A

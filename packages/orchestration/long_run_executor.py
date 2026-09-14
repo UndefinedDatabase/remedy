@@ -72,7 +72,6 @@ from pathlib import Path
 from typing import Any
 
 from packages.core.models import JobBudgets, RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.budget_guard import BudgetCounters
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.dag_schedule import blocked_downstream
@@ -83,9 +82,10 @@ from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_RUNNING,
     JOB_STOPPED,
+    JobPlan,
 )
-from packages.orchestration.safe_points import should_stop as _should_stop
 from packages.orchestration.pingpong_job import save_job_plan as _save_job
+from packages.orchestration.safe_points import should_stop as _should_stop
 from packages.orchestration.task_runner import (
     finalize_task,
     materialize_task_output,

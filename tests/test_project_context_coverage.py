@@ -625,9 +625,9 @@ class TestRunLogSchema:
     }
 
     def test_run_log_event_has_exact_metadata_keys(self, tmp_path, monkeypatch):
-        import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.project import _cmd_project_context
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.project_registry import (
             RemyProject,
             save_project,
@@ -635,7 +635,6 @@ class TestRunLogSchema:
         from packages.orchestration.project_registry import (
             attach_job as _attach_job,
         )
-        from packages.orchestration.pingpong_job import save_job_plan
 
         job = _make_job()
         save_job_plan(job)
@@ -654,9 +653,9 @@ class TestRunLogSchema:
         assert self._REQUIRED_META_KEYS, "the recorded metadata contract is kept for the writer paths"
 
     def test_run_log_event_scope_is_project(self, tmp_path, monkeypatch):
-        import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.project import _cmd_project_context
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.project_registry import (
             RemyProject,
             save_project,
@@ -664,7 +663,6 @@ class TestRunLogSchema:
         from packages.orchestration.project_registry import (
             attach_job as _attach_job,
         )
-        from packages.orchestration.pingpong_job import save_job_plan
 
         job = _make_job()
         save_job_plan(job)
@@ -682,6 +680,7 @@ class TestRunLogSchema:
     def test_run_log_no_sentinels(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.project import _cmd_project_context
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.project_registry import (
             RemyProject,
             save_project,
@@ -689,7 +688,6 @@ class TestRunLogSchema:
         from packages.orchestration.project_registry import (
             attach_job as _attach_job,
         )
-        from packages.orchestration.pingpong_job import save_job_plan
 
         job = _make_job()
         save_job_plan(job)

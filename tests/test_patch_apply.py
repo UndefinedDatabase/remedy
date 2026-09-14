@@ -28,7 +28,6 @@ import pytest
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 from packages.core.models import Artifact, ArtifactKind
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_REJECTED,
@@ -46,6 +45,7 @@ from packages.orchestration.patch_apply import (
 )
 from packages.orchestration.patch_intent import RISK_HIGH, RISK_LOW, RISK_MEDIUM, RISK_UNKNOWN
 from packages.orchestration.permissions import Capability, set_permission
+from packages.orchestration.pingpong_job import JobPlan
 
 
 def _make_job(*, with_repo: bool = True, tmp_repo: Path | None = None) -> tuple[JobPlan, Path | None]:

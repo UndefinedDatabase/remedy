@@ -15,8 +15,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import ui_server as mod
+from packages.orchestration.pingpong_job import JobPlan
 
 #: One tick's metadata in the shape `safe_points._budget_tick_payload` writes
 #: it. `test_budget_tick_envelope.py` pins that shape against the live emitter;

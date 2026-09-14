@@ -9,7 +9,6 @@ from __future__ import annotations
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.permissions import (
     Capability,
     effective_permissions,
@@ -17,6 +16,7 @@ from packages.orchestration.permissions import (
     is_reserved,
     set_permission,
 )
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Helpers

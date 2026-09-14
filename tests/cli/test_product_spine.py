@@ -489,8 +489,7 @@ class TestJobStatusReportTruthFields:
 
     def _make_job_and_save(self, tmp_path):
         from packages.core.models import Artifact, RunState
-        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
         art = Artifact(
             name='builder output',
             content='diff --git a/foo.py',
@@ -584,8 +583,7 @@ class TestNoProviderNoApplyProof:
         import json
 
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job = JobPlan(job_title='no-apply proof')
         save_job_plan(job, root=tmp_path)
         from apps.cli.commands.job import _cmd_job_report
@@ -601,8 +599,7 @@ class TestNoProviderNoApplyProof:
         import json
 
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job = JobPlan(job_title='no-apply-action proof')
         save_job_plan(job, root=tmp_path)
         from apps.cli.commands.job import _cmd_job_status

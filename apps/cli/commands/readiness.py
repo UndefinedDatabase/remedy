@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.data_paths import lookup_job_id
-from packages.orchestration.storage import JobNotFoundError
 from packages.orchestration.pingpong_job import require_job_plan
+from packages.orchestration.storage import JobNotFoundError
 
 if TYPE_CHECKING:
     import argparse
@@ -63,12 +63,12 @@ def _cmd_readiness_project(project_id_str: str, *, json_output: bool = False) ->
         summarize_readiness,
     )
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import load_job_plan
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
         _load_project_readonly,
         _projects_dir,
     )
-    from packages.orchestration.pingpong_job import load_job_plan
     from packages.orchestration.timeline import load_run_events
 
     try:

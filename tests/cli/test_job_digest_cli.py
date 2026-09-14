@@ -22,10 +22,9 @@ import pytest
 from apps.cli.command_catalog import CATALOG, get_command
 from apps.cli.commands.job import _cmd_job_digest
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.job_digest import build_job_digest
-from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.timeline import load_run_events
 
 pytestmark = pytest.mark.integration

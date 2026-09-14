@@ -38,7 +38,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration._symbols import (
     NEXT as _NEXT,
 )
@@ -56,6 +55,7 @@ from packages.orchestration.approval_queue import (
 )
 from packages.orchestration.patch_intent import RISK_LOW
 from packages.orchestration.permissions import Capability, is_reserved
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Enums

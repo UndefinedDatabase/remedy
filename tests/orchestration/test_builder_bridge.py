@@ -4,9 +4,9 @@ from __future__ import annotations
 import json
 import subprocess
 
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import builder_bridge
 from packages.orchestration.builder_models import BuilderOutput
+from packages.orchestration.pingpong_job import JobPlan
 
 
 class TestBuilderBridgeParseStage:

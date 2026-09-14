@@ -25,10 +25,9 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.cockpit import summarize_cockpit
 from packages.orchestration.permissions import Capability, set_permission
-from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 # ---------------------------------------------------------------------------
 # Helpers

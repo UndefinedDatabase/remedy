@@ -370,8 +370,8 @@ def build_self_dogfood_inspection(
     job = None
     if job_id:
         try:
-            from packages.orchestration.storage import JobNotFoundError
             from packages.orchestration.pingpong_job import require_job_plan
+            from packages.orchestration.storage import JobNotFoundError
             job = require_job_plan(normalize_job_id(job_id), ddir)
             insp.sources_checked.append(SelfImprovementSource("job", SourceStatus.AVAILABLE))
         except (ValueError, JobNotFoundError):
@@ -452,6 +452,7 @@ def propose_self_improvement(
     enters the existing evaluate/approve/materialize flow. Never inserts Job.tasks,
     never approves, never executes. Idempotent by item fingerprint."""
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import require_job_plan
     from packages.orchestration.proposed_tasks import (
         ProposedTask,
         ProposedTaskSource,
@@ -464,7 +465,6 @@ def propose_self_improvement(
         evaluate_run_action,
     )
     from packages.orchestration.storage import JobNotFoundError
-    from packages.orchestration.pingpong_job import require_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     result = SelfDogfoodResult(job_id=job_id)

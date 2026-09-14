@@ -20,7 +20,6 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.dag_schedule import blocked_downstream, ready_set
 from packages.orchestration.decision_queue import list_decisions
 from packages.orchestration.intake import heuristic_intake, mission_candidate_hint
@@ -73,8 +72,8 @@ from packages.orchestration.mission_state import (
     set_mission_order,
     set_mission_status,
 )
+from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
 from packages.orchestration.schemas.models import JobIntake
-from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
 _T0 = datetime(2026, 7, 31, 12, 0, 0, tzinfo=timezone.utc)
 _PROJECT = "proj-alpha"

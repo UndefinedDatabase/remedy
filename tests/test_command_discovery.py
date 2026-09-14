@@ -23,7 +23,6 @@ from pathlib import Path
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.command_discovery import (
     CommandCandidate,
     _detect_cargo,
@@ -38,6 +37,7 @@ from packages.orchestration.command_discovery import (
     discover_commands,
     select_best_test_candidate,
 )
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Helpers

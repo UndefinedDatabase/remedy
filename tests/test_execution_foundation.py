@@ -17,14 +17,14 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from uuid import uuid4
 
 import pytest
 
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.brain_detail import (
     build_brain_node_detail,
 )
+from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.project_brain import (
     ET_HAS_RUN_CONTRACT,
     ET_HAS_TOKEN_POLICY,
@@ -34,8 +34,6 @@ from packages.orchestration.project_brain import (
     NT_WORKER_ADAPTER,
     build_project_brain,
 )
-from packages.orchestration.pingpong_job import save_job_plan
-from packages.orchestration.data_paths import mint_job_id
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -14,8 +14,8 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import Artifact, RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.permissions import Capability, set_permission
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.repo_applicator import (
     _build_repo_file_content,
     _resolve_repo_path,

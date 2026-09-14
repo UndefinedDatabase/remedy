@@ -34,8 +34,8 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import hunk_apply
+from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.diff_parser import parse_unified_diff_to_view
 from packages.orchestration.hunk_apply import (
     HUNK_APPLY_CONFLICT,
@@ -47,7 +47,7 @@ from packages.orchestration.hunk_subset_diff import (
     SUBSET_REFUSAL_ABSENT_HUNK,
     ApprovedSubsetDiff,
 )
-from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan
 
 ORIGINAL = "\n".join(f"line {number:02d}" for number in range(1, 21)) + "\n"
 

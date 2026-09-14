@@ -42,7 +42,6 @@ from typing import Any
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.escalation import (
     answer_task_decision,
@@ -80,7 +79,7 @@ from packages.orchestration.orchestrator_move_schema import (
     MOVE_DISPATCH_JOB,
     ORCHESTRATOR_MOVE_SCHEMA_V,
 )
-from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, load_job_plan, save_job_plan
 from packages.orchestration.watchdog import (
     DECISION_OPTION_ABORT,
     DECISION_OPTION_RESUME,

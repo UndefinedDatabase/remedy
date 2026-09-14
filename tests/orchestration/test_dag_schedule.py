@@ -10,14 +10,13 @@ from __future__ import annotations
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import TaskEntry
 from packages.orchestration.dag_schedule import (
     BLOCKING_STATES,
     blocked_downstream,
     build_graph,
     ready_set,
 )
-
+from packages.orchestration.pingpong_job import TaskEntry
 
 # ---------------------------------------------------------------------------
 # Fixture builders

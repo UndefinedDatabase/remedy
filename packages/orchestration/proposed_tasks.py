@@ -644,8 +644,7 @@ def do_materialize(job_id: str, task_id: str, root: Path | None = None) -> Propo
         JobNotFoundError: if job_id does not correspond to a persisted Job.
         ValueError: if task is not approved or already materialized.
     """
-    from packages.orchestration.pingpong_job import TaskEntry
-    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+    from packages.orchestration.pingpong_job import TaskEntry, load_job_plan, save_job_plan
 
     job_uuid = normalize_job_id(job_id)
 

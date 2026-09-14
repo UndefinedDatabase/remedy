@@ -26,7 +26,6 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.brain_viewer import (
     BrainViewerData,
     _compute_positions,
@@ -35,8 +34,8 @@ from packages.orchestration.brain_viewer import (
     export_brain_viewer_json,
     write_brain_viewer_files,
 )
+from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.project_brain import build_project_brain
-from packages.orchestration.pingpong_job import save_job_plan
 
 # ---------------------------------------------------------------------------
 # Redaction sentinels

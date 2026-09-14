@@ -115,9 +115,9 @@ class TestFixturePatchApplication:
 class TestBridgeIntegration:
     def test_fixture_bridge_e2e_missing_function(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import BuilderOutput
+        from packages.orchestration.pingpong_job import JobPlan
 
         repo = create_missing_function_repo(tmp_path / "repo")
         patch = fixture_patch_missing_function()
@@ -139,9 +139,9 @@ class TestBridgeIntegration:
 
     def test_fixture_bridge_e2e_wrong_return(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import BuilderOutput
+        from packages.orchestration.pingpong_job import JobPlan
 
         repo = create_wrong_return_repo(tmp_path / "repo")
         patch = fixture_patch_wrong_return()
@@ -162,9 +162,9 @@ class TestBridgeIntegration:
 
     def test_no_raw_output_in_bridge_events(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import BuilderOutput
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.timeline import load_run_events
 
         repo = create_missing_function_repo(tmp_path / "repo")

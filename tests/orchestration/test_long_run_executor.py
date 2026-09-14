@@ -17,7 +17,6 @@ import pytest
 
 import packages.orchestration.long_run_executor as lre
 from packages.core.models import JobBudgets, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.config import get_key_spec
 from packages.orchestration.long_run_executor import (
@@ -50,6 +49,8 @@ from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_RUNNING,
     JOB_STOPPED,
+    JobPlan,
+    TaskEntry,
 )
 from packages.orchestration.safe_points import request_stop
 
@@ -887,7 +888,6 @@ class TestJobRunCommand:
 
     def test_a_capped_config_value_names_the_config_key(self, monkeypatch, capsys):
         from apps.cli.commands import job as job_cmd
-
         from packages.orchestration.pingpong_job import save_job_plan
         from packages.providers.ollama_builder import provider as provider_mod
 
@@ -1287,8 +1287,8 @@ class TestTheCyclesExperimentOverride:
 
     def test_limits_from_config_without_the_override_still_clamps(self):
         from packages.orchestration.long_run_executor import (
-            CYCLE_SAFETY_CAP,
             CONFIG_KEY_MAX_CYCLES,
+            CYCLE_SAFETY_CAP,
             limits_from_config,
         )
 

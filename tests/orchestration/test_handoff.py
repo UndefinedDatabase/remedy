@@ -128,10 +128,8 @@ def _seed_job_checkpoint(root, mission, job_id: str, *,
 def _seed_readable_job(root, mission,
                        job_id: str = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"):
     """A persisted job linked to the mission, so the decision queue can read it."""
-    from uuid import UUID
 
-    from packages.orchestration.pingpong_job import JobPlan
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
     save_job_plan(JobPlan(job_id=job_id, job_title="the linked job"))
     _seed_job_checkpoint(root, mission, job_id)

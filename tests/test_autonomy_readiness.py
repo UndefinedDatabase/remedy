@@ -8,7 +8,6 @@ import sys
 from uuid import uuid4
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.autonomy_readiness import (
     LEVELS,
     assess_job_readiness,
@@ -17,6 +16,7 @@ from packages.orchestration.autonomy_readiness import (
     summarize_readiness,
 )
 from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 
 def _make_job(**extra_meta) -> JobPlan:
@@ -203,8 +203,8 @@ class TestReadinessCLI:
 class TestReadinessBrainNode:
     def test_brain_has_readiness_node(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.project_brain import build_project_brain
         job = JobPlan(
             job_id=mint_job_id(), job_title="brain-test", user_prompt="test",
             tasks=[TaskEntry(title="t", status=RunState.PENDING)],
@@ -216,8 +216,8 @@ class TestReadinessBrainNode:
 
     def test_readiness_node_safe_metadata(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.project_brain import build_project_brain
         job = JobPlan(
             job_id=mint_job_id(), job_title="brain-test", user_prompt="test",
             tasks=[TaskEntry(title="t", status=RunState.PENDING)],

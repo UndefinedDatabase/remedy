@@ -10,14 +10,13 @@ from uuid import uuid4
 
 import pytest
 
-from tests.cli.runtime_helpers import run_grouped_cli
 from packages.orchestration.data_paths import mint_job_id
+from tests.cli.runtime_helpers import run_grouped_cli
 
 
 def _job(data_dir):
     from packages.core.models import Artifact, ArtifactKind, RunState
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
     task = TaskEntry(title="t")
     fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.task_id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",

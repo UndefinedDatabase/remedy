@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from uuid import uuid4
+
 from packages.orchestration.data_paths import mint_job_id
 
 
@@ -347,8 +348,8 @@ class TestDryRunValidation:
     def test_dry_run_no_permission_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
+        from packages.orchestration.pingpong_job import JobPlan
         jid = uuid4()
         job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED)
         events = [
@@ -363,9 +364,9 @@ class TestDryRunValidation:
     def test_dry_run_no_repo_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
         from packages.orchestration.permissions import Capability, set_permission
+        from packages.orchestration.pingpong_job import JobPlan
         jid = uuid4()
         job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED, metadata={})
         set_permission(job, Capability.repo_test_run, allow=True)
@@ -381,8 +382,8 @@ class TestDryRunValidation:
     def test_dry_run_creates_no_events(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.timeline import load_run_events
         jid = uuid4()
         job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED)
@@ -423,8 +424,8 @@ class TestResumeDryRun:
     def test_dry_run_from_approved_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
+        from packages.orchestration.pingpong_job import JobPlan
         jid = uuid4()
         job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED)
         events = [
@@ -441,9 +442,9 @@ class TestResumeDryRun:
     def test_dry_run_from_apply_resumable(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
         from packages.orchestration.permissions import Capability, set_permission
+        from packages.orchestration.pingpong_job import JobPlan
         jid = uuid4()
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -468,8 +469,8 @@ class TestResumeDryRun:
     def test_dry_run_checkpoint_not_found(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
+        from packages.orchestration.pingpong_job import JobPlan
         jid = uuid4()
         job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED)
         dr = resume_dry_run(job, "nonexistent", str(tmp_path))
@@ -479,8 +480,8 @@ class TestResumeDryRun:
     def test_dry_run_not_resumable(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
+        from packages.orchestration.pingpong_job import JobPlan
         jid = mint_job_id()
         job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED)
         events = [

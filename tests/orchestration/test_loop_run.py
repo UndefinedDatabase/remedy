@@ -32,7 +32,6 @@ from pathlib import Path
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import mission_state, pingpong_job
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.long_run_executor import (
@@ -56,6 +55,7 @@ from packages.orchestration.loop_spec import (
     LoopSpec,
     load_loop_specs,
 )
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.run_report import report_path
 
 DEADLINE_ISO = "2026-09-01T00:00:00+00:00"

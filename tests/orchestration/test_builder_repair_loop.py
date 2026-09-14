@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import json
 
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.builder_models import BuilderOutput
+from packages.orchestration.pingpong_job import JobPlan
 
 
 def _make_output(fix_content: str, action: str = "modify") -> BuilderOutput:

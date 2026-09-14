@@ -41,7 +41,6 @@ import pytest
 from apps.cli.command_catalog import get_command
 from apps.cli.commands import collect_all_handlers
 from apps.cli.commands import patch as CMD
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.data_paths import job_evidence_index_dir, resolve_job_id
 from packages.orchestration.diff_parser import parse_unified_diff_to_view
 from packages.orchestration.diff_view_source import (
@@ -56,7 +55,7 @@ from packages.orchestration.hunk_decision_record import (
     HUNK_DECISIONS_METADATA_KEY,
     HUNK_RECORD_REFUSAL_NO_DIFF,
 )
-from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
 
 ORIGINAL = "\n".join(f"line {number:02d}" for number in range(1, 31)) + "\n"
 

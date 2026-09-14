@@ -24,8 +24,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from packages.orchestration.pingpong_job import JobPlan
-
 # F032 T001b: the import direction is ONE-WAY and stays that way —
 # ``decision_evidence`` is pure and imports nothing from this module, so the
 # emit gate below can live at the derivation point with no cycle to break.
@@ -39,6 +37,7 @@ from packages.orchestration.decision_evidence import (
     enforce_decision_evidence,
     export_decision_evidence,
 )
+from packages.orchestration.pingpong_job import JobPlan
 
 
 @dataclass(frozen=True)

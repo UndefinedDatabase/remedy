@@ -11,9 +11,8 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 from packages.core.models import Artifact, ArtifactKind, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-from packages.orchestration.pingpong_job import save_job_plan
 from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 
 def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
@@ -646,15 +645,14 @@ class TestSourceApply:
         from uuid import uuid4 as _uuid4
 
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.permissions import Capability, set_permission
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.run_contract import (
             ContractAction,
             build_default_run_contract,
             save_contract,
         )
         from packages.orchestration.source_apply import apply_structured_patch, revert_apply
-        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
         repo = tmp_path / "repo"

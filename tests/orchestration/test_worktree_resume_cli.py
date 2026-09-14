@@ -13,17 +13,15 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
-from uuid import uuid4
 
 import pytest
 
 from apps.cli.commands import job as job_cmd
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import data_paths, event_replay
 from packages.orchestration import worktrees as W
-from packages.orchestration.pingpong_job import save_job_plan
 from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
 
 @pytest.fixture(autouse=True)

@@ -18,8 +18,8 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.approval_queue import make_intent_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 # ---------------------------------------------------------------------------
 # Catalog tests

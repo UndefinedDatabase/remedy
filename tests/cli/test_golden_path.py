@@ -194,8 +194,7 @@ class TestDoMission:
 
     def test_job_show_silent_for_legacy_job(self, tmp_path, monkeypatch):
         """Legacy job without intake → no Intake block."""
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         env = _env(tmp_path)
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))

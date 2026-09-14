@@ -1585,12 +1585,12 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
     """Build project-level summary for dashboard. Returns None if no project."""
     try:
         from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.pingpong_job import list_job_plans
         from packages.orchestration.project_registry import load_project
         from packages.orchestration.project_summary import (
             build_project_summary,
             detect_patterns,
         )
-        from packages.orchestration.pingpong_job import list_job_plans
         from packages.orchestration.timeline import load_run_events
 
         project_id = job.metadata.get("project_id")

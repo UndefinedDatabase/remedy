@@ -340,9 +340,8 @@ class TestCompletionContract:
 class TestJobFulfillFixturePass:
 
     def _setup_job(self, tmp_path):
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Test fulfillment", metadata={"target_repo": str(repo)})
@@ -428,12 +427,11 @@ class TestOneFindingRepairLoop:
 
     def test_repair_loop(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
             run_job_fulfill,
         )
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Repair loop test", metadata={"target_repo": str(repo)})
@@ -496,12 +494,11 @@ class TestJobReportAfterFulfilled:
 
     def test_report_shows_completed(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
             run_job_fulfill,
         )
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Report test", metadata={"target_repo": str(repo)})
@@ -529,12 +526,11 @@ class TestJobStatusAfterFulfilled:
 
     def test_status_shows_completed(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
             run_job_fulfill,
         )
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Status test", metadata={"target_repo": str(repo)})
@@ -565,9 +561,8 @@ class TestFailurePaths:
     def test_failing_test_blocks_completion(self, tmp_path, monkeypatch):
         """R-0199: Failing tests must block completed_verified."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import run_job_fulfill
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         # Create demo repo with failing test
         repo = tmp_path / "fail_repo"
@@ -595,9 +590,8 @@ class TestFailurePaths:
     def test_existing_md_uses_modify_intent(self, tmp_path, monkeypatch):
         """R-0199: Existing MD files use modify intent and succeed (not blocked)."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         # Pre-create CHANGELOG.md — should trigger modify intent, not create
@@ -622,15 +616,14 @@ class TestProposedTaskLifecycle:
     def test_proposed_tasks_accessible(self, tmp_path, monkeypatch):
         """R-0196: Proposed tasks can be listed and acted on after fulfillment."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.proposed_tasks import (
             approve_proposed_task,
             defer_proposed_task,
             load_proposed_tasks,
             reject_proposed_task,
         )
-        from packages.orchestration.pingpong_job import save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Propose test", metadata={"target_repo": str(repo)})
@@ -695,8 +688,7 @@ class TestJobFulfillCLI:
 
     def test_missing_fixture_flag(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         job = JobPlan(job_title="No flag test")
         save_job_plan(job, root=tmp_path)
@@ -959,9 +951,8 @@ class TestPromotionGate:
 class TestStagedFulfillment:
 
     def _setup_job(self, tmp_path):
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Staged test", metadata={"target_repo": str(repo)})
@@ -1017,9 +1008,8 @@ class TestStagedFulfillment:
         """Target repo must be untouched when tests fail in staging."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import run_job_fulfill
-        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
 
         # Create repo with failing test
         repo = tmp_path / "fail_repo"
@@ -1080,9 +1070,8 @@ class TestStagingCleanup:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         import glob as glob_mod
 
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Cleanup test", metadata={"target_repo": str(repo)})
@@ -1112,9 +1101,8 @@ class TestMetadataNeverMutated:
 
     def test_target_repo_unchanged_on_success(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Meta test", metadata={"target_repo": str(repo)})
@@ -1130,9 +1118,8 @@ class TestMetadataNeverMutated:
 
     def test_target_repo_unchanged_on_test_failure(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         # Break the test so it fails
@@ -1306,9 +1293,8 @@ class TestCodeAppliedTruth:
     def test_failing_test_leaves_target_unchanged(self, tmp_path, monkeypatch):
         import hashlib
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
 
@@ -1358,9 +1344,8 @@ class TestStagedTestExecution:
     def test_target_repo_has_no_pytest_cache(self, tmp_path, monkeypatch):
         """After fulfillment, target repo must not contain .pytest_cache."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Cache test", metadata={"target_repo": str(repo)})
@@ -1375,9 +1360,8 @@ class TestStagedTestExecution:
     def test_target_repo_has_no_pycache(self, tmp_path, monkeypatch):
         """After fulfillment, target repo must not contain test __pycache__."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         # Remove any pre-existing __pycache__
@@ -1400,12 +1384,11 @@ class TestCodeAppliedTruthV04:
 
     def test_successful_fulfillment_code_applied_true(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
             run_job_fulfill,
         )
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Applied test", metadata={"target_repo": str(repo)})
@@ -1417,12 +1400,11 @@ class TestCodeAppliedTruthV04:
 
     def test_failing_test_code_applied_false(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
             run_job_fulfill,
         )
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         (repo / "tests" / "test_demo.py").write_text("def test_fail(): assert False\n")
@@ -1439,9 +1421,8 @@ class TestBlockedFulfillmentStatus:
 
     def test_blocked_has_stop_reason(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         (repo / "tests" / "test_demo.py").write_text("def test_fail(): assert False\n")
@@ -1454,9 +1435,8 @@ class TestBlockedFulfillmentStatus:
 
     def test_blocked_has_next_action(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         (repo / "tests" / "test_demo.py").write_text("def test_fail(): assert False\n")
@@ -1474,9 +1454,8 @@ class TestApplyScope:
 
     def test_staged_apply_has_staged_scope(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Scope test", metadata={"target_repo": str(repo)})
@@ -1550,9 +1529,8 @@ class TestExistingMarkdownFulfillment:
 
     def test_existing_changelog_appended(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         # Pre-create CHANGELOG.md (fixture normally creates it)
@@ -1621,9 +1599,8 @@ class TestBlockedFulfillmentTruthV05:
 
     def _run_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         # Create a conftest that makes tests fail
@@ -1670,9 +1647,8 @@ class TestSuccessfulFulfillmentTruthV05:
 
     def test_changed_target_files_match_promotion(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="Success test", metadata={"target_repo": str(repo)})

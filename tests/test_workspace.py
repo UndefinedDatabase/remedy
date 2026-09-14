@@ -15,9 +15,9 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.path_utils import sanitize_path_component as _sanitize_path_component
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.task_runner import (
     _extract_proposed_changes,
     materialize_task_output,

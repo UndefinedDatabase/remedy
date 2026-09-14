@@ -285,9 +285,8 @@ class TestEndToEnd:
     """
 
     def _job(self, tmp_path: Path):
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         job = JobPlan(job_title="dod gate e2e", metadata={"target_repo": str(repo)})
@@ -395,8 +394,7 @@ class TestEndToEnd:
 
 class TestJobDodCommand:
     def _job(self, tmp_path: Path):
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         job = JobPlan(job_title="dod cli", metadata={})
         save_job_plan(job, root=tmp_path)

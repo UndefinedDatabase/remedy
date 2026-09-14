@@ -166,9 +166,8 @@ def run_do(
         stop_before_apply: Stop before apply (default True).
     """
     from packages.core.models import Artifact, ArtifactKind
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
     # --- Step 931: max_loops validation ---
     if max_loops < 1:

@@ -6,13 +6,13 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from packages.core.models import JobBudgets
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.budget_guard import (
     BudgetCounterError,
     BudgetCounters,
     collect_counters_from_actuals,
     evaluate_budget,
 )
+from packages.orchestration.pingpong_job import JobPlan
 
 UTC = timezone.utc
 T0 = datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC)

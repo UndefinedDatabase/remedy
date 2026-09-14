@@ -20,9 +20,8 @@ import pytest
 from apps.cli.command_catalog import CATALOG, get_command
 from apps.cli.commands.job import _cmd_job_run_report
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.run_report import report_path
-from packages.orchestration.pingpong_job import save_job_plan
 
 pytestmark = pytest.mark.integration
 

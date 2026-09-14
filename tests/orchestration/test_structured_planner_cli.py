@@ -9,8 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
-from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
 VALID_PLAN = json.dumps({
     "schema_v": "pp1", "summary": "plan it",

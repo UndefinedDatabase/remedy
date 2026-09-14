@@ -12,10 +12,9 @@ Coverage:
 
 from __future__ import annotations
 
-from uuid import uuid4
-
 import pytest
 
+from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.run_contract import (
     RunContract,
@@ -23,7 +22,6 @@ from packages.orchestration.run_contract import (
     export_run_contract_json,
     summarize_run_contract,
 )
-from packages.orchestration.data_paths import mint_job_id
 
 # ---------------------------------------------------------------------------
 # Helpers

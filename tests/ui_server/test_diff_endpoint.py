@@ -18,8 +18,8 @@ from pathlib import Path
 
 import pytest
 
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.diff_parser import DIFF_VIEW_MAX_BODY_LINES
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 # WHY the two diffs name DIFFERENT files: serving the job diff where the task
 # run's was asked for — or the reverse — is then a red rather than a shrug.

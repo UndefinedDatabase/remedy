@@ -9,14 +9,13 @@ from uuid import uuid4
 
 import pytest
 
-from tests.cli.runtime_helpers import run_grouped_cli
 from packages.orchestration.data_paths import mint_job_id
+from tests.cli.runtime_helpers import run_grouped_cli
 
 
 def _make_job_with_failure(data_dir):
     from packages.core.models import Artifact, ArtifactKind, RunState
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
     task = TaskEntry(title="orig")
     fa = Artifact(
@@ -109,8 +108,7 @@ def test_no_traceback_text_output(env):
 def _make_job_with_source_failure(data_dir):
     """Failure carrying a safe opt-in source-fixture target."""
     from packages.core.models import Artifact, ArtifactKind, RunState
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
     task = TaskEntry(title="orig")
     fa = Artifact(

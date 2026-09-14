@@ -44,7 +44,6 @@ from packages.orchestration.mission_compiler import (
     MissionPlanInProgressError,
     attach_milestone_dods,
     build_mission_prompt,
-    resolve_milestone_cap,
     compile_milestone_dod,
     compile_mission_plan,
     compose_mission_prompt,
@@ -55,6 +54,7 @@ from packages.orchestration.mission_compiler import (
     plan_mission,
     plan_version_of,
     render_mission_plan_md,
+    resolve_milestone_cap,
     write_mission_plan_md,
 )
 from packages.orchestration.mission_plan_schema import (

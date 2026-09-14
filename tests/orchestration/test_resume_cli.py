@@ -23,14 +23,13 @@ import pytest
 import apps.cli.commands.job as job_cmd
 import packages.orchestration.checkpoints as cp
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.checkpoints import (
     Checkpoint,
     verify_digest_for,
     write_checkpoint,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.safe_points import request_stop, stop_requested
-from packages.orchestration.pingpong_job import save_job_plan
 
 
 @pytest.fixture(autouse=True)

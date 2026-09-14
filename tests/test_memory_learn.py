@@ -5,12 +5,11 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from uuid import uuid4
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-from packages.orchestration.memory_learn import export_learn_json, learn_from_job
 from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.memory_learn import export_learn_json, learn_from_job
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 
 def _make_job(**extra_meta) -> JobPlan:

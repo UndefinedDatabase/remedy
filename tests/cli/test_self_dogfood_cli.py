@@ -6,19 +6,16 @@ No apply/approval/git/provider/network, bounded timeout.
 from __future__ import annotations
 
 import json
-from uuid import uuid4
 
 import pytest
 
-from packages.orchestration.data_paths import normalize_job_id
+from packages.orchestration.data_paths import mint_job_id, normalize_job_id
 from tests.cli.runtime_helpers import run_grouped_cli
-from packages.orchestration.data_paths import mint_job_id
 
 
 def _job(data_dir):
     from packages.core.models import Artifact, ArtifactKind, RunState
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
     task = TaskEntry(title="t")
     fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.task_id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",
@@ -94,12 +91,12 @@ def test_propose_explicit_item(env):
 def test_propose_contract_denied(env):
     import dataclasses
 
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
     from packages.orchestration.run_contract import (
         ContractAction,
         build_default_run_contract,
         save_contract,
     )
-    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
     job_id = _job(env)
     job = load_job_plan(normalize_job_id(job_id), env)
     c = build_default_run_contract(job)

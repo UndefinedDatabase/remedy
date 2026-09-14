@@ -24,7 +24,6 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.do_run import (
     DO_PHASES,
@@ -36,6 +35,7 @@ from packages.orchestration.do_run import (
     summarize_do_run,
     validate_next_safe_action_command,
 )
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Helpers

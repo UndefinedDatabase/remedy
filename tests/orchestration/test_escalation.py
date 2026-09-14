@@ -19,7 +19,6 @@ from pathlib import Path
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.decision_queue import (
     DECISION_TYPES,
     export_decision_json,
@@ -47,6 +46,7 @@ from packages.orchestration.escalation import (
     task_decision_answer_command,
     write_escalation_assumptions_md,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 UTC = timezone.utc
 T0 = datetime(2026, 7, 30, 12, 0, 0, tzinfo=UTC)

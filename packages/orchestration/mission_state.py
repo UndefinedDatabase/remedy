@@ -1024,9 +1024,8 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
     pointed at a job that does not exist.
     """
     from packages.core.models import RunState
-    from packages.orchestration.pingpong_job import JobPlan
+    from packages.orchestration.pingpong_job import JobPlan, require_job_plan, save_job_plan
     from packages.orchestration.storage import JobNotFoundError, JobStoreError
-    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 
     text = str(next_step).strip()
     if not text:

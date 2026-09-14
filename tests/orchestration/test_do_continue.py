@@ -9,17 +9,15 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.approval_queue import make_intent_id, set_approval_state
-from packages.orchestration.data_paths import normalize_job_id
+from packages.orchestration.data_paths import mint_job_id, normalize_job_id
 from packages.orchestration.permissions import Capability, set_permission
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.run_contract import (
     ContractAction,
     build_default_run_contract,
     save_contract,
 )
-from packages.orchestration.pingpong_job import save_job_plan
-from packages.orchestration.data_paths import mint_job_id
 
 ARTIFACT_CONTENT = "Summary:\n  - safe doc\nProposed Changes:\n  - add a line\nNotes:\n  - none\n"
 

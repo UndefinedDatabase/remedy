@@ -75,8 +75,8 @@ from packages.orchestration.orchestrator_loop import (
 from packages.orchestration.orchestrator_move_schema import (
     ORCHESTRATOR_MOVE_SCHEMA_V,
 )
-from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, FlightPlan
 from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, FlightPlan
 
 PROJECT = "p-f070-e2e"
 GOAL = "Ship the demo end to end"

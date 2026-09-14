@@ -15,7 +15,6 @@ import pytest
 
 import packages.orchestration.long_run_executor as lre
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.long_run_executor import (
     REPORTED_TERMINALS,
     TERMINAL_ALL_GREEN,
@@ -26,6 +25,7 @@ from packages.orchestration.long_run_executor import (
     TERMINAL_STOPPED_BY_OPERATOR,
     _apply_terminal,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.run_report import (
     REPORT_ERROR_METADATA_KEY,
     REPORT_FILENAME,

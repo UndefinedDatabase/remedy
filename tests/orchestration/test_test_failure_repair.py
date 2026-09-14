@@ -46,8 +46,7 @@ def _make_job(tmp_path):
     old = os.environ.get("REMEDY_DATA_DIR")
     os.environ["REMEDY_DATA_DIR"] = str(data_dir)
 
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
     job = JobPlan(job_title="test-job", user_prompt="test")
     task = TaskEntry(title="initial task")
@@ -548,8 +547,8 @@ class TestRepairIntentTruth:
     def test_repair_intent_visible_in_approval_queue(self, tmp_path):
         """repair_patch_intent_id must be findable via get_patch_intent."""
         from packages.orchestration.approval_queue import get_patch_intent
-        from packages.orchestration.repair_loop import start_repair_loop_v0
         from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.repair_loop import start_repair_loop_v0
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
@@ -567,8 +566,8 @@ class TestRepairIntentTruth:
     def test_repair_intent_in_list(self, tmp_path):
         """repair_patch_intent_id must appear in list_patch_intents."""
         from packages.orchestration.approval_queue import list_patch_intents
-        from packages.orchestration.repair_loop import start_repair_loop_v0
         from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.repair_loop import start_repair_loop_v0
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
@@ -584,8 +583,8 @@ class TestRepairIntentTruth:
         """next_safe_action must reference intent that actually exists."""
         from packages.orchestration.approval_queue import get_patch_intent
         from packages.orchestration.do_run import validate_next_safe_action_command
-        from packages.orchestration.repair_loop import start_repair_loop_v0
         from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.repair_loop import start_repair_loop_v0
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
@@ -602,8 +601,8 @@ class TestRepairIntentTruth:
     def test_repair_intent_approval_state_pending(self, tmp_path):
         """Repair intent should be in pending state."""
         from packages.orchestration.approval_queue import get_patch_intent
-        from packages.orchestration.repair_loop import start_repair_loop_v0
         from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.repair_loop import start_repair_loop_v0
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
@@ -617,8 +616,8 @@ class TestRepairIntentTruth:
     def test_repair_intent_has_safe_metadata(self, tmp_path):
         """Repair intent metadata must have safe fields, no raw output."""
         from packages.orchestration.approval_queue import get_patch_intent
-        from packages.orchestration.repair_loop import start_repair_loop_v0
         from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.repair_loop import start_repair_loop_v0
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:

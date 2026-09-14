@@ -18,8 +18,7 @@ from packages.orchestration.data_paths import mint_job_id
 
 def _job(env: Path, *, files: dict[str, str] | None = None, repo: bool = True) -> str:
     from packages.core.models import RunState
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
     meta: dict = {}
     if repo:
         rp = env / f"repo-{uuid4().hex[:6]}"

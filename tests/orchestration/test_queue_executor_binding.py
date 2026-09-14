@@ -20,7 +20,6 @@ from pathlib import Path
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import job_queue as queue
 from packages.orchestration.config import reset_config
 from packages.orchestration.data_paths import normalize_job_id
@@ -31,7 +30,7 @@ from packages.orchestration.long_run_executor import (
     queue_binding_enabled,
     run_cycles,
 )
-from packages.orchestration.pingpong_job import load_job_plan
+from packages.orchestration.pingpong_job import JobPlan, load_job_plan
 
 PROJECT = "proj-binding"
 

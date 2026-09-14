@@ -45,8 +45,7 @@ def _setup_job_with_failure(tmp_path: Path) -> tuple[str, str, str]:
     old = os.environ.get("REMEDY_DATA_DIR")
     os.environ["REMEDY_DATA_DIR"] = str(data_dir)
     try:
-        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
         from packages.orchestration.test_failure_artifact import (
             TestFailureArtifact,
             persist_failure_artifact,

@@ -10,14 +10,13 @@ other tier.
 from __future__ import annotations
 
 import json
-from uuid import uuid4
 
 import pytest
 
 from apps.cli.commands.job_context_cmd import list_repo_candidate_paths
+from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.token_economy import estimate_text_tokens
 from tests.cli.runtime_helpers import run_grouped_cli
-from packages.orchestration.data_paths import mint_job_id
 
 #: The fenced file: it imports its direct neighbor, which imports one file
 #: further out, and a fourth file nothing imports at all. That shape is exactly
@@ -83,8 +82,7 @@ def _make_repo(tmp_path):
 
 def _make_job(data_dir, repo, *, files_hint=("alpha.py",), attach_repo=True):
     """Persist a real Job whose single task carries a real flight-plan block."""
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
     task = TaskEntry(
         title="edit alpha",

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from packages.core.models import Artifact, ArtifactKind
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.approval_queue import make_intent_id
 from packages.orchestration.change_set import derive_change_set
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 
 def _job_with_intents(count: int = 1):

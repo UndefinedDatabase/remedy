@@ -13,10 +13,8 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-from packages.orchestration.data_paths import normalize_job_id
-from packages.orchestration.pingpong_job import save_job_plan
-from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.data_paths import mint_job_id, normalize_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 
 def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
@@ -290,11 +288,11 @@ class TestContinueFromNodeProjectLinking:
         assert result.child_job_id in project.job_ids
 
         # Build aggregate
+        from packages.orchestration.pingpong_job import list_job_plans
         from packages.orchestration.project_brain_aggregate import (
             build_project_brain_aggregate,
             export_project_brain_aggregate_json,
         )
-        from packages.orchestration.pingpong_job import list_job_plans
         all_jobs = list_job_plans()
         linked = [j for j in all_jobs if str(j.job_id) in project.job_ids]
         events_map = {}

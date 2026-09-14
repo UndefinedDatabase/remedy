@@ -13,8 +13,7 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, JobFences, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Shared fixtures

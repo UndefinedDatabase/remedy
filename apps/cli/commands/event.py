@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 def _load_job_events(job_id_str: str):
     """Load job and events, exit on error. Returns (job, events, job_id_str)."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import JobNotFoundError
     from packages.orchestration.pingpong_job import require_job_plan
+    from packages.orchestration.storage import JobNotFoundError
     from packages.orchestration.timeline import load_run_events
 
     try:

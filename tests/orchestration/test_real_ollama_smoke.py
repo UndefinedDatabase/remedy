@@ -32,8 +32,8 @@ class TestFixtureSmoke:
 
     def test_fixture_pipeline_on_real_repo(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
+        from packages.orchestration.pingpong_job import JobPlan
 
         repo = create_missing_function_repo(tmp_path / "repo")
         patch = fixture_patch_missing_function()
@@ -55,8 +55,8 @@ class TestFixtureSmoke:
 
     def test_fixture_pipeline_stops_at_approval(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
+        from packages.orchestration.pingpong_job import JobPlan
 
         repo = create_missing_function_repo(tmp_path / "repo")
         patch = fixture_patch_missing_function()
@@ -138,9 +138,9 @@ class TestRealOllamaSmoke:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from uuid import uuid4
 
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import TaskExecutionContext
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.timeline import load_run_events
         from packages.providers.ollama_builder.provider import OllamaBuilder
 

@@ -46,8 +46,8 @@ def _cmd_repair_start(args: Any) -> None:
 
 def _cmd_failure_show(args: Any) -> None:
     """Show a test failure artifact."""
-    from packages.orchestration.storage import JobNotFoundError, JobStoreError
     from packages.orchestration.pingpong_job import require_job_plan
+    from packages.orchestration.storage import JobNotFoundError, JobStoreError
     from packages.orchestration.test_failure_artifact import (
         TestFailureArtifact,
         export_failure_artifact_json,
@@ -130,9 +130,9 @@ def _cmd_repair_propose(args: Any) -> None:
 def _cmd_repair_status(args: Any) -> None:
     """Show repair attempts and approval state (read-only)."""
     from packages.orchestration.approval_queue import get_patch_intent
+    from packages.orchestration.pingpong_job import require_job_plan
     from packages.orchestration.repair_loop import load_repair_attempts
     from packages.orchestration.storage import JobNotFoundError, JobStoreError
-    from packages.orchestration.pingpong_job import require_job_plan
 
     try:
         job = require_job_plan(args.job_id)
@@ -213,9 +213,9 @@ def _cmd_repair_request(args: Any) -> None:
 
 
 def _cmd_repair_request_show(args: Any) -> None:
+    from packages.orchestration.pingpong_job import require_job_plan
     from packages.orchestration.repair_request_builder import get_request_package
     from packages.orchestration.storage import JobNotFoundError
-    from packages.orchestration.pingpong_job import require_job_plan
     try:
         job = require_job_plan(args.job_id)
     except (JobNotFoundError, ValueError) as exc:

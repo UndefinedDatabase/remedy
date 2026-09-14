@@ -14,7 +14,6 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from packages.core.models import Artifact
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.dag_schedule import blocked_downstream
 from packages.orchestration.decision_inbox import (
     DECISION_INBOX_VERSION,
@@ -26,6 +25,7 @@ from packages.orchestration.escalation import (
     answer_task_decision,
     enqueue_task_decision,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 #: DECISION F031 D3 — the eight types a branch of ``list_decisions`` actually
 #: produces.  ``worker_approval`` and ``revert_missing`` have no producer at

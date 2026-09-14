@@ -38,7 +38,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration._symbols import (
     INFO as _INFO,
 )
@@ -59,6 +58,7 @@ from packages.orchestration._symbols import (
     section,
 )
 from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.project_brain import (
     NT_AGENT_LOOP,
     NT_APPROVAL,

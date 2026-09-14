@@ -195,8 +195,8 @@ class BudgetGate:
 
 def can_retry_task(job_id: str, task_id: str, root: Path | None = None) -> dict[str, Any]:
     """Read-only retry readiness check. Does NOT execute anything."""
-    from packages.orchestration.proposed_tasks import reconcile_materialized
     from packages.orchestration.pingpong_job import load_job_plan_safe
+    from packages.orchestration.proposed_tasks import reconcile_materialized
 
     blockers: list[str] = []
 

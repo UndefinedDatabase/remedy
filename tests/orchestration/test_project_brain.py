@@ -16,11 +16,9 @@ from uuid import UUID, uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.memory.models import MemoryEntry
-from packages.orchestration.data_paths import normalize_job_id
-from packages.orchestration.pingpong_job import save_job_plan
-from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.data_paths import mint_job_id, normalize_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -1029,6 +1027,7 @@ class TestContinueRoundtripAggregate:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.continue_from_node import continue_from_node
         from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.pingpong_job import load_job_plan
         from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.project_brain_aggregate import (
             build_project_brain_aggregate,
@@ -1037,7 +1036,6 @@ class TestContinueRoundtripAggregate:
             RemyProject,
             save_project,
         )
-        from packages.orchestration.pingpong_job import load_job_plan
         from packages.orchestration.timeline import load_run_events
 
         pid = str(uuid4())
@@ -1314,9 +1312,8 @@ class TestLearnEvidence:
     def test_learn_creates_entries(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
         from packages.orchestration.memory_learn import learn_from_job
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
         job = JobPlan(
             job_id=mint_job_id(), job_title="learn-test", user_prompt="test",
@@ -1338,10 +1335,9 @@ class TestBrainMemoryNodeSafe:
     def test_memory_node_has_evidence_fields(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
         from packages.memory.local_gateway import store_memory
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
         from packages.orchestration.project_brain import build_project_brain
-        from packages.orchestration.pingpong_job import save_job_plan
 
         job = JobPlan(
             job_id=mint_job_id(), job_title="brain-mem", user_prompt="test",
@@ -1370,8 +1366,8 @@ class TestBrainMemoryNodeSafe:
 class TestGitStatusBrainNode:
     def test_git_status_node_in_graph(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.project_brain import build_project_brain
 
         job = JobPlan(
             job_id=mint_job_id(), job_title="brain-git", user_prompt="test",
@@ -1393,8 +1389,8 @@ class TestGitStatusBrainNode:
 
     def test_git_status_node_no_repo(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.project_brain import build_project_brain
 
         job = JobPlan(
             job_id=mint_job_id(), job_title="brain-no-git", user_prompt="test",
@@ -1409,8 +1405,8 @@ class TestGitStatusBrainNode:
     def test_git_status_non_git_target(self, tmp_path, monkeypatch):
         """Non-git target_repo creates node with is_git_repo=False."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.project_brain import build_project_brain
 
         non_git = tmp_path / "not-a-git-repo"
         non_git.mkdir()
@@ -1458,8 +1454,8 @@ class TestGitStatusBrainNode:
 class TestStopReasonBrainNode:
     def test_stop_reason_node_in_graph(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.project_brain import build_project_brain
 
         job = JobPlan(
             job_id=mint_job_id(), job_title="brain-sr", user_prompt="test",

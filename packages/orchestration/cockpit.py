@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_PENDING,
@@ -28,6 +27,7 @@ from packages.orchestration.approval_queue import (
 )
 from packages.orchestration.data_paths import run_log_dir
 from packages.orchestration.permissions import Capability, is_allowed
+from packages.orchestration.pingpong_job import JobPlan
 
 if TYPE_CHECKING:
     from packages.orchestration.project_constitution import ProjectConstitution

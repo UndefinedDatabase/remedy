@@ -8,8 +8,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from packages.orchestration.data_paths import resolve_job_id
-from packages.orchestration.storage import JobNotFoundError
 from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
+from packages.orchestration.storage import JobNotFoundError
 
 if TYPE_CHECKING:
     import argparse
@@ -195,11 +195,11 @@ def _cmd_revert_patch_intent(
     from pathlib import Path as _Path
 
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import load_job_plan as _load_job
     from packages.orchestration.repository_snapshot import (
         load_durable_apply_record,
         revert_repository_apply,
     )
-    from packages.orchestration.pingpong_job import load_job_plan as _load_job
 
     data_dir = resolve_data_root()
     job = _load_job(job_id)

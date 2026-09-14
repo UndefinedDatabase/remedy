@@ -25,13 +25,13 @@ from unittest.mock import patch
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.permissions import (
     Capability,
     is_allowed,
     is_reserved,
     set_permission,
 )
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.test_runner import (
     _EXECUTION_SAFE_EXECUTABLES,
     TIMEOUT_DEFAULT_SEC,

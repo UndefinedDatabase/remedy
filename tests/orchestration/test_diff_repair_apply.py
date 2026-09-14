@@ -35,14 +35,13 @@ def _make_approved_job(tmp_path, monkeypatch):
     """A saved Job with repo_generated_write and one APPROVED patch intent."""
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     from packages.core.models import Artifact
-    from packages.orchestration.pingpong_job import JobPlan
     from packages.orchestration.approval_queue import (
         APPROVAL_APPROVED,
         make_intent_id,
         set_approval_state,
     )
     from packages.orchestration.permissions import Capability, set_permission
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
     job = JobPlan(job_title="diff-repair-apply-test")
     set_permission(job, Capability.repo_generated_write, allow=True)

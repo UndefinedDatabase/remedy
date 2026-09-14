@@ -10,11 +10,10 @@ import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -231,8 +230,8 @@ class TestWorkerShow:
 class TestWorkerBrainNode:
     def test_worker_adapter_node_in_graph(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.project_brain import build_project_brain
 
         job = JobPlan(
             job_id=mint_job_id(), job_title="brain-wa", user_prompt="test",

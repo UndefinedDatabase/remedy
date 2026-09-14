@@ -941,8 +941,7 @@ class TestCommitReadinessSchemaCompleteness:
     """Commit-readiness schema must be complete and safe."""
 
     def test_full_schema(self):
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job = JobPlan(job_title="schema")
         save_job_plan(job)
 
@@ -961,8 +960,7 @@ class TestCommitReadinessSchemaCompleteness:
             assert not missing, f"Missing: {missing}"
 
     def test_changed_files_truncated_false(self):
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job = JobPlan(job_title="trunc-false")
         save_job_plan(job)
 
@@ -973,8 +971,7 @@ class TestCommitReadinessSchemaCompleteness:
             assert data["changed_files_truncated"] is False
 
     def test_missing_tests_not_ready(self):
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job = JobPlan(job_title="missing-tests")
         save_job_plan(job)
 
@@ -986,8 +983,7 @@ class TestCommitReadinessSchemaCompleteness:
             assert any("tests" in r for r in data["reasons"])
 
     def test_missing_proof_not_ready(self):
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job = JobPlan(job_title="missing-proof")
         save_job_plan(job)
 
@@ -1017,8 +1013,7 @@ class TestCommitReadinessSchemaCompleteness:
             assert "shell=True" not in stripped
 
     def test_no_raw_leaks(self):
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job = JobPlan(job_title="leaks")
         save_job_plan(job)
 
@@ -1031,8 +1026,7 @@ class TestCommitReadinessSchemaCompleteness:
                 assert bad not in output
 
     def test_human_output_concise(self):
-        from packages.orchestration.pingpong_job import JobPlan
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job = JobPlan(job_title="human")
         save_job_plan(job)
 

@@ -338,6 +338,7 @@ def evaluate_continue_eligibility(
     )
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.permissions import Capability, is_allowed
+    from packages.orchestration.pingpong_job import require_job_plan
     from packages.orchestration.repository_snapshot import (
         list_durable_apply_ids,
         load_durable_apply_record,
@@ -348,7 +349,6 @@ def evaluate_continue_eligibility(
         evaluate_run_action,
     )
     from packages.orchestration.storage import JobNotFoundError
-    from packages.orchestration.pingpong_job import require_job_plan
 
     data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = ContinueEligibility(eligible=False, job_id=job_id)
@@ -530,13 +530,13 @@ def run_do_continue(
     """
     from packages.orchestration.approval_queue import get_patch_intent
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import load_job_plan
     from packages.orchestration.repository_snapshot import (
         build_snapshot_truth,
         load_durable_apply_record,
         update_apply_record_state,
     )
     from packages.orchestration.run_contract import ensure_contract, export_usage_json, load_usage
-    from packages.orchestration.pingpong_job import load_job_plan
 
     data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
     result = ContinueResult(

@@ -141,8 +141,8 @@ def revert_patch_intent(
     No shell, no Git, no LLM, no network.
     """
     from packages.orchestration.approval_queue import get_patch_intent
-    from packages.orchestration.run_log import RunLogWriter
     from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.run_log import RunLogWriter
 
     def _blocked(reason: str, target_path: str = "", action: str = "") -> PatchRevertResult:
         return PatchRevertResult(

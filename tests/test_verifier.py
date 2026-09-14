@@ -10,8 +10,8 @@ from __future__ import annotations
 from uuid import uuid4
 
 from packages.core.models import Artifact, ArtifactKind, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.task_runner import (
     annotate_task_result,
     finalize_task,

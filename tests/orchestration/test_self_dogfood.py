@@ -13,10 +13,9 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration import self_dogfood as SD
-from packages.orchestration.pingpong_job import save_job_plan
 from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 
 @pytest.fixture()

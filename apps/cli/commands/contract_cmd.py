@@ -9,12 +9,12 @@ from typing import Any
 
 def _cmd_contract_inspect(args: Any) -> None:
     """Show the run contract for a job."""
+    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
     from packages.orchestration.run_contract import (
         ensure_contract,
         export_run_contract_json,
         summarize_run_contract,
     )
-    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 
     job_id = getattr(args, "job_id", "")
     if not job_id:
@@ -42,12 +42,12 @@ def _cmd_contract_inspect(args: Any) -> None:
 
 def _cmd_contract_check(args: Any) -> None:
     """Check whether an action is allowed by the contract."""
+    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
     from packages.orchestration.run_contract import (
         ensure_contract,
         evaluate_run_action,
         export_run_action_decision_json,
     )
-    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 
     job_id = getattr(args, "job_id", "")
     action = getattr(args, "action", "")
@@ -92,13 +92,13 @@ def _cmd_contract_set(args: Any) -> None:
     """Set a contract field on a job (limited to safe fields)."""
     from dataclasses import fields as dc_fields
 
+    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
     from packages.orchestration.run_contract import (
         RunContract,
         ensure_contract,
         save_contract,
         validate_run_contract,
     )
-    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 
     job_id = getattr(args, "job_id", "")
     field_name = getattr(args, "field", "")

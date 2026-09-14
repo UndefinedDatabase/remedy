@@ -12,15 +12,14 @@ from uuid import uuid4
 
 import pytest
 
-from tests.cli.runtime_helpers import run_grouped_cli
 from packages.orchestration.data_paths import mint_job_id
+from tests.cli.runtime_helpers import run_grouped_cli
 
 
 def _make_ineligible_job(data_dir):
     """Create a job with an unapproved intent under data_dir. Returns job_id."""
     from packages.core.models import Artifact, ArtifactKind, RunState
-    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
     task = TaskEntry(title="t")
     art = Artifact(

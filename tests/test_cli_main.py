@@ -20,10 +20,9 @@ from __future__ import annotations
 import pytest
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.permissions import Capability, set_permission
-from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, load_job_plan, save_job_plan
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -812,9 +811,8 @@ class TestProjectCommandsCLI:
     def test_malformed_project_id_no_placeholder_in_brain(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.project_brain import build_project_brain, export_project_brain_json
-        from packages.orchestration.pingpong_job import save_job_plan
         job = JobPlan(job_title="bad-project", state=RunState.PENDING, metadata={"project_id": "not-a-uuid"})
         save_job_plan(job)
         graph = build_project_brain(job, [])

@@ -5,8 +5,8 @@ Tests for plan_job() orchestration runner.
 from __future__ import annotations
 
 from packages.core.models import Artifact, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.job_runner import plan_job
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 # ---------------------------------------------------------------------------
 # plan_job: basic behavior

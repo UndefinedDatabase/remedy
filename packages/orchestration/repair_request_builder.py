@@ -448,6 +448,7 @@ def build_repair_request_package(
     Never calls a provider/network/subprocess, never applies, never creates a Patch
     Intent. Idempotent per (failure, target_kind, model_hint) unless ``new=True``."""
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
     from packages.orchestration.repair_loop import build_repair_context, find_repair_attempt
     from packages.orchestration.run_contract import (
         ContractAction,
@@ -455,7 +456,6 @@ def build_repair_request_package(
         evaluate_run_action,
     )
     from packages.orchestration.storage import JobNotFoundError
-    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     label = (generator_label or "external").strip() or "external"

@@ -10,8 +10,8 @@ import os
 
 import pytest
 
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.builder_models import BuilderOutput
+from packages.orchestration.pingpong_job import JobPlan
 
 
 class TestFixtureBridgeSmoke:

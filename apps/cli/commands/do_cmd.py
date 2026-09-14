@@ -187,7 +187,6 @@ def _cmd_do_mission(
         sys.exit(3)
 
     from packages.core.models import RunState
-    from packages.orchestration.pingpong_job import JobPlan
     from packages.orchestration.intake import (
         compose_intake_prompt,
         heuristic_intake,
@@ -196,7 +195,7 @@ def _cmd_do_mission(
         run_intake,
     )
     from packages.orchestration.job_runner import plan_job
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
     call_fn = None
     intake_result = None
@@ -2930,8 +2929,8 @@ def _cmd_do_replan(
 ) -> None:
     """Regenerate the flight plan for an existing job."""
     from packages.orchestration.data_paths import job_evidence_export_dir, resolve_job_id
-    from packages.orchestration.storage import JobNotFoundError
     from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
+    from packages.orchestration.storage import JobNotFoundError
 
     job_id = resolve_job_id(job_id_str)
     try:

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.data_paths import normalize_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, load_job_plan, save_job_plan
 from packages.orchestration.proposed_tasks import (
     ProposedTask,
     add_proposed_task,
@@ -18,7 +18,6 @@ from packages.orchestration.proposed_tasks import (
     evaluate_proposed_task,
     propose_task_from_review_finding,
 )
-from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 from packages.orchestration.worker_queue import (
     enqueue_job,
     get_next_job,

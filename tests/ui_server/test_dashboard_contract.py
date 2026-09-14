@@ -519,11 +519,11 @@ class TestReadinessEndpointUsesAutonomyReadiness:
 
     def test_readiness_runtime_with_empty_job(self):
         """Runtime test: assess_job_readiness returns real report for minimal job."""
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autonomy_readiness import (
             assess_job_readiness,
             export_readiness_json,
         )
+        from packages.orchestration.pingpong_job import JobPlan
 
         job = JobPlan(job_title="test-readiness", user_prompt="test")
         report = assess_job_readiness(job, [])
@@ -539,8 +539,8 @@ class TestReadinessEndpointUsesAutonomyReadiness:
 
     def test_readiness_runtime_with_events(self):
         """Level 1 requires attached_repo + tasks."""
-        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
         from packages.orchestration.autonomy_readiness import assess_job_readiness
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
         job = JobPlan(
             job_title="test-readiness",

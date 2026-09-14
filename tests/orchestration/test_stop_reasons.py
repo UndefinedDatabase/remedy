@@ -9,8 +9,8 @@ from packages.orchestration.builder_models import BuilderOutput
 class TestBridgeStopReasons:
     def _run_bridge(self, tmp_path, monkeypatch, *, patch_text, autonomy=4):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
+        from packages.orchestration.pingpong_job import JobPlan
 
         repo = tmp_path / "repo"
         repo.mkdir(exist_ok=True)
@@ -65,8 +65,8 @@ class TestBridgeStopReasons:
 
     def test_test_failure_gives_test_failed_stop_reason(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
+        from packages.orchestration.pingpong_job import JobPlan
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -93,9 +93,8 @@ class TestBridgeStopReasons:
 class TestLoopStopReasons:
     def test_budget_exhausted_stop_reason(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -129,9 +128,8 @@ class TestLoopStopReasons:
 
     def test_repeated_patch_stop_reason(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -162,9 +160,8 @@ class TestLoopStopReasons:
 class TestDashboardStopReason:
     def test_stop_reason_in_live_state(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.ui_server import _build_live_state_json
 
         job = JobPlan(job_title="test")
@@ -182,9 +179,8 @@ class TestDashboardStopReason:
 
     def test_stop_reason_empty_on_success(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.ui_server import _build_live_state_json
 
         job = JobPlan(job_title="test")

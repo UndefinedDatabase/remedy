@@ -17,8 +17,8 @@ from __future__ import annotations
 import json
 
 from packages.core.models import Artifact, ArtifactKind
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.approval_queue import make_intent_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.proof_chain import (
     PROOF_FAILED,
     PROOF_INCOMPLETE,

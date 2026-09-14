@@ -14,23 +14,21 @@ import hashlib
 import json
 import subprocess
 from pathlib import Path
-from uuid import uuid4
 
 import pytest
 
 from apps.cli.commands import job as job_cmd
 from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import data_paths, event_replay
 from packages.orchestration import worktree_resume as WR
 from packages.orchestration import worktrees as W
+from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.pingpong_loop import (
     load_run,
     run_pingpong,
 )
 from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
-from packages.orchestration.pingpong_job import save_job_plan
-from packages.orchestration.data_paths import mint_job_id
 
 _REAL_UPDATE = WR._update_persisted_run
 _REAL_REMOVE = W.remove

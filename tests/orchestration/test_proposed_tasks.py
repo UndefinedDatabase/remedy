@@ -61,10 +61,8 @@ REAL_JOB_UUID = "12345678-1234-1234-1234-123456789012"
 
 def _create_real_job(root: Path, job_id: str = REAL_JOB_UUID) -> None:
     """Create a minimal Job file in the given data root."""
-    from uuid import UUID
 
-    from packages.orchestration.pingpong_job import JobPlan
-    from packages.orchestration.pingpong_job import save_job_plan
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
     job = JobPlan(job_id=job_id, job_title="test-job")
     save_job_plan(job, root)
 

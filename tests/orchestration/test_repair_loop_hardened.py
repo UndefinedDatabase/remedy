@@ -14,9 +14,8 @@ from tests.orchestration.small_repo_fixtures import (
 class TestDeterministicRepairLoop:
     def test_succeeds_in_two_cycles(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
         cycle_patches = [fixture_patch_repair_cycle1(), fixture_patch_repair_cycle2()]
@@ -43,9 +42,8 @@ class TestDeterministicRepairLoop:
 
     def test_malformed_patch_stops_safely(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
 
@@ -68,9 +66,8 @@ class TestDeterministicRepairLoop:
 
     def test_repeated_patch_stops_safely(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
         same_patch = json.dumps(fixture_patch_repair_cycle1())
@@ -94,9 +91,8 @@ class TestDeterministicRepairLoop:
 
     def test_max_cycles_exhausted_stops_safely(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
         counter = [0]
@@ -122,9 +118,8 @@ class TestDeterministicRepairLoop:
 
     def test_source_apply_approval_gate_intact(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
 
@@ -147,9 +142,8 @@ class TestDeterministicRepairLoop:
 
     def test_no_raw_output_leaks_in_repair_events(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.timeline import load_run_events
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
@@ -179,9 +173,8 @@ class TestDeterministicRepairLoop:
 
     def test_events_recorded_per_cycle(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.pingpong_job import save_job_plan
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.timeline import load_run_events
 
         repo = create_repair_scenario_repo(tmp_path / "repo")

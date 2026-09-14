@@ -39,13 +39,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from packages.core.models import JobBudgets, RunState
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.loop_spec import (
     INERT_TRIGGER_NOTICE,
     LOOP_TEMPLATE_VARS,
     LoopBudgets,
     LoopSpec,
 )
+from packages.orchestration.pingpong_job import JobPlan
 
 #: Metadata key carrying the originating loop's name — the provenance line that
 #: makes a loop-materialized job traceable in evidence and reports.

@@ -7,8 +7,8 @@ import os
 import subprocess
 import sys
 
-from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.decision_queue import DECISION_TYPES, list_decisions
+from packages.orchestration.pingpong_job import JobPlan
 
 _CLI = [sys.executable, "-m", "apps.cli.grouped"]
 
@@ -276,7 +276,6 @@ class TestFlightPlanLabel:
 
     def test_flight_plan_parse_failure_not_planned(self, tmp_path, monkeypatch):
         """LLM flight plan parse failure -> non-zero exit, no tasks, postmortem."""
-        from pathlib import Path
 
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
@@ -290,6 +289,7 @@ class TestFlightPlanLabel:
         monkeypatch.chdir(str(repo))
 
         import pytest
+
         from apps.cli.commands.do_cmd import _cmd_do_mission
         with pytest.raises(SystemExit) as exc_info:
             _cmd_do_mission("test mission", repo=str(repo), json_output=True)
@@ -336,7 +336,6 @@ class TestApprovalGateEnforcement:
         """R-0130: rejected plan refuses execution at CLI level."""
         from packages.core.models import RunState
         from packages.orchestration.pingpong_job import TaskEntry
-        from packages.orchestration.pingpong_job import save_job_plan
         env = _env(tmp_path)
         repo = _git_repo(tmp_path)
         subprocess.run(
@@ -412,6 +411,7 @@ class TestDecisionResolve:
 
     def test_bad_reason_exits(self, tmp_path, monkeypatch):
         import pytest
+
         from packages.orchestration.pingpong_job import save_job_plan
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
@@ -639,6 +639,7 @@ class TestReplanApprovalRearm:
 
     def test_replan_rejected_after_completed_task(self, tmp_path):
         import pytest
+
         from packages.orchestration.flight_plan import ReplanRejectedError, replan
         from packages.orchestration.schemas.models import FlightPlan
 
