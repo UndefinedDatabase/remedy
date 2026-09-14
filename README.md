@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-76 of 279 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+77 of 279 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 19 | 32 |
+| 2 | Minimal Self-Build Runtime | 20 | 32 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -112,7 +112,13 @@ whole; and the retirement of `worker_recommend`. Nothing was deleted from
 the prototype cluster here, only made SAFE to delete: that deletion, the
 atomic record flip and the classic runner were split off at the
 eight-session soft limit and belong to the follow-up feature the STATUS
-ledger registers directly after it).
+ledger registers directly after it),
+F275 one world completion, part three (the prototype-cluster deletion
+PERFORMED, one module group per commit, each lost behaviour registered as a
+finding; the classic-to-unified record flip landed as ONE commit and the
+red bridge it opened closed in two rounds; and the classic job store, the
+classic `Job` and `Task` models, `resolve_any_job_id` and every which-store
+branch deleted, leaving one job record, one store and one id resolver).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
