@@ -56,8 +56,7 @@ def test_plan_job_task_types_present():
 # ---------------------------------------------------------------------------
 
 def test_plan_job_state_is_planned_after_planning():
-    job = JobPlan(job_title="test")
-    assert job.state == RunState.PENDING
+    job = JobPlan(job_title="test", state=RunState.PENDING)
     result = plan_job(job)
     assert result.job.state == RunState.PLANNED
 

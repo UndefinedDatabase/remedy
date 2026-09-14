@@ -223,7 +223,6 @@ class TestIdempotency:
 
 class TestProofAlignment:
     def test_repair_intent_not_applied_or_verified(self, data_dir):
-        import uuid
         jid, fa, _ = _make_job_with_failure(data_dir)
         r = RL.run_repair_attempt(jid, fa, fixture_builder=True, data_dir=data_dir)
         job = load_job_plan(normalize_job_id(jid), data_dir)
@@ -232,7 +231,7 @@ class TestProofAlignment:
         assert intent.get("state") == "pending"  # not approved, not applied
         from packages.orchestration.proof_chain import PROOF_VERIFIED, build_proof_chain
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(data_dir, uuid.UUID(jid))
+        events = load_run_events(data_dir, jid)
         chain = build_proof_chain(job, events, data_dir=data_dir)
         for c in chain.changes:
             if c.intent_id == r.repair_intent_id:
@@ -248,7 +247,6 @@ class TestProofAlignment:
 class TestRedaction:
     def test_no_raw_leakage_in_result_and_events(self, data_dir):
         import json
-        import uuid
         jid, fa, _ = _make_job_with_failure(
             data_dir,
             safe_summary="Test test_failed: exit 1",  # safe summary is bounded
@@ -258,7 +256,7 @@ class TestRedaction:
         payload = json.dumps(RL.export_repair_attempt_json(r))
         ctx = RL.export_repair_context_json(RL.build_repair_context(jid, fa, data_dir))
         from packages.orchestration.timeline import load_run_events
-        events_blob = json.dumps(load_run_events(data_dir, uuid.UUID(jid)))
+        events_blob = json.dumps(load_run_events(data_dir, jid))
         for blob in (payload, json.dumps(ctx), events_blob):
             assert "Traceback" not in blob
             assert "/home/" not in blob

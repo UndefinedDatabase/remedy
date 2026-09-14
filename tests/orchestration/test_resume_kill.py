@@ -63,13 +63,13 @@ import sys
 import time
 from pathlib import Path
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
 from packages.orchestration.long_run_executor import (
     CycleLimits,
     TaskAttempt,
     run_cycles,
 )
-from packages.orchestration.storage import load_job, save_job
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, require_job_plan, save_job_plan
 
 MARKER = Path(sys.argv[1])
 JOB_FILE = Path(sys.argv[2])
@@ -78,12 +78,12 @@ TOTAL_TASKS = int(sys.argv[4])
 MODE = sys.argv[5]                     # "first" | "resume"
 
 if MODE == "first":
-    job = Job(name="kill-fixture",
-              tasks=[Task(title=f"t{i}", description="d") for i in range(TOTAL_TASKS)])
-    save_job(job)
-    JOB_FILE.write_text(str(job.id), encoding="utf-8")
+    job = JobPlan(job_title="kill-fixture",
+                  tasks=[TaskEntry(title=f"t{i}", body="d") for i in range(TOTAL_TASKS)])
+    save_job_plan(job)
+    JOB_FILE.write_text(job.job_id, encoding="utf-8")
 else:
-    job = load_job(__import__("uuid").UUID(JOB_FILE.read_text(encoding="utf-8")))
+    job = require_job_plan(JOB_FILE.read_text(encoding="utf-8"))
 
 _cycle = {"n": 0}
 
@@ -97,12 +97,12 @@ def step(j, _provider):
     _cycle["n"] += 1
     if MODE == "first" and _cycle["n"] == KILL_ON_CYCLE:
         # In flight: the task is picked but NOT completed and NOT recorded.
-        MARKER.write_text(json.dumps({"cycle": _cycle["n"], "task_id": str(task.id)}),
+        MARKER.write_text(json.dumps({"cycle": _cycle["n"], "task_id": task.task_id}),
                           encoding="utf-8")
         while True:
             time.sleep(0.05)            # the parent kills us here
     task.status = RunState.COMPLETED
-    return TaskAttempt(task_id=task.id, executed=True, verified=True)
+    return TaskAttempt(task_id=task.task_id, executed=True, verified=True)
 
 
 result = run_cycles(
@@ -113,7 +113,7 @@ result = run_cycles(
 )
 print(json.dumps({"terminal_status": result.terminal_status,
                   "cycles_run": result.cycles_run,
-                  "job_id": str(job.id)}))
+                  "job_id": job.job_id}))
 '''
 
 
@@ -306,7 +306,7 @@ class TestKillAndResume:
 class TestTornCheckpoint:
     """The atomic write makes a torn file impossible to produce on demand.
 
-    ``storage._atomic_write_job`` writes a temp file, fsyncs it and renames
+    ``pingpong_job._persist_job`` writes a temp file, fsyncs it and renames
     it, so a kill leaves either the old file or the new one — never a half
     one. Forcing a real mid-write kill is therefore not deterministic, and a
     test that tried would be a flake generator. The torn file is written

@@ -55,6 +55,29 @@ def _corrupt(root: Path, job_id: str, text: str = "{not json") -> Path:
     return path
 
 
+class TestTheWriteReplacesTheRecordWhole:
+    """R-0885: the unified writer never leaves a half-written record behind."""
+
+    def test_a_failure_before_the_rename_leaves_the_previous_record_intact(
+        self, tmp_path, monkeypatch
+    ):
+        import os
+
+        job = _plan("aaaaaaaaaaaaaaaa")
+        path = save_job_plan(job, root=tmp_path)
+        before = path.read_bytes()
+        job.job_title = "changed"
+
+        def refuse(fd):
+            raise OSError("fsync refused")
+
+        monkeypatch.setattr(os, "fsync", refuse)
+        with pytest.raises(OSError, match="fsync refused"):
+            save_job_plan(job, root=tmp_path)
+        assert path.read_bytes() == before
+        assert sorted(entry.name for entry in path.parent.iterdir()) == ["job.json"]
+
+
 class TestTheJobsRootOverride:
     """W1: one call may name the store's base directory instead of the data root."""
 

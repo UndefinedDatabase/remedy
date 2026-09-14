@@ -335,7 +335,7 @@ class TestApprovalGateEnforcement:
     def test_rejected_cli_exit_3(self, tmp_path):
         """R-0130: rejected plan refuses execution at CLI level."""
         from packages.core.models import RunState
-        from packages.orchestration.pingpong_job import TaskEntry
+        from packages.orchestration.pingpong_job import TaskEntry, save_job_plan
         env = _env(tmp_path)
         repo = _git_repo(tmp_path)
         subprocess.run(
@@ -349,24 +349,8 @@ class TestApprovalGateEnforcement:
             tasks=[TaskEntry(title="X")],
         )
         env_with_data = {**env, "REMEDY_DATA_DIR": str(tmp_path / "data")}
-        save_result = subprocess.run(
-            [sys.executable, "-c", f"""
-import os, sys
-sys.path.insert(0, os.environ["PYTHONPATH"])
-os.environ["REMEDY_DATA_DIR"] = "{tmp_path / 'data'}"
-from packages.core.models import Job, Task, RunState
-from packages.orchestration.storage import save_job
-job = Job(name="rejected-test", state=RunState.PLANNED,
-          flight_plan={{"_approval": "rejected"}},
-          tasks=[Task(description="X")])
-save_job(job)
-print(str(job.id))
-"""],
-            capture_output=True, text=True, timeout=30,
-            cwd=str(repo), env=env_with_data,
-        )
-        job_id = save_result.stdout.strip()
-        short_id = job_id[:8]
+        save_job_plan(job, root=tmp_path / "data")
+        short_id = job.job_id[:8]
 
         run = subprocess.run(
             [*_CLI, "job", "resume", short_id],
@@ -667,7 +651,7 @@ class TestReplanApprovalRearm:
 class TestApprovalGoldenPathCLI:
     """R-0127: full CLI sequence — init → do(seed) → run(blocked) → approve → status.
 
-    Assumption: inline save_job seeds the job with a pending flight plan as the
+    Assumption: inline save_job_plan seeds the job with a pending flight plan as the
     provider stand-in, per spec allowance.
     """
 
@@ -682,36 +666,24 @@ class TestApprovalGoldenPathCLI:
         )
         assert init.returncode == 0, init.stderr
 
-        # 2. seed job with pending flight plan via save_job
-        seed = subprocess.run(
-            [sys.executable, "-c", """
-import os, json, sys
-sys.path.insert(0, os.environ["PYTHONPATH"])
-os.environ["REMEDY_DATA_DIR"] = os.environ["REMEDY_DATA_DIR"]
-from packages.core.models import Job, Task, RunState
-from packages.orchestration.storage import save_job
-job = Job(
-    name="approval-smoke",
-    state=RunState.PLANNED,
-    flight_plan={
-        "schema_v": "flight_plan_v1",
-        "tasks": [{"id": "T001", "title": "Do thing", "goal": "G",
-                    "acceptance": ["Done"], "depends_on": [],
-                    "est_tokens_band": "M", "files_hint": []}],
-        "risks": [],
-        "_approval": "pending",
-    },
-    tasks=[Task(description="Do thing")],
-)
-save_job(job)
-print(json.dumps({"job_id": str(job.id)}))
-"""],
-            capture_output=True, text=True, timeout=30,
-            cwd=str(repo), env=env,
+        # 2. seed job with pending flight plan via save_job_plan
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import TaskEntry, save_job_plan
+        job = JobPlan(
+            job_title="approval-smoke",
+            state=RunState.PLANNED,
+            flight_plan={
+                "schema_v": "flight_plan_v1",
+                "tasks": [{"id": "T001", "title": "Do thing", "goal": "G",
+                            "acceptance": ["Done"], "depends_on": [],
+                            "est_tokens_band": "M", "files_hint": []}],
+                "risks": [],
+                "_approval": "pending",
+            },
+            tasks=[TaskEntry(title="Do thing")],
         )
-        assert seed.returncode == 0, seed.stderr
-        job_id = json.loads(seed.stdout)["job_id"]
-        short_id = job_id[:8]
+        save_job_plan(job, root=tmp_path / "data")
+        short_id = job.job_id[:8]
 
         # 3. run attempt → expect blocked (exit 3, stderr mentions approval)
         run = subprocess.run(

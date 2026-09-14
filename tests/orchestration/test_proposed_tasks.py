@@ -844,7 +844,8 @@ class TestBackendReadiness:
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
-        corrupt_path = tmp_path / "jobs" / "corrupt-job.json"
+        corrupt_path = tmp_path / "jobs" / "corrupt-job" / "job.json"
+        corrupt_path.parent.mkdir(parents=True)
         corrupt_path.write_text("not json")
         report = backend_readiness(REAL_JOB_UUID)
         assert report["storage_health"]["job_store_skipped_files"] > 0

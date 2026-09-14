@@ -535,8 +535,8 @@ class TestStatus:
         _init_project(repo, env)
 
         jobs_dir = tmp_path / "data" / "jobs"
-        jobs_dir.mkdir(parents=True, exist_ok=True)
-        (jobs_dir / "bad.json").write_text("{corrupt")
+        (jobs_dir / "badjob").mkdir(parents=True, exist_ok=True)
+        (jobs_dir / "badjob" / "job.json").write_text("{corrupt")
 
         result = _run_status(repo, env, ["--json"])
         assert result.returncode == 0
@@ -789,12 +789,11 @@ class TestShortIdResolution:
                 break
         if common < 4:
             jobs_dir = tmp_path / "data" / "jobs"
-            src = jobs_dir / f"{id2}.json"
             forced_id = id1[:8] + id2[8:]
-            dst = jobs_dir / f"{forced_id}.json"
-            data = src.read_text().replace(str(id2), forced_id)
-            dst.write_text(data)
-            src.unlink()
+            dst = jobs_dir / forced_id
+            (jobs_dir / id2).rename(dst)
+            record = dst / "job.json"
+            record.write_text(record.read_text().replace(str(id2), forced_id))
             prefix = id1[:8]
         else:
             prefix = id1[:common]
