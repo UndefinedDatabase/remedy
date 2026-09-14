@@ -8,29 +8,29 @@ Branch: feature/f275-one-world-completion-part-three, cut from `main` at
 Finish what F274 could not reach inside its own limit: the two carry-overs F260's Design
 names, DECISION F260 D3, the prototype-cluster deletion itself, the atomic record flip that
 T002 rules but does not perform, and the classic runner. Operator ruling amend0908-f275-finish
-orders T001 PERFORMED, not prepared. T001 and T002 are DONE, and the classic runner's whole
-command surface is gone as of round 34.
+orders T001 PERFORMED, not prepared. T001 and T002 are DONE, the classic runner's whole
+command surface is gone as of round 34, and the record flip landed in round 101.
 
 ## Current Step
 
-ROUND 101 IS THE FLIP ROUND, per operator amendment amend0914-f275-sprint. One bookkeeping
-commit books the round 100 verdict, registers as `R-0884` the structured acceptance form that
-DECISION F275 D22 left to the flip, and records DECISION F275 D75, under which the eleven thin
-sites of DECISION F275 D48 are re-checked by their own witnesses before the flip. The next
-commit is THE FLIP: the transform in the primary checkout, then every committed overlay carrier
-of rounds 90 to 100 in round and part order, staged and landed as ONE declared-oversize commit.
-The full suite then runs once in the primary checkout and its transcript is committed. The
-overlay method of DECISION F275 D64 is retired from the flip commit onward.
+ROUND 102 IS THE FIRST BRIDGE ROUND, per operator amendment amend0914-f275-sprint rule 3. It
+removes the lint rows and the guard and pin failures the flip left: `ruff`'s own fixer sorts
+the import blocks and drops the unused imports in the files the flip changed, the three
+routed-handler tests of `tests/test_data_paths.py` build a unified record with a classic-shaped
+id, the job digest's golden normalizer reads the unified record's id, two guard tests about
+the classic pydantic models import those models again, and the command door's import guard
+rules `save_job_plan` where it ruled `save_job`. The full suite runs once and its bad-node set
+must be a strict subset of round 101's committed transcript.
 
 ## Next Steps
 
-1. BRIDGE ROUNDS on the real tree, one residue group each, every one strictly shrinking the
-   bad-node set of the committed transcript before it with no node newly bad: production code
-   that hands a `JobPlan` a `JobBudgets` model where the record holds its serialized dict; the
-   classic-shaped tests of routed handlers in `tests/test_data_paths.py`; what is left of the
-   classic runner under `job resume`, whose kill-and-resume fixture still builds a classic job;
-   the job digest's stored goldens; and the rows `ruff check` gains from the transform — until
-   a round's transcript reads exit 0.
+1. MORE BRIDGE ROUNDS on the real tree, each strictly shrinking the committed bad-node set with
+   no node newly bad: production code that hands a `JobPlan` a `JobBudgets` model where the
+   record holds its serialized dict, and the `job resume` tests of `tests/cli/test_plan_approval.py`;
+   what is left of the classic runner under `job resume`, whose kill-and-resume fixture still
+   builds a classic job; the scoped job listings; and the single failures left in the job
+   context command, the golden path, the runtime smokes, the repair loop, the proposed-task
+   store, the cockpit adapter and the task runner — until a round's transcript reads exit 0.
 2. THE CLASSIC STORE, with the which-store branches and adapters the flip leaves unreached.
 3. THE CLOSURE SEQUENCE.
 
@@ -38,11 +38,12 @@ overlay method of DECISION F275 D64 is retired from the flip commit onward.
 
 - THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20
   sessions and 60 rounds without a replacement, so this feature closes only at full scope.
-- THE BRANCH IS RED FROM THE FLIP COMMIT until a bridge round's transcript reads exit 0, and
-  hosted CI on the branch is expected to be red in that span, per amend0914 rule 3.
+- THE BRANCH IS RED until a bridge round's transcript reads exit 0, and hosted CI on the branch
+  is expected to be red in that span, per amend0914 rule 3.
 - THE BRIDGE IS BOUNDED at eight rounds after the flip commit: a ninth writes an operator
   question and stops, and a round that adds a bad node is FAIL.
+- A SERVER-START RACE: a command-channel test read its server's info file before the server
+  wrote it once in the reviewer's full run after the flip and passed ten times alone.
 - ONE ROUTED LOAD IS REACHED BY NO TEST until `R-0883` is repaired.
-- The open set is 88 by distinct id at this round's base, with `R-0809`, `R-0880` and `R-0883`
-  open, and 89 once `R-0884` is registered. Four are High — R-0803, R-0804, R-0806 and R-0807 —
-  all F273's, per DECISION F272 D12.
+- The open set is 89 by distinct id, with `R-0809`, `R-0880`, `R-0883` and `R-0884` open.
+  Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
