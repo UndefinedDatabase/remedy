@@ -1,367 +1,207 @@
-# Handback — F275 round 102
+# Handback — F275 round 103
 
 ## Session
 
-`SESSION 35 of feature F275 · round 102 · rounds so far 102`
+`SESSION 35 of feature F275 · round 103 · rounds so far 103`
 
 ## Range
 
-Review of `7f2991c9`..`HEAD`: six commits (C0 part 1, C0 part 2, C1, C2, C3, C4), plus this handback commit C5. `.agent/STOP`
-was ABSENT at all three readings constraint 2 orders (before C0, before C2, before C5): `ls .agent/STOP` exit 2 each time,
-"No such file or directory".
+Review of `0fac911d`..`HEAD`: eight commits (C0a, C0b, C0c, C1, C2, C3, C4, C5), plus this handback commit C6. `.agent/STOP`
+was ABSENT at all three readings constraint 2 orders (before C0a, before C2, before C6): `stat .agent/STOP` exit 1 each
+time, "No such file or directory".
 
-**THE BRIDGE SHRANK.** The full suite ran once in the primary checkout after C3: exit 1,
-`22 failed, 18419 passed, 23 skipped, 1 warning, 7 errors`, **29** distinct bad nodes against round 101's **40**. FIXED **11**,
-exactly the eleven the block orders, and NEWLY BAD **0**. The transcript is committed as C4.
+**THE BRIDGE CLOSED.** The full suite ran once in the primary checkout after C4. It exited **0** with
+`18450 passed, 23 skipped, 1 warning in 1409.81s (0:23:29)`. That is **0** distinct bad nodes against round 102's **29**:
+FIXED **29**, NEWLY BAD **0**. The transcript is committed as C5.
 
 ## Commits
 
-### 0c449dd1 F275 R102 C0 part 1: save the round 102 block as authored text
+### 795aaf5d F275 R103 C0a: save the round 103 block as authored text
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r102.md` | +283 / -0 | the block, copied after I checked its sha256 `bde76f3f…` against the digest received (24741 bytes). Split from the mirror, see deviation 1 |
+| `.agent/authored/f275-r103.md` | +278 / -0 | the block as received. Before copying, I checked its sha256 `2c8a365b…8e369675` (26767 bytes) against the digest received |
 
-### 6489feca F275 R102 C0 part 2: mirror the round 102 block into the last-block state file
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | +221 / -214 | the same bytes, the mirror |
-
-### 2d907c03 F275 R102 C1: book the round 101 verdict and its slip, record DECISION F275 D76 and make the plan current
+### 7586c3d7 F275 R103 C0b: mirror the round 103 block into the last-block state file
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | +14 / -0 | slice DEC102 appended, 3391 bytes: DECISION F275 D76 |
-| `.agent/live_review.md` | +10 / -0 | slice RECORD102 appended, 3353 bytes: `Gate: F275 R101` VERDICT PASS |
-| `.agent/plan.md` | +23 / -22 | slice PLAN102, a full replacement, 3109 bytes, 49 lines. This is the FIRST SUBSTANTIVE COMMIT |
-| `.agent/prose_slips.md` | +2 / -0 | slice SLIP102 appended, 512 bytes: the round 101 G3 staged-numstat slip |
+| `.agent/last_block.md` | +206 / -211 | the same bytes, the mirror |
 
-### 2b118122 F275 R102 C2: ruff's own fixer sorts the import blocks and drops the unused imports in the files the flip changed
-
-SPEC L: `ruff check --fix --select I001,F401` (ruff 0.15.17) from the primary root, over exactly the 293 paths that
-`git diff --name-only b184040c ebc0182c` prints. There was no other edit. The fixer changed 184 of those paths. Every row's
-Reason reads "`ruff` fix", meaning I001 import order, F401 unused import, or both. A self-review scan of `git diff -U0` found
-**0** changed lines outside an import statement. The one line that did not match the scan's pattern was the
-`CYCLE_SAFETY_CAP, DEFAULT_MAX_CYCLES)` continuation of a parenthesized import in `tests/orchestration/test_checkpoints.py`.
+### a1d9cd28 F275 R103 C0c: save the round 103 test carrier as authored text
 
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/commands/brain.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/change.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/context.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/contract_cmd.py` | +3 / -3 | `ruff` fix |
-| `apps/cli/commands/dashboard_cmd.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/decision.py` | +3 / -3 | `ruff` fix |
-| `apps/cli/commands/do_cmd.py` | +2 / -3 | `ruff` fix |
-| `apps/cli/commands/event.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/file.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/guide.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/job.py` | +1 / -2 | `ruff` fix |
-| `apps/cli/commands/memory.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/patch.py` | +2 / -2 | `ruff` fix |
-| `apps/cli/commands/policy.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/project.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/propose_cmd.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/readiness.py` | +2 / -2 | `ruff` fix |
-| `apps/cli/commands/repair_cmd.py` | +3 / -3 | `ruff` fix |
-| `apps/cli/commands/repo.py` | +1 / -1 | `ruff` fix |
-| `apps/cli/commands/review_cmd.py` | +4 / -4 | `ruff` fix |
-| `apps/cli/commands/snapshot_cmds.py` | +2 / -2 | `ruff` fix |
-| `apps/cli/commands/test_cmds.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/agent_loop.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/brain_detail.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/brain_viewer.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/cockpit.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/continue_from_node.py` | +2 / -3 | `ruff` fix |
-| `packages/orchestration/decision_queue.py` | +1 / -2 | `ruff` fix |
-| `packages/orchestration/do_continue.py` | +2 / -2 | `ruff` fix |
-| `packages/orchestration/do_run.py` | +1 / -2 | `ruff` fix |
-| `packages/orchestration/file_provenance.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/job_fulfillment.py` | +1 / -2 | `ruff` fix |
-| `packages/orchestration/llm_planner.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/long_run_executor.py` | +2 / -2 | `ruff` fix |
-| `packages/orchestration/loop_run.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/mission_readiness.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/mission_state.py` | +1 / -2 | `ruff` fix |
-| `packages/orchestration/orchestrator_brain.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/patch_revert.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/project_brain.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/proposed_tasks.py` | +1 / -2 | `ruff` fix |
-| `packages/orchestration/repair_loop.py` | +5 / -6 | `ruff` fix |
-| `packages/orchestration/repair_request_builder.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/repository_snapshot.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/self_dogfood.py` | +2 / -2 | `ruff` fix |
-| `packages/orchestration/self_dogfood_execution.py` | +2 / -2 | `ruff` fix |
-| `packages/orchestration/task_execution.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/task_runner.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/test_execution_service.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/timeline.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/ui_server.py` | +1 / -1 | `ruff` fix |
-| `packages/orchestration/worker_queue.py` | +2 / -2 | `ruff` fix |
-| `tests/cli/test_change_proof_cli.py` | +1 / -1 | `ruff` fix |
-| `tests/cli/test_decision_answers.py` | +1 / -1 | `ruff` fix |
-| `tests/cli/test_do_continue_cli.py` | +2 / -3 | `ruff` fix |
-| `tests/cli/test_file_provenance_cli.py` | +2 / -3 | `ruff` fix |
-| `tests/cli/test_golden_path.py` | +1 / -2 | `ruff` fix |
-| `tests/cli/test_job_context_cmd.py` | +2 / -4 | `ruff` fix |
-| `tests/cli/test_job_digest_cli.py` | +1 / -2 | `ruff` fix |
-| `tests/cli/test_job_report.py` | +1 / -2 | `ruff` fix |
-| `tests/cli/test_open_decisions_view.py` | +1 / -2 | `ruff` fix |
-| `tests/cli/test_orchestrator_brain_cli.py` | +2 / -3 | `ruff` fix |
-| `tests/cli/test_patch_cmd.py` | +1 / -2 | `ruff` fix |
-| `tests/cli/test_plan_approval.py` | +4 / -3 | `ruff` fix |
-| `tests/cli/test_product_spine.py` | +3 / -6 | `ruff` fix |
-| `tests/cli/test_propose_cli.py` | +2 / -5 | `ruff` fix |
-| `tests/cli/test_real_test_execution_cli.py` | +2 / -3 | `ruff` fix |
-| `tests/cli/test_repair_request_cli.py` | +2 / -3 | `ruff` fix |
-| `tests/cli/test_repair_runtime.py` | +1 / -2 | `ruff` fix |
-| `tests/cli/test_repair_v1_cli.py` | +3 / -5 | `ruff` fix |
-| `tests/cli/test_self_dogfood_cli.py` | +3 / -6 | `ruff` fix |
-| `tests/cli/test_self_dogfood_execution_cli.py` | +2 / -3 | `ruff` fix |
-| `tests/orchestration/test_approval_queue.py` | +3 / -5 | `ruff` fix |
-| `tests/orchestration/test_autonomy.py` | +9 / -14 | `ruff` fix |
-| `tests/orchestration/test_autorun.py` | +16 / -29 | `ruff` fix |
-| `tests/orchestration/test_budget_guard.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_budget_stop_integration.py` | +4 / -4 | `ruff` fix |
-| `tests/orchestration/test_builder_bridge.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_builder_bridge_smoke.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_builder_repair_loop.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_builder_visibility.py` | +4 / -8 | `ruff` fix |
-| `tests/orchestration/test_bundled_clarification.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_change_set.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_checkpoints.py` | +2 / -3 | `ruff` fix |
-| `tests/orchestration/test_command_discovery.py` | +2 / -3 | `ruff` fix |
-| `tests/orchestration/test_context_inspector.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_dag_schedule.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_decision_evidence.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_decision_inbox.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_diff_repair_apply.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_do_continue.py` | +2 / -4 | `ruff` fix |
-| `tests/orchestration/test_do_run.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_dod_gate.py` | +2 / -4 | `ruff` fix |
-| `tests/orchestration/test_escalation.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_event_ledger.py` | +2 / -2 | `ruff` fix |
-| `tests/orchestration/test_event_replay.py` | +8 / -7 | `ruff` fix |
-| `tests/orchestration/test_f018_authority_integration.py` | +2 / -2 | `ruff` fix |
-| `tests/orchestration/test_fence_production_e2e.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_handoff.py` | +1 / -3 | `ruff` fix |
-| `tests/orchestration/test_hunk_apply.py` | +2 / -2 | `ruff` fix |
-| `tests/orchestration/test_hunk_decision_record.py` | +2 / -2 | `ruff` fix |
-| `tests/orchestration/test_job_digest.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_job_fulfillment.py` | +24 / -48 | `ruff` fix |
-| `tests/orchestration/test_long_run_executor.py` | +3 / -3 | `ruff` fix |
-| `tests/orchestration/test_loop_run.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_memory_execution.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_memory_planning.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_mission_compiler.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_mission_e2e.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_mission_readiness.py` | +2 / -5 | `ruff` fix |
-| `tests/orchestration/test_mission_state.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_orchestrator_brain.py` | +2 / -4 | `ruff` fix |
-| `tests/orchestration/test_orchestrator_loop.py` | +9 / -9 | `ruff` fix |
-| `tests/orchestration/test_project_brain.py` | +9 / -13 | `ruff` fix |
-| `tests/orchestration/test_prompt_redaction.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_proof_chain.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_proposed_tasks.py` | +1 / -3 | `ruff` fix |
-| `tests/orchestration/test_queue_executor_binding.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_real_ollama_smoke.py` | +3 / -3 | `ruff` fix |
-| `tests/orchestration/test_real_test_execution.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_repair_loop_hardened.py` | +7 / -14 | `ruff` fix |
-| `tests/orchestration/test_repair_loop_v1.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_repair_request_builder.py` | +2 / -4 | `ruff` fix |
-| `tests/orchestration/test_repository_snapshot.py` | +1 / -3 | `ruff` fix |
-| `tests/orchestration/test_resume_cli.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_run_report_hook.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_self_dogfood.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_self_dogfood_execution.py` | +2 / -3 | `ruff` fix |
-| `tests/orchestration/test_self_healing_cycles.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_small_repo_fixtures.py` | +3 / -3 | `ruff` fix |
-| `tests/orchestration/test_snapshot_architecture.py` | +1 / -1 | `ruff` fix |
-| `tests/orchestration/test_source_apply.py` | +2 / -4 | `ruff` fix |
-| `tests/orchestration/test_stop_reasons.py` | +6 / -10 | `ruff` fix |
-| `tests/orchestration/test_structured_planner_cli.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_task_execution.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_test_failure_repair.py` | +6 / -7 | `ruff` fix |
-| `tests/orchestration/test_token_economy.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_token_economy_integration.py` | +2 / -2 | `ruff` fix |
-| `tests/orchestration/test_watchdog.py` | +1 / -2 | `ruff` fix |
-| `tests/orchestration/test_worker_execution.py` | +2 / -3 | `ruff` fix |
-| `tests/orchestration/test_worktree_lifecycle.py` | +2 / -4 | `ruff` fix |
-| `tests/orchestration/test_worktree_resume_cli.py` | +1 / -3 | `ruff` fix |
-| `tests/regression/test_named_bugs.py` | +1 / -2 | `ruff` fix |
-| `tests/storage/test_persistence.py` | +1 / -2 | `ruff` fix |
-| `tests/test_agent_loop.py` | +1 / -2 | `ruff` fix |
-| `tests/test_artifact_kinds.py` | +1 / -1 | `ruff` fix |
-| `tests/test_autonomy_readiness.py` | +3 / -3 | `ruff` fix |
-| `tests/test_brain_detail.py` | +1 / -2 | `ruff` fix |
-| `tests/test_brain_smoke.py` | +1 / -2 | `ruff` fix |
-| `tests/test_brain_viewer.py` | +1 / -2 | `ruff` fix |
-| `tests/test_cli_main.py` | +2 / -4 | `ruff` fix |
-| `tests/test_cockpit.py` | +1 / -2 | `ruff` fix |
-| `tests/test_command_discovery.py` | +1 / -1 | `ruff` fix |
-| `tests/test_context_coverage.py` | +1 / -2 | `ruff` fix |
-| `tests/test_data_paths.py` | +3 / -6 | `ruff` fix |
-| `tests/test_execution_foundation.py` | +2 / -4 | `ruff` fix |
-| `tests/test_grouped_cli.py` | +1 / -3 | `ruff` fix |
-| `tests/test_llm_planner.py` | +1 / -1 | `ruff` fix |
-| `tests/test_memory_gateway.py` | +1 / -1 | `ruff` fix |
-| `tests/test_memory_learn.py` | +2 / -3 | `ruff` fix |
-| `tests/test_patch_apply.py` | +1 / -1 | `ruff` fix |
-| `tests/test_patch_intent_approval.py` | +1 / -2 | `ruff` fix |
-| `tests/test_permissions.py` | +1 / -1 | `ruff` fix |
-| `tests/test_project_brain.py` | +1 / -2 | `ruff` fix |
-| `tests/test_project_constitution.py` | +1 / -2 | `ruff` fix |
-| `tests/test_project_context_coverage.py` | +3 / -5 | `ruff` fix |
-| `tests/test_repo_applicator.py` | +1 / -1 | `ruff` fix |
-| `tests/test_run_contract.py` | +1 / -3 | `ruff` fix |
-| `tests/test_run_log_cli.py` | +1 / -2 | `ruff` fix |
-| `tests/test_runner.py` | +1 / -1 | `ruff` fix |
-| `tests/test_task_runner.py` | +1 / -1 | `ruff` fix |
-| `tests/test_test_runner.py` | +1 / -1 | `ruff` fix |
-| `tests/test_timeline.py` | +1 / -2 | `ruff` fix |
-| `tests/test_token_policy.py` | +1 / -3 | `ruff` fix |
-| `tests/test_trust_report.py` | +1 / -2 | `ruff` fix |
-| `tests/test_verifier.py` | +1 / -1 | `ruff` fix |
-| `tests/test_workspace.py` | +1 / -1 | `ruff` fix |
-| `tests/ui_contracts/test_graph_architecture.py` | +2 / -1 | `ruff` fix |
-| `tests/ui_contracts/test_ux_quality.py` | +6 / -12 | `ruff` fix |
-| `tests/ui_server/test_budget_final_section.py` | +1 / -1 | `ruff` fix |
-| `tests/ui_server/test_dashboard_cockpit_truth.py` | +1 / -1 | `ruff` fix |
-| `tests/ui_server/test_dashboard_contract.py` | +2 / -2 | `ruff` fix |
-| `tests/ui_server/test_diff_endpoint.py` | +1 / -1 | `ruff` fix |
-| `tests/ui_server/test_digest_route.py` | +1 / -1 | `ruff` fix |
-| **total, 184 paths** | **+355 / -527** | |
+| `.agent/authored/f275-r103-tests.md` | +441 / -0 | the carrier as received, sha256 `17ce2dd1…2418d` (19032 bytes), checked against the digest received |
 
-### 9127bbe0 F275 R102 C3: repair eleven guard and pin nodes the transform renamed without reading
+### 6ab4a81b F275 R103 C1: book the round 102 verdict and its slip, register R-0885 and R-0886, record DECISION F275 D77 and make the plan current
 
-SPEC E: slice EDITS102 was loaded with `json.loads` and applied in object order and list order. Each `old` occurred exactly
-once.
+This is the FIRST SUBSTANTIVE COMMIT.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/test_job_digest.py` | +1 / -1 | EDITS102 pair 1: the golden normalizer reads `job_id` |
-| `tests/orchestration/test_uuid_record_ratchet.py` | +2 / -2 | EDITS102 pair 1: the discriminator imports the classic `Job` again |
-| `tests/test_data_paths.py` | +12 / -12 | EDITS102 pairs 1 to 3: the three routed-handler tests save a `JobPlan` with a string-UUID `job_id` |
-| `tests/test_model_construction_keywords.py` | +2 / -2 | EDITS102 pair 1: the undeclared-keyword premise imports the classic `Task` again |
-| `tests/ui_server/test_command_channel.py` | +7 / -7 | EDITS102 pairs 1 to 3: the door rules `pingpong_job.save_job_plan`, and the violation fixture uses `_persist_job` |
+| `.agent/decisions.md` | +14 / -0 | slice DEC103 appended, 3495 bytes: DECISION F275 D77 |
+| `.agent/live_review.md` | +14 / -0 | slice RECORD103 appended, 6103 bytes: `Gate: F275 R102` VERDICT PASS, plus the registration of `R-0885` and `R-0886` |
+| `.agent/plan.md` | +18 / -19 | slice PLAN103, a full replacement: 2961 bytes, 48 lines |
+| `.agent/prose_slips.md` | +2 / -0 | slice SLIP103 appended, 463 bytes |
 
-### 951f1812 F275 R102 C4: commit the transcript of the round's one full-suite run, 29 bad nodes against round 101's 40
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f275-r102-suite.txt` | +31 / -0 | SPEC S: line 1 `EXIT=1`, line 2 the summary, then the 29 distinct bad nodes, sorted. 2996 bytes |
-
-### C5 — this commit (self-reference, R-0149 pattern)
+### 5bab1d85 F275 R103 C2: save a job record by an fsynced replace and read an empty project id as no project, repairing R-0885 and R-0886
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | NO NUMBERS | constraint 7 runs no gate after C5, and a handback cannot read the commit that writes it. C5's numbers are the reviewer's |
+| `apps/cli/commands/job.py` | +1 / -1 | P2: `_scope_label` treats a falsy `project_id` as unscoped (`if not job.project_id`) |
+| `apps/cli/commands/project.py` | +1 / -1 | P3: `_cmd_project_adopt` refuses only when `project_id` is non-empty (`if job.project_id`) |
+| `packages/orchestration/pingpong_job.py` | +16 / -1 | P1, **R-0885**: `_persist_job` works in five steps. (1) It encodes the same `json.dumps(..., indent=2) + "\n"` text as UTF-8. (2) It writes that to `tempfile.mkstemp(dir=out.parent, suffix=".tmp")`. (3) It flushes and runs `os.fsync`. (4) It calls `os.replace` onto the record. (5) On any `BaseException` it unlinks the temp file and re-raises. It still returns `out`. There is one WHY comment, and `import tempfile` is added at module level |
+| `packages/orchestration/project_scope.py` | +2 / -2 | P4, **R-0886**: in `job_in_scope`, the legacy branch is now `if not job.project_id`, and the function docstring says "no project_id" |
 
-Every cell above comes from `git show --numstat`. I compared them cell by cell against G6:
+### 10be7eaa F275 R103 C3: hand a mission's record its budgets as a dict, read the flight scope first, load jobs by the raising loader and seed the runtime smoke with a unified record
 
-- C0 part 1 +283 -0, 1 path
-- C0 part 2 +221 -214, 1 path
-- C1 +49 -22, 4 paths
-- C2 +355 -527, 184 paths
-- C3 +24 -24, 5 paths
-- C4 +31 -0, 1 path
+| Path | +/- | Reason |
+|---|---|---|
+| `apps/cli/commands/do_cmd.py` | +1 / -1 | P5: `budgets=job_budgets.model_dump(mode="json") if job_budgets is not None else None` |
+| `apps/cli/commands/job_context_cmd.py` | +16 / -11 | P6: `_task_files_hint` takes the flight block's `files_hint` when it is a list, otherwise the task's own. The comment above it and the module docstring sentence give that order and both reasons. The rest of the docstring paragraph is re-wrapped |
+| `packages/orchestration/job_fulfillment.py` | +2 / -2 | P7: the entry load in `run_job_fulfill` is `require_job_plan(normalize_job_id(job_id), data_dir)`. `require_job_plan` is added to that function's local import, and `load_job_plan` stays there because the function's three later loads use it |
+| `packages/orchestration/test_execution_service.py` | +4 / -4 | P8: three loads now use `require_job_plan`, and the unused `load_job_plan` import is gone |
+| `scripts/remedy_runtime_cli_smoke.py` | +10 / -10 | P9: `create_env` mints `uuid4().hex[:16]` and writes `jobs/<id>/job.json` with the eight ordered keys. `smoke_propose` and `smoke_worker` read that path. It still imports nothing from `packages/` |
 
-Every sum and every path count agrees. The table generator read C2's 184 rows from that same `git show --numstat 2b118122`
-output.
+### 1788cd57 F275 R103 C4: apply the round 103 test carrier, re-seeding the tests that still wrote a classic record and pinning R-0885 and R-0886
+
+SPEC T: the one fence of the carrier as committed at `a1d9cd28` was extracted to scratch (425 lines, 18140 bytes, sha256
+`b37505a7…3bf5924`). I ran `git apply --check` and then `git apply` from the primary root. There was no other edit.
+
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/cli/test_golden_path.py` | +6 / -7 | carrier |
+| `tests/cli/test_plan_approval.py` | +22 / -50 | carrier |
+| `tests/cli/test_scoped_listings.py` | +18 / -34 | carrier |
+| `tests/orchestration/test_final_audit_evidence.py` | +1 / -1 | carrier |
+| `tests/orchestration/test_proposed_tasks.py` | +2 / -1 | carrier |
+| `tests/orchestration/test_repair_loop_v1.py` | +2 / -4 | carrier |
+| `tests/orchestration/test_resume_kill.py` | +11 / -11 | carrier |
+| `tests/orchestration/test_unified_store_parity.py` | +23 / -0 | carrier |
+| `tests/test_runner.py` | +1 / -2 | carrier |
+
+### b66fdb5d F275 R103 C5: commit the transcript of the round's one full-suite run, exit 0 with no bad node against round 102's 29
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f275-r103-suite.txt` | +2 / -0 | SPEC S: `EXIT=0` and the summary line. There is no bad node, so the file is 2 lines and 65 bytes |
+
+### C6 — this commit (self-reference, R-0149 pattern)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | NO NUMBERS | constraint 8 runs no gate after C6, and a handback cannot read the commit that writes it. C6's numbers are the reviewer's |
+
+Every cell above comes from `git log --numstat` / `git show --numstat`. I compared each commit's sums against G6's rows:
+
+- C0a +278 -0, 1 path
+- C0b +206 -211, 1 path
+- C0c +441 -0, 1 path
+- C1 +48 -19, 4 paths
+- C2 +20 -5, 4 paths
+- C3 +33 -28, 5 paths
+- C4 +86 -110, 9 paths
+- C5 +2 -0, 1 path
+
+Every sum and every path count agrees.
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git push origin feature/f275-one-world-completion-part-three` after C1 | exit 0, `7f2991c9..2d907c03`, carrying C0 part 1, C0 part 2 and C1 |
-| the same after C3 | exit 0, `2d907c03..9127bbe0`, carrying C2 and C3 |
-| the same after C4 | exit 0, `9127bbe0..951f1812` |
-| the same after C5 | runs after this commit; its result is in the round report |
-| `git archive 5ce0c5a2`, extracted into `.remedy-wt/r102w/lint_base/` (a plain directory) | exit 0, used only for G2's lint baseline. No worktree was created, and `git worktree list` shows 1 row |
-| `ruff check --fix --select I001,F401` over the 293 flip paths in the PRIMARY checkout (SPEC L) | exit 0, `Found 354 errors (354 fixed, 0 remaining).` |
+| `git push -u origin feature/f275-one-world-completion-part-three` after C1 | exit 0, `0fac911d..6ab4a81b`, carrying C0a, C0b, C0c and C1 |
+| `git push origin feature/f275-one-world-completion-part-three` after C4 | exit 0, `6ab4a81b..1788cd57`, carrying C2, C3 and C4 |
+| the same after C5 | exit 0, `1788cd57..b66fdb5d` |
+| the same after C6 | runs after this commit. Its result is in the round report |
+| `git worktree add --detach .remedy-wt/r103w/wt 1788cd57` (G3) | exit 0 |
+| `git worktree remove .remedy-wt/r103w/wt` (no `--force`), then `git worktree prune -v` | both exit 0, before the suite. `git worktree list` shows 1 row |
+| `git archive 0fac911d`, extracted by Python `tarfile` into `.remedy-wt/r103w/archive_0fac911d/` (a plain directory) | used only for G2's lint baseline |
 | `gh` / `remedy` | NOT RUN. No pull request, no branch created or deleted, no merge, no force-push, no history rewrite |
 
 ## Verification
 
-The scripts and their outputs are all under `.remedy-wt/r102w/` and are not committed. Each exit code below is the real
-process return code, either as the Bash tool reported it or as a script printed it from `subprocess`.
+The scripts and their outputs are all under `.remedy-wt/r103w/` and are not committed. Each exit code is the real process
+return code, either as the Bash tool reported it or as a script printed it from `subprocess`.
 
 | Gate | At | REAL exit | Decisive reading |
 |---|---|---|---|
-| G1 transport and bookkeeping | after C1 `2d907c03` | `g1.py` 0 | The sha256 of `f275-r102.md` is `bde76f3fb1cec386…ab801f6` at both C0 commits, and it **equals** the received digest. `last_block.md` at C0 part 2 is **byte-identical** to it. Slices FOUND: **5** (PLAN102, RECORD102, SLIP102, DEC102, EDITS102), and each **matches** its BEGIN-marker sha256. `plan.md` at C1 **equals** PLAN102: **49** lines, `## Goal` **1**, `## Next Steps` **1**. The blobs at `7f2991c9` are **1168612** (`live_review.md`), **305304** (`prose_slips.md`) and **1318510** (`decisions.md`), all as ordered. In all three files, the file at C1 **equals** the blob followed by the slice, at 1171965, 305816 and 1321901 bytes. `^Gate: F\d+ R\d+ — ` reads **123** at base and **124** at C1, and `Gate: F275 R101 — ` reads **1**. The open set by distinct id is **89** at base and **89** at C1, with **identical membership**. `R-0809`, `R-0880`, `R-0883` and `R-0884` are open at both. The appends' deletion columns are 0, 0 and 0 |
-| G2 the code | after C3 `9127bbe0` | `g2.py` 0 | **At C2:** the fixer's summary line is **`Found 354 errors (354 fixed, 0 remaining).`** `git show --numstat 2b118122` lists **184** paths, **+355 -527**, with **0** paths outside the flip's 293. **At C3:** the pair counts are 1, 1, 1 (`tests/test_data_paths.py`), 1 (`test_job_digest.py`), 1 (`test_uuid_record_ratchet.py`), 1 (`test_model_construction_keywords.py`) and 1, 1, 1 (`test_command_channel.py`), all **1**. `C3:packages` is `d3a40d00c8222f687bb9f7136f18592ed20288e2`, `C3:apps` is `625e9faa3c5ef8f34f7e6b11a45ba05360191ec2` and `C3:tests` is `50b1076580d05561527332c701393243b3b2c274`, **all equal** to the reviewer's dry-run trees. `ruff check . --output-format concise` gives **26** rows at `5ce0c5a2` (archive tree, ruff exit 1) and **11** at C3 (primary checkout, ruff exit 1). As a multiset with line and column dropped, rows at C3 absent at `5ce0c5a2`: **`[]`**. The C3 rows by code are `I001` 9, `UP035` 1 and `F821` 1. Rows at `5ce0c5a2` absent at C3: 15, in `tests/cli/test_plan_approval.py` (6), `tests/orchestration/test_long_run_executor.py` (2), `tests/test_project_context_coverage.py` (2), and 1 each in `test_checkpoints.py`, `test_dag_schedule.py`, `test_mission_compiler.py`, `test_orchestrator_loop.py` and `tests/ui_contracts/test_graph_architecture.py` |
-| G3 the targeted files | after G2, before the suite | pytest **0** | This ran with SPEC S's environment from the primary root, over the six ordered files. The output was **`250 passed in 16.66s`**, with no failure and no error |
-| G4 the bridge | after the suite, before C4; committed-transcript reading at C4 | `probe_import.py` 0; **pytest 1**; `g4.py` 0; `suite.py build` 0; `suite.py check HEAD` 0 | `packages.orchestration.pingpong_job.__file__` is `/home/decodeux/Repos/remedy/packages/orchestration/pingpong_job.py`, inside the primary checkout. pytest exited **1**, with summary **`22 failed, 18419 passed, 23 skipped, 1 warning, 7 errors in 1397.10s (0:23:17)`** and 0 bytes of stderr. BASE, from `7f2991c9:.agent/authored/f275-r101-suite.txt`, has **40** nodes. Distinct bad nodes now: **29**. **FIXED 11**: `tests/orchestration/test_ci_budgets.py::test_this_repository_really_is_at_or_below_the_lint_ceiling`; `tests/orchestration/test_job_digest.py::test_the_normalized_envelope_equals_its_stored_golden` with `[blocked_with_decisions]`, `[budget_stopped]`, `[green]` and `[mid_run]`; `tests/orchestration/test_uuid_record_ratchet.py::TestNoRecordOutsideTheClassicPairDeclaresAUuidId::test_the_matcher_can_see_a_uuid_field_at_all`; `tests/test_data_paths.py::TestRoutedHandler::test_a_routed_handler_accepts_a_short_classic_prefix`, `::test_attaching_by_short_prefix_stores_the_full_job_id` and `::test_stopping_by_an_unhyphenated_id_files_the_stop_under_the_canonical_id`; `tests/test_model_construction_keywords.py::TestEveryConstructionKeywordIsADeclaredField::test_an_undeclared_keyword_really_is_dropped_rather_than_rejected`; `tests/ui_server/test_command_channel.py::TestCommandDoorImportGuard::test_the_door_imports_exactly_the_allowed_set`. All 11 ordered nodes are in FIXED; missing **`[]`**. **NEWLY BAD 0** (`[]`), so no rerun was needed and FLAKY is `[]`. **NEWLY BAD less FLAKY: `[]`**. The now set is a strict subset of BASE. `test_job_id_is_checked_after_the_credentials` passed in this run. Before C4, `git status --porcelain --untracked-files=all` listed only `?? .agent/authored/f275-r102-suite.txt`. At C4 `951f1812`, the committed transcript **equals** the file rebuilt from the saved stdout, 2996 bytes |
-| G5 tree, canary, path set, open set | after C4 `951f1812` | `g56.py` 0. Inside it: status 0, worktree list 0, **canary 1** | `git status --porcelain` printed `''`. `git worktree list` shows **1** row. The canary `python3 -B -m pytest tests/cli/test_golden_path.py -q` exited **1** with `2 failed, 40 passed in 19.24s`. The 2 failures are `TestStatus::test_status_corrupt_file_handled` and `TestShortIdResolution::test_ambiguous_short_id_exits_2`, both in BASE and in this round's transcript. Path set: `7f2991c9..C4` changed **194** paths against an expected **194**, which is the union of the 7 Bundle `.agent/` paths other than `handoff.md`, C2's 184 and C3's 5. Two of C3's paths, `tests/test_data_paths.py` and `tests/orchestration/test_job_digest.py`, are also C2's, so the union is 7 + 184 + 3 = 194. **MISSING `[]`, EXTRA `[]`**. The open set is 89 at C4 and **equals** C1's |
-| G6 insertion cap | after C4 | `g56.py` 0 (the same script) | C0 part 1 `0c449dd1` +283 -0, 1 path; C0 part 2 `6489feca` +221 -214, 1 path; C1 `2d907c03` +49 -22, 4 paths; C2 `2b118122` +355 -527, 184 paths; C3 `9127bbe0` +24 -24, 5 paths; C4 `951f1812` +31 -0, 1 path. **Commits reaching 500 insertions: 0** |
+| G1 transport and bookkeeping | after C1 `6ab4a81b` | `g1.py` 0; `ledger_counts.py` 0 at both revisions | `f275-r103.md` at C0a has sha256 **equal** to the received block digest, 26767 bytes. `last_block.md` at C0b is **byte-identical** to it. `f275-r103-tests.md` at C0c has sha256 **equal** to the received carrier digest, 19032 bytes. Slices FOUND: **4** (PLAN103, RECORD103, SLIP103, DEC103), and each **matches** its BEGIN-marker sha256. `plan.md` at C1 **equals** PLAN103: **48** lines, `## Goal` **1**, `## Next Steps` **1**. For each append, the `0fac911d` blob followed by the slice **equals** the file at C1: `live_review.md` 1171965 + 6103 = 1178068; `prose_slips.md` 305816 + 463 = 306279; `decisions.md` 1321901 + 3495 = 1325396. `^Gate: F\d+ R\d+ — ` reads **124** at `0fac911d` and **125** at C1, and `Gate: F275 R102 — ` reads **1** at C1. The open set by distinct id is **89** at `0fac911d` and **91** at C1. The diff of the two sorted id lists is exactly `+R-0885`, `+R-0886`. The appends' deletion columns are 0, 0 and 0 |
+| G2 the code | after C4 `1788cd57` | `git apply --check` 0, `git apply` 0; ruff over the 18 changed files 0; `g2_multiset.py` 0 | `git show --name-only 5bab1d85` lists exactly P1 to P4's 4 files. `10be7eaa` lists exactly P5 to P9's 5 files. `git rev-parse 1788cd57:tests` = **`52cc576ae9c7ae9777c68f41ab32230551bfe100`**, **equal** to the reviewer's dry-run tree. `python3 -m ruff check --output-format concise` (ruff 0.15.17) over every file C2, C3 and C4 change reports `All checks passed!`. `ruff check . --output-format concise` gives **11** rows at `0fac911d` (archive tree, ruff exit 1) and **11** at C4 (primary checkout, ruff exit 1). As a multiset with line and column dropped, rows at C4 absent at `0fac911d`: **0**, and the reverse is also 0. By code the rows are `I001` 9, `UP035` 1 and `F821` 1 |
+| G3 the red-proofs | worktree at C4, one file at a time | `g3.py` 0. Each mutated pytest run exits 1 | Each run wrote the C1 blob over one file and ran from inside the worktree with SPEC S's environment. **P1** `pingpong_job.py` over `test_unified_store_parity.py`: 1 failed, 21 passed. BAD = `TestTheWriteReplacesTheRecordWhole::test_a_failure_before_the_rename_leaves_the_previous_record_intact`. **P2** `job.py` over `test_scoped_listings.py`: 1 failed, 19 passed. BAD = `TestScopedListingsCLI::test_legacy_job_hidden_and_unscoped_label`. **P3** `project.py` over the same file: 2 failed, 18 passed. BAD = `TestScopedListingsCLI::test_adopt_persists` and `TestScopedListingsCLI::test_adopting_a_pingpong_job_id_exits_cleanly_instead_of_crashing`. **P4** `project_scope.py` over the same file: 1 failed, 19 passed. BAD = `TestTwoProjectIsolation::test_a_record_with_no_project_is_legacy`. **P5** `do_cmd.py` over `test_plan_approval.py`: 2 failed, 25 passed. BAD = `TestConfigBudgetPrecedence::test_config_budget_survives_plan_suggestion` and `::test_plan_fills_unset_config_field`. **P6** `job_context_cmd.py` over `test_job_context_cmd.py`: 3 failed, 9 passed. BAD = `test_direct_import_neighbor_appears_at_tier_two`, `test_fenced_file_is_tier_one_and_rendered_full` and `test_unrelated_module_is_omitted_for_distance`. **P7** `job_fulfillment.py` over `test_job_fulfillment.py`: 1 failed, 104 passed. BAD = `TestJobFulfillFixturePass::test_a_pingpong_job_id_reaches_the_store_instead_of_a_uuid_parse`. **P8** `test_execution_service.py` over `test_test_execution_service.py`: 1 failed, 64 passed. BAD = `TestUsageAccounting::test_usage_incremented_on_process_start`. **P9** `remedy_runtime_cli_smoke.py` over `test_propose_cli_runtime.py` and `test_worker_cli_runtime.py`: 2 failed. BAD = `TestProposeRuntimeSmoke::test_propose_flow` and `TestWorkerRuntimeSmoke::test_worker_flow`. **Every named node was bad, 16 of 16**, and no unnamed node was bad. After each run the file was restored and read back **byte-identical** to its C4 blob, 9 of 9. The worktree's `git status --porcelain` was `''`. The worktree was then removed without `--force` and pruned |
+| G4 the targeted files | primary checkout, after G3, before the suite | pytest **0** | SPEC S's environment. The nine carrier files plus the twelve named files gave **`863 passed in 144.74s (0:02:24)`**, equal to the reviewer's 863 |
+| G5 the bridge | after the suite; committed-transcript reading at C5 | **pytest 0**; `g5_build.py` 0 (both builds) | `python3 -B -m pytest -q -p no:randomly -p no:cacheprovider --tb=short -rfEs` ran from the primary root with `PYTHONPATH`, `REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed and `PYTHONDONTWRITEBYTECODE=1`. It exited **0**. Summary **`18450 passed, 23 skipped, 1 warning in 1409.81s (0:23:29)`**. stdout was 25208 bytes, stderr 0 bytes, and stdout had **0** line-initial `FAILED `/`ERROR ` rows. BASE, from `0fac911d:.agent/authored/f275-r102-suite.txt`, has **29** nodes. Distinct bad nodes now: **0**. **FIXED 29**: all 29 BASE nodes, among them the 2 golden-path nodes, the 3 job-context nodes, the 4 plan-approval nodes, the 4 scoped-listings nodes, both runtime smokes, the cockpit adapter, the job-fulfillment pingpong-id node, the proposed-tasks corrupt-job node, both repair-loop nodes, the 7 resume-kill nodes, usage accounting and `tests/test_runner.py::test_plan_job_state_is_planned_after_planning`. **NEWLY BAD 0**, so there were no reruns and FLAKY is `[]`. NEWLY BAD less FLAKY = `[]`, and FIXED is non-empty. BASE nodes still bad: 0. Before C5, `git status --porcelain` listed only `?? .agent/authored/f275-r103-suite.txt`. At C5, the committed transcript and the file rebuilt from the saved stdout are **equal**: both sha256 `a36ed9b3…628c51c`, 65 bytes |
+| G6 tree, canary, path set, open set, cap | after C5 `b66fdb5d` | status 0; worktree list 0; **canary 0**; `g6.py` 0; `ledger_counts.py` 0 | `git status --porcelain` printed `''`. `git worktree list` shows **1** row. The canary `python3 -B -m pytest tests/cli/test_golden_path.py -q` (the exact command, primary root, session environment) exited **0** with **`42 passed in 19.25s`**. Path set: `0fac911d..C5` changed **26** paths, and the expected union is **26** (8 Bundle `.agent/` paths other than `handoff.md`, plus C2's 4, C3's 5 and C4's 9). **MISSING `[]`, EXTRA `[]`**. The open set at C5 is 91, and its sorted id list is **byte-identical** to C1's. Rows: C0a `795aaf5d` +278 -0, 1 path; C0b `7586c3d7` +206 -211, 1; C0c `a1d9cd28` +441 -0, 1; C1 `6ab4a81b` +48 -19, 4; C2 `5bab1d85` +20 -5, 4; C3 `10be7eaa` +33 -28, 5; C4 `1788cd57` +86 -110, 9; C5 `b66fdb5d` +2 -0, 1. **Commits reaching 500 insertions: none** |
 
 ## Authored-text proofs
 
 | Text | Target | Result |
 |---|---|---|
-| the block | `.agent/authored/f275-r102.md`, `.agent/last_block.md` | sha256 on disk `bde76f3f…ab801f6`, equal to the received digest. Both blobs are equal to that digest at C0 part 2 (G1) |
-| PLAN102 | `.agent/plan.md` | equal to the slice at C1, 3109 bytes. The marker sha256 `b84b5c90…` matched |
-| RECORD102 | `.agent/live_review.md` | post equals the 1168612-byte pre followed by the 3353-byte slice. The marker `5d9cc617…` matched |
-| SLIP102 | `.agent/prose_slips.md` | post equals the 305304-byte pre followed by the 512-byte slice. The marker `be33cf0f…` matched |
-| DEC102 | `.agent/decisions.md` | post equals the 1318510-byte pre followed by the 3391-byte slice. The marker `776a61f8…` matched |
-| EDITS102 | the five test files of C3 | the marker `da534028…` matched. The slice was loaded by `json.loads` from the extracted bytes, and every pair's count was 1. The C3 trees equal the reviewer's dry run (G2) |
+| the block | `.agent/authored/f275-r103.md`, `.agent/last_block.md` | sha256 `2c8a365b…8e369675`, **equal** to the received digest at C0a. The mirror is byte-identical at C0b (G1) |
+| the test carrier | `.agent/authored/f275-r103-tests.md` | sha256 `17ce2dd1…418d`, **equal** to the received digest at C0c (G1) |
+| PLAN103 | `.agent/plan.md` | **equal** to the slice at C1, 2961 bytes. The marker sha256 `a31103e5…` matched |
+| RECORD103 | `.agent/live_review.md` | post **equals** the 1171965-byte pre followed by the 6103-byte slice. The marker `5d90ab52…` matched |
+| SLIP103 | `.agent/prose_slips.md` | post **equals** the 305816-byte pre followed by the 463-byte slice. The marker `d1dcca34…` matched |
+| DEC103 | `.agent/decisions.md` | post **equals** the 1321901-byte pre followed by the 3495-byte slice. The marker `d28c9bf2…` matched |
+| the carrier's fence | the nine test files of C4 | applied unaltered. `C4:tests` equals the reviewer's dry-run tree `52cc576a…` (G2) |
 
-NO SLICE WAS EDITED. Nothing under `packages/`, `apps/` or `tests/` was edited by hand. C2 is the fixer's output alone, and
-C3 is EDITS102 alone.
+NO SLICE WAS EDITED, and the fence was applied unaltered.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C0 block and mirror | deviated | landed as two commits, 283 and 221 insertions; deviation 1 |
-| C1 bookkeeping (PLAN102, RECORD102, SLIP102, DEC102) | done | first substantive commit; zero deletion column on all three appends |
-| C2 SPEC L, the import rows | done | 184 paths, +355 -527, fixer summary as the reviewer read it |
-| C3 SPEC E, the eleven nodes | done | nine pairs, each count 1; trees equal the reviewer's dry run |
-| SPEC S / C4 suite transcript | done | exit 1, 29 bad nodes, strict subset of round 101's 40 |
-| C5 handback | done | this commit |
+| C0a / C0b / C0c | done | three commits, as the Bundle orders |
+| C1 bookkeeping (PLAN103, RECORD103, SLIP103, DEC103) | done | first substantive commit. The appends have a zero deletion column |
+| R-0885 (P1) | done | repaired by `5bab1d85`. Red-proved in G3 |
+| R-0886 (P2, P3, P4) | done | repaired by `5bab1d85`. Red-proved in G3 |
+| P5 to P9 | done | `10be7eaa`. Red-proved in G3 |
+| SPEC T / C4 | done | `C4:tests` equals the reviewer's tree |
+| SPEC S / C5 | done | exit 0, 0 bad nodes, a strict subset of round 102's 29 |
+| C6 handback | done | this commit |
 | G1 · G2 · G3 · G4 · G5 · G6 | done | readings above |
-| DECISION F275 D76 | done | landed at C1 |
+| DECISION F275 D77 | done | landed at C1 |
 
 ## Deviations & assumptions
 
-1. **C0 WAS SPLIT INTO TWO COMMITS.** This departs from the Bundle's commit sequence. Staged together, the block and its
-   mirror read **504 insertions**: `f275-r102.md` +283 and `last_block.md` +221 -214. That breaks constraint 4 ("Every commit
-   stays under 500 insertions") and the AGENTS.md 500-insertion rule. The AGENTS.md exemption covers a verbatim rewrite of
-   a SINGLE state file, and this commit has two files. Granting F275 a third oversize commit was not mine to do. So I
-   unstaged the mirror and committed the authored copy as `0c449dd1` (+283) and the mirror as `6489feca` (+221 -214). The
-   first commit's body states the reason. The bytes are identical to the ordered C0. G1's "at C0" readings are taken at
-   both commits, and the mirror's byte identity at the second. The round therefore has seven commits, C0 part 1 to C5,
-   not six.
-2. **STOP READINGS USED `ls`.** Each reading was `ls .agent/STOP`, and its exit code is the reading: 2 (absent) all three
-   times.
-3. **THE SHELL'S STARTING DIRECTORY.** The session's working directory was `.remedy-wt/r101`, the reviewer's scratch. No
-   command ran from it, and no file under it was listed or read. Every path I used was absolute, and every git command used
+1. **AN UNORDERED TARGETED PRE-CHECK BEFORE C3.** Before committing C3, I applied the extracted fence to the primary
+   working tree without staging it. I ran G4's exact 21-file list with SPEC S's environment and got `863 passed`. Then I
+   reversed the fence with `git apply -R`, which exited 0. `git status --porcelain` then listed only C3's five files, and
+   C3 was committed with exactly those five. This was not a gate and not a full-suite run. It could not change any
+   committed byte: SPEC T's `git apply --check` and `git apply` then ran on the committed C3 tree, and `C4:tests` equals
+   the reviewer's tree. The Bundle's commit sequence is unchanged.
+2. **G1'S BYTE NUMERALS.** The block's "1171965 bytes for `.agent/live_review.md`, 305816 … and 1321901" are the sizes of
+   the `0fac911d` blobs, the "pre" side, not of the files at C1. I report both sides: the C1 files are 1178068, 306279
+   and 1325396 bytes, and each equals pre plus slice.
+3. **WHAT P4 DID NOT TOUCH.** P4 names "the docstring's legacy rule" inside `job_in_scope`, and I changed only that
+   docstring. The MODULE docstring of `packages/orchestration/project_scope.py` (line 7) still reads
+   "jobs with project_id=None". It is left for the reviewer to rule on, under the constraint that SPEC P is not
+   reinterpreted.
+4. **A SIDE EFFECT OF P1.** `tempfile.mkstemp` creates the record with mode 0600, so a saved `job.json` is now 0600
+   instead of the umask default that `write_text` gave. The classic `_atomic_write_job` did the same. No test in the suite
+   reads a job record's mode, and the suite is green.
+5. **HOW STOP AND EXIT CODES WERE READ.** Each STOP reading was `stat .agent/STOP`, and the tool reported exit 1 ("No
+   such file or directory") all three times. Before the first reading, a `test -e .agent/STOP` came back with no output
+   and no exit code shown, so I re-read it with `stat` and `ls -la .agent/`, and no `STOP` was listed. The Bash guard
+   here rejects `; echo $?` and `cd …&&` compounds. So pytest and ruff runs went through small scratch wrappers
+   (`run_pytest.py`, `run_raw.py`, `g*.py`), which print `subprocess` return codes.
+6. **HOW THE SUITE WAS LAUNCHED.** `run_pytest.py` ran SPEC S's exact argv from the primary root, in the foreground under a
+   60-minute tool timeout. It took 23:29 and was not detached. It ran once. The session environment had none of
+   `PYTHONPATH`, `REMEDY_PROJECT`, `REMEDY_DATA_DIR` or `PYTHONDONTWRITEBYTECODE` set (probed by `envprobe.py`). The
+   canary ran with that environment, by the block's exact command. An earlier canary run with SPEC S's environment and
+   the extra `-p` flags also read `42 passed`.
+7. **THE SHELL'S STARTING DIRECTORY.** The session's working directory was `.remedy-wt/r101`, the reviewer's scratch. No
+   command ran from it, and nothing under it was listed or read. Every path was absolute, and every git command used
    `git -C /home/decodeux/Repos/remedy`.
-4. **HOW THE SUITE WAS LAUNCHED.** The single full-suite run was started detached by `suite.py start`, using
-   `subprocess.Popen` with a new session, so a tool timeout could not kill it. It ran SPEC S's exact command from the
-   primary root, with `PYTHONPATH`, `REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed and `PYTHONDONTWRITEBYTECODE=1`. Its
-   stdout and stderr went to `.remedy-wt/r102w/suite.stdout` and `suite.stderr`, and pytest's return code went to
-   `suite.rc`. It ran once. The session environment had none of the three variables set, so the canary, which the block
-   gives no environment, also ran without them.
-5. **AN UNORDERED PROBE AND A SELF-REVIEW SCAN.** Before the suite, `probe_import.py` printed the import path of
-   `packages.orchestration.pingpong_job` under SPEC S's environment. Before C2's commit, `c2_review.py` scanned C2's diff
-   for changed lines that are not part of an import. Neither is a gate, both touched nothing tracked, and neither ran a test.
 
 ## Next
 
-The reviewer reviews round 102 per amendment amend0914 rule 4, reading the committed transcript
-`.agent/authored/f275-r102-suite.txt` (29 bad nodes) without re-running the full suite. That transcript is the base reading
-for bridge round 103, the second of at most eight. The residue is what `.agent/plan.md`'s Next Steps names:
-
-- the `JobBudgets` dict hand-off and the `job resume` tests of `tests/cli/test_plan_approval.py` (4)
-- the classic kill-and-resume fixture (`tests/orchestration/test_resume_kill.py`, 7)
-- the scoped listings (4)
-- the job context command (3)
-- the golden path (2)
-- the repair loop (2)
-- one node each in the runtime smokes (2 files), the proposed-task store, the cockpit adapter, the job fulfillment
-  pingpong-id test, the test execution service's usage accounting, and the task runner
+The reviewer reviews round 103 per amendment amend0914 rule 4, reading the committed transcript
+`.agent/authored/f275-r103-suite.txt`. It reads **exit 0**, so this is the FIRST EXIT-0 ROUND, where the reviewer runs the
+full suite itself once (amend0914 rule 4), and the red bridge ends (rule 3). Per `.agent/plan.md`'s Next Steps, no further
+bridge round is owed. Next comes THE CLASSIC STORE: the classic `Job`/`Task` models, `packages/orchestration/storage.py` and
+its remaining readers, the cockpit's which-store branches and `_JobPlanAdapter`, the classic-store search in
+`resolve_job_id`, and the guard tests pinning the classic models. THE CLOSURE SEQUENCE follows.
 
 Operator questions open: 1
 
