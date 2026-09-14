@@ -28,7 +28,6 @@ from packages.orchestration.worker_queue import (
 def _setup(tmp_path, monkeypatch) -> tuple[Path, str]:
     root = tmp_path / "data"
     monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", root / "proposed_tasks")
-    monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", root / "jobs")
     jid = str(uuid4())
     job = JobPlan(job_id=jid, job_title="worker-test")
     save_job_plan(job, root)

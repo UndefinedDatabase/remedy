@@ -422,7 +422,7 @@ def evaluate_self_execution_eligibility(
     proposed_task_id: str, job_id: str | None = None, data_dir: Path | None = None,
 ) -> SelfExecEligibility:
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.pingpong_job import require_job_plan
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.proposed_tasks import (
         ProposedTaskStatus,
         get_proposed_task,
@@ -432,7 +432,6 @@ def evaluate_self_execution_eligibility(
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = SelfExecEligibility(proposed_task_id=proposed_task_id)
@@ -649,8 +648,7 @@ def reconcile_self_attempt(
     approval, proof). Never applies, approves, runs tests, or calls a provider."""
     from packages.orchestration.approval_queue import APPROVAL_APPROVED, get_patch_intent
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.pingpong_job import require_job_plan
-    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     a = _load_attempt(attempt_id, ddir)

@@ -21,8 +21,7 @@ _ESCALATION_PREFIX = "td:"
 def _load_job_events(job_id_str: str):
     """Load job and events. Returns (job, events, job_id_str)."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.pingpong_job import require_job_plan
-    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.timeline import load_run_events
 
     job_id = resolve_job_id(job_id_str)
@@ -250,8 +249,7 @@ def _cmd_decision_resolve(
             answer_task_decision,
             find_task_decision,
         )
-        from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
-        from packages.orchestration.storage import JobNotFoundError
+        from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
 
         job_id = _rji(job_id_str)
         try:
@@ -294,8 +292,7 @@ def _cmd_decision_resolve(
         print(f"Resume the run: remedy job resume {job_id_str} --json")
     elif decision_id.startswith("fp:"):
         from packages.orchestration.data_paths import resolve_job_id as _rji
-        from packages.orchestration.pingpong_job import require_job_plan
-        from packages.orchestration.storage import JobNotFoundError
+        from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
         job_id = _rji(job_id_str)
         try:

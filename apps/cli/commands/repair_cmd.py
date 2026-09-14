@@ -23,7 +23,7 @@ def _cmd_repair_start(args: Any) -> None:
         "true", "1", "yes",
     )
 
-    from packages.orchestration.storage import JobNotFoundError, JobStoreError
+    from packages.orchestration.pingpong_job import JobNotFoundError, JobStoreError
 
     try:
         result = start_repair_loop_v0(
@@ -46,8 +46,7 @@ def _cmd_repair_start(args: Any) -> None:
 
 def _cmd_failure_show(args: Any) -> None:
     """Show a test failure artifact."""
-    from packages.orchestration.pingpong_job import require_job_plan
-    from packages.orchestration.storage import JobNotFoundError, JobStoreError
+    from packages.orchestration.pingpong_job import JobNotFoundError, JobStoreError, require_job_plan
     from packages.orchestration.test_failure_artifact import (
         TestFailureArtifact,
         export_failure_artifact_json,
@@ -97,12 +96,12 @@ def _cmd_failure_show(args: Any) -> None:
 
 def _cmd_repair_propose(args: Any) -> None:
     """Propose a bounded, approval-gated repair (v1). Creates a Patch Intent only."""
+    from packages.orchestration.pingpong_job import JobNotFoundError, JobStoreError
     from packages.orchestration.repair_loop import (
         export_repair_attempt_json,
         run_repair_attempt,
         summarize_repair_attempt,
     )
-    from packages.orchestration.storage import JobNotFoundError, JobStoreError
 
     fixture = str(getattr(args, "fixture_builder", "false")).lower() in ("true", "1", "yes")
     source_fixture = str(getattr(args, "fixture_source_builder", "false")).lower() in ("true", "1", "yes")
@@ -130,9 +129,8 @@ def _cmd_repair_propose(args: Any) -> None:
 def _cmd_repair_status(args: Any) -> None:
     """Show repair attempts and approval state (read-only)."""
     from packages.orchestration.approval_queue import get_patch_intent
-    from packages.orchestration.pingpong_job import require_job_plan
+    from packages.orchestration.pingpong_job import JobNotFoundError, JobStoreError, require_job_plan
     from packages.orchestration.repair_loop import load_repair_attempts
-    from packages.orchestration.storage import JobNotFoundError, JobStoreError
 
     try:
         job = require_job_plan(args.job_id)
@@ -213,9 +211,8 @@ def _cmd_repair_request(args: Any) -> None:
 
 
 def _cmd_repair_request_show(args: Any) -> None:
-    from packages.orchestration.pingpong_job import require_job_plan
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.repair_request_builder import get_request_package
-    from packages.orchestration.storage import JobNotFoundError
     try:
         job = require_job_plan(args.job_id)
     except (JobNotFoundError, ValueError) as exc:

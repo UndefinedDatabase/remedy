@@ -55,7 +55,7 @@ from packages.orchestration.command_discovery import (
 from packages.orchestration.data_paths import normalize_job_id, resolve_data_root
 from packages.orchestration.exec_guard import ExecGuardPolicy, plan_child_spawn
 from packages.orchestration.permissions import Capability, is_allowed
-from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
+from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
 from packages.orchestration.run_contract import (
     ContractAction,
     ensure_contract,
@@ -65,7 +65,6 @@ from packages.orchestration.run_contract import (
     save_usage,
     validate_run_contract,
 )
-from packages.orchestration.storage import JobNotFoundError
 from packages.orchestration.test_runner import _EXECUTION_SAFE_EXECUTABLES
 
 # ---------------------------------------------------------------------------

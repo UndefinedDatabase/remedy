@@ -205,6 +205,6 @@ def build_decision_inbox(
 
     return {
         "version": DECISION_INBOX_VERSION,
-        "job_id": str(getattr(job, "job_id", None) or getattr(job, "id", "")),
+        "job_id": str(getattr(job, "job_id", "")),
         "decisions": cards,
     }

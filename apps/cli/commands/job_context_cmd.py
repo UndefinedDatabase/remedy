@@ -81,16 +81,14 @@ def list_repo_candidate_paths(root: Path) -> list[str]:
     return _repo_candidate_paths_with_source(root)[0]
 
 
-# WHY this reads two spellings: the unified record (`JobPlan`) spells a job's
-# own id `job_id`, while the classic core `Job` spells it `id`.
 def _job_identity(job: Any) -> str:
-    """The job's own id as a string, whichever store minted it."""
-    return str(getattr(job, "job_id", "") or getattr(job, "id", ""))
+    """The job's own id as a string."""
+    return str(getattr(job, "job_id", ""))
 
 
-# WHY this reads two spellings: the unified record carries the checkout as its
-# own `repo_path` field, while the classic core `Job` carries it inside
-# `metadata["target_repo"]`.
+# WHY this reads two places: a job carries its checkout as its own `repo_path`
+# field, while `job._cmd_attach_repo` and `job_fulfillment` record a target repo
+# inside `metadata["target_repo"]`.
 def _job_target_repo(job: Any) -> str:
     """The job's target repo, or "" for a job carrying neither spelling."""
     repo_path = getattr(job, "repo_path", "")
@@ -102,11 +100,9 @@ def _job_target_repo(job: Any) -> str:
     return ""
 
 
-# WHY this reads two spellings: a `TaskEntry` spells its id `task_id` (`T001`),
-# while the classic core `Task` spells it `id` (a UUID).
 def _task_identity(task: Any) -> str:
-    """The task's own id as a string, whichever store minted it."""
-    return str(getattr(task, "task_id", "") or getattr(task, "id", ""))
+    """The task's own id as a string."""
+    return str(getattr(task, "task_id", ""))
 
 
 def _task_flight_inputs(task: Any) -> dict:
@@ -181,9 +177,8 @@ def resolve_task_for_context(task_ref: str | None, tasks: list) -> tuple[Any, st
 
     lowered = ref.lower()
     # The `.lower()` here is load-bearing, not cosmetic: `ref` is already
-    # lowercased and a classic UUID is already lowercase, so the classic path
-    # does not move — but `T001` is not, and without it a `TaskEntry` would not
-    # be prefix-addressable at all.
+    # lowercased but `T001` is not, and without it a `TaskEntry` would not be
+    # prefix-addressable at all.
     by_prefix = [
         task for task in tasks if _task_identity(task).lower().startswith(lowered)
     ]
@@ -269,18 +264,11 @@ def _cmd_job_context(
         compile_task_context,
         export_omitted_context_json,
     )
-    from packages.orchestration.data_paths import resolve_any_job_id
-    from packages.orchestration.pingpong_job import require_job_plan
-    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.data_paths import resolve_job_id
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
     try:
-        # Resolving across BOTH stores is what lets this command answer for a
-        # job `remedy do job-run` created. Until F275 T003 collapsed the two
-        # resolvers, `resolve_job_id` searched the classic store alone and so
-        # answered "no job matches prefix" for every one of them; the two names
-        # are now one function, and this call site keeps `resolve_any_job_id`
-        # because that name states what it needs.
-        resolved = resolve_any_job_id(job_id_str)
+        resolved = resolve_job_id(job_id_str)
         job = require_job_plan(resolved)
     except JobNotFoundError:
         print(f"Job not found: {job_id_str}", file=sys.stderr)

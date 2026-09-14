@@ -16,7 +16,7 @@ Redaction policy (v1):
               contents, full diff previews.
 
 Storage location follows the same REMEDY_DATA_DIR resolution order as
-storage.py and workspace.py:
+pingpong_job.py and workspace.py:
   1. REMEDY_DATA_DIR environment variable, if set.
   2. Repository-local default: <repo_root>/.data/runs/
 """

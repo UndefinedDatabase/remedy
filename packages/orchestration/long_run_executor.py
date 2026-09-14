@@ -13,7 +13,7 @@ It sequences parts that already exist and reimplements none of them:
   * task execution   ``task_runner.run_next_task`` — rollback-on-failure stays
                      that module's concern
   * verification     ``verifier.verify_task_output`` + ``task_runner.finalize_task``
-  * persistence      ``storage.save_job`` — no new persistence path
+  * persistence      ``pingpong_job.save_job_plan`` — no new persistence path
   * job status       the ``pingpong_job.JOB_*`` constants
 
 Readiness is TOPOLOGICAL (F050): the ready set is the PENDING tasks whose
@@ -1312,7 +1312,7 @@ def run_cycles(
                  the existing bounded repair loop through the counted provider
                  seam
       clock      the only source of "now" — the loop never sleeps
-      save       ``storage.save_job``
+      save       ``pingpong_job.save_job_plan``
       log        anything with ``.log(event, **meta)`` (a RunLogWriter); when
                  omitted, no ledger events are emitted
 

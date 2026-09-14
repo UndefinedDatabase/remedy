@@ -1117,7 +1117,7 @@ class LinearStep:
 
 class TestJobPlanCompatibility:
     """DECISION F112 D4: enqueue_task_decision/auto_apply_safe_default must
-    work against a pingpong JobPlan/TaskEntry, not only Core Job/Task."""
+    work against a pingpong JobPlan/TaskEntry."""
 
     def test_auto_apply_safe_default_answers_and_records_on_a_job_plan_task(self):
         from packages.orchestration.pingpong_job import JobPlan, TaskEntry

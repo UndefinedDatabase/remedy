@@ -2,7 +2,7 @@
 Data path resolution for Remedy.
 
 This is the single authoritative location in production Python that reads
-REMEDY_DATA_DIR.  All other production modules (storage.py, run_log.py,
+REMEDY_DATA_DIR.  All other production modules (run_log.py,
 project_registry.py, workspace.py, apps/cli/main.py) must import helpers
 from this module instead of reading the environment variable directly.
 
@@ -16,7 +16,7 @@ Public API::
 
     resolve_data_root() -> Path
     jobs_dir(root: Path | None = None) -> Path
-    resolve_job_id(raw) -> str               # both job stores; resolve_any_job_id is an alias
+    resolve_job_id(raw) -> str               # the one job store; exits on failure
     lookup_job_id(raw) -> str                # the same search, raising JobIdError instead of exiting
     mint_job_id() -> str                     # a job id (16-hex, DECISION F260 D2)
     mint_run_id() -> str                     # a run id
@@ -249,35 +249,13 @@ def run_dir(run_id: str, root: Path | None = None) -> Path:
 _SHORT_HEX_RE = re.compile(r"[0-9a-fA-F]{4,32}")
 
 
-def _classic_job_id_matches(prefix: str) -> list[str]:
-    """Every id in the CLASSIC job store starting with ``prefix``.
-
-    One ``<uuid>.json`` file per job, so the id is the file stem.
-    """
-    jdir = jobs_dir()
-    if not jdir.exists():
-        return []
-    lower = prefix.lower()
-    return [
-        p.stem for p in jdir.glob("*.json")
-        if p.stem.lower().startswith(lower)
-    ]
-
-
 def _task_job_id_matches(prefix: str) -> list[str]:
-    """Every id in the TASK-JOB store starting with ``prefix``.
+    """Every id in the job store starting with ``prefix``.
 
-    Since F260 T002 both stores live under ``<data_root>/jobs/``: the classic
-    one as ``<uuid>.json`` FILES, this one as ``<16hex>/`` DIRECTORIES holding
-    a ``job.json``. The ``is_dir()`` test plus the ``job.json`` check is what
-    keeps the two populations apart — a classic ``<uuid>.json`` file is not a
-    directory and never reaches this reading, and the sibling
-    :func:`_classic_job_id_matches` globs ``*.json`` and so never sees a
-    ping-pong directory.
-
-    One directory per job, so the id is the directory name. A directory
-    without a ``job.json`` is not a job — a half-created or hand-made
-    directory must not be resolvable as one.
+    One directory per job under ``<data_root>/jobs/``, holding a ``job.json``, so
+    the id is the directory name. A directory without a ``job.json`` is not a job —
+    a half-created or hand-made directory must not be resolvable as one — and a
+    plain file in ``jobs/`` is not a job either.
     """
     tdir = jobs_dir()
     if not tdir.exists():
@@ -317,7 +295,7 @@ class JobIdInvalid(JobIdError):
 
 
 class JobIdNotFound(JobIdError):
-    """A well-formed prefix that matches no job in either store."""
+    """A well-formed prefix that matches no job."""
 
 
 class JobIdAmbiguous(JobIdError):
@@ -353,7 +331,7 @@ def normalize_job_id(raw: str) -> str:
 
 
 def lookup_job_id(raw: str) -> str:
-    """Resolve a full job id or a short hex prefix across BOTH job stores, or RAISE.
+    """Resolve a full job id or a short hex prefix against the job store, or RAISE.
 
     The search :func:`resolve_job_id` documents, and the same return values, but a
     failure raises a :class:`JobIdError` instead of ending the process:
@@ -370,7 +348,7 @@ def lookup_job_id(raw: str) -> str:
     if not _SHORT_HEX_RE.fullmatch(raw):
         raise JobIdInvalid(f"invalid job ID: {raw!r}")
 
-    matches = sorted(set(_classic_job_id_matches(raw)) | set(_task_job_id_matches(raw)))
+    matches = sorted(_task_job_id_matches(raw))
     if len(matches) == 1:
         return matches[0]
     if len(matches) > 1:
@@ -379,26 +357,16 @@ def lookup_job_id(raw: str) -> str:
 
 
 def resolve_job_id(raw: str) -> str:
-    """Resolve a full job id or a short hex prefix across BOTH job stores.
+    """Resolve a full job id or a short hex prefix against the job store.
 
-    Remedy runs jobs into two stores. ``<data_root>/jobs/<uuid>.json`` is the
-    classic one; ``<data_root>/jobs/<16hex>/job.json`` is the one
-    ``remedy do job-run`` writes. Since F260 T002 both stores share the one
-    ``jobs/`` directory and are told apart by FILE versus DIRECTORY: the classic
-    id is a ``.json`` file's stem, the ping-pong id is a directory holding a
-    ``job.json``. Both file their run logs the same way, under
-    ``<data_root>/job_logs/<job-id>/``, so ``timeline.load_run_events`` reaches
-    either. This function searches both stores. Until F275 T003 it searched the
-    classic store alone, where a 16-hex ping-pong id can never match — which is
-    why `remedy teach narrate <task-job-id>` answered "no job matches prefix"
-    for a job whose run log was sitting on disk the whole time (operator
-    dogfooding, 2026-08-25). The two searches are unioned and deduplicated, so
-    an id that is present in both stores is one match rather than a false
-    ambiguity.
+    Every job is one record at ``<data_root>/jobs/<id>/job.json``, so a prefix
+    resolves to the one directory holding a ``job.json`` whose name starts with it.
+    The job's run log lives under ``<data_root>/job_logs/<job-id>/``, so
+    ``timeline.load_run_events`` reaches it by the id returned here.
 
-    Returns a ``str`` because the two stores mint different id shapes and only
-    one of them is a UUID. A full UUID comes back in the form ``str(UUID(...))``
-    produces; a prefix comes back as the matching file stem or directory name.
+    Returns a ``str``. A full UUID comes back in the form ``str(UUID(...))``
+    produces, without touching the disk; a prefix comes back as the matching
+    directory name.
 
     READ-ONLY: this opens directories and stats files, and writes nothing —
     which is what lets the teacher, whose whole stance is passivity, use it.
@@ -418,10 +386,3 @@ def resolve_job_id(raw: str) -> str:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-
-# ``resolve_any_job_id`` is an ALIAS of ``resolve_job_id``, not a copy: F275 T003
-# collapsed the two resolvers, which had differed in one statement, and an alias is
-# one function under two names, so the two cannot drift apart again. The name is
-# kept because the callers under ``apps/cli/`` read it as saying they need both job
-# stores. ``tests/test_data_paths.py`` pins the identity.
-resolve_any_job_id = resolve_job_id

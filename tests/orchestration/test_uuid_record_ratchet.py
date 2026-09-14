@@ -1,4 +1,4 @@
-"""The one-world id shape is a `str`, and no record outside the classic pair may say UUID.
+"""The one-world id shape is a `str`, and no record outside the allowlist may say UUID.
 
 DECISION F275 D33 (finding `R-0878`): DECISION F275 D26's premise P2 selected records with
 `issubclass(obj, BaseModel)`, so seven production DATACLASSES declaring a UUID-typed job or
@@ -15,13 +15,12 @@ import pkgutil
 import pytest
 from pydantic import BaseModel
 
-#: The classic record defines the id shape the one world replaces; it keeps its UUIDs
-#: until the flip deletes it, and `pingpong_job` holds the unified record it becomes.
-CLASSIC_MODULES = {"packages.core.models", "packages.orchestration.pingpong_job"}
-
 #: Records carrying a UUID id the flip does NOT feed, ruled out of scope by DECISION
 #: F275 D33. Each entry is (module, class, field) and each is there for a stated reason.
 ALLOWED = {
+    # An artifact id is the artifact's own, minted when the artifact is built; it is
+    # neither a job id nor a task id.
+    ("packages.core.models", "Artifact", "id"),
     # A memory entry's id is minted by the memory store and never by a job or a task.
     ("packages.memory.models", "MemoryEntry", "id"),
     # A project id is the registry's own; DECISION F275 D33 leaves it until a feature
@@ -65,13 +64,12 @@ def _walk():
                     yield m.name, obj, field
 
 
-class TestNoRecordOutsideTheClassicPairDeclaresAUuidId:
+class TestNoRecordOutsideTheAllowlistDeclaresAUuidId:
     def test_no_uuid_typed_job_or_task_id_survives(self):
         offenders = sorted(
             f"{module}.{obj.__name__}.{field}"
             for module, obj, field in _walk()
             if field in ID_FIELDS
-            and module not in CLASSIC_MODULES
             and (module, obj.__name__, field) not in ALLOWED
         )
         assert offenders == [], (
@@ -82,21 +80,12 @@ class TestNoRecordOutsideTheClassicPairDeclaresAUuidId:
 
     def test_the_matcher_can_see_a_uuid_field_at_all(self):
         """The discriminator. Without it the test above passes on a broken matcher."""
-        from packages.core.models import Job
+        from packages.core.models import Artifact
 
-        assert "id" in _uuid_fields(Job), (
-            "the matcher cannot see `Job.id`, which IS a uuid.UUID, so a green "
+        assert "id" in _uuid_fields(Artifact), (
+            "the matcher cannot see `Artifact.id`, which IS a uuid.UUID, so a green "
             "no-offenders reading proves nothing"
         )
-
-    def test_the_classic_modules_are_exempt_and_would_otherwise_offend(self):
-        """The exemption is load-bearing, not decorative: prove it is carrying something."""
-        classic = [
-            f"{module}.{obj.__name__}.{field}"
-            for module, obj, field in _walk()
-            if field in ID_FIELDS and module in CLASSIC_MODULES
-        ]
-        assert classic, "no classic record declares a UUID id, so CLASSIC_MODULES is dead"
 
 
 class TestNoModuleReadsAUuidMethodOffAnIdField:

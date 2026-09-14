@@ -179,9 +179,8 @@ def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
     import json as _json
 
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.pingpong_job import require_job_plan
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.run_contract import ensure_contract, export_usage_json, load_usage
-    from packages.orchestration.storage import JobNotFoundError
 
     try:
         job_id = lookup_job_id(job_id_str)

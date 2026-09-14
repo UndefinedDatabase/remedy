@@ -150,8 +150,9 @@ class TestResolveJobId:
     """Test the central short-ID resolver."""
 
     def _make_job_file(self, jobs_path: Path, job_id: str) -> None:
-        jobs_path.mkdir(parents=True, exist_ok=True)
-        (jobs_path / f"{job_id}.json").write_text(json.dumps({"id": job_id}))
+        record_dir = jobs_path / job_id
+        record_dir.mkdir(parents=True, exist_ok=True)
+        (record_dir / "job.json").write_text(json.dumps({"job_id": job_id}))
 
     def test_a_full_uuid_resolves_to_its_own_canonical_string_form(
         self, monkeypatch, tmp_path
@@ -211,11 +212,7 @@ class TestResolveJobId:
     def test_a_pingpong_job_id_resolves_through_the_one_resolver(
         self, monkeypatch, tmp_path
     ):
-        """F275 T003: ``resolve_job_id`` searches the ping-pong store too.
-
-        Before the collapse it searched the classic ``<uuid>.json`` files alone,
-        so a 16-hex id held in a ``<16hex>/job.json`` directory never matched.
-        """
+        """A minted 16-hex id held in a ``<16hex>/job.json`` directory resolves, whole or by prefix."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.data_paths import jobs_dir, mint_job_id, resolve_job_id
         job_id = mint_job_id()
@@ -224,23 +221,6 @@ class TestResolveJobId:
         (record_dir / "job.json").write_text(json.dumps({"id": job_id}))
         assert resolve_job_id(job_id) == job_id
         assert resolve_job_id(job_id[:8]) == job_id
-
-    def test_a_prefix_matching_both_stores_is_ambiguous(self, monkeypatch, tmp_path):
-        """One prefix naming a classic record AND a ping-pong record exits 2."""
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.data_paths import jobs_dir, resolve_job_id
-        self._make_job_file(jobs_dir(), "abcd1234-0000-0000-0000-000000000001")
-        pingpong_dir = jobs_dir() / "abcd12340000beef"
-        pingpong_dir.mkdir(parents=True)
-        (pingpong_dir / "job.json").write_text(json.dumps({"id": "abcd12340000beef"}))
-        with pytest.raises(SystemExit) as exc_info:
-            resolve_job_id("abcd1234")
-        assert exc_info.value.code == 2
-
-    def test_the_two_resolver_names_are_one_function(self):
-        """``resolve_any_job_id`` is an alias, so the two names cannot drift apart."""
-        from packages.orchestration import data_paths
-        assert data_paths.resolve_job_id is data_paths.resolve_any_job_id
 
 
 class TestLookupJobId:
@@ -268,12 +248,12 @@ class TestLookupJobId:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.data_paths import JobIdAmbiguous, lookup_job_id
         jobs_path = tmp_path / "jobs"
-        jobs_path.mkdir(parents=True)
         for job_id in (
             "aaaa1111-0000-0000-0000-000000000002",
             "aaaa1111-0000-0000-0000-000000000001",
         ):
-            (jobs_path / f"{job_id}.json").write_text(json.dumps({"id": job_id}))
+            (jobs_path / job_id).mkdir(parents=True)
+            (jobs_path / job_id / "job.json").write_text(json.dumps({"job_id": job_id}))
         with pytest.raises(JobIdAmbiguous) as exc_info:
             lookup_job_id("aaaa1111")
         assert exc_info.value.matches == [
@@ -327,7 +307,7 @@ class TestNormalizeJobId:
 class TestRoutedHandler:
     """A handler routed through ``lookup_job_id`` accepts what its ``UUID(...)`` parse refused."""
 
-    def test_a_routed_handler_accepts_a_short_classic_prefix(
+    def test_a_routed_handler_accepts_a_short_uuid_prefix(
         self, monkeypatch, tmp_path, capsys
     ):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -389,9 +369,9 @@ class TestRoutedHandler:
         """
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         full_id = "abcd1234-0000-0000-0000-000000000001"
-        jobs_path = tmp_path / "jobs"
-        jobs_path.mkdir(parents=True)
-        (jobs_path / f"{full_id}.json").write_text(json.dumps({"id": full_id}))
+        record_dir = tmp_path / "jobs" / full_id
+        record_dir.mkdir(parents=True)
+        (record_dir / "job.json").write_text(json.dumps({"job_id": full_id}))
         seen = self._spy_on_load_job(monkeypatch)
         handler = getattr(importlib.import_module(f"apps.cli.commands.{module_name}"), handler_name)
         with contextlib.suppress(self._LoadJobReached, SystemExit):
@@ -548,16 +528,6 @@ class TestMintIds:
 # is defined SEMANTICALLY — membership is "F260 moved this module's hand-built
 # ``jobs_dir() / <id> / 'evidence'`` onto the one spelling" — so a later reader
 # knows what earns a place here rather than guessing from the list.
-#
-# ``packages/orchestration/storage.py`` is DELIBERATELY EXCLUDED and correctly
-# keeps its ``jobs_dir`` calls. It names the CLASSIC job store,
-# ``<data_root>/jobs/<uuid>.json``, which is one FILE per job and a different
-# concept from a job's evidence DIRECTORY; that store is deleted in F260 T004,
-# not here. ``packages/orchestration/checkpoints.py`` called ``jobs_dir`` too
-# until the flip moved its job snapshot onto ``data_paths.job_record_path``.
-# The reason is written down because an exclusion a later reader cannot justify
-# is one a later reader deletes — or, worse, "fixes" by migrating the classic
-# store onto an evidence path it was never meant to share.
 _JOB_EVIDENCE_OWNING_MODULES = (
     "packages.orchestration.pingpong_job",
     "packages.orchestration.job_evidence",
@@ -568,9 +538,6 @@ _JOB_EVIDENCE_OWNING_MODULES = (
 # The modules that reached the live ping-pong store through
 # ``pingpong_job._jobs_dir`` until F260 T002 DELETED that helper. They now spell
 # it as ``data_paths.job_dir`` / ``job_record_path`` and nothing else.
-# ``packages.orchestration.storage`` is NOT in this set and must never be added:
-# its ``_resolve_jobs_dir`` is a different symbol naming the CLASSIC store that
-# F260 T004 deletes, and it merely shares a substring with the deleted name.
 _MIGRATED_OFF_JOBS_DIR_MODULES = (
     "packages.orchestration.pingpong_job",
     "packages.orchestration.job_evidence",
@@ -692,40 +659,44 @@ class TestJobAndRunLayout:
             f"the record is still filed under a task_jobs component: {written}"
         )
 
-    def test_a_pingpong_record_in_the_jobs_dir_is_still_resolvable_beside_a_classic_one(
+    def test_only_a_directory_holding_a_job_json_resolves_as_a_job(
         self, monkeypatch, tmp_path,
     ):
-        """Both stores share ``jobs/`` now, and neither shadows the other.
+        """The resolver reads one store: a directory under ``jobs/`` holding a ``job.json``.
 
-        This is why the T002 move is ONE commit: the writer moved and its reader
-        moved with it. ``_classic_job_id_matches`` globs ``*.json`` and cannot
-        see a directory; ``_task_job_id_matches`` reads directories holding a
-        ``job.json`` and cannot see a classic file. So one directory carrying
-        both shapes yields exactly one match per id and never a false ambiguity —
-        and a directory without a ``job.json`` is not a job at all.
+        A ``<uuid>.json`` FILE beside it is not a job, so its prefix matches nothing and
+        exits 1 rather than resolving or making the prefix ambiguous; a directory
+        without a ``job.json`` is not a job either.
         """
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.data_paths import jobs_dir, resolve_any_job_id
+        from packages.orchestration.data_paths import jobs_dir, resolve_job_id
 
-        classic_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
-        pingpong_id = "0123456789abcdef"
+        shared_prefix_file_id = "abcd1234-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+        lone_file_id = "eeee5555-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+        record_id = "abcd12340123beef"
         bare_id = "fedcba9876543210"
 
         jobs_dir().mkdir(parents=True)
-        (jobs_dir() / f"{classic_id}.json").write_text(
-            json.dumps({"job_id": classic_id}), encoding="utf-8")
-        (jobs_dir() / pingpong_id).mkdir()
-        (jobs_dir() / pingpong_id / "job.json").write_text(
-            json.dumps({"job_id": pingpong_id}), encoding="utf-8")
+        for file_id in (shared_prefix_file_id, lone_file_id):
+            (jobs_dir() / f"{file_id}.json").write_text(
+                json.dumps({"job_id": file_id}), encoding="utf-8")
+        (jobs_dir() / record_id).mkdir()
+        (jobs_dir() / record_id / "job.json").write_text(
+            json.dumps({"job_id": record_id}), encoding="utf-8")
         (jobs_dir() / bare_id).mkdir()
 
-        assert resolve_any_job_id(pingpong_id) == pingpong_id
-        assert resolve_any_job_id(pingpong_id[:8]) == pingpong_id
-        assert resolve_any_job_id(classic_id) == classic_id
-        assert resolve_any_job_id(classic_id[:8]) == classic_id
+        assert resolve_job_id(record_id) == record_id
+        assert resolve_job_id("abcd1234") == record_id, (
+            "a prefix shared by the record directory and a .json file must name the record alone"
+        )
+        with pytest.raises(SystemExit) as exc:
+            resolve_job_id("eeee5555")
+        assert exc.value.code == 1, (
+            f"a prefix naming only a .json file resolved to something (exit {exc.value.code})"
+        )
 
         with pytest.raises(SystemExit) as exc:
-            resolve_any_job_id(bare_id)
+            resolve_job_id(bare_id)
         assert exc.value.code == 1, (
             f"a directory with no job.json resolved to something (exit {exc.value.code})"
         )
@@ -786,10 +757,6 @@ class TestJobAndRunLayout:
         returns, so an equality test stays green while the second spelling comes
         back. Only reading the module itself sees it, which is why BOTH readings
         ship rather than either one alone.
-
-        ``storage.py`` is not in this set on purpose: it names the CLASSIC
-        store ``<data_root>/jobs/<uuid>.json``, a file per job rather than a
-        job's evidence directory, and F260 T004 deletes it.
         """
         import importlib
 
@@ -820,25 +787,20 @@ class TestJobAndRunLayout:
             module = importlib.import_module(modname)
             assert Path(module.__file__).is_file(), f"{modname} has no source file"
 
-    def test_the_classic_store_modules_still_call_jobs_dir(self):
-        """The excluded module must keep naming the classic store, not lose it quietly.
+    def test_the_jobs_dir_reading_finds_the_calls_data_paths_really_makes(self):
+        """The other half of the non-vacuity reading, aimed at a module that must call ``jobs_dir``.
 
-        This is the other half of the non-vacuity reading: if ``jobs_dir`` had
-        simply been deleted everywhere, the absence guard above would pass for
-        the wrong reason. ``storage.py`` is the module that legitimately still
-        calls it, until F260 T004 deletes that store. ``checkpoints.py`` called
-        it too until the flip moved its job snapshot onto ``job_record_path``.
+        If the AST reading could not see a ``jobs_dir`` reference at all, the absence
+        guard above would pass for the wrong reason. ``data_paths`` builds ``job_dir``
+        and ``job_record_paths`` on ``jobs_dir``, so the reading must find it there.
         """
-        from packages.orchestration import storage
+        from packages.orchestration import data_paths
 
-        for module in (storage,):
-            hits = self._jobs_dir_references(module)
-            assert hits, (
-                f"{module.__name__} no longer references jobs_dir; the classic "
-                "store is still live until F260 T004 deletes it, so this is "
-                "either a real regression or a sign this guard now measures "
-                "nothing"
-            )
+        hits = self._jobs_dir_references(data_paths)
+        assert hits, (
+            "the AST reading finds no jobs_dir reference in data_paths, which builds "
+            "job_dir on it; the absence guard above is therefore measuring nothing"
+        )
 
     def test_pingpong_job_has_no_jobs_dir_attribute_at_all(self):
         """``pingpong_job._jobs_dir`` is GONE, not merely unused.
@@ -866,12 +828,6 @@ class TestJobAndRunLayout:
         ``_jobs_dir() / job_id`` was EQUAL to what ``job_dir`` returns, so
         an equality test stays green while the second spelling returns. Only
         reading the module itself sees it.
-
-        ``storage.py`` is out of scope on purpose: its ``_resolve_jobs_dir`` is
-        a DIFFERENT symbol that merely contains the same substring, and it names
-        the CLASSIC store ``<data_root>/jobs/<uuid>.json`` that F260 T004
-        deletes. It is not a survivor of this migration and never referenced the
-        deleted helper.
         """
         import importlib
 
@@ -888,10 +844,10 @@ class TestJobAndRunLayout:
 
         The set could be empty, and the AST reading could be structurally unable
         to see an underscore-prefixed private helper — in which case the guard
-        would pass while measuring nothing. ``storage._resolve_jobs_dir`` is the
-        control: a private, underscore-prefixed, module-local helper of exactly
-        the shape ``_jobs_dir`` had, defined AND called in the same file, which
-        the same reading DOES find.
+        would pass while measuring nothing. ``data_paths._exit_ambiguous`` is the
+        control: a private, underscore-prefixed, module-local helper of the
+        shape ``_jobs_dir`` had, defined AND called in the same file, which the
+        same reading DOES find, while its prefix ``_exit`` names nothing there.
 
         The last assertion is the one that matters most. A helper comes back as
         an uncalled ``def`` before it comes back as a call, so the reading must
@@ -901,7 +857,7 @@ class TestJobAndRunLayout:
         """
         import importlib
 
-        from packages.orchestration import storage
+        from packages.orchestration import data_paths
 
         assert _MIGRATED_OFF_JOBS_DIR_MODULES, (
             "the migrated module set is EMPTY; the absence guard above would "
@@ -912,18 +868,17 @@ class TestJobAndRunLayout:
         for modname in _MIGRATED_OFF_JOBS_DIR_MODULES:
             module = importlib.import_module(modname)
             assert Path(module.__file__).is_file(), f"{modname} has no source file"
-        assert self._names_of(storage, "_resolve_jobs_dir"), (
-            "the AST reading cannot find storage._resolve_jobs_dir, a private "
-            "helper of exactly the shape _jobs_dir had; the absence assertions "
+        assert self._names_of(data_paths, "_exit_ambiguous"), (
+            "the AST reading cannot find data_paths._exit_ambiguous, a private "
+            "helper of the shape _jobs_dir had; the absence assertions "
             "above are therefore measuring nothing"
         )
-        assert self._names_of(storage, "_jobs_dir") == [], (
-            "storage.py names _jobs_dir; it never did, so either the reading "
-            "now matches on a substring or storage.py grew a dependency on a "
-            "helper that no longer exists"
+        assert self._names_of(data_paths, "_exit") == [], (
+            "the reading finds _exit in data_paths, which names only "
+            "_exit_ambiguous, so it now matches on a substring"
         )
-        assert len(self._names_of(storage, "_resolve_jobs_dir")) > \
-            len(self._references_to(storage, "_resolve_jobs_dir")), (
+        assert len(self._names_of(data_paths, "_exit_ambiguous")) > \
+            len(self._references_to(data_paths, "_exit_ambiguous")), (
             "_names_of found no more than _references_to did, so its DEFINITION "
             "arm is dead; a helper revived as an uncalled def would then slip "
             "past the absence guard above"
@@ -967,11 +922,12 @@ def _uuid_parses_fed_to_a_job_load(source: str) -> list[tuple[int, str]]:
     """Sorted ``(line, function name)`` pairs of ``UUID(...)`` parses handed to a job-store loader.
 
     Inside each function, two shapes count: a ``UUID(...)`` call that is a positional
-    argument of ``load_job``, ``load_job_safe`` or ``_lj`` (``self_dogfood``'s local
-    alias of ``load_job``), and a bare name passed positionally to one of them that the
-    same function assigned from a ``UUID(...)`` call. The line is the argument's.
+    argument of ``load_job_plan``, ``load_job_plan_safe`` or ``require_job_plan``, or of
+    the local aliases ``_lj`` and ``_load_job`` they are imported under, and a bare name
+    passed positionally to one of them that the same function assigned from a
+    ``UUID(...)`` call. The line is the argument's.
     """
-    loader_names = {"load_job", "load_job_safe", "_lj"}
+    loader_names = {"load_job_plan", "load_job_plan_safe", "require_job_plan", "_lj", "_load_job"}
 
     def is_uuid_parse(node: ast.AST) -> bool:
         return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "UUID"
@@ -1016,19 +972,9 @@ class TestJobStoreLoadsDoNotParseTheirIdWithUuid:
     """F275 R88: a job-store load under ``packages/`` takes its id through ``normalize_job_id``.
 
     ``UUID(...)`` refuses the sixteen-hex id ``mint_job_id`` mints, so a load that parses
-    with it dies before the store is asked. For every id the classic store holds the
-    routing is behaviour-neutral, which is why the pin is a reading of the source.
+    with it dies before the store is asked, which is why the pin is a reading of the source.
+    No load is exempt.
     """
-
-    # DECISION F275 D62 keeps exactly two parses, each for its own reason.
-    # ``ui_server._load_job``: the parse IS its which-store switch; routed, a sixteen-hex id
-    # would be tried against the classic store and answered 404 before the ping-pong branch ran.
-    # ``execute_test_run``: the parsed ``UUID`` goes on to event writers and a lease, a return
-    # domain this round does not widen.
-    _EXEMPT_LOADS = frozenset({
-        ("packages/orchestration/ui_server.py", "_load_job"),
-        ("packages/orchestration/test_execution_service.py", "execute_test_run"),
-    })
 
     def test_no_job_store_load_under_packages_is_handed_a_uuid_parse(self):
         from packages.orchestration import data_paths
@@ -1037,8 +983,7 @@ class TestJobStoreLoadsDoNotParseTheirIdWithUuid:
         for path in sorted((repo / "packages").rglob("*.py")):
             relative = path.relative_to(repo).as_posix()
             for line, function in _uuid_parses_fed_to_a_job_load(path.read_text(encoding="utf-8")):
-                if (relative, function) not in self._EXEMPT_LOADS:
-                    findings.append(f"{relative}:{line} in {function}")
+                findings.append(f"{relative}:{line} in {function}")
         assert findings == [], (
             f"job-store loads handed a UUID(...) parse instead of normalize_job_id: {findings}"
         )
@@ -1046,12 +991,12 @@ class TestJobStoreLoadsDoNotParseTheirIdWithUuid:
     def test_the_guard_sees_both_shapes_it_forbids(self):
         planted = (
             "def loads_a_direct_parse(job_id):\n"
-            "    return load_job(UUID(job_id), None)\n"
+            "    return require_job_plan(UUID(job_id), None)\n"
             "\n"
             "\n"
             "def loads_a_named_parse(job_id):\n"
             "    parsed = UUID(job_id)\n"
-            "    return load_job_safe(parsed)\n"
+            "    return load_job_plan_safe(parsed)\n"
         )
         assert _uuid_parses_fed_to_a_job_load(planted) == [
             (2, "loads_a_direct_parse"),

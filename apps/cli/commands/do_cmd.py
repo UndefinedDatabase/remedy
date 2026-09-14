@@ -1579,9 +1579,7 @@ def _cmd_do_job_resume(
 ) -> None:
     """Resume an interrupted JobPlan in its own job-owned worktree.
 
-    JobPlan IDs are 16-character hex values (``ee71656400f646e0``) — a different
-    storage model from the UUID Core Jobs that ``remedy job resume`` handles. The
-    two are deliberately kept apart rather than pretending to be the same object.
+    JobPlan IDs are 16-character hex values (``ee71656400f646e0``).
 
     F1: the material invocation controls come through the shared ``RunInvocation`` with
     omission preserved as ``None``, so resume never clears a persisted cap by passing 0.
@@ -2929,8 +2927,7 @@ def _cmd_do_replan(
 ) -> None:
     """Regenerate the flight plan for an existing job."""
     from packages.orchestration.data_paths import job_evidence_export_dir, resolve_job_id
-    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
-    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
 
     job_id = resolve_job_id(job_id_str)
     try:

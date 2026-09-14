@@ -23,34 +23,10 @@ EXIT_UNKNOWN_JOB = 3
 _FINISHED_STATES = frozenset({"completed"})
 
 
-class _CoreJobAdapter:
-    """Adapt a Core Job (storage.load_job) to the interface _cmd_job_stop expects."""
-
-    __slots__ = ("state", "stop_request_id", "stop_reason", "stop_source", "stopped_at")
-
-    def __init__(self, core_job):
-        self.state = core_job.state.value
-        self.stop_request_id = ""
-        self.stop_reason = ""
-        self.stop_source = ""
-        self.stopped_at = ""
-
-
-
 def _load_job(job_id: str):
     from packages.orchestration.pingpong_job import load_job_plan
 
-    plan = load_job_plan(job_id)
-    if plan is not None:
-        return plan
-
-    try:
-        from packages.orchestration.pingpong_job import load_job_plan
-
-        core = load_job_plan(job_id)
-        return _CoreJobAdapter(core)
-    except Exception:
-        return None
+    return load_job_plan(job_id)
 
 
 def _print_status(job_id: str, *, json_output: bool) -> None:

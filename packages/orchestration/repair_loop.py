@@ -602,8 +602,7 @@ def build_repair_context(
     failure artifacts return status="blocked" with a safe blocker code.
     """
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.pingpong_job import require_job_plan
-    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
     ctx = RepairContextSummary(job_id=job_id, failure_artifact_id=failure_artifact_id)
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
@@ -779,13 +778,12 @@ def evaluate_repair_eligibility(
     """
     from packages.orchestration.approval_queue import get_patch_intent
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.pingpong_job import require_job_plan
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.run_contract import (
         ContractAction,
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = RepairEligibility(job_id=job_id, failure_artifact_id=failure_artifact_id)
@@ -1075,13 +1073,12 @@ def run_repair_attempt(
 
     from packages.orchestration.approval_queue import get_patch_intent
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.pingpong_job import require_job_plan
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.run_contract import (
         ContractAction,
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     phases: list[dict[str, str]] = []
@@ -1404,8 +1401,7 @@ def reconcile_repair_after_continue(
     Never applies code, never runs tests; it only reflects the outcome.
     """
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.pingpong_job import require_job_plan
-    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     out = RepairReconcileResult()

@@ -147,7 +147,6 @@ class TestBudgetGate:
 class TestCanRetryTask:
     def test_completed_not_retryable(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
         from packages.core.models import RunState
         from packages.orchestration.pingpong_job import JobPlan, TaskEntry
         job = JobPlan(job_id=mint_job_id(), job_title="retry-test")
@@ -161,7 +160,6 @@ class TestCanRetryTask:
 
     def test_pending_not_retryable(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
         from packages.core.models import RunState
         from packages.orchestration.pingpong_job import JobPlan, TaskEntry
         job = JobPlan(job_id=mint_job_id(), job_title="retry-test")

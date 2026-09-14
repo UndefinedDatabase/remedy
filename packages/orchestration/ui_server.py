@@ -95,66 +95,8 @@ def _safe_rel_file(name: str) -> str:
 # Safe data builders (no raw content leaks)
 # ---------------------------------------------------------------------------
 
-class _JobPlanTaskAdapter:
-    """Minimal adapter so JobPlan tasks look like core Job tasks to the dashboard."""
-
-    def __init__(self, task: Any) -> None:
-        self._t = task
-        self.id = task.task_id
-        self.description = task.title
-        status_map = {
-            "applied_to_job_workspace": "completed",
-            "passed": "completed",
-            "blocked": "blocked",
-            "failed": "failed",
-            "skipped": "pending",
-            "pending": "pending",
-            "running": "running",
-        }
-        raw = task.status or "pending"
-
-        class _Status:
-            def __init__(self, val: str) -> None:
-                self.value = val
-            def __str__(self) -> str:
-                return self.value
-
-        self.status = _Status(status_map.get(raw, raw))
-        self.metadata = {}
-
-
-class _JobPlanAdapter:
-    """Adapter that makes a JobPlan look enough like a core Job for the dashboard."""
-
-    def __init__(self, plan: Any) -> None:
-        self._plan = plan
-        self.id = plan.job_id
-        self.name = plan.job_title
-
-        class _State:
-            def __init__(self, val: str) -> None:
-                self.value = val
-            def __str__(self) -> str:
-                return self.value
-
-        state_map = {
-            "completed": "completed",
-            "blocked": "blocked",
-            "running": "running",
-            "planned": "active",
-            "paused": "blocked",
-        }
-        self.state = _State(state_map.get(plan.state, plan.state))
-        self.tasks = [_JobPlanTaskAdapter(t) for t in plan.tasks]
-        self.artifacts = []
-        self.metadata = {"source": "job_plan", "job_plan_id": plan.job_id}
-        self._is_job_plan = True
-
-
 def _load_events(job: Any) -> list[dict[str, Any]]:
     """Load run-log events for a job."""
-    if getattr(job, "_is_job_plan", False):
-        return _load_job_plan_events(job)
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.timeline import load_run_events
     return load_run_events(resolve_data_root(), job.job_id)
@@ -169,59 +111,6 @@ def _resolve_evidence_dir(job_id: str) -> Path | None:
     `ui_server` directly."""
     from packages.orchestration.evidence_index import resolve_job_evidence_dir
     return resolve_job_evidence_dir(job_id)
-
-
-def _load_job_plan_events(job: Any) -> list[dict[str, Any]]:
-    """Load agent run trace events as dashboard events for a JobPlan."""
-    from packages.orchestration.agent_run_trace import load_trace_jsonl
-
-    plan = job._plan
-    events: list[dict[str, Any]] = []
-
-    ev_dir = _resolve_evidence_dir(plan.job_id)
-    if ev_dir is None:
-        return events
-
-    trace_path = ev_dir / "agent_run_trace.jsonl"
-    if not trace_path.exists():
-        return events
-
-    _ACTOR_MAP = {
-        "builder_prompt_created": "Builder",
-        "builder_output_received": "Builder",
-        "repair_prompt_created": "Builder",
-        "repair_output_received": "Builder",
-        "reviewer_prompt_created": "Reviewer",
-        "reviewer_output_received": "Reviewer",
-        "review_finding_opened": "Reviewer",
-        "review_finding_rechecked": "Reviewer",
-        "task_gate_evaluated": "System",
-        "task_workspace_applied": "System",
-        "job_flow_started": "System",
-        "job_planned": "System",
-        "task_started": "System",
-        "job_evidence_exported": "System",
-        "promotion_dry_run_completed": "System",
-        "final_audit_completed": "System",
-    }
-
-    for te in load_trace_jsonl(trace_path):
-        kind = te.get("event_kind", "")
-        events.append({
-            "event": kind,
-            "timestamp": te.get("created_at", ""),
-            "metadata": {
-                "task_id": te.get("task_id", ""),
-                "run_id": te.get("run_id", ""),
-                "verdict": te.get("verdict", ""),
-                "status": te.get("status", ""),
-                "role": te.get("role", ""),
-                "actor": _ACTOR_MAP.get(kind, "System"),
-                "trace_source": te.get("trace_source", ""),
-            },
-        })
-
-    return events
 
 
 def _safe_error(code: int, message: str) -> tuple[int, dict[str, Any]]:
@@ -992,165 +881,6 @@ def _build_prompt_trace(ev_dir: Path | None) -> dict[str, Any]:
     }
 
 
-def _build_job_plan_dashboard(job: Any) -> dict[str, Any]:
-    """Build safe dashboard for a JobPlan (job-flow) job.
-
-    Uses Agent Run Trace events directly instead of legacy core events.
-    """
-    events = _load_events(job)
-    plan = job._plan
-    generated_at = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    task_count = len(job.tasks)
-    completed = sum(1 for t in job.tasks
-                    if (t.status.value if hasattr(t.status, "value") else str(t.status))
-                    == "completed")
-    blocked = sum(1 for t in job.tasks
-                  if (t.status.value if hasattr(t.status, "value") else str(t.status))
-                  in ("blocked", "failed"))
-    state = job.state.value if hasattr(job.state, "value") else str(job.state)
-
-    has_builder = any(e.get("event") == "builder_prompt_created" for e in events)
-    has_reviewer = any(e.get("event") == "reviewer_prompt_created" for e in events)
-    has_final_audit = any(e.get("event") == "final_audit_completed" for e in events)
-    has_repair = any(e.get("event") == "repair_prompt_created" for e in events)
-
-    final_audit_status = ""
-    for e in reversed(events):
-        if e.get("event") == "final_audit_completed":
-            final_audit_status = e.get("metadata", {}).get("status", "")
-            break
-
-    reviewer_pass = any(
-        e.get("event") == "task_gate_evaluated"
-        and e.get("metadata", {}).get("verdict") == "pass"
-        for e in events
-    )
-
-    review_done = has_reviewer and reviewer_pass
-    finalized = (has_final_audit
-                 and final_audit_status == "READY_FOR_APPROVAL"
-                 and blocked == 0)
-
-    phases = [
-        {"id": "planning", "title": "Planning",
-         "status": "done" if any(e.get("event") == "job_planned" for e in events) else "pending",
-         "rank": 0, "source": "agent_run_trace"},
-        {"id": "build", "title": "Build",
-         "status": "done" if finalized else ("current" if has_builder else "pending"),
-         "rank": 1, "source": "agent_run_trace"},
-        {"id": "test", "title": "Test",
-         "status": "not_applicable",
-         "rank": 2, "source": "agent_run_trace"},
-        {"id": "review", "title": "Review",
-         "status": "done" if review_done else ("current" if has_reviewer else "pending"),
-         "rank": 3, "source": "agent_run_trace"},
-        {"id": "finalized", "title": "Finalized",
-         "status": "done" if finalized else "pending",
-         "rank": 4, "source": "agent_run_trace"},
-    ]
-
-    task_items = []
-    for idx, t in enumerate(job.tasks):
-        tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
-        task_items.append({
-            "id": str(t.task_id),
-            "title": t.title[:80] if t.title else f"Task {idx + 1}",
-            "status": tstat,
-            "source": "job_plan",
-        })
-
-    activity_items = []
-    for e in events[-12:]:
-        ev = e.get("event", "")
-        meta = e.get("metadata", {})
-        prompt_chars = _as_int(meta.get("prompt_chars", 0))
-        item: dict[str, Any] = {
-            "id": f"evt-{e.get('timestamp', '')[:19]}",
-            "time": e.get("timestamp", ""),
-            "actor": meta.get("actor", "System"),
-            "event_kind": ev,
-            "summary": ev.replace("_", " ").capitalize(),
-            "source": "agent_run_trace",
-            "trace_source": meta.get("trace_source", ""),
-            "task_id": str(meta.get("task_id", "") or ""),
-            "prompt_kind": str(meta.get("prompt_kind", "") or ""),
-            "prompt_chars": prompt_chars,
-        }
-        if prompt_chars > 0:
-            item["token_estimate"] = prompt_chars // 4
-        activity_items.append(item)
-
-    ev_dir = _resolve_evidence_dir(plan.job_id)
-    job_flow_data: dict[str, Any] = {}
-    if ev_dir:
-        jf_path = ev_dir / "job_flow.json"
-        if jf_path.exists():
-            try:
-                import json as _json
-                job_flow_data = _json.loads(jf_path.read_text())
-            except (OSError, ValueError):
-                pass
-
-    fa = job_flow_data.get("final_audit", {})
-    next_action_cmd = job_flow_data.get("next_approve_command_safe", "")
-    next_action_label = fa.get("recommended_next_action", "Review job state")
-
-    evidence_missing: list[str] = []
-    if not events:
-        evidence_missing.append("agent_run_trace")
-    if ev_dir and not (ev_dir / "prompt_trace_summary.json").exists():
-        evidence_missing.append("prompt_trace")
-    if not ev_dir:
-        evidence_missing.append("evidence_dir")
-
-    return {
-        "version": 3,
-        "job_id": str(job.job_id),
-        "generated_at": generated_at,
-        "source": "job_plan_adapter",
-        "live": {
-            "running": state in ("active", "running"),
-            "state": state,
-            "current_actor": "",
-            "last_event_at": events[-1].get("timestamp", "") if events else "",
-            "stale": not events,
-            "source": "agent_run_trace",
-            "confidence": "high" if events else "none",
-        },
-        "metrics": {
-            "open": blocked,
-            "planned": task_count - completed - blocked,
-            "done": completed,
-            "progress_percent": round((completed / max(task_count, 1)) * 100),
-            "source_counts": {"tasks": task_count, "events": len(events)},
-            "computed_from": "job_plan_and_agent_run_trace",
-        },
-        "tasks": task_items,
-        "activity": activity_items,
-        "phases": phases,
-        "prompt_trace": _build_prompt_trace(ev_dir),
-        "next_action": {
-            "kind": "guidance",
-            "label": next_action_label,
-            "command": next_action_cmd,
-            "requires_user": True,
-        },
-        "truth": {
-            "source": "job_plan_adapter",
-            "trace_source": "reconstructed" if events else "none",
-            "missing_evidence": evidence_missing,
-            "demo_mode": False,
-            "computed_from": "job_plan_and_agent_run_trace",
-        },
-        "redaction": {
-            "policy": "safe_summaries_only",
-            "raw_content_exposed": False,
-            "unsafe_fields_blocked": True,
-        },
-    }
-
-
 # WHY: `metrics.open` and `open_decision_count` are both typed `int` with no "unknown"
 # state, so a failure here reads as 0 instead of propagating — unlike
 # `_build_orchestrator_section`, the richer shape that can answer "unknown". The event
@@ -1170,8 +900,6 @@ def _count_open_decisions(job: Any, events: list[dict[str, Any]]) -> int:
 
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
-    if getattr(job, "_is_job_plan", False):
-        return _build_job_plan_dashboard(job)
     events = _load_events(job)
     truth_data_dir = _resolve_dashboard_data_dir()
     # Authoritative proof chain (durable snapshot truth) — built once, reused for
@@ -2356,13 +2084,10 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     server meant (DECISION F008 D1).
 
     `task_id` is DECISION F021 D2's single additive field, and it is resolved
-    from TWO places because this repository has two event sources: the run log
-    carries it as a top-level `RunEvent` field, while `_load_job_plan_events`
-    nests it under `metadata`. Reading only the top level would leave the
-    feed's jump-to-node dead for exactly the trace-driven jobs while every
-    run-log job worked, which is a half-feature rather than a visible failure.
-    Empty string when neither source carries one: a row with no linkage simply
-    does not jump.
+    from TWO places: the top-level `RunEvent` field the run log carries, and
+    otherwise a `task_id` nested under the event's `metadata`. The top level
+    wins when both carry one. Empty string when neither carries one: a row with
+    no linkage simply does not jump.
 
     `budget` is DECISION F022 D3's field and it is CONDITIONAL on the event
     kind: a `budget.tick` gains it and every other kind's frame stays

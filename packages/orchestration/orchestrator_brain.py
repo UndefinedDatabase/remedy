@@ -304,8 +304,7 @@ def _gather_signals(job_id: str, data_dir: Path,
         "request_packages": 0, "self_attempts_awaiting": 0, "self_attempts_pending": 0,
         "self_proposed_approved": [], "self_items": 0, "budget_exhausted": False,
     }
-    from packages.orchestration.pingpong_job import require_job_plan
-    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     try:
         job = require_job_plan(normalize_job_id(job_id), data_dir)
     except (ValueError, JobNotFoundError):

@@ -94,11 +94,9 @@ class TestFrameShape:
     def test_the_envelope_carries_the_linkage_from_both_event_sources(self):
         """DECISION F021 D2's single additive field, resolved from TWO places.
 
-        `load_run_events` yields run-log rows whose `task_id` is TOP-LEVEL,
-        while `_load_job_plan_events` nests it under `metadata`. A summary
-        reading only the top level would leave jump-to-node dead for every
-        trace-driven job while every run-log job worked -- a silent half
-        feature, and the failure mode no suite here would have surfaced.
+        `load_run_events` yields run-log rows whose `task_id` is TOP-LEVEL; an
+        event may instead carry it nested under `metadata`. The summary reads
+        both, and the top level wins when both carry one.
         """
         from_run_log = mod._safe_event_summary(
             1, {"event": "task_started", "task_id": "T-7"})

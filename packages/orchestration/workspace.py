@@ -8,7 +8,7 @@ Design constraints:
   - Runtime is injected; orchestration never imports provider code directly.
   - LocalWorkspaceRuntime is the only concrete implementation for Step 6.
   - No patch application, no command execution — only structured file writes.
-  - Storage location follows the same resolution order as storage.py:
+  - Storage location follows the same resolution order as pingpong_job.py:
       1. REMEDY_DATA_DIR env var (workspace dir is a sibling of jobs/ inside it).
       2. Repository-local default: <repo_root>/.data/workspaces/
 """

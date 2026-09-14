@@ -83,14 +83,11 @@ def list_decisions(
     job: JobPlan | Any,
     events: list[dict[str, Any]],
 ) -> list[HumanDecision]:
-    """Derive all pending human decisions from existing state.
-
-    Accepts both Core Job (has .id UUID) and JobPlan (has .job_id str).
-    """
+    """Derive all pending human decisions from existing state."""
     decisions: list[HumanDecision] = []
-    job_id = str(getattr(job, "job_id", None) or getattr(job, "id", ""))
+    job_id = str(getattr(job, "job_id", ""))
 
-    # 1. Pending patch approvals (Core Job only; JobPlan has no .artifacts).
+    # 1. Pending patch approvals.
     try:
         from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
         intents = list_patch_intents(job)

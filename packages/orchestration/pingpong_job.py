@@ -153,16 +153,14 @@ class TaskProofSummary:
 class TaskEntry:
     """A single task within a job."""
     # A job file's tasks are numbered T001, T002, ... by parse order, and the
-    # parser passes those ids; a task built by code mints its id, as the classic
-    # Task did.
+    # parser passes those ids; a task built by code mints its id.
     task_id: str = field(default_factory=mint_task_id)
     source_heading_number: int = 0  # Original ## Task N number
     title: str = ""
     task_class: str = TASK_CLASS_DEFAULT
     # F112 T003b2b1: durable per-task answers to escalated decisions this
-    # task raised (e.g. a cannot_fit split-or-proceed choice) — keyed like
-    # Core Job's Task.inputs so escalation.py's answer-recording path
-    # (DECISION F112 D4) works unmodified against either task shape.
+    # task raised (e.g. a cannot_fit split-or-proceed choice) — read and written
+    # by escalation.py's answer-recording path (DECISION F112 D4).
     inputs: dict = field(default_factory=dict)
     # F112 T003c: this task's declared fenced scope, parsed from a "Files:"
     # section in job markdown (mirrors "Acceptance:") — the
@@ -189,9 +187,9 @@ class TaskEntry:
     task_start_tree_ref: str = ""     # checkpoint ref protecting that tree object
     task_start_recorded_at: str = ""
     task_attempt_state: str = ""      # "" | "active" | "complete"
-    # F275 T003, DECISION F275 D22: the two fields the classic `Task` carried and
-    # `TaskEntry` had no counterpart for. They are widened in BEFORE the flip, so the
-    # commit that moves consumers onto this record loses nothing a caller could read.
+    # F275 T003, DECISION F275 D22: the two fields the deleted classic `Task` carried and
+    # `TaskEntry` had no counterpart for. They were widened in BEFORE the flip, so the
+    # commit that moved consumers onto this record lost nothing a caller could read.
     # `output_artifact_ids` is read at 35 sites, 15 of them production, including the
     # live task runner and the cockpit's detail panel. `budget` is a serialized dict
     # rather than a `Budget`, which is the shape `JobPlan.budgets` already uses on this
@@ -419,18 +417,16 @@ class JobPlan:
     # vanishes on the first persist/resume cycle.
     #
     # Absent is spelled "" for a string and None for a structured value, which
-    # is what every field above already does. The classic `Job` in
-    # `packages.core.models` spells the first three `str | None`; the empty
-    # string is what survives here, because no reader that must tell "unset"
-    # from "empty" for them exists yet.
+    # is what every field above already does. The empty string is what the first
+    # three carry, because no reader that must tell "unset" from "empty" for them
+    # exists yet.
     mission: str = ""
     user_prompt: str = ""
     project_id: str = ""
     intake: dict | None = None
     flight_plan: dict | None = None
     artifacts: list[Artifact] = field(default_factory=list)
-    # NOT a `Budget()` default factory, unlike the classic `Job`: an empty
-    # budget and an absent one are indistinguishable once exported, and
+    # NOT a `Budget()` default factory: an empty budget and an absent one are indistinguishable once exported, and
     # `budgets` above already carries the F018 limits, so a defaulted second
     # budget object would write a meaningless `{}` into every job record.
     budget: Budget | None = None
@@ -446,33 +442,54 @@ class JobPlan:
 # Persistence
 # ---------------------------------------------------------------------------
 
-# ``root`` overrides the store's base directory for ONE call, which is how a caller
-# reads or writes a job record outside the process data root (DECISION F275 D23).
-# ``data_paths.job_record_path`` always accepted it; these three never passed it on.
+class JobNotFoundError(Exception):
+    """Raised when no job record exists for the requested id."""
+
+    def __init__(self, job_id: str) -> None:
+        super().__init__(f"Job not found: {job_id}")
+        self.job_id = job_id
 
 
-def _persist_job(job: JobPlan, root: Path | None = None) -> Path:
-    # ``data_paths`` owns "where the ping-pong record lives" (DECISION F260 D1),
-    # so this writer and the readers that resolve an id cannot drift apart.
-    from packages.orchestration.data_paths import job_record_path
+class JobStoreError(Exception):
+    """Raised when a job record exists and cannot be read."""
 
-    out = job_record_path(job.job_id, root)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    data = (_json.dumps(_export_job(job), indent=2) + "\n").encode("utf-8")
-    # WHY: a save interrupted part-way leaves the previous record or the new one, never a torn file.
-    fd, tmp = tempfile.mkstemp(dir=str(out.parent), suffix=".tmp")
+
+# The one atomic text writer: the job record below and the checkpoint, mission and
+# compiled-mission records each write through it rather than carrying their own.
+def atomic_write_text(path: Path, data: str) -> None:
+    """Write ``data`` to ``path`` as UTF-8 by an fsynced replace, creating the parent.
+
+    An interrupted write leaves the previous file or the new one, never a torn file,
+    and removes its temporary file.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
     try:
         with os.fdopen(fd, "wb") as fh:
-            fh.write(data)
+            fh.write(data.encode("utf-8"))
             fh.flush()
             os.fsync(fh.fileno())
-        os.replace(tmp, out)
+        os.replace(tmp, path)
     except BaseException:
         try:
             os.unlink(tmp)
         except OSError:
             pass
         raise
+
+
+# ``root`` overrides the store's base directory for ONE call, which is how a caller
+# reads or writes a job record outside the process data root (DECISION F275 D23).
+# ``data_paths.job_record_path`` always accepted it; these three never passed it on.
+
+
+def _persist_job(job: JobPlan, root: Path | None = None) -> Path:
+    # ``data_paths`` owns "where the job record lives" (DECISION F260 D1),
+    # so this writer and the readers that resolve an id cannot drift apart.
+    from packages.orchestration.data_paths import job_record_path
+
+    out = job_record_path(job.job_id, root)
+    atomic_write_text(out, _json.dumps(_export_job(job), indent=2) + "\n")
     return out
 
 
@@ -496,8 +513,7 @@ def load_job_plan(job_id: str, root: Path | None = None) -> JobPlan | None:
 
 # ``load_job_plan`` answers ``None`` for a record that is MISSING and for one that is
 # UNREADABLE alike, so its caller cannot tell a job that never existed from a job whose
-# record rotted; this is the unified counterpart of ``storage.load_job_safe``, which
-# carries that distinction for the classic record (DECISION F275 D23).
+# record rotted; this function carries that distinction (DECISION F275 D23).
 
 
 def load_job_plan_safe(job_id: str, root: Path | None = None) -> tuple[JobPlan | None, bool]:
@@ -520,17 +536,14 @@ def load_job_plan_safe(job_id: str, root: Path | None = None) -> tuple[JobPlan |
         return (None, True)
 
 
-# WHY: every caller that catches ``JobNotFoundError`` needs the raise the classic ``storage.load_job`` gave it.
+# WHY: a caller with a failure path of its own needs a raise it can catch, not a ``None``.
 def require_job_plan(job_id: str, root: Path | None = None) -> JobPlan:
-    """Load one JobPlan, or RAISE what the classic ``storage.load_job`` raised.
+    """Load one JobPlan, or RAISE.
 
     The contract: the plan ``load_job_plan_safe`` reads comes back; when there is no
     plan, a record that exists and cannot be read raises ``JobStoreError``, and a job
-    with no record raises ``JobNotFoundError(job_id)``. Both are the classes the
-    classic loader's callers already catch. It never returns ``None``.
+    with no record raises ``JobNotFoundError(job_id)``. It never returns ``None``.
     """
-    from packages.orchestration.storage import JobNotFoundError, JobStoreError
-
     plan, degraded = load_job_plan_safe(job_id, root)
     if plan is None:
         if degraded:
@@ -543,9 +556,8 @@ def list_job_plans_safe(root: Path | None = None) -> tuple[list[JobPlan], bool, 
     """Every persisted JobPlan. Returns ``(plans, degraded, skipped_job_ids)``.
 
     The third element names a skipped record BY JOB ID — the record's directory name
-    — where ``storage.list_jobs_safe`` names a file name, because one directory per
-    job is what makes the id the honest identifier here. Sorted by ``created_at``
-    descending, newest first, as the classic function is. No input makes this raise.
+    — because one directory per job is what makes the id the honest identifier here.
+    Sorted by ``created_at`` descending, newest first. No input makes this raise.
     """
     from packages.orchestration.data_paths import job_record_paths
 
@@ -563,8 +575,7 @@ def list_job_plans_safe(root: Path | None = None) -> tuple[list[JobPlan], bool, 
 def list_job_plans(root: Path | None = None) -> list[JobPlan]:
     """Every persisted JobPlan, newest first; an unreadable record is skipped silently.
 
-    The plain reader over ``list_job_plans_safe``, as ``storage.list_jobs`` is the
-    plain reader over ``storage.list_jobs_safe``. Use the safe form to see which
+    The plain reader over ``list_job_plans_safe``. Use the safe form to see which
     records were skipped.
     """
     plans, _, _ = list_job_plans_safe(root)
@@ -2939,7 +2950,7 @@ def resume_job_plan(job_id: str, **run_kwargs: Any) -> JobPlan:
     """Resume an interrupted JobPlan in its OWN job-owned worktree.
 
     This is the JobPlan-level recovery record: it reads ``jobs/<job-id>/
-    job.json``, NOT a Core Job event log and not per-task ping-pong run records
+    job.json``, NOT a run log and not per-task ping-pong run records
     (those correctly say ``cleanup_status=job_owned``; the job owns the worktree).
 
     The same worktree (``job-<job-id>``), the same branch and the same base commit

@@ -132,8 +132,6 @@ class TestLearnCLI:
 
     def test_learn_json_output(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        import packages.orchestration.storage as _storage
-        monkeypatch.setattr(_storage, "_DATA_DIR", tmp_path / "jobs")
         from packages.orchestration.pingpong_job import save_job_plan
         job = JobPlan(
             job_id=mint_job_id(), job_title="done", user_prompt="done",
@@ -153,8 +151,6 @@ class TestLearnCLI:
 
     def test_learn_approved_flag(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        import packages.orchestration.storage as _storage
-        monkeypatch.setattr(_storage, "_DATA_DIR", tmp_path / "jobs")
         from packages.orchestration.pingpong_job import save_job_plan
         job = JobPlan(
             job_id=mint_job_id(), job_title="done", user_prompt="done",

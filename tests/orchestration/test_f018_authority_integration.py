@@ -171,7 +171,7 @@ class TestBuildRunManifestDictBudgets:
         assert job.budgets["max_total_tokens"] == 50000
 
     def test_jobbudgets_model_on_job_captured(self):
-        """Core Job with JobBudgets model → model_dump produces dict."""
+        """JobPlan with a JobBudgets model → model_dump produces dict."""
         from packages.core.models import JobBudgets
         from packages.orchestration.pingpong_job import JobPlan
 
@@ -614,7 +614,7 @@ class TestJobplanStopCreatesDecision:
     """Gate: test_jobplan_stop_creates_decision"""
 
     def test_jobplan_stop_creates_decision(self):
-        """Core Job with budget stop fields → list_decisions creates budget decision."""
+        """JobPlan with budget stop fields → list_decisions creates budget decision."""
         from packages.orchestration.decision_queue import list_decisions
         from packages.orchestration.pingpong_job import JobPlan
 

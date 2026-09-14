@@ -6,7 +6,7 @@ ever lives on disk.
 
 **v1 is deliberately FILE-BASED.** In STATUS order this feature lands BEFORE the SQLite
 token ledger (F103) introduces that dependency, and the codebase today persists every
-entity as an atomic per-entity JSON file (``storage.save_job``, ``project_registry``,
+entity as an atomic per-entity JSON file (``pingpong_job.save_job_plan``, ``project_registry``,
 ``proposed_tasks``). So the queue matches what exists. If a later scheduler feature
 outgrows this, migrating to the then-existing SQLite is THAT feature's decision, not a
 debt this module pretends to have paid.
@@ -28,7 +28,7 @@ Claims are never taken over silently: a consumer that dies leaves its entry visi
 ``claimed`` with its owner on it, and re-offering it is an explicit operator command
 (T003), not a timeout applied behind the operator's back. Listing stays honest under
 corruption — an entry file that will not parse is skipped and COUNTED, exactly as
-``storage.list_jobs_safe`` does for jobs.
+``pingpong_job.list_job_plans_safe`` does for jobs.
 """
 from __future__ import annotations
 
@@ -341,7 +341,7 @@ def enqueue(project: str, goal: str = "", prio: int = 0, *,
 def list_entries_safe(project: str, root: Path | None = None,
                       ) -> tuple[list[QueueEntry], bool, list[str]]:
     """List a project's queue with corruption visible: ``(entries, degraded,
-    skipped_files)`` — the same honesty shape ``storage.list_jobs_safe`` uses for jobs. A
+    skipped_files)`` — the same honesty shape ``pingpong_job.list_job_plans_safe`` uses for jobs. A
     file that will not parse is skipped and COUNTED; the queue stays listable always."""
     project_fd = _open_project_fd(project, root, create=False)
     if project_fd is None:

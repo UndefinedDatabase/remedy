@@ -17,7 +17,7 @@ The scenario, in order:
 
 **Everything runs through the public verbs.** The jobs are created by the
 loop's own dispatch (``mission_state.continue_mission``), their terminal state
-is written with ``storage.save_job``, their Definition of Done is compiled by
+is written with ``pingpong_job.save_job_plan``, their Definition of Done is compiled by
 the F061 compiler and recorded with ``dod_gate.store_dod`` /
 ``save_gate_result``, and the decision is raised and answered with
 ``escalation.enqueue_task_decision`` / ``answer_task_decision``. The loop reads
@@ -145,7 +145,7 @@ def _no_execution(job):
 def _finish_job_with_dod_met(job_id: str) -> None:
     """Take a dispatched job to a terminal state with its DoD met.
 
-    Every step is an existing verb: the job's own record via ``save_job``, its
+    Every step is an existing verb: the job's own record via ``save_job_plan``, its
     Definition of Done compiled by the F061 compiler (deterministic path — no
     provider), and the gate's verdict recorded exactly where ``run_job_gate``
     records it. The gate's check EXECUTION is not re-run here; what this test

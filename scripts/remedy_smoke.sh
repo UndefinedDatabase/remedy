@@ -1757,13 +1757,13 @@ def chk(cond, msg):
 from packages.orchestration.dashboard import (
     build_job_dashboard, build_project_dashboard, summarize_job_dashboard,
 )
-from packages.core.models import Job, Task, RunState
-from uuid import uuid4
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
-job = Job(id=uuid4(), name='smoke-dash', user_prompt='t',
-    tasks=[Task(description='x', status=RunState.COMPLETED)],
+job = JobPlan(job_title='smoke-dash', user_prompt='t',
+    tasks=[TaskEntry(title='x', status=RunState.COMPLETED)],
     metadata={'target_repo': '.'})
-events = [{'event': 'job_created', 'run_id': 'r1', 'job_id': str(job.id),
+events = [{'event': 'job_created', 'run_id': 'r1', 'job_id': job.job_id,
     'timestamp': '2026-01-01', 'outcome': 'ok', 'metadata': {}}]
 
 data = build_job_dashboard(job, events)
@@ -1775,7 +1775,7 @@ for k in ('readiness', 'decisions', 'test_status', 'token_policy', 'memory', 'ev
 text = summarize_job_dashboard(data)
 chk('Dashboard' in text, 'missing Dashboard in text')
 
-pdata = build_project_dashboard('p1', [job], {str(job.id): events})
+pdata = build_project_dashboard('p1', [job], {job.job_id: events})
 chk(pdata['version'] == 1, 'project bad version')
 chk(pdata['job_count'] == 1, 'project bad job_count')
 
@@ -1799,11 +1799,11 @@ from packages.orchestration.project_brain import (
     ET_HAS_DECISION_QUEUE,
     _NODE_TYPE_ORDER, build_project_brain,
 )
-from packages.core.models import Job, Task, RunState
-from uuid import uuid4
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
-job = Job(id=uuid4(), name='smoke-brain', user_prompt='t',
-    tasks=[Task(description='x', status=RunState.COMPLETED)],
+job = JobPlan(job_title='smoke-brain', user_prompt='t',
+    tasks=[TaskEntry(title='x', status=RunState.COMPLETED)],
     metadata={'target_repo': '.'})
 events = []
 graph = build_project_brain(job, events)
@@ -2430,8 +2430,7 @@ print('    dev status: OK (blockers=' + str(len(d.get('remaining_blockers',[])))
     python3 -c "
 import sys, json, re
 sys.path.insert(0, '.')
-from uuid import UUID
-from packages.orchestration.storage import load_job
+from packages.orchestration.pingpong_job import require_job_plan
 from packages.orchestration.ui_view_model import build_story, build_checklist, build_human_node_detail, build_layers
 from packages.orchestration.timeline import load_run_events
 from packages.orchestration.data_paths import resolve_data_root
@@ -2441,9 +2440,9 @@ def chk(cond, msg):
         print('ERROR: ' + msg, file=sys.stderr)
         sys.exit(1)
 
-job = load_job(UUID('${REPAIR_JOB_ID}'))
+job = require_job_plan('${REPAIR_JOB_ID}')
 data_dir = resolve_data_root()
-events = load_run_events(data_dir, job.id)
+events = load_run_events(data_dir, job.job_id)
 
 # Story
 story = build_story(job, events)
@@ -2500,7 +2499,7 @@ print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey i
 
     # -------------------------------------------------------------------------
     # 14a. Flight plan approval gate — real CLI sequence (F014 T004)
-    # Provider stand-in: inline save_job seeds job with pending flight plan.
+    # Provider stand-in: inline save_job_plan seeds job with pending flight plan.
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="14a"
     echo "--- 14a. Flight plan approval gate (CLI sequence)"
@@ -2508,10 +2507,10 @@ print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey i
     # Seed a job with a pending flight plan (provider stand-in)
     FP_JOB_ID="$(python3 -c "
 import json
-from packages.core.models import Job, Task, RunState
-from packages.orchestration.storage import save_job
-job = Job(
-    name='smoke-approval',
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+job = JobPlan(
+    job_title='smoke-approval',
     state=RunState.PLANNED,
     flight_plan={
         'schema_v': 'flight_plan_v1',
@@ -2521,10 +2520,10 @@ job = Job(
         'risks': [],
         '_approval': 'pending',
     },
-    tasks=[Task(description='Smoke task')],
+    tasks=[TaskEntry(title='Smoke task')],
 )
-save_job(job)
-print(str(job.id)[:8])
+save_job_plan(job)
+print(job.job_id[:8])
 ")"
     echo "    seeded job: ${FP_JOB_ID}"
 

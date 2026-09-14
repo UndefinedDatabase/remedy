@@ -249,7 +249,7 @@ def _make_ping_pong_job(repo, *, files_hint=("alpha.py",), attach_repo=True):
     return job, task
 
 
-def test_a_ping_pong_created_job_compiles_context_like_a_classic_one(tmp_path, env):
+def test_a_ping_pong_created_job_compiles_context(tmp_path, env):
     repo = _make_repo(tmp_path)
     job, _task = _make_ping_pong_job(repo)
 
@@ -265,8 +265,8 @@ def test_a_ping_pong_created_job_compiles_context_like_a_classic_one(tmp_path, e
 
 
 def test_a_ping_pong_job_without_a_repo_path_exits_two(tmp_path, env):
-    """The unified record spells the target repo `repo_path`, so an empty one
-    must reach the SAME exit 2 an unattached classic job reaches."""
+    """The job record spells the target repo `repo_path`, so an empty one, with no
+    `metadata["target_repo"]` either, exits 2."""
     repo = _make_repo(tmp_path)
     job, _task = _make_ping_pong_job(repo, attach_repo=False)
 

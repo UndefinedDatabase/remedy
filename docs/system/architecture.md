@@ -181,7 +181,7 @@ semantically different tasks with the same identifier.
 
 `packages/orchestration/workspace.py` provides the `LocalWorkspaceRuntime`, which is the first concrete runtime implementation.
 
-Each job gets a dedicated directory: `<workspace_root>/<job_id>/`. The workspace root defaults to `<repo_root>/.data/workspaces/` and follows the same `REMEDY_DATA_DIR` resolution logic as `storage.py`.
+Each job gets a dedicated directory: `<workspace_root>/<job_id>/`. The workspace root defaults to `<repo_root>/.data/workspaces/` and follows the same `REMEDY_DATA_DIR` resolution logic as the job store in `pingpong_job.py`.
 
 The runtime is **injected** into orchestration functions — it is never imported directly by providers. This allows future runtime implementations (Docker sandbox, remote) to be swapped in without changing orchestration logic.
 
@@ -220,7 +220,7 @@ The conservative ordering used by the CLI:
 2. `materialize_task_output` — writes workspace file; adds `workspace_file` path to artifact metadata in memory
 3. `verify_task_output` — pure check; reads artifact and workspace file; returns `VerificationResult` without mutating state
 4. `finalize_task` — applies the result: `COMPLETED` on pass, `PENDING` + metadata on failure
-5. `save_job` — persists the authoritative post-verification job state
+5. `save_job_plan` — persists the authoritative post-verification job state
 
 `verify_task_output` is pure — it does not mutate the job. `finalize_task` is the only
 function that transitions a task from `RUNNING` to `COMPLETED` or `PENDING`. Saving
@@ -405,7 +405,7 @@ for every meaningful Remedy operation.
 ```
 
 One file per CLI invocation (`run_id` is a UUID4 hex string generated at startup).
-The directory follows the same `REMEDY_DATA_DIR` resolution order as `storage.py`
+The directory follows the same `REMEDY_DATA_DIR` resolution order as `pingpong_job.py`
 and `workspace.py`: env var first, then `<repo_root>/.data/runs/`.
 
 **Format:** one compact JSON object per line (no trailing comma, no wrapping array).
@@ -528,7 +528,7 @@ load_run_events(data_dir: Path, job_id: UUID | str) -> list[dict]
     # Reads all *.jsonl under <data_dir>/runs/<job_id>/; sorted by timestamp.
     # Returns [] if directory is missing. Ignores empty/malformed lines.
 
-summarize_timeline(job: Job, events: list[dict]) -> str
+summarize_timeline(job: JobPlan, events: list[dict]) -> str
     # Returns a human-readable multiline terminal string.
 ```
 
@@ -583,7 +583,7 @@ path, repo path, patch intent count and risk levels. Unknown events render as
 **Public API:**
 
 ```python
-summarize_cockpit(job: Job, events: list[dict], *, data_dir: Path | None = None) -> str
+summarize_cockpit(job: JobPlan, events: list[dict], *, data_dir: Path | None = None) -> str
     # Returns a decision-oriented cockpit string.
     # data_dir is REMEDY_DATA_DIR; when provided, the run-log dir path appears
     # in the Important artifacts section.
@@ -682,15 +682,15 @@ be treated as equivalent to `RISK_LOW` (see patch_intent.py module docstring).
 **Public API::
 
 ```python
-list_patch_intents(job: Job) -> list[dict]
+list_patch_intents(job: JobPlan) -> list[dict]
     # All intents across all artifacts, with current approval state.
     # Invalid stored risk coerced to RISK_UNKNOWN.
 
-get_patch_intent(job: Job, intent_id: str) -> dict | None
+get_patch_intent(job: JobPlan, intent_id: str) -> dict | None
     # Single intent by intent_id; None if not found.
 
 set_approval_state(job, intent_id, state, *, reason=None, decided_by="user") -> dict
-    # Record an approval decision.  Caller must save_job() afterwards.
+    # Record an approval decision.  Caller must save_job_plan() afterwards.
     # Raises ValueError for invalid state or unknown intent_id.
 
 make_intent_id(artifact_id: UUID, idx: int) -> str
@@ -714,12 +714,12 @@ The Trust Report is the audit-ready view.  It assembles evidence across all laye
 system — Job model, Artifact metadata, run-log JSONL, Permissions, and Approval Queue —
 into a single, deterministic, human-readable document.
 
-**Scope:** Read-only.  No `save_job`, no artifact mutation, no filesystem writes, no repo
+**Scope:** Read-only.  No `save_job_plan`, no artifact mutation, no filesystem writes, no repo
 writes, no shell execution, no LLM calls.  No new dependencies.  One public function:
 
 ```python
 summarize_trust_report(
-    job: Job,
+    job: JobPlan,
     events: list[dict],
     *,
     data_dir: Path | None = None,
@@ -1394,7 +1394,7 @@ No frontend, AG-UI, Three.js, or MCP integration is present in Steps 23/23.1.
 
 `packages/orchestration/brain_detail.py` — read-only explanation and detail layer for individual Project Brain nodes.  This is the CLI foundation for the future "click a brain sphere and inspect it" UX in a visual cockpit.
 
-**Scope constraints (enforced):**  Read-only only.  No repo mutation, no `save_job`, no patch apply, no permission mutation, no shell/subprocess/Git/Docker/network/MCP/Claude execution, no memory writes, no frontend implementation, no raw artifact content rendering.
+**Scope constraints (enforced):**  Read-only only.  No repo mutation, no `save_job_plan`, no patch apply, no permission mutation, no shell/subprocess/Git/Docker/network/MCP/Claude execution, no memory writes, no frontend implementation, no raw artifact content rendering.
 
 ### View relationships
 
@@ -2442,7 +2442,7 @@ Resolution order (unchanged from historical convention):
 2. `<repo_root>/.data`, where `repo_root` is derived from `data_paths.py`'s own `__file__`.
 
 **Updated callers** (all previously read `REMEDY_DATA_DIR` directly):
-- `packages/orchestration/storage.py` → uses `jobs_dir()`; retains `_DATA_DIR` for monkeypatch compatibility
+- `packages/orchestration/pingpong_job.py` → uses `job_record_path()` and `job_record_paths()`, which build on `jobs_dir()`
 - `packages/orchestration/run_log.py` → uses `runs_dir()` via `_runs_dir_default`
 - `packages/orchestration/project_registry.py` → uses `projects_dir()`
 - `packages/orchestration/workspace.py` → uses `workspaces_dir()`

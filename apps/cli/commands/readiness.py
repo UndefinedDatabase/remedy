@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.data_paths import lookup_job_id
-from packages.orchestration.pingpong_job import require_job_plan
-from packages.orchestration.storage import JobNotFoundError
+from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
 if TYPE_CHECKING:
     import argparse

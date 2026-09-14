@@ -296,9 +296,9 @@ def run_loop(spec: LoopSpec, *, project_id: str, date: str | None = None,
 def last_run_for_loop(name: str, *, root: Path | None = None) -> JobPlan | None:
     """The most recent job carrying ``loop_ref == name``, or ``None``.
 
-    Reads the store through ``storage.list_jobs_safe``, which ALREADY sorts by
+    Reads the store through ``pingpong_job.list_job_plans_safe``, which ALREADY sorts by
     ``created_at`` descending, so the FIRST match is the most recent — no
-    ``max()`` and no re-sort. That helper SKIPS unreadable job files, so a loop
+    ``max()`` and no re-sort. That helper SKIPS unreadable job records, so a loop
     whose only run will not parse reports ``None`` rather than a wrong run.
     """
     from packages.orchestration.pingpong_job import list_job_plans_safe

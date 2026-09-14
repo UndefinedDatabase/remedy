@@ -365,10 +365,10 @@ class TestContractPersistence:
         assert loaded.source == "user_override"
 
     def test_saved_contract_survives_json_roundtrip(self):
-        """Contract survives Job JSON serialization (as in storage.py)."""
+        """Contract survives the job record's JSON serialization (as in pingpong_job.py)."""
         job = _make_job()
         c = ensure_contract(job)
-        # Simulate save_job / load_job roundtrip
+        # Simulate the save_job_plan / load_job_plan roundtrip
         from packages.orchestration.pingpong_job import _export_job, _import_job
         restored = _import_job(json.loads(json.dumps(_export_job(job))))
         loaded = load_contract(restored)

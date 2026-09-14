@@ -1,23 +1,15 @@
-"""F275 T003 — the three capabilities the UNIFIED job store lacked and now has.
+"""F275 T003 — three capabilities of the job store (DECISION F275 D23).
 
-A dry run of the classic-to-unified record flip, applied in a disposable worktree
-and RUN, measured three things the classic store does and the unified store did not:
+  W1  a JOBS-ROOT OVERRIDE — ``save_job_plan`` and ``load_job_plan`` pass ``root`` on
+      to ``data_paths.job_record_path``;
+  W2  CORRUPTION VISIBILITY — ``load_job_plan_safe`` returns ``(plan, degraded)`` and
+      ``require_job_plan`` raises ``JobNotFoundError`` or ``JobStoreError``, where
+      ``load_job_plan`` answers ``None`` for a missing record and an unreadable one alike;
+  W3  LISTING — ``list_job_plans`` and ``list_job_plans_safe``.
 
-  W1  a JOBS-ROOT OVERRIDE — 186 classic call sites pass one and
-      ``data_paths.job_record_path`` always accepted it, but ``save_job_plan`` and
-      ``load_job_plan`` never passed it on;
-  W2  CORRUPTION VISIBILITY — ``storage.load_job_safe`` returns ``(job, degraded)``
-      and four production sites act on that flag, while ``load_job_plan`` answers
-      ``None`` for a missing record and an unreadable one alike;
-  W3  LISTING — ``storage.list_jobs`` and ``storage.list_jobs_safe`` are called at
-      17 sites and the unified store had no listing function of any spelling.
-
-DECISION F275 D23 rules that those three are widened in BEFORE the flip rather than
-invented inside it, because the flip is this feature's one declared-oversize commit
-and therefore the one commit that cannot be split to separate new API from the
-migration onto it. These tests pin the three capabilities, the backward compatibility
-that makes the widen green, and the layout rule the glob's placement obeys
-(DECISION F260 D1: only ``data_paths`` spells the store's shape).
+These tests pin the three capabilities, the atomic write, the loading of records written
+before the widen, and the layout rule the
+glob's placement obeys (DECISION F260 D1: only ``data_paths`` spells the store's shape).
 
 Every test isolates through ``tmp_path``, so none of them can write into the
 repository's own ``.data``.
@@ -31,7 +23,9 @@ import pytest
 
 from packages.orchestration.data_paths import job_record_path, job_record_paths
 from packages.orchestration.pingpong_job import (
+    JobNotFoundError,
     JobPlan,
+    JobStoreError,
     list_job_plans,
     list_job_plans_safe,
     load_job_plan,
@@ -39,7 +33,6 @@ from packages.orchestration.pingpong_job import (
     require_job_plan,
     save_job_plan,
 )
-from packages.orchestration.storage import JobNotFoundError, JobStoreError
 
 
 def _plan(job_id: str, created_at: str = "2026-09-10T12:00:00+00:00") -> JobPlan:
@@ -182,7 +175,7 @@ class TestCorruptionVisibilityOfOneRecord:
 
 
 class TestTheRaisingLoader:
-    """The raising loader answers a caller that catches the way the classic loader did."""
+    """The raising loader answers a caller that catches ``JobNotFoundError`` or ``JobStoreError``."""
 
     def test_h2_an_absent_record_raises_job_not_found_naming_the_id_asked_for(
         self, tmp_path: Path
@@ -280,12 +273,12 @@ class TestOnlyDataPathsSpellsTheStoreShape:
     ) -> None:
         assert job_record_paths(tmp_path / "never_created") == []
 
-    def test_m3_the_classic_file_per_job_shape_is_not_what_the_accessor_finds(
+    def test_m3_a_file_per_job_shape_is_not_what_the_accessor_finds(
         self, tmp_path: Path
     ) -> None:
-        """A discriminator: the unified record is ``<id>/job.json``, never ``<id>.json``.
+        """A discriminator: the job record is ``<id>/job.json``, never ``<id>.json``.
 
-        Without this the glob could be widened to the classic store's shape and every
+        Without this the glob could be widened to a top-level ``*.json`` shape and every
         other listing test would stay green, because a directory-per-job store has no
         top-level ``*.json`` file to confuse it.
         """

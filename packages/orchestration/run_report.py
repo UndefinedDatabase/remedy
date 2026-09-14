@@ -749,8 +749,7 @@ def render_report(job: Any, mode: str = MODE_FINAL, *,
 def _job_repo_root(job: Any) -> str:
     """The repository this job ran against, or "" when that is not knowable.
 
-    ``packages.core.models.Job`` carries no repo path — the persisted
-    ``pingpong_job.JobPlan`` does (``repo_path``), which is the same source the
+    The persisted ``pingpong_job.JobPlan`` carries it (``repo_path``), which is the same source the
     cycle loop reads its budget actuals from.  An unreadable or absent plan is
     not an error here: it means the milestone is simply not knowable, and the
     report says "not recorded" rather than guessing a repository.

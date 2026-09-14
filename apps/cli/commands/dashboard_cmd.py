@@ -16,8 +16,7 @@ if TYPE_CHECKING:
 def _cmd_dashboard_job(job_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.dashboard import build_job_dashboard, summarize_job_dashboard
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.pingpong_job import require_job_plan
-    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.timeline import load_run_events
 
     try:

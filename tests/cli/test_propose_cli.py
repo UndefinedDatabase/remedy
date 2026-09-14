@@ -34,10 +34,6 @@ def tmp_store_with_job(tmp_path, monkeypatch):
         "packages.orchestration.proposed_tasks._STORE_DIR",
         tmp_path / "proposed_tasks",
     )
-    monkeypatch.setattr(
-        "packages.orchestration.storage._DATA_DIR",
-        tmp_path / "jobs",
-    )
 
     from packages.orchestration.pingpong_job import JobPlan, save_job_plan
     job = JobPlan(job_id=REAL_JOB_UUID, job_title="cli-test")
@@ -318,10 +314,6 @@ class TestAuditEvents:
         monkeypatch.setattr(
             "packages.orchestration.proposed_tasks._STORE_DIR",
             tmp_path / "proposed_tasks",
-        )
-        monkeypatch.setattr(
-            "packages.orchestration.storage._DATA_DIR",
-            tmp_path / "jobs",
         )
         from uuid import UUID
 

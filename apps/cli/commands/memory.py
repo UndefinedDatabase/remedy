@@ -138,8 +138,7 @@ def _cmd_memory_learn(
     approved: bool = False,
     json_output: bool = False,
 ) -> None:
-    from packages.orchestration.pingpong_job import require_job_plan
-    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
     try:
         job_id = lookup_job_id(job_id_str)

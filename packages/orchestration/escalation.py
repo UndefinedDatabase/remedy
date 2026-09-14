@@ -102,8 +102,7 @@ __all__ = [
 def _metadata(job: JobPlan | Any) -> dict[str, Any]:
     """The job's metadata dict, created on first use.
 
-    Both Core ``Job`` and the pingpong ``JobPlan`` are accepted; a job shape
-    without metadata at all gets an empty dict rather than an AttributeError,
+    A job shape without metadata at all gets an empty dict rather than an AttributeError,
     because a missing metadata store means "no escalations", not a crash.
     """
     meta = getattr(job, "metadata", None)
@@ -264,14 +263,7 @@ def _record_answer_on_task(job: JobPlan | Any, record: Mapping[str, Any]) -> Non
     """
     task_id = str(record.get("task_id"))
     for task in getattr(job, "tasks", ()) or ():
-        # F112 T003b2b1: pingpong JobPlan's TaskEntry carries `task_id`
-        # (a plain string), never Core Job's Task.id (a UUID) — accept
-        # either shape rather than assuming the Core one, matching
-        # _metadata()'s own "both Core Job and pingpong JobPlan" contract.
-        task_identifier = getattr(task, "id", None)
-        if task_identifier is None:
-            task_identifier = getattr(task, "task_id", None)
-        if str(task_identifier) != task_id:
+        if str(getattr(task, "task_id", None)) != task_id:
             continue
         inputs = task.inputs if isinstance(task.inputs, dict) else {}
         answers = inputs.get(TASK_INPUTS_ANSWERS_KEY)

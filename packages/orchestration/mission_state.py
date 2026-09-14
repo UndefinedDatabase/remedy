@@ -18,14 +18,14 @@ What a mission deliberately is NOT:
 * It does not transition itself.  ``achieved``/``abandoned``/``paused`` are set
   by explicit commands only; this feature contains no automatic transition.
 
-Storage, like every other entity in this codebase (``storage.save_job``,
+Storage, like every other entity in this codebase (``pingpong_job.save_job_plan``,
 ``project_registry``, ``proposed_tasks``): one atomic JSON file per record,
 under a project-scoped area of the data root::
 
     <data root>/missions/<project id>/<mission id>.json
 
-Reuse (A6): the atomic write is ``storage._atomic_write_job`` — temp file,
-fsync, ``os.replace`` — the same helper behind ``save_job`` and behind
+Reuse (A6): the atomic write is ``pingpong_job.atomic_write_text`` — temp file,
+fsync, ``os.replace`` — the same helper behind ``save_job_plan`` and behind
 ``checkpoints.write_checkpoint``.  This module introduces NO second atomic
 writer and NO second reader of the data root.
 
@@ -37,8 +37,8 @@ Honesty rules this module holds to:
 * One job belongs to at most ONE mission.  Cross-mission reuse of a job would
   make lineage ambiguous, so it is refused at link time.
 * Listings never crash.  A record that will not parse is skipped and COUNTED
-  (``list_missions_safe``), exactly as ``storage.list_jobs_safe`` does for
-  jobs; a link whose job is gone renders ``(missing job)`` rather than raising.
+  (``list_missions_safe``), exactly as ``pingpong_job.list_job_plans_safe`` does
+  for jobs; a link whose job is gone renders ``(missing job)`` rather than raising.
 
 Verify-first (T003) lives at the bottom of this module: a follow-up job's plan
 is REQUIRED to begin with a verify task, and that requirement is enforced by
@@ -57,7 +57,7 @@ from uuid import uuid4
 
 from packages.orchestration.data_paths import missions_dir, normalize_job_id
 from packages.orchestration.exec_guard import run_guarded_test_command
-from packages.orchestration.storage import _atomic_write_job as _atomic_write
+from packages.orchestration.pingpong_job import atomic_write_text as _atomic_write
 
 #: Bumped whenever the record body changes shape.  A reader meeting a version
 #: it does not know refuses that record rather than guessing at its meaning.
@@ -424,8 +424,7 @@ def list_missions_safe(project_id: str, root: Path | None = None,
     """List one project's missions with corruption VISIBLE.
 
     Returns ``(missions, degraded, skipped_files)``.  Newest first by
-    ``created_at``, ties broken by id so the order is total and reproducible —
-    the same rule ``storage.list_jobs_safe`` follows for jobs.
+    ``created_at``, ties broken by id so the order is total and reproducible.
     """
     directory = mission_dir_for_project(project_id, root)
     if not directory.is_dir():
@@ -1024,8 +1023,13 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
     pointed at a job that does not exist.
     """
     from packages.core.models import RunState
-    from packages.orchestration.pingpong_job import JobPlan, require_job_plan, save_job_plan
-    from packages.orchestration.storage import JobNotFoundError, JobStoreError
+    from packages.orchestration.pingpong_job import (
+        JobNotFoundError,
+        JobPlan,
+        JobStoreError,
+        require_job_plan,
+        save_job_plan,
+    )
 
     text = str(next_step).strip()
     if not text:

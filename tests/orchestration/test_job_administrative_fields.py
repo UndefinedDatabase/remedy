@@ -212,14 +212,7 @@ class TestAdministrativeFieldsThroughTheRealWriter:
 
 
 class TestTheTwoTaskFieldsWidenedInBeforeTheFlip:
-    """F275 T003 — the two fields `TaskEntry` had no counterpart for.
-
-    DECISION F275 D22 measured that the classic `Task` and the unified `TaskEntry`
-    share two field names of seven and twenty-three, and that three `Task` fields
-    have no counterpart of the same meaning. Two of those are widened in here,
-    before the flip, so that the commit moving consumers onto the unified record
-    loses nothing a caller could read; `acceptance_checks` is deliberately NOT
-    among them and its structured form is registered as a finding instead.
+    """F275 T003 — the task's `output_artifact_ids` and `budget` fields (DECISION F275 D22).
 
     These pin the same three properties the eight job-level fields above pin, for
     the same reason: `_export_job` and `_import_job` are explicit field-by-field

@@ -22,8 +22,8 @@ What a checkpoint is, and what it deliberately is not:
   fails is logged loudly and the run continues (feature-file A9 default);
   the next cycle simply writes the next one.
 
-Reuse (A6): the atomic write is ``storage._atomic_write_job`` — temp file,
-fsync, ``os.replace`` — the same helper behind ``save_job``.  This module
+Reuse (A6): the atomic write is ``pingpong_job.atomic_write_text`` — temp file,
+fsync, ``os.replace`` — the same helper behind ``save_job_plan``.  This module
 introduces NO second atomic writer.  (F046's ``write_cycle_record`` uses a
 plain ``write_text``; checkpoints deliberately do not copy that, because a
 half-written checkpoint is exactly the failure mode this feature exists to
@@ -51,7 +51,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from packages.orchestration.storage import _atomic_write_job as _atomic_write
+from packages.orchestration.pingpong_job import atomic_write_text as _atomic_write
 
 _log = logging.getLogger("remedy.checkpoints")
 
@@ -235,9 +235,8 @@ def _job_snapshot_reference(job_id: str) -> tuple[str, str]:
 def resolve_worktree_head(job_id: str) -> str:
     """The worktree head recorded on the persisted job plan, or "" when unknown.
 
-    ``packages.core.models.Job`` carries no worktree field — the F006 job plan
-    does, and that is the only durable source.  A job that never ran in a
-    worktree honestly reports no head.
+    The F006 job plan is the only durable source of the worktree head.  A job
+    that never ran in a worktree honestly reports no head.
     """
     try:
         from packages.orchestration.pingpong_job import load_job_plan

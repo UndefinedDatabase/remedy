@@ -238,48 +238,6 @@ class TestSanitizeShareablePaths:
 
 
 class TestCockpitBridgeAdapter:
-    def test_job_plan_adapter_has_required_fields(self):
-        from packages.orchestration.ui_server import _JobPlanAdapter
-
-        class FakeTask:
-            task_id = "T001"
-            title = "Fix bug"
-            status = "applied_to_job_workspace"
-
-        class FakePlan:
-            job_id = "abc123"
-            job_title = "Test Job"
-            state = "completed"
-            tasks = [FakeTask()]
-
-        adapter = _JobPlanAdapter(FakePlan())
-        assert adapter.id == "abc123"
-        assert adapter.name == "Test Job"
-        assert len(adapter.tasks) == 1
-        assert adapter.tasks[0].id == "T001"
-        assert adapter.tasks[0].description == "Fix bug"
-        assert adapter.tasks[0].status.value == "completed"
-        assert adapter.artifacts == []
-        assert adapter._is_job_plan is True
-
-    def test_job_plan_adapter_maps_statuses(self):
-        from packages.orchestration.ui_server import _JobPlanAdapter
-
-        class FakeTask:
-            task_id = "T001"
-            title = "Test"
-            status = "blocked"
-
-        class FakePlan:
-            job_id = "x"
-            job_title = "J"
-            state = "blocked"
-            tasks = [FakeTask()]
-
-        adapter = _JobPlanAdapter(FakePlan())
-        assert adapter.state.value == "blocked"
-        assert adapter.tasks[0].status.value == "blocked"
-
     def test_load_job_accepts_uuid(self):
         from packages.orchestration.ui_server import _load_job
         _, err = _load_job("not-a-valid-id-at-all!!!!")

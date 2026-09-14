@@ -411,7 +411,7 @@ class TestJobFulfillFixturePass:
         """F275 R88: a minted sixteen-hex id is looked up and not found, not refused by ``UUID(...)``."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import JobNotFoundError
+        from packages.orchestration.pingpong_job import JobNotFoundError
 
         repo = create_demo_repo(tmp_path)
         with pytest.raises(JobNotFoundError):

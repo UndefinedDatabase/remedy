@@ -338,7 +338,7 @@ def evaluate_continue_eligibility(
     )
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.permissions import Capability, is_allowed
-    from packages.orchestration.pingpong_job import require_job_plan
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.repository_snapshot import (
         list_durable_apply_ids,
         load_durable_apply_record,
@@ -348,7 +348,6 @@ def evaluate_continue_eligibility(
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError
 
     data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = ContinueEligibility(eligible=False, job_id=job_id)

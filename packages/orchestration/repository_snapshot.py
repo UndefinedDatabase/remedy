@@ -1374,6 +1374,9 @@ def revert_repository_apply(
     from packages.orchestration.permissions import (
         is_allowed as _is_allowed,
     )
+    from packages.orchestration.pingpong_job import (
+        JobNotFoundError as _JobNotFoundError,
+    )
     from packages.orchestration.pingpong_job import require_job_plan as _load_job
     from packages.orchestration.run_contract import (
         ContractAction as _ContractAction,
@@ -1383,9 +1386,6 @@ def revert_repository_apply(
     )
     from packages.orchestration.run_contract import (
         evaluate_run_action as _evaluate_run_action,
-    )
-    from packages.orchestration.storage import (
-        JobNotFoundError as _JobNotFoundError,
     )
 
     data_dir = data_dir or resolve_data_root()

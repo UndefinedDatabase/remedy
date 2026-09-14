@@ -12,8 +12,7 @@ from typing import TYPE_CHECKING, Any
 from packages.core.models import RunState
 from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
 from packages.orchestration.job_runner import PlanJobResult
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry, require_job_plan, save_job_plan
-from packages.orchestration.storage import JobNotFoundError
+from packages.orchestration.pingpong_job import JobNotFoundError, JobPlan, TaskEntry, require_job_plan, save_job_plan
 
 if TYPE_CHECKING:
     import argparse
@@ -2112,10 +2111,7 @@ def _cmd_job_budget(
     *,
     json_output: bool = False,
 ) -> None:
-    """Show budget limits and current counters for a job.
-
-    Supports both Core Job UUIDs and JobPlan hex IDs.
-    """
+    """Show budget limits and current counters for a job."""
     import json as _json
 
     from packages.orchestration.budget_guard import evaluate_budget
@@ -2129,8 +2125,7 @@ def _cmd_job_budget(
     _counter_status = "no_runs"
     _counter_diagnostic = ""
     _found_as = None
-    # The JobPlan the F104 money figures are read from, whichever id form was
-    # given. A Core Job UUID reaches the same plan through _plan_for_core below.
+    # The JobPlan the F104 money figures are read from.
     _plan = None
 
     job_plan = load_job_plan(job_id)
@@ -2173,43 +2168,14 @@ def _cmd_job_budget(
             if has_runs:
                 _counter_status = "actuals_not_persisted"
 
-    if _found_as is None:
+    if job_plan is None:
+        # No plan was read: this raises the store's own error for a record that is
+        # missing, which exits here, or unreadable.
         try:
-            job = require_job_plan(job_id)
+            require_job_plan(job_id)
         except JobNotFoundError:
             print(f"Error: job {job_id!r} not found.", file=sys.stderr)
             sys.exit(1)
-        _found_as = "core_job"
-        _job_display_id = str(job.job_id)
-        _budgets = job.budgets
-
-        if _budgets is None:
-            if json_output:
-                print(_json.dumps({"job_id": _job_display_id, "budgets": None}, indent=2))
-            else:
-                print(f"Job {_job_display_id[:8]}: no budgets configured.")
-            return
-
-        _plan_for_core = load_job_plan(_job_display_id)
-        _plan = _plan_for_core
-        if _plan_for_core is not None and getattr(_plan_for_core, "budget_actuals", None) is not None:
-            from packages.orchestration.budget_guard import (
-                BudgetCounterError,
-                counters_from_persisted,
-                decode_persisted_budget_actuals,
-            )
-            _fra = getattr(_plan_for_core, "first_running_at", "") or None
-            try:
-                _validated = decode_persisted_budget_actuals(
-                    _plan_for_core.budget_actuals, first_running_at=_fra)
-                counters = counters_from_persisted(_validated)
-                evaluation = evaluate_budget(_budgets, counters)
-                _counter_status = "evaluated"
-            except (BudgetCounterError, Exception) as _budget_exc:
-                _counter_status = "corrupt"
-                _counter_diagnostic = str(_budget_exc)
-                counters = None
-                evaluation = None
 
     if _budgets is None and _budgets_dict is None:
         if json_output:

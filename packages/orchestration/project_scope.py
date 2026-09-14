@@ -105,7 +105,7 @@ def scoped_jobs(
     """Return jobs visible under *scope*.
 
     Returns ``(jobs, degraded, skipped_files)`` — same shape as
-    ``storage.list_jobs_safe`` with the unreadable-files honesty count
+    ``pingpong_job.list_job_plans_safe`` with the unreadable-records honesty count
     passed through.
     """
     from packages.orchestration.pingpong_job import list_job_plans_safe

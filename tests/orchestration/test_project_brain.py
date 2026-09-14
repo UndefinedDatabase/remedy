@@ -336,7 +336,6 @@ class TestBrainReliabilityHygiene:
             "packages/orchestration/project_context_coverage.py",
             "packages/orchestration/autonomy_readiness.py",
             "packages/orchestration/memory_learn.py",
-            "packages/orchestration/storage.py",
             "packages/orchestration/project_registry.py",
             "packages/orchestration/patch_apply.py",
             "packages/orchestration/command_discovery.py",
@@ -1424,12 +1423,9 @@ class TestGitStatusBrainNode:
 
     def test_job_aware_repo_status(self, tmp_path, monkeypatch):
         """Job-aware repo status reads target_repo and emits run-log event."""
-        import packages.orchestration.storage as _storage
-
         jobs_dir = tmp_path / "jobs"
         jobs_dir.mkdir()
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        monkeypatch.setattr(_storage, "_DATA_DIR", jobs_dir)
 
         from packages.orchestration.pingpong_job import save_job_plan
 
