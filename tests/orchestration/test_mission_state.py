@@ -625,6 +625,15 @@ class TestVerifyFirstStructure:
         with pytest.raises(MissionVerifyFirstError):
             assert_verify_first([build_follow_up_task("Add the CSV path")])
 
+    def test_the_refusals_name_the_task_by_its_title(self):
+        """R-0888: both refusals quote the task's title, never a '?' placeholder."""
+        with pytest.raises(MissionVerifyFirstError, match="Add the CSV path"):
+            assert_verify_first([build_follow_up_task("Add the CSV path")])
+        loose = build_follow_up_task("Add the JSON path")
+        loose.inputs["flight"] = {"planned_id": "M001", "depends_on": []}
+        with pytest.raises(MissionVerifyFirstError, match="Add the JSON path"):
+            assert_verify_first([build_verify_first_task(self._previous_job()), loose])
+
     def test_an_empty_plan_is_refused(self):
         with pytest.raises(MissionVerifyFirstError):
             assert_verify_first([])

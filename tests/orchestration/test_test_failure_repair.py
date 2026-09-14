@@ -143,6 +143,13 @@ class TestBuildFailureArtifact:
         assert failure.failure_kind == FAILURE_TIMEOUT
         assert failure.exit_code == 137
 
+    def test_the_artifact_carries_the_job_id(self, tmp_path):
+        """R-0888: the artifact links back to its job by the unified record's id."""
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(job_title="test", user_prompt="t")
+        failure = build_test_failure_artifact(job, {"status": "failed", "exit_code": 1})
+        assert failure.job_id == job.job_id != ""
+
     def test_build_fallback(self, tmp_path):
         from packages.orchestration.pingpong_job import JobPlan
         job = JobPlan(job_title="test", user_prompt="t")

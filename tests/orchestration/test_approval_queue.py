@@ -494,6 +494,14 @@ class TestReviewerLoop:
         recs = run_reviewer(job)
         assert isinstance(recs, list)
 
+    def test_the_reviewer_context_names_the_job_by_its_title(self):
+        """R-0888: a unified record hands the reviewer its title, not an empty name."""
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.reviewer import run_reviewer
+        seen = []
+        run_reviewer(JobPlan(job_title="named-job"), reviewer_fn=lambda ctx: seen.append(ctx) or [])
+        assert seen[0]["job_name"] == "named-job"
+
     def test_run_reviewer_with_custom_fn(self):
         from packages.orchestration.reviewer import run_reviewer
         job = _make_job_s101(2)

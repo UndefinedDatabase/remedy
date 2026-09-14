@@ -179,3 +179,21 @@ class TestPromptTracePayload:
         assert section["missingReason"] == "some_reason"
         assert section["totalPrompts"] == 0
         assert section["items"] == []
+
+
+class TestTheDashboardCarriesThePromptTrace:
+    """R-0887: the one dashboard builder emits the section the cockpit's lens reads."""
+
+    def test_the_dashboard_carries_the_jobs_prompt_trace(self, tmp_path, monkeypatch):
+        from packages.orchestration import ui_server
+        from packages.orchestration.pingpong_job import JobPlan
+
+        job = JobPlan(job_title="traced")
+        _write_trace(tmp_path, "T001", [_base_record()])
+        seen = []
+        monkeypatch.setattr(ui_server, "_load_events", lambda j: [])
+        monkeypatch.setattr(ui_server, "_resolve_evidence_dir", lambda job_id: seen.append(job_id) or tmp_path)
+        section = ui_server._build_dashboard(job)["prompt_trace"]
+        assert seen == [job.job_id]
+        assert section["source"] == "prompt_trace_jsonl"
+        assert [item["taskId"] for item in section["items"]] == ["T001"]
