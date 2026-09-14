@@ -13,20 +13,21 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 99 ADDS THE FLIP'S TENTH OVERLAY, on top of the first nine, under DECISION F275 D64's
-method. The checkpoint writer measures a job's snapshot at the unified record's own path,
-tests that touch a job's record on disk use that path, the mission command tests build their
-jobs as unified records, and the layout guard stops pinning the checkpoint module to the
-classic store. The diff is carried in a carrier, so no path under `packages/`, `apps/` or
-`tests/` moves; the round books the round 98 verdict and its prose slip.
+ROUND 100 ADDS THE FLIP'S ELEVENTH OVERLAY, on top of the first ten, under DECISION F275 D64's
+method, and it edits tests only. Where the transform read the id of a proposed task or of a
+project-brain node as a job's or a task's id, the test reads `id` again; two classic models a
+test reached through `__import__` become the unified records they were already built as; and
+`MagicMock` job doubles set the unified record's `job_id` and `job_title`. The diff is carried
+in carriers, so no path under `packages/`, `apps/` or `tests/` moves; the round books the round
+99 verdict.
 
 ## Next Steps
 
 1. MORE OVERLAYS, one residue group each, every one applied on top of those before it:
    production code that hands a `JobPlan` a `JobBudgets` model where the record holds its
-   serialized dict; the self-dogfood runtimes; the classic-shaped tests of routed handlers in
-   `tests/test_data_paths.py`; and what is left of the classic runner under `job resume`,
-   whose kill-and-resume fixture still builds a classic job.
+   serialized dict; the classic-shaped tests of routed handlers in `tests/test_data_paths.py`;
+   what is left of the classic runner under `job resume`, whose kill-and-resume fixture still
+   builds a classic job; and the job digest's stored goldens.
 2. THE FLIP: the transform, then every overlay in round order, landed as a series of commits
    each under the 500-insertion cap inside one round, carrying DECISION F275 D48's obligations
    and registering the structured acceptance form DECISION F275 D22 leaves to it, unless the
@@ -38,8 +39,8 @@ classic store. The diff is carried in a carrier, so no path under `packages/`, `
 
 - THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20
   sessions and 60 rounds without a replacement, so this feature closes only at full scope.
-- THE FLIP IS NOT CLOSE: many test nodes still fail in the flipped tree, and a test that starts
-  the command line from a directory outside that tree runs this checkout's code instead.
+- THE FLIP IS NOT CLOSE: test nodes still fail in the flipped tree, and a test that starts the
+  command line from a directory outside that tree runs this checkout's code instead.
 - AN OVERLAY IS A DIFF AGAINST A FIXED TREE: it holds only while the production tree stays at
   `844a7f21`, and it depends on the generator and transform staying reproducible from round
   77's two scratch JSON files.
