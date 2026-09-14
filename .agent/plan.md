@@ -13,22 +13,24 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-THE FLIP ROUND, per operator amendment amend0914-f275-sprint. First commit books the round 100
-verdict and any carried slips, exactly as before. Next commit is THE FLIP: in the primary
-checkout, on the branch, run the transform as round 100's block ordered it, then apply every
-committed overlay carrier under `.agent/authored/` (`f275-r<n>-overlay*.md`, ascending round and
-part order, each `git apply --check` then `git apply`), then `git add -A` — ONE commit, the
-operator's second declared-oversize grant for F275. Then one full-suite run in the primary
-checkout, transcript committed to `.agent/authored/f275-r<n>-suite.txt`. Then the handback.
+ROUND 101 IS THE FLIP ROUND, per operator amendment amend0914-f275-sprint. One bookkeeping
+commit books the round 100 verdict, registers as `R-0884` the structured acceptance form that
+DECISION F275 D22 left to the flip, and records DECISION F275 D75, under which the eleven thin
+sites of DECISION F275 D48 are re-checked by their own witnesses before the flip. The next
+commit is THE FLIP: the transform in the primary checkout, then every committed overlay carrier
+of rounds 90 to 100 in round and part order, staged and landed as ONE declared-oversize commit.
+The full suite then runs once in the primary checkout and its transcript is committed. The
+overlay method of DECISION F275 D64 is retired from the flip commit onward.
 
 ## Next Steps
 
-1. BRIDGE ROUNDS: one residue group each, on the real tree — production code that hands a
-   `JobPlan` a `JobBudgets` model where the record holds its serialized dict; the classic-shaped
-   tests of routed handlers in `tests/test_data_paths.py`; what is left of the classic runner
-   under `job resume`, whose kill-and-resume fixture still builds a classic job; and the job
-   digest's stored goldens — each round strictly shrinking the committed bad-node set until a
-   round reads exit 0.
+1. BRIDGE ROUNDS on the real tree, one residue group each, every one strictly shrinking the
+   bad-node set of the committed transcript before it with no node newly bad: production code
+   that hands a `JobPlan` a `JobBudgets` model where the record holds its serialized dict; the
+   classic-shaped tests of routed handlers in `tests/test_data_paths.py`; what is left of the
+   classic runner under `job resume`, whose kill-and-resume fixture still builds a classic job;
+   the job digest's stored goldens; and the rows `ruff check` gains from the transform — until
+   a round's transcript reads exit 0.
 2. THE CLASSIC STORE, with the which-store branches and adapters the flip leaves unreached.
 3. THE CLOSURE SEQUENCE.
 
@@ -36,10 +38,11 @@ checkout, transcript committed to `.agent/authored/f275-r<n>-suite.txt`. Then th
 
 - THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20
   sessions and 60 rounds without a replacement, so this feature closes only at full scope.
-- THE FLIP IS NOT CLOSE: test nodes still fail in the flipped tree, and a test that starts the
-  command line from a directory outside that tree runs this checkout's code instead.
-- THE BRIDGE IS BOUNDED: at most eight red rounds after the flip commit (amend0914 rule 3); a
-  round that adds a bad node is FAIL.
+- THE BRANCH IS RED FROM THE FLIP COMMIT until a bridge round's transcript reads exit 0, and
+  hosted CI on the branch is expected to be red in that span, per amend0914 rule 3.
+- THE BRIDGE IS BOUNDED at eight rounds after the flip commit: a ninth writes an operator
+  question and stops, and a round that adds a bad node is FAIL.
 - ONE ROUTED LOAD IS REACHED BY NO TEST until `R-0883` is repaired.
 - The open set is 88 by distinct id at this round's base, with `R-0809`, `R-0880` and `R-0883`
-  open. Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+  open, and 89 once `R-0884` is registered. Four are High — R-0803, R-0804, R-0806 and R-0807 —
+  all F273's, per DECISION F272 D12.
