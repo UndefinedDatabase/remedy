@@ -13,26 +13,24 @@ command surface is gone as of round 34, and the record flip landed in round 101.
 
 ## Current Step
 
-ROUND 102 IS THE FIRST BRIDGE ROUND, per operator amendment amend0914-f275-sprint rule 3. It
-removes the lint rows and the guard and pin failures the flip left: `ruff`'s own fixer sorts
-the import blocks and drops the unused imports in the files the flip changed, the three
-routed-handler tests of `tests/test_data_paths.py` build a unified record with a classic-shaped
-id, the job digest's golden normalizer reads the unified record's id, two guard tests about
-the classic pydantic models import those models again, and the command door's import guard
-rules `save_job_plan` where it ruled `save_job`. The full suite runs once and its bad-node set
-must be a strict subset of round 101's committed transcript.
+ROUND 103 IS THE SECOND BRIDGE ROUND, per operator amendment amend0914-f275-sprint rule 3, and
+it aims at every bad node round 102's transcript lists. It registers and repairs `R-0885`, the
+job save the flip left non-atomic, and `R-0886`, the three readers that treat only `None` as
+no project. It repairs the rest in production where the flip broke a contract — the budgets a
+mission hands its record, the flight plan's file scope in the job context command, the entry
+load of job fulfilment and the three job loads of the test execution service — and in the
+runtime smoke harness and the tests where they still seed a classic record. The full suite
+runs once; its bad-node set must be a strict subset of round 102's.
 
 ## Next Steps
 
-1. MORE BRIDGE ROUNDS on the real tree, each strictly shrinking the committed bad-node set with
-   no node newly bad: production code that hands a `JobPlan` a `JobBudgets` model where the
-   record holds its serialized dict, and the `job resume` tests of `tests/cli/test_plan_approval.py`;
-   what is left of the classic runner under `job resume`, whose kill-and-resume fixture still
-   builds a classic job; the scoped job listings; and the single failures left in the job
-   context command, the golden path, the runtime smokes, the repair loop, the proposed-task
-   store, the cockpit adapter and the task runner — until a round's transcript reads exit 0.
-2. THE CLASSIC STORE, with the which-store branches and adapters the flip leaves unreached.
-3. THE CLOSURE SEQUENCE.
+1. MORE BRIDGE ROUNDS only if round 103's transcript does not read exit 0, each strictly
+   shrinking the committed bad-node set with no node newly bad.
+2. THE CLASSIC STORE: the classic `Job` and `Task` models and `packages/orchestration/storage.py`
+   with their remaining readers, the which-store branches of the cockpit and its unreachable
+   `_JobPlanAdapter`, the classic-store search inside `resolve_job_id`, and the guard tests
+   that still pin the classic models.
+3. THE CLOSURE SEQUENCE, with the integration gate's full-suite runs.
 
 ## Risks
 
@@ -45,5 +43,6 @@ must be a strict subset of round 101's committed transcript.
 - A SERVER-START RACE: a command-channel test read its server's info file before the server
   wrote it once in the reviewer's full run after the flip and passed ten times alone.
 - ONE ROUTED LOAD IS REACHED BY NO TEST until `R-0883` is repaired.
-- The open set is 89 by distinct id, with `R-0809`, `R-0880`, `R-0883` and `R-0884` open.
-  Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+- The open set is 89 by distinct id at this round's base and 91 once `R-0885` and `R-0886` are
+  registered, with `R-0809`, `R-0880`, `R-0883` and `R-0884` open. Four are High — R-0803,
+  R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
