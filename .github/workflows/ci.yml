@@ -26,6 +26,11 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        # Full history, not the checkout's default depth of one commit: the
+        # event-name coupling ratchet reads deleted modules out of git history,
+        # and a shallow clone hands it an empty corpus (finding R-0889).
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
