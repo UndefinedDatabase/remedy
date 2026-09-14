@@ -175,7 +175,7 @@ def _cmd_list_jobs(
 
 def _scope_label(job: JobPlan, scope: ProjectScope, known_ids: set[str]) -> str:
     """Return display suffix for scoped listings."""
-    if job.project_id is None:
+    if not job.project_id:
         return "  (unscoped)"
     if job.project_id not in known_ids:
         return f"  (orphaned: {job.project_id[:8]})"

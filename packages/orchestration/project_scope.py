@@ -77,7 +77,7 @@ def job_in_scope(
 ) -> bool:
     """Return True if *job* is visible under *scope*.
 
-    Legacy rule: jobs with project_id=None are in scope only under
+    Legacy rule: jobs with no project_id are in scope only under
     --all-projects OR when exactly one project exists on the machine.
 
     ``_legacy_visible`` is a precomputed override for the legacy check,
@@ -86,7 +86,7 @@ def job_in_scope(
     if scope.all_projects:
         return True
 
-    if job.project_id is None:
+    if not job.project_id:
         if _legacy_visible is not None:
             return _legacy_visible
         return _project_count() <= 1

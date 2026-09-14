@@ -457,7 +457,7 @@ def _cmd_project_adopt(
         print(f"Error: job not found: {resolved_id[:8]}", file=sys.stderr)
         sys.exit(3)
 
-    if job.project_id is not None:
+    if job.project_id:
         print(
             f"Error: job {resolved_id[:8]} already belongs to project {job.project_id[:8]}",
             file=sys.stderr,

@@ -21,6 +21,7 @@ import json as _json
 import os
 import re
 import shutil
+import tempfile
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -457,7 +458,21 @@ def _persist_job(job: JobPlan, root: Path | None = None) -> Path:
 
     out = job_record_path(job.job_id, root)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(_json.dumps(_export_job(job), indent=2) + "\n")
+    data = (_json.dumps(_export_job(job), indent=2) + "\n").encode("utf-8")
+    # WHY: a save interrupted part-way leaves the previous record or the new one, never a torn file.
+    fd, tmp = tempfile.mkstemp(dir=str(out.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, out)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
     return out
 
 
