@@ -17,7 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 
 
 @dataclass(frozen=True)
@@ -47,7 +48,7 @@ class LoopResult:
 
 
 def run_autonomy_loop(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     *,
     max_cycles: int = 3,
@@ -58,7 +59,7 @@ def run_autonomy_loop(
     from packages.orchestration.stop_reasons import derive_stop_reasons
     from packages.orchestration.token_policy import derive_token_mode
 
-    job_id = str(job.id)
+    job_id = str(job.job_id)
     cycles: list[CycleDecision] = []
     stop_reason_summaries: list[str] = []
 
@@ -111,7 +112,7 @@ def run_autonomy_loop(
     )
 
 
-def _emit_token_policy_applied(job: Job) -> None:
+def _emit_token_policy_applied(job: JobPlan) -> None:
     """Emit token_policy_applied run-log event once at loop start."""
     try:
         from packages.orchestration.run_log import RunLogWriter
@@ -121,7 +122,7 @@ def _emit_token_policy_applied(job: Job) -> None:
         )
 
         tp = build_default_token_policy(job)
-        log = RunLogWriter(job_id=job.id)
+        log = RunLogWriter(job_id=job.job_id)
         log.log(
             "token_policy_applied",
             outcome="applied",
@@ -134,7 +135,7 @@ def _emit_token_policy_applied(job: Job) -> None:
 
 
 def _decide(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     autonomy_level: int,
     readiness_level: int,
@@ -181,7 +182,7 @@ def _decide(
         pending = [t for t in (job.tasks or []) if t.status == RunState.PENDING]
         if pending:
             return ("needs_approval", "pending tasks require approval (level 1: propose)",
-                    "remedy job run-next <job_id>", "")
+                    "remedy job resume <job_id>", "")
         return ("complete", "no pending tasks", "none", "")
 
     # Level 2: approved_apply — can apply approved patches
@@ -214,7 +215,7 @@ def _decide(
         if not pending:
             return ("complete", "no pending tasks (level 4: bounded_loop)", "none", "")
         return ("run_task", "bounded loop cycle (level 4: bounded_loop)",
-                "remedy job run-next <job_id>", "")
+                "remedy job resume <job_id>", "")
 
     # Level 5: revert_capable — can revert applied patches
     if autonomy_level == 5:

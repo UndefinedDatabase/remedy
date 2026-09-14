@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from packages.core.models import Artifact, Job, Task
+from packages.core.models import Artifact
 from packages.orchestration.dag_schedule import blocked_downstream
 from packages.orchestration.decision_inbox import (
     DECISION_INBOX_VERSION,
@@ -25,6 +25,7 @@ from packages.orchestration.escalation import (
     answer_task_decision,
     enqueue_task_decision,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 #: DECISION F031 D3 — the eight types a branch of ``list_decisions`` actually
 #: produces.  ``worker_approval`` and ``revert_missing`` have no producer at
@@ -66,20 +67,20 @@ def _isolated_data_root(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
 
-def _make_job(**overrides) -> Job:
+def _make_job(**overrides) -> JobPlan:
     defaults = dict(
-        name="f031-inbox-job",
+        job_title="f031-inbox-job",
         user_prompt="Test the decision inbox",
         tasks=[],
         metadata={"target_repo": "/tmp/repo"},
     )
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _linear_task_chain(count: int) -> list[Task]:
+def _linear_task_chain(count: int) -> list[TaskEntry]:
     """Tasks with no flight metadata — the legacy rule chains each to its predecessor."""
-    return [Task(description=f"step {i}") for i in range(count)]
+    return [TaskEntry(title=f"step {i}") for i in range(count)]
 
 
 def _cards_by_type(inbox: dict) -> dict[str, dict]:
@@ -91,7 +92,7 @@ def _cards_by_type(inbox: dict) -> dict[str, dict]:
 # ---------------------------------------------------------------------------
 
 
-def _fixture_patch_approval() -> tuple[Job, list[dict]]:
+def _fixture_patch_approval() -> tuple[JobPlan, list[dict]]:
     artifact = Artifact(
         name="patch",
         content="",
@@ -105,12 +106,12 @@ def _fixture_patch_approval() -> tuple[Job, list[dict]]:
     return _make_job(artifacts=[artifact]), []
 
 
-def _fixture_stop_reason() -> tuple[Job, list[dict]]:
+def _fixture_stop_reason() -> tuple[JobPlan, list[dict]]:
     # No target repo attached — derive_stop_reasons raises "no_target_repo".
     return _make_job(metadata={}), []
 
 
-def _fixture_test_failure() -> tuple[Job, list[dict]]:
+def _fixture_test_failure() -> tuple[JobPlan, list[dict]]:
     return _make_job(), [{
         "event": "test_run_completed",
         "timestamp": "2026-08-23T11:00:00+00:00",
@@ -119,7 +120,7 @@ def _fixture_test_failure() -> tuple[Job, list[dict]]:
     }]
 
 
-def _fixture_repo_dirty() -> tuple[Job, list[dict]]:
+def _fixture_repo_dirty() -> tuple[JobPlan, list[dict]]:
     return _make_job(), [{
         "event": "git_status_read",
         "timestamp": "2026-08-23T11:30:00+00:00",
@@ -127,27 +128,27 @@ def _fixture_repo_dirty() -> tuple[Job, list[dict]]:
     }]
 
 
-def _fixture_token_budget() -> tuple[Job, list[dict]]:
+def _fixture_token_budget() -> tuple[JobPlan, list[dict]]:
     return _make_job(metadata={"target_repo": "/tmp/repo",
                                "budget_stop_reason": "budget_exhausted"}), []
 
 
-def _fixture_memory_review() -> tuple[Job, list[dict]]:
+def _fixture_memory_review() -> tuple[JobPlan, list[dict]]:
     from packages.memory.local_gateway import mark_stale, store_memory
     entry = store_memory("inbox_probe", "a card the inbox must surface")
     mark_stale(str(entry.id))
     return _make_job(), []
 
 
-def _fixture_flight_plan_approval() -> tuple[Job, list[dict]]:
+def _fixture_flight_plan_approval() -> tuple[JobPlan, list[dict]]:
     return _make_job(flight_plan={"_approval": "pending"}), []
 
 
-def _fixture_task_decision() -> tuple[Job, list[dict]]:
+def _fixture_task_decision() -> tuple[JobPlan, list[dict]]:
     job = _make_job(tasks=_linear_task_chain(3))
     enqueue_task_decision(
         job,
-        task_id=job.tasks[0].id,
+        task_id=job.tasks[0].task_id,
         question="Which database?",
         options=["postgres", "sqlite"],
         now=FIXED_NOW - timedelta(seconds=90),
@@ -178,7 +179,7 @@ def test_card_appears_for_each_producing_type(decision_type):
     inbox = build_decision_inbox(job, events, now=FIXED_NOW)
 
     assert inbox["version"] == DECISION_INBOX_VERSION
-    assert inbox["job_id"] == str(job.id)
+    assert inbox["job_id"] == str(job.job_id)
 
     cards = _cards_by_type(inbox)
     assert decision_type in cards, f"no card of type {decision_type}: {sorted(cards)}"
@@ -198,13 +199,13 @@ def test_card_appears_for_each_producing_type(decision_type):
 def test_blocked_count_equals_dag_blocked_downstream():
     job = _make_job(tasks=_linear_task_chain(4))
     first = job.tasks[0]
-    enqueue_task_decision(job, task_id=first.id, question="Wait for me?",
+    enqueue_task_decision(job, task_id=first.task_id, question="Wait for me?",
                           now=FIXED_NOW)
 
     inbox = build_decision_inbox(job, [], now=FIXED_NOW)
     card = _cards_by_type(inbox)["task_decision"]
 
-    expected = len(blocked_downstream(job.tasks, {first.id}))
+    expected = len(blocked_downstream(job.tasks, {first.task_id}))
     assert card["blocked_count"] == expected
     # Without this half the assertion above passes on a module that always
     # returns 0: two zeros compare equal.
@@ -234,7 +235,7 @@ def test_non_task_decision_types_report_zero_blocked(decision_type):
 
 def test_age_seconds_is_the_exact_integer_for_a_known_stamp():
     job = _make_job(tasks=_linear_task_chain(1))
-    enqueue_task_decision(job, task_id=job.tasks[0].id, question="How old?",
+    enqueue_task_decision(job, task_id=job.tasks[0].task_id, question="How old?",
                           now=FIXED_NOW - timedelta(seconds=125))
     card = _cards_by_type(build_decision_inbox(job, [], now=FIXED_NOW))["task_decision"]
     assert card["age_seconds"] == 125
@@ -250,7 +251,7 @@ def test_age_seconds_is_none_for_an_empty_stamp():
 
 def test_age_seconds_is_none_for_a_malformed_stamp():
     job = _make_job(tasks=_linear_task_chain(1))
-    record = enqueue_task_decision(job, task_id=job.tasks[0].id,
+    record = enqueue_task_decision(job, task_id=job.tasks[0].task_id,
                                    question="When?", now=FIXED_NOW)
     record["created_at"] = "not-a-timestamp"
     card = _cards_by_type(build_decision_inbox(job, [], now=FIXED_NOW))["task_decision"]
@@ -259,7 +260,7 @@ def test_age_seconds_is_none_for_a_malformed_stamp():
 
 def test_age_seconds_clamps_a_future_stamp_to_zero():
     job = _make_job(tasks=_linear_task_chain(1))
-    enqueue_task_decision(job, task_id=job.tasks[0].id, question="From the future?",
+    enqueue_task_decision(job, task_id=job.tasks[0].task_id, question="From the future?",
                           now=FIXED_NOW + timedelta(hours=1))
     card = _cards_by_type(build_decision_inbox(job, [], now=FIXED_NOW))["task_decision"]
     assert card["age_seconds"] == 0
@@ -272,7 +273,7 @@ def test_age_seconds_clamps_a_future_stamp_to_zero():
 
 def test_task_id_that_is_not_a_uuid_reports_zero_and_raises_nothing():
     job = _make_job(tasks=_linear_task_chain(3))
-    record = enqueue_task_decision(job, task_id=job.tasks[0].id,
+    record = enqueue_task_decision(job, task_id=job.tasks[0].task_id,
                                    question="Who am I?", now=FIXED_NOW)
     record["task_id"] = "definitely-not-a-uuid"
     card = _cards_by_type(build_decision_inbox(job, [], now=FIXED_NOW))["task_decision"]

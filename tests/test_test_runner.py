@@ -24,13 +24,14 @@ from unittest.mock import patch
 
 import pytest
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
 from packages.orchestration.permissions import (
     Capability,
     is_allowed,
     is_reserved,
     set_permission,
 )
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.test_runner import (
     _EXECUTION_SAFE_EXECUTABLES,
     TIMEOUT_DEFAULT_SEC,
@@ -43,8 +44,8 @@ from packages.orchestration.test_runner import (
 # ---------------------------------------------------------------------------
 
 
-def _make_job(*, with_repo: str | None = None) -> Job:
-    job = Job(name="test", state=RunState.PENDING)
+def _make_job(*, with_repo: str | None = None) -> JobPlan:
+    job = JobPlan(job_title="test", state=RunState.PENDING)
     if with_repo is not None:
         job.metadata["target_repo"] = with_repo
     return job
@@ -233,7 +234,7 @@ class TestCommandAutoDetect:
 
 
 class TestRunTestsLocalOutcome:
-    def _make_repo_with_pytest(self, tmp_path: Path) -> tuple[Path, Job]:
+    def _make_repo_with_pytest(self, tmp_path: Path) -> tuple[Path, JobPlan]:
         repo = tmp_path / "repo"
         repo.mkdir()
         (repo / "pyproject.toml").write_text("[build-system]\n")
@@ -340,8 +341,8 @@ class TestRunLogEventSchema:
     def test_log_event_metadata_keys(self, tmp_path):
         from packages.orchestration.run_log import RunLogWriter, read_run_events
 
-        job = Job(name="test", state=RunState.PENDING)
-        log = RunLogWriter(job_id=job.id, data_root=tmp_path)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
+        log = RunLogWriter(job_id=job.job_id, data_root=tmp_path)
         log.log(
             "test_run_completed",
             test_run_id="abc123",
@@ -401,7 +402,7 @@ class TestBrainTestRunNode:
             build_project_brain,
         )
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         events = self._make_events()
         graph = build_project_brain(job, events)
         test_run_nodes = [n for n in graph.nodes if n.type == NT_TEST_RUN]
@@ -413,7 +414,7 @@ class TestBrainTestRunNode:
             build_project_brain,
         )
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         events = self._make_events()
         graph = build_project_brain(job, events)
         tr = next(n for n in graph.nodes if n.type == NT_TEST_RUN)
@@ -425,7 +426,7 @@ class TestBrainTestRunNode:
             build_project_brain,
         )
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         events = [
             {
                 "event": "test_run_completed",
@@ -453,7 +454,7 @@ class TestBrainTestRunNode:
             build_project_brain,
         )
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         events = self._make_events()
         graph = build_project_brain(job, events)
         tr_edges = [e for e in graph.edges if e.type == ET_HAS_TEST_RUN]
@@ -465,7 +466,7 @@ class TestBrainTestRunNode:
             export_project_brain_json,
         )
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         events = self._make_events()
         graph = build_project_brain(job, events)
         data = export_project_brain_json(graph)
@@ -478,7 +479,7 @@ class TestBrainTestRunNode:
             export_project_brain_json,
         )
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         events = self._make_events()
         graph = build_project_brain(job, events)
         data = export_project_brain_json(graph)
@@ -509,7 +510,7 @@ class TestBrainDetailTestRun:
             build_project_brain,
         )
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         events = [
             {
                 "event": "test_run_completed",
@@ -582,7 +583,7 @@ class TestTrustReportTestRunSection:
     def test_trust_report_mentions_test_run(self):
         from packages.orchestration.trust_report import summarize_trust_report
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         events = [
             {
                 "event": "test_run_completed",
@@ -607,7 +608,7 @@ class TestTrustReportTestRunSection:
         """Trust report must not contain raw subprocess output or forbidden field names."""
         from packages.orchestration.trust_report import summarize_trust_report
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         # Use a sentinel as fake output — verify it does NOT appear in the report.
         sentinel = "SUPERSECRET_SUBPROCESS_OUTPUT_DO_NOT_LOG"
         events = [
@@ -637,14 +638,14 @@ class TestTrustReportTestRunSection:
     def test_trust_report_no_test_runs_placeholder(self):
         from packages.orchestration.trust_report import summarize_trust_report
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         report = summarize_trust_report(job, [])
         assert "No test runs recorded." in report
 
     def test_trust_report_raw_stdout_not_included_note(self):
         from packages.orchestration.trust_report import summarize_trust_report
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         events = [
             {
                 "event": "test_run_completed",
@@ -675,7 +676,7 @@ class TestTimelineTestRunRendering:
     def test_timeline_renders_test_run_event(self):
         from packages.orchestration.timeline import summarize_timeline
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         events = [
             {
                 "event": "test_run_completed",
@@ -700,7 +701,7 @@ class TestTimelineTestRunRendering:
     def test_timeline_no_raw_output_in_rendering(self):
         from packages.orchestration.timeline import summarize_timeline
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         events = [
             {
                 "event": "test_run_completed",
@@ -738,7 +739,7 @@ class TestViewerJsonTestRunNode:
         )
         from packages.orchestration.project_brain import build_project_brain
 
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         graph = build_project_brain(job, events)
         with tempfile.TemporaryDirectory() as td:
             out_dir = Path(td) / "viewer"

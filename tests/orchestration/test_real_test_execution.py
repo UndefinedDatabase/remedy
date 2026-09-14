@@ -13,11 +13,12 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration import real_test_execution as rte
+from packages.orchestration.data_paths import mint_job_id
 
 
 def _job(env: Path, *, files: dict[str, str] | None = None, repo: bool = True) -> str:
-    from packages.core.models import Job, RunState, Task
-    from packages.orchestration.storage import save_job
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
     meta: dict = {}
     if repo:
         rp = env / f"repo-{uuid4().hex[:6]}"
@@ -25,10 +26,10 @@ def _job(env: Path, *, files: dict[str, str] | None = None, repo: bool = True) -
         for rel, content in (files or {"a.py": "x = 1\n"}).items():
             (rp / rel).write_text(content)
         meta["target_repo"] = str(rp)
-    job = Job(id=uuid4(), name="m", user_prompt="x", state=RunState.RUNNING,
-              tasks=[Task(description="t")], artifacts=[], metadata=meta)
-    save_job(job, root=env)
-    return str(job.id)
+    job = JobPlan(job_id=mint_job_id(), job_title="m", user_prompt="x", state=RunState.RUNNING,
+              tasks=[TaskEntry(title="t")], artifacts=[], metadata=meta)
+    save_job_plan(job, root=env)
+    return str(job.job_id)
 
 
 @pytest.fixture()
@@ -227,46 +228,6 @@ class TestIntegrity:
 # ---------------------------------------------------------------------------
 # Mission gate consumption (Step 1886)
 # ---------------------------------------------------------------------------
-
-
-class TestMissionGates:
-    def test_snapshot_gate_blocks_without_snapshot(self, env, monkeypatch):
-        from packages.orchestration import overnight_mission as om
-        rf = env.parent / "lr.md"; rf.write_text("## Verdict\nPASS\n")
-        monkeypatch.setenv("REMEDY_REVIEW_FILE", str(rf))
-        jid = _job(env)
-        c = om.create_mission_contract_from_job(
-            jid, acceptance_criteria=["done"],
-            required_gates=[om.GATE_CLEAN_REVIEW, om.GATE_SNAPSHOT_BEFORE_APPLY], data_dir=env)
-        e = om.evaluate_mission_contract(c, data_dir=env)
-        assert e.satisfied is False
-        assert any("snapshot_before_apply" in m for m in e.missing_proofs)
-
-    def test_snapshot_gate_satisfied_after_snapshot(self, env, monkeypatch):
-        from packages.orchestration import overnight_mission as om
-        rf = env.parent / "lr.md"; rf.write_text("## Verdict\nPASS\n")
-        monkeypatch.setenv("REMEDY_REVIEW_FILE", str(rf))
-        jid = _job(env)
-        rte.create_snapshot_proof(jid, data_dir=env)
-        c = om.create_mission_contract_from_job(
-            jid, acceptance_criteria=["done"],
-            required_gates=[om.GATE_CLEAN_REVIEW, om.GATE_SNAPSHOT_BEFORE_APPLY], data_dir=env)
-        e = om.evaluate_mission_contract(c, data_dir=env)
-        assert not any("snapshot_before_apply" in m for m in e.missing_proofs)
-
-    def test_rollback_gate_blocks_metadata_only(self, env, monkeypatch):
-        from packages.orchestration import overnight_mission as om
-        rf = env.parent / "lr.md"; rf.write_text("## Verdict\nPASS\n")
-        monkeypatch.setenv("REMEDY_REVIEW_FILE", str(rf))
-        jid = _job(env)
-        sp = rte.create_snapshot_proof(jid, data_dir=env)
-        rte.create_rollback_proof(jid, sp.snapshot_id, data_dir=env)
-        c = om.create_mission_contract_from_job(
-            jid, acceptance_criteria=["done"],
-            required_gates=[om.GATE_CLEAN_REVIEW, om.GATE_ROLLBACK_RESTORE], data_dir=env)
-        e = om.evaluate_mission_contract(c, data_dir=env)
-        assert e.satisfied is False
-        assert any("rollback_restore" in m for m in e.missing_proofs)
 
 
 # ---------------------------------------------------------------------------

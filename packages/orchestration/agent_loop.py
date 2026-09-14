@@ -1,37 +1,15 @@
 """
-Agent Loop v0 — Local execution loop for Remedy jobs.
+Agent Loop v0 — Local state derivation for Remedy jobs.
 
-Defines the data models, state derivation, and execution loop for coordinating
-workflows such as:
+Defines the data models and state derivation for coordinating workflows such
+as:
 
     Remedy planner → builder → reviewer → fix cycle → verifier
 
-The ``run_agent_loop`` function drives the loop: plan → build → approve →
-test → repeat.  It delegates actual task execution to the existing CLI
-command handlers and emits structured run-log events at each stage.
-
-Run-log events emitted by ``run_agent_loop``:
-  agent_loop_started          — loop begins
-  agent_loop_cycle_started    — each cycle begins
-  agent_loop_decision         — decision made (run_next_task, needs_planning)
-  agent_loop_cycle_completed  — each cycle ends
-  agent_loop_paused           — loop paused (needs_approval, blocked, needs_planning)
-  agent_loop_completed        — loop finished (all_done, max_cycles_reached)
-
-Event top-level fields:
-  outcome: str                — event-specific outcome (RunEvent.outcome)
-
-Metadata schema (all events share the same 10 keys):
-  cycle: int                  — current cycle number (0 for started)
-  max_cycles: int             — configured max cycles
-  decision: str               — AgentLoopDecision value (or "start")
-  stage: str                  — AgentLoopStage value (or "start")
-  reason: str                 — safe literal reason
-  task_count: int             — total task count
-  pending_task_count: int     — pending tasks
-  pending_approval_count: int — pending patch intent approvals
-  applied_count: int          — applied patch intents
-  test_run_count: int         — completed test runs
+The local execution loop that once drove plan → build → approve → test →
+repeat cycles was DELETED at F275 round 32, per DECISION F275 D18; it had no
+production caller.  Nothing in this module executes a task: it derives state
+and renders it, and ``remedy dev agent-loop`` is its only reader.
 
 Stale-event policy:
   A historical ``task_run_failed outcome=permission_denied`` event does NOT
@@ -51,7 +29,6 @@ Public API::
     default_agent_loop_state(job, *, max_cycles=3) -> AgentLoopState
     summarize_agent_loop_state(job, state) -> str
     derive_agent_loop_state(job, events, *, max_cycles=3) -> AgentLoopState
-    run_agent_loop(job, *, max_cycles=3, auto_approve_low_risk=False, run_tests=True) -> AgentLoopState
 """
 
 from __future__ import annotations
@@ -59,9 +36,8 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass, field
 from typing import Any
-from uuid import UUID
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
 from packages.orchestration._symbols import (
     NEXT as _NEXT,
 )
@@ -79,6 +55,7 @@ from packages.orchestration.approval_queue import (
 )
 from packages.orchestration.patch_intent import RISK_LOW
 from packages.orchestration.permissions import Capability, is_reserved
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -137,7 +114,7 @@ class AgentAdapterSpec:
 class AgentLoopState:
     """Immutable snapshot of the current agent loop state for a job."""
 
-    job_id: UUID
+    job_id: str
     current_stage: AgentLoopStage
     cycle: int
     max_cycles: int
@@ -154,10 +131,10 @@ class AgentLoopState:
 # ---------------------------------------------------------------------------
 
 
-def default_agent_loop_state(job: Job, *, max_cycles: int = 3) -> AgentLoopState:
+def default_agent_loop_state(job: JobPlan, *, max_cycles: int = 3) -> AgentLoopState:
     """Return a fresh, zero-cycle loop state for a job."""
     return AgentLoopState(
-        job_id=job.id,
+        job_id=job.job_id,
         current_stage=AgentLoopStage.PLANNED,
         cycle=0,
         max_cycles=max_cycles,
@@ -171,7 +148,7 @@ def default_agent_loop_state(job: Job, *, max_cycles: int = 3) -> AgentLoopState
 
 
 def derive_agent_loop_state(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     *,
     max_cycles: int = 3,
@@ -195,7 +172,7 @@ def derive_agent_loop_state(
     blocked_reason = _find_current_blocker(job, events)
     if blocked_reason:
         return AgentLoopState(
-            job_id=job.id,
+            job_id=job.job_id,
             current_stage=AgentLoopStage.BLOCKED,
             cycle=0,
             max_cycles=max_cycles,
@@ -222,7 +199,7 @@ def derive_agent_loop_state(
 
     if pending_non_low:
         return AgentLoopState(
-            job_id=job.id,
+            job_id=job.job_id,
             current_stage=AgentLoopStage.REVIEW,
             cycle=0,
             max_cycles=max_cycles,
@@ -240,7 +217,7 @@ def derive_agent_loop_state(
     )
     if all_tasks_done and all_non_low_approved:
         return AgentLoopState(
-            job_id=job.id,
+            job_id=job.job_id,
             current_stage=AgentLoopStage.COMPLETED,
             cycle=0,
             max_cycles=max_cycles,
@@ -256,7 +233,7 @@ def derive_agent_loop_state(
     has_pending = any(t.status == RunState.PENDING for t in job.tasks)
     stage = AgentLoopStage.BUILD if has_pending else AgentLoopStage.PLANNED
     return AgentLoopState(
-        job_id=job.id,
+        job_id=job.job_id,
         current_stage=stage,
         cycle=0,
         max_cycles=max_cycles,
@@ -269,7 +246,7 @@ def derive_agent_loop_state(
     )
 
 
-def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
+def summarize_agent_loop_state(job: JobPlan, state: AgentLoopState) -> str:
     """Return a human-readable agent loop state report for a job.
 
     Read-only: never mutates job, state, or any filesystem resource.
@@ -279,8 +256,8 @@ def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
     intents = list_patch_intents(job)
     pending_tasks = [t for t in job.tasks if t.status == RunState.PENDING]
 
-    short_id = str(job.id)[:8]
-    name     = job.name if len(job.name) <= 60 else job.name[:60] + "…"
+    short_id = str(job.job_id)[:8]
+    name     = job.job_title if len(job.job_title) <= 60 else job.job_title[:60] + "…"
 
     parts: list[str] = []
     parts.append("Remedy Agent Loop")
@@ -347,7 +324,7 @@ def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
 
 
 def _find_current_blocker(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
 ) -> str | None:
     """Return a ``blocked_reason`` string if there is a current blocking condition.
@@ -407,7 +384,7 @@ def _find_current_blocker(
                 continue
             # Stale if the task is no longer PENDING in the job model.
             task_still_pending = any(
-                str(t.id) == task_id and t.status == RunState.PENDING
+                str(t.task_id) == task_id and t.status == RunState.PENDING
                 for t in job.tasks
             )
             if not task_still_pending:
@@ -432,199 +409,8 @@ def _format_blocker(blocked_reason: str) -> str:
     return blocked_reason
 
 
-def _loop_meta(
-    job: Job,
-    state: AgentLoopState | None,
-    *,
-    cycle: int,
-    max_cycles: int,
-    outcome: str,
-    reason: str,
-) -> dict[str, Any]:
-    """Build the exact safe metadata dict for every agent_loop_* event.
-
-    Returns (outcome, metadata) where outcome is a top-level RunEvent field
-    and metadata contains exactly 10 keys (no outcome duplication).
-    """
-    intents = list_patch_intents(job)
-    pending_approvals = sum(
-        1 for i in intents if i["state"] == APPROVAL_PENDING
-    )
-    applied = sum(
-        1 for i in intents if i.get("state") == "applied"
-    )
-    test_runs = sum(
-        1 for t in job.tasks
-        if t.status in (RunState.COMPLETED, RunState.FAILED)
-        and t.inputs.get("task_type") == "run_tests"
-    )
-    meta = {
-        "cycle": cycle,
-        "max_cycles": max_cycles,
-        "decision": state.decision.value if state else "start",
-        "stage": state.current_stage.value if state else "start",
-        "reason": reason,
-        "task_count": len(job.tasks),
-        "pending_task_count": sum(
-            1 for t in job.tasks if t.status == RunState.PENDING
-        ),
-        "pending_approval_count": pending_approvals,
-        "applied_count": applied,
-        "test_run_count": test_runs,
-    }
-    return outcome, meta
-
-
-def run_agent_loop(
-    job: Job,
-    *,
-    max_cycles: int = 3,
-    auto_approve_low_risk: bool = False,
-    run_tests: bool = True,
-) -> AgentLoopState:
-    """Run the agent execution loop for a job.
-
-    Safe local execution loop. Default does NOT auto-approve.
-    Stops on: needs_approval (paused), blocked, complete, max_cycles reached.
-
-    Run-log events emitted (all use the same 10-key metadata schema):
-      agent_loop_started, agent_loop_cycle_started, agent_loop_decision,
-      agent_loop_cycle_completed, agent_loop_paused, agent_loop_completed
-    """
-    from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.storage import load_job
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-    log = RunLogWriter(job_id=job.id)
-
-    def _emit(event_name: str, outcome_and_meta: tuple[str, dict[str, Any]]) -> None:
-        """Log an agent_loop event. outcome at top level, metadata has 10 keys."""
-        outcome, meta = outcome_and_meta
-        log.log(event_name, outcome=outcome, **meta)
-
-    _emit("agent_loop_started", _loop_meta(
-        job, None, cycle=0, max_cycles=max_cycles,
-        outcome="started", reason="loop_started"))
-
-    # Emit token_policy_applied once at loop start
-    from packages.orchestration.token_policy import (
-        build_default_token_policy,
-        derive_token_mode,
-    )
-    _tp = build_default_token_policy(job)
-    log.log(
-        "token_policy_applied",
-        outcome="applied",
-        mode=derive_token_mode(job),
-        max_context_tokens=_tp.budget.get("expensive_tokens", 100_000),
-        local_first=True,
-    )
-
-    state: AgentLoopState | None = None
-
-    for cycle in range(1, max_cycles + 1):
-        # Reload job and events each cycle to get latest state
-        job = load_job(job.id)
-        events = load_run_events(data_dir, job.id)
-        state = derive_agent_loop_state(job, events, max_cycles=max_cycles)
-
-        _emit("agent_loop_cycle_started", _loop_meta(
-            job, state, cycle=cycle, max_cycles=max_cycles,
-            outcome="cycle_started", reason="cycle_begin"))
-
-        # Terminal conditions
-        if state.decision == AgentLoopDecision.COMPLETE:
-            _emit("agent_loop_completed", _loop_meta(
-                job, state, cycle=cycle, max_cycles=max_cycles,
-                outcome="completed", reason="all_done"))
-            return state
-
-        if state.decision == AgentLoopDecision.BLOCKED:
-            _emit("agent_loop_paused", _loop_meta(
-                job, state, cycle=cycle, max_cycles=max_cycles,
-                outcome="paused", reason="blocked"))
-            return state
-
-        if state.decision == AgentLoopDecision.NEEDS_APPROVAL:
-            if auto_approve_low_risk:
-                _auto_approve_low_risk_intents(job, log)
-                # Re-derive after auto-approval
-                job = load_job(job.id)
-                events = load_run_events(data_dir, job.id)
-                state = derive_agent_loop_state(job, events, max_cycles=max_cycles)
-                if state.decision == AgentLoopDecision.NEEDS_APPROVAL:
-                    _emit("agent_loop_paused", _loop_meta(
-                        job, state, cycle=cycle, max_cycles=max_cycles,
-                        outcome="paused", reason="needs_approval"))
-                    return state
-            else:
-                _emit("agent_loop_paused", _loop_meta(
-                    job, state, cycle=cycle, max_cycles=max_cycles,
-                    outcome="paused", reason="needs_approval"))
-                return state
-
-        # Execute: run next task if in BUILD stage
-        if state.current_stage == AgentLoopStage.BUILD:
-            _emit("agent_loop_decision", _loop_meta(
-                job, state, cycle=cycle, max_cycles=max_cycles,
-                outcome="run_next_task", reason="execute_task"))
-            try:
-                _run_next_task_step(job)
-            except SystemExit:
-                pass  # Task runner calls sys.exit on failure; loop continues.
-
-        elif state.current_stage == AgentLoopStage.PLANNED:
-            _emit("agent_loop_decision", _loop_meta(
-                job, state, cycle=cycle, max_cycles=max_cycles,
-                outcome="needs_planning", reason="needs_planning"))
-            _emit("agent_loop_paused", _loop_meta(
-                job, state, cycle=cycle, max_cycles=max_cycles,
-                outcome="paused", reason="needs_planning"))
-            return state
-
-        # Reload after potential task execution
-        job = load_job(job.id)
-        _emit("agent_loop_cycle_completed", _loop_meta(
-            job, state, cycle=cycle, max_cycles=max_cycles,
-            outcome="cycle_completed", reason="cycle_end"))
-
-    # Max cycles reached
-    if state is None:
-        events = load_run_events(data_dir, job.id)
-        state = derive_agent_loop_state(job, events, max_cycles=max_cycles)
-
-    _emit("agent_loop_completed", _loop_meta(
-        job, state, cycle=max_cycles, max_cycles=max_cycles,
-        outcome="max_cycles_reached", reason="max_cycles_reached"))
-    return state
-
-
-def _auto_approve_low_risk_intents(job: Job, log: Any) -> None:
-    """Auto-approve low-risk patch intents."""
-    from packages.orchestration.approval_queue import set_approval_state
-    from packages.orchestration.storage import save_job
-
-    intents = list_patch_intents(job)
-    for intent in intents:
-        if intent["state"] == APPROVAL_PENDING and intent["risk"] == RISK_LOW:
-            try:
-                set_approval_state(job, intent["intent_id"], "approved",
-                                   reason="auto-approved (low risk)")
-            except ValueError:
-                continue
-    save_job(job)
-
-
-def _run_next_task_step(job: Job) -> None:
-    """Execute one run-next-task step. Delegates to the job command handler."""
-    from apps.cli.commands.job import _cmd_run_next_task_local
-    _cmd_run_next_task_local(str(job.id))
-
-
-def _next_action(job: Job, state: AgentLoopState) -> str:
-    full_id = str(job.id)
+def _next_action(job: JobPlan, state: AgentLoopState) -> str:
+    full_id = str(job.job_id)
     d = state.decision
 
     if d == AgentLoopDecision.BLOCKED:
@@ -660,7 +446,7 @@ def _next_action(job: Job, state: AgentLoopState) -> str:
     if state.current_stage == AgentLoopStage.BUILD:
         return (
             f"  {_NEXT} Run next Remedy task:\n"
-            f"      remedy job run-next {full_id}"
+            f"      remedy job resume {full_id}"
         )
     return (
         f"  {_NEXT} Plan the job:\n"

@@ -1,0 +1,2 @@
+EXIT=0
+18442 passed, 23 skipped, 1 warning in 161.95s (0:02:41)

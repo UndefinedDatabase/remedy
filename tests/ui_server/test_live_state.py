@@ -16,7 +16,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, Task
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -25,20 +25,20 @@ UI_SRC = ROOT / "apps" / "ui" / "src"
 UI_ROOT = ROOT / "apps" / "ui"
 
 
-def _make_job(**overrides: object) -> Job:
+def _make_job(**overrides: object) -> JobPlan:
     defaults = dict(
-        name="test-ui-job",
+        job_title="test-ui-job",
         user_prompt="Test prompt for UI",
-        tasks=[Task(type="write_readme", description="Write a README")],
+        tasks=[TaskEntry(title="Write a README")],
     )
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _make_job_s91():
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -48,8 +48,8 @@ def _make_job_s91():
 
 def _make_job_s101(task_count: int = 3):
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -125,9 +125,9 @@ class TestUIServerIntegration:
     def _setup_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         self.job = _make_job()
-        from packages.orchestration.storage import save_job
-        save_job(self.job)
-        self.job_id = str(self.job.id)
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
 
     def _start_server(self, **kwargs):

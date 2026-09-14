@@ -4,20 +4,14 @@ Smoke tests: verify that core models and contracts import without errors.
 
 
 def test_core_models_import():
-    from packages.core.models import (
-        AcceptanceCheck,
-        Artifact,
-        Budget,
-        Job,
-        RunState,
-        Task,
-    )
+    from packages.core.models import AcceptanceCheck, Artifact, Budget, RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
     assert Budget is not None
     assert AcceptanceCheck is not None
     assert Artifact is not None
-    assert Task is not None
+    assert TaskEntry is not None
     assert RunState is not None
-    assert Job is not None
+    assert JobPlan is not None
 
 
 def test_contracts_interfaces_import():
@@ -41,16 +35,17 @@ def test_run_state_values():
 
 
 def test_job_defaults():
-    from packages.core.models import Job
-    job = Job(name="test-job")
-    assert job.name == "test-job"
+    from packages.orchestration.pingpong_job import JobPlan
+    job = JobPlan(job_title="test-job")
+    assert job.job_title == "test-job"
     assert job.tasks == []
     assert job.artifacts == []
 
 
 def test_task_lifecycle_defaults():
-    from packages.core.models import RunState, Task
-    task = Task(description="do something")
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import TaskEntry
+    task = TaskEntry(title="do something")
     assert task.status == RunState.PENDING
     assert task.output_artifact_ids == []
 
@@ -63,8 +58,8 @@ def test_artifact_provenance():
     # With task_id
     from uuid import uuid4
     tid = uuid4()
-    b = Artifact(name="out2", content="world", task_id=tid)
-    assert b.task_id == tid
+    b = Artifact(name="out2", content="world", task_id=str(tid))
+    assert b.task_id == str(tid)
 
 
 def test_interfaces_are_protocols():

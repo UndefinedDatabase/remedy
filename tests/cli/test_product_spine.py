@@ -28,12 +28,6 @@ def _read_doc(name: str) -> str:
 
 
 class TestOperatorCommandsExist:
-    def test_worker_facade_in_catalog(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = {c.command_id for c in CATALOG}
-        for cmd_id in ("worker.doctor", "worker.add", "worker.disable"):
-            assert cmd_id in ids, f"{cmd_id} missing from catalog"
-
     def test_mission_facade_in_catalog(self):
         from apps.cli.command_catalog import CATALOG
         ids = {c.command_id for c in CATALOG}
@@ -44,11 +38,6 @@ class TestOperatorCommandsExist:
         from apps.cli.command_catalog import get_command
         cmd = get_command("doctor.core")
         assert cmd is not None
-        assert cmd.action_class == "read_only"
-
-    def test_worker_doctor_is_read_only(self):
-        from apps.cli.command_catalog import get_command
-        cmd = get_command("worker.doctor")
         assert cmd.action_class == "read_only"
 
     def test_mission_report_is_read_only(self):
@@ -64,24 +53,8 @@ class TestOperatorCommandsExist:
     def test_all_operator_commands_have_handlers(self):
         from apps.cli.commands import collect_all_handlers
         handlers = collect_all_handlers()
-        for cmd_id in ("worker.doctor", "worker.add", "worker.disable",
-                       "mission.run", "mission.report", "doctor.core",
-                       "approval.policy-list", "approval.policy-show",
-                       "approval.policy-enable", "approval.policy-disable",
-                       "approval.policy-evaluate", "approval.policy-grant"):
+        for cmd_id in ("mission.run", "mission.report", "doctor.core"):
             assert cmd_id in handlers, f"{cmd_id} missing from handlers"
-
-    def test_approval_group_in_catalog(self):
-        from apps.cli.command_catalog import GROUPS
-        assert "approval" in GROUPS
-
-    def test_approval_commands_in_catalog(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = {c.command_id for c in CATALOG}
-        for cmd_id in ("approval.policy-list", "approval.policy-show",
-                       "approval.policy-enable", "approval.policy-disable",
-                       "approval.policy-evaluate", "approval.policy-grant"):
-            assert cmd_id in ids, f"{cmd_id} missing from catalog"
 
 
 # ---------------------------------------------------------------------------
@@ -103,11 +76,6 @@ class TestStaleCommandScanner:
         text = self._read_doc("simple-operator-quickstart-v0.md")
         assert "--adapter " not in text, \
             "Stale --adapter flag (should be --adapter-id)"
-
-    def test_no_stale_adapter_flag_in_operator_path(self):
-        text = self._read_doc("controlled-claude-code-operator-path-v0.md")
-        assert "--adapter " not in text or "--adapter-id" in text, \
-            "Stale --adapter flag without --adapter-id"
 
     def test_no_stale_self_proposal_list(self):
         text = self._read_doc("simple-operator-quickstart-v0.md")
@@ -174,8 +142,6 @@ class TestFastLaneSelfTest:
             "test_worker_cli_runtime.py",
             "test_self_dogfood_execution_cli.py",
             "test_smoke_scripts.py",
-            "test_overnight_executor_cli.py",
-            "test_review_bundle_runtime.py",
         ]
         for name in heavy:
             assert name not in text, \
@@ -223,14 +189,6 @@ class TestFastLaneSelfTest:
         assert "--collect-only" in text, \
             "Runtime lane must use --collect-only to discover test nodes"
 
-    def test_runtime_lane_review_bundle_is_node_isolated(self):
-        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
-        node_section_start = text.index("NODE_ISOLATED_FILES")
-        node_section_end = text.index(")", node_section_start)
-        node_section = text[node_section_start:node_section_end]
-        assert "test_review_bundle_runtime.py" in node_section, \
-            "test_review_bundle_runtime.py must be in NODE_ISOLATED_FILES"
-
     def test_runtime_lane_node_start_end_markers(self):
         text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
         assert "START node:" in text, \
@@ -252,10 +210,6 @@ class TestFastLaneSelfTest:
         text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
         assert "stale" in text.lower(), \
             "Runtime lane must include stale process diagnostic"
-
-    def test_runtime_lane_includes_review_bundle_runtime(self):
-        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
-        assert "test_review_bundle_runtime.py" in text
 
     def test_runtime_lane_includes_config_cmd(self):
         text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
@@ -471,8 +425,8 @@ class TestJobTruthExtraction:
     def test_empty_job_truth(self, tmp_path, monkeypatch):
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         from apps.cli.commands.job import _extract_job_truth
-        from packages.core.models import Job
-        job = Job(name='empty test')
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(job_title='empty test')
         truth = _extract_job_truth(job)
         assert truth['artifact_count'] == 0
         assert truth['patch_intent_ids'] == []
@@ -483,8 +437,9 @@ class TestJobTruthExtraction:
     def test_job_with_artifact_counts(self, tmp_path, monkeypatch):
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         from apps.cli.commands.job import _extract_job_truth
-        from packages.core.models import Artifact, Job
-        job = Job(name='artifact test', artifacts=[
+        from packages.core.models import Artifact
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(job_title='artifact test', artifacts=[
             Artifact(name='plan', content='plan output'),
             Artifact(name='build', content='build output'),
         ])
@@ -495,13 +450,14 @@ class TestJobTruthExtraction:
     def test_job_with_patch_intent(self, tmp_path, monkeypatch):
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         from apps.cli.commands.job import _extract_job_truth
-        from packages.core.models import Artifact, Job
+        from packages.core.models import Artifact
+        from packages.orchestration.pingpong_job import JobPlan
         art = Artifact(
             name='patch',
             content='diff output',
             metadata={'patch_intent_count': 1},
         )
-        job = Job(name='patch test', artifacts=[art])
+        job = JobPlan(job_title='patch test', artifacts=[art])
         truth = _extract_job_truth(job)
         assert truth['artifact_count'] == 1
         assert len(truth['patch_intent_ids']) == 1
@@ -510,7 +466,8 @@ class TestJobTruthExtraction:
     def test_patch_applied_clears_approval(self, tmp_path, monkeypatch):
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         from apps.cli.commands.job import _extract_job_truth
-        from packages.core.models import Artifact, Job
+        from packages.core.models import Artifact
+        from packages.orchestration.pingpong_job import JobPlan
         intent_id = 'abcd1234-0'
         art = Artifact(
             name='patch',
@@ -522,7 +479,7 @@ class TestJobTruthExtraction:
                 },
             },
         )
-        job = Job(name='applied test', artifacts=[art])
+        job = JobPlan(job_title='applied test', artifacts=[art])
         truth = _extract_job_truth(job)
         assert truth['approval_required'] is False
 
@@ -531,21 +488,21 @@ class TestJobStatusReportTruthFields:
     """Status and report JSON include enriched truth fields."""
 
     def _make_job_and_save(self, tmp_path):
-        from packages.core.models import Artifact, Job, RunState, Task
-        from packages.orchestration.storage import save_job
+        from packages.core.models import Artifact, RunState
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
         art = Artifact(
             name='builder output',
             content='diff --git a/foo.py',
             metadata={'patch_intent_count': 1},
         )
-        task = Task(description='Fix the bug', inputs={'task_type': 'code_repair'})
-        job = Job(
-            name='Demo fix',
+        task = TaskEntry(title='Fix the bug', inputs={'task_type': 'code_repair'})
+        job = JobPlan(
+            job_title='Demo fix',
             state=RunState.PAUSED,
             tasks=[task],
             artifacts=[art],
         )
-        save_job(job, root=tmp_path)
+        save_job_plan(job, root=tmp_path)
         return job
 
     def test_status_json_has_truth_fields(self, tmp_path, monkeypatch):
@@ -558,7 +515,7 @@ class TestJobStatusReportTruthFields:
         from apps.cli.commands.job import _cmd_job_status
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            _cmd_job_status(str(job.id), json_output=True)
+            _cmd_job_status(str(job.job_id), json_output=True)
         data = json.loads(buf.getvalue())
         assert data['artifact_count'] == 1
         assert data['approval_required'] is True
@@ -575,7 +532,7 @@ class TestJobStatusReportTruthFields:
         from apps.cli.commands.job import _cmd_job_report
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            _cmd_job_report(str(job.id), json_output=True)
+            _cmd_job_report(str(job.job_id), json_output=True)
         data = json.loads(buf.getvalue())
         assert data['artifact_count'] == 1
         assert data['approval_required'] is True
@@ -626,14 +583,13 @@ class TestNoProviderNoApplyProof:
         import json
 
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(name='no-apply proof')
-        save_job(job, root=tmp_path)
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+        job = JobPlan(job_title='no-apply proof')
+        save_job_plan(job, root=tmp_path)
         from apps.cli.commands.job import _cmd_job_report
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            _cmd_job_report(str(job.id), json_output=True)
+            _cmd_job_report(str(job.job_id), json_output=True)
         data = json.loads(buf.getvalue())
         assert data['code_applied'] is False, 'v1 must never report code_applied=True'
 
@@ -643,14 +599,13 @@ class TestNoProviderNoApplyProof:
         import json
 
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(name='no-apply-action proof')
-        save_job(job, root=tmp_path)
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+        job = JobPlan(job_title='no-apply-action proof')
+        save_job_plan(job, root=tmp_path)
         from apps.cli.commands.job import _cmd_job_status
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            _cmd_job_status(str(job.id), json_output=True)
+            _cmd_job_status(str(job.job_id), json_output=True)
         data = json.loads(buf.getvalue())
         nsa = data.get('next_safe_action', '')
         assert 'apply' not in nsa.lower() or 'patch approve' in nsa.lower(), \

@@ -10,21 +10,22 @@ from uuid import uuid4
 
 import pytest
 
+from packages.orchestration.data_paths import mint_job_id
 from tests.cli.runtime_helpers import run_grouped_cli
 
 
 def _job(data_dir):
-    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-    from packages.orchestration.storage import save_job
-    task = Task(description="t")
-    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=task.id,
+    from packages.core.models import Artifact, ArtifactKind, RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+    task = TaskEntry(title="t")
+    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.task_id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",
-                            "related_task_id": str(task.id), "related_files": ["docs/guide.md"],
+                            "related_task_id": str(task.task_id), "related_files": ["docs/guide.md"],
                             "exit_code": 1, "safe_summary": "boom", "command_display": "pytest x"})
-    job = Job(id=uuid4(), name="ov-rr", user_prompt="x", state=RunState.RUNNING,
+    job = JobPlan(job_id=mint_job_id(), job_title="ov-rr", user_prompt="x", state=RunState.RUNNING,
               tasks=[task], artifacts=[fa], metadata={"target_repo": "."})
-    save_job(job, root=data_dir)
-    return str(job.id), str(fa.id)
+    save_job_plan(job, root=data_dir)
+    return str(job.job_id), str(fa.id)
 
 
 @pytest.fixture()
@@ -57,16 +58,19 @@ def test_valid_request_json(env):
     d = json.loads(r.stdout)
     assert d["stop_reason"] == "ready"
     assert d["request_package_id"]
-    assert d["output_intake_command"].startswith(f"remedy provider intake-repair {job_id}")
+    # The intake fields are REMOVED, not emptied (DECISION F275 D11 (b)).
+    assert "output_intake_command" not in d
+    assert "trust_gate_command" not in d
     assert "diff --git" not in r.stdout
 
 
-def test_text_includes_request_and_intake(env):
+def test_text_surface_advertises_no_dead_command(env):
     job_id, fid = _job(env)
     r = run_grouped_cli(["repair", "request", job_id, "--failure-artifact-id", fid], env)
     assert r.returncode == 0, r.stderr
     assert "Repair request" in r.stdout
-    assert "provider intake-repair" in r.stdout
+    assert "provider intake-repair" not in r.stdout
+    assert "provider trust-show" not in r.stdout
 
 
 def test_request_show_json(env):

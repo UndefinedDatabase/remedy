@@ -40,7 +40,8 @@ import json
 from datetime import datetime
 from uuid import uuid4
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.diff_parser import (
     DIFF_VIEW_MAX_FILES,
     parse_unified_diff_to_view,
@@ -64,6 +65,7 @@ from packages.orchestration.hunk_ledger import (
     HUNK_STATE_REJECTED,
     export_hunk_ledger,
 )
+from packages.orchestration.pingpong_job import JobPlan
 
 ORIGINAL = "\n".join(f"line {number:02d}" for number in range(1, 21)) + "\n"
 
@@ -112,12 +114,12 @@ def _ids(diff_text: str, file_index: int = 0) -> list[str]:
 HUNK_IDS = _ids(TWO_HUNK_DIFF)
 
 
-def _job(**metadata: object) -> Job:
+def _job(**metadata: object) -> JobPlan:
     """A job carrying ``metadata`` and nothing else. The recorder needs no capability and no
     intent — it writes no repository — so this is deliberately barer than the apply seam's."""
-    return Job(
-        id=uuid4(),
-        name="hunk decision job",
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="hunk decision job",
         user_prompt="record the operator's hunk decision",
         state=RunState.RUNNING,
         tasks=[],
@@ -126,7 +128,7 @@ def _job(**metadata: object) -> Job:
     )
 
 
-def _record(job: Job, *, task_id: object = "t-1", attempt: object = 2,
+def _record(job: JobPlan, *, task_id: object = "t-1", attempt: object = 2,
             diff_text: str = TWO_HUNK_DIFF, approved=(), rejected=(),
             now: datetime = DECIDED_AT):
     """One call to the shipped TEXT entry point, with this suite's defaults."""
@@ -141,7 +143,7 @@ def _record(job: Job, *, task_id: object = "t-1", attempt: object = 2,
     )
 
 
-def _record_from_view(job: Job, *, view, task_id: object = "t-1", attempt: object = 2,
+def _record_from_view(job: JobPlan, *, view, task_id: object = "t-1", attempt: object = 2,
                       approved=(), rejected=(), now: datetime = DECIDED_AT):
     """One call to the shipped VIEW entry point, with this suite's defaults."""
     return record_hunk_decision_from_view(

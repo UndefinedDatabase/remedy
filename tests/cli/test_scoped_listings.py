@@ -13,7 +13,7 @@ import sys
 from unittest.mock import patch
 from uuid import uuid4
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.project_scope import ProjectScope, job_in_scope, scoped_jobs
 
 _CLI = [sys.executable, "-m", "apps.cli.grouped"]
@@ -86,19 +86,10 @@ def _create_job(repo, env, mission):
 
 
 def _write_legacy_job(data_dir, name="legacy-job"):
-    """Write a job JSON with no project_id directly to the store."""
-    jobs = data_dir / "jobs"
-    jobs.mkdir(parents=True, exist_ok=True)
-    jid = str(uuid4())
-    (jobs / f"{jid}.json").write_text(json.dumps({
-        "id": jid,
-        "name": name,
-        "state": "pending",
-        "tasks": [],
-        "artifacts": [],
-        "metadata": {},
-    }))
-    return jid[:8], jid
+    """Persist a job record with no project_id directly to the store."""
+    job = JobPlan(job_title=name)
+    save_job_plan(job, root=data_dir)
+    return job.job_id[:8], job.job_id
 
 
 def _get_project_slug(repo, env):
@@ -201,6 +192,36 @@ class TestScopedListingsCLI:
         assert "orphan-to-adopt" in result.stdout
         assert "(unscoped)" not in result.stdout
 
+    def test_adopting_a_pingpong_job_id_exits_cleanly_instead_of_crashing(
+        self, tmp_path, monkeypatch, capsys,
+    ):
+        """R-0882: adopt passed a resolved 16-hex id to ``UUID(...)`` and crashed.
+
+        IN-PROCESS on purpose: ``_env`` points a subprocess's PYTHONPATH at the
+        directory pytest was launched from, so a subprocess could import a
+        different tree than the one under test, and a red-proof that mutates
+        one tree while importing another cannot fail.
+        """
+        from apps.cli.commands.project import _cmd_project_adopt
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        data_dir = tmp_path / "data"
+        env = _env(data_dir)
+        repo_a = _git_repo(tmp_path, "alpha")
+        _init_project(repo_a, env)
+
+        pingpong_id = "0123456789abcdef"
+        save_job_plan(JobPlan(job_id=pingpong_id, job_title="pingpong"), root=data_dir)
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        monkeypatch.chdir(repo_a)
+        capsys.readouterr()
+
+        _cmd_project_adopt(pingpong_id)
+
+        assert "Adopted 01234567" in capsys.readouterr().out
+        assert load_job_plan(pingpong_id, root=data_dir).project_id
+
     def test_orphaned_label_on_deleted_project(self, tmp_path):
         data_dir = tmp_path / "data"
         env = _env(data_dir)
@@ -210,18 +231,8 @@ class TestScopedListingsCLI:
         _create_job(repo_a, env, "alpha job")
 
         # Create a job with a fake project_id (simulates deleted project)
-        jobs_dir = data_dir / "jobs"
-        orphan_id = str(uuid4())
         fake_project = str(uuid4())
-        (jobs_dir / f"{orphan_id}.json").write_text(json.dumps({
-            "id": orphan_id,
-            "name": "orphaned-job",
-            "state": "pending",
-            "tasks": [],
-            "artifacts": [],
-            "metadata": {},
-            "project_id": fake_project,
-        }))
+        save_job_plan(JobPlan(job_title="orphaned-job", project_id=fake_project), root=data_dir)
 
         # --all-projects listing should show orphaned label and not crash
         result = _run_cli(["job", "list", "--all-projects"], env, cwd=str(repo_a))
@@ -270,8 +281,8 @@ class TestScopedListingsCLI:
 # ---------------------------------------------------------------------------
 
 
-def _job(project_id: str | None = None, name: str = "j") -> Job:
-    return Job(name=name, project_id=project_id)
+def _job(project_id: str | None = None, name: str = "j") -> JobPlan:
+    return JobPlan(job_title=name, project_id=project_id)
 
 
 class TestTwoProjectIsolation:
@@ -303,6 +314,13 @@ class TestTwoProjectIsolation:
         scope = ProjectScope(project_id=_P1, all_projects=False, source="flag")
         assert not job_in_scope(legacy, scope, _legacy_visible=False)
 
+    def test_a_record_with_no_project_is_legacy(self):
+        """A unified record with no project spells it ``""``, never ``None`` (R-0886)."""
+        legacy = JobPlan(job_title="old")
+        scope = ProjectScope(project_id=_P1, all_projects=False, source="flag")
+        assert legacy.project_id == ""
+        assert job_in_scope(legacy, scope, _legacy_visible=True)
+
     def test_legacy_visible_under_all(self):
         legacy = _job(None, "old")
         scope = ProjectScope(project_id=None, all_projects=True, source="flag")
@@ -318,7 +336,7 @@ class TestScopedJobsIntegration:
 
         scope = ProjectScope(project_id=_P1, all_projects=False, source="flag")
         with patch(
-            "packages.orchestration.storage.list_jobs_safe",
+            "packages.orchestration.pingpong_job.list_job_plans_safe",
             return_value=(mock_jobs, False, []),
         ), patch(
             "packages.orchestration.project_scope._project_count",
@@ -326,7 +344,7 @@ class TestScopedJobsIntegration:
         ):
             jobs, degraded, skipped = scoped_jobs(scope)
 
-        names = [j.name for j in jobs]
+        names = [j.job_title for j in jobs]
         assert "alpha" in names
         assert "beta" not in names
         assert "old" not in names
@@ -340,7 +358,7 @@ class TestScopedJobsIntegration:
 
         scope = ProjectScope(project_id=None, all_projects=True, source="flag")
         with patch(
-            "packages.orchestration.storage.list_jobs_safe",
+            "packages.orchestration.pingpong_job.list_job_plans_safe",
             return_value=(mock_jobs, True, ["bad.json"]),
         ):
             jobs, degraded, skipped = scoped_jobs(scope)

@@ -10,10 +10,11 @@ from pathlib import Path
 
 import pytest
 
-from packages.core.models import ArtifactKind, Job, RunState, Task
+from packages.core.models import ArtifactKind, RunState
 from packages.orchestration import repair_loop as RL
 from packages.orchestration.approval_queue import get_patch_intent
-from packages.orchestration.storage import load_job, save_job
+from packages.orchestration.data_paths import normalize_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, load_job_plan, save_job_plan
 from packages.orchestration.test_failure_artifact import (
     TestFailureArtifact,
 )
@@ -25,15 +26,14 @@ from packages.orchestration.test_failure_artifact import (
 
 def _make_job_with_failure(data_dir, *, failure_kind="test_failed", exit_code=1,
                            safe_summary="Test test_failed: exit 1", related_files=None):
-    task = Task(description="orig task", status=RunState.COMPLETED)
-    job = Job(
-        name="repair-v1", tasks=[task],
-        permissions={"repo_generated_write": "allow", "repo_test_run": "allow"},
+    task = TaskEntry(title="orig task", status=RunState.COMPLETED)
+    job = JobPlan(
+        job_title="repair-v1", tasks=[task],
         metadata={"target_repo": "."},
     )
-    save_job(job, root=data_dir)
+    save_job_plan(job, root=data_dir)
     fail = TestFailureArtifact(
-        job_id=str(job.id), task_id=str(task.id), related_test_run_id="tr-abc12345",
+        job_id=str(job.job_id), task_id=str(task.task_id), related_test_run_id="tr-abc12345",
         related_apply_id="ap-xyz", failing_phase="test", command_safe="pytest -q",
         exit_code=exit_code, safe_summary=safe_summary, failure_kind=failure_kind,
         related_files=related_files or [],
@@ -42,19 +42,19 @@ def _make_job_with_failure(data_dir, *, failure_kind="test_failed", exit_code=1,
     from packages.core.models import Artifact as _A
     art = _A(
         name=f"test-failure-{fail.artifact_id}", content=fail.safe_summary[:500],
-        kind=ArtifactKind.VERIFICATION, task_id=task.id,
+        kind=ArtifactKind.VERIFICATION, task_id=str(task.task_id),
         metadata={
             "test_failure": True, "failure_kind": fail.failure_kind,
             "related_test_run_id": fail.related_test_run_id,
             "related_intent_id": "", "related_apply_id": fail.related_apply_id,
-            "related_task_id": str(task.id), "failing_phase": "test",
+            "related_task_id": str(task.task_id), "failing_phase": "test",
             "command_safe": fail.command_safe, "exit_code": fail.exit_code,
             "related_files": fail.related_files, "safe_summary": fail.safe_summary,
         },
     )
     job.artifacts.append(art)
-    save_job(job, root=data_dir)
-    return str(job.id), str(art.id), str(task.id)
+    save_job_plan(job, root=data_dir)
+    return str(job.job_id), str(art.id), str(task.task_id)
 
 
 @pytest.fixture()
@@ -151,7 +151,7 @@ class TestProposeFixtureBuilder:
         assert r.status == "approval_required"
         assert r.stop_reason == "approval_required"
         assert r.repair_intent_id
-        job = load_job(__import__("uuid").UUID(jid), data_dir)
+        job = load_job_plan(normalize_job_id(jid), data_dir)
         assert get_patch_intent(job, r.repair_intent_id) is not None
         assert r.next_safe_action.command == f"remedy patch approve {jid} {r.repair_intent_id}"
 
@@ -191,12 +191,11 @@ class TestIdempotency:
         assert r2.resumed is True
 
     def test_no_duplicate_task_artifact_intent(self, data_dir):
-        import uuid
         jid, fa, _ = _make_job_with_failure(data_dir)
         RL.run_repair_attempt(jid, fa, fixture_builder=True, data_dir=data_dir)
         RL.run_repair_attempt(jid, fa, fixture_builder=True, data_dir=data_dir)
         RL.run_repair_attempt(jid, fa, fixture_builder=True, data_dir=data_dir)
-        job = load_job(uuid.UUID(jid), data_dir)
+        job = load_job_plan(normalize_job_id(jid), data_dir)
         fix_tasks = [t for t in job.tasks if (t.inputs or {}).get("repair_fix_task")]
         repair_arts = [a for a in job.artifacts if (a.metadata or {}).get("repair_v1")]
         attempts = RL.load_repair_attempts(job)
@@ -224,16 +223,15 @@ class TestIdempotency:
 
 class TestProofAlignment:
     def test_repair_intent_not_applied_or_verified(self, data_dir):
-        import uuid
         jid, fa, _ = _make_job_with_failure(data_dir)
         r = RL.run_repair_attempt(jid, fa, fixture_builder=True, data_dir=data_dir)
-        job = load_job(uuid.UUID(jid), data_dir)
+        job = load_job_plan(normalize_job_id(jid), data_dir)
         intent = get_patch_intent(job, r.repair_intent_id)
         assert intent is not None
         assert intent.get("state") == "pending"  # not approved, not applied
         from packages.orchestration.proof_chain import PROOF_VERIFIED, build_proof_chain
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(data_dir, uuid.UUID(jid))
+        events = load_run_events(data_dir, jid)
         chain = build_proof_chain(job, events, data_dir=data_dir)
         for c in chain.changes:
             if c.intent_id == r.repair_intent_id:
@@ -249,7 +247,6 @@ class TestProofAlignment:
 class TestRedaction:
     def test_no_raw_leakage_in_result_and_events(self, data_dir):
         import json
-        import uuid
         jid, fa, _ = _make_job_with_failure(
             data_dir,
             safe_summary="Test test_failed: exit 1",  # safe summary is bounded
@@ -259,7 +256,7 @@ class TestRedaction:
         payload = json.dumps(RL.export_repair_attempt_json(r))
         ctx = RL.export_repair_context_json(RL.build_repair_context(jid, fa, data_dir))
         from packages.orchestration.timeline import load_run_events
-        events_blob = json.dumps(load_run_events(data_dir, uuid.UUID(jid)))
+        events_blob = json.dumps(load_run_events(data_dir, jid))
         for blob in (payload, json.dumps(ctx), events_blob):
             assert "Traceback" not in blob
             assert "/home/" not in blob

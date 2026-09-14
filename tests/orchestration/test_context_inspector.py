@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from packages.core.models import Artifact, ArtifactKind, Job, Task
+from packages.core.models import Artifact, ArtifactKind
 from packages.orchestration.context_inspector import (
     BUDGET_NEAR,
     BUDGET_OVER,
@@ -38,6 +38,7 @@ from packages.orchestration.context_inspector import (
     inspect_context,
     summarize_context_inspection,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -45,7 +46,7 @@ from packages.orchestration.context_inspector import (
 
 
 def _make_job(*, tasks=None, artifacts=None, user_prompt="Fix the bug"):
-    job = Job(name="test-job", user_prompt=user_prompt)
+    job = JobPlan(job_title="test-job", user_prompt=user_prompt)
     if tasks:
         job.tasks = tasks
     if artifacts:
@@ -414,7 +415,7 @@ class TestInspectContext:
             "pyproject.toml": "x",
             "src/auth.py": "def auth(): pass",
         })
-        task = Task(description="Fix auth bug", inputs={"target_path": "src/auth.py"})
+        task = TaskEntry(title="Fix auth bug", inputs={"target_path": "src/auth.py"})
         job = _make_job(tasks=[task])
         inspection = inspect_context(job, [], repo_root=repo)
         included_paths = {p.path for p in inspection.included_paths}
@@ -425,10 +426,10 @@ class TestInspectContext:
             "pyproject.toml": "x",
             "src/fix.py": "def fix(): pass",
         })
-        task = Task(description="Fix bug")
+        task = TaskEntry(title="Fix bug")
         art = Artifact(
             name="patch-intent", content="", kind=ArtifactKind.PATCH_INTENT,
-            task_id=task.id,
+            task_id=str(task.task_id),
             metadata={
                 "patch_intent_explanations": [{"file": "src/fix.py", "action": "modify", "risk": "low"}],
                 "patch_intent_approvals": {},
@@ -462,10 +463,10 @@ class TestInspectContext:
     def test_task_id_filter(self, tmp_path):
         """task_id accepted without crash."""
         repo = _make_repo(tmp_path)
-        task = Task(description="Task")
+        task = TaskEntry(title="Task")
         job = _make_job(tasks=[task])
-        inspection = inspect_context(job, [], task_id=str(task.id), repo_root=repo)
-        assert inspection.task_id == str(task.id)
+        inspection = inspect_context(job, [], task_id=str(task.task_id), repo_root=repo)
+        assert inspection.task_id == str(task.task_id)
 
     def test_budget_respected(self, tmp_path):
         repo = _make_repo(tmp_path, {
@@ -791,7 +792,7 @@ class TestStableSorting:
             "src/target.py": "t = 1",
             "src/zebra.py": "z = 1",
         })
-        task = Task(description="Fix", inputs={"target_path": "src/target.py"})
+        task = TaskEntry(title="Fix", inputs={"target_path": "src/target.py"})
         job = _make_job(tasks=[task])
         inspection = inspect_context(job, [], repo_root=repo)
         source_paths = [p for p in inspection.included_paths if p.category == "source"]

@@ -84,7 +84,7 @@ def _make_artifact(
         name=f"task_output_{task_type}",
         content="Builder Execution Output\n\nProposed Changes:\n  - change A",
         mime_type="text/plain",
-        task_id=task_id or uuid4(),
+        task_id=str(task_id or uuid4()),
         metadata={"task_type": task_type, "summary": summary},
     )
 
@@ -129,20 +129,20 @@ class TestPatchIntentSetModel:
     def test_empty_intents_is_valid(self):
         task_id = uuid4()
         artifact_id = uuid4()
-        pis = PatchIntentSet(task_id=task_id, artifact_id=artifact_id)
+        pis = PatchIntentSet(task_id=str(task_id), artifact_id=artifact_id)
         assert pis.intents == []
 
     def test_serialization_round_trip(self):
         task_id = uuid4()
         artifact_id = uuid4()
         pis = PatchIntentSet(
-            task_id=task_id,
+            task_id=str(task_id),
             artifact_id=artifact_id,
             intents=[PatchIntent(target_path="README.md", intent="Update")],
         )
         raw = pis.model_dump_json()
         pis2 = PatchIntentSet.model_validate_json(raw)
-        assert pis2.task_id == task_id
+        assert pis2.task_id == str(task_id)
         assert len(pis2.intents) == 1
         assert pis2.intents[0].target_path == "README.md"
 
@@ -230,12 +230,12 @@ class TestDerivePatchIntents:
 
 class TestVerifyPatchIntentSet:
     def test_empty_set_is_valid(self):
-        pis = PatchIntentSet(task_id=uuid4(), artifact_id=uuid4())
+        pis = PatchIntentSet(task_id=str(uuid4()), artifact_id=uuid4())
         assert verify_patch_intent_set(pis) == []
 
     def test_valid_relative_md_path_is_valid(self):
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="README.md", intent="Update")],
         )
@@ -243,7 +243,7 @@ class TestVerifyPatchIntentSet:
 
     def test_absolute_path_is_rejected(self):
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="/etc/passwd", intent="bad")],
         )
@@ -252,7 +252,7 @@ class TestVerifyPatchIntentSet:
 
     def test_traversal_is_rejected(self):
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="../outside/repo.md", intent="bad")],
         )
@@ -261,7 +261,7 @@ class TestVerifyPatchIntentSet:
 
     def test_non_md_extension_is_rejected(self):
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="src/main.py", intent="Edit source")],
         )
@@ -270,7 +270,7 @@ class TestVerifyPatchIntentSet:
 
     def test_empty_intent_string_is_rejected(self):
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="README.md", intent="")],
         )
@@ -295,7 +295,7 @@ class TestMaterializePatchIntents:
     def test_empty_set_returns_none(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         runtime = LocalWorkspaceRuntime(job_id=uuid4())
-        pis = PatchIntentSet(task_id=uuid4(), artifact_id=uuid4())
+        pis = PatchIntentSet(task_id=str(uuid4()), artifact_id=uuid4())
         result = materialize_patch_intents(pis, runtime, 0, "test")
         assert result is None
 
@@ -304,7 +304,7 @@ class TestMaterializePatchIntents:
         runtime = LocalWorkspaceRuntime(job_id=uuid4())
         task_id = uuid4()
         pis = PatchIntentSet(
-            task_id=task_id,
+            task_id=str(task_id),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="README.md", intent="Update readme")],
         )
@@ -317,7 +317,7 @@ class TestMaterializePatchIntents:
         runtime = LocalWorkspaceRuntime(job_id=uuid4())
         task_id = uuid4()
         pis = PatchIntentSet(
-            task_id=task_id,
+            task_id=str(task_id),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="README.md", intent="Update")],
         )
@@ -332,7 +332,7 @@ class TestMaterializePatchIntents:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         runtime = LocalWorkspaceRuntime(job_id=uuid4())
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="README.md", intent="Update")],
         )
@@ -346,7 +346,7 @@ class TestMaterializePatchIntents:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         runtime = LocalWorkspaceRuntime(job_id=uuid4())
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="README.md", intent="Update")],
         )
@@ -412,7 +412,7 @@ class TestDerivePatchIntentsInvariantGuards:
 class TestVerifyNullBytePath:
     def test_null_byte_in_path_is_rejected(self):
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="README\x00.md", intent="bad")],
         )
@@ -421,7 +421,7 @@ class TestVerifyNullBytePath:
 
     def test_clean_path_not_flagged_for_null_byte(self):
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="README.md", intent="Update")],
         )
@@ -493,7 +493,7 @@ class TestPatchIntentErrorSurfacing:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         artifact = _make_artifact(task_type="write_readme", summary="Update readme")
         pis = PatchIntentSet(
-            task_id=artifact.task_id,
+            task_id=str(artifact.task_id),
             artifact_id=artifact.id,
             intents=[PatchIntent(target_path="/etc/passwd", intent="bad")],
         )
@@ -509,7 +509,7 @@ class TestPatchIntentErrorSurfacing:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         runtime = LocalWorkspaceRuntime(job_id=uuid4())
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="/etc/passwd", intent="bad")],
         )
@@ -593,7 +593,7 @@ class TestGenerateDryRunPreview:
         return derive_patch_intents(artifact, task_type)
 
     def test_empty_intents_returns_empty_list(self):
-        pis = PatchIntentSet(task_id=uuid4(), artifact_id=uuid4(), intents=[])
+        pis = PatchIntentSet(task_id=str(uuid4()), artifact_id=uuid4(), intents=[])
         results = generate_dry_run_preview(pis, _SAMPLE_CONTENT, "unknown")
         assert results == []
 
@@ -728,7 +728,7 @@ class TestClassifyRisk:
 
     def test_risk_level_on_dry_run_result_preview_only(self):
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="README.md", intent="some intent")],
         )
@@ -737,7 +737,7 @@ class TestClassifyRisk:
 
     def test_risk_level_on_dry_run_result_create(self, tmp_path):
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="README.md", intent="some intent")],
         )
@@ -748,7 +748,7 @@ class TestClassifyRisk:
     def test_risk_level_on_dry_run_result_modify(self, tmp_path):
         (tmp_path / "README.md").write_text("# existing\n")
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="README.md", intent="some intent")],
         )
@@ -798,7 +798,7 @@ class TestGenerateDryRunPreviewBoundary:
 
     def _make_pis(self, target_path: str) -> PatchIntentSet:
         return PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path=target_path, intent="some intent")],
         )
@@ -828,7 +828,7 @@ class TestGenerateDryRunPreviewBoundary:
         independent boundary guard via resolve() + is_relative_to().
         """
         pis = PatchIntentSet(
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             artifact_id=uuid4(),
             intents=[PatchIntent(target_path="../outside.md", intent="escape")],
         )

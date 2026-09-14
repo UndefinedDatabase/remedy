@@ -23,21 +23,21 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
 from packages.orchestration.permissions import Capability, set_permission
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.run_log import read_run_events
-from packages.orchestration.storage import save_job
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_and_save_job(tmp_path, monkeypatch, **metadata_overrides) -> Job:
+def _make_and_save_job(tmp_path, monkeypatch, **metadata_overrides) -> JobPlan:
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-    job = Job(name="test", state=RunState.PENDING)
+    job = JobPlan(job_title="test", state=RunState.PENDING)
     job.metadata.update(metadata_overrides)
-    save_job(job)
+    save_job_plan(job)
     return job
 
 
@@ -73,17 +73,17 @@ class TestPlanJobLocalRunLog:
         """Return (mock_planner_cls, mock_planner_instance, mock_plan_job_with_llm)."""
         from packages.orchestration.job_runner import PlanJobResult
 
-        job_holder: list[Job] = []
+        job_holder: list[JobPlan] = []
 
         # Mirrors plan_job_with_llm's real signature (llm_planner.py:105): F115
         # added the keyword-only on_prompt_composed hook, and a double that drops
         # it turns the CLI call into a TypeError that job.py swallows as exit 1.
         def fake_plan_job_with_llm(job, _call_planner, *, on_prompt_composed=None):
             if changed:
-                from packages.core.models import Task
+                from packages.orchestration.pingpong_job import TaskEntry
 
                 for i in range(task_count):
-                    task = Task(description=f"task {i}", inputs={"task_type": f"type_{i}"})
+                    task = TaskEntry(title=f"task {i}", inputs={"task_type": f"type_{i}"})
                     job.tasks.append(task)
             return PlanJobResult(job=job, changed=changed)
 
@@ -111,9 +111,9 @@ class TestPlanJobLocalRunLog:
         ):
             from apps.cli.commands.job import _cmd_plan_job_local
 
-            _cmd_plan_job_local(str(job.id))
+            _cmd_plan_job_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         assert any(e["event"] == "planning_started" for e in events)
 
     def test_writes_planning_completed_on_success(self, tmp_path, monkeypatch):
@@ -133,9 +133,9 @@ class TestPlanJobLocalRunLog:
         ):
             from apps.cli.commands.job import _cmd_plan_job_local
 
-            _cmd_plan_job_local(str(job.id))
+            _cmd_plan_job_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         assert any(e["event"] == "planning_completed" for e in events)
 
     def test_planning_completed_outcome_changed(self, tmp_path, monkeypatch):
@@ -155,9 +155,9 @@ class TestPlanJobLocalRunLog:
         ):
             from apps.cli.commands.job import _cmd_plan_job_local
 
-            _cmd_plan_job_local(str(job.id))
+            _cmd_plan_job_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         completed = next(e for e in events if e["event"] == "planning_completed")
         assert completed["outcome"] == "changed"
 
@@ -179,9 +179,9 @@ class TestPlanJobLocalRunLog:
         ):
             from apps.cli.commands.job import _cmd_plan_job_local
 
-            _cmd_plan_job_local(str(job.id))
+            _cmd_plan_job_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         completed = next(e for e in events if e["event"] == "planning_completed")
         assert completed["outcome"] == "noop"
 
@@ -204,9 +204,9 @@ class TestPlanJobLocalRunLog:
         ):
             from apps.cli.commands.job import _cmd_plan_job_local
 
-            _cmd_plan_job_local(str(job.id))
+            _cmd_plan_job_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         started = next(e for e in events if e["event"] == "planning_started")
         assert started["provider"] == "ollama"
         assert started["role"] == "planner"
@@ -229,7 +229,7 @@ class TestPlanJobLocalRunLog:
         ):
             from apps.cli.commands.job import _cmd_plan_job_local
 
-            _cmd_plan_job_local(str(job.id))
+            _cmd_plan_job_local(str(job.job_id))
 
         out = capsys.readouterr().out
         assert "log=" in out
@@ -243,37 +243,37 @@ class TestPlanJobLocalRunLog:
 class TestRunNextTaskLocalNoop:
     def test_noop_writes_task_run_noop(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test", state=RunState.PENDING)
-        save_job(job)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
+        save_job_plan(job)
 
         from apps.cli.commands.job import _cmd_run_next_task_local
 
-        _cmd_run_next_task_local(str(job.id))
+        _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         assert any(e["event"] == "task_run_noop" for e in events)
 
     def test_noop_outcome_is_no_pending_tasks(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test", state=RunState.PENDING)
-        save_job(job)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
+        save_job_plan(job)
 
         from apps.cli.commands.job import _cmd_run_next_task_local
 
-        _cmd_run_next_task_local(str(job.id))
+        _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         noop = next(e for e in events if e["event"] == "task_run_noop")
         assert noop["outcome"] == "no_pending_tasks"
 
     def test_noop_output_includes_log_path(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test", state=RunState.PENDING)
-        save_job(job)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
+        save_job_plan(job)
 
         from apps.cli.commands.job import _cmd_run_next_task_local
 
-        _cmd_run_next_task_local(str(job.id))
+        _cmd_run_next_task_local(str(job.job_id))
 
         out = capsys.readouterr().out
         assert "log=" in out
@@ -284,7 +284,7 @@ class TestRunNextTaskLocalNoop:
 # ---------------------------------------------------------------------------
 
 
-def _build_success_mocks(tmp_path, job: Job, task: Task):
+def _build_success_mocks(tmp_path, job: JobPlan, task: TaskEntry):
     """Build a complete set of mock objects for a successful run-next-task-local call."""
     from packages.orchestration.task_runner import RunTaskResult
     from packages.orchestration.verifier import VerificationResult
@@ -297,11 +297,11 @@ def _build_success_mocks(tmp_path, job: Job, task: Task):
             "  - Change A\n  - Change B\n\nNotes:\n  - None\n"
         ),
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.task_id),
         kind=ArtifactKind.BUILDER_PROPOSAL,
         metadata={"task_type": task.inputs.get("task_type", "unknown"), "summary": "done"},
     )
-    task.output_artifact_ids.append(artifact.id)
+    task.output_artifact_ids.append(str(artifact.id))
     job.artifacts.append(artifact)
 
     ws_file = tmp_path / "fake_ws.txt"
@@ -309,13 +309,13 @@ def _build_success_mocks(tmp_path, job: Job, task: Task):
     artifact.metadata["workspace_file"] = str(ws_file)
     task.status = RunState.RUNNING
 
-    run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
-    vr = VerificationResult(task_id=task.id, passed=True, checks=[])
+    run_result = RunTaskResult(job=job, task_id=task.task_id, changed=True)
+    vr = VerificationResult(task_id=task.task_id, passed=True, checks=[])
     fake_mf = MaterializedFile(path=ws_file, content="  - Change A\n", size=14)
 
     def fake_finalize(r, v):
         for t in r.job.tasks:
-            if t.id == r.task_id:
+            if t.task_id == r.task_id:
                 t.status = RunState.COMPLETED
 
     return run_result, vr, fake_mf, fake_finalize
@@ -327,10 +327,10 @@ class TestRunNextTaskLocalSuccess:
     def _run_success(self, tmp_path, monkeypatch, task_type="write_readme"):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        job = Job(name="test", state=RunState.RUNNING)
-        task = Task(description="write readme", inputs={"task_type": task_type})
+        job = JobPlan(job_title="test", state=RunState.RUNNING)
+        task = TaskEntry(title="write readme", inputs={"task_type": task_type})
         job.tasks.append(task)
-        save_job(job)
+        save_job_plan(job)
 
         run_result, vr, fake_mf, fake_finalize = _build_success_mocks(tmp_path, job, task)
 
@@ -363,9 +363,9 @@ class TestRunNextTaskLocalSuccess:
         ):
             from apps.cli.commands.job import _cmd_run_next_task_local
 
-            _cmd_run_next_task_local(str(job.id))
+            _cmd_run_next_task_local(str(job.job_id))
 
-        return job, _run_events_for_job(tmp_path, job.id)
+        return job, _run_events_for_job(tmp_path, job.job_id)
 
     def test_writes_task_run_started(self, tmp_path, monkeypatch):
         _, events = self._run_success(tmp_path, monkeypatch)
@@ -428,20 +428,20 @@ class TestRunNextTaskVerificationFailure:
     def _run_verification_failure(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        job = Job(name="test", state=RunState.RUNNING)
-        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job = JobPlan(job_title="test", state=RunState.RUNNING)
+        task = TaskEntry(title="write readme", inputs={"task_type": "write_readme"})
         job.tasks.append(task)
-        save_job(job)
+        save_job_plan(job)
 
         artifact = Artifact(
             name="task_output_write_readme",
             content="Missing sections",
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.task_id),
             kind=ArtifactKind.BUILDER_PROPOSAL,
             metadata={"task_type": "write_readme", "summary": "done"},
         )
-        task.output_artifact_ids.append(artifact.id)
+        task.output_artifact_ids.append(str(artifact.id))
         job.artifacts.append(artifact)
         task.status = RunState.RUNNING
 
@@ -449,9 +449,9 @@ class TestRunNextTaskVerificationFailure:
         from packages.orchestration.verifier import VerificationCheckResult, VerificationResult
         from packages.orchestration.workspace import MaterializedFile
 
-        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
+        run_result = RunTaskResult(job=job, task_id=task.task_id, changed=True)
         vr = VerificationResult(
-            task_id=task.id,
+            task_id=task.task_id,
             passed=False,
             checks=[
                 VerificationCheckResult(
@@ -467,7 +467,7 @@ class TestRunNextTaskVerificationFailure:
 
         def fake_finalize(r, v):
             for t in r.job.tasks:
-                if t.id == r.task_id:
+                if t.task_id == r.task_id:
                     t.status = RunState.PENDING
 
         builder_instance = MagicMock()
@@ -500,9 +500,9 @@ class TestRunNextTaskVerificationFailure:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        return _run_events_for_job(tmp_path, job.id)
+        return _run_events_for_job(tmp_path, job.job_id)
 
     def test_writes_verification_failed(self, tmp_path, monkeypatch):
         events = self._run_verification_failure(tmp_path, monkeypatch)
@@ -543,12 +543,12 @@ class TestRunNextTaskRepoPermissionDenied:
         repo_dir = tmp_path / "repo"
         repo_dir.mkdir()
 
-        job = Job(name="test", state=RunState.RUNNING)
+        job = JobPlan(job_title="test", state=RunState.RUNNING)
         job.metadata["target_repo"] = str(repo_dir)
         set_permission(job, Capability.repo_generated_write, allow=False)
-        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        task = TaskEntry(title="write readme", inputs={"task_type": "write_readme"})
         job.tasks.append(task)
-        save_job(job)
+        save_job_plan(job)
 
         artifact = Artifact(
             name="task_output_write_readme",
@@ -557,11 +557,11 @@ class TestRunNextTaskRepoPermissionDenied:
                 "  - Change A\n  - Change B\n\nNotes:\n  - None\n"
             ),
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.task_id),
             kind=ArtifactKind.BUILDER_PROPOSAL,
             metadata={"task_type": "write_readme", "summary": "done"},
         )
-        task.output_artifact_ids.append(artifact.id)
+        task.output_artifact_ids.append(str(artifact.id))
         job.artifacts.append(artifact)
 
         ws_file = tmp_path / "fake_ws.txt"
@@ -573,13 +573,13 @@ class TestRunNextTaskRepoPermissionDenied:
         from packages.orchestration.verifier import VerificationResult
         from packages.orchestration.workspace import MaterializedFile
 
-        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
-        vr = VerificationResult(task_id=task.id, passed=True, checks=[])
+        run_result = RunTaskResult(job=job, task_id=task.task_id, changed=True)
+        vr = VerificationResult(task_id=task.task_id, passed=True, checks=[])
         fake_mf = MaterializedFile(path=ws_file, content="  - Change A\n", size=14)
 
         def fake_finalize(r, v):
             for t in r.job.tasks:
-                if t.id == r.task_id:
+                if t.task_id == r.task_id:
                     t.status = RunState.COMPLETED
 
         builder_instance = MagicMock()
@@ -611,9 +611,9 @@ class TestRunNextTaskRepoPermissionDenied:
         ):
             from apps.cli.commands.job import _cmd_run_next_task_local
 
-            _cmd_run_next_task_local(str(job.id))
+            _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         skipped = next(
             (e for e in events if e["event"] == "repo_application_skipped"), None
         )
@@ -633,10 +633,10 @@ class TestRunNextTaskPatchIntentCreated:
         """Patch intent creation logs patch_intent_created with count and risk_levels."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        job = Job(name="test", state=RunState.RUNNING)
-        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job = JobPlan(job_title="test", state=RunState.RUNNING)
+        task = TaskEntry(title="write readme", inputs={"task_type": "write_readme"})
         job.tasks.append(task)
-        save_job(job)
+        save_job_plan(job)
 
         artifact = Artifact(
             name="task_output_write_readme",
@@ -645,11 +645,11 @@ class TestRunNextTaskPatchIntentCreated:
                 "  - Change A\n  - Change B\n\nNotes:\n  - None\n"
             ),
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.task_id),
             kind=ArtifactKind.BUILDER_PROPOSAL,
             metadata={"task_type": "write_readme", "summary": "done"},
         )
-        task.output_artifact_ids.append(artifact.id)
+        task.output_artifact_ids.append(str(artifact.id))
         job.artifacts.append(artifact)
 
         ws_file = tmp_path / "fake_ws.txt"
@@ -665,12 +665,12 @@ class TestRunNextTaskPatchIntentCreated:
         from packages.orchestration.verifier import VerificationResult
         from packages.orchestration.workspace import MaterializedFile
 
-        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
-        vr = VerificationResult(task_id=task.id, passed=True, checks=[])
+        run_result = RunTaskResult(job=job, task_id=task.task_id, changed=True)
+        vr = VerificationResult(task_id=task.task_id, passed=True, checks=[])
         fake_mf = MaterializedFile(path=ws_file, content="  - Change A\n", size=14)
 
         fake_pis = PatchIntentSet(
-            task_id=task.id,
+            task_id=str(task.task_id),
             artifact_id=artifact.id,
             intents=[
                 PatchIntent(
@@ -685,7 +685,7 @@ class TestRunNextTaskPatchIntentCreated:
 
         def fake_finalize(r, v):
             for t in r.job.tasks:
-                if t.id == r.task_id:
+                if t.task_id == r.task_id:
                     t.status = RunState.COMPLETED
 
         builder_instance = MagicMock()
@@ -733,9 +733,9 @@ class TestRunNextTaskPatchIntentCreated:
         ):
             from apps.cli.commands.job import _cmd_run_next_task_local
 
-            _cmd_run_next_task_local(str(job.id))
+            _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         created = next(
             (e for e in events if e["event"] == "patch_intent_created"), None
         )
@@ -749,10 +749,10 @@ class TestRunNextTaskPatchIntentCreated:
         """Patch intent explanations carry a created_at timestamp (F262 T002)."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        job = Job(name="test", state=RunState.RUNNING)
-        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job = JobPlan(job_title="test", state=RunState.RUNNING)
+        task = TaskEntry(title="write readme", inputs={"task_type": "write_readme"})
         job.tasks.append(task)
-        save_job(job)
+        save_job_plan(job)
 
         artifact = Artifact(
             name="task_output_write_readme",
@@ -761,11 +761,11 @@ class TestRunNextTaskPatchIntentCreated:
                 "  - Change A\n  - Change B\n\nNotes:\n  - None\n"
             ),
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.task_id),
             kind=ArtifactKind.BUILDER_PROPOSAL,
             metadata={"task_type": "write_readme", "summary": "done"},
         )
-        task.output_artifact_ids.append(artifact.id)
+        task.output_artifact_ids.append(str(artifact.id))
         job.artifacts.append(artifact)
 
         ws_file = tmp_path / "fake_ws.txt"
@@ -782,12 +782,12 @@ class TestRunNextTaskPatchIntentCreated:
         from packages.orchestration.verifier import VerificationResult
         from packages.orchestration.workspace import MaterializedFile
 
-        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
-        vr = VerificationResult(task_id=task.id, passed=True, checks=[])
+        run_result = RunTaskResult(job=job, task_id=task.task_id, changed=True)
+        vr = VerificationResult(task_id=task.task_id, passed=True, checks=[])
         fake_mf = MaterializedFile(path=ws_file, content="  - Change A\n", size=14)
 
         fake_pis = PatchIntentSet(
-            task_id=task.id,
+            task_id=str(task.task_id),
             artifact_id=artifact.id,
             intents=[
                 PatchIntent(
@@ -812,7 +812,7 @@ class TestRunNextTaskPatchIntentCreated:
 
         def fake_finalize(r, v):
             for t in r.job.tasks:
-                if t.id == r.task_id:
+                if t.task_id == r.task_id:
                     t.status = RunState.COMPLETED
 
         builder_instance = MagicMock()
@@ -860,11 +860,11 @@ class TestRunNextTaskPatchIntentCreated:
         ):
             from apps.cli.commands.job import _cmd_run_next_task_local
 
-            _cmd_run_next_task_local(str(job.id))
+            _cmd_run_next_task_local(str(job.job_id))
 
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
-        reloaded = load_job(job.id)
+        reloaded = load_job_plan(job.job_id)
         explanations = reloaded.artifacts[0].metadata["patch_intent_explanations"]
         assert explanations[0]["created_at"]
 
@@ -882,18 +882,18 @@ class TestRunNextTaskWorkspaceWriteDenialTerminal:
 
         from packages.orchestration.permissions import Capability, set_permission
 
-        job = Job(name="test", state=RunState.RUNNING)
-        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job = JobPlan(job_title="test", state=RunState.RUNNING)
+        task = TaskEntry(title="write readme", inputs={"task_type": "write_readme"})
         job.tasks.append(task)
         set_permission(job, Capability.workspace_write, allow=False)
-        save_job(job)
+        save_job_plan(job)
 
         from apps.cli.commands.job import _cmd_run_next_task_local
 
         with pytest.raises(SystemExit):
-            _cmd_run_next_task_local(str(job.id))
+            _cmd_run_next_task_local(str(job.job_id))
 
-        return _run_events_for_job(tmp_path, job.id)
+        return _run_events_for_job(tmp_path, job.job_id)
 
     def test_task_run_started_is_logged(self, tmp_path, monkeypatch):
         events = self._run_denied(tmp_path, monkeypatch)
@@ -935,10 +935,10 @@ class TestRunNextTaskWorkspaceWriteDenialTerminal:
 
 def _make_task_job(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-    job = Job(name="test", state=RunState.RUNNING)
-    task = Task(description="write readme", inputs={"task_type": "write_readme"})
+    job = JobPlan(job_title="test", state=RunState.RUNNING)
+    task = TaskEntry(title="write readme", inputs={"task_type": "write_readme"})
     job.tasks.append(task)
-    save_job(job)
+    save_job_plan(job)
     return job, task
 
 
@@ -953,9 +953,9 @@ class TestRunNextTaskImportErrorTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         assert "task_run_failed" in _event_names(events)
 
     def test_import_error_outcome_is_missing_dependency(self, tmp_path, monkeypatch):
@@ -968,9 +968,9 @@ class TestRunNextTaskImportErrorTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         ev = next(e for e in events if e["event"] == "task_run_failed")
         assert ev["outcome"] == "missing_dependency"
 
@@ -985,9 +985,9 @@ class TestRunNextTaskImportErrorTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        log_path = _find_run_log(tmp_path, job.id)
+        log_path = _find_run_log(tmp_path, job.job_id)
         assert log_path is not None
         assert secret_msg not in log_path.read_text(encoding="utf-8")
 
@@ -1002,9 +1002,9 @@ class TestRunNextTaskImportErrorTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         names = _event_names(events)
         terminal = {"task_run_completed", "task_run_failed", "task_run_noop"}
         assert names.count("task_run_started") == 1
@@ -1042,9 +1042,9 @@ class TestRunNextTaskValidationErrorTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         assert "task_run_failed" in _event_names(events)
 
     def test_validation_error_outcome_is_invalid_builder_output(self, tmp_path, monkeypatch):
@@ -1064,9 +1064,9 @@ class TestRunNextTaskValidationErrorTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         ev = next(e for e in events if e["event"] == "task_run_failed")
         assert ev["outcome"] == "invalid_builder_output"
 
@@ -1086,9 +1086,9 @@ class TestRunNextTaskValidationErrorTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        log_path = _find_run_log(tmp_path, job.id)
+        log_path = _find_run_log(tmp_path, job.job_id)
         assert log_path is not None
         raw = log_path.read_text(encoding="utf-8")
         # The log must record error_category, not the full pydantic error text
@@ -1109,9 +1109,9 @@ class TestRunNextTaskValidationErrorTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        names = _event_names(_run_events_for_job(tmp_path, job.id))
+        names = _event_names(_run_events_for_job(tmp_path, job.job_id))
         terminal = {"task_run_completed", "task_run_failed", "task_run_noop"}
         assert names.count("task_run_started") == 1
         assert sum(names.count(t) for t in terminal) == 1
@@ -1135,9 +1135,9 @@ class TestRunNextTaskValueErrorTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         assert "task_run_failed" in _event_names(events)
 
     def test_value_error_outcome_is_configuration_error(self, tmp_path, monkeypatch):
@@ -1156,9 +1156,9 @@ class TestRunNextTaskValueErrorTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         ev = next(e for e in events if e["event"] == "task_run_failed")
         assert ev["outcome"] == "configuration_error"
 
@@ -1176,9 +1176,9 @@ class TestRunNextTaskValueErrorTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        names = _event_names(_run_events_for_job(tmp_path, job.id))
+        names = _event_names(_run_events_for_job(tmp_path, job.job_id))
         terminal = {"task_run_completed", "task_run_failed", "task_run_noop"}
         assert names.count("task_run_started") == 1
         assert sum(names.count(t) for t in terminal) == 1
@@ -1202,9 +1202,9 @@ class TestRunNextTaskGenericExceptionTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         assert "task_run_failed" in _event_names(events)
 
     def test_generic_exception_outcome_is_builder_error(self, tmp_path, monkeypatch):
@@ -1223,9 +1223,9 @@ class TestRunNextTaskGenericExceptionTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         ev = next(e for e in events if e["event"] == "task_run_failed")
         assert ev["outcome"] == "builder_error"
 
@@ -1245,9 +1245,9 @@ class TestRunNextTaskGenericExceptionTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        events = _run_events_for_job(tmp_path, job.id)
+        events = _run_events_for_job(tmp_path, job.job_id)
         ev = next(e for e in events if e["event"] == "task_run_failed")
         assert ev["metadata"].get("error_category") == "RuntimeError"
 
@@ -1268,9 +1268,9 @@ class TestRunNextTaskGenericExceptionTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        log_path = _find_run_log(tmp_path, job.id)
+        log_path = _find_run_log(tmp_path, job.job_id)
         assert log_path is not None
         assert secret_msg not in log_path.read_text(encoding="utf-8")
 
@@ -1288,9 +1288,9 @@ class TestRunNextTaskGenericExceptionTerminal:
             from apps.cli.commands.job import _cmd_run_next_task_local
 
             with pytest.raises(SystemExit):
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
 
-        names = _event_names(_run_events_for_job(tmp_path, job.id))
+        names = _event_names(_run_events_for_job(tmp_path, job.job_id))
         terminal = {"task_run_completed", "task_run_failed", "task_run_noop"}
         assert names.count("task_run_started") == 1
         assert sum(names.count(t) for t in terminal) == 1
@@ -1306,14 +1306,14 @@ class TestRunNextTaskBuilderNoChange:
     def _run_no_change(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
-        job = Job(name="test", state=RunState.RUNNING)
-        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job = JobPlan(job_title="test", state=RunState.RUNNING)
+        task = TaskEntry(title="write readme", inputs={"task_type": "write_readme"})
         job.tasks.append(task)
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.task_runner import RunTaskResult
 
-        run_result = RunTaskResult(job=job, task_id=task.id, changed=False)
+        run_result = RunTaskResult(job=job, task_id=task.task_id, changed=False)
 
         builder_instance = MagicMock()
         builder_instance.model = "test-model"
@@ -1328,9 +1328,9 @@ class TestRunNextTaskBuilderNoChange:
         ):
             from apps.cli.commands.job import _cmd_run_next_task_local
 
-            _cmd_run_next_task_local(str(job.id))
+            _cmd_run_next_task_local(str(job.job_id))
 
-        return _run_events_for_job(tmp_path, job.id)
+        return _run_events_for_job(tmp_path, job.job_id)
 
     def test_logs_task_run_noop(self, tmp_path, monkeypatch):
         events = self._run_no_change(tmp_path, monkeypatch)
@@ -1381,8 +1381,8 @@ class TestPlanJobLocalPlanningFailed:
         if exc_to_raise is None:
             exc_to_raise = RuntimeError("secret-token abc123")
 
-        job = Job(name="test", state=RunState.PENDING)
-        save_job(job)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
+        save_job_plan(job)
 
         planner_instance = MagicMock()
         planner_instance.model = "test-model"
@@ -1400,9 +1400,9 @@ class TestPlanJobLocalPlanningFailed:
             from apps.cli.commands.job import _cmd_plan_job_local
 
             with pytest.raises(SystemExit):
-                _cmd_plan_job_local(str(job.id))
+                _cmd_plan_job_local(str(job.job_id))
 
-        return _run_events_for_job(tmp_path, job.id)
+        return _run_events_for_job(tmp_path, job.job_id)
 
     def test_planning_failed_event_written(self, tmp_path, monkeypatch):
         events = self._run_planning_failed(tmp_path, monkeypatch)

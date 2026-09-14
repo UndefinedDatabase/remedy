@@ -57,6 +57,24 @@ class TestCatalogIntegrity:
             assert group == cmd.group_id, f"command_id prefix mismatch: {cmd.command_id}"
             assert sub == cmd.subcommand, f"command_id suffix mismatch: {cmd.command_id}"
 
+    def test_every_related_reference_resolves_to_a_live_command(self) -> None:
+        """R-0859: nothing here resolved `related=` against the catalog.
+
+        A deletion round removes a command and its own entry, and the entries
+        that POINT at it keep pointing. Every other guard in this class reads
+        an entry's own fields, so a cross-reference to a command that no
+        longer exists was invisible to all of them — and `remedy list` then
+        offers the reader a sibling that resolves to nothing.
+        """
+        live = {cmd.command_id for cmd in CATALOG}
+        dangling = sorted(
+            (cmd.command_id, ref)
+            for cmd in CATALOG
+            for ref in (cmd.related or ())
+            if ref not in live
+        )
+        assert dangling == [], f"related= names commands that do not exist: {dangling}"
+
 
 class TestCatalogClassification:
     def test_every_command_has_action_class(self) -> None:
@@ -82,20 +100,20 @@ class TestCatalogExpensive:
                 f"{cmd.command_id}.is_expensive must be a bool"
             )
 
-    def test_exactly_job_run_is_marked_expensive_so_far(self) -> None:
+    def test_exactly_one_command_is_marked_expensive_so_far(self) -> None:
         marked = sorted(cmd.command_id for cmd in CATALOG if cmd.is_expensive)
-        assert marked == ["job.run"], (
-            f"F114 T003 has only marked job.run so far; found {marked}"
+        assert marked == ["job.resume"], (
+            f"F114 T003 marks exactly the one expensive command; found {marked}"
         )
 
     def test_job_run_is_expensive(self) -> None:
-        assert get_command("job.run").is_expensive is True
+        assert get_command("job.resume").is_expensive is True
 
     def test_job_run_has_a_yes_flag_to_skip_the_cost_confirmation(self) -> None:
-        args = get_command("job.run").args
+        args = get_command("job.resume").args
         yes_args = [a for a in args if a.name == "--yes"]
-        assert len(yes_args) == 1, "job.run must declare exactly one --yes arg"
-        assert yes_args[0].is_flag is True, "job.run's --yes must be a flag, not a valued option"
+        assert len(yes_args) == 1, "job.resume must declare exactly one --yes arg"
+        assert yes_args[0].is_flag is True, "job.resume's --yes must be a flag, not a valued option"
 
 
 class TestListCommandOptions:
@@ -231,7 +249,7 @@ class TestRequiredCommands:
 
     REQUIRED = (
         "job.create", "job.list", "job.show", "job.attach-repo", "job.permit",
-        "job.permissions", "job.run-next",
+        "job.permissions",
         "project.create", "project.list", "project.show", "project.attach-repo",
         "project.attach-job", "project.context",
         "patch.list", "patch.show", "patch.approve", "patch.reject", "patch.apply",

@@ -252,8 +252,8 @@ class TestRealOllamaEval:
         from packages.providers.ollama_builder.provider import OllamaBuilder
 
         ctx = TaskExecutionContext(
-            job_id=uuid4(),
-            task_id=uuid4(),
+            job_id=str(uuid4()),
+            task_id=str(uuid4()),
             job_prompt="Add hello function",
             task_type="code_change",
             task_description="Add def hello(): return 'hello' to app.py",

@@ -18,8 +18,9 @@ if str(_ROOT) not in sys.path:
 
 
 def _make_job(*, tasks=None, name="test", metadata=None):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if metadata:
         job.metadata = dict(metadata)
     if tasks:
@@ -27,7 +28,7 @@ def _make_job(*, tasks=None, name="test", metadata=None):
             task_type = t.get("type", "readme_draft")
             inputs = dict(t.get("metadata", {}))
             inputs.setdefault("task_type", task_type)
-            task = Task(description=t.get("description", task_type), inputs=inputs)
+            task = TaskEntry(title=t.get("description", task_type), inputs=inputs)
             if "status" in t:
                 task.status = RunState(t["status"])
             job.tasks.append(task)
@@ -179,12 +180,13 @@ class TestReviewerCliJsonOutput:
     def test_review_run_fixture_json(self):
         """review run --fixture-reviewer --json returns structured output."""
         job = _make_job(tasks=[{"type": "test", "status": "completed"}])
-        with patch("packages.orchestration.storage.load_job", return_value=job), \
-             patch("packages.orchestration.storage.save_job"):
+        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
+             patch("apps.cli.commands.review_cmd.lookup_job_id", side_effect=lambda raw: raw), \
+             patch("packages.orchestration.pingpong_job.save_job_plan"):
             import contextlib
             import io
             args = MagicMock()
-            args.job_id = str(job.id)
+            args.job_id = str(job.job_id)
             args.after_task = None
             args.fixture_reviewer = True
             args.json = True
@@ -214,12 +216,13 @@ class TestReviewerCliJsonOutput:
         recs = run_reviewer(job, reviewer_fn=_fixture_reviewer)
         store_recommendations(job, recs)
 
-        with patch("packages.orchestration.storage.load_job", return_value=job), \
-             patch("packages.orchestration.storage.save_job"):
+        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
+             patch("apps.cli.commands.review_cmd.lookup_job_id", side_effect=lambda raw: raw), \
+             patch("packages.orchestration.pingpong_job.save_job_plan"):
             import contextlib
             import io
             args = MagicMock()
-            args.job_id = str(job.id)
+            args.job_id = str(job.job_id)
             args.recommendation_id = recs[0].id
             args.json = True
             buf = io.StringIO()
@@ -241,12 +244,13 @@ class TestReviewerCliJsonOutput:
         recs = run_reviewer(job, reviewer_fn=_fixture_reviewer)
         store_recommendations(job, recs)
 
-        with patch("packages.orchestration.storage.load_job", return_value=job), \
-             patch("packages.orchestration.storage.save_job"):
+        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
+             patch("apps.cli.commands.review_cmd.lookup_job_id", side_effect=lambda raw: raw), \
+             patch("packages.orchestration.pingpong_job.save_job_plan"):
             import contextlib
             import io
             args = MagicMock()
-            args.job_id = str(job.id)
+            args.job_id = str(job.job_id)
             args.recommendation_id = recs[0].id
             args.json = True
             buf = io.StringIO()
@@ -307,14 +311,15 @@ class TestMemoryCandidateCliCommands:
         job.metadata = {}
         create_candidate(job, "repair_pattern", "Fixed mul")
 
-        with patch("packages.orchestration.storage.load_job", return_value=job):
+        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
+             patch("apps.cli.commands.memory.lookup_job_id", side_effect=lambda raw: raw):
             import contextlib
             import io
 
             from apps.cli.commands.memory import _cmd_memory_candidates
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
-                _cmd_memory_candidates(str(job.id), json_output=True)
+                _cmd_memory_candidates(str(job.job_id), json_output=True)
         data = json.loads(buf.getvalue())
         assert data["version"] == 1
         assert len(data["candidates"]) >= 1
@@ -326,8 +331,9 @@ class TestMemoryCandidateCliCommands:
         job.metadata = {}
         c = create_candidate(job, "test_command", "pytest works")
 
-        with patch("packages.orchestration.storage.load_job", return_value=job), \
-             patch("packages.orchestration.storage.save_job"), \
+        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
+             patch("apps.cli.commands.memory.lookup_job_id", side_effect=lambda raw: raw), \
+             patch("packages.orchestration.pingpong_job.save_job_plan"), \
              patch.dict("sys.modules", {"packages.orchestration.memory": MagicMock()}):
             import contextlib
             import io
@@ -335,7 +341,7 @@ class TestMemoryCandidateCliCommands:
             from apps.cli.commands.memory import _cmd_memory_approve_candidate
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
-                _cmd_memory_approve_candidate(str(job.id), c["id"], json_output=True)
+                _cmd_memory_approve_candidate(str(job.job_id), c["id"], json_output=True)
         data = json.loads(buf.getvalue())
         assert data["approved"] is True
         assert data["memory_created"] is True
@@ -346,15 +352,16 @@ class TestMemoryCandidateCliCommands:
         job.metadata = {}
         c = create_candidate(job, "test_command", "pytest works")
 
-        with patch("packages.orchestration.storage.load_job", return_value=job), \
-             patch("packages.orchestration.storage.save_job"):
+        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
+             patch("apps.cli.commands.memory.lookup_job_id", side_effect=lambda raw: raw), \
+             patch("packages.orchestration.pingpong_job.save_job_plan"):
             import contextlib
             import io
 
             from apps.cli.commands.memory import _cmd_memory_reject_candidate
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
-                _cmd_memory_reject_candidate(str(job.id), c["id"], json_output=True)
+                _cmd_memory_reject_candidate(str(job.job_id), c["id"], json_output=True)
         data = json.loads(buf.getvalue())
         assert data["rejected"] is True
         assert data["memory_created"] is False

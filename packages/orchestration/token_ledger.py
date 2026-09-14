@@ -15,7 +15,7 @@ verify-ledger`` (T002) is how the disagreement is found.
 
 SQLITE NOTE: this is the FIRST and so far ONLY place in Remedy that uses
 SQLite. Everything else persists as atomic JSON files under the data root
-(``storage.py``, ``project_registry.py``, ``mission_state.py``). A reader
+(``pingpong_job.py``, ``project_registry.py``, ``mission_state.py``). A reader
 looking for "where does Remedy use a database" lands here and finds all of it.
 The precedent this module sets — Python's bundled ``sqlite3`` only, WAL mode,
 schema versioning through a ``meta`` row, transactions of one statement — is

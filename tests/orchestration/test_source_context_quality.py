@@ -43,11 +43,11 @@ class TestSourceContextBudget:
         assert total_small <= 200
 
     def test_same_repo_same_selection(self, tmp_path):
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.source_context import inject_source_context
         repo = create_missing_function_repo(tmp_path / "repo")
-        job1 = Job(name="test1")
-        job2 = Job(name="test2")
+        job1 = JobPlan(job_title="test1")
+        job2 = JobPlan(job_title="test2")
         ctx1 = inject_source_context(job1, repo, budget=4000)
         ctx2 = inject_source_context(job2, repo, budget=4000)
         assert ctx1.selection_hash == ctx2.selection_hash
@@ -69,12 +69,12 @@ class TestSourceContextRedaction:
 class TestSourceContextMetadata:
     def test_inject_records_safe_metadata(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.source_context import inject_source_context
         from packages.orchestration.timeline import load_run_events
 
         repo = create_missing_function_repo(tmp_path / "repo")
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         ctx = inject_source_context(job, repo, data_dir=str(tmp_path / "data"))
 
         assert ctx.file_count > 0
@@ -82,7 +82,7 @@ class TestSourceContextMetadata:
         assert ctx.selection_hash != ""
         assert ctx.mode == "compact"
 
-        events = load_run_events(tmp_path / "data", job.id)
+        events = load_run_events(tmp_path / "data", job.job_id)
         inject_events = [e for e in events if e["event"] == "source_context_injected"]
         assert len(inject_events) == 1
         meta = inject_events[0]["metadata"]
@@ -97,14 +97,14 @@ class TestSourceContextMetadata:
 
     def test_no_raw_content_in_run_log(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.source_context import inject_source_context
         from packages.orchestration.timeline import load_run_events
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         inject_source_context(job, repo, data_dir=str(tmp_path / "data"))
-        events = load_run_events(tmp_path / "data", job.id)
+        events = load_run_events(tmp_path / "data", job.job_id)
         for event in events:
             event_str = str(event)
             assert "return a - b" not in event_str

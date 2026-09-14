@@ -32,8 +32,7 @@ operator approval.
 3. Read the report    →  remedy job report <job_id> --json
 4. Open the UI        →  remedy ui <job_id>
 5. Review results     →  remedy review run <job_id> --json
-6. Check worker       →  remedy worker doctor <name> --json
-7. Approve if needed  →  remedy patch approve <job_id> <patch_intent_id>
+6. Approve if needed  →  remedy patch approve <job_id> <patch_intent_id>
 ```
 
 Each step is explicit. No step runs automatically from the previous one.
@@ -46,12 +45,14 @@ start with a job.
 
 ## What a worker is
 
-A worker is an external tool (like Claude Code) that Remedy can delegate
-tasks to. Workers are not embedded in Remedy — they run as separate
-processes through bounded command templates.
-
-Adding a worker (`remedy worker add claude`) enables the adapter and template
-metadata. It does NOT execute the worker or create any sessions.
+Remedy deliberately ships no worker-onboarding command. Delegating a task to
+an external tool ran through a builder adapter and a bounded command template,
+and F275 deleted both together with the runner that used them, so there is no
+`worker doctor`, `worker add` or `worker disable` and no stub standing in for
+them. The bounded-subprocess guard those rails were built on survives as
+`packages/orchestration/exec_guard.py`, which F085 owns; a future feature that
+reintroduces external workers builds on that guard rather than on the deleted
+adapter.
 
 ## What a report is
 
@@ -72,22 +73,6 @@ Before any worker can execute a command, an operator must explicitly approve
 the execution session. Approval is per-session, not blanket. The approval
 references a specific command template that constrains what the worker can do.
 
-## What self-repair proposals are
-
-Self-repair proposals are structured suggestions for improvements that
-Remedy generates based on its own evidence. They are metadata records, not
-executed actions.
-
-An operator can:
-- List proposals: `remedy self-repair proposal-list --json`
-- Approve a proposal: `remedy self-repair proposal-approve <id> --json`
-- Deny a proposal: `remedy self-repair proposal-deny <id> --json`
-- Edit a proposal: `remedy self-repair proposal-edit <id> --json`
-- Convert to worker prompt: `remedy self-repair worker-prompt <id> --json`
-
-Converting to a worker prompt creates a safe, bounded prompt for the operator
-to give to a worker. The proposal itself never executes anything.
-
 ## Command taxonomy
 
 ### Primary operator path
@@ -100,8 +85,6 @@ to give to a worker. The proposal itself never executes anything.
 | `do job-run <id> --json` | Run pending tasks through Builder/Reviewer/Repair | Yes | Yes |
 | `ui <id>` | Open interactive UI | No | No |
 | `review run <id> --json` | Reviewer recommendations | No | No |
-| `worker doctor <name>` | Check worker readiness | No | No |
-| `worker add <name>` | Enable adapter + template | Metadata | No |
 | `config list/show/get` | View config | No | No |
 | `review bundle <id>` | Review evidence bundle | No | No |
 | `job fulfill <id> --fixture-demo` | Run fixture fulfillment demo | Metadata+repo | No* |
@@ -115,7 +98,6 @@ without prior explicit approval.
 |---------|-------------|-------------|
 | `approval summary/show/enable` | Execution approval policy | Advanced autonomy setting |
 | `mission run/report` | Mission contract facade | Internal bounded loops |
-| `execution approve/run/show` | Direct execution control | Debugging execution state |
 | `builder adapter-show/enable/list` | Direct adapter management | Debugging adapter state |
 | `overnight *` | Bounded overnight preparation | Pre-run planning |
 
@@ -125,7 +107,6 @@ without prior explicit approval.
 |---------|-------------|-------------|
 | `dogfood create/step/show/stop/replay` | Mission internals | Debugging mission state |
 | `self inspect/plan/propose/reconcile` | Self-dogfood internals | Development |
-| `self-repair *` | Self-repair proposals | Development-time |
 | `local-advisor *` | Ollama advisory | Disabled by default |
 | `local-candidate *` | Local model candidate gen | Disabled by default |
 | `tournament *` | Model comparison harness | Evaluation only |

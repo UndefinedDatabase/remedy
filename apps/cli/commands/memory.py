@@ -7,6 +7,8 @@ import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from packages.orchestration.data_paths import lookup_job_id
+
 if TYPE_CHECKING:
     import argparse
 
@@ -136,17 +138,15 @@ def _cmd_memory_learn(
     approved: bool = False,
     json_output: bool = False,
 ) -> None:
-    from uuid import UUID
-
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
     try:
-        job_id = UUID(job_id_str)
+        job_id = lookup_job_id(job_id_str)
     except ValueError:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -157,7 +157,7 @@ def _cmd_memory_learn(
     from packages.orchestration.timeline import load_run_events
 
     data_dir = resolve_data_root()
-    events = load_run_events(data_dir, job.id)
+    events = load_run_events(data_dir, job.job_id)
     result = learn_from_job(job, events, approved=approved)
 
     if json_output:
@@ -167,7 +167,7 @@ def _cmd_memory_learn(
         for e in result.entries:
             print(f"  {e['key']} = {e['value']} ({e['status']})")
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
     log.log(
         "memory_learned",
         learned_count=result.learned_count,
@@ -299,18 +299,16 @@ def _cmd_memory_candidates(
     json_output: bool = False,
 ) -> None:
     """List memory candidates for a job."""
-    from uuid import UUID
-
     from packages.orchestration.memory_candidates import list_candidates
-    from packages.orchestration.storage import load_job
+    from packages.orchestration.pingpong_job import load_job_plan
 
-    job = load_job(UUID(job_id_str))
+    job = load_job_plan(lookup_job_id(job_id_str))
     candidates = list_candidates(job)
 
     if json_output:
         print(_json.dumps({
             "version": 1,
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "candidates": candidates,
         }, indent=2))
     else:
@@ -332,19 +330,17 @@ def _cmd_memory_approve_candidate(
     json_output: bool = False,
 ) -> None:
     """Approve a memory candidate."""
-    from uuid import UUID
-
     from packages.orchestration.memory_candidates import approve_candidate
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
-    job = load_job(UUID(job_id_str))
+    job = load_job_plan(lookup_job_id(job_id_str))
     ok = approve_candidate(job, candidate_id)
     if ok:
-        save_job(job)
+        save_job_plan(job)
         if json_output:
             print(_json.dumps({
                 "version": 1,
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "candidate_id": candidate_id,
                 "approved": True,
                 "memory_created": True,
@@ -355,7 +351,7 @@ def _cmd_memory_approve_candidate(
         if json_output:
             print(_json.dumps({
                 "version": 1,
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "candidate_id": candidate_id,
                 "approved": False,
                 "memory_created": False,
@@ -373,19 +369,17 @@ def _cmd_memory_reject_candidate(
     json_output: bool = False,
 ) -> None:
     """Reject a memory candidate."""
-    from uuid import UUID
-
     from packages.orchestration.memory_candidates import reject_candidate
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
-    job = load_job(UUID(job_id_str))
+    job = load_job_plan(lookup_job_id(job_id_str))
     ok = reject_candidate(job, candidate_id)
     if ok:
-        save_job(job)
+        save_job_plan(job)
         if json_output:
             print(_json.dumps({
                 "version": 1,
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "candidate_id": candidate_id,
                 "rejected": True,
                 "memory_created": False,
@@ -396,7 +390,7 @@ def _cmd_memory_reject_candidate(
         if json_output:
             print(_json.dumps({
                 "version": 1,
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "candidate_id": candidate_id,
                 "rejected": False,
                 "memory_created": False,

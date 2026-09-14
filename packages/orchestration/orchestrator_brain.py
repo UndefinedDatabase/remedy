@@ -33,7 +33,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
+
+from packages.orchestration.data_paths import normalize_job_id
 
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1466/1470/1471/1472)
@@ -66,14 +68,12 @@ class OptionKind:
     INSPECT = "inspect"
     PROPOSE_REPAIR = "propose_repair"
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
-    IMPORT_CANDIDATE = "import_candidate"
     APPROVE_INTENT = "approve_intent"
     CONTINUE_INTENT = "continue_intent"
     OVERNIGHT_RUN = "overnight_run"
     SELF_INSPECT = "self_inspect"
     SELF_PROPOSE = "self_propose"
     SELF_EXECUTE = "self_execute"
-    PROVIDER_TRUST_VERIFICATION = "provider_trust_verification"
     LOCAL_ADVISOR_NEEDED = "local_advisor_needed"
     HUMAN_REVIEW = "human_review"
 
@@ -213,7 +213,6 @@ class OrchestratorDecision:
     rationale: str = ""
     evidence_fingerprint: str = ""
     safe_summary: str = ""
-    advisor: dict[str, Any] | None = None  # optional local-advisor critique (Step 1509)
 
 
 def _now() -> str:
@@ -221,12 +220,8 @@ def _now() -> str:
 
 
 def _scrub(text: str) -> str:
-    from packages.orchestration.provider_trust import _scrub_public
+    from packages.common.public_text_redaction import _scrub_public
     return _scrub_public(str(text))[:300]
-
-
-def _agent_dir() -> Path:
-    return Path(os.environ.get("REMEDY_AGENT_DIR") or ".agent")
 
 
 # ---------------------------------------------------------------------------
@@ -299,30 +294,19 @@ def list_ideas(data_dir: Path | None = None) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def _review_state() -> tuple[str, bool, int]:
-    """Return (verdict, blocks, open_blocker_high)."""
-    from packages.orchestration.overnight_executor import (
-        parse_review_findings,
-        review_findings_block_execution,
-    )
-    f = parse_review_findings(_agent_dir() / "live_review.md")
-    blocks, _ = review_findings_block_execution(f)
-    return f.verdict, blocks, f.open_blocker_or_high
-
-
 def _gather_signals(job_id: str, data_dir: Path,
                     refs: list[OrchestratorEvidenceRef]) -> dict[str, Any]:
     """Collect safe, durable signals for a job. Unknown stays unknown."""
     sig: dict[str, Any] = {
         "unresolved_failures": 0, "failure_ids": [], "repair_attempts": 0,
         "repair_failed": 0, "pending_intents": [], "approved_intents": [],
-        "trust_accepted": 0, "trust_rejected": 0, "materialized": 0,
+        "materialized": 0,
         "request_packages": 0, "self_attempts_awaiting": 0, "self_attempts_pending": 0,
         "self_proposed_approved": [], "self_items": 0, "budget_exhausted": False,
     }
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     try:
-        job = load_job(UUID(job_id), data_dir)
+        job = require_job_plan(normalize_job_id(job_id), data_dir)
     except (ValueError, JobNotFoundError):
         refs.append(OrchestratorEvidenceRef("job", "missing"))
         return sig
@@ -356,14 +340,8 @@ def _gather_signals(job_id: str, data_dir: Path,
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         refs.append(OrchestratorEvidenceRef("patch_intents", "unknown"))
 
-    # Provider trust + materials + requests.
-    try:
-        from packages.orchestration.provider_trust import load_trust_reports
-        reps = list(load_trust_reports(job).values())
-        sig["trust_accepted"] = sum(1 for r in reps if r.get("trust_status") == "accepted")
-        sig["trust_rejected"] = sum(1 for r in reps if r.get("trust_status") == "rejected")
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        pass
+    # Provider materials + requests. Remedy deliberately reads no trust signal here:
+    # the Provider Trust Gate was deleted with F275 T001 and nothing replaced it.
     try:
         from packages.orchestration.provider_patch_material import load_materials
         sig["materialized"] = sum(1 for m in load_materials(job).values()
@@ -371,28 +349,6 @@ def _gather_signals(job_id: str, data_dir: Path,
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
 
-    # Provider Trust Verification v1 signals (Step 1554).
-    try:
-        from packages.orchestration.provider_trust_verification import load_verification_reports
-        vreps = list(load_verification_reports(job).values())
-        sig["verification_passed"] = sum(1 for r in vreps if r.get("decision") == "verification_passed")
-        sig["verification_needs_review"] = sum(1 for r in vreps if r.get("decision") == "needs_human_review")
-        sig["verification_rejected"] = sum(1 for r in vreps if r.get("decision") == "verification_rejected")
-        sig["verification_loop_risk"] = sum(1 for r in vreps if r.get("loop_risk") == "high")
-        verified_trust_ids = {r.get("trust_report_id") for r in vreps if r.get("trust_report_id")}
-        from packages.orchestration.provider_trust import load_trust_reports as _ltr
-        accepted_reps = [r for r in _ltr(job).values() if r.get("trust_status") == "accepted"]
-        unverified = [r for r in accepted_reps if r.get("report_id") not in verified_trust_ids]
-        sig["trust_accepted_unverified"] = len(unverified)
-        sig["unverified_trust_report_id"] = str(unverified[0].get("report_id")) if unverified else ""
-        sig["verification_needs_review_id"] = next(
-            (str(r.get("verification_id")) for r in vreps
-             if r.get("decision") == "needs_human_review" and r.get("verification_id")), "")
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        sig["verification_passed"] = sig["verification_needs_review"] = 0
-        sig["verification_rejected"] = sig["verification_loop_risk"] = 0
-        sig["trust_accepted_unverified"] = 0
-        sig["unverified_trust_report_id"] = sig["verification_needs_review_id"] = ""
     try:
         from packages.orchestration.repair_request_builder import load_request_packages
         sig["request_packages"] = len(load_request_packages(job))
@@ -479,16 +435,6 @@ def build_orchestrator_situation(
                               repository_identity=_repository_identity())
 
     refs: list[OrchestratorRisk] = []
-    verdict, review_blocks, open_bh = _review_state()
-    s.evidence_refs.append(OrchestratorEvidenceRef(".agent/live_review.md",
-                                                   "available" if verdict != "unknown" else "missing",
-                                                   summary=f"verdict={verdict}"))
-    if review_blocks:
-        s.blockers.append("review_findings_open")
-        s.risks.append(OrchestratorRisk("review_findings_open", "blocker",
-                                        f"Live review verdict={verdict}, open blocker/high={open_bh}.",
-                                        "live_review"))
-
     sig: dict[str, Any] = {}
     if job_id:
         sig = _gather_signals(job_id, ddir, s.evidence_refs)
@@ -519,11 +465,11 @@ def build_orchestrator_situation(
         s.evidence_refs.append(OrchestratorEvidenceRef("ideas", "available",
                                                        summary=f"{len(ideas)} idea(s)"))
 
-    s.options = _generate_options(s, sig, job_id or "", review_blocks, ideas)
-    s.evidence_fingerprint = _evidence_fingerprint(sig, verdict)
+    s.options = _generate_options(s, sig, job_id or "", ideas)
+    s.evidence_fingerprint = _evidence_fingerprint(sig)
     s.loop_guard = _loop_guard(s, sig, ddir)
-    _score_options(s, sig, review_blocks)
-    s.model_routing_plan = _routing_plan(s, sig, review_blocks)
+    _score_options(s, sig)
+    s.model_routing_plan = _routing_plan(s, sig)
     s.evidence_status = "degraded" if any(r.status in ("missing", "malformed")
                                           for r in s.evidence_refs) else "complete"
     avail = [o for o in s.options if o.available]
@@ -564,7 +510,7 @@ def _opt(kind: str, label: str, *, command: str = "", entity_ids: list[str] | No
 
 
 def _generate_options(s: OrchestratorSituation, sig: dict[str, Any], job_id: str,
-                      review_blocks: bool, ideas: list[dict]) -> list[OrchestratorOption]:
+                      ideas: list[dict]) -> list[OrchestratorOption]:
     opts: list[OrchestratorOption] = []
     # Always-safe inspect baseline.
     opts.append(_opt(OptionKind.SELF_INSPECT, "Inspect self-improvement evidence",
@@ -601,13 +547,6 @@ def _generate_options(s: OrchestratorSituation, sig: dict[str, Any], job_id: str
                              entity_ids=[fa], risk="low",
                              outcome="Creates a repair proposal (no apply).",
                              why_now="Unresolved failure with no repair attempt."))
-        # Self attempt awaiting candidate.
-        if sig.get("self_attempts_awaiting", 0) > 0:
-            opts.append(_opt(OptionKind.IMPORT_CANDIDATE, "Import an external candidate for a self attempt",
-                             command=(f"remedy provider intake-repair {job_id} --input <file> "
-                                      f"--provider self_dogfood --json"),
-                             risk="low", outcome="Candidate enters the Trust Gate.",
-                             why_now="A self attempt awaits an external candidate."))
         # Approved self ProposedTask → execute.
         for pt in sig.get("self_proposed_approved", [])[:1]:
             opts.append(_opt(OptionKind.SELF_EXECUTE, "Execute an approved self-improvement task",
@@ -622,38 +561,6 @@ def _generate_options(s: OrchestratorSituation, sig: dict[str, Any], job_id: str
                          command="remedy self plan --json", risk="low",
                          outcome="Plan improvement items for human approval.",
                          why_now="Self-improvement items exist."))
-
-    # Provider Trust Verification v1 (Step 1554).
-    if job_id:
-        # Trust accepted but not yet verified → recommend verification before any approval.
-        if sig.get("trust_accepted_unverified", 0) > 0 and sig.get("unverified_trust_report_id"):
-            trid = sig["unverified_trust_report_id"]
-            opts.append(_opt(OptionKind.PROVIDER_TRUST_VERIFICATION,
-                             "Verify an accepted-but-unverified candidate",
-                             command=f"remedy provider verify {job_id} {trid} --json",
-                             entity_ids=[trid], risk="low",
-                             outcome="Second-stage check before any pending intent (no apply).",
-                             why_now="A trust-accepted candidate has not been verified.",
-                             contract_action="provider_verify_candidate"))
-        # Verification needs review → human-gated inspection (never auto-approve).
-        if sig.get("verification_needs_review", 0) > 0 and sig.get("verification_needs_review_id"):
-            vid = sig["verification_needs_review_id"]
-            opts.append(_opt(OptionKind.HUMAN_REVIEW,
-                             "Inspect a verification report (needs review)",
-                             command=f"remedy provider verification-show {job_id} {vid} --json",
-                             entity_ids=[vid], risk="low",
-                             outcome="Human reviews the safe verification findings.",
-                             why_now="A candidate passed trust but verification needs human review."))
-            opts[-1].available = False
-
-    # Repeated verification / trust rejection → roadmap note, human-gated.
-    if sig.get("verification_rejected", 0) >= 2 or sig.get("trust_rejected", 0) >= 2:
-        opts.append(_opt(OptionKind.PROVIDER_TRUST_VERIFICATION,
-                         "Change approach (repeated rejection)",
-                         risk="medium", outcome="Revise the request/candidate (manual).",
-                         why_now="Repeated provider trust/verification rejections.",
-                         why_not="Repeated failures need a human to change approach — no auto retry."))
-        opts[-1].available = False
 
     # Ideas as roadmap hints → human review only.
     for idea in ideas[:1]:
@@ -678,28 +585,22 @@ def _generate_options(s: OrchestratorSituation, sig: dict[str, Any], job_id: str
 _BASE_SCORE = {
     OptionKind.APPROVE_INTENT: 90,
     OptionKind.CONTINUE_INTENT: 85,
-    OptionKind.IMPORT_CANDIDATE: 70,
     OptionKind.PROPOSE_REPAIR: 65,
     OptionKind.SELF_EXECUTE: 55,
     OptionKind.SELF_PROPOSE: 40,
     OptionKind.SELF_INSPECT: 20,
-    OptionKind.PROVIDER_TRUST_VERIFICATION: 60,
     OptionKind.LOCAL_ADVISOR_NEEDED: 10,
     OptionKind.HUMAN_REVIEW: 5,
 }
 
 
-def _score_options(s: OrchestratorSituation, sig: dict[str, Any], review_blocks: bool) -> None:
+def _score_options(s: OrchestratorSituation, sig: dict[str, Any]) -> None:
     for o in s.options:
         score = _BASE_SCORE.get(o.kind, 10)
         codes: list[str] = []
         if not o.available:
             score = 0
             codes.append("unavailable")
-        # Open blocker/high review forces human-review: execution-like options unsafe.
-        if review_blocks and o.kind not in (OptionKind.SELF_INSPECT, OptionKind.HUMAN_REVIEW):
-            score = min(score, 1)
-            codes.append("review_blocks_execution")
         # Budget exhaustion suppresses apply-type options.
         if sig.get("budget_exhausted") and o.kind in (OptionKind.CONTINUE_INTENT,):
             score = min(score, 2)
@@ -720,16 +621,13 @@ def _score_options(s: OrchestratorSituation, sig: dict[str, Any], review_blocks:
 # ---------------------------------------------------------------------------
 
 
-def _evidence_fingerprint(sig: dict[str, Any], verdict: str) -> str:
+def _evidence_fingerprint(sig: dict[str, Any]) -> str:
     key = json.dumps({
-        "verdict": verdict,
         "unresolved_failures": sig.get("unresolved_failures", 0),
         "repair_attempts": sig.get("repair_attempts", 0),
         "repair_failed": sig.get("repair_failed", 0),
         "pending_intents": len(sig.get("pending_intents", [])),
         "approved_intents": len(sig.get("approved_intents", [])),
-        "trust_rejected": sig.get("trust_rejected", 0),
-        "trust_accepted": sig.get("trust_accepted", 0),
         "materialized": sig.get("materialized", 0),
         "self_attempts_awaiting": sig.get("self_attempts_awaiting", 0),
         "self_attempts_pending": sig.get("self_attempts_pending", 0),
@@ -744,10 +642,6 @@ def _loop_guard(s: OrchestratorSituation, sig: dict[str, Any], data_dir: Path) -
         return OrchestratorLoopGuard(LoopGuardStatus.REQUIRE_HUMAN_REVIEW,
                                      "Repeated repair failures for this job.",
                                      OptionKind.PROPOSE_REPAIR, sig["repair_failed"])
-    if sig.get("trust_rejected", 0) >= 2:
-        return OrchestratorLoopGuard(LoopGuardStatus.BLOCK,
-                                     "Repeated provider trust rejections.",
-                                     OptionKind.IMPORT_CANDIDATE, sig["trust_rejected"])
     # Decision-history repetition: same selected kind + same evidence fingerprint.
     prior = list_decisions(s.scope_key(), data_dir)
     same = [d for d in prior if d.get("evidence_fingerprint") == s.evidence_fingerprint
@@ -776,13 +670,13 @@ OrchestratorSituation.scope_key = _scope_key  # type: ignore[attr-defined]
 # ---------------------------------------------------------------------------
 
 
-def _routing_plan(s: OrchestratorSituation, sig: dict[str, Any],
-                  review_blocks: bool) -> OrchestratorModelRoutingPlan:
-    if review_blocks or s.loop_guard.status in (LoopGuardStatus.BLOCK,
-                                                LoopGuardStatus.REQUIRE_HUMAN_REVIEW):
+def _routing_plan(s: OrchestratorSituation,
+                  sig: dict[str, Any]) -> OrchestratorModelRoutingPlan:
+    if s.loop_guard.status in (LoopGuardStatus.BLOCK,
+                               LoopGuardStatus.REQUIRE_HUMAN_REVIEW):
         return OrchestratorModelRoutingPlan(
             RoutingTier.HUMAN_REVIEW_REQUIRED,
-            "Open blocker/high review or loop guard block — a human decides.", False)
+            "Loop guard block — a human decides.", False)
     avail = [o for o in s.options if o.available and o.score > 1]
     if not avail:
         return OrchestratorModelRoutingPlan(
@@ -791,13 +685,13 @@ def _routing_plan(s: OrchestratorSituation, sig: dict[str, Any],
     top = avail[0].score
     gap = top - (avail[1].score if len(avail) > 1 else 0)
     # Candidate generation needed + complete evidence + budget → external builder (PLAN).
-    needs_candidate = sig.get("self_attempts_awaiting", 0) > 0 or (
+    needs_candidate = (
         sig.get("unresolved_failures", 0) > 0 and sig.get("repair_attempts", 0) == 0)
     if needs_candidate and not sig.get("budget_exhausted") and s.evidence_status == "complete":
         return OrchestratorModelRoutingPlan(
             RoutingTier.EXTERNAL_BUILDER_NEEDED,
             "Candidate generation is the bottleneck; external builder output would help — "
-            "but only through the Trust Gate, never applied directly.", True,
+            "but Remedy has no import route for it, so a human relays it.", True,
             notes="Plan only — no model is called in v0. Output is untrusted.")
     if gap >= 30:
         return OrchestratorModelRoutingPlan(
@@ -920,144 +814,6 @@ def select_orchestrator_decision(
 
 
 # ---------------------------------------------------------------------------
-# Local Model Advisor integration (Steps 1509-1511) — advisory ONLY.
-#
-# The model NEVER controls the orchestrator. It can only: lower confidence, add safe
-# missing-evidence hints, or escalate weak/unknown evidence to human review. It can NEVER
-# create a command, approve/apply/propose, mark evidence complete, override a blocker/high
-# review, bypass budget/contract, or change which deterministic command executes. The final
-# next_safe_action stays deterministic + catalog-backed + entity-backed.
-# ---------------------------------------------------------------------------
-
-_CONFIDENCE_ORDER = ["low", "medium", "high"]
-
-
-def _lower_confidence(level: str) -> str:
-    try:
-        i = _CONFIDENCE_ORDER.index(level)
-    except ValueError:
-        return "low"
-    return _CONFIDENCE_ORDER[max(0, i - 1)]
-
-
-def _evidence_is_weak(decision: OrchestratorDecision,
-                      situation: OrchestratorSituation) -> bool:
-    if situation.evidence_status == "degraded" or decision.confidence == "low":
-        return True
-    return any(r.status in ("missing", "malformed", "unknown") for r in situation.evidence_refs)
-
-
-def consult_local_advisor_for_decision(
-    decision: OrchestratorDecision, situation: OrchestratorSituation, *,
-    data_dir: Path | None = None, enabled_override: bool | None = None,
-    transport: Any = None, new: bool = False,
-) -> OrchestratorDecision:
-    """Optionally consult a local advisor and apply DETERMINISTIC impact rules (Step 1510).
-
-    Mutates and returns ``decision`` with an ``advisor`` summary attached. Missing/unavailable
-    advisor never changes the deterministic decision (Step 1509). The advisor can only weaken
-    confidence or escalate to human review on weak evidence — never strengthen, never execute.
-    """
-    from packages.orchestration.data_paths import resolve_data_root
-    ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
-    from packages.orchestration.local_model_advisor import (
-        LocalAdvisorDecisionImpact,
-        LocalAdvisorRequest,
-        LocalAdvisorStatus,
-        export_local_advisor_response_json,
-        load_local_advisor_config,
-        run_local_advisor,
-    )
-
-    config = load_local_advisor_config(enabled_override=enabled_override)
-    impact = LocalAdvisorDecisionImpact.NO_CHANGE
-
-    if not config.enabled:
-        decision.advisor = {
-            "enabled": False, "available": False, "status": "disabled",
-            "stop_reason": "disabled", "decision_impact": impact,
-            "summary": "Local advisor disabled; deterministic decision unchanged.",
-        }
-        return decision
-
-    # Contract gate (Step 1515): for a job-scoped decision the run-contract may deny the
-    # local advisor. Denial never changes the deterministic decision.
-    if decision.job_id:
-        try:
-            from packages.orchestration.run_contract import (
-                ContractAction,
-                ensure_contract,
-                evaluate_run_action,
-            )
-            from packages.orchestration.storage import JobNotFoundError, load_job
-            job = load_job(UUID(decision.job_id), ddir)
-            if not evaluate_run_action(ensure_contract(job), ContractAction.LOCAL_ADVISOR_RUN).allowed:
-                decision.advisor = {
-                    "enabled": True, "available": False, "status": "blocked",
-                    "stop_reason": "contract_denied", "decision_impact": impact,
-                    "summary": "Contract denies local advisor; deterministic decision unchanged.",
-                }
-                return decision
-        except (ImportError, ValueError, JobNotFoundError, OSError, KeyError, TypeError, AttributeError):
-            pass
-
-    # Build the advisor payload from the SAFE decision export + the situation's options.
-    payload = export_decision_json(decision)
-    payload["options"] = [o.to_dict() for o in situation.options]
-    req = LocalAdvisorRequest(job_id=decision.job_id, decision_id=decision.decision_id,
-                              scope=situation.scope_key(), payload=payload)
-    resp = run_local_advisor(req, config, data_dir=ddir, transport=transport, new=new)
-    adv = export_local_advisor_response_json(resp)
-    adv["suggested_impact"] = resp.decision_impact  # advisory hint (non-binding)
-
-    if resp.status != LocalAdvisorStatus.COMPLETED:
-        # Unavailable / blocked / unparseable / reused-without-content → no change.
-        adv["decision_impact"] = LocalAdvisorDecisionImpact.NO_CHANGE
-        decision.advisor = adv
-        return decision
-
-    high_concern = (any(f.severity == "high" for f in resp.findings)
-                    or any(c.get("severity") == "high" for c in resp.suggested_concerns))
-    weak = _evidence_is_weak(decision, situation)
-    open_blocker = bool(decision.blockers)
-
-    # Rule: escalate to human review only when the model flags high loop/evidence risk AND
-    # deterministic evidence is already weak — and only for an otherwise-selected action that
-    # is not already gated by an open blocker/human review.
-    if (decision.stop_reason == StopReason.SELECTED and not open_blocker
-            and (resp.loop_risk == "high" or high_concern) and weak):
-        impact = LocalAdvisorDecisionImpact.HUMAN_REVIEW_REQUIRED
-        if decision.selected_option:
-            decision.rejected_options.insert(0, {
-                "kind": decision.selected_option.get("kind", ""),
-                "label": decision.selected_option.get("label", ""),
-                "score": decision.selected_option.get("score", 0),
-                "why_not": "Local advisor flagged high risk on weak evidence — human review.",
-            })
-        decision.selected_option = None
-        decision.stop_reason = StopReason.HUMAN_REVIEW_REQUIRED
-        decision.confidence = "low"
-        decision.next_safe_action = "remedy orchestrator report --json"
-        decision.rationale = (
-            "Deterministic decision escalated to human review: local advisor flagged "
-            "high risk and the supporting evidence is weak/unknown.")
-    elif resp.suggested_concerns or resp.missing_evidence_hints or resp.confidence_hint == "low":
-        # Soften confidence; attach safe missing-evidence hints. Action unchanged.
-        new_conf = _lower_confidence(decision.confidence)
-        if new_conf != decision.confidence or resp.missing_evidence_hints:
-            impact = LocalAdvisorDecisionImpact.CONFIDENCE_ADJUSTED
-        decision.confidence = new_conf
-
-    adv["decision_impact"] = impact
-    if resp.missing_evidence_hints:
-        adv["missing_evidence_hints"] = resp.missing_evidence_hints
-    decision.advisor = adv
-    decision.safe_summary = (decision.safe_summary
-                             + f"; advisor={resp.status}/{impact}")
-    return decision
-
-
-# ---------------------------------------------------------------------------
 # Report (Step 1476) + exports
 # ---------------------------------------------------------------------------
 
@@ -1089,7 +845,6 @@ def export_decision_json(d: OrchestratorDecision) -> dict[str, Any]:
         "loop_guard_status": d.loop_guard_status, "next_safe_action": d.next_safe_action,
         "stop_reason": d.stop_reason, "rationale": d.rationale,
         "evidence_fingerprint": d.evidence_fingerprint, "safe_summary": d.safe_summary,
-        "advisor": d.advisor,
     }
 
 

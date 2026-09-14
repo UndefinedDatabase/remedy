@@ -48,7 +48,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_REJECTED,
@@ -56,6 +56,7 @@ from packages.orchestration.approval_queue import (
     set_approval_state,
 )
 from packages.orchestration.patch_intent import RISK_HIGH, RISK_LOW, RISK_MEDIUM
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.project_brain import (
     ET_BELONGS_TO_PROJECT,
     ET_BLOCKED,
@@ -90,30 +91,29 @@ from packages.orchestration.project_brain import (
     export_project_brain_json,
     summarize_project_brain,
 )
-from packages.orchestration.storage import save_job
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_job(**kwargs) -> Job:
-    defaults: dict = {"name": "Test brain job", "state": RunState.PENDING}
+def _make_job(**kwargs) -> JobPlan:
+    defaults: dict = {"job_title": "Test brain job", "state": RunState.PENDING}
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _pending_task(**kwargs) -> Task:
-    return Task(description="write docs", inputs={"task_type": "write_readme"}, **kwargs)
+def _pending_task(**kwargs) -> TaskEntry:
+    return TaskEntry(title="write docs", inputs={"task_type": "write_readme"}, **kwargs)
 
 
-def _completed_task(**kwargs) -> Task:
-    t = Task(description="task done", inputs={"task_type": "write_readme"}, **kwargs)
+def _completed_task(**kwargs) -> TaskEntry:
+    t = TaskEntry(title="task done", inputs={"task_type": "write_readme"}, **kwargs)
     t.status = RunState.COMPLETED
     return t
 
 
-def _add_patch_artifact(job: Job, *, risk: str = RISK_MEDIUM, task_id=None) -> str:
+def _add_patch_artifact(job: JobPlan, *, risk: str = RISK_MEDIUM, task_id=None) -> str:
     """Add a single patch-intent artifact to job. Returns intent_id."""
     task_id = task_id or uuid4()
     explanations = [
@@ -129,7 +129,7 @@ def _add_patch_artifact(job: Job, *, risk: str = RISK_MEDIUM, task_id=None) -> s
         name="builder proposal",
         content="ARTIFACT_CONTENT_MUST_NOT_RENDER",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=task_id,
+        task_id=str(task_id),
         metadata={"patch_intent_explanations": explanations},
     )
     job.artifacts.append(artifact)
@@ -237,7 +237,7 @@ class TestBrainNodeEdge:
     def test_project_brain_graph_construction(self):
         job = _make_job()
         graph = build_project_brain(job, [])
-        assert graph.job_id == job.id
+        assert graph.job_id == job.job_id
         assert isinstance(graph.nodes, tuple)
         assert isinstance(graph.edges, tuple)
 
@@ -259,7 +259,7 @@ class TestBuildProjectBrain:
         graph = build_project_brain(job, [])
         job_nodes = [n for n in graph.nodes if n.type == NT_JOB]
         assert len(job_nodes) == 1
-        assert job_nodes[0].id == str(job.id)
+        assert job_nodes[0].id == str(job.job_id)
         assert job_nodes[0].status == "pending"
 
     def test_empty_job_always_has_placeholders(self):
@@ -277,7 +277,7 @@ class TestBuildProjectBrain:
     def test_empty_job_has_placeholder_edges(self):
         job = _make_job()
         graph = build_project_brain(job, [])
-        job_id = str(job.id)
+        job_id = str(job.job_id)
         mem_edges = [e for e in graph.edges if e.type == ET_FUTURE_MEMORY]
         mcp_edges = [e for e in graph.edges if e.type == ET_FUTURE_MCP]
         assert len(mem_edges) == 1
@@ -294,12 +294,12 @@ class TestBuildProjectBrain:
         graph = build_project_brain(job, [])
         task_nodes = [n for n in graph.nodes if n.type == NT_TASK]
         assert len(task_nodes) == 1
-        assert task_nodes[0].id == str(task.id)
+        assert task_nodes[0].id == str(task.task_id)
         assert task_nodes[0].status == "pending"
         has_task_edges = [e for e in graph.edges if e.type == ET_HAS_TASK]
         assert len(has_task_edges) == 1
-        assert has_task_edges[0].source == str(job.id)
-        assert has_task_edges[0].target == str(task.id)
+        assert has_task_edges[0].source == str(job.job_id)
+        assert has_task_edges[0].target == str(task.task_id)
 
     def test_artifact_node_owned_by_task(self):
         job = _make_job()
@@ -309,7 +309,7 @@ class TestBuildProjectBrain:
             name="proposal",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.task_id),
         )
         job.artifacts.append(artifact)
         graph = build_project_brain(job, [])
@@ -319,7 +319,7 @@ class TestBuildProjectBrain:
         assert art_nodes[0].status == "available"
         art_edges = [e for e in graph.edges if e.type == ET_CREATED]
         assert len(art_edges) == 1
-        assert art_edges[0].source == str(task.id)
+        assert art_edges[0].source == str(task.task_id)
         assert art_edges[0].target == str(artifact.id)
 
     def test_artifact_node_owned_by_job_when_no_task_id(self):
@@ -328,7 +328,7 @@ class TestBuildProjectBrain:
         job.artifacts.append(artifact)
         graph = build_project_brain(job, [])
         art_edges = [e for e in graph.edges if e.type == ET_CREATED]
-        assert art_edges[0].source == str(job.id)
+        assert art_edges[0].source == str(job.job_id)
 
     def test_patch_intent_nodes_pending(self):
         job = _make_job()
@@ -376,20 +376,20 @@ class TestBuildProjectBrain:
         job = _make_job()
         task = _completed_task()
         job.tasks.append(task)
-        events = [_task_run_completed_event(str(job.id), str(task.id))]
+        events = [_task_run_completed_event(str(job.job_id), str(task.task_id))]
         graph = build_project_brain(job, events)
         ver_nodes = [n for n in graph.nodes if n.type == NT_VERIFICATION]
         assert len(ver_nodes) == 1
         assert ver_nodes[0].status == "passed"
         ver_edges = [e for e in graph.edges if e.type == ET_VERIFIED]
         assert len(ver_edges) == 1
-        assert ver_edges[0].source == str(task.id)
+        assert ver_edges[0].source == str(task.task_id)
 
     def test_permission_blocker_node_from_perm_denied(self):
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
+        events = [_perm_denied_event(str(job.job_id), task_id=str(task.task_id))]
         graph = build_project_brain(job, events)
         blk_nodes = [n for n in graph.nodes if n.type == NT_BLOCKER]
         assert len(blk_nodes) == 1
@@ -397,11 +397,11 @@ class TestBuildProjectBrain:
         assert blk_nodes[0].metadata["capability"] == "workspace_write"
         blk_edges = [e for e in graph.edges if e.type == ET_BLOCKED]
         assert len(blk_edges) == 1
-        assert blk_edges[0].source == str(task.id)
+        assert blk_edges[0].source == str(task.task_id)
 
     def test_permission_blocker_no_task_id(self):
         job = _make_job()
-        events = [_perm_denied_event(str(job.id), task_id=None)]
+        events = [_perm_denied_event(str(job.job_id), task_id=None)]
         graph = build_project_brain(job, events)
         blk_nodes = [n for n in graph.nodes if n.type == NT_BLOCKER]
         assert len(blk_nodes) == 1
@@ -411,7 +411,7 @@ class TestBuildProjectBrain:
 
     def test_agent_loop_node(self):
         job = _make_job()
-        events = [_agent_loop_event(str(job.id), stage="build", decision="continue")]
+        events = [_agent_loop_event(str(job.job_id), stage="build", decision="continue")]
         graph = build_project_brain(job, events)
         al_nodes = [n for n in graph.nodes if n.type == NT_AGENT_LOOP]
         assert len(al_nodes) == 1
@@ -419,11 +419,11 @@ class TestBuildProjectBrain:
         assert al_nodes[0].metadata["decision"] == "continue"
         al_edges = [e for e in graph.edges if e.type == ET_INSPECTED]
         assert len(al_edges) == 1
-        assert al_edges[0].target == str(job.id)
+        assert al_edges[0].target == str(job.job_id)
 
     def test_run_event_node_for_key_events(self):
         job = _make_job()
-        events = [_job_created_event(str(job.id))]
+        events = [_job_created_event(str(job.job_id))]
         graph = build_project_brain(job, events)
         re_nodes = [n for n in graph.nodes if n.type == NT_RUN_EVENT]
         assert len(re_nodes) == 1
@@ -433,7 +433,7 @@ class TestBuildProjectBrain:
 
     def test_non_key_event_not_promoted_to_run_event(self):
         job = _make_job()
-        events = [{"event": "task_run_started", "job_id": str(job.id), "metadata": {}}]
+        events = [{"event": "task_run_started", "job_id": str(job.job_id), "metadata": {}}]
         graph = build_project_brain(job, events)
         re_nodes = [n for n in graph.nodes if n.type == NT_RUN_EVENT]
         assert len(re_nodes) == 0
@@ -458,7 +458,7 @@ class TestBuildProjectBrain:
         events = [
             {
                 "event": "project_constitution_loaded",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r0",
                 "timestamp": "2026-05-06T10:00:00+00:00",
                 "outcome": "loaded",
@@ -475,7 +475,7 @@ class TestBuildProjectBrain:
         events = [
             {
                 "event": "project_constitution_loaded",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r0",
                 "timestamp": "2026-05-06T10:00:00+00:00",
                 "outcome": "loaded",
@@ -500,7 +500,7 @@ class TestBuildProjectBrain:
         task = _pending_task()
         job.tasks.append(task)
         artifact = Artifact(
-            name="plan", content="x", kind=ArtifactKind.PLANNING, task_id=task.id
+            name="plan", content="x", kind=ArtifactKind.PLANNING, task_id=str(task.task_id)
         )
         job.artifacts.append(artifact)
         graph = build_project_brain(job, [])
@@ -525,10 +525,10 @@ class TestBuildProjectBrain:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        _add_patch_artifact(job, task_id=task.id)
+        _add_patch_artifact(job, task_id=task.task_id)
         events = [
-            _job_created_event(str(job.id)),
-            _task_run_completed_event(str(job.id), str(task.id)),
+            _job_created_event(str(job.job_id)),
+            _task_run_completed_event(str(job.job_id), str(task.task_id)),
         ]
         g1 = build_project_brain(job, events)
         g2 = build_project_brain(job, events)
@@ -543,7 +543,7 @@ class TestBuildProjectBrain:
             job.tasks.append(_pending_task())
         for task in job.tasks:
             job.artifacts.append(
-                Artifact(name="a", content="x", kind=ArtifactKind.BUILDER_PROPOSAL, task_id=task.id)
+                Artifact(name="a", content="x", kind=ArtifactKind.BUILDER_PROPOSAL, task_id=str(task.task_id))
             )
         graph = build_project_brain(job, [])
         assert sum(1 for n in graph.nodes if n.type == NT_TASK) == 3
@@ -577,7 +577,7 @@ class TestSummarizeProjectBrain:
         job = _make_job()
         graph = build_project_brain(job, [])
         out = summarize_project_brain(graph)
-        assert str(job.id)[:8] in out
+        assert str(job.job_id)[:8] in out
 
     def test_node_and_edge_counts_present(self):
         job = _make_job()
@@ -599,7 +599,7 @@ class TestSummarizeProjectBrain:
         job = _make_job()
         task = _completed_task()
         job.tasks.append(task)
-        events = [_task_run_completed_event(str(job.id), str(task.id))]
+        events = [_task_run_completed_event(str(job.job_id), str(task.task_id))]
         graph = build_project_brain(job, events)
         out = summarize_project_brain(graph)
         assert NT_JOB in out
@@ -632,7 +632,7 @@ class TestExportProjectBrainJson:
         job = _make_job()
         graph = build_project_brain(job, [])
         export = export_project_brain_json(graph)
-        assert export["job_id"] == str(job.id)
+        assert export["job_id"] == str(job.job_id)
 
     def test_nodes_is_list(self):
         job = _make_job()
@@ -666,8 +666,8 @@ class TestExportProjectBrainJson:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        _add_patch_artifact(job, task_id=task.id)
-        events = [_job_created_event(str(job.id))]
+        _add_patch_artifact(job, task_id=task.task_id)
+        events = [_job_created_event(str(job.job_id))]
         graph = build_project_brain(job, events)
         export = export_project_brain_json(graph)
         # Must not raise
@@ -701,7 +701,7 @@ RAW_COMMAND_OUTPUT_MUST_NOT_RENDER  = "RAW_COMMAND_OUTPUT_MUST_NOT_RENDER"
 
 
 class TestRedactionHardening:
-    def _build_poisoned_graph(self) -> tuple[Job, list[dict]]:
+    def _build_poisoned_graph(self) -> tuple[JobPlan, list[dict]]:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
@@ -711,7 +711,7 @@ class TestRedactionHardening:
             name="proposal",
             content=ARTIFACT_CONTENT_MUST_NOT_RENDER,
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.task_id),
             metadata={
                 "patch_intent_explanations": [
                     {
@@ -735,10 +735,10 @@ class TestRedactionHardening:
         events = [
             {
                 "event": "task_run_completed",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r1",
                 "timestamp": "2026-05-06T10:01:00+00:00",
-                "task_id": str(task.id),
+                "task_id": str(task.task_id),
                 "outcome": "pass",
                 "message": EVENT_MESSAGE_MUST_NOT_RENDER,
                 "metadata": {"output": RAW_COMMAND_OUTPUT_MUST_NOT_RENDER},
@@ -825,26 +825,26 @@ class TestCLIBrain:
     def test_valid_job_prints_report(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id)])
         main()
         out = capsys.readouterr().out
         assert "Remedy Project Brain" in out
-        assert str(job.id)[:8] in out
+        assert str(job.job_id)[:8] in out
 
     def test_cli_logs_project_brain_inspected(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id)])
         main()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         jsonl_files = list(runs_dir.glob("*.jsonl"))
         assert len(jsonl_files) == 1
         events = [
@@ -858,13 +858,13 @@ class TestCLIBrain:
     def test_run_log_metadata_has_exactly_required_fields(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id)])
         main()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = [
             json.loads(line)
             for line in next(runs_dir.glob("*.jsonl")).read_text().splitlines()
@@ -885,55 +885,55 @@ class TestCLIBrain:
             name="proposal",
             content=ARTIFACT_CONTENT_MUST_NOT_RENDER,
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.task_id),
         )
         job.artifacts.append(artifact)
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id)])
         main()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         raw = next(runs_dir.glob("*.jsonl")).read_text()
         assert ARTIFACT_CONTENT_MUST_NOT_RENDER not in raw
 
     def test_exactly_one_run_log_file_created(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id)])
         main()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         assert len(list(runs_dir.glob("*.jsonl"))) == 1
 
     def test_json_flag_returns_parseable_json(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"])
         main()
         out = capsys.readouterr().out
         data = json.loads(out)
         assert data["version"] == 1
-        assert data["job_id"] == str(job.id)
+        assert data["job_id"] == str(job.job_id)
         assert isinstance(data["nodes"], list)
         assert isinstance(data["edges"], list)
 
     def test_json_flag_output_has_correct_top_level_keys(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"])
         main()
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -948,7 +948,7 @@ class TestCLIBrain:
             name="proposal",
             content=ARTIFACT_CONTENT_MUST_NOT_RENDER,
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.task_id),
             metadata={
                 "patch_intent_explanations": [
                     {
@@ -965,11 +965,11 @@ class TestCLIBrain:
         job.artifacts.append(artifact)
         intent_id = make_intent_id(artifact.id, 0)
         set_approval_state(job, intent_id, APPROVAL_APPROVED, reason=APPROVAL_REASON_MUST_NOT_RENDER)
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"])
         main()
         out = capsys.readouterr().out
         for sentinel in [
@@ -982,13 +982,13 @@ class TestCLIBrain:
     def test_json_flag_still_logs_exact_metadata_keys(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"])
         main()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = [
             json.loads(line)
             for line in next(runs_dir.glob("*.jsonl")).read_text().splitlines()
@@ -1082,28 +1082,28 @@ class TestSafeCycleParsing:
 
     def test_cycle_int_string_parsed(self):
         job = _make_job()
-        events = [self._al_event_with_cycle(str(job.id), "2")]
+        events = [self._al_event_with_cycle(str(job.job_id), "2")]
         graph = build_project_brain(job, events)
         al = next(n for n in graph.nodes if n.type == NT_AGENT_LOOP)
         assert al.metadata["cycle"] == 2
 
     def test_cycle_int_value_parsed(self):
         job = _make_job()
-        events = [self._al_event_with_cycle(str(job.id), 3)]
+        events = [self._al_event_with_cycle(str(job.job_id), 3)]
         graph = build_project_brain(job, events)
         al = next(n for n in graph.nodes if n.type == NT_AGENT_LOOP)
         assert al.metadata["cycle"] == 3
 
     def test_cycle_non_numeric_string_defaults_zero(self):
         job = _make_job()
-        events = [self._al_event_with_cycle(str(job.id), "not-a-number")]
+        events = [self._al_event_with_cycle(str(job.job_id), "not-a-number")]
         graph = build_project_brain(job, events)
         al = next(n for n in graph.nodes if n.type == NT_AGENT_LOOP)
         assert al.metadata["cycle"] == 0
 
     def test_cycle_none_defaults_zero(self):
         job = _make_job()
-        ev = self._al_event_with_cycle(str(job.id), None)
+        ev = self._al_event_with_cycle(str(job.job_id), None)
         # Explicitly set cycle to None in metadata
         ev["metadata"]["cycle"] = None
         graph = build_project_brain(job, [ev])
@@ -1114,7 +1114,7 @@ class TestSafeCycleParsing:
         job = _make_job()
         ev: dict = {
             "event": "agent_loop_inspected",
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "run_id": "r1",
             "timestamp": "2026-05-06T10:02:00+00:00",
             "outcome": "inspected",
@@ -1129,7 +1129,7 @@ class TestSafeCycleParsing:
         job = _make_job()
         malformed = {
             "event": "agent_loop_inspected",
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "metadata": {"cycle": "bad", "stage": None, "decision": None},
         }
         graph = build_project_brain(job, [malformed])
@@ -1141,7 +1141,7 @@ class TestSafeCycleParsing:
         job = _make_job()
         malformed = {
             "event": "agent_loop_inspected",
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "metadata": {"cycle": [], "stage": 42, "decision": {}},
         }
         graph = build_project_brain(job, [malformed])
@@ -1219,7 +1219,7 @@ class TestProjectPlaceholderNode:
             None,
         )
         assert edge is not None
-        assert edge.source == str(job.id)
+        assert edge.source == str(job.job_id)
         assert edge.target == proj_node_id
 
     def test_no_edge_without_project_id(self):
@@ -1274,8 +1274,8 @@ class TestRealMemoryNodesInBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.memory.local_gateway import store_memory
         job = _make_job()
-        save_job(job)
-        store_memory(key="test_k", value="test_v", job_id=str(job.id), approved=True)
+        save_job_plan(job)
+        store_memory(key="test_k", value="test_v", job_id=str(job.job_id), approved=True)
         graph = build_project_brain(job, [])
         types = {n.type for n in graph.nodes}
         assert NT_MEMORY_ENTRY in types
@@ -1284,8 +1284,8 @@ class TestRealMemoryNodesInBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.memory.local_gateway import store_memory
         job = _make_job()
-        save_job(job)
-        store_memory(key="test_k", value="test_v", job_id=str(job.id), approved=False)
+        save_job_plan(job)
+        store_memory(key="test_k", value="test_v", job_id=str(job.job_id), approved=False)
         graph = build_project_brain(job, [])
         types = {n.type for n in graph.nodes}
         assert NT_MEMORY_ENTRY not in types
@@ -1294,8 +1294,8 @@ class TestRealMemoryNodesInBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.memory.local_gateway import store_memory
         job = _make_job()
-        save_job(job)
-        store_memory(key="my_key", value="secret_val", job_id=str(job.id),
+        save_job_plan(job)
+        store_memory(key="my_key", value="secret_val", job_id=str(job.job_id),
                      tags=["t1"], approved=True)
         graph = build_project_brain(job, [])
         mem_nodes = [n for n in graph.nodes if n.type == NT_MEMORY_ENTRY]
@@ -1310,8 +1310,8 @@ class TestRealMemoryNodesInBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.memory.local_gateway import store_memory
         job = _make_job()
-        save_job(job)
-        store_memory(key="k", value="v", job_id=str(job.id), approved=True)
+        save_job_plan(job)
+        store_memory(key="k", value="v", job_id=str(job.job_id), approved=True)
         graph = build_project_brain(job, [])
         edge_types = {e.type for e in graph.edges}
         assert ET_HAS_MEMORY in edge_types
@@ -1320,8 +1320,8 @@ class TestRealMemoryNodesInBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.memory.local_gateway import store_memory
         job = _make_job()
-        save_job(job)
-        store_memory(key="k", value="v", job_id=str(job.id), approved=True)
+        save_job_plan(job)
+        store_memory(key="k", value="v", job_id=str(job.job_id), approved=True)
         graph = build_project_brain(job, [])
         types = {n.type for n in graph.nodes}
         assert NT_MEMORY in types, "memory_placeholder still present for future MemPalace"
@@ -1330,8 +1330,8 @@ class TestRealMemoryNodesInBrain:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.memory.local_gateway import store_memory
         job = _make_job()
-        save_job(job)
-        store_memory(key="k", value="SECRET_VALUE_42", job_id=str(job.id), approved=True)
+        save_job_plan(job)
+        store_memory(key="k", value="SECRET_VALUE_42", job_id=str(job.job_id), approved=True)
         graph = build_project_brain(job, [])
         exported = export_project_brain_json(graph)
         import json

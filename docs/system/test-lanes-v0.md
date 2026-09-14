@@ -12,11 +12,6 @@ healthy without risk of environment-specific hangs.
 | Suite | Type | What it proves |
 |-------|------|----------------|
 | `test_worker_facade_cmd.py` | unit | Worker add/doctor/disable, alias registry, catalog wiring |
-| `test_dogfood_run.py` | unit | Mission run loop, morning report, 10 stop conditions, evidence |
-| `test_managed_builder_execution.py` | unit | Command templates, approval, execution safety, placeholders |
-| `test_main_builder_adapter.py` | unit | Adapter specs, enable/disable, mode management |
-| `test_self_repair_proposal.py` | unit | Proposal lifecycle: create/approve/deny/edit/worker-prompt |
-| `test_execution_approval_policy.py` | unit+integration | Policy model, evaluation, grant, real storage path truth |
 | `test_development_artifact_boundary.py` | guard | Dev artifact vs product truth boundary enforcement |
 | `test_product_spine.py` | unit | Operator command consistency, stale doc scanner, lane self-test |
 
@@ -32,7 +27,7 @@ provider trust gate, tournament scoring, full event replay chain.
 **Tests**: ~57
 
 Runs subprocess-based CLI integration tests. Subprocess-heavy suites
-(`test_review_bundle_runtime.py`) run per-node — each test gets its own bounded
+run per-node — each test gets its own bounded
 pytest invocation with process-group isolation (`start_new_session=True`,
 `killpg` on timeout). Other suites run as whole-file invocations.
 
@@ -42,7 +37,6 @@ the exact node ID is visible in output.
 
 | Suite | Type | What it proves |
 |-------|------|----------------|
-| `test_review_bundle_runtime.py` | CLI integration | Evidence safety, no raw leaks, progress summary |
 | `test_command_catalog.py` | CLI integration | Catalog integrity, group definitions, handler wiring |
 | `test_contract_runtime.py` | CLI integration | Allowed/denied actions, budget, contract evaluation |
 | `test_config_cmd.py` | CLI integration | Config layer basics |

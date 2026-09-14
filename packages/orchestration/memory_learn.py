@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,7 @@ class LearnResult:
 
 
 def learn_from_job(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     *,
     approved: bool = False,
@@ -45,7 +45,7 @@ def learn_from_job(
     """
     from packages.memory.local_gateway import upsert_memory
 
-    job_id = str(job.id)
+    job_id = str(job.job_id)
     project_id = job.metadata.get("project_id")
     learned = 0
     skipped = 0

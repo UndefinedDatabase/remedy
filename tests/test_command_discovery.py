@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
 from packages.orchestration.command_discovery import (
     CommandCandidate,
     _detect_cargo,
@@ -37,6 +37,7 @@ from packages.orchestration.command_discovery import (
     discover_commands,
     select_best_test_candidate,
 )
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -64,8 +65,8 @@ def _register_project(repo: Path, env: dict) -> None:
     assert r.returncode == 0, r.stderr.decode()
 
 
-def _make_job() -> Job:
-    return Job(name="test", state=RunState.PENDING)
+def _make_job() -> JobPlan:
+    return JobPlan(job_title="test", state=RunState.PENDING)
 
 
 # ---------------------------------------------------------------------------

@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.task_runner import (
     annotate_task_result,
     finalize_task,
@@ -28,9 +29,9 @@ from packages.orchestration.workspace import LocalWorkspaceRuntime
 # ---------------------------------------------------------------------------
 
 
-def _make_planned_job(task_type: str = "write_code") -> Job:
-    task = Task(description="Do some work.", inputs={"task_type": task_type})
-    return Job(name="test-job", tasks=[task], state=RunState.PLANNED)
+def _make_planned_job(task_type: str = "write_code") -> JobPlan:
+    task = TaskEntry(title="Do some work.", inputs={"task_type": task_type})
+    return JobPlan(job_title="test-job", tasks=[task], state=RunState.PLANNED)
 
 
 def _stub_builder(context: TaskExecutionContext) -> BuilderOutput:
@@ -42,7 +43,7 @@ def _stub_builder(context: TaskExecutionContext) -> BuilderOutput:
     )
 
 
-def _full_run(job: Job, tmp_path, builder=None) -> tuple:
+def _full_run(job: JobPlan, tmp_path, builder=None) -> tuple:
     """Run build → annotate → materialize → verify → finalize for one task.
 
     Returns (result, mf, vr) after finalize_task has been called.
@@ -55,7 +56,7 @@ def _full_run(job: Job, tmp_path, builder=None) -> tuple:
     annotate_task_result(
         result, provider="stub", role="builder", model="stub-model", elapsed_ms=1.0
     )
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     vr = verify_task_output(result.job, result.task_id)
     finalize_task(result, vr)
@@ -115,7 +116,7 @@ def test_verify_fails_when_no_output_artifact_ids():
     job = _make_planned_job()
     task = job.tasks[0]
     # task.output_artifact_ids is empty (no build was run)
-    vr = verify_task_output(job, task.id)
+    vr = verify_task_output(job, task.task_id)
     assert vr.passed is False
     assert any(c.check == "has_output_artifact" and not c.passed for c in vr.checks)
 
@@ -129,8 +130,8 @@ def test_verify_fails_when_artifact_id_not_in_job_artifacts():
     """output_artifact_ids references a UUID not in job.artifacts."""
     job = _make_planned_job()
     task = job.tasks[0]
-    task.output_artifact_ids.append(uuid4())  # dangling reference
-    vr = verify_task_output(job, task.id)
+    task.output_artifact_ids.append(str(uuid4()))  # dangling reference
+    vr = verify_task_output(job, task.task_id)
     assert vr.passed is False
     assert any(c.check == "artifact_exists" and not c.passed for c in vr.checks)
 
@@ -148,13 +149,13 @@ def test_verify_fails_when_artifact_task_id_does_not_match():
         name="task_output_write_code",
         content="some content",
         mime_type="text/plain",
-        task_id=uuid4(),  # wrong task_id — not task.id
+        task_id=str(uuid4()),  # wrong task_id — not task.id
         metadata={},
     )
     job.artifacts.append(wrong_artifact)
-    task.output_artifact_ids.append(wrong_artifact.id)
+    task.output_artifact_ids.append(str(wrong_artifact.id))
 
-    vr = verify_task_output(job, task.id)
+    vr = verify_task_output(job, task.task_id)
     assert vr.passed is False
     assert any(c.check == "artifact_task_id_matches" and not c.passed for c in vr.checks)
 
@@ -172,14 +173,14 @@ def test_verify_fails_when_workspace_file_key_missing():
         name="task_output_write_code",
         content="Builder Execution Output\n\nProposed Changes:\n  - Add foo()\n",
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.task_id),
         metadata={"task_type": "write_code", "summary": "done"},
         # no 'workspace_file' key
     )
     job.artifacts.append(artifact)
-    task.output_artifact_ids.append(artifact.id)
+    task.output_artifact_ids.append(str(artifact.id))
 
-    vr = verify_task_output(job, task.id)
+    vr = verify_task_output(job, task.task_id)
     assert vr.passed is False
     assert any(c.check == "workspace_file_in_metadata" and not c.passed for c in vr.checks)
 
@@ -198,7 +199,7 @@ def test_verify_fails_when_workspace_file_does_not_exist(tmp_path):
         name="task_output_write_code",
         content="...",
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.task_id),
         metadata={
             "task_type": "write_code",
             "summary": "done",
@@ -206,9 +207,9 @@ def test_verify_fails_when_workspace_file_does_not_exist(tmp_path):
         },
     )
     job.artifacts.append(artifact)
-    task.output_artifact_ids.append(artifact.id)
+    task.output_artifact_ids.append(str(artifact.id))
 
-    vr = verify_task_output(job, task.id)
+    vr = verify_task_output(job, task.task_id)
     assert vr.passed is False
     assert any(c.check == "workspace_file_exists" and not c.passed for c in vr.checks)
 
@@ -229,7 +230,7 @@ def test_verify_fails_when_workspace_file_is_empty(tmp_path):
         name="task_output_write_code",
         content="...",
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.task_id),
         metadata={
             "task_type": "write_code",
             "summary": "done",
@@ -237,9 +238,9 @@ def test_verify_fails_when_workspace_file_is_empty(tmp_path):
         },
     )
     job.artifacts.append(artifact)
-    task.output_artifact_ids.append(artifact.id)
+    task.output_artifact_ids.append(str(artifact.id))
 
-    vr = verify_task_output(job, task.id)
+    vr = verify_task_output(job, task.task_id)
     assert vr.passed is False
     assert any(c.check == "workspace_file_not_empty" and not c.passed for c in vr.checks)
 
@@ -260,7 +261,7 @@ def test_verify_fails_when_no_proposed_change_lines(tmp_path):
         name="task_output_write_code",
         content="...",
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.task_id),
         metadata={
             "task_type": "write_code",
             "summary": "done",
@@ -268,9 +269,9 @@ def test_verify_fails_when_no_proposed_change_lines(tmp_path):
         },
     )
     job.artifacts.append(artifact)
-    task.output_artifact_ids.append(artifact.id)
+    task.output_artifact_ids.append(str(artifact.id))
 
-    vr = verify_task_output(job, task.id)
+    vr = verify_task_output(job, task.task_id)
     assert vr.passed is False
     assert any(c.check == "has_proposed_change" and not c.passed for c in vr.checks)
 
@@ -291,7 +292,7 @@ def test_task_not_completed_until_verification_passes(tmp_path, monkeypatch):
     annotate_task_result(
         result, provider="stub", role="builder", model="m", elapsed_ms=1.0
     )
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     materialize_task_output(result, runtime)
 
     vr = verify_task_output(result.job, result.task_id)
@@ -309,7 +310,7 @@ def test_failed_verification_leaves_task_pending(tmp_path, monkeypatch):
     assert job.tasks[0].status == RunState.RUNNING
 
     # Force verification to fail by pointing workspace_file at a non-existent path
-    artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in job.artifacts if a.task_id == str(result.task_id))
     artifact.metadata["workspace_file"] = str(tmp_path / "ghost.txt")
 
     vr = verify_task_output(result.job, result.task_id)
@@ -325,7 +326,7 @@ def test_failed_verification_records_failures_in_artifact_metadata(tmp_path, mon
     job = _make_planned_job()
     result = run_next_task(job, _stub_builder)
 
-    artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in job.artifacts if a.task_id == str(result.task_id))
     artifact.metadata["workspace_file"] = str(tmp_path / "ghost.txt")
 
     vr = verify_task_output(result.job, result.task_id)
@@ -343,7 +344,7 @@ def test_failed_verification_clears_output_artifact_ids(tmp_path, monkeypatch):
     result = run_next_task(job, _stub_builder)
     assert len(job.tasks[0].output_artifact_ids) == 1
 
-    artifact = next(a for a in job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in job.artifacts if a.task_id == str(result.task_id))
     artifact.metadata["workspace_file"] = str(tmp_path / "ghost.txt")
 
     vr = verify_task_output(result.job, result.task_id)
@@ -360,7 +361,7 @@ def test_retry_verify_uses_new_artifact_not_stale(tmp_path, monkeypatch):
     # First attempt: verification fails (point workspace_file at non-existent path)
     result1 = run_next_task(job, _stub_builder)
     stale_artifact_id = job.tasks[0].output_artifact_ids[0]
-    artifact1 = next(a for a in job.artifacts if a.task_id == result1.task_id)
+    artifact1 = next(a for a in job.artifacts if a.task_id == str(result1.task_id))
     artifact1.metadata["workspace_file"] = str(tmp_path / "ghost.txt")
     vr1 = verify_task_output(result1.job, result1.task_id)
     assert vr1.passed is False
@@ -370,7 +371,7 @@ def test_retry_verify_uses_new_artifact_not_stale(tmp_path, monkeypatch):
 
     # Second attempt: builder runs again; materialize produces a real file
     result2 = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     annotate_task_result(
         result2, provider="stub", role="builder", model="m", elapsed_ms=1.0
     )
@@ -431,7 +432,7 @@ def _make_artifact_content(
 
 
 def _setup_artifact_with_content(
-    job: Job,
+    job: JobPlan,
     content: str,
     task_type: str,
     ws_file_path,
@@ -443,7 +444,7 @@ def _setup_artifact_with_content(
         name=f"task_output_{task_type}",
         content=content,
         mime_type="text/plain",
-        task_id=task.id,
+        task_id=str(task.task_id),
         kind=ArtifactKind.BUILDER_PROPOSAL,
         metadata={
             "task_type": task_type,
@@ -452,7 +453,7 @@ def _setup_artifact_with_content(
         },
     )
     job.artifacts.append(artifact)
-    task.output_artifact_ids.append(artifact.id)
+    task.output_artifact_ids.append(str(artifact.id))
     return artifact
 
 
@@ -466,19 +467,19 @@ class TestGenericProfileVerification:
         """Unknown task_type uses generic profile; standard content passes."""
         job = _make_planned_job("write_code")
         task = job.tasks[0]
-        content = _make_artifact_content(task.id, "write_code")
+        content = _make_artifact_content(task.task_id, "write_code")
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "write_code", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         assert vr.passed is True
 
     def test_generic_profile_check_names_present(self, tmp_path):
         job = _make_planned_job("write_code")
         task = job.tasks[0]
-        content = _make_artifact_content(task.id, "write_code")
+        content = _make_artifact_content(task.task_id, "write_code")
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "write_code", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         check_names = [c.check for c in vr.checks]
         assert "required_section:Summary:" in check_names
         assert "required_section:Proposed Changes:" in check_names
@@ -495,22 +496,22 @@ class TestGenericProfileVerification:
         task = job.tasks[0]
         # Artifact content with a TODO — should fail repo_doc forbidden_phrase:TODO
         content = _make_artifact_content(
-            task.id, "write_readme", summary="TODO: fill in later"
+            task.task_id, "write_readme", summary="TODO: fill in later"
         )
         # No workspace_file in metadata; contract skips workspace checks entirely.
         artifact = Artifact(
             name="task_output_write_readme",
             content=content,
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.task_id),
             kind=ArtifactKind.BUILDER_PROPOSAL,
             metadata={"task_type": "write_readme", "summary": "done"},
         )
         job.artifacts.append(artifact)
-        task.output_artifact_ids.append(artifact.id)
+        task.output_artifact_ids.append(str(artifact.id))
 
         vr = verify_task_output(
-            job, task.id, contract=TaskContract(require_workspace_file=False)
+            job, task.task_id, contract=TaskContract(require_workspace_file=False)
         )
         # Profile check should still fire and fail on TODO
         check_names = [c.check for c in vr.checks]
@@ -530,10 +531,10 @@ class TestRepoDocProfileVerification:
         """write_readme → repo_doc; content without TODO/TBD passes."""
         job = _make_planned_job("write_readme")
         task = job.tasks[0]
-        content = _make_artifact_content(task.id, "write_readme")
+        content = _make_artifact_content(task.task_id, "write_readme")
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "write_readme", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         assert vr.passed is True
 
     def test_repo_doc_fails_on_TODO_in_content(self, tmp_path):
@@ -541,11 +542,11 @@ class TestRepoDocProfileVerification:
         job = _make_planned_job("write_readme")
         task = job.tasks[0]
         content = _make_artifact_content(
-            task.id, "write_readme", summary="TODO: finish this"
+            task.task_id, "write_readme", summary="TODO: finish this"
         )
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "write_readme", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         assert vr.passed is False
         assert any(c.check == "forbidden_phrase:TODO" and not c.passed for c in vr.checks)
 
@@ -553,11 +554,11 @@ class TestRepoDocProfileVerification:
         job = _make_planned_job("write_readme")
         task = job.tasks[0]
         content = _make_artifact_content(
-            task.id, "write_readme", changes=["Update section TBD later"]
+            task.task_id, "write_readme", changes=["Update section TBD later"]
         )
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "write_readme", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         assert vr.passed is False
         assert any(c.check == "forbidden_phrase:TBD" and not c.passed for c in vr.checks)
 
@@ -566,11 +567,11 @@ class TestRepoDocProfileVerification:
         job = _make_planned_job("write_readme")
         task = job.tasks[0]
         content = _make_artifact_content(
-            task.id, "write_readme", summary="todo: figure out later"
+            task.task_id, "write_readme", summary="todo: figure out later"
         )
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "write_readme", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         assert vr.passed is False
         assert any(c.check == "forbidden_phrase:TODO" and not c.passed for c in vr.checks)
 
@@ -585,12 +586,12 @@ class TestAnalysisDocProfileVerification:
         job = _make_planned_job("write_spec")
         task = job.tasks[0]
         content = _make_artifact_content(
-            task.id, "write_spec",
+            task.task_id, "write_spec",
             changes=["Add section A", "Add section B"],
         )
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "write_spec", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         assert vr.passed is True
 
     def test_analysis_doc_fails_with_one_change(self, tmp_path):
@@ -598,11 +599,11 @@ class TestAnalysisDocProfileVerification:
         job = _make_planned_job("write_spec")
         task = job.tasks[0]
         content = _make_artifact_content(
-            task.id, "write_spec", changes=["Only one change"]
+            task.task_id, "write_spec", changes=["Only one change"]
         )
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "write_spec", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         assert vr.passed is False
         assert any(c.check == "min_proposed_changes" and not c.passed for c in vr.checks)
 
@@ -610,13 +611,13 @@ class TestAnalysisDocProfileVerification:
         job = _make_planned_job("write_analysis")
         task = job.tasks[0]
         content = _make_artifact_content(
-            task.id, "write_analysis",
+            task.task_id, "write_analysis",
             summary="maybe this is correct",
             changes=["Change A", "Change B"],
         )
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "write_analysis", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         assert vr.passed is False
         assert any(c.check == "forbidden_phrase:maybe" and not c.passed for c in vr.checks)
 
@@ -631,13 +632,13 @@ class TestImplementationPlanProfileVerification:
         job = _make_planned_job("create_plan")
         task = job.tasks[0]
         content = _make_artifact_content(
-            task.id, "create_plan",
+            task.task_id, "create_plan",
             changes=["Step A", "Step B"],
             risks=["Breaking change to API"],
         )
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "create_plan", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         assert vr.passed is True
 
     def test_implementation_plan_fails_without_risks_section(self, tmp_path):
@@ -646,11 +647,11 @@ class TestImplementationPlanProfileVerification:
         task = job.tasks[0]
         # No risks= argument → no Risks: section
         content = _make_artifact_content(
-            task.id, "create_plan", changes=["Step A", "Step B"]
+            task.task_id, "create_plan", changes=["Step A", "Step B"]
         )
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "create_plan", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         assert vr.passed is False
         assert any(
             c.check == "required_section:Risks:" and not c.passed for c in vr.checks
@@ -660,13 +661,13 @@ class TestImplementationPlanProfileVerification:
         job = _make_planned_job("create_plan")
         task = job.tasks[0]
         content = _make_artifact_content(
-            task.id, "create_plan",
+            task.task_id, "create_plan",
             changes=["Only one step"],
             risks=["Some risk"],
         )
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "create_plan", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         assert vr.passed is False
         assert any(c.check == "min_proposed_changes" and not c.passed for c in vr.checks)
 
@@ -675,11 +676,11 @@ class TestImplementationPlanProfileVerification:
         job = _make_planned_job("create_plan")
         task = job.tasks[0]
         content = _make_artifact_content(
-            task.id, "create_plan", changes=["Step A", "Step B"]
+            task.task_id, "create_plan", changes=["Step A", "Step B"]
         )
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "create_plan", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         check_names = [c.check for c in vr.checks]
         assert "required_section:Risks:" in check_names
 
@@ -688,14 +689,14 @@ class TestImplementationPlanProfileVerification:
         job = _make_planned_job("create_plan")
         task = job.tasks[0]
         content = _make_artifact_content(
-            task.id, "create_plan",
+            task.task_id, "create_plan",
             summary="TODO: decide on API surface",
             changes=["Step A", "Step B"],
             risks=["API may break consumers"],
         )
         ws = tmp_path / "out.txt"
         _setup_artifact_with_content(job, content, "create_plan", ws)
-        vr = verify_task_output(job, task.id)
+        vr = verify_task_output(job, task.task_id)
         # No forbidden_phrase:TODO check should appear (or if it does, it must pass)
         todo_checks = [c for c in vr.checks if c.check == "forbidden_phrase:TODO"]
         assert all(c.passed for c in todo_checks), (

@@ -13,12 +13,9 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from packages.core.models import (
-    Job,
-    RunState,
-    Task,
-)
-from packages.orchestration.storage import save_job
+from packages.core.models import RunState
+from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -34,21 +31,21 @@ FORBIDDEN_KEYS = (
 )
 
 
-def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> Job:
+def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
     meta: dict = {}
     if project_id:
         meta["project_id"] = project_id
     if target_repo:
         meta["target_repo"] = target_repo
-    return Job(
-        id=uuid4(),
-        name="test job",
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="test job",
         user_prompt="test prompt",
         state=RunState.RUNNING,
         tasks=[
-            Task(
-                id=uuid4(),
-                description="task",
+            TaskEntry(
+                task_id="T001",
+                title="task",
                 status=RunState.PENDING,
                 inputs={"task_type": "patch"},
                 output_artifact_ids=[],
@@ -66,8 +63,8 @@ def _make_job(*, project_id: str | None = None, target_repo: str | None = None) 
 
 def _make_job_s101(task_count: int = 3):
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -88,13 +85,13 @@ def _make_job_s101(task_count: int = 3):
 
 
 def _make_job_s111(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                task_type=t.get("type", "readme_draft"),
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -110,13 +107,13 @@ def _make_job_s111(*, tasks=None, name="test"):
 
 
 def _make_job_s122(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                task_type=t.get("type", "readme_draft"),
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -132,13 +129,13 @@ def _make_job_s122(*, tasks=None, name="test"):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                task_type=t.get("type", "readme_draft"),
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -154,15 +151,16 @@ def _make_job_s127(*, tasks=None, name="test"):
 
 
 def _make_job_s135(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
             task_type = t.get("type", "readme_draft")
             inputs = dict(t.get("metadata", {}))
             inputs.setdefault("task_type", task_type)
-            task = Task(
-                description=t.get("description", task_type),
+            task = TaskEntry(
+                title=t.get("description", task_type),
                 inputs=inputs,
             )
             if "status" in t:
@@ -177,14 +175,15 @@ def _make_job_s135(*, tasks=None, name="test"):
 
 
 def _make_job_s141(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
             task_type = t.get("type", "readme_draft")
             inputs = dict(t.get("metadata", {}))
             inputs.setdefault("task_type", task_type)
-            task = Task(description=t.get("description", task_type), inputs=inputs)
+            task = TaskEntry(title=t.get("description", task_type), inputs=inputs)
             if "status" in t:
                 task.status = RunState(t["status"])
             job.tasks.append(task)
@@ -196,21 +195,21 @@ def _make_job_s141(*, tasks=None, name="test"):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def _make_job_s61(*, project_id: str | None = None, target_repo: str | None = None) -> Job:
+def _make_job_s61(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
     meta: dict = {}
     if project_id:
         meta["project_id"] = project_id
     if target_repo:
         meta["target_repo"] = target_repo
-    return Job(
-        id=uuid4(),
-        name="step61-test",
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="step61-test",
         user_prompt="test prompt",
         state=RunState.RUNNING,
         tasks=[
-            Task(
-                id=uuid4(),
-                description="task",
+            TaskEntry(
+                task_id="T001",
+                title="task",
                 status=RunState.PENDING,
                 inputs={"task_type": "patch"},
                 output_artifact_ids=[],
@@ -221,13 +220,13 @@ def _make_job_s61(*, project_id: str | None = None, target_repo: str | None = No
     )
 
 
-def _make_job_s62() -> Job:
-    return Job(
-        id=uuid4(),
-        name="hygiene-test",
+def _make_job_s62() -> JobPlan:
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="hygiene-test",
         user_prompt="test",
         state=RunState.RUNNING,
-        tasks=[Task(id=uuid4(), description="t", status=RunState.PENDING,
+        tasks=[TaskEntry(task_id="T001", title="t", status=RunState.PENDING,
                      inputs={"task_type": "patch"}, output_artifact_ids=[])],
         artifacts=[],
         metadata={},
@@ -764,7 +763,7 @@ class TestNoRawLeaks:
         )
 
         job = _make_job_s61()
-        save_job(job)
+        save_job_plan(job)
         events = [_proof_event("i1", "a.py"), _test_event()]
         graph = build_project_brain(job, events)
         raw = json.dumps(export_project_brain_json(graph))
@@ -779,7 +778,7 @@ class TestNoRawLeaks:
         )
 
         job = _make_job_s61()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         text = summarize_project_brain(graph)
         for forbidden in FORBIDDEN_KEYS:
@@ -801,7 +800,7 @@ class TestNoRawLeaks:
         save_project(project)
 
         job = _make_job_s61(project_id=pid)
-        save_job(job)
+        save_job_plan(job)
 
         agg = build_project_brain_aggregate(project, [job], {})
         raw = json.dumps(export_project_brain_aggregate_json(agg))
@@ -813,7 +812,7 @@ class TestNoRawLeaks:
         from packages.orchestration.project_brain import build_project_brain
 
         job = _make_job_s61()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         ar_nodes = [n for n in graph.nodes if n.type == "autonomy_readiness"]
         assert ar_nodes
@@ -859,8 +858,6 @@ class TestNoSilentSwallow:
             "packages/orchestration/project_brain.py",
             "packages/orchestration/autonomy_readiness.py",
             "packages/orchestration/brain_detail.py",
-            "packages/orchestration/context_pack.py",
-            "packages/orchestration/storage.py",
         ]
         for mod in modules:
             src = Path(mod).read_text()

@@ -33,7 +33,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
-from uuid import UUID
 
 # ---------------------------------------------------------------------------
 # Path sanitization (no absolute path leaks in dashboard JSON)
@@ -96,69 +95,11 @@ def _safe_rel_file(name: str) -> str:
 # Safe data builders (no raw content leaks)
 # ---------------------------------------------------------------------------
 
-class _JobPlanTaskAdapter:
-    """Minimal adapter so JobPlan tasks look like core Job tasks to the dashboard."""
-
-    def __init__(self, task: Any) -> None:
-        self._t = task
-        self.id = task.task_id
-        self.description = task.title
-        status_map = {
-            "applied_to_job_workspace": "completed",
-            "passed": "completed",
-            "blocked": "blocked",
-            "failed": "failed",
-            "skipped": "pending",
-            "pending": "pending",
-            "running": "running",
-        }
-        raw = task.status or "pending"
-
-        class _Status:
-            def __init__(self, val: str) -> None:
-                self.value = val
-            def __str__(self) -> str:
-                return self.value
-
-        self.status = _Status(status_map.get(raw, raw))
-        self.metadata = {}
-
-
-class _JobPlanAdapter:
-    """Adapter that makes a JobPlan look enough like a core Job for the dashboard."""
-
-    def __init__(self, plan: Any) -> None:
-        self._plan = plan
-        self.id = plan.job_id
-        self.name = plan.job_title
-
-        class _State:
-            def __init__(self, val: str) -> None:
-                self.value = val
-            def __str__(self) -> str:
-                return self.value
-
-        state_map = {
-            "completed": "completed",
-            "blocked": "blocked",
-            "running": "running",
-            "planned": "active",
-            "paused": "blocked",
-        }
-        self.state = _State(state_map.get(plan.state, plan.state))
-        self.tasks = [_JobPlanTaskAdapter(t) for t in plan.tasks]
-        self.artifacts = []
-        self.metadata = {"source": "job_plan", "job_plan_id": plan.job_id}
-        self._is_job_plan = True
-
-
 def _load_events(job: Any) -> list[dict[str, Any]]:
     """Load run-log events for a job."""
-    if getattr(job, "_is_job_plan", False):
-        return _load_job_plan_events(job)
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.timeline import load_run_events
-    return load_run_events(resolve_data_root(), job.id)
+    return load_run_events(resolve_data_root(), job.job_id)
 
 
 def _resolve_evidence_dir(job_id: str) -> Path | None:
@@ -172,96 +113,28 @@ def _resolve_evidence_dir(job_id: str) -> Path | None:
     return resolve_job_evidence_dir(job_id)
 
 
-def _load_job_plan_events(job: Any) -> list[dict[str, Any]]:
-    """Load agent run trace events as dashboard events for a JobPlan."""
-    from packages.orchestration.agent_run_trace import load_trace_jsonl
-
-    plan = job._plan
-    events: list[dict[str, Any]] = []
-
-    ev_dir = _resolve_evidence_dir(plan.job_id)
-    if ev_dir is None:
-        return events
-
-    trace_path = ev_dir / "agent_run_trace.jsonl"
-    if not trace_path.exists():
-        return events
-
-    _ACTOR_MAP = {
-        "builder_prompt_created": "Builder",
-        "builder_output_received": "Builder",
-        "repair_prompt_created": "Builder",
-        "repair_output_received": "Builder",
-        "reviewer_prompt_created": "Reviewer",
-        "reviewer_output_received": "Reviewer",
-        "review_finding_opened": "Reviewer",
-        "review_finding_rechecked": "Reviewer",
-        "task_gate_evaluated": "System",
-        "task_workspace_applied": "System",
-        "job_flow_started": "System",
-        "job_planned": "System",
-        "task_started": "System",
-        "job_evidence_exported": "System",
-        "promotion_dry_run_completed": "System",
-        "final_audit_completed": "System",
-    }
-
-    for te in load_trace_jsonl(trace_path):
-        kind = te.get("event_kind", "")
-        events.append({
-            "event": kind,
-            "timestamp": te.get("created_at", ""),
-            "metadata": {
-                "task_id": te.get("task_id", ""),
-                "run_id": te.get("run_id", ""),
-                "verdict": te.get("verdict", ""),
-                "status": te.get("status", ""),
-                "role": te.get("role", ""),
-                "actor": _ACTOR_MAP.get(kind, "System"),
-                "trace_source": te.get("trace_source", ""),
-            },
-        })
-
-    return events
-
-
 def _safe_error(code: int, message: str) -> tuple[int, dict[str, Any]]:
     return code, {"error": message}
 
 
 def _load_job(job_id_str: str) -> Any:
-    """Load a Job by UUID or JobPlan hex ID, return (job, error_tuple)."""
-    import re
+    """Load a job record by id, return (job, error_tuple)."""
+    from packages.orchestration.data_paths import JobIdInvalid, normalize_job_id
+    from packages.orchestration.pingpong_job import load_job_plan
 
-    uuid_was_valid = False
-    # Try core UUID job first
     try:
-        job_id = UUID(job_id_str)
-        uuid_was_valid = True
-        from packages.orchestration.storage import JobNotFoundError, JobStoreError, load_job
-        job = load_job(job_id)
-        return job, None
-    except ValueError:
-        pass
-    except (FileNotFoundError, ImportError, JobNotFoundError, JobStoreError):
-        pass
-
-    # Valid UUID that wasn't found — 404 not 400
-    if uuid_was_valid:
+        job_id = normalize_job_id(job_id_str)
+    except JobIdInvalid:
+        if re.fullmatch(r"[0-9a-fA-F]+", job_id_str):
+            return None, _safe_error(404, "job not found")
+        return None, _safe_error(400, "invalid job id")
+    try:
+        job = load_job_plan(job_id)
+    except OSError:
+        job = None
+    if job is None:
         return None, _safe_error(404, "job not found")
-
-    # Try job-flow JobPlan short hex ID (must look like hex)
-    if re.fullmatch(r"[0-9a-fA-F]+", job_id_str):
-        try:
-            from packages.orchestration.pingpong_job import load_job_plan
-            plan = load_job_plan(job_id_str)
-            if plan is not None:
-                return _JobPlanAdapter(plan), None
-        except (ImportError, OSError):
-            pass
-        return None, _safe_error(404, "job not found")
-
-    return None, _safe_error(400, "invalid job id")
+    return job, None
 
 
 def _task_test_status(task_id: str, events: list[dict]) -> str:
@@ -552,7 +425,7 @@ def _build_test_execution_section(job: Any) -> dict[str, Any]:
     + failure artifact only. No raw output, no mutation, no fake live."""
     try:
         from packages.orchestration.real_test_execution import list_test_runs
-        runs = list_test_runs(str(job.id))
+        runs = list_test_runs(str(job.job_id))
         latest = runs[-1] if runs else None
         return {
             "latest_test_status": (latest or {}).get("status", "none"),
@@ -560,7 +433,7 @@ def _build_test_execution_section(job: Any) -> dict[str, Any]:
             "failure_artifact_id": (latest or {}).get("failure_artifact_id", ""),
             "test_run_count": len(runs),
             "next_safe_action": (f"remedy test result {(latest or {}).get('test_run_id')} --json"
-                                 if latest else f"remedy test run {str(job.id)} --json"),
+                                 if latest else f"remedy test run {str(job.job_id)} --json"),
             "live": False, "source": "real_test_execution",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -577,15 +450,15 @@ def _build_snapshot_rollback_section(job: Any) -> dict[str, Any]:
             list_rollback_proofs,
             list_snapshot_proofs,
         )
-        snaps = list_snapshot_proofs(job_id=str(job.id))
-        rbs = list_rollback_proofs(job_id=str(job.id))
+        snaps = list_snapshot_proofs(job_id=str(job.job_id))
+        rbs = list_rollback_proofs(job_id=str(job.job_id))
         return {
             "snapshot_recorded": bool(snaps),
             "snapshot_proof_count": len(snaps),
             "restore_available": any(r.get("restore_available") for r in rbs),
             "restore_tested": False,
             "rollback_proof_count": len(rbs),
-            "next_safe_action": f"remedy snapshot create {str(job.id)} --json",
+            "next_safe_action": f"remedy snapshot create {str(job.job_id)} --json",
             "live": False, "source": "real_test_execution",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -611,12 +484,12 @@ def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
             build_snapshot_truth,
             list_durable_apply_ids,
         )
-        apply_ids = list_durable_apply_ids(str(job.id), data_dir)
+        apply_ids = list_durable_apply_ids(str(job.job_id), data_dir)
         verified = 0
         reverted = 0
         drift = False
         for aid in apply_ids:
-            truth = build_snapshot_truth(str(job.id), apply_id=aid, data_dir=data_dir)
+            truth = build_snapshot_truth(str(job.job_id), apply_id=aid, data_dir=data_dir)
             if (truth.apply_state == "applied"
                     and truth.snapshot_verified_now
                     and truth.recovery_material_available
@@ -714,7 +587,7 @@ def _build_repair_section(job: Any) -> dict[str, Any]:
                 resolved_failure_count += 1
     next_action = ""
     if pending_intent_id:
-        next_action = f"remedy patch approve {job.id} {pending_intent_id}"
+        next_action = f"remedy patch approve {job.job_id} {pending_intent_id}"
     return {
         "attempt_count": attempt_count,
         "pending_approval_count": pending_approval,
@@ -740,11 +613,11 @@ def _build_overnight_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
     if data_dir is None:
         return unknown
     try:
-        from packages.orchestration.overnight_readiness import (
+        from packages.orchestration.mission_readiness import (
             build_overnight_readiness,
             export_readiness_json,
         )
-        d = export_readiness_json(build_overnight_readiness(str(job.id), data_dir))
+        d = export_readiness_json(build_overnight_readiness(str(job.job_id), data_dir))
         checklist = d.get("checklist", [])
         na = d.get("next_action")
         return {
@@ -755,7 +628,7 @@ def _build_overnight_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
             "next_action_label": na["label"] if na else "",
             "checklist_done": sum(1 for i in checklist if i["status"] == "done"),
             "checklist_total": len(checklist),
-            "source": "overnight_readiness",
+            "source": "mission_readiness",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return unknown
@@ -769,12 +642,10 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
     claim. LIVE is always false — estimates + metadata only."""
     try:
         from packages.orchestration.token_economy import token_economy_report
-        rep = token_economy_report(str(job.id))
+        rep = token_economy_report(str(job.job_id))
         est = rep.get("context_budget_estimate", {}) or {}
         pack = rep.get("context_pack_recommendation", {}) or {}
         decision = rep.get("decision", {}) or {}
-        from packages.orchestration.worker_registry import get_worker_spec, is_placeholder
-        oll = get_worker_spec("ollama.placeholder")
         return {
             "budget_status": decision.get("budget_status", "unknown_budget"),
             "estimated_token_band": decision.get("estimated_token_band", "unknown"),
@@ -783,7 +654,6 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
             "estimated_token_savings_band": (pack.get("estimated_token_savings", {}) or {}).get("band", "unknown"),
             "local_first_recommended": (decision.get("estimated_cost_band") in ("free", "cheap")
                                         and not decision.get("requires_human_approval")),
-            "ollama_placeholder_available": bool(oll is not None and is_placeholder(oll)),
             "requires_human_approval": decision.get("requires_human_approval", True),
             "warning_count": len(est.get("warnings", [])),
             "next_safe_action": decision.get("next_safe_action", ""),
@@ -794,79 +664,9 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
         return {"budget_status": "unknown_budget", "estimated_token_band": "unknown",
                 "estimated_context_tokens": "unknown", "context_pack_recommendation": "",
                 "estimated_token_savings_band": "unknown", "local_first_recommended": False,
-                "ollama_placeholder_available": "unknown", "requires_human_approval": True,
+                "requires_human_approval": True,
                 "warning_count": "unknown", "next_safe_action": "", "live": False,
                 "source": "unavailable"}
-
-
-def _build_worker_registry_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Worker Registry + Route Policy v0 summary for the cockpit (Step 1730).
-
-    Counts + active route policy + recommended route only. No buttons, no mutation, no "run worker",
-    no fake provider/Ollama status. LIVE is always false — this block is metadata + policy only."""
-    try:
-        from packages.orchestration.worker_registry import (
-            WorkerSelectionRequest,
-            evaluate_worker_selection,
-            is_placeholder,
-            load_route_policy,
-            load_worker_registry,
-        )
-        specs = load_worker_registry()
-        policy = load_route_policy(str(job.id))
-        selection = evaluate_worker_selection(
-            WorkerSelectionRequest(job_id=str(job.id), task_type="repair"), policy=policy,
-            registry=specs)
-        return {
-            "available_workers_count": len(specs),
-            "enabled_workers_count": sum(1 for s in specs if s.enabled),
-            "placeholder_workers_count": sum(1 for s in specs if is_placeholder(s)),
-            "selected_workers": list(policy.user_selected_worker_ids),
-            "preferred_workers": list(policy.preferred_worker_ids),
-            "blocked_workers": list(policy.blocked_worker_ids),
-            "local_first_enabled": policy.prefer_local_for_cheap_tasks,
-            "ollama_preference_enabled": policy.prefer_ollama_for_cheap_tasks,
-            "max_cost_tier": policy.max_cost_tier,
-            "max_risk_tier": policy.max_risk_tier,
-            "token_budget_hint": policy.token_budget_hint,
-            "recommended_worker_id": selection.recommended_worker_id,
-            "requires_human_approval": selection.requires_human_approval,
-            "recommended_next_action": selection.next_safe_action,
-            "live": False,
-            "source": "worker_registry",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"available_workers_count": "unknown", "selected_workers": [],
-                "preferred_workers": [], "blocked_workers": [], "local_first_enabled": "unknown",
-                "ollama_preference_enabled": "unknown", "recommended_worker_id": "",
-                "recommended_next_action": "", "live": False, "source": "unavailable"}
-
-
-def _build_builder_routing_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Expensive Builder Routing v0 summary for the cockpit (Step 1595).
-
-    Latest tier + budget/loop status + external-recommended flag + next-action label only.
-    No buttons, no mutation, no execution, no raw content."""
-    try:
-        from packages.orchestration.builder_routing import load_builder_routing_traces
-        scope = f"job:{job.id}"
-        traces = load_builder_routing_traces(scope=scope)
-        latest = traces[-1] if traces else None
-        external_recommended = any(
-            t.get("selected_tier") == "external_candidate_generator" for t in traces)
-        return {
-            "routing_decision_count": len(traces),
-            "latest_tier": (latest or {}).get("selected_tier", ""),
-            "loop_guard_status": (latest or {}).get("loop_guard_status", ""),
-            "risk_level": ((latest or {}).get("risk_summary", {}) or {}).get("level", ""),
-            "external_builder_recommended": external_recommended,
-            "next_safe_action_label": (latest or {}).get("next_safe_action", ""),
-            "source": "builder_routing",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"routing_decision_count": "unknown", "latest_tier": "",
-                "loop_guard_status": "", "external_builder_recommended": False,
-                "next_safe_action_label": "", "source": "unavailable"}
 
 
 def _build_repair_request_section(job: Any) -> dict[str, Any]:
@@ -898,7 +698,7 @@ def _build_self_dogfood_section(job: Any) -> dict[str, Any]:
     latest status only. No buttons, no mutation, no raw findings."""
     try:
         from packages.orchestration.proposed_tasks import load_proposed_tasks_safe
-        tasks, _ = load_proposed_tasks_safe(str(job.id))
+        tasks, _ = load_proposed_tasks_safe(str(job.job_id))
         sd = [t for t in tasks if getattr(t, "task_type", "") == "self_dogfood"]
         def _st(t):
             s = getattr(t, "status", "")
@@ -923,7 +723,7 @@ def _build_self_execution_section(job: Any) -> dict[str, Any]:
     Counts + latest state only. No buttons, no mutation, no raw content."""
     try:
         from packages.orchestration.self_dogfood_execution import list_attempts
-        attempts = [a for a in list_attempts() if a.get("job_id") == str(job.id)]
+        attempts = [a for a in list_attempts() if a.get("job_id") == str(job.job_id)]
         by_state: dict[str, int] = {}
         for a in attempts:
             by_state[a.get("state", "")] = by_state.get(a.get("state", ""), 0) + 1
@@ -946,7 +746,7 @@ def _build_orchestrator_section(job: Any) -> dict[str, Any]:
     decision only. No buttons, no mutation, no raw content."""
     try:
         from packages.orchestration.orchestrator_brain import list_decisions
-        decisions = list_decisions(f"job:{job.id}")
+        decisions = list_decisions(f"job:{job.job_id}")
         if not decisions:
             return {"decision_count": 0, "latest_stop_reason": "none", "confidence": "",
                     "next_safe_action": "", "loop_guard_status": "", "model_routing_tier": "",
@@ -1081,165 +881,6 @@ def _build_prompt_trace(ev_dir: Path | None) -> dict[str, Any]:
     }
 
 
-def _build_job_plan_dashboard(job: Any) -> dict[str, Any]:
-    """Build safe dashboard for a JobPlan (job-flow) job.
-
-    Uses Agent Run Trace events directly instead of legacy core events.
-    """
-    events = _load_events(job)
-    plan = job._plan
-    generated_at = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    task_count = len(job.tasks)
-    completed = sum(1 for t in job.tasks
-                    if (t.status.value if hasattr(t.status, "value") else str(t.status))
-                    == "completed")
-    blocked = sum(1 for t in job.tasks
-                  if (t.status.value if hasattr(t.status, "value") else str(t.status))
-                  in ("blocked", "failed"))
-    state = job.state.value if hasattr(job.state, "value") else str(job.state)
-
-    has_builder = any(e.get("event") == "builder_prompt_created" for e in events)
-    has_reviewer = any(e.get("event") == "reviewer_prompt_created" for e in events)
-    has_final_audit = any(e.get("event") == "final_audit_completed" for e in events)
-    has_repair = any(e.get("event") == "repair_prompt_created" for e in events)
-
-    final_audit_status = ""
-    for e in reversed(events):
-        if e.get("event") == "final_audit_completed":
-            final_audit_status = e.get("metadata", {}).get("status", "")
-            break
-
-    reviewer_pass = any(
-        e.get("event") == "task_gate_evaluated"
-        and e.get("metadata", {}).get("verdict") == "pass"
-        for e in events
-    )
-
-    review_done = has_reviewer and reviewer_pass
-    finalized = (has_final_audit
-                 and final_audit_status == "READY_FOR_APPROVAL"
-                 and blocked == 0)
-
-    phases = [
-        {"id": "planning", "title": "Planning",
-         "status": "done" if any(e.get("event") == "job_planned" for e in events) else "pending",
-         "rank": 0, "source": "agent_run_trace"},
-        {"id": "build", "title": "Build",
-         "status": "done" if finalized else ("current" if has_builder else "pending"),
-         "rank": 1, "source": "agent_run_trace"},
-        {"id": "test", "title": "Test",
-         "status": "not_applicable",
-         "rank": 2, "source": "agent_run_trace"},
-        {"id": "review", "title": "Review",
-         "status": "done" if review_done else ("current" if has_reviewer else "pending"),
-         "rank": 3, "source": "agent_run_trace"},
-        {"id": "finalized", "title": "Finalized",
-         "status": "done" if finalized else "pending",
-         "rank": 4, "source": "agent_run_trace"},
-    ]
-
-    task_items = []
-    for idx, t in enumerate(job.tasks):
-        tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
-        task_items.append({
-            "id": str(t.id),
-            "title": t.description[:80] if t.description else f"Task {idx + 1}",
-            "status": tstat,
-            "source": "job_plan",
-        })
-
-    activity_items = []
-    for e in events[-12:]:
-        ev = e.get("event", "")
-        meta = e.get("metadata", {})
-        prompt_chars = _as_int(meta.get("prompt_chars", 0))
-        item: dict[str, Any] = {
-            "id": f"evt-{e.get('timestamp', '')[:19]}",
-            "time": e.get("timestamp", ""),
-            "actor": meta.get("actor", "System"),
-            "event_kind": ev,
-            "summary": ev.replace("_", " ").capitalize(),
-            "source": "agent_run_trace",
-            "trace_source": meta.get("trace_source", ""),
-            "task_id": str(meta.get("task_id", "") or ""),
-            "prompt_kind": str(meta.get("prompt_kind", "") or ""),
-            "prompt_chars": prompt_chars,
-        }
-        if prompt_chars > 0:
-            item["token_estimate"] = prompt_chars // 4
-        activity_items.append(item)
-
-    ev_dir = _resolve_evidence_dir(plan.job_id)
-    job_flow_data: dict[str, Any] = {}
-    if ev_dir:
-        jf_path = ev_dir / "job_flow.json"
-        if jf_path.exists():
-            try:
-                import json as _json
-                job_flow_data = _json.loads(jf_path.read_text())
-            except (OSError, ValueError):
-                pass
-
-    fa = job_flow_data.get("final_audit", {})
-    next_action_cmd = job_flow_data.get("next_approve_command_safe", "")
-    next_action_label = fa.get("recommended_next_action", "Review job state")
-
-    evidence_missing: list[str] = []
-    if not events:
-        evidence_missing.append("agent_run_trace")
-    if ev_dir and not (ev_dir / "prompt_trace_summary.json").exists():
-        evidence_missing.append("prompt_trace")
-    if not ev_dir:
-        evidence_missing.append("evidence_dir")
-
-    return {
-        "version": 3,
-        "job_id": str(job.id),
-        "generated_at": generated_at,
-        "source": "job_plan_adapter",
-        "live": {
-            "running": state in ("active", "running"),
-            "state": state,
-            "current_actor": "",
-            "last_event_at": events[-1].get("timestamp", "") if events else "",
-            "stale": not events,
-            "source": "agent_run_trace",
-            "confidence": "high" if events else "none",
-        },
-        "metrics": {
-            "open": blocked,
-            "planned": task_count - completed - blocked,
-            "done": completed,
-            "progress_percent": round((completed / max(task_count, 1)) * 100),
-            "source_counts": {"tasks": task_count, "events": len(events)},
-            "computed_from": "job_plan_and_agent_run_trace",
-        },
-        "tasks": task_items,
-        "activity": activity_items,
-        "phases": phases,
-        "prompt_trace": _build_prompt_trace(ev_dir),
-        "next_action": {
-            "kind": "guidance",
-            "label": next_action_label,
-            "command": next_action_cmd,
-            "requires_user": True,
-        },
-        "truth": {
-            "source": "job_plan_adapter",
-            "trace_source": "reconstructed" if events else "none",
-            "missing_evidence": evidence_missing,
-            "demo_mode": False,
-            "computed_from": "job_plan_and_agent_run_trace",
-        },
-        "redaction": {
-            "policy": "safe_summaries_only",
-            "raw_content_exposed": False,
-            "unsafe_fields_blocked": True,
-        },
-    }
-
-
 # WHY: `metrics.open` and `open_decision_count` are both typed `int` with no "unknown"
 # state, so a failure here reads as 0 instead of propagating — unlike
 # `_build_orchestrator_section`, the richer shape that can answer "unknown". The event
@@ -1259,8 +900,6 @@ def _count_open_decisions(job: Any, events: list[dict[str, Any]]) -> int:
 
 def _build_dashboard(job: Any) -> dict[str, Any]:
     """Build safe dashboard payload for a job."""
-    if getattr(job, "_is_job_plan", False):
-        return _build_job_plan_dashboard(job)
     events = _load_events(job)
     truth_data_dir = _resolve_dashboard_data_dir()
     # Authoritative proof chain (durable snapshot truth) — built once, reused for
@@ -1317,13 +956,6 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "command_hash": tm.get("command_hash", "")[:16],
             "timestamp": te.get("timestamp", ""),
         }
-
-    # Token budget
-    token_mode = "compact"
-    for e in reversed(events):
-        if e.get("event") == "context_pack_created":
-            token_mode = e.get("metadata", {}).get("mode", "compact")
-            break
 
     # Guidance
     guidance_cards: list[dict[str, str]] = []
@@ -1384,10 +1016,10 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
     task_items: list[dict[str, Any]] = []
     for idx, t in enumerate(job.tasks):
         tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
-        tid = str(t.id)
+        tid = str(t.task_id)
         task_items.append({
             "id": tid,
-            "title": t.description[:80] if t.description else f"Task {idx + 1}",
+            "title": t.title[:80] if t.title else f"Task {idx + 1}",
             "status": tstat,
             "verified": tstat == "completed",
             "source": "real",
@@ -1446,7 +1078,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
     try:
         from packages.orchestration.proposed_tasks import can_finalize
         finalize_ok, finalize_reason = can_finalize(
-            str(job.id),
+            str(job.job_id),
             pending_task_count=pending_task_count,
             blocked_task_count=blocked_task_count,
             pending_approvals=pending_approvals,
@@ -1491,7 +1123,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
 
     return {
         "version": 3,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "generated_at": generated_at,
         "source": "server",
         "live": {
@@ -1519,8 +1151,6 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "continuation": _build_continuation_section(job, events, truth_data_dir),
         "repair": _build_repair_section(job),
         "overnight": _build_overnight_section(job, truth_data_dir),
-        "builder_routing": _build_builder_routing_section(job),
-        "worker_registry": _build_worker_registry_section(job),
         "token_economy": _build_token_economy_section(job),
         "test_execution": _build_test_execution_section(job),
         "snapshot_rollback": _build_snapshot_rollback_section(job),
@@ -1533,6 +1163,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "tasks": task_items,
         "activity": activity_items,
         "phases": phases,
+        "prompt_trace": _build_prompt_trace(_resolve_evidence_dir(str(job.job_id))),
         "graph_summary": {
             "node_count": graph_node_count,
             "edge_count": graph_edge_count,
@@ -1559,7 +1190,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "computed_from": "job_model_and_event_ledger",
         },
         "timeline_events": timeline_events,
-        "proposed_tasks": _build_proposed_tasks_section(str(job.id)),
+        "proposed_tasks": _build_proposed_tasks_section(str(job.job_id)),
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
         "project_summary": _build_project_summary_section(job),
@@ -1573,7 +1204,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         # Primary truth is in metrics, tasks, phases, truth, live.
         # Do not use legacy fields as core truth in new consumers.
         "legacy": {
-            "job_name": job.name,
+            "job_name": job.job_title,
             "task_count": task_count,
             "guidance": guidance_cards,
             "lifecycle": lifecycle,
@@ -1643,7 +1274,7 @@ def _build_resume_section(job: Any, events: list[dict[str, Any]]) -> dict[str, A
             replay_job,
         )
         data_dir = resolve_data_root()
-        replay = replay_job(str(job.id), data_dir)
+        replay = replay_job(str(job.job_id), data_dir)
         cps = find_checkpoints(replay)
 
         safe_cps = [c for c in cps if c.safe_to_resume]
@@ -1683,12 +1314,12 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
     """Build project-level summary for dashboard. Returns None if no project."""
     try:
         from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.pingpong_job import list_job_plans
         from packages.orchestration.project_registry import load_project
         from packages.orchestration.project_summary import (
             build_project_summary,
             detect_patterns,
         )
-        from packages.orchestration.storage import list_jobs
         from packages.orchestration.timeline import load_run_events
 
         project_id = job.metadata.get("project_id")
@@ -1697,13 +1328,13 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
 
         from uuid import UUID
         project = load_project(UUID(project_id))
-        all_jobs = list_jobs()
-        linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+        all_jobs = list_job_plans()
+        linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
 
         data_dir = resolve_data_root()
         all_events: dict[str, list[dict]] = {}
         for j in linked_jobs:
-            all_events[str(j.id)] = load_run_events(data_dir, j.id)
+            all_events[str(j.job_id)] = load_run_events(data_dir, j.job_id)
 
         summary = build_project_summary(project, linked_jobs, all_events)
         patterns = detect_patterns(linked_jobs, all_events)
@@ -1791,9 +1422,6 @@ def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
         elif ev == "repair_context_created":
             by_role["repair"] = by_role.get("repair", 0) + tokens
             sources_seen.add("repair_context")
-        elif ev in ("context_pack_created",):
-            by_role["planner"] = by_role.get("planner", 0) + tokens
-            sources_seen.add("context_pack")
         else:
             by_role["other"] = by_role.get("other", 0) + tokens
 
@@ -1980,7 +1608,7 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
 
     # Next command
     next_command = _pipeline_next_command(
-        str(job.id), stop_reason, approval_required, intent_id,
+        str(job.job_id), stop_reason, approval_required, intent_id,
         source_apply_status, tests_status,
     )
 
@@ -2152,7 +1780,7 @@ def _build_diff_json(job: Any) -> dict[str, Any]:
     filesystem logic, no path building and no error handling of its own, because
     `build_diff_view` never raises and names every absence in its own envelope."""
     from packages.orchestration.diff_view_source import build_diff_view
-    return build_diff_view(_resolve_evidence_dir(str(job.id)))
+    return build_diff_view(_resolve_evidence_dir(str(job.job_id)))
 
 
 def _build_task_run_diff_json(job: Any, task_id: str) -> dict[str, Any]:
@@ -2160,7 +1788,7 @@ def _build_task_run_diff_json(job: Any, task_id: str) -> dict[str, Any]:
     `_build_diff_json` is one: `build_diff_view` never raises and names every absence,
     including an unknown task id, in its own envelope."""
     from packages.orchestration.diff_view_source import build_diff_view
-    return build_diff_view(_resolve_evidence_dir(str(job.id)), task_id=task_id)
+    return build_diff_view(_resolve_evidence_dir(str(job.job_id)), task_id=task_id)
 
 
 def _build_layers_json() -> dict[str, Any]:
@@ -2199,7 +1827,7 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
 
     # Compute view-model hash for change detection
     node_count = len(events)
-    raw = f"{job.id}:{state}:{node_count}"
+    raw = f"{job.job_id}:{state}:{node_count}"
     vm_hash = _hl.md5(raw.encode()).hexdigest()[:12]
 
     # Latest event
@@ -2248,9 +1876,9 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
     for t in job.tasks:
         tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
         if tstat == "running":
-            active_task_id = str(t.id)
+            active_task_id = str(t.task_id)
         if tstat == "completed":
-            latest_completed_task_id = str(t.id)
+            latest_completed_task_id = str(t.task_id)
 
     # Repair loop detection
     repair_loop_used = any(
@@ -2295,7 +1923,7 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
 
     return {
         "version": 3,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "cursor": cursor,
         "stage": stage,
         "running": state in ("active", "running"),
@@ -2365,7 +1993,7 @@ def _build_events_since_json(job: Any, cursor: str) -> dict[str, Any]:
     ]
     return {
         "version": 1,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "cursor": str(len(events)),
         "events": safe,
     }
@@ -2457,13 +2085,10 @@ def _safe_event_summary(seq: int, event: dict[str, Any]) -> dict[str, Any]:
     server meant (DECISION F008 D1).
 
     `task_id` is DECISION F021 D2's single additive field, and it is resolved
-    from TWO places because this repository has two event sources: the run log
-    carries it as a top-level `RunEvent` field, while `_load_job_plan_events`
-    nests it under `metadata`. Reading only the top level would leave the
-    feed's jump-to-node dead for exactly the trace-driven jobs while every
-    run-log job worked, which is a half-feature rather than a visible failure.
-    Empty string when neither source carries one: a row with no linkage simply
-    does not jump.
+    from TWO places: the top-level `RunEvent` field the run log carries, and
+    otherwise a `task_id` nested under the event's `metadata`. The top level
+    wins when both carry one. Empty string when neither carries one: a row with
+    no linkage simply does not jump.
 
     `budget` is DECISION F022 D3's field and it is CONDITIONAL on the event
     kind: a `budget.tick` gains it and every other kind's frame stays
@@ -3036,7 +2661,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 # are out the status line is spent and cannot say "not found".
                 self._send_json(*err)
                 return
-            if not acquire_sse_slot(str(job.id)):
+            if not acquire_sse_slot(str(job.job_id)):
                 # 429 for the same reason and in the same window: a refused
                 # stream must not consume the capacity it was refused.
                 self._send_json(*_safe_error(429, "too many streams for this job"))
@@ -3051,7 +2676,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 )
                 self._send_sse_stream(job, str(start))
             finally:
-                release_sse_slot(str(job.id))
+                release_sse_slot(str(job.job_id))
             return
 
         # /api/layers
@@ -3179,11 +2804,11 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             return
         payload, shape_error = self._read_command_payload()
         if shape_error:
-            self._audit_attempt(str(job.id), "rejected_shape", create=True)
+            self._audit_attempt(str(job.job_id), "rejected_shape", create=True)
             self._send_json(*shape_error)
             return
         if not self._command_is_ui_exposed(payload["command"]):
-            self._audit_attempt(str(job.id), "rejected_command", create=True,
+            self._audit_attempt(str(job.job_id), "rejected_command", create=True,
                                 payload=payload)
             self._send_json(*_command_field_error(
                 "command", COMMAND_NOT_EXPOSED_MESSAGE))
@@ -3194,14 +2819,14 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # decision this server already made, so charging for it would penalise the
         # client for the server's own idempotency guarantee, in precisely the
         # retry-after-a-timeout case the nonce exists to serve.
-        replayed = self._replayed_command_result(str(job.id), payload["client_nonce"])
+        replayed = self._replayed_command_result(str(job.job_id), payload["client_nonce"])
         if replayed is not None:
             # D15 audits the replay with the ORIGINAL attempt's outcome, and finding
             # R-0636 rules what that token may be: a replay REPEATS an acceptance
             # rather than being one, so `replayed` is its own token. T5_F035 and
             # T9_F167 read this file to count what the door did, and one token for
             # both events would make them indistinguishable to both. R-0636's payer.
-            self._audit_attempt(str(job.id), "replayed", create=True,
+            self._audit_attempt(str(job.job_id), "replayed", create=True,
                                 payload=payload)
             self._send_json(replayed["status"], replayed["body"])
             return
@@ -3210,8 +2835,8 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # refused anyway would let a mid-rollout or simply buggy client lock
         # ITSELF out of a job with malformed bodies — a denial of service
         # produced by the guard rather than prevented by it.
-        if not self._rate_limit_admits_command(str(job.id)):
-            self._audit_attempt(str(job.id), "rejected_rate", create=True, payload=payload)
+        if not self._rate_limit_admits_command(str(job.job_id)):
+            self._audit_attempt(str(job.job_id), "rejected_rate", create=True, payload=payload)
             self._send_json(*_safe_error(429, COMMAND_RATE_LIMIT_MESSAGE))
             return
         # D5 maps `job.stop` to `safe_points.request_stop`; D18 fixes the order of
@@ -3222,21 +2847,21 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # returns the ORIGINAL result and there is none before the other two.
         if payload["command"] == JOB_STOP_COMMAND_ID:
             try:
-                accepted_body = self._dispatch_job_stop(str(job.id), payload)
+                accepted_body = self._dispatch_job_stop(str(job.job_id), payload)
             except (OSError, RuntimeError, ValueError, TypeError):
                 # D18, clause four: an effect that RAISED is neither `accepted`,
                 # which would be false, nor unaudited, which would break D6.
-                self._audit_attempt(str(job.id), "rejected_effect", create=True,
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
                                     payload=payload)
                 self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
                 return
             # D18, clause three: BOTH writes below fail SOFT. The stop is already
             # durable, so refusing after the fact would report a stop that really
             # was requested as one that was not.
-            self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
-            self._publish_command_result(str(job.id), payload["client_nonce"],
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
                                          accepted_body)
-            self._emit_command_accepted_event(str(job.id), accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
         # D5 maps `decision.resolve` to `answer_task_decision` followed by
@@ -3249,7 +2874,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             except (OSError, RuntimeError, ValueError, TypeError):
                 # D18, clause four: an effect that RAISED is neither `accepted`,
                 # which would be false, nor unaudited, which would break D6.
-                self._audit_attempt(str(job.id), "rejected_effect", create=True,
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
                                     payload=payload)
                 self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
                 return
@@ -3257,7 +2882,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 # D21, clause three: the effect RAN and DECLINED — the decision
                 # is absent or is no longer open. Nothing changed on disk, so
                 # nothing is published and a retry cannot answer it differently.
-                self._audit_attempt(str(job.id), "rejected_state", create=True,
+                self._audit_attempt(str(job.job_id), "rejected_state", create=True,
                                     payload=payload)
                 self._send_json(*_safe_error(409, COMMAND_DECISION_STATE_MESSAGE))
                 return
@@ -3265,10 +2890,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             # below fail SOFT. The answer is already persisted, so refusing
             # after the fact would report an answer that really was written as
             # one that was not.
-            self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
-            self._publish_command_result(str(job.id), payload["client_nonce"],
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
                                          accepted_body)
-            self._emit_command_accepted_event(str(job.id), accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
         # DECISION F033 D4 maps `patch.approve-hunks` to `record_hunk_decision_from_view`
@@ -3281,7 +2906,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             except (OSError, RuntimeError, ValueError, TypeError):
                 # D18, clause four: an effect that RAISED is neither `accepted`,
                 # which would be false, nor unaudited, which would break D6.
-                self._audit_attempt(str(job.id), "rejected_effect", create=True,
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
                                     payload=payload)
                 self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
                 return
@@ -3290,7 +2915,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 # `record_hunk_decision_from_view` writes NOTHING to `job.metadata` on
                 # a refusal, so nothing changed on disk, nothing is published, and a
                 # retry of the same decision cannot answer it differently.
-                self._audit_attempt(str(job.id), "rejected_state", create=True,
+                self._audit_attempt(str(job.job_id), "rejected_state", create=True,
                                     payload=payload)
                 self._send_json(*_safe_error(
                     409, COMMAND_HUNK_DECISION_STATE_MESSAGE))
@@ -3298,17 +2923,17 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             # D18, clause three: both writes below fail SOFT. The decision is already
             # persisted, so refusing after the fact would report a decision that
             # really was recorded as one that was not.
-            self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
-            self._publish_command_result(str(job.id), payload["client_nonce"],
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
                                          accepted_body)
-            self._emit_command_accepted_event(str(job.id), accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
         # An id `_command_is_ui_exposed` admitted that no clause above dispatches.
         # DECISION F009 D22: this is a GUARD, not a placeholder — unreachable
         # while the exposed subset holds exactly the three ids named above, and the
         # alternative is a request that gets no response at all.
-        self._audit_attempt(str(job.id), "not_implemented", create=True, payload=payload)
+        self._audit_attempt(str(job.job_id), "not_implemented", create=True, payload=payload)
         self._send_json(*_safe_error(501, COMMAND_NOT_DISPATCHED_MESSAGE))
 
     def _dispatch_job_stop(self, job_id: str, payload: Any) -> dict[str, Any]:
@@ -3374,7 +2999,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         from datetime import datetime, timezone
 
         from packages.orchestration.escalation import answer_task_decision
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         args = payload.get("args")
         args = args if isinstance(args, dict) else {}
         decision_id = args.get("decision_id")
@@ -3415,7 +3040,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             now=datetime.now(timezone.utc))
         if record is None:
             return None
-        save_job(job)
+        save_job_plan(job)
         return {"command": payload["command"], "outcome": "accepted",
                 "decision_id": str(record.get("decision_id", ""))}
 
@@ -3462,7 +3087,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             HUNK_STATE_PENDING,
             HUNK_STATE_REJECTED,
         )
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         args = payload.get("args")
         args = args if isinstance(args, dict) else {}
         task_run = args.get("task_run")
@@ -3471,7 +3096,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         rejected = args.get("rejected")
         # The CANONICAL id, for the reason finding R-0744 records: the evidence index
         # is keyed by the full lowercase hyphenated form and nothing else resolves it.
-        evidence_dir = resolve_job_evidence_dir(str(job.id))
+        evidence_dir = resolve_job_evidence_dir(str(job.job_id))
         view = build_diff_view(evidence_dir, task_id=task_run)
         # BOTH halves of the attempt key come from the ENVELOPE, which is the same key
         # the CLI door composes — so one decision has ONE key whichever door records it.
@@ -3487,7 +3112,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         )
         if isinstance(result, HunkApprovalRefusal):
             return None
-        save_job(job)
+        save_job_plan(job)
         states = [entry.state for entry in result.ledger.entries]
         return {"command": payload["command"], "outcome": "accepted",
                 "attempt_key": result.attempt_key,
@@ -3583,7 +3208,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         """True when `command_id` is one of the ids the UI door accepts.
 
         Imported inside the function, the idiom this module already uses for
-        the same catalog in `do_run`, `proof_chain` and `review_bundle`: the
+        the same catalog in `do_run` and `proof_chain`: the
         catalog is a large module and the write door must not pull it in at
         import time.
         """

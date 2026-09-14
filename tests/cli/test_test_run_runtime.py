@@ -86,7 +86,7 @@ def _make_job_with_repo(
     max_test_runs: int = 3,
 ) -> None:
     """Patch a job JSON to add target_repo, permissions, and run_contract."""
-    job_file = data_root / "jobs" / f"{job_id}.json"
+    job_file = data_root / "jobs" / job_id / "job.json"
     job_data = json.loads(job_file.read_text())
 
     job_data["metadata"]["target_repo"] = str(repo_path)
@@ -421,7 +421,7 @@ class TestArchitectureGuards:
         """Missing target_repo directory must be handled gracefully."""
         data_root, job_id = create_test_env(tmp_path)
         # Set target_repo to a path that doesn't exist
-        job_file = data_root / "jobs" / f"{job_id}.json"
+        job_file = data_root / "jobs" / job_id / "job.json"
         job_data = json.loads(job_file.read_text())
         job_data["metadata"]["target_repo"] = str(tmp_path / "nonexistent_repo")
         job_data["metadata"].setdefault("permissions", {})

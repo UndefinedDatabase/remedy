@@ -12,7 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from packages.core.models import AcceptanceCheck, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import TaskEntry
 from packages.orchestration.prompt_facts import repo_facts_block
 from packages.orchestration.prompt_segments import (
     ComposedPrompt,
@@ -510,20 +511,18 @@ def plan_job_llm(
     )
 
 
-def map_flight_plan_to_tasks(plan: FlightPlan) -> list[Task]:
+def map_flight_plan_to_tasks(plan: FlightPlan) -> list[TaskEntry]:
     """Convert FlightPlan tasks to core Task objects, preserving order.
 
     Flight plan metadata is stored in task.inputs["flight"] so the
     runner and evidence pipeline can trace provenance without modifying
     the core Task model.
     """
-    tasks: list[Task] = []
+    tasks: list[TaskEntry] = []
     for pt in plan.tasks:
-        task = Task(
-            description=f"{pt.title}: {pt.goal}",
-            acceptance_checks=[
-                AcceptanceCheck(description=ac) for ac in pt.acceptance
-            ],
+        task = TaskEntry(
+            title=f"{pt.title}: {pt.goal}",
+            acceptance="\n".join(pt.acceptance),
             inputs={
                 "flight": {
                     "planned_id": pt.id,
@@ -815,21 +814,21 @@ def resolve_flight_plan_approval(
 
     Returns the assumption-log path on an approval and None on a rejection.
     """
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
 
     fp = job.flight_plan
     if reason != "approve":
         fp["_approval"] = "rejected"
         job.flight_plan = fp
-        save_job(job)
+        save_job_plan(job)
         return None
     if questions:
         fp["clarifications_resolved"] = apply_clarification_answers(
             fp.get("clarifications_resolved"), answers)
     fp["_approval"] = "approved"
     job.flight_plan = fp
-    save_job(job)
+    save_job_plan(job)
     from packages.orchestration.data_paths import job_evidence_export_dir
     return write_assumptions_md(
         fp.get("clarifications_resolved"),
-        job_evidence_export_dir(str(job.id)))
+        job_evidence_export_dir(str(job.job_id)))

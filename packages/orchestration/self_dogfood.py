@@ -30,7 +30,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID
+
+from packages.orchestration.data_paths import normalize_job_id
 
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1400/1401/1407)
@@ -186,7 +187,7 @@ def _now() -> str:
 
 
 def _scrub(text: str) -> str:
-    from packages.orchestration.provider_trust import _scrub_public
+    from packages.common.public_text_redaction import _scrub_public
     return _scrub_public(str(text))[:300]
 
 
@@ -226,45 +227,8 @@ def _read_agent_file(name: str) -> tuple[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Live review parser reuse (Step 1402)
-# ---------------------------------------------------------------------------
-
-
-def _review_findings():
-    """Reuse the safe live-review parser from the overnight executor."""
-    from packages.orchestration.overnight_executor import parse_review_findings
-    return parse_review_findings(_agent_dir() / "live_review.md")
-
-
-# ---------------------------------------------------------------------------
 # Detectors (Steps 1402-1406)
 # ---------------------------------------------------------------------------
-
-
-def _detect_review(items: list, blockers: list, risks: list) -> None:
-    f = _review_findings()
-    if f.source in ("unavailable", "malformed"):
-        items.append(_mk_item(
-            ItemType.EVIDENCE_GAP, Priority.MEDIUM, Confidence.HIGH,
-            "Live review file missing or unreadable", key="live_review_missing",
-            detail="No parseable .agent/live_review.md verdict.", source_type="live_review"))
-        return
-    if f.verdict in ("pending", "fail"):
-        blockers.append("review_verdict_not_pass")
-        risks.append(SelfImprovementRisk(
-            id="review_verdict", severity=Priority.BLOCKER,
-            summary=f"Live review verdict is {f.verdict}.", source="live_review"))
-        items.append(_mk_item(
-            ItemType.SAFETY_GAP, Priority.BLOCKER, Confidence.HIGH,
-            f"Live review verdict is {f.verdict}", key=f"review_verdict_{f.verdict}",
-            detail="Resolve the review before claiming merge-ready.", source_type="live_review"))
-    if f.open_blocker_or_high > 0:
-        blockers.append("open_blocker_or_high_findings")
-        items.append(_mk_item(
-            ItemType.SAFETY_GAP, Priority.BLOCKER, Confidence.HIGH,
-            f"{f.open_blocker_or_high} open blocker/high review finding(s)",
-            key="open_blocker_high", detail="Open blocker/high findings must be resolved.",
-            source_type="live_review"))
 
 
 def _detect_stale_handoff(items: list) -> None:
@@ -304,7 +268,7 @@ def _detect_stale_handoff(items: list) -> None:
 def _detect_evidence_gaps(job: Any, items: list) -> None:
     if job is None:
         return
-    job_id = str(job.id)
+    job_id = str(job.job_id)
     # Failure artifact without a repair attempt; repair without pending intent.
     try:
         from packages.orchestration.repair_loop import load_repair_attempts
@@ -332,19 +296,6 @@ def _detect_evidence_gaps(job: Any, items: list) -> None:
                     source_type="repair_loop"))
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         pass
-    # Provider trust accepted but not materialized.
-    try:
-        from packages.orchestration.provider_trust import load_trust_reports
-        for r in load_trust_reports(job).values():
-            if r.get("trust_status") == "accepted" and not r.get("repair_intent_id"):
-                items.append(_mk_item(
-                    ItemType.EVIDENCE_GAP, Priority.MEDIUM, Confidence.MEDIUM,
-                    "Accepted provider candidate not materialized",
-                    key=f"trust_not_materialized_{r.get('report_id','')}",
-                    detail="Accepted provider trust report produced no applyable intent.",
-                    source_type="provider_trust"))
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        pass
 
 
 def _detect_roadmap(items: list) -> None:
@@ -356,12 +307,6 @@ def _detect_roadmap(items: list) -> None:
         return (pkg / mod).exists()
 
     rules = [
-        (has("provider_trust.py") and has("repair_request_builder.py"),
-         "Provider Trust Verification v1", "provider_trust.py",
-         "Trust gate + request builder exist; harden trust verification beyond regex."),
-        (has("overnight_executor.py"),
-         "Bounded Overnight Executor v1", "overnight_executor.py",
-         "Single-cycle executor exists; consider a bounded multi-cycle v1 (still gated)."),
         (has("self_dogfood.py"),
          "Self-Dogfood Execution v0", "self_dogfood.py",
          "Self-dogfood planner exists; a guarded execution rail is the natural next step."),
@@ -425,8 +370,8 @@ def build_self_dogfood_inspection(
     job = None
     if job_id:
         try:
-            from packages.orchestration.storage import JobNotFoundError, load_job
-            job = load_job(UUID(job_id), ddir)
+            from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
+            job = require_job_plan(normalize_job_id(job_id), ddir)
             insp.sources_checked.append(SelfImprovementSource("job", SourceStatus.AVAILABLE))
         except (ValueError, JobNotFoundError):
             insp.sources_checked.append(SelfImprovementSource("job", SourceStatus.MISSING))
@@ -435,7 +380,6 @@ def build_self_dogfood_inspection(
     items: list[SelfImprovementItem] = []
     blockers: list[str] = []
     risks: list[SelfImprovementRisk] = []
-    _detect_review(items, blockers, risks)
     _detect_stale_handoff(items)
     _detect_evidence_gaps(job, items)
     _detect_roadmap(items)
@@ -507,6 +451,7 @@ def propose_self_improvement(
     enters the existing evaluate/approve/materialize flow. Never inserts Job.tasks,
     never approves, never executes. Idempotent by item fingerprint."""
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.proposed_tasks import (
         ProposedTask,
         ProposedTaskSource,
@@ -518,13 +463,12 @@ def propose_self_improvement(
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     result = SelfDogfoodResult(job_id=job_id)
 
     try:
-        load_job(UUID(job_id), ddir)
+        require_job_plan(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         result.stop_reason = "job_not_found"
         result.evidence_status = "unknown"
@@ -532,8 +476,8 @@ def propose_self_improvement(
         result.next_safe_action = SelfImprovementAction("List jobs", "remedy job list --json", "")
         return result
 
-    from packages.orchestration.storage import load_job as _lj
-    job = _lj(UUID(job_id), ddir)
+    from packages.orchestration.pingpong_job import load_job_plan as _lj
+    job = _lj(normalize_job_id(job_id), ddir)
     contract = ensure_contract(job)
     if not evaluate_run_action(contract, ContractAction.SELF_PROPOSE_TASK).allowed:
         result.stop_reason = "contract_blocked"

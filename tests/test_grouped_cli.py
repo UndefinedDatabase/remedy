@@ -17,14 +17,13 @@ import json
 import subprocess
 import sys
 from io import StringIO
-from uuid import uuid4
 
 import pytest
 
 from apps.cli.command_catalog import GROUPS, get_commands_for_group
 from apps.cli.grouped import _ALWAYS_INJECT, build_parser
-from packages.core.models import Job, Task
-from packages.orchestration.storage import save_job
+from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 _HELP_CONTRACT_GROUPS = [g for g in GROUPS if g not in _ALWAYS_INJECT]
 
@@ -32,12 +31,12 @@ _HELP_CONTRACT_GROUPS = [g for g in GROUPS if g not in _ALWAYS_INJECT]
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_job() -> Job:
-    return Job(
-        id=uuid4(),
-        name="test-job",
+def _make_job() -> JobPlan:
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="test-job",
         user_prompt="test prompt",
-        tasks=[Task(id=uuid4(), description="task-0")],
+        tasks=[TaskEntry(task_id="T001", title="task-0")],
     )
 
 
@@ -177,8 +176,8 @@ class TestGroupedExecution:
 
     def test_policy_contract_json(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
-        stdout, stderr, rc = _capture_grouped(["policy", "contract", str(job.id), "--json"])
+        save_job_plan(job)
+        stdout, stderr, rc = _capture_grouped(["policy", "contract", str(job.job_id), "--json"])
         assert rc == 0, f"policy contract --json failed: {stderr}"
         data = json.loads(stdout)
         assert data["scope"] == "job"
@@ -186,16 +185,16 @@ class TestGroupedExecution:
 
     def test_policy_token_json(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
-        stdout, stderr, rc = _capture_grouped(["policy", "token", str(job.id), "--json"])
+        save_job_plan(job)
+        stdout, stderr, rc = _capture_grouped(["policy", "token", str(job.job_id), "--json"])
         assert rc == 0, f"policy token --json failed: {stderr}"
         data = json.loads(stdout)
         assert data["scope"] == "job"
 
     def test_brain_graph_json(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
-        stdout, stderr, rc = _capture_grouped(["brain", "graph", str(job.id), "--json"])
+        save_job_plan(job)
+        stdout, stderr, rc = _capture_grouped(["brain", "graph", str(job.job_id), "--json"])
         assert rc == 0, f"brain graph --json failed: {stderr}"
         data = json.loads(stdout)
         assert "nodes" in data
@@ -203,8 +202,8 @@ class TestGroupedExecution:
 
     def test_test_discover_json(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
-        stdout, stderr, rc = _capture_grouped(["test", "discover", str(job.id), "--json"])
+        save_job_plan(job)
+        stdout, stderr, rc = _capture_grouped(["test", "discover", str(job.job_id), "--json"])
         # Without a repo, discover exits 1 but still outputs valid JSON to stderr
         raw = stdout or stderr
         data = json.loads(raw)
@@ -266,8 +265,8 @@ class TestMainEntrypointDelegatesGroupDispatch:
 
     def test_policy_contract_json_via_main(self) -> None:
         job = _make_job()
-        save_job(job)
-        stdout, stderr, rc = _capture_main(["policy", "contract", str(job.id), "--json"])
+        save_job_plan(job)
+        stdout, stderr, rc = _capture_main(["policy", "contract", str(job.job_id), "--json"])
         assert rc == 0, f"policy contract --json via main failed: {stderr}"
         data = json.loads(stdout)
         assert data["scope"] == "job"
@@ -644,7 +643,7 @@ class TestJobListCLI:
     def test_list_json_has_created_at(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.job import _cmd_list_jobs
         buf = StringIO()
         monkeypatch.setattr("sys.stdout", buf)
@@ -656,12 +655,12 @@ class TestJobListCLI:
     def test_default_order_is_newest_first(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from datetime import datetime, timedelta, timezone
-        older = Job(id=uuid4(), name="older", user_prompt="x",
-                    created_at=datetime.now(timezone.utc) - timedelta(days=1))
-        newer = Job(id=uuid4(), name="newer", user_prompt="x",
-                    created_at=datetime.now(timezone.utc))
-        save_job(older)
-        save_job(newer)
+        older = JobPlan(job_id=mint_job_id(), job_title="older", user_prompt="x",
+                    created_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat())
+        newer = JobPlan(job_id=mint_job_id(), job_title="newer", user_prompt="x",
+                    created_at=datetime.now(timezone.utc).isoformat())
+        save_job_plan(older)
+        save_job_plan(newer)
         from apps.cli.commands.job import _cmd_list_jobs
         buf = StringIO()
         monkeypatch.setattr("sys.stdout", buf)
@@ -672,7 +671,7 @@ class TestJobListCLI:
     def test_limit_caps_returned_jobs(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         for _ in range(3):
-            save_job(_make_job())
+            save_job_plan(_make_job())
         from apps.cli.commands.job import _cmd_list_jobs
         buf = StringIO()
         monkeypatch.setattr("sys.stdout", buf)
@@ -682,7 +681,7 @@ class TestJobListCLI:
 
     def test_unknown_sort_field_exits_nonzero(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        save_job(_make_job())
+        save_job_plan(_make_job())
         from apps.cli.commands.job import _cmd_list_jobs
         with pytest.raises(SystemExit) as exc:
             _cmd_list_jobs(json_output=True, all_projects=True, sort="bogus")

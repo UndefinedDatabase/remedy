@@ -1,8 +1,8 @@
-"""F114 T003 — acceptance tests for job.run's cost-preview behavior.
+"""F114 T003 — acceptance tests for job.resume's cost-preview behavior.
 
 Unlike tests/orchestration/test_long_run_executor.py's own gate tests
 (which mock confirm_cost_preview itself to isolate the wiring), these
-exercise the REAL confirm_cost_preview end to end through job.run, per
+exercise the REAL confirm_cost_preview end to end through job.resume, per
 docs/roadmap/features/T3_F114.md's acceptance section: a pipe exits with
 the --yes hint, --yes proceeds audited, and every printed estimate
 carries its basis label.
@@ -37,7 +37,7 @@ class TestJobRunCostPreviewAcceptance:
 
         err = capsys.readouterr().err
         assert "--yes" in err
-        assert "job.run" in err
+        assert "job.resume" in err
 
     def test_yes_flag_proceeds_through_the_real_gate_without_a_tty(self, monkeypatch):
         from apps.cli.commands import job as job_cmd
@@ -62,7 +62,7 @@ class TestJobRunCostPreviewAcceptance:
         assert ran == ["abc12345"]
 
     def test_the_printed_preview_line_carries_its_basis_label(self, monkeypatch, capsys):
-        # A9: every shown number carries its basis label - job.run's own
+        # A9: every shown number carries its basis label - job.resume's own
         # printed line is no exception, even in the unavailable case.
         from apps.cli.commands import job as job_cmd
 

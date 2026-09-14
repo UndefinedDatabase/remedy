@@ -312,16 +312,16 @@ class TestExportSafety:
 
 def _make_job(**kwargs):
     """Create a minimal Job for testing."""
-    from packages.core.models import Job
-    defaults = dict(name="test-job")
+    from packages.orchestration.pingpong_job import JobPlan
+    defaults = dict(job_title="test-job")
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 class TestContractPersistence:
     def test_save_and_load_roundtrip(self):
         job = _make_job()
-        c = _contract(job_id=str(job.id))
+        c = _contract(job_id=str(job.job_id))
         save_contract(job, c)
         loaded = load_contract(job)
         assert loaded is not None
@@ -346,7 +346,7 @@ class TestContractPersistence:
         job = _make_job()
         c = ensure_contract(job)
         assert c.contract_id.startswith("rc-")
-        assert c.job_id == str(job.id)
+        assert c.job_id == str(job.job_id)
         assert c.source == "default_v1"
 
     def test_ensure_returns_same_contract_on_second_call(self):
@@ -365,13 +365,12 @@ class TestContractPersistence:
         assert loaded.source == "user_override"
 
     def test_saved_contract_survives_json_roundtrip(self):
-        """Contract survives Job JSON serialization (as in storage.py)."""
+        """Contract survives the job record's JSON serialization (as in pingpong_job.py)."""
         job = _make_job()
         c = ensure_contract(job)
-        # Simulate save_job / load_job roundtrip
-        json_str = job.model_dump_json()
-        from packages.core.models import Job
-        restored = Job.model_validate_json(json_str)
+        # Simulate the save_job_plan / load_job_plan roundtrip
+        from packages.orchestration.pingpong_job import _export_job, _import_job
+        restored = _import_job(json.loads(json.dumps(_export_job(job))))
         loaded = load_contract(restored)
         assert loaded is not None
         assert loaded.contract_id == c.contract_id
@@ -649,9 +648,8 @@ class TestUsageLedger:
         job = _make_job()
         u = RunUsage(loops_used=5, tokens_used=1000)
         save_usage(job, u)
-        json_str = job.model_dump_json()
-        from packages.core.models import Job
-        restored = Job.model_validate_json(json_str)
+        from packages.orchestration.pingpong_job import _export_job, _import_job
+        restored = _import_job(json.loads(json.dumps(_export_job(job))))
         loaded = load_usage(restored)
         assert loaded.loops_used == 5
         assert loaded.tokens_used == 1000

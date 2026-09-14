@@ -13,8 +13,9 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, Job, RunState
+from packages.core.models import Artifact, RunState
 from packages.orchestration.permissions import Capability, set_permission
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.repo_applicator import (
     _build_repo_file_content,
     _resolve_repo_path,
@@ -49,7 +50,7 @@ def _make_artifact(task_type: str, summary: str = "Test summary.") -> Artifact:
         name=f"task_output_{task_type}",
         content="\n".join(content_lines),
         mime_type="text/plain",
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         metadata={"task_type": task_type, "summary": summary},
     )
 
@@ -544,14 +545,14 @@ class TestStaleRepoPath:
 # ---------------------------------------------------------------------------
 
 
-def _make_job_with_permission(allow: bool) -> Job:
-    job = Job(name="test", state=RunState.PENDING)
+def _make_job_with_permission(allow: bool) -> JobPlan:
+    job = JobPlan(job_title="test", state=RunState.PENDING)
     set_permission(job, Capability.repo_generated_write, allow=allow)
     return job
 
 
-def _make_job_default_permissions() -> Job:
-    return Job(name="test", state=RunState.PENDING)
+def _make_job_default_permissions() -> JobPlan:
+    return JobPlan(job_title="test", state=RunState.PENDING)
 
 
 class TestCheckAndApplyToRepo:

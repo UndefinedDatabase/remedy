@@ -749,8 +749,7 @@ def render_report(job: Any, mode: str = MODE_FINAL, *,
 def _job_repo_root(job: Any) -> str:
     """The repository this job ran against, or "" when that is not knowable.
 
-    ``packages.core.models.Job`` carries no repo path — the persisted
-    ``pingpong_job.JobPlan`` does (``repo_path``), which is the same source the
+    The persisted ``pingpong_job.JobPlan`` carries it (``repo_path``), which is the same source the
     cycle loop reads its budget actuals from.  An unreadable or absent plan is
     not an error here: it means the milestone is simply not knowable, and the
     report says "not recorded" rather than guessing a repository.
@@ -758,7 +757,7 @@ def _job_repo_root(job: Any) -> str:
     try:
         from packages.orchestration.pingpong_job import load_job_plan
 
-        plan = load_job_plan(str(getattr(job, "id", "") or ""))
+        plan = load_job_plan(str(getattr(job, "job_id", "") or ""))
     except Exception:  # noqa: BLE001 — a report must not depend on the plan store
         return ""
     return str(getattr(plan, "repo_path", "") or "") if plan is not None else ""
@@ -778,8 +777,8 @@ def collect_report_sources(job: Any) -> ReportSources:
 
     tasks = tuple(
         TaskOutcome(
-            task_id=str(getattr(t, "id", ""))[:8],
-            description=str(getattr(t, "description", "") or ""),
+            task_id=str(getattr(t, "task_id", ""))[:8],
+            description=str(getattr(t, "title", "") or ""),
             status=getattr(getattr(t, "status", None), "value",
                            str(getattr(t, "status", "") or "")),
         )
@@ -787,8 +786,8 @@ def collect_report_sources(job: Any) -> ReportSources:
     )
     metadata = getattr(job, "metadata", None) or {}
     return ReportSources(
-        job_id=str(getattr(job, "id", "") or ""),
-        job_name=str(getattr(job, "name", "") or ""),
+        job_id=str(getattr(job, "job_id", "") or ""),
+        job_name=str(getattr(job, "job_title", "") or ""),
         project_id=str(getattr(job, "project_id", "") or ""),
         mission=str(getattr(job, "mission", "") or ""),
         loop_ref=str(metadata.get(LOOP_REF_METADATA_KEY, "") or ""),
@@ -813,7 +812,7 @@ def _evidence_sources(job: Any) -> dict[str, Any]:
     report the others.  A source that cannot be read is simply absent, and
     absent renders "not recorded" — the same rule everywhere (P6).
     """
-    job_id = str(getattr(job, "id", "") or "")
+    job_id = str(getattr(job, "job_id", "") or "")
     extra: dict[str, Any] = {}
 
     try:
@@ -916,7 +915,7 @@ def _folded_apply_states(job: Any) -> dict[str, Any]:
         )
         from packages.orchestration.timeline import load_run_events
 
-        job_id = str(getattr(job, "id", "") or "")
+        job_id = str(getattr(job, "job_id", "") or "")
         if not job_id:
             return {}
         data_dir = resolve_data_root()
@@ -943,7 +942,7 @@ def _tasks_with_apply_state(job: Any, tasks: tuple[TaskOutcome, ...]
     folded = _folded_apply_states(job)
     if not folded or not tasks:
         return None
-    full_ids = [str(getattr(t, "id", "") or "")
+    full_ids = [str(getattr(t, "task_id", "") or "")
                 for t in (getattr(job, "tasks", None) or ())]
     if len(full_ids) != len(tasks):
         # The two iterations disagree, so the pairing is not knowable.  Saying
@@ -1004,7 +1003,7 @@ def write_final_report(job: Any, *, sources: ReportSources | None = None) -> Pat
     account of the run, and losing the account must not lose the run.
     """
     try:
-        job_id = str(getattr(job, "id", "") or "")
+        job_id = str(getattr(job, "job_id", "") or "")
         text = render_report_from_sources(
             sources if sources is not None else build_report_sources(job),
             mode=MODE_FINAL)

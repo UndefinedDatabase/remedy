@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.proposed_tasks import (
     TERMINAL_STATUSES,
     UNRESOLVED_STATUSES,
@@ -60,12 +61,10 @@ REAL_JOB_UUID = "12345678-1234-1234-1234-123456789012"
 
 def _create_real_job(root: Path, job_id: str = REAL_JOB_UUID) -> None:
     """Create a minimal Job file in the given data root."""
-    from uuid import UUID
 
-    from packages.core.models import Job
-    from packages.orchestration.storage import save_job
-    job = Job(id=UUID(job_id), name="test-job")
-    save_job(job, root)
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+    job = JobPlan(job_id=job_id, job_title="test-job")
+    save_job_plan(job, root)
 
 
 class TestProposedTaskModel:
@@ -550,7 +549,7 @@ class TestMaterialization:
 
     def test_do_materialize_creates_real_job_task(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         t = ProposedTask(title="Materialize me", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
         add_proposed_task(REAL_JOB_UUID, t)
@@ -558,15 +557,14 @@ class TestMaterialization:
         assert result is not None
         assert result.materialized_task_id != ""
         assert result.materialized_at is not None
-        from uuid import UUID
 
-        from packages.orchestration.storage import load_job
-        job = load_job(UUID(REAL_JOB_UUID))
-        assert any(str(task.id) == result.materialized_task_id for task in job.tasks)
+        from packages.orchestration.pingpong_job import load_job_plan
+        job = load_job_plan(normalize_job_id(REAL_JOB_UUID))
+        assert any(str(task.task_id) == result.materialized_task_id for task in job.tasks)
 
     def test_do_materialize_rejects_non_approved(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         t = ProposedTask(title="Not ready", status=ProposedTaskStatus.EVALUATED)
         add_proposed_task(REAL_JOB_UUID, t)
@@ -575,7 +573,7 @@ class TestMaterialization:
 
     def test_do_materialize_rejects_already_materialized(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         t = ProposedTask(title="Done", status=ProposedTaskStatus.APPROVED_FOR_BUILD, materialized_task_id="existing")
         add_proposed_task(REAL_JOB_UUID, t)
@@ -597,7 +595,7 @@ class TestMaterialization:
 class TestEndToEndFlow:
     def test_full_proposed_task_lifecycle(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
 
         t = propose_task_from_review_finding(REAL_JOB_UUID, title="New feature", reason="Reviewer found gap", risk="medium")
@@ -638,7 +636,7 @@ class TestEndToEndFlow:
 
     def test_full_lifecycle_with_materialize(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         t = propose_task_from_review_finding(REAL_JOB_UUID, title="Build it", risk="medium")
         evaluate_proposed_task(REAL_JOB_UUID, t.id)
@@ -649,12 +647,11 @@ class TestEndToEndFlow:
         assert list_approved_not_materialized(REAL_JOB_UUID) == []
         ok, _ = can_finalize(REAL_JOB_UUID)
         assert ok is True
-        from uuid import UUID
 
-        from packages.orchestration.storage import load_job
-        job = load_job(UUID(REAL_JOB_UUID))
+        from packages.orchestration.pingpong_job import load_job_plan
+        job = load_job_plan(normalize_job_id(REAL_JOB_UUID))
         assert len(job.tasks) == 1
-        assert str(job.tasks[0].id) == materialized.materialized_task_id
+        assert str(job.tasks[0].task_id) == materialized.materialized_task_id
 
 
 class TestFileLocking:
@@ -678,7 +675,7 @@ class TestFileLocking:
 
     def test_approve_then_materialize_preserves_state(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         t = ProposedTask(title="Build", status=ProposedTaskStatus.EVALUATED)
         add_proposed_task(REAL_JOB_UUID, t)
@@ -757,14 +754,14 @@ class TestStoreRootResolution:
 class TestReconciliation:
     def test_consistent(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         report = reconcile_materialized(REAL_JOB_UUID)
         assert report["consistent"] is True
 
     def test_missing_job_task(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         t = ProposedTask(title="Ghost", status=ProposedTaskStatus.APPROVED_FOR_BUILD, materialized_task_id="nonexistent-task-id")
         add_proposed_task(REAL_JOB_UUID, t)
@@ -774,7 +771,7 @@ class TestReconciliation:
 
     def test_corrupt_store(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         pt_dir = tmp_path / "proposed_tasks"
         pt_dir.mkdir(parents=True, exist_ok=True)
@@ -787,7 +784,7 @@ class TestReconciliation:
 class TestBackendReadiness:
     def test_healthy_job_no_work(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         report = backend_readiness(REAL_JOB_UUID)
         assert report["storage_health"]["healthy"] is True
@@ -796,7 +793,7 @@ class TestBackendReadiness:
 
     def test_not_ready_with_unresolved(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         add_proposed_task(REAL_JOB_UUID, ProposedTask(title="Pending"))
         report = backend_readiness(REAL_JOB_UUID)
@@ -810,7 +807,7 @@ class TestBackendReadiness:
 
     def test_not_ready_corrupt_store(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         pt_dir = tmp_path / "proposed_tasks"
         pt_dir.mkdir(parents=True, exist_ok=True)
@@ -821,7 +818,7 @@ class TestBackendReadiness:
 
     def test_materialized_pending_task(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         t = propose_task_from_review_finding(REAL_JOB_UUID, title="Work", risk="medium")
         evaluate_proposed_task(REAL_JOB_UUID, t.id)
@@ -836,7 +833,7 @@ class TestBackendReadiness:
 
     def test_execution_health_section(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         report = backend_readiness(REAL_JOB_UUID)
         assert "execution_health" in report
@@ -845,9 +842,10 @@ class TestBackendReadiness:
 
     def test_corrupt_other_job_degrades_storage(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
-        corrupt_path = tmp_path / "jobs" / "corrupt-job.json"
+        corrupt_path = tmp_path / "jobs" / "corrupt-job" / "job.json"
+        corrupt_path.parent.mkdir(parents=True)
         corrupt_path.write_text("not json")
         report = backend_readiness(REAL_JOB_UUID)
         assert report["storage_health"]["job_store_skipped_files"] > 0
@@ -857,7 +855,7 @@ class TestBackendReadiness:
 class TestOvernightReadiness:
     def test_never_ready_yet(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         _create_real_job(tmp_path)
         report = overnight_readiness(REAL_JOB_UUID)
         assert report["ready"] is False

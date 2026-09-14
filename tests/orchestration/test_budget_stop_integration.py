@@ -187,9 +187,9 @@ class TestDecisionQueueDerivation:
     """list_decisions derives token_budget from job state."""
 
     def test_budget_exhausted_produces_decision(self):
-        from packages.core.models import Job
         from packages.orchestration.decision_queue import list_decisions
-        job = Job(name="budget-test", metadata={"error": "budget_exhausted: max_provider_calls"})
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(job_title="budget-test", metadata={"error": "budget_exhausted: max_provider_calls"})
         decisions = list_decisions(job, [])
         budget_decisions = [d for d in decisions if d.type == "token_budget"]
         assert len(budget_decisions) == 1
@@ -197,9 +197,9 @@ class TestDecisionQueueDerivation:
         assert "budget_exhausted" in budget_decisions[0].safe_summary
 
     def test_no_budget_error_no_decision(self):
-        from packages.core.models import Job
         from packages.orchestration.decision_queue import list_decisions
-        job = Job(name="ok-test")
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(job_title="ok-test")
         decisions = list_decisions(job, [])
         budget_decisions = [d for d in decisions if d.type == "token_budget"]
         assert len(budget_decisions) == 0
@@ -335,9 +335,9 @@ class TestDecisionQueueBudgetEvents:
     """Decision queue detects budget stops from events."""
 
     def test_job_stopped_event_produces_decision(self):
-        from packages.core.models import Job
         from packages.orchestration.decision_queue import list_decisions
-        job = Job(name="event-test")
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(job_title="event-test")
         events = [{
             "event": "job_stopped",
             "metadata": {
@@ -352,10 +352,10 @@ class TestDecisionQueueBudgetEvents:
         assert "budget" in budget_decisions[0].safe_summary
 
     def test_metadata_budget_stop_produces_decision(self):
-        from packages.core.models import Job
         from packages.orchestration.decision_queue import list_decisions
-        job = Job(
-            name="meta-budget-test",
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(
+            job_title="meta-budget-test",
             metadata={"budget_stop_reason": "budget_exhausted:max_total_tokens"},
         )
         decisions = list_decisions(job, [])
@@ -502,23 +502,25 @@ class TestRunContractBudgetInheritance:
     """RunContract inherits limits from JobBudgets when set."""
 
     def test_contract_inherits_max_tokens(self):
-        from packages.core.models import Job, JobBudgets
+        from packages.core.models import JobBudgets
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.run_contract import build_default_run_contract
-        job = Job(name="inherit-test", budgets=JobBudgets(max_total_tokens=50000))
+        job = JobPlan(job_title="inherit-test", budgets=JobBudgets(max_total_tokens=50000))
         contract = build_default_run_contract(job)
         assert contract.max_tokens == 50000
 
     def test_contract_inherits_wall_clock(self):
-        from packages.core.models import Job, JobBudgets
+        from packages.core.models import JobBudgets
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.run_contract import build_default_run_contract
-        job = Job(name="inherit-test-2", budgets=JobBudgets(max_wall_clock_minutes=30))
+        job = JobPlan(job_title="inherit-test-2", budgets=JobBudgets(max_wall_clock_minutes=30))
         contract = build_default_run_contract(job)
         assert contract.max_runtime_seconds == 1800
 
     def test_contract_defaults_without_budgets(self):
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.run_contract import build_default_run_contract
-        job = Job(name="default-test")
+        job = JobPlan(job_title="default-test")
         contract = build_default_run_contract(job)
         assert contract.max_tokens == 200_000
         assert contract.max_runtime_seconds == 600

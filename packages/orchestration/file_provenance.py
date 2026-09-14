@@ -19,8 +19,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from packages.core.models import Job
 from packages.orchestration.approval_queue import list_patch_intents
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -56,7 +56,7 @@ class FileProvenance:
 
 
 def build_file_provenance(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     path: str,
     data_dir: Path | None = None,
@@ -68,7 +68,7 @@ def build_file_provenance(
     (build_snapshot_truth) for apply/revert state instead of stale artifact
     metadata (Steps 1146, 1157).
     """
-    job_id_str = str(job.id)
+    job_id_str = str(job.job_id)
     chain: list[ProvenanceLink] = []
 
     # 1. Find patch intents targeting this path

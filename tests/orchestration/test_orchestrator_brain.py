@@ -7,13 +7,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, Task
+from packages.core.models import Artifact, ArtifactKind
 from packages.orchestration import orchestrator_brain as OB
-from packages.orchestration.storage import load_job, save_job
+from packages.orchestration.data_paths import mint_job_id, normalize_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, load_job_plan, save_job_plan
 
 
 @pytest.fixture()
@@ -28,16 +29,16 @@ def env(tmp_path, monkeypatch):
 
 
 def _job(data_dir, *, failure=True, related=("docs/guide.md",)):
-    t = Task(description="t")
+    t = TaskEntry(title="t")
     arts = []
     if failure:
-        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=t.id,
+        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.task_id),
                       metadata={"test_failure": True, "failure_kind": "test_failed",
-                                "related_task_id": str(t.id), "related_files": list(related),
+                                "related_task_id": str(t.task_id), "related_files": list(related),
                                 "safe_summary": "boom"})
         arts.append(fa)
-    job = Job(id=uuid4(), name="ov", tasks=[t], artifacts=arts, metadata={"target_repo": "."})
-    save_job(job, root=data_dir)
+    job = JobPlan(job_id=mint_job_id(), job_title="ov", tasks=[t], artifacts=arts, metadata={"target_repo": "."})
+    save_job_plan(job, root=data_dir)
     return job
 
 
@@ -51,39 +52,29 @@ class TestDecisionQuality:
         from packages.orchestration.do_run import validate_next_safe_action_command
         d, _ = env
         job = _job(d)
-        s = OB.build_orchestrator_situation(str(job.id), d)
+        s = OB.build_orchestrator_situation(str(job.job_id), d)
         dec = OB.select_orchestrator_decision(s, d)
         if dec.selected_option and dec.selected_option.get("command"):
             assert validate_next_safe_action_command(dec.next_safe_action)
 
-    def test_open_blocker_forces_human_review(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text(
-            "## Verdict\nFAIL\n\n### R-1: x\n- **Status**: Open\n- **Severity**: High\n")
-        job = _job(d)
-        s = OB.build_orchestrator_situation(str(job.id), d)
-        dec = OB.select_orchestrator_decision(s, d)
-        assert dec.stop_reason == OB.StopReason.HUMAN_REVIEW_REQUIRED
-        assert s.model_routing_plan.tier == OB.RoutingTier.HUMAN_REVIEW_REQUIRED
-
     def test_unresolved_failure_beats_roadmap(self, env):
         d, _ = env
         job = _job(d)
-        s = OB.build_orchestrator_situation(str(job.id), d)
+        s = OB.build_orchestrator_situation(str(job.job_id), d)
         dec = OB.select_orchestrator_decision(s, d)
         assert dec.selected_option["kind"] == OB.OptionKind.PROPOSE_REPAIR
 
     def test_pending_approval_beats_proposal(self, env):
         d, _ = env
         # Build a job with a pending patch intent (beats other options).
-        t = Task(description="t")
+        t = TaskEntry(title="t")
         art = Artifact(name="b", content="Proposed Changes:\n  - x", kind=ArtifactKind.BUILDER_PROPOSAL,
-                       task_id=t.id, metadata={"patch_intent_explanations": [
+                       task_id=str(t.task_id), metadata={"patch_intent_explanations": [
                            {"file": "docs/x.md", "action": "create", "risk": "low",
                             "reason": "", "summary": "s"}], "patch_intent_approvals": {}})
-        job = Job(id=uuid4(), name="ov", tasks=[t], artifacts=[art], metadata={"target_repo": "."})
-        save_job(job, root=d)
-        s = OB.build_orchestrator_situation(str(job.id), d)
+        job = JobPlan(job_id=mint_job_id(), job_title="ov", tasks=[t], artifacts=[art], metadata={"target_repo": "."})
+        save_job_plan(job, root=d)
+        s = OB.build_orchestrator_situation(str(job.job_id), d)
         dec = OB.select_orchestrator_decision(s, d)
         assert dec.selected_option["kind"] == OB.OptionKind.APPROVE_INTENT
 
@@ -92,19 +83,19 @@ class TestDecisionQuality:
         # selectable "continue" option.
         from packages.orchestration.approval_queue import set_approval_state
         d, _ = env
-        t = Task(description="t")
+        t = TaskEntry(title="t")
         art = Artifact(name="b", content="Proposed Changes:\n  - x", kind=ArtifactKind.BUILDER_PROPOSAL,
-                       task_id=t.id, metadata={"patch_intent_explanations": [
+                       task_id=str(t.task_id), metadata={"patch_intent_explanations": [
                            {"file": "docs/x.md", "action": "create", "risk": "low",
                             "reason": "", "summary": "s"}], "patch_intent_approvals": {}})
-        job = Job(id=uuid4(), name="ov", tasks=[t], artifacts=[art], metadata={"target_repo": "."})
-        save_job(job, root=d)
+        job = JobPlan(job_id=mint_job_id(), job_title="ov", tasks=[t], artifacts=[art], metadata={"target_repo": "."})
+        save_job_plan(job, root=d)
         from packages.orchestration.approval_queue import make_intent_id
         iid = make_intent_id(art.id, 0)
-        j = load_job(UUID(str(job.id)), d)
+        j = load_job_plan(normalize_job_id(str(job.job_id)), d)
         set_approval_state(j, iid, "approved", decided_by="human")
-        save_job(j, root=d)  # default contract denies PATCH_APPLY
-        s = OB.build_orchestrator_situation(str(job.id), d)
+        save_job_plan(j, root=d)  # default contract denies PATCH_APPLY
+        s = OB.build_orchestrator_situation(str(job.job_id), d)
         cont = [o for o in s.options if o.kind == OB.OptionKind.CONTINUE_INTENT]
         assert cont and all(not o.available for o in cont)
         dec = OB.select_orchestrator_decision(s, d)
@@ -130,15 +121,15 @@ class TestAntiLoop:
         d, _ = env
         job = _job(d, failure=False)  # idle → self_propose / inspect, stable evidence
         # First decision: allow.
-        s1 = OB.build_orchestrator_situation(str(job.id), d)
+        s1 = OB.build_orchestrator_situation(str(job.job_id), d)
         assert s1.loop_guard.status == OB.LoopGuardStatus.ALLOW
         OB.select_orchestrator_decision(s1, d, persist=True)
         # Second: warn.
-        s2 = OB.build_orchestrator_situation(str(job.id), d)
+        s2 = OB.build_orchestrator_situation(str(job.job_id), d)
         assert s2.loop_guard.status == OB.LoopGuardStatus.WARN
         OB.select_orchestrator_decision(s2, d, persist=True)
         # Third: block.
-        s3 = OB.build_orchestrator_situation(str(job.id), d)
+        s3 = OB.build_orchestrator_situation(str(job.job_id), d)
         assert s3.loop_guard.status == OB.LoopGuardStatus.BLOCK
 
     def test_repeated_repair_failure_requires_human(self, env):
@@ -146,29 +137,29 @@ class TestAntiLoop:
         job = _job(d)
         # Inject two failed repair attempts.
         from packages.orchestration import repair_loop as RL
-        j = load_job(UUID(str(job.id)), d)
+        j = load_job_plan(normalize_job_id(str(job.job_id)), d)
         for i in range(2):
-            att = RL.RepairAttempt(attempt_id=f"a{i}", job_id=str(job.id),
+            att = RL.RepairAttempt(attempt_id=f"a{i}", job_id=str(job.job_id),
                                    failure_artifact_id=f"f{i}", status="tested_failed",
                                    source="cli_v1", created_at="t")
             RL.save_repair_attempt(j, att)
-        s = OB.build_orchestrator_situation(str(job.id), d)
+        s = OB.build_orchestrator_situation(str(job.job_id), d)
         assert s.loop_guard.status == OB.LoopGuardStatus.REQUIRE_HUMAN_REVIEW
 
     def test_new_evidence_resets_loop(self, env):
         d, _ = env
         job = _job(d, failure=False)
-        OB.select_orchestrator_decision(OB.build_orchestrator_situation(str(job.id), d), d, persist=True)
-        OB.select_orchestrator_decision(OB.build_orchestrator_situation(str(job.id), d), d, persist=True)
+        OB.select_orchestrator_decision(OB.build_orchestrator_situation(str(job.job_id), d), d, persist=True)
+        OB.select_orchestrator_decision(OB.build_orchestrator_situation(str(job.job_id), d), d, persist=True)
         # New evidence (a failure) → different fingerprint → loop resets to allow.
         _job(d) if False else None
-        j = load_job(UUID(str(job.id)), d)
+        j = load_job_plan(normalize_job_id(str(job.job_id)), d)
         j.artifacts.append(Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION,
-                                    task_id=j.tasks[0].id,
+                                    task_id=str(j.tasks[0].task_id),
                                     metadata={"test_failure": True, "failure_kind": "test_failed",
-                                              "related_task_id": str(j.tasks[0].id), "safe_summary": "n"}))
-        save_job(j, root=d)
-        s = OB.build_orchestrator_situation(str(job.id), d)
+                                              "related_task_id": str(j.tasks[0].task_id), "safe_summary": "n"}))
+        save_job_plan(j, root=d)
+        s = OB.build_orchestrator_situation(str(job.job_id), d)
         assert s.loop_guard.status == OB.LoopGuardStatus.ALLOW
 
 
@@ -178,14 +169,6 @@ class TestAntiLoop:
 
 
 class TestModelRouting:
-    def test_open_blocker_high_human_review(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text("## Verdict\nPENDING\n")
-        job = _job(d)
-        s = OB.build_orchestrator_situation(str(job.id), d)
-        assert s.model_routing_plan.tier == OB.RoutingTier.HUMAN_REVIEW_REQUIRED
-        assert s.model_routing_plan.allow_external is False
-
     def test_candidate_generation_external_builder(self, env):
         d, _ = env
         # Failure with no repair attempt + test budget available → candidate needed.
@@ -195,17 +178,39 @@ class TestModelRouting:
         job = _job(d)
         c = build_default_run_contract(job)
         c = dataclasses.replace(c, max_test_runs=1)
-        save_contract(job, c); save_job(job, root=d)
-        s = OB.build_orchestrator_situation(str(job.id), d)
+        save_contract(job, c); save_job_plan(job, root=d)
+        s = OB.build_orchestrator_situation(str(job.job_id), d)
         assert s.model_routing_plan.tier == OB.RoutingTier.EXTERNAL_BUILDER_NEEDED
         assert s.model_routing_plan.notes  # plan only
+
+    def test_loop_guard_forces_human_review_tier(self, env):
+        """R-0862: the human-review tier had no positive pin after round 18.
+
+        Round 18 deleted `_review_state` and the two tests that pinned this tier. The
+        tier still ships and is still reachable through the loop guard, so it is pinned
+        here through the surviving durable-failure signal rather than through the
+        deleted review state."""
+        d, _ = env
+        job = _job(d)
+        from packages.orchestration import repair_loop as RL
+        j = load_job_plan(normalize_job_id(str(job.job_id)), d)
+        for i in range(2):
+            att = RL.RepairAttempt(attempt_id=f"h{i}", job_id=str(job.job_id),
+                                   failure_artifact_id=f"f{i}", status="tested_failed",
+                                   source="cli_v1", created_at="t")
+            RL.save_repair_attempt(j, att)
+        s = OB.build_orchestrator_situation(str(job.job_id), d)
+        # The precondition, asserted so this test cannot pass vacuously.
+        assert s.loop_guard.status == OB.LoopGuardStatus.REQUIRE_HUMAN_REVIEW
+        assert s.model_routing_plan.tier == OB.RoutingTier.HUMAN_REVIEW_REQUIRED
+        assert s.model_routing_plan.allow_external is False
 
     def test_routing_never_executes(self, env):
         # The routing plan is data only — no model is invoked (architecture guard covers
         # imports; here we assert the plan carries a "plan only" note for non-deterministic).
         d, _ = env
         job = _job(d, failure=False)
-        s = OB.build_orchestrator_situation(str(job.id), d)
+        s = OB.build_orchestrator_situation(str(job.job_id), d)
         assert s.model_routing_plan.tier in (
             OB.RoutingTier.DETERMINISTIC_ONLY, OB.RoutingTier.LOCAL_ADVISOR_PREFERRED,
             OB.RoutingTier.EXTERNAL_BUILDER_NEEDED, OB.RoutingTier.HUMAN_REVIEW_REQUIRED)
@@ -229,7 +234,7 @@ class TestIdeas:
         d, _ = env
         OB.record_idea("eventually support plugins", d)
         job = _job(d, failure=False)
-        s = OB.build_orchestrator_situation(str(job.id), d)
+        s = OB.build_orchestrator_situation(str(job.job_id), d)
         # Idea surfaces as a human-review-only option, never auto-selected/executable.
         idea_opts = [o for o in s.options if o.kind == OB.OptionKind.HUMAN_REVIEW]
         assert all(not o.available for o in idea_opts)
@@ -248,12 +253,12 @@ class TestRedaction:
             "Traceback (most recent call last)\n")
         OB.record_idea("token sk-deadbeefdeadbeef00 at /home/u/.env please fix", d)
         job = _job(d)
-        s = OB.build_orchestrator_situation(str(job.id), d)
+        s = OB.build_orchestrator_situation(str(job.job_id), d)
         dec = OB.select_orchestrator_decision(s, d, persist=True)
         blobs = [
             json.dumps(OB.export_situation_json(s)),
             json.dumps(OB.export_decision_json(dec)),
-            OB.render_report_markdown(OB.build_orchestrator_report(str(job.id), d)),
+            OB.render_report_markdown(OB.build_orchestrator_report(str(job.job_id), d)),
             json.dumps(OB.list_ideas(d)),
         ]
         for b in blobs:

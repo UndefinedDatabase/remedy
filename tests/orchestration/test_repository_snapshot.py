@@ -20,7 +20,6 @@ import json
 import os
 from pathlib import Path
 from unittest.mock import MagicMock
-from uuid import UUID
 
 import pytest
 
@@ -76,18 +75,18 @@ def _save_revert_job(
     allow_perm=True  → Capability.repo_revert granted
     allow_contract=True → ContractAction.REVERT allowed (removed from denied_actions)
     """
-    from packages.core.models import Job, RunState
+    from packages.core.models import RunState
     from packages.orchestration.permissions import Capability, set_permission
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
     from packages.orchestration.run_contract import (
         ContractAction,
         build_default_run_contract,
         save_contract,
     )
-    from packages.orchestration.storage import save_job
 
-    job = Job(
-        id=UUID(JOB_ID),
-        name="revert-test-job",
+    job = JobPlan(
+        job_id=JOB_ID,
+        job_title="revert-test-job",
         user_prompt="test",
         state=RunState.RUNNING,
         tasks=[],
@@ -110,7 +109,7 @@ def _save_revert_job(
                 denied_actions=(*contract.denied_actions, ContractAction.REVERT),
             )
     save_contract(job, contract)
-    save_job(job, root=data_dir)
+    save_job_plan(job, root=data_dir)
 
 
 # ---------------------------------------------------------------------------

@@ -785,7 +785,7 @@ def summarize_project(
     Redaction: no artifact content, no approval reasons, no event messages,
     no diff previews, no command output, no raw exception text.
     """
-    job_map = {str(j.id): j for j in jobs}
+    job_map = {str(j.job_id): j for j in jobs}
     lines: list[str] = []
     lines.append("Remedy Project Registry v0")
     lines.append(f"Project : {project.name}")
@@ -806,7 +806,7 @@ def summarize_project(
         for jid in project.job_ids:
             j = job_map.get(jid)
             if j is not None:
-                lines.append(f"  {jid[:8]}  {j.state.value:<12}  {j.name[:40]}")
+                lines.append(f"  {jid[:8]}  {j.state.value:<12}  {j.job_title[:40]}")
             else:
                 lines.append(f"  {jid[:8]}  (not loaded)")
     else:
@@ -853,7 +853,7 @@ def export_project_json(
         derive_project_context_coverage,
     )
 
-    job_map = {str(j.id): j for j in jobs}
+    job_map = {str(j.job_id): j for j in jobs}
     jobs_out: list[dict[str, Any]] = []
     total_tasks = 0
     total_artifacts = 0
@@ -865,7 +865,7 @@ def export_project_json(
             total_tasks += tc
             total_artifacts += ac
             jobs_out.append({
-                "id": str(j.id),
+                "id": str(j.job_id),
                 "state": j.state.value,
                 "task_count": tc,
                 "artifact_count": ac,

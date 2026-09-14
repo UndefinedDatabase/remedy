@@ -111,7 +111,7 @@ def _seed_job_checkpoint(root, mission, job_id: str, *,
     checkpoint = Checkpoint(
         cycle_index=cycle_index,
         job_id=job_id,
-        job_snapshot_path=f"jobs/{job_id}.json",
+        job_snapshot_path=f"jobs/{job_id}/job.json",
         job_snapshot_sha256="sha256:" + "a" * 64,
         worktree_head="c0ffee" + "0" * 34,
         budget_spent_tokens=1234,
@@ -128,12 +128,10 @@ def _seed_job_checkpoint(root, mission, job_id: str, *,
 def _seed_readable_job(root, mission,
                        job_id: str = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"):
     """A persisted job linked to the mission, so the decision queue can read it."""
-    from uuid import UUID
 
-    from packages.core.models import Job
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
-    save_job(Job(id=UUID(job_id), name="the linked job"))
+    save_job_plan(JobPlan(job_id=job_id, job_title="the linked job"))
     _seed_job_checkpoint(root, mission, job_id)
     return job_id
 
@@ -455,7 +453,7 @@ class _LoopJob:
     """The smallest thing the dispatch seam must return: an id and no plan."""
 
     def __init__(self, job_id: str = "job-0001"):
-        self.id = job_id
+        self.job_id = job_id
         self.flight_plan = None
 
 

@@ -9,14 +9,14 @@ from __future__ import annotations
 
 import pytest
 
-from packages.core.models import RunState, Task
+from packages.core.models import RunState
 from packages.orchestration.dag_schedule import (
     BLOCKING_STATES,
     blocked_downstream,
     build_graph,
     ready_set,
 )
-
+from packages.orchestration.pingpong_job import TaskEntry
 
 # ---------------------------------------------------------------------------
 # Fixture builders
@@ -24,10 +24,10 @@ from packages.orchestration.dag_schedule import (
 
 
 def flight_task(planned_id: str, *depends_on: str,
-                status: RunState = RunState.PENDING) -> Task:
+                status: RunState = RunState.PENDING) -> TaskEntry:
     """A task carrying Flight Plan metadata, shaped like the real mapper's."""
-    return Task(
-        description=f"task {planned_id}",
+    return TaskEntry(
+        title=f"task {planned_id}",
         inputs={"flight": {
             "planned_id": planned_id,
             "title": planned_id,
@@ -37,19 +37,19 @@ def flight_task(planned_id: str, *depends_on: str,
     )
 
 
-def legacy_task(name: str, *, status: RunState = RunState.PENDING) -> Task:
+def legacy_task(name: str, *, status: RunState = RunState.PENDING) -> TaskEntry:
     """A task with no flight metadata — the legacy/heuristic-fallback shape."""
-    return Task(description=f"legacy {name}", status=status)
+    return TaskEntry(title=f"legacy {name}", status=status)
 
 
-def ids(tasks: list[Task], *planned_ids: str) -> list:
+def ids(tasks: list[TaskEntry], *planned_ids: str) -> list:
     """Task ids for the given planned ids, in the order asked for."""
-    by_planned = {t.inputs["flight"]["planned_id"]: t.id
+    by_planned = {t.inputs["flight"]["planned_id"]: t.task_id
                   for t in tasks if "flight" in t.inputs}
     return [by_planned[p] for p in planned_ids]
 
 
-def diamond(**states: RunState) -> list[Task]:
+def diamond(**states: RunState) -> list[TaskEntry]:
     """A -> (B, C) -> D.  States passed by planned id override PENDING."""
     return [
         flight_task("A", status=states.get("A", RunState.PENDING)),
@@ -124,13 +124,13 @@ def test_empty_plan_is_empty():
 def test_legacy_plan_without_metadata_schedules_linearly():
     tasks = [legacy_task("one"), legacy_task("two"), legacy_task("three")]
     # One rule: each task depends on its predecessor.
-    assert ready_set(tasks) == [tasks[0].id]
+    assert ready_set(tasks) == [tasks[0].task_id]
 
     tasks[0].status = RunState.COMPLETED
-    assert ready_set(tasks) == [tasks[1].id]
+    assert ready_set(tasks) == [tasks[1].task_id]
 
     tasks[1].status = RunState.COMPLETED
-    assert ready_set(tasks) == [tasks[2].id]
+    assert ready_set(tasks) == [tasks[2].task_id]
 
 
 def test_legacy_plan_holds_the_tail_while_the_head_is_unfinished():
@@ -146,11 +146,11 @@ def test_mixed_plan_resolves_each_task_by_its_own_kind():
     c = flight_task("C", "A")
     tasks = [a, mid, c]
 
-    assert ready_set(tasks) == [a.id]
+    assert ready_set(tasks) == [a.task_id]
 
     a.status = RunState.COMPLETED
     # mid unblocks by predecessor rule, C unblocks by its declared edge.
-    assert ready_set(tasks) == [mid.id, c.id]
+    assert ready_set(tasks) == [mid.task_id, c.task_id]
 
 
 def test_flight_task_after_a_legacy_task_does_not_inherit_position():
@@ -158,7 +158,7 @@ def test_flight_task_after_a_legacy_task_does_not_inherit_position():
     independent = flight_task("B")          # declares no dependency at all
     tasks = [legacy, independent]
     # The flight task is ready immediately: it is not the legacy chain's tail.
-    assert ready_set(tasks) == [legacy.id, independent.id]
+    assert ready_set(tasks) == [legacy.task_id, independent.task_id]
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +184,7 @@ def test_self_dependency_is_never_ready():
 def test_duplicate_declared_edge_is_collapsed():
     tasks = [flight_task("A", status=RunState.COMPLETED),
              flight_task("B", "A", "A")]
-    assert build_graph(tasks)[1].depends_on == (tasks[0].id,)
+    assert build_graph(tasks)[1].depends_on == (tasks[0].task_id,)
     assert ready_set(tasks) == ids(tasks, "B")
 
 
@@ -249,14 +249,14 @@ def test_blocked_downstream_never_reports_a_completed_task():
 
 def test_blocked_downstream_follows_the_legacy_chain():
     tasks = [legacy_task("one"), legacy_task("two"), legacy_task("three")]
-    assert blocked_downstream(tasks, [tasks[0].id]) == {tasks[1].id,
-                                                        tasks[2].id}
+    assert blocked_downstream(tasks, [tasks[0].task_id]) == {tasks[1].task_id,
+                                                        tasks[2].task_id}
 
 
 def test_blocked_downstream_of_an_unknown_id_is_empty():
     tasks = diamond()
     stranger = flight_task("STRANGER")
-    assert blocked_downstream(tasks, [stranger.id]) == set()
+    assert blocked_downstream(tasks, [stranger.task_id]) == set()
 
 
 def test_blocked_downstream_of_a_leaf_is_empty():
@@ -296,5 +296,5 @@ def test_build_graph_is_deterministic_and_in_plan_order():
     first = build_graph(tasks)
     second = build_graph(tasks)
     assert first == second
-    assert [node.task_id for node in first] == [t.id for t in tasks]
+    assert [node.task_id for node in first] == [t.task_id for t in tasks]
     assert [node.index for node in first] == [0, 1, 2, 3]

@@ -48,7 +48,8 @@ from uuid import UUID
 from packages.orchestration.patch_intent import RISK_LEVELS, RISK_UNKNOWN
 
 if TYPE_CHECKING:
-    from packages.core.models import Artifact, Job
+    from packages.core.models import Artifact
+    from packages.orchestration.pingpong_job import JobPlan
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +104,7 @@ def _parse_intent_id(intent_id: str) -> tuple[str, int] | None:
 
 
 def _find_artifact_for_intent(
-    job: Job, intent_id: str
+    job: JobPlan, intent_id: str
 ) -> tuple[Artifact, int] | None:
     """Resolve an intent_id to (artifact, idx).
 
@@ -126,7 +127,7 @@ def _find_artifact_for_intent(
 # ---------------------------------------------------------------------------
 
 
-def list_patch_intents(job: Job) -> list[dict]:
+def list_patch_intents(job: JobPlan) -> list[dict]:
     """Return all patch intents across the job with their current approval state.
 
     Scans ``job.artifacts`` for any artifact that has a
@@ -185,7 +186,7 @@ def list_patch_intents(job: Job) -> list[dict]:
     return result
 
 
-def get_patch_intent(job: Job, intent_id: str) -> dict | None:
+def get_patch_intent(job: JobPlan, intent_id: str) -> dict | None:
     """Return a single patch intent record by intent_id, or None if not found."""
     for item in list_patch_intents(job):
         if item["intent_id"] == intent_id:
@@ -194,7 +195,7 @@ def get_patch_intent(job: Job, intent_id: str) -> dict | None:
 
 
 def set_approval_state(
-    job: Job,
+    job: JobPlan,
     intent_id: str,
     state: str,
     *,
@@ -234,7 +235,7 @@ def set_approval_state(
     found = _find_artifact_for_intent(job, intent_id)
     if found is None:
         raise ValueError(
-            f"Patch intent {intent_id!r} not found in job {job.id}.  "
+            f"Patch intent {intent_id!r} not found in job {job.job_id}.  "
             "Use 'remedy patch list <job_id>' to see available intent IDs."
         )
 

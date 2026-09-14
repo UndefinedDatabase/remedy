@@ -18,8 +18,8 @@ from pathlib import Path
 
 import pytest
 
-from packages.core.models import Job, Task
 from packages.orchestration.diff_parser import DIFF_VIEW_MAX_BODY_LINES
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 # WHY the two diffs name DIFFERENT files: serving the job diff where the task
 # run's was asked for — or the reverse — is then a red rather than a shrug.
@@ -45,11 +45,11 @@ TASK_DIFF = f"""diff --git a/{TASK_DIFF_PATH} b/{TASK_DIFF_PATH}
 """
 
 
-def _make_job() -> Job:
-    return Job(
-        name="test-diff-endpoint-job",
+def _make_job() -> JobPlan:
+    return JobPlan(
+        job_title="test-diff-endpoint-job",
         user_prompt="Test prompt for the diff endpoint",
-        tasks=[Task(type="write_readme", description="Write a README")],
+        tasks=[TaskEntry(title="Write a README")],
     )
 
 
@@ -60,9 +60,9 @@ class TestDiffEndpoint:
     def _setup_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         self.job = _make_job()
-        from packages.orchestration.storage import save_job
-        save_job(self.job)
-        self.job_id = str(self.job.id)
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
 
     def _write_evidence(self) -> Path:
@@ -274,9 +274,9 @@ class TestDiffEndpointPerfBudget:
         """
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         self.job = _make_job()
-        from packages.orchestration.storage import save_job
-        save_job(self.job)
-        self.job_id = str(self.job.id)
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
 
         self.evidence_dir = tmp_path / "evidence"

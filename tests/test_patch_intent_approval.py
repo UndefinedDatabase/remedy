@@ -28,7 +28,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import ArtifactKind, Job, RunState, Task
+from packages.core.models import ArtifactKind, RunState
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_PENDING,
@@ -42,30 +42,30 @@ from packages.orchestration.approval_queue import (
 )
 from packages.orchestration.cockpit import summarize_cockpit
 from packages.orchestration.patch_intent import RISK_MEDIUM, RISK_UNKNOWN
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_job(**kwargs) -> Job:
-    defaults: dict = {"name": "Test approval job", "state": RunState.PENDING}
+def _make_job(**kwargs) -> JobPlan:
+    defaults: dict = {"job_title": "Test approval job", "state": RunState.PENDING}
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _make_pending_task(**kwargs) -> Task:
-    return Task(description="do work", inputs={"task_type": "write_readme"}, **kwargs)
+def _make_pending_task(**kwargs) -> TaskEntry:
+    return TaskEntry(title="do work", inputs={"task_type": "write_readme"}, **kwargs)
 
 
-def _completed_task(**kwargs) -> Task:
-    t = Task(description="done", inputs={"task_type": "write_readme"}, **kwargs)
+def _completed_task(**kwargs) -> TaskEntry:
+    t = TaskEntry(title="done", inputs={"task_type": "write_readme"}, **kwargs)
     t.status = RunState.COMPLETED
     return t
 
 
-def _add_patch_artifact(job: Job, *, risk: str = RISK_MEDIUM, intent_count: int = 1) -> str:
+def _add_patch_artifact(job: JobPlan, *, risk: str = RISK_MEDIUM, intent_count: int = 1) -> str:
     """Add a fake patch-intent artifact to the job.  Returns the intent_id of the first intent."""
     from packages.core.models import Artifact
 
@@ -83,7 +83,7 @@ def _add_patch_artifact(job: Job, *, risk: str = RISK_MEDIUM, intent_count: int 
         name="builder_proposal",
         content="",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         metadata={
             "patch_intent_explanations": explanations,
             "patch_intent_risks": [risk] * intent_count,
@@ -339,7 +339,7 @@ class TestFormatHelpers:
             name="builder_proposal",
             content="",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={
                 "patch_intent_explanations": [
                     {"file": "docs/file_0.md", "action": "modify", "risk": RISK_MEDIUM,
@@ -385,25 +385,25 @@ class TestFormatHelpers:
 
 
 class TestCmdListPatchIntents:
-    def _save(self, tmp_path, monkeypatch, **kwargs) -> Job:
+    def _save(self, tmp_path, monkeypatch, **kwargs) -> JobPlan:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job(**kwargs)
-        save_job(job)
+        save_job_plan(job)
         return job
 
     def test_no_intents_prints_placeholder(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_list_patch_intents
-        _cmd_list_patch_intents(str(job.id))
+        _cmd_list_patch_intents(str(job.job_id))
         out = capsys.readouterr().out
         assert "No patch intents" in out
 
     def test_one_intent_shows_in_table(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
         _add_patch_artifact(job)
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.patch import _cmd_list_patch_intents
-        _cmd_list_patch_intents(str(job.id))
+        _cmd_list_patch_intents(str(job.job_id))
         out = capsys.readouterr().out
         assert "docs/file_0.md" in out
         assert APPROVAL_PENDING in out
@@ -425,9 +425,9 @@ class TestCmdListPatchIntents:
     def test_json_output_has_version_and_intents(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
         _add_patch_artifact(job)
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.patch import _cmd_list_patch_intents
-        _cmd_list_patch_intents(str(job.id), json_output=True)
+        _cmd_list_patch_intents(str(job.job_id), json_output=True)
         data = json.loads(capsys.readouterr().out)
         assert data["version"] == 1
         assert data["intent_count"] == 1
@@ -437,28 +437,28 @@ class TestCmdListPatchIntents:
     def test_json_output_has_created_at_key(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
         _add_patch_artifact(job)
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.patch import _cmd_list_patch_intents
-        _cmd_list_patch_intents(str(job.id), json_output=True)
+        _cmd_list_patch_intents(str(job.job_id), json_output=True)
         data = json.loads(capsys.readouterr().out)
         assert "created_at" in data["intents"][0]
 
     def test_limit_caps_returned_intents(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
         _add_patch_artifact(job, intent_count=3)
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.patch import _cmd_list_patch_intents
-        _cmd_list_patch_intents(str(job.id), json_output=True, limit="2")
+        _cmd_list_patch_intents(str(job.job_id), json_output=True, limit="2")
         data = json.loads(capsys.readouterr().out)
         assert data["intent_count"] == 2
 
     def test_unknown_sort_field_exits_nonzero(self, tmp_path, monkeypatch):
         job = self._save(tmp_path, monkeypatch)
         _add_patch_artifact(job)
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.patch import _cmd_list_patch_intents
         with pytest.raises(SystemExit) as exc_info:
-            _cmd_list_patch_intents(str(job.id), json_output=True, sort="bogus")
+            _cmd_list_patch_intents(str(job.job_id), json_output=True, sort="bogus")
         assert exc_info.value.code == 1
 
 
@@ -468,18 +468,18 @@ class TestCmdListPatchIntents:
 
 
 class TestCmdShowPatchIntent:
-    def _save(self, tmp_path, monkeypatch) -> Job:
+    def _save(self, tmp_path, monkeypatch) -> JobPlan:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         return job
 
     def test_shows_risk_and_summary(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
         intent_id = _add_patch_artifact(job)
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.patch import _cmd_show_patch_intent
-        _cmd_show_patch_intent(str(job.id), intent_id)
+        _cmd_show_patch_intent(str(job.job_id), intent_id)
         out = capsys.readouterr().out
         assert RISK_MEDIUM in out
         assert "Proposed change 0" in out
@@ -489,9 +489,9 @@ class TestCmdShowPatchIntent:
         intent_id = _add_patch_artifact(job)
         # Patch the artifact's diff preview to be long enough to trigger truncation
         job.artifacts[-1].metadata["patch_intent_diff_preview"] = "x" * 500
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.patch import _cmd_show_patch_intent
-        _cmd_show_patch_intent(str(job.id), intent_id)
+        _cmd_show_patch_intent(str(job.job_id), intent_id)
         out = capsys.readouterr().out
         # Full 500-char preview must not appear verbatim
         assert "x" * 500 not in out
@@ -500,7 +500,7 @@ class TestCmdShowPatchIntent:
         job = self._save(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_show_patch_intent
         with pytest.raises(SystemExit) as exc_info:
-            _cmd_show_patch_intent(str(job.id), "deadbeef-0")
+            _cmd_show_patch_intent(str(job.job_id), "deadbeef-0")
         assert exc_info.value.code == 1
 
 
@@ -510,19 +510,19 @@ class TestCmdShowPatchIntent:
 
 
 class TestCmdApprovePatchIntent:
-    def _setup(self, tmp_path, monkeypatch) -> tuple[Job, str]:
+    def _setup(self, tmp_path, monkeypatch) -> tuple[JobPlan, str]:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         intent_id = _add_patch_artifact(job)
-        save_job(job)
+        save_job_plan(job)
         return job, intent_id
 
     def test_approve_writes_metadata(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_approve_patch_intent
-        from packages.orchestration.storage import load_job
-        _cmd_approve_patch_intent(str(job.id), intent_id, None)
-        reloaded = load_job(job.id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        _cmd_approve_patch_intent(str(job.job_id), intent_id, None)
+        reloaded = load_job_plan(job.job_id)
         item = get_patch_intent(reloaded, intent_id)
         assert item is not None
         assert item["state"] == APPROVAL_APPROVED
@@ -531,8 +531,8 @@ class TestCmdApprovePatchIntent:
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_approve_patch_intent
         # Capture events by reading the JSONL file after the command.
-        _cmd_approve_patch_intent(str(job.id), intent_id, None)
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        _cmd_approve_patch_intent(str(job.job_id), intent_id, None)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -548,7 +548,7 @@ class TestCmdApprovePatchIntent:
     def test_approve_confirmation_printed(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_approve_patch_intent
-        _cmd_approve_patch_intent(str(job.id), intent_id, None)
+        _cmd_approve_patch_intent(str(job.job_id), intent_id, None)
         out = capsys.readouterr().out
         assert "Approved" in out
         assert intent_id in out
@@ -556,7 +556,7 @@ class TestCmdApprovePatchIntent:
     def test_approve_prints_no_files_modified_note(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_approve_patch_intent
-        _cmd_approve_patch_intent(str(job.id), intent_id, None)
+        _cmd_approve_patch_intent(str(job.job_id), intent_id, None)
         out = capsys.readouterr().out
         # Must reassure user that no repo files were changed.
         assert "no files" in out.lower() or "metadata only" in out.lower()
@@ -564,9 +564,9 @@ class TestCmdApprovePatchIntent:
     def test_approve_with_reason(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_approve_patch_intent
-        from packages.orchestration.storage import load_job
-        _cmd_approve_patch_intent(str(job.id), intent_id, "LGTM")
-        reloaded = load_job(job.id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        _cmd_approve_patch_intent(str(job.job_id), intent_id, "LGTM")
+        reloaded = load_job_plan(job.job_id)
         item = get_patch_intent(reloaded, intent_id)
         assert item["approval_reason"] == "LGTM"
 
@@ -574,21 +574,21 @@ class TestCmdApprovePatchIntent:
         """Raw approval reason must not appear in CLI output."""
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_approve_patch_intent
-        _cmd_approve_patch_intent(str(job.id), intent_id, "SECRET_APPROVAL_REASON_DO_NOT_RENDER")
+        _cmd_approve_patch_intent(str(job.job_id), intent_id, "SECRET_APPROVAL_REASON_DO_NOT_RENDER")
         out = capsys.readouterr().out
         assert "SECRET_APPROVAL_REASON_DO_NOT_RENDER" not in out
 
     def test_approve_with_reason_prints_recorded(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_approve_patch_intent
-        _cmd_approve_patch_intent(str(job.id), intent_id, "any reason text")
+        _cmd_approve_patch_intent(str(job.job_id), intent_id, "any reason text")
         out = capsys.readouterr().out
         assert "reason: recorded" in out
 
     def test_approve_without_reason_prints_none(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_approve_patch_intent
-        _cmd_approve_patch_intent(str(job.id), intent_id, None)
+        _cmd_approve_patch_intent(str(job.job_id), intent_id, None)
         out = capsys.readouterr().out
         assert "reason: none" in out
 
@@ -596,7 +596,7 @@ class TestCmdApprovePatchIntent:
         job, _ = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_approve_patch_intent
         with pytest.raises(SystemExit) as exc_info:
-            _cmd_approve_patch_intent(str(job.id), "deadbeef-0", None)
+            _cmd_approve_patch_intent(str(job.job_id), "deadbeef-0", None)
         assert exc_info.value.code == 1
 
     def test_no_repo_files_modified(self, tmp_path, monkeypatch, capsys):
@@ -605,7 +605,7 @@ class TestCmdApprovePatchIntent:
         # Record files in tmp_path before
         before = set(tmp_path.rglob("*"))
         from apps.cli.commands.patch import _cmd_approve_patch_intent
-        _cmd_approve_patch_intent(str(job.id), intent_id, None)
+        _cmd_approve_patch_intent(str(job.job_id), intent_id, None)
         after = set(tmp_path.rglob("*"))
         new_files = after - before
         # New files must be inside REMEDY_DATA_DIR (tmp_path), not elsewhere.
@@ -619,19 +619,19 @@ class TestCmdApprovePatchIntent:
 
 
 class TestCmdRejectPatchIntent:
-    def _setup(self, tmp_path, monkeypatch) -> tuple[Job, str]:
+    def _setup(self, tmp_path, monkeypatch) -> tuple[JobPlan, str]:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         intent_id = _add_patch_artifact(job)
-        save_job(job)
+        save_job_plan(job)
         return job, intent_id
 
     def test_reject_writes_metadata(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
-        from packages.orchestration.storage import load_job
-        _cmd_reject_patch_intent(str(job.id), intent_id, None)
-        reloaded = load_job(job.id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        _cmd_reject_patch_intent(str(job.job_id), intent_id, None)
+        reloaded = load_job_plan(job.job_id)
         item = get_patch_intent(reloaded, intent_id)
         assert item is not None
         assert item["state"] == APPROVAL_REJECTED
@@ -639,8 +639,8 @@ class TestCmdRejectPatchIntent:
     def test_reject_emits_run_log_event(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
-        _cmd_reject_patch_intent(str(job.id), intent_id, None)
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        _cmd_reject_patch_intent(str(job.job_id), intent_id, None)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -655,7 +655,7 @@ class TestCmdRejectPatchIntent:
     def test_reject_confirmation_printed(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
-        _cmd_reject_patch_intent(str(job.id), intent_id, None)
+        _cmd_reject_patch_intent(str(job.job_id), intent_id, None)
         out = capsys.readouterr().out
         assert "Rejected" in out
         assert intent_id in out
@@ -663,17 +663,17 @@ class TestCmdRejectPatchIntent:
     def test_approve_after_reject_updates_state(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_approve_patch_intent, _cmd_reject_patch_intent
-        from packages.orchestration.storage import load_job
-        _cmd_reject_patch_intent(str(job.id), intent_id, None)
-        _cmd_approve_patch_intent(str(job.id), intent_id, None)
-        reloaded = load_job(job.id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        _cmd_reject_patch_intent(str(job.job_id), intent_id, None)
+        _cmd_approve_patch_intent(str(job.job_id), intent_id, None)
+        reloaded = load_job_plan(job.job_id)
         item = get_patch_intent(reloaded, intent_id)
         assert item["state"] == APPROVAL_APPROVED
 
     def test_reject_prints_metadata_only_note(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
-        _cmd_reject_patch_intent(str(job.id), intent_id, None)
+        _cmd_reject_patch_intent(str(job.job_id), intent_id, None)
         out = capsys.readouterr().out
         assert "no files" in out.lower() or "metadata only" in out.lower()
 
@@ -681,21 +681,21 @@ class TestCmdRejectPatchIntent:
         """Raw rejection reason must not appear in CLI output."""
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
-        _cmd_reject_patch_intent(str(job.id), intent_id, "SECRET_APPROVAL_REASON_DO_NOT_RENDER")
+        _cmd_reject_patch_intent(str(job.job_id), intent_id, "SECRET_APPROVAL_REASON_DO_NOT_RENDER")
         out = capsys.readouterr().out
         assert "SECRET_APPROVAL_REASON_DO_NOT_RENDER" not in out
 
     def test_reject_with_reason_prints_recorded(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
-        _cmd_reject_patch_intent(str(job.id), intent_id, "needs more work")
+        _cmd_reject_patch_intent(str(job.job_id), intent_id, "needs more work")
         out = capsys.readouterr().out
         assert "reason: recorded" in out
 
     def test_reject_without_reason_prints_none(self, tmp_path, monkeypatch, capsys):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
-        _cmd_reject_patch_intent(str(job.id), intent_id, None)
+        _cmd_reject_patch_intent(str(job.job_id), intent_id, None)
         out = capsys.readouterr().out
         assert "reason: none" in out
 
@@ -703,15 +703,15 @@ class TestCmdRejectPatchIntent:
         job, _ = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
         with pytest.raises(SystemExit) as exc_info:
-            _cmd_reject_patch_intent(str(job.id), "deadbeef-0", None)
+            _cmd_reject_patch_intent(str(job.job_id), "deadbeef-0", None)
         assert exc_info.value.code == 1
 
     def test_run_log_reason_present_false_when_no_reason(self, tmp_path, monkeypatch):
         """reason_present=False logged when no reason given (not the absence of a key)."""
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
-        _cmd_reject_patch_intent(str(job.id), intent_id, None)
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        _cmd_reject_patch_intent(str(job.job_id), intent_id, None)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -723,8 +723,8 @@ class TestCmdRejectPatchIntent:
     def test_run_log_reason_present_true_when_reason_given(self, tmp_path, monkeypatch):
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
-        _cmd_reject_patch_intent(str(job.id), intent_id, "not ready")
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        _cmd_reject_patch_intent(str(job.job_id), intent_id, "not ready")
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -738,8 +738,8 @@ class TestCmdRejectPatchIntent:
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
         secret_reason = "SECRET_REASON_TEXT_MUST_NOT_LOG"
-        _cmd_reject_patch_intent(str(job.id), intent_id, secret_reason)
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        _cmd_reject_patch_intent(str(job.job_id), intent_id, secret_reason)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         for f in runs_dir.glob("*.jsonl"):
             assert secret_reason not in f.read_text()
 
@@ -756,8 +756,8 @@ class TestCockpitApprovalIntegration:
         job.tasks.append(_completed_task())
         task_id = str(uuid4())
         _add_patch_artifact(job, risk=RISK_MEDIUM)
-        events = _task_run_succeeded_events(str(job.id), task_id) + [
-            _patch_intent_event(str(job.id), task_id, RISK_MEDIUM),
+        events = _task_run_succeeded_events(str(job.job_id), task_id) + [
+            _patch_intent_event(str(job.job_id), task_id, RISK_MEDIUM),
         ]
         out = summarize_cockpit(job, events)
         assert "pending" in out.lower()
@@ -770,8 +770,8 @@ class TestCockpitApprovalIntegration:
         task_id = str(uuid4())
         intent_id = _add_patch_artifact(job, risk=RISK_MEDIUM)
         set_approval_state(job, intent_id, APPROVAL_REJECTED)
-        events = _task_run_succeeded_events(str(job.id), task_id) + [
-            _patch_intent_event(str(job.id), task_id, RISK_MEDIUM),
+        events = _task_run_succeeded_events(str(job.job_id), task_id) + [
+            _patch_intent_event(str(job.job_id), task_id, RISK_MEDIUM),
         ]
         out = summarize_cockpit(job, events)
         assert "rejected" in out.lower()
@@ -783,7 +783,7 @@ class TestCockpitApprovalIntegration:
         task_id = str(uuid4())
         intent_id = _add_patch_artifact(job, risk=RISK_MEDIUM)
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
-        events = _task_run_succeeded_events(str(job.id), task_id)
+        events = _task_run_succeeded_events(str(job.job_id), task_id)
         out = summarize_cockpit(job, events)
         # Must not imply files were applied to the repo
         assert "applied to" not in out.lower()
@@ -797,8 +797,8 @@ class TestCockpitApprovalIntegration:
         job.tasks.append(_make_pending_task())
         task_id = str(uuid4())
         _add_patch_artifact(job, risk=RISK_MEDIUM)
-        events = _task_run_succeeded_events(str(job.id), task_id) + [
-            _patch_intent_event(str(job.id), task_id, RISK_MEDIUM),
+        events = _task_run_succeeded_events(str(job.job_id), task_id) + [
+            _patch_intent_event(str(job.job_id), task_id, RISK_MEDIUM),
         ]
         out = summarize_cockpit(job, events)
         assert "patch list" in out
@@ -808,8 +808,8 @@ class TestCockpitApprovalIntegration:
         job = _make_job(state=RunState.COMPLETED)
         job.tasks.append(_completed_task())
         task_id = str(uuid4())
-        events = _task_run_succeeded_events(str(job.id), task_id) + [
-            _patch_intent_event(str(job.id), task_id, "low"),
+        events = _task_run_succeeded_events(str(job.job_id), task_id) + [
+            _patch_intent_event(str(job.job_id), task_id, "low"),
         ]
         out = summarize_cockpit(job, events)
         # Low risk + no pending approvals → "Nothing needs your attention"

@@ -10,20 +10,21 @@ from uuid import uuid4
 
 import pytest
 
+from packages.orchestration.data_paths import mint_job_id
 from tests.cli.runtime_helpers import run_grouped_cli
 
 
 def _job(data_dir):
-    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-    from packages.orchestration.storage import save_job
-    task = Task(description="t")
-    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=task.id,
+    from packages.core.models import Artifact, ArtifactKind, RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+    task = TaskEntry(title="t")
+    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.task_id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",
-                            "related_task_id": str(task.id), "safe_summary": "boom"})
-    job = Job(id=uuid4(), name="ov-orch", user_prompt="x", state=RunState.RUNNING,
+                            "related_task_id": str(task.task_id), "safe_summary": "boom"})
+    job = JobPlan(job_id=mint_job_id(), job_title="ov-orch", user_prompt="x", state=RunState.RUNNING,
               tasks=[task], artifacts=[fa], metadata={"target_repo": "."})
-    save_job(job, root=data_dir)
-    return str(job.id)
+    save_job_plan(job, root=data_dir)
+    return str(job.job_id)
 
 
 @pytest.fixture()

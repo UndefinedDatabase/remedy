@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from uuid import uuid4
 
+from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.task_execution import (
     ALLOWED_PROVIDERS,
     BudgetGate,
@@ -147,27 +147,27 @@ class TestBudgetGate:
 class TestCanRetryTask:
     def test_completed_not_retryable(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
-        from packages.core.models import Job, RunState, Task
-        job = Job(id=uuid4(), name="retry-test")
-        task = Task(description="Done", status=RunState.COMPLETED)
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+        job = JobPlan(job_id=mint_job_id(), job_title="retry-test")
+        task = TaskEntry(title="Done", status=RunState.COMPLETED)
         job.tasks.append(task)
-        from packages.orchestration.storage import save_job
-        save_job(job)
-        result = can_retry_task(str(job.id), str(task.id))
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(job)
+        result = can_retry_task(str(job.job_id), str(task.task_id))
         assert result["ready"] is False
         assert "already_completed" in result["blockers"]
 
     def test_pending_not_retryable(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")
-        monkeypatch.setattr("packages.orchestration.storage._DATA_DIR", tmp_path / "jobs")
-        from packages.core.models import Job, RunState, Task
-        job = Job(id=uuid4(), name="retry-test")
-        task = Task(description="Pending", status=RunState.PENDING)
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+        job = JobPlan(job_id=mint_job_id(), job_title="retry-test")
+        task = TaskEntry(title="Pending", status=RunState.PENDING)
         job.tasks.append(task)
-        from packages.orchestration.storage import save_job
-        save_job(job)
-        result = can_retry_task(str(job.id), str(task.id))
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(job)
+        result = can_retry_task(str(job.job_id), str(task.task_id))
         assert result["ready"] is False
         assert "still_pending" in result["blockers"]
 

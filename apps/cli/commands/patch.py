@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from packages.orchestration.data_paths import resolve_job_id
-from packages.orchestration.storage import JobNotFoundError, load_job, save_job
+from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
 
 if TYPE_CHECKING:
     import argparse
@@ -26,7 +26,7 @@ def _cmd_list_patch_intents(
 ) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -62,7 +62,7 @@ def _cmd_list_patch_intents(
 def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -91,7 +91,7 @@ def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
 def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -105,8 +105,8 @@ def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | Non
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    save_job(job)
-    log = RunLogWriter(job_id=job.id)
+    save_job_plan(job)
+    log = RunLogWriter(job_id=job.job_id)
     log.log(
         "patch_intent_approved", outcome="approved",
         intent_id=entry["intent_id"], target_path=entry["target_path"],
@@ -120,7 +120,7 @@ def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | Non
 def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -134,8 +134,8 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    save_job(job)
-    log = RunLogWriter(job_id=job.id)
+    save_job_plan(job)
+    log = RunLogWriter(job_id=job.job_id)
     log.log(
         "patch_intent_rejected", outcome="rejected",
         intent_id=entry["intent_id"], target_path=entry["target_path"],
@@ -149,7 +149,7 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
 def _cmd_apply_patch_intent(job_id_str: str, intent_id: str, *, json_output: bool = False) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -186,7 +186,7 @@ def _cmd_revert_patch_intent(
     """
     job_id = resolve_job_id(job_id_str)
     try:
-        load_job(job_id)
+        require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -194,11 +194,11 @@ def _cmd_revert_patch_intent(
     from pathlib import Path as _Path
 
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import load_job_plan as _load_job
     from packages.orchestration.repository_snapshot import (
         load_durable_apply_record,
         revert_repository_apply,
     )
-    from packages.orchestration.storage import load_job as _load_job
 
     data_dir = resolve_data_root()
     job = _load_job(job_id)
@@ -317,7 +317,7 @@ def _cmd_approve_hunks(
     """
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -376,7 +376,7 @@ def _cmd_approve_hunks(
                 print(f"  hunks: {', '.join(result.hunk_ids)}", file=sys.stderr)
         sys.exit(1)
 
-    save_job(job)
+    save_job_plan(job)
 
     if json_output:
         print(_json.dumps(result.exported, sort_keys=True))

@@ -46,15 +46,15 @@ def _make_job(*, permitted: bool = True, target_repo: str | None = None, max_tes
     budget or a counter hits `'>' not supported between MagicMock and int`.
     A real model costs nothing here and carries the real defaults.
     """
-    from packages.core.models import Job
+    from packages.orchestration.pingpong_job import JobPlan
     metadata = {"target_repo": target_repo} if target_repo else {}
-    return Job(name="test-job", metadata=metadata)
+    return JobPlan(job_title="test-job", metadata=metadata)
 
 
 def _make_contract(max_test_runs: int = 1, max_runtime_seconds: float = 300.0):
-    from packages.core.models import Job
+    from packages.orchestration.pingpong_job import JobPlan
     from packages.orchestration.run_contract import build_default_run_contract
-    c = build_default_run_contract(Job(name="test-job"))
+    c = build_default_run_contract(JobPlan(job_title="test-job"))
     from dataclasses import replace as dc_replace
     return dc_replace(c, max_test_runs=max_test_runs, max_runtime_seconds=max_runtime_seconds)
 
@@ -496,8 +496,8 @@ class TestExecuteTestRunGates:
     """Tests for all gate checks in execute_test_run."""
 
     def _make_job_with_repo(self, tmp_path):
-        from packages.core.models import Job
-        return Job(name="test-job", metadata={"target_repo": str(tmp_path)})
+        from packages.orchestration.pingpong_job import JobPlan
+        return JobPlan(job_title="test-job", metadata={"target_repo": str(tmp_path)})
 
     def test_invalid_job_id_blocked(self):
         from packages.orchestration.test_execution_service import execute_test_run
@@ -518,11 +518,11 @@ class TestExecuteTestRunGates:
 
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
                    return_value=tmp_path):
-            with patch("packages.orchestration.test_execution_service.load_job") as mock_load:
+            with patch("packages.orchestration.test_execution_service.require_job_plan") as mock_load:
                 job = self._make_job_with_repo(tmp_path)
                 job.metadata = {"permissions": {"repo_test_run": "allow"}}  # no target_repo
                 mock_load.return_value = job
-                req = TestExecutionRequest(job_id=str(job.id))
+                req = TestExecutionRequest(job_id=str(job.job_id))
                 result = execute_test_run(req)
         assert result.status == "blocked"
         assert result.stop_reason == "no_target_repo"
@@ -532,12 +532,12 @@ class TestExecuteTestRunGates:
 
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
                    return_value=tmp_path):
-            with patch("packages.orchestration.test_execution_service.load_job") as mock_load:
+            with patch("packages.orchestration.test_execution_service.require_job_plan") as mock_load:
                 job = self._make_job_with_repo(tmp_path)
                 mock_load.return_value = job
                 with patch("packages.orchestration.test_execution_service.is_allowed",
                            return_value=False):
-                    req = TestExecutionRequest(job_id=str(job.id))
+                    req = TestExecutionRequest(job_id=str(job.job_id))
                     result = execute_test_run(req)
         assert result.status == "blocked"
         assert result.stop_reason == "permission_denied"
@@ -549,7 +549,7 @@ class TestExecuteTestRunGates:
 
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
                    return_value=tmp_path):
-            with patch("packages.orchestration.test_execution_service.load_job") as mock_load:
+            with patch("packages.orchestration.test_execution_service.require_job_plan") as mock_load:
                 job = self._make_job_with_repo(tmp_path)
                 mock_load.return_value = job
                 with patch("packages.orchestration.test_execution_service.is_allowed",
@@ -558,7 +558,7 @@ class TestExecuteTestRunGates:
                                return_value=_make_contract(max_test_runs=0)):
                         with patch("packages.orchestration.test_execution_service.load_usage",
                                    return_value=RunUsage()):
-                            req = TestExecutionRequest(job_id=str(job.id))
+                            req = TestExecutionRequest(job_id=str(job.job_id))
                             result = execute_test_run(req)
         assert result.status == "blocked"
         assert "max_test_runs" in result.safe_summary.lower() or "exhausted" in result.stop_reason
@@ -574,7 +574,7 @@ class TestExecuteTestRunGates:
 
         job = self._make_job_with_repo(tmp_path)
         job_id = uuid4()
-        job.id = job_id
+        job.job_id = job_id
         ws2 = tmp_path / "workspaces" / str(job_id)
         ws2.mkdir(parents=True)
         lock2 = ws2 / "test_execution.lock"
@@ -587,7 +587,7 @@ class TestExecuteTestRunGates:
         try:
             with patch("packages.orchestration.test_execution_service.resolve_data_root",
                        return_value=tmp_path):
-                with patch("packages.orchestration.test_execution_service.load_job",
+                with patch("packages.orchestration.test_execution_service.require_job_plan",
                            return_value=job):
                     with patch("packages.orchestration.test_execution_service.is_allowed",
                                return_value=True):
@@ -613,7 +613,7 @@ class TestExecuteTestRunGates:
 
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
                    return_value=tmp_path):
-            with patch("packages.orchestration.test_execution_service.load_job") as mock_load:
+            with patch("packages.orchestration.test_execution_service.require_job_plan") as mock_load:
                 job = self._make_job_with_repo(tmp_path)
                 mock_load.return_value = job
                 with patch("packages.orchestration.test_execution_service.is_allowed",
@@ -628,7 +628,7 @@ class TestExecuteTestRunGates:
                                            return_value=[]):
                                     with patch("packages.orchestration.test_execution_service.select_best_test_candidate",
                                                return_value=None):
-                                        req = TestExecutionRequest(job_id=str(job.id))
+                                        req = TestExecutionRequest(job_id=str(job.job_id))
                                         result = execute_test_run(req)
         assert result.status == "blocked"
         assert result.stop_reason == "no_test_command_discovered"
@@ -658,7 +658,7 @@ class TestExecuteTestRunGates:
 
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
                    return_value=tmp_path):
-            with patch("packages.orchestration.test_execution_service.load_job") as mock_load:
+            with patch("packages.orchestration.test_execution_service.require_job_plan") as mock_load:
                 job = self._make_job_with_repo(tmp_path)
                 mock_load.return_value = job
                 with patch("packages.orchestration.test_execution_service.is_allowed",
@@ -670,12 +670,12 @@ class TestExecuteTestRunGates:
                      patch("packages.orchestration.test_execution_service.load_usage",
                            return_value=RunUsage()), \
                      patch("packages.orchestration.test_execution_service.save_usage"), \
-                     patch("packages.orchestration.test_execution_service.save_job"), \
+                     patch("packages.orchestration.test_execution_service.save_job_plan"), \
                      patch("packages.orchestration.test_execution_service.discover_commands",
                            return_value=candidates), \
                      patch("packages.orchestration.test_execution_service._run_isolated_process",
                            side_effect=fake_run):
-                    req = TestExecutionRequest(job_id=str(job.id), command_id=command_id)
+                    req = TestExecutionRequest(job_id=str(job.job_id), command_id=command_id)
                     return execute_test_run(req)
 
     def test_explicit_command_id_executes_that_command(self, tmp_path):
@@ -722,14 +722,14 @@ class TestExecuteTestRunGates:
         save_usage_calls = []
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
                    return_value=tmp_path):
-            with patch("packages.orchestration.test_execution_service.load_job") as mock_load:
+            with patch("packages.orchestration.test_execution_service.require_job_plan") as mock_load:
                 job = self._make_job_with_repo(tmp_path)
                 mock_load.return_value = job
                 with patch("packages.orchestration.test_execution_service.is_allowed",
                            return_value=False):
                     with patch("packages.orchestration.test_execution_service.save_usage",
                                side_effect=lambda j, u: save_usage_calls.append(u)):
-                        req = TestExecutionRequest(job_id=str(job.id))
+                        req = TestExecutionRequest(job_id=str(job.job_id))
                         execute_test_run(req)
         # Permission denied before process start — save_usage should NOT be called
         assert len(save_usage_calls) == 0
@@ -768,9 +768,9 @@ class TestUsageAccounting:
 
         with patch("packages.orchestration.test_execution_service.resolve_data_root",
                    return_value=tmp_path):
-            with patch("packages.orchestration.test_execution_service.load_job") as mock_load:
+            with patch("packages.orchestration.test_execution_service.require_job_plan") as mock_load:
                 job = MagicMock()
-                job.id = uuid4()
+                job.job_id = uuid4()
                 job.metadata = {"target_repo": str(repo)}
                 job.tasks = []
                 job.artifacts = []
@@ -785,9 +785,9 @@ class TestUsageAccounting:
                                        return_value=initial_usage):
                                 with patch("packages.orchestration.test_execution_service.save_usage",
                                            side_effect=mock_save_usage):
-                                    with patch("packages.orchestration.test_execution_service.save_job"):
+                                    with patch("packages.orchestration.test_execution_service.save_job_plan"):
                                         req = TestExecutionRequest(
-                                            job_id=str(job.id),
+                                            job_id=str(job.job_id),
                                             requested_timeout_seconds=30.0,
                                         )
                                         result = execute_test_run(req)
@@ -898,14 +898,14 @@ class TestCatalogValidation:
                 max_test_runs=max_test_runs,
             )
 
-        from packages.core.models import Job
-        job = Job(name="catalog-test", user_prompt="")
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(job_title="catalog-test", user_prompt="")
         job.metadata = {
             "target_repo": str(tmp_path),
             "permissions": {"repo_test_run": "allow"},
         }
         job_id = uuid4()
-        job.id = job_id
+        job.job_id = job_id
 
         ws = tmp_path / "workspaces" / str(job_id)
         ws.mkdir(parents=True)
@@ -917,7 +917,7 @@ class TestCatalogValidation:
         try:
             with patch("packages.orchestration.test_execution_service.resolve_data_root",
                        return_value=tmp_path), \
-                 patch("packages.orchestration.test_execution_service.load_job",
+                 patch("packages.orchestration.test_execution_service.require_job_plan",
                        return_value=job), \
                  patch("packages.orchestration.test_execution_service.is_allowed",
                        return_value=True), \

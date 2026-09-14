@@ -1,16 +1,18 @@
 """F018 T001 — JobBudgets model, config, CLI precedence, RunManifest snapshot."""
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from packages.core.models import Job, JobBudgets
+from packages.core.models import JobBudgets
+from packages.orchestration.pingpong_job import JobPlan
 
 
 class TestJobBudgetsModel:
     def test_no_budgets_default(self):
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         assert job.budgets is None
 
     def test_all_none_fields(self):
@@ -130,36 +132,41 @@ class TestJobBudgetsModel:
         assert b.deadline == datetime(2027, 1, 1, 1, 0, 0, tzinfo=timezone.utc)
 
     def test_backward_compatible_old_job_fixture(self):
-        data = {"name": "old-job", "id": "00000000-0000-0000-0000-000000000001"}
-        job = Job.model_validate(data)
+        from packages.orchestration.pingpong_job import _import_job
+        job = _import_job({"job_id": "0000000000000001", "job_title": "old-job"})
         assert job.budgets is None
-        assert job.name == "old-job"
+        assert job.job_title == "old-job"
 
     def test_job_with_budgets_serializes(self):
+        from packages.orchestration.pingpong_job import _export_job, _import_job
         dl = datetime(2026, 12, 31, tzinfo=timezone.utc)
-        job = Job(
-            name="budgeted",
-            budgets=JobBudgets(max_total_tokens=100_000, deadline=dl),
+        job = JobPlan(
+            job_title="budgeted",
+            budgets=JobBudgets(max_total_tokens=100_000, deadline=dl).model_dump(mode="json"),
         )
-        d = job.model_dump()
+        d = _export_job(job)
         assert d["budgets"]["max_total_tokens"] == 100_000
         assert d["budgets"]["deadline"] is not None
+        job2 = _import_job(d)
+        assert job2.budgets["max_total_tokens"] == 100_000
+        assert job2.budgets["deadline"] is not None
 
     def test_job_with_budgets_roundtrips(self):
+        from packages.orchestration.pingpong_job import _export_job, _import_job
         dl = datetime(2026, 12, 31, tzinfo=timezone.utc)
-        job = Job(
-            name="budgeted",
+        job = JobPlan(
+            job_title="budgeted",
             budgets=JobBudgets(
                 max_total_tokens=100_000,
                 max_provider_calls=10,
                 deadline=dl,
-            ),
+            ).model_dump(mode="json"),
         )
-        d = job.model_dump(mode="json")
-        job2 = Job.model_validate(d)
+        d = _export_job(job)
+        job2 = _import_job(d)
         assert job2.budgets is not None
-        assert job2.budgets.max_total_tokens == 100_000
-        assert job2.budgets.max_provider_calls == 10
+        assert job2.budgets["max_total_tokens"] == 100_000
+        assert job2.budgets["max_provider_calls"] == 10
 
     def test_float_rejected_for_int_field(self):
         with pytest.raises(Exception):
@@ -182,12 +189,14 @@ class TestJobBudgetsModel:
             JobBudgets(max_wall_clock_minutes="30")
 
     def test_json_roundtrip_preserves_strict_types(self):
-        b = JobBudgets(max_total_tokens=100, max_provider_calls=3)
-        job = Job(name="strict-test", budgets=b)
-        json_str = job.model_dump_json()
-        job2 = Job.model_validate_json(json_str)
-        assert job2.budgets.max_total_tokens == 100
-        assert isinstance(job2.budgets.max_total_tokens, int)
+        from packages.orchestration.pingpong_job import _export_job, _import_job
+        job = JobPlan(
+            job_title="strict-test",
+            budgets=JobBudgets(max_total_tokens=100, max_provider_calls=3).model_dump(mode="json"),
+        )
+        job2 = _import_job(json.loads(json.dumps(_export_job(job))))
+        assert job2.budgets["max_total_tokens"] == 100
+        assert isinstance(job2.budgets["max_total_tokens"], int)
 
     def test_config_only_budgets_persist_on_job(self, tmp_path, monkeypatch):
         toml = tmp_path / "remedy.toml"
@@ -201,7 +210,7 @@ class TestJobBudgetsModel:
             assert result is not None
             assert result.max_total_tokens == 321
             assert result.max_provider_calls == 7
-            job = Job(name="config-budget", budgets=result)
+            job = JobPlan(job_title="config-budget", budgets=result)
             assert job.budgets is not None
             assert job.budgets.max_total_tokens == 321
         finally:
@@ -463,8 +472,8 @@ class TestRunManifestBudgetSnapshot:
 
     def test_job_budgets_accessible_for_manifest_binding(self):
         dl = datetime(2026, 12, 31, tzinfo=timezone.utc)
-        job = Job(
-            name="manifest-test",
+        job = JobPlan(
+            job_title="manifest-test",
             budgets=JobBudgets(max_total_tokens=50000, deadline=dl),
         )
         job_budgets = getattr(job, "budgets", None)
@@ -474,7 +483,7 @@ class TestRunManifestBudgetSnapshot:
         assert snap["max_total_tokens"] == 50000
 
     def test_no_budgets_yields_none_snapshot(self):
-        job = Job(name="no-budget")
+        job = JobPlan(job_title="no-budget")
         job_budgets = getattr(job, "budgets", None)
         assert job_budgets is None
 

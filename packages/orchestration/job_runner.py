@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 # Fixed planning task templates — order is intentional.
 _PLANNING_TASK_SPECS: list[tuple[str, str]] = [
@@ -39,11 +40,11 @@ class PlanJobResult:
     changed: True if planning work was performed; False if already planned.
     """
 
-    job: Job
+    job: JobPlan
     changed: bool
 
 
-def plan_job(job: Job) -> PlanJobResult:
+def plan_job(job: JobPlan) -> PlanJobResult:
     """Generate an initial planning skeleton for the given job.
 
     Adds 3 standard planning Tasks and 1 orchestration-owned planning Artifact.
@@ -61,11 +62,11 @@ def plan_job(job: Job) -> PlanJobResult:
     job.state = RunState.RUNNING
 
     job.tasks = [
-        Task(description=description, inputs={"task_type": name})
+        TaskEntry(title=description, inputs={"task_type": name})
         for name, description in _PLANNING_TASK_SPECS
     ]
 
-    prompt_summary = job.user_prompt or job.name
+    prompt_summary = job.user_prompt or job.job_title
     task_lines = "\n".join(
         f"  - {name}: {description}"
         for name, description in _PLANNING_TASK_SPECS
@@ -76,7 +77,7 @@ def plan_job(job: Job) -> PlanJobResult:
             name="planning_output",
             content=(
                 f"Initial planning output\n"
-                f"Job:    {job.id}\n"
+                f"Job:    {job.job_id}\n"
                 f"Prompt: {prompt_summary}\n\n"
                 f"Tasks generated:\n{task_lines}\n\n"
                 f"Note: deterministic planning skeleton — no LLM involved."

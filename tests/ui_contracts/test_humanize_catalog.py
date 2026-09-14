@@ -129,8 +129,8 @@ def _module_assignments(path: Path) -> dict[str, ast.expr]:
 
 @lru_cache(maxsize=1)
 def trace_event_kinds() -> frozenset[str]:
-    """``TRACE_EVENT_KINDS`` — the JobPlan branch of ``_load_events`` writes these
-    straight into the envelope's ``event`` field, so a reader receives them."""
+    """``TRACE_EVENT_KINDS`` — the agent run trace's event kinds, which this contract
+    counts in the stream vocabulary."""
     value = _module_assignments(TRACE_MODULE)["TRACE_EVENT_KINDS"]
     assert isinstance(value, ast.Call), "TRACE_EVENT_KINDS must stay a frozenset({...})"
     return frozenset(element.value for element in value.args[0].elts)

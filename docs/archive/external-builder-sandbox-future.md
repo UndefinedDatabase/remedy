@@ -1,6 +1,6 @@
 # External Builder Sandbox — Future Design Note (Step 1641)
 
-> **Status: DEPRECATED** — Built as `docs/system/external-builder-sandbox-v0.md`.
+> **Status: DEPRECATED** — Was built, then DELETED with the prototype cluster (F275).
 > Future direction: F085. Kept for historical context.
 
 A forward-looking note. **Nothing here is built.** It records why the Automated Local Candidate

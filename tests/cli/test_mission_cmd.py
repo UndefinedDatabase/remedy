@@ -72,13 +72,13 @@ def _link_job(data_root: Path, project_id: str, mission_id: str, *,
     """Persist a job in the given state and link it into the mission's chain."""
     script = (
         "import sys; sys.path.insert(0, '.');"
-        "from packages.core.models import Job, RunState;"
-        "from packages.orchestration.storage import save_job;"
+        "from packages.core.models import RunState;"
+        "from packages.orchestration.pingpong_job import JobPlan, save_job_plan;"
         "from packages.orchestration.mission_state import link_job_to_mission;"
-        f"job = Job(name='fixture', state=RunState({state!r}));"
-        "save_job(job);"
-        f"link_job_to_mission({project_id!r}, {mission_id!r}, str(job.id), {role!r});"
-        "print(job.id)"
+        f"job = JobPlan(job_title='fixture', state=RunState({state!r}));"
+        "save_job_plan(job);"
+        f"link_job_to_mission({project_id!r}, {mission_id!r}, job.job_id, {role!r});"
+        "print(job.job_id)"
     )
     proc = subprocess.run(
         [sys.executable, "-c", script], cwd=str(REPO_ROOT), capture_output=True,
@@ -244,7 +244,7 @@ class TestShow:
         data_root, project_id = project
         mission_id = _start(data_root, project_id, "Keep it working")
         job_id = _link_job(data_root, project_id, mission_id, role="initial")
-        (data_root / "jobs" / f"{job_id}.json").unlink()
+        (data_root / "jobs" / job_id / "job.json").unlink()
 
         proc = _run(["mission", "show", mission_id, "--project", project_id],
                     data_root)
@@ -323,16 +323,16 @@ def _pending_plan_job(repo: Path, data_root: Path, goal: str,
     """Persist a job with a pending flight plan and the given intake hint."""
     script = (
         "import sys; sys.path.insert(0, '.');"
-        "from packages.core.models import Job, RunState;"
-        "from packages.orchestration.storage import save_job;"
+        "from packages.core.models import RunState;"
+        "from packages.orchestration.pingpong_job import JobPlan, save_job_plan;"
         "from packages.orchestration.project_registry import resolve_project;"
         f"project = resolve_project({str(repo)!r});"
-        f"job = Job(name='fixture', mission={goal!r}, project_id=str(project.id),"
+        f"job = JobPlan(job_title='fixture', mission={goal!r}, project_id=str(project.id),"
         f"  intake={{'schema_v': 'ji1', 'goal': {goal!r},"
         f"           'mission_candidate': {mission_candidate!r}}},"
         "   flight_plan={'schema_v': 'flight_plan_v1', '_approval': 'pending'},"
         "   state=RunState.PLANNED);"
-        "save_job(job); print(job.id)"
+        "save_job_plan(job); print(job.job_id)"
     )
     proc = subprocess.run(
         [sys.executable, "-c", script], cwd=str(REPO_ROOT), capture_output=True,
@@ -467,7 +467,7 @@ class TestPlainDoFlowCreatesNoMission:
         out = _run_in(repo, ["do", "Maintain the CI pipeline continuously",
                              "--no-llm", "--json"], data_root).stdout
         job_id = json.loads(out)["job_id"]
-        job = json.loads((data_root / "jobs" / f"{job_id}.json").read_text())
+        job = json.loads((data_root / "jobs" / job_id / "job.json").read_text())
 
         assert job["intake"]["mission_candidate"] is True
         assert _missions_on_disk(data_root) == []
@@ -503,14 +503,14 @@ class TestContinue:
                    *, command: str = "check the importer") -> str:
         script = (
             "import sys; sys.path.insert(0, '.');"
-            "from packages.core.models import Job, RunState;"
-            "from packages.orchestration.storage import save_job;"
+            "from packages.core.models import RunState;"
+            "from packages.orchestration.pingpong_job import JobPlan, save_job_plan;"
             "from packages.orchestration.mission_state import link_job_to_mission;"
-            f"job = Job(name='job one', state=RunState('completed'),"
+            f"job = JobPlan(job_title='job one', state=RunState('completed'),"
             f"  project_id={project_id!r}, metadata={{'verify_command': {command!r}}});"
-            "save_job(job);"
-            f"link_job_to_mission({project_id!r}, {mission_id!r}, str(job.id), 'initial');"
-            "print(job.id)"
+            "save_job_plan(job);"
+            f"link_job_to_mission({project_id!r}, {mission_id!r}, job.job_id, 'initial');"
+            "print(job.job_id)"
         )
         proc = subprocess.run(
             [sys.executable, "-c", script], cwd=str(REPO_ROOT),
@@ -1356,3 +1356,120 @@ class TestShowLeadsWithTheTrip:
                                 project_id, "--json"], data_root).stdout)
 
         assert body["watchdog_trips"] == []
+
+
+class TestMissionReadinessIsWiredToTheCarriedModule:
+    """F275 T001: the readiness view carried out of the prototype cluster.
+
+    `packages/orchestration/mission_readiness.py` was moved definition by
+    definition in rounds 1 and 2 and left deliberately UNWIRED, so for two
+    rounds it was dead code. These are the tests that stop it being dead: the
+    catalog carries the command, the dispatch table reaches the handler, the
+    real CLI answers with the carried payload, and the cockpit no longer
+    imports the cluster module it was carried out of.
+    """
+
+    JOB_ID = "11111111-2222-3333-4444-555555555555"
+
+    def test_the_catalog_registers_mission_readiness_exactly_once(self):
+        from apps.cli.command_catalog import CATALOG
+
+        assert len([c for c in CATALOG if c.command_id == "mission.readiness"]) == 1
+
+    def test_the_dispatch_table_reaches_the_handler(self):
+        from apps.cli.commands import collect_all_handlers
+
+        assert "mission.readiness" in collect_all_handlers()
+
+    def test_the_real_cli_answers_with_the_carried_payload(self, project):
+        data_root, _project_id = project
+
+        body = json.loads(_run(["mission", "readiness", self.JOB_ID, "--json"],
+                               data_root).stdout)
+
+        for key in ("readiness_level", "ready", "can_run_unattended", "blockers",
+                    "risks", "checklist"):
+            assert key in body, f"the carried payload lost {key}"
+
+    def test_the_text_view_names_the_mission_command(self, project):
+        data_root, _project_id = project
+
+        out = _run(["mission", "readiness", self.JOB_ID], data_root).stdout
+
+        assert out.startswith("Mission readiness:")
+
+    def test_the_cockpit_reads_the_carried_module_and_says_so(self):
+        from packages.orchestration.ui_server import _build_overnight_section
+
+        class _Job:
+            job_id = "11111111-2222-3333-4444-555555555555"
+
+        section = _build_overnight_section(_Job(), Path(".data"))
+
+        assert section["source"] == "mission_readiness"
+
+    def test_the_cockpit_source_names_the_carried_readiness_module(self):
+        """The cockpit imports the CARRIED module, named by its dotted path.
+
+        The token is the DOTTED MODULE PATH, never the bare word: the carried
+        symbol `build_overnight_readiness` keeps its spelling by DECISION F275
+        D1, so a substring check would red on the very names the move preserves.
+
+        The negative half — that the deleted module is not imported here —
+        carries no assertion and needs none: `overnight_readiness.py` has not
+        existed on disk since `0f19c86a`, so an import of it raises instead of
+        passing quietly. The map ratchet this test once cited was retired by
+        DECISION F275 D15, so citing it would name a guard that is gone.
+        """
+        source = (REPO_ROOT / "packages" / "orchestration" / "ui_server.py").read_text(
+            encoding="utf-8")
+
+        assert "from packages.orchestration.mission_readiness import" in source
+
+
+class TestMissionReportIsTheCarriedReportView:
+    """F275 T001: the second carry-over, and the death of the name's old holder.
+
+    DECISION F274 D2 rules that `mission report` is not free until its current
+    holder dies, so the two happen in one commit. These tests pin both halves:
+    the name now resolves to the carried view in `mission_cmd`, and the facade
+    in `worker_facade_cmd` no longer provides it.
+    """
+
+    JOB_ID = "11111111-2222-3333-4444-555555555555"
+
+    def test_the_catalog_entry_is_job_keyed_now(self):
+        from apps.cli.command_catalog import get_command
+
+        names = [a.name for a in get_command("mission.report").args]
+
+        assert names == ["job_id", "--markdown", "--json"]
+
+    def test_the_facade_no_longer_provides_the_command(self):
+        from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
+
+        assert "mission.report" not in COMMAND_HANDLERS
+
+    def test_the_dispatch_table_still_reaches_it(self):
+        from apps.cli.commands import collect_all_handlers
+
+        assert "mission.report" in collect_all_handlers()
+
+    def test_the_real_cli_answers_with_the_carried_report(self, project):
+        data_root, _project_id = project
+
+        body = json.loads(_run(["mission", "report", self.JOB_ID, "--json"],
+                               data_root).stdout)
+
+        assert "report" in body
+        for key in ("completed_checklist", "blocked_checklist", "completed_count",
+                    "blocked_count"):
+            assert key in body["report"], f"the carried report lost {key}"
+
+    def test_the_facade_module_no_longer_names_the_cluster_builder(self):
+        """The CLI path to the cluster builder is what this round removed."""
+        source = (REPO_ROOT / "apps" / "cli" / "commands" / "worker_facade_cmd.py").read_text(
+            encoding="utf-8")
+
+        assert "build_mission_morning_report" not in source
+        assert "_cmd_mission_report" not in source

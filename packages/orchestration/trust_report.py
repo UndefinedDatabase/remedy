@@ -20,7 +20,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from packages.core.models import ArtifactKind, Job, RunState
+from packages.core.models import ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan
 
 if TYPE_CHECKING:
     from packages.orchestration.project_constitution import ProjectConstitution
@@ -61,7 +62,7 @@ from packages.orchestration.permissions import Capability, effective_permissions
 
 
 def summarize_trust_report(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     *,
     data_dir: Path | None = None,
@@ -76,8 +77,8 @@ def summarize_trust_report(
     parts: list[str] = []
 
     # ── Header ──────────────────────────────────────────────────────────────
-    short_id = str(job.id)[:8]
-    name = job.name if len(job.name) <= 60 else job.name[:60] + "…"
+    short_id = str(job.job_id)[:8]
+    name = job.job_title if len(job.job_title) <= 60 else job.job_title[:60] + "…"
     parts.append("Remedy Trust Report")
     parts.append(f"Job: {short_id} — {name}")
     parts.append(f"State: {job.state.value}")
@@ -90,7 +91,7 @@ def summarize_trust_report(
         prompt = job.user_prompt[:400] + "…" if len(job.user_prompt) > 400 else job.user_prompt
         parts.append(f"  {prompt}")
     else:
-        parts.append(f"  (no prompt recorded — job name: {job.name!r})")
+        parts.append(f"  (no prompt recorded — job name: {job.job_title!r})")
 
     # ── 2. Plan ─────────────────────────────────────────────────────────────
     parts.append(section("2. Plan"))
@@ -114,8 +115,8 @@ def summarize_trust_report(
         parts.append(f"  Tasks: {', '.join(summary_parts)}")
         for task in job.tasks:
             task_type = task.inputs.get("task_type", "unknown")
-            desc = task.description[:60] + "…" if len(task.description) > 60 else task.description
-            status_label = task.status.value
+            desc = task.title[:60] + "…" if len(task.title) > 60 else task.title
+            status_label = task.status
             parts.append(f"    [{status_label:<9}] {task_type} — {desc}")
 
     # ── 3. Execution summary ─────────────────────────────────────────────────
@@ -245,7 +246,7 @@ def summarize_trust_report(
         if target_repo:
             parts.append(
                 f"  {_INFO} Project Constitution: not loaded"
-                f" (run: remedy constitution {job.id})"
+                f" (run: remedy brain constitution {job.job_id})"
             )
         else:
             parts.append(f"  {_INFO} Project Constitution: no attached repo")
@@ -371,7 +372,7 @@ def summarize_trust_report(
 
     # Optional: run log dir path
     if data_dir is not None:
-        run_log_path = run_log_dir(job.id, data_dir)
+        run_log_path = run_log_dir(job.job_id, data_dir)
         parts.append("")
         parts.append(f"  Run log dir: {run_log_path}")
 
@@ -448,11 +449,11 @@ def _extract_signals(events: list[dict[str, Any]]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
+def _derive_next_action(job: JobPlan, signals: dict[str, Any]) -> str:
     if not job.tasks:
         return (
             f"  {_NEXT} Plan this job:\n"
-            f"      remedy job plan {job.id}"
+            f"      remedy job plan {job.job_id}"
         )
 
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
@@ -461,15 +462,15 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if not ws_allowed and pending:
         return (
             f"  {_NEXT} Grant workspace permission, then run:\n"
-            f"      remedy job permit {job.id} workspace_write allow\n"
-            f"      remedy job run-next {job.id}"
+            f"      remedy job permit {job.job_id} workspace_write allow\n"
+            f"      remedy job resume {job.job_id}"
         )
 
     if signals["has_interrupted"] and pending:
         return (
             f"  {_NEXT} Inspect the timeline, then resume:\n"
-            f"      remedy brain timeline {job.id}\n"
-            f"      remedy job run-next {job.id}"
+            f"      remedy brain timeline {job.job_id}\n"
+            f"      remedy job resume {job.job_id}"
         )
 
     intents = list_patch_intents(job)
@@ -483,20 +484,20 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
     if high_risk_pending and pending:
         return (
             f"  {_NEXT} Review and decide on patch intents, then continue:\n"
-            f"      remedy patch list {job.id}\n"
-            f"      remedy job run-next {job.id}"
+            f"      remedy patch list {job.job_id}\n"
+            f"      remedy job resume {job.job_id}"
         )
 
     if n_approved and not pending and not n_pending_intents:
         return (
             f"  {_NEXT} All patch intents approved. Apply with:\n"
-            f"      remedy patch apply {job.id} <intent_id>"
+            f"      remedy patch apply {job.job_id} <intent_id>"
         )
 
     if pending:
         return (
             f"  {_NEXT} Continue execution:\n"
-            f"      remedy job run-next {job.id}"
+            f"      remedy job resume {job.job_id}"
         )
 
     return (
@@ -510,7 +511,7 @@ def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _get_apply_record(job: Job, intent_id: str) -> dict | None:
+def _get_apply_record(job: JobPlan, intent_id: str) -> dict | None:
     """Return the apply record for intent_id from artifact metadata, or None."""
     for artifact in job.artifacts:
         records = artifact.metadata.get("patch_intent_apply_records", {})

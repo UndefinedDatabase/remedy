@@ -11,31 +11,32 @@ from uuid import uuid4
 
 import pytest
 
+from packages.orchestration.data_paths import mint_job_id
 from tests.cli.runtime_helpers import run_grouped_cli
 
 
 def _approved_task(data_dir):
-    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+    from packages.core.models import Artifact, ArtifactKind, RunState
     from packages.orchestration import self_dogfood as SD
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
     from packages.orchestration.proposed_tasks import (
         ProposedTaskStatus,
         load_proposed_tasks,
         save_proposed_tasks,
         transition_status,
     )
-    from packages.orchestration.storage import save_job
-    task = Task(description="t")
-    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=task.id,
+    task = TaskEntry(title="t")
+    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.task_id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",
-                            "related_task_id": str(task.id), "safe_summary": "boom"})
-    job = Job(id=uuid4(), name="ov-se", user_prompt="x", state=RunState.RUNNING,
+                            "related_task_id": str(task.task_id), "safe_summary": "boom"})
+    job = JobPlan(job_id=mint_job_id(), job_title="ov-se", user_prompt="x", state=RunState.RUNNING,
               tasks=[task], artifacts=[fa], metadata={"target_repo": "."})
-    save_job(job, root=data_dir)
-    SD.propose_self_improvement(str(job.id), top=1, data_dir=data_dir)
-    tasks = load_proposed_tasks(str(job.id), data_dir)
+    save_job_plan(job, root=data_dir)
+    SD.propose_self_improvement(str(job.job_id), top=1, data_dir=data_dir)
+    tasks = load_proposed_tasks(str(job.job_id), data_dir)
     transition_status(tasks[0], ProposedTaskStatus.APPROVED_FOR_BUILD, by="human")
-    save_proposed_tasks(str(job.id), tasks, data_dir)
-    return str(job.id), tasks[0].id
+    save_proposed_tasks(str(job.job_id), tasks, data_dir)
+    return str(job.job_id), tasks[0].id
 
 
 @pytest.fixture()
@@ -82,7 +83,7 @@ def test_approved_execute_awaits_candidate(env, work_repo):
     assert r.returncode == 0, r.stderr
     d = json.loads(r.stdout)
     assert d["state"] == "awaiting_external_candidate"
-    assert d["next_safe_action"].startswith(f"remedy provider intake-repair {job_id}")
+    assert d["next_safe_action"] == "remedy self status --json"
 
 
 def test_execute_idempotent(env, work_repo):

@@ -14,6 +14,7 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration import token_economy as te
+from packages.orchestration.data_paths import mint_job_id
 
 # ---------------------------------------------------------------------------
 # Job + repo fixtures (small bounded repo so inspect_context is deterministic)
@@ -21,19 +22,19 @@ from packages.orchestration import token_economy as te
 
 
 def _job_with_repo(env: Path, *, files: dict[str, str]) -> str:
-    from packages.core.models import Job, RunState, Task
-    from packages.orchestration.storage import save_job
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
     repo = env / f"repo-{uuid4().hex[:6]}"
     repo.mkdir(parents=True)
     for rel, content in files.items():
         p = repo / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content)
-    task = Task(description="t")
-    job = Job(id=uuid4(), name="te", user_prompt="x", state=RunState.RUNNING, tasks=[task],
+    task = TaskEntry(title="t")
+    job = JobPlan(job_id=mint_job_id(), job_title="te", user_prompt="x", state=RunState.RUNNING, tasks=[task],
               artifacts=[], metadata={"target_repo": str(repo)})
-    save_job(job, root=env)
-    return str(job.id)
+    save_job_plan(job, root=env)
+    return str(job.job_id)
 
 
 @pytest.fixture()
@@ -67,12 +68,6 @@ class TestEstimateHelpers:
         assert te.estimate_task_token_band("repair", 20000) == te.TokenBand.MEDIUM
         assert te.estimate_task_token_band("repair", 50000) == te.TokenBand.HIGH
         assert te.estimate_task_token_band("repair", -1) == te.TokenBand.UNKNOWN
-
-    def test_route_band_unknown_stays_unknown(self):
-        from packages.orchestration.worker_registry import get_worker_spec
-        ext = get_worker_spec("external.builder_package")  # token band unknown
-        assert te.estimate_route_token_band(ext, 4000) == te.TokenBand.UNKNOWN
-        assert te.estimate_route_token_band(None, 4000) == te.TokenBand.UNKNOWN
 
     def test_savings(self):
         s = te.estimate_token_savings(10000, 3000)
@@ -177,19 +172,21 @@ class TestDecision:
         assert "fits the estimated budget" not in d.reason.lower()
         assert "unknown" in d.reason.lower()
         # next action points to a safe inspection, not a cheap-route-ready implication.
-        assert "context inspect" in d.next_safe_action or "route-policy" in d.next_safe_action
+        assert "context inspect" in d.next_safe_action
 
     def test_unknown_context_hint_not_local_first(self, env):
         h = te.routing_token_hint("no-such-job")
         assert h["requires_human_approval"] is True
         assert h["local_first_recommended"] is False
 
-    def test_local_route_no_approval_when_cheap(self, env):
+    def test_no_route_spec_fail_safe_requires_approval(self, env):
         jid = _job_with_repo(env, files={"README.md": "hi\n", "src/a.py": "x=1\n"})
         d = te.compute_token_economy_decision(jid, task_type="repair")
-        # small repo → local route, cheap, no approval
-        assert d.recommended_worker_id == "local.candidate_generator"
-        assert d.requires_human_approval is False
+        # F275 R20 / DECISION F275 D9: no spec resolves → no recommendation, UNKNOWN band, approval on
+        assert d.recommended_worker_id == ""
+        assert d.estimated_cost_band == te.TokenBand.UNKNOWN
+        assert d.requires_human_approval is True
+        assert "No route spec is available" in d.reason
 
     def test_over_threshold_requires_approval(self, env):
         jid = _job_with_repo(env, files={"README.md": "hi\n"})

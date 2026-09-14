@@ -139,7 +139,7 @@ def _cost_counters(job: Any) -> Any | None:
         )
         from packages.orchestration.pingpong_job import load_job_plan
 
-        job_id = str(getattr(job, "id", "") or "")
+        job_id = str(getattr(job, "job_id", "") or "")
         plan = load_job_plan(job_id) if job_id else None
         actuals = getattr(plan, "budget_actuals", None) if plan is not None else None
         if actuals is None:

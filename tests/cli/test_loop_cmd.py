@@ -40,7 +40,7 @@ import pytest
 from apps.cli.command_catalog import CATALOG
 from apps.cli.commands import collect_all_handlers
 from packages.core.models import RunState
-from packages.orchestration import storage
+from packages.orchestration import pingpong_job
 from packages.orchestration.loop_run import LOOP_REF_METADATA_KEY, run_loop
 from packages.orchestration.loop_spec import INERT_TRIGGER_NOTICE, load_loop_specs
 
@@ -124,7 +124,7 @@ def _dispatch_with(command_id: str, **attributes: object) -> None:
 
 def _stored_jobs() -> list:
     """Every job actually PERSISTED, read back through the store the command wrote to."""
-    jobs, _degraded, _skipped = storage.list_jobs_safe()
+    jobs, _degraded, _skipped = pingpong_job.list_job_plans_safe()
     return jobs
 
 
@@ -170,13 +170,13 @@ def test_after_one_real_firing_the_row_shows_that_run(project, capsys):
     _write_config(project, MANUAL_JOB_LOOP)
     (spec,) = load_loop_specs()
     outcome = run_loop(spec, project_id="remedy", date="2026-08-13", root=project)
-    stored = storage.load_job(outcome.job.id, project)
+    stored = pingpong_job.load_job_plan(outcome.job.job_id, project)
 
     _dispatch_with("loop.list", json=False)
 
     row = _row(capsys.readouterr().out, "nightly-tidy")
     assert "never" not in row
-    assert stored.created_at.isoformat() in row
+    assert stored.created_at in row
     assert stored.state.value in row
 
 
@@ -184,13 +184,13 @@ def test_json_output_carries_last_run_created_at_and_state(project, capsys):
     _write_config(project, MANUAL_JOB_LOOP)
     (spec,) = load_loop_specs()
     outcome = run_loop(spec, project_id="remedy", date="2026-08-13", root=project)
-    stored = storage.load_job(outcome.job.id, project)
+    stored = pingpong_job.load_job_plan(outcome.job.job_id, project)
 
     _dispatch_with("loop.list", json=True)
 
     data = json.loads(capsys.readouterr().out)
     row = next(item for item in data["loops"] if item["name"] == "nightly-tidy")
-    assert row["last_run_created_at"] == stored.created_at.isoformat()
+    assert row["last_run_created_at"] == stored.created_at
     assert row["last_run_state"] == stored.state.value
 
 
@@ -249,7 +249,7 @@ def test_run_with_yes_materializes_a_planned_job_carrying_the_loop_ref(
     (stored,) = _stored_jobs()          # read back through the STORE, not the text
     assert stored.metadata[LOOP_REF_METADATA_KEY] == "nightly-tidy"
     assert stored.state == RunState.PLANNED
-    assert str(stored.id) in out
+    assert str(stored.job_id) in out
 
 
 def test_run_prints_the_next_command_naming_the_job_it_just_created(
@@ -260,7 +260,7 @@ def test_run_prints_the_next_command_naming_the_job_it_just_created(
 
     out = capsys.readouterr().out
     (stored,) = _stored_jobs()
-    assert f"remedy job run {stored.id}" in out
+    assert f"remedy job resume {stored.job_id}" in out
 
 
 def test_an_unknown_loop_name_is_refused_and_names_the_loops_that_exist(
@@ -308,7 +308,7 @@ def test_a_tty_stdin_answering_yes_materializes(
 
     (stored,) = _stored_jobs()
     assert stored.state == RunState.PLANNED
-    assert str(stored.id) in capsys.readouterr().out
+    assert str(stored.job_id) in capsys.readouterr().out
 
 
 def test_a_tty_stdin_declining_creates_nothing_and_does_not_raise(

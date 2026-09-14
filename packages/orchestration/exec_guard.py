@@ -87,9 +87,9 @@ _RLIMIT_ATTRS = {
     "core_file_bytes": "RLIMIT_CORE",
 }
 
-#: Never inherited by a guarded child, whatever an allowlist says. Same spelling and
-#: members as `managed_builder_execution._FORBIDDEN_ENV_KEYS`, kept here so the guard
-#: denies them even when a caller's allowlist is wrong.
+#: Never inherited by a guarded child, whatever an allowlist says. This is the ONE
+#: definition of the set, so the guard denies these keys even when a caller's
+#: allowlist is wrong.
 FORBIDDEN_ENV_KEYS = frozenset({
     "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "CLAUDE_API_KEY",
     "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
@@ -546,12 +546,16 @@ def test_command_exec_policy(
 ) -> ExecGuardPolicy:
     """The stage-1 policy every `test`-class command runs under.
 
-    `cpu_seconds`, `address_space_bytes` and `open_files` are deliberately None,
-    for the reasons `managed_builder_execution._builder_exec_policy` already
-    settled for the builder class — not restated here, so the two cannot drift
-    apart. What IS enforced is real: this guard's own wall deadline, a per-stream
-    output cap applied WHILE reading, the cwd pin, a zero core dump and an
-    explicit environment allowlist.
+    `cpu_seconds`, `address_space_bytes` and `open_files` are deliberately None.
+    THIS IS THE ONE STATEMENT OF THAT REASON in this module; the other policy
+    builders cite it rather than restate it, so the classes cannot drift apart. A
+    value picked without measuring real workloads would kill legitimate runs — a
+    multi-threaded build burns CPU-seconds far faster than wall-clock — and T2_F085
+    makes the per-class rlimit VALUES config with per-project overrides. RLIMIT_AS
+    also cannot be classified from what `wait4` reports, so a run it killed would
+    surface as a plain failure. What IS enforced is real: this guard's own wall
+    deadline, a per-stream output cap applied WHILE reading, the cwd pin, a zero
+    core dump and an explicit environment allowlist.
 
     `env=None` is deliberate: it makes `plan_child_spawn` build the child
     environment from `os.environ`, which is where a test command's toolchain
@@ -602,9 +606,9 @@ def run_guarded_test_command(
     persist what a timed-out suite managed to print, and dropping that output would
     lose evidence the guard has in hand.
 
-    A signal death comes back as a NEGATIVE returncode in the -SIGNUM form — the
-    same translation `managed_builder_execution._guarded_exit_code` performs — since
-    that is what `subprocess.run` reported before the migration.
+    A signal death comes back as a NEGATIVE returncode in the -SIGNUM form: the
+    guard reports `returncode=None` plus the signal NAME, so the negative form is
+    rebuilt from it — that is what `subprocess.run` reported before the migration.
 
     `FileNotFoundError` is deliberately NOT caught here: `Popen` raises it inside
     `run_guarded` before any supervision starts, it means the executable does not
@@ -638,9 +642,8 @@ def dod_process_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPol
     A DoD check is BOUNDED — pytest, a linter, a build, a project's own command —
     so it KEEPS a wall timeout, which is what separates this class from `dod-app`
     in T2_F085's policy table. `cpu_seconds`, `address_space_bytes` and
-    `open_files` are None for the reasons
-    `managed_builder_execution._builder_exec_policy` already settled for the
-    builder class, not restated here so the two cannot drift apart.
+    `open_files` are None for the reasons :func:`test_command_exec_policy` states,
+    not restated here so the classes cannot drift apart.
 
     `env=None` is deliberate and is the gap this seam closes: the call site it
     replaces passed `os.environ.copy()`, which handed a project-authored command
@@ -719,8 +722,8 @@ def dod_app_exec_policy(
     column imply a bound that is absent.
 
     `cpu_seconds`, `address_space_bytes` and `open_files` are None for the reasons
-    `managed_builder_execution._builder_exec_policy` already settled for the
-    builder class, not restated here so the two cannot drift apart.
+    :func:`test_command_exec_policy` states, not restated here so the classes
+    cannot drift apart.
 
     `env` is the CALLER's already-resolved environment and becomes the scrub
     SOURCE; `declared_env_keys` names the keys it adds on top of the parent's —
@@ -809,8 +812,8 @@ def runtime_build_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardP
     package registry, and a default-deny posture would break the command it guards.
 
     `cpu_seconds`, `address_space_bytes` and `open_files` are None for the reasons
-    `managed_builder_execution._builder_exec_policy` already settled for the builder
-    class, not restated here so the two cannot drift apart.
+    :func:`test_command_exec_policy` states, not restated here so the classes
+    cannot drift apart.
 
     `env=None` is deliberate and is the gap this seam closes: the call sites it is
     built for inherit the whole parent environment, so a secret-like variable reaches
@@ -886,8 +889,8 @@ def runtime_server_exec_policy(
     document says so rather than letting the column imply a bound that is absent.
 
     `cpu_seconds`, `address_space_bytes` and `open_files` are None for the reasons
-    `managed_builder_execution._builder_exec_policy` already settled for the
-    builder class, not restated here so the two cannot drift apart.
+    :func:`test_command_exec_policy` states, not restated here so the classes
+    cannot drift apart.
 
     `env` is the CALLER's already-resolved environment and becomes the scrub
     SOURCE, because every one of the three sites builds one before it spawns;

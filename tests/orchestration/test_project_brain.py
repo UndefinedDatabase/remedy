@@ -15,15 +15,10 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from packages.core.models import (
-    Artifact,
-    ArtifactKind,
-    Job,
-    RunState,
-    Task,
-)
+from packages.core.models import Artifact, ArtifactKind, RunState
 from packages.memory.models import MemoryEntry
-from packages.orchestration.storage import save_job
+from packages.orchestration.data_paths import mint_job_id, normalize_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -37,21 +32,21 @@ FORBIDDEN_KEYS = (
 )
 
 
-def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> Job:
+def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
     meta: dict = {}
     if project_id:
         meta["project_id"] = project_id
     if target_repo:
         meta["target_repo"] = target_repo
-    return Job(
-        id=uuid4(),
-        name="test job",
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="test job",
         user_prompt="test prompt",
         state=RunState.RUNNING,
         tasks=[
-            Task(
-                id=uuid4(),
-                description="task",
+            TaskEntry(
+                task_id="T001",
+                title="task",
                 status=RunState.PENDING,
                 inputs={"task_type": "patch"},
                 output_artifact_ids=[],
@@ -67,44 +62,42 @@ def _make_job(*, project_id: str | None = None, target_repo: str | None = None) 
 # ===========================================================================
 
 
-def _make_job_s68(**overrides) -> Job:
+def _make_job_s68(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "description": "test job",
         "tasks": [
-            Task(description="task 1", status=RunState.COMPLETED),
+            TaskEntry(title="task 1", status=RunState.COMPLETED),
         ],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _make_job_s163(name: str = "Test goal") -> Job:
-    job = Job(name=name)
+def _make_job_s163(name: str = "Test goal") -> JobPlan:
+    job = JobPlan(job_title=name)
     job.metadata = job.metadata or {}
     return job
 
 
-def _make_job_s61(*, project_id: str | None = None, target_repo: str | None = None) -> Job:
+def _make_job_s61(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
     meta: dict = {}
     if project_id:
         meta["project_id"] = project_id
     if target_repo:
         meta["target_repo"] = target_repo
-    return Job(
-        id=uuid4(),
-        name="step61-test",
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="step61-test",
         user_prompt="test prompt",
         state=RunState.RUNNING,
         tasks=[
-            Task(
-                id=uuid4(),
-                description="task",
+            TaskEntry(
+                task_id="T001",
+                title="task",
                 status=RunState.PENDING,
                 inputs={"task_type": "patch"},
                 output_artifact_ids=[],
@@ -115,13 +108,13 @@ def _make_job_s61(*, project_id: str | None = None, target_repo: str | None = No
     )
 
 
-def _make_job_s62() -> Job:
-    return Job(
-        id=uuid4(),
-        name="hygiene-test",
+def _make_job_s62() -> JobPlan:
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="hygiene-test",
         user_prompt="test",
         state=RunState.RUNNING,
-        tasks=[Task(id=uuid4(), description="t", status=RunState.PENDING,
+        tasks=[TaskEntry(task_id="T001", title="t", status=RunState.PENDING,
                      inputs={"task_type": "patch"}, output_artifact_ids=[])],
         artifacts=[],
         metadata={},
@@ -257,7 +250,7 @@ class TestBrainGraphStructure:
         from packages.orchestration.project_brain import build_project_brain
 
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         assert hasattr(graph, "degraded")
         assert isinstance(graph.degraded, tuple)
@@ -270,7 +263,7 @@ class TestBrainGraphStructure:
         )
 
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         exported = export_project_brain_json(graph)
         assert "degraded" in exported
@@ -295,7 +288,6 @@ class TestBrainGraphStructure:
             "_build_token_policy_node",
             "_build_worker_adapter_nodes",
             "_build_readiness_node",
-            "_build_context_pack_node",
             "_build_proof_nodes",
             "_build_revert_nodes",
             "_build_change_set_nodes",
@@ -344,8 +336,6 @@ class TestBrainReliabilityHygiene:
             "packages/orchestration/project_context_coverage.py",
             "packages/orchestration/autonomy_readiness.py",
             "packages/orchestration/memory_learn.py",
-            "packages/orchestration/context_pack.py",
-            "packages/orchestration/storage.py",
             "packages/orchestration/project_registry.py",
             "packages/orchestration/patch_apply.py",
             "packages/orchestration/command_discovery.py",
@@ -382,7 +372,7 @@ class TestCausalAccuracy:
         )
 
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
 
         # Simulate two proof events and two test events
         events = [
@@ -442,7 +432,7 @@ class TestCausalAccuracy:
         )
 
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
 
         events = [
             {
@@ -467,67 +457,6 @@ class TestCausalAccuracy:
             assert edge.target  # non-empty target
 
 
-
-
-class TestContextOptimizer:
-    def test_explain_context(self):
-        from packages.orchestration.context_optimizer import explain_context
-        job = _make_job_s68()
-        data = explain_context(job, _make_events(), mode="compact", budget=2000)
-        assert data["version"] == 1
-        assert data["mode"] == "compact"
-        assert data["budget"] == 2000
-        assert "sections" in data
-        assert "excluded" in data
-        assert "recommendations" in data
-        assert isinstance(data["sections"], list)
-
-    def test_explain_context_invalid_mode(self):
-        from packages.orchestration.context_optimizer import explain_context
-        job = _make_job_s68()
-        data = explain_context(job, [], mode="invalid_mode", budget=2000)
-        assert data["mode"] == "compact"  # fallback
-
-    def test_optimize_context(self):
-        from packages.orchestration.context_optimizer import optimize_context
-        job = _make_job_s68()
-        data = optimize_context(job, _make_events(), budget=2000)
-        assert data["version"] == 1
-        assert data["budget"] == 2000
-        assert "recommended_mode" in data
-        assert data["recommended_mode"] in ("caveman", "compact", "standard")
-        assert "estimated_tokens" in data
-        assert "token_savings" in data
-        assert "included_sections" in data
-        assert "excluded_sections" in data
-        assert "recommended_worker" in data
-        assert "recommendations" in data
-
-    def test_optimize_context_tight_budget(self):
-        from packages.orchestration.context_optimizer import optimize_context
-        job = _make_job_s68()
-        data = optimize_context(job, [], budget=50)
-        # Very tight budget should pick caveman
-        assert data["recommended_mode"] in ("caveman", "compact", "standard")
-
-    def test_optimize_context_7_field_schema(self):
-        """context_budget_optimized event must match 7-field schema."""
-        from packages.orchestration.context_optimizer import optimize_context
-        from packages.orchestration.event_schemas import validate_event_metadata
-        job = _make_job_s68()
-        data = optimize_context(job, _make_events(), budget=2000)
-        # Build metadata as the CLI handler would
-        meta = {
-            "mode": data["recommended_mode"],
-            "budget": data["budget"],
-            "estimated_tokens": data["estimated_tokens"],
-            "token_savings": data["token_savings"],
-            "recommended_worker": data["recommended_worker"],
-            "included_section_count": len(data["included_sections"]),
-            "excluded_section_count": len(data["excluded_sections"]),
-        }
-        errors = validate_event_metadata("context_budget_optimized", meta)
-        assert errors == [], f"Schema errors: {errors}"
 
 
 # ── Brain Integration ───────────────────────────────────────────────────
@@ -668,7 +597,7 @@ class TestStoryViewModelSchema:
         story = build_story(job, events)
 
         assert story["version"] == 1
-        assert story["job_id"] == str(job.id)
+        assert story["job_id"] == str(job.job_id)
         assert story["headline"]
         assert story["plain_status"]
         assert "progress" in story
@@ -849,7 +778,7 @@ class TestMultiProofCausalEdges:
         )
 
         job = _make_job_s61()
-        save_job(job)
+        save_job_plan(job)
 
         events = [
             _proof_event("i1", "a.py"),
@@ -879,7 +808,7 @@ class TestMultiProofCausalEdges:
         )
 
         job = _make_job_s61()
-        save_job(job)
+        save_job_plan(job)
 
         events = [
             _proof_event("i1", "a.py"),
@@ -912,7 +841,7 @@ class TestMultiProofCausalEdges:
             },
         )
         job.artifacts.append(art)
-        save_job(job)
+        save_job_plan(job)
 
         events = [_proof_event("i1", "a.py")]
         graph = build_project_brain(job, events)
@@ -967,7 +896,7 @@ class TestFileProvenanceChain:
             },
         )
         job.artifacts.append(art)
-        save_job(job)
+        save_job_plan(job)
 
         events = [
             _proof_event(intent_id, "src/foo.py"),
@@ -987,7 +916,7 @@ class TestFileProvenanceChain:
         from packages.orchestration.file_provenance import build_file_provenance
 
         job = _make_job_s61()
-        save_job(job)
+        save_job_plan(job)
         prov = build_file_provenance(job, [], "nonexistent.py")
         assert prov.found is False
         assert len(prov.chain) == 0
@@ -1018,12 +947,12 @@ class TestFileProvenanceChain:
             },
         )
         job.artifacts.append(art)
-        save_job(job)
+        save_job_plan(job)
 
         # Save DurableApplyRecord with reverted state
         record = DurableApplyRecord(
             apply_id=intent_id,
-            job_id=str(job.id),
+            job_id=str(job.job_id),
             intent_id=intent_id,
             snapshot_id="snap-001",
             state="reverted",
@@ -1033,7 +962,7 @@ class TestFileProvenanceChain:
             after_proof={},
             snapshot_verified=True,
         )
-        save_durable_apply_record(record, str(job.id), tmp_path)
+        save_durable_apply_record(record, str(job.job_id), tmp_path)
 
         # Without data_dir: stale artifact state ("applied")
         prov_stale = build_file_provenance(job, [], "src/foo.py")
@@ -1075,7 +1004,7 @@ class TestFileProvenanceChain:
             },
         )
         job.artifacts.append(art)
-        save_job(job)
+        save_job_plan(job)
 
         prov = build_file_provenance(job, [_proof_event(intent_id, "x.py")], "x.py")
         raw = json.dumps(export_file_provenance_json(prov))
@@ -1097,6 +1026,7 @@ class TestContinueRoundtripAggregate:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.continue_from_node import continue_from_node
         from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.pingpong_job import load_job_plan
         from packages.orchestration.project_brain import build_project_brain
         from packages.orchestration.project_brain_aggregate import (
             build_project_brain_aggregate,
@@ -1105,7 +1035,6 @@ class TestContinueRoundtripAggregate:
             RemyProject,
             save_project,
         )
-        from packages.orchestration.storage import load_job
         from packages.orchestration.timeline import load_run_events
 
         pid = str(uuid4())
@@ -1113,28 +1042,28 @@ class TestContinueRoundtripAggregate:
         save_project(project)
 
         parent = _make_job_s61(project_id=pid, target_repo=str(tmp_path))
-        save_job(parent)
+        save_job_plan(parent)
 
         # Build parent brain, continue from first node
         parent_graph = build_project_brain(parent, [])
         result = continue_from_node(parent, parent_graph, parent_graph.nodes[0].id, "child task")
 
-        child = load_job(UUID(result.child_job_id))
+        child = load_job_plan(normalize_job_id(result.child_job_id))
 
         # Load events for both jobs
         data_root = resolve_data_root()
-        parent_events = load_run_events(data_root, parent.id)
-        child_events = load_run_events(data_root, child.id)
+        parent_events = load_run_events(data_root, parent.job_id)
+        child_events = load_run_events(data_root, child.job_id)
 
         all_events = {
-            str(parent.id): parent_events,
-            str(child.id): child_events,
+            str(parent.job_id): parent_events,
+            str(child.job_id): child_events,
         }
 
         # Attach child to project
-        project.job_ids.append(str(child.id))
-        if str(parent.id) not in project.job_ids:
-            project.job_ids.append(str(parent.id))
+        project.job_ids.append(str(child.job_id))
+        if str(parent.job_id) not in project.job_ids:
+            project.job_ids.append(str(parent.job_id))
 
         agg = build_project_brain_aggregate(
             project, [parent, child], all_events,
@@ -1142,8 +1071,8 @@ class TestContinueRoundtripAggregate:
 
         # Aggregate must include nodes from both jobs
         job_node_ids = [n.id for n in agg.nodes if n.type == "job"]
-        assert str(parent.id) in job_node_ids
-        assert str(child.id) in job_node_ids
+        assert str(parent.job_id) in job_node_ids
+        assert str(child.job_id) in job_node_ids
 
         # Must have continuation edge
         cont_edges = [e for e in agg.edges if e.type == "continued_as"]
@@ -1168,8 +1097,8 @@ class TestContinueRoundtripAggregate:
 
         j1 = _make_job_s61(project_id=pid)
         j2 = _make_job_s61(project_id=pid)
-        save_job(j1)
-        save_job(j2)
+        save_job_plan(j1)
+        save_job_plan(j2)
 
         agg = build_project_brain_aggregate(project, [j1, j2], {})
         assert agg.summary["job_count"] == 2
@@ -1246,7 +1175,7 @@ class TestBrainDetailRegistry:
         from packages.orchestration.project_brain import build_project_brain
 
         job = _make_job_s62()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         for node in graph.nodes:
             detail = build_brain_node_detail(job, graph, node.id, [])
@@ -1381,16 +1310,16 @@ class TestCardManagement:
 class TestLearnEvidence:
     def test_learn_creates_entries(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job, RunState, Task
+        from packages.core.models import RunState
         from packages.orchestration.memory_learn import learn_from_job
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
-        job = Job(
-            id=uuid4(), name="learn-test", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.COMPLETED)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="learn-test", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.COMPLETED)],
             metadata={"target_repo": "/tmp/test"},
         )
-        save_job(job)
+        save_job_plan(job)
         events = [
             {"event": "test_run_completed", "metadata": {"command": "pytest", "status": "passed", "exit_code": 0}},
             {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": "i1", "target_path": "a.py", "sha256": "aaa", "bytes_written": 10, "line_count": 5}},
@@ -1404,17 +1333,17 @@ class TestLearnEvidence:
 class TestBrainMemoryNodeSafe:
     def test_memory_node_has_evidence_fields(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job, RunState, Task
+        from packages.core.models import RunState
         from packages.memory.local_gateway import store_memory
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
         from packages.orchestration.project_brain import build_project_brain
-        from packages.orchestration.storage import save_job
 
-        job = Job(
-            id=uuid4(), name="brain-mem", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="brain-mem", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         )
-        save_job(job)
-        store_memory("test.key", "test value", job_id=str(job.id), approved=True)
+        save_job_plan(job)
+        store_memory("test.key", "test value", job_id=str(job.job_id), approved=True)
         graph = build_project_brain(job, [])
 
         mem_nodes = [n for n in graph.nodes if n.type == "memory"]
@@ -1436,15 +1365,15 @@ class TestBrainMemoryNodeSafe:
 class TestGitStatusBrainNode:
     def test_git_status_node_in_graph(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.project_brain import build_project_brain
-        from packages.orchestration.storage import save_job
 
-        job = Job(
-            id=uuid4(), name="brain-git", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="brain-git", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
             metadata={"target_repo": "."},
         )
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         git_nodes = [n for n in graph.nodes if n.type == "git_status"]
         assert len(git_nodes) == 1
@@ -1459,14 +1388,14 @@ class TestGitStatusBrainNode:
 
     def test_git_status_node_no_repo(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.project_brain import build_project_brain
-        from packages.orchestration.storage import save_job
 
-        job = Job(
-            id=uuid4(), name="brain-no-git", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="brain-no-git", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         )
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         git_nodes = [n for n in graph.nodes if n.type == "git_status"]
         # No target_repo → no git_status node
@@ -1475,17 +1404,17 @@ class TestGitStatusBrainNode:
     def test_git_status_non_git_target(self, tmp_path, monkeypatch):
         """Non-git target_repo creates node with is_git_repo=False."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.project_brain import build_project_brain
-        from packages.orchestration.storage import save_job
 
         non_git = tmp_path / "not-a-git-repo"
         non_git.mkdir()
-        job = Job(
-            id=uuid4(), name="brain-non-git", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="brain-non-git", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
             metadata={"target_repo": str(non_git)},
         )
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         git_nodes = [n for n in graph.nodes if n.type == "git_status"]
         assert len(git_nodes) == 1
@@ -1494,24 +1423,21 @@ class TestGitStatusBrainNode:
 
     def test_job_aware_repo_status(self, tmp_path, monkeypatch):
         """Job-aware repo status reads target_repo and emits run-log event."""
-        import packages.orchestration.storage as _storage
-
         jobs_dir = tmp_path / "jobs"
         jobs_dir.mkdir()
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        monkeypatch.setattr(_storage, "_DATA_DIR", jobs_dir)
 
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(
-            id=uuid4(), name="repo-aware", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="repo-aware", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
             metadata={"target_repo": "."},
         )
-        save_job(job)
+        save_job_plan(job)
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
         result = subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped", "repo", "status", str(job.id), "--json"],
+            [sys.executable, "-m", "apps.cli.grouped", "repo", "status", str(job.job_id), "--json"],
             capture_output=True, text=True, timeout=10, env=env,
         )
         assert result.returncode == 0
@@ -1524,15 +1450,15 @@ class TestGitStatusBrainNode:
 class TestStopReasonBrainNode:
     def test_stop_reason_node_in_graph(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.project_brain import build_project_brain
-        from packages.orchestration.storage import save_job
 
-        job = Job(
-            id=uuid4(), name="brain-sr", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="brain-sr", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
             metadata={},  # No target_repo → derives no_target_repo
         )
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         sr_nodes = [n for n in graph.nodes if n.type == "stop_reason"]
         assert len(sr_nodes) >= 1

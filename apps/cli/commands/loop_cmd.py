@@ -249,14 +249,14 @@ def _cmd_loop_run(name: str, *, project: str | None = None, yes: bool = False) -
     outcome = run_loop(spec, project_id=project_id)
 
     state = getattr(outcome.job.state, "value", outcome.job.state)
-    print(f"job {outcome.job.id}  {state}")
+    print(f"job {outcome.job.job_id}  {state}")
     if outcome.mission_id:
         print(f"mission {outcome.mission_id}")
     if outcome.notice:
         # The OUTCOME knows whether this run was inert; the display must not
         # re-derive that from a constant (finding R-0355).
         print(outcome.notice)
-    print(f"Nothing has run yet. Start it with: remedy job run {outcome.job.id}")
+    print(f"Nothing has run yet. Start it with: remedy job resume {outcome.job.job_id}")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {

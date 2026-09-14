@@ -15,16 +15,16 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, Task
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 
-def _make_job() -> Job:
+def _make_job() -> JobPlan:
     # No target_repo in metadata, so the decision queue derives at least one
     # card ("no target repository attached") and the inbox is never empty.
-    return Job(
-        name="f031-decisions-endpoint-job",
+    return JobPlan(
+        job_title="f031-decisions-endpoint-job",
         user_prompt="Test the decisions endpoint",
-        tasks=[Task(description="write a readme")],
+        tasks=[TaskEntry(title="write a readme")],
     )
 
 
@@ -33,9 +33,9 @@ class TestDecisionsEndpoint:
     def _setup_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         self.job = _make_job()
-        from packages.orchestration.storage import save_job
-        save_job(self.job)
-        self.job_id = str(self.job.id)
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
 
     def _start_server(self, **kwargs):

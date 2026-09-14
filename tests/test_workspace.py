@@ -14,9 +14,10 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.path_utils import sanitize_path_component as _sanitize_path_component
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.task_runner import (
     _extract_proposed_changes,
     materialize_task_output,
@@ -29,9 +30,9 @@ from packages.orchestration.workspace import LocalWorkspaceRuntime, Materialized
 # ---------------------------------------------------------------------------
 
 
-def _make_planned_job(task_type: str = "write_code") -> Job:
-    task = Task(description="Do some work.", inputs={"task_type": task_type})
-    return Job(name="test-job", tasks=[task], state=RunState.PLANNED)
+def _make_planned_job(task_type: str = "write_code") -> JobPlan:
+    task = TaskEntry(task_id="T001", title="Do some work.", inputs={"task_type": task_type})
+    return JobPlan(job_title="test-job", tasks=[task], state=RunState.PLANNED)
 
 
 def _stub_builder(context: TaskExecutionContext) -> BuilderOutput:
@@ -152,7 +153,7 @@ def test_materialize_noop_when_not_changed(tmp_path, monkeypatch):
     # Simulate no-op result (no pending tasks)
     from packages.orchestration.task_runner import RunTaskResult
     result = RunTaskResult(job=job, task_id=None, changed=False)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is None
 
@@ -161,7 +162,7 @@ def test_materialize_returns_materialized_file(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job()
     result = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert isinstance(mf, MaterializedFile)
 
@@ -170,7 +171,7 @@ def test_materialize_file_exists_on_disk(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job(task_type="write_code")
     result = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is not None
     assert mf.path.exists()
@@ -180,7 +181,7 @@ def test_materialize_file_path_uses_task_type(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job(task_type="generate_tests")
     result = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is not None
     # Filename format: <index>_<safe_type>_<short_id>.txt
@@ -193,7 +194,7 @@ def test_materialize_file_content_contains_summary(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job()
     result = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is not None
     assert "Implemented the feature." in mf.content
@@ -203,7 +204,7 @@ def test_materialize_file_content_contains_proposed_changes(tmp_path, monkeypatc
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job()
     result = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is not None
     assert "Add function foo()" in mf.content
@@ -219,9 +220,9 @@ def test_materialize_sets_workspace_file_in_artifact_metadata(tmp_path, monkeypa
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job()
     result = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
-    artifact = next(a for a in result.job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in result.job.artifacts if a.task_id == str(result.task_id))
     assert "workspace_file" in artifact.metadata
     assert artifact.metadata["workspace_file"] == str(mf.path)
 
@@ -230,9 +231,9 @@ def test_materialize_workspace_file_path_is_absolute(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job()
     result = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     materialize_task_output(result, runtime)
-    artifact = next(a for a in result.job.artifacts if a.task_id == result.task_id)
+    artifact = next(a for a in result.job.artifacts if a.task_id == str(result.task_id))
     assert Path(artifact.metadata["workspace_file"]).is_absolute()
 
 
@@ -390,7 +391,7 @@ def test_materialize_notes_not_in_proposed_section(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job()
     result = run_next_task(job, _stub_builder_with_notes_and_risks)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is not None
     # Find the "Proposed Changes:" section in the file and check no note text appears there
@@ -409,7 +410,7 @@ def test_materialize_risks_not_in_proposed_section(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job()
     result = run_next_task(job, _stub_builder_with_notes_and_risks)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is not None
     lines = mf.content.splitlines()
@@ -427,7 +428,7 @@ def test_materialize_proposed_changes_all_present(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job()
     result = run_next_task(job, _stub_builder_with_notes_and_risks)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is not None
     assert "Add foo()" in mf.content
@@ -443,7 +444,7 @@ def test_materialize_filename_includes_index(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job(task_type="write_code")
     result = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is not None
     # First task in job.tasks → index 0 → "000_..."
@@ -454,23 +455,23 @@ def test_materialize_filename_includes_short_task_id(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job(task_type="write_code")
     result = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is not None
-    task = next(t for t in result.job.tasks if t.id == result.task_id)
-    short_id = task.id.hex[:8]
+    task = next(t for t in result.job.tasks if t.task_id == result.task_id)
+    short_id = task.task_id[:8]
     assert short_id in mf.path.name
 
 
 def test_duplicate_task_type_no_filename_collision(tmp_path, monkeypatch):
     """Two tasks with the same task_type must produce different workspace files."""
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-    task1 = Task(description="First.", inputs={"task_type": "do_work"})
-    task2 = Task(description="Second.", inputs={"task_type": "do_work"})
-    job = Job(name="test", tasks=[task1, task2], state=RunState.PLANNED)
+    task1 = TaskEntry(title="First.", inputs={"task_type": "do_work"})
+    task2 = TaskEntry(title="Second.", inputs={"task_type": "do_work"})
+    job = JobPlan(job_title="test", tasks=[task1, task2], state=RunState.PLANNED)
 
     result1 = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf1 = materialize_task_output(result1, runtime)
 
     result2 = run_next_task(result1.job, _stub_builder)
@@ -483,12 +484,12 @@ def test_duplicate_task_type_no_filename_collision(tmp_path, monkeypatch):
 
 def test_second_task_filename_index_is_one(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-    task1 = Task(description="First.", inputs={"task_type": "step_a"})
-    task2 = Task(description="Second.", inputs={"task_type": "step_b"})
-    job = Job(name="test", tasks=[task1, task2], state=RunState.PLANNED)
+    task1 = TaskEntry(title="First.", inputs={"task_type": "step_a"})
+    task2 = TaskEntry(title="Second.", inputs={"task_type": "step_b"})
+    job = JobPlan(job_title="test", tasks=[task1, task2], state=RunState.PLANNED)
 
     result1 = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     materialize_task_output(result1, runtime)
 
     result2 = run_next_task(result1.job, _stub_builder)
@@ -507,7 +508,7 @@ def test_materialize_sanitizes_unsafe_task_type(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job(task_type="../../../etc/passwd")
     result = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is not None
     # File must be inside the workspace root — no traversal succeeded
@@ -522,7 +523,7 @@ def test_materialize_sanitizes_spaces_in_task_type(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
     job = _make_planned_job(task_type="write some code")
     result = run_next_task(job, _stub_builder)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     assert mf is not None
     assert " " not in mf.path.name
@@ -585,12 +586,12 @@ def test_materialize_raises_when_task_id_not_in_job_tasks(tmp_path, monkeypatch)
             name="task_output_fake",
             content="Builder Execution Output\n\nProposed Changes:\n  - x\n",
             mime_type="text/plain",
-            task_id=orphan_task_id,
+            task_id=str(orphan_task_id),
             metadata={"task_type": "fake", "summary": "s"},
         )
     )
     result = RunTaskResult(job=job, task_id=orphan_task_id, changed=True)
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     with pytest.raises(RuntimeError, match="not found in job.tasks"):
         materialize_task_output(result, runtime)
 

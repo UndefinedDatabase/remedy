@@ -35,7 +35,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID
+
+from packages.orchestration.data_paths import normalize_job_id
 
 # ---------------------------------------------------------------------------
 # Phase / stop-reason vocabulary (Step 1164)
@@ -337,6 +338,7 @@ def evaluate_continue_eligibility(
     )
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.permissions import Capability, is_allowed
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.repository_snapshot import (
         list_durable_apply_ids,
         load_durable_apply_record,
@@ -346,14 +348,13 @@ def evaluate_continue_eligibility(
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError, load_job
 
     data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = ContinueEligibility(eligible=False, job_id=job_id)
 
     # 1. Job exists.
     try:
-        job = load_job(UUID(job_id), data_dir)
+        job = require_job_plan(normalize_job_id(job_id), data_dir)
     except (ValueError, JobNotFoundError):
         elig.blockers.append("job_not_found")
         elig.next_safe_action = "remedy job list --json"
@@ -528,13 +529,13 @@ def run_do_continue(
     """
     from packages.orchestration.approval_queue import get_patch_intent
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import load_job_plan
     from packages.orchestration.repository_snapshot import (
         build_snapshot_truth,
         load_durable_apply_record,
         update_apply_record_state,
     )
     from packages.orchestration.run_contract import ensure_contract, export_usage_json, load_usage
-    from packages.orchestration.storage import load_job
 
     data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
     result = ContinueResult(
@@ -561,7 +562,7 @@ def run_do_continue(
     result.intent_id = iid
     result.apply_id = iid
 
-    job = load_job(UUID(request.job_id), data_dir)
+    job = load_job_plan(normalize_job_id(request.job_id), data_dir)
     contract = ensure_contract(job)
     result.contract_id = contract.contract_id
     intent = get_patch_intent(job, iid) or {}
@@ -692,7 +693,7 @@ def run_do_continue(
             evidence_warnings.append("snapshot_evidence_degraded")
 
         # Reload job after apply mutated metadata.
-        job = load_job(UUID(request.job_id), data_dir)
+        job = load_job_plan(normalize_job_id(request.job_id), data_dir)
 
         # ── Phase: test (crash-atomic, no double budget) ────────────────
         test_cp = latest_checkpoint(checkpoints, ContinuePhase.TEST)
@@ -731,7 +732,7 @@ def run_do_continue(
             _emit_continue(data_dir, request.job_id, "do_continue_stopped", {
                 "stop_reason": result.stop_reason, "evidence_status": result.evidence_status,
             })
-            result.usage_after = export_usage_json(load_usage(load_job(UUID(request.job_id), data_dir)))
+            result.usage_after = export_usage_json(load_usage(load_job_plan(normalize_job_id(request.job_id), data_dir)))
             return result
         else:
             from packages.orchestration.test_execution_service import (
@@ -797,14 +798,14 @@ def run_do_continue(
             _emit_continue(data_dir, request.job_id, "do_continue_stopped", {
                 "stop_reason": result.stop_reason,
             })
-            result.usage_after = export_usage_json(load_usage(load_job(UUID(request.job_id), data_dir)))
+            result.usage_after = export_usage_json(load_usage(load_job_plan(normalize_job_id(request.job_id), data_dir)))
             return result
 
         # ── Phase: proof ────────────────────────────────────────────────
         from packages.orchestration.proof_chain import build_proof_chain
         from packages.orchestration.timeline import load_run_events
-        job = load_job(UUID(request.job_id), data_dir)
-        events = load_run_events(data_dir, UUID(request.job_id))
+        job = load_job_plan(normalize_job_id(request.job_id), data_dir)
+        events = load_run_events(data_dir, request.job_id)
         chain = build_proof_chain(job, events, data_dir=data_dir)
         target_change = next((c for c in chain.changes if c.intent_id == iid), None)
         result.proof_status = target_change.proof_status if target_change else chain.overall_status
@@ -816,7 +817,7 @@ def run_do_continue(
             evidence_warnings.append("proof_event_degraded")
 
         # ── Evidence + final stop (Steps 1172-1174) ─────────────────────
-        result.usage_after = export_usage_json(load_usage(load_job(UUID(request.job_id), data_dir)))
+        result.usage_after = export_usage_json(load_usage(load_job_plan(normalize_job_id(request.job_id), data_dir)))
         evidence_complete = not evidence_warnings
         result.evidence_status = "complete" if evidence_complete else "degraded"
 

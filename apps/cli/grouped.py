@@ -231,8 +231,6 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--top", default=None, dest="top", help=arg.help)
             elif arg.name == "--attempt-id":
                 parser.add_argument("--attempt-id", default=None, dest="attempt_id", help=arg.help)
-            elif arg.name == "--use-local-advisor":
-                parser.add_argument("--use-local-advisor", action="store_true", dest="use_local_advisor", help=arg.help)
             elif arg.name == "--keep-staging":
                 parser.add_argument("--keep-staging", action="store_true", dest="keep_staging", help=arg.help)
             elif arg.name == "--builder":

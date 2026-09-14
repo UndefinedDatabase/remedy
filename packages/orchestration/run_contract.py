@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Canonical action vocabulary (Step 1068)
@@ -53,19 +53,6 @@ class ContractAction:
     # Repair Loop v1 metadata actions (Step 1204) — safe, allowed by default.
     CREATE_REPAIR_ARTIFACT = "create_repair_artifact"
     CREATE_REPAIR_PATCH_INTENT = "create_repair_patch_intent"
-    # Provider Trust Gate v0 (Step 1321) — metadata-level intake of UNTRUSTED
-    # external output. These are NOT provider execution (that stays CLOUD_PROVIDER,
-    # denied by no_cloud). Allowed by default; create the intent still needs approval.
-    PROVIDER_INTAKE = "provider_intake"
-    PROVIDER_TRUST_REVIEW = "provider_trust_review"
-    PROVIDER_MATERIALIZE_PATCH = "provider_materialize_patch"
-    CREATE_PROVIDER_REPAIR_INTENT = "create_provider_repair_intent"
-    # Provider Trust Verification v1 (Step 1553) — second-stage SAFE verification of an
-    # already-quarantined candidate. NOT provider execution (that stays CLOUD_PROVIDER).
-    # verify is metadata-only; verification-show is read-only. Allowed by default; never
-    # applies/approves/tests/creates PRs.
-    PROVIDER_VERIFY_CANDIDATE = "provider_verify_candidate"
-    PROVIDER_VERIFICATION_SHOW = "provider_verification_show"
     # Expensive Builder Routing v0 (Step 1587) — routing/policy/planning ONLY. NOT builder/
     # provider/model execution and NOT candidate generation. decide is metadata-only (persists
     # a safe trace); report is read-only. Allowed by default.
@@ -92,14 +79,6 @@ class ContractAction:
     EXTERNAL_BUILDER_PACKAGE = "external_builder_package"
     EXTERNAL_BUILDER_SUBMIT = "external_builder_submit"
     EXTERNAL_BUILDER_SHOW = "external_builder_show"
-    # Worker Registry + User-Selectable Route Policy v0 (Step 1726) — METADATA + POLICY only. NOT
-    # worker/provider/model/Ollama/cloud execution. worker-registry-show / route-policy-show /
-    # route-policy-evaluate are read-only; route-policy-set is metadata-only (persists a safe
-    # per-job policy). None of these ever execute a worker, start work, or call a provider.
-    WORKER_REGISTRY_SHOW = "worker_registry_show"
-    ROUTE_POLICY_SHOW = "route_policy_show"
-    ROUTE_POLICY_SET = "route_policy_set"
-    ROUTE_POLICY_EVALUATE = "route_policy_evaluate"
     # Token Economy + Context Budget Optimizer v0 (Step 1766) — ESTIMATES + METADATA only. NOT
     # provider/model/Ollama/cloud execution, NOT real pricing. budget-show/estimate/economy-report
     # and context-pack-recommend are read-only; budget-set is metadata-only (persists a safe per-job
@@ -145,32 +124,6 @@ class ContractAction:
     # execution, NOT candidate generation, NOT apply/approve. adapter-list/show/session-show/list/
     # integrity are read-only; adapter-enable/package-create/session-create/session-record-output/
     # session-intake are write_metadata. None execute a worker, apply a change, or call a provider.
-    BUILDER_ADAPTER_SHOW = "builder_adapter_show"
-    BUILDER_ADAPTER_ENABLE = "builder_adapter_enable"
-    BUILDER_PACKAGE_CREATE = "builder_package_create"
-    BUILDER_SESSION_CREATE = "builder_session_create"
-    BUILDER_SESSION_SHOW = "builder_session_show"
-    BUILDER_SESSION_INTAKE = "builder_session_intake"
-    # Managed Builder Execution v1 (Step 2035) — BOUNDED MANAGED EXECUTION via command templates.
-    # template-list/show/execution-show/list/debug-bundle are read-only; template-create is
-    # write_metadata; approve is approval_gate; run is test_execution (bounded managed runner,
-    # no shell, sanitized env, timeout, output cap). None execute arbitrary commands.
-    EXECUTION_TEMPLATE_SHOW = "execution_template_show"
-    EXECUTION_TEMPLATE_CREATE = "execution_template_create"
-    EXECUTION_TEMPLATE_ENABLE = "execution_template_enable"
-    EXECUTION_TEMPLATE_DISABLE = "execution_template_disable"
-    EXECUTION_TEMPLATE_UPDATE = "execution_template_update"
-    EXECUTION_APPROVE = "execution_approve"
-    EXECUTION_RUN = "execution_run"
-    EXECUTION_SHOW = "execution_show"
-    EXECUTION_DEBUG_BUNDLE = "execution_debug_bundle"
-    # v1.1: approval hardening read-only surfaces
-    EXECUTION_APPROVAL_SHOW = "execution_approval_show"
-    EXECUTION_APPROVAL_VALIDATE = "execution_approval_validate"
-    EXECUTION_APPROVAL_LIST = "execution_approval_list"
-    # v1.2: operator path (Step 2506)
-    EXECUTION_OPERATOR_RUNBOOK = "execution_operator_runbook"
-    EXECUTION_CLAUDE_DOCTOR = "execution_claude_doctor"
     # Repair Request Builder v0 (Step 1373) — metadata-only, provider-agnostic.
     # Prepares/exports a safe request package; NOT external execution.
     PREPARE_REPAIR_REQUEST = "prepare_repair_request"
@@ -189,12 +142,6 @@ class ContractAction:
     ORCHESTRATOR_INSPECT = "orchestrator_inspect"
     ORCHESTRATOR_DECIDE = "orchestrator_decide"
     ORCHESTRATOR_REPORT = "orchestrator_report"
-    # Local Model Advisor Adapter v0 (Step 1515) — OPTIONAL loopback-only advisory critique.
-    # Distinct from CLOUD_PROVIDER (external execution, denied by no_cloud) and from any
-    # external builder: this is a local, advisory-only, metadata-level action. status is
-    # read-only; run is metadata-only (advisory text; never executes/applies/approves).
-    LOCAL_ADVISOR_STATUS = "local_advisor_status"
-    LOCAL_ADVISOR_RUN = "local_advisor_run"
 
     # Open-Ended Dogfood Run Orchestrator + Replay Analyzer v0 (Step 2160) — METADATA + EVALUATION +
     # REPLAY only. NOT provider/model/worker execution, NOT apply/approve/git. create/step/stop persist
@@ -328,12 +275,6 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.CREATE_FIX_TASK,
     ContractAction.CREATE_REPAIR_ARTIFACT,
     ContractAction.CREATE_REPAIR_PATCH_INTENT,
-    ContractAction.PROVIDER_INTAKE,
-    ContractAction.PROVIDER_TRUST_REVIEW,
-    ContractAction.PROVIDER_MATERIALIZE_PATCH,
-    ContractAction.CREATE_PROVIDER_REPAIR_INTENT,
-    ContractAction.PROVIDER_VERIFY_CANDIDATE,
-    ContractAction.PROVIDER_VERIFICATION_SHOW,
     ContractAction.BUILDER_ROUTING_DECIDE,
     ContractAction.BUILDER_ROUTING_REPORT,
     ContractAction.LOCAL_CANDIDATE_GENERATOR_STATUS,
@@ -345,10 +286,6 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.EXTERNAL_BUILDER_PACKAGE,
     ContractAction.EXTERNAL_BUILDER_SUBMIT,
     ContractAction.EXTERNAL_BUILDER_SHOW,
-    ContractAction.WORKER_REGISTRY_SHOW,
-    ContractAction.ROUTE_POLICY_SHOW,
-    ContractAction.ROUTE_POLICY_SET,
-    ContractAction.ROUTE_POLICY_EVALUATE,
     ContractAction.TOKEN_BUDGET_SHOW,
     ContractAction.TOKEN_BUDGET_SET,
     ContractAction.TOKEN_ESTIMATE,
@@ -370,26 +307,6 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.REPAIR_LOOP_EVALUATE,
     ContractAction.REPAIR_LOOP_POLICY_SET,
     ContractAction.REPAIR_LOOP_SHOW,
-    ContractAction.BUILDER_ADAPTER_SHOW,
-    ContractAction.BUILDER_ADAPTER_ENABLE,
-    ContractAction.BUILDER_PACKAGE_CREATE,
-    ContractAction.BUILDER_SESSION_CREATE,
-    ContractAction.BUILDER_SESSION_SHOW,
-    ContractAction.BUILDER_SESSION_INTAKE,
-    ContractAction.EXECUTION_TEMPLATE_SHOW,
-    ContractAction.EXECUTION_TEMPLATE_CREATE,
-    ContractAction.EXECUTION_TEMPLATE_ENABLE,
-    ContractAction.EXECUTION_TEMPLATE_DISABLE,
-    ContractAction.EXECUTION_TEMPLATE_UPDATE,
-    ContractAction.EXECUTION_APPROVE,
-    ContractAction.EXECUTION_RUN,
-    ContractAction.EXECUTION_SHOW,
-    ContractAction.EXECUTION_DEBUG_BUNDLE,
-    ContractAction.EXECUTION_APPROVAL_SHOW,
-    ContractAction.EXECUTION_APPROVAL_VALIDATE,
-    ContractAction.EXECUTION_APPROVAL_LIST,
-    ContractAction.EXECUTION_OPERATOR_RUNBOOK,
-    ContractAction.EXECUTION_CLAUDE_DOCTOR,
     ContractAction.PREPARE_REPAIR_REQUEST,
     ContractAction.EXPORT_REPAIR_REQUEST,
     ContractAction.SELF_INSPECT,
@@ -401,8 +318,6 @@ _DEFAULT_ALLOWED_ACTIONS: tuple[str, ...] = (
     ContractAction.ORCHESTRATOR_INSPECT,
     ContractAction.ORCHESTRATOR_DECIDE,
     ContractAction.ORCHESTRATOR_REPORT,
-    ContractAction.LOCAL_ADVISOR_STATUS,
-    ContractAction.LOCAL_ADVISOR_RUN,
     ContractAction.DOGFOOD_RUN_CREATE,
     ContractAction.DOGFOOD_RUN_STEP,
     ContractAction.DOGFOOD_RUN_STOP,
@@ -480,7 +395,7 @@ _CLOUD_ACTIONS = frozenset({
 })
 
 
-def build_default_run_contract(job: Job) -> RunContract:
+def build_default_run_contract(job: JobPlan) -> RunContract:
     """Build a sensible default RunContract for a job.
 
     Deterministic — derives contract from job metadata only.
@@ -501,8 +416,8 @@ def build_default_run_contract(job: Job) -> RunContract:
 
     return RunContract(
         version=1,
-        contract_id=f"rc-{str(job.id)[:8]}",
-        job_id=str(job.id),
+        contract_id=f"rc-{str(job.job_id)[:8]}",
+        job_id=str(job.job_id),
         scope="job",
         autonomy_level=1,
         allowed_actions=_DEFAULT_ALLOWED_ACTIONS,
@@ -550,12 +465,12 @@ def _contract_from_dict(data: dict[str, Any]) -> RunContract:
     return RunContract(**cleaned)
 
 
-def save_contract(job: Job, contract: RunContract) -> None:
+def save_contract(job: JobPlan, contract: RunContract) -> None:
     """Store a RunContract in job.metadata. Caller must persist the job."""
     job.metadata[_CONTRACT_META_KEY] = export_run_contract_json(contract)
 
 
-def load_contract(job: Job) -> RunContract | None:
+def load_contract(job: JobPlan) -> RunContract | None:
     """Load the persisted RunContract from job.metadata, or None if absent."""
     data = job.metadata.get(_CONTRACT_META_KEY)
     if not isinstance(data, dict):
@@ -563,7 +478,7 @@ def load_contract(job: Job) -> RunContract | None:
     return _contract_from_dict(data)
 
 
-def ensure_contract(job: Job) -> RunContract:
+def ensure_contract(job: JobPlan) -> RunContract:
     """Return the persisted contract, creating and saving one if absent.
 
     Guarantees stable contract_id and created_at across reloads.
@@ -580,7 +495,7 @@ def ensure_contract(job: Job) -> RunContract:
     return contract
 
 
-def _reconcile_budget_fields(job: Job, contract: RunContract) -> RunContract:
+def _reconcile_budget_fields(job: JobPlan, contract: RunContract) -> RunContract:
     """If JobBudgets diverged from the persisted contract, update contract."""
     budgets = getattr(job, "budgets", None)
     if budgets is None:
@@ -636,12 +551,12 @@ def _reconcile_budget_fields(job: Job, contract: RunContract) -> RunContract:
     return updated
 
 
-def needs_contract_migration(job: Job) -> bool:
+def needs_contract_migration(job: JobPlan) -> bool:
     """Check if a job needs contract migration (no persisted contract)."""
     return not isinstance(job.metadata.get(_CONTRACT_META_KEY), dict)
 
 
-def migrate_contract(job: Job) -> RunContract:
+def migrate_contract(job: JobPlan) -> RunContract:
     """Migrate an old job to have a persisted contract.
 
     Idempotent — returns existing contract if already present.
@@ -687,12 +602,12 @@ def _usage_to_dict(usage: RunUsage) -> dict[str, Any]:
     }
 
 
-def save_usage(job: Job, usage: RunUsage) -> None:
+def save_usage(job: JobPlan, usage: RunUsage) -> None:
     """Store usage in job.metadata. Caller must persist the job."""
     job.metadata[_USAGE_META_KEY] = _usage_to_dict(usage)
 
 
-def load_usage(job: Job) -> RunUsage:
+def load_usage(job: JobPlan) -> RunUsage:
     """Load usage from job.metadata. Returns zero usage if absent."""
     data = job.metadata.get(_USAGE_META_KEY)
     if not isinstance(data, dict):

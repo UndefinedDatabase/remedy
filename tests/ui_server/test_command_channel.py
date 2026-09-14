@@ -20,7 +20,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, Task
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 # The wire spelling is pinned here on purpose: a test that imports the constant
 # it is checking cannot catch a rename of the header the browser has to send.
@@ -34,11 +34,11 @@ UNEXPOSED_CATALOG_COMMAND = "job.list"
 UNKNOWN_COMMAND = "not.a.command.anywhere"
 
 
-def _make_job() -> Job:
-    return Job(
-        name="test-command-channel-job",
+def _make_job() -> JobPlan:
+    return JobPlan(
+        job_title="test-command-channel-job",
         user_prompt="Test prompt for the command channel",
-        tasks=[Task(type="write_readme", description="Write a README")],
+        tasks=[TaskEntry(title="Write a README")],
     )
 
 
@@ -70,9 +70,9 @@ class TestCommandChannelDoor:
     def _setup_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         self.job = _make_job()
-        from packages.orchestration.storage import save_job
-        save_job(self.job)
-        self.job_id = str(self.job.id)
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
 
     def _start_server(self, **kwargs):
@@ -467,13 +467,13 @@ class TestCommandChannelDoor:
             enqueue_task_decision,
             find_task_decision,
         )
-        from packages.orchestration.storage import load_job, save_job
+        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
         record = enqueue_task_decision(
-            self.job, task_id=self.job.tasks[0].id,
+            self.job, task_id=self.job.tasks[0].task_id,
             question="Which database should the task use?",
             now=datetime.now(timezone.utc))
-        save_job(self.job)
+        save_job_plan(self.job)
         decision_id = record["decision_id"]
 
         port, token = self._start_server()
@@ -487,7 +487,7 @@ class TestCommandChannelDoor:
         assert status == 200, body
         assert body["outcome"] == "accepted", body
         assert body["decision_id"] == decision_id, body
-        answered = find_task_decision(load_job(self.job.id), decision_id)
+        answered = find_task_decision(load_job_plan(self.job.job_id), decision_id)
         assert answered["status"] == "answered", answered
         assert answered["answer"] == "postgres", answered
         assert answered["answer_source"] == "human", answered
@@ -509,13 +509,13 @@ class TestCommandChannelDoor:
         the dispatch reads is the one written here rather than the one this
         test holds in memory.
         """
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         flight_plan = {"_approval": approval}
         if clarifications is not None:
             flight_plan["clarifications_resolved"] = clarifications
         self.job.flight_plan = flight_plan
-        save_job(self.job)
+        save_job_plan(self.job)
 
     def _resolve_flight_plan(self, port, token, nonce, answer, answers=None):
         args = {"decision_id": "fp:approval", "answer": answer}
@@ -764,16 +764,16 @@ class TestCommandChannelDoor:
 
     def test_a_second_job_has_its_own_budget(self, command_rate_limit):
         """The key is the PAIR, so exhausting one job leaves the other alone."""
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         limit = command_rate_limit(2)
         other = _make_job()
-        save_job(other)
+        save_job_plan(other)
         port, token = self._start_server()
         for index in range(limit):
             assert self._post_command(port, token, f"nonce-a-{index}")[0] == 200
         assert self._post_command(port, token, "nonce-a-over")[0] == 429
         status, _ = self._post_command(
-            port, token, "nonce-b-0", job_id=str(other.id))
+            port, token, "nonce-b-0", job_id=str(other.job_id))
         assert status == 200
 
     def test_a_shape_error_does_not_spend_budget(self, command_rate_limit):
@@ -1462,7 +1462,7 @@ class TestCommandDoorImportGuard:
         ("packages.orchestration.hunk_ledger", "HUNK_STATE_PENDING"),   # F033 D4
         ("packages.orchestration.hunk_ledger", "HUNK_STATE_REJECTED"),  # F033 D4
         ("packages.orchestration.safe_points", "request_stop"),            # D5
-        ("packages.orchestration.storage", "save_job"),                    # D21
+        ("packages.orchestration.pingpong_job", "save_job_plan"),          # D21
         ("packages.orchestration.timeline", "append_run_event"),           # D23
     })
 
@@ -1487,12 +1487,12 @@ class TestCommandDoorImportGuard:
         "shutil",
     })
 
-    #: `storage` is the one write-side module the door may reach, and only for
+    #: `pingpong_job` is the one write-side module the door may reach, and only for
     #: the single name DECISION F009 D21 puts in the effect table: the answer is
-    #: durable only once `save_job` returns. Any OTHER name from it is the
+    #: durable only once `save_job_plan` returns. Any OTHER name from it is the
     #: "handler touching storage directly" the Acceptance forbids.
-    STORAGE_MODULE = "packages.orchestration.storage"
-    STORAGE_ALLOWED_NAMES = frozenset({"save_job"})
+    STORAGE_MODULE = "packages.orchestration.pingpong_job"
+    STORAGE_ALLOWED_NAMES = frozenset({"save_job_plan"})
 
     @staticmethod
     def _door_imports(source: str, method_names) -> set:
@@ -1564,8 +1564,8 @@ class TestCommandDoorImportGuard:
             "class _RemedyHandler:\n"
             "    def _dispatch_job_stop(self):\n"
             "        from packages.orchestration.source_apply import apply_source_patch\n"
-            "        from packages.orchestration.storage import delete_job\n"
-            "        return apply_source_patch, delete_job\n"
+            "        from packages.orchestration.pingpong_job import _persist_job\n"
+            "        return apply_source_patch, _persist_job\n"
         )
         found = self._door_imports(violation, self.DOOR_METHODS)
         assert ("packages.orchestration.source_apply",

@@ -9,10 +9,10 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
 from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
 from packages.orchestration.job_runner import PlanJobResult
-from packages.orchestration.storage import JobNotFoundError, load_job, save_job
+from packages.orchestration.pingpong_job import JobNotFoundError, JobPlan, TaskEntry, require_job_plan, save_job_plan
 
 if TYPE_CHECKING:
     import argparse
@@ -70,11 +70,11 @@ def _cmd_create_job(
     metadata: dict = {}
     metadata["project_id"] = project_id
 
-    tasks: list[Task] = []
+    tasks: list[TaskEntry] = []
     state = RunState.PENDING
     if task_type is not None:
         description = (task_description or "").strip() or f"Execute {task_type} task."
-        tasks = [Task(description=description, inputs={"task_type": task_type})]
+        tasks = [TaskEntry(title=description, inputs={"task_type": task_type})]
         state = RunState.PLANNED
 
     from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
@@ -94,8 +94,8 @@ def _cmd_create_job(
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(2)
 
-    job = Job(
-        name=prompt[:50],
+    job = JobPlan(
+        job_title=prompt[:50],
         user_prompt=prompt,
         state=state,
         tasks=tasks,
@@ -103,14 +103,14 @@ def _cmd_create_job(
         budgets=budgets,
         project_id=project_id,
     )
-    save_job(job)
-    print(job.id)
-    log = RunLogWriter(job_id=job.id)
+    save_job_plan(job)
+    print(job.job_id)
+    log = RunLogWriter(job_id=job.job_id)
     log.log("job_created", outcome="created")
 
     if project is not None:
         from packages.orchestration.project_registry import attach_job, save_project
-        attach_job(project, str(job.id))
+        attach_job(project, str(job.job_id))
         save_project(project)
 
 
@@ -142,11 +142,11 @@ def _cmd_list_jobs(
             sort=sort, desc=desc, since=since, until=until, limit=limit,
             sort_fields={
                 "created_at": lambda j: j.created_at,
-                "name": lambda j: j.name,
+                "name": lambda j: j.job_title,
                 "state": lambda j: j.state.value,
             },
             default_sort_field="created_at",
-            date_getter=lambda j: j.created_at.isoformat(),
+            date_getter=lambda j: j.created_at,
         )
     except ListOptionError as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -156,8 +156,8 @@ def _cmd_list_jobs(
         print(_json.dumps({
             "version": 1,
             "job_count": len(jobs),
-            "jobs": [{"id": str(job.id), "state": job.state.value, "name": job.name,
-                     "created_at": job.created_at.isoformat(),
+            "jobs": [{"id": str(job.job_id), "state": job.state.value, "name": job.job_title,
+                     "created_at": job.created_at,
                      "project_id": job.project_id or ""} for job in jobs],
         }, sort_keys=True))
         return
@@ -167,14 +167,14 @@ def _cmd_list_jobs(
     known = _known_project_ids()
     for job in jobs:
         label = _scope_label(job, scope, known)
-        print(f"{job.id}  {job.state.value:<12}  {job.created_at.isoformat()}  {job.name}{label}")
+        print(f"{job.job_id}  {job.state.value:<12}  {job.created_at}  {job.job_title}{label}")
     if skipped:
         print(f"  ({len(skipped)} unreadable job file(s) skipped)", file=sys.stderr)
 
 
-def _scope_label(job: Job, scope: ProjectScope, known_ids: set[str]) -> str:
+def _scope_label(job: JobPlan, scope: ProjectScope, known_ids: set[str]) -> str:
     """Return display suffix for scoped listings."""
-    if job.project_id is None:
+    if not job.project_id:
         return "  (unscoped)"
     if job.project_id not in known_ids:
         return f"  (orphaned: {job.project_id[:8]})"
@@ -184,13 +184,17 @@ def _scope_label(job: Job, scope: ProjectScope, known_ids: set[str]) -> str:
 
 
 def _cmd_show_job(job_id_str: str) -> None:
+    import json
+
+    from packages.orchestration.pingpong_job import _export_job
+
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
-    print(job.model_dump_json(indent=2))
+    print(json.dumps(_export_job(job), indent=2))
     if job.intake:
         _print_intake_block(job.intake)
 
@@ -232,7 +236,7 @@ def _print_intake_block(intake: dict) -> None:
 def _cmd_plan_job_local(job_id_str: str) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -241,7 +245,7 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
     from packages.orchestration.run_log import RunLogWriter
     from packages.providers.ollama_planner.provider import OllamaPlanner
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
     planner = OllamaPlanner()
     log.log("planning_started", provider="ollama", role="planner", model=planner.model)
 
@@ -273,7 +277,7 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
         _plan_traces.append(build_trace_entry(
             prompt_text=effective_prompt,
             role="planner",
-            job_id=str(job.id),
+            job_id=str(job.job_id),
             provider="ollama",
             provider_kind="ollama",
             prompt_kind="plan-retry" if is_parse_retry else "plan",
@@ -344,11 +348,11 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
     _persist_plan_traces()
 
     annotate_planning_result(result, provider="ollama", role="planner", model=planner.model, elapsed_ms=elapsed_ms)
-    save_job(result.job)
+    save_job_plan(result.job)
 
     if not result.changed:
         log.log("planning_completed", provider="ollama", role="planner", model=planner.model, outcome="noop")
-        print(f"Job {result.job.id} already planned — no changes made.  log={log.path}")
+        print(f"Job {result.job.job_id} already planned — no changes made.  log={log.path}")
     else:
         from packages.orchestration.artifact_index import planning_artifact
         pa = planning_artifact(result.job.artifacts)
@@ -359,7 +363,7 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
             task_count=len(result.job.tasks),
         )
         print(
-            f"Job {result.job.id} | role=planner model={planner.model} "
+            f"Job {result.job.job_id} | role=planner model={planner.model} "
             f"tasks={len(result.job.tasks)} elapsed={round(elapsed_ms)}ms  log={log.path}"
         )
 
@@ -367,7 +371,7 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
 def _cmd_attach_repo(job_id_str: str, repo_path_str: str) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -383,14 +387,14 @@ def _cmd_attach_repo(job_id_str: str, repo_path_str: str) -> None:
 
     resolved = repo_path.resolve()
     job.metadata["target_repo"] = str(resolved)
-    save_job(job)
-    print(f"Job {job.id} | repo={resolved}")
+    save_job_plan(job)
+    print(f"Job {job.job_id} | repo={resolved}")
 
 
 def _cmd_set_permission(job_id_str: str, action: str, capability_str: str) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -408,8 +412,8 @@ def _cmd_set_permission(job_id_str: str, action: str, capability_str: str) -> No
         sys.exit(1)
 
     set_permission(job, cap, allow=(action == "allow"))
-    save_job(job)
-    print(f"Job {job.id} | permission {cap.value}={action}")
+    save_job_plan(job)
+    print(f"Job {job.job_id} | permission {cap.value}={action}")
     if is_reserved(cap):
         print(
             f"note: {cap.value} is reserved and has no effect in this version "
@@ -420,14 +424,14 @@ def _cmd_set_permission(job_id_str: str, action: str, capability_str: str) -> No
 def _cmd_show_permissions(job_id_str: str) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
     from packages.orchestration.permissions import effective_permissions
     rows = effective_permissions(job)
-    print(f"Job {job.id} | permissions:")
+    print(f"Job {job.job_id} | permissions:")
     for row in rows:
         print(f"  {row['capability']:<24} {row['effective']:<6}  [{row['status']}]")
 
@@ -435,7 +439,7 @@ def _cmd_show_permissions(job_id_str: str) -> None:
 def _cmd_run_next_task_local(job_id_str: str) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -476,34 +480,34 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     from packages.orchestration.workspace import LocalWorkspaceRuntime
     from packages.providers.ollama_builder.provider import OllamaBuilder
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
 
     if not any(t.status == RunState.PENDING for t in job.tasks):
         log.log("task_run_noop", outcome="no_pending_tasks")
-        print(f"Job {job.id} — no pending tasks.  log={log.path}")
+        print(f"Job {job.job_id} — no pending tasks.  log={log.path}")
         return
 
     pending_task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
     pending_task_type = pending_task.inputs.get("task_type", "unknown") if pending_task else None
-    log.log("task_run_started", task_id=str(pending_task.id) if pending_task else None, task_type=pending_task_type)
+    log.log("task_run_started", task_id=str(pending_task.task_id) if pending_task else None, task_type=pending_task_type)
 
     def _fail(outcome: str, **meta: object) -> None:
         log.log(
             "task_run_failed",
-            task_id=str(pending_task.id) if pending_task else None,
+            task_id=str(pending_task.task_id) if pending_task else None,
             outcome=outcome, task_type=pending_task_type, **meta,
         )
 
     if not _perm_allowed(job, Capability.workspace_write):
         _fail("permission_denied", capability="workspace_write")
-        print(f"Error: permission denied — workspace_write is not granted for job {job.id}", file=sys.stderr)
+        print(f"Error: permission denied — workspace_write is not granted for job {job.job_id}", file=sys.stderr)
         sys.exit(1)
 
     start = time.monotonic()
     try:
         builder = OllamaBuilder()
         log.log(
-            "builder_started", task_id=str(pending_task.id) if pending_task else None,
+            "builder_started", task_id=str(pending_task.task_id) if pending_task else None,
             provider="ollama", role="builder", model=builder.model, task_type=pending_task_type,
         )
         result: RunTaskResult = run_next_task(job, builder.build)
@@ -527,13 +531,13 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
 
     if not result.changed:
         log.log(
-            "task_run_noop", task_id=str(pending_task.id) if pending_task else None,
+            "task_run_noop", task_id=str(pending_task.task_id) if pending_task else None,
             outcome="no_change", task_type=pending_task_type, reason="builder_returned_no_change",
         )
-        print(f"Job {job.id} — builder returned no change.  log={log.path}")
+        print(f"Job {job.job_id} — builder returned no change.  log={log.path}")
         return
 
-    _task_obj_for_log = next((t for t in result.job.tasks if t.id == result.task_id), None)
+    _task_obj_for_log = next((t for t in result.job.tasks if t.task_id == result.task_id), None)
     _artifact_id_for_log = (
         str(_task_obj_for_log.output_artifact_ids[0])
         if _task_obj_for_log and _task_obj_for_log.output_artifact_ids
@@ -544,14 +548,14 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
 
     annotate_task_result(result, provider="ollama", role="builder", model=builder.model, elapsed_ms=elapsed_ms)
 
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     mf = materialize_task_output(result, runtime)
     log.log("workspace_materialized", task_id=str(result.task_id), workspace_file=str(mf.path))
 
     vr = verify_task_output(result.job, result.task_id)
 
     _task_type_for_log = (
-        next(t for t in result.job.tasks if t.id == result.task_id).inputs.get("task_type", "unknown")
+        next(t for t in result.job.tasks if t.task_id == result.task_id).inputs.get("task_type", "unknown")
     )
     if vr.passed:
         from packages.orchestration.task_registry import get_task_type_spec as _get_spec
@@ -573,10 +577,10 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
                 "directory; skipping repo application", file=sys.stderr,
             )
         else:
-            task_obj = next(t for t in result.job.tasks if t.id == result.task_id)
+            task_obj = next(t for t in result.job.tasks if t.task_id == result.task_id)
             if task_obj.output_artifact_ids:
                 artifact_id = task_obj.output_artifact_ids[0]
-                artifact = next((a for a in result.job.artifacts if a.id == artifact_id), None)
+                artifact = next((a for a in result.job.artifacts if str(a.id) == artifact_id), None)
                 if artifact is not None:
                     repo_applied = check_and_apply_to_repo(job, artifact, repo_root)
                     if repo_applied:
@@ -600,13 +604,13 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
             truncate_preview,
             verify_patch_intent_set,
         )
-        pi_task_obj = next(t for t in result.job.tasks if t.id == result.task_id)
+        pi_task_obj = next(t for t in result.job.tasks if t.task_id == result.task_id)
         if pi_task_obj.output_artifact_ids:
             pi_artifact_id = pi_task_obj.output_artifact_ids[0]
-            pi_artifact = next((a for a in result.job.artifacts if a.id == pi_artifact_id), None)
+            pi_artifact = next((a for a in result.job.artifacts if str(a.id) == pi_artifact_id), None)
             if pi_artifact is not None:
                 pi_task_type = pi_artifact.metadata.get("task_type", "unknown")
-                pi_task_index = next(i for i, t in enumerate(result.job.tasks) if t.id == result.task_id)
+                pi_task_index = next(i for i, t in enumerate(result.job.tasks) if t.task_id == result.task_id)
                 pis = derive_patch_intents(pi_artifact, pi_task_type)
                 pi_errors = verify_patch_intent_set(pis)
                 if pi_errors:
@@ -648,11 +652,11 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
                 else:
                     log.log("patch_intent_skipped", task_id=str(result.task_id), outcome="no_intents")
 
-    save_job(result.job)
+    save_job_plan(result.job)
 
-    task = next(t for t in result.job.tasks if t.id == result.task_id)
+    task = next(t for t in result.job.tasks if t.task_id == result.task_id)
     task_type = task.inputs.get("task_type", "unknown")
-    pending_remaining = sum(1 for t in result.job.tasks if t.status.value == "pending")
+    pending_remaining = sum(1 for t in result.job.tasks if t.status == "pending")
 
     if vr.passed:
         log.log("task_run_completed", task_id=str(result.task_id), outcome="pass")
@@ -664,7 +668,7 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     pi_info = f" patch_intents={patch_intent_count}" if patch_intent_count > 0 else ""
     verified_info = "verified=pass" if vr.passed else f"verified=FAIL({len(vr.failures)} check(s))"
     print(
-        f"Job {result.job.id} | task={result.task_id} type={task_type} "
+        f"Job {result.job.job_id} | task={result.task_id} type={task_type} "
         f"role=builder model={builder.model} elapsed={round(elapsed_ms)}ms "
         f"remaining={pending_remaining}{file_info}{repo_info}{pi_info} {verified_info}"
         f"  log={log.path}"
@@ -735,7 +739,7 @@ def _cmd_job_run_cycles(
         estimate,
         confirm_above_usd=resolve_confirm_above_usd(),
         yes=(yes or unattended),
-        command_name="job.run",
+        command_name="job.resume",
     ):
         print("Cancelled. Nothing was run.")
         return
@@ -757,7 +761,7 @@ def _cmd_job_run_cycles(
 
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -786,12 +790,12 @@ def _cmd_job_run_cycles(
 
     if not _perm_allowed(job, Capability.workspace_write):
         print(
-            f"Error: permission denied — workspace_write is not granted for job {job.id}",
+            f"Error: permission denied — workspace_write is not granted for job {job.job_id}",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
     try:
         builder = OllamaBuilder()
     except Exception as exc:
@@ -807,7 +811,7 @@ def _cmd_job_run_cycles(
         print(_json.dumps(result.to_json(), indent=2, sort_keys=True))
     else:
         print(
-            f"Job {job.id} | cycles={result.cycles_run}/{limits.max_cycles} "
+            f"Job {job.job_id} | cycles={result.cycles_run}/{limits.max_cycles} "
             f"terminal={result.terminal_status} status={result.job_status}"
             f"{' reason=' + result.stop_reason if result.stop_reason else ''}"
             f"  log={log.path}"
@@ -822,7 +826,7 @@ def _cmd_job_run_cycles(
         sys.exit(1)
 
 
-def _resume_preview(job: Job, jid: str, checkpoint: Any) -> dict[str, Any]:
+def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
     """What ``remedy job resume`` WOULD decide — computed without changing anything.
 
     Every lookup here is read-only.  In particular the stop request is
@@ -929,6 +933,8 @@ def _cmd_job_resume(
     *,
     cycles: int | None = None,
     dry_run: bool = False,
+    unattended: bool = False,
+    yes: bool = False,
     json_output: bool = False,
 ) -> None:
     """Continue a job from its newest valid CYCLE checkpoint (F047 T002).
@@ -950,7 +956,7 @@ def _cmd_job_resume(
          edited the worktree; resume refuses and names BOTH heads.  It never
          rebases silently (P2).
       3. the PLAN-APPROVAL GATE is consulted through the same check
-         ``remedy job run`` uses — resume is not a second door around it.
+         ``remedy job resume`` uses — resume is not a second door around it.
 
     Only then does it hand off to the multi-cycle executor.
 
@@ -982,12 +988,12 @@ def _cmd_job_resume(
 
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    jid = str(job.id)
+    jid = str(job.job_id)
 
     try:
         checkpoint = load_latest_valid(jid)
@@ -1037,7 +1043,7 @@ def _cmd_job_resume(
             )
             sys.exit(3)
 
-    # 3. Plan-approval gate — the same check `remedy job run` makes.
+    # 3. Plan-approval gate — the same check `remedy job resume` makes.
     block_reason = flight_plan_blocks_execution(job)
     if block_reason == "pending":
         print(
@@ -1073,7 +1079,13 @@ def _cmd_job_resume(
               f"(spent={checkpoint.budget_spent_tokens} tokens, "
               f"verify={checkpoint.verify_result or 'not_run'})")
 
-    _cmd_job_run_cycles(job_id_str, cycles=cycles, json_output=json_output)
+    _cmd_job_run_cycles(
+        job_id_str,
+        cycles=cycles,
+        unattended=unattended,
+        yes=yes,
+        json_output=json_output,
+    )
 
 
 def _cmd_job_assumptions(job_id_str: str) -> None:
@@ -1085,7 +1097,7 @@ def _cmd_job_assumptions(job_id_str: str) -> None:
     """
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -1097,7 +1109,7 @@ def _cmd_job_assumptions(job_id_str: str) -> None:
     clarifications = fp.get("clarifications_resolved") if isinstance(fp, dict) else None
     print(render_assumptions_md(clarifications))
 
-    log_path = job_evidence_export_dir(str(job.id)) / "assumptions.md"
+    log_path = job_evidence_export_dir(str(job.job_id)) / "assumptions.md"
     if log_path.exists():
         print(f"Evidence copy: {log_path}")
 
@@ -1108,7 +1120,7 @@ def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
 
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -1116,7 +1128,7 @@ def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.timeline import load_run_events
 
     data_dir = resolve_data_root()
-    events = load_run_events(data_dir, job.id)
+    events = load_run_events(data_dir, job.job_id)
 
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
     task_count = len(job.tasks)
@@ -1126,8 +1138,8 @@ def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
     has_real_events = event_count > 0
 
     summary = {
-        "job_id": str(job.id),
-        "name": job.name,
+        "job_id": str(job.job_id),
+        "name": job.job_title,
         "state": state,
         "task_count": task_count,
         "done_count": done_count,
@@ -1142,8 +1154,8 @@ def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
         print(_json.dumps(summary, indent=2))
     else:
         mode_label = "LIVE" if has_real_events else "DEMO (no events yet)"
-        print(f"Job {job.id}")
-        print(f"  Name:    {job.name}")
+        print(f"Job {job.job_id}")
+        print(f"  Name:    {job.job_title}")
         print(f"  State:   {state}")
         print(f"  Mode:    {mode_label}")
         print(f"  Tasks:   {done_count}/{task_count} done, {pending_count} pending")
@@ -1197,7 +1209,7 @@ def _cmd_resume(
 
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -1412,7 +1424,7 @@ def _cmd_resume(
 
 
 
-def _extract_job_truth(job: Job) -> dict:
+def _extract_job_truth(job: JobPlan) -> dict:
     """Extract safe truth from job model for status/report views."""
     artifact_count = len(job.artifacts) if hasattr(job, 'artifacts') else 0
 
@@ -1446,7 +1458,7 @@ def _extract_job_truth(job: Job) -> dict:
     # Check timeline for stop reason
     from packages.orchestration.timeline import load_run_events
     data_dir = resolve_data_root()
-    events = load_run_events(data_dir, job.id)
+    events = load_run_events(data_dir, job.job_id)
     for ev in reversed(events):
         ev_data = ev if isinstance(ev, dict) else (ev.data if hasattr(ev, 'data') else {})
         if isinstance(ev_data, dict):
@@ -1479,7 +1491,7 @@ def _extract_job_truth(job: Job) -> dict:
     fulfillment_next_action = ''
     try:
         from packages.orchestration.job_fulfillment import list_fulfillment_records
-        records = list_fulfillment_records(str(job.id), data_dir)
+        records = list_fulfillment_records(str(job.job_id), data_dir)
         if records:
             latest = records[-1]
             fulfillment_status = latest.status.value
@@ -1520,7 +1532,7 @@ def _extract_job_truth(job: Job) -> dict:
     }
 
 
-def _open_decisions_view(job: Job) -> dict:
+def _open_decisions_view(job: JobPlan) -> dict:
     """The open-decision block status and report both render FIRST (F051 T003).
 
     Returns the rendered text lines, the JSON-safe decision dicts, and the one
@@ -1538,7 +1550,7 @@ def _open_decisions_view(job: Job) -> dict:
         )
         from packages.orchestration.timeline import load_run_events
 
-        events = load_run_events(resolve_data_root(), job.id)
+        events = load_run_events(resolve_data_root(), job.job_id)
         decisions = list_decisions(job, events)
         return {
             'lines': render_open_decisions_lines(decisions),
@@ -1556,7 +1568,7 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
 
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError:
         if json_output:
             print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
@@ -1595,15 +1607,15 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
     elif state == 'completed' and truth.get('fulfillment_status') == 'completed_verified':
         next_action = f'remedy propose list {job_id_str} --json'
     elif pending_count > 0:
-        next_action = 'remedy job run <job_id> --json'
+        next_action = 'remedy job resume <job_id> --json'
     elif state in ('completed', 'failed'):
         next_action = f'remedy job report {job_id_str} --json'
     else:
         next_action = f'remedy job report {job_id_str} --json'
 
     status = {
-        'job_id': str(job.id),
-        'name': job.name,
+        'job_id': str(job.job_id),
+        'name': job.job_title,
         'state': state,
         'task_count': task_count,
         'done_count': done_count,
@@ -1629,8 +1641,8 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
     else:
         for line in open_decision_view['lines']:
             print(line)
-        print(f'Job {job.id}')
-        print(f'  Name:      {job.name}')
+        print(f'Job {job.job_id}')
+        print(f'  Name:      {job.job_title}')
         print(f'  State:     {state}')
         print(f'  Tasks:     {done_count}/{task_count} done, {pending_count} pending')
         print(f'  Events:    {truth["event_count"]}')
@@ -1674,7 +1686,7 @@ def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
 
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError:
         # A clean error, never a traceback: an unknown id is a normal thing for
         # a human to type.
@@ -1690,7 +1702,7 @@ def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
         if json_output:
             print(_json.dumps({
                 'error': 'run_not_terminal',
-                'job_id': str(job.id),
+                'job_id': str(job.job_id),
                 'state': state,
                 'terminal_status': terminal,
                 'hint': 'use --interim for a snapshot',
@@ -1714,7 +1726,7 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
 
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError:
         if json_output:
             print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
@@ -1734,9 +1746,9 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
     for t in job.tasks:
         t_state = t.status.value if hasattr(t.status, 'value') else str(t.status)
         task_details.append({
-            'task_id': str(t.id),
+            'task_id': str(t.task_id),
             'status': t_state,
-            'description': t.description[:120] if t.description else '',
+            'description': t.title[:120] if t.title else '',
             'type': t.inputs.get('task_type', 'unknown') if t.inputs else 'unknown',
         })
 
@@ -1748,15 +1760,15 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
             list_fulfillment_records,
         )
         data_dir = resolve_data_root()
-        records = list_fulfillment_records(str(job.id), data_dir)
+        records = list_fulfillment_records(str(job.job_id), data_dir)
         if records:
             fulfillment_data = export_job_fulfillment_json(records[-1])
     except Exception:
         pass
 
     report = {
-        'job_id': str(job.id),
-        'name': job.name,
+        'job_id': str(job.job_id),
+        'name': job.job_title,
         'state': state,
         'task_count': task_count,
         'done_count': done_count,
@@ -1787,8 +1799,8 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
     else:
         for line in open_decision_view['lines']:
             print(line)
-        print(f'Job Report: {job.id}')
-        print(f'  Name:      {job.name}')
+        print(f'Job Report: {job.job_id}')
+        print(f'  Name:      {job.job_title}')
         print(f'  State:     {state}')
         print(f'  Tasks:     {done_count}/{task_count} done, {pending_count} pending')
         print(f'  Events:    {truth["event_count"]}')
@@ -1823,7 +1835,7 @@ def _cmd_job_digest(job_id_str: str, *, json_output: bool = False) -> None:
 
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError:
         # A clean error, never a traceback: an unknown id is a normal thing
         # for a human to type (the same shape _cmd_job_report uses above).
@@ -1836,7 +1848,7 @@ def _cmd_job_digest(job_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.timeline import load_run_events
 
     data_dir = resolve_data_root()
-    events = load_run_events(data_dir, job.id)
+    events = load_run_events(data_dir, job.job_id)
 
     from packages.orchestration.job_digest import build_job_digest
 
@@ -1849,7 +1861,7 @@ def _cmd_job_digest(job_id_str: str, *, json_output: bool = False) -> None:
         print(_json.dumps(digest, indent=2))
         return
 
-    print(f'Job digest: {job.id}')
+    print(f'Job digest: {job.job_id}')
     print(f'  State:     {digest["state"]}')
     print(f'  Headline:  {digest["headline"]}')
     print(f'  Cost:      {digest["cost"]["value"]} ({digest["cost"]["basis"]})')
@@ -1878,7 +1890,7 @@ def _cmd_job_dod(job_id_str: str, *, json_output: bool = False) -> None:
 
     job_id = resolve_job_id(job_id_str)
     try:
-        load_job(job_id)
+        require_job_plan(job_id)
     except JobNotFoundError:
         if json_output:
             print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
@@ -1955,7 +1967,7 @@ def _cmd_job_fulfill(
         sys.exit(1)
 
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError:
         if json_output:
             print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
@@ -2000,7 +2012,7 @@ def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
     )
 
     try:
-        job = load_job(resolve_job_id(job_id_str))
+        job = require_job_plan(resolve_job_id(job_id_str))
     except JobNotFoundError:
         print(f"Job not found: {job_id_str}", file=sys.stderr)
         sys.exit(1)
@@ -2099,14 +2111,11 @@ def _cmd_job_budget(
     *,
     json_output: bool = False,
 ) -> None:
-    """Show budget limits and current counters for a job.
-
-    Supports both Core Job UUIDs and JobPlan hex IDs.
-    """
+    """Show budget limits and current counters for a job."""
     import json as _json
 
     from packages.orchestration.budget_guard import evaluate_budget
-    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.pingpong_job import load_job_plan, require_job_plan
 
     _job_display_id = job_id
     _budgets = None
@@ -2116,8 +2125,7 @@ def _cmd_job_budget(
     _counter_status = "no_runs"
     _counter_diagnostic = ""
     _found_as = None
-    # The JobPlan the F104 money figures are read from, whichever id form was
-    # given. A Core Job UUID reaches the same plan through _plan_for_core below.
+    # The JobPlan the F104 money figures are read from.
     _plan = None
 
     job_plan = load_job_plan(job_id)
@@ -2160,43 +2168,14 @@ def _cmd_job_budget(
             if has_runs:
                 _counter_status = "actuals_not_persisted"
 
-    if _found_as is None:
+    if job_plan is None:
+        # No plan was read: this raises the store's own error for a record that is
+        # missing, which exits here, or unreadable.
         try:
-            job = load_job(job_id)
+            require_job_plan(job_id)
         except JobNotFoundError:
             print(f"Error: job {job_id!r} not found.", file=sys.stderr)
             sys.exit(1)
-        _found_as = "core_job"
-        _job_display_id = str(job.id)
-        _budgets = job.budgets
-
-        if _budgets is None:
-            if json_output:
-                print(_json.dumps({"job_id": _job_display_id, "budgets": None}, indent=2))
-            else:
-                print(f"Job {_job_display_id[:8]}: no budgets configured.")
-            return
-
-        _plan_for_core = load_job_plan(_job_display_id)
-        _plan = _plan_for_core
-        if _plan_for_core is not None and getattr(_plan_for_core, "budget_actuals", None) is not None:
-            from packages.orchestration.budget_guard import (
-                BudgetCounterError,
-                counters_from_persisted,
-                decode_persisted_budget_actuals,
-            )
-            _fra = getattr(_plan_for_core, "first_running_at", "") or None
-            try:
-                _validated = decode_persisted_budget_actuals(
-                    _plan_for_core.budget_actuals, first_running_at=_fra)
-                counters = counters_from_persisted(_validated)
-                evaluation = evaluate_budget(_budgets, counters)
-                _counter_status = "evaluated"
-            except (BudgetCounterError, Exception) as _budget_exc:
-                _counter_status = "corrupt"
-                _counter_diagnostic = str(_budget_exc)
-                counters = None
-                evaluation = None
 
     if _budgets is None and _budgets_dict is None:
         if json_output:
@@ -2402,14 +2381,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job_id,
         json_output=getattr(args, "json", False),
     ),
-    "job.run-next": lambda args: _cmd_run_next_task_local(args.job_id),
-    "job.run": lambda args: _cmd_job_run_cycles(
-        args.job_id,
-        cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
-        unattended=getattr(args, "unattended", False),
-        yes=getattr(args, "yes", False),
-        json_output=getattr(args, "json", False),
-    ),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
     "job.assumptions": lambda args: _cmd_job_assumptions(args.job_id),
     "job.summary": lambda args: _cmd_job_summary(
@@ -2435,6 +2406,8 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
             args.job_id,
             cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
             dry_run=getattr(args, "dry_run", False),
+            unattended=getattr(args, "unattended", False),
+            yes=getattr(args, "yes", False),
             json_output=getattr(args, "json", False),
         )
     ),

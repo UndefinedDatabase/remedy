@@ -13,7 +13,7 @@ It sequences parts that already exist and reimplements none of them:
   * task execution   ``task_runner.run_next_task`` — rollback-on-failure stays
                      that module's concern
   * verification     ``verifier.verify_task_output`` + ``task_runner.finalize_task``
-  * persistence      ``storage.save_job`` — no new persistence path
+  * persistence      ``pingpong_job.save_job_plan`` — no new persistence path
   * job status       the ``pingpong_job.JOB_*`` constants
 
 Readiness is TOPOLOGICAL (F050): the ready set is the PENDING tasks whose
@@ -70,9 +70,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID
 
-from packages.core.models import Job, JobBudgets, RunState
+from packages.core.models import JobBudgets, RunState
 from packages.orchestration.budget_guard import BudgetCounters
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.dag_schedule import blocked_downstream
@@ -83,9 +82,10 @@ from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_RUNNING,
     JOB_STOPPED,
+    JobPlan,
 )
+from packages.orchestration.pingpong_job import save_job_plan as _save_job
 from packages.orchestration.safe_points import should_stop as _should_stop
-from packages.orchestration.storage import save_job as _save_job
 from packages.orchestration.task_runner import (
     finalize_task,
     materialize_task_output,
@@ -230,13 +230,13 @@ class CycleLimits:
 
 ProviderCall = Callable[[TaskExecutionContext], BuilderOutput]
 #: (job, provider_call) -> TaskAttempt.  Executes exactly ONE ready task.
-TaskStep = Callable[[Job, ProviderCall], "TaskAttempt"]
+TaskStep = Callable[[JobPlan, ProviderCall], "TaskAttempt"]
 #: (job, cycle_index, verify_command) -> one of the VERIFY_* strings, or a
 #: :class:`VerifyOutcome` when the step can also report WHAT failed (F052).
 #: Returning a bare string is the pre-F052 contract and stays supported.
-VerifyStep = Callable[[Job, int, str | None], "str | VerifyOutcome"]
+VerifyStep = Callable[[JobPlan, int, str | None], "str | VerifyOutcome"]
 #: (job, cycle_index, findings) -> RepairOutcome.  ONE repair round (F052).
-RepairStep = Callable[[Job, int, dict[str, Any]], "RepairOutcome"]
+RepairStep = Callable[[JobPlan, int, dict[str, Any]], "RepairOutcome"]
 
 
 @dataclass(frozen=True)
@@ -278,7 +278,7 @@ class RepairOutcome:
 class TaskAttempt:
     """Outcome of one single-task step inside a cycle."""
 
-    task_id: UUID | None = None
+    task_id: str | None = None
     executed: bool = False
     verified: bool = False
     error: str = ""
@@ -443,7 +443,7 @@ def _goal_text_for(entry: Any) -> str:
     return text
 
 
-def queued_entry_to_job(entry: Any, *, save: Callable[[Job], None] | None = None) -> Job:
+def queued_entry_to_job(entry: Any, *, save: Callable[[JobPlan], None] | None = None) -> JobPlan:
     """Turn a claimed queue entry into a NORMAL job, planned and persisted.
 
     Deliberately the same shape ``remedy job create`` + ``remedy job plan`` produce, and
@@ -454,8 +454,8 @@ def queued_entry_to_job(entry: Any, *, save: Callable[[Job], None] | None = None
     from packages.orchestration.job_runner import plan_job
 
     prompt = _goal_text_for(entry)
-    job = Job(
-        name=prompt[:50],
+    job = JobPlan(
+        job_title=prompt[:50],
         user_prompt=prompt,
         state=RunState.PENDING,
         metadata={"project_id": entry.project_id, "queue_entry_id": entry.id},
@@ -466,7 +466,7 @@ def queued_entry_to_job(entry: Any, *, save: Callable[[Job], None] | None = None
     return job
 
 
-def _pull_queue_when_idle(job: Job, terminal: str, *, log: Any = None) -> QueuePull | None:
+def _pull_queue_when_idle(job: JobPlan, terminal: str, *, log: Any = None) -> QueuePull | None:
     """The binding: an idle loop takes the next entry for THIS job's project.
 
     Every guard here is a reason to do nothing — not enabled, not idle, no project, no
@@ -499,18 +499,18 @@ def _pull_queue_when_idle(job: Job, terminal: str, *, log: Any = None) -> QueueP
         return QueuePull(entry_id=entry.id, status=QUEUE_PULL_FAILED, reason=reason)
 
     with contextlib.suppress(_queue.QueueError):
-        _queue.complete(entry, str(queued_job.id))
+        _queue.complete(entry, str(queued_job.job_id))
     _emit(log, LEDGER_EVENT_QUEUE_PULL, outcome="planned",
-          entry_id=entry.id, job_id=str(queued_job.id))
+          entry_id=entry.id, job_id=str(queued_job.job_id))
     return QueuePull(entry_id=entry.id, status=QUEUE_PULL_PLANNED,
-                     job_id=str(queued_job.id))
+                     job_id=str(queued_job.job_id))
 
 
 @dataclass(frozen=True)
 class CycleLoopResult:
     """What the whole loop did."""
 
-    job: Job
+    job: JobPlan
     terminal_status: str
     job_status: str
     stop_reason: str = ""
@@ -532,7 +532,7 @@ class CycleLoopResult:
 
     def to_json(self) -> dict[str, Any]:
         payload = {
-            "job_id": str(self.job.id),
+            "job_id": str(self.job.job_id),
             "terminal_status": self.terminal_status,
             "job_status": self.job_status,
             "stop_reason": self.stop_reason,
@@ -553,12 +553,12 @@ class CycleLoopResult:
 # ---------------------------------------------------------------------------
 
 
-def default_task_step(job: Job, provider_call: ProviderCall,
-                      task_id: UUID | None = None) -> TaskAttempt:
+def default_task_step(job: JobPlan, provider_call: ProviderCall,
+                      task_id: str | None = None) -> TaskAttempt:
     """Run ONE ready task through the existing single-task path.
 
     run_next_task -> materialize -> verify_task_output -> finalize_task, which
-    is exactly what ``remedy job run-next`` does.  Rollback on builder failure
+    is exactly what ``remedy job resume`` does.  Rollback on builder failure
     is ``run_next_task``'s concern; the exception is translated into a failed
     attempt so the conductor can end the cycle and record it.
 
@@ -576,7 +576,7 @@ def default_task_step(job: Job, provider_call: ProviderCall,
     if not result.changed or result.task_id is None:
         return TaskAttempt()
 
-    runtime = LocalWorkspaceRuntime(job_id=job.id)
+    runtime = LocalWorkspaceRuntime(job_id=job.job_id)
     materialize_task_output(result, runtime)
     vr = verify_task_output(result.job, result.task_id)
     finalize_task(result, vr)
@@ -588,7 +588,7 @@ def default_task_step(job: Job, provider_call: ProviderCall,
     )
 
 
-def _no_verify(job: Job, cycle_index: int, verify_command: str | None) -> str:
+def _no_verify(job: JobPlan, cycle_index: int, verify_command: str | None) -> str:
     """The default verify step: none configured, and it says so."""
     return VERIFY_NOT_RUN
 
@@ -768,9 +768,9 @@ def limits_from_config(config: Any = None, *, cycles_flag: int | None = None,
 # ---------------------------------------------------------------------------
 
 
-def ready_tasks(job: Job, batch_size: int, *,
-                blocked_ids: Collection[UUID] = (),
-                awaiting_ids: Collection[UUID] = ()) -> list[UUID]:
+def ready_tasks(job: JobPlan, batch_size: int, *,
+                blocked_ids: Collection[str] = (),
+                awaiting_ids: Collection[str] = ()) -> list[str]:
     """The ready batch: the DAG ready set in plan order, capped at batch_size.
 
     F050: a task is ready when every dependency it declares in its Flight Plan
@@ -796,8 +796,8 @@ def ready_tasks(job: Job, batch_size: int, *,
     return ready[:batch_size]
 
 
-def skipped_blocked_tasks(job: Job,
-                          blocked_ids: Collection[UUID]) -> list[UUID]:
+def skipped_blocked_tasks(job: JobPlan,
+                          blocked_ids: Collection[str]) -> list[str]:
     """Ids withheld only because something upstream is blocked, in plan order.
 
     This is what the cycle record names so a report can say WHY nothing
@@ -806,11 +806,11 @@ def skipped_blocked_tasks(job: Job,
     if not blocked_ids:
         return []
     skipped = blocked_downstream(job.tasks, blocked_ids)
-    return [task.id for task in job.tasks if task.id in skipped]
+    return [task.task_id for task in job.tasks if task.task_id in skipped]
 
 
-def awaiting_downstream_tasks(job: Job,
-                              awaiting_ids: Collection[UUID]) -> list[UUID]:
+def awaiting_downstream_tasks(job: JobPlan,
+                              awaiting_ids: Collection[str]) -> list[str]:
     """Ids withheld only because something upstream awaits a decision (F051).
 
     Same traversal as ``skipped_blocked_tasks``, reported under its own name so
@@ -833,7 +833,7 @@ def _step_target_argument(step: TaskStep) -> bool:
         return False
 
 
-def _is_green(job: Job, last_verify: str) -> bool:
+def _is_green(job: JobPlan, last_verify: str) -> bool:
     """Every task completed AND the last verify step did not fail."""
     if not job.tasks:
         return False
@@ -843,7 +843,7 @@ def _is_green(job: Job, last_verify: str) -> bool:
 
 
 def _default_counters(
-    job: Job,
+    job: JobPlan,
     *,
     now: datetime,
     started_at: datetime,
@@ -863,7 +863,7 @@ def _default_counters(
         )
         from packages.orchestration.pingpong_job import load_job_plan
 
-        plan = load_job_plan(str(job.id))
+        plan = load_job_plan(str(job.job_id))
         actuals = getattr(plan, "budget_actuals", None) if plan is not None else None
         if actuals is not None:
             validated = decode_persisted_budget_actuals(
@@ -908,7 +908,7 @@ REPORTED_TERMINALS: frozenset[str] = frozenset({
 })
 
 
-def _apply_terminal(job: Job, terminal_status: str, stop_reason: str, *,
+def _apply_terminal(job: JobPlan, terminal_status: str, stop_reason: str, *,
                     write_report: bool = True) -> str:
     """Write the terminal status onto the job and return the job status.
 
@@ -938,10 +938,10 @@ def _apply_terminal(job: Job, terminal_status: str, stop_reason: str, *,
     return job_status
 
 
-def _write_cycle_checkpoint(job: Job, record: CycleRecord,
+def _write_cycle_checkpoint(job: JobPlan, record: CycleRecord,
                             limits: CycleLimits, *,
-                            blocked_ids: Collection[UUID] = (),
-                            awaiting_ids: Collection[UUID] = ()) -> None:
+                            blocked_ids: Collection[str] = (),
+                            awaiting_ids: Collection[str] = ()) -> None:
     """Write this cycle's checkpoint (F047).  Never raises into the loop.
 
     The next intent is derived from what the job still has READY at this
@@ -969,7 +969,7 @@ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
         if pending else {"kind": INTENT_NONE}
     )
     _, error = record_cycle_checkpoint(
-        str(job.id), record.cycle_index,
+        str(job.job_id), record.cycle_index,
         budget_spent_tokens=record.tokens_so_far,
         verify_result=record.verify_result,
         verify_command=limits.verify_command,
@@ -981,7 +981,7 @@ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
         job.metadata.pop("checkpoint_error", None)
 
 
-def _open_decision_ids(job: Job) -> tuple[str, ...]:
+def _open_decision_ids(job: JobPlan) -> tuple[str, ...]:
     """Ids of the job's still-open task decisions, in the order they were raised."""
     from packages.orchestration.escalation import open_task_decisions
 
@@ -989,7 +989,7 @@ def _open_decision_ids(job: Job) -> tuple[str, ...]:
                  for record in open_task_decisions(job))
 
 
-def _escalate_task(job: Job, attempt: TaskAttempt, target: UUID, *,
+def _escalate_task(job: JobPlan, attempt: TaskAttempt, target: str, *,
                    now: datetime, unattended: bool,
                    log: Any = None) -> dict[str, Any]:
     """Enqueue ONE decision for the task that raised ``needs_decision`` (F051).
@@ -1102,7 +1102,7 @@ def render_cycle_summary_line(record: CycleRecord) -> str:
 # ---------------------------------------------------------------------------
 
 
-def build_cycle_repair_findings(job: Job, cycle_index: int,
+def build_cycle_repair_findings(job: JobPlan, cycle_index: int,
                                 outcome: VerifyOutcome,
                                 *, executed_task_ids: Collection[str] = (),
                                 round_number: int = 1) -> dict[str, Any]:
@@ -1122,7 +1122,7 @@ def build_cycle_repair_findings(job: Job, cycle_index: int,
 
     test_event = {"metadata": {"exit_code": 1, "passed": False,
                                "cycle": cycle_index}}
-    findings = build_repair_context(job.id, test_event, [])
+    findings = build_repair_context(job.job_id, test_event, [])
     findings.update({
         "source": "cycle_verify",
         "cycle_index": cycle_index,
@@ -1134,7 +1134,7 @@ def build_cycle_repair_findings(job: Job, cycle_index: int,
     return findings
 
 
-def default_repair_step(job: Job, cycle_index: int, findings: dict[str, Any],
+def default_repair_step(job: JobPlan, cycle_index: int, findings: dict[str, Any],
                         *, provider_call: ProviderCall) -> RepairOutcome:
     """ONE repair round, run through the EXISTING bounded repair loop.
 
@@ -1161,17 +1161,17 @@ def default_repair_step(job: Job, cycle_index: int, findings: dict[str, Any],
 
     def build_fn(repair_context: dict[str, Any] | None) -> BuilderOutput:
         return provider_call(TaskExecutionContext(
-            job_id=job.id,
+            job_id=str(job.job_id),
             job_prompt=job.user_prompt,
-            task_id=task.id,
+            task_id=str(task.task_id),
             task_type=task.inputs.get("task_type", "unknown"),
-            task_description=task.description,
+            task_description=task.title,
             prior_task_summaries=[json.dumps(repair_context or findings,
                                              sort_keys=True)],
         ))
 
     try:
-        repo_path = LocalWorkspaceRuntime(job_id=job.id).workspace.root
+        repo_path = LocalWorkspaceRuntime(job_id=job.job_id).workspace.root
         loop = run_builder_bridge_loop(
             build_fn, repo_path,
             job=job, data_dir=resolve_data_root(), max_cycles=1,
@@ -1214,7 +1214,7 @@ class RepairPhase:
         return f"not healed after {rounds}"
 
 
-def _run_repair_rounds(job: Job, cycle_index: int, outcome: VerifyOutcome, *,
+def _run_repair_rounds(job: JobPlan, cycle_index: int, outcome: VerifyOutcome, *,
                        limits: CycleLimits,
                        verify_step: VerifyStep,
                        repair_step: RepairStep,
@@ -1282,7 +1282,7 @@ def _run_repair_rounds(job: Job, cycle_index: int, outcome: VerifyOutcome, *,
 
 
 def run_cycles(
-    job: Job,
+    job: JobPlan,
     limits: CycleLimits,
     provider_call: ProviderCall,
     *,
@@ -1290,7 +1290,7 @@ def run_cycles(
     verify: VerifyStep | None = None,
     repair: RepairStep | None = None,
     clock: Callable[[], datetime] | None = None,
-    save: Callable[[Job], None] | None = None,
+    save: Callable[[JobPlan], None] | None = None,
     log: Any = None,
     control_root_path: Any = None,
     record_evidence: bool = True,
@@ -1312,7 +1312,7 @@ def run_cycles(
                  the existing bounded repair loop through the counted provider
                  seam
       clock      the only source of "now" — the loop never sleeps
-      save       ``storage.save_job``
+      save       ``pingpong_job.save_job_plan``
       log        anything with ``.log(event, **meta)`` (a RunLogWriter); when
                  omitted, no ledger events are emitted
 
@@ -1352,7 +1352,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
     now_fn = clock or (lambda: datetime.now(timezone.utc))
     save_fn = save or _save_job
 
-    base_index = (next_cycle_index(str(job.id)) if first_cycle_index is None
+    base_index = (next_cycle_index(str(job.job_id)) if first_cycle_index is None
                   else int(first_cycle_index))
     loop_started_at = now_fn()
     provider_calls = 0
@@ -1362,12 +1362,12 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
     #: PENDING (there is no persistent task-level FAILED), so only this loop
     #: knows which attempts it made and lost.  Ids accumulate for the whole
     #: run: a branch that failed stays blocked until a new run retries it.
-    blocked_ids: set[UUID] = set()
+    blocked_ids: set[str] = set()
     #: F051 awaiting tracking.  DERIVED from the job's open escalation records
     #: at every batch boundary, never stored twice: answering a decision removes
     #: the task from this set with no bookkeeping here, which is exactly how an
     #: answered branch gets picked up mid-run.
-    awaiting_ids: set[UUID] = set()
+    awaiting_ids: set[str] = set()
     awaiting_checks = 0
     step_takes_target = _step_target_argument(task_step or default_task_step)
 
@@ -1387,7 +1387,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
         cycle loop makes, so a stop is honored identically wherever it lands."""
         at = now_fn()
         return _should_stop(
-            str(job.id),
+            str(job.job_id),
             budgets=limits.budgets,
             counters=_default_counters(
                 job, now=at, started_at=loop_started_at,
@@ -1401,7 +1401,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
 
         # 1. Safe point FIRST — operator stop and budgets in one evaluation.
         stop = _should_stop(
-            str(job.id),
+            str(job.job_id),
             budgets=limits.budgets,
             counters=_default_counters(
                 job, now=now, started_at=loop_started_at,
@@ -1540,7 +1540,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             skipped_blocked_task_ids=tuple(
                 str(task_id) for task_id in skipped_blocked_tasks(job, blocked_ids)),
             awaiting_task_ids=tuple(
-                str(task.id) for task in job.tasks if task.id in awaiting_ids),
+                str(task.task_id) for task in job.tasks if task.task_id in awaiting_ids),
             awaiting_downstream_task_ids=tuple(
                 str(task_id)
                 for task_id in awaiting_downstream_tasks(job, awaiting_ids)),
@@ -1559,7 +1559,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
         save_fn(job)
         if record_evidence:
             try:
-                write_cycle_record(str(job.id), record)
+                write_cycle_record(str(job.job_id), record)
             except (OSError, ValueError) as exc:
                 job.metadata["cycle_evidence_error"] = f"{type(exc).__name__}: {exc}"
         if record_checkpoint:

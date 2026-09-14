@@ -17,7 +17,7 @@ The scenario, in order:
 
 **Everything runs through the public verbs.** The jobs are created by the
 loop's own dispatch (``mission_state.continue_mission``), their terminal state
-is written with ``storage.save_job``, their Definition of Done is compiled by
+is written with ``pingpong_job.save_job_plan``, their Definition of Done is compiled by
 the F061 compiler and recorded with ``dod_gate.store_dod`` /
 ``save_gate_result``, and the decision is raised and answered with
 ``escalation.enqueue_task_decision`` / ``answer_task_decision``. The loop reads
@@ -38,11 +38,11 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from uuid import UUID
 
 import pytest
 
 from packages.core.models import RunState
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.dod_compiler import compile_dod
 from packages.orchestration.dod_gate import GateResult, save_gate_result, store_dod
 from packages.orchestration.escalation import (
@@ -75,8 +75,8 @@ from packages.orchestration.orchestrator_loop import (
 from packages.orchestration.orchestrator_move_schema import (
     ORCHESTRATOR_MOVE_SCHEMA_V,
 )
+from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, FlightPlan
-from packages.orchestration.storage import load_job, save_job
 
 PROJECT = "p-f070-e2e"
 GOAL = "Ship the demo end to end"
@@ -138,24 +138,24 @@ def _no_execution(job):
     human, and the loop's next legal move after the answer is a dispatch.
     """
     job.state = RunState.PAUSED
-    save_job(job)
+    save_job_plan(job)
     return _NoExecution()
 
 
 def _finish_job_with_dod_met(job_id: str) -> None:
     """Take a dispatched job to a terminal state with its DoD met.
 
-    Every step is an existing verb: the job's own record via ``save_job``, its
+    Every step is an existing verb: the job's own record via ``save_job_plan``, its
     Definition of Done compiled by the F061 compiler (deterministic path — no
     provider), and the gate's verdict recorded exactly where ``run_job_gate``
     records it. The gate's check EXECUTION is not re-run here; what this test
     exercises is the loop READING a recorded verdict back.
     """
-    job = load_job(UUID(job_id))
+    job = load_job_plan(normalize_job_id(job_id))
     job.state = RunState.COMPLETED
     for task in job.tasks:
         task.status = RunState.COMPLETED
-    save_job(job)
+    save_job_plan(job)
 
     plan = FlightPlan.model_validate({
         "schema_v": FLIGHT_PLAN_SCHEMA_V,
@@ -171,26 +171,26 @@ def _finish_job_with_dod_met(job_id: str) -> None:
 
 def _raise_one_decision(job_id: str, question: str) -> str:
     """Raise ONE open decision on a job, through the existing escalation verb."""
-    job = load_job(UUID(job_id))
+    job = load_job_plan(normalize_job_id(job_id))
     record = enqueue_task_decision(
         job,
-        task_id=job.tasks[-1].id,
+        task_id=job.tasks[-1].task_id,
         question=question,
         options=("blue", "green"),
         impact="the polish cannot start until someone chooses",
         now=datetime(2026, 8, 3, 12, 0, tzinfo=timezone.utc))
-    save_job(job)
+    save_job_plan(job)
     return str(record["decision_id"])
 
 
 def _answer_the_decision(job_id: str, decision_id: str, answer: str) -> None:
     """A human's move: answer through the same verb the CLI uses."""
-    job = load_job(UUID(job_id))
+    job = load_job_plan(normalize_job_id(job_id))
     record = answer_task_decision(
         job, decision_id, answer=answer,
         now=datetime(2026, 8, 3, 12, 5, tzinfo=timezone.utc))
     assert record is not None, "the decision to answer was not found"
-    save_job(job)
+    save_job_plan(job)
 
 
 class _ScriptedOrchestrator:
@@ -346,7 +346,7 @@ class TestTheEscalatedDecision:
         job_ids = [link.job_id for link in e2e["final"].job_links]
         still_open = []
         for job_id in job_ids:
-            still_open.extend(open_task_decisions(load_job(UUID(job_id))))
+            still_open.extend(open_task_decisions(load_job_plan(normalize_job_id(job_id))))
         assert still_open == []
 
     def test_the_second_run_started_only_after_the_answer(self, e2e):

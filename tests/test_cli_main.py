@@ -19,21 +19,22 @@ from __future__ import annotations
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.permissions import Capability, set_permission
-from packages.orchestration.storage import load_job, save_job
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, load_job_plan, save_job_plan
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_and_save_job(tmp_path, monkeypatch, **metadata_overrides) -> Job:
+def _make_and_save_job(tmp_path, monkeypatch, **metadata_overrides) -> JobPlan:
     """Create a minimal job, persist it in a temp data dir, and return it."""
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-    job = Job(name="test", state=RunState.PENDING)
+    job = JobPlan(job_title="test", state=RunState.PENDING)
     job.metadata.update(metadata_overrides)
-    save_job(job)
+    save_job_plan(job)
     return job
 
 
@@ -47,7 +48,7 @@ class TestSetPermissionReservedNotice:
         job = _make_and_save_job(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_set_permission
 
-        _cmd_set_permission(str(job.id), "allow", "repo_overwrite")
+        _cmd_set_permission(str(job.job_id), "allow", "repo_overwrite")
         out = capsys.readouterr().out
         assert "reserved" in out
         assert "repo_overwrite" in out
@@ -56,7 +57,7 @@ class TestSetPermissionReservedNotice:
         job = _make_and_save_job(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_set_permission
 
-        _cmd_set_permission(str(job.id), "deny", "shell_exec")
+        _cmd_set_permission(str(job.job_id), "deny", "shell_exec")
         out = capsys.readouterr().out
         assert "reserved" in out
         assert "shell_exec" in out
@@ -65,7 +66,7 @@ class TestSetPermissionReservedNotice:
         job = _make_and_save_job(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_set_permission
 
-        _cmd_set_permission(str(job.id), "allow", "repo_generated_write")
+        _cmd_set_permission(str(job.job_id), "allow", "repo_generated_write")
         out = capsys.readouterr().out
         assert "reserved" not in out
 
@@ -73,17 +74,17 @@ class TestSetPermissionReservedNotice:
         job = _make_and_save_job(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_set_permission
 
-        _cmd_set_permission(str(job.id), "deny", "workspace_write")
+        _cmd_set_permission(str(job.job_id), "deny", "workspace_write")
         out = capsys.readouterr().out
         assert "reserved" not in out
 
     def test_set_permission_still_persists_for_reserved_cap(self, tmp_path, monkeypatch):
         job = _make_and_save_job(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_set_permission
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
-        _cmd_set_permission(str(job.id), "allow", "repo_overwrite")
-        reloaded = load_job(job.id)
+        _cmd_set_permission(str(job.job_id), "allow", "repo_overwrite")
+        reloaded = load_job_plan(job.job_id)
         assert reloaded.metadata["permissions"]["repo_overwrite"] == "allow"
 
 
@@ -97,7 +98,7 @@ class TestShowPermissions:
         job = _make_and_save_job(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.id))
+        _cmd_show_permissions(str(job.job_id))
         out = capsys.readouterr().out
         assert "workspace_write" in out
         assert "repo_generated_write" in out
@@ -108,7 +109,7 @@ class TestShowPermissions:
         job = _make_and_save_job(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.id))
+        _cmd_show_permissions(str(job.job_id))
         out = capsys.readouterr().out
         assert "[reserved]" in out
 
@@ -116,7 +117,7 @@ class TestShowPermissions:
         job = _make_and_save_job(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.id))
+        _cmd_show_permissions(str(job.job_id))
         out = capsys.readouterr().out
         assert "[active]" in out
 
@@ -124,7 +125,7 @@ class TestShowPermissions:
         job = _make_and_save_job(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.id))
+        _cmd_show_permissions(str(job.job_id))
         out = capsys.readouterr().out
         lines = [l for l in out.splitlines() if "workspace_write" in l]
         assert any("[active]" in l for l in lines)
@@ -133,7 +134,7 @@ class TestShowPermissions:
         job = _make_and_save_job(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.id))
+        _cmd_show_permissions(str(job.job_id))
         out = capsys.readouterr().out
         lines = [l for l in out.splitlines() if "repo_overwrite" in l]
         assert any("[reserved]" in l for l in lines)
@@ -142,7 +143,7 @@ class TestShowPermissions:
         job = _make_and_save_job(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.id))
+        _cmd_show_permissions(str(job.job_id))
         out = capsys.readouterr().out
         # workspace_write is allowed by default
         lines = [l for l in out.splitlines() if "workspace_write" in l]
@@ -151,11 +152,11 @@ class TestShowPermissions:
     def test_explicit_allow_reflected(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
         set_permission(job, Capability.repo_generated_write, allow=True)
-        save_job(job)
+        save_job_plan(job)
 
         from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.id))
+        _cmd_show_permissions(str(job.job_id))
         out = capsys.readouterr().out
         lines = [l for l in out.splitlines() if "repo_generated_write" in l]
         assert any("allow" in l for l in lines)
@@ -163,11 +164,11 @@ class TestShowPermissions:
     def test_explicit_deny_reflected(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
         set_permission(job, Capability.workspace_write, allow=False)
-        save_job(job)
+        save_job_plan(job)
 
         from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.id))
+        _cmd_show_permissions(str(job.job_id))
         out = capsys.readouterr().out
         lines = [l for l in out.splitlines() if "workspace_write" in l]
         assert any("deny" in l for l in lines)
@@ -189,13 +190,13 @@ class TestWorkspaceWriteDenialPreBuilder:
     - does not save any modified job state
     """
 
-    def _setup_denied_job(self, tmp_path, monkeypatch) -> Job:
+    def _setup_denied_job(self, tmp_path, monkeypatch) -> JobPlan:
         job = _make_and_save_job(tmp_path, monkeypatch)
         # Add a pending task so the scenario is meaningful
-        task = Task(description="test task", inputs={"task_type": "test"})
+        task = TaskEntry(title="test task", inputs={"task_type": "test"})
         job.tasks.append(task)
         set_permission(job, Capability.workspace_write, allow=False)
-        save_job(job)
+        save_job_plan(job)
         return job
 
     def test_denied_exits_nonzero(self, tmp_path, monkeypatch):
@@ -203,7 +204,7 @@ class TestWorkspaceWriteDenialPreBuilder:
         from apps.cli.commands.job import _cmd_run_next_task_local
 
         with pytest.raises(SystemExit) as exc_info:
-            _cmd_run_next_task_local(str(job.id))
+            _cmd_run_next_task_local(str(job.job_id))
         assert exc_info.value.code == 1
 
     def test_denied_prints_error_to_stderr(self, tmp_path, monkeypatch, capsys):
@@ -211,7 +212,7 @@ class TestWorkspaceWriteDenialPreBuilder:
         from apps.cli.commands.job import _cmd_run_next_task_local
 
         with pytest.raises(SystemExit):
-            _cmd_run_next_task_local(str(job.id))
+            _cmd_run_next_task_local(str(job.job_id))
         err = capsys.readouterr().err
         assert "workspace_write" in err
         assert "permission" in err.lower()
@@ -221,8 +222,8 @@ class TestWorkspaceWriteDenialPreBuilder:
         from apps.cli.commands.job import _cmd_run_next_task_local
 
         with pytest.raises(SystemExit):
-            _cmd_run_next_task_local(str(job.id))
-        reloaded = load_job(job.id)
+            _cmd_run_next_task_local(str(job.job_id))
+        reloaded = load_job_plan(job.job_id)
         # No task should have transitioned to RUNNING (builder was never called)
         assert all(t.status == RunState.PENDING for t in reloaded.tasks)
 
@@ -231,8 +232,8 @@ class TestWorkspaceWriteDenialPreBuilder:
         from apps.cli.commands.job import _cmd_run_next_task_local
 
         with pytest.raises(SystemExit):
-            _cmd_run_next_task_local(str(job.id))
-        reloaded = load_job(job.id)
+            _cmd_run_next_task_local(str(job.job_id))
+        reloaded = load_job_plan(job.job_id)
         assert len(reloaded.artifacts) == 0
 
 
@@ -247,14 +248,14 @@ class TestNoPendingTasksWithPermissionDenied:
     def test_no_tasks_workspace_write_denied_exits_zero(self, tmp_path, monkeypatch, capsys):
         """A job with no tasks and workspace_write=deny should exit 0, not 1."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         set_permission(job, Capability.workspace_write, allow=False)
-        save_job(job)
+        save_job_plan(job)
 
         from apps.cli.commands.job import _cmd_run_next_task_local
 
         # Should return normally (no SystemExit) even with workspace_write denied
-        _cmd_run_next_task_local(str(job.id))
+        _cmd_run_next_task_local(str(job.job_id))
         out = capsys.readouterr().out
         assert "no pending tasks" in out
 
@@ -262,27 +263,27 @@ class TestNoPendingTasksWithPermissionDenied:
         self, tmp_path, monkeypatch, capsys
     ):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test", state=RunState.PENDING)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
         set_permission(job, Capability.workspace_write, allow=False)
-        save_job(job)
+        save_job_plan(job)
 
         from apps.cli.commands.job import _cmd_run_next_task_local
 
-        _cmd_run_next_task_local(str(job.id))
+        _cmd_run_next_task_local(str(job.job_id))
         out = capsys.readouterr().out
-        assert str(job.id) in out
+        assert str(job.job_id) in out
 
     def test_no_tasks_workspace_write_allowed_exits_normally(
         self, tmp_path, monkeypatch, capsys
     ):
         """Baseline: no tasks, workspace_write allowed → same clean exit."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test", state=RunState.PENDING)
-        save_job(job)
+        job = JobPlan(job_title="test", state=RunState.PENDING)
+        save_job_plan(job)
 
         from apps.cli.commands.job import _cmd_run_next_task_local
 
-        _cmd_run_next_task_local(str(job.id))
+        _cmd_run_next_task_local(str(job.job_id))
         out = capsys.readouterr().out
         assert "no pending tasks" in out
 
@@ -317,24 +318,24 @@ class TestPatchIntentErrorsCLI:
         from packages.orchestration.workspace import MaterializedFile
 
         # Build a job with one pending task and a pre-built artifact.
-        job = Job(name="test-pi-cli", state=RunState.PENDING)
-        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job = JobPlan(job_title="test-pi-cli", state=RunState.PENDING)
+        task = TaskEntry(title="write readme", inputs={"task_type": "write_readme"})
         artifact = Artifact(
             name="task_output_write_readme",
             content="Proposed Changes:\n  - Update readme",
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.task_id),
             metadata={"task_type": "write_readme", "summary": "Update readme"},
         )
-        task.output_artifact_ids.append(artifact.id)
+        task.output_artifact_ids.append(str(artifact.id))
         job.tasks.append(task)
         job.artifacts.append(artifact)
-        save_job(job)  # saved with task in PENDING status
+        save_job_plan(job)  # saved with task in PENDING status
 
         # Simulate run_next_task having run the task (task now RUNNING).
         task.status = RunState.RUNNING
-        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
-        vr = VerificationResult(task_id=task.id, passed=True)
+        run_result = RunTaskResult(job=job, task_id=task.task_id, changed=True)
+        vr = VerificationResult(task_id=task.task_id, passed=True)
         fake_mf = MaterializedFile(
             path=Path(tmp_path) / "fake_workspace.txt",
             content="x",
@@ -343,7 +344,7 @@ class TestPatchIntentErrorsCLI:
 
         def fake_finalize(r, v):
             for t in r.job.tasks:
-                if t.id == r.task_id:
+                if t.task_id == r.task_id:
                     t.status = RunState.COMPLETED
 
         with (
@@ -379,12 +380,12 @@ class TestPatchIntentErrorsCLI:
 
             from apps.cli.commands.job import _cmd_run_next_task_local
 
-            _cmd_run_next_task_local(str(job.id))
+            _cmd_run_next_task_local(str(job.job_id))
 
         # Verify saved metadata.
-        reloaded = load_job(job.id)
+        reloaded = load_job_plan(job.job_id)
         saved_artifact = next(
-            (a for a in reloaded.artifacts if str(a.task_id) == str(task.id)), None
+            (a for a in reloaded.artifacts if str(a.task_id) == str(task.task_id)), None
         )
         assert saved_artifact is not None, "Artifact not found in saved job"
         assert "patch_intent_errors" in saved_artifact.metadata
@@ -416,26 +417,26 @@ class TestPatchIntentErrorsCLI:
         from packages.orchestration.verifier import VerificationCheckResult, VerificationResult
         from packages.orchestration.workspace import MaterializedFile
 
-        job = Job(name="test-pi-verifier-fail", state=RunState.PENDING)
-        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job = JobPlan(job_title="test-pi-verifier-fail", state=RunState.PENDING)
+        task = TaskEntry(title="write readme", inputs={"task_type": "write_readme"})
         artifact = Artifact(
             name="task_output_write_readme",
             content="Proposed Changes:\n  - Update readme",
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.task_id),
             metadata={"task_type": "write_readme", "summary": "Update readme"},
         )
-        task.output_artifact_ids.append(artifact.id)
+        task.output_artifact_ids.append(str(artifact.id))
         job.tasks.append(task)
         job.artifacts.append(artifact)
-        save_job(job)  # saved with task in PENDING status
+        save_job_plan(job)  # saved with task in PENDING status
 
         task.status = RunState.RUNNING
-        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
+        run_result = RunTaskResult(job=job, task_id=task.task_id, changed=True)
 
         # Verifier fails — patch intent block must not be entered at all.
         vr = VerificationResult(
-            task_id=task.id,
+            task_id=task.task_id,
             passed=False,
             checks=[
                 VerificationCheckResult(
@@ -485,7 +486,7 @@ class TestPatchIntentErrorsCLI:
 
             # CLI exits non-zero on verifier failure — expected behavior.
             with pytest.raises(SystemExit) as exc_info:
-                _cmd_run_next_task_local(str(job.id))
+                _cmd_run_next_task_local(str(job.job_id))
             assert exc_info.value.code == 1
 
         # Patch intent functions must never have been invoked.
@@ -493,11 +494,11 @@ class TestPatchIntentErrorsCLI:
         mock_verify_pi.assert_not_called()
 
         # Reload and inspect the persisted state.
-        reloaded = load_job(job.id)
+        reloaded = load_job_plan(job.job_id)
 
         # Task lifecycle: real finalize_task must have rolled back to PENDING and
         # cleared output_artifact_ids (safe-to-retry state for the next cycle).
-        reloaded_task = next(t for t in reloaded.tasks if t.id == task.id)
+        reloaded_task = next(t for t in reloaded.tasks if t.task_id == task.task_id)
         assert reloaded_task.status == RunState.PENDING
         assert reloaded_task.output_artifact_ids == []
 
@@ -505,7 +506,7 @@ class TestPatchIntentErrorsCLI:
         # The artifact is kept in job.artifacts for diagnostics even after
         # finalize_task clears task.output_artifact_ids, so search by task_id.
         saved_artifact = next(
-            (a for a in reloaded.artifacts if str(a.task_id) == str(task.id)), None
+            (a for a in reloaded.artifacts if str(a.task_id) == str(task.task_id)), None
         )
         assert saved_artifact is not None, "Artifact not found in saved job"
         assert "patch_intent_file" not in saved_artifact.metadata
@@ -548,23 +549,23 @@ class TestPatchIntentRisksCLI:
         from packages.orchestration.verifier import VerificationResult
         from packages.orchestration.workspace import MaterializedFile
 
-        job = Job(name="test-risk-cli", state=RunState.PENDING)
-        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job = JobPlan(job_title="test-risk-cli", state=RunState.PENDING)
+        task = TaskEntry(title="write readme", inputs={"task_type": "write_readme"})
         artifact = Artifact(
             name="task_output_write_readme",
             content="Proposed Changes:\n  - Update readme\n  - Add installation",
             mime_type="text/plain",
-            task_id=task.id,
+            task_id=str(task.task_id),
             metadata={"task_type": "write_readme", "summary": "Update readme"},
         )
-        task.output_artifact_ids.append(artifact.id)
+        task.output_artifact_ids.append(str(artifact.id))
         job.tasks.append(task)
         job.artifacts.append(artifact)
-        save_job(job)
+        save_job_plan(job)
 
         task.status = RunState.RUNNING
-        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
-        vr = VerificationResult(task_id=task.id, passed=True)
+        run_result = RunTaskResult(job=job, task_id=task.task_id, changed=True)
+        vr = VerificationResult(task_id=task.task_id, passed=True)
         fake_mf = MaterializedFile(
             path=Path(tmp_path) / "fake_workspace.txt",
             content="x",
@@ -573,7 +574,7 @@ class TestPatchIntentRisksCLI:
 
         def fake_finalize(r, v):
             for t in r.job.tasks:
-                if t.id == r.task_id:
+                if t.task_id == r.task_id:
                     t.status = RunState.COMPLETED
 
         with (
@@ -607,11 +608,11 @@ class TestPatchIntentRisksCLI:
 
             from apps.cli.commands.job import _cmd_run_next_task_local
 
-            _cmd_run_next_task_local(str(job.id))
+            _cmd_run_next_task_local(str(job.job_id))
 
-        reloaded = load_job(job.id)
+        reloaded = load_job_plan(job.job_id)
         saved_artifact = next(
-            (a for a in reloaded.artifacts if str(a.task_id) == str(task.id)), None
+            (a for a in reloaded.artifacts if str(a.task_id) == str(task.task_id)), None
         )
         out = capsys.readouterr().out
         return saved_artifact, out
@@ -745,11 +746,10 @@ class TestProjectCommandsCLI:
 
     def test_attach_project_job_sets_metadata(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from uuid import UUID
 
         from apps.cli.commands.job import _cmd_create_job
         from apps.cli.commands.project import _cmd_attach_project_job, _cmd_create_project
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         _cmd_create_project("JobLink", None)
         target_id = capsys.readouterr().out.strip()
         # The job is created under a DIFFERENT project (F148 requires a
@@ -760,7 +760,7 @@ class TestProjectCommandsCLI:
         job_id = capsys.readouterr().out.strip()
         _cmd_attach_project_job(target_id, job_id)
         capsys.readouterr()
-        job = load_job(UUID(job_id))
+        job = load_job_plan(normalize_job_id(job_id))
         assert job.metadata.get("project_id") == target_id
 
     def test_create_job_with_valid_project_links(self, tmp_path, monkeypatch, capsys):
@@ -810,11 +810,11 @@ class TestProjectCommandsCLI:
 
     def test_malformed_project_id_no_placeholder_in_brain(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from packages.core.models import Job, RunState
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.project_brain import build_project_brain, export_project_brain_json
-        from packages.orchestration.storage import save_job
-        job = Job(name="bad-project", state=RunState.PENDING, metadata={"project_id": "not-a-uuid"})
-        save_job(job)
+        job = JobPlan(job_title="bad-project", state=RunState.PENDING, metadata={"project_id": "not-a-uuid"})
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         d = export_project_brain_json(graph)
         types = {n["type"] for n in d["nodes"]}
@@ -844,82 +844,75 @@ class TestCreateJobTaskType:
 
     def test_task_type_creates_one_task(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from uuid import UUID
 
         from apps.cli.commands.job import _cmd_create_job
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         _cmd_create_job("smoke prompt", task_type="write_readme")
         job_id = capsys.readouterr().out.strip()
-        job = load_job(UUID(job_id))
+        job = load_job_plan(normalize_job_id(job_id))
         assert len(job.tasks) == 1
 
     def test_task_type_sets_state_planned(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from uuid import UUID
 
         from apps.cli.commands.job import _cmd_create_job
         from packages.core.models import RunState
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         _cmd_create_job("smoke prompt", task_type="write_readme")
         job_id = capsys.readouterr().out.strip()
-        job = load_job(UUID(job_id))
+        job = load_job_plan(normalize_job_id(job_id))
         assert job.state == RunState.PLANNED
 
     def test_task_type_stored_in_task_inputs(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from uuid import UUID
 
         from apps.cli.commands.job import _cmd_create_job
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         _cmd_create_job("prompt", task_type="analyze_code")
         job_id = capsys.readouterr().out.strip()
-        job = load_job(UUID(job_id))
+        job = load_job_plan(normalize_job_id(job_id))
         assert job.tasks[0].inputs.get("task_type") == "analyze_code"
 
     def test_task_description_stored_in_task(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from uuid import UUID
 
         from apps.cli.commands.job import _cmd_create_job
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         _cmd_create_job("prompt", task_type="write_readme", task_description="Custom desc.")
         job_id = capsys.readouterr().out.strip()
-        job = load_job(UUID(job_id))
-        assert job.tasks[0].description == "Custom desc."
+        job = load_job_plan(normalize_job_id(job_id))
+        assert job.tasks[0].title == "Custom desc."
 
     def test_default_description_when_none_given(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from uuid import UUID
 
         from apps.cli.commands.job import _cmd_create_job
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         _cmd_create_job("prompt", task_type="write_readme")
         job_id = capsys.readouterr().out.strip()
-        job = load_job(UUID(job_id))
-        assert "write_readme" in job.tasks[0].description
+        job = load_job_plan(normalize_job_id(job_id))
+        assert "write_readme" in job.tasks[0].title
 
     def test_no_task_type_leaves_state_pending(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from uuid import UUID
 
         from apps.cli.commands.job import _cmd_create_job
         from packages.core.models import RunState
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         _cmd_create_job("plain prompt")
         job_id = capsys.readouterr().out.strip()
-        job = load_job(UUID(job_id))
+        job = load_job_plan(normalize_job_id(job_id))
         assert job.state == RunState.PENDING
         assert len(job.tasks) == 0
 
     def test_hyphens_and_underscores_allowed_in_task_type(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
-        from uuid import UUID
 
         from apps.cli.commands.job import _cmd_create_job
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         _cmd_create_job("prompt", task_type="analyze-code_v2")
         job_id = capsys.readouterr().out.strip()
-        job = load_job(UUID(job_id))
+        job = load_job_plan(normalize_job_id(job_id))
         assert job.tasks[0].inputs.get("task_type") == "analyze-code_v2"
 
     # ------------------------------------------------------------------
@@ -955,17 +948,16 @@ class TestCreateJobTaskType:
         """--project + --task-type: metadata linked, 1 task, state PLANNED, project shows job."""
         import json
         self._env(tmp_path, monkeypatch)
-        from uuid import UUID
 
         from apps.cli.commands.job import _cmd_create_job
         from apps.cli.commands.project import _cmd_create_project, _cmd_show_project
         from packages.core.models import RunState
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         _cmd_create_project("CombinedTest", None)
         project_id = capsys.readouterr().out.strip()
         _cmd_create_job("combined prompt", project_id=project_id, task_type="write_readme")
         job_id = capsys.readouterr().out.strip()
-        job = load_job(UUID(job_id))
+        job = load_job_plan(normalize_job_id(job_id))
         assert job.metadata.get("project_id") == project_id
         assert len(job.tasks) == 1
         assert job.tasks[0].inputs["task_type"] == "write_readme"

@@ -48,7 +48,7 @@ from typing import TYPE_CHECKING
 from packages.orchestration.exec_guard import run_guarded_test_command
 
 if TYPE_CHECKING:
-    from packages.core.models import Job
+    from packages.orchestration.pingpong_job import JobPlan
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +131,7 @@ class TestRunRecord:
 
 
 def run_tests_local(
-    job: Job,
+    job: JobPlan,
     workspace_root: Path,
     *,
     timeout_sec: int = TIMEOUT_DEFAULT_SEC,

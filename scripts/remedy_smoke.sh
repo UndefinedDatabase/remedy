@@ -9,7 +9,7 @@
 #   ./scripts/remedy_smoke.sh
 #
 # Requirements: remedy CLI on PATH (grouped entry point), python3.
-# Optional: Ollama running locally (for job run-next).
+# Optional: Ollama running locally (for job resume).
 #
 # Overrides:
 #   REMEDY_SMOKE_REPO  — temp repo path (default: /tmp/remedy-target-repo)
@@ -332,8 +332,8 @@ print('    job state=planned, 1 task, task_type=write_readme: OK')
     # 5. Run next task (requires Ollama — skip gracefully if unavailable)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="5"
-    echo "--- 5. job run-next"
-    if remedy job run-next "${JOB_ID}"; then
+    echo "--- 5. job resume"
+    if remedy job resume "${JOB_ID}"; then
         echo "    Task run: OK"
     else
         echo "    Task run: SKIP (Ollama likely unavailable — continuing smoke)"
@@ -1213,49 +1213,6 @@ print('    brain autonomy_readiness: OK')
 "
 
     # -------------------------------------------------------------------------
-    # 12j. Context pack JSON (Step 49)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12j"
-    echo "--- 12j. Context pack compact + caveman"
-    PACK_COMPACT="$(remedy context pack "${JOB_ID}" --json)"
-    python3 -c "
-import json, sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: context pack compact: ' + msg, file=sys.stderr)
-        sys.exit(1)
-data = json.loads(sys.argv[1])
-chk(data.get('version') == 1, 'version must be 1')
-chk(data.get('mode') == 'compact', 'mode must be compact')
-chk('budget' in data, 'missing budget')
-chk('estimated_tokens' in data, 'missing estimated_tokens')
-chk('truncated' in data, 'missing truncated')
-chk('sections' in data, 'missing sections')
-chk(len(data['sections']) > 0, 'no sections')
-for s in data['sections']:
-    for k in ('name', 'priority', 'content', 'estimated_tokens'):
-        chk(k in s, 'section missing key: ' + k)
-full = json.dumps(data)
-for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
-    chk(bad not in full, 'forbidden string in pack: ' + bad)
-print('    context pack compact: OK (sections=' + str(len(data['sections'])) + ', tokens=' + str(data['estimated_tokens']) + ')')
-" "${PACK_COMPACT}"
-
-    PACK_CAVEMAN="$(remedy context pack "${JOB_ID}" --mode caveman --json)"
-    python3 -c "
-import json, sys
-data = json.loads(sys.argv[1])
-if data.get('mode') != 'caveman':
-    print('ERROR: context pack caveman mode != caveman', file=sys.stderr)
-    sys.exit(1)
-compact_tokens = int(sys.argv[2])
-if data['estimated_tokens'] > compact_tokens:
-    print('ERROR: caveman should not use more tokens than compact', file=sys.stderr)
-    sys.exit(1)
-print('    context pack caveman: OK (tokens=' + str(data['estimated_tokens']) + ' <= compact=' + str(compact_tokens) + ')')
-" "${PACK_CAVEMAN}" "$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['estimated_tokens'])" "${PACK_COMPACT}")"
-
-    # -------------------------------------------------------------------------
     # 12k. Memory learn JSON (Step 50)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12k"
@@ -1291,10 +1248,10 @@ print('    memory learn idempotent: OK (learned=0, skipped=' + str(data['skipped
 " "${LEARN2_JSON}"
 
     # -------------------------------------------------------------------------
-    # 12l. Run-log schema: readiness_assessed + context_pack_created + memory_learned
+    # 12l. Run-log schema: readiness_assessed + memory_learned
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12l"
-    echo "--- 12l. Run-log schema: readiness + context_pack + memory_learned"
+    echo "--- 12l. Run-log schema: readiness + memory_learned"
     python3 -c "
 import json, sys
 from pathlib import Path
@@ -1312,7 +1269,6 @@ if runs_dir.exists():
                 events.append(json.loads(line))
 event_names = [e['event'] for e in events]
 chk('readiness_assessed' in event_names, 'no readiness_assessed event')
-chk('context_pack_created' in event_names, 'no context_pack_created event')
 chk('memory_learned' in event_names, 'no memory_learned event')
 # Check readiness_assessed metadata
 ra = [e for e in events if e['event'] == 'readiness_assessed']
@@ -1320,19 +1276,13 @@ ra_required = frozenset({'scope', 'highest_eligible_level', 'missing_count', 'bl
 for ev in ra:
     got = frozenset(ev.get('metadata', {}).keys())
     chk(got == ra_required, 'readiness_assessed keys: got=' + str(sorted(got)) + ' want=' + str(sorted(ra_required)))
-# Check context_pack_created metadata
-cp = [e for e in events if e['event'] == 'context_pack_created']
-cp_required = frozenset({'budget', 'estimated_tokens', 'mode', 'truncated', 'section_count'})
-for ev in cp:
-    got = frozenset(ev.get('metadata', {}).keys())
-    chk(got == cp_required, 'context_pack_created keys: got=' + str(sorted(got)) + ' want=' + str(sorted(cp_required)))
 # Check memory_learned metadata
 ml = [e for e in events if e['event'] == 'memory_learned']
 ml_required = frozenset({'learned_count', 'skipped_count', 'approved', 'source_count'})
 for ev in ml:
     got = frozenset(ev.get('metadata', {}).keys())
     chk(got == ml_required, 'memory_learned keys: got=' + str(sorted(got)) + ' want=' + str(sorted(ml_required)))
-print('    run-log schema: OK (readiness=' + str(len(ra)) + ', pack=' + str(len(cp)) + ', learn=' + str(len(ml)) + ')')
+print('    run-log schema: OK (readiness=' + str(len(ra)) + ', learn=' + str(len(ml)) + ')')
 " "${JOB_ID}" "${RUNS_ROOT}"
 
     # -------------------------------------------------------------------------
@@ -1574,50 +1524,10 @@ print('    change list: OK (count=' + str(len(data['changes'])) + ')')
 " "${CHANGE_LIST_JSON}"
 
     # -------------------------------------------------------------------------
-    # 12s. Token economy (Step 56) — caveman/compact/standard ordering
+    # 12s. Token policy (Step 56)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12s"
-    echo "--- 12s. Token economy"
-    CAVE_JSON="$(remedy context pack "${JOB_ID}" --mode caveman --json)"
-    COMP_JSON="$(remedy context pack "${JOB_ID}" --mode compact --json)"
-    STD_JSON="$(remedy context pack "${JOB_ID}" --mode standard --json)"
-    python3 -c "
-import json, sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: token economy: ' + msg, file=sys.stderr)
-        sys.exit(1)
-cave = json.loads(sys.argv[1])
-comp = json.loads(sys.argv[2])
-std  = json.loads(sys.argv[3])
-chk(cave['mode'] == 'caveman', 'caveman mode')
-chk(comp['mode'] == 'compact', 'compact mode')
-chk(std['mode'] == 'standard', 'standard mode')
-chk(cave['estimated_tokens'] <= comp['estimated_tokens'], 'caveman must be <= compact tokens')
-chk(comp['estimated_tokens'] <= std['estimated_tokens'], 'compact must be <= standard tokens')
-print('    token ordering: OK (caveman=' + str(cave['estimated_tokens'])
-      + ', compact=' + str(comp['estimated_tokens'])
-      + ', standard=' + str(std['estimated_tokens']) + ')')
-" "${CAVE_JSON}" "${COMP_JSON}" "${STD_JSON}"
-
-    # Worker recommend
-    WORKER_JSON="$(remedy worker recommend "${JOB_ID}" --json)"
-    python3 -c "
-import json, sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: worker recommend: ' + msg, file=sys.stderr)
-        sys.exit(1)
-data = json.loads(sys.argv[1])
-chk(data.get('version') == 1, 'version must be 1')
-chk('recommended_worker' in data, 'missing recommended_worker')
-chk('token_mode' in data, 'missing token_mode')
-chk('estimated_context_tokens' in data, 'missing estimated_context_tokens')
-chk('requires_approval' in data, 'missing requires_approval')
-chk('candidates' in data, 'missing candidates')
-print('    worker recommend: OK (worker=' + data['recommended_worker'] + ', mode=' + data['token_mode'] + ')')
-" "${WORKER_JSON}"
-
+    echo "--- 12s. Token policy"
     # Token policy required fields
     TP_JSON="$(remedy policy token "${JOB_ID}" --json)"
     python3 -c "
@@ -1691,14 +1601,10 @@ print('    brain nodes: OK (has change_set)')
     echo "--- 12u. Memory card-show help"
     remedy memory card-show --help | grep -qi "memory_id"
 
-    # Step 64: Worker show + explain
+    # Step 64: Worker show
     _SMOKE_SECTION="12v"
     echo "--- 12v. Worker show ollama"
     remedy worker show ollama | grep -q "Ollama"
-
-    _SMOKE_SECTION="12w"
-    echo "--- 12w. Worker explain"
-    remedy worker explain "${JOB_ID}" | grep -q "Scoring breakdown"
 
     # Step 65.1: Repo status (job-aware)
     _SMOKE_SECTION="12x"
@@ -1851,13 +1757,13 @@ def chk(cond, msg):
 from packages.orchestration.dashboard import (
     build_job_dashboard, build_project_dashboard, summarize_job_dashboard,
 )
-from packages.core.models import Job, Task, RunState
-from uuid import uuid4
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
-job = Job(id=uuid4(), name='smoke-dash', user_prompt='t',
-    tasks=[Task(description='x', status=RunState.COMPLETED)],
+job = JobPlan(job_title='smoke-dash', user_prompt='t',
+    tasks=[TaskEntry(title='x', status=RunState.COMPLETED)],
     metadata={'target_repo': '.'})
-events = [{'event': 'job_created', 'run_id': 'r1', 'job_id': str(job.id),
+events = [{'event': 'job_created', 'run_id': 'r1', 'job_id': job.job_id,
     'timestamp': '2026-01-01', 'outcome': 'ok', 'metadata': {}}]
 
 data = build_job_dashboard(job, events)
@@ -1869,7 +1775,7 @@ for k in ('readiness', 'decisions', 'test_status', 'token_policy', 'memory', 'ev
 text = summarize_job_dashboard(data)
 chk('Dashboard' in text, 'missing Dashboard in text')
 
-pdata = build_project_dashboard('p1', [job], {str(job.id): events})
+pdata = build_project_dashboard('p1', [job], {job.job_id: events})
 chk(pdata['version'] == 1, 'project bad version')
 chk(pdata['job_count'] == 1, 'project bad job_count')
 
@@ -1893,11 +1799,11 @@ from packages.orchestration.project_brain import (
     ET_HAS_DECISION_QUEUE,
     _NODE_TYPE_ORDER, build_project_brain,
 )
-from packages.core.models import Job, Task, RunState
-from uuid import uuid4
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
-job = Job(id=uuid4(), name='smoke-brain', user_prompt='t',
-    tasks=[Task(description='x', status=RunState.COMPLETED)],
+job = JobPlan(job_title='smoke-brain', user_prompt='t',
+    tasks=[TaskEntry(title='x', status=RunState.COMPLETED)],
     metadata={'target_repo': '.'})
 events = []
 graph = build_project_brain(job, events)
@@ -2524,8 +2430,7 @@ print('    dev status: OK (blockers=' + str(len(d.get('remaining_blockers',[])))
     python3 -c "
 import sys, json, re
 sys.path.insert(0, '.')
-from uuid import UUID
-from packages.orchestration.storage import load_job
+from packages.orchestration.pingpong_job import require_job_plan
 from packages.orchestration.ui_view_model import build_story, build_checklist, build_human_node_detail, build_layers
 from packages.orchestration.timeline import load_run_events
 from packages.orchestration.data_paths import resolve_data_root
@@ -2535,9 +2440,9 @@ def chk(cond, msg):
         print('ERROR: ' + msg, file=sys.stderr)
         sys.exit(1)
 
-job = load_job(UUID('${REPAIR_JOB_ID}'))
+job = require_job_plan('${REPAIR_JOB_ID}')
 data_dir = resolve_data_root()
-events = load_run_events(data_dir, job.id)
+events = load_run_events(data_dir, job.job_id)
 
 # Story
 story = build_story(job, events)
@@ -2594,7 +2499,7 @@ print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey i
 
     # -------------------------------------------------------------------------
     # 14a. Flight plan approval gate — real CLI sequence (F014 T004)
-    # Provider stand-in: inline save_job seeds job with pending flight plan.
+    # Provider stand-in: inline save_job_plan seeds job with pending flight plan.
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="14a"
     echo "--- 14a. Flight plan approval gate (CLI sequence)"
@@ -2602,10 +2507,10 @@ print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey i
     # Seed a job with a pending flight plan (provider stand-in)
     FP_JOB_ID="$(python3 -c "
 import json
-from packages.core.models import Job, Task, RunState
-from packages.orchestration.storage import save_job
-job = Job(
-    name='smoke-approval',
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+job = JobPlan(
+    job_title='smoke-approval',
     state=RunState.PLANNED,
     flight_plan={
         'schema_v': 'flight_plan_v1',
@@ -2615,16 +2520,16 @@ job = Job(
         'risks': [],
         '_approval': 'pending',
     },
-    tasks=[Task(description='Smoke task')],
+    tasks=[TaskEntry(title='Smoke task')],
 )
-save_job(job)
-print(str(job.id)[:8])
+save_job_plan(job)
+print(job.job_id[:8])
 ")"
     echo "    seeded job: ${FP_JOB_ID}"
 
     # Run attempt -> expect exit 3 + "plan awaiting approval"
     set +e
-    RUN_OUT="$(remedy job run-next "${FP_JOB_ID}" 2>&1)"
+    RUN_OUT="$(remedy job resume "${FP_JOB_ID}" 2>&1)"
     RUN_EXIT=$?
     set -e
     if [ "$RUN_EXIT" -ne 3 ]; then

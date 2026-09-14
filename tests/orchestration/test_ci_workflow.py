@@ -54,3 +54,11 @@ def test_hosted_workflow_never_auto_retries():
     lines = [line for line in workflow_text().splitlines() if line.strip()[:1] != "#"]
     for token in ("continue-on-error", "retry", "max_attempts"):
         assert [line for line in lines if token in line] == [], token
+
+
+def test_hosted_workflow_checks_out_the_full_history():
+    """A shallow clone hides the deleted modules the event-name coupling ratchet reads (R-0889)."""
+    text = workflow_text()
+    assert text.count("fetch-depth: 0") == 1
+    checkout = text.index("actions/checkout@v4")
+    assert checkout < text.index("fetch-depth: 0") < text.index("actions/setup-python@v5")

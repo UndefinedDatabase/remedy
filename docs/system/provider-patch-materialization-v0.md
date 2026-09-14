@@ -1,6 +1,6 @@
 # Trusted Provider Patch Materialization v0
 
-Turns an **accepted** [ProviderTrustReport](provider-trust-gate-v0.md) candidate into
+Turns an **accepted** ProviderTrustReport candidate into
 a **real, applyable** pending Repair Patch Intent — one that flows through the
 existing approval-gated path — while the raw provider diff stays private.
 
@@ -10,8 +10,10 @@ existing approval-gated path — while the raw provider diff stays private.
       → remedy patch approve <job> <intent_id>
       → remedy do continue <job> --intent-id <intent_id>   # snapshot → apply → test → proof
 
-`remedy provider intake-repair` materializes automatically when the patch shape is
-supported. Inspect material with `remedy provider material-show <job> <material_id> --json`.
+Remedy deliberately has NO command that creates or inspects material any more: the
+intake and material-show commands were deleted with the Provider Trust Gate by
+F275 T001. Only `load_materials` — a pure read of material already on disk — survives,
+and R-0867 records which feature should reap the rest.
 
 ## accepted ≠ materialized ≠ applied
 
@@ -48,9 +50,11 @@ applyable surface.)
 
 ## Verification
 
-`remedy provider material-show` runs `verify_provider_patch_material`: manifest +
-patch present, content hash matches, target paths still safe, trust report still
-accepted, single candidate, not revoked.
+`verify_provider_patch_material` checks: manifest + patch present, content hash
+matches, single candidate, not revoked. It has NO caller left and it is STRICTLY
+WEAKER than described above — the "target paths still safe" and "trust report still
+accepted" checks were deleted with the trust gate, so its `ok` is easier to satisfy
+and must not be read as a safety property (R-0867). No command invokes it.
 
 ## Idempotency
 
@@ -67,8 +71,6 @@ intent — no duplicate Fix Task / Repair Artifact / Patch Intent.
 
 ## See also
 
-- [provider-trust-gate-v0.md](provider-trust-gate-v0.md) — the untrusted-intake trust gate.
 - [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply path materialized intents use.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
-- [repair-request-builder-v0.md](repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor (output re-enters via provider intake).
-- [provider-trust-verification-v1.md](provider-trust-verification-v1.md) — materialization now only proceeds for a candidate that PASSED verification; non-passing candidates create no material/intent.
+- [repair-request-builder-v0.md](repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor.

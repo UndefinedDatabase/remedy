@@ -47,17 +47,19 @@ content is never dumped.
 
 ## Local / Ollama-first relationship
 
-Cheap, small tasks (estimated tokens under `prefer_local_under_tokens`) should prefer a local /
-Ollama-capable route **when safe**. This is metadata only: the Ollama worker is a non-executable
-placeholder (from Worker Registry v0), so the recommendation points to **configuration / planning**,
-never execution.
+Remedy no longer recommends a worker or a route. F275 round 20 deleted the Worker Registry + Route
+Policy that owned every worker spec, including the non-executable Ollama placeholder, so
+`recommended_worker_id` is always empty and `estimated_cost_band` is always `unknown` (DECISION F275
+D9). The local / Ollama-first *idea* is inherited by **F110, model routing**; the budget profile's
+`prefer_local_under_tokens` survives as a threshold that nothing consults for routing today.
 
 ## Expensive route justification
 
-Expensive, unknown-cost, high-risk, external, cloud, and placeholder routes **always** require
-human-facing approval — this reuses the Worker Registry hard-safety floor
-(`hard_safety_requires_approval`) and cannot be weakened by any budget setting. A decision also
-requires approval when the estimated total exceeds the budget or the approval-token threshold.
+Human-facing approval is now **UNCONDITIONAL**: every decision `compute_token_economy_decision`
+returns requires it. Before the deletion the approval rule already ended in `or not spec`, and with
+no registry no spec resolves for any job, so that term now holds for every job — the R-0095
+hard-safety floor survives by **degradation** and is strictly stricter than the rule it replaced
+(DECISION F275 D9). No budget setting can weaken it, and the budget/threshold warnings are unchanged.
 
 ## User-facing budget explanations
 

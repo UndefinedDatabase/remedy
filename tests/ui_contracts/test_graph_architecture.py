@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import json
 import tempfile
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from packages.core.models import Job, RunState, Task
+import pytest
+
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -23,41 +25,39 @@ UI_SRC = ROOT / "apps" / "ui" / "src"
 UI_ROOT = ROOT / "apps" / "ui"
 
 
-def _make_job(**overrides) -> Job:
+def _make_job(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "tasks": [Task(description="task 1", status=RunState.COMPLETED)],
+        "tasks": [TaskEntry(title="task 1", status=RunState.COMPLETED)],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 # ── Step 71.1: Token Policy Applied ──────────────────────────────────────
 
 
-def _make_job_s74(**overrides) -> Job:
+def _make_job_s74(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "tasks": [Task(description="task 1", status=RunState.COMPLETED)],
+        "tasks": [TaskEntry(title="task 1", status=RunState.COMPLETED)],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _make_job_s91():
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -67,8 +67,8 @@ def _make_job_s91():
 
 def _make_job_s101(task_count: int = 3):
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -89,13 +89,13 @@ def _make_job_s101(task_count: int = 3):
 
 
 def _make_job_s111(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                task_type=t.get("type", "readme_draft"),
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -110,8 +110,8 @@ def _make_job_s111(*, tasks=None, name="test"):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def _make_job_s163(name: str = "Test goal") -> Job:
-    job = Job(name=name)
+def _make_job_s163(name: str = "Test goal") -> JobPlan:
+    job = JobPlan(job_title=name)
     job.metadata = job.metadata or {}
     return job
 
@@ -124,7 +124,7 @@ def _get_viewer_html():
     from packages.orchestration.project_brain import build_project_brain
 
     job = _make_job()
-    events = [{"event": "job_created", "run_id": "r1", "job_id": str(job.id),
+    events = [{"event": "job_created", "run_id": "r1", "job_id": str(job.job_id),
                 "timestamp": "2026-01-01", "outcome": "ok", "metadata": {}}]
     graph = build_project_brain(job, events)
     data = build_brain_viewer_data(job, graph, events)

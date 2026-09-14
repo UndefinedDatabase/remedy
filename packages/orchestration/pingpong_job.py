@@ -21,6 +21,7 @@ import json as _json
 import os
 import re
 import shutil
+import tempfile
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,11 +32,12 @@ from typing import TYPE_CHECKING, Any
 # them at runtime from the job record's plain JSON.
 from packages.core.models import Artifact, Budget, JobFences, RunState
 
-# F260 D2: one minting function per KIND of id. This module names JOBs and
+# F260 D2: one minting function per KIND of id. This module names JOBs, TASKs and
 # EPISODEs, so it mints through data_paths rather than spelling uuid4 inline.
-# Module-level and not function-scoped: JobPlan's default_factory below is read
-# when the class body runs, which a local import could never reach.
-from packages.orchestration.data_paths import mint_episode_id, mint_job_id
+# Module-level and not function-scoped: the default_factory of JobPlan and of
+# TaskEntry below is read when the class body runs, which a local import could
+# never reach.
+from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_task_id
 
 if TYPE_CHECKING:
     from packages.orchestration.schemas.models import PlannedTask
@@ -150,14 +152,15 @@ class TaskProofSummary:
 @dataclass
 class TaskEntry:
     """A single task within a job."""
-    task_id: str = ""          # T001, T002, ... (by parse order)
+    # A job file's tasks are numbered T001, T002, ... by parse order, and the
+    # parser passes those ids; a task built by code mints its id.
+    task_id: str = field(default_factory=mint_task_id)
     source_heading_number: int = 0  # Original ## Task N number
     title: str = ""
     task_class: str = TASK_CLASS_DEFAULT
     # F112 T003b2b1: durable per-task answers to escalated decisions this
-    # task raised (e.g. a cannot_fit split-or-proceed choice) — keyed like
-    # Core Job's Task.inputs so escalation.py's answer-recording path
-    # (DECISION F112 D4) works unmodified against either task shape.
+    # task raised (e.g. a cannot_fit split-or-proceed choice) — read and written
+    # by escalation.py's answer-recording path (DECISION F112 D4).
     inputs: dict = field(default_factory=dict)
     # F112 T003c: this task's declared fenced scope, parsed from a "Files:"
     # section in job markdown (mirrors "Acceptance:") — the
@@ -184,6 +187,15 @@ class TaskEntry:
     task_start_tree_ref: str = ""     # checkpoint ref protecting that tree object
     task_start_recorded_at: str = ""
     task_attempt_state: str = ""      # "" | "active" | "complete"
+    # F275 T003, DECISION F275 D22: the two fields the deleted classic `Task` carried and
+    # `TaskEntry` had no counterpart for. They were widened in BEFORE the flip, so the
+    # commit that moved consumers onto this record lost nothing a caller could read.
+    # `output_artifact_ids` is read at 35 sites, 15 of them production, including the
+    # live task runner and the cockpit's detail panel. `budget` is a serialized dict
+    # rather than a `Budget`, which is the shape `JobPlan.budgets` already uses on this
+    # same record for the same reason: the exporter emits JSON, never a model object.
+    output_artifact_ids: list[str] = field(default_factory=list)
+    budget: dict | None = None
 
 
 # F112 T003b2a: translates a live TaskEntry into the granularity machinery's
@@ -405,18 +417,16 @@ class JobPlan:
     # vanishes on the first persist/resume cycle.
     #
     # Absent is spelled "" for a string and None for a structured value, which
-    # is what every field above already does. The classic `Job` in
-    # `packages.core.models` spells the first three `str | None`; the empty
-    # string is what survives here, because no reader that must tell "unset"
-    # from "empty" for them exists yet.
+    # is what every field above already does. The empty string is what the first
+    # three carry, because no reader that must tell "unset" from "empty" for them
+    # exists yet.
     mission: str = ""
     user_prompt: str = ""
     project_id: str = ""
     intake: dict | None = None
     flight_plan: dict | None = None
     artifacts: list[Artifact] = field(default_factory=list)
-    # NOT a `Budget()` default factory, unlike the classic `Job`: an empty
-    # budget and an absent one are indistinguishable once exported, and
+    # NOT a `Budget()` default factory: an empty budget and an absent one are indistinguishable once exported, and
     # `budgets` above already carries the F018 limits, so a defaulted second
     # budget object would write a meaningless `{}` into every job record.
     budget: Budget | None = None
@@ -432,26 +442,66 @@ class JobPlan:
 # Persistence
 # ---------------------------------------------------------------------------
 
-def _persist_job(job: JobPlan) -> Path:
-    # ``data_paths`` owns "where the ping-pong record lives" (DECISION F260 D1),
+class JobNotFoundError(Exception):
+    """Raised when no job record exists for the requested id."""
+
+    def __init__(self, job_id: str) -> None:
+        super().__init__(f"Job not found: {job_id}")
+        self.job_id = job_id
+
+
+class JobStoreError(Exception):
+    """Raised when a job record exists and cannot be read."""
+
+
+# The one atomic text writer: the job record below and the checkpoint, mission and
+# compiled-mission records each write through it rather than carrying their own.
+def atomic_write_text(path: Path, data: str) -> None:
+    """Write ``data`` to ``path`` as UTF-8 by an fsynced replace, creating the parent.
+
+    An interrupted write leaves the previous file or the new one, never a torn file,
+    and removes its temporary file.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data.encode("utf-8"))
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+# ``root`` overrides the store's base directory for ONE call, which is how a caller
+# reads or writes a job record outside the process data root (DECISION F275 D23).
+# ``data_paths.job_record_path`` always accepted it; these three never passed it on.
+
+
+def _persist_job(job: JobPlan, root: Path | None = None) -> Path:
+    # ``data_paths`` owns "where the job record lives" (DECISION F260 D1),
     # so this writer and the readers that resolve an id cannot drift apart.
     from packages.orchestration.data_paths import job_record_path
 
-    out = job_record_path(job.job_id)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(_json.dumps(_export_job(job), indent=2) + "\n")
+    out = job_record_path(job.job_id, root)
+    atomic_write_text(out, _json.dumps(_export_job(job), indent=2) + "\n")
     return out
 
 
-def save_job_plan(job: JobPlan) -> Path:
+def save_job_plan(job: JobPlan, root: Path | None = None) -> Path:
     """Public API to persist a JobPlan. Returns path to job.json."""
-    return _persist_job(job)
+    return _persist_job(job, root)
 
 
-def load_job_plan(job_id: str) -> JobPlan | None:
+def load_job_plan(job_id: str, root: Path | None = None) -> JobPlan | None:
     from packages.orchestration.data_paths import job_record_path
 
-    job_file = job_record_path(job_id)
+    job_file = job_record_path(job_id, root)
     if not job_file.exists():
         return None
     try:
@@ -459,6 +509,77 @@ def load_job_plan(job_id: str) -> JobPlan | None:
         return _import_job(data)
     except (OSError, _json.JSONDecodeError, KeyError):
         return None
+
+
+# ``load_job_plan`` answers ``None`` for a record that is MISSING and for one that is
+# UNREADABLE alike, so its caller cannot tell a job that never existed from a job whose
+# record rotted; this function carries that distinction (DECISION F275 D23).
+
+
+def load_job_plan_safe(job_id: str, root: Path | None = None) -> tuple[JobPlan | None, bool]:
+    """Load one JobPlan, returning ``(plan, degraded)``.
+
+    ``(None, False)`` when no record exists, ``(None, True)`` when one exists and
+    cannot be read, ``(plan, False)`` on success. No input makes this raise:
+    ``OSError``, ``JSONDecodeError`` and ``KeyError`` are what ``load_job_plan``
+    already catches, and ``ValueError`` and ``TypeError`` are what ``_import_job``
+    raises on a record whose JSON parses into the wrong shapes.
+    """
+    from packages.orchestration.data_paths import job_record_path
+
+    job_file = job_record_path(job_id, root)
+    if not job_file.exists():
+        return (None, False)
+    try:
+        return (_import_job(_json.loads(job_file.read_text())), False)
+    except (OSError, _json.JSONDecodeError, KeyError, ValueError, TypeError):
+        return (None, True)
+
+
+# WHY: a caller with a failure path of its own needs a raise it can catch, not a ``None``.
+def require_job_plan(job_id: str, root: Path | None = None) -> JobPlan:
+    """Load one JobPlan, or RAISE.
+
+    The contract: the plan ``load_job_plan_safe`` reads comes back; when there is no
+    plan, a record that exists and cannot be read raises ``JobStoreError``, and a job
+    with no record raises ``JobNotFoundError(job_id)``. It never returns ``None``.
+    """
+    plan, degraded = load_job_plan_safe(job_id, root)
+    if plan is None:
+        if degraded:
+            raise JobStoreError(f"Unreadable job record for {job_id}")
+        raise JobNotFoundError(job_id)
+    return plan
+
+
+def list_job_plans_safe(root: Path | None = None) -> tuple[list[JobPlan], bool, list[str]]:
+    """Every persisted JobPlan. Returns ``(plans, degraded, skipped_job_ids)``.
+
+    The third element names a skipped record BY JOB ID — the record's directory name
+    — because one directory per job is what makes the id the honest identifier here.
+    Sorted by ``created_at`` descending, newest first. No input makes this raise.
+    """
+    from packages.orchestration.data_paths import job_record_paths
+
+    plans: list[JobPlan] = []
+    skipped: list[str] = []
+    for path in job_record_paths(root):
+        try:
+            plans.append(_import_job(_json.loads(path.read_text())))
+        except (OSError, _json.JSONDecodeError, KeyError, ValueError, TypeError):
+            skipped.append(path.parent.name)
+    plans.sort(key=lambda plan: plan.created_at, reverse=True)
+    return (plans, len(skipped) > 0, skipped)
+
+
+def list_job_plans(root: Path | None = None) -> list[JobPlan]:
+    """Every persisted JobPlan, newest first; an unreadable record is skipped silently.
+
+    The plain reader over ``list_job_plans_safe``. Use the safe form to see which
+    records were skipped.
+    """
+    plans, _, _ = list_job_plans_safe(root)
+    return plans
 
 
 def _export_file_proof(p: AppliedFileProof) -> dict[str, Any]:
@@ -792,6 +913,8 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "task_start_tree_ref": t.task_start_tree_ref,
                 "task_start_recorded_at": t.task_start_recorded_at,
                 "task_attempt_state": t.task_attempt_state,
+                "output_artifact_ids": t.output_artifact_ids,
+                "budget": t.budget,
             }
             for t in job.tasks
         ],
@@ -896,6 +1019,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             task_start_tree_ref=t.get("task_start_tree_ref", ""),
             task_start_recorded_at=t.get("task_start_recorded_at", ""),
             task_attempt_state=t.get("task_attempt_state", ""),
+            output_artifact_ids=list(t.get("output_artifact_ids") or []),
+            budget=t.get("budget"),
         ))
     return job
 
@@ -2825,7 +2950,7 @@ def resume_job_plan(job_id: str, **run_kwargs: Any) -> JobPlan:
     """Resume an interrupted JobPlan in its OWN job-owned worktree.
 
     This is the JobPlan-level recovery record: it reads ``jobs/<job-id>/
-    job.json``, NOT a Core Job event log and not per-task ping-pong run records
+    job.json``, NOT a run log and not per-task ping-pong run records
     (those correctly say ``cleanup_status=job_owned``; the job owns the worktree).
 
     The same worktree (``job-<job-id>``), the same branch and the same base commit

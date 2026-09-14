@@ -18,7 +18,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, Task
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 # ---------------------------------------------------------------------------
 # Catalog tests
@@ -39,21 +39,14 @@ def test_context_inspect_in_catalog():
     assert "--budget" in arg_names
 
 
-def test_context_inspect_related_commands():
-    from apps.cli.command_catalog import CATALOG
-    cmds = {c.command_id: c for c in CATALOG}
-    entry = cmds["context.inspect"]
-    assert "context.pack" in entry.related
-
-
 # ---------------------------------------------------------------------------
 # Handler tests
 # ---------------------------------------------------------------------------
 
 
 def _make_test_job():
-    task = Task(description="Fix auth bug")
-    job = Job(name="test-job", user_prompt="Fix the bug")
+    task = TaskEntry(title="Fix auth bug")
+    job = JobPlan(job_title="test-job", user_prompt="Fix the bug")
     job.tasks = [task]
     return job, task
 
@@ -61,9 +54,10 @@ def _make_test_job():
 def test_handler_text_output(capsys):
     from apps.cli.commands.context import _cmd_context_inspect
     job, task = _make_test_job()
-    job_id = str(job.id)
+    job_id = str(job.job_id)
 
-    with patch("apps.cli.commands.context.load_job", return_value=job), \
+    with patch("apps.cli.commands.context.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.context.lookup_job_id", side_effect=lambda raw: raw), \
          patch("packages.orchestration.context_inspector._resolve_repo_root", return_value=None), \
          patch("packages.orchestration.data_paths.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
@@ -77,9 +71,10 @@ def test_handler_text_output(capsys):
 def test_handler_json_output(capsys):
     from apps.cli.commands.context import _cmd_context_inspect
     job, task = _make_test_job()
-    job_id = str(job.id)
+    job_id = str(job.job_id)
 
-    with patch("apps.cli.commands.context.load_job", return_value=job), \
+    with patch("apps.cli.commands.context.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.context.lookup_job_id", side_effect=lambda raw: raw), \
          patch("packages.orchestration.context_inspector._resolve_repo_root", return_value=None), \
          patch("packages.orchestration.data_paths.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
@@ -98,10 +93,11 @@ def test_handler_json_output(capsys):
 def test_handler_json_with_task_id(capsys):
     from apps.cli.commands.context import _cmd_context_inspect
     job, task = _make_test_job()
-    job_id = str(job.id)
-    task_id = str(task.id)
+    job_id = str(job.job_id)
+    task_id = str(task.task_id)
 
-    with patch("apps.cli.commands.context.load_job", return_value=job), \
+    with patch("apps.cli.commands.context.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.context.lookup_job_id", side_effect=lambda raw: raw), \
          patch("packages.orchestration.context_inspector._resolve_repo_root", return_value=None), \
          patch("packages.orchestration.data_paths.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
@@ -121,9 +117,10 @@ def test_handler_invalid_job_id():
 def test_handler_invalid_task_id():
     from apps.cli.commands.context import _cmd_context_inspect
     job, _ = _make_test_job()
-    job_id = str(job.id)
+    job_id = str(job.job_id)
 
-    with patch("apps.cli.commands.context.load_job", return_value=job), \
+    with patch("apps.cli.commands.context.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.context.lookup_job_id", side_effect=lambda raw: raw), \
          pytest.raises(SystemExit) as exc_info:
         _cmd_context_inspect(job_id, task_id="not-a-uuid")
     assert exc_info.value.code == 1
@@ -132,9 +129,10 @@ def test_handler_invalid_task_id():
 def test_handler_no_traceback(capsys):
     from apps.cli.commands.context import _cmd_context_inspect
     job, _ = _make_test_job()
-    job_id = str(job.id)
+    job_id = str(job.job_id)
 
-    with patch("apps.cli.commands.context.load_job", return_value=job), \
+    with patch("apps.cli.commands.context.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.context.lookup_job_id", side_effect=lambda raw: raw), \
          patch("packages.orchestration.context_inspector._resolve_repo_root", return_value=None), \
          patch("packages.orchestration.data_paths.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
@@ -148,9 +146,10 @@ def test_handler_no_traceback(capsys):
 def test_handler_output_bounded(capsys):
     from apps.cli.commands.context import _cmd_context_inspect
     job, _ = _make_test_job()
-    job_id = str(job.id)
+    job_id = str(job.job_id)
 
-    with patch("apps.cli.commands.context.load_job", return_value=job), \
+    with patch("apps.cli.commands.context.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.context.lookup_job_id", side_effect=lambda raw: raw), \
          patch("packages.orchestration.context_inspector._resolve_repo_root", return_value=None), \
          patch("packages.orchestration.data_paths.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
@@ -179,10 +178,11 @@ def test_handler_task_not_in_job():
     """Step 883: task_id that's valid UUID but not in job.tasks exits 1."""
     from apps.cli.commands.context import _cmd_context_inspect
     job, _ = _make_test_job()
-    job_id = str(job.id)
+    job_id = str(job.job_id)
     fake_task_id = str(uuid4())  # valid UUID, not in job
 
-    with patch("apps.cli.commands.context.load_job", return_value=job), \
+    with patch("apps.cli.commands.context.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.context.lookup_job_id", side_effect=lambda raw: raw), \
          pytest.raises(SystemExit) as exc_info:
         _cmd_context_inspect(job_id, task_id=fake_task_id)
     assert exc_info.value.code == 1
@@ -192,10 +192,11 @@ def test_handler_task_in_job_passes(capsys):
     """Step 883: task_id that exists in job.tasks succeeds."""
     from apps.cli.commands.context import _cmd_context_inspect
     job, task = _make_test_job()
-    job_id = str(job.id)
-    task_id = str(task.id)
+    job_id = str(job.job_id)
+    task_id = str(task.task_id)
 
-    with patch("apps.cli.commands.context.load_job", return_value=job), \
+    with patch("apps.cli.commands.context.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.context.lookup_job_id", side_effect=lambda raw: raw), \
          patch("packages.orchestration.context_inspector._resolve_repo_root", return_value=None), \
          patch("packages.orchestration.data_paths.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):
@@ -209,9 +210,10 @@ def test_handler_json_budget_gate_assessed(capsys):
     """Step 890: JSON output shows budget gate as assessed, not enforced."""
     from apps.cli.commands.context import _cmd_context_inspect
     job, _ = _make_test_job()
-    job_id = str(job.id)
+    job_id = str(job.job_id)
 
-    with patch("apps.cli.commands.context.load_job", return_value=job), \
+    with patch("apps.cli.commands.context.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.context.lookup_job_id", side_effect=lambda raw: raw), \
          patch("packages.orchestration.context_inspector._resolve_repo_root", return_value=None), \
          patch("packages.orchestration.data_paths.resolve_data_root", return_value="/tmp"), \
          patch("packages.orchestration.timeline.load_run_events", return_value=[]):

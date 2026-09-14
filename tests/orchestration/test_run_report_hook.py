@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 import packages.orchestration.long_run_executor as lre
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
 from packages.orchestration.long_run_executor import (
     REPORTED_TERMINALS,
     TERMINAL_ALL_GREEN,
@@ -25,6 +25,7 @@ from packages.orchestration.long_run_executor import (
     TERMINAL_STOPPED_BY_OPERATOR,
     _apply_terminal,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.run_report import (
     REPORT_ERROR_METADATA_KEY,
     REPORT_FILENAME,
@@ -58,11 +59,11 @@ def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
     return data_dir
 
 
-def make_job(task_count: int = 1) -> Job:
-    return Job(
-        name="reporting-job",
+def make_job(task_count: int = 1) -> JobPlan:
+    return JobPlan(
+        job_title="reporting-job",
         user_prompt="build the thing",
-        tasks=[Task(description=f"task {i}", inputs={"task_type": "documentation"})
+        tasks=[TaskEntry(title=f"task {i}", inputs={"task_type": "documentation"})
                for i in range(task_count)],
         state=RunState.PLANNED,
     )
@@ -74,7 +75,7 @@ class TestEveryTerminalPathWritesOneReport:
     def test_each_terminal_writes_exactly_one_report(self, terminal):
         job = make_job()
         _apply_terminal(job, terminal, "some reason")
-        path = report_path(str(job.id))
+        path = report_path(str(job.job_id))
         assert path.is_file(), f"{terminal} wrote no report"
         assert path.name == REPORT_FILENAME
         siblings = list(path.parent.glob("report*"))
@@ -84,7 +85,7 @@ class TestEveryTerminalPathWritesOneReport:
     def test_the_report_names_the_terminal_it_was_written_for(self, terminal):
         job = make_job()
         _apply_terminal(job, terminal, "some reason")
-        text = report_path(str(job.id)).read_text(encoding="utf-8")
+        text = report_path(str(job.job_id)).read_text(encoding="utf-8")
         assert f"- Terminal status: {terminal}" in text
         assert "INTERIM SNAPSHOT" not in text          # a final report, not a snapshot
 
@@ -95,18 +96,18 @@ class TestEveryTerminalPathWritesOneReport:
         """The job still has work; a "final" report would lie about that."""
         job = make_job()
         _apply_terminal(job, TERMINAL_MAX_CYCLES_REACHED, "")
-        assert not report_path(str(job.id)).exists()
+        assert not report_path(str(job.job_id)).exists()
 
     def test_the_report_sits_beside_the_cycle_records(self):
         job = make_job()
         _apply_terminal(job, TERMINAL_ALL_GREEN, "")
-        expected = lre.cycle_evidence_dir(str(job.id)).parent / REPORT_FILENAME
-        assert report_path(str(job.id)) == expected
+        expected = lre.cycle_evidence_dir(str(job.job_id)).parent / REPORT_FILENAME
+        assert report_path(str(job.job_id)) == expected
 
     def test_the_stop_reason_reaches_the_report(self):
         job = make_job()
         _apply_terminal(job, TERMINAL_BUDGET_EXHAUSTED, "budget_exhausted:tokens")
-        text = report_path(str(job.id)).read_text(encoding="utf-8")
+        text = report_path(str(job.job_id)).read_text(encoding="utf-8")
         assert "- Stop reason: budget_exhausted:tokens" in text
 
 
@@ -116,7 +117,7 @@ class TestRegeneratedNotAppended:
     def test_a_second_terminal_regenerates_the_same_file(self):
         job = make_job()
         _apply_terminal(job, TERMINAL_BLOCKED, "no_ready_tasks")
-        first = report_path(str(job.id)).read_text(encoding="utf-8")
+        first = report_path(str(job.job_id)).read_text(encoding="utf-8")
         assert "- Terminal status: blocked" in first
 
         # …resume, finish for real.
@@ -125,7 +126,7 @@ class TestRegeneratedNotAppended:
         job.state = RunState.COMPLETED
         _apply_terminal(job, TERMINAL_ALL_GREEN, "")
 
-        path = report_path(str(job.id))
+        path = report_path(str(job.job_id))
         assert list(path.parent.glob("report*")) == [path]
         second = path.read_text(encoding="utf-8")
         assert "- Terminal status: all_green" in second
@@ -134,16 +135,16 @@ class TestRegeneratedNotAppended:
     def test_the_file_never_grows_by_concatenation(self):
         job = make_job()
         _apply_terminal(job, TERMINAL_ALL_GREEN, "")
-        once = report_path(str(job.id)).read_text(encoding="utf-8")
+        once = report_path(str(job.job_id)).read_text(encoding="utf-8")
         for _ in range(3):
             _apply_terminal(job, TERMINAL_ALL_GREEN, "")
-        assert report_path(str(job.id)).read_text(encoding="utf-8") == once
+        assert report_path(str(job.job_id)).read_text(encoding="utf-8") == once
 
     def test_exactly_one_report_heading_per_file(self):
         job = make_job()
         _apply_terminal(job, TERMINAL_ALL_GREEN, "")
         _apply_terminal(job, TERMINAL_ALL_GREEN, "")
-        text = report_path(str(job.id)).read_text(encoding="utf-8")
+        text = report_path(str(job.job_id)).read_text(encoding="utf-8")
         assert text.count("# Run report — ") == 1
 
 
@@ -190,7 +191,7 @@ class TestAReportFailureNeverKillsTheRun:
         """The seam that lets a caller apply a terminal without an account."""
         job = make_job()
         _apply_terminal(job, TERMINAL_ALL_GREEN, "", write_report=False)
-        assert not report_path(str(job.id)).exists()
+        assert not report_path(str(job.job_id)).exists()
 
 
 class TestThroughTheRealLoop:
@@ -199,7 +200,7 @@ class TestThroughTheRealLoop:
     def test_a_completed_run_leaves_a_report(self):
         job = make_job()
 
-        def completing_step(current_job: Job, provider_call) -> lre.TaskAttempt:
+        def completing_step(current_job: JobPlan, provider_call) -> lre.TaskAttempt:
             task = next((t for t in current_job.tasks
                          if t.status == RunState.PENDING), None)
             if task is None:
@@ -207,14 +208,14 @@ class TestThroughTheRealLoop:
             task.status = RunState.COMPLETED
             if all(t.status == RunState.COMPLETED for t in current_job.tasks):
                 current_job.state = RunState.COMPLETED
-            return lre.TaskAttempt(task_id=task.id, executed=True, verified=True)
+            return lre.TaskAttempt(task_id=task.task_id, executed=True, verified=True)
 
         result = lre.run_cycles(
             job, lre.CycleLimits(max_cycles=2), lambda _ctx: None,
             task_step=completing_step, clock=_FakeClock(),
             save=lambda _job: None, record_checkpoint=False)
         assert result.terminal_status == TERMINAL_ALL_GREEN
-        text = report_path(str(job.id)).read_text(encoding="utf-8")
+        text = report_path(str(job.job_id)).read_text(encoding="utf-8")
         assert "- Terminal status: all_green" in text
         assert "## Recommended next action" in text
 

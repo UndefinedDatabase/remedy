@@ -94,11 +94,9 @@ class TestFrameShape:
     def test_the_envelope_carries_the_linkage_from_both_event_sources(self):
         """DECISION F021 D2's single additive field, resolved from TWO places.
 
-        `load_run_events` yields run-log rows whose `task_id` is TOP-LEVEL,
-        while `_load_job_plan_events` nests it under `metadata`. A summary
-        reading only the top level would leave jump-to-node dead for every
-        trace-driven job while every run-log job worked -- a silent half
-        feature, and the failure mode no suite here would have surfaced.
+        `load_run_events` yields run-log rows whose `task_id` is TOP-LEVEL; an
+        event may instead carry it nested under `metadata`. The summary reads
+        both, and the top level wins when both carry one.
         """
         from_run_log = mod._safe_event_summary(
             1, {"event": "task_started", "task_id": "T-7"})
@@ -117,7 +115,7 @@ class TestFrameShape:
         monkeypatch.setattr(mod, "_load_events", lambda job: _events(3))
 
         class _Job:
-            id = "11111111-2222-3333-4444-555555555555"
+            job_id = "11111111-2222-3333-4444-555555555555"
 
         polled = mod._build_events_since_json(_Job(), "0")["events"]
         streamed = [json.loads(_parse(f)["data"])
@@ -173,7 +171,7 @@ class TestHeartbeatCadence:
 
 # A job the route can carry: `_load_job` is stubbed, so only the id is read.
 class _Job:
-    id = "11111111-2222-3333-4444-555555555555"
+    job_id = "11111111-2222-3333-4444-555555555555"
 
 
 class _Socket:
@@ -398,7 +396,7 @@ class TestStreamCapRoute:
 
     def test_the_stream_is_refused_with_429_beyond_the_cap(self, monkeypatch):
         for _ in range(mod.SSE_MAX_STREAMS_PER_JOB):
-            assert mod.acquire_sse_slot(_Job.id)
+            assert mod.acquire_sse_slot(_Job.job_id)
         answered, streamed = _dispatch(
             monkeypatch, "/api/jobs/J/events/stream?token=tok", _Job(), None)
         assert streamed == []
@@ -406,14 +404,14 @@ class TestStreamCapRoute:
 
     def test_a_refused_stream_does_not_consume_a_slot(self, monkeypatch):
         for _ in range(mod.SSE_MAX_STREAMS_PER_JOB):
-            mod.acquire_sse_slot(_Job.id)
+            mod.acquire_sse_slot(_Job.job_id)
         _dispatch(monkeypatch, "/api/jobs/J/events/stream?token=tok", _Job(), None)
         # Still exactly at the cap: the refusal took nothing.
-        assert mod._SSE_SLOTS_PER_JOB[_Job.id] == mod.SSE_MAX_STREAMS_PER_JOB
+        assert mod._SSE_SLOTS_PER_JOB[_Job.job_id] == mod.SSE_MAX_STREAMS_PER_JOB
 
     def test_a_served_stream_releases_its_slot(self, monkeypatch):
         _dispatch(monkeypatch, "/api/jobs/J/events/stream?token=tok", _Job(), None)
-        assert _Job.id not in mod._SSE_SLOTS_PER_JOB
+        assert _Job.job_id not in mod._SSE_SLOTS_PER_JOB
 
     def test_a_raising_stream_still_releases_its_slot(self, monkeypatch):
         monkeypatch.setattr(mod, "_load_job", lambda jid: (_Job(), None))
@@ -435,7 +433,7 @@ class TestStreamCapRoute:
             raised = True
         assert raised
         # The `finally` is the whole point: a crash must not leak capacity.
-        assert _Job.id not in mod._SSE_SLOTS_PER_JOB
+        assert _Job.job_id not in mod._SSE_SLOTS_PER_JOB
 
     def test_an_unknown_job_never_takes_a_slot(self, monkeypatch):
         _dispatch(

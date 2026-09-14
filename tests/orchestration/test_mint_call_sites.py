@@ -1,4 +1,4 @@
-"""F260 D2: the JOB, RUN and EPISODE call sites mint through data_paths, not inline.
+"""F260 D2: the JOB, RUN, EPISODE and TASK call sites mint through data_paths, not inline.
 
 WHY THIS FILE EXISTS. Moving four ``uuid4().hex[:16]`` expressions onto
 ``mint_job_id``, ``mint_run_id`` and ``mint_episode_id`` changes no behaviour: a site
@@ -6,7 +6,7 @@ that drifts back to an inline mint still produces a correct-looking 16-hex id, s
 existing suite goes red on its own. DECISION F260 D2 is about WHICH FUNCTION names each
 kind, and that is only observable by reading the call sites. These tests are that reading.
 
-THE TWO DATACLASS DEFAULTS ARE PINNED BY OBJECT IDENTITY. ``default_factory is
+THE THREE DATACLASS DEFAULTS ARE PINNED BY OBJECT IDENTITY. ``default_factory is
 data_paths.mint_job_id`` runs against the shipped function object, and — unlike any text
 check — is NOT satisfied by a look-alike ``lambda: mint_job_id()``, which would pass every
 behavioural test while putting the inline-expression habit straight back.
@@ -49,6 +49,12 @@ class TestMintCallSites:
         factory = pingpong_loop.PingPongResult.__dataclass_fields__["run_id"].default_factory
 
         assert factory is data_paths.mint_run_id
+
+    def test_task_entry_task_id_default_is_the_mint_function_itself(self) -> None:
+        """Same identity reading for the TASK kind: a task built by code mints its id."""
+        factory = pingpong_job.TaskEntry.__dataclass_fields__["task_id"].default_factory
+
+        assert factory is data_paths.mint_task_id
 
     def test_every_active_episode_id_assignment_calls_mint_episode_id(self) -> None:
         """Both in-body episode sites, read by AST because there is no object to compare."""

@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.project_scope import (
     ProjectScope,
     job_in_scope,
@@ -18,8 +18,8 @@ from packages.orchestration.project_scope import (
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _job(project_id: str | None = None, name: str = "j") -> Job:
-    return Job(name=name, project_id=project_id)
+def _job(project_id: str | None = None, name: str = "j") -> JobPlan:
+    return JobPlan(job_title=name, project_id=project_id)
 
 
 PROJ_A = str(uuid4())
@@ -182,7 +182,7 @@ class TestScopedJobs:
             _job(None, name="legacy"),
         ]
         monkeypatch.setattr(
-            "packages.orchestration.storage.list_jobs_safe",
+            "packages.orchestration.pingpong_job.list_job_plans_safe",
             lambda root=None: (jobs, True, ["bad.json"]),
         )
 
@@ -190,7 +190,7 @@ class TestScopedJobs:
         filtered, degraded, skipped = scoped_jobs(scope)
 
         assert len(filtered) == 1
-        assert filtered[0].name == "a1"
+        assert filtered[0].job_title == "a1"
         assert degraded is True
         assert skipped == ["bad.json"]
 
@@ -201,7 +201,7 @@ class TestScopedJobs:
             _job(None, name="legacy"),
         ]
         monkeypatch.setattr(
-            "packages.orchestration.storage.list_jobs_safe",
+            "packages.orchestration.pingpong_job.list_job_plans_safe",
             lambda root=None: (jobs, False, []),
         )
 

@@ -19,9 +19,9 @@ import pytest
 
 from apps.cli.command_catalog import CATALOG, get_command
 from apps.cli.commands.job import _cmd_job_run_report
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.run_report import report_path
-from packages.orchestration.storage import save_job
 
 pytestmark = pytest.mark.integration
 
@@ -39,19 +39,19 @@ def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
 
 def saved_job(*, state: RunState = RunState.COMPLETED,
               terminal: str = "all_green",
-              task_status: RunState = RunState.COMPLETED) -> Job:
-    job = Job(
-        name="report-job",
+              task_status: RunState = RunState.COMPLETED) -> JobPlan:
+    job = JobPlan(
+        job_title="report-job",
         user_prompt="build the thing",
         mission="Build the thing",
-        tasks=[Task(description=f"task {i}", inputs={"task_type": "documentation"})
+        tasks=[TaskEntry(title=f"task {i}", inputs={"task_type": "documentation"})
                for i in range(2)],
         state=state,
         metadata={"target_repo": "/tmp/repo", "cycle_terminal_status": terminal},
     )
     for task in job.tasks:
         task.status = task_status
-    save_job(job)
+    save_job_plan(job)
     return job
 
 
@@ -59,7 +59,7 @@ class TestFinalMode:
 
     def test_it_renders_the_run_report(self, capsys):
         job = saved_job()
-        _cmd_job_run_report(str(job.id))
+        _cmd_job_run_report(str(job.job_id))
         out = capsys.readouterr().out
         assert "# Run report — report-job" in out
         assert "- Terminal status: all_green" in out
@@ -67,18 +67,18 @@ class TestFinalMode:
 
     def test_it_is_not_labeled_as_a_snapshot(self, capsys):
         job = saved_job()
-        _cmd_job_run_report(str(job.id))
+        _cmd_job_run_report(str(job.job_id))
         assert "INTERIM SNAPSHOT" not in capsys.readouterr().out
 
     def test_a_short_job_id_prefix_resolves(self, capsys):
         job = saved_job()
-        _cmd_job_run_report(str(job.id)[:8])
+        _cmd_job_run_report(str(job.job_id)[:8])
         assert "# Run report — report-job" in capsys.readouterr().out
 
     def test_it_reads_disk_sources_not_only_the_job(self, capsys):
         """The mission and both task lines come from the persisted job."""
         job = saved_job()
-        _cmd_job_run_report(str(job.id))
+        _cmd_job_run_report(str(job.job_id))
         out = capsys.readouterr().out
         assert "- Mission: Build the thing" in out
         assert out.count("- `") >= 2
@@ -89,7 +89,7 @@ class TestInterimMode:
     def test_it_renders_the_loud_snapshot_label(self, capsys):
         job = saved_job(state=RunState.RUNNING, terminal="",
                         task_status=RunState.PENDING)
-        _cmd_job_run_report(str(job.id), interim=True)
+        _cmd_job_run_report(str(job.job_id), interim=True)
         first = capsys.readouterr().out.splitlines()[0]
         assert first.startswith("> **INTERIM SNAPSHOT — run still in progress")
         assert "rendered at" in first
@@ -99,9 +99,9 @@ class TestInterimMode:
         and interim is legal on any job, so this is the one state where both
         modes render and their structure can be compared at all."""
         job = saved_job()
-        _cmd_job_run_report(str(job.id), interim=True)
+        _cmd_job_run_report(str(job.job_id), interim=True)
         interim = capsys.readouterr().out
-        _cmd_job_run_report(str(job.id))
+        _cmd_job_run_report(str(job.job_id))
         final = capsys.readouterr().out
         assert _headings(interim) == _headings(final)
 
@@ -110,7 +110,7 @@ class TestInterimMode:
         job = saved_job(state=RunState.RUNNING, terminal="",
                         task_status=RunState.PENDING)
         before = _job_file(job).read_bytes()
-        _cmd_job_run_report(str(job.id), interim=True)
+        _cmd_job_run_report(str(job.job_id), interim=True)
         capsys.readouterr()
         assert _job_file(job).read_bytes() == before
 
@@ -118,28 +118,28 @@ class TestInterimMode:
         """Only the terminal hook writes report.md — never a render."""
         job = saved_job(state=RunState.RUNNING, terminal="",
                         task_status=RunState.PENDING)
-        _cmd_job_run_report(str(job.id), interim=True)
+        _cmd_job_run_report(str(job.job_id), interim=True)
         capsys.readouterr()
-        assert not report_path(str(job.id)).exists()
+        assert not report_path(str(job.job_id)).exists()
 
     def test_final_mode_writes_no_report_file_either(self, capsys):
         job = saved_job()
-        _cmd_job_run_report(str(job.id))
+        _cmd_job_run_report(str(job.job_id))
         capsys.readouterr()
-        assert not report_path(str(job.id)).exists()
+        assert not report_path(str(job.job_id)).exists()
 
 
 class TestFinalRefusesANonTerminalRun:
     """R-0161: --final on a moving run would be an unbannered snapshot."""
 
-    def _running(self) -> Job:
+    def _running(self) -> JobPlan:
         return saved_job(state=RunState.RUNNING, terminal="",
                          task_status=RunState.PENDING)
 
     def test_it_refuses_with_a_clean_error(self, capsys):
         job = self._running()
         with pytest.raises(SystemExit) as exc:
-            _cmd_job_run_report(str(job.id))
+            _cmd_job_run_report(str(job.job_id))
         assert exc.value.code == 1
         captured = capsys.readouterr()
         assert captured.err.strip() == (
@@ -151,19 +151,19 @@ class TestFinalRefusesANonTerminalRun:
         """Never render anyway: a refusal that still prints is not a refusal."""
         job = self._running()
         with pytest.raises(SystemExit):
-            _cmd_job_run_report(str(job.id))
+            _cmd_job_run_report(str(job.job_id))
         assert capsys.readouterr().out == ""
 
     def test_it_never_silently_switches_to_interim(self, capsys):
         job = self._running()
         with pytest.raises(SystemExit):
-            _cmd_job_run_report(str(job.id))
+            _cmd_job_run_report(str(job.job_id))
         assert "INTERIM SNAPSHOT" not in capsys.readouterr().out
 
     def test_json_mode_reports_run_not_terminal(self, capsys):
         job = self._running()
         with pytest.raises(SystemExit) as exc:
-            _cmd_job_run_report(str(job.id), json_output=True)
+            _cmd_job_run_report(str(job.job_id), json_output=True)
         assert exc.value.code == 1
         payload = json.loads(capsys.readouterr().out)
         assert payload["error"] == "run_not_terminal"
@@ -174,7 +174,7 @@ class TestFinalRefusesANonTerminalRun:
     def test_interim_on_the_same_job_still_works(self, capsys):
         """The refusal is scoped to --final; the snapshot path is untouched."""
         job = self._running()
-        _cmd_job_run_report(str(job.id), interim=True)
+        _cmd_job_run_report(str(job.job_id), interim=True)
         assert "INTERIM SNAPSHOT" in capsys.readouterr().out
 
     @pytest.mark.parametrize("terminal", [
@@ -183,7 +183,7 @@ class TestFinalRefusesANonTerminalRun:
     ])
     def test_every_reported_terminal_is_allowed(self, terminal, capsys):
         job = saved_job(terminal=terminal)
-        _cmd_job_run_report(str(job.id))
+        _cmd_job_run_report(str(job.job_id))
         out = capsys.readouterr().out
         assert "# Run report — report-job" in out
         assert f"- Terminal status: {terminal}" in out
@@ -193,7 +193,7 @@ class TestFinalRefusesANonTerminalRun:
         job = saved_job(state=RunState.RUNNING, terminal="max_cycles_reached",
                         task_status=RunState.PENDING)
         with pytest.raises(SystemExit) as exc:
-            _cmd_job_run_report(str(job.id))
+            _cmd_job_run_report(str(job.job_id))
         assert exc.value.code == 1
         assert "run still in progress" in capsys.readouterr().err
 
@@ -209,7 +209,7 @@ class TestJsonMode:
 
     def test_it_emits_the_structured_sources(self, capsys):
         job = saved_job()
-        _cmd_job_run_report(str(job.id), json_output=True)
+        _cmd_job_run_report(str(job.job_id), json_output=True)
         payload = json.loads(capsys.readouterr().out)
         assert payload["job_name"] == "report-job"
         assert payload["terminal_status"] == "all_green"
@@ -218,15 +218,15 @@ class TestJsonMode:
 
     def test_the_json_is_not_the_rendered_markdown(self, capsys):
         job = saved_job()
-        _cmd_job_run_report(str(job.id), json_output=True)
+        _cmd_job_run_report(str(job.job_id), json_output=True)
         out = capsys.readouterr().out
         assert "# Run report" not in out
 
     def test_json_and_interim_agree_on_the_sources(self, capsys):
         job = saved_job()
-        _cmd_job_run_report(str(job.id), json_output=True)
+        _cmd_job_run_report(str(job.job_id), json_output=True)
         payload = json.loads(capsys.readouterr().out)
-        _cmd_job_run_report(str(job.id), interim=True)
+        _cmd_job_run_report(str(job.job_id), interim=True)
         text = capsys.readouterr().out
         assert payload["job_name"] in text
 
@@ -272,7 +272,7 @@ class TestOneCommandThreeModes:
         from apps.cli.commands.job import _cmd_job_report
 
         job = saved_job()
-        _cmd_job_report(str(job.id))
+        _cmd_job_report(str(job.job_id))
         out = capsys.readouterr().out
         assert "Job Report:" in out           # the pre-F053 view
         assert "# Run report" not in out
@@ -282,7 +282,7 @@ def _headings(text: str) -> list[str]:
     return [line for line in text.splitlines() if line.startswith("## ")]
 
 
-def _job_file(job: Job) -> Path:
+def _job_file(job: JobPlan) -> Path:
     from packages.orchestration.data_paths import jobs_dir
 
-    return jobs_dir() / f"{job.id}.json"
+    return jobs_dir() / job.job_id / "job.json"

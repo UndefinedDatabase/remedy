@@ -20,8 +20,9 @@ if str(_ROOT) not in sys.path:
 
 
 def _make_job(*, tasks=None, name="test", metadata=None):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if metadata:
         job.metadata = dict(metadata)
     if tasks:
@@ -29,8 +30,8 @@ def _make_job(*, tasks=None, name="test", metadata=None):
             task_type = t.get("type", "readme_draft")
             inputs = dict(t.get("metadata", {}))
             inputs.setdefault("task_type", task_type)
-            task = Task(
-                description=t.get("description", task_type),
+            task = TaskEntry(
+                title=t.get("description", task_type),
                 inputs=inputs,
             )
             if "status" in t:
@@ -304,7 +305,7 @@ class TestReviewerAcceptRejectRecommendation:
         ok = accept_recommendation(job, recs[0].id)
         assert ok is True
         assert len(job.tasks) == task_count_before  # No direct task
-        proposed = load_proposed_tasks(str(job.id))
+        proposed = load_proposed_tasks(str(job.job_id))
         assert len(proposed) == 1
         assert proposed[0].title == "Add edge case tests"
         assert proposed[0].source.value == "reviewer"

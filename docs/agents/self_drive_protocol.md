@@ -244,6 +244,27 @@ still applies at 12/40. (3) The session round target of 6 to 8 stands; a session
 ending below it states the reason in one sentence in its handoff. Reverse by
 deleting this paragraph.
 
+Operator amendment amend0908-f275-finish (2026-09-08) — F275 FINISHES THE
+PROTOTYPE-CLUSTER DELETION; NO FOURTH SPLIT. (1) F275's soft limit is 20 sessions
+and 60 rounds, by operator order and BY NAME; it travels to no other feature.
+(2) The amend0905-throughput split-and-close default does NOT apply to F275. On
+reaching the limit the session writes the scope report and continues; the only
+permitted close of F275 below its full scope is the old hard stop with an
+operator question, and only when a module group is genuinely undeletable under
+the three rules in `docs/roadmap/features/T2_F275.md` T001. (3) For F275's T001
+the atomic unit of "never split" is ONE MODULE GROUP (module, handler, catalog
+entries, cockpit section, tests, map lines) in one commit, not the whole slice;
+sessions and rounds may end between group commits with the tree green. (4) An
+importer that is itself on F260's deletion list is not a blocking edge; it is
+deleted with its target. A surviving importer loses the import and the code path
+in the same commit, and any user-observable behaviour lost is registered as a
+finding naming the inheriting feature — never a stub, shim or copy. (5) A session
+of F275 may cite "authoring errors accumulating" as its reason to end only after
+at least four delegated rounds. Rationale: the deletion was the last slice of
+F260, F272 and F274 and each closed before reaching it; F274 cut one import edge
+per round and left 20 of 42. Reverse by deleting this paragraph and the two
+amend0908 paragraphs in `docs/roadmap/features/T2_F275.md`.
+
 Operator amendment amend0911-feedback (2026-09-11), rule A — FINDINGS ARE NEVER
 WITHOUT AN OWNER AND ARE NEVER LOST. Every open finding has exactly one owner:
 the feature it was found in (when the repair is in that feature's scope), a named
@@ -309,6 +330,68 @@ to 5 of amend0908-f275-finish stand unchanged. This paragraph overrides the two
 amend0908 paragraphs in `docs/roadmap/features/T2_F275.md` wherever they state the
 numbers; those paragraphs stay byte-identical as history. Reverse by deleting this
 paragraph.
+
+Operator amendment amend0914-f275-sprint (2026-09-14) — F275 LANDS THE FLIP NOW
+AND FINISHES AT ONE SUITE RUN PER ROUND. Measured on round 99: a 303-line
+test-only diff cost five runs of the full suite (about two hours of waiting),
+three fresh worktrees, a re-run of the transform, seventeen carrier applications
+and seven bookkeeping commits. The operator ends that. All rules below are BY
+NAME for F275 and travel to no other feature. (1) THE FLIP ROUND. The very next
+delegated round after this amendment is the flip round. Its first substantive
+commit books whatever verdict and slips the handoff carries, exactly as today.
+Its next commit is THE FLIP: in the primary checkout, on the branch, the
+transform run as the latest overlay round's block orders it, then every
+committed overlay carrier under `.agent/authored/` (the files named
+`f275-r<n>-overlay*.md`, in ascending round order and part order, each applied
+with `git apply --check` then `git apply`), then `git add -A`, ONE commit. The
+operator grants F275 a SECOND declared-oversize commit for exactly this commit,
+overriding clause (b) of the AGENTS.md size exception for F275 alone; the worker
+declares it in the handback with the reason "the record flip is atomic by
+construction, DECISION F272 D15". Pieces that earlier decisions ordered as
+separate commits inside the flip (for example the raising loader of DECISION
+F275 D64) land inside this one commit. The flip round runs the full suite ONCE,
+after the flip commit, and commits its transcript (see rule 4). Operator
+question Q1 of 2026-09-13 is answered by this rule: the single commit. (2) THE
+OVERLAY METHOD ENDS. DECISION F275 D64 is retired from the flip commit onward:
+no new overlay carrier is written, no flipped worktree is built, no CONTROL tree
+is run. The residue groups `.agent/plan.md` still names (the JobBudgets dict,
+the routed-handler tests in `tests/test_data_paths.py`, the classic
+kill-and-resume fixture under `job resume`, the job digest's goldens) are done
+AFTER the flip as ordinary rounds editing the real tree. (3) THE RED BRIDGE.
+From the flip commit until the first round whose committed suite transcript
+reads exit 0, the branch tip MAY be red; this is not a finding and hosted CI red
+on the branch in that span is expected. Every bridge round records at its base
+the set of bad test node ids (failed plus errors) from the previous round's
+committed transcript, and its own transcript must show that set STRICTLY SHRINK
+with NO node newly bad; a round that adds a bad node is FAIL. Sessions and
+rounds may end inside the bridge with the tree committed and pushed. The bridge
+is at most eight rounds; a ninth writes an operator question and stops. (4) ONE
+SUITE RUN PER ROUND. For the rest of F275 the full suite runs EXACTLY ONCE per
+round: by the WORKER, in the PRIMARY checkout (never a worktree, which lacks the
+UI dependencies — DECISION F275 D48), serially, after its last code commit and
+before its handback; the worker saves the summary line and the full list of bad
+node ids to `.agent/authored/f275-r<n>-suite.txt` and commits it as its own
+commit. The reviewer READS that transcript and does NOT re-run the full suite.
+The reviewer's own re-run of a round is: pytest on every test file the round
+touched and on the test files nearest to every production module it touched,
+`tests/cli/test_golden_path.py`, `tests/docs/`, `ruff check` on the touched
+files, and the diff read bottom-up. Mutation red-proofs for production code stay
+mandatory but run on the targeted test files only. The reviewer runs the full
+suite itself exactly three more times in F275: after the flip round, at the
+first exit-0 round, and where the closure protocol's integration gate already
+requires it. A reviewer dry run before authoring is allowed but is proved with
+targeted tests, never with the full suite. There is no CONTROL run: a round's
+base reading is the previous round's committed transcript. (5) BOOKKEEPING IN
+ONE COMMIT. The block copy and its mirror stay (transport is one digest,
+amend0827 rule 5). The plan slice, the verdict booking, the prose-slip lines and
+any DECISION of a round land in ONE commit; each append is verified once as
+"post equals pre plus slice" with no negative control and no second reader. The
+handback is its own commit. A round orders at most SIX gates. (6) UNCHANGED:
+guardrails G1 to G8, the closure protocol and its evidence package, Rule A5,
+amend0908-f275-finish rules 2 to 5, and amend0911-f275-to-scope. Reason: two of
+three F275 slices have been finished for days; the remaining work is mechanical
+and its cost was ritual, not substance. Reverse by deleting this paragraph and
+the amend0914 paragraph in `docs/roadmap/features/T2_F275.md`.
 
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN

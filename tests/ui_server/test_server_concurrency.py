@@ -18,17 +18,17 @@ from pathlib import Path
 
 import pytest
 
-from packages.core.models import Job, Task
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 
-def _make_job(**overrides: object) -> Job:
+def _make_job(**overrides: object) -> JobPlan:
     defaults = dict(
-        name="test-concurrency-job",
+        job_title="test-concurrency-job",
         user_prompt="Test prompt for concurrency",
-        tasks=[Task(type="write_readme", description="Write a README")],
+        tasks=[TaskEntry(title="Write a README")],
     )
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 class TestServerServesConcurrentRequests:
@@ -37,11 +37,11 @@ class TestServerServesConcurrentRequests:
     @pytest.fixture(autouse=True)
     def _setup_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         self.job = _make_job()
-        save_job(self.job)
-        self.job_id = str(self.job.id)
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
 
     def _start_server(self) -> tuple[int, str]:

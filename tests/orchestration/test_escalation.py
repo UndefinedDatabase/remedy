@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
 from packages.orchestration.decision_queue import (
     DECISION_TYPES,
     export_decision_json,
@@ -46,6 +46,7 @@ from packages.orchestration.escalation import (
     task_decision_answer_command,
     write_escalation_assumptions_md,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 UTC = timezone.utc
 T0 = datetime(2026, 7, 30, 12, 0, 0, tzinfo=UTC)
@@ -57,22 +58,22 @@ T1 = datetime(2026, 7, 30, 12, 5, 0, tzinfo=UTC)
 # ---------------------------------------------------------------------------
 
 
-def make_job(task_count: int = 2, *, name: str = "escalation-job") -> Job:
-    return Job(
-        name=name,
+def make_job(task_count: int = 2, *, name: str = "escalation-job") -> JobPlan:
+    return JobPlan(
+        job_title=name,
         user_prompt="build the thing",
-        tasks=[Task(description=f"task {i}", inputs={"task_type": "documentation"})
+        tasks=[TaskEntry(task_id=f"T{i + 1:03d}", title=f"task {i}", inputs={"task_type": "documentation"})
                for i in range(task_count)],
         state=RunState.PLANNED,
     )
 
 
-def escalate(job: Job, task_index: int = 0, *, question: str = "Which database?",
+def escalate(job: JobPlan, task_index: int = 0, *, question: str = "Which database?",
              options=("postgres", "sqlite"), safe_default: str = "",
              now: datetime = T0) -> dict:
     return enqueue_task_decision(
         job,
-        task_id=job.tasks[task_index].id,
+        task_id=job.tasks[task_index].task_id,
         question=question,
         options=options,
         safe_default=safe_default,
@@ -97,7 +98,7 @@ class TestEnqueue:
         job = make_job()
         record = escalate(job, safe_default="sqlite")
 
-        assert record["task_id"] == str(job.tasks[0].id)
+        assert record["task_id"] == str(job.tasks[0].task_id)
         assert record["question"] == "Which database?"
         assert record["options"] == ["postgres", "sqlite"]
         assert record["safe_default"] == "sqlite"
@@ -110,7 +111,7 @@ class TestEnqueue:
         record = escalate(job)
 
         assert record["decision_id"].startswith(DECISION_ID_PREFIX)
-        assert job.tasks[0].id.hex[:8] in record["decision_id"]
+        assert job.tasks[0].task_id[:8] in record["decision_id"]
 
     def test_a_second_decision_for_the_same_task_gets_its_own_id(self):
         job = make_job()
@@ -181,7 +182,7 @@ class TestAwaitingBranch:
         job = make_job()
         escalate(job, 0)
 
-        assert awaiting_decision_task_ids(job) == {job.tasks[0].id}
+        assert awaiting_decision_task_ids(job) == {job.tasks[0].task_id}
 
     def test_the_task_keeps_its_pending_status(self):
         # Awaiting is NOT failed: no FAILED task state, so the job stays
@@ -269,7 +270,7 @@ class TestSafeDefaults:
 
         assert record["status"] == ESCALATION_STATUS_OPEN
         assert record["answer"] == ""
-        assert awaiting_decision_task_ids(job) == {job.tasks[0].id}
+        assert awaiting_decision_task_ids(job) == {job.tasks[0].task_id}
 
     def test_auto_apply_answers_from_the_default_and_says_so(self):
         job = make_job()
@@ -374,8 +375,8 @@ class TestDecisionQueueDerivation:
                  if d.type == DECISION_TYPE_TASK_DECISION)
 
         assert d.next_actions == (
-            task_decision_answer_command(str(job.id), record["decision_id"], "postgres"),
-            task_decision_answer_command(str(job.id), record["decision_id"], "sqlite"),
+            task_decision_answer_command(str(job.job_id), record["decision_id"], "postgres"),
+            task_decision_answer_command(str(job.job_id), record["decision_id"], "sqlite"),
         )
         assert all(a.startswith("remedy decision resolve ") for a in d.next_actions)
 
@@ -387,7 +388,7 @@ class TestDecisionQueueDerivation:
                  if d.type == DECISION_TYPE_TASK_DECISION)
 
         assert d.next_actions == (
-            task_decision_answer_command(str(job.id), record["decision_id"]),)
+            task_decision_answer_command(str(job.job_id), record["decision_id"]),)
 
     def test_the_payload_carries_question_options_default_and_refs(self):
         job = make_job()
@@ -400,7 +401,7 @@ class TestDecisionQueueDerivation:
         assert d.payload["question"] == "Which database?"
         assert d.payload["options"] == ["postgres", "sqlite"]
         assert d.payload["safe_default"] == "sqlite"
-        assert d.payload["task_id"] == str(job.tasks[0].id)
+        assert d.payload["task_id"] == str(job.tasks[0].task_id)
         assert len(d.payload["cross_references"]) == 1
 
     def test_an_answered_escalation_is_resolved_not_open(self):
@@ -509,15 +510,15 @@ class RecordingLog:
         self.events.append((event, meta))
 
 
-def passing_verify(job: Job, cycle_index: int, verify_command) -> str:
+def passing_verify(job: JobPlan, cycle_index: int, verify_command) -> str:
     return VERIFY_PASSED
 
 
-def no_save(job: Job) -> None:
+def no_save(job: JobPlan) -> None:
     return None
 
 
-def make_fanout_job(name: str = "fanout-job") -> Job:
+def make_fanout_job(name: str = "fanout-job") -> JobPlan:
     """R -> (B1a -> B1b, B2, B3): one root, three branches, one with downstream.
 
     Branch 1 is the one that will raise a question, and B1b exists precisely so
@@ -525,16 +526,16 @@ def make_fanout_job(name: str = "fanout-job") -> Job:
     nothing else.  Plan order puts branch 1 first, so a scheduler that just took
     the first PENDING task would stall on it.
     """
-    def task(planned_id: str, *depends_on: str) -> Task:
-        return Task(
-            description=f"task {planned_id}",
+    def task(planned_id: str, *depends_on: str) -> TaskEntry:
+        return TaskEntry(
+            title=f"task {planned_id}",
             inputs={"task_type": "documentation",
                     "flight": {"planned_id": planned_id, "title": planned_id,
                                "depends_on": list(depends_on)}},
         )
 
-    return Job(
-        name=name,
+    return JobPlan(
+        job_title=name,
         user_prompt="build the thing",
         tasks=[task("R"), task("B1a", "R"), task("B1b", "B1a"),
                task("B2", "R"), task("B3", "R")],
@@ -542,14 +543,14 @@ def make_fanout_job(name: str = "fanout-job") -> Job:
     )
 
 
-def planned_id_of(job: Job, task_id) -> str:
+def planned_id_of(job: JobPlan, task_id) -> str:
     for task in job.tasks:
-        if str(task.id) == str(task_id):
+        if str(task.task_id) == str(task_id):
             return task.inputs["flight"]["planned_id"]
     raise AssertionError(f"no task {task_id} in this job")
 
 
-def task_by_planned_id(job: Job, planned_id: str) -> Task:
+def task_by_planned_id(job: JobPlan, planned_id: str) -> TaskEntry:
     for task in job.tasks:
         if task.inputs.get("flight", {}).get("planned_id") == planned_id:
             return task
@@ -572,8 +573,8 @@ class EscalatingStep:
         self.executed: list[str] = []
         self.escalated: list[str] = []
 
-    def __call__(self, job: Job, provider_call, task_id=None) -> TaskAttempt:
-        task = (next((t for t in job.tasks if t.id == task_id), None)
+    def __call__(self, job: JobPlan, provider_call, task_id=None) -> TaskAttempt:
+        task = (next((t for t in job.tasks if t.task_id == task_id), None)
                 if task_id is not None
                 else next((t for t in job.tasks
                            if t.status == RunState.PENDING), None))
@@ -585,7 +586,7 @@ class EscalatingStep:
             self.escalate.discard(planned_id)     # asked once
             self.escalated.append(planned_id)
             return TaskAttempt(
-                task_id=task.id,
+                task_id=task.task_id,
                 needs_decision=True,
                 question=f"How should {planned_id} proceed?",
                 options=("fast", "safe"),
@@ -593,21 +594,21 @@ class EscalatingStep:
             )
 
         provider_call(TaskExecutionContext(
-            job_id=job.id, job_prompt=job.user_prompt, task_id=task.id,
+            job_id=str(job.job_id), job_prompt=job.user_prompt, task_id=str(task.task_id),
             task_type=task.inputs.get("task_type", "unknown"),
-            task_description=task.description))
+            task_description=task.title))
         self.executed.append(planned_id)
         task.status = RunState.COMPLETED
         if all(t.status == RunState.COMPLETED for t in job.tasks):
             job.state = RunState.COMPLETED
         if self.on_execute is not None:
             self.on_execute(job, planned_id)
-        return TaskAttempt(task_id=task.id, executed=True, verified=True)
+        return TaskAttempt(task_id=task.task_id, executed=True, verified=True)
 
 
 def run_fanout(control_root: Path, step: EscalatingStep, *,
                batch_size: int = 1, max_cycles: int = 10,
-               unattended: bool = False, job: Job | None = None,
+               unattended: bool = False, job: JobPlan | None = None,
                log=None):
     job = job if job is not None else make_fanout_job()
     result = run_cycles(
@@ -641,7 +642,7 @@ class TestThreeBranchFixture:
         assert task_by_planned_id(job, "B1a").status == RunState.PENDING
         assert task_by_planned_id(job, "B1b").status == RunState.PENDING
         assert awaiting_downstream_tasks(job, awaiting_decision_task_ids(job)) == [
-            task_by_planned_id(job, "B1b").id]
+            task_by_planned_id(job, "B1b").task_id]
 
     def test_exactly_one_open_decision_is_listed(self, control_root):
         job, result = run_fanout(control_root, EscalatingStep("B1a"))
@@ -680,18 +681,18 @@ class TestThreeBranchFixture:
         # The acceptance path exactly as a human walks it: the command the
         # status view printed, then a resume.  No new CLI, no new queue.
         from apps.cli.commands.decision import _cmd_decision_resolve
-        from packages.orchestration.storage import load_job, save_job
+        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
         step = EscalatingStep("B1a")
         job, first = run_fanout(control_root, step)
-        save_job(job)
+        save_job_plan(job)
         decision_id = first.open_decision_ids[0]
 
-        _cmd_decision_resolve(str(job.id), decision_id, reason="fast")
+        _cmd_decision_resolve(str(job.job_id), decision_id, reason="fast")
         out = capsys.readouterr().out
 
         assert f"Answered {decision_id}" in out and "fast" in out
-        reloaded = load_job(job.id)
+        reloaded = load_job_plan(job.job_id)
         assert open_task_decisions(reloaded) == []
         assert answered_task_decisions(reloaded)[0]["answer"] == "fast"
         assert answered_task_decisions(reloaded)[0]["answer_source"] == (
@@ -705,17 +706,17 @@ class TestThreeBranchFixture:
 
     def test_the_cli_refuses_to_overwrite_an_answer(self, control_root, capsys):
         from apps.cli.commands.decision import _cmd_decision_resolve
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         step = EscalatingStep("B1a")
         job, first = run_fanout(control_root, step)
-        save_job(job)
+        save_job_plan(job)
         decision_id = first.open_decision_ids[0]
 
-        _cmd_decision_resolve(str(job.id), decision_id, reason="fast")
+        _cmd_decision_resolve(str(job.job_id), decision_id, reason="fast")
         capsys.readouterr()
         with pytest.raises(SystemExit) as exit_info:
-            _cmd_decision_resolve(str(job.id), decision_id, reason="safe")
+            _cmd_decision_resolve(str(job.job_id), decision_id, reason="safe")
 
         assert exit_info.value.code == 1
         assert "already answered" in capsys.readouterr().err
@@ -723,14 +724,14 @@ class TestThreeBranchFixture:
     def test_the_cli_refuses_an_empty_answer_without_a_default(
             self, control_root, capsys):
         from apps.cli.commands.decision import _cmd_decision_resolve
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         step = EscalatingStep("B1a", safe_default="")
         job, first = run_fanout(control_root, step)
-        save_job(job)
+        save_job_plan(job)
 
         with pytest.raises(SystemExit) as exit_info:
-            _cmd_decision_resolve(str(job.id), first.open_decision_ids[0], reason="")
+            _cmd_decision_resolve(str(job.job_id), first.open_decision_ids[0], reason="")
 
         assert exit_info.value.code == 1
         assert "--reason carries the answer" in capsys.readouterr().err
@@ -749,9 +750,9 @@ class TestThreeBranchFixture:
 
         # From the cycle that raised it onwards, every record names the branch.
         naming = [c for c in result.cycles
-                  if str(awaiting_task.id) in c.awaiting_task_ids]
+                  if str(awaiting_task.task_id) in c.awaiting_task_ids]
         assert naming, "no cycle record named the awaiting task"
-        assert str(task_by_planned_id(job, "B1b").id) in (
+        assert str(task_by_planned_id(job, "B1b").task_id) in (
             naming[-1].awaiting_downstream_task_ids)
         raised = [c for c in result.cycles if c.open_decision_ids]
         assert len(raised) == 1
@@ -770,7 +771,7 @@ class TestThreeBranchFixture:
         assert raised[0]["question"] == "How should B1a proceed?"
 
 
-def step_order(job: Job, result) -> list[str]:
+def step_order(job: JobPlan, result) -> list[str]:
     """Planned ids this run executed, in execution order, from the records."""
     return [planned_id_of(job, task_id)
             for cycle in result.cycles for task_id in cycle.executed_task_ids]
@@ -795,7 +796,7 @@ class TestContinuationAndPickup:
         # next batch boundary of THIS run must release branch 1.
         answered: list[str] = []
 
-        def answer_when_b2_runs(job: Job, planned_id: str) -> None:
+        def answer_when_b2_runs(job: JobPlan, planned_id: str) -> None:
             if planned_id != "B2" or answered:
                 return
             open_now = open_task_decisions(job)
@@ -840,7 +841,7 @@ class TestContinuationAndPickup:
         # And the moment it is answered, the branch is ready again.
         answer_task_decision(job, result.open_decision_ids[0], answer="fast", now=T1)
         assert ready_tasks(job, 10, awaiting_ids=awaiting_decision_task_ids(job)) == [
-            task_by_planned_id(job, "B1a").id]
+            task_by_planned_id(job, "B1a").task_id]
 
     def test_the_checkpoint_never_names_an_awaiting_task_as_the_next_intent(
             self, control_root, isolate_data_root):
@@ -858,16 +859,16 @@ class TestContinuationAndPickup:
             task_step=step, verify=passing_verify, clock=FakeClock(),
             save=no_save, control_root_path=control_root,
         )
-        awaiting_task_id = str(task_by_planned_id(job, "B1a").id)
+        awaiting_task_id = str(task_by_planned_id(job, "B1a").task_id)
         escalating_cycle = next(c.cycle_index for c in result.cycles
                                 if c.tasks_escalated)
 
-        assert checkpoint_paths(str(job.id)), "the run wrote no checkpoint"
+        assert checkpoint_paths(str(job.job_id)), "the run wrote no checkpoint"
         # From the escalating cycle onwards, no checkpoint may point a resume at
         # the awaiting task.  Earlier ones legitimately name it: at that point
         # the question had not been raised yet.
         checked = 0
-        for path in checkpoint_paths(str(job.id)):
+        for path in checkpoint_paths(str(job.job_id)):
             checkpoint = read_checkpoint(path)
             assert checkpoint is not None
             if checkpoint.cycle_index < escalating_cycle:
@@ -875,7 +876,7 @@ class TestContinuationAndPickup:
             checked += 1
             assert checkpoint.next_intent.get("task_id", "") != awaiting_task_id
         assert checked >= 1
-        latest = load_latest_valid(str(job.id))
+        latest = load_latest_valid(str(job.job_id))
         assert latest is not None
         assert latest.next_intent.get("kind") == INTENT_NONE
         assert result.terminal_status == TERMINAL_BLOCKED
@@ -959,14 +960,14 @@ class TestUnattendedRunLoopCliFlag:
 
     ``run_cycles(unattended=…)`` existed with no CLI call site passing it, so the
     A9 rule ("defaults auto-apply only under --yes/unattended") was unreachable.
-    These drive the real ``remedy job run`` handler.
+    These drive the real ``remedy job resume`` handler.
     """
 
     @pytest.fixture
     def cli_job(self, monkeypatch):
         """A saved 2-task job with the cycle loop reachable and a fake builder."""
         import packages.orchestration.long_run_executor as lre
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.providers.ollama_builder import provider as provider_mod
 
         class FakeBuilder:
@@ -977,34 +978,34 @@ class TestUnattendedRunLoopCliFlag:
 
         # The F046 rollout cap collapses every run to the single pass; the loop
         # itself is what F051 hangs off, so the cap is lifted for these tests
-        # exactly as the existing job.run multi-cycle test does.
+        # exactly as the existing job.resume multi-cycle test does.
         monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 5)
         monkeypatch.setattr(provider_mod, "OllamaBuilder", FakeBuilder)
         monkeypatch.setattr(lre, "default_task_step",
                             EscalatingStep("T0", safe_default="safe"))
 
-        job = Job(
-            name="cli-unattended-job",
+        job = JobPlan(
+            job_title="cli-unattended-job",
             user_prompt="build the thing",
-            tasks=[Task(description=f"task {i}",
+            tasks=[TaskEntry(title=f"task {i}",
                         inputs={"task_type": "documentation",
                                 "flight": {"planned_id": f"T{i}", "title": f"T{i}",
                                            "depends_on": ([f"T{i - 1}"] if i else [])}})
                    for i in range(2)],
             state=RunState.PLANNED,
         )
-        save_job(job)
+        save_job_plan(job)
         return job
 
     def test_the_flag_auto_answers_a_safe_default_and_the_run_continues(
             self, cli_job, monkeypatch, capsys):
         from apps.cli.commands import job as job_cmd
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
-        job_cmd._cmd_job_run_cycles(str(cli_job.id), cycles=3, unattended=True)
+        job_cmd._cmd_job_run_cycles(str(cli_job.job_id), cycles=3, unattended=True)
         out = capsys.readouterr().out
 
-        stored = load_job(cli_job.id)
+        stored = load_job_plan(cli_job.job_id)
         answered = answered_task_decisions(stored)
         assert len(answered) == 1
         assert answered[0]["answer"] == "safe"
@@ -1017,14 +1018,14 @@ class TestUnattendedRunLoopCliFlag:
     def test_without_the_flag_the_same_fixture_leaves_the_decision_open(
             self, cli_job, monkeypatch, capsys):
         from apps.cli.commands import job as job_cmd
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
         with pytest.raises(SystemExit) as exit_info:
-            job_cmd._cmd_job_run_cycles(str(cli_job.id), cycles=3, yes=True)
+            job_cmd._cmd_job_run_cycles(str(cli_job.job_id), cycles=3, yes=True)
         out = capsys.readouterr().out
 
         assert exit_info.value.code == 1          # blocked is a non-zero exit
-        stored = load_job(cli_job.id)
+        stored = load_job_plan(cli_job.job_id)
         assert len(open_task_decisions(stored)) == 1
         assert open_task_decisions(stored)[0]["safe_default"] == "safe"
         assert answered_task_decisions(stored) == []
@@ -1033,7 +1034,7 @@ class TestUnattendedRunLoopCliFlag:
     def test_the_flag_is_registered_in_the_catalog(self):
         from apps.cli.command_catalog import CATALOG
 
-        entry = next(c for c in CATALOG if c.command_id == "job.run")
+        entry = next(c for c in CATALOG if c.command_id == "job.resume")
         flag = next(a for a in entry.args if a.name == "--unattended")
 
         assert flag.is_option and flag.is_flag and not flag.required
@@ -1045,7 +1046,7 @@ class TestUnattendedRunLoopCliFlag:
         from apps.cli.commands import job as job_cmd
 
         seen: dict = {}
-        monkeypatch.setattr(job_cmd, "_cmd_job_run_cycles",
+        monkeypatch.setattr(job_cmd, "_cmd_job_resume",
                             lambda job_id, **kw: seen.update(kw))
 
         class Args:
@@ -1054,7 +1055,7 @@ class TestUnattendedRunLoopCliFlag:
             unattended = True
             json = False
 
-        job_cmd.COMMAND_HANDLERS["job.run"](Args())
+        job_cmd.COMMAND_HANDLERS["job.resume"](Args())
 
         assert seen["unattended"] is True
 
@@ -1063,7 +1064,7 @@ class TestUnattendedRunLoopCliFlag:
         from apps.cli.commands import job as job_cmd
 
         seen: dict = {}
-        monkeypatch.setattr(job_cmd, "_cmd_job_run_cycles",
+        monkeypatch.setattr(job_cmd, "_cmd_job_resume",
                             lambda job_id, **kw: seen.update(kw))
 
         class OldArgs:
@@ -1071,7 +1072,7 @@ class TestUnattendedRunLoopCliFlag:
             cycles = None
             json = False
 
-        job_cmd.COMMAND_HANDLERS["job.run"](OldArgs())
+        job_cmd.COMMAND_HANDLERS["job.resume"](OldArgs())
 
         assert seen["unattended"] is False
 
@@ -1100,23 +1101,23 @@ class LinearStep:
     def __init__(self) -> None:
         self.executed: list[str] = []
 
-    def __call__(self, job: Job, provider_call) -> TaskAttempt:
+    def __call__(self, job: JobPlan, provider_call) -> TaskAttempt:
         task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
         if task is None:
             return TaskAttempt()
         provider_call(TaskExecutionContext(
-            job_id=job.id, job_prompt=job.user_prompt, task_id=task.id,
-            task_type="documentation", task_description=task.description))
-        self.executed.append(task.description)
+            job_id=str(job.job_id), job_prompt=job.user_prompt, task_id=str(task.task_id),
+            task_type="documentation", task_description=task.title))
+        self.executed.append(task.title)
         task.status = RunState.COMPLETED
         if all(t.status == RunState.COMPLETED for t in job.tasks):
             job.state = RunState.COMPLETED
-        return TaskAttempt(task_id=task.id, executed=True, verified=True)
+        return TaskAttempt(task_id=task.task_id, executed=True, verified=True)
 
 
 class TestJobPlanCompatibility:
     """DECISION F112 D4: enqueue_task_decision/auto_apply_safe_default must
-    work against a pingpong JobPlan/TaskEntry, not only Core Job/Task."""
+    work against a pingpong JobPlan/TaskEntry."""
 
     def test_auto_apply_safe_default_answers_and_records_on_a_job_plan_task(self):
         from packages.orchestration.pingpong_job import JobPlan, TaskEntry

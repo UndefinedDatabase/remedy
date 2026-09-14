@@ -15,9 +15,11 @@ from uuid import uuid4
 import pytest
 
 from apps.cli.commands.file import _cmd_file_why
-from packages.core.models import Artifact, ArtifactKind, Job, RunState
+from packages.core.models import Artifact, ArtifactKind, RunState
 from packages.orchestration.approval_queue import make_intent_id
+from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.permissions import Capability, set_permission
+from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.repository_snapshot import (
     DurableApplyRecord,
     create_snapshot,
@@ -30,7 +32,6 @@ from packages.orchestration.run_contract import (
     build_default_run_contract,
     save_contract,
 )
-from packages.orchestration.storage import save_job
 
 PATH = "src/foo.py"
 
@@ -46,7 +47,7 @@ def _build_job_with_apply(data_dir: Path, repo_root: Path, *, apply_state: str):
     target = repo_root / PATH
     target.write_text("before\n")
 
-    job_id = uuid4()
+    job_id = mint_job_id()
     art_id = uuid4()
     intent_id = make_intent_id(art_id, 0)
 
@@ -71,8 +72,8 @@ def _build_job_with_apply(data_dir: Path, repo_root: Path, *, apply_state: str):
             },
         },
     )
-    job = Job(
-        id=job_id, name="prov-job", user_prompt="t", state=RunState.RUNNING,
+    job = JobPlan(
+        job_id=job_id, job_title="prov-job", user_prompt="t", state=RunState.RUNNING,
         tasks=[], artifacts=[art], metadata={},
     )
     # Permission + contract so a real revert can run. Persist the job AFTER
@@ -86,7 +87,7 @@ def _build_job_with_apply(data_dir: Path, repo_root: Path, *, apply_state: str):
         denied_actions=tuple(a for a in contract.denied_actions if a != ContractAction.REVERT),
     )
     save_contract(job, contract)
-    save_job(job, root=data_dir)
+    save_job_plan(job, root=data_dir)
 
     rec = DurableApplyRecord(
         apply_id=intent_id, job_id=str(job_id), intent_id=intent_id,
@@ -117,7 +118,7 @@ def env(tmp_path, monkeypatch):
 def test_file_why_reflects_reverted_state(env, capsys):
     data_dir, repo_root = env
     job, _ = _build_job_with_apply(data_dir, repo_root, apply_state="reverted")
-    _cmd_file_why(str(job.id), PATH, json_output=False)
+    _cmd_file_why(str(job.job_id), PATH, json_output=False)
     out = capsys.readouterr().out
     assert "patch_apply" in out
     # Reverted apply is NOT currently applied.
@@ -128,7 +129,7 @@ def test_file_why_reflects_reverted_state(env, capsys):
 def test_file_why_applied_state(env, capsys):
     data_dir, repo_root = env
     job, _ = _build_job_with_apply(data_dir, repo_root, apply_state="applied")
-    _cmd_file_why(str(job.id), PATH, json_output=False)
+    _cmd_file_why(str(job.job_id), PATH, json_output=False)
     out = capsys.readouterr().out
     assert "status=applied" in out
 
@@ -136,7 +137,7 @@ def test_file_why_applied_state(env, capsys):
 def test_file_why_json_no_private_path_leak(env, capsys):
     data_dir, repo_root = env
     job, _ = _build_job_with_apply(data_dir, repo_root, apply_state="reverted")
-    _cmd_file_why(str(job.id), PATH, json_output=True)
+    _cmd_file_why(str(job.job_id), PATH, json_output=True)
     out = capsys.readouterr().out
     assert '"reverted"' in out
     assert str(data_dir) not in out

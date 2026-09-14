@@ -165,9 +165,9 @@ def run_do(
         max_loops: Max loops (1 for v1).
         stop_before_apply: Stop before apply (default True).
     """
-    from packages.core.models import Artifact, ArtifactKind, Job, Task
+    from packages.core.models import Artifact, ArtifactKind
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
     # --- Step 931: max_loops validation ---
     if max_loops < 1:
@@ -213,7 +213,7 @@ def run_do(
     repo_exists = repo.is_dir()
     result.repo_path_safe = repo.name if repo_exists else ""
 
-    job = Job(name=goal[:80], user_prompt=goal[:500], budgets=budgets, project_id=project_id)
+    job = JobPlan(job_title=goal[:80], user_prompt=goal[:500], budgets=budgets, project_id=project_id)
     if repo_exists:
         art = Artifact(
             name="repo-ref", content="",
@@ -238,10 +238,10 @@ def run_do(
         save_contract(job, contract)
     result._contract = contract
 
-    save_job(job)
-    result.job_id = str(job.id)
+    save_job_plan(job)
+    result.job_id = str(job.job_id)
 
-    _do_emit(data_dir, job.id, "do_run_initialized", {
+    _do_emit(data_dir, job.job_id, "do_run_initialized", {
         "goal_safe": goal[:200],
         "autonomy_level": contract.autonomy_level,
         "repo_exists": repo_exists,
@@ -249,7 +249,7 @@ def run_do(
 
     result.phases.append(DoRunPhase(
         phase="init", status="completed",
-        safe_summary=f"Job {str(job.id)[:8]} created",
+        safe_summary=f"Job {str(job.job_id)[:8]} created",
     ))
 
     # --- Phase: plan (Step 910) — contract check ---
@@ -258,16 +258,16 @@ def run_do(
         result.phases.append(plan_block)
         result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=plan_block.safe_summary)
         result.phases.append(DoRunPhase(phase="stop", status="stopped", safe_summary="Stopped: contract"))
-        _do_emit(data_dir, job.id, "do_run_stopped", {"reason": "contract_blocked_plan"})
+        _do_emit(data_dir, job.job_id, "do_run_stopped", {"reason": "contract_blocked_plan"})
         return result
 
-    task = Task(description=f"Implement: {goal[:200]}")
+    task = TaskEntry(title=f"Implement: {goal[:200]}")
     job.tasks = [task]
-    save_job(job)
-    result.task_id = str(task.id)
+    save_job_plan(job)
+    result.task_id = str(task.task_id)
 
-    _do_emit(data_dir, job.id, "do_run_planned", {
-        "task_id": str(task.id),
+    _do_emit(data_dir, job.job_id, "do_run_planned", {
+        "task_id": str(task.task_id),
         "task_count": 1,
     })
 
@@ -282,7 +282,7 @@ def run_do(
         result.phases.append(ctx_block)
         result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=ctx_block.safe_summary)
         result.phases.append(DoRunPhase(phase="stop", status="stopped", safe_summary="Stopped: contract"))
-        _do_emit(data_dir, job.id, "do_run_stopped", {"reason": "contract_blocked_context"})
+        _do_emit(data_dir, job.job_id, "do_run_stopped", {"reason": "contract_blocked_context"})
         return result
 
     context_phase = _run_context_phase(job, repo, data_dir, result)
@@ -302,7 +302,7 @@ def run_do(
             phase="stop", status="stopped",
             safe_summary=f"Stopped: {stop_reason}",
         ))
-        _do_emit(data_dir, job.id, "do_run_stopped", {
+        _do_emit(data_dir, job.job_id, "do_run_stopped", {
             "reason": stop_reason,
         })
         return result
@@ -313,7 +313,7 @@ def run_do(
         result.phases.append(build_block)
         result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=build_block.safe_summary)
         result.phases.append(DoRunPhase(phase="stop", status="stopped", safe_summary="Stopped: contract"))
-        _do_emit(data_dir, job.id, "do_run_stopped", {"reason": "contract_blocked_build"})
+        _do_emit(data_dir, job.job_id, "do_run_stopped", {"reason": "contract_blocked_build"})
         return result
 
     if contract.autonomy_level < 2:
@@ -333,13 +333,13 @@ def run_do(
             phase="stop", status="stopped",
             safe_summary="Stopped: autonomy too low for build",
         ))
-        _do_emit(data_dir, job.id, "do_run_stopped", {"reason": "autonomy_too_low"})
+        _do_emit(data_dir, job.job_id, "do_run_stopped", {"reason": "autonomy_too_low"})
         return result
 
     build_artifact = _run_build_phase(job, goal, repo, data_dir)
     result.artifact_ids.append(str(build_artifact.id))
 
-    _do_emit(data_dir, job.id, "do_run_built", {
+    _do_emit(data_dir, job.job_id, "do_run_built", {
         "artifact_id": str(build_artifact.id),
     })
 
@@ -354,13 +354,13 @@ def run_do(
         result.phases.append(pi_block)
         result.stop_reason = DoRunStopReason(reason="contract_blocked", detail=pi_block.safe_summary)
         result.phases.append(DoRunPhase(phase="stop", status="stopped", safe_summary="Stopped: contract"))
-        _do_emit(data_dir, job.id, "do_run_stopped", {"reason": "contract_blocked_patch_intent"})
+        _do_emit(data_dir, job.job_id, "do_run_stopped", {"reason": "contract_blocked_patch_intent"})
         return result
 
     intent_id = _run_patch_intent_phase(job, build_artifact, data_dir)
     if intent_id:
         result.patch_intent_id = intent_id
-        _do_emit(data_dir, job.id, "do_run_patch_intent_created", {
+        _do_emit(data_dir, job.job_id, "do_run_patch_intent_created", {
             "intent_id": intent_id,
         })
         result.phases.append(DoRunPhase(
@@ -408,7 +408,7 @@ def run_do(
         phase="stop", status="stopped",
         safe_summary=f"Stopped: {result.stop_reason.reason}",
     ))
-    _do_emit(data_dir, job.id, "do_run_stopped", {
+    _do_emit(data_dir, job.job_id, "do_run_stopped", {
         "reason": result.stop_reason.reason,
     })
 
@@ -418,13 +418,13 @@ def run_do(
     save_usage(job, usage)
 
     # Emit contract decision event
-    _do_emit(data_dir, job.id, "contract_decision", {
+    _do_emit(data_dir, job.job_id, "contract_decision", {
         "action": "do_run_complete",
         "loops_used": usage.loops_used,
         "contract_id": contract.contract_id,
     })
 
-    save_job(job)
+    save_job_plan(job)
     return result
 
 
@@ -444,7 +444,7 @@ def _run_context_phase(
         )
         from packages.orchestration.timeline import load_run_events
 
-        events = load_run_events(data_dir, job.id)
+        events = load_run_events(data_dir, job.job_id)
         inspection = inspect_context(
             job, events,
             task_id=result.task_id or None,
@@ -457,7 +457,7 @@ def _run_context_phase(
             f"~{inspection.budget.estimated_total_tokens} tokens"
         )
 
-        _do_emit(data_dir, job.id, "do_run_context_inspected", {
+        _do_emit(data_dir, job.job_id, "do_run_context_inspected", {
             "readiness": inspection.readiness.status,
             "file_count": inspection.budget.file_count,
             "estimated_tokens": inspection.budget.estimated_total_tokens,
@@ -494,13 +494,13 @@ def _run_build_phase(job: Any, goal: str, repo: Path, data_dir: Path) -> Any:
         name="fixture-build-output",
         content=safe_summary,
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=job.tasks[0].id if job.tasks else None,
+        task_id=str(job.tasks[0].task_id) if job.tasks else None,
         metadata={"fixture": True, "safe_summary": safe_summary},
     )
     job.artifacts.append(artifact)
 
-    from packages.orchestration.storage import save_job
-    save_job(job)
+    from packages.orchestration.pingpong_job import save_job_plan
+    save_job_plan(job)
     return artifact
 
 
@@ -522,8 +522,8 @@ def _run_patch_intent_phase(job: Any, artifact: Any, data_dir: Path) -> str:
     ]
     artifact.metadata["patch_intent_approvals"] = {}
 
-    from packages.orchestration.storage import save_job
-    save_job(job)
+    from packages.orchestration.pingpong_job import save_job_plan
+    save_job_plan(job)
     return intent_id
 
 
@@ -536,7 +536,7 @@ def _run_proof_phase(job: Any, data_dir: Path, result: DoRunResult) -> DoRunPhas
         )
         from packages.orchestration.timeline import load_run_events
 
-        events = load_run_events(data_dir, job.id)
+        events = load_run_events(data_dir, job.job_id)
         chain = build_proof_chain(job, events)
         result.proof_status = chain.summary_status
 

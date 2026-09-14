@@ -1,29 +1,33 @@
 """Self-Dogfood Execution v0 tests (Steps 1448/1449/1450/1452).
 
-Eligibility, branch/main safety, state machine, idempotency, redaction, architecture
-guards, and the simulated end-to-end self-improvement flow (execute → intake →
-reconcile → approve → do continue → completed). No real provider / git / main mutation.
+Eligibility, branch/main safety, state machine, idempotency, redaction and architecture
+guards. No real provider / git / main mutation.
+
+Remedy deliberately has no end-to-end flow test here any more: F275 T001 deleted the
+Provider Trust Gate and its `provider intake-repair` command, so nothing can move an
+attempt past `awaiting_external_candidate` and the round trip the old test drove no
+longer exists (R-0866).
 """
 from __future__ import annotations
 
 import dataclasses
-import json
 import subprocess
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, Task
+from packages.core.models import Artifact, ArtifactKind
 from packages.orchestration import self_dogfood as SD
 from packages.orchestration import self_dogfood_execution as SE
+from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.proposed_tasks import (
     ProposedTaskStatus,
     load_proposed_tasks,
     save_proposed_tasks,
     transition_status,
 )
-from packages.orchestration.storage import load_job, save_job
 
 
 @pytest.fixture()
@@ -40,20 +44,20 @@ def env(tmp_path, monkeypatch):
 
 
 def _approved_task(data_dir, *, failure=True, repo="."):
-    t = Task(description="t")
+    t = TaskEntry(title="t")
     arts = []
     if failure:
-        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=t.id,
+        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.task_id),
                       metadata={"test_failure": True, "failure_kind": "test_failed",
-                                "related_task_id": str(t.id), "related_files": ["docs/guide.md"],
+                                "related_task_id": str(t.task_id), "related_files": ["docs/guide.md"],
                                 "safe_summary": "doc gap"})
         arts.append(fa)
-    job = Job(id=uuid4(), name="ov", tasks=[t], artifacts=arts, metadata={"target_repo": repo})
-    save_job(job, root=data_dir)
-    SD.propose_self_improvement(str(job.id), top=1, data_dir=data_dir)
-    tasks = load_proposed_tasks(str(job.id), data_dir)
+    job = JobPlan(job_id=mint_job_id(), job_title="ov", tasks=[t], artifacts=arts, metadata={"target_repo": repo})
+    save_job_plan(job, root=data_dir)
+    SD.propose_self_improvement(str(job.job_id), top=1, data_dir=data_dir)
+    tasks = load_proposed_tasks(str(job.job_id), data_dir)
     transition_status(tasks[0], ProposedTaskStatus.APPROVED_FOR_BUILD, by="human")
-    save_proposed_tasks(str(job.id), tasks, data_dir)
+    save_proposed_tasks(str(job.job_id), tasks, data_dir)
     return job, tasks[0]
 
 
@@ -65,7 +69,7 @@ def _approved_task(data_dir, *, failure=True, repo="."):
 class TestEligibility:
     def test_approved_self_task_eligible(self, env):
         job, pt = _approved_task(env)
-        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.id), env)
+        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.job_id), env)
         assert e.eligible and e.item_fingerprint
 
     def test_missing_task(self, env):
@@ -74,29 +78,22 @@ class TestEligibility:
 
     def test_unapproved_blocks(self, env):
         job, _ = _approved_task(env)
-        SD.propose_self_improvement(str(job.id), top=2, data_dir=env)
-        tasks = load_proposed_tasks(str(job.id), env)
+        SD.propose_self_improvement(str(job.job_id), top=2, data_dir=env)
+        tasks = load_proposed_tasks(str(job.job_id), env)
         unapproved = next(t for t in tasks if t.status == ProposedTaskStatus.PROPOSED)
-        e = SE.evaluate_self_execution_eligibility(unapproved.id, str(job.id), env)
+        e = SE.evaluate_self_execution_eligibility(unapproved.id, str(job.job_id), env)
         assert not e.eligible and e.stop_reason == SE.StopReason.NOT_APPROVED
-
-    def test_pending_review_blocks(self, env, monkeypatch):
-        ad = Path(__import__("os").environ["REMEDY_AGENT_DIR"])
-        (ad / "live_review.md").write_text("## Verdict\nPENDING\n")
-        job, pt = _approved_task(env)
-        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.id), env)
-        assert not e.eligible and e.stop_reason == SE.StopReason.REVIEW_FINDINGS_OPEN
 
     def test_main_branch_blocks(self, env, monkeypatch):
         monkeypatch.setattr(SE, "current_branch", lambda: "main")
         job, pt = _approved_task(env)
-        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.id), env)
+        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.job_id), env)
         assert not e.eligible and e.stop_reason == SE.StopReason.MAIN_BRANCH_UNSAFE
 
     def test_unknown_branch_blocks(self, env, monkeypatch):
         monkeypatch.setattr(SE, "current_branch", lambda: "")
         job, pt = _approved_task(env)
-        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.id), env)
+        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.job_id), env)
         assert not e.eligible and e.stop_reason == SE.StopReason.MAIN_BRANCH_UNSAFE
 
     def test_contract_blocked(self, env):
@@ -109,8 +106,8 @@ class TestEligibility:
         c = build_default_run_contract(job)
         c = dataclasses.replace(c, allowed_actions=tuple(
             a for a in c.allowed_actions if a != ContractAction.SELF_EXECUTE_PREPARE))
-        save_contract(job, c); save_job(job, root=env)
-        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.id), env)
+        save_contract(job, c); save_job_plan(job, root=env)
+        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.job_id), env)
         assert not e.eligible and e.stop_reason == SE.StopReason.CONTRACT_BLOCKED
 
 
@@ -122,22 +119,22 @@ class TestEligibility:
 class TestStartAndIdempotency:
     def test_execute_awaits_candidate(self, env):
         job, pt = _approved_task(env)
-        r = SE.start_self_execution(pt.id, str(job.id), env)
+        r = SE.start_self_execution(pt.id, str(job.job_id), env)
         assert r.state == SE.AttemptState.AWAITING_EXTERNAL_CANDIDATE
         assert r.request_package_id
-        assert r.next_safe_action.startswith(f"remedy provider intake-repair {job.id}")
+        assert r.next_safe_action == "remedy self status --json"
 
     def test_execute_idempotent_resume(self, env):
         job, pt = _approved_task(env)
-        r1 = SE.start_self_execution(pt.id, str(job.id), env)
-        r2 = SE.start_self_execution(pt.id, str(job.id), env)
+        r1 = SE.start_self_execution(pt.id, str(job.job_id), env)
+        r2 = SE.start_self_execution(pt.id, str(job.job_id), env)
         assert r1.attempt_id == r2.attempt_id
         assert len(SE.list_attempts(env)) == 1
 
     def test_main_blocks_start(self, env, monkeypatch):
         monkeypatch.setattr(SE, "current_branch", lambda: "main")
         job, pt = _approved_task(env)
-        r = SE.start_self_execution(pt.id, str(job.id), env)
+        r = SE.start_self_execution(pt.id, str(job.job_id), env)
         assert r.state == SE.AttemptState.BLOCKED
         assert r.stop_reason == SE.StopReason.MAIN_BRANCH_UNSAFE
         assert SE.list_attempts(env) == []
@@ -154,78 +151,9 @@ class TestStartAndIdempotency:
 
 
 class TestEndToEnd:
-    def test_full_self_improvement_flow(self, env, monkeypatch, tmp_path):
-        import packages.orchestration.test_execution_service as tes
-        from packages.orchestration import do_continue as dc
-        from packages.orchestration import provider_trust as PT
-        from packages.orchestration.approval_queue import set_approval_state
-        from packages.orchestration.permissions import Capability, set_permission
-        from packages.orchestration.run_contract import (
-            ContractAction,
-            build_default_run_contract,
-            save_contract,
-        )
-        from tests.orchestration.test_do_continue import _fake_test
-
-        repo = tmp_path / "repo"; (repo / "docs").mkdir(parents=True)
-        (repo / "docs" / "guide.md").write_text("line one\nline two\n")
-        job, pt = _approved_task(env, repo=str(repo.resolve()))
-        # Enable apply via do continue.
-        c = build_default_run_contract(job)
-        c = dataclasses.replace(
-            c, allowed_actions=tuple(list(c.allowed_actions) + [ContractAction.PATCH_APPLY]),
-            denied_actions=tuple(a for a in c.denied_actions if a != ContractAction.PATCH_APPLY),
-            stop_before_apply=False, max_test_runs=1)
-        save_contract(job, c)
-        set_permission(job, Capability.repo_generated_write, allow=True)
-        set_permission(job, Capability.repo_test_run, allow=True)
-        save_job(job, root=env)
-
-        r = SE.start_self_execution(pt.id, str(job.id), env)
-        assert r.state == SE.AttemptState.AWAITING_EXTERNAL_CANDIDATE
-
-        cand = ("Doc fix.\n```diff\n--- a/docs/guide.md\n+++ b/docs/guide.md\n"
-                "@@ -1,2 +1,3 @@\n line one\n+self improvement line\n line two\n```\n")
-        cf = env / "resp.md"; cf.write_text(cand)
-        ir = PT.intake_provider_repair(
-            PT.ProviderOutputIntakeRequest(
-                job_id=str(job.id), provider_name=SE._self_provider_label(r.attempt_id)),
-            input_path=str(cf), data_dir=env)
-        assert ir.trust_status == PT.TrustStatus.ACCEPTED and ir.repair_intent_id
-
-        rec = SE.reconcile_self_attempt(r.attempt_id, env)
-        assert rec.state == SE.AttemptState.INTENT_PENDING_APPROVAL
-        assert rec.patch_intent_id == ir.repair_intent_id
-
-        job = load_job(UUID(str(job.id)), env)
-        set_approval_state(job, rec.patch_intent_id, "approved", decided_by="human")
-        save_job(job, root=env)
-        fn, _ = _fake_test(env, status="passed")
-        monkeypatch.setattr(tes, "execute_test_run", fn)
-        dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id), intent_id=rec.patch_intent_id), env)
-
-        rec2 = SE.reconcile_self_attempt(r.attempt_id, env)
-        assert rec2.state == SE.AttemptState.COMPLETED
-        assert rec2.proof_status == "verified"
-        assert "self improvement line" in (repo / "docs" / "guide.md").read_text()
-
-    def test_reconcile_does_not_mislink_foreign_intent(self, env):
-        # R-0084: a trust report from a DIFFERENT provider label must not be linked
-        # to this attempt (no false completion).
-        job, pt = _approved_task(env)
-        r = SE.start_self_execution(pt.id, str(job.id), env)
-        # Inject an accepted trust report with a non-matching provider label.
-        reloaded = load_job(UUID(str(job.id)), env)
-        from packages.orchestration.provider_trust import ProviderTrustReport, save_trust_report
-        rep = ProviderTrustReport(
-            report_id="rogue", job_id=str(job.id), quarantine_id="q",
-            provider_name="someone_else", trust_status="accepted",
-            repair_intent_id="rogue-intent-0", received_at=SE._now())
-        save_trust_report(reloaded, rep)
-        save_job(reloaded, root=env)
-        rec = SE.reconcile_self_attempt(r.attempt_id, env)
-        assert not rec.patch_intent_id  # foreign intent NOT linked
-        assert rec.state == SE.AttemptState.AWAITING_EXTERNAL_CANDIDATE
+    # R-0084's mislink guard (`test_reconcile_does_not_mislink_foreign_intent`) is gone
+    # with F275 T001: reconcile no longer links anything, so the property is held BY
+    # CONSTRUCTION rather than by a test. See R-0866.
 
     def test_reconcile_idempotent_after_completed(self, env, monkeypatch, tmp_path):
         # Re-running reconcile on a completed attempt is stable (no double work).
@@ -236,36 +164,6 @@ class TestEndToEnd:
         SE.save_attempt(a, env)
         r = SE.reconcile_self_attempt("done1", env)
         assert r.state == SE.AttemptState.COMPLETED
-
-
-# ---------------------------------------------------------------------------
-# Redaction (Step 1449)
-# ---------------------------------------------------------------------------
-
-
-class TestRedaction:
-    def test_no_raw_leak(self, env):
-        ad = Path(__import__("os").environ["REMEDY_AGENT_DIR"])
-        (ad / "live_review.md").write_text(
-            "## Verdict\nPASS\nleak sk-abcdef0123456789abcd at /home/u/.ssh/id_rsa\n"
-            "Traceback (most recent call last)\n")
-        job, pt = _approved_task(env)
-        r = SE.start_self_execution(pt.id, str(job.id), env)
-        reloaded = load_job(UUID(str(job.id)), env)
-        from packages.orchestration.review_bundle import _build_self_execution_summary
-        from packages.orchestration.ui_server import _build_self_execution_section
-        blobs = [
-            json.dumps(SE.export_result_json(r)),
-            json.dumps(SE.get_attempt(r.attempt_id, env)),
-            json.dumps(_build_self_execution_summary(reloaded)),
-            json.dumps(_build_self_execution_section(reloaded)),
-            (env / "self_dogfood" / "attempts" / r.attempt_id / "request.md").read_text(),
-        ]
-        for b in blobs:
-            assert "sk-abcdef0123456789abcd" not in b
-            assert "/home/" not in b
-            assert "id_rsa" not in b
-            assert "Traceback" not in b
 
 
 # ---------------------------------------------------------------------------
@@ -309,12 +207,16 @@ class TestArchitectureGuards:
         assert "gh pr" not in self.SRC.lower()
 
     def test_next_actions_catalog_backed(self, env):
+        # The command the ATTEMPT ITSELF reports must resolve in the shipped catalog —
+        # not a string this test supplies, which is what it used to assert.
         from packages.orchestration.do_run import validate_next_safe_action_command
         job, pt = _approved_task(env)
-        r = SE.start_self_execution(pt.id, str(job.id), env)
-        # intake command is catalog-backed (strip placeholder args).
-        assert validate_next_safe_action_command(
-            f"remedy provider intake-repair {job.id} --json")
+        r = SE.start_self_execution(pt.id, str(job.job_id), env)
+        assert r.next_safe_action
+        assert validate_next_safe_action_command(r.next_safe_action)
+        rec = SE.reconcile_self_attempt(r.attempt_id, env)
+        assert rec.next_safe_action
+        assert validate_next_safe_action_command(rec.next_safe_action)
 
 
 # ---------------------------------------------------------------------------

@@ -7,15 +7,15 @@ Job.tasks/creates PRs.
 from __future__ import annotations
 
 import dataclasses
-import json
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, Task
+from packages.core.models import Artifact, ArtifactKind
 from packages.orchestration import self_dogfood as SD
-from packages.orchestration.storage import load_job, save_job
+from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 
 @pytest.fixture()
@@ -30,16 +30,22 @@ def env(tmp_path, monkeypatch):
     return d, ad
 
 
-def _job(data_dir, *, failure=True):
-    t = Task(description="t")
+def _job(data_dir, *, failure=True, failures=1):
+    """A job carrying ``failures`` unresolved failure artifacts (none when ``failure`` is false).
+
+    Each unresolved failure yields one HIGH ``EVIDENCE_GAP`` item, so the count is how a
+    test asks for one high-priority item or for several.
+    """
+    t = TaskEntry(title="t")
     arts = []
     if failure:
-        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=t.id,
-                      metadata={"test_failure": True, "failure_kind": "test_failed",
-                                "related_task_id": str(t.id), "safe_summary": "boom"})
-        arts.append(fa)
-    job = Job(id=uuid4(), name="ov", tasks=[t], artifacts=arts, metadata={"target_repo": "."})
-    save_job(job, root=data_dir)
+        for n in range(failures):
+            fa = Artifact(name=f"tf{n}", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.task_id),
+                          metadata={"test_failure": True, "failure_kind": "test_failed",
+                                    "related_task_id": str(t.task_id), "safe_summary": "boom"})
+            arts.append(fa)
+    job = JobPlan(job_id=mint_job_id(), job_title="ov", tasks=[t], artifacts=arts, metadata={"target_repo": "."})
+    save_job_plan(job, root=data_dir)
     return job
 
 
@@ -55,25 +61,10 @@ class TestInspection:
         assert insp.repository_identity
         assert any(s.name == ".agent/live_review.md" for s in insp.sources_checked)
 
-    def test_pending_review_is_blocker(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text("## Verdict\nPENDING\n")
-        insp = SD.build_self_dogfood_inspection(data_dir=d)
-        assert "review_verdict_not_pass" in insp.blockers
-        assert any(i.item_type == SD.ItemType.SAFETY_GAP and i.priority == SD.Priority.BLOCKER
-                   for i in insp.items)
-
-    def test_open_blocker_finding(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text(
-            "## Verdict\nPASS\n\n### R-1: x\n- **Status**: Open\n- **Severity**: High\n")
-        insp = SD.build_self_dogfood_inspection(data_dir=d)
-        assert "open_blocker_or_high_findings" in insp.blockers
-
     def test_evidence_gap_failure_without_repair(self, env):
         d, _ = env
         job = _job(d, failure=True)
-        insp = SD.build_self_dogfood_inspection(str(job.id), d)
+        insp = SD.build_self_dogfood_inspection(str(job.job_id), d)
         assert any("Unresolved failure has no repair attempt" == i.title for i in insp.items)
 
     def test_roadmap_items_cite_evidence(self, env):
@@ -100,40 +91,40 @@ class TestPlanAndPropose:
     def test_plan_groups_and_top3(self, env):
         d, _ = env
         job = _job(d)
-        plan = SD.build_self_improvement_plan(str(job.id), d)
+        plan = SD.build_self_improvement_plan(str(job.job_id), d)
         assert plan.item_count >= 1
         assert len(plan.recommended) <= 3
 
     def test_propose_ambiguous_requires_selection(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text("## Verdict\nPENDING\n\n### R-1: x\n- **Status**: Open\n- **Severity**: High\n")
-        job = _job(d)
-        r = SD.propose_self_improvement(str(job.id), data_dir=d)
+        # Two unresolved failures → two HIGH evidence-gap items → no single obvious pick.
+        d, _ = env
+        job = _job(d, failures=2)
+        r = SD.propose_self_improvement(str(job.job_id), data_dir=d)
         assert r.stop_reason == "ambiguous_selection"
         assert not r.proposed_task_ids
 
     def test_propose_top_creates_tasks(self, env):
         d, _ = env
         job = _job(d)
-        r = SD.propose_self_improvement(str(job.id), top=2, data_dir=d)
+        r = SD.propose_self_improvement(str(job.job_id), top=2, data_dir=d)
         assert r.stop_reason == "ok"
         assert len(r.proposed_task_ids) == 2
 
     def test_propose_idempotent(self, env):
         d, _ = env
         job = _job(d)
-        SD.propose_self_improvement(str(job.id), top=2, data_dir=d)
-        r2 = SD.propose_self_improvement(str(job.id), top=2, data_dir=d)
+        SD.propose_self_improvement(str(job.job_id), top=2, data_dir=d)
+        r2 = SD.propose_self_improvement(str(job.job_id), top=2, data_dir=d)
         assert not r2.proposed_task_ids and len(r2.skipped_existing) == 2
         from packages.orchestration.proposed_tasks import load_proposed_tasks
-        assert len(load_proposed_tasks(str(job.id), d)) == 2
+        assert len(load_proposed_tasks(str(job.job_id), d)) == 2
 
     def test_proposed_task_origin_and_type(self, env):
         d, _ = env
         job = _job(d)
-        SD.propose_self_improvement(str(job.id), top=1, data_dir=d)
+        SD.propose_self_improvement(str(job.job_id), top=1, data_dir=d)
         from packages.orchestration.proposed_tasks import load_proposed_tasks
-        t = load_proposed_tasks(str(job.id), d)[0]
+        t = load_proposed_tasks(str(job.job_id), d)[0]
         assert t.task_type == "self_dogfood"
         assert t.origin_recommendation_id.startswith("self_dogfood:")
         assert t.materialized_task_id == ""  # not materialized into Job.tasks
@@ -154,42 +145,10 @@ class TestPlanAndPropose:
         c = build_default_run_contract(job)
         c = dataclasses.replace(c, allowed_actions=tuple(
             a for a in c.allowed_actions if a != ContractAction.SELF_PROPOSE_TASK))
-        save_contract(job, c); save_job(job, root=d)
-        r = SD.propose_self_improvement(str(job.id), top=1, data_dir=d)
+        save_contract(job, c); save_job_plan(job, root=d)
+        r = SD.propose_self_improvement(str(job.job_id), top=1, data_dir=d)
         assert r.stop_reason == "contract_blocked"
         assert not r.proposed_task_ids
-
-
-# ---------------------------------------------------------------------------
-# Redaction (Step 1421)
-# ---------------------------------------------------------------------------
-
-
-class TestRedaction:
-    def test_no_raw_leak(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text(
-            "## Verdict\nPASS\nleak token sk-abcdef0123456789abcd at /home/u/.ssh/id_rsa\n"
-            "Traceback (most recent call last)\n")
-        job = _job(d)
-        SD.propose_self_improvement(str(job.id), top=2, data_dir=d)
-        reloaded = load_job(UUID(str(job.id)), d)
-        from packages.orchestration.proposed_tasks import load_proposed_tasks
-        from packages.orchestration.review_bundle import _build_self_dogfood_summary
-        from packages.orchestration.ui_server import _build_self_dogfood_section
-        blobs = [
-            json.dumps(SD.export_inspection_json(SD.build_self_dogfood_inspection(str(job.id), d))),
-            json.dumps(SD.export_plan_json(SD.build_self_improvement_plan(str(job.id), d))),
-            SD.render_report_markdown(SD.build_self_dogfood_report(str(job.id), d)),
-            json.dumps(_build_self_dogfood_summary(reloaded)),
-            json.dumps(_build_self_dogfood_section(reloaded)),
-            json.dumps([t.model_dump(mode="json") for t in load_proposed_tasks(str(job.id), d)], default=str),
-        ]
-        for b in blobs:
-            assert "sk-abcdef0123456789abcd" not in b
-            assert "/home/" not in b
-            assert "id_rsa" not in b
-            assert "Traceback" not in b
 
 
 # ---------------------------------------------------------------------------
@@ -237,6 +196,6 @@ class TestArchitectureGuards:
         from packages.orchestration.do_run import validate_next_safe_action_command
         d, _ = env
         job = _job(d)
-        insp = SD.build_self_dogfood_inspection(str(job.id), d)
+        insp = SD.build_self_dogfood_inspection(str(job.job_id), d)
         assert insp.next_safe_action is not None
         assert validate_next_safe_action_command(insp.next_safe_action.command)

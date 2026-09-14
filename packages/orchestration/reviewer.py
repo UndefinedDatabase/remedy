@@ -79,7 +79,7 @@ def run_reviewer(
 
     # Build safe context for reviewer
     context: dict[str, Any] = {
-        "job_name": job.name[:80] if hasattr(job, "name") else "",
+        "job_name": str(job.job_title)[:80] if hasattr(job, "job_title") else "",
         "task_count": len(job.tasks),
         "completed_tasks": [],
         "current_test_status": "unknown",
@@ -89,7 +89,7 @@ def run_reviewer(
         tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
         if tstat == "completed":
             context["completed_tasks"].append({
-                "id": str(t.id),
+                "id": str(t.task_id),
                 "task_type": (getattr(t, "inputs", None) or {}).get("task_type", "unknown"),
                 "status": tstat,
             })
@@ -126,7 +126,7 @@ def accept_recommendation(job: Any, recommendation_id: str) -> bool:
     for rec in recs:
         if rec.get("id") == recommendation_id and rec.get("status") == "pending":
             rec["status"] = "accepted"
-            propose_from_recommendation(str(job.id), rec)
+            propose_from_recommendation(str(job.job_id), rec)
             _save_recommendations(job, recs)
             return True
     return False

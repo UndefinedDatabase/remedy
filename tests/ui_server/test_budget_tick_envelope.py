@@ -210,7 +210,7 @@ class TestBothTransportsCarryTheSameTick:
         monkeypatch.setattr(mod, "_load_events", lambda job: events)
 
         class _Job:
-            id = "11111111-2222-3333-4444-555555555555"
+            job_id = "11111111-2222-3333-4444-555555555555"
 
         polled = mod._build_events_since_json(_Job(), "0")["events"]
         clock = _Clock()

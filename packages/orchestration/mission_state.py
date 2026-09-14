@@ -18,14 +18,14 @@ What a mission deliberately is NOT:
 * It does not transition itself.  ``achieved``/``abandoned``/``paused`` are set
   by explicit commands only; this feature contains no automatic transition.
 
-Storage, like every other entity in this codebase (``storage.save_job``,
+Storage, like every other entity in this codebase (``pingpong_job.save_job_plan``,
 ``project_registry``, ``proposed_tasks``): one atomic JSON file per record,
 under a project-scoped area of the data root::
 
     <data root>/missions/<project id>/<mission id>.json
 
-Reuse (A6): the atomic write is ``storage._atomic_write_job`` — temp file,
-fsync, ``os.replace`` — the same helper behind ``save_job`` and behind
+Reuse (A6): the atomic write is ``pingpong_job.atomic_write_text`` — temp file,
+fsync, ``os.replace`` — the same helper behind ``save_job_plan`` and behind
 ``checkpoints.write_checkpoint``.  This module introduces NO second atomic
 writer and NO second reader of the data root.
 
@@ -37,8 +37,8 @@ Honesty rules this module holds to:
 * One job belongs to at most ONE mission.  Cross-mission reuse of a job would
   make lineage ambiguous, so it is refused at link time.
 * Listings never crash.  A record that will not parse is skipped and COUNTED
-  (``list_missions_safe``), exactly as ``storage.list_jobs_safe`` does for
-  jobs; a link whose job is gone renders ``(missing job)`` rather than raising.
+  (``list_missions_safe``), exactly as ``pingpong_job.list_job_plans_safe`` does
+  for jobs; a link whose job is gone renders ``(missing job)`` rather than raising.
 
 Verify-first (T003) lives at the bottom of this module: a follow-up job's plan
 is REQUIRED to begin with a verify task, and that requirement is enforced by
@@ -53,11 +53,11 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-from packages.orchestration.data_paths import missions_dir
+from packages.orchestration.data_paths import missions_dir, normalize_job_id
 from packages.orchestration.exec_guard import run_guarded_test_command
-from packages.orchestration.storage import _atomic_write_job as _atomic_write
+from packages.orchestration.pingpong_job import atomic_write_text as _atomic_write
 
 #: Bumped whenever the record body changes shape.  A reader meeting a version
 #: it does not know refuses that record rather than guessing at its meaning.
@@ -424,8 +424,7 @@ def list_missions_safe(project_id: str, root: Path | None = None,
     """List one project's missions with corruption VISIBLE.
 
     Returns ``(missions, degraded, skipped_files)``.  Newest first by
-    ``created_at``, ties broken by id so the order is total and reproducible —
-    the same rule ``storage.list_jobs_safe`` follows for jobs.
+    ``created_at``, ties broken by id so the order is total and reproducible.
     """
     directory = mission_dir_for_project(project_id, root)
     if not directory.is_dir():
@@ -652,14 +651,14 @@ def mission_job_state_label(job_id: str) -> str:
     whose file will not parse renders ``(unreadable job)``.  Those are
     different facts and get different labels.
     """
-    from packages.orchestration.storage import load_job_safe
+    from packages.orchestration.pingpong_job import load_job_plan_safe
 
     try:
-        uuid = UUID(str(job_id))
+        uuid = normalize_job_id(str(job_id))
     except (AttributeError, TypeError, ValueError):
         return MISSING_JOB_LABEL
     try:
-        job, degraded = load_job_safe(uuid)
+        job, degraded = load_job_plan_safe(uuid)
     except Exception:  # noqa: BLE001 — a listing never dies of a bad record
         return UNREADABLE_JOB_LABEL
     if job is not None:
@@ -751,19 +750,19 @@ def build_verify_first_task(previous_job: Any) -> Any:
     of the world.  It is a task, not an instruction: it occupies position 0 of
     the plan and every other task depends on it.
     """
-    from packages.core.models import AcceptanceCheck, RunState, Task
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import TaskEntry
 
-    previous_id = str(getattr(previous_job, "id", "") or "")
+    previous_id = str(getattr(previous_job, "job_id", "") or "")
     command = resolve_verify_command(previous_job)
     described = command or "no verification command recorded"
-    return Task(
-        description=(
+    return TaskEntry(
+        title=(
             f"Verify the previous job's Definition of Done still holds "
             f"(job {previous_id}): {described}"),
-        acceptance_checks=[AcceptanceCheck(
-            description=(
-                "The previous job's recorded verification passes against the "
-                "current state before any follow-up work starts."))],
+        acceptance=(
+            "The previous job's recorded verification passes against the "
+            "current state before any follow-up work starts."),
         inputs={
             "task_type": MISSION_VERIFY_TASK_TYPE,
             "verify_command": command,
@@ -804,12 +803,12 @@ def inject_verify_first(previous_job: Any, follow_up_tasks: list[Any]) -> list[A
             declared.insert(0, MISSION_VERIFY_PLANNED_ID)
         flight["depends_on"] = declared
         flight.setdefault("planned_id", f"M{index:03d}")
-        flight.setdefault("title", task.description[:60])
+        flight.setdefault("title", task.title[:60])
         flight.setdefault("est_tokens_band", "M")
         flight.setdefault("files_hint", [])
         inputs = dict(task.inputs)
         inputs["flight"] = flight
-        planned.append(task.model_copy(update={"inputs": inputs}))
+        planned.append(replace(task, inputs=inputs))
     return planned
 
 
@@ -828,13 +827,13 @@ def assert_verify_first(tasks: list[Any]) -> None:
         raise MissionVerifyFirstError(
             "a follow-up plan must begin with the injected verify task "
             f"(task_type {MISSION_VERIFY_TASK_TYPE!r}); the plan starts with: "
-            f"{getattr(tasks[0], 'description', '?')!r}")
+            f"{getattr(tasks[0], 'title', '?')!r}")
     for task in tasks[1:]:
         flight = task.inputs.get("flight") if isinstance(task.inputs, dict) else None
         declared = list((flight or {}).get("depends_on") or [])
         if MISSION_VERIFY_PLANNED_ID not in [str(d) for d in declared]:
             raise MissionVerifyFirstError(
-                f"follow-up task {getattr(task, 'description', '?')!r} does not "
+                f"follow-up task {getattr(task, 'title', '?')!r} does not "
                 f"depend on the verify task {MISSION_VERIFY_PLANNED_ID} — it "
                 f"could start before the previous state was verified")
 
@@ -999,10 +998,11 @@ def build_follow_up_task(next_step: str) -> Any:
     job, not this module's.  What this module owns is that whatever the plan
     turns out to be, verification comes first.
     """
-    from packages.core.models import RunState, Task
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import TaskEntry
 
-    return Task(
-        description=str(next_step).strip(),
+    return TaskEntry(
+        title=str(next_step).strip(),
         inputs={"task_type": MISSION_FOLLOW_UP_TASK_TYPE},
         status=RunState.PENDING,
     )
@@ -1022,12 +1022,13 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
     ``initial`` job with the work alone — an honest plan, not a verify task
     pointed at a job that does not exist.
     """
-    from packages.core.models import Job, RunState
-    from packages.orchestration.storage import (
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import (
         JobNotFoundError,
+        JobPlan,
         JobStoreError,
-        load_job,
-        save_job,
+        require_job_plan,
+        save_job_plan,
     )
 
     text = str(next_step).strip()
@@ -1043,7 +1044,7 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
         role = MISSION_ROLE_INITIAL
     else:
         try:
-            previous_job = load_job(UUID(previous.job_id))
+            previous_job = require_job_plan(normalize_job_id(previous.job_id))
         except (ValueError, JobNotFoundError) as exc:
             raise MissionError(
                 f"the previous job {previous.job_id} is gone, so its Definition "
@@ -1061,8 +1062,8 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
     if role == MISSION_ROLE_FOLLOW_UP:
         assert_verify_first(tasks)
 
-    job = Job(
-        name=text[:80],
+    job = JobPlan(
+        job_title=text[:80],
         mission=mission.goal,
         user_prompt=text,
         project_id=str(mission.project_id),
@@ -1070,8 +1071,8 @@ def continue_mission(project_id: str, mission_id: str, next_step: str, *,
         state=RunState.PLANNED,
         metadata={"mission_id": mission.id, "mission_role": role},
     )
-    save_job(job)
-    link_job_to_mission(project_id, mission.id, str(job.id), role, now=now,
+    save_job_plan(job)
+    link_job_to_mission(project_id, mission.id, str(job.job_id), role, now=now,
                         root=root)
     return job
 
@@ -1094,7 +1095,7 @@ def execute_mission_followup(job: Any, *, cwd: Path | None = None,
     """
     from packages.core.models import RunState
     from packages.orchestration.dag_schedule import blocked_downstream, ready_set
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
 
     assert_verify_first(list(job.tasks))
     verify_task = job.tasks[0]
@@ -1102,31 +1103,31 @@ def execute_mission_followup(job: Any, *, cwd: Path | None = None,
     outcome = run_verify_task(verify_task, cwd=cwd, now=now, runner=runner)
     run = MissionFollowupRun(
         mission_id=str((getattr(job, "metadata", None) or {}).get("mission_id", "")),
-        job_id=str(job.id),
+        job_id=str(job.job_id),
         verify=outcome,
         steps=[f"verify:{outcome.result}"],
     )
 
     if not outcome.follow_up_may_start:
         verify_task.status = RunState.FAILED
-        blocked = blocked_downstream(list(job.tasks), [verify_task.id])
+        blocked = blocked_downstream(list(job.tasks), [verify_task.task_id])
         job.state = RunState.FAILED
         run.message = (
             f"{outcome.detail} — the follow-up never started "
             f"({len(blocked)} task(s) blocked behind it)")
-        save_job(job)
+        save_job_plan(job)
         write_mission_verify_record(run)
         return run
 
     verify_task.status = RunState.COMPLETED
     for task in job.tasks[1:]:
-        if task.id not in ready_set(list(job.tasks)):
+        if task.task_id not in ready_set(list(job.tasks)):
             continue
         if work_runner is None:
             break
         if work_runner(task):
             task.status = RunState.COMPLETED
-            run.steps.append(f"work:{task.description}")
+            run.steps.append(f"work:{task.title}")
     run.follow_up_started = len(run.steps) > 1
     run.message = (
         "verification passed; the follow-up work ran"
@@ -1137,6 +1138,6 @@ def execute_mission_followup(job: Any, *, cwd: Path | None = None,
     job.state = (RunState.COMPLETED
                  if all(t.status == RunState.COMPLETED for t in job.tasks)
                  else RunState.PLANNED)
-    save_job(job)
+    save_job_plan(job)
     write_mission_verify_record(run)
     return run

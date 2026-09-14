@@ -189,15 +189,12 @@ class TestTeachNarrateIsReadOnly:
 
 
 class TestTeachReachesTaskJobs:
-    """The teacher can explain a `remedy do job-run` job, not only a classic one.
+    """The teacher can explain a `remedy do job-run` job.
 
     Operator dogfooding on 2026-08-25: `remedy teach narrate edbbc42bba4c4b00`
-    answered "no job matches prefix" while that job's run log sat in
-    `<data_root>/runs/edbbc42bba4c4b00/`. `resolve_job_id` searched
-    `jobs/*.json` and returned a UUID; a task job is a DIRECTORY under
-    `jobs/` named by sixteen hex characters, which is not a UUID. The
-    teacher was built against the classic store and could not see a job-based
-    run at all.
+    answered "no job matches prefix" while that job's run log sat on disk. A job
+    is a DIRECTORY under `jobs/` named by sixteen hex characters and holding a
+    `job.json`, and `resolve_job_id` resolves exactly that shape.
     """
 
     #: The real shape: `pingpong_job` mints `uuid4().hex[:16]`.
@@ -241,8 +238,8 @@ class TestTeachReachesTaskJobs:
 
         assert _hash_tree(data_root) == before
 
-    def test_a_classic_job_still_resolves(self, data_root, capsys):
-        """The wider resolver ADDS a store; it takes none away."""
+    def test_a_full_uuid_job_id_still_resolves(self, data_root, capsys):
+        """A full UUID resolves without touching the store, so its run log narrates."""
         _write_run_log(data_root, _JOB_ID, _EVENTS)
 
         assert _exit_code(lambda: _cmd_teach_narrate(_JOB_ID)) == 0

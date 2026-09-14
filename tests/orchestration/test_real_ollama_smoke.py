@@ -32,8 +32,8 @@ class TestFixtureSmoke:
 
     def test_fixture_pipeline_on_real_repo(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
         from packages.orchestration.builder_bridge import run_builder_bridge
+        from packages.orchestration.pingpong_job import JobPlan
 
         repo = create_missing_function_repo(tmp_path / "repo")
         patch = fixture_patch_missing_function()
@@ -43,7 +43,7 @@ class TestFixtureSmoke:
             structured_patch_text=json.dumps(patch),
             structured_patch_format="json",
         )
-        job = Job(name="fixture-smoke")
+        job = JobPlan(job_title="fixture-smoke")
         result = run_builder_bridge(
             output, repo, job=job, data_dir=tmp_path / "data",
             autonomy_level=4,
@@ -55,8 +55,8 @@ class TestFixtureSmoke:
 
     def test_fixture_pipeline_stops_at_approval(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
         from packages.orchestration.builder_bridge import run_builder_bridge
+        from packages.orchestration.pingpong_job import JobPlan
 
         repo = create_missing_function_repo(tmp_path / "repo")
         patch = fixture_patch_missing_function()
@@ -66,7 +66,7 @@ class TestFixtureSmoke:
             structured_patch_text=json.dumps(patch),
             structured_patch_format="json",
         )
-        job = Job(name="fixture-smoke")
+        job = JobPlan(job_title="fixture-smoke")
         result = run_builder_bridge(
             output, repo, job=job, data_dir=tmp_path / "data",
             autonomy_level=2,
@@ -110,8 +110,8 @@ class TestRealOllamaSmoke:
         repo = create_missing_function_repo(tmp_path / "repo")
         builder = OllamaBuilder()
         context = TaskExecutionContext(
-            job_id=uuid4(),
-            task_id=uuid4(),
+            job_id=str(uuid4()),
+            task_id=str(uuid4()),
             job_prompt="Add a hello() function that returns 'hello'",
             task_type="code_change",
             task_description="Write hello() in app.py that returns the string 'hello'",
@@ -138,31 +138,31 @@ class TestRealOllamaSmoke:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from uuid import uuid4
 
-        from packages.core.models import Job
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import TaskExecutionContext
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.timeline import load_run_events
         from packages.providers.ollama_builder.provider import OllamaBuilder
 
         repo = create_missing_function_repo(tmp_path / "repo")
         builder = OllamaBuilder()
         context = TaskExecutionContext(
-            job_id=uuid4(),
-            task_id=uuid4(),
+            job_id=str(uuid4()),
+            task_id=str(uuid4()),
             job_prompt="Add a hello() function",
             task_type="code_change",
             task_description="Write hello() in app.py",
         )
         output = builder.build(context)
 
-        job = Job(name="ollama-smoke")
+        job = JobPlan(job_title="ollama-smoke")
         result = run_builder_bridge(
             output, repo, job=job, data_dir=tmp_path / "data",
             autonomy_level=3,
         )
 
         # No raw provider output in events
-        events = load_run_events(tmp_path / "data", job.id)
+        events = load_run_events(tmp_path / "data", job.job_id)
         for event in events:
             meta_str = str(event.get("metadata", {}))
             assert "def hello" not in meta_str

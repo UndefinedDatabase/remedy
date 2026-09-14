@@ -20,7 +20,7 @@ targeted failure / self item:
 1. A **repair request package** ([repair-request-builder-v0.md](../system/repair-request-builder-v0.md)).
 2. The orchestrator has a **deterministic, evidence-backed decision** that an external
    builder is justified (uncertainty / repeated cheap failure), not a model's opinion.
-3. The **local advisor** ([local-model-advisor-v0.md](../system/local-model-advisor-v0.md)) was tried
+3. The **local advisor** was tried
    first where useful (cheap before expensive).
 
 ## Output handling (hard order)

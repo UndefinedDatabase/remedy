@@ -2,7 +2,7 @@
 Data path resolution for Remedy.
 
 This is the single authoritative location in production Python that reads
-REMEDY_DATA_DIR.  All other production modules (storage.py, run_log.py,
+REMEDY_DATA_DIR.  All other production modules (run_log.py,
 project_registry.py, workspace.py, apps/cli/main.py) must import helpers
 from this module instead of reading the environment variable directly.
 
@@ -16,13 +16,15 @@ Public API::
 
     resolve_data_root() -> Path
     jobs_dir(root: Path | None = None) -> Path
-    resolve_job_id(raw) -> str               # the classic store
-    resolve_any_job_id(raw) -> str           # both stores
+    resolve_job_id(raw) -> str               # the one job store; exits on failure
+    lookup_job_id(raw) -> str                # the same search, raising JobIdError instead of exiting
     mint_job_id() -> str                     # a job id (16-hex, DECISION F260 D2)
     mint_run_id() -> str                     # a run id
     mint_episode_id() -> str                 # a run-episode id
+    mint_task_id() -> str                    # a task id no job file numbered
     job_dir(job_id, root: Path | None = None) -> Path
     job_record_path(job_id, root: Path | None = None) -> Path
+    job_record_paths(root: Path | None = None) -> list[Path]
     job_evidence_dir(job_id, root: Path | None = None) -> Path
     runs_dir(root: Path | None = None) -> Path               # keyed by RUN id
     run_dir(run_id, root: Path | None = None) -> Path
@@ -39,6 +41,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import NoReturn
 from uuid import UUID, uuid4
 
 
@@ -160,12 +163,12 @@ def control_dir(root: Path | None = None) -> Path:
 
 
 # DECISION F260 D2 (2026-09-06): every Remedy id is ``uuid4().hex[:16]``, but ONE
-# SHAPE IS NOT ONE FUNCTION. The same sixteen hex characters already name four
+# SHAPE IS NOT ONE FUNCTION. The same sixteen hex characters already name five
 # different kinds of thing, so passing a run id where a job id belongs is not a
 # type error and never will be. A name is the weakest distinction Python gives
 # away for free, and it is the one thing that makes such a swap greppable, so
 # each kind is minted by its own ``def`` below. ``safe_points.new_request_id``
-# is the fourth kind and stays where the stop request lives.
+# is the fifth kind and stays where the stop request lives.
 
 
 def mint_job_id() -> str:
@@ -180,6 +183,11 @@ def mint_run_id() -> str:
 
 def mint_episode_id() -> str:
     """Mint the id of one EPISODE — one execution attempt of a run; a resume gets its own."""
+    return uuid4().hex[:16]
+
+
+def mint_task_id() -> str:
+    """Mint the id of one TASK that no job file numbered — a task built by code, not parsed."""
     return uuid4().hex[:16]
 
 
@@ -209,6 +217,25 @@ def job_record_path(job_id: str, root: Path | None = None) -> Path:
     return job_dir(job_id, root) / "job.json"
 
 
+# The SHAPE of the job store — one directory per job, the record inside it named
+# ``job.json`` — is a layout fact, and DECISION F260 D1 puts every layout fact in this
+# module, so a caller that globbed for itself would be the second place a layout change
+# has to happen.
+
+
+def job_record_paths(root: Path | None = None) -> list[Path]:
+    """Every persisted job record under ``root``, sorted by path.
+
+    The plural of ``job_record_path`` above. Returns ``[]`` when the jobs directory
+    does not exist, so no caller has to decide whether "no jobs" and "no store"
+    differ.
+    """
+    jdir = jobs_dir(root)
+    if not jdir.is_dir():
+        return []
+    return sorted(jdir.glob("*/job.json"))
+
+
 def job_evidence_dir(job_id: str, root: Path | None = None) -> Path:
     """The job's own evidence — artifacts, streams and post-mortems, beside its record."""
     return job_dir(job_id, root) / "evidence"
@@ -222,35 +249,13 @@ def run_dir(run_id: str, root: Path | None = None) -> Path:
 _SHORT_HEX_RE = re.compile(r"[0-9a-fA-F]{4,32}")
 
 
-def _classic_job_id_matches(prefix: str) -> list[str]:
-    """Every id in the CLASSIC job store starting with ``prefix``.
-
-    One ``<uuid>.json`` file per job, so the id is the file stem.
-    """
-    jdir = jobs_dir()
-    if not jdir.exists():
-        return []
-    lower = prefix.lower()
-    return [
-        p.stem for p in jdir.glob("*.json")
-        if p.stem.lower().startswith(lower)
-    ]
-
-
 def _task_job_id_matches(prefix: str) -> list[str]:
-    """Every id in the TASK-JOB store starting with ``prefix``.
+    """Every id in the job store starting with ``prefix``.
 
-    Since F260 T002 both stores live under ``<data_root>/jobs/``: the classic
-    one as ``<uuid>.json`` FILES, this one as ``<16hex>/`` DIRECTORIES holding
-    a ``job.json``. The ``is_dir()`` test plus the ``job.json`` check is what
-    keeps the two populations apart — a classic ``<uuid>.json`` file is not a
-    directory and never reaches this reading, and the sibling
-    :func:`_classic_job_id_matches` globs ``*.json`` and so never sees a
-    ping-pong directory.
-
-    One directory per job, so the id is the directory name. A directory
-    without a ``job.json`` is not a job — a half-created or hand-made
-    directory must not be resolvable as one.
+    One directory per job under ``<data_root>/jobs/``, holding a ``job.json``, so
+    the id is the directory name. A directory without a ``job.json`` is not a job —
+    a half-created or hand-made directory must not be resolvable as one — and a
+    plain file in ``jobs/`` is not a job either.
     """
     tdir = jobs_dir()
     if not tdir.exists():
@@ -264,7 +269,7 @@ def _task_job_id_matches(prefix: str) -> list[str]:
     ]
 
 
-def _exit_ambiguous(raw: str, matches: list[str]) -> None:
+def _exit_ambiguous(raw: str, matches: list[str]) -> NoReturn:
     print(f"Error: ambiguous job id prefix '{raw}' matches "
           f"{len(matches)} jobs:", file=sys.stderr)
     for m in sorted(matches):
@@ -272,18 +277,68 @@ def _exit_ambiguous(raw: str, matches: list[str]) -> None:
     sys.exit(2)
 
 
-def resolve_job_id(raw: str) -> str:
-    """Parse a full UUID or resolve a short hex prefix to a unique job id.
+class JobIdError(ValueError):
+    """A job id string that does not name exactly one job.
 
-    Searches the CLASSIC job store ONLY — that restriction is now carried by
-    the SEARCH, not by the return type, since a ``str`` could hold either id
-    shape. Callers that must reach both stores use :func:`resolve_any_job_id`.
+    It is a ``ValueError`` ON PURPOSE. The CLI handlers parsed a job id with
+    ``UUID(...)``, which raises ``ValueError``, and they guard that parse with
+    ``except ValueError`` or wider; several of those guards select a documented
+    path of their own — a JSON error payload, a ``job_not_found`` document —
+    instead of ending the process. A handler that routes its parse through
+    :func:`lookup_job_id` therefore keeps that path, which a ``SystemExit`` from
+    :func:`resolve_job_id` would escape.
+    """
 
-    Returns the canonical id as a string: lowercase, hyphenated, the form
-    ``str(UUID(...))`` produces. F260 T004 is where this function and
-    :func:`resolve_any_job_id` become one.
 
-    Exits with code 1 on invalid input, code 2 on ambiguous prefix.
+class JobIdInvalid(JobIdError):
+    """The string is neither a full UUID nor a short hex prefix."""
+
+
+class JobIdNotFound(JobIdError):
+    """A well-formed prefix that matches no job."""
+
+
+class JobIdAmbiguous(JobIdError):
+    """A prefix that matches more than one job; ``matches`` lists them, sorted."""
+
+    def __init__(self, raw: str, matches: list[str]) -> None:
+        self.raw = raw
+        self.matches = sorted(matches)
+        super().__init__(
+            f"ambiguous job id prefix {raw!r} matches {len(self.matches)} jobs"
+        )
+
+
+# UUID(...) was the id-shape check while every job id was a UUID, and it refuses the sixteen-hex id mint_job_id mints.
+_JOB_ID_HEX16_RE = re.compile(r"[0-9a-f]{16}")
+
+
+def normalize_job_id(raw: str) -> str:
+    """Check a job id's SHAPE and return its canonical spelling, or RAISE.
+
+    A string ``UUID(...)`` accepts comes back as ``str(UUID(raw))``; sixteen
+    lowercase hex characters, the shape :func:`mint_job_id` mints, come back
+    unchanged; anything else raises :class:`JobIdInvalid`. It reads no disk and
+    resolves no prefix — :func:`lookup_job_id` is the function that does.
+    """
+    try:
+        return str(UUID(raw))
+    except ValueError:
+        pass
+    if _JOB_ID_HEX16_RE.fullmatch(raw):
+        return raw
+    raise JobIdInvalid(f"invalid job ID: {raw!r}")
+
+
+def lookup_job_id(raw: str) -> str:
+    """Resolve a full job id or a short hex prefix against the job store, or RAISE.
+
+    The search :func:`resolve_job_id` documents, and the same return values, but a
+    failure raises a :class:`JobIdError` instead of ending the process:
+    :class:`JobIdInvalid` for a string that is neither a UUID nor a hex prefix,
+    :class:`JobIdNotFound` for a prefix no job matches, :class:`JobIdAmbiguous`
+    for a prefix more than one job matches. A full UUID returns without touching
+    the disk. READ-ONLY, like :func:`resolve_job_id`.
     """
     try:
         return str(UUID(raw))
@@ -291,65 +346,43 @@ def resolve_job_id(raw: str) -> str:
         pass
 
     if not _SHORT_HEX_RE.fullmatch(raw):
-        print(f"Error: invalid job ID: {raw!r}", file=sys.stderr)
-        sys.exit(1)
+        raise JobIdInvalid(f"invalid job ID: {raw!r}")
 
-    matches = _classic_job_id_matches(raw)
+    matches = sorted(_task_job_id_matches(raw))
     if len(matches) == 1:
         return matches[0]
     if len(matches) > 1:
-        _exit_ambiguous(raw, matches)
-
-    print(f"Error: no job matches prefix {raw!r}", file=sys.stderr)
-    sys.exit(1)
+        raise JobIdAmbiguous(raw, matches)
+    raise JobIdNotFound(f"no job matches prefix {raw!r}")
 
 
-def resolve_any_job_id(raw: str) -> str:
-    """Resolve a job id across BOTH job stores, and return it as a string.
+def resolve_job_id(raw: str) -> str:
+    """Resolve a full job id or a short hex prefix against the job store.
 
-    Remedy runs jobs into two stores. ``<data_root>/jobs/<uuid>.json`` is the
-    classic one; ``<data_root>/jobs/<16hex>/job.json`` is the one
-    ``remedy do job-run`` writes. Since F260 T002 both stores share the one
-    ``jobs/`` directory and are told apart by FILE versus DIRECTORY: the classic
-    id is a ``.json`` file's stem, the ping-pong id is a directory holding a
-    ``job.json``. Both file their run logs the same way, under
-    ``<data_root>/job_logs/<job-id>/``, so ``timeline.load_run_events`` reaches
-    either — but :func:`resolve_job_id` SEARCHES only the classic store, where a
-    16-hex task-job id can never match. Both now return a ``str``; F260 T004 is
-    where the two become one.
+    Every job is one record at ``<data_root>/jobs/<id>/job.json``, so a prefix
+    resolves to the one directory holding a ``job.json`` whose name starts with it.
+    The job's run log lives under ``<data_root>/job_logs/<job-id>/``, so
+    ``timeline.load_run_events`` reaches it by the id returned here.
 
-    That is why `remedy teach narrate <task-job-id>` answered "no job matches
-    prefix" for a job whose run log was sitting on disk the whole time
-    (operator dogfooding, 2026-08-25). The teacher was built against the
-    classic store and could not see a job-based run at all.
-
-    The return type is ``str`` because the two stores mint different id shapes
-    and only one of them is a UUID. Callers print it or join it onto a path;
-    nothing needs the parsed form.
+    Returns a ``str``. A full UUID comes back in the form ``str(UUID(...))``
+    produces, without touching the disk; a prefix comes back as the matching
+    directory name.
 
     READ-ONLY: this opens directories and stats files, and writes nothing —
     which is what lets the teacher, whose whole stance is passivity, use it.
 
     Exits with code 1 on invalid input or no match, code 2 on an ambiguous
-    prefix — the same codes, and the same messages, :func:`resolve_job_id`
-    uses, so no caller gains a new exit path by switching.
+    prefix.
+
+    The search itself is :func:`lookup_job_id`; this function is its EXITING
+    form, for a command that has no failure path of its own. A handler that
+    guards its parse calls :func:`lookup_job_id` and catches the ``ValueError``.
     """
     try:
-        return str(UUID(raw))
-    except ValueError:
-        pass
-
-    if not _SHORT_HEX_RE.fullmatch(raw):
-        print(f"Error: invalid job ID: {raw!r}", file=sys.stderr)
+        return lookup_job_id(raw)
+    except JobIdAmbiguous as exc:
+        _exit_ambiguous(raw, exc.matches)
+    except JobIdError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    # A single id could in principle live in both stores; dedupe so that is a
-    # match rather than a false ambiguity.
-    matches = sorted(set(_classic_job_id_matches(raw)) | set(_task_job_id_matches(raw)))
-    if len(matches) == 1:
-        return matches[0]
-    if len(matches) > 1:
-        _exit_ambiguous(raw, matches)
-
-    print(f"Error: no job matches prefix {raw!r}", file=sys.stderr)
-    sys.exit(1)

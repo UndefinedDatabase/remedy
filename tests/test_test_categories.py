@@ -24,8 +24,6 @@ def test_fast_script_targets_core_suites():
     source = (SCRIPTS / "remedy_test_fast.sh").read_text()
     for suite in [
         "test_worker_facade_cmd.py",
-        "test_dogfood_run.py",
-        "test_managed_builder_execution.py",
         "test_product_spine.py",
     ]:
         assert suite in source, f"Fast lane must include {suite}"
@@ -34,7 +32,6 @@ def test_fast_script_targets_core_suites():
 def test_fast_script_no_subprocess_files():
     source = (SCRIPTS / "remedy_test_fast.sh").read_text()
     for suite in [
-        "test_review_bundle_runtime.py",
         "test_command_catalog.py",
         "test_contract_runtime.py",
         "test_config_cmd.py",
@@ -54,7 +51,6 @@ def test_runtime_script_uses_wrapper():
 def test_runtime_script_targets_subprocess_suites():
     source = (SCRIPTS / "remedy_test_runtime.sh").read_text()
     for suite in [
-        "test_review_bundle_runtime.py",
         "test_command_catalog.py",
         "test_contract_runtime.py",
         "test_config_cmd.py",

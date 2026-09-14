@@ -24,7 +24,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from packages.core.models import ArtifactKind, Job
+from packages.core.models import ArtifactKind
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -157,7 +158,7 @@ class ContextCoverageSnapshot:
 
 
 def derive_context_coverage(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     *,
     constitution: object | None = None,
@@ -247,11 +248,11 @@ def derive_context_coverage(
                 project_id = job.metadata.get("project_id")
                 present = has_approved_memory(
                     project_id=project_id,
-                    job_id=str(job.id) if not project_id else None,
+                    job_id=str(job.job_id) if not project_id else None,
                 )
                 # Also check job-scoped when project_id is set
                 if not present and project_id:
-                    present = has_approved_memory(job_id=str(job.id))
+                    present = has_approved_memory(job_id=str(job.job_id))
             except (ImportError, ValueError, OSError):
                 present = False
             return present, (
@@ -293,7 +294,7 @@ def derive_context_coverage(
     missing_keys = tuple(s.key for s in built if not s.present)
 
     return ContextCoverageSnapshot(
-        job_id=str(job.id),
+        job_id=str(job.job_id),
         scope="job",
         score=score,
         present_weight=present_weight,

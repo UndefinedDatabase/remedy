@@ -24,8 +24,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from packages.core.models import Job
-
 # F032 T001b: the import direction is ONE-WAY and stays that way —
 # ``decision_evidence`` is pure and imports nothing from this module, so the
 # emit gate below can live at the derivation point with no cycle to break.
@@ -39,6 +37,7 @@ from packages.orchestration.decision_evidence import (
     enforce_decision_evidence,
     export_decision_evidence,
 )
+from packages.orchestration.pingpong_job import JobPlan
 
 
 @dataclass(frozen=True)
@@ -81,17 +80,14 @@ DECISION_TYPES = frozenset({
 
 
 def list_decisions(
-    job: Job | Any,
+    job: JobPlan | Any,
     events: list[dict[str, Any]],
 ) -> list[HumanDecision]:
-    """Derive all pending human decisions from existing state.
-
-    Accepts both Core Job (has .id UUID) and JobPlan (has .job_id str).
-    """
+    """Derive all pending human decisions from existing state."""
     decisions: list[HumanDecision] = []
-    job_id = str(getattr(job, "job_id", None) or getattr(job, "id", ""))
+    job_id = str(getattr(job, "job_id", ""))
 
-    # 1. Pending patch approvals (Core Job only; JobPlan has no .artifacts).
+    # 1. Pending patch approvals.
     try:
         from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
         intents = list_patch_intents(job)
@@ -997,7 +993,7 @@ def list_decisions(
 
 
 def get_decision(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     decision_id: str,
 ) -> HumanDecision | None:
@@ -1008,13 +1004,13 @@ def get_decision(
     return None
 
 
-def explain_decisions(job: Job, events: list[dict[str, Any]]) -> str:
+def explain_decisions(job: JobPlan, events: list[dict[str, Any]]) -> str:
     """Human-readable explanation of all pending decisions."""
     decisions = list_decisions(job, events)
     if not decisions:
-        return f"No pending decisions for job {str(job.id)[:8]}."
+        return f"No pending decisions for job {str(job.job_id)[:8]}."
 
-    lines = [f"Human Decision Queue for {str(job.id)[:8]} ({len(decisions)} items)"]
+    lines = [f"Human Decision Queue for {str(job.job_id)[:8]} ({len(decisions)} items)"]
     by_sev = {"blocker": 0, "warning": 0, "info": 0}
     for d in decisions:
         by_sev[d.severity] = by_sev.get(d.severity, 0) + 1

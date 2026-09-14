@@ -8,12 +8,15 @@ bypasses a gate, never edits code, never applies, never approves:
     approved ProposedTask (origin self_dogfood)
       → SelfImprovementAttempt
       → safe request package (no FailureArtifact required)
-      → awaiting_external_candidate
-      → [human relays request; candidate re-enters via provider intake-repair]
-      → Provider Trust Gate → materialized PENDING intent
-      → [human] remedy patch approve → remedy do continue
-      → snapshot → apply → test → proof
-      → reconcile → completed
+      → awaiting_external_candidate  [the rail ENDS here]
+
+Remedy deliberately has NO import step after `awaiting_external_candidate`: F275 T001
+deleted the Provider Trust Gate and its `provider intake-repair` command with it, and
+DECISION F260 D3 maps the external builder to "none, deliberately". R-0866 records the
+loss. The states beyond `awaiting_external_candidate` — candidate_imported,
+intent_pending_approval, intent_approved, proof_verified, completed — are KEPT and still
+run for an attempt whose `patch_intent_id` is already on disk, but no NEW attempt can
+acquire one.
 
 This is an orchestrator / tracking rail. No provider/model/network/subprocess/
 browser. No direct source_apply/patch_apply. No git ops, no PR, no main mutation, no
@@ -38,7 +41,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
+
+from packages.orchestration.data_paths import normalize_job_id
 
 # ---------------------------------------------------------------------------
 # Vocabularies (Steps 1430/1434)
@@ -264,13 +269,8 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _self_provider_label(attempt_id: str) -> str:
-    """Provider label that correlates an imported candidate to THIS attempt (R-0084)."""
-    return f"self_dogfood:{attempt_id}"
-
-
 def _scrub(text: str) -> str:
-    from packages.orchestration.provider_trust import _scrub_public
+    from packages.common.public_text_redaction import _scrub_public
     return _scrub_public(str(text))[:300]
 
 
@@ -418,19 +418,11 @@ def _transition(attempt: SelfImprovementAttempt, target: str) -> bool:
 _SELF_DOGFOOD_PREFIX = "self_dogfood:"
 
 
-def _review_blocks() -> tuple[bool, str]:
-    from packages.orchestration.overnight_executor import (
-        parse_review_findings,
-        review_findings_block_execution,
-    )
-    agent_dir = Path(os.environ.get("REMEDY_AGENT_DIR") or ".agent")
-    return review_findings_block_execution(parse_review_findings(agent_dir / "live_review.md"))
-
-
 def evaluate_self_execution_eligibility(
     proposed_task_id: str, job_id: str | None = None, data_dir: Path | None = None,
 ) -> SelfExecEligibility:
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.proposed_tasks import (
         ProposedTaskStatus,
         get_proposed_task,
@@ -440,7 +432,6 @@ def evaluate_self_execution_eligibility(
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError, load_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = SelfExecEligibility(proposed_task_id=proposed_task_id)
@@ -478,18 +469,9 @@ def evaluate_self_execution_eligibility(
         fp = fp[len(_SELF_DOGFOOD_PREFIX):]
     elig.item_fingerprint = fp
 
-    # Review must not be PENDING/FAIL/open blocker-high.
-    blocked, _ = _review_blocks()
-    if blocked:
-        elig.blockers.append("review_findings_open")
-        elig.stop_reason = StopReason.REVIEW_FINDINGS_OPEN
-        elig.next_safe_action = "remedy self inspect --json"
-        elig.safe_summary = "Live review is PENDING/FAIL/open blocker-high."
-        return elig
-
     # Contract gate.
     try:
-        job = load_job(UUID(jid), ddir)
+        job = require_job_plan(normalize_job_id(jid), ddir)
     except (ValueError, JobNotFoundError):
         elig.blockers.append("no_job")
         elig.stop_reason = StopReason.NO_JOB
@@ -573,8 +555,8 @@ def _build_self_request_text(item: Any, job_id: str) -> str:
         "Return either a single JSON object:\n```json\n" + schema + "\n```\n"
         "OR a single fenced unified diff:\n```diff\n<one unified diff>\n```", "",
         "## How Remedy will handle your output",
-        "Quarantined + trust-validated; an accepted candidate becomes a PENDING patch "
-        "intent that a human must approve before anything is applied via `do continue`.",
+        "Remedy has NO import command for it: the attempt records that it is waiting and "
+        "stops there. A human decides what to do with your answer outside Remedy.",
     ]
     return "\n".join(lines)
 
@@ -649,9 +631,7 @@ def start_self_execution(
     _transition(attempt, AttemptState.REQUEST_PREPARED)
     _transition(attempt, AttemptState.AWAITING_EXTERNAL_CANDIDATE)
     attempt.stop_reason = StopReason.AWAITING_EXTERNAL_CANDIDATE
-    attempt.next_safe_action = (
-        f"remedy provider intake-repair {jid} --input <response_file> "
-        f"--provider {_self_provider_label(attempt.attempt_id)} --json")
+    attempt.next_safe_action = "remedy self status --json"
     save_attempt(attempt, ddir)
     return _result_from_attempt(attempt)
 
@@ -664,13 +644,11 @@ def start_self_execution(
 def reconcile_self_attempt(
     attempt_id: str, data_dir: Path | None = None,
 ) -> SelfImprovementAttemptResult:
-    """Refresh an attempt's state from existing durable truth (ProposedTask, provider
-    trust reports, materialization, patch intent approval, proof). Never applies,
-    approves, runs tests, or calls a provider."""
+    """Refresh an attempt's state from existing durable truth (ProposedTask, patch intent
+    approval, proof). Never applies, approves, runs tests, or calls a provider."""
     from packages.orchestration.approval_queue import APPROVAL_APPROVED, get_patch_intent
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.provider_trust import load_trust_reports
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     a = _load_attempt(attempt_id, ddir)
@@ -684,32 +662,20 @@ def reconcile_self_attempt(
         return _result_from_attempt(a)
 
     try:
-        job = load_job(UUID(a.job_id), ddir)
+        job = require_job_plan(normalize_job_id(a.job_id), ddir)
     except (ValueError, JobNotFoundError):
         a.stop_reason = StopReason.NO_JOB
         save_attempt(a, ddir)
         return _result_from_attempt(a)
 
-    # Link a materialized provider intent — DETERMINISTICALLY (R-0084). The candidate
-    # for THIS attempt must be imported with provider label "self_dogfood:<attempt_id>"
-    # (the exact label the request's intake command supplies), so we only link a trust
-    # report whose provider_name matches this attempt. No cross-attempt mislink.
-    if not a.patch_intent_id:
-        want_provider = _self_provider_label(a.attempt_id)
-        linked_intents = {x.get("patch_intent_id") for x in list_attempts(ddir)
-                          if x.get("attempt_id") != a.attempt_id and x.get("patch_intent_id")}
-        reports = sorted(load_trust_reports(job).values(),
-                         key=lambda r: r.get("received_at", ""))
-        for rep in reversed(reports):
-            iid = rep.get("repair_intent_id", "")
-            if (iid and iid not in linked_intents
-                    and rep.get("provider_name", "") == want_provider):
-                a.patch_intent_id = iid
-                a.provider_trust_report_id = rep.get("report_id", "")
-                a.provider_material_id = rep.get("material_id", "")
-                _transition(a, AttemptState.CANDIDATE_IMPORTED)
-                _transition(a, AttemptState.INTENT_PENDING_APPROVAL)
-                break
+    # Remedy deliberately acquires NO patch intent here. Until F275 T001 this block linked
+    # a materialized provider intent to THIS attempt by the provider label
+    # "self_dogfood:<attempt_id>" (R-0084's deterministic, mislink-proof rule), reading the
+    # trust reports of `packages.orchestration.provider_trust`. That module, its Trust Gate
+    # and its `provider intake-repair` command are deleted, so no candidate can enter and
+    # is left to link. An attempt that reaches `awaiting_external_candidate` stays there.
+    # R-0866 records the loss; DECISION F260 D3 maps the external builder to "none,
+    # deliberately", so there is no inheriting feature to point at.
 
     if a.patch_intent_id:
         intent = get_patch_intent(job, a.patch_intent_id)
@@ -740,7 +706,7 @@ def _intent_proof_status(job: Any, intent_id: str, data_dir: Path) -> str:
     try:
         from packages.orchestration.proof_chain import build_proof_chain
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(data_dir, UUID(str(job.id)))
+        events = load_run_events(data_dir, str(job.job_id))
         chain = build_proof_chain(job, events, data_dir=data_dir)
         change = next((c for c in chain.changes if c.intent_id == intent_id), None)
         if change is not None:
@@ -753,8 +719,7 @@ def _intent_proof_status(job: Any, intent_id: str, data_dir: Path) -> str:
 def _next_action_for(a: SelfImprovementAttempt) -> str:
     s = a.state
     if s == AttemptState.AWAITING_EXTERNAL_CANDIDATE:
-        return (f"remedy provider intake-repair {a.job_id} --input <response_file> "
-                f"--provider {_self_provider_label(a.attempt_id)} --json")
+        return "remedy self status --json"
     if s == AttemptState.INTENT_PENDING_APPROVAL and a.patch_intent_id:
         return f"remedy patch approve {a.job_id} {a.patch_intent_id} --json"
     if s == AttemptState.INTENT_APPROVED and a.patch_intent_id:

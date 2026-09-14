@@ -56,9 +56,9 @@ def _cmd_status(
     for j in jobs:
         state = j.state.value
         by_state[state].append({
-            "job_id": str(j.id),
-            "short_id": str(j.id)[:8],
-            "name": j.name,
+            "job_id": str(j.job_id),
+            "short_id": str(j.job_id)[:8],
+            "name": j.job_title,
             "state": state,
         })
 
@@ -69,7 +69,7 @@ def _cmd_status(
             from packages.orchestration.decision_queue import list_decisions
             from packages.orchestration.timeline import load_run_events
 
-            events = load_run_events(resolve_data_root(), j.id)
+            events = load_run_events(resolve_data_root(), j.job_id)
             decs = list_decisions(j, events)
             decisions_open += sum(1 for d in decs if d.status == "open")
         except Exception:
@@ -82,7 +82,7 @@ def _cmd_status(
             continue
         try:
             from packages.orchestration.safe_points import stop_requested
-            if stop_requested(str(j.id)) is not None:
+            if stop_requested(str(j.job_id)) is not None:
                 stops_pending += 1
         except Exception:
             pass

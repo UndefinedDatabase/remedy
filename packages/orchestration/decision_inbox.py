@@ -23,7 +23,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
-from uuid import UUID
 
 from packages.orchestration.dag_schedule import blocked_downstream
 from packages.orchestration.decision_queue import export_decision_json, list_decisions
@@ -65,12 +64,9 @@ def _blocked_subtree_size(job: Any, payload: Any) -> int:
     set makes ``blocked_downstream`` return the empty set by its own first
     branch, so every other type reports 0 with no special case here.
     """
-    seeds: set[UUID] = set()
-    if isinstance(payload, dict):
-        try:
-            seeds = {UUID(str(payload.get("task_id")))}
-        except (ValueError, TypeError):
-            seeds = set()
+    seeds: set[str] = set()
+    if isinstance(payload, dict) and payload.get("task_id"):
+        seeds = {str(payload["task_id"])}
     # ``list_decisions`` accepts a JobPlan too, and a JobPlan has no ``.tasks``.
     tasks = getattr(job, "tasks", None) or ()
     return len(blocked_downstream(tasks, seeds))
@@ -189,8 +185,8 @@ def build_decision_inbox(
     Additive over ``export_decision_json``: each card carries exactly three
     extra keys, ``age_seconds``, ``blocked_count`` and
     ``answerable_by_decision_resolve``.  No input makes this function
-    raise — an unreadable ``created_at`` gives a None age, a task id that is not
-    a UUID gives 0 blocked, and the card still renders.  Being honest about an
+    raise — an unreadable ``created_at`` gives a None age, a task id that names
+    no task gives 0 blocked, and the card still renders.  Being honest about an
     unreadable entry is the point; hiding it would lose the question.
     """
     moment = now or datetime.now(timezone.utc)
@@ -209,6 +205,6 @@ def build_decision_inbox(
 
     return {
         "version": DECISION_INBOX_VERSION,
-        "job_id": str(getattr(job, "job_id", None) or getattr(job, "id", "")),
+        "job_id": str(getattr(job, "job_id", "")),
         "decisions": cards,
     }

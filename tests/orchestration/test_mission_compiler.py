@@ -44,7 +44,6 @@ from packages.orchestration.mission_compiler import (
     MissionPlanInProgressError,
     attach_milestone_dods,
     build_mission_prompt,
-    resolve_milestone_cap,
     compile_milestone_dod,
     compile_mission_plan,
     compose_mission_prompt,
@@ -55,6 +54,7 @@ from packages.orchestration.mission_compiler import (
     plan_mission,
     plan_version_of,
     render_mission_plan_md,
+    resolve_milestone_cap,
     write_mission_plan_md,
 )
 from packages.orchestration.mission_plan_schema import (
@@ -81,7 +81,7 @@ from packages.orchestration.mission_state import (
     mission_record_path,
     set_mission_plan,
 )
-from packages.orchestration.storage import list_jobs_safe
+from packages.orchestration.pingpong_job import list_job_plans_safe
 from packages.orchestration.worktrees import WORKTREE_DIRNAME
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "mission"
@@ -698,7 +698,7 @@ class TestNoAutostart:
             attached, mission_evidence_dir("proj", mission.id), mission.goal)
         set_mission_plan("proj", mission.id, attached.model_dump())
 
-        jobs, _degraded, _skipped = list_jobs_safe()
+        jobs, _degraded, _skipped = list_job_plans_safe()
         assert jobs == []
         assert not jobs_dir().exists() or list(jobs_dir().iterdir()) == []
         assert load_mission("proj", mission.id).job_links == ()

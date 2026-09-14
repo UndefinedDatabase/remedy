@@ -50,10 +50,9 @@ from typing import Any
 #: DECISION F032 D2: when F066 lands its resolver, the migration is a rename
 #: onto F066's constant instead of a re-typing of four strings scattered
 #: through producers.  It is a real constant and not a comment on purpose —
-#: the two nearest existing types,
-#: ``provider_trust_verification.ProviderVerificationEvidenceRef`` and
-#: ``orchestrator_brain.OrchestratorEvidenceRef``, both state their vocabulary
-#: only in a trailing ``#`` comment, so nothing can validate against either.
+#: the nearest existing type, ``orchestrator_brain.OrchestratorEvidenceRef``,
+#: states its vocabulary only in a trailing ``#`` comment, so nothing can
+#: validate against it.
 #: That is exactly the failure this constant exists to avoid.
 DECISION_EVIDENCE_REF_KINDS = frozenset({"file", "failure", "coverage", "decision"})
 

@@ -51,6 +51,7 @@ from packages.orchestration.mission_plan_schema import (
     MissionPlan,
     MissionPlanDraft,
 )
+from packages.orchestration.pingpong_job import atomic_write_text as _atomic_write
 from packages.orchestration.prompt_facts import repo_facts_block
 from packages.orchestration.prompt_segments import (
     ComposedPrompt,
@@ -60,7 +61,6 @@ from packages.orchestration.prompt_segments import (
 )
 from packages.orchestration.prompt_trace import build_trace_entry
 from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, FlightPlan
-from packages.orchestration.storage import _atomic_write_job as _atomic_write
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 
 #: The id the deterministic fallback's single milestone carries.

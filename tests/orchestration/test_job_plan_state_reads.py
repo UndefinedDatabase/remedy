@@ -23,10 +23,10 @@ this file:
 
 This test is the standing guard the probe cannot be. It reads every tracked
 ``.py`` file under ``packages/`` and ``apps/`` with ``ast``, finds the locals
-bound from ``load_job_plan(...)`` in each function scope, and fails on any read
-of ``status`` off one of them — whether spelled as an attribute or as a
-``getattr`` string. A file is enumerated from ``git ls-files`` and never from a
-shell glob, per DECISION F272 D2.
+bound from ``load_job_plan(...)`` or ``require_job_plan(...)`` in each function
+scope, and fails on any read of ``status`` off one of them — whether spelled as
+an attribute or as a ``getattr`` string. A file is enumerated from
+``git ls-files`` and never from a shell glob, per DECISION F272 D2.
 """
 from __future__ import annotations
 
@@ -34,13 +34,15 @@ import ast
 import subprocess
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 #: The retired spelling. ``state`` is the live one.
 RETIRED_FIELD = "status"
 
-#: The loader whose return value is a ``JobPlan``.
-JOB_PLAN_LOADER = "load_job_plan"
+#: The loaders whose return value is a ``JobPlan``.
+JOB_PLAN_LOADERS = ("load_job_plan", "require_job_plan")
 
 
 def _tracked_production_python_files() -> list[Path]:
@@ -71,7 +73,7 @@ class _RetiredReadFinder(ast.NodeVisitor):
                 continue
             fn = call.func
             name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", "")
-            if name != JOB_PLAN_LOADER:
+            if name not in JOB_PLAN_LOADERS:
                 continue
             for target in sub.targets:
                 if isinstance(target, ast.Name):
@@ -134,11 +136,12 @@ class TestNoRetiredJobPlanStateReads:
         files = _tracked_production_python_files()
         assert len(files) > 300, f"corpus collapsed to {len(files)} files"
 
-    def test_the_scan_sees_a_retired_read_when_one_is_there(self) -> None:
-        """The discriminator: the finder is not vacuously empty."""
+    @pytest.mark.parametrize("loader", JOB_PLAN_LOADERS)
+    def test_the_scan_sees_a_retired_read_when_one_is_there(self, loader: str) -> None:
+        """The discriminator: the finder is not vacuously empty, for either loader."""
         source = (
             "def f(jid):\n"
-            "    j = load_job_plan(jid)\n"
+            f"    j = {loader}(jid)\n"
             "    return getattr(j, 'status', '')\n"
         )
         finder = _RetiredReadFinder("synthetic.py")

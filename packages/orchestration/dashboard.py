@@ -15,11 +15,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 
 
 def build_job_dashboard(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Build a complete job dashboard. All derived, no persistence."""
@@ -28,7 +29,7 @@ def build_job_dashboard(
     from packages.orchestration.event_ledger import build_event_summary
     from packages.orchestration.token_policy import derive_token_mode
 
-    job_id = str(job.id)
+    job_id = str(job.job_id)
 
     # Readiness
     report = assess_job_readiness(job, events)
@@ -90,7 +91,7 @@ def build_job_dashboard(
         next_actions.append(f"remedy decision list {job_id[:8]}")
     pending = [t for t in job.tasks if t.status == RunState.PENDING]
     if pending:
-        next_actions.append(f"remedy job run-next {job_id[:8]}")
+        next_actions.append(f"remedy job resume {job_id[:8]}")
     next_actions.append(f"remedy brain graph {job_id[:8]}")
 
     return {
@@ -122,7 +123,7 @@ def build_job_dashboard(
 
 def build_project_dashboard(
     project_id: str,
-    jobs: list[Job],
+    jobs: list[JobPlan],
     all_events: dict[str, list[dict[str, Any]]],
 ) -> dict[str, Any]:
     """Build a project-level dashboard."""
@@ -131,7 +132,7 @@ def build_project_dashboard(
     total_decisions = 0
     readiness_levels: list[int] = []
     for j in jobs:
-        jid = str(j.id)
+        jid = str(j.job_id)
         jevents = all_events.get(jid, [])
         decisions = list_decisions(j, jevents)
         total_decisions += len([d for d in decisions if d.status == "open"])

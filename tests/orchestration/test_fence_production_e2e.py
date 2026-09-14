@@ -12,15 +12,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import (
-    Artifact,
-    ArtifactKind,
-    Job,
-    JobFences,
-    RunState,
-    Task,
-)
-from packages.orchestration.storage import save_job
+from packages.core.models import Artifact, ArtifactKind, JobFences, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Shared fixtures
@@ -42,8 +35,8 @@ def env(tmp_path, monkeypatch):
 
 
 def _make_job(data_dir, repo, *, fences=None, name="test-job"):
-    job = Job(name=name, fences=fences, metadata={"target_repo": str(repo.resolve())})
-    save_job(job, root=data_dir)
+    job = JobPlan(job_title=name, fences=fences, metadata={"target_repo": str(repo.resolve())})
+    save_job_plan(job, root=data_dir)
     return job
 
 
@@ -63,7 +56,7 @@ class TestJobFulfillmentFenceEnforcement:
         data_dir, repo = env
         fences = JobFences(deny=["docs/**"])
         job = _make_job(data_dir, repo, fences=fences)
-        record = self._run(job.id, repo, data_dir)
+        record = self._run(job.job_id, repo, data_dir)
         assert record.stop_reason == "fence_violation"
         assert record.staging_promoted is False
         assert not record.changed_target_files
@@ -74,7 +67,7 @@ class TestJobFulfillmentFenceEnforcement:
         data_dir, repo = env
         monkeypatch.setenv("REMEDY_SCOPE_DENY", "docs/**")
         job = _make_job(data_dir, repo)
-        record = self._run(job.id, repo, data_dir)
+        record = self._run(job.job_id, repo, data_dir)
         assert record.stop_reason == "fence_violation"
         assert record.staging_promoted is False
 
@@ -82,7 +75,7 @@ class TestJobFulfillmentFenceEnforcement:
         data_dir, repo = env
         monkeypatch.setenv("REMEDY_SCOPE_DENY", "docs/**")
         job = _make_job(data_dir, repo)
-        record = self._run(job.id, repo, data_dir)
+        record = self._run(job.job_id, repo, data_dir)
         assert record.stop_reason == "fence_violation"
         assert record.staging_promoted is False
         target = repo / "docs" / "CHANGES.md"
@@ -92,18 +85,18 @@ class TestJobFulfillmentFenceEnforcement:
         data_dir, repo = env
         fences = JobFences(deny=["docs/**"])
         job = _make_job(data_dir, repo, fences=fences)
-        self._run(job.id, repo, data_dir)
+        self._run(job.job_id, repo, data_dir)
         artifacts = list(data_dir.rglob("fence_violations_*.json"))
         assert len(artifacts) >= 1
         data = json.loads(artifacts[0].read_text())
         assert data["schema"] == "fence_violations/v2"
-        assert data["job_id"] == str(job.id)
+        assert data["job_id"] == str(job.job_id)
         assert data["applicator"] == "job_fulfillment"
 
     def test_allowed_write_not_blocked_by_fences(self, env):
         data_dir, repo = env
         job = _make_job(data_dir, repo)
-        record = self._run(job.id, repo, data_dir)
+        record = self._run(job.job_id, repo, data_dir)
         assert record.stop_reason != "fence_violation"
 
 
@@ -123,7 +116,7 @@ class TestDoContinueFenceEnforcement:
         from packages.orchestration.run_contract import ContractAction, build_default_run_contract, save_contract
 
         fences = JobFences(deny=deny) if deny else None
-        task = Task(description="Continue task")
+        task = TaskEntry(title="Continue task")
         content = "Summary:\n  - safe doc\nProposed Changes:\n  - add a line\nNotes:\n  - none\n"
         explanations = [
             {"file": target_path, "action": "create", "risk": "low",
@@ -131,11 +124,11 @@ class TestDoContinueFenceEnforcement:
         ]
         art = Artifact(
             name="build", content=content, kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.task_id),
             metadata={"patch_intent_explanations": explanations, "patch_intent_approvals": {}},
         )
-        job = Job(
-            name="cont-job", user_prompt="continue", state=RunState.RUNNING,
+        job = JobPlan(
+            job_title="cont-job", user_prompt="continue", state=RunState.RUNNING,
             tasks=[task], artifacts=[art], fences=fences,
             metadata={"target_repo": str(repo.resolve())},
         )
@@ -157,14 +150,14 @@ class TestDoContinueFenceEnforcement:
             max_test_runs=1,
         )
         save_contract(job, contract)
-        save_job(job, root=data_dir)
+        save_job_plan(job, root=data_dir)
         return job, intent_id
 
     def test_denied_intent_produces_fence_violation(self, env):
         data_dir, repo = env
         from packages.orchestration.do_continue import ContinueRequest, ContinueStopReason, run_do_continue
         job, iid = self._make_continue_job(data_dir, repo, deny=["docs/**"])
-        result = run_do_continue(ContinueRequest(job_id=str(job.id), intent_id=iid), data_dir=data_dir)
+        result = run_do_continue(ContinueRequest(job_id=str(job.job_id), intent_id=iid), data_dir=data_dir)
         assert result.stop_reason == ContinueStopReason.FENCE_VIOLATION
         target = repo / "docs" / "CHANGES.md"
         assert not target.exists()
@@ -173,7 +166,7 @@ class TestDoContinueFenceEnforcement:
         data_dir, repo = env
         from packages.orchestration.do_continue import ContinueRequest, ContinueStopReason, run_do_continue
         job, iid = self._make_continue_job(data_dir, repo, deny=["docs/**"])
-        result = run_do_continue(ContinueRequest(job_id=str(job.id), intent_id=iid), data_dir=data_dir)
+        result = run_do_continue(ContinueRequest(job_id=str(job.job_id), intent_id=iid), data_dir=data_dir)
         assert result.stop_reason == ContinueStopReason.FENCE_VIOLATION
         assert result.stop_reason != ContinueStopReason.APPLY_FAILED
 
@@ -181,7 +174,7 @@ class TestDoContinueFenceEnforcement:
         data_dir, repo = env
         from packages.orchestration.do_continue import ContinueRequest, run_do_continue
         job, iid = self._make_continue_job(data_dir, repo, deny=["docs/**"])
-        run_do_continue(ContinueRequest(job_id=str(job.id), intent_id=iid), data_dir=data_dir)
+        run_do_continue(ContinueRequest(job_id=str(job.job_id), intent_id=iid), data_dir=data_dir)
         artifacts = list(data_dir.rglob("fence_violations_*.json"))
         assert len(artifacts) >= 1
 
@@ -190,7 +183,7 @@ class TestDoContinueFenceEnforcement:
         monkeypatch.setenv("REMEDY_SCOPE_DENY", "docs/**")
         from packages.orchestration.do_continue import ContinueRequest, ContinueStopReason, run_do_continue
         job, iid = self._make_continue_job(data_dir, repo)
-        result = run_do_continue(ContinueRequest(job_id=str(job.id), intent_id=iid), data_dir=data_dir)
+        result = run_do_continue(ContinueRequest(job_id=str(job.job_id), intent_id=iid), data_dir=data_dir)
         assert result.stop_reason == ContinueStopReason.FENCE_VIOLATION
 
 
@@ -212,14 +205,14 @@ class TestCLIJobFences:
     def test_human_output_shows_builtin_rules(self, env):
         data_dir, repo = env
         job = _make_job(data_dir, repo)
-        output = self._run_cli(str(job.id))
+        output = self._run_cli(str(job.job_id))
         assert "Builtin rules:" in output
         assert ".git/" in output
 
     def test_json_output_has_builtin_rules(self, env):
         data_dir, repo = env
         job = _make_job(data_dir, repo)
-        output = self._run_cli(str(job.id), json_output=True)
+        output = self._run_cli(str(job.job_id), json_output=True)
         data = json.loads(output)
         assert "builtin_rules" in data
         assert any(r["pattern"] == ".git/" for r in data["builtin_rules"])
@@ -228,7 +221,7 @@ class TestCLIJobFences:
         data_dir, repo = env
         fences = JobFences(allow=["src/**"], deny=["tests/**"])
         job = _make_job(data_dir, repo, fences=fences)
-        output = self._run_cli(str(job.id), json_output=True)
+        output = self._run_cli(str(job.job_id), json_output=True)
         data = json.loads(output)
         assert any(r["pattern"] == "src/**" for r in data["allow_rules"])
         assert any(r["pattern"] == "tests/**" for r in data["deny_rules"])
@@ -238,7 +231,7 @@ class TestCLIJobFences:
         data_dir, repo = env
         monkeypatch.setenv("REMEDY_SCOPE_DENY", "secret/**")
         job = _make_job(data_dir, repo)
-        output = self._run_cli(str(job.id), json_output=True)
+        output = self._run_cli(str(job.job_id), json_output=True)
         data = json.loads(output)
         assert any(r["pattern"] == "secret/**" for r in data["deny_rules"])
         assert any(r["source"] == "environment" for r in data["deny_rules"])
@@ -248,7 +241,7 @@ class TestCLIJobFences:
         config = repo / "remedy.toml"
         config.write_text('[remedy.scope]\ndeny = ["vendor/**"]\n')
         job = _make_job(data_dir, repo)
-        output = self._run_cli(str(job.id), json_output=True)
+        output = self._run_cli(str(job.job_id), json_output=True)
         data = json.loads(output)
         assert any(r["pattern"] == "vendor/**" for r in data["deny_rules"])
         assert any(r["source"] == "project" for r in data["deny_rules"])
@@ -256,7 +249,7 @@ class TestCLIJobFences:
     def test_dynamic_builtin_rule_present(self, env):
         data_dir, repo = env
         job = _make_job(data_dir, repo)
-        output = self._run_cli(str(job.id), json_output=True)
+        output = self._run_cli(str(job.job_id), json_output=True)
         data = json.loads(output)
         builtins = [r["pattern"] for r in data["builtin_rules"]]
         assert ".git/" in builtins
@@ -269,10 +262,10 @@ class TestCLIJobFences:
 
     def test_missing_target_repo_exits(self, env):
         data_dir, repo = env
-        job = Job(name="no-repo")
-        save_job(job, root=data_dir)
+        job = JobPlan(job_title="no-repo")
+        save_job_plan(job, root=data_dir)
         with pytest.raises(SystemExit) as exc_info:
-            self._run_cli(str(job.id))
+            self._run_cli(str(job.job_id))
         assert exc_info.value.code == 2
 
     def test_malformed_config_exits(self, env):
@@ -281,14 +274,14 @@ class TestCLIJobFences:
         config.write_text('[remedy.scope]\ndeny = 42\n')
         job = _make_job(data_dir, repo)
         with pytest.raises(SystemExit) as exc_info:
-            self._run_cli(str(job.id))
+            self._run_cli(str(job.job_id))
         assert exc_info.value.code == 3
 
     def test_allow_list_provenance_in_output(self, env):
         data_dir, repo = env
         fences = JobFences(allow=["src/**", "lib/**"])
         job = _make_job(data_dir, repo, fences=fences)
-        output = self._run_cli(str(job.id), json_output=True)
+        output = self._run_cli(str(job.job_id), json_output=True)
         data = json.loads(output)
         assert len(data["allow_rules"]) == 2
         for r in data["allow_rules"]:
@@ -299,7 +292,7 @@ class TestCLIJobFences:
         data_dir, repo = env
         fences = JobFences(allow=["src/**"], deny=["build/**"])
         job = _make_job(data_dir, repo, fences=fences)
-        cli_out = self._run_cli(str(job.id), json_output=True)
+        cli_out = self._run_cli(str(job.job_id), json_output=True)
         cli_data = json.loads(cli_out)
         eff = resolve_fence_spec_effective(
             repo, job_fences={"allow": fences.allow, "deny": fences.deny})

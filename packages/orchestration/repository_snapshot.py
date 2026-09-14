@@ -1367,14 +1367,17 @@ def revert_repository_apply(
     No revert if files changed after apply (drift detection).
     No caller-supplied permission booleans (Step 1137).
     """
-    from uuid import UUID as _UUID
-
+    from packages.orchestration.data_paths import normalize_job_id
     from packages.orchestration.permissions import (
         Capability as _Capability,
     )
     from packages.orchestration.permissions import (
         is_allowed as _is_allowed,
     )
+    from packages.orchestration.pingpong_job import (
+        JobNotFoundError as _JobNotFoundError,
+    )
+    from packages.orchestration.pingpong_job import require_job_plan as _load_job
     from packages.orchestration.run_contract import (
         ContractAction as _ContractAction,
     )
@@ -1383,12 +1386,6 @@ def revert_repository_apply(
     )
     from packages.orchestration.run_contract import (
         evaluate_run_action as _evaluate_run_action,
-    )
-    from packages.orchestration.storage import (
-        JobNotFoundError as _JobNotFoundError,
-    )
-    from packages.orchestration.storage import (
-        load_job as _load_job,
     )
 
     data_dir = data_dir or resolve_data_root()
@@ -1420,7 +1417,7 @@ def revert_repository_apply(
 
     # Gate 3a: Load job from storage — no bypass booleans (Step 1137)
     try:
-        _job_uuid = _UUID(job_id)
+        _job_uuid = normalize_job_id(job_id)
         _job = _load_job(_job_uuid, data_dir)
     except (ValueError, _JobNotFoundError):
         _emit_snapshot_event(data_dir, job_id, "revert_blocked", {

@@ -4,9 +4,9 @@ from __future__ import annotations
 import json
 import subprocess
 
-from packages.core.models import Job
 from packages.orchestration import builder_bridge
 from packages.orchestration.builder_models import BuilderOutput
+from packages.orchestration.pingpong_job import JobPlan
 
 
 class TestBuilderBridgeParseStage:
@@ -14,7 +14,7 @@ class TestBuilderBridgeParseStage:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.builder_bridge import run_builder_bridge
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         output = BuilderOutput(summary="Plan", proposed_changes=["Plan stuff"])
         result = run_builder_bridge(output, tmp_path, job=job, data_dir=tmp_path)
         assert result.stage == "parse_failed"
@@ -25,7 +25,7 @@ class TestBuilderBridgeParseStage:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.builder_bridge import run_builder_bridge
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         output = BuilderOutput(
             summary="Fix", proposed_changes=["Fix calc"],
             structured_patch_text="I think we should fix the function.",
@@ -38,7 +38,7 @@ class TestBuilderBridgeParseStage:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.builder_bridge import run_builder_bridge
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         patch_text = json.dumps({
             "file_ops": [{"path": "calc.py", "action": "modify", "content": "x=1\n"}]
         })
@@ -58,7 +58,7 @@ class TestBuilderBridgeApplyStage:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.builder_bridge import run_builder_bridge
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         fix_content = "def add(a, b):\n    return a + b\n"
         patch_text = json.dumps({
             "file_ops": [{"path": "calc.py", "action": "create", "content": fix_content}]
@@ -77,7 +77,7 @@ class TestBuilderBridgeApplyStage:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.builder_bridge import run_builder_bridge
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         patch_text = json.dumps({
             "file_ops": [{"path": "a.py", "action": "create", "content": "x=1\n"}]
         })
@@ -108,7 +108,7 @@ class TestBuilderBridgeTestStage:
             summary="Fix calc", proposed_changes=["Fix add"],
             structured_patch_text=patch_text,
         )
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge(output, tmp_path, job=job, data_dir=tmp_path, autonomy_level=4)
         assert result.apply_success is True
         assert result.test_passed is True
@@ -131,7 +131,7 @@ class TestBuilderBridgeTestStage:
             summary="Fix calc", proposed_changes=["Fix add"],
             structured_patch_text=patch_text,
         )
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge(output, tmp_path, job=job, data_dir=tmp_path, autonomy_level=4)
         assert result.apply_success is True
         assert result.test_passed is False
@@ -144,7 +144,7 @@ class TestBuilderBridgeEvents:
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.timeline import load_run_events
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         patch_text = json.dumps({
             "file_ops": [{"path": "a.py", "action": "create", "content": "x\n"}]
         })
@@ -153,7 +153,7 @@ class TestBuilderBridgeEvents:
             structured_patch_text=patch_text,
         )
         run_builder_bridge(output, tmp_path, job=job, data_dir=tmp_path, autonomy_level=2)
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
         event_types = [e["event"] for e in events]
         assert "builder_patch_parsed" in event_types
 
@@ -163,7 +163,7 @@ class TestBuilderBridgeSafety:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.builder_bridge import run_builder_bridge
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         output = BuilderOutput(
             summary="Fix", proposed_changes=["Fix"],
             structured_patch_text="rm -rf / && echo done",
@@ -176,7 +176,7 @@ class TestBuilderBridgeSafety:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.builder_bridge import run_builder_bridge
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         patch_text = json.dumps({
             "file_ops": [{"path": "../etc/passwd", "action": "modify", "content": "x"}]
         })
@@ -199,7 +199,7 @@ def _run_bridge_test_stage(tmp_path):
         structured_patch_text=patch_text,
     )
     return builder_bridge.run_builder_bridge(
-        output, tmp_path, job=Job(name="test"), data_dir=tmp_path, autonomy_level=4
+        output, tmp_path, job=JobPlan(job_title="test"), data_dir=tmp_path, autonomy_level=4
     )
 
 

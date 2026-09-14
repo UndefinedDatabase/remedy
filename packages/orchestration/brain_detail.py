@@ -38,7 +38,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from packages.core.models import Job
 from packages.orchestration._symbols import (
     INFO as _INFO,
 )
@@ -59,6 +58,7 @@ from packages.orchestration._symbols import (
     section,
 )
 from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.project_brain import (
     NT_AGENT_LOOP,
     NT_APPROVAL,
@@ -68,7 +68,6 @@ from packages.orchestration.project_brain import (
     NT_CHANGE_SET,
     NT_CONSTITUTION,
     NT_CONTEXT_COVERAGE,
-    NT_CONTEXT_PACK,
     NT_DECISION_QUEUE,
     NT_EVENT_LEDGER,
     NT_GIT_STATUS,
@@ -122,7 +121,7 @@ class BrainNodeDetail:
 
 
 def build_brain_node_detail(
-    job: Job,
+    job: JobPlan,
     graph: ProjectBrainGraph,
     node_id: str,
     events: list[dict[str, Any]],
@@ -140,7 +139,7 @@ def build_brain_node_detail(
         safe_id = node_id[:64] if node_id else "(empty)"
         raise ValueError(f"node not found in graph: {safe_id!r}")
 
-    job_id_str = str(job.id)
+    job_id_str = str(job.job_id)
 
     # ── Connections ─────────────────────────────────────────────────────────
     node_map = {n.id: n for n in graph.nodes}
@@ -281,7 +280,7 @@ def export_brain_node_detail_json(detail: BrainNodeDetail) -> dict[str, Any]:
 
 
 def _detail_job(
-    job: Job,
+    job: JobPlan,
     node: Any,
     job_id_str: str,
     connected: list[dict[str, str]],
@@ -291,7 +290,7 @@ def _detail_job(
     task_count = len(job.tasks)
     artifact_count = len(job.artifacts)
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
-    name_trunc = job.name if len(job.name) <= 80 else job.name[:80] + "…"
+    name_trunc = job.job_title if len(job.job_title) <= 80 else job.job_title[:80] + "…"
 
     explanation = (
         f"Top-level job '{name_trunc}'. "
@@ -313,7 +312,7 @@ def _detail_job(
 
     next_actions: list[str] = []
     if pending:
-        next_actions.append(f"remedy job run-next {job_id_str}")
+        next_actions.append(f"remedy job resume {job_id_str}")
     next_actions.append(f"remedy brain trust {job_id_str}")
     next_actions.append(f"remedy brain {job_id_str}")
 
@@ -338,47 +337,47 @@ def _detail_job(
 
 
 def _detail_task(
-    job: Job,
+    job: JobPlan,
     node: Any,
     job_id_str: str,
     connected: list[dict[str, str]],
 ) -> BrainNodeDetail:
-    task = next((t for t in job.tasks if str(t.id) == node.id), None)
+    task = next((t for t in job.tasks if str(t.task_id) == node.id), None)
     if task is None:
         return _fallback(node, job_id_str, connected, "Task not found in job model.")
 
     task_type = str(task.inputs.get("task_type", "unknown"))
-    desc = task.description if len(task.description) <= 120 else task.description[:120] + "…"
+    desc = task.title if len(task.title) <= 120 else task.title[:120] + "…"
 
     explanation = (
-        f"Task of type '{task_type}'. Status: {task.status.value}. "
+        f"Task of type '{task_type}'. Status: {task.status}. "
         f"Description: {desc}"
     )
 
     # Collect affected files from linked artifact metadata (repo_applied_files only).
     affected: list[str] = []
     for art in job.artifacts:
-        if art.task_id == task.id:
+        if art.task_id == str(task.task_id):
             files = art.metadata.get("repo_applied_files", [])
             if isinstance(files, list):
                 affected.extend(str(f) for f in files[:20])
 
     evidence = [
-        f"status: {task.status.value}",
+        f"status: {task.status}",
         f"task_type: {task_type}",
         f"linked_artifacts: {len(task.output_artifact_ids)}",
     ]
 
     next_actions: list[str] = []
-    if task.status.value == "pending":
-        next_actions.append(f"remedy job run-next {job_id_str}")
+    if task.status == "pending":
+        next_actions.append(f"remedy job resume {job_id_str}")
 
     return BrainNodeDetail(
         job_id=job_id_str,
         node_id=node.id,
         node_type=NT_TASK,
         title=desc,
-        status=node.status or task.status.value,
+        status=node.status or task.status,
         risk=None,
         explanation=explanation,
         why_it_exists=(
@@ -394,7 +393,7 @@ def _detail_task(
 
 
 def _detail_artifact(
-    job: Job,
+    job: JobPlan,
     node: Any,
     job_id_str: str,
     connected: list[dict[str, str]],
@@ -450,7 +449,7 @@ def _detail_artifact(
 
 
 def _detail_patch_intent(
-    job: Job,
+    job: JobPlan,
     node: Any,
     job_id_str: str,
     connected: list[dict[str, str]],
@@ -516,7 +515,7 @@ def _detail_patch_intent(
 
 
 def _detail_approval(
-    job: Job,
+    job: JobPlan,
     node: Any,
     job_id_str: str,
     connected: list[dict[str, str]],
@@ -683,7 +682,7 @@ def _detail_run_event(
         connected_to=tuple(connected),
         evidence=tuple(evidence),
         affected_files=(),
-        next_actions=(f"remedy timeline {job_id_str}",),
+        next_actions=(f"remedy brain timeline {job_id_str}",),
         redaction_notes=(
             "Event message is not rendered.",
             "Raw command output is not rendered.",
@@ -712,7 +711,7 @@ def _detail_agent_loop(
         f"cycle: {cycle}",
     ]
 
-    next_actions = [f"remedy agent-loop {job_id_str}"]
+    next_actions = [f"remedy dev agent-loop {job_id_str}"]
 
     return BrainNodeDetail(
         job_id=job_id_str,
@@ -723,7 +722,7 @@ def _detail_agent_loop(
         risk=None,
         explanation=explanation,
         why_it_exists=(
-            "Created when remedy agent-loop was run against this job.",
+            "Created when remedy dev agent-loop was run against this job.",
             "Records the orchestration decision at a point in time.",
         ),
         connected_to=tuple(connected),
@@ -770,7 +769,7 @@ def _detail_constitution(
         connected_to=tuple(connected),
         evidence=tuple(evidence),
         affected_files=(),
-        next_actions=(f"remedy constitution {job_id_str}",),
+        next_actions=(f"remedy brain constitution {job_id_str}",),
         redaction_notes=("Full source file contents are not rendered.",),
     )
 
@@ -1194,7 +1193,7 @@ def _detail_worker_adapter(
         ),
         affected_files=(),
         next_actions=(
-            "Inspect with `remedy workers` for all provider specs.",
+            "Inspect with `remedy worker list` for all provider specs.",
         ),
         redaction_notes=("No secrets or API keys in worker specs.",),
     )
@@ -1236,45 +1235,6 @@ def _detail_autonomy_readiness(
             f"Inspect with `remedy readiness job {job_id_str[:8]}`.",
         ),
         redaction_notes=("No sensitive data in readiness assessment.",),
-    )
-
-
-def _detail_context_pack(
-    node: Any,
-    job_id_str: str,
-    connected: list[dict[str, str]],
-) -> BrainNodeDetail:
-    tokens = node.metadata.get("estimated_tokens", 0)
-    budget = node.metadata.get("budget", 0)
-    truncated = node.metadata.get("truncated", False)
-
-    return BrainNodeDetail(
-        job_id=job_id_str,
-        node_id=node.id,
-        node_type=NT_CONTEXT_PACK,
-        title="Context Pack",
-        status=node.status or "active",
-        risk=None,
-        explanation=(
-            f"Context pack: ~{tokens} tokens (budget={budget}). "
-            f"Truncated: {truncated}. "
-            "Deterministic compact context for future provider calls."
-        ),
-        why_it_exists=(
-            "Reduces token usage by preparing compact structured context.",
-            "No LLM calls, no network, no raw content included.",
-        ),
-        connected_to=tuple(connected),
-        evidence=(
-            f"estimated_tokens: {tokens}",
-            f"budget: {budget}",
-            f"truncated: {truncated}",
-        ),
-        affected_files=(),
-        next_actions=(
-            f"Build with `remedy context pack {job_id_str[:8]}`.",
-        ),
-        redaction_notes=("No raw content in context pack metadata.",),
     )
 
 
@@ -1658,7 +1618,6 @@ _DETAIL_REGISTRY: dict[str, Any] = {
     NT_TOKEN_POLICY: _detail_token_policy,
     NT_WORKER_ADAPTER: _detail_worker_adapter,
     NT_AUTONOMY_READINESS: _detail_autonomy_readiness,
-    NT_CONTEXT_PACK: _detail_context_pack,
     NT_PATCH_APPLY_PROOF: _detail_patch_apply_proof,
     NT_PROJECT_PLACEHOLDER: _detail_project_placeholder,
     NT_PATCH_REVERT: _detail_patch_revert,

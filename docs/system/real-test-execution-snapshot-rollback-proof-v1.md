@@ -52,12 +52,6 @@ On `failed`/`timeout`, `execute_test_run` creates a safe Test Failure Artifact (
 to the `test_run_id`; the next safe action points at repair. Raw stdout/stderr stays private
 (referenced by `output_ref`); public surfaces get safe summaries only.
 
-## Mission contract gate relationship
-
-`overnight_mission` consumes: latest real test run (`tests_green` only from a real `passed` + exit 0),
-`snapshot_recorded` (gate `snapshot_before_apply`), and `rollback_restore_available` (gate
-`rollback_restore_available`). A failing latest test or a missing required gate blocks satisfaction.
-
 ## CLI
 
 ```

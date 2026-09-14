@@ -10,6 +10,7 @@ import pytest
 
 from apps.cli.command_catalog import CATALOG, get_commands_for_group
 from apps.cli.commands import collect_all_handlers
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.proposed_tasks import (
     ProposedTask,
     ProposedTaskStatus,
@@ -33,16 +34,10 @@ def tmp_store_with_job(tmp_path, monkeypatch):
         "packages.orchestration.proposed_tasks._STORE_DIR",
         tmp_path / "proposed_tasks",
     )
-    monkeypatch.setattr(
-        "packages.orchestration.storage._DATA_DIR",
-        tmp_path / "jobs",
-    )
-    from uuid import UUID
 
-    from packages.core.models import Job
-    from packages.orchestration.storage import save_job
-    job = Job(id=UUID(REAL_JOB_UUID), name="cli-test")
-    save_job(job)
+    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+    job = JobPlan(job_id=REAL_JOB_UUID, job_title="cli-test")
+    save_job_plan(job)
     return tmp_path
 
 
@@ -279,10 +274,9 @@ class TestProposeMaterializeHandler:
         data = json.loads(capsys.readouterr().out)
         assert data["materialized_count"] == 1
         assert data["tasks"][0]["materialized_task_id"] != ""
-        from uuid import UUID
 
-        from packages.orchestration.storage import load_job
-        job = load_job(UUID(REAL_JOB_UUID))
+        from packages.orchestration.pingpong_job import load_job_plan
+        job = load_job_plan(normalize_job_id(REAL_JOB_UUID))
         assert len(job.tasks) == 1
 
     def test_materialize_all(self, tmp_store_with_job, capsys):
@@ -295,10 +289,9 @@ class TestProposeMaterializeHandler:
         handlers["propose.materialize"](args)
         data = json.loads(capsys.readouterr().out)
         assert data["materialized_count"] == 2
-        from uuid import UUID
 
-        from packages.orchestration.storage import load_job
-        job = load_job(UUID(REAL_JOB_UUID))
+        from packages.orchestration.pingpong_job import load_job_plan
+        job = load_job_plan(normalize_job_id(REAL_JOB_UUID))
         assert len(job.tasks) == 2
 
     def test_materialize_non_approved_fails(self, tmp_store_with_job):
@@ -322,17 +315,12 @@ class TestAuditEvents:
             "packages.orchestration.proposed_tasks._STORE_DIR",
             tmp_path / "proposed_tasks",
         )
-        monkeypatch.setattr(
-            "packages.orchestration.storage._DATA_DIR",
-            tmp_path / "jobs",
-        )
         from uuid import UUID
 
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.run_log import RunLogWriter
-        from packages.orchestration.storage import save_job
         job_uuid = "12345678-1234-1234-1234-123456789012"
-        save_job(Job(id=UUID(job_uuid), name="audit-test"))
+        save_job_plan(JobPlan(job_id=job_uuid, job_title="audit-test"))
         t = ProposedTask(title="Test", risk="medium")
         add_proposed_task(job_uuid, t)
 

@@ -10,7 +10,8 @@ from __future__ import annotations
 import json
 import sys
 from typing import Any
-from uuid import UUID
+
+from packages.orchestration.data_paths import lookup_job_id
 
 _MAX_REASON_LEN = 200
 _MAX_NOTES_DISPLAY = 200
@@ -23,10 +24,10 @@ def _safe_text(text: str, limit: int = 80) -> str:
 
 
 def _make_writer(job_id: str) -> Any:
-    """Create a RunLogWriter for audit events. Returns None if job_id is not a valid UUID."""
+    """Create a RunLogWriter for audit events. Returns None if job_id does not resolve to one job."""
     try:
         from packages.orchestration.run_log import RunLogWriter
-        uid = UUID(job_id)
+        uid = lookup_job_id(job_id)
         return RunLogWriter(uid)
     except (ValueError, TypeError, ImportError, OSError):
         return None
@@ -38,9 +39,9 @@ def _require_job(job_id: str, args: Any) -> bool:
     Returns True if job exists, False + printed error if not.
     """
     try:
-        from packages.orchestration.storage import JobNotFoundError, JobStoreError, load_job
-        uid = UUID(job_id)
-        load_job(uid)
+        from packages.orchestration.pingpong_job import JobNotFoundError, JobStoreError, require_job_plan
+        uid = lookup_job_id(job_id)
+        require_job_plan(uid)
         return True
     except (ValueError, TypeError):
         msg = f"Invalid job ID: {job_id}"

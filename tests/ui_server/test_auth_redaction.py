@@ -9,21 +9,21 @@ import tempfile
 from pathlib import Path
 from uuid import uuid4
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 
-def _make_job(**overrides) -> Job:
+def _make_job(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "tasks": [Task(description="task 1", status=RunState.COMPLETED)],
+        "tasks": [TaskEntry(title="task 1", status=RunState.COMPLETED)],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _get_viewer_html():
@@ -34,7 +34,7 @@ def _get_viewer_html():
     from packages.orchestration.project_brain import build_project_brain
 
     job = _make_job()
-    events = [{"event": "job_created", "run_id": "r1", "job_id": str(job.id),
+    events = [{"event": "job_created", "run_id": "r1", "job_id": str(job.job_id),
                 "timestamp": "2026-01-01", "outcome": "ok", "metadata": {}}]
     graph = build_project_brain(job, events)
     data = build_brain_viewer_data(job, graph, events)

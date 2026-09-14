@@ -5,13 +5,14 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from packages.core.models import Job, JobBudgets
+from packages.core.models import JobBudgets
 from packages.orchestration.budget_guard import (
     BudgetCounterError,
     BudgetCounters,
     collect_counters_from_actuals,
     evaluate_budget,
 )
+from packages.orchestration.pingpong_job import JobPlan
 
 UTC = timezone.utc
 T0 = datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC)
@@ -394,33 +395,33 @@ class TestCollectCountersFromActuals:
 class TestRunContractConsolidation:
     def test_contract_inherits_tokens_from_budgets(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        job = Job(name="test", budgets=JobBudgets(max_total_tokens=50000))
+        job = JobPlan(job_title="test", budgets=JobBudgets(max_total_tokens=50000))
         c = build_default_run_contract(job)
         assert c.max_tokens == 50000
 
     def test_contract_inherits_runtime_from_budgets(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        job = Job(name="test", budgets=JobBudgets(max_wall_clock_minutes=30))
+        job = JobPlan(job_title="test", budgets=JobBudgets(max_wall_clock_minutes=30))
         c = build_default_run_contract(job)
         assert c.max_runtime_seconds == 1800
 
     def test_contract_defaults_without_budgets(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         c = build_default_run_contract(job)
         assert c.max_tokens == 200_000
         assert c.max_runtime_seconds == 600
 
     def test_contract_partial_budgets_only_overrides_set_fields(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        job = Job(name="test", budgets=JobBudgets(max_total_tokens=80000))
+        job = JobPlan(job_title="test", budgets=JobBudgets(max_total_tokens=80000))
         c = build_default_run_contract(job)
         assert c.max_tokens == 80000
         assert c.max_runtime_seconds == 600
 
     def test_no_contradictory_evaluation(self):
         from packages.orchestration.run_contract import RunUsage, build_default_run_contract, check_budget
-        job = Job(name="test", budgets=JobBudgets(max_total_tokens=10000))
+        job = JobPlan(job_title="test", budgets=JobBudgets(max_total_tokens=10000))
         c = build_default_run_contract(job)
         assert c.max_tokens == 10000
         usage = RunUsage(tokens_used=5000)

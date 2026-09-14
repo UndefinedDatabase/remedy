@@ -6,9 +6,9 @@ import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
-from uuid import UUID
 
-from packages.orchestration.storage import JobNotFoundError, load_job
+from packages.orchestration.data_paths import lookup_job_id
+from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
 if TYPE_CHECKING:
     import argparse
@@ -16,12 +16,12 @@ if TYPE_CHECKING:
 
 def _cmd_run_contract(job_id_str: str, *, json_output: bool = False) -> None:
     try:
-        job_id = UUID(job_id_str)
+        job_id = lookup_job_id(job_id_str)
     except ValueError:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -39,7 +39,7 @@ def _cmd_run_contract(job_id_str: str, *, json_output: bool = False) -> None:
     else:
         print(summarize_run_contract(contract))
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
     log.log(
         "run_contract_inspected",
         autonomy_level=contract.autonomy_level,
@@ -51,12 +51,12 @@ def _cmd_run_contract(job_id_str: str, *, json_output: bool = False) -> None:
 
 def _cmd_token_policy(job_id_str: str, *, json_output: bool = False) -> None:
     try:
-        job_id = UUID(job_id_str)
+        job_id = lookup_job_id(job_id_str)
     except ValueError:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -74,7 +74,7 @@ def _cmd_token_policy(job_id_str: str, *, json_output: bool = False) -> None:
     else:
         print(summarize_token_policy(policy))
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
     log.log(
         "token_policy_inspected", scope=policy.scope,
         zero_token_step_count=len(policy.zero_token_steps),

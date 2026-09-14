@@ -36,11 +36,11 @@ from html import escape as _html_esc
 from pathlib import Path
 from typing import Any
 
-from packages.core.models import Job
 from packages.orchestration.brain_detail import (
     build_brain_node_detail,
     export_brain_node_detail_json,
 )
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.project_brain import (
     ProjectBrainGraph,
     export_project_brain_json,
@@ -73,7 +73,6 @@ _ZONE_MAP: dict[str, str] = {
     "mcp_placeholder": "future",
     "project_placeholder": "intent",
     "autonomy_readiness": "policy",
-    "context_pack": "policy",
     "run_contract": "policy",
     "token_policy": "policy",
     "worker_adapter": "policy",
@@ -101,7 +100,6 @@ _LAYER_MAP: dict[str, int] = {
     "project_placeholder": 1,
     "patch_apply": 4,
     "autonomy_readiness": 1,
-    "context_pack": 2,
     "event_ledger": 2,
     "stop_reason": 3,
     "decision_queue": 3,
@@ -159,7 +157,7 @@ class BrainViewerData:
 
 
 def build_brain_viewer_data(
-    job: Job,
+    job: JobPlan,
     graph: ProjectBrainGraph,
     events: list[dict[str, Any]],
 ) -> BrainViewerData:
@@ -184,7 +182,7 @@ def build_brain_viewer_data(
         except (KeyError, ValueError, AttributeError, TypeError, RuntimeError, OSError):
             detail_fallback_count += 1
             node_details[node.id] = {
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "node_id": node.id,
                 "node_type": node.type,
                 "title": node.label[:80],
@@ -202,7 +200,7 @@ def build_brain_viewer_data(
     positions = _compute_positions(graph_dict["nodes"])
 
     return BrainViewerData(
-        job_id=str(job.id),
+        job_id=str(job.job_id),
         generated_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         graph=graph_dict,
         node_details=node_details,
@@ -679,7 +677,6 @@ function col(n){
   var t=n.type,s=n.status||'';
   if(t==='memory_placeholder'||t==='memory')return'var(--remedy-memory)';
   if(t==='autonomy_readiness')return'var(--remedy-proof)';
-  if(t==='context_pack')return'var(--remedy-cyan)';
   if(t==='mcp_placeholder')return'var(--remedy-muted)';
   if(s==='blocked'||s==='failed'||s==='rejected')return'var(--remedy-risk)';
   if(s==='running')return'var(--remedy-cyan)';

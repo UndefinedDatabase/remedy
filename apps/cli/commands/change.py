@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
-from packages.orchestration.storage import JobNotFoundError, load_job
+from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
 if TYPE_CHECKING:
     import argparse
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 def _cmd_change_list(job_id_str: str, *, json_output: bool = False) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -42,7 +42,7 @@ def _cmd_change_list(job_id_str: str, *, json_output: bool = False) -> None:
 def _cmd_change_show(job_id_str: str, intent_id: str, *, json_output: bool = False) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -72,7 +72,7 @@ def _cmd_change_show(job_id_str: str, intent_id: str, *, json_output: bool = Fal
 def _cmd_change_proof(job_id_str: str, *, path: str | None = None, json_output: bool = False) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)

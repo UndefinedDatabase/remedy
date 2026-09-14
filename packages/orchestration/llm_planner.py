@@ -12,9 +12,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
 from packages.orchestration.artifact_index import planning_artifact
 from packages.orchestration.job_runner import PlanJobResult
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 from packages.orchestration.prompt_segments import (
     ComposedPrompt,
@@ -24,7 +25,7 @@ from packages.orchestration.prompt_segments import (
 )
 
 
-def _deduplicate_task_types(proposed_tasks: list[ProposedTask]) -> list[Task]:
+def _deduplicate_task_types(proposed_tasks: list[ProposedTask]) -> list[TaskEntry]:
     """Convert ProposedTask list to Task list with unique task_type values.
 
     If two proposed tasks share the same task_type, the second and subsequent
@@ -35,7 +36,7 @@ def _deduplicate_task_types(proposed_tasks: list[ProposedTask]) -> list[Task]:
     Example: [write_tests, write_tests] -> [write_tests, write_tests_2]
     """
     seen: dict[str, int] = {}
-    tasks: list[Task] = []
+    tasks: list[TaskEntry] = []
     for t in proposed_tasks:
         tt = t.task_type
         if tt in seen:
@@ -43,11 +44,11 @@ def _deduplicate_task_types(proposed_tasks: list[ProposedTask]) -> list[Task]:
             tt = f"{t.task_type}_{seen[tt]}"
         else:
             seen[tt] = 1
-        tasks.append(Task(description=t.description, inputs={"task_type": tt}))
+        tasks.append(TaskEntry(title=t.description, inputs={"task_type": tt}))
     return tasks
 
 
-def _recall_memory_for_planning(job: Job) -> tuple[str, dict]:
+def _recall_memory_for_planning(job: JobPlan) -> tuple[str, dict]:
     """Recall approved memory for planner context injection.
 
     Returns (memory_section_text, metadata_dict).
@@ -61,7 +62,7 @@ def _recall_memory_for_planning(job: Job) -> tuple[str, dict]:
         project_id = job.metadata.get("project_id")
         ctx = build_memory_context(
             project_id=project_id,
-            job_id=str(job.id) if not project_id else None,
+            job_id=str(job.job_id) if not project_id else None,
             budget=500,
         )
         section = format_memory_section(ctx)
@@ -75,7 +76,7 @@ def _recall_memory_for_planning(job: Job) -> tuple[str, dict]:
         # Emit audit event
         from packages.memory.context_summary import emit_memory_recalled_event
         data_dir = job.metadata.get("data_dir")
-        emit_memory_recalled_event(ctx, data_dir=data_dir, job_id=str(job.id), stage="planning")
+        emit_memory_recalled_event(ctx, data_dir=data_dir, job_id=str(job.job_id), stage="planning")
         return section, meta
     except (ImportError, OSError, ValueError):
         return "", {}
@@ -103,7 +104,7 @@ def compose_planner_prompt(job_prompt: str, memory_section: str = "") -> Compose
 
 
 def plan_job_with_llm(
-    job: Job,
+    job: JobPlan,
     call_planner: Callable[[str], PlannerOutput],
     *,
     on_prompt_composed: Callable[[ComposedPrompt], None] | None = None,
@@ -139,7 +140,7 @@ def plan_job_with_llm(
     # F115 D1/D3: compose instead of concatenating, so the caller's trace entry
     # carries a real segment manifest. The sent bytes are unchanged — the
     # composer joins with the same delimiter this concatenation used.
-    composed = compose_planner_prompt(job.user_prompt or job.name, memory_section)
+    composed = compose_planner_prompt(job.user_prompt or job.job_title, memory_section)
     prompt = composed.text
     if on_prompt_composed is not None:
         on_prompt_composed(composed)
@@ -149,11 +150,11 @@ def plan_job_with_llm(
     job.tasks = _deduplicate_task_types(output.proposed_tasks)
 
     import hashlib as _hashlib
-    _raw_prompt = job.user_prompt or job.name
+    _raw_prompt = job.user_prompt or job.job_title
     _prompt_hash = _hashlib.sha256(_raw_prompt.encode()).hexdigest()[:16]
     content_lines = [
         "LLM Planning Output",
-        f"Job:    {job.id}",
+        f"Job:    {job.job_id}",
         f"Prompt: [redacted] (hash={_prompt_hash}, len={len(_raw_prompt)})",
         "",
         f"Summary: {output.summary}",
@@ -161,7 +162,7 @@ def plan_job_with_llm(
         "Tasks:",
     ]
     for task in job.tasks:
-        content_lines.append(f"  - {task.inputs['task_type']}: {task.description}")
+        content_lines.append(f"  - {task.inputs['task_type']}: {task.title}")
     if output.acceptance_checks:
         content_lines.append("")
         content_lines.append("Acceptance Checks:")

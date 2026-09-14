@@ -238,7 +238,7 @@ def inject_source_context(
     # Record event
     if data_dir is not None:
         from packages.orchestration.timeline import append_run_event
-        append_run_event(data_dir, job.id, event="source_context_injected", metadata={
+        append_run_event(data_dir, job.job_id, event="source_context_injected", metadata={
             "file_count": ctx.file_count,
             "manifest_count": ctx.manifest_count,
             "test_file_count": ctx.test_file_count,

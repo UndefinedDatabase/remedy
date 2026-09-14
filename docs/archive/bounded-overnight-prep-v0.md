@@ -8,12 +8,6 @@ FUTURE bounded overnight run. This block is preparation only — there is **no
 executor, no scheduler, no background worker**, and nothing applies code, runs
 tests, proposes/applies repairs, calls a provider, or mutates the repo.
 
-Commands (all read-only):
-
-    remedy overnight readiness <job_id> --json
-    remedy overnight plan <job_id> --json
-    remedy overnight report <job_id> [--markdown] [--json]
-
 ## Readiness vs. actual overnight run
 
 - **Readiness** answers: is this job *coherent* to assess, what would Remedy do
@@ -58,18 +52,8 @@ This block does NOT: apply code, run tests, propose/apply repairs, revert, call 
 provider, auto-approve, relax the contract, raise budgets, or start a background
 worker/scheduler. The overnight commands do not mutate the repo or the job.
 
-## How the executor uses this
-
-The [Bounded Overnight Executor v0](../system/bounded-overnight-executor-v0.md) consumes this
-readiness report: it is foreground, runs at most one cycle, refuses to run when
-execution is not explicitly permitted (`--allow-one-cycle` + an action flag) or a
-blocker/PENDING-FAIL review exists, honours the `BoundedOvernightPolicy` limits and
-stop reasons, and only ever acts through the existing approval-gated `do continue` /
-repair paths — never a new apply bypass.
-
 ## See also
 
-- [bounded-overnight-executor-v0.md](../system/bounded-overnight-executor-v0.md) — the foreground one-step executor that acts on this report.
 - [do-continue-v1.md](../guides/do-continue-v1.md) — the one-cycle path the executor reuses.
 - [repair-loop-v1.md](../system/repair-loop-v1.md) — the approval-gated repair proposal/apply cycle.
 - [snapshot-rollback-v1.md](../system/snapshot-rollback-v1.md) — durable snapshot truth.

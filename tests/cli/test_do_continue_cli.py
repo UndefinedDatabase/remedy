@@ -12,17 +12,18 @@ from uuid import uuid4
 
 import pytest
 
+from packages.orchestration.data_paths import mint_job_id
 from tests.cli.runtime_helpers import run_grouped_cli
 
 
 def _make_ineligible_job(data_dir):
     """Create a job with an unapproved intent under data_dir. Returns job_id."""
-    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-    from packages.orchestration.storage import save_job
+    from packages.core.models import Artifact, ArtifactKind, RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
-    task = Task(description="t")
+    task = TaskEntry(title="t")
     art = Artifact(
-        name="b", content="", kind=ArtifactKind.BUILDER_PROPOSAL, task_id=task.id,
+        name="b", content="", kind=ArtifactKind.BUILDER_PROPOSAL, task_id=str(task.task_id),
         metadata={
             "patch_intent_explanations": [
                 {"file": "docs/X.md", "action": "create", "risk": "low",
@@ -31,10 +32,10 @@ def _make_ineligible_job(data_dir):
             "patch_intent_approvals": {},  # not approved
         },
     )
-    job = Job(id=uuid4(), name="cli-cont", user_prompt="x", state=RunState.RUNNING,
+    job = JobPlan(job_id=mint_job_id(), job_title="cli-cont", user_prompt="x", state=RunState.RUNNING,
               tasks=[task], artifacts=[art], metadata={})
-    save_job(job, root=data_dir)
-    return str(job.id)
+    save_job_plan(job, root=data_dir)
+    return str(job.job_id)
 
 
 @pytest.fixture()

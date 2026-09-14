@@ -6,7 +6,8 @@ import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
-from uuid import UUID
+
+from packages.orchestration.data_paths import lookup_job_id
 
 if TYPE_CHECKING:
     import argparse
@@ -15,16 +16,16 @@ if TYPE_CHECKING:
 def _cmd_dashboard_job(job_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.dashboard import build_job_dashboard, summarize_job_dashboard
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.timeline import load_run_events
 
     try:
-        job_id = UUID(job_id_str)
+        job_id = lookup_job_id(job_id_str)
     except ValueError:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -44,7 +45,7 @@ def _cmd_dashboard_project(project_id_str: str, *, json_output: bool = False) ->
 
     from packages.orchestration.dashboard import build_project_dashboard
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job
+    from packages.orchestration.pingpong_job import load_job_plan
     from packages.orchestration.timeline import load_run_events
 
     try:
@@ -58,9 +59,9 @@ def _cmd_dashboard_project(project_id_str: str, *, json_output: bool = False) ->
     all_events: dict[str, list] = {}
     for jid in project.get("job_ids", []):
         try:
-            j = load_job(UUID(jid))
+            j = load_job_plan(lookup_job_id(jid))
             jobs.append(j)
-            all_events[jid] = load_run_events(data_dir, UUID(jid))
+            all_events[jid] = load_run_events(data_dir, jid)
         except Exception:
             pass
 

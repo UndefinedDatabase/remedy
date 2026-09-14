@@ -12,33 +12,28 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import (
-    Artifact,
-    ArtifactKind,
-    Job,
-    RunState,
-    Task,
-)
-from packages.orchestration.storage import save_job
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
-def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> Job:
+def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
     meta: dict = {}
     if project_id:
         meta["project_id"] = project_id
     if target_repo:
         meta["target_repo"] = target_repo
-    return Job(
-        id=uuid4(),
-        name="test job",
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="test job",
         user_prompt="test prompt",
         state=RunState.RUNNING,
         tasks=[
-            Task(
-                id=uuid4(),
-                description="task",
+            TaskEntry(
+                task_id="T001",
+                title="task",
                 status=RunState.PENDING,
                 inputs={"task_type": "patch"},
                 output_artifact_ids=[],
@@ -49,48 +44,45 @@ def _make_job(*, project_id: str | None = None, target_repo: str | None = None) 
     )
 
 
-def _make_job_s68(**overrides) -> Job:
+def _make_job_s68(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": str(uuid4()),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "description": "test job",
         "tasks": [
-            Task(description="task 1", status=RunState.COMPLETED),
+            TaskEntry(title="task 1", status=RunState.COMPLETED),
         ],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _make_job_s71(**overrides) -> Job:
+def _make_job_s71(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": str(uuid4()),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "tasks": [Task(description="task 1", status=RunState.COMPLETED)],
+        "tasks": [TaskEntry(title="task 1", status=RunState.COMPLETED)],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 # ── Step 71.1: Token Policy Applied ──────────────────────────────────────
 
 
 def _make_job_s111(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                task_type=t.get("type", "readme_draft"),
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -105,7 +97,7 @@ def _make_job_s111(*, tasks=None, name="test"):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
+def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[JobPlan, str, Path]:
     """Create a job with an approved patch intent and attached repo."""
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
@@ -141,9 +133,9 @@ def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
         },
     )
 
-    job = Job(
-        id=uuid4(),
-        name="patch job",
+    job = JobPlan(
+        job_id=mint_job_id(),
+        job_title="patch job",
         user_prompt="apply test",
         state=RunState.RUNNING,
         tasks=[],
@@ -152,7 +144,7 @@ def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
     )
     set_approval_state(job, intent_id, APPROVAL_APPROVED)
     set_permission(job, Capability.repo_generated_write, allow=True)
-    save_job(job)
+    save_job_plan(job)
     return job, intent_id, repo
 
 
@@ -177,75 +169,12 @@ def _make_events() -> list[dict]:
 
 
 class TestTokenEconomy:
-    """Token Economy v1 — context pack modes, worker recommend."""
-
-    def test_context_pack_caveman_smaller_than_compact(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.context_pack import build_context_pack
-        caveman = build_context_pack(job, [], budget=10000, mode="caveman")
-        compact = build_context_pack(job, [], budget=10000, mode="compact")
-        standard = build_context_pack(job, [], budget=10000, mode="standard")
-        assert caveman.estimated_tokens <= compact.estimated_tokens
-        assert compact.estimated_tokens <= standard.estimated_tokens
-
-    def test_context_pack_standard_mode(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.context_pack import build_context_pack
-        pack = build_context_pack(job, [], budget=10000, mode="standard")
-        assert pack.mode == "standard"
-
-    def test_caveman_no_long_prose(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.context_pack import build_context_pack
-        pack = build_context_pack(job, [], budget=10000, mode="caveman")
-        for s in pack.sections:
-            # Caveman sections should be short fragments
-            lines = s.content.split("\n")
-            for line in lines:
-                assert len(line) < 200, f"Caveman line too long: {line[:50]}..."
-
-    def test_worker_recommend_json_schema(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.worker_recommend import (
-            export_worker_recommendation_json,
-            recommend_worker,
-        )
-        rec = recommend_worker(job, [])
-        exported = export_worker_recommendation_json(rec)
-        required = {
-            "version", "job_id", "recommended_worker", "reason",
-            "token_mode", "estimated_context_tokens",
-            "requires_approval", "candidates",
-        }
-        assert required <= set(exported.keys())
-        assert exported["version"] == 1
-
-    def test_worker_recommend_local_first(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.worker_recommend import recommend_worker
-        rec = recommend_worker(job, [])
-        assert rec.recommended_worker == "ollama"  # local-first
-        assert not rec.requires_approval
+    """Token Economy v1 — the token policy."""
 
     def test_token_policy_json_has_all_fields(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.token_policy import (
             build_default_token_policy,
@@ -269,51 +198,6 @@ class TestTokenEconomy:
         assert isinstance(exported["prohibited_payloads"], list)
         assert isinstance(exported["max_context_tokens"], int)
 
-    def test_token_policy_applied_event_schema(self, tmp_path, monkeypatch):
-        """Agent loop must emit token_policy_applied with exact metadata keys."""
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.agent_loop import run_agent_loop
-        run_agent_loop(job, max_cycles=1)
-
-        from packages.orchestration.data_paths import resolve_data_root
-        from packages.orchestration.timeline import load_run_events
-        events = load_run_events(resolve_data_root(), job.id)
-        tpa = [e for e in events if e.get("event") == "token_policy_applied"]
-        assert len(tpa) >= 1, "must emit token_policy_applied"
-        meta = tpa[0].get("metadata", {})
-        required = {"mode", "max_context_tokens", "local_first"}
-        assert required <= set(meta.keys()), f"missing: {required - set(meta.keys())}"
-        assert meta["local_first"] is True
-
-    def test_worker_recommend_no_execution(self, tmp_path, monkeypatch):
-        """Worker recommend must not execute any provider."""
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.worker_recommend import recommend_worker
-        rec = recommend_worker(job, [])
-        # All candidates must be inert metadata — no subprocess, network, or shell
-        for c in rec.candidates:
-            assert c.execution_mode in ("local_process", "external_harness", "api")
-            assert c.status in ("available", "future")
-
-    def test_all_modes_obey_redaction(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.context_pack import build_context_pack, export_context_pack_json
-        for mode in ("caveman", "compact", "standard"):
-            pack = build_context_pack(job, [], budget=10000, mode=mode)
-            exported = export_context_pack_json(pack)
-            exported_str = json.dumps(exported)
-            for forbidden in ("api_key", "password", "secret", "credential"):
-                assert forbidden not in exported_str.lower() or mode in exported_str
-
 
 
 
@@ -330,9 +214,9 @@ class TestTokenPolicyApplied:
     def test_autonomy_loop_emits_event(self, tmp_path, monkeypatch):
         """Autonomy loop must emit token_policy_applied at start."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job = _make_job_s68()
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.autonomy_loop import run_autonomy_loop
         from packages.orchestration.data_paths import resolve_data_root
@@ -340,7 +224,7 @@ class TestTokenPolicyApplied:
 
         run_autonomy_loop(job, [], max_cycles=1, autonomy_level=0)
 
-        events = load_run_events(resolve_data_root(), job.id)
+        events = load_run_events(resolve_data_root(), job.job_id)
         tpa = [e for e in events if e.get("event") == "token_policy_applied"]
         assert len(tpa) >= 1, "must emit token_policy_applied"
         meta = tpa[0].get("metadata", {})
@@ -380,16 +264,16 @@ class TestTokenPolicyAppliedSchema:
 
     def test_autonomy_loop_emits(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job = _make_job_s71()
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.autonomy_loop import run_autonomy_loop
         from packages.orchestration.data_paths import resolve_data_root
         from packages.orchestration.timeline import load_run_events
 
         run_autonomy_loop(job, [], max_cycles=1, autonomy_level=0)
-        events = load_run_events(resolve_data_root(), job.id)
+        events = load_run_events(resolve_data_root(), job.job_id)
         tpa = [e for e in events if e.get("event") == "token_policy_applied"]
         assert len(tpa) >= 1
         meta = tpa[0].get("metadata", {})
@@ -399,9 +283,9 @@ class TestTokenPolicyAppliedSchema:
 
     def test_event_ledger_includes_tpa(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job = _make_job_s71()
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.autonomy_loop import run_autonomy_loop
         from packages.orchestration.data_paths import resolve_data_root
@@ -409,8 +293,8 @@ class TestTokenPolicyAppliedSchema:
         from packages.orchestration.timeline import load_run_events
 
         run_autonomy_loop(job, [], max_cycles=1, autonomy_level=0)
-        events = load_run_events(resolve_data_root(), job.id)
-        ledger = list_events(str(job.id), events)
+        events = load_run_events(resolve_data_root(), job.job_id)
+        ledger = list_events(str(job.job_id), events)
         tpa_ledger = [e for e in ledger if e.event_type == "token_policy_applied"]
         assert len(tpa_ledger) >= 1
 
@@ -503,62 +387,3 @@ class TestWorkerResourcesAndUnloadCli:
         with patch("shutil.which", return_value="/usr/bin/ollama"):
             with pytest.raises(SystemExit):
                 _cmd_worker_unload(json_output=False)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 113 — Semantic Zoom Truth Table v4
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-
-
-class TestContextPackMemory:
-    def test_approved_only(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.memory.local_gateway import store_memory
-        from packages.orchestration.context_pack import build_context_pack
-
-        job = Job(
-            id=uuid4(), name="ctx-mem", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
-        )
-        # Store globally (context pack reads global scope)
-        store_memory("approved.key", "val1", approved=True)
-        store_memory("unapproved.key", "val2", approved=False)
-
-        pack = build_context_pack(job, [], budget=5000, mode="compact")
-        mem_section = next((s for s in pack.sections if s.name == "memory_keys"), None)
-        assert mem_section is not None
-        assert "approved.key" in mem_section.content
-        assert "unapproved.key" not in mem_section.content
-
-    def test_caveman_mode_count(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.memory.local_gateway import store_memory
-        from packages.orchestration.context_pack import build_context_pack
-
-        job = Job(
-            id=uuid4(), name="ctx-cave", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
-        )
-        store_memory("k1", "v1", approved=True)
-        pack = build_context_pack(job, [], budget=5000, mode="caveman")
-        mem_section = next((s for s in pack.sections if s.name == "memory_keys"), None)
-        assert mem_section is not None
-        assert "mem:" in mem_section.content
-
-    def test_no_raw_values_in_pack(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.memory.local_gateway import store_memory
-        from packages.orchestration.context_pack import build_context_pack
-
-        job = Job(
-            id=uuid4(), name="ctx-raw", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
-        )
-        store_memory("secret.key", "SECRET_RAW_VALUE_12345", approved=True)
-        pack = build_context_pack(job, [], budget=5000, mode="compact")
-        mem_section = next((s for s in pack.sections if s.name == "memory_keys"), None)
-        assert mem_section is not None
-        assert "SECRET_RAW_VALUE_12345" not in mem_section.content
-

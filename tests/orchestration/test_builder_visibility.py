@@ -7,14 +7,13 @@ import json
 class TestLiveStateBridgeFields:
     def test_bridge_fields_present_after_parse_event(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import BuilderOutput
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.ui_server import _build_live_state_json
 
-        job = Job(name="test")
-        save_job(job)
+        job = JobPlan(job_title="test")
+        save_job_plan(job)
 
         patch_text = json.dumps({
             "file_ops": [{"path": "a.py", "action": "create", "content": "x\n"}]
@@ -32,14 +31,13 @@ class TestLiveStateBridgeFields:
 
     def test_bridge_fields_show_parse_error(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import BuilderOutput
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.ui_server import _build_live_state_json
 
-        job = Job(name="test")
-        save_job(job)
+        job = JobPlan(job_title="test")
+        save_job_plan(job)
 
         output = BuilderOutput(
             summary="Fix", proposed_changes=["Fix"],
@@ -52,14 +50,13 @@ class TestLiveStateBridgeFields:
 
     def test_repair_loop_cycle_in_state(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
         from packages.orchestration.builder_models import BuilderOutput
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.ui_server import _build_live_state_json
 
-        job = Job(name="test")
-        save_job(job)
+        job = JobPlan(job_title="test")
+        save_job_plan(job)
 
         (tmp_path / "calc.py").write_text("def add(a, b):\n    return 0\n")
         (tmp_path / "tests").mkdir()
@@ -87,14 +84,13 @@ class TestLiveStateBridgeFields:
 
     def test_stage_map_recognizes_bridge_events(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import BuilderOutput
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.ui_server import _build_live_state_json
 
-        job = Job(name="test")
-        save_job(job)
+        job = JobPlan(job_title="test")
+        save_job_plan(job)
 
         patch_text = json.dumps({
             "file_ops": [{"path": "a.py", "action": "create", "content": "x\n"}]

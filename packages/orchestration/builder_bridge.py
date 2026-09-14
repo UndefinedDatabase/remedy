@@ -134,7 +134,7 @@ def run_builder_bridge(
 
     stop_reason_for_parse = _map_error_kind_to_stop_reason(parse_result.error_kind) if not parse_result.parse_success else ""
 
-    _emit(data_dir, job.id, "builder_patch_parsed", {
+    _emit(data_dir, job.job_id, "builder_patch_parsed", {
         "parse_success": parse_result.parse_success,
         "error_kind": parse_result.error_kind,
         "stop_reason": stop_reason_for_parse,
@@ -162,7 +162,7 @@ def run_builder_bridge(
     result.intent_id = intent_id
     result.stage = "approved"
 
-    _emit(data_dir, job.id, "builder_bridge_intent_approved", {
+    _emit(data_dir, job.job_id, "builder_bridge_intent_approved", {
         "intent_id": intent_id,
         "target_paths": parse_result.target_paths,
         "risk": parse_result.risk,
@@ -175,7 +175,7 @@ def run_builder_bridge(
     if diff_response is None:
         apply_result = apply_structured_patch(
             patch, repo_path,
-            data_dir=str(data_dir), job_id=job.id, job=job,
+            data_dir=str(data_dir), job_id=job.job_id, job=job,
             intent_id=intent_id,
         )
         result.apply_success = apply_result.success
@@ -194,7 +194,7 @@ def run_builder_bridge(
         )
         result.diff_repair_mode = diff_result.mode
         result.diff_fallback_reason = diff_result.fallback_reason
-        _emit(data_dir, job.id, "diff_repair_applied", {
+        _emit(data_dir, job.job_id, "diff_repair_applied", {
             "mode": diff_result.mode,
             "applied": diff_result.applied,
             "fallback_reason": diff_result.fallback_reason,
@@ -233,7 +233,7 @@ def run_builder_bridge(
                 result.test_passed = passed
                 result.stage = "tested"
 
-                _emit(data_dir, job.id, "builder_bridge_test_completed", {
+                _emit(data_dir, job.job_id, "builder_bridge_test_completed", {
                     "exit_code": proc.returncode,
                     "passed": passed,
                 })
@@ -243,7 +243,7 @@ def run_builder_bridge(
                     proof_hash = hashlib.sha256(
                         (output.structured_patch_text or "").encode()
                     ).hexdigest()[:16]
-                    _emit(data_dir, job.id, "proof_collected", {
+                    _emit(data_dir, job.job_id, "proof_collected", {
                         "content_hash": proof_hash,
                         "source": "builder_bridge",
                         "test_passed": True,
@@ -279,7 +279,7 @@ def _create_and_approve_intent(job: Any, parse_result: BuilderPatchResult) -> st
         })
 
     artifact = Artifact(
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         name="builder-bridge-intent",
         content="",
     )
@@ -440,7 +440,7 @@ def run_builder_bridge_loop(
         patch_hash = hashlib.sha256(patch_text.encode()).hexdigest()[:16]
         if patch_hash in seen_patch_hashes and patch_text:
             loop_result.stop_reason = "repeated_patch_detected"
-            _emit(data_dir, job.id, "repair_loop_stopped", {
+            _emit(data_dir, job.job_id, "repair_loop_stopped", {
                 "cycle": cycle,
                 "reason": "repeated_patch_detected",
                 "patch_hash": patch_hash,
@@ -449,7 +449,7 @@ def run_builder_bridge_loop(
         if patch_text:
             seen_patch_hashes.add(patch_hash)
 
-        _emit(data_dir, job.id, "repair_loop_cycle_started", {
+        _emit(data_dir, job.job_id, "repair_loop_cycle_started", {
             "cycle": cycle,
             "max_cycles": max_cycles,
             "has_repair_context": repair_ctx is not None,
@@ -462,7 +462,7 @@ def run_builder_bridge_loop(
                 output.structured_patch_text or ""
             )
             if diff_response is None:
-                _emit(data_dir, job.id, "diff_repair_not_used", {
+                _emit(data_dir, job.job_id, "diff_repair_not_used", {
                     "cycle": cycle, "reason": decode_reason,
                 })
 
@@ -480,15 +480,15 @@ def run_builder_bridge_loop(
         # Remedy deliberately does not retry the SAME answer in full-file mode —
         # the answer was diff-shaped, so the next prompt has to ask for a full file.
         if bridge_result.stage == "diff_fallback":
-            _emit(data_dir, job.id, "repair_round_fell_back_to_full_file", {
+            _emit(data_dir, job.job_id, "repair_round_fell_back_to_full_file", {
                 "cycle": cycle,
                 "reason": bridge_result.diff_fallback_reason,
             })
             if cycle < max_cycles:
                 repair_ctx = build_repair_context(
-                    job.id,
+                    job.job_id,
                     {"metadata": {"exit_code": 1, "passed": False, "cycle": cycle}},
-                    load_run_events(data_dir, job.id),
+                    load_run_events(data_dir, job.job_id),
                 )
                 repair_ctx["repair_mode"] = "full_file"
                 repair_ctx["full_file_reason"] = bridge_result.diff_fallback_reason
@@ -498,7 +498,7 @@ def run_builder_bridge_loop(
         # Check outcomes
         if bridge_result.stage in ("parse_failed", "apply_failed"):
             loop_result.stop_reason = bridge_result.stop_reason or bridge_result.stage
-            _emit(data_dir, job.id, "repair_loop_stopped", {
+            _emit(data_dir, job.job_id, "repair_loop_stopped", {
                 "cycle": cycle,
                 "reason": bridge_result.stop_reason or bridge_result.stage,
                 "error": bridge_result.error,
@@ -507,16 +507,16 @@ def run_builder_bridge_loop(
 
         if bridge_result.test_passed is True:
             loop_result.success = True
-            _emit(data_dir, job.id, "repair_loop_succeeded", {
+            _emit(data_dir, job.job_id, "repair_loop_succeeded", {
                 "cycle": cycle,
             })
             break
 
         if bridge_result.test_passed is False and cycle < max_cycles:
             # Build repair context for next cycle
-            events = load_run_events(data_dir, job.id)
+            events = load_run_events(data_dir, job.job_id)
             test_event = {"metadata": {"exit_code": 1, "passed": False, "cycle": cycle}}
-            repair_ctx = build_repair_context(job.id, test_event, events)
+            repair_ctx = build_repair_context(job.job_id, test_event, events)
             loop_result.repair_contexts.append(repair_ctx)
 
             if diff_mode:
@@ -527,9 +527,9 @@ def run_builder_bridge_loop(
             else:
                 mode_meta = {"mode": "full_file", "reason": "diff_mode_off"}
             repair_ctx["repair_mode"] = mode_meta["mode"]
-            _emit(data_dir, job.id, "repair_mode_selected", {"cycle": cycle, **mode_meta})
+            _emit(data_dir, job.job_id, "repair_mode_selected", {"cycle": cycle, **mode_meta})
 
-            _emit(data_dir, job.id, "repair_context_created", {
+            _emit(data_dir, job.job_id, "repair_context_created", {
                 "cycle": cycle,
                 "failure_kind": repair_ctx.get("failure_kind", "unknown"),
             })

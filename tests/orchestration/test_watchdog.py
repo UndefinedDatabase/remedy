@@ -38,11 +38,11 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from typing import Any
-from uuid import UUID
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.escalation import (
     answer_task_decision,
     open_task_decisions,
@@ -79,7 +79,7 @@ from packages.orchestration.orchestrator_move_schema import (
     MOVE_DISPATCH_JOB,
     ORCHESTRATOR_MOVE_SCHEMA_V,
 )
-from packages.orchestration.storage import load_job, save_job
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, load_job_plan, save_job_plan
 from packages.orchestration.watchdog import (
     DECISION_OPTION_ABORT,
     DECISION_OPTION_RESUME,
@@ -437,12 +437,12 @@ def _trip(kind: str = TRIP_NO_PROGRESS, *, what: str = "") -> Trip:
     )
 
 
-def _job_with_tasks(task_count: int = 2) -> Job:
+def _job_with_tasks(task_count: int = 2) -> JobPlan:
     """The escalation suite's job shape: a planned job with attachable tasks."""
-    return Job(
-        name="watchdog-job",
+    return JobPlan(
+        job_title="watchdog-job",
         user_prompt="build the watched thing",
-        tasks=[Task(description=f"task {i}",
+        tasks=[TaskEntry(title=f"task {i}",
                     inputs={"task_type": "documentation"})
                for i in range(task_count)],
         state=RunState.PLANNED,
@@ -468,8 +468,8 @@ def mission(data_root):
 def linked_job(mission, data_root):
     """The mission's one linked, persisted job — what a decision attaches to."""
     job = _job_with_tasks()
-    save_job(job)
-    link_job_to_mission(ACTION_PROJECT, mission.id, str(job.id),
+    save_job_plan(job)
+    link_job_to_mission(ACTION_PROJECT, mission.id, str(job.job_id),
                         MISSION_ROLE_INITIAL, root=data_root)
     return job
 
@@ -490,7 +490,7 @@ def test_an_empty_trip_list_writes_nothing_at_all(mission, linked_job,
     assert actions == []
     assert _status(mission.id, data_root) == MISSION_STATUS_ACTIVE
     assert not ledger_path(ACTION_PROJECT, mission.id, data_root).is_file()
-    assert open_task_decisions(load_job(linked_job.id)) == []
+    assert open_task_decisions(load_job_plan(linked_job.job_id)) == []
 
 
 def test_one_trip_pauses_an_active_mission(mission, linked_job, data_root):
@@ -558,7 +558,7 @@ def test_a_second_trip_of_the_same_class_is_suppressed(mission, linked_job,
     assert second[0].decision_id == ""
     assert watchdog_decision_marker(TRIP_NO_PROGRESS) in second[0].note
     # One record, not two — dedup is the point of the marker.
-    records = open_task_decisions(load_job(linked_job.id))
+    records = open_task_decisions(load_job_plan(linked_job.job_id))
     assert len(records) == 1
     assert records[0]["options"] == [DECISION_OPTION_RESUME,
                                      DECISION_OPTION_ABORT]
@@ -576,7 +576,7 @@ def test_two_trip_classes_in_one_call_raise_two_decisions(mission, linked_job,
 
     assert [a.suppressed for a in actions] == [False, False]
     questions = [r["question"]
-                 for r in open_task_decisions(load_job(linked_job.id))]
+                 for r in open_task_decisions(load_job_plan(linked_job.job_id))]
     assert len(questions) == 2
     assert questions[0].startswith(watchdog_decision_marker(TRIP_NO_PROGRESS))
     assert questions[1].startswith(watchdog_decision_marker(TRIP_BURN_ANOMALY))
@@ -589,10 +589,10 @@ def test_answering_the_decision_lifts_the_suppression(mission, linked_job,
     assert act_on_trips(ACTION_PROJECT, mission.id, [_trip()],
                         root=data_root, now=T0)[0].suppressed is True
 
-    job = load_job(linked_job.id)
+    job = load_job_plan(linked_job.job_id)
     assert answer_task_decision(job, first[0].decision_id,
                                 answer=DECISION_OPTION_RESUME, now=T0)
-    save_job(job)
+    save_job_plan(job)
 
     third = act_on_trips(ACTION_PROJECT, mission.id, [_trip()], root=data_root,
                          now=T0)
@@ -709,7 +709,7 @@ class _PausedExecution:
     stop_reason = ""
 
 
-def _pause_the_job(job: Job) -> _PausedExecution:
+def _pause_the_job(job: JobPlan) -> _PausedExecution:
     """The executor seam, so this file stays provider-free (the e2e idiom).
 
     A real executor always takes a dispatched job OUT of ``planned``; ``paused``
@@ -717,7 +717,7 @@ def _pause_the_job(job: Job) -> _PausedExecution:
     dispatch follow, which is what a no-progress run has to be able to do.
     """
     job.state = RunState.PAUSED
-    save_job(job)
+    save_job_plan(job)
     return _PausedExecution()
 
 
@@ -765,7 +765,7 @@ def _open_questions(mission_id: str, data_root: Any) -> list[str]:
     questions: list[str] = []
     for link in mission.job_links:
         questions.extend(str(record["question"]) for record
-                         in open_task_decisions(load_job(UUID(link.job_id))))
+                         in open_task_decisions(load_job_plan(normalize_job_id(link.job_id))))
     return questions
 
 
@@ -886,8 +886,8 @@ def test_evaluate_mission_writes_nothing_at_all(data_root):
     """The INDEPENDENCE claim: asking must not do what acting would do."""
     mission = _eval_mission(data_root, _dispatch_ledger(3))
     job = _job_with_tasks()
-    save_job(job)
-    link_job_to_mission(EVAL_PROJECT, mission.id, str(job.id),
+    save_job_plan(job)
+    link_job_to_mission(EVAL_PROJECT, mission.id, str(job.job_id),
                         MISSION_ROLE_INITIAL, root=data_root)
     before_entries = len(read_ledger(EVAL_PROJECT, mission.id, data_root))
 
@@ -899,7 +899,7 @@ def test_evaluate_mission_writes_nothing_at_all(data_root):
         MISSION_STATUS_ACTIVE
     assert len(read_ledger(EVAL_PROJECT, mission.id, data_root)) == \
         before_entries
-    assert open_task_decisions(load_job(job.id)) == []
+    assert open_task_decisions(load_job_plan(job.job_id)) == []
 
 
 def test_evaluate_mission_returns_the_same_trips_twice(data_root):

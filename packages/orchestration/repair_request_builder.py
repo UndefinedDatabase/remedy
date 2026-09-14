@@ -4,15 +4,16 @@ Provider-Agnostic Repair Request Builder v0 (Steps 1365-1398).
 Given a TestFailureArtifact, produce a SAFE, structured request package that can be
 handed to ANY external worker / model / human — Remedy stays provider-, worker-,
 model-, subscription-, IDE-, and account-AGNOSTIC. The external actor produces a
-candidate repair OUTSIDE Remedy; that output re-enters ONLY through the existing
-path:
+candidate repair OUTSIDE Remedy.
 
-    remedy provider intake-repair <job> --failure-artifact-id <id> --input <file> --provider <label>
-      → Trust Gate → Patch Materialization → Approval → remedy do continue
+Remedy deliberately has NO import route for that answer. F275 T001 deleted the Provider
+Trust Gate and its `provider intake-repair` command, which was the one command that
+read an external candidate back in, so this module prepares a package that ends with
+the human who received it. R-0868 records that it has no importer left.
 
 This module never calls a provider/model/network/subprocess/browser/IDE, never
-applies, never creates a Patch Intent, and never calls provider intake itself. It
-only prepares a safe request package + records an offline candidate-generator record.
+applies, and never creates a Patch Intent. It only prepares a safe request package +
+records an offline candidate-generator record.
 
 A candidate-generator adapter BOUNDARY is defined here as an interface only: the
 manual/offline adapter's ``execute()`` raises ``CandidateGeneratorExecutionUnavailable``.
@@ -37,7 +38,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
+
+from packages.orchestration.data_paths import normalize_job_id
 
 MAX_REQUEST_BYTES = 256 * 1024
 _REQUESTS_META_KEY = "repair_request_packages_v0"
@@ -132,8 +135,6 @@ class RepairRequestPackage:
     generator_label: str = "external"
     failure_kind: str = ""
     sections: list[RepairRequestSection] = field(default_factory=list)
-    output_intake_command: str = ""
-    trust_gate_command: str = ""
     content_sha256: str = ""
     created_at: str = ""
     warnings: list[str] = field(default_factory=list)
@@ -147,8 +148,6 @@ class RepairRequestPackage:
             "target_kind": self.target_kind, "model_hint": self.model_hint,
             "generator_label": self.generator_label, "failure_kind": self.failure_kind,
             "sections": [s.to_dict() for s in self.sections],
-            "output_intake_command": self.output_intake_command,
-            "trust_gate_command": self.trust_gate_command,
             "content_sha256": self.content_sha256, "created_at": self.created_at,
             "warnings": self.warnings,
         }
@@ -167,8 +166,6 @@ class RepairRequestBuildResult:
     generator_label: str = "external"
     stop_reason: str = RepairRequestStopReason.READY
     evidence_status: str = "complete"
-    output_intake_command: str = ""
-    trust_gate_command: str = ""
     next_steps: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     safe_summary: str = ""
@@ -183,8 +180,6 @@ class RepairRequestBuildResult:
             "target_kind": self.target_kind, "model_hint": self.model_hint,
             "generator_label": self.generator_label, "stop_reason": self.stop_reason,
             "evidence_status": self.evidence_status,
-            "output_intake_command": self.output_intake_command,
-            "trust_gate_command": self.trust_gate_command,
             "next_steps": self.next_steps, "warnings": self.warnings,
             "safe_summary": self.safe_summary,
         }
@@ -197,7 +192,7 @@ def _now() -> str:
 def _scrub(text: str) -> str:
     """Scrub secret-like / absolute-path / traceback material from any text that
     will be shared with an untrusted external actor (defense-in-depth)."""
-    from packages.orchestration.provider_trust import _scrub_public
+    from packages.common.public_text_redaction import _scrub_public
     return _scrub_public(str(text))
 
 
@@ -425,12 +420,11 @@ def _import_next_steps(job_id: str, failure_artifact_id: str, label: str) -> lis
     return [
         "1. Send this request to any external model / worker / human.",
         "2. Save their candidate response to a local file.",
-        f"3. Import it: remedy provider intake-repair {job_id} "
-        f"--failure-artifact-id {failure_artifact_id} --input <response_file> "
-        f"--provider {label} --json",
-        f"4. If needed, inspect the trust report: remedy provider trust-show {job_id} <report_id> --json",
-        f"5. If a patch intent is created, approve it: remedy patch approve {job_id} <intent_id> --json",
-        f"6. Apply it through the normal path: remedy do continue {job_id} --intent-id <intent_id> --json",
+        "3. Remedy has NO command that imports that file back: the untrusted-intake "
+        "route was deleted by F275 T001 (R-0868). The steps below apply only to a patch "
+        "intent that already exists.",
+        f"4. If a patch intent exists, approve it: remedy patch approve {job_id} <intent_id> --json",
+        f"5. Apply it through the normal path: remedy do continue {job_id} --intent-id <intent_id> --json",
     ]
 
 
@@ -454,13 +448,13 @@ def build_repair_request_package(
     Never calls a provider/network/subprocess, never applies, never creates a Patch
     Intent. Idempotent per (failure, target_kind, model_hint) unless ``new=True``."""
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
     from packages.orchestration.repair_loop import build_repair_context, find_repair_attempt
     from packages.orchestration.run_contract import (
         ContractAction,
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError, load_job, save_job
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     label = (generator_label or "external").strip() or "external"
@@ -470,7 +464,7 @@ def build_repair_request_package(
         model_hint=hint, generator_label=label)
 
     try:
-        job = load_job(UUID(job_id), ddir)
+        job = require_job_plan(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         result.stop_reason = RepairRequestStopReason.JOB_NOT_FOUND
         result.evidence_status = "unknown"
@@ -504,25 +498,18 @@ def build_repair_request_package(
         if existing is not None:
             result.request_package_id = existing["request_package_id"]
             result.request_file_id = existing["request_package_id"]
-            result.output_intake_command = existing.get("output_intake_command", "")
-            result.trust_gate_command = existing.get("trust_gate_command", "")
             result.next_steps = _import_next_steps(job_id, failure_artifact_id,
                                                    existing.get("generator_label", label))
             result.safe_summary = "Existing repair request reused (idempotent)."
             return result
 
     rpid = uuid4().hex[:16]
-    intake_cmd = (f"remedy provider intake-repair {job_id} "
-                  f"--failure-artifact-id {failure_artifact_id} --input <response_file> "
-                  f"--provider {label} --json")
-    trust_cmd = f"remedy provider trust-show {job_id} <report_id> --json"
     package = RepairRequestPackage(
         request_package_id=rpid, job_id=job_id, failure_artifact_id=failure_artifact_id,
         repair_attempt_id=attempt_id, test_run_id=ctx.test_run_id, apply_id=ctx.apply_id,
         intent_id=ctx.intent_id, task_id=ctx.task_id, target_kind=target_kind,
         model_hint=hint, generator_label=label, failure_kind=ctx.failure_kind,
-        sections=_build_sections(ctx, target_kind, hint),
-        output_intake_command=intake_cmd, trust_gate_command=trust_cmd, created_at=_now(),
+        sections=_build_sections(ctx, target_kind, hint), created_at=_now(),
         warnings=[],
     )
     rendered = render_request_markdown(package)
@@ -545,17 +532,15 @@ def build_repair_request_package(
         execution_mode=CandidateGeneratorCapability.MANUAL,
     )
     save_generator_record(job, record)
-    save_job(job, root=ddir)
+    save_job_plan(job, root=ddir)
 
     result.request_package_id = rpid
     result.request_file_id = rpid
     result.generator_record_id = grid
-    result.output_intake_command = intake_cmd
-    result.trust_gate_command = trust_cmd
     result.next_steps = _import_next_steps(job_id, failure_artifact_id, label)
     result.safe_summary = (
-        f"Repair request prepared ({target_kind}); hand to an external actor, then "
-        f"import the response via provider intake-repair.")
+        f"Repair request prepared ({target_kind}); hand it to an external actor. Remedy "
+        f"has no command that imports their answer back.")
     return result
 
 
@@ -570,7 +555,7 @@ def export_build_result_json(result: RepairRequestBuildResult) -> dict[str, Any]
 
 class CandidateGeneratorExecutionUnavailable(RuntimeError):
     """Raised when an adapter cannot execute a generator in-process. v0 is offline:
-    candidate output must be produced externally and imported via provider intake."""
+    candidate output must be produced externally, and Remedy cannot import it back."""
 
 
 class CandidateGeneratorAdapter:
@@ -592,7 +577,7 @@ class CandidateGeneratorAdapter:
     def execute(self, *args: Any, **kwargs: Any) -> Any:
         raise CandidateGeneratorExecutionUnavailable(
             "Automated candidate generation is not available in v0; produce the "
-            "candidate externally and import it via 'remedy provider intake-repair'.")
+            "candidate externally. Remedy has no command that imports it back.")
 
 
 class ManualCandidateGeneratorAdapter(CandidateGeneratorAdapter):

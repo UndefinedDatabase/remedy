@@ -12,11 +12,11 @@ Coverage:
 
 from __future__ import annotations
 
-from uuid import uuid4
-
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.token_policy import (
     TokenPolicy,
     build_default_token_policy,
@@ -30,14 +30,14 @@ from packages.orchestration.token_policy import (
 # ---------------------------------------------------------------------------
 
 
-def _make_job(*, task_count: int = 0) -> Job:
+def _make_job(*, task_count: int = 0) -> JobPlan:
     tasks = [
-        Task(id=uuid4(), description=f"task-{i}")
+        TaskEntry(task_id=f"T{i + 1:03d}", title=f"task-{i}")
         for i in range(task_count)
     ]
-    return Job(
-        id=uuid4(),
-        name="test-job",
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="test-job",
         user_prompt="test prompt",
         tasks=tasks,
     )
@@ -77,7 +77,7 @@ class TestBuildDefaultTokenPolicy:
     def test_job_id_matches(self) -> None:
         job = _make_job()
         policy = build_default_token_policy(job)
-        assert policy.job_id == str(job.id)
+        assert policy.job_id == str(job.job_id)
 
     def test_scope_is_job(self) -> None:
         policy = build_default_token_policy(_make_job())

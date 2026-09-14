@@ -57,7 +57,7 @@ from packages.orchestration.patch_intent import RISK_HIGH, RISK_UNKNOWN
 from packages.orchestration.permissions import Capability, is_allowed
 
 if TYPE_CHECKING:
-    from packages.core.models import Job
+    from packages.orchestration.pingpong_job import JobPlan
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +99,7 @@ class PatchApplyResult:
 
 
 def apply_patch_intent(
-    job: Job,
+    job: JobPlan,
     intent_id: str,
     *,
     data_dir: Path | None = None,
@@ -123,7 +123,7 @@ def apply_patch_intent(
     Returns:
         PatchApplyResult with state "applied", "noop", or "blocked".
     """
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
 
     def _blocked(reason: str, target_path: str = "", action: str = "") -> PatchApplyResult:
         result = PatchApplyResult(
@@ -200,7 +200,7 @@ def apply_patch_intent(
             repo_root,
             [_TouchedPath(path=target_path, operation=action, role="target")],
             applicator="patch_apply",
-            job_id=str(getattr(job, "id", "")),
+            job_id=str(getattr(job, "job_id", "")),
             intent_id=intent_id,
             evidence_dir=data_dir,
             job_fences=_job_fences,
@@ -232,7 +232,7 @@ def apply_patch_intent(
         verify_snapshot as _verify_snapshot,
     )
     _data_dir_path = data_dir or _resolve_data_root()
-    _job_id_str = str(job.id)
+    _job_id_str = str(job.job_id)
     _snap_result = _create_snapshot(_job_id_str, intent_id, [target_path], repo_root, _data_dir_path)
     if not _snap_result.success:
         return _blocked(f"snapshot_blocked:{_snap_result.safe_error_kind}", target_path, action)
@@ -324,7 +324,7 @@ def apply_patch_intent(
     }
 
     # ── 11. Save job ──────────────────────────────────────────────────────
-    save_job(job, root=data_dir)
+    save_job_plan(job, root=data_dir)
 
     # ── 11b. Durable apply record (Step 1124) ─────────────────────────────
     _snap_meta = _load_snapshot(_snapshot_id, _job_id_str, _data_dir_path)
@@ -511,7 +511,7 @@ def _build_modify_section(proposed_lines: list[str]) -> str:
 
 
 def _emit_run_log(
-    job: Job,
+    job: JobPlan,
     result: PatchApplyResult,
     data_dir: Path | None,
 ) -> None:
@@ -523,11 +523,11 @@ def _emit_run_log(
     """
     from packages.orchestration.run_log import RunEvent, RunLogWriter
 
-    log = RunLogWriter(job_id=job.id, data_root=data_dir)
+    log = RunLogWriter(job_id=job.job_id, data_root=data_dir)
     log.append(
         RunEvent(
             event="patch_intent_applied",
-            job_id=str(job.id),
+            job_id=str(job.job_id),
             run_id=log.run_id,
             timestamp=datetime.now(timezone.utc).isoformat(),
             outcome=result.state,
@@ -544,7 +544,7 @@ def _emit_run_log(
 
 
 def _emit_proof_run_log(
-    job: Job,
+    job: JobPlan,
     result: PatchApplyResult,
     data_dir: Path | None,
     applied_at: str,
@@ -559,11 +559,11 @@ def _emit_proof_run_log(
     """
     from packages.orchestration.run_log import RunEvent, RunLogWriter
 
-    log = RunLogWriter(job_id=job.id, data_root=data_dir)
+    log = RunLogWriter(job_id=job.job_id, data_root=data_dir)
     log.append(
         RunEvent(
             event="patch_apply_proof_recorded",
-            job_id=str(job.id),
+            job_id=str(job.job_id),
             run_id=log.run_id,
             timestamp=datetime.now(timezone.utc).isoformat(),
             outcome=result.state,

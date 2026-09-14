@@ -6,7 +6,7 @@
 > candidate: description · source feature · date. Any entry present at
 > feature-claim time is a block condition.
 
-EMPTY — no candidate is open.
+- THE SELF-USE RUNNER HANDS `run_job` THE ROLE CONFIG'S PROVIDER NAMES BUT NOT ITS MODEL NAMES. In F275 round 107's run of `SU-014`, recorded under `.agent/selfuse_f275/`, `resolve_role_config` named provider `ollama` and model `muse-glimmer:latest` for both the builder and the reviewer, while the job's `execution_config` records `builder_model=''` and `reviewer_model=''`, each with source `default`; so a closure's self-use run may not run the model its role config names. Raised at the closure review of F275 from the worker's declared observation, not yet searched against the open set under §3 item 30 and not measured beyond that record. · F275 · 2026-09-14
 
 The entries F109's closure gate recorded on 2026-09-03 were discharged in F110
 round 1 without spending an R-id, which is what operator amendment

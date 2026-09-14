@@ -48,14 +48,14 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     make_intent_id,
     set_approval_state,
 )
 from packages.orchestration.patch_intent import RISK_MEDIUM
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 # ---------------------------------------------------------------------------
 # Redaction sentinels
@@ -87,24 +87,24 @@ _DETAIL_KEYS = frozenset({
 # ---------------------------------------------------------------------------
 
 
-def _make_job(**kwargs) -> Job:
-    defaults: dict = {"name": "Smoke test job", "state": RunState.PENDING}
+def _make_job(**kwargs) -> JobPlan:
+    defaults: dict = {"job_title": "Smoke test job", "state": RunState.PENDING}
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _pending_task(**kwargs) -> Task:
-    return Task(description="write docs", inputs={"task_type": "write_readme"}, **kwargs)
+def _pending_task(**kwargs) -> TaskEntry:
+    return TaskEntry(title="write docs", inputs={"task_type": "write_readme"}, **kwargs)
 
 
-def _completed_task(**kwargs) -> Task:
-    t = Task(description="task done", inputs={"task_type": "write_readme"}, **kwargs)
+def _completed_task(**kwargs) -> TaskEntry:
+    t = TaskEntry(title="task done", inputs={"task_type": "write_readme"}, **kwargs)
     t.status = RunState.COMPLETED
     return t
 
 
 def _add_patch_artifact(
-    job: Job,
+    job: JobPlan,
     *,
     risk: str = RISK_MEDIUM,
     content: str = "some content",
@@ -116,7 +116,7 @@ def _add_patch_artifact(
         name="builder proposal",
         content=content,
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=task_id,
+        task_id=str(task_id),
         metadata={
             "patch_intent_explanations": [
                 {
@@ -279,10 +279,10 @@ class TestBrainLifecycle:
     def test_before_planning_brain_json_valid(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        data = _call_brain_json(str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        data = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         assert data["version"] == 1
-        assert data["job_id"] == str(job.id)
+        assert data["job_id"] == str(job.job_id)
         assert isinstance(data["nodes"], list)
         assert isinstance(data["edges"], list)
         node_types = {n["type"] for n in data["nodes"]}
@@ -291,10 +291,10 @@ class TestBrainLifecycle:
     def test_before_planning_brain_node_job_json(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        brain = _call_brain_json(str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        brain = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         job_node = next(n for n in brain["nodes"] if n["type"] == "job")
-        detail = _call_brain_node_json(str(job.id), job_node["id"], monkeypatch, capsys)
+        detail = _call_brain_node_json(str(job.job_id), job_node["id"], monkeypatch, capsys)
         assert detail["node_type"] == "job"
         assert detail["node_id"] == job_node["id"]
         _assert_detail_keys(detail)
@@ -304,8 +304,8 @@ class TestBrainLifecycle:
         job = _make_job()
         job.tasks.append(_pending_task())
         job.tasks.append(_pending_task())
-        save_job(job)
-        data = _call_brain_json(str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        data = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         task_nodes = [n for n in data["nodes"] if n["type"] == "task"]
         assert len(task_nodes) == 2
 
@@ -313,10 +313,10 @@ class TestBrainLifecycle:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.tasks.append(_pending_task())
-        save_job(job)
-        brain = _call_brain_json(str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        brain = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         task_node = next(n for n in brain["nodes"] if n["type"] == "task")
-        detail = _call_brain_node_json(str(job.id), task_node["id"], monkeypatch, capsys)
+        detail = _call_brain_node_json(str(job.job_id), task_node["id"], monkeypatch, capsys)
         assert detail["node_type"] == "task"
         assert detail["node_id"] == task_node["id"]
         _assert_detail_keys(detail)
@@ -326,9 +326,9 @@ class TestBrainLifecycle:
         job = _make_job()
         task = _completed_task()
         job.tasks.append(task)
-        save_job(job)
-        _write_run_events(tmp_path, job.id, [_task_completed_event(str(job.id), str(task.id))])
-        data = _call_brain_json(str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        _write_run_events(tmp_path, job.job_id, [_task_completed_event(str(job.job_id), str(task.task_id))])
+        data = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         ver_nodes = [n for n in data["nodes"] if n["type"] == "verification"]
         assert len(ver_nodes) == 1
 
@@ -337,11 +337,11 @@ class TestBrainLifecycle:
         job = _make_job()
         task = _completed_task()
         job.tasks.append(task)
-        save_job(job)
-        _write_run_events(tmp_path, job.id, [_task_completed_event(str(job.id), str(task.id))])
-        brain = _call_brain_json(str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        _write_run_events(tmp_path, job.job_id, [_task_completed_event(str(job.job_id), str(task.task_id))])
+        brain = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         ver_node = next(n for n in brain["nodes"] if n["type"] == "verification")
-        detail = _call_brain_node_json(str(job.id), ver_node["id"], monkeypatch, capsys)
+        detail = _call_brain_node_json(str(job.job_id), ver_node["id"], monkeypatch, capsys)
         assert detail["node_type"] == "verification"
         assert detail["node_id"] == ver_node["id"]
         _assert_detail_keys(detail)
@@ -351,8 +351,8 @@ class TestBrainLifecycle:
         job = _make_job()
         _, intent_id = _add_patch_artifact(job)
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
-        save_job(job)
-        data = _call_brain_json(str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        data = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         dec_nodes = [n for n in data["nodes"] if n["type"] == "approval_decision"]
         assert len(dec_nodes) == 1
 
@@ -361,10 +361,10 @@ class TestBrainLifecycle:
         job = _make_job()
         _, intent_id = _add_patch_artifact(job)
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
-        save_job(job)
-        brain = _call_brain_json(str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        brain = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         dec_node = next(n for n in brain["nodes"] if n["type"] == "approval_decision")
-        detail = _call_brain_node_json(str(job.id), dec_node["id"], monkeypatch, capsys)
+        detail = _call_brain_node_json(str(job.job_id), dec_node["id"], monkeypatch, capsys)
         assert detail["node_type"] == "approval_decision"
         _assert_detail_keys(detail)
 
@@ -379,7 +379,7 @@ class TestBrainNodeJsonAllTypes:
 
     def _get_detail(
         self,
-        job: Job,
+        job: JobPlan,
         node_type: str,
         tmp_path,
         monkeypatch,
@@ -392,16 +392,16 @@ class TestBrainNodeJsonAllTypes:
         from apps.cli.main import main
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        save_job(job)
+        save_job_plan(job)
         if events:
-            _write_run_events(tmp_path, job.id, events)
+            _write_run_events(tmp_path, job.job_id, events)
 
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"])
         main()
         brain = json.loads(capsys.readouterr().out)
         node = next(n for n in brain["nodes"] if n["type"] == node_type)
 
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), node["id"], "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), node["id"], "--json"])
         main()
         return json.loads(capsys.readouterr().out)
 
@@ -445,7 +445,7 @@ class TestBrainNodeJsonAllTypes:
         job = _make_job()
         task = _completed_task()
         job.tasks.append(task)
-        events = [_task_completed_event(str(job.id), str(task.id))]
+        events = [_task_completed_event(str(job.job_id), str(task.task_id))]
         detail = self._get_detail(job, "verification", tmp_path, monkeypatch, capsys, events=events)
         assert detail["node_type"] == "verification"
         _assert_detail_keys(detail)
@@ -454,28 +454,28 @@ class TestBrainNodeJsonAllTypes:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        events = [_perm_denied_event(str(job.id), str(task.id))]
+        events = [_perm_denied_event(str(job.job_id), str(task.task_id))]
         detail = self._get_detail(job, "permission_blocker", tmp_path, monkeypatch, capsys, events=events)
         assert detail["node_type"] == "permission_blocker"
         _assert_detail_keys(detail)
 
     def test_run_event_node(self, tmp_path, monkeypatch, capsys):
         job = _make_job()
-        events = [_job_created_event(str(job.id))]
+        events = [_job_created_event(str(job.job_id))]
         detail = self._get_detail(job, "run_event", tmp_path, monkeypatch, capsys, events=events)
         assert detail["node_type"] == "run_event"
         _assert_detail_keys(detail)
 
     def test_agent_loop_node(self, tmp_path, monkeypatch, capsys):
         job = _make_job()
-        events = [_agent_loop_event(str(job.id))]
+        events = [_agent_loop_event(str(job.job_id))]
         detail = self._get_detail(job, "agent_loop", tmp_path, monkeypatch, capsys, events=events)
         assert detail["node_type"] == "agent_loop"
         _assert_detail_keys(detail)
 
     def test_constitution_node(self, tmp_path, monkeypatch, capsys):
         job = _make_job()
-        events = [_constitution_loaded_event(str(job.id))]
+        events = [_constitution_loaded_event(str(job.job_id))]
         detail = self._get_detail(job, "constitution", tmp_path, monkeypatch, capsys, events=events)
         assert detail["node_type"] == "constitution"
         _assert_detail_keys(detail)
@@ -502,19 +502,19 @@ class TestBrainJsonRegression:
     def test_brain_json_no_human_header(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        data = _call_brain_json(str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        data = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         assert "Remedy Project Brain" not in json.dumps(data)
         assert data["version"] == 1
 
     def test_brain_json_stderr_empty_on_success(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"])
         main()
         captured = capsys.readouterr()
         assert captured.err == ""
@@ -522,26 +522,26 @@ class TestBrainJsonRegression:
     def test_brain_json_no_traceback_in_stdout(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        data = _call_brain_json(str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        data = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         assert "Traceback" not in json.dumps(data)
 
     def test_brain_node_json_no_human_header(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        detail = _call_brain_node_json(str(job.id), str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        detail = _call_brain_node_json(str(job.job_id), str(job.job_id), monkeypatch, capsys)
         assert "Remedy Brain Node Detail" not in json.dumps(detail)
         assert detail["node_type"] == "job"
 
     def test_brain_node_json_stderr_empty_on_success(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), str(job.job_id), "--json"])
         main()
         captured = capsys.readouterr()
         assert captured.err == ""
@@ -549,8 +549,8 @@ class TestBrainJsonRegression:
     def test_brain_node_json_no_traceback_in_stdout(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        detail = _call_brain_node_json(str(job.id), str(job.id), monkeypatch, capsys)
+        save_job_plan(job)
+        detail = _call_brain_node_json(str(job.job_id), str(job.job_id), monkeypatch, capsys)
         assert "Traceback" not in json.dumps(detail)
 
 
@@ -568,14 +568,14 @@ class TestBrainRunLogSchema:
     def test_project_brain_inspected_exact_keys(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id)])
         main()
         capsys.readouterr()
-        ev = self._find(_read_run_log(tmp_path, job.id), "project_brain_inspected")
+        ev = self._find(_read_run_log(tmp_path, job.job_id), "project_brain_inspected")
         assert set(ev.get("metadata", {}).keys()) == {
             "node_count", "edge_count", "task_count", "patch_intent_count"
         }
@@ -583,14 +583,14 @@ class TestBrainRunLogSchema:
     def test_project_brain_inspected_json_mode_exact_keys(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"])
         main()
         capsys.readouterr()
-        ev = self._find(_read_run_log(tmp_path, job.id), "project_brain_inspected")
+        ev = self._find(_read_run_log(tmp_path, job.job_id), "project_brain_inspected")
         assert set(ev.get("metadata", {}).keys()) == {
             "node_count", "edge_count", "task_count", "patch_intent_count"
         }
@@ -598,14 +598,14 @@ class TestBrainRunLogSchema:
     def test_brain_node_inspected_exact_keys(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), str(job.job_id)])
         main()
         capsys.readouterr()
-        ev = self._find(_read_run_log(tmp_path, job.id), "brain_node_inspected")
+        ev = self._find(_read_run_log(tmp_path, job.job_id), "brain_node_inspected")
         assert set(ev.get("metadata", {}).keys()) == {
             "node_id", "node_type", "connected_count", "evidence_count"
         }
@@ -613,14 +613,14 @@ class TestBrainRunLogSchema:
     def test_brain_node_inspected_json_mode_exact_keys(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), str(job.job_id), "--json"])
         main()
         capsys.readouterr()
-        ev = self._find(_read_run_log(tmp_path, job.id), "brain_node_inspected")
+        ev = self._find(_read_run_log(tmp_path, job.job_id), "brain_node_inspected")
         assert set(ev.get("metadata", {}).keys()) == {
             "node_id", "node_type", "connected_count", "evidence_count"
         }
@@ -634,7 +634,7 @@ class TestBrainRunLogSchema:
 class TestBrainRedactionHardening:
     """All 5 redaction sentinels must be absent from every JSON and log output path."""
 
-    def _poisoned_setup(self, tmp_path: Path) -> Job:
+    def _poisoned_setup(self, tmp_path: Path) -> JobPlan:
         """Build and save a job with every redaction sentinel embedded."""
         job = _make_job()
         task = _pending_task()
@@ -644,7 +644,7 @@ class TestBrainRedactionHardening:
             name="proposal",
             content=ARTIFACT_CONTENT_MUST_NOT_RENDER,
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=task.id,
+            task_id=str(task.task_id),
             metadata={
                 "patch_intent_explanations": [
                     {
@@ -665,17 +665,17 @@ class TestBrainRedactionHardening:
         events = [
             {
                 "event": "task_run_completed",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r1",
                 "timestamp": "2026-05-06T10:01:00+00:00",
-                "task_id": str(task.id),
+                "task_id": str(task.task_id),
                 "outcome": "pass",
                 "message": EVENT_MESSAGE_MUST_NOT_RENDER,
                 "metadata": {"output": RAW_COMMAND_OUTPUT_MUST_NOT_RENDER},
             }
         ]
-        save_job(job)
-        _write_run_events(tmp_path, job.id, events)
+        save_job_plan(job)
+        _write_run_events(tmp_path, job.job_id, events)
         return job
 
     def _no_sentinels(self, text: str) -> None:
@@ -685,13 +685,13 @@ class TestBrainRedactionHardening:
     def test_brain_json_no_sentinels(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._poisoned_setup(tmp_path)
-        data = _call_brain_json(str(job.id), monkeypatch, capsys)
+        data = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         self._no_sentinels(json.dumps(data))
 
     def test_brain_node_json_no_sentinels(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._poisoned_setup(tmp_path)
-        brain = _call_brain_json(str(job.id), monkeypatch, capsys)
+        brain = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         # Target a node adjacent to poisoned data (patch_intent preferred, artifact fallback).
         # The job node is intentionally avoided: it holds no direct content fields.
         target_node = (
@@ -703,7 +703,7 @@ class TestBrainRedactionHardening:
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), target_node["id"], "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), target_node["id"], "--json"])
         main()
         raw = capsys.readouterr().out
         self._no_sentinels(raw)
@@ -715,17 +715,17 @@ class TestBrainRedactionHardening:
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"])
         main()
         capsys.readouterr()
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         ev = next(e for e in events if e.get("event") == "project_brain_inspected")
         self._no_sentinels(json.dumps(ev))
 
     def test_brain_node_run_log_no_sentinels(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._poisoned_setup(tmp_path)
-        brain = _call_brain_json(str(job.id), monkeypatch, capsys)
+        brain = _call_brain_json(str(job.job_id), monkeypatch, capsys)
         # Mirror test_brain_node_json_no_sentinels: patch_intent → artifact → job fallback
         target_node = (
             next((n for n in brain["nodes"] if n["type"] == "patch_intent"), None)
@@ -735,10 +735,10 @@ class TestBrainRedactionHardening:
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), target_node["id"]])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), target_node["id"]])
         main()
         capsys.readouterr()
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         ev = next(e for e in events if e.get("event") == "brain_node_inspected")
         self._no_sentinels(json.dumps(ev))
 
@@ -754,11 +754,11 @@ class TestBrainNodeUnknownNode:
     def test_unknown_node_exits_1(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit) as exc:
             main()
         assert exc.value.code == 1
@@ -766,11 +766,11 @@ class TestBrainNodeUnknownNode:
     def test_unknown_node_stdout_empty(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit):
             main()
         assert capsys.readouterr().out == ""
@@ -778,11 +778,11 @@ class TestBrainNodeUnknownNode:
     def test_unknown_node_stderr_safe_message(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit):
             main()
         err = capsys.readouterr().err
@@ -791,11 +791,11 @@ class TestBrainNodeUnknownNode:
     def test_unknown_node_stderr_no_traceback(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist", "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), "does-not-exist", "--json"])
         with pytest.raises(SystemExit):
             main()
         assert "Traceback" not in capsys.readouterr().err
@@ -803,12 +803,12 @@ class TestBrainNodeUnknownNode:
     def test_long_node_id_safely_truncated_in_stderr(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         long_id = "x" * 200
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), long_id, "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), long_id, "--json"])
         with pytest.raises(SystemExit):
             main()
         err = capsys.readouterr().err

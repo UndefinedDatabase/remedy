@@ -48,7 +48,7 @@ def task_artifacts_by_kind(
     kind: ArtifactKind,
 ) -> list[Artifact]:
     """Return all artifacts for the given task_id with the given kind."""
-    return [a for a in artifacts if a.task_id == task_id and a.kind == kind]
+    return [a for a in artifacts if a.task_id == str(task_id) and a.kind == kind]
 
 
 def planning_artifact(artifacts: Sequence[Artifact]) -> Artifact | None:

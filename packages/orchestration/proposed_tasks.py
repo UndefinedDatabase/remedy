@@ -28,11 +28,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from packages.orchestration.data_paths import proposed_tasks_dir
+from packages.orchestration.data_paths import normalize_job_id, proposed_tasks_dir
 
 
 def _utcnow() -> datetime:
@@ -644,13 +644,12 @@ def do_materialize(job_id: str, task_id: str, root: Path | None = None) -> Propo
         JobNotFoundError: if job_id does not correspond to a persisted Job.
         ValueError: if task is not approved or already materialized.
     """
-    from packages.core.models import Task
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import TaskEntry, load_job_plan, save_job_plan
 
-    job_uuid = UUID(job_id)
+    job_uuid = normalize_job_id(job_id)
 
     with _file_lock(job_id, root):
-        job = load_job(job_uuid, root)
+        job = load_job_plan(job_uuid, root)
         tasks = load_proposed_tasks(job_id, root)
         ptask = None
         for t in tasks:
@@ -665,12 +664,13 @@ def do_materialize(job_id: str, task_id: str, root: Path | None = None) -> Propo
             raise ValueError(f"Already materialized: {ptask.id} → {ptask.materialized_task_id}")
 
         task_dict = materialize_approved_task(ptask)
-        real_task = Task.model_validate(task_dict)
+        real_task = TaskEntry(task_id=task_dict["id"], title=task_dict["description"], inputs=task_dict["inputs"],
+                              status=task_dict["status"])
 
         job.tasks.append(real_task)
-        save_job(job, root)
+        save_job_plan(job, root)
 
-        ptask.materialized_task_id = str(real_task.id)
+        ptask.materialized_task_id = str(real_task.task_id)
         ptask.materialized_at = _utcnow()
         save_proposed_tasks(job_id, tasks, root)
     return ptask
@@ -693,10 +693,10 @@ def reconcile_materialized(job_id: str, root: Path | None = None) -> dict[str, A
 
     Returns a report dict (inspect-only by default).
     """
-    from packages.orchestration.storage import load_job_safe
+    from packages.orchestration.pingpong_job import load_job_plan_safe
 
-    job_uuid = UUID(job_id)
-    job, job_degraded = load_job_safe(job_uuid, root)
+    job_uuid = normalize_job_id(job_id)
+    job, job_degraded = load_job_plan_safe(job_uuid, root)
 
     try:
         proposals = load_proposed_tasks(job_id, root)
@@ -718,7 +718,7 @@ def reconcile_materialized(job_id: str, root: Path | None = None) -> dict[str, A
     proposed_task_id_map: dict[str, str] = {}
     if job:
         for t in job.tasks:
-            tid = str(t.id)
+            tid = str(t.task_id)
             job_task_ids.add(tid)
             pt_id = (t.inputs or {}).get("proposed_task_id", "")
             if pt_id:
@@ -821,12 +821,12 @@ def _task_status_val(t: Any) -> str:
 
 def backend_readiness(job_id: str, root: Path | None = None) -> dict[str, Any]:
     """Structured readiness report: storage, build, finalize, execution, overnight sections."""
-    from packages.orchestration.storage import list_jobs_safe, load_job_safe
+    from packages.orchestration.pingpong_job import list_job_plans_safe, load_job_plan_safe
 
-    job, job_degraded = load_job_safe(UUID(job_id), root)
+    job, job_degraded = load_job_plan_safe(normalize_job_id(job_id), root)
     proposals, proposals_degraded = load_proposed_tasks_safe(job_id, root)
     recon = reconcile_materialized(job_id, root)
-    _, jobs_degraded, skipped_files = list_jobs_safe(root)
+    _, jobs_degraded, skipped_files = list_job_plans_safe(root)
 
     # Storage health
     job_missing = job is None and not job_degraded

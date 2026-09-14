@@ -21,7 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -50,7 +50,7 @@ class ChangeEntry:
 
 
 def derive_change_set(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
 ) -> list[ChangeEntry]:
     """Derive change entries from job artifacts and run-log events.

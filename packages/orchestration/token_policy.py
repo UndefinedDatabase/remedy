@@ -22,7 +22,8 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -100,13 +101,13 @@ _DEFAULT_FUTURE_LAYERS: tuple[str, ...] = (
 )
 
 
-def build_default_token_policy(job: Job) -> TokenPolicy:
+def build_default_token_policy(job: JobPlan) -> TokenPolicy:
     """Build a sensible default TokenPolicy for a job.
 
     Deterministic — derives policy from job metadata only.
     No LLM calls, no network, no filesystem access.
     """
-    job_id_str = str(job.id)
+    job_id_str = str(job.job_id)
     task_count = len(job.tasks) if job.tasks else 0
     scope = "job"
 
@@ -199,7 +200,7 @@ def summarize_token_policy(policy: TokenPolicy) -> str:
     return "\n".join(lines)
 
 
-def derive_token_mode(job: Job) -> str:
+def derive_token_mode(job: JobPlan) -> str:
     """The token mode a job's shape asks for: caveman, compact or standard.
 
     Deterministic — reads the task count and the run state and nothing else.

@@ -57,6 +57,7 @@ from packages.orchestration.mission_state import (
     set_mission_status,
 )
 from packages.orchestration.orchestrator_loop import (
+    BOUNDARY_FAILURES_BEFORE_ESCALATION,
     CONFIG_KEY_MAX_ITERATIONS,
     DEFAULT_MAX_ITERATIONS,
     DOSSIER_FILENAME,
@@ -66,7 +67,9 @@ from packages.orchestration.orchestrator_loop import (
     OUTCOME_REFUSED,
     PROTOCOL_DOC_RELATIVE,
     PROTOCOL_VERSION,
+    RETRYABLE_FAILURE_CLASSES,
     SECTION_DECISIONS,
+    SECTION_DIRECTIVES,
     SECTION_DOSSIER,
     SECTION_FEEDBACK,
     SECTION_PLAN,
@@ -82,22 +85,16 @@ from packages.orchestration.orchestrator_loop import (
     TERMINAL_STOPPED,
     TERMINAL_WAITING,
     USAGE_UNMEASURED,
+    JobExecution,
     LedgerEntry,
     LoopLimits,
     MilestoneEvidence,
-    attach_milestone_dod,
-    run_gate_for_job,
-    JobExecution,
     MoveOutcome,
-    blocked_completion,
-    working_milestone,
-    BOUNDARY_FAILURES_BEFORE_ESCALATION,
-    RETRYABLE_FAILURE_CLASSES,
-    SECTION_DIRECTIVES,
-    released_milestone_directives,
     all_milestones_done,
     append_ledger_entry,
     assemble_context,
+    attach_milestone_dod,
+    blocked_completion,
     build_orchestrator_prompt,
     build_orchestrator_system_prompt,
     context_digest,
@@ -114,10 +111,13 @@ from packages.orchestration.orchestrator_loop import (
     orchestrator_protocol_text,
     protocol_document_path,
     read_ledger,
+    released_milestone_directives,
     render_ledger,
     render_mission_dossier,
     resolve_mission_project,
+    run_gate_for_job,
     run_mission,
+    working_milestone,
 )
 from packages.orchestration.orchestrator_move_schema import (
     MAX_PAYLOAD_VALUE_CHARS,
@@ -529,7 +529,7 @@ class _FakeJob:
     """The smallest thing the dispatch seam has to return: an id and no plan."""
 
     def __init__(self, job_id: str = "job-0001"):
-        self.id = job_id
+        self.job_id = job_id
         self.flight_plan = None
 
 
@@ -1498,7 +1498,7 @@ class TestTheLoopExecutesWhatItDispatches:
 
         self._run(tmp_path, mission, execute, dispatched)
         assert len(seen) == 1, "exactly one execution per dispatch"
-        assert str(seen[0].id) == "job-0001", "the job just created, not another"
+        assert str(seen[0].job_id) == "job-0001", "the job just created, not another"
 
     def test_what_execution_produced_is_on_the_ledger(self, tmp_path, mission,
                                                       dispatched):

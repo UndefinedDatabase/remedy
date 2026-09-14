@@ -5,18 +5,19 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from uuid import uuid4
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.memory_learn import export_learn_json, learn_from_job
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 
-def _make_job(**extra_meta) -> Job:
-    return Job(
-        id=uuid4(),
-        name="learn-test",
+def _make_job(**extra_meta) -> JobPlan:
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="learn-test",
         user_prompt="test learn",
-        tasks=[Task(description="t", status=RunState.PENDING)],
+        tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         metadata=extra_meta,
     )
 
@@ -81,7 +82,7 @@ class TestLearnBasic:
         for _ in range(5):
             learn_from_job(job, events)
         from packages.memory.local_gateway import list_memory
-        entries = list_memory(job_id=str(job.id))
+        entries = list_memory(job_id=str(job.job_id))
         keys = [e.key for e in entries if e.key == "repo.test_command.primary"]
         assert len(keys) == 1
 
@@ -131,19 +132,17 @@ class TestLearnCLI:
 
     def test_learn_json_output(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        import packages.orchestration.storage as _storage
-        monkeypatch.setattr(_storage, "_DATA_DIR", tmp_path / "jobs")
-        from packages.orchestration.storage import save_job
-        job = Job(
-            id=uuid4(), name="done", user_prompt="done",
-            tasks=[Task(description="t", status=RunState.COMPLETED)],
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="done", user_prompt="done",
+            tasks=[TaskEntry(title="t", status=RunState.COMPLETED)],
         )
-        save_job(job)
+        save_job_plan(job)
         import os
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
         result = subprocess.run(
             [sys.executable, "-m", "apps.cli.grouped",
-             "memory", "learn", str(job.id), "--json"],
+             "memory", "learn", str(job.job_id), "--json"],
             capture_output=True, text=True, timeout=30, env=env,
         )
         assert result.returncode == 0, f"stderr={result.stderr}"
@@ -152,20 +151,18 @@ class TestLearnCLI:
 
     def test_learn_approved_flag(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        import packages.orchestration.storage as _storage
-        monkeypatch.setattr(_storage, "_DATA_DIR", tmp_path / "jobs")
-        from packages.orchestration.storage import save_job
-        job = Job(
-            id=uuid4(), name="done", user_prompt="done",
-            tasks=[Task(description="t", status=RunState.COMPLETED)],
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="done", user_prompt="done",
+            tasks=[TaskEntry(title="t", status=RunState.COMPLETED)],
             metadata={"target_repo": "/tmp/test"},
         )
-        save_job(job)
+        save_job_plan(job)
         import os
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
         result = subprocess.run(
             [sys.executable, "-m", "apps.cli.grouped",
-             "memory", "learn", str(job.id), "--approved", "--json"],
+             "memory", "learn", str(job.job_id), "--approved", "--json"],
             capture_output=True, text=True, timeout=30, env=env,
         )
         assert result.returncode == 0, f"stderr={result.stderr}"
@@ -174,17 +171,17 @@ class TestLearnCLI:
 
     def test_learn_improves_context_coverage(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
-        job = Job(
-            id=uuid4(), name="done", user_prompt="done",
-            tasks=[Task(description="t", status=RunState.COMPLETED)],
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="done", user_prompt="done",
+            tasks=[TaskEntry(title="t", status=RunState.COMPLETED)],
             metadata={"target_repo": "/tmp/test"},
         )
-        save_job(job)
+        save_job_plan(job)
         # Learn with approved=True so memory appears
         learn_from_job(job, [], approved=True)
         from packages.memory.local_gateway import has_approved_memory
-        assert has_approved_memory(job_id=str(job.id)) is True
+        assert has_approved_memory(job_id=str(job.job_id)) is True
 
 
 class TestUpsertMemory:

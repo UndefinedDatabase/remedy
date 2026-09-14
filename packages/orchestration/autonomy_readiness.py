@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -85,7 +85,7 @@ def _resolve_readiness_data_dir() -> Path:
     return resolve_data_root()
 
 
-def _has_attached_repo(job: Job) -> bool:
+def _has_attached_repo(job: JobPlan) -> bool:
     return bool(job.metadata.get("target_repo"))
 
 
@@ -93,11 +93,11 @@ def _has_constitution(events: list[dict[str, Any]]) -> bool:
     return any(e.get("event") == "project_constitution_loaded" for e in events)
 
 
-def _has_tasks(job: Job) -> bool:
+def _has_tasks(job: JobPlan) -> bool:
     return len(job.tasks) > 0
 
 
-def _has_permission(job: Job, perm: str) -> bool:
+def _has_permission(job: JobPlan, perm: str) -> bool:
     return job.metadata.get("permissions", {}).get(perm) == "allow"
 
 
@@ -151,7 +151,7 @@ def _has_revert_snapshot(events: list[dict[str, Any]]) -> bool:
     return any(e.get("event") == "patch_intent_reverted" for e in events)
 
 
-def _has_verified_snapshot(job: Job, data_dir: Path) -> bool:
+def _has_verified_snapshot(job: JobPlan, data_dir: Path) -> bool:
     """True only if the job has a durably verified, revert-capable snapshot.
 
     Authoritative durable check via build_snapshot_truth (Step 1159). A generic
@@ -168,7 +168,7 @@ def _has_verified_snapshot(job: Job, data_dir: Path) -> bool:
     """
     from packages.orchestration.repository_snapshot import build_snapshot_truth
 
-    job_id = str(job.id)
+    job_id = str(job.job_id)
     # Candidate intents come from artifact apply-record keys; the truth itself is
     # loaded from durable storage, never from the metadata values.
     intent_ids: set[str] = set()
@@ -216,7 +216,7 @@ def _has_pending_approvals(events: list[dict[str, Any]]) -> bool:
     return len(pending) > 0
 
 
-def _has_no_open_decisions(job: Job, events: list[dict[str, Any]]) -> bool:
+def _has_no_open_decisions(job: JobPlan, events: list[dict[str, Any]]) -> bool:
     """True when there are no open human decisions pending."""
     try:
         from packages.orchestration.decision_queue import build_decision_summary, list_decisions
@@ -228,7 +228,7 @@ def _has_no_open_decisions(job: Job, events: list[dict[str, Any]]) -> bool:
 
 
 def _collect_signals(
-    job: Job, events: list[dict[str, Any]], data_dir: Path | None = None
+    job: JobPlan, events: list[dict[str, Any]], data_dir: Path | None = None
 ) -> dict[str, bool]:
     """Collect all readiness signals into a flat dict."""
     data_dir = data_dir if data_dir is not None else _resolve_readiness_data_dir()
@@ -262,7 +262,7 @@ def _collect_signals(
 
 def _assess_level(
     level_def: dict[str, Any],
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     signals: dict[str, bool],
 ) -> LevelAssessment:
@@ -349,7 +349,7 @@ def _assess_level(
 # ---------------------------------------------------------------------------
 
 def assess_job_readiness(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     data_dir: Path | None = None,
 ) -> ReadinessReport:
@@ -376,7 +376,7 @@ def assess_job_readiness(
     return ReadinessReport(
         version=2,
         scope="job",
-        job_id=str(job.id),
+        job_id=str(job.job_id),
         project_id=job.metadata.get("project_id", ""),
         highest_eligible_level=highest,
         levels=assessments,
@@ -387,7 +387,7 @@ def assess_job_readiness(
 
 def assess_project_readiness(
     project_id: str,
-    jobs: list[Job],
+    jobs: list[JobPlan],
     all_events: dict[str, list[dict[str, Any]]],
     data_dir: Path | None = None,
 ) -> ReadinessReport:
@@ -415,14 +415,14 @@ def assess_project_readiness(
     agg_signals: dict[str, bool] = {}
     job_signals_list = []
     for j in jobs:
-        js = _collect_signals(j, all_events.get(str(j.id), []), data_dir)
+        js = _collect_signals(j, all_events.get(str(j.job_id), []), data_dir)
         job_signals_list.append(js)
         for k, v in js.items():
             agg_signals[k] = agg_signals.get(k, False) or v
 
     level_results: list[LevelAssessment] = []
     for ld in LEVELS:
-        per_job = [_assess_level(ld, j, all_events.get(str(j.id), []), js) for j, js in zip(jobs, job_signals_list)]
+        per_job = [_assess_level(ld, j, all_events.get(str(j.job_id), []), js) for j, js in zip(jobs, job_signals_list)]
         any_eligible = any(a.eligible for a in per_job)
         all_present = set()
         all_missing = set()

@@ -71,9 +71,9 @@ def _dev_status(*, json_output: bool = False) -> None:
 
     # Check UI contract
     try:
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.ui_view_model import build_brain_view_model
-        job = Job(name="status-check")
+        job = JobPlan(job_title="status-check")
         vm = build_brain_view_model(job, [])
         origins = [n for n in vm["nodes"] if n["is_origin"]]
         status["ui_contract_ok"] = (
@@ -86,9 +86,9 @@ def _dev_status(*, json_output: bool = False) -> None:
 
     # Check task progress
     try:
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.ui_view_model import build_task_progress
-        job = Job(name="tp-check")
+        job = JobPlan(job_title="tp-check")
         tp = build_task_progress(job, [])
         status["task_progress_ok"] = tp["version"] == 1
     except Exception:

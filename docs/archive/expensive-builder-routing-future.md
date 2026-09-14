@@ -10,7 +10,7 @@
 
 1. **Deterministic first.** If the evidence yields a clear next action, no model is used.
 2. **Local cheap advisor next.** When options are close or evidence is weak, the optional
-   [local model advisor](../system/local-model-advisor-v0.md) may *critique* the deterministic plan
+   local model advisor may *critique* the deterministic plan
    (loopback-only, advisory-only).
 3. **Expensive/external builder last,** and only when candidate generation is the
    bottleneck, the request is **targeted and justified**, and budget allows.
@@ -23,7 +23,7 @@
   with an approved patch intent.
 - **No automatic approval, PR, or job creation.** Human approval gates remain.
 - **No retry loops.** Bounded attempts; repeated failure → human review, never a storm.
-- **Budget/usage policy required**, tracked separately from the local-advisor budget.
+- **Budget/usage policy required**, tracked separately from the local advisor budget.
 - **Output verification required** — never treat builder output as truth, never let it
   become the `next_safe_action` directly.
 - **No model output overrides** a contract/budget/review blocker or marks evidence
@@ -37,6 +37,5 @@ candidate work — so it is the most tightly gated and the last resort.
 
 ## See also
 
-- [local-model-advisor-v0.md](../system/local-model-advisor-v0.md)
 - [orchestrator-brain-v0.md](../system/orchestrator-brain-v0.md)
 - [provider-trust-gate-v0.md](../system/provider-trust-gate-v0.md)

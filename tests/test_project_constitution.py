@@ -44,8 +44,9 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
 from packages.orchestration.cockpit import summarize_cockpit
+from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 from packages.orchestration.project_constitution import (
     ProjectConstitution,
     _is_safe_path,
@@ -53,7 +54,6 @@ from packages.orchestration.project_constitution import (
     load_project_constitution,
     render_constitution,
 )
-from packages.orchestration.storage import save_job
 from packages.orchestration.trust_report import summarize_trust_report
 
 # ---------------------------------------------------------------------------
@@ -61,10 +61,10 @@ from packages.orchestration.trust_report import summarize_trust_report
 # ---------------------------------------------------------------------------
 
 
-def _make_job(**kwargs) -> Job:
-    defaults: dict = {"name": "Test constitution job", "state": RunState.PENDING}
+def _make_job(**kwargs) -> JobPlan:
+    defaults: dict = {"job_title": "Test constitution job", "state": RunState.PENDING}
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _write(tmp_path: Path, name: str, content: str) -> Path:
@@ -460,23 +460,23 @@ class TestRenderConstitution:
 
 
 class TestCmdConstitution:
-    def _save(self, tmp_path, monkeypatch, **kwargs) -> Job:
+    def _save(self, tmp_path, monkeypatch, **kwargs) -> JobPlan:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job(**kwargs)
-        save_job(job)
+        save_job_plan(job)
         return job
 
     def test_prints_constitution_for_valid_job(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
         from apps.cli.commands.brain import _cmd_constitution
-        _cmd_constitution(str(job.id))
+        _cmd_constitution(str(job.job_id))
         out = capsys.readouterr().out
         assert "Remedy Project Constitution" in out
 
     def test_no_repo_attached_exits_0(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
         from apps.cli.commands.brain import _cmd_constitution
-        _cmd_constitution(str(job.id))  # must not raise
+        _cmd_constitution(str(job.job_id))  # must not raise
         out = capsys.readouterr().out
         assert "no attached repo" in out.lower() or "unavailable" in out.lower()
 
@@ -489,9 +489,9 @@ class TestCmdConstitution:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(repo_dir)
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_constitution
-        _cmd_constitution(str(job.id))
+        _cmd_constitution(str(job.job_id))
         out = capsys.readouterr().out
         assert "pytest" in out
 
@@ -517,12 +517,12 @@ class TestCmdConstitution:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(repo_dir)
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_constitution
-        _cmd_constitution(str(job.id))
+        _cmd_constitution(str(job.job_id))
         capsys.readouterr()
         # Check run log
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -566,7 +566,7 @@ class TestCockpitConstitutionIntegration:
 
     def test_no_noisy_attention_item_when_absent(self):
         """Absent constitution must not add a 'constitution:' artifact line."""
-        job = Job(name="Unnamed job", state=RunState.PENDING)  # avoid 'constitution' in name
+        job = JobPlan(job_title="Unnamed job", state=RunState.PENDING)  # avoid 'constitution' in name
         out = summarize_cockpit(job, [], constitution=None)
         assert "constitution:" not in out
 
@@ -623,7 +623,7 @@ class TestTrustReportConstitutionIntegration:
 
 
 class TestTrustReportCLIConstitution:
-    def _setup_repo(self, tmp_path, monkeypatch) -> tuple[Job, Path]:
+    def _setup_repo(self, tmp_path, monkeypatch) -> tuple[JobPlan, Path]:
         """Create a job with an attached repo containing pyproject.toml."""
         repo_dir = tmp_path / "repo"
         repo_dir.mkdir()
@@ -635,7 +635,7 @@ class TestTrustReportCLIConstitution:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(repo_dir)
-        save_job(job)
+        save_job_plan(job)
         return job, repo_dir
 
     def test_attached_repo_shows_available_from_n_sources(
@@ -643,7 +643,7 @@ class TestTrustReportCLIConstitution:
     ):
         job, _ = self._setup_repo(tmp_path, monkeypatch)
         from apps.cli.commands.brain import _cmd_trust_report
-        _cmd_trust_report(str(job.id))
+        _cmd_trust_report(str(job.job_id))
         out = capsys.readouterr().out
         assert "Project Constitution" in out
         assert "available from" in out
@@ -653,16 +653,16 @@ class TestTrustReportCLIConstitution:
         """The old 'not loaded' hint must not appear when repo is attached."""
         job, _ = self._setup_repo(tmp_path, monkeypatch)
         from apps.cli.commands.brain import _cmd_trust_report
-        _cmd_trust_report(str(job.id))
+        _cmd_trust_report(str(job.job_id))
         out = capsys.readouterr().out
         assert "not loaded" not in out
 
     def test_no_repo_shows_no_attached_repo(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_trust_report
-        _cmd_trust_report(str(job.id))
+        _cmd_trust_report(str(job.job_id))
         out = capsys.readouterr().out
         assert "no attached repo" in out.lower()
 
@@ -672,9 +672,9 @@ class TestTrustReportCLIConstitution:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(repo_dir)
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_trust_report
-        _cmd_trust_report(str(job.id))
+        _cmd_trust_report(str(job.job_id))
         out = capsys.readouterr().out
         assert "Project Constitution" in out
         assert "no sources found" in out
@@ -683,9 +683,9 @@ class TestTrustReportCLIConstitution:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "does_not_exist")
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_trust_report
-        _cmd_trust_report(str(job.id))
+        _cmd_trust_report(str(job.job_id))
         out = capsys.readouterr().out
         assert "Project Constitution" in out
         assert "unavailable" in out or "missing" in out
@@ -694,7 +694,7 @@ class TestTrustReportCLIConstitution:
         """Trust report must not dump raw AGENTS.md lines from the constitution."""
         job, _ = self._setup_repo(tmp_path, monkeypatch)
         from apps.cli.commands.brain import _cmd_trust_report
-        _cmd_trust_report(str(job.id))
+        _cmd_trust_report(str(job.job_id))
         out = capsys.readouterr().out
         # The trust report shows constitution summary only, not full convention list
         assert "Never commit to main directly" not in out
@@ -714,7 +714,7 @@ class TestTimelineConstitutionEvent:
         events = [
             {
                 "event": "project_constitution_loaded",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r",
                 "timestamp": "2026-05-05T10:00:00+00:00",
                 "outcome": "loaded",
@@ -735,7 +735,7 @@ class TestTimelineConstitutionEvent:
         events = [
             {
                 "event": "project_constitution_loaded",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r",
                 "timestamp": "2026-05-05T10:00:00+00:00",
                 "metadata": {"source_count": 3, "warning_count": 0, "has_test_commands": True},
@@ -751,7 +751,7 @@ class TestTimelineConstitutionEvent:
         events = [
             {
                 "event": "project_constitution_loaded",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r",
                 "timestamp": "2026-05-05T10:00:00+00:00",
                 "metadata": {"source_count": 1, "warning_count": 0, "has_test_commands": True},
@@ -767,7 +767,7 @@ class TestTimelineConstitutionEvent:
         events = [
             {
                 "event": "project_constitution_loaded",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r",
                 "timestamp": "2026-05-05T10:00:00+00:00",
                 "metadata": {"source_count": 0, "warning_count": 1, "has_test_commands": False},
@@ -784,7 +784,7 @@ class TestTimelineConstitutionEvent:
         events = [
             {
                 "event": "project_constitution_loaded",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r",
                 "timestamp": "2026-05-05T10:00:00+00:00",
                 "metadata": {"source_count": 2, "warning_count": 0, "has_test_commands": True},
@@ -801,7 +801,7 @@ class TestTimelineConstitutionEvent:
         events = [
             {
                 "event": "project_constitution_loaded",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r",
                 "timestamp": "2026-05-05T10:00:00+00:00",
                 "metadata": {
@@ -824,7 +824,7 @@ class TestTimelineConstitutionEvent:
         events = [
             {
                 "event": "project_constitution_loaded",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r",
                 "timestamp": "2026-05-05T10:00:00+00:00",
                 "metadata": {"source_count": 2, "warning_count": 0, "has_test_commands": True},

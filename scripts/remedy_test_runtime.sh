@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Runtime test lane — CLI integration tests that use subprocess.run.
 #
-# Subprocess-heavy suites (test_review_bundle_runtime.py) run per-node
-# to isolate hangs at the individual test level. Other suites run as
-# whole-file invocations.
+# Subprocess-heavy suites run per-node to isolate hangs at the individual
+# test level. Other suites run as whole-file invocations.
 #
 # Per-node diagnostics: START/END markers with wall-clock timing.
 # Stale process check at end to catch orphaned children.
@@ -44,7 +43,6 @@ echo "  node_timeout=${NODE_TIMEOUT}s, inner_pytest_timeout=${INNER_TIMEOUT}s"
 
 # Subprocess-heavy suites: run each test node individually.
 NODE_ISOLATED_FILES=(
-    tests/cli/test_review_bundle_runtime.py
 )
 
 # Light suites: run as whole file.

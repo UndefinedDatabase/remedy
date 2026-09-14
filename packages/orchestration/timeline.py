@@ -15,9 +15,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-from uuid import UUID
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
 from packages.orchestration._symbols import (
     FAIL as _FAIL,
 )
@@ -41,6 +40,7 @@ from packages.orchestration._symbols import (
     section,
 )
 from packages.orchestration.data_paths import run_log_dir
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.run_log import RunLogWriter, new_run_id
 
 # One run per PROCESS: every event one invocation appends to a job belongs to the
@@ -55,7 +55,7 @@ _PROCESS_RUN_ID = new_run_id()
 
 def append_run_event(
     data_dir: str | Path,
-    job_id: UUID | str,
+    job_id: str,
     *,
     event: str,
     metadata: dict[str, Any] | None = None,
@@ -64,13 +64,20 @@ def append_run_event(
 
     Convenience wrapper around RunLogWriter for one-shot event recording.
     ``data_dir`` is the Remedy data root (e.g. ``.data/``).
+
+    ``job_id`` is a STRING and is joined VERBATIM, because ``data_paths.run_log_dir``
+    joins ``str(job_id)`` and :func:`load_run_events` below reads from exactly there.
+    This function used to coerce with ``UUID(str(job_id))``, which rejected the
+    sixteen hex characters ``data_paths.mint_job_id`` produces and, for an
+    unhyphenated 32-hex id, wrote a directory its own reader never looked in
+    (F275, finding R-0877).
     """
-    jid = job_id if isinstance(job_id, UUID) else UUID(str(job_id))
-    writer = RunLogWriter(jid, run_id=_PROCESS_RUN_ID, data_root=Path(data_dir))
+    writer = RunLogWriter(str(job_id), run_id=_PROCESS_RUN_ID,
+                          data_root=Path(data_dir))
     writer.log(event, **(metadata or {}))
 
 
-def load_run_events(data_dir: Path, job_id: UUID | str) -> list[dict[str, Any]]:
+def load_run_events(data_dir: Path, job_id: str) -> list[dict[str, Any]]:
     """Load all run log events for a job, sorted by timestamp.
 
     Reads every ``*.jsonl`` file under ``<data_dir>/runs/<job_id>/``.
@@ -99,14 +106,14 @@ def load_run_events(data_dir: Path, job_id: UUID | str) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-def summarize_timeline(job: Job, events: list[dict[str, Any]]) -> str:
+def summarize_timeline(job: JobPlan, events: list[dict[str, Any]]) -> str:
     """Return a human-readable multiline string summarising the job timeline."""
     parts: list[str] = []
 
     # ── Header ──────────────────────────────────────────────────────────
     parts.append("Remedy Timeline")
-    short_id = str(job.id)[:8]
-    name = job.name if len(job.name) <= 60 else job.name[:60] + "…"
+    short_id = str(job.job_id)[:8]
+    name = job.job_title if len(job.job_title) <= 60 else job.job_title[:60] + "…"
     parts.append(f"Job: {short_id} — {name}")
     parts.append(f"State: {job.state.value}")
 
@@ -367,7 +374,7 @@ def _fmt_elapsed(meta: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _derive_status(job: Job) -> str:
+def _derive_status(job: JobPlan) -> str:
     total = len(job.tasks)
     completed = sum(1 for t in job.tasks if t.status == RunState.COMPLETED)
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
@@ -384,9 +391,9 @@ def _derive_status(job: Job) -> str:
     return f"  {job.state.value.capitalize()}."
 
 
-def _derive_next_action(job: Job, events: list[dict[str, Any]]) -> str:
+def _derive_next_action(job: JobPlan, events: list[dict[str, Any]]) -> str:
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
-    job_id_str = str(job.id)
+    job_id_str = str(job.job_id)
 
     # Most recent terminal event
     terminal_events = [
@@ -420,7 +427,7 @@ def _derive_next_action(job: Job, events: list[dict[str, Any]]) -> str:
     if pending:
         return (
             f"  {_NEXT} Run the next pending task:\n"
-            f"      remedy job run-next {job_id_str}"
+            f"      remedy job resume {job_id_str}"
         )
 
     return (

@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import json
 
-from packages.core.models import Job
 from packages.orchestration.builder_models import BuilderOutput
+from packages.orchestration.pingpong_job import JobPlan
 
 
 def _make_output(fix_content: str, action: str = "modify") -> BuilderOutput:
@@ -127,7 +127,7 @@ class TestRepairLoopSuccess:
         def build_fn(repair_ctx):
             return _make_output(fix)
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=3,
         )
@@ -155,7 +155,7 @@ class TestRepairLoopSuccess:
                 # Correct fix
                 return _make_output("def add(a, b):\n    return a + b\n")
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=3,
         )
@@ -178,7 +178,7 @@ class TestRepairLoopFailure:
         def build_fn(repair_ctx):
             return _make_output("def add(a, b):\n    return a - b\n")
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=2,
         )
@@ -192,7 +192,7 @@ class TestRepairLoopFailure:
         def build_fn(repair_ctx):
             return BuilderOutput(summary="Plan", proposed_changes=["Plan stuff"])
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=3,
         )
@@ -221,7 +221,7 @@ class TestRepairLoopRepairContext:
                 return _make_output("def add(a, b):\n    return a - b\n")
             return _make_output("def add(a, b):\n    return a + b\n")
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=3,
         )
@@ -245,11 +245,11 @@ class TestRepairLoopEvents:
         def build_fn(repair_ctx):
             return _make_output("def add(a, b):\n    return a + b\n")
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=3,
         )
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
         event_types = [e["event"] for e in events]
         assert "repair_loop_cycle_started" in event_types
         assert "repair_loop_succeeded" in event_types
@@ -267,7 +267,7 @@ class TestRepairLoopDiffMode:
         _write_diff_repo(tmp_path)
         call_count = [0]
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge_loop(
             _diff_build_fn(call_count), tmp_path,
             job=job, data_dir=tmp_path, max_cycles=3,
@@ -298,7 +298,7 @@ class TestRepairLoopDiffMode:
         _write_diff_repo(tmp_path)
         call_count = [0]
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge_loop(
             _diff_build_fn(call_count), tmp_path,
             job=job, data_dir=tmp_path, max_cycles=3,
@@ -308,7 +308,7 @@ class TestRepairLoopDiffMode:
         assert repair_ctx["repair_mode"] == "full_file"
         assert "diff_hunks" not in repair_ctx
 
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
         selected = [e for e in events if e["event"] == "repair_mode_selected"]
         assert len(selected) == 1
         assert selected[0]["metadata"]["reason"] == "diff_mode_off"
@@ -329,14 +329,14 @@ class TestRepairLoopDiffMode:
                 return _make_output("def add(a, b):\n    return a - b\n")
             return _make_output("def add(a, b):\n    return a + b\n")
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=3,
         )
         repair_ctx = result.repair_contexts[0]
         assert repair_ctx["repair_mode"] == "full_file"
 
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
         selected = [e for e in events if e["event"] == "repair_mode_selected"]
         assert len(selected) == 1
         # A file_ops path maps to an empty range list (DECISION F111 D3); what
@@ -365,7 +365,7 @@ class TestRepairLoopDiffChannel:
             assert repair_ctx["repair_mode"] == "diff"
             return _make_diff_repair_answer(_LANDING_DIFF)
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=3,
         )
@@ -373,7 +373,7 @@ class TestRepairLoopDiffChannel:
         assert call_count[0] == 2
         assert "    return a + b\n" in (tmp_path / "calc.py").read_text()
 
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
         applied = [e for e in events if e["event"] == "diff_repair_applied"]
         assert len(applied) == 1
         assert applied[0]["metadata"]["mode"] == "diff"
@@ -403,7 +403,7 @@ class TestRepairLoopDiffChannel:
                 return _make_diff_repair_answer(_CONFLICTING_DIFF)
             return _make_output("def add(a, b):\n    return a + b\n")
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=3,
         )
@@ -412,7 +412,7 @@ class TestRepairLoopDiffChannel:
         assert seen_bytes[1] == seen_bytes[2]  # the rejected diff wrote nothing
         assert pre_loop_bytes == seen_bytes[0]
 
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
         applied = [e for e in events if e["event"] == "diff_repair_applied"]
         assert len(applied) == 1
         assert applied[0]["metadata"]["mode"] == "full_fallback"
@@ -451,11 +451,11 @@ class TestRepairLoopDiffChannel:
             assert repair_ctx["repair_mode"] == "diff"
             return _make_output("def add(a, b):\n    return a + b\n")
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=3,
         )
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
         not_used = [e for e in events if e["event"] == "diff_repair_not_used"]
         assert len(not_used) == 1
         assert not_used[0]["metadata"]["cycle"] == 2
@@ -549,13 +549,13 @@ class TestRepairPayloadMeasurement:
             assert repair_ctx["repair_mode"] == "diff"
             return _make_diff_repair_answer(_LARGE_LANDING_DIFF)
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         result = run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=2,
         )
         assert result.success is True
 
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
         selected = [e for e in events if e["event"] == "repair_mode_selected"]
         assert len(selected) == 1
         meta = selected[0]["metadata"]
@@ -600,13 +600,13 @@ class TestRepairPayloadMeasurement:
             )
             return _make_diff_repair_answer(_LARGE_LANDING_DIFF)
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         run_builder_bridge_loop(
             build_fn, tmp_path, job=job, data_dir=tmp_path, max_cycles=2,
         )
         assert call_count[0] == 2
 
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
         selected = [e for e in events if e["event"] == "repair_mode_selected"]
         assert len(selected) == 1
         meta = selected[0]["metadata"]

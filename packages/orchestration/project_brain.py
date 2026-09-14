@@ -54,7 +54,6 @@ Edge types:
   recorded_proof        — patch_apply → patch_apply_proof (causal)
   proof_verified_by     — patch_apply_proof → test_run (causal)
   informed_memory       — patch_apply_proof → memory (causal)
-  summarizes            — context_pack → readiness or job (causal)
   continued_as          — origin_node → child_job_placeholder (Step 52)
 
 Redaction policy:
@@ -76,7 +75,6 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
-from packages.core.models import Job
 from packages.orchestration._symbols import (
     FAIL as _FAIL,
 )
@@ -104,6 +102,7 @@ from packages.orchestration.autonomy_readiness import assess_job_readiness
 from packages.orchestration.change_set import derive_change_set
 from packages.orchestration.context_coverage import derive_context_coverage
 from packages.orchestration.data_paths import resolve_data_root
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.run_contract import build_default_run_contract
 from packages.orchestration.timeline import load_run_events
 from packages.orchestration.token_policy import build_default_token_policy
@@ -134,7 +133,6 @@ NT_RUN_CONTRACT        = "run_contract"
 NT_TOKEN_POLICY        = "token_policy"
 NT_WORKER_ADAPTER      = "worker_adapter"
 NT_AUTONOMY_READINESS  = "autonomy_readiness"
-NT_CONTEXT_PACK        = "context_pack"
 NT_PATCH_APPLY_PROOF   = "patch_apply_proof"
 NT_PATCH_REVERT        = "patch_revert"
 NT_CHANGE_SET          = "change_set"
@@ -164,14 +162,12 @@ ET_HAS_RUN_CONTRACT      = "has_run_contract"
 ET_HAS_TOKEN_POLICY      = "has_token_policy"
 ET_HAS_WORKER_ADAPTER    = "has_worker_adapter"
 ET_HAS_READINESS         = "has_readiness"
-ET_HAS_CONTEXT_PACK      = "has_context_pack"
 # Causal chain edges (Step 51)
 ET_APPROVED_BY           = "approved_by"
 ET_ALLOWED_APPLY         = "allowed_apply"
 ET_RECORDED_PROOF        = "recorded_proof"
 ET_PROOF_VERIFIED_BY     = "proof_verified_by"
 ET_INFORMED_MEMORY       = "informed_memory"
-ET_SUMMARIZES            = "summarizes"
 ET_CONTINUED_AS          = "continued_as"
 ET_REVERTED_BY           = "reverted_by"
 ET_INCLUDES_INTENT       = "includes_intent"
@@ -203,7 +199,6 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_TOKEN_POLICY:        17,
     NT_WORKER_ADAPTER:      18,
     NT_AUTONOMY_READINESS:  19,
-    NT_CONTEXT_PACK:        20,
     NT_PATCH_APPLY_PROOF:   21,
     NT_GIT_STATUS:          22,
     NT_EVENT_LEDGER:        23,
@@ -258,7 +253,7 @@ class BrainEdge:
 class ProjectBrainGraph:
     """Immutable snapshot of the Project Brain Graph for a job."""
 
-    job_id: UUID
+    job_id: str
     nodes: tuple[BrainNode, ...]
     edges: tuple[BrainEdge, ...]
     degraded: tuple[str, ...] = ()
@@ -277,7 +272,7 @@ class _Acc:
 
     def __init__(
         self,
-        job: Job,
+        job: JobPlan,
         events: list[dict[str, Any]],
         constitution: object | None,
     ) -> None:
@@ -286,7 +281,7 @@ class _Acc:
         self.constitution = constitution
         self.nodes: list[BrainNode] = []
         self.edges: list[BrainEdge] = []
-        self.job_node_id = str(job.id)
+        self.job_node_id = str(job.job_id)
         self.degraded: list[str] = []
 
     def node_id_set(self) -> set[str]:
@@ -300,26 +295,26 @@ class _Acc:
 
 
 def _build_job_node(acc: _Acc) -> None:
-    short_name = acc.job.name if len(acc.job.name) <= 50 else acc.job.name[:50] + "\u2026"
+    short_name = acc.job.job_title if len(acc.job.job_title) <= 50 else acc.job.job_title[:50] + "\u2026"
     acc.nodes.append(BrainNode(
         id=acc.job_node_id,
         type=NT_JOB,
         label=short_name,
         status=acc.job.state.value,
-        ref_id=str(acc.job.id),
+        ref_id=str(acc.job.job_id),
         metadata={"task_count": len(acc.job.tasks), "artifact_count": len(acc.job.artifacts)},
     ))
 
 
 def _build_task_nodes(acc: _Acc) -> None:
     for task in acc.job.tasks:
-        tid = str(task.id)
-        desc = task.description
+        tid = str(task.task_id)
+        desc = task.title
         label = desc if len(desc) <= 60 else desc[:60] + "\u2026"
         tt = str(task.inputs.get("task_type", "unknown"))
         acc.nodes.append(BrainNode(
             id=tid, type=NT_TASK, label=label,
-            status=task.status.value, ref_id=tid,
+            status=task.status, ref_id=tid,
             metadata={"task_type": tt},
         ))
         acc.edges.append(BrainEdge(source=acc.job_node_id, target=tid, type=ET_HAS_TASK))
@@ -465,7 +460,7 @@ def _build_event_derived_nodes(acc: _Acc) -> None:
             acc.nodes.append(BrainNode(
                 id=aid, type=NT_AGENT_LOOP,
                 label=f"agent loop: {ev_type.replace('agent_loop_', '')}",
-                status=outcome or decision, ref_id=str(acc.job.id),
+                status=outcome or decision, ref_id=str(acc.job.job_id),
                 metadata={"stage": stage, "decision": decision, "cycle": cycle, "event_type": ev_type},
             ))
             acc.edges.append(BrainEdge(source=aid, target=acc.job_node_id, type=ET_INSPECTED))
@@ -478,7 +473,7 @@ def _build_event_derived_nodes(acc: _Acc) -> None:
                 id=rid, type=NT_RUN_EVENT,
                 label=ev_type.replace("_", " "),
                 status=str(outcome) if outcome else "recorded",
-                ref_id=str(acc.job.id), metadata={"event_type": ev_type},
+                ref_id=str(acc.job.job_id), metadata={"event_type": ev_type},
             ))
             acc.edges.append(BrainEdge(source=acc.job_node_id, target=rid, type=ET_EMITTED))
 
@@ -503,7 +498,7 @@ def _build_constitution_node(acc: _Acc) -> None:
     acc.nodes.append(BrainNode(
         id="constitution", type=NT_CONSTITUTION,
         label=con_label, status=con_status,
-        ref_id=str(acc.job.id), metadata=con_meta,
+        ref_id=str(acc.job.job_id), metadata=con_meta,
     ))
     acc.edges.append(BrainEdge(source=acc.job_node_id, target="constitution", type=ET_GOVERNED))
 
@@ -523,10 +518,10 @@ def _build_memory_nodes(acc: _Acc) -> None:
         project_id = acc.job.metadata.get("project_id")
         entries = list_memory(
             project_id=project_id,
-            job_id=str(acc.job.id) if not project_id else None,
+            job_id=str(acc.job.job_id) if not project_id else None,
         )
         if project_id:
-            job_entries = list_memory(job_id=str(acc.job.id))
+            job_entries = list_memory(job_id=str(acc.job.job_id))
             seen = {me.id for me in entries}
             entries += [e for e in job_entries if e.id not in seen]
         for me in entries:
@@ -644,7 +639,7 @@ def _build_worker_adapter_nodes(acc: _Acc) -> None:
 
 def _build_readiness_node(acc: _Acc) -> None:
     try:
-        evts = load_run_events(resolve_data_root(), acc.job.id)
+        evts = load_run_events(resolve_data_root(), acc.job.job_id)
         report = assess_job_readiness(acc.job, evts)
         sigs = report.signals
         acc.nodes.append(BrainNode(
@@ -664,25 +659,6 @@ def _build_readiness_node(acc: _Acc) -> None:
         acc.edges.append(BrainEdge(source=acc.job_node_id, target="autonomy_readiness", type=ET_HAS_READINESS))
     except (ImportError, FileNotFoundError, OSError):
         acc.degraded.append("readiness")
-
-
-def _build_context_pack_node(acc: _Acc) -> None:
-    cp_events = [e for e in acc.events if e.get("event") == "context_pack_created"]
-    if not cp_events:
-        return
-    meta = cp_events[-1].get("metadata", {})
-    acc.nodes.append(BrainNode(
-        id="context_pack", type=NT_CONTEXT_PACK,
-        label=f"Context Pack ({meta.get('mode', 'compact')})", status="active",
-        metadata={
-            "mode": str(meta.get("mode", "compact")),
-            "budget": int(meta.get("budget", 0)),
-            "estimated_tokens": int(meta.get("estimated_tokens", 0)),
-            "truncated": bool(meta.get("truncated", False)),
-            "section_count": int(meta.get("section_count", 0)),
-        },
-    ))
-    acc.edges.append(BrainEdge(source=acc.job_node_id, target="context_pack", type=ET_HAS_CONTEXT_PACK))
 
 
 def _build_proof_nodes(acc: _Acc) -> None:
@@ -924,13 +900,6 @@ def _build_causal_edges(acc: _Acc) -> None:
                 # Fallback: last proof for unmatched memory
                 acc.edges.append(BrainEdge(source=proof_ids[-1], target=mn.id, type=ET_INFORMED_MEMORY))
 
-    # context_pack --summarizes--> readiness or job
-    cp = next((n for n in acc.nodes if n.type == NT_CONTEXT_PACK), None)
-    if cp:
-        ar = next((n for n in acc.nodes if n.type == NT_AUTONOMY_READINESS), None)
-        target = ar.id if ar else acc.job_node_id
-        acc.edges.append(BrainEdge(source=cp.id, target=target, type=ET_SUMMARIZES))
-
 
 def _build_continuation_edges(acc: _Acc) -> None:
     nids = acc.node_id_set()
@@ -948,7 +917,7 @@ def _build_continuation_edges(acc: _Acc) -> None:
         acc.nodes.append(BrainNode(
             id=placeholder_id, type=NT_JOB,
             label=f"Child Job {child_id[:8]}", status="linked", ref_id=child_id,
-            metadata={"parent_job_id": str(acc.job.id), "origin_node_id": origin_nid},
+            metadata={"parent_job_id": str(acc.job.job_id), "origin_node_id": origin_nid},
         ))
         if origin_nid in nids:
             acc.edges.append(BrainEdge(source=origin_nid, target=placeholder_id, type=ET_CONTINUED_AS))
@@ -960,7 +929,7 @@ def _build_continuation_edges(acc: _Acc) -> None:
 
 
 def build_project_brain(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     *,
     constitution: object | None = None,
@@ -992,7 +961,6 @@ def build_project_brain(
     _build_token_policy_node(acc)
     _build_worker_adapter_nodes(acc)
     _build_readiness_node(acc)
-    _build_context_pack_node(acc)
     _build_proof_nodes(acc)
     _build_revert_nodes(acc)
     _build_change_set_nodes(acc)
@@ -1010,7 +978,7 @@ def build_project_brain(
     sorted_edges = tuple(sorted(acc.edges, key=lambda e: (e.source, e.target, e.type)))
 
     return ProjectBrainGraph(
-        job_id=job.id, nodes=sorted_nodes, edges=sorted_edges,
+        job_id=job.job_id, nodes=sorted_nodes, edges=sorted_edges,
         degraded=tuple(acc.degraded),
     )
 
@@ -1041,7 +1009,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         NT_CONSTITUTION, NT_CONTEXT_COVERAGE, NT_MEMORY, NT_MCP,
         NT_PROJECT_PLACEHOLDER, NT_PATCH_APPLY, NT_TEST_RUN,
         NT_RUN_CONTRACT, NT_TOKEN_POLICY, NT_WORKER_ADAPTER,
-        NT_AUTONOMY_READINESS, NT_CONTEXT_PACK, NT_PATCH_APPLY_PROOF,
+        NT_AUTONOMY_READINESS, NT_PATCH_APPLY_PROOF,
         NT_GIT_STATUS, NT_EVENT_LEDGER, NT_STOP_REASON,
         NT_DECISION_QUEUE,
     ]

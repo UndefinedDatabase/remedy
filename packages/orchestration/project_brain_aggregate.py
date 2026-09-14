@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.project_brain import (
     NT_MEMORY_ENTRY,
     NT_PATCH_APPLY_PROOF,
@@ -62,7 +62,7 @@ class ProjectBrainAggregate:
 
 def build_project_brain_aggregate(
     project: RemyProject,
-    jobs: list[Job],
+    jobs: list[JobPlan],
     all_events: dict[str, list[dict[str, Any]]],
     *,
     constitutions: dict[str, object | None] | None = None,
@@ -128,7 +128,7 @@ def build_project_brain_aggregate(
 
     # Job subgraphs
     for job in jobs:
-        jid = str(job.id)
+        jid = str(job.job_id)
         events = all_events.get(jid, [])
         constitution = consts.get(jid)
 
@@ -158,7 +158,7 @@ def build_project_brain_aggregate(
             ))
 
     # Continuation edges from run-log events
-    job_id_set = {str(j.id) for j in jobs}
+    job_id_set = {str(j.job_id) for j in jobs}
     for jid_str, events in all_events.items():
         for ev in events:
             if ev.get("event") == "continued_from_node" and ev.get("outcome") == "spawned_child":

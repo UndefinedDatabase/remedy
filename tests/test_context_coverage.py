@@ -54,19 +54,19 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
 from packages.orchestration.context_coverage import (
     ContextCoverageSnapshot,
     derive_context_coverage,
     export_context_coverage_json,
     summarize_context_coverage,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 from packages.orchestration.project_brain import (
     ET_HAS_CONTEXT_SNAPSHOT,
     NT_CONTEXT_COVERAGE,
     build_project_brain,
 )
-from packages.orchestration.storage import save_job
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -109,10 +109,10 @@ _BRAIN_NODE_DETAIL_KEYS = frozenset({
 # ---------------------------------------------------------------------------
 
 
-def _make_job(**kwargs) -> Job:
-    defaults: dict = {"name": "Coverage test job", "state": RunState.PENDING}
+def _make_job(**kwargs) -> JobPlan:
+    defaults: dict = {"job_title": "Coverage test job", "state": RunState.PENDING}
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _write_run_events(tmp_path: Path, job_id, events: list[dict]) -> None:
@@ -169,23 +169,23 @@ def _mock_constitution(*, source_files=("CLAUDE.md",)):
     return c
 
 
-def _add_builder_artifact(job: Job) -> Artifact:
+def _add_builder_artifact(job: JobPlan) -> Artifact:
     a = Artifact(
         name="builder output",
         content="some content",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=uuid4(),
+        task_id=str(uuid4()),
     )
     job.artifacts.append(a)
     return a
 
 
-def _add_patch_intent_artifact(job: Job) -> Artifact:
+def _add_patch_intent_artifact(job: JobPlan) -> Artifact:
     a = Artifact(
         name="builder output",
         content="some content",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=uuid4(),
+        task_id=str(uuid4()),
         metadata={"patch_intent_count": 1},
     )
     job.artifacts.append(a)
@@ -263,7 +263,7 @@ class TestContextCoverageSignals:
 
     def test_planned_tasks_signal_present(self):
         job = _make_job()
-        job.tasks.append(Task(description="do something", inputs={}))
+        job.tasks.append(TaskEntry(title="do something", inputs={}))
         snap = derive_context_coverage(job, [])
         sig = next(s for s in snap.signals if s.key == "planned_tasks")
         assert sig.present
@@ -296,7 +296,7 @@ class TestContextCoverageSignals:
 
     def test_patch_intents_via_event(self):
         job = _make_job()
-        events = [{"event": "patch_intent_created", "job_id": str(job.id),
+        events = [{"event": "patch_intent_created", "job_id": str(job.job_id),
                    "run_id": "r1", "timestamp": "2026-05-07T10:00:00+00:00",
                    "outcome": "created", "metadata": {}}]
         snap = derive_context_coverage(job, events)
@@ -305,7 +305,7 @@ class TestContextCoverageSignals:
 
     def test_verification_results_signal_present(self):
         job = _make_job()
-        events = [_verification_passed_event(str(job.id), str(uuid4()))]
+        events = [_verification_passed_event(str(job.job_id), str(uuid4()))]
         snap = derive_context_coverage(job, events)
         sig = next(s for s in snap.signals if s.key == "verification_results")
         assert sig.present
@@ -318,7 +318,7 @@ class TestContextCoverageSignals:
 
     def test_run_logs_signal_present(self):
         job = _make_job()
-        events = [{"event": "job_created", "job_id": str(job.id),
+        events = [{"event": "job_created", "job_id": str(job.job_id),
                    "run_id": "r0", "timestamp": "2026-05-07T09:59:00+00:00",
                    "outcome": "created", "metadata": {}}]
         snap = derive_context_coverage(job, events)
@@ -327,7 +327,7 @@ class TestContextCoverageSignals:
 
     def test_approval_decisions_signal_present(self):
         job = _make_job()
-        events = [_approval_event(str(job.id))]
+        events = [_approval_event(str(job.job_id))]
         snap = derive_context_coverage(job, events)
         sig = next(s for s in snap.signals if s.key == "approval_decisions")
         assert sig.present
@@ -337,7 +337,7 @@ class TestContextCoverageSignals:
         job.metadata["target_repo"] = "/repo"
         snap = derive_context_coverage(
             job,
-            [{"event": "any", "job_id": str(job.id), "metadata": {}}],
+            [{"event": "any", "job_id": str(job.job_id), "metadata": {}}],
             constitution=_mock_constitution(),
         )
         sig = next(s for s in snap.signals if s.key == "project_memory")
@@ -348,10 +348,10 @@ class TestContextCoverageSignals:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.memory.local_gateway import store_memory
         job = _make_job()
-        store_memory(key="k", value="v", job_id=str(job.id), approved=True)
+        store_memory(key="k", value="v", job_id=str(job.job_id), approved=True)
         snap = derive_context_coverage(
             job,
-            [{"event": "any", "job_id": str(job.id), "metadata": {}}],
+            [{"event": "any", "job_id": str(job.job_id), "metadata": {}}],
             constitution=_mock_constitution(),
         )
         sig = next(s for s in snap.signals if s.key == "project_memory")
@@ -414,7 +414,7 @@ class TestContextCoverageRedaction:
         events = [
             {
                 "event": "task_run_failed",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r1",
                 "timestamp": "2026-05-07T10:00:00+00:00",
                 "message": "EVENT_MESSAGE_MUST_NOT_RENDER",
@@ -450,7 +450,7 @@ class TestContextCoverageRedaction:
         events = [
             {
                 "event": "patch_intent_approved",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r1",
                 "timestamp": "2026-05-07T10:00:00+00:00",
                 "outcome": "approved",
@@ -578,8 +578,8 @@ class TestContextCoverageCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.job_id)])
         main()
         out = capsys.readouterr().out
         assert "Remedy Context Coverage" in out
@@ -592,9 +592,9 @@ class TestContextCoverageCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "brain", "context", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "context", str(job.job_id), "--json"]
         )
         main()
         raw = capsys.readouterr().out
@@ -608,9 +608,9 @@ class TestContextCoverageCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "brain", "context", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "context", str(job.job_id), "--json"]
         )
         main()
         raw = capsys.readouterr().out
@@ -624,11 +624,11 @@ class TestContextCoverageCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.job_id)])
         main()
         capsys.readouterr()
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         logged = [e for e in events if e.get("event") == "context_coverage_inspected"]
         assert len(logged) == 1
 
@@ -639,11 +639,11 @@ class TestContextCoverageCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.job_id)])
         main()
         capsys.readouterr()
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         ev = next(e for e in events if e.get("event") == "context_coverage_inspected")
         meta = ev["metadata"]
         actual = set(meta.keys())
@@ -660,11 +660,11 @@ class TestContextCoverageCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.job_id)])
         main()
         capsys.readouterr()
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         ev = next(e for e in events if e.get("event") == "context_coverage_inspected")
         assert ev["metadata"]["scope"] == "job"
 
@@ -675,9 +675,9 @@ class TestContextCoverageCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "brain", "context", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "context", str(job.job_id), "--json"]
         )
         main()
         out = capsys.readouterr().out
@@ -691,11 +691,11 @@ class TestContextCoverageCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.job_id)])
         main()
         capsys.readouterr()
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         ev = next(e for e in events if e.get("event") == "context_coverage_inspected")
         serialised = json.dumps(ev)
         for s in _ALL_SENTINELS:
@@ -729,14 +729,14 @@ class TestBrainContextCoverageNode:
     def test_context_coverage_node_status_strong(self):
         job = _make_job()
         job.metadata["target_repo"] = "/repo"
-        job.tasks.append(Task(description="do x", inputs={"task_type": "write_readme"}))
+        job.tasks.append(TaskEntry(title="do x", inputs={"task_type": "write_readme"}))
         job.tasks[0].status = RunState.COMPLETED
         _add_builder_artifact(job)
         _add_patch_intent_artifact(job)
         events = [
-            _verification_passed_event(str(job.id), str(uuid4())),
-            _approval_event(str(job.id)),
-            {"event": "job_created", "job_id": str(job.id),
+            _verification_passed_event(str(job.job_id), str(uuid4())),
+            _approval_event(str(job.job_id)),
+            {"event": "job_created", "job_id": str(job.job_id),
              "run_id": "r0", "timestamp": "2026-05-07T09:59:00+00:00",
              "outcome": "created", "metadata": {}},
         ]
@@ -755,7 +755,7 @@ class TestBrainContextCoverageNode:
             if e.target == "context_coverage" and e.type == ET_HAS_CONTEXT_SNAPSHOT
         ]
         assert len(edges) == 1
-        assert edges[0].source == str(job.id)
+        assert edges[0].source == str(job.job_id)
 
     def test_context_coverage_label_contains_percent(self):
         job = _make_job()
@@ -781,9 +781,9 @@ class TestBrainContextCoverageNode:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"]
         )
         main()
         brain = json.loads(capsys.readouterr().out)
@@ -806,9 +806,9 @@ class TestBrainNodeContextCoverageDetail:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"]
         )
         main()
         brain = json.loads(capsys.readouterr().out)
@@ -816,7 +816,7 @@ class TestBrainNodeContextCoverageDetail:
 
         monkeypatch.setattr(
             sys, "argv",
-            ["remedy", "brain", "node", str(job.id), cc_node["id"], "--json"],
+            ["remedy", "brain", "node", str(job.job_id), cc_node["id"], "--json"],
         )
         main()
         detail = json.loads(capsys.readouterr().out)
@@ -831,9 +831,9 @@ class TestBrainNodeContextCoverageDetail:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"]
         )
         main()
         brain = json.loads(capsys.readouterr().out)
@@ -841,7 +841,7 @@ class TestBrainNodeContextCoverageDetail:
 
         monkeypatch.setattr(
             sys, "argv",
-            ["remedy", "brain", "node", str(job.id), cc_node["id"], "--json"],
+            ["remedy", "brain", "node", str(job.job_id), cc_node["id"], "--json"],
         )
         main()
         detail = json.loads(capsys.readouterr().out)
@@ -856,9 +856,9 @@ class TestBrainNodeContextCoverageDetail:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(
-            sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"]
+            sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"]
         )
         main()
         brain = json.loads(capsys.readouterr().out)
@@ -866,7 +866,7 @@ class TestBrainNodeContextCoverageDetail:
 
         monkeypatch.setattr(
             sys, "argv",
-            ["remedy", "brain", "node", str(job.id), cc_node["id"], "--json"],
+            ["remedy", "brain", "node", str(job.job_id), cc_node["id"], "--json"],
         )
         main()
         detail = json.loads(capsys.readouterr().out)
@@ -888,7 +888,7 @@ class TestBrainViewerContextCoverage:
         job = _make_job()
         graph = build_project_brain(job, [])
         data = build_brain_viewer_data(job, graph, [])
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         return write_brain_viewer_files(data, out_dir)
 
     def test_viewer_data_json_has_context_coverage_node(self, tmp_path):
@@ -924,7 +924,7 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": "1"},
         )
         job.artifacts.append(a)
@@ -938,7 +938,7 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": "not-an-int"},
         )
         job.artifacts.append(a)
@@ -952,7 +952,7 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": []},
         )
         job.artifacts.append(a)
@@ -966,7 +966,7 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": None},
         )
         job.artifacts.append(a)
@@ -980,7 +980,7 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": "bad"},
         )
         job.artifacts.append(a)
@@ -1000,12 +1000,12 @@ class TestSafeInt:
             name="bp",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=uuid4(),
+            task_id=str(uuid4()),
             metadata={"patch_intent_count": "not-a-number"},
         )
         job.artifacts.append(a)
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"])
         main()
         raw = capsys.readouterr().out
         parsed = json.loads(raw)
@@ -1023,16 +1023,16 @@ class TestV0Ceiling:
     def _fully_populated_job(self):
         job = _make_job()
         job.metadata["target_repo"] = "/repo"
-        job.tasks.append(Task(description="do x", inputs={"task_type": "write_readme"}))
+        job.tasks.append(TaskEntry(title="do x", inputs={"task_type": "write_readme"}))
         _add_builder_artifact(job)
         _add_patch_intent_artifact(job)
         return job
 
     def _fully_populated_events(self, job):
         return [
-            _verification_passed_event(str(job.id), str(uuid4())),
-            _approval_event(str(job.id)),
-            {"event": "job_created", "job_id": str(job.id),
+            _verification_passed_event(str(job.job_id), str(uuid4())),
+            _approval_event(str(job.job_id)),
+            {"event": "job_created", "job_id": str(job.job_id),
              "run_id": "r0", "timestamp": "2026-05-07T09:59:00+00:00",
              "outcome": "created", "metadata": {}},
         ]
@@ -1104,19 +1104,19 @@ class TestContextCmdStaleRepo:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent_repo")
-        save_job(job)
-        result = self._run_context(str(job.id), monkeypatch, capsys, tmp_path)
+        save_job_plan(job)
+        result = self._run_context(str(job.job_id), monkeypatch, capsys, tmp_path)
         assert "Warning: project constitution unavailable for context coverage." in result.err
 
     def test_stale_repo_exits_0(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent_repo")
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job.job_id)])
         main()  # must not raise SystemExit
 
     def test_file_not_dir_warns_stderr(self, tmp_path, monkeypatch, capsys):
@@ -1125,8 +1125,8 @@ class TestContextCmdStaleRepo:
         fake_file.write_text("x")
         job = _make_job()
         job.metadata["target_repo"] = str(fake_file)
-        save_job(job)
-        result = self._run_context(str(job.id), monkeypatch, capsys, tmp_path)
+        save_job_plan(job)
+        result = self._run_context(str(job.job_id), monkeypatch, capsys, tmp_path)
         assert "Warning: project constitution unavailable for context coverage." in result.err
 
     def test_runtime_error_doesnt_leak_secret(self, tmp_path, monkeypatch, capsys):
@@ -1134,13 +1134,13 @@ class TestContextCmdStaleRepo:
         from packages.orchestration import project_constitution as _pc_mod
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path)
-        save_job(job)
+        save_job_plan(job)
 
         real_dir = tmp_path / "repo"
         real_dir.mkdir()
         job2 = _make_job()
         job2.metadata["target_repo"] = str(real_dir)
-        save_job(job2)
+        save_job_plan(job2)
 
         def _boom(path):
             raise RuntimeError("SECRET_INTERNAL_PATH_DATA")
@@ -1150,7 +1150,7 @@ class TestContextCmdStaleRepo:
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job2.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "context", str(job2.job_id)])
         main()
         result = capsys.readouterr()
         assert "SECRET_INTERNAL_PATH_DATA" not in result.err
@@ -1159,8 +1159,8 @@ class TestContextCmdStaleRepo:
     def test_no_target_repo_no_warning(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        result = self._run_context(str(job.id), monkeypatch, capsys, tmp_path)
+        save_job_plan(job)
+        result = self._run_context(str(job.job_id), monkeypatch, capsys, tmp_path)
         assert "Warning" not in result.err
 
     def test_valid_repo_no_warning(self, tmp_path, monkeypatch, capsys):
@@ -1169,8 +1169,8 @@ class TestContextCmdStaleRepo:
         real_dir.mkdir()
         job = _make_job()
         job.metadata["target_repo"] = str(real_dir)
-        save_job(job)
-        result = self._run_context(str(job.id), monkeypatch, capsys, tmp_path)
+        save_job_plan(job)
+        result = self._run_context(str(job.job_id), monkeypatch, capsys, tmp_path)
         assert "Warning" not in result.err
 
 
@@ -1189,16 +1189,16 @@ class TestContextCoverageDetailConfidenceKeys:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
 
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.job_id), "--json"])
         main()
         brain = json.loads(capsys.readouterr().out)
         cc_node = next(n for n in brain["nodes"] if n["type"] == "context_coverage")
 
         monkeypatch.setattr(
             sys, "argv",
-            ["remedy", "brain", "node", str(job.id), cc_node["id"], "--json"],
+            ["remedy", "brain", "node", str(job.job_id), cc_node["id"], "--json"],
         )
         main()
         return json.loads(capsys.readouterr().out)

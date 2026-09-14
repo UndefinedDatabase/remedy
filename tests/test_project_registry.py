@@ -32,11 +32,11 @@ def _make_project(**kwargs) -> RemyProject:
 
 class _FakeJob:
     def __init__(self, job_id: str, state: str = "pending", tasks=(), artifacts=()):
-        self.id = UUID(job_id)
+        self.job_id = UUID(job_id)
         self.state = type("S", (), {"value": state})()
         self.tasks = list(tasks)
         self.artifacts = list(artifacts)
-        self.name = f"Job {job_id[:8]}"
+        self.job_title = f"Job {job_id[:8]}"
 
 
 # ---------------------------------------------------------------------------

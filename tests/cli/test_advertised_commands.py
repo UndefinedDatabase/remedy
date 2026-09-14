@@ -21,6 +21,7 @@ from __future__ import annotations
 import re
 import subprocess
 from pathlib import Path
+from typing import NamedTuple
 
 from apps.cli.command_catalog import CATALOG, GROUPS
 
@@ -32,25 +33,69 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: or symbol grep cannot see.
 _ADVERTISED_COMMAND_RE = re.compile(r"remedy\s+([a-z][a-z0-9-]*)\s+([a-z][a-z0-9-]*)")
 
-#: A pair counts as an advertisement only when what FOLLOWS it looks like a
-#: command line rather than prose: an argument placeholder, an option, a closing
-#: quote, or nothing at all. Without this narrowing, ``remedy init requires a
-#: git repository`` reads as a command named ``init requires``.
-_COMMAND_TAIL_CHARS = "<{\"'"
+#: ``remedy <something>`` — the SINGLE-token invocation, which the two-token
+#: regex above is structurally blind to. That blindness is how an invented
+#: ``remedy list`` survived two rounds of a session whose subject was dead
+#: advertisements: no pair regex can ever see a one-word command.
+_ADVERTISED_GROUP_RE = re.compile(r"remedy\s+([a-z][a-z0-9-]*)")
+
+#: An invocation counts as an advertisement only when what FOLLOWS it looks like
+#: a command line rather than prose: an argument placeholder, an option, a
+#: closing quote, a closing BACKTICK, or nothing at all. Without this narrowing,
+#: ``remedy init requires a git repository`` reads as a command named ``init
+#: requires``. The BACKTICK belongs here because a markdown page closes an
+#: inline command with one — ``run `remedy list` `` — and omitting it hid every
+#: advertisement written as an inline code span from the operator-facing sweep:
+#: adding this one character raised the advertisements the scanner SEES from 641
+#: to 791 over the same corpora, 150 of which had never been scanned at all.
+_COMMAND_TAIL_CHARS = "<{\"'`"
 
 
-def scan_advertised_commands(text: str) -> list[tuple[str, str]]:
-    """Return the ``(group, subcommand)`` pairs `text` advertises as commands."""
-    found: list[tuple[str, str]] = []
+def _tail_reads_as_a_command_line(text: str, end: int) -> bool:
+    """Does what follows `text[:end]` read as a command line rather than prose?
+
+    One helper for BOTH invocation forms, so the two regexes can never drift
+    apart on what counts as an advertisement.
+    """
+    tail = text[end:].lstrip(" ")
+    if not tail:
+        return True
+    return tail[0] in _COMMAND_TAIL_CHARS or tail.startswith("--")
+
+
+def scan_advertised_commands(text: str) -> list[tuple[str, ...]]:
+    """Return the invocations `text` advertises as commands.
+
+    Two-element tuples are the ``remedy <group> <sub>`` form, one-element tuples
+    the ``remedy <group>`` form. Nothing is pre-filtered against ``GROUPS``
+    here: finding R-0847 records that the old ``if group not in GROUPS:
+    continue`` made this scanner blind to exactly the advertisements a deletion
+    feature leaves behind — once a group is deleted WHOLE, every string still
+    telling an operator to run one of its commands stopped matching. Deciding
+    which invocations RESOLVE is ``_resolves``'s job, not the scanner's.
+    """
+    found: list[tuple[str, ...]] = []
     for match in _ADVERTISED_COMMAND_RE.finditer(text):
-        group, subcommand = match.group(1), match.group(2)
-        if group not in GROUPS:
+        if not _tail_reads_as_a_command_line(text, match.end()):
             continue
-        tail = text[match.end():].lstrip(" ")
-        if tail and not (tail[0] in _COMMAND_TAIL_CHARS or tail.startswith("--")):
+        found.append((match.group(1), match.group(2)))
+    for match in _ADVERTISED_GROUP_RE.finditer(text):
+        if not _tail_reads_as_a_command_line(text, match.end()):
             continue
-        found.append((group, subcommand))
+        found.append((match.group(1),))
     return found
+
+
+def _resolves(invocation: tuple[str, ...]) -> bool:
+    """Can the LIVE catalog run `invocation`?
+
+    A two-element invocation must be a catalog pair. A one-element invocation
+    must be a known group, because ``remedy <group>`` is the real group-help
+    invocation and not a typo.
+    """
+    if len(invocation) == 2:
+        return invocation in {(entry.group_id, entry.subcommand) for entry in CATALOG}
+    return invocation[0] in GROUPS
 
 
 def _tracked_production_python_files() -> list[str]:
@@ -91,27 +136,47 @@ def _tracked_files_under(directory: str, suffix: str) -> list[str]:
     return [line for line in listing.splitlines() if line.endswith(suffix)]
 
 
-def _sweep(relative_paths: list[str]) -> tuple[int, list[str]]:
+class UnresolvedAdvertisement(NamedTuple):
+    """One site advertising an invocation the live catalog cannot run."""
+
+    path: str
+    invocation: tuple[str, ...]
+    line_number: int
+
+    @property
+    def key(self) -> tuple[str, str]:
+        """The allowlist key: the path and the invocation, and NEVER the line
+        number — a line-keyed allowlist rots on the next edit anywhere in the
+        file, and would then excuse a moved advertisement while failing on the
+        one that never moved."""
+        return (self.path, " ".join(self.invocation))
+
+    def __str__(self) -> str:
+        return f"{self.path}:{self.line_number}: remedy {' '.join(self.invocation)}"
+
+
+def _sweep(relative_paths: list[str]) -> tuple[int, list[UnresolvedAdvertisement]]:
     """Return (advertisements seen, unresolved sites) over `relative_paths`."""
-    catalog_pairs = {(entry.group_id, entry.subcommand) for entry in CATALOG}
     seen = 0
-    unresolved: list[str] = []
+    unresolved: list[UnresolvedAdvertisement] = []
     for relative_path in relative_paths:
         source = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
         for line_number, line in enumerate(source.splitlines(), 1):
-            for group, subcommand in scan_advertised_commands(line):
+            for invocation in scan_advertised_commands(line):
                 seen += 1
-                if (group, subcommand) not in catalog_pairs:
-                    unresolved.append(f"{relative_path}:{line_number}: remedy {group} {subcommand}")
+                if not _resolves(invocation):
+                    unresolved.append(
+                        UnresolvedAdvertisement(relative_path, invocation, line_number)
+                    )
     return seen, unresolved
 
 
-def collect_command_advertisements() -> tuple[int, list[str]]:
+def collect_command_advertisements() -> tuple[int, list[UnresolvedAdvertisement]]:
     """Sweep production code; return (advertisements seen, unresolved sites)."""
     return _sweep(_tracked_production_python_files())
 
 
-def collect_operator_facing_advertisements() -> tuple[int, list[str]]:
+def collect_operator_facing_advertisements() -> tuple[int, list[UnresolvedAdvertisement]]:
     """Sweep the shell scripts and the operator-facing docs the same way."""
     paths: list[str] = []
     for directory, suffix in _OPERATOR_FACING_ROOTS:
@@ -130,7 +195,7 @@ def test_every_advertised_command_exists_in_the_catalog() -> None:
     assert not unresolved, (
         "production code advertises commands the catalog does not carry — "
         "delete a command's advertisements in the same commit as the command:\n"
-        + "\n".join(unresolved)
+        + "\n".join(str(site) for site in unresolved)
     )
 
 
@@ -145,7 +210,7 @@ def test_every_operator_facing_advertised_command_exists_in_the_catalog() -> Non
     assert not unresolved, (
         "an operator-facing script or page advertises commands the catalog does "
         "not carry — delete a command's advertisements in the same commit as the "
-        "command:\n" + "\n".join(unresolved)
+        "command:\n" + "\n".join(str(site) for site in unresolved)
     )
 
 

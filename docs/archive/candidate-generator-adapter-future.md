@@ -24,15 +24,16 @@ A future automated adapter implements `CandidateGeneratorAdapter`:
    request path).
 2. `execute()` — produces candidate output and writes it to a local file (no other
    side effects).
-3. The output re-enters through the **unchanged** path:
-   `remedy provider intake-repair` → Trust Gate → Materialization → Approval →
-   `do continue`. The adapter never applies, approves, or bypasses the gate.
+3. The output re-enters through whatever untrusted-intake path exists at the time.
+   There is none today: F275 T001 deleted the Provider Trust Gate and its intake
+   command, so an executing adapter would first have to build a replacement
+   (R-0866). The adapter never applies, approves, or bypasses a gate.
 
 ## Requirements before any executing adapter ships
 
 - **RunContract actions**: a distinct executing action (e.g. `provider_execute_candidate`)
-  that is denied by default and separate from `prepare_repair_request` /
-  `provider_intake` / `provider_materialize_patch`.
+  that is denied by default and separate from `prepare_repair_request`. The former
+  intake/materialize actions were deleted with the trust gate (F275 T001).
 - **Budget/token tracking**: per-run token + cost accounting wired into RunContract /
   RunUsage; execution blocked when budget is exhausted.
 - **No-cloud / provider policy**: honor `no_cloud` and a local-first model policy;
@@ -51,5 +52,4 @@ and treating any single provider/subscription as required.
 ## See also
 
 - [repair-request-builder-v0.md](../system/repair-request-builder-v0.md)
-- [provider-trust-gate-v0.md](../system/provider-trust-gate-v0.md)
 - [provider-patch-materialization-v0.md](../system/provider-patch-materialization-v0.md)

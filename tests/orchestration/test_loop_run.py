@@ -31,8 +31,8 @@ from pathlib import Path
 
 import pytest
 
-from packages.core.models import Job, RunState
-from packages.orchestration import mission_state, storage
+from packages.core.models import RunState
+from packages.orchestration import mission_state, pingpong_job
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.long_run_executor import (
     TERMINAL_ALL_GREEN,
@@ -55,6 +55,7 @@ from packages.orchestration.loop_spec import (
     LoopSpec,
     load_loop_specs,
 )
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.run_report import report_path
 
 DEADLINE_ISO = "2026-09-01T00:00:00+00:00"
@@ -85,19 +86,19 @@ goal_template = "{template}"
 
 def test_job_action_loop_materializes_a_normal_job(tmp_path: Path) -> None:
     spec = _job_loop(tmp_path, template="tidy {project} on {date}")
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     job = loop_to_job(spec, project_id="remedy", date="2026-08-13", save=saved.append)
 
     assert job.user_prompt == "tidy remedy on 2026-08-13"
-    assert job.name == "tidy remedy on 2026-08-13"
+    assert job.job_title == "tidy remedy on 2026-08-13"
     assert job.project_id == "remedy"
     assert job.metadata["project_id"] == "remedy"
 
 
 def test_loop_ref_metadata_carries_the_loop_name(tmp_path: Path) -> None:
     spec = _job_loop(tmp_path)
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     job = loop_to_job(spec, project_id="remedy", date="2026-08-13", save=saved.append)
 
@@ -107,7 +108,7 @@ def test_loop_ref_metadata_carries_the_loop_name(tmp_path: Path) -> None:
 
 def test_materialized_job_stops_at_planned_and_is_saved_once(tmp_path: Path) -> None:
     spec = _job_loop(tmp_path)
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     job = loop_to_job(spec, project_id="remedy", date="2026-08-13", save=saved.append)
 
@@ -118,7 +119,7 @@ def test_materialized_job_stops_at_planned_and_is_saved_once(tmp_path: Path) -> 
 
 def test_both_template_variables_are_substituted(tmp_path: Path) -> None:
     spec = _job_loop(tmp_path, template="sweep {project} at {date} for {project}")
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     job = loop_to_job(spec, project_id="acme", date="2026-01-02", save=saved.append)
 
@@ -128,7 +129,7 @@ def test_both_template_variables_are_substituted(tmp_path: Path) -> None:
 
 def test_template_without_placeholders_passes_through(tmp_path: Path) -> None:
     spec = _job_loop(tmp_path, template="run the nightly tidy")
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     job = loop_to_job(spec, project_id="acme", date="2026-01-02", save=saved.append)
 
@@ -144,7 +145,7 @@ max_wall_clock_minutes = 30
 max_cost_usd = 1.5
 deadline = "{DEADLINE_ISO}"
 """)
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     job = loop_to_job(spec, project_id="remedy", date="2026-08-13", save=saved.append)
 
@@ -159,7 +160,7 @@ deadline = "{DEADLINE_ISO}"
 
 def test_loop_without_budgets_produces_a_job_without_budgets(tmp_path: Path) -> None:
     spec = _job_loop(tmp_path)
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     job = loop_to_job(spec, project_id="remedy", date="2026-08-13", save=saved.append)
 
@@ -171,7 +172,7 @@ def test_unattended_is_recorded_and_never_changes_the_state(tmp_path: Path) -> N
     """The 'a loop never implies --yes' pin: unattended is audit data, not approval."""
     attended = _job_loop(tmp_path / "off", unattended=False)
     unattended = _job_loop(tmp_path / "on", unattended=True)
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     attended_job = loop_to_job(attended, project_id="remedy", date="2026-08-13",
                                save=saved.append)
@@ -194,7 +195,7 @@ name = "weekly-review"
 kind = "mission"
 mission = "review"
 """)
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     with pytest.raises(LoopRunError) as excinfo:
         loop_to_job(spec, project_id="remedy", date="2026-08-13", save=saved.append)
@@ -225,16 +226,16 @@ mission = "{template}"
 """)
 
 
-def _stored_job(name: str, *, loop_ref: str, created_at: datetime) -> Job:
+def _stored_job(name: str, *, loop_ref: str, created_at: datetime) -> JobPlan:
     """A job built by hand so its ``created_at`` is explicit, not a clock read."""
-    return Job(name=name, user_prompt=name, state=RunState.PLANNED,
+    return JobPlan(job_title=name, user_prompt=name, state=RunState.PLANNED,
                created_at=created_at, metadata={LOOP_REF_METADATA_KEY: loop_ref})
 
 
 def test_run_loop_on_a_job_action_returns_a_planned_job_without_a_mission(
         tmp_path: Path) -> None:
     spec = _job_loop(tmp_path)
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
                        save=saved.append, root=tmp_path)
@@ -247,7 +248,7 @@ def test_run_loop_on_a_job_action_returns_a_planned_job_without_a_mission(
 def test_run_loop_on_a_mission_action_creates_a_mission_with_the_rendered_goal(
         tmp_path: Path) -> None:
     spec = _mission_loop(tmp_path, template="review {project} for {date}")
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
                        save=saved.append, root=tmp_path)
@@ -262,7 +263,7 @@ def test_mission_path_records_provenance_on_the_job_not_on_the_mission(
         tmp_path: Path) -> None:
     """DECISION F045 D5: loop_ref rides on the JOB; the mission stays reachable."""
     spec = _mission_loop(tmp_path)
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
                        save=saved.append, root=tmp_path)
@@ -275,14 +276,14 @@ def test_mission_path_records_provenance_on_the_job_not_on_the_mission(
 
 def test_mission_job_is_the_missions_initial_link(tmp_path: Path) -> None:
     spec = _mission_loop(tmp_path)
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
                        save=saved.append, root=tmp_path)
 
     mission = mission_state.load_mission("remedy", outcome.mission_id, root=tmp_path)
     (link,) = mission.job_links
-    assert link.job_id == str(outcome.job.id)
+    assert link.job_id == str(outcome.job.job_id)
     assert link.role == mission_state.MISSION_ROLE_INITIAL
 
 
@@ -291,7 +292,7 @@ def test_unattended_mission_loop_is_recorded_and_still_stops_at_planned(
     """The 'a loop never implies --yes' pin for the mission path."""
     attended = _mission_loop(tmp_path / "off", unattended=False)
     unattended = _mission_loop(tmp_path / "on", unattended=True)
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     attended_out = run_loop(attended, project_id="remedy", date="2026-08-13",
                             save=saved.append, root=tmp_path / "off")
@@ -308,7 +309,7 @@ def test_inert_trigger_yields_the_notice_and_still_produces_a_planned_job(
         tmp_path: Path) -> None:
     spec = _mission_loop(tmp_path, trigger='\n[loop.trigger]\nkind = "schedule"\n'
                                            'schedule = "0 9 * * 1"')
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
                        save=saved.append, root=tmp_path)
@@ -320,7 +321,7 @@ def test_inert_trigger_yields_the_notice_and_still_produces_a_planned_job(
 
 def test_manual_trigger_yields_no_notice(tmp_path: Path) -> None:
     spec = _job_loop(tmp_path)
-    saved: list[Job] = []
+    saved: list[JobPlan] = []
 
     outcome = run_loop(spec, project_id="remedy", date="2026-08-13",
                        save=saved.append, root=tmp_path)
@@ -331,27 +332,27 @@ def test_manual_trigger_yields_no_notice(tmp_path: Path) -> None:
 
 def test_last_run_for_loop_returns_the_most_recent_run_or_none(tmp_path: Path) -> None:
     older = _stored_job("older run", loop_ref="nightly-tidy",
-                        created_at=datetime(2026, 8, 11, tzinfo=timezone.utc))
+                        created_at=datetime(2026, 8, 11, tzinfo=timezone.utc).isoformat())
     newer = _stored_job("newer run", loop_ref="nightly-tidy",
-                        created_at=datetime(2026, 8, 13, tzinfo=timezone.utc))
-    storage.save_job(older, tmp_path)
-    storage.save_job(newer, tmp_path)
+                        created_at=datetime(2026, 8, 13, tzinfo=timezone.utc).isoformat())
+    pingpong_job.save_job_plan(older, tmp_path)
+    pingpong_job.save_job_plan(newer, tmp_path)
 
-    assert last_run_for_loop("nightly-tidy", root=tmp_path).id == newer.id
+    assert last_run_for_loop("nightly-tidy", root=tmp_path).job_id == newer.job_id
     assert last_run_for_loop("never-ran", root=tmp_path) is None
 
 
 def test_last_run_for_loop_ignores_another_loops_run(tmp_path: Path) -> None:
     mine = _stored_job("mine", loop_ref="nightly-tidy",
-                       created_at=datetime(2026, 8, 11, tzinfo=timezone.utc))
+                       created_at=datetime(2026, 8, 11, tzinfo=timezone.utc).isoformat())
     theirs = _stored_job("theirs", loop_ref="weekly-review",
-                         created_at=datetime(2026, 8, 13, tzinfo=timezone.utc))
-    storage.save_job(mine, tmp_path)
-    storage.save_job(theirs, tmp_path)
+                         created_at=datetime(2026, 8, 13, tzinfo=timezone.utc).isoformat())
+    pingpong_job.save_job_plan(mine, tmp_path)
+    pingpong_job.save_job_plan(theirs, tmp_path)
 
     found = last_run_for_loop("nightly-tidy", root=tmp_path)
     assert found is not None
-    assert found.id == mine.id
+    assert found.job_id == mine.job_id
     assert found.metadata[LOOP_REF_METADATA_KEY] == "nightly-tidy"
 
 
@@ -368,7 +369,7 @@ def test_mission_run_persists_the_mission_text_on_the_stored_job(
 
     expected_goal = render_goal_template(spec.action.mission, project="remedy",
                                          date="2026-08-13")
-    stored = storage.load_job(outcome.job.id, tmp_path)
+    stored = pingpong_job.load_job_plan(outcome.job.job_id, tmp_path)
     assert stored.mission == expected_goal
 
 
@@ -381,7 +382,7 @@ def test_run_loop_root_isolates_the_job_store_on_the_mission_path(
 
     found = last_run_for_loop(spec.name, root=tmp_path)
     assert found is not None
-    assert found.id == outcome.job.id
+    assert found.job_id == outcome.job.job_id
 
 
 def test_run_loop_root_isolates_the_job_store_on_the_job_path(
@@ -393,7 +394,7 @@ def test_run_loop_root_isolates_the_job_store_on_the_job_path(
 
     found = last_run_for_loop(spec.name, root=tmp_path)
     assert found is not None
-    assert found.id == outcome.job.id
+    assert found.job_id == outcome.job.job_id
 
 
 # ---------------------------------------------------------------------------
@@ -427,27 +428,27 @@ class _SteppingClock:
         return current
 
 
-def _completing_step(job: Job, provider_call) -> TaskAttempt:
+def _completing_step(job: JobPlan, provider_call) -> TaskAttempt:
     """Complete the first PENDING task, through the counted provider seam."""
     task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
     if task is None:
         return TaskAttempt()
     provider_call(
         TaskExecutionContext(
-            job_id=job.id,
+            job_id=str(job.job_id),
             job_prompt=job.user_prompt,
-            task_id=task.id,
+            task_id=str(task.task_id),
             task_type=task.inputs.get("task_type", "unknown"),
-            task_description=task.description,
+            task_description=task.title,
         )
     )
     task.status = RunState.COMPLETED
     if all(t.status == RunState.COMPLETED for t in job.tasks):
         job.state = RunState.COMPLETED
-    return TaskAttempt(task_id=task.id, executed=True, verified=True)
+    return TaskAttempt(task_id=task.task_id, executed=True, verified=True)
 
 
-def _passing_verify(job: Job, cycle_index: int, verify_command) -> str:
+def _passing_verify(job: JobPlan, cycle_index: int, verify_command) -> str:
     return VERIFY_PASSED
 
 
@@ -505,11 +506,11 @@ def test_a_fixture_loop_runs_end_to_end_and_its_report_names_the_loop(
     assert provider.calls == 3
     assert job.state is RunState.COMPLETED
 
-    written = report_path(str(job.id))
+    written = report_path(str(job.job_id))
     assert written.is_file()
     expected_line = f"- Loop: {spec.name}"
     text = written.read_text(encoding="utf-8")
     assert [line for line in text.splitlines() if line == expected_line] == [expected_line]
 
-    stored = storage.load_job(job.id, isolated_data_root)
+    stored = pingpong_job.load_job_plan(job.job_id, isolated_data_root)
     assert stored.metadata[LOOP_REF_METADATA_KEY] == spec.name

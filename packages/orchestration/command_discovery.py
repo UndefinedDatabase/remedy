@@ -56,7 +56,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from packages.core.models import Job
+    from packages.orchestration.pingpong_job import JobPlan
 
 
 # ---------------------------------------------------------------------------
@@ -212,7 +212,7 @@ class CommandCandidate:
 
 
 def discover_commands(
-    job: Job,
+    job: JobPlan,
     repo_root: Path,
 ) -> list[CommandCandidate]:
     """Run all detectors and return deduplicated CommandCandidate list.
@@ -468,7 +468,7 @@ def _js_package_manager(pkg_dir: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _detect_constitution(job: Job, repo_root: Path) -> list[CommandCandidate]:
+def _detect_constitution(job: JobPlan, repo_root: Path) -> list[CommandCandidate]:
     """Extract test/build/lint commands from the Project Constitution."""
     try:
         from packages.orchestration.project_constitution import load_project_constitution

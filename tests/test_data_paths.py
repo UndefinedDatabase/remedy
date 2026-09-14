@@ -11,9 +11,13 @@ Verifies:
 
 from __future__ import annotations
 
+import ast
+import contextlib
+import importlib
 import json
 import re
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -146,8 +150,9 @@ class TestResolveJobId:
     """Test the central short-ID resolver."""
 
     def _make_job_file(self, jobs_path: Path, job_id: str) -> None:
-        jobs_path.mkdir(parents=True, exist_ok=True)
-        (jobs_path / f"{job_id}.json").write_text(json.dumps({"id": job_id}))
+        record_dir = jobs_path / job_id
+        record_dir.mkdir(parents=True, exist_ok=True)
+        (record_dir / "job.json").write_text(json.dumps({"job_id": job_id}))
 
     def test_a_full_uuid_resolves_to_its_own_canonical_string_form(
         self, monkeypatch, tmp_path
@@ -204,6 +209,227 @@ class TestResolveJobId:
         result = resolve_job_id(str(uid))
         assert result == str(uid)
 
+    def test_a_pingpong_job_id_resolves_through_the_one_resolver(
+        self, monkeypatch, tmp_path
+    ):
+        """A minted 16-hex id held in a ``<16hex>/job.json`` directory resolves, whole or by prefix."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import jobs_dir, mint_job_id, resolve_job_id
+        job_id = mint_job_id()
+        record_dir = jobs_dir() / job_id
+        record_dir.mkdir(parents=True)
+        (record_dir / "job.json").write_text(json.dumps({"id": job_id}))
+        assert resolve_job_id(job_id) == job_id
+        assert resolve_job_id(job_id[:8]) == job_id
+
+
+class TestLookupJobId:
+    """F275 T003: the RAISING form of the resolver, for handlers that guard their parse."""
+
+    def test_an_unmatched_prefix_raises_not_found_which_is_a_value_error(
+        self, monkeypatch, tmp_path
+    ):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import JobIdNotFound, lookup_job_id
+        (tmp_path / "jobs").mkdir(parents=True)
+        with pytest.raises(JobIdNotFound):
+            lookup_job_id("deadbeef")
+        # A handler's existing ``except ValueError`` guard must catch it.
+        with pytest.raises(ValueError):
+            lookup_job_id("deadbeef")
+
+    def test_a_non_hex_string_raises_invalid(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import JobIdInvalid, lookup_job_id
+        with pytest.raises(JobIdInvalid):
+            lookup_job_id("not-a-hex")
+
+    def test_an_ambiguous_prefix_raises_with_the_sorted_matches(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import JobIdAmbiguous, lookup_job_id
+        jobs_path = tmp_path / "jobs"
+        for job_id in (
+            "aaaa1111-0000-0000-0000-000000000002",
+            "aaaa1111-0000-0000-0000-000000000001",
+        ):
+            (jobs_path / job_id).mkdir(parents=True)
+            (jobs_path / job_id / "job.json").write_text(json.dumps({"job_id": job_id}))
+        with pytest.raises(JobIdAmbiguous) as exc_info:
+            lookup_job_id("aaaa1111")
+        assert exc_info.value.matches == [
+            "aaaa1111-0000-0000-0000-000000000001",
+            "aaaa1111-0000-0000-0000-000000000002",
+        ]
+
+    def test_resolve_job_id_keeps_its_exit_codes_and_its_exact_messages(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import resolve_job_id
+        (tmp_path / "jobs").mkdir(parents=True)
+        with pytest.raises(SystemExit) as exc_info:
+            resolve_job_id("not-a-hex")
+        assert exc_info.value.code == 1
+        assert capsys.readouterr().err == "Error: invalid job ID: 'not-a-hex'\n"
+        with pytest.raises(SystemExit) as exc_info:
+            resolve_job_id("deadbeef")
+        assert exc_info.value.code == 1
+        assert capsys.readouterr().err == "Error: no job matches prefix 'deadbeef'\n"
+
+
+class TestNormalizeJobId:
+    """F275 R88: the disk-free SHAPE check a job-store load takes its id through."""
+
+    def test_a_uuid_comes_back_in_its_canonical_string_form(self):
+        from packages.orchestration.data_paths import normalize_job_id
+        uid = uuid4()
+        assert normalize_job_id(str(uid).upper()) == str(uid)
+        assert normalize_job_id(uid.hex) == str(uid)
+
+    def test_a_minted_job_id_comes_back_unchanged_without_a_record_on_disk(
+        self, monkeypatch, tmp_path
+    ):
+        data_root = tmp_path / "no-such-data-root"
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_root))
+        from packages.orchestration.data_paths import mint_job_id, normalize_job_id
+        job_id = mint_job_id()
+        assert normalize_job_id(job_id) == job_id
+        assert not data_root.exists()
+
+    def test_a_short_prefix_is_not_a_job_id_and_raises_invalid(self):
+        from packages.orchestration.data_paths import JobIdInvalid, normalize_job_id
+        with pytest.raises(JobIdInvalid):
+            normalize_job_id("abcd1234")
+        with pytest.raises(ValueError):
+            normalize_job_id("not-a-job-id")
+
+
+class TestRoutedHandler:
+    """A handler routed through ``lookup_job_id`` accepts what its ``UUID(...)`` parse refused."""
+
+    def test_a_routed_handler_accepts_a_short_uuid_prefix(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.guide import _cmd_guide_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+        job_id = str(uuid4())
+        save_job_plan(JobPlan(job_id=job_id, job_title="routed-handler"))
+        exit_code = None
+        try:
+            _cmd_guide_job(job_id[:8], json_output=True)
+        except SystemExit as exc:
+            exit_code = exc.code
+        captured = capsys.readouterr()
+        assert "invalid job ID" not in captured.err
+        assert exit_code is None
+        json.loads(captured.out)
+
+    class _LoadJobReached(Exception):
+        """Raised by the ``load_job`` spy, so a handler stops right after its load."""
+
+    def _spy_on_load_job(self, monkeypatch) -> list[str]:
+        """Replace ``load_job_plan`` and ``require_job_plan`` with a spy recording ``str()`` of each id.
+
+        The handlers import the loader inside the function, so the ``pingpong_job`` module
+        attribute is the one they read at call time.
+        """
+        from packages.orchestration import pingpong_job
+
+        seen: list[str] = []
+
+        def spy(job_id, *args, **kwargs):
+            seen.append(str(job_id))
+            raise self._LoadJobReached(str(job_id))
+
+        monkeypatch.setattr(pingpong_job, "load_job_plan", spy)
+        monkeypatch.setattr(pingpong_job, "require_job_plan", spy)
+        return seen
+
+    @pytest.mark.parametrize(
+        ("module_name", "handler_name", "extra_args"),
+        [
+            pytest.param("review_cmd", "_cmd_review_run", None, id="review-run"),
+            pytest.param("review_cmd", "_cmd_review_list", None, id="review-list"),
+            pytest.param("review_cmd", "_cmd_review_accept", None, id="review-accept"),
+            pytest.param("review_cmd", "_cmd_review_reject", None, id="review-reject"),
+            pytest.param("memory", "_cmd_memory_candidates", (), id="memory-candidates"),
+            pytest.param("memory", "_cmd_memory_approve_candidate", ("cand-1",), id="memory-approve"),
+            pytest.param("memory", "_cmd_memory_reject_candidate", ("cand-1",), id="memory-reject"),
+            pytest.param("repo", "_cmd_commit_readiness", (), id="commit-readiness"),
+        ],
+    )
+    def test_a_loading_handler_hands_load_job_the_id_a_short_prefix_resolves_to(
+        self, monkeypatch, tmp_path, module_name, handler_name, extra_args
+    ):
+        """F275 R86: each handler loads what ``lookup_job_id`` resolves, not a ``UUID(...)`` parse.
+
+        ``extra_args`` is ``None`` for a handler taking an ``argparse`` namespace, and
+        otherwise the positional arguments that follow the job id.
+        """
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        full_id = "abcd1234-0000-0000-0000-000000000001"
+        record_dir = tmp_path / "jobs" / full_id
+        record_dir.mkdir(parents=True)
+        (record_dir / "job.json").write_text(json.dumps({"job_id": full_id}))
+        seen = self._spy_on_load_job(monkeypatch)
+        handler = getattr(importlib.import_module(f"apps.cli.commands.{module_name}"), handler_name)
+        with contextlib.suppress(self._LoadJobReached, SystemExit):
+            if extra_args is None:
+                handler(SimpleNamespace(job_id="abcd1234", recommendation_id="rec-1"))
+            else:
+                handler("abcd1234", *extra_args)
+        assert seen == [full_id]
+
+    def test_project_readiness_hands_a_stored_pingpong_id_to_load_job(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """A ping-pong id a project stores reaches ``load_job`` instead of dying in a ``UUID(...)`` parse."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.readiness import _cmd_readiness_project
+        from packages.orchestration.data_paths import jobs_dir, mint_job_id
+        from packages.orchestration.project_registry import RemyProject, save_project
+        job_id = mint_job_id()
+        record_dir = jobs_dir() / job_id
+        record_dir.mkdir(parents=True)
+        (record_dir / "job.json").write_text(json.dumps({"id": job_id}))
+        project = RemyProject(name="pingpong-readiness", job_ids=[job_id])
+        save_project(project)
+        seen = self._spy_on_load_job(monkeypatch)
+        _cmd_readiness_project(str(project.id), json_output=True)
+        assert seen == [job_id]
+
+    def test_attaching_by_short_prefix_stores_the_full_job_id(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """``project attach-job`` files the id it resolved, never the prefix it was typed as."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.project import _cmd_attach_project_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+        from packages.orchestration.project_registry import RemyProject, load_project, save_project
+        job_id = str(uuid4())
+        save_job_plan(JobPlan(job_id=job_id, job_title="attach-by-prefix"))
+        project = RemyProject(name="attach-by-prefix")
+        save_project(project)
+        short = job_id[:8]
+        _cmd_attach_project_job(str(project.id), short)
+        assert load_project(project.id).job_ids == [job_id]
+        assert f"Attached job {short} " in capsys.readouterr().out
+
+    def test_stopping_by_an_unhyphenated_id_files_the_stop_under_the_canonical_id(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """``job stop``'s loader loads the id as given, so its caller normalises an unhyphenated one."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.job_stop_cmd import _cmd_job_stop
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+        from packages.orchestration.safe_points import stop_requested
+        uid = uuid4()
+        save_job_plan(JobPlan(job_id=str(uid), job_title="stop-by-hex"))
+        _cmd_job_stop(uid.hex)
+        assert stop_requested(str(uid)) is not None
+        assert stop_requested(uid.hex) is None
+
 
 class TestSingleReaderInvariant:
     """Verify data_paths.py is the only production Python file reading REMEDY_DATA_DIR."""
@@ -248,8 +474,8 @@ class TestMintIds:
     """
 
     def _minters(self) -> list:
-        from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id
-        return [mint_job_id, mint_run_id, mint_episode_id]
+        from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id, mint_task_id
+        return [mint_job_id, mint_run_id, mint_episode_id, mint_task_id]
 
     def test_each_mints_sixteen_lowercase_hex_chars(self):
         for mint in self._minters():
@@ -269,6 +495,13 @@ class TestMintIds:
         assert mint_job_id is not mint_run_id
         assert mint_job_id is not mint_episode_id
         assert mint_run_id is not mint_episode_id
+
+    def test_the_task_minter_is_a_fourth_distinct_function(self):
+        """The TASK kind gets its own function too, not an alias of the other three."""
+        from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id, mint_task_id
+        assert mint_task_id is not mint_job_id
+        assert mint_task_id is not mint_run_id
+        assert mint_task_id is not mint_episode_id
 
     def test_minted_ids_match_the_short_hex_pattern(self):
         """What lets the existing prefix resolvers accept a minted id at all."""
@@ -295,15 +528,6 @@ class TestMintIds:
 # is defined SEMANTICALLY — membership is "F260 moved this module's hand-built
 # ``jobs_dir() / <id> / 'evidence'`` onto the one spelling" — so a later reader
 # knows what earns a place here rather than guessing from the list.
-#
-# ``packages/orchestration/checkpoints.py`` and ``packages/orchestration/
-# storage.py`` are DELIBERATELY EXCLUDED and correctly keep their ``jobs_dir``
-# calls. They name the CLASSIC job store, ``<data_root>/jobs/<uuid>.json``,
-# which is one FILE per job and a different concept from a job's evidence
-# DIRECTORY; that store is deleted in F260 T004, not here. The reason is written
-# down because an exclusion a later reader cannot justify is one a later reader
-# deletes — or, worse, "fixes" by migrating the classic store onto an evidence
-# path it was never meant to share.
 _JOB_EVIDENCE_OWNING_MODULES = (
     "packages.orchestration.pingpong_job",
     "packages.orchestration.job_evidence",
@@ -314,9 +538,6 @@ _JOB_EVIDENCE_OWNING_MODULES = (
 # The modules that reached the live ping-pong store through
 # ``pingpong_job._jobs_dir`` until F260 T002 DELETED that helper. They now spell
 # it as ``data_paths.job_dir`` / ``job_record_path`` and nothing else.
-# ``packages.orchestration.storage`` is NOT in this set and must never be added:
-# its ``_resolve_jobs_dir`` is a different symbol naming the CLASSIC store that
-# F260 T004 deletes, and it merely shares a substring with the deleted name.
 _MIGRATED_OFF_JOBS_DIR_MODULES = (
     "packages.orchestration.pingpong_job",
     "packages.orchestration.job_evidence",
@@ -438,40 +659,44 @@ class TestJobAndRunLayout:
             f"the record is still filed under a task_jobs component: {written}"
         )
 
-    def test_a_pingpong_record_in_the_jobs_dir_is_still_resolvable_beside_a_classic_one(
+    def test_only_a_directory_holding_a_job_json_resolves_as_a_job(
         self, monkeypatch, tmp_path,
     ):
-        """Both stores share ``jobs/`` now, and neither shadows the other.
+        """The resolver reads one store: a directory under ``jobs/`` holding a ``job.json``.
 
-        This is why the T002 move is ONE commit: the writer moved and its reader
-        moved with it. ``_classic_job_id_matches`` globs ``*.json`` and cannot
-        see a directory; ``_task_job_id_matches`` reads directories holding a
-        ``job.json`` and cannot see a classic file. So one directory carrying
-        both shapes yields exactly one match per id and never a false ambiguity —
-        and a directory without a ``job.json`` is not a job at all.
+        A ``<uuid>.json`` FILE beside it is not a job, so its prefix matches nothing and
+        exits 1 rather than resolving or making the prefix ambiguous; a directory
+        without a ``job.json`` is not a job either.
         """
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.data_paths import jobs_dir, resolve_any_job_id
+        from packages.orchestration.data_paths import jobs_dir, resolve_job_id
 
-        classic_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
-        pingpong_id = "0123456789abcdef"
+        shared_prefix_file_id = "abcd1234-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+        lone_file_id = "eeee5555-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+        record_id = "abcd12340123beef"
         bare_id = "fedcba9876543210"
 
         jobs_dir().mkdir(parents=True)
-        (jobs_dir() / f"{classic_id}.json").write_text(
-            json.dumps({"job_id": classic_id}), encoding="utf-8")
-        (jobs_dir() / pingpong_id).mkdir()
-        (jobs_dir() / pingpong_id / "job.json").write_text(
-            json.dumps({"job_id": pingpong_id}), encoding="utf-8")
+        for file_id in (shared_prefix_file_id, lone_file_id):
+            (jobs_dir() / f"{file_id}.json").write_text(
+                json.dumps({"job_id": file_id}), encoding="utf-8")
+        (jobs_dir() / record_id).mkdir()
+        (jobs_dir() / record_id / "job.json").write_text(
+            json.dumps({"job_id": record_id}), encoding="utf-8")
         (jobs_dir() / bare_id).mkdir()
 
-        assert resolve_any_job_id(pingpong_id) == pingpong_id
-        assert resolve_any_job_id(pingpong_id[:8]) == pingpong_id
-        assert resolve_any_job_id(classic_id) == classic_id
-        assert resolve_any_job_id(classic_id[:8]) == classic_id
+        assert resolve_job_id(record_id) == record_id
+        assert resolve_job_id("abcd1234") == record_id, (
+            "a prefix shared by the record directory and a .json file must name the record alone"
+        )
+        with pytest.raises(SystemExit) as exc:
+            resolve_job_id("eeee5555")
+        assert exc.value.code == 1, (
+            f"a prefix naming only a .json file resolved to something (exit {exc.value.code})"
+        )
 
         with pytest.raises(SystemExit) as exc:
-            resolve_any_job_id(bare_id)
+            resolve_job_id(bare_id)
         assert exc.value.code == 1, (
             f"a directory with no job.json resolved to something (exit {exc.value.code})"
         )
@@ -532,10 +757,6 @@ class TestJobAndRunLayout:
         returns, so an equality test stays green while the second spelling comes
         back. Only reading the module itself sees it, which is why BOTH readings
         ship rather than either one alone.
-
-        ``checkpoints.py`` and ``storage.py`` are not in this set on purpose:
-        they name the CLASSIC store ``<data_root>/jobs/<uuid>.json``, a file per
-        job rather than a job's evidence directory, and F260 T004 deletes it.
         """
         import importlib
 
@@ -566,24 +787,20 @@ class TestJobAndRunLayout:
             module = importlib.import_module(modname)
             assert Path(module.__file__).is_file(), f"{modname} has no source file"
 
-    def test_the_classic_store_modules_still_call_jobs_dir(self):
-        """The excluded pair must keep naming the classic store, not lose it quietly.
+    def test_the_jobs_dir_reading_finds_the_calls_data_paths_really_makes(self):
+        """The other half of the non-vacuity reading, aimed at a module that must call ``jobs_dir``.
 
-        This is the other half of the non-vacuity reading: if ``jobs_dir`` had
-        simply been deleted everywhere, the absence guard above would pass for
-        the wrong reason. ``checkpoints.py`` and ``storage.py`` are the modules
-        that legitimately still call it, until F260 T004 deletes that store.
+        If the AST reading could not see a ``jobs_dir`` reference at all, the absence
+        guard above would pass for the wrong reason. ``data_paths`` builds ``job_dir``
+        and ``job_record_paths`` on ``jobs_dir``, so the reading must find it there.
         """
-        from packages.orchestration import checkpoints, storage
+        from packages.orchestration import data_paths
 
-        for module in (checkpoints, storage):
-            hits = self._jobs_dir_references(module)
-            assert hits, (
-                f"{module.__name__} no longer references jobs_dir; the classic "
-                "store is still live until F260 T004 deletes it, so this is "
-                "either a real regression or a sign this guard now measures "
-                "nothing"
-            )
+        hits = self._jobs_dir_references(data_paths)
+        assert hits, (
+            "the AST reading finds no jobs_dir reference in data_paths, which builds "
+            "job_dir on it; the absence guard above is therefore measuring nothing"
+        )
 
     def test_pingpong_job_has_no_jobs_dir_attribute_at_all(self):
         """``pingpong_job._jobs_dir`` is GONE, not merely unused.
@@ -611,12 +828,6 @@ class TestJobAndRunLayout:
         ``_jobs_dir() / job_id`` was EQUAL to what ``job_dir`` returns, so
         an equality test stays green while the second spelling returns. Only
         reading the module itself sees it.
-
-        ``storage.py`` is out of scope on purpose: its ``_resolve_jobs_dir`` is
-        a DIFFERENT symbol that merely contains the same substring, and it names
-        the CLASSIC store ``<data_root>/jobs/<uuid>.json`` that F260 T004
-        deletes. It is not a survivor of this migration and never referenced the
-        deleted helper.
         """
         import importlib
 
@@ -633,10 +844,10 @@ class TestJobAndRunLayout:
 
         The set could be empty, and the AST reading could be structurally unable
         to see an underscore-prefixed private helper — in which case the guard
-        would pass while measuring nothing. ``storage._resolve_jobs_dir`` is the
-        control: a private, underscore-prefixed, module-local helper of exactly
-        the shape ``_jobs_dir`` had, defined AND called in the same file, which
-        the same reading DOES find.
+        would pass while measuring nothing. ``data_paths._exit_ambiguous`` is the
+        control: a private, underscore-prefixed, module-local helper of the
+        shape ``_jobs_dir`` had, defined AND called in the same file, which the
+        same reading DOES find, while its prefix ``_exit`` names nothing there.
 
         The last assertion is the one that matters most. A helper comes back as
         an uncalled ``def`` before it comes back as a call, so the reading must
@@ -646,7 +857,7 @@ class TestJobAndRunLayout:
         """
         import importlib
 
-        from packages.orchestration import storage
+        from packages.orchestration import data_paths
 
         assert _MIGRATED_OFF_JOBS_DIR_MODULES, (
             "the migrated module set is EMPTY; the absence guard above would "
@@ -657,18 +868,17 @@ class TestJobAndRunLayout:
         for modname in _MIGRATED_OFF_JOBS_DIR_MODULES:
             module = importlib.import_module(modname)
             assert Path(module.__file__).is_file(), f"{modname} has no source file"
-        assert self._names_of(storage, "_resolve_jobs_dir"), (
-            "the AST reading cannot find storage._resolve_jobs_dir, a private "
-            "helper of exactly the shape _jobs_dir had; the absence assertions "
+        assert self._names_of(data_paths, "_exit_ambiguous"), (
+            "the AST reading cannot find data_paths._exit_ambiguous, a private "
+            "helper of the shape _jobs_dir had; the absence assertions "
             "above are therefore measuring nothing"
         )
-        assert self._names_of(storage, "_jobs_dir") == [], (
-            "storage.py names _jobs_dir; it never did, so either the reading "
-            "now matches on a substring or storage.py grew a dependency on a "
-            "helper that no longer exists"
+        assert self._names_of(data_paths, "_exit") == [], (
+            "the reading finds _exit in data_paths, which names only "
+            "_exit_ambiguous, so it now matches on a substring"
         )
-        assert len(self._names_of(storage, "_resolve_jobs_dir")) > \
-            len(self._references_to(storage, "_resolve_jobs_dir")), (
+        assert len(self._names_of(data_paths, "_exit_ambiguous")) > \
+            len(self._references_to(data_paths, "_exit_ambiguous")), (
             "_names_of found no more than _references_to did, so its DEFINITION "
             "arm is dead; a helper revived as an uncalled def would then slip "
             "past the absence guard above"
@@ -705,3 +915,90 @@ class TestJobAndRunLayout:
             "hasattr found nothing at all on pingpong_loop; the absence above "
             "would then be measuring an import failure, not a deleted helper"
         )
+
+
+# The census DECISION F275 D62 pins by shape: a job id parsed with ``UUID(...)`` on its way into the job store.
+def _uuid_parses_fed_to_a_job_load(source: str) -> list[tuple[int, str]]:
+    """Sorted ``(line, function name)`` pairs of ``UUID(...)`` parses handed to a job-store loader.
+
+    Inside each function, two shapes count: a ``UUID(...)`` call that is a positional
+    argument of ``load_job_plan``, ``load_job_plan_safe`` or ``require_job_plan``, or of
+    the local aliases ``_lj`` and ``_load_job`` they are imported under, and a bare name
+    passed positionally to one of them that the same function assigned from a
+    ``UUID(...)`` call. The line is the argument's.
+    """
+    loader_names = {"load_job_plan", "load_job_plan_safe", "require_job_plan", "_lj", "_load_job"}
+
+    def is_uuid_parse(node: ast.AST) -> bool:
+        return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "UUID"
+
+    def nodes_of_this_function(function: ast.AST) -> list[ast.AST]:
+        nodes, pending = [], list(ast.iter_child_nodes(function))
+        while pending:
+            node = pending.pop()
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue
+            nodes.append(node)
+            pending.extend(ast.iter_child_nodes(node))
+        return nodes
+
+    pairs: list[tuple[int, str]] = []
+    for function in ast.walk(ast.parse(source)):
+        if not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        nodes = nodes_of_this_function(function)
+        parsed_names = {
+            target.id
+            for node in nodes
+            if isinstance(node, ast.Assign) and is_uuid_parse(node.value)
+            for target in node.targets
+            if isinstance(target, ast.Name)
+        }
+        for node in nodes:
+            if not isinstance(node, ast.Call):
+                continue
+            callee = getattr(node.func, "id", None) or getattr(node.func, "attr", None)
+            if callee not in loader_names:
+                continue
+            for arg in node.args:
+                if is_uuid_parse(arg):
+                    pairs.append((arg.lineno, function.name))
+                elif isinstance(arg, ast.Name) and arg.id in parsed_names:
+                    pairs.append((arg.lineno, function.name))
+    return sorted(pairs)
+
+
+class TestJobStoreLoadsDoNotParseTheirIdWithUuid:
+    """F275 R88: a job-store load under ``packages/`` takes its id through ``normalize_job_id``.
+
+    ``UUID(...)`` refuses the sixteen-hex id ``mint_job_id`` mints, so a load that parses
+    with it dies before the store is asked, which is why the pin is a reading of the source.
+    No load is exempt.
+    """
+
+    def test_no_job_store_load_under_packages_is_handed_a_uuid_parse(self):
+        from packages.orchestration import data_paths
+        repo = Path(data_paths.__file__).resolve().parents[2]
+        findings = []
+        for path in sorted((repo / "packages").rglob("*.py")):
+            relative = path.relative_to(repo).as_posix()
+            for line, function in _uuid_parses_fed_to_a_job_load(path.read_text(encoding="utf-8")):
+                findings.append(f"{relative}:{line} in {function}")
+        assert findings == [], (
+            f"job-store loads handed a UUID(...) parse instead of normalize_job_id: {findings}"
+        )
+
+    def test_the_guard_sees_both_shapes_it_forbids(self):
+        planted = (
+            "def loads_a_direct_parse(job_id):\n"
+            "    return require_job_plan(UUID(job_id), None)\n"
+            "\n"
+            "\n"
+            "def loads_a_named_parse(job_id):\n"
+            "    parsed = UUID(job_id)\n"
+            "    return load_job_plan_safe(parsed)\n"
+        )
+        assert _uuid_parses_fed_to_a_job_load(planted) == [
+            (2, "loads_a_direct_parse"),
+            (7, "loads_a_named_parse"),
+        ]

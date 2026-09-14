@@ -350,20 +350,20 @@ def _cmd_mission_continue(mission_id: str, next_step: str, *,
         print(_json.dumps({
             "version": 1,
             "mission_id": mission.id,
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "role": job.metadata.get("mission_role", ""),
             "verify_first_task": (
-                {"description": verify.description,
+                {"description": verify.title,
                  "verify_command": verify.inputs.get("verify_command", "")}
                 if verify is not None else None),
-            "tasks": [t.description for t in job.tasks],
+            "tasks": [t.title for t in job.tasks],
         }, sort_keys=True))
         return
 
-    print(str(job.id))
+    print(str(job.job_id))
     print(f"  Mission: {mission.id[:12]}  ({job.metadata.get('mission_role', '')})")
     if verify is not None:
-        print(f"  Task 1 (injected): {verify.description}")
+        print(f"  Task 1 (injected): {verify.title}")
         print("  The follow-up work cannot start until that task completes.")
     else:
         print("  First job of this mission — there is no previous state to verify.")
@@ -550,7 +550,68 @@ def _cmd_mission_handoff(mission_id: str, *, json_output: bool = False) -> None:
         print(f"    - {gap.get('source', '')}: {gap.get('detail', '')}")
 
 
+def _cmd_mission_readiness(job_id: str, *, json_output: bool = False) -> None:
+    """Read-only: is this job safe to run unattended?
+
+    The readiness view carried out of the prototype cluster into
+    ``packages/orchestration/mission_readiness.py`` by DECISION F275 D1. The
+    JSON payload is the carried module's own export, unwrapped, so the view
+    survives the cluster deletion byte for byte rather than being redesigned.
+    """
+    from packages.orchestration.mission_readiness import (
+        build_overnight_readiness,
+        export_readiness_json,
+    )
+    data = export_readiness_json(build_overnight_readiness(str(job_id)))
+    if json_output:
+        print(_json.dumps(data, indent=2))
+        return
+    print(f"Mission readiness: {str(job_id)[:8]}")
+    print(f"  level: {data['readiness_level']}  ready: {data['ready']}  "
+          f"unattended: {data['can_run_unattended']}")
+    if data["blockers"]:
+        print("  blockers: " + ", ".join(data["blockers"]))
+    top_risks = [r for r in data["risks"] if r["severity"] in ("blocker", "high")]
+    if top_risks:
+        print("  top risks: " + "; ".join(r["summary"] for r in top_risks[:3]))
+    na = data.get("next_action")
+    if na:
+        print(f"  next: {na['label']} -> {na['command']}")
+
+
+def _cmd_mission_report(job_id: str, *, markdown: bool = False,
+                        json_output: bool = False) -> None:
+    """Read-only morning-style report built from the job's current evidence.
+
+    The second of the two carry-overs F260's Design orders before the cluster
+    deletion, landing on the name DECISION F274 D2 reserved for it. It reads
+    ``packages/orchestration/mission_readiness.py`` — the module rounds 1 and 2
+    carried — and never the cluster.
+    """
+    from packages.orchestration.mission_readiness import (
+        build_overnight_report,
+        render_overnight_report_markdown,
+    )
+    data = build_overnight_report(str(job_id))
+    if markdown:
+        print(render_overnight_report_markdown(data))
+        return
+    if json_output:
+        print(_json.dumps(data, indent=2))
+        return
+    print(render_overnight_report_markdown(data))
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+    "mission.report": lambda args: _cmd_mission_report(
+        args.job_id,
+        markdown=getattr(args, "markdown", False),
+        json_output=getattr(args, "json", False),
+    ),
+    "mission.readiness": lambda args: _cmd_mission_readiness(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
     "mission.handoff": lambda args: _cmd_mission_handoff(
         args.mission_id,
         json_output=getattr(args, "json", False),

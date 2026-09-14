@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 import packages.orchestration.long_run_executor as lre
-from packages.core.models import Job, JobBudgets, RunState, Task
+from packages.core.models import JobBudgets, RunState
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.config import get_key_spec
 from packages.orchestration.long_run_executor import (
@@ -49,6 +49,7 @@ from packages.orchestration.long_run_executor import (
     render_cycle_summary_line,
     run_cycles,
 )
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.safe_points import request_stop
 
 UTC = timezone.utc
@@ -76,12 +77,12 @@ def control_root(tmp_path: Path) -> Path:
     return root
 
 
-def make_job(task_count: int = 1) -> Job:
-    return Job(
-        name="healing-job",
+def make_job(task_count: int = 1) -> JobPlan:
+    return JobPlan(
+        job_title="healing-job",
         user_prompt="build the thing",
         tasks=[
-            Task(description=f"task {i}", inputs={"task_type": "documentation"})
+            TaskEntry(title=f"task {i}", inputs={"task_type": "documentation"})
             for i in range(task_count)
         ],
         state=RunState.PLANNED,
@@ -100,25 +101,25 @@ class FakeClock:
         return current
 
 
-def completing_step(job: Job, provider_call) -> TaskAttempt:
+def completing_step(job: JobPlan, provider_call) -> TaskAttempt:
     """Completes the first PENDING task, through the provider seam."""
     task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
     if task is None:
         return TaskAttempt()
     provider_call(TaskExecutionContext(
-        job_id=job.id,
+        job_id=str(job.job_id),
         job_prompt=job.user_prompt,
-        task_id=task.id,
+        task_id=str(task.task_id),
         task_type=task.inputs.get("task_type", "unknown"),
-        task_description=task.description,
+        task_description=task.title,
     ))
     task.status = RunState.COMPLETED
     if all(t.status == RunState.COMPLETED for t in job.tasks):
         job.state = RunState.COMPLETED
-    return TaskAttempt(task_id=task.id, executed=True, verified=True)
+    return TaskAttempt(task_id=task.task_id, executed=True, verified=True)
 
 
-def no_save(job: Job) -> None:
+def no_save(job: JobPlan) -> None:
     return None
 
 
@@ -205,7 +206,7 @@ class TestVerifyFailureClassification:
             record_checkpoint=False,
         )
         assert result.cycles[0].verify_failure_class == "config"
-        assert read_cycle_records(str(job.id))[0]["verify_failure_class"] == "config"
+        assert read_cycle_records(str(job.job_id))[0]["verify_failure_class"] == "config"
 
     def test_a_green_cycle_records_no_class(self, control_root):
         job = make_job(1)
@@ -275,7 +276,7 @@ class TestRepairFindingsPayload:
         findings = build_cycle_repair_findings(
             job, 1, VerifyOutcome(result=VERIFY_FAILED))
         assert findings["version"] == 1
-        assert findings["job_id"] == str(job.id)
+        assert findings["job_id"] == str(job.job_id)
         assert findings["failure_kind"] == "assertion"
         assert findings["status"] == "failed"
         assert "safe_summary" in findings
@@ -406,7 +407,7 @@ class BreakingVerify:
         self.heals_after = heals_after
         self.calls = 0
 
-    def __call__(self, job: Job, cycle_index: int, verify_command) -> VerifyOutcome:
+    def __call__(self, job: JobPlan, cycle_index: int, verify_command) -> VerifyOutcome:
         result = (VERIFY_PASSED
                   if self.heals_after is not None and self.calls >= self.heals_after
                   else VERIFY_FAILED)
@@ -430,7 +431,7 @@ class FakeRepair:
         self.error = error
         self.findings: list[dict] = []
 
-    def __call__(self, job: Job, cycle_index: int, findings: dict) -> RepairOutcome:
+    def __call__(self, job: JobPlan, cycle_index: int, findings: dict) -> RepairOutcome:
         self.findings.append(findings)
         return RepairOutcome(ran=self.ran, changed_files=self.changed_files,
                              error=self.error)
@@ -539,7 +540,7 @@ class TestHealedCycleIsVisible:
             repair=FakeRepair(), clock=FakeClock(), save=no_save,
             control_root_path=control_root, record_checkpoint=False,
         )
-        record = read_cycle_records(str(job.id))[0]
+        record = read_cycle_records(str(job.job_id))[0]
         assert record["repair_summary"] == "healed after 1 repair round"
         assert record["healed_after_repair"] is True
         assert record["repair_rounds_used"] == 1
@@ -695,13 +696,13 @@ class TestStubbornBreakStopsAfterExactlyTwoRounds:
             repair=FakeRepair(), clock=FakeClock(), save=no_save,
             control_root_path=control_root, record_checkpoint=False,
         )
-        record = read_cycle_records(str(job.id))[0]
+        record = read_cycle_records(str(job.job_id))[0]
         ref = f"cycles/cycle_{record['cycle_index']:04d}.json"
 
         payload = PostmortemV1(
             failure_class=FailureClass(record["verify_failure_class"]),
             signal_source="terminal_status",
-            job_id=str(job.id), scope=SCOPE_JOB,
+            job_id=str(job.job_id), scope=SCOPE_JOB,
             terminal_status="test_failed",
             evidence_refs=(ref,),
         ).to_json()
@@ -791,7 +792,7 @@ class TestStopRequestBetweenRepairRounds:
 
         def repair_then_stop(j, idx, findings) -> RepairOutcome:
             rounds_started.append(findings["repair_round"])
-            request_stop(str(j.id), reason="operator asked",
+            request_stop(str(j.job_id), reason="operator asked",
                          control_root_path=control_root)
             return RepairOutcome(ran=True, changed_files=("calc.py",))
 
@@ -807,7 +808,7 @@ class TestStopRequestBetweenRepairRounds:
         assert "operator_stop" in result.stop_reason
         assert result.job.state == RunState.PAUSED
         # The interrupted phase is still on disk, with the round it did spend.
-        assert read_cycle_records(str(job.id))[0]["repair_rounds_used"] == 1
+        assert read_cycle_records(str(job.job_id))[0]["repair_rounds_used"] == 1
 
     def test_a_stop_before_the_first_round_spends_nothing(self, control_root):
         job = make_job(1)
@@ -816,7 +817,7 @@ class TestStopRequestBetweenRepairRounds:
         class StoppingVerify(BreakingVerify):
             def __call__(self, j, cycle_index, verify_command):
                 out = super().__call__(j, cycle_index, verify_command)
-                request_stop(str(j.id), reason="operator asked",
+                request_stop(str(j.job_id), reason="operator asked",
                              control_root_path=control_root)
                 return out
 
@@ -877,7 +878,7 @@ class TestEdgeCases:
         assert log.of(LEDGER_EVENT_CYCLE_HEALED)[0]["healed_without_changes"] is True
         # And a human reading the report sees it, not just the JSON.
         assert "flaky?" in render_cycle_summary_line(cycle)
-        assert read_cycle_records(str(job.id))[0]["healed_without_changes"] is True
+        assert read_cycle_records(str(job.job_id))[0]["healed_without_changes"] is True
 
     def test_a_heal_that_changed_files_is_not_flagged(self, control_root):
         job = make_job(1)

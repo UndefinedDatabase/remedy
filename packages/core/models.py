@@ -16,10 +16,6 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt, model_validator
 
 
-def _utcnow() -> datetime:
-    return datetime.now(tz=timezone.utc)
-
-
 class Budget(BaseModel):
     """Resource budget for a job or task."""
 
@@ -113,21 +109,9 @@ class Artifact(BaseModel):
     name: str
     content: str
     mime_type: str = "text/plain"
-    task_id: UUID | None = None
+    task_id: str | None = None
     kind: ArtifactKind = ArtifactKind.UNKNOWN
     metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class Task(BaseModel):
-    """A single unit of work within a job."""
-
-    id: UUID = Field(default_factory=uuid4)
-    description: str
-    inputs: dict[str, Any] = Field(default_factory=dict)
-    acceptance_checks: list[AcceptanceCheck] = Field(default_factory=list)
-    budget: Budget = Field(default_factory=Budget)
-    status: RunState = RunState.PENDING
-    output_artifact_ids: list[UUID] = Field(default_factory=list)
 
 
 class JobBudgets(BaseModel):
@@ -221,23 +205,3 @@ class JobFences(BaseModel):
                 cleaned.append(trimmed)
             object.__setattr__(self, field_name, cleaned)
         return self
-
-
-class Job(BaseModel):
-    """Top-level orchestration unit composed of tasks."""
-
-    id: UUID = Field(default_factory=uuid4)
-    name: str
-    mission: str | None = None
-    user_prompt: str | None = None
-    created_at: datetime = Field(default_factory=_utcnow)
-    tasks: list[Task] = Field(default_factory=list)
-    state: RunState = RunState.PENDING
-    artifacts: list[Artifact] = Field(default_factory=list)
-    budget: Budget = Field(default_factory=Budget)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-    project_id: str | None = None
-    intake: dict[str, Any] | None = None
-    flight_plan: dict[str, Any] | None = None
-    fences: JobFences | None = None
-    budgets: JobBudgets | None = None

@@ -21,12 +21,12 @@ _ESCALATION_PREFIX = "td:"
 def _load_job_events(job_id_str: str):
     """Load job and events. Returns (job, events, job_id_str)."""
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
     from packages.orchestration.timeline import load_run_events
 
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -180,9 +180,9 @@ def _create_mission_for_job(job: Any) -> None:
               "  Register one with: remedy init", file=sys.stderr)
         sys.exit(1)
 
-    existing = mission_for_job(str(job.id))
+    existing = mission_for_job(str(job.job_id))
     if existing is not None:
-        print(f"Error: job {str(job.id)[:8]} already belongs to mission "
+        print(f"Error: job {str(job.job_id)[:8]} already belongs to mission "
               f"{existing.id[:12]} — one job, one mission.", file=sys.stderr)
         sys.exit(1)
 
@@ -190,11 +190,11 @@ def _create_mission_for_job(job: Any) -> None:
     goal = ""
     if isinstance(intake, dict):
         goal = str(intake.get("goal", "") or "")
-    goal = goal or str(getattr(job, "mission", "") or "") or str(job.name)
+    goal = goal or str(getattr(job, "mission", "") or "") or str(job.job_title)
 
     try:
         mission = create_mission(project_id, goal)
-        link_job_to_mission(project_id, mission.id, str(job.id),
+        link_job_to_mission(project_id, mission.id, str(job.job_id),
                             MISSION_ROLE_INITIAL)
     except MissionError as exc:
         print(f"Error: could not start the mission: {exc}", file=sys.stderr)
@@ -249,11 +249,11 @@ def _cmd_decision_resolve(
             answer_task_decision,
             find_task_decision,
         )
-        from packages.orchestration.storage import JobNotFoundError, load_job, save_job
+        from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
 
         job_id = _rji(job_id_str)
         try:
-            job = load_job(job_id)
+            job = require_job_plan(job_id)
         except JobNotFoundError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             sys.exit(1)
@@ -285,18 +285,18 @@ def _cmd_decision_resolve(
                 file=sys.stderr)
             sys.exit(1)
 
-        save_job(job)
+        save_job_plan(job)
         print(f"Answered {decision_id} for job {job_id_str}: {answered['answer']}")
         for ref in answered.get("cross_references", []):
             print(f"  Same question also asked as: {ref}")
-        print(f"Resume the run: remedy job run {job_id_str} --json")
+        print(f"Resume the run: remedy job resume {job_id_str} --json")
     elif decision_id.startswith("fp:"):
         from packages.orchestration.data_paths import resolve_job_id as _rji
-        from packages.orchestration.storage import JobNotFoundError, load_job
+        from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
         job_id = _rji(job_id_str)
         try:
-            job = load_job(job_id)
+            job = require_job_plan(job_id)
         except JobNotFoundError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             sys.exit(1)

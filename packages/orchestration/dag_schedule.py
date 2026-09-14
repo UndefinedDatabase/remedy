@@ -34,9 +34,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
-from uuid import UUID
 
-from packages.core.models import RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import TaskEntry
 
 #: Task states that block everything downstream of them.  A task rolled back
 #: to PENDING after a failed attempt is NOT in here — in-run failure tracking
@@ -57,30 +57,30 @@ __all__ = [
 class TaskNode:
     """One task's resolved position in the dependency graph."""
 
-    task_id: UUID
+    task_id: str
     #: Position in plan order — the stable tie-break for every ordering here.
     index: int
     #: Task ids this task waits for, in the order they were declared.
-    depends_on: tuple[UUID, ...]
+    depends_on: tuple[str, ...]
     #: True when at least one declared dependency named no task in the plan.
     #: Such a task is never ready (see module docstring).
     has_unresolved_dependency: bool = False
 
 
-def _flight_meta(task: Task) -> Mapping[str, Any] | None:
+def _flight_meta(task: TaskEntry) -> Mapping[str, Any] | None:
     """The task's flight metadata, or None when it carries none."""
     flight = task.inputs.get("flight")
     return flight if isinstance(flight, Mapping) else None
 
 
-def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
+def build_graph(tasks: Sequence[TaskEntry]) -> tuple[TaskNode, ...]:
     """Resolve every task's dependencies to task ids, in plan order.
 
     Applies the two rules from the module docstring: flight metadata resolves
     ``depends_on`` planned ids through the plan; a task without it depends on
     its predecessor.
     """
-    by_planned: dict[str, UUID] = {}
+    by_planned: dict[str, str] = {}
     for task in tasks:
         flight = _flight_meta(task)
         if flight is None:
@@ -90,24 +90,24 @@ def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
             continue
         # First declaration wins, so a duplicated planned id cannot silently
         # redirect earlier tasks' edges to a later task.
-        by_planned.setdefault(str(planned_id), task.id)
+        by_planned.setdefault(str(planned_id), task.task_id)
 
     nodes: list[TaskNode] = []
     for index, task in enumerate(tasks):
         flight = _flight_meta(task)
         if flight is None:
             # Legacy rule: depend on the predecessor; the first task is free.
-            predecessor = (tasks[index - 1].id,) if index > 0 else ()
-            nodes.append(TaskNode(task_id=task.id, index=index,
+            predecessor = (tasks[index - 1].task_id,) if index > 0 else ()
+            nodes.append(TaskNode(task_id=task.task_id, index=index,
                                   depends_on=predecessor))
             continue
 
         declared = flight.get("depends_on") or []
-        resolved: list[UUID] = []
+        resolved: list[str] = []
         unresolved = False
         for dep in declared:
             target = by_planned.get(str(dep))
-            if target is None or target == task.id:
+            if target is None or target == task.task_id:
                 # Names no task in the plan, or names itself: a dependency
                 # that can never complete.
                 unresolved = True
@@ -115,7 +115,7 @@ def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
             if target not in resolved:
                 resolved.append(target)
         nodes.append(TaskNode(
-            task_id=task.id,
+            task_id=task.task_id,
             index=index,
             depends_on=tuple(resolved),
             has_unresolved_dependency=unresolved,
@@ -123,7 +123,7 @@ def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
     return tuple(nodes)
 
 
-def ready_set(tasks: Sequence[Task]) -> list[UUID]:
+def ready_set(tasks: Sequence[TaskEntry]) -> list[str]:
     """Ids of the PENDING tasks whose dependencies are ALL completed.
 
     Returned in plan order — stable and deterministic, with no timestamp or
@@ -131,8 +131,8 @@ def ready_set(tasks: Sequence[Task]) -> list[UUID]:
     dependency is not COMPLETED, including a dependency that is itself still
     pending, running, failed, or unresolvable.
     """
-    status_by_id = {task.id: task.status for task in tasks}
-    ready: list[UUID] = []
+    status_by_id = {task.task_id: task.status for task in tasks}
+    ready: list[str] = []
     for node in build_graph(tasks):
         if status_by_id.get(node.task_id) != RunState.PENDING:
             continue
@@ -144,8 +144,8 @@ def ready_set(tasks: Sequence[Task]) -> list[UUID]:
     return ready
 
 
-def blocked_downstream(tasks: Sequence[Task],
-                       blocked_ids: Iterable[UUID]) -> set[UUID]:
+def blocked_downstream(tasks: Sequence[TaskEntry],
+                       blocked_ids: Iterable[str]) -> set[str]:
     """Transitive dependents of ``blocked_ids`` — the skipped-blocked set.
 
     The seeds themselves are NOT included: they are blocked for their own
@@ -161,13 +161,13 @@ def blocked_downstream(tasks: Sequence[Task],
         return set()
 
     nodes = build_graph(tasks)
-    dependents: dict[UUID, list[UUID]] = {}
+    dependents: dict[str, list[str]] = {}
     for node in nodes:
         for dep in node.depends_on:
             dependents.setdefault(dep, []).append(node.task_id)
 
-    status_by_id = {task.id: task.status for task in tasks}
-    blocked: set[UUID] = set()
+    status_by_id = {task.task_id: task.status for task in tasks}
+    blocked: set[str] = set()
     # Plan-order queue: deterministic traversal, though the result is a set.
     queue = [seed for seed in (node.task_id for node in nodes)
              if seed in seeds]

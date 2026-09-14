@@ -8,35 +8,30 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from unittest.mock import MagicMock
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
-from packages.core.models import (
-    Artifact,
-    ArtifactKind,
-    Job,
-    RunState,
-    Task,
-)
-from packages.orchestration.storage import save_job
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.data_paths import mint_job_id, normalize_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 
-def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> Job:
+def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
     meta: dict = {}
     if project_id:
         meta["project_id"] = project_id
     if target_repo:
         meta["target_repo"] = target_repo
-    return Job(
-        id=uuid4(),
-        name="test job",
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="test job",
         user_prompt="test prompt",
         state=RunState.RUNNING,
         tasks=[
-            Task(
-                id=uuid4(),
-                description="task",
+            TaskEntry(
+                task_id="T001",
+                title="task",
                 status=RunState.PENDING,
                 inputs={"task_type": "patch"},
                 output_artifact_ids=[],
@@ -47,21 +42,21 @@ def _make_job(*, project_id: str | None = None, target_repo: str | None = None) 
     )
 
 
-def _make_job_s57(*, project_id: str | None = None, target_repo: str | None = None) -> Job:
+def _make_job_s57(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
     meta: dict = {}
     if project_id:
         meta["project_id"] = project_id
     if target_repo:
         meta["target_repo"] = target_repo
-    return Job(
-        id=uuid4(),
-        name="test job",
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="test job",
         user_prompt="test prompt",
         state=RunState.RUNNING,
         tasks=[
-            Task(
-                id=uuid4(),
-                description="task",
+            TaskEntry(
+                task_id="T001",
+                title="task",
                 status=RunState.PENDING,
                 inputs={"task_type": "patch"},
                 output_artifact_ids=[],
@@ -77,27 +72,25 @@ def _make_job_s57(*, project_id: str | None = None, target_repo: str | None = No
 # ===========================================================================
 
 
-def _make_job_s68(**overrides) -> Job:
+def _make_job_s68(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "description": "test job",
         "tasks": [
-            Task(description="task 1", status=RunState.COMPLETED),
+            TaskEntry(title="task 1", status=RunState.COMPLETED),
         ],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _make_job_s101(task_count: int = 3):
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -117,7 +110,7 @@ def _make_job_s101(task_count: int = 3):
 # ---------------------------------------------------------------------------
 
 
-def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
+def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[JobPlan, str, Path]:
     """Create a job with an approved patch intent and attached repo."""
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
@@ -153,9 +146,9 @@ def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
         },
     )
 
-    job = Job(
-        id=uuid4(),
-        name="patch job",
+    job = JobPlan(
+        job_id=mint_job_id(),
+        job_title="patch job",
         user_prompt="apply test",
         state=RunState.RUNNING,
         tasks=[],
@@ -164,7 +157,7 @@ def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
     )
     set_approval_state(job, intent_id, APPROVAL_APPROVED)
     set_permission(job, Capability.repo_generated_write, allow=True)
-    save_job(job)
+    save_job_plan(job)
     return job, intent_id, repo
 
 
@@ -199,7 +192,7 @@ class TestContinueFromNodeProjectLinking:
         save_project(project)
 
         job = _make_job(project_id=str(project.id), target_repo=str(tmp_path))
-        save_job(job)
+        save_job_plan(job)
 
         # Build brain graph
         from packages.orchestration.project_brain import build_project_brain
@@ -223,21 +216,21 @@ class TestContinueFromNodeProjectLinking:
         save_project(project)
 
         job = _make_job(project_id=str(project.id), target_repo=str(tmp_path))
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.continue_from_node import continue_from_node
         from packages.orchestration.project_brain import build_project_brain
         graph = build_project_brain(job, [])
         result = continue_from_node(job, graph, graph.nodes[0].id, "test")
 
-        from packages.orchestration.storage import load_job
-        child = load_job(UUID(result.child_job_id))
+        from packages.orchestration.pingpong_job import load_job_plan
+        child = load_job_plan(normalize_job_id(result.child_job_id))
         assert child.metadata["project_id"] == str(project.id)
 
     def test_parent_gets_continued_event(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job(target_repo=str(tmp_path))
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.continue_from_node import continue_from_node
         from packages.orchestration.project_brain import build_project_brain
@@ -246,7 +239,7 @@ class TestContinueFromNodeProjectLinking:
 
         from packages.orchestration.data_paths import resolve_data_root
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(resolve_data_root(), job.id)
+        events = load_run_events(resolve_data_root(), job.job_id)
         parent_events = [
             e for e in events
             if e.get("event") == "continued_from_node"
@@ -257,7 +250,7 @@ class TestContinueFromNodeProjectLinking:
     def test_no_raw_prompt_in_run_log(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job(target_repo=str(tmp_path))
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.continue_from_node import continue_from_node
         from packages.orchestration.project_brain import build_project_brain
@@ -266,7 +259,7 @@ class TestContinueFromNodeProjectLinking:
 
         from packages.orchestration.data_paths import resolve_data_root
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(resolve_data_root(), job.id)
+        events = load_run_events(resolve_data_root(), job.job_id)
         for ev in events:
             meta_str = json.dumps(ev.get("metadata", {}))
             assert "secret prompt text XYZ" not in meta_str
@@ -279,10 +272,10 @@ class TestContinueFromNodeProjectLinking:
         save_project(project)
 
         job = _make_job(project_id=str(project.id), target_repo=str(tmp_path))
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.project_registry import attach_job
-        attach_job(project, str(job.id))
+        attach_job(project, str(job.job_id))
         save_project(project)
 
         from packages.orchestration.continue_from_node import continue_from_node
@@ -295,19 +288,19 @@ class TestContinueFromNodeProjectLinking:
         assert result.child_job_id in project.job_ids
 
         # Build aggregate
+        from packages.orchestration.pingpong_job import list_job_plans
         from packages.orchestration.project_brain_aggregate import (
             build_project_brain_aggregate,
             export_project_brain_aggregate_json,
         )
-        from packages.orchestration.storage import list_jobs
-        all_jobs = list_jobs()
-        linked = [j for j in all_jobs if str(j.id) in project.job_ids]
+        all_jobs = list_job_plans()
+        linked = [j for j in all_jobs if str(j.job_id) in project.job_ids]
         events_map = {}
         from packages.orchestration.data_paths import resolve_data_root
         from packages.orchestration.timeline import load_run_events
         data_dir = resolve_data_root()
         for j in linked:
-            events_map[str(j.id)] = load_run_events(data_dir, j.id)
+            events_map[str(j.job_id)] = load_run_events(data_dir, j.job_id)
 
         agg = build_project_brain_aggregate(project, linked, events_map)
         exported = export_project_brain_aggregate_json(agg)
@@ -335,7 +328,7 @@ class TestContinueFromNodeIntegration:
         )
 
         job = _make_job_s57(target_repo=str(tmp_path))
-        save_job(job)
+        save_job_plan(job)
 
         graph = build_project_brain(job, [])
         node_id = graph.nodes[0].id
@@ -345,7 +338,7 @@ class TestContinueFromNodeIntegration:
         from packages.orchestration.data_paths import resolve_data_root
         from packages.orchestration.timeline import load_run_events
 
-        events = load_run_events(resolve_data_root(), job.id)
+        events = load_run_events(resolve_data_root(), job.job_id)
         graph2 = build_project_brain(job, events)
 
         cont_edges = [e for e in graph2.edges if e.type == ET_CONTINUED_AS]
@@ -358,7 +351,7 @@ class TestContinueFromNodeIntegration:
         from packages.orchestration.project_brain import build_project_brain
 
         job = _make_job_s57(target_repo=str(tmp_path))
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
 
         with pytest.raises((ValueError, KeyError)):
@@ -370,17 +363,17 @@ class TestContinueFromNodeIntegration:
         from packages.orchestration.project_brain import build_project_brain
 
         job = _make_job_s57(target_repo=str(tmp_path))
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         result = continue_from_node(job, graph, graph.nodes[0].id, "child test")
 
         # Load child and build its brain
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
-        child = load_job(UUID(result.child_job_id))
+        child = load_job_plan(normalize_job_id(result.child_job_id))
         child_graph = build_project_brain(child, [])
         assert len(child_graph.nodes) >= 1
-        assert child_graph.job_id == child.id
+        assert child_graph.job_id == child.job_id
 
 
 
@@ -406,7 +399,7 @@ class TestDecisionQueue:
         from packages.orchestration.decision_queue import list_decisions
         job = _make_job_s68()
         events = [
-            {"event": "test_run_completed", "run_id": "r1", "job_id": str(job.id),
+            {"event": "test_run_completed", "run_id": "r1", "job_id": str(job.job_id),
              "timestamp": "2026-01-01T00:01:00", "outcome": "failed",
              "metadata": {"status": "failed", "command": "pytest", "test_run_id": "tr1"}},
         ]
@@ -420,7 +413,7 @@ class TestDecisionQueue:
         from packages.orchestration.decision_queue import list_decisions
         job = _make_job_s68()
         events = [
-            {"event": "git_status_read", "run_id": "r1", "job_id": str(job.id),
+            {"event": "git_status_read", "run_id": "r1", "job_id": str(job.job_id),
              "timestamp": "2026-01-01T00:01:00", "outcome": "ok",
              "metadata": {"dirty": True, "branch": "main", "changed_file_count": 3}},
         ]
@@ -474,7 +467,7 @@ class TestDecisionQueue:
         from packages.orchestration.decision_queue import get_decision
         job = _make_job_s68()
         events = [
-            {"event": "git_status_read", "run_id": "r1", "job_id": str(job.id),
+            {"event": "git_status_read", "run_id": "r1", "job_id": str(job.job_id),
              "timestamp": "2026-01-01", "outcome": "ok",
              "metadata": {"dirty": True, "branch": "main", "changed_file_count": 1}},
         ]
@@ -500,6 +493,14 @@ class TestReviewerLoop:
         job = _make_job_s101(2)
         recs = run_reviewer(job)
         assert isinstance(recs, list)
+
+    def test_the_reviewer_context_names_the_job_by_its_title(self):
+        """R-0888: a unified record hands the reviewer its title, not an empty name."""
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.reviewer import run_reviewer
+        seen = []
+        run_reviewer(JobPlan(job_title="named-job"), reviewer_fn=lambda ctx: seen.append(ctx) or [])
+        assert seen[0]["job_name"] == "named-job"
 
     def test_run_reviewer_with_custom_fn(self):
         from packages.orchestration.reviewer import run_reviewer
@@ -566,7 +567,7 @@ class TestReviewerLoop:
         assert ok is True
         assert len(job.tasks) == initial_task_count  # No direct task — creates ProposedTask instead
         assert job.metadata["reviewer_recommendations"][0]["status"] == "accepted"
-        proposed = load_proposed_tasks(str(job.id))
+        proposed = load_proposed_tasks(str(job.job_id))
         assert len(proposed) == 1
         assert proposed[0].title == "Add docs"
 

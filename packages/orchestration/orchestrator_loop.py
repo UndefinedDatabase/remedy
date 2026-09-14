@@ -366,13 +366,14 @@ def open_mission_decisions(mission: Any) -> list[dict[str, Any]]:
     answering a decision between two iterations is picked up by the next one
     with no bookkeeping here.
     """
+    from packages.orchestration.data_paths import normalize_job_id
     from packages.orchestration.escalation import open_task_decisions
-    from packages.orchestration.storage import load_job
+    from packages.orchestration.pingpong_job import require_job_plan
 
     out: list[dict[str, Any]] = []
     for link in getattr(mission, "job_links", ()) or ():
         try:
-            job = load_job(_as_uuid(link.job_id))
+            job = require_job_plan(normalize_job_id(link.job_id))
         except Exception:
             # A job that cannot be read cannot be asked about its decisions.
             # Recorded as absent rather than raised: one unreadable job must
@@ -380,12 +381,6 @@ def open_mission_decisions(mission: Any) -> list[dict[str, Any]]:
             continue
         out.extend(open_task_decisions(job))
     return out
-
-
-def _as_uuid(raw: Any) -> Any:
-    from uuid import UUID
-
-    return raw if isinstance(raw, UUID) else UUID(str(raw))
 
 
 # ---------------------------------------------------------------------------
@@ -1457,7 +1452,7 @@ def execute_dispatched_job(job: Any, *,
     campaign attempt 1 produced ten missions whose jobs all sat at ``planned``
     (R-0184). It reimplements nothing: the limits come from
     ``limits_from_config`` — so the F046 rollout cap still applies exactly as
-    it does for ``remedy job run`` — the task pipeline is ``default_task_step``,
+    it does for ``remedy job resume`` — the task pipeline is ``default_task_step``,
     and the budgets are the job's own.
 
     ``unattended=True`` because the gauntlet's whole premise is a run with no
@@ -1490,14 +1485,14 @@ def execute_dispatched_job(job: Any, *,
     limits = replace(limits, budgets=getattr(job, "budgets", None))
     result = run_cycles(job, limits, OllamaBuilder().build,
                         task_step=default_task_step,
-                        log=RunLogWriter(job_id=job.id),
+                        log=RunLogWriter(job_id=job.job_id),
                         unattended=True)
     # Carried out rather than logged and forgotten: a run that went over the
     # rollout cap has to say so in its own evidence (R-0187).
     # R-0188: the gate runs at PRODUCTION job completion, here, once. It
     # persists its own verdict where load_gate_result reads it, so there is no
     # second store and the fixture-demo fulfillment spine stays untouched.
-    released, blocker = run_gate_for_job(str(job.id), worktree_root)
+    released, blocker = run_gate_for_job(str(job.job_id), worktree_root)
     return JobExecution(terminal_status=result.terminal_status,
                         job_status=result.job_status,
                         stop_reason=result.stop_reason,
@@ -1591,7 +1586,7 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
         job = create(project_id, mission_id, payload["step"], root=root,
                      now=now)
         approved = _auto_approve_if_gated(job)
-        detail = f"job {job.id} dispatched for {payload['milestone_id']}"
+        detail = f"job {job.job_id} dispatched for {payload['milestone_id']}"
         if approved:
             detail += " (plan auto-approved, audited)"
         # R-0188: give the job its milestone's DoD before it runs, or the gate
@@ -1600,7 +1595,7 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
 
         if attach_milestone_dod(project_id, mission_id,
                                 _load(project_id, mission_id, root),
-                                payload["milestone_id"], str(job.id), root):
+                                payload["milestone_id"], str(job.job_id), root):
             detail += "; DoD attached"
         run = (execute or execute_dispatched_job)(job)
         # What execution PRODUCED, on the ledger entry, so the next iteration's
@@ -1623,7 +1618,7 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
             if not released and getattr(run, "gate_blocker", ""):
                 detail += f" ({run.gate_blocker})"
         return MoveOutcome(status="dispatched", detail=detail,
-                           job_id=str(job.id))
+                           job_id=str(job.job_id))
 
     # Unreachable through the schema: `kind` is a closed Literal, so anything
     # else failed validation long before it reached here. Kept as a loud
@@ -1644,13 +1639,13 @@ def _auto_approve_if_gated(job: Any) -> bool:
         auto_approve_flight_plan,
         flight_plan_approval_open,
     )
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
 
     if not flight_plan_approval_open(job):
         return False
     job.flight_plan = auto_approve_flight_plan(
-        dict(job.flight_plan or {}), job_evidence_export_dir(str(job.id)))
-    save_job(job)
+        dict(job.flight_plan or {}), job_evidence_export_dir(str(job.job_id)))
+    save_job_plan(job)
     return True
 
 
@@ -1729,8 +1724,9 @@ def collect_milestone_evidence(project_id: str, mission_id: str,
                                milestone_id: str,
                                root: Path | None = None) -> MilestoneEvidence:
     """Read a milestone's evidence through the existing job and gate verbs."""
+    from packages.orchestration.data_paths import normalize_job_id
     from packages.orchestration.dod_gate import load_gate_result
-    from packages.orchestration.storage import load_job
+    from packages.orchestration.pingpong_job import require_job_plan
 
     job_id = dispatched_job_for(project_id, mission_id, milestone_id, root)
     if not job_id:
@@ -1739,7 +1735,7 @@ def collect_milestone_evidence(project_id: str, mission_id: str,
     state = ""
     handback: Any = None
     try:
-        job = load_job(_as_uuid(job_id))
+        job = require_job_plan(normalize_job_id(job_id))
     except Exception:
         # An unreadable job is an ABSENT observation, never a passing one.
         return MilestoneEvidence(job_id=job_id)
@@ -1920,9 +1916,10 @@ def escalate_repeated_refusal(project_id: str, mission_id: str, reason: str, *,
     ``escalation.enqueue_task_decision`` attaches to; a mission with no job yet
     has nowhere to attach one, and that is reported rather than papered over.
     """
+    from packages.orchestration.data_paths import normalize_job_id
     from packages.orchestration.escalation import enqueue_task_decision
     from packages.orchestration.mission_state import load_mission
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 
     mission = load_mission(project_id, mission_id, root)
     link = mission.latest_link()
@@ -1930,7 +1927,7 @@ def escalate_repeated_refusal(project_id: str, mission_id: str, reason: str, *,
         return ("no job is linked to this mission, so the refusal cannot be "
                 "attached to a decision — a human has to look at the mission")
     try:
-        job = load_job(_as_uuid(link.job_id))
+        job = require_job_plan(normalize_job_id(link.job_id))
     except Exception as exc:
         return f"the mission's latest job could not be read to escalate: {exc}"
     tasks = list(getattr(job, "tasks", ()) or ())
@@ -1938,13 +1935,13 @@ def escalate_repeated_refusal(project_id: str, mission_id: str, reason: str, *,
         return (f"job {link.job_id} has no task to attach the decision to")
     record = enqueue_task_decision(
         job,
-        task_id=tasks[0].id,
+        task_id=tasks[0].task_id,
         question=(f"The orchestrator's move was refused twice in a row: "
                   f"{reason}. How should this mission proceed?"),
         options=("replan the mission", "abandon the mission"),
         impact="the mission cannot advance until this is answered",
         now=now or datetime.now(timezone.utc))
-    save_job(job)
+    save_job_plan(job)
     return str(record.get("decision_id", ""))
 
 

@@ -191,10 +191,12 @@ class TestTickCadenceAndShape:
     def test_a_pingpong_shaped_job_id_still_emits(self, data_root, control):
         """T6 — the regression test for DECISION F022 D2 clause one.
 
-        A JobPlan's `job_id` is `uuid4().hex[:16]`, which `UUID()` rejects. Routing
-        this emission through `timeline.append_run_event` would raise `ValueError`
-        before the write, the soft failure would swallow it, and the ticker would be
-        silently dead on the one job shape that runs long enough to need it.
+        A JobPlan's `job_id` is `uuid4().hex[:16]`, which `UUID()` rejects. Until
+        F275's finding R-0877 removed the coercion, routing this emission through
+        `timeline.append_run_event` raised `ValueError` before the write, the soft
+        failure swallowed it, and the ticker was silently dead on the one job shape
+        that runs long enough to need it. The route is still the direct one and this
+        test still holds it there.
         """
         job_id = uuid4().hex[:16]
         with pytest.raises(ValueError):

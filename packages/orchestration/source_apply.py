@@ -263,14 +263,14 @@ def apply_structured_patch(
         enforce_change_set(
             repo_root, touched,
             applicator="source_apply",
-            job_id=str(getattr(job, "id", None) or job_id or "unknown"),
+            job_id=str(getattr(job, "job_id", None) or job_id or "unknown"),
             intent_id=intent_id or "",
             evidence_dir=Path(data_dir) if data_dir else resolve_data_root(),
             job_fences=_job_fences,
         )
 
     data_dir_path = Path(data_dir) if data_dir else resolve_data_root()
-    job_id_str = str(getattr(job, "id", None) or job_id or "unknown")
+    job_id_str = str(getattr(job, "job_id", None) or job_id or "unknown")
 
     # Mandatory snapshot: derive path set, create, verify — block if any step fails
     path_set = build_snapshot_path_set(patch)

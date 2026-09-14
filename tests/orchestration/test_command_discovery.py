@@ -10,21 +10,22 @@ import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _make_job(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                task_type=t.get("type", "readme_draft"),
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -40,13 +41,13 @@ def _make_job(*, tasks=None, name="test"):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                task_type=t.get("type", "readme_draft"),
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -226,46 +227,17 @@ class TestWorkerShow:
 
 
 
-class TestWorkerExplain:
-    def test_explain_cli_help(self):
-        result = subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped", "worker", "explain", "--help"],
-            capture_output=True, text=True, timeout=10,
-        )
-        assert result.returncode == 0
-        assert "job_id" in result.stdout.lower()
-
-    def test_explain_produces_scoring(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
-        from packages.orchestration.worker_recommend import recommend_worker
-
-        job = Job(
-            id=uuid4(), name="explain-test", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
-        )
-        save_job(job)
-        rec = recommend_worker(job, [])
-        assert rec.recommended_worker == "ollama"
-        assert len(rec.candidates) >= 3
-        # ollama should score highest (local + available)
-        assert rec.candidates[0].provider_id == "ollama"
-        assert rec.candidates[0].score > rec.candidates[-1].score
-
-
-
-
 class TestWorkerBrainNode:
     def test_worker_adapter_node_in_graph(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.project_brain import build_project_brain
-        from packages.orchestration.storage import save_job
 
-        job = Job(
-            id=uuid4(), name="brain-wa", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="brain-wa", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         )
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         wa_nodes = [n for n in graph.nodes if n.type == "worker_adapter"]
         assert len(wa_nodes) >= 1

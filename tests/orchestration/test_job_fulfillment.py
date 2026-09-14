@@ -14,6 +14,10 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
+import pytest
+
+from packages.orchestration.data_paths import normalize_job_id
+
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
@@ -336,13 +340,12 @@ class TestCompletionContract:
 class TestJobFulfillFixturePass:
 
     def _setup_job(self, tmp_path):
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Test fulfillment", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Test fulfillment", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
         return job, repo
 
     def test_fixture_pass_completes(self, tmp_path, monkeypatch):
@@ -350,7 +353,7 @@ class TestJobFulfillFixturePass:
         from packages.orchestration.job_fulfillment import run_job_fulfill
 
         job, repo = self._setup_job(tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         assert record.status.value == "completed_verified"
         assert len(record.task_ids) >= 2
@@ -370,7 +373,7 @@ class TestJobFulfillFixturePass:
         from packages.orchestration.job_fulfillment import run_job_fulfill
 
         job, repo = self._setup_job(tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         assert len(record.changed_files) >= 2
         for f in record.changed_files:
@@ -382,7 +385,7 @@ class TestJobFulfillFixturePass:
         from packages.orchestration.job_fulfillment import run_job_fulfill
 
         job, repo = self._setup_job(tmp_path)
-        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         cl = (repo / "CHANGELOG.md").read_text()
         assert "(no proposed changes found in artifact)" not in cl
@@ -398,11 +401,21 @@ class TestJobFulfillFixturePass:
         from packages.orchestration.job_fulfillment import run_job_fulfill
 
         job, repo = self._setup_job(tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         assert record.test_passed is True
         assert len(record.test_run_ids) > 0
         assert record.test_run_ids[0] != ""
+
+    def test_a_pingpong_job_id_reaches_the_store_instead_of_a_uuid_parse(self, tmp_path, monkeypatch):
+        """F275 R88: a minted sixteen-hex id is looked up and not found, not refused by ``UUID(...)``."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.pingpong_job import JobNotFoundError
+
+        repo = create_demo_repo(tmp_path)
+        with pytest.raises(JobNotFoundError):
+            run_job_fulfill("0123456789abcdef", repo, data_dir=tmp_path)
 
 
 # ---------------------------------------------------------------------------
@@ -414,19 +427,18 @@ class TestOneFindingRepairLoop:
 
     def test_repair_loop(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
             run_job_fulfill,
         )
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Repair loop test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Repair loop test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
         record = run_job_fulfill(
-            str(job.id), repo, data_dir=tmp_path,
+            str(job.job_id), repo, data_dir=tmp_path,
             review_mode="one_finding_then_pass",
         )
 
@@ -482,23 +494,22 @@ class TestJobReportAfterFulfilled:
 
     def test_report_shows_completed(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
             run_job_fulfill,
         )
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Report test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
-        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        job = JobPlan(job_title="Report test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
+        run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         from apps.cli.commands.job import _cmd_job_report
 
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            _cmd_job_report(str(job.id), json_output=True)
+            _cmd_job_report(str(job.job_id), json_output=True)
         data = json.loads(buf.getvalue())
         assert data["state"] == "completed"
         assert data["code_applied"] is True
@@ -515,23 +526,22 @@ class TestJobStatusAfterFulfilled:
 
     def test_status_shows_completed(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
             run_job_fulfill,
         )
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Status test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
-        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        job = JobPlan(job_title="Status test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
+        run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         from apps.cli.commands.job import _cmd_job_status
 
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            _cmd_job_status(str(job.id), json_output=True)
+            _cmd_job_status(str(job.job_id), json_output=True)
         data = json.loads(buf.getvalue())
         assert data["state"] == "completed"
         assert data["approval_required"] is False
@@ -551,9 +561,8 @@ class TestFailurePaths:
     def test_failing_test_blocks_completion(self, tmp_path, monkeypatch):
         """R-0199: Failing tests must block completed_verified."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import run_job_fulfill
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         # Create demo repo with failing test
         repo = tmp_path / "fail_repo"
@@ -570,9 +579,9 @@ class TestFailurePaths:
             "    assert False, \"intentional failure\"\n"
         )
 
-        job = Job(name="Fail test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        job = JobPlan(job_title="Fail test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         assert record.status.value != "completed_verified"
         assert record.test_passed is False
@@ -581,17 +590,16 @@ class TestFailurePaths:
     def test_existing_md_uses_modify_intent(self, tmp_path, monkeypatch):
         """R-0199: Existing MD files use modify intent and succeed (not blocked)."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         # Pre-create CHANGELOG.md — should trigger modify intent, not create
         (repo / "CHANGELOG.md").write_text("# Existing\n")
 
-        job = Job(name="Existing MD test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        job = JobPlan(job_title="Existing MD test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         # With modify intent, apply succeeds and fulfillment completes
         assert record.status.value == "completed_verified"
@@ -608,35 +616,34 @@ class TestProposedTaskLifecycle:
     def test_proposed_tasks_accessible(self, tmp_path, monkeypatch):
         """R-0196: Proposed tasks can be listed and acted on after fulfillment."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.proposed_tasks import (
             approve_proposed_task,
             defer_proposed_task,
             load_proposed_tasks,
             reject_proposed_task,
         )
-        from packages.orchestration.storage import save_job
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Propose test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        job = JobPlan(job_title="Propose test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         assert record.status.value == "completed_verified"
         assert len(record.next_suggestion_ids) >= 3
 
         # Load and verify
-        tasks = load_proposed_tasks(str(job.id), root=tmp_path)
+        tasks = load_proposed_tasks(str(job.job_id), root=tmp_path)
         assert len(tasks) >= 3
 
         # Approve/reject/defer
         ids = [t.id for t in tasks]
-        approve_proposed_task(str(job.id), ids[0], root=tmp_path)
-        reject_proposed_task(str(job.id), ids[1], reason="not needed", root=tmp_path)
-        defer_proposed_task(str(job.id), ids[2], reason="later", root=tmp_path)
+        approve_proposed_task(str(job.job_id), ids[0], root=tmp_path)
+        reject_proposed_task(str(job.job_id), ids[1], reason="not needed", root=tmp_path)
+        defer_proposed_task(str(job.job_id), ids[2], reason="later", root=tmp_path)
 
-        updated = load_proposed_tasks(str(job.id), root=tmp_path)
+        updated = load_proposed_tasks(str(job.job_id), root=tmp_path)
         statuses = {t.id: t.status.value for t in updated}
         assert statuses[ids[0]] == "approved_for_build"
         assert statuses[ids[1]] == "rejected"
@@ -681,18 +688,17 @@ class TestJobFulfillCLI:
 
     def test_missing_fixture_flag(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
-        job = Job(name="No flag test")
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="No flag test")
+        save_job_plan(job, root=tmp_path)
 
         from apps.cli.commands.job import _cmd_job_fulfill
 
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             try:
-                _cmd_job_fulfill(str(job.id), fixture_demo=False, json_output=True)
+                _cmd_job_fulfill(str(job.job_id), fixture_demo=False, json_output=True)
             except SystemExit:
                 pass
         output = buf.getvalue()
@@ -945,13 +951,12 @@ class TestPromotionGate:
 class TestStagedFulfillment:
 
     def _setup_job(self, tmp_path):
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Staged test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Staged test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
         return job, repo
 
     def test_staging_used_in_fulfillment(self, tmp_path, monkeypatch):
@@ -959,7 +964,7 @@ class TestStagedFulfillment:
         from packages.orchestration.job_fulfillment import run_job_fulfill
 
         job, repo = self._setup_job(tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         assert record.staging_used is True
         assert record.status.value == "completed_verified"
@@ -969,23 +974,22 @@ class TestStagedFulfillment:
         from packages.orchestration.job_fulfillment import run_job_fulfill
 
         job, repo = self._setup_job(tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         assert record.staging_promoted is True
         assert len(record.promotion_files) > 0
 
     def test_target_repo_restored_after_staging(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from uuid import UUID
 
         from packages.orchestration.job_fulfillment import run_job_fulfill
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
         job, repo = self._setup_job(tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         # After fulfillment, target_repo should point to real repo, not staging
-        final_job = load_job(UUID(str(job.id)), tmp_path)
+        final_job = load_job_plan(normalize_job_id(str(job.job_id)), tmp_path)
         assert final_job.metadata["target_repo"] == str(repo.resolve())
         assert "staging" not in final_job.metadata["target_repo"]
 
@@ -994,7 +998,7 @@ class TestStagedFulfillment:
         from packages.orchestration.job_fulfillment import run_job_fulfill
 
         job, repo = self._setup_job(tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         # Files should exist in real repo after promotion
         for f in record.changed_files:
@@ -1003,11 +1007,9 @@ class TestStagedFulfillment:
     def test_staging_discarded_on_test_failure(self, tmp_path, monkeypatch):
         """Target repo must be untouched when tests fail in staging."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from uuid import UUID
 
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import run_job_fulfill
-        from packages.orchestration.storage import load_job, save_job
+        from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
 
         # Create repo with failing test
         repo = tmp_path / "fail_repo"
@@ -1024,9 +1026,9 @@ class TestStagedFulfillment:
             "    assert False, \"intentional\"\n"
         )
 
-        job = Job(name="Staging fail test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        job = JobPlan(job_title="Staging fail test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         # Should not be completed
         assert record.status.value != "completed_verified"
@@ -1034,7 +1036,7 @@ class TestStagedFulfillment:
         assert record.staging_promoted is False
 
         # target_repo restored to real repo
-        final_job = load_job(UUID(str(job.id)), tmp_path)
+        final_job = load_job_plan(normalize_job_id(str(job.job_id)), tmp_path)
         assert final_job.metadata["target_repo"] == str(repo.resolve())
 
     def test_export_includes_staging_fields(self, tmp_path, monkeypatch):
@@ -1045,7 +1047,7 @@ class TestStagedFulfillment:
         )
 
         job, repo = self._setup_job(tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
         data = export_job_fulfillment_json(record)
 
         assert "staging_used" in data
@@ -1068,14 +1070,13 @@ class TestStagingCleanup:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         import glob as glob_mod
 
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Cleanup test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
-        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        job = JobPlan(job_title="Cleanup test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
+        run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         # No staging_* dirs should remain in /tmp
         import tempfile
@@ -1084,7 +1085,7 @@ class TestStagingCleanup:
         )
         # Filter to only dirs for this job (they should be cleaned up)
         for d in staging_dirs:
-            if str(job.id)[:16] in d:
+            if str(job.job_id)[:16] in d:
                 assert False, f"Staging dir not cleaned up: {d}"
 
 
@@ -1100,39 +1101,37 @@ class TestMetadataNeverMutated:
 
     def test_target_repo_unchanged_on_success(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import load_job, save_job
+        from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Meta test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Meta test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
         original_target = str(repo.resolve())
-        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
-        reloaded = load_job(job.id, tmp_path)
+        reloaded = load_job_plan(job.job_id, tmp_path)
         saved_target = reloaded.metadata.get("target_repo", "")
         assert saved_target == original_target, f"target_repo mutated: {saved_target}"
         assert "staging" not in saved_target.lower()
 
     def test_target_repo_unchanged_on_test_failure(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import load_job, save_job
+        from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         # Break the test so it fails
         test_file = repo / "tests" / "test_demo.py"
         test_file.write_text("def test_fail(): assert False\n")
-        job = Job(name="Meta fail test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Meta fail test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
         original_target = str(repo.resolve())
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
-        reloaded = load_job(job.id, tmp_path)
+        reloaded = load_job_plan(job.job_id, tmp_path)
         saved_target = reloaded.metadata.get("target_repo", "")
         assert saved_target == original_target
         assert "staging" not in saved_target.lower()
@@ -1294,9 +1293,8 @@ class TestCodeAppliedTruth:
     def test_failing_test_leaves_target_unchanged(self, tmp_path, monkeypatch):
         import hashlib
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
 
@@ -1313,10 +1311,10 @@ class TestCodeAppliedTruth:
             test_file.read_bytes()
         ).hexdigest()
 
-        job = Job(name="Truth test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Truth test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         # All original files must be unchanged
         for rel, before_hash in before_hashes.items():
@@ -1346,15 +1344,14 @@ class TestStagedTestExecution:
     def test_target_repo_has_no_pytest_cache(self, tmp_path, monkeypatch):
         """After fulfillment, target repo must not contain .pytest_cache."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Cache test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Cache test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
-        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         # Target should not have .pytest_cache
         pytest_cache = repo / ".pytest_cache"
@@ -1363,9 +1360,8 @@ class TestStagedTestExecution:
     def test_target_repo_has_no_pycache(self, tmp_path, monkeypatch):
         """After fulfillment, target repo must not contain test __pycache__."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         # Remove any pre-existing __pycache__
@@ -1373,10 +1369,10 @@ class TestStagedTestExecution:
         for pc in repo.rglob("__pycache__"):
             shutil.rmtree(pc)
 
-        job = Job(name="Pycache test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Pycache test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
-        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         # No new __pycache__ in target
         pycache_dirs = list(repo.rglob("__pycache__"))
@@ -1388,36 +1384,34 @@ class TestCodeAppliedTruthV04:
 
     def test_successful_fulfillment_code_applied_true(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
             run_job_fulfill,
         )
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Applied test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Applied test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
         assert record.staging_promoted is True
         assert len(record.promotion_files) > 0
 
     def test_failing_test_code_applied_false(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import (
             create_demo_repo,
             run_job_fulfill,
         )
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         (repo / "tests" / "test_demo.py").write_text("def test_fail(): assert False\n")
-        job = Job(name="Blocked test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Blocked test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
         assert record.staging_promoted is False
         assert record.status.value == "blocked"
 
@@ -1427,31 +1421,29 @@ class TestBlockedFulfillmentStatus:
 
     def test_blocked_has_stop_reason(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         (repo / "tests" / "test_demo.py").write_text("def test_fail(): assert False\n")
-        job = Job(name="Stop reason test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Stop reason test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
         assert record.stop_reason, "Blocked fulfillment must have stop_reason"
         assert "test_not_passed" in record.stop_reason
 
     def test_blocked_has_next_action(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         (repo / "tests" / "test_demo.py").write_text("def test_fail(): assert False\n")
-        job = Job(name="Next action test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Next action test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
         assert record.next_safe_action, "Blocked fulfillment must have next_safe_action"
         assert "remedy" in record.next_safe_action
         assert "no pending tasks" not in record.next_safe_action
@@ -1462,17 +1454,16 @@ class TestApplyScope:
 
     def test_staged_apply_has_staged_scope(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import load_job, save_job
+        from packages.orchestration.pingpong_job import JobPlan, load_job_plan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Scope test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Scope test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
-        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
-        reloaded = load_job(job.id, tmp_path)
+        reloaded = load_job_plan(job.job_id, tmp_path)
         for art in reloaded.artifacts:
             records = art.metadata.get("patch_intent_apply_records", {})
             for rec in records.values():
@@ -1538,9 +1529,8 @@ class TestExistingMarkdownFulfillment:
 
     def test_existing_changelog_appended(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         # Pre-create CHANGELOG.md (fixture normally creates it)
@@ -1548,10 +1538,10 @@ class TestExistingMarkdownFulfillment:
         original_content = "# Existing Changelog\n\nPrevious entries.\n"
         changelog.write_text(original_content)
 
-        job = Job(name="Append test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="Append test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
 
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
         assert record.status.value == "completed_verified", (
             f"Expected completed_verified, got {record.status.value}: {record.stop_reason}"
         )
@@ -1561,32 +1551,6 @@ class TestExistingMarkdownFulfillment:
         assert final_content.startswith(original_content), (
             "Original changelog content was not preserved"
         )
-
-
-class TestReviewBundleFulfillment:
-    """Review bundle must include fulfillment/staging/promotion truth."""
-
-    def test_fulfillment_summary_in_bundle(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
-        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.review_bundle import build_review_bundle
-        from packages.orchestration.storage import save_job
-
-        repo = create_demo_repo(tmp_path)
-        job = Job(name="Bundle test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
-
-        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
-
-        result = build_review_bundle(str(job.id))
-        section_names = [s.filename for s in result.sections]
-        assert "fulfillment_summary.json" in section_names
-
-        # Check the section was included (not degraded)
-        for s in result.sections:
-            if s.filename == "fulfillment_summary.json":
-                assert s.status == "included", f"Fulfillment section status: {s.status}"
 
 
 class TestDemoDocsCommands:
@@ -1635,16 +1599,15 @@ class TestBlockedFulfillmentTruthV05:
 
     def _run_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
         # Create a conftest that makes tests fail
         (repo / "conftest.py").write_text("def pytest_collection_modifyitems(items):\n    raise SystemExit(1)\n")
-        job = Job(name="Blocked test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        job = JobPlan(job_title="Blocked test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
         return job, record
 
     def test_blocked_has_stop_reason(self, tmp_path, monkeypatch):
@@ -1684,14 +1647,13 @@ class TestSuccessfulFulfillmentTruthV05:
 
     def test_changed_target_files_match_promotion(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="Success test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
-        record = run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
+        job = JobPlan(job_title="Success test", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
+        record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         assert record.status.value == "completed_verified"
         assert record.changed_target_files == record.promotion_files
@@ -1699,21 +1661,6 @@ class TestSuccessfulFulfillmentTruthV05:
         # staged_files may be broader than changed_target_files
         for f in record.changed_target_files:
             assert f in record.staged_files
-
-
-class TestReviewBundleSafeError:
-    """Review bundle must not leak raw exception text."""
-
-    def test_error_no_raw_traceback(self):
-        from pathlib import Path
-
-        from packages.orchestration.review_bundle import _build_fulfillment_summary
-        # Non-existent data_dir triggers error path
-        result = _build_fulfillment_summary("nonexistent-job", Path("/tmp/no-such-dir"))
-        assert result["status"] in ("no_fulfillment_records", "error")
-        if result["status"] == "error":
-            assert "error_type" in result
-            assert "error" not in result  # no raw str(exc)
 
 
 # ---------------------------------------------------------------------------
@@ -1736,7 +1683,7 @@ class TestIntegrityReadOnlyV07:
 
         monkeypatch.setattr(ig, "run_integrity_checks", bomb)
 
-        from packages.orchestration.overnight_readiness import _integrity_status
+        from packages.orchestration.mission_readiness import _integrity_status
         result = _integrity_status()
         assert result == "unknown"
 
@@ -1751,35 +1698,9 @@ class TestIntegrityReadOnlyV07:
 
         monkeypatch.setattr(sp, "run", bomb)
 
-        from packages.orchestration.overnight_readiness import _integrity_status
+        from packages.orchestration.mission_readiness import _integrity_status
         result = _integrity_status()
         assert result == "unknown"
-
-    def test_build_integrity_summary_no_run_integrity_checks(self, monkeypatch):
-        """Review bundle integrity must not call run_integrity_checks."""
-        import packages.orchestration.integrity_gate as ig
-
-        def bomb(**kwargs):
-            raise AssertionError("run_integrity_checks must not be called from bundle")
-
-        monkeypatch.setattr(ig, "run_integrity_checks", bomb)
-
-        from packages.orchestration.review_bundle import _build_integrity_summary
-        result = _build_integrity_summary()
-        assert result.get("status") == "unknown"
-
-    def test_build_integrity_summary_no_subprocess(self, monkeypatch):
-        """No subprocess.run from _build_integrity_summary."""
-        import subprocess as sp
-
-        def bomb(*args, **kwargs):
-            raise AssertionError(f"subprocess.run called: {args}")
-
-        monkeypatch.setattr(sp, "run", bomb)
-
-        from packages.orchestration.review_bundle import _build_integrity_summary
-        result = _build_integrity_summary()
-        assert result.get("status") == "unknown"
 
     def test_no_agent_dependency(self, tmp_path, monkeypatch):
         """Read-only integrity works without .agent directory."""
@@ -1790,7 +1711,7 @@ class TestIntegrityReadOnlyV07:
         assert result["status"] == "unknown"
         assert result["passed"] is None
 
-        from packages.orchestration.overnight_readiness import _integrity_status
+        from packages.orchestration.mission_readiness import _integrity_status
         assert _integrity_status() == "unknown"
 
 
@@ -1823,20 +1744,6 @@ class TestChangedFilesPublicTruth:
         exported = export_job_fulfillment_json(rec)
         assert exported["changed_files"] == [], \
             "Blocked job changed_files must be empty"
-
-
-class TestChangedFilesSafeScope:
-    """changed_files_safe.json must include scope metadata."""
-
-    def test_scope_field_present(self):
-        from unittest.mock import MagicMock
-
-        from packages.orchestration.review_bundle import _build_changed_files_safe
-        job = MagicMock()
-        job.artifacts = []
-        result = _build_changed_files_safe(job, [])
-        assert result["scope"] == "artifact_intent"
-        assert "scope_note" in result
 
 
 class TestDocsCommandShapesV06:

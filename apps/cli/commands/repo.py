@@ -7,7 +7,8 @@ import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
-from uuid import UUID
+
+from packages.orchestration.data_paths import lookup_job_id
 
 if TYPE_CHECKING:
     import argparse
@@ -28,7 +29,7 @@ def _safe_task_label(task: Any) -> str:
         if isinstance(val, str) and val.strip():
             return val.strip()[:60].replace("\n", " ")
 
-    desc = getattr(task, "description", None)
+    desc = getattr(task, "title", None)
     if isinstance(desc, str) and desc.strip():
         return desc.strip().split("\n")[0][:60]
 
@@ -52,14 +53,14 @@ def _cmd_repo_status(
     # Job-aware: load target_repo from job metadata
     job = None
     if job_id_str:
-        from packages.orchestration.storage import JobNotFoundError, load_job
+        from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
         try:
-            job_id = UUID(job_id_str)
+            job_id = lookup_job_id(job_id_str)
         except ValueError:
             print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
             sys.exit(1)
         try:
-            job = load_job(job_id)
+            job = require_job_plan(job_id)
         except JobNotFoundError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             sys.exit(1)
@@ -80,7 +81,7 @@ def _cmd_repo_status(
         changed = len(status.modified_files) + len(status.untracked_files) + len(status.staged_files)
         raw = f"{status.current_branch}:{status.head_sha}:{status.is_clean}:{changed}"
         status_hash = hashlib.sha256(raw.encode()).hexdigest()[:16]
-        log = RunLogWriter(job_id=job.id)
+        log = RunLogWriter(job_id=job.job_id)
         log.log(
             "git_status_read",
             outcome="clean" if status.is_clean else "dirty",
@@ -165,17 +166,17 @@ def _cmd_commit_readiness(
     """Preview commit readiness — read-only, no git writes."""
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.git_status import read_git_status
-    from packages.orchestration.storage import load_job
+    from packages.orchestration.pingpong_job import require_job_plan
     from packages.orchestration.timeline import load_run_events
 
     try:
-        job = load_job(UUID(job_id_str))
+        job = require_job_plan(lookup_job_id(job_id_str))
     except Exception:
         print(f"Error: job not found: {job_id_str}", file=sys.stderr)
         sys.exit(1)
 
     data_dir = resolve_data_root()
-    events = load_run_events(data_dir, job.id)
+    events = load_run_events(data_dir, job.job_id)
     repo_path = (job.metadata or {}).get("repo_path", ".")
     git = read_git_status(repo_path)
 
@@ -213,21 +214,21 @@ def _cmd_commit_readiness(
     ready = len(reasons) == 0
 
     # Suggested commit message
-    short_id = str(job.id)[:8]
+    short_id = str(job.job_id)[:8]
     task_summary = ""
     if job.tasks:
         types = [_safe_task_label(t) for t in job.tasks[:3]]
         task_summary = ", ".join(types)
-    suggested = f"remedy/{short_id}: {task_summary or job.name}"[:120]
+    suggested = f"remedy/{short_id}: {task_summary or job.job_title}"[:120]
 
     # Next action — grounded in reasons
     next_action = _build_readiness_next_action(
-        ready, reasons, str(job.id), changed_files,
+        ready, reasons, str(job.job_id), changed_files,
     )
 
     result = {
         "version": 1,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "repo_path": str(repo_path),
         "ready": ready,
         "reasons": reasons,
@@ -245,7 +246,7 @@ def _cmd_commit_readiness(
     else:
         mark = "READY" if ready else "NOT READY"
         print(f"Commit readiness: {mark}")
-        print(f"  Job: {str(job.id)[:8]} ({job.name})")
+        print(f"  Job: {str(job.job_id)[:8]} ({job.job_title})")
         print(f"  Repo: {repo_path}")
         print(f"  Tests passed: {tests_passed}")
         print(f"  Proof present: {proof_present}")

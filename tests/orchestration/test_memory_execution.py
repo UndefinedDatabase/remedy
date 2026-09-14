@@ -1,8 +1,9 @@
 """Tests: approved memory feeds into task execution context safely."""
 from __future__ import annotations
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.task_runner import run_next_task
 
 
@@ -19,9 +20,9 @@ _fake_builder.last_ctx = None
 
 
 def _make_planned_job(prompt="Fix bug"):
-    job = Job(name="test-job", user_prompt=prompt)
+    job = JobPlan(job_title="test-job", user_prompt=prompt)
     job.state = RunState.PLANNED
-    job.tasks = [Task(description="Test task", inputs={"task_type": "test_task"})]
+    job.tasks = [TaskEntry(title="Test task", inputs={"task_type": "test_task"})]
     job.artifacts = [
         Artifact(
             name="planning_output",
@@ -114,7 +115,7 @@ class TestExecutionMemoryMetadata:
         repo = tmp_path / "repo"
         repo.mkdir()
 
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         # No permission, no approval — must fail regardless of memory
         patch = StructuredPatch(
             intent_kind="file_ops",

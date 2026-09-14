@@ -20,9 +20,11 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
-    from packages.core.models import Job
+    from packages.orchestration.pingpong_job import JobPlan
 
 from pydantic import BaseModel, Field
+
+from packages.orchestration.data_paths import normalize_job_id
 
 # ---------------------------------------------------------------------------
 # JobFulfillmentStatus
@@ -520,7 +522,7 @@ def _generate_next_suggestions(job_id: str, data_dir: Path) -> list[str]:
 # Fulfillment engine
 # ---------------------------------------------------------------------------
 
-def _create_fixture_run_contract(job: Job, data_dir: Path) -> str:
+def _create_fixture_run_contract(job: JobPlan, data_dir: Path) -> str:
     """Create and persist a RunContract suitable for fixture fulfillment.
 
     Enables: patch apply, test execution (bounded).
@@ -533,8 +535,8 @@ def _create_fixture_run_contract(job: Job, data_dir: Path) -> str:
 
     contract = RunContract(
         version=1,
-        contract_id=f"fulfill-{str(job.id)[:8]}",
-        job_id=str(job.id),
+        contract_id=f"fulfill-{str(job.job_id)[:8]}",
+        job_id=str(job.job_id),
         scope="job",
         autonomy_level=1,
         max_loops=5,
@@ -558,14 +560,14 @@ def _create_fixture_run_contract(job: Job, data_dir: Path) -> str:
 
 
 def _approve_and_apply_intent(
-    job: Job,
+    job: JobPlan,
     artifact_id: str,
     intent_idx: int,
     record: JobFulfillmentRecord,
     data_dir: Path,
     *,
     target_repo_override: Path | None = None,
-) -> tuple[Job, bool]:
+) -> tuple[JobPlan, bool]:
     """Approve and apply a single patch intent through existing patch_apply.
 
     Returns (updated_job, success).
@@ -573,7 +575,7 @@ def _approve_and_apply_intent(
     """
     from packages.orchestration.approval_queue import make_intent_id, set_approval_state
     from packages.orchestration.patch_apply import apply_patch_intent
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
     intent_id = make_intent_id(UUID(artifact_id), intent_idx)
     record.patch_intent_ids.append(intent_id)
@@ -584,7 +586,7 @@ def _approve_and_apply_intent(
         decided_by="fixture_demo",
     )
     record.approval_ids.append(intent_id)
-    save_job(job, root=data_dir)
+    save_job_plan(job, root=data_dir)
 
     apply_result = apply_patch_intent(job, intent_id, data_dir=data_dir, target_repo_override=target_repo_override)
 
@@ -601,7 +603,7 @@ def _approve_and_apply_intent(
         record.changed_files.append(apply_result.target_path)
 
     # Reload job after apply mutated metadata
-    job = load_job(UUID(record.job_id), data_dir)
+    job = load_job_plan(normalize_job_id(record.job_id), data_dir)
     return job, True
 
 
@@ -623,10 +625,10 @@ def run_job_fulfill(
     Proof through existing proof_chain.build_proof_chain.
     Completion decided by JobFulfillmentContract.check().
     """
-    from packages.core.models import Artifact, ArtifactKind, RunState, Task
+    from packages.core.models import Artifact, ArtifactKind, RunState
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.permissions import Capability, set_permission
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import TaskEntry, load_job_plan, require_job_plan, save_job_plan
     from packages.orchestration.timeline import append_run_event
 
     if data_dir is None:
@@ -634,30 +636,30 @@ def run_job_fulfill(
     data_dir = Path(data_dir)
 
     record = JobFulfillmentRecord(job_id=job_id, mode="fixture_demo")
-    job = load_job(UUID(job_id), data_dir)
+    job = require_job_plan(normalize_job_id(job_id), data_dir)
     record.repo_safe_name = repo_root.name
 
-    append_run_event(data_dir, UUID(job_id), event="fulfillment_started", metadata={
+    append_run_event(data_dir, job_id, event="fulfillment_started", metadata={
         "fulfillment_id": record.fulfillment_id, "mode": "fixture_demo",
     })
 
     # ── CONTRACT SETUP ────────────────────────────────────────────────────
     contract_id = _create_fixture_run_contract(job, data_dir)
     record.contract_id = contract_id
-    save_job(job, root=data_dir)
+    save_job_plan(job, root=data_dir)
 
     # ── PLANNING ─────────────────────────────────────────────────────────
     record.status = JobFulfillmentStatus.PLANNING
     task_descriptors = fixture_plan_tasks(job_id)
 
     for td in task_descriptors:
-        task = Task(
-            description=td["description"],
+        task = TaskEntry(
+            title=td["description"],
             inputs={"task_type": td["task_type"], **td.get("inputs", {})},
         )
-        td["model_task_id"] = str(task.id)
+        td["model_task_id"] = str(task.task_id)
         job.tasks.append(task)
-        record.task_ids.append(str(task.id))
+        record.task_ids.append(str(task.task_id))
 
     # Set target repo + permissions
     job.metadata["target_repo"] = str(repo_root.resolve())
@@ -666,7 +668,7 @@ def run_job_fulfill(
     record.permissions_granted = ["repo_generated_write", "repo_test_run"]
 
     job.state = RunState.RUNNING
-    save_job(job, root=data_dir)
+    save_job_plan(job, root=data_dir)
     save_fulfillment_record(record, data_dir)
 
     # ── WORKING ──────────────────────────────────────────────────────────
@@ -684,7 +686,7 @@ def run_job_fulfill(
             name=wo["artifact_name"],
             content=wo["content"],
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=UUID(td["model_task_id"]),
+            task_id=td["model_task_id"],
             metadata={
                 "patch_intent_count": 1,
                 "source": "fixture_worker",
@@ -702,11 +704,11 @@ def run_job_fulfill(
 
         # Mark task completed
         for t in job.tasks:
-            if str(t.id) == td["model_task_id"]:
+            if str(t.task_id) == td["model_task_id"]:
                 t.status = RunState.COMPLETED
                 break
 
-    save_job(job, root=data_dir)
+    save_job_plan(job, root=data_dir)
     save_fulfillment_record(record, data_dir)
 
     # ── REVIEWING ────────────────────────────────────────────────────────
@@ -722,13 +724,13 @@ def run_job_fulfill(
         for finding in review_result.findings:
             origin_task_id = task_descriptors[0]["model_task_id"]
             repair_td = finding_to_repair_task(finding, origin_task_id, review_round)
-            repair_task = Task(
-                description=repair_td["description"],
+            repair_task = TaskEntry(
+                title=repair_td["description"],
                 inputs=repair_td["inputs"],
             )
-            repair_td["model_task_id"] = str(repair_task.id)
+            repair_td["model_task_id"] = str(repair_task.task_id)
             job.tasks.append(repair_task)
-            record.repair_task_ids.append(str(repair_task.id))
+            record.repair_task_ids.append(str(repair_task.task_id))
 
             repair_output = fixture_repair_output(repair_td)
 
@@ -749,7 +751,7 @@ def run_job_fulfill(
                 name="fixture_repair_output",
                 content="[fixture repair metadata]",
                 kind=ArtifactKind.BUILDER_PROPOSAL,
-                task_id=repair_task.id,
+                task_id=str(repair_task.task_id),
                 metadata={
                     "source": "fixture_repair",
                     "origin_finding": finding.get("code", ""),
@@ -758,7 +760,7 @@ def run_job_fulfill(
             job.artifacts.append(repair_art)
             repair_task.status = RunState.COMPLETED
 
-        save_job(job, root=data_dir)
+        save_job_plan(job, root=data_dir)
 
         # Second review
         review_round = 2
@@ -793,7 +795,7 @@ def run_job_fulfill(
     # NO metadata mutation — target_repo stays as real repo
     # Apply uses target_repo_override instead
 
-    append_run_event(data_dir, UUID(job_id), event="staging_created", metadata={
+    append_run_event(data_dir, job_id, event="staging_created", metadata={
         "fulfillment_id": record.fulfillment_id,
         "files_copied": staging_ws.files_copied,
         "excluded_count": len(staging_ws.excluded_dirs),
@@ -874,7 +876,7 @@ def run_job_fulfill(
         record.staged_files = [r.relative_path for r in staged_changes]
         staging_result.apply_records = staged_changes
 
-        append_run_event(data_dir, UUID(job_id), event="fulfillment_staged_apply", metadata={
+        append_run_event(data_dir, job_id, event="fulfillment_staged_apply", metadata={
             "fulfillment_id": record.fulfillment_id,
             "changed_files": record.changed_files,
             "staged_files": record.staged_files,
@@ -923,8 +925,8 @@ def run_job_fulfill(
         try:
             from packages.orchestration.proof_chain import build_proof_chain
             from packages.orchestration.timeline import load_run_events
-            job = load_job(UUID(job_id), data_dir)
-            events = load_run_events(data_dir, UUID(job_id))
+            job = load_job_plan(normalize_job_id(job_id), data_dir)
+            events = load_run_events(data_dir, job_id)
             chain = build_proof_chain(job, events, data_dir=data_dir)
             record.proof_status = chain.overall_status
         except Exception:
@@ -940,7 +942,7 @@ def run_job_fulfill(
 
         staging_result.proof_status = record.proof_status
 
-        append_run_event(data_dir, UUID(job_id), event="fulfillment_proof_built", metadata={
+        append_run_event(data_dir, job_id, event="fulfillment_proof_built", metadata={
             "fulfillment_id": record.fulfillment_id,
             "proof_status": record.proof_status,
             "proof_accepted_reason": record.proof_accepted_reason,
@@ -948,7 +950,7 @@ def run_job_fulfill(
 
         # ── FINAL REVIEW ──────────────────────────────────────────────
         record.status = JobFulfillmentStatus.FINAL_REVIEW
-        job = load_job(UUID(job_id), data_dir)
+        job = load_job_plan(normalize_job_id(job_id), data_dir)
 
         all_tasks_done = all(
             (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed"
@@ -977,7 +979,7 @@ def run_job_fulfill(
             if promotion.blockers:
                 record.contract_blockers = list(promotion.blockers)
 
-            append_run_event(data_dir, UUID(job_id), event="staging_promoted", metadata={
+            append_run_event(data_dir, job_id, event="staging_promoted", metadata={
                 "fulfillment_id": record.fulfillment_id,
                 "promoted": promotion.promoted,
                 "files_promoted": promotion.files_promoted,
@@ -1005,7 +1007,7 @@ def run_job_fulfill(
             record.dod_released = dod_result.released
             record.dod_blocking_red = list(dod_result.blocking_red)
             record.dod_reported_red = list(dod_result.reported_red)
-            append_run_event(data_dir, UUID(job_id), event="dod_gate_evaluated",
+            append_run_event(data_dir, job_id, event="dod_gate_evaluated",
                              metadata={
                                  "fulfillment_id": record.fulfillment_id,
                                  "released": dod_result.released,
@@ -1025,15 +1027,15 @@ def run_job_fulfill(
             record.status = JobFulfillmentStatus.COMPLETED_VERIFIED
             record.stop_reason = "completed_verified"
 
-            job = load_job(UUID(job_id), data_dir)
+            job = load_job_plan(normalize_job_id(job_id), data_dir)
             job.state = RunState.COMPLETED
-            save_job(job, root=data_dir)
+            save_job_plan(job, root=data_dir)
 
             suggestion_ids = _generate_next_suggestions(job_id, data_dir)
             record.next_suggestion_ids = suggestion_ids
             record.next_safe_action = f"remedy propose list {job_id} --json"
 
-            append_run_event(data_dir, UUID(job_id), event="fulfillment_completed", metadata={
+            append_run_event(data_dir, job_id, event="fulfillment_completed", metadata={
                 "fulfillment_id": record.fulfillment_id,
                 "status": "completed_verified",
                 "contract_id": record.contract_id,

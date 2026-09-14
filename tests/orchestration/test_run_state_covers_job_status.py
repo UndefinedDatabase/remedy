@@ -1,15 +1,11 @@
 """F272 T002 — ``RunState`` covers every value ``JobPlan.status`` can hold.
 
-DECISION F272 D5 rules the ``state`` collapse in two moves. The classic ``Job``
-already spells the lifecycle field ``state: RunState``; ``JobPlan`` still spells
-it ``status: str`` out of the six ``JOB_*`` constants. Those two vocabularies
-differed in BOTH directions — ``blocked`` and ``stopped`` had no ``RunState``
-member — so a bare rename would have silently lost two states. Round 8 widens
-``RunState`` with those two; these tests pin the coverage that makes round 9's
-one-commit rename lossless, the survival of the seven pre-existing members, the
-``RunState(value)`` lookup round 9's importer performs on a stored string, and a
-non-vacuity control without which a membership reading that answered True for
-everything would pass.
+DECISION F272 D5 rules the ``state`` collapse: ``JobPlan`` spells its lifecycle field
+``state: RunState``, and ``RunState`` carries ``blocked`` and ``stopped`` so that every
+``JOB_*`` constant has a member. These tests pin that coverage, the survival of the
+seven original members, the ``RunState(value)`` lookup the importer performs on a
+stored string, and a non-vacuity control without which a membership reading that
+answered True for everything would pass.
 """
 from __future__ import annotations
 

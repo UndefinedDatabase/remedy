@@ -28,13 +28,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import (
-    Artifact,
-    ArtifactKind,
-    Job,
-    RunState,
-    Task,
-)
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.project_context_coverage import (
     _SIGNALS,
     _TOTAL_WEIGHT,
@@ -64,19 +59,19 @@ def _make_project(**kwargs) -> RemyProject:
     return RemyProject(**defaults)
 
 
-def _make_job(state: RunState = RunState.PENDING) -> Job:
-    return Job(name="test job", state=state)
+def _make_job(state: RunState = RunState.PENDING) -> JobPlan:
+    return JobPlan(job_title="test job", state=state)
 
 
-def _make_job_with_tasks(n: int = 1) -> Job:
-    job = Job(name="task job", state=RunState.PLANNED)
+def _make_job_with_tasks(n: int = 1) -> JobPlan:
+    job = JobPlan(job_title="task job", state=RunState.PLANNED)
     for i in range(n):
-        job.tasks.append(Task(description=f"task {i}"))
+        job.tasks.append(TaskEntry(title=f"task {i}"))
     return job
 
 
-def _make_job_with_builder_artifact() -> Job:
-    job = Job(name="builder job", state=RunState.RUNNING)
+def _make_job_with_builder_artifact() -> JobPlan:
+    job = JobPlan(job_title="builder job", state=RunState.RUNNING)
     job.artifacts.append(Artifact(
         name="proposal",
         content="",
@@ -85,8 +80,8 @@ def _make_job_with_builder_artifact() -> Job:
     return job
 
 
-def _make_job_with_verification_artifact() -> Job:
-    job = Job(name="verified job", state=RunState.COMPLETED)
+def _make_job_with_verification_artifact() -> JobPlan:
+    job = JobPlan(job_title="verified job", state=RunState.COMPLETED)
     job.artifacts.append(Artifact(
         name="verification",
         content="",
@@ -95,9 +90,9 @@ def _make_job_with_verification_artifact() -> Job:
     return job
 
 
-def _make_job_with_patch_intent() -> Job:
+def _make_job_with_patch_intent() -> JobPlan:
     """Job with a patch intent recorded in artifact metadata."""
-    job = Job(name="pi job", state=RunState.RUNNING)
+    job = JobPlan(job_title="pi job", state=RunState.RUNNING)
     art = Artifact(
         name="proposal",
         content="",
@@ -118,7 +113,7 @@ def _make_job_with_patch_intent() -> Job:
     return job
 
 
-def _make_job_with_approval() -> Job:
+def _make_job_with_approval() -> JobPlan:
     """Job with a patch intent that has been approved."""
     from packages.orchestration.approval_queue import make_intent_id, set_approval_state
     job = _make_job_with_patch_intent()
@@ -212,7 +207,7 @@ class TestDeriveProjectContextCoverage:
     def test_linked_jobs_present_with_jobs(self):
         p = _make_project()
         job = _make_job()
-        attach_job(p, str(job.id))
+        attach_job(p, str(job.job_id))
         snap = derive_project_context_coverage(p, [job])
         sig = next(s for s in snap.signals if s.key == "linked_jobs")
         assert sig.present is True
@@ -330,7 +325,7 @@ class TestDeriveProjectContextCoverage:
         attach_repo(p, str(tmp_path))
         job = _make_job_with_approval()
         # Add tasks and verification to the same job
-        job.tasks.append(Task(description="task 1", status=RunState.COMPLETED))
+        job.tasks.append(TaskEntry(title="task 1", status=RunState.COMPLETED))
         snap = derive_project_context_coverage(p, [job])
         # Without approved memory: 85 (all except project_memory + mcp)
         assert snap.score == 85
@@ -339,7 +334,7 @@ class TestDeriveProjectContextCoverage:
         p = _make_project()
         attach_repo(p, str(tmp_path))
         job = _make_job_with_approval()
-        job.tasks.append(Task(description="t", status=RunState.COMPLETED))
+        job.tasks.append(TaskEntry(title="t", status=RunState.COMPLETED))
         snap = derive_project_context_coverage(p, [job])
         assert snap.score <= V0_MAX_SCORE
 
@@ -630,9 +625,9 @@ class TestRunLogSchema:
     }
 
     def test_run_log_event_has_exact_metadata_keys(self, tmp_path, monkeypatch):
-        import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.project import _cmd_project_context
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.project_registry import (
             RemyProject,
             save_project,
@@ -640,12 +635,11 @@ class TestRunLogSchema:
         from packages.orchestration.project_registry import (
             attach_job as _attach_job,
         )
-        from packages.orchestration.storage import save_job
 
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         p = RemyProject(name="RunLogProject")
-        _attach_job(p, str(job.id))
+        _attach_job(p, str(job.job_id))
         save_project(p)
 
         _cmd_project_context(str(p.id))
@@ -653,15 +647,15 @@ class TestRunLogSchema:
         # F146 (2727114) made `project context` strictly read-only and removed
         # its RunLog write: "zero writes on read-only commands". The pin is now
         # that contract — the command must leave no run log behind at all.
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         assert not runs_dir.exists(), \
             "project context is read-only and must not write a run log"
         assert self._REQUIRED_META_KEYS, "the recorded metadata contract is kept for the writer paths"
 
     def test_run_log_event_scope_is_project(self, tmp_path, monkeypatch):
-        import json as _json
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.project import _cmd_project_context
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.project_registry import (
             RemyProject,
             save_project,
@@ -669,24 +663,24 @@ class TestRunLogSchema:
         from packages.orchestration.project_registry import (
             attach_job as _attach_job,
         )
-        from packages.orchestration.storage import save_job
 
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         p = RemyProject(name="ScopeProject")
-        _attach_job(p, str(job.id))
+        _attach_job(p, str(job.job_id))
         save_project(p)
 
         _cmd_project_context(str(p.id))
 
         # Same F146 read-only contract: nothing under the data root's job_logs/
         # may appear because a project was merely inspected.
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         assert not list(runs_dir.glob("*.jsonl")) if runs_dir.exists() else True
 
     def test_run_log_no_sentinels(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.project import _cmd_project_context
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.project_registry import (
             RemyProject,
             save_project,
@@ -694,17 +688,16 @@ class TestRunLogSchema:
         from packages.orchestration.project_registry import (
             attach_job as _attach_job,
         )
-        from packages.orchestration.storage import save_job
 
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         p = RemyProject(name="NoSentinelProject")
-        _attach_job(p, str(job.id))
+        _attach_job(p, str(job.job_id))
         save_project(p)
 
         _cmd_project_context(str(p.id))
 
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         for f in runs_dir.glob("*.jsonl"):
             content = f.read_text()
             for sentinel in _REDACTION_SENTINELS:
@@ -835,10 +828,10 @@ class TestProjectContextCLI:
         """Confirm `remedy context <job_id>` still works and uses job scope."""
         self._env(tmp_path, monkeypatch)
         from apps.cli.commands.brain import _cmd_context
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job = _make_job()
-        save_job(job)
-        _cmd_context(str(job.id), json_output=True)
+        save_job_plan(job)
+        _cmd_context(str(job.job_id), json_output=True)
         out = capsys.readouterr().out
         d = json.loads(out)
         assert d["scope"] == "job"
