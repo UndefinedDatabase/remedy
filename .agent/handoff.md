@@ -1,64 +1,70 @@
-# Handback — F275 round 106
+# Handback — F275 round 107
 
 ## Session
 
-`SESSION 35 of feature F275 · round 106 · rounds so far 106`
+`SESSION 35 of feature F275 · round 107 · rounds so far 107`
 
 ## Range
 
-Review of `d8674d8d`..`HEAD`: five commits (C0a, C0b, C1, C2, C3), plus this handback commit C4. `.agent/STOP` was
-ABSENT at all three readings constraint 2 orders (before C0a, before the gate, before C4): `ls /home/decodeux/Repos/remedy/.agent/STOP`
+Review of `50171d2f`..`HEAD`: five commits (C0a, C0b, C1, C2, C3), plus this handback commit C4. `.agent/STOP` was
+ABSENT at all three readings constraint 2 orders (before C0a, before U2, before C4): `ls /home/decodeux/Repos/remedy/.agent/STOP`
 exit 2 each time, "No such file or directory".
 
-**THE INTEGRATION GATE: BRANCH-ONLY IS EMPTY.** The branch run at C2 `64674850` exited **0** with
-`18442 passed, 23 skipped, 1 warning in 161.95s (0:02:41)` and no failed node. The base run at the merge base
-`d0aa833b` exited **1** with `13 failed, 19758 passed, 23 skipped, 1 warning in 177.68s (0:02:57)`. All 13 are BASE-ONLY,
-and **none of them is attributed to a missing artifact** (Deviation 1). The evidence is committed under `.agent/gate_f275_r106/`
-as C3. Nothing was repaired.
+**THE SELF-USE RUN BLOCKED AT THE APPROVAL GATE UNDER `ollama`, WITH TWO DEFECT STRINGS.** The generator appended
+`SU-014`, "Address ledger finding R-0445". `run_next_self_use_item` returned job `c9720cf080b84cc0` in state `blocked`,
+its one task `T001` `blocked`. The string `fake` does not appear in its `execution_config`. Nothing was applied, and
+`consumed_by` stays empty. `describe_self_use_run_defects` returned 2 strings, verbatim:
+
+```
+job c9720cf080b84cc0 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+```
+
+**THE SUITE:** the round's one serial full-suite run exited **0**, `18442 passed, 23 skipped, 1 warning in 1416.49s (0:23:36)`,
+no bad node. Nothing was repaired.
 
 ## Commits
 
-### 2119bffc F275 R106 C0a: save the round 106 block as authored text
+### 21ebf51a F275 R107 C0a: save the round 107 block as authored text
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r106.md` | +229 / -0 | the block as received. Before copying, I checked its sha256 `434c7f14…0767cefd` (18186 bytes) against the digest received |
+| `.agent/authored/f275-r107.md` | +222 / -0 | the block as received. Before copying, I checked its sha256 `37eb8ee1…08236e0c` (20169 bytes) against the digest received |
 
-### 56a96169 F275 R106 C0b: mirror the round 106 block into the last-block state file
+### 4192dabc F275 R107 C0b: mirror the round 107 block into the last-block state file
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +174 / -242 | the same bytes, the mirror |
+| `.agent/last_block.md` | +163 / -170 | the same bytes, the mirror |
 
-### 0cc69cbb F275 R106 C1: book round 105's PASS, resolve R-0887 and R-0888, and plan the closure sequence's integration gate
+### d7b73d61 F275 R107 C1: book round 106's PASS and the integration gate, re-assign 22 open findings to F273, and plan the self-use run
 
 This is the FIRST SUBSTANTIVE COMMIT.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +12 / -0 | slice RECORD106 appended, 3601 bytes: `Gate: F275 R105` VERDICT PASS, `Done: R-0887`, `Done: R-0888` |
-| `.agent/plan.md` | +17 / -15 | slice PLAN106, a full replacement: 2457 bytes, 43 lines |
+| `.agent/decisions.md` | +14 / -0 | slice DEC107 appended, 3374 bytes: DECISION F275 D79 |
+| `.agent/live_review.md` | +30 / -22 | SPEC O: ` Owner: F273.` appended to the 22 registration lines (the 22 deletions are those lines' old forms). Then slice RECORD107 appended, 3403 bytes: `Gate: F275 R106` VERDICT PASS |
+| `.agent/plan.md` | +17 / -19 | slice PLAN107, a full replacement: 2386 bytes, 41 lines |
+| `.agent/prose_slips.md` | +2 / -0 | slice SLIP107 appended, 620 bytes |
 
-### 64674850 F275 R106 C2: append the Built State section to the F275 feature file
-
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/roadmap/features/T2_F275.md` | +37 / -0 | slice BUILT106 appended, 2633 bytes |
-
-### e109e584 F275 R106 C3: commit the integration gate's evidence, branch exit 0 with no failed node and no branch-only failure
+### 6deab62c F275 R107 C2: append the generated self-use item SU-014 and commit its run to the approval gate, blocked with two defect strings
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r106-suite.txt` | +2 / -0 | `EXIT=0` and the branch run's last line. No failed node, so 2 lines |
-| `.agent/gate_f275_r106/attribution.txt` | +31 / -0 | `BRANCH-ONLY: NONE`, and the 13 BASE-ONLY ids with the import probes and each id's two alone re-runs |
-| `.agent/gate_f275_r106/base_failed.txt` | +13 / -0 | the base set, sorted |
-| `.agent/gate_f275_r106/base_only.txt` | +13 / -0 | the same 13 ids |
-| `.agent/gate_f275_r106/base_run_tail.txt` | +7 / -0 | command, commit, exit 1, summary line, wall time, `React UI not built` count 0 |
-| `.agent/gate_f275_r106/branch_failed.txt` | +0 / -0 | empty: the branch set has no id |
-| `.agent/gate_f275_r106/branch_only.txt` | +0 / -0 | empty |
-| `.agent/gate_f275_r106/branch_run_tail.txt` | +6 / -0 | command, commit, exit 0, summary line, wall time |
-| `.agent/gate_f275_r106/dist_mtime_window.txt` | +7 / -0 | window, the copies' counts, step b's stamp, `NONE` |
-| `.agent/gate_f275_r106/gate_summary.txt` | +20 / -0 | the three steps with their readings |
+| `.agent/selfuse_f275/entry_and_job_file.txt` | +5 / -0 | id, title, provenance, `consumed_by` `''`, job file path |
+| `.agent/selfuse_f275/execution_config.txt` | +2 / -0 | the `ExecutionConfig` repr, then `FAKE_APPEARS_IN_EXECUTION_CONFIG: False` |
+| `.agent/selfuse_f275/full_transcript.txt` | +6 / -0 | the run process's stdout (4 lines) and its stderr (empty) |
+| `.agent/selfuse_f275/result_state.txt` | +5 / -0 | the call, `job_id`, `state`, the task count, and `T001` `blocked` |
+| `.agent/selfuse_f275/run_defects.txt` | +3 / -0 | `2`, then the two strings |
+| `.agent/selfuse_f275/timing.txt` | +5 / -0 | start and end epochs, wall seconds, the process return code, `budgets` |
+| `scripts/self_use_queue.json` | +8 / -0 | `SU-014` appended by `generate_and_append_if_empty`. Not edited by hand |
+
+### a9b53217 F275 R107 C3: commit the transcript of the round's one full-suite run, exit 0 with no bad node
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f275-r107-suite.txt` | +2 / -0 | `EXIT=0` and the summary line. No bad node, so 2 lines |
 
 ### C4 — this commit (self-reference, R-0149 pattern)
 
@@ -66,13 +72,13 @@ This is the FIRST SUBSTANTIVE COMMIT.
 |---|---|---|
 | `.agent/handoff.md` | NO NUMBERS | constraint 8 runs no gate after C4, and a handback cannot read the commit that writes it. C4's numbers are the reviewer's |
 
-Every cell above comes from `git show --numstat`. I compared each commit's sums against G4's rows:
+Every cell above comes from `git show --numstat`. I compared each commit's sums against G5's rows:
 
-- C0a +229 -0, 1 path
-- C0b +174 -242, 1 path
-- C1 +29 -15, 2 paths
-- C2 +37 -0, 1 path
-- C3 +99 -0, 10 paths
+- C0a +222 -0, 1 path
+- C0b +163 -170, 1 path
+- C1 +63 -41, 4 paths
+- C2 +34 -0, 7 paths
+- C3 +2 -0, 1 path
 
 Every sum and every path count agrees.
 
@@ -80,96 +86,64 @@ Every sum and every path count agrees.
 
 | Command | Outcome |
 |---|---|
-| `git push -u origin feature/f275-one-world-completion-part-three` after C1 | exit 0, `d8674d8d..0cc69cbb`, carrying C0a, C0b and C1 |
-| `git push origin feature/f275-one-world-completion-part-three` after C2 | exit 0, `0cc69cbb..64674850` |
-| the same after C3 | exit 0, `64674850..e109e584` |
+| `git push -u origin feature/f275-one-world-completion-part-three` after C1 | exit 0, `50171d2f..d7b73d61`, carrying C0a, C0b and C1 |
+| `git push origin feature/f275-one-world-completion-part-three` after C2 | exit 0, `d7b73d61..6deab62c` |
+| the same after C3 | exit 0, `6deab62c..a9b53217` |
 | the same after C4 | runs after this commit. Its result is in the round report |
-| `git worktree add -b tmp/f275-r106-base .remedy-wt/r106w/base d0aa833b8286e567e9d23aa2789a42592b720ae6` | exit 0, `HEAD is now at d0aa833b` |
-| `git worktree remove .remedy-wt/r106w/base` (no `--force`), `git worktree prune -v`, `git branch -D tmp/f275-r106-base` | all exit 0; `Deleted branch tmp/f275-r106-base (was d0aa833b)`; `git worktree list` one row |
-| `gh` / `remedy` | NOT RUN. No pull request, no merge, no force-push, no history rewrite. The one branch created and deleted is `tmp/f275-r106-base` |
+| `git worktree add -b tmp/f275-r107-selfuse .remedy-wt/r107w/wt d7b73d61` | exit 0, `HEAD is now at d7b73d61` |
+| the job's own worktree: `git worktree remove .remedy-wt/r107w/wt/.remedy-wt/job-c9720cf080b84cc0` (no `--force`) | exit 0. The job created it and left it `retained`. It was clean at `d7b73d61`, and the job's result diff was 0 bytes (Deviation 1) |
+| `git worktree remove .remedy-wt/r107w/wt` (no `--force`), `git worktree prune -v`, `git branch -d tmp/f275-r107-selfuse` | all exit 0; `Deleted branch tmp/f275-r107-selfuse (was d7b73d61)`; `git worktree list` one row |
+| the self-use job's provider calls | local `ollama`, through `run_job`, with the runner's default budgets |
+| `gh` / `remedy` | NOT RUN. No pull request, no merge, no force-push, no history rewrite. The one branch I created and deleted is `tmp/f275-r107-selfuse`. The job itself created `remedy/job-c9720cf080b84cc0`, which still exists (Deviation 1) |
 
 ## Verification
 
-The scripts and their raw outputs are under `.remedy-wt/r106w/` and `~/remedy-gate-scratch/f275-r106/`, not committed.
-Each exit code is the real process return code, as the Bash tool reported it or as a script read it from `subprocess`.
+The scripts and their raw outputs are under `.remedy-wt/r107w/`, not committed. Each exit code is the real process
+return code, as the Bash tool reported it or as a launcher read it from `subprocess`.
 
 | Gate | At | REAL exit | Decisive reading |
 |---|---|---|---|
-| G1 transport and bookkeeping | after C1 `0cc69cbb` | `g1.py` 0 | `f275-r106.md` at C0a has sha256 **equal** to the received digest. `last_block.md` at C0b is **byte-identical** to it. Slices FOUND: **3** (PLAN106, RECORD106, BUILT106), each **matching** its BEGIN-marker sha256. `plan.md` at C1 **equals** PLAN106: **43** lines, `## Goal` **1**, `## Next Steps` **1**. `live_review.md` at `d8674d8d` is **1188708** bytes, and that blob followed by RECORD106 **equals** the file at C1. `^Gate: F\d+ R\d+ — ` reads **127** at `d8674d8d` and **128** at C1; `Gate: F275 R105 — ` reads **1**. The open set by distinct id reads **91** at `d8674d8d` and **89** at C1, removed `['R-0887', 'R-0888']`, added `[]` |
-| G2 the feature file | after C2 `64674850` | `g2.py` 0; pytest **0** | The `d8674d8d` blob (14064 bytes) followed by BUILT106 (2633) **equals** the file at C2 (16697). numstat `37 0`, so the deletion column is zero. `python3 -m pytest tests/docs/ -q` from the primary root with the three variables removed: exit **0**, **`306 passed in 0.53s`** |
-| G3 the gate | branch run, base run, compare; before C3 | branch pytest **0**; base pytest **1**; `compare.py` 0; `probe.py` 0; `collect.py` 0 | See the G3 readings below. BRANCH-ONLY less flaky: **empty** |
-| G4 tree, path set, open set, cap | after C3 `e109e584` | `g4.py` 0 | `git status --porcelain` printed `''`. `git worktree list`: **1** row. `git branch --list 'tmp/*'` printed `''`. Changed paths `d8674d8d..e109e584`: **15**, against the 15 Bundle paths other than `handoff.md`. **MISSING none, EXTRA none**. Open set at C3 **equals** C1's, 89 ids. Rows: C0a `2119bffc` +229 -0, 1 path; C0b `56a96169` +174 -242, 1; C1 `0cc69cbb` +29 -15, 2; C2 `64674850` +37 -0, 1; C3 `e109e584` +99 -0, 10. **Commits reaching 500 insertions: none** |
+| G1 transport and bookkeeping | after C1 `d7b73d61` | `g1.py` 0 | `f275-r107.md` at C0a has sha256 **equal** to the received digest (20169 bytes). `last_block.md` at C0b is **byte-identical** to it. Slices FOUND: **4** (DEC107 3374 bytes, PLAN107 2386, RECORD107 3403, SLIP107 620), each **matching** its BEGIN-marker sha256. `plan.md` at C1 **equals** PLAN107: **41** lines, `## Goal` **1**, `## Next Steps` **1**. `live_review.md` at C1: sha256 **`e9b6d00b…7923929a` matches**, **1195998** bytes (base 1192309). `prose_slips.md`: base 307080 + slice 620 **equals** C1 307700. `decisions.md`: base 1329223 + slice 3374 **equals** C1 1332597. `^Gate: F\d+ R\d+ — ` reads **128** at `50171d2f` and **129** at C1; `Gate: F275 R106 — ` reads **1**. The open set by distinct id reads **89** at both, **identical membership**. **22 of 22** SPEC O ids have exactly one `Owner: F273.`, at the end of their line |
+| G2 the generation | before and after U1, before C2 | `u1.py` 0 | (a) `pending_self_use_items()` **`()`**, `next_self_use_item()` **`None`**. (b) id **`'SU-014'`**, title **`'Address ledger finding R-0445'`**, provenance **`'generated (self-use-generator tier 1, ledger scan, R-0445)'`**, consumed_by **`''`**. (c) bytes **43768 → 48787**, items **13 → 14**. (d) pending after: **`['SU-014']`**. All four match the reviewer's readings. After the run, the loader again read `consumed_by` `''`, pending `['SU-014']`, 48787 bytes and 14 items |
+| G3 the run | after U3, before C2 | `u2_launch.py` 0 (the run's process 0); `u3.py` 0 | See the G3 readings below |
+| G4 the suite | after C2; transcript reading at C3 `a9b53217` | pytest **0**; `build_transcript.py` 0; `g5.py` 0 | Summary `18442 passed, 23 skipped, 1 warning in 1416.49s (0:23:36)`. Bad nodes **0**: no line starts with `FAILED ` or `ERROR `, and stderr was 0 bytes. So no alone re-run was owed and **no bad node is left after removing FLAKY ones**. At C3 the committed transcript (65 bytes) **equals** the file rebuilt from the saved stdout |
+| G5 tree, path set, open set, cap | after C3 `a9b53217` | `g5.py` 0 | `git status --porcelain` printed `''`. `git worktree list`: **1** row. `git branch --list 'tmp/*'` printed `''`. Changed paths `50171d2f..a9b53217`: **14**, the 8 Bundle files other than `handoff.md` plus the 6 SPEC U files. **MISSING none, EXTRA none**. Open set at C3 **equals** C1's, 89 ids. Rows: C0a `21ebf51a` +222 -0, 1 path; C0b `4192dabc` +163 -170, 1; C1 `d7b73d61` +63 -41, 4; C2 `6deab62c` +34 -0, 7; C3 `a9b53217` +2 -0, 1. **Commits reaching 500 insertions: none** |
 
 ### G3 readings
 
-- **G-BRANCH.** Command `python3 -m pytest -n auto -q -rfE`, run in the primary checkout at C2
-  `64674850ccf09ec2c2cea5bb588f6cfe7726a4fc`. The tree was clean before and after, PYTHONPATH, REMEDY_PROJECT and
-  REMEDY_DATA_DIR were removed, and `apps/ui/dist` was not rebuilt. Output went through the subprocess pipe to
-  `~/remedy-gate-scratch/f275-r106/branch_run.txt`. Exit **0**. Summary `18442 passed, 23 skipped, 1 warning in 161.95s
-  (0:02:41)`. Wall **162.7 s**. Failed nodes **0**.
-- **G-BASE.** The worktree was `.remedy-wt/r106w/base`, on branch `tmp/f275-r106-base`, at `d0aa833b`.
-  - (a) Copies made with `shutil.copytree(symlinks=True)`:
-    - `apps/ui/node_modules`: 43005 files and 27 symlinks preserved; the primary has 43005 and 27.
-    - `apps/ui/dist`: 4 files and 0 symlinks; the primary has 4 and 0.
-  - (b) The newest mtime under the worktree's `apps/ui/src` was `1789415825.8548944`. The stamp `1789415885.0` was set
-    on all 5 entries under `apps/ui/dist` and on the directory itself.
-  - (c) and (e) The dist mtimes were the same 4 files before and after the run. None changed.
-  - (d) Command `REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q -rfE`, run from inside the worktree with the
-    three variables removed. Window `1789415901.135197` to `1789416079.4047954`. Exit **1**. Summary `13 failed, 19758
-    passed, 23 skipped, 1 warning in 177.68s (0:02:57)`. Wall **178.3 s**. Failed nodes **13**.
-  - **Dist files whose mtime fell inside the window: 0.** `React UI not built`: **0**.
-  - The run's warnings summary names the worktree's own `packages/orchestration/model_routing.py`.
-- **G-COMPARE.** The branch set is empty and the base set holds 13 ids.
-  - **BRANCH-ONLY: none**, so no serial re-run was owed.
-  - **BASE-ONLY: 13.** Each id was re-run alone in the base worktree before its removal, first with the gate's
-    environment and then with `PYTHONPATH` set to the worktree.
-  - An import probe of `apps.cli.main` and `packages.orchestration.data_paths`, with the gate's environment, resolved
-    to `/home/decodeux/Repos/remedy/…`, the PRIMARY checkout, from a cwd outside the worktree. It resolved to the worktree
-    from the worktree's own cwd, and to the worktree from outside once `PYTHONPATH` was set to it.
-  - **11 ids** fail alone with the gate's environment and pass alone with `PYTHONPATH` on the worktree:
-    - `tests/orchestration/test_test_runner.py::TestPermitGuidanceArgOrder::test_permit_runtime_stderr`
-    - the 8 ids of `tests/test_command_discovery.py`
-    - `tests/test_test_runner.py::TestCliRunTestsLocal::test_no_target_repo_exits_1`
-    - `tests/test_test_runner.py::TestCliRunTestsLocal::test_permission_missing_exits_1`
+- **(a) The call.** `run_next_self_use_item('/home/decodeux/Repos/remedy/.remedy-wt/r107w/dest',
+  repo_path='/home/decodeux/Repos/remedy/.remedy-wt/r107w/wt', queue_path='/home/decodeux/Repos/remedy/scripts/self_use_queue.json')`.
+  No other argument was passed, so the default budgets and `max_tasks=1` applied. The process started from the primary
+  root. Just before the call, `resolve_role_config` read `provider='ollama' model='muse-glimmer:latest' effort='medium'`
+  for both `builder` and `reviewer`.
+- **(b) The JobPlan.** `job_id` **`c9720cf080b84cc0`**, `state` **`blocked`**. Its one task is **`T001`**, status
+  **`blocked`**. Isolation `worktree`, branch `remedy/job-c9720cf080b84cc0`, `worktree_cleanup_status` `retained`,
+  result diff 0 bytes, `root_changed_files` `[]`.
+- **(c) execution_config**, verbatim:
+  `ExecutionConfig(builder='ollama', builder_source='cli', reviewer='ollama', reviewer_source='cli', builder_model='', builder_model_source='default', builder_effort='', builder_effort_source='default', reviewer_model='', reviewer_model_source='default', reviewer_effort='', reviewer_effort_source='default', repair_provider='', repair_provider_source='default', repair_model='', repair_model_source='default', repair_effort='', repair_effort_source='default', max_rounds=3, max_rounds_source='default', repair_rounds_allowed=2, repair_rounds_source='default', test_command='', test_command_source='default', claude_cli_write_mode='none', claude_cli_write_mode_source='default', context_strategy='task_bounded_sequential_job', timeout_sec=120, timeout_sec_source='default', timeout_profile='', timeout_profile_source='default', max_output_chars=50000, max_output_chars_source='default', stream_evidence=False, stream_evidence_source='default', max_tasks=1, max_tasks_source='invocation')`.
+  **`fake` appears: False** (case-insensitive also False). The gate does not fail on this point.
+- **(d) Timing.** Wall clock **140.1 s**, epochs `1789417359.35` to `1789417499.46`. `budgets`
+  `{'max_total_tokens': None, 'max_provider_calls': 6, 'max_wall_clock_minutes': None, 'max_cost_usd': 0.5, 'deadline': None}`.
+- **(e) The defect tuple.** Length **2**:
+  - `job c9720cf080b84cc0 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail`
+  - `T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail`
+- **(f) Nothing applied.** Before C2, `git status --porcelain` in the primary checkout printed ` M scripts/self_use_queue.json`
+  and `?? .agent/selfuse_f275/` and nothing else. Both the disposable worktree and `tmp/f275-r107-selfuse` are gone.
+  `SU-014`'s `consumed_by` reads `''`.
 
-    Each of these tests runs `python3 -m apps.cli.main job create` with its cwd set to a temporary target repository. That
-    subprocess therefore imports the branch's code from the primary checkout through the editable install, and mints a
-    16-hex id. The next subprocess inherits the worktree's cwd, imports the base's code, and rejects that id: `Error:
-    invalid job ID: '5ff2051b23a64ca2'`, or `summary:  Job ID format invalid.`
-  - **2 ids** pass alone in the gate's environment:
-    - `tests/orchestration/test_product_smoke.py::TestAppStartsGreen::test_a_clean_app_passes`. The base run read
-      `OSError: [Errno 98] Address already in use` on port 5273.
-    - `tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup`. The base run read
-      a machine-wide `pgrep -f apps.cli.grouped.*--help` match. The branch deletes this file.
-- **Passed counts.** The branch passed 18442 and the base 19758, a difference of **−1316**. Collection (`pytest
-  --collect-only -q`) gives **18465** on the branch against **19794** at the base, **−1329**. The 13 base failures account
-  for the gap between −1316 and −1329. Both runs skipped 23.
-
-  I keyed per-file collected counts to `git diff --name-status d0aa833b 64674850 -- tests/`, which lists 5 A, 47 D, 201 M
-  and 1 R075. Files with no change contribute 0. By status:
-  - **D −1170.** The largest deletions are `test_managed_builder_execution.py` −133, `test_dogfood_run.py` −93,
-    `test_review_bundle.py` −90, `test_execution_approval_policy.py` −82, `test_self_repair_proposal.py` −77,
-    `test_main_builder_adapter.py` −51, `test_repair_loop_v2.py` −43, `test_local_model_advisor.py` −39,
-    `test_overnight_executor.py` −38 and `test_worker_registry.py` −36 (all under `tests/orchestration/`), plus 37 more
-    deleted files, among them `tests/cli/test_review_bundle_runtime.py` −14 and `tests/test_storage.py` −12.
-  - **A +46.** The added files are `test_unified_store_parity.py` +22, `test_one_job_store.py` +10,
-    `test_uuid_record_ratchet.py` +7, `test_event_name_coupling.py` +4 and `tests/docs/test_named_source_paths.py` +3.
-  - **M −203.** The largest changes are `tests/test_grouped_cli.py` −120, `tests/cli/test_worker_facade_cmd.py` −33 and
-    `tests/test_data_paths.py` +23.
-  - **R −2.** `test_overnight_readiness.py` became `test_mission_readiness.py`, 22 tests to 20.
-
-Constraint 7, measured on the committed block: **229** lines TOTAL, **92** slice body lines (43 + 12 + 37), **137** PROSE,
-as stated. No line is a run of a single repeated character. The four STEP and SLICE header lines (1, 127, 174, 190)
-carry only two-character box-drawing rules.
+Constraint 7, measured on the committed block: **222** lines TOTAL, **65** slice body lines (41 + 8 + 2 + 14), **157**
+PROSE, as stated. No line is a run of a single repeated character. The five STEP and SLICE header lines (1, 143, 188,
+200, 206) carry only two-character box-drawing rules.
 
 ## Authored-text proofs
 
 | Text | Target | Result |
 |---|---|---|
-| the block | `.agent/authored/f275-r106.md`, `.agent/last_block.md` | sha256 `434c7f14…0767cefd`, **equal** to the received digest at C0a. The mirror is byte-identical at C0b (G1) |
-| PLAN106 | `.agent/plan.md` | **equal** to the slice at C1, 2457 bytes. The marker sha256 `57fc1010…` matched |
-| RECORD106 | `.agent/live_review.md` | post **equals** the 1188708-byte base blob followed by the 3601-byte slice. The marker `fc357250…` matched |
-| BUILT106 | `docs/roadmap/features/T2_F275.md` | post **equals** the 14064-byte base blob followed by the 2633-byte slice. The marker `93661ddb…` matched |
+| the block | `.agent/authored/f275-r107.md`, `.agent/last_block.md` | sha256 `37eb8ee1…`, **equal** to the received digest at C0a. The mirror is byte-identical at C0b (G1) |
+| PLAN107 | `.agent/plan.md` | **equal** to the slice at C1, 2386 bytes. The marker `b212befa…` matched |
+| SPEC O + RECORD107 | `.agent/live_review.md` | the file at C1 has the reviewer's sha256 `e9b6d00b…` and 1195998 bytes. The marker `69d8ebed…` matched |
+| SLIP107 | `.agent/prose_slips.md` | post **equals** the 307080-byte base blob followed by the 620-byte slice. The marker `73a5053f…` matched |
+| DEC107 | `.agent/decisions.md` | post **equals** the 1329223-byte base blob followed by the 3374-byte slice. The marker `2f929a85…` matched |
 
 NO SLICE WAS EDITED.
 
@@ -178,57 +152,61 @@ NO SLICE WAS EDITED.
 | Item | Status | Reason |
 |---|---|---|
 | C0a / C0b | done | two commits, as the Bundle orders |
-| C1 bookkeeping (PLAN106, RECORD106) | done | first substantive commit; zero deletion column on the append |
-| Round 105 verdict booked; R-0887, R-0888 resolved | done | `Gate: F275 R105` and both `Done:` lines at C1; open set 91 → 89 |
-| C2 Built State (BUILT106) | done | zero deletion column; `tests/docs/` 306 passed |
-| SPEC G / C3 integration gate | done | branch exit 0; BRANCH-ONLY empty; BASE-ONLY 13, attributed with evidence but not to a missing artifact (Deviation 1) |
+| C1 bookkeeping (PLAN107, SPEC O, RECORD107, SLIP107, DEC107) | done | first substantive commit; the only deletions are SPEC O's 22 line endings |
+| SPEC O: 22 findings to F273 | done | 22 of 22 lines end with ` Owner: F273.`; open set unchanged at 89 |
+| SPEC U U1 generate | done | `SU-014` appended through the generator |
+| SPEC U U2 run | done | ran to the approval gate and blocked; nothing applied; worktree and temporary branch removed. The job's own retained worktree was removed too (Deviation 1) |
+| SPEC U U3 evidence / C2 | done | the six `.txt` files |
+| SPEC S suite / C3 | done | exit 0, no bad node |
 | C4 handback | done | this commit |
-| G1 · G2 · G3 · G4 | done | readings above |
+| G1 · G2 · G3 · G4 · G5 | done | readings above |
 
 ## Deviations & assumptions
 
-1. **NO BASE-ONLY ID FITS SPEC G'S "MISSING ARTIFACT" CLASS.** The artifact parity held: the copies matched the primary,
-   `React UI not built` read 0 and no dist mtime fell in the window. So, by SPEC G's two classes, all 13 ids fall into
-   "reported as a genuine base failure". I report them that way, with the direct evidence that none is a defect of the
-   base code:
-   - 11 are a mixed-code run. The editable install imports the PRIMARY checkout for a subprocess whose cwd is outside
-     the worktree. These 11 pass alone once `PYTHONPATH` pins the worktree.
-   - 2 pass alone in the gate's own environment.
-
-   Earlier gates, such as F274 R18, did not meet the 11 because base and branch minted the same id shape. The branch's
-   16-hex id is what now exposes it. The classification is the reviewer's. BRANCH-ONLY is empty, so this does not
-   block the round.
-2. **WORK EXTRA TO SPEC G, BETWEEN STEP (e) AND THE WORKTREE'S REMOVAL.** Between step (e) and removing the worktree, I ran
-   the attribution probes in it:
-   - three `python3 -B -c` import probes;
-   - 26 single-node pytest runs, 13 ids times two environments, with `-p no:cacheprovider`;
-   - one `pytest --collect-only -q` in the base worktree and one in the primary checkout, for the per-file count
-     explanation.
-
-   None of these is a full-suite run. The worktree's `git status --porcelain` was `''` before removal, and removal
-   needed no `--force`.
-3. **THE DIST STAMP LAY 30 SECONDS IN THE FUTURE.** Step b set the stamp to the newest src mtime plus 60 s
-   (`1789415885.0`), and the clock read `1789415854` just after. So that the stamp could not fall inside the run window,
-   I waited until the clock passed it and then launched the base run. The window opens at `1789415901.1`, after the stamp.
-4. **HOW RUNS AND EXIT CODES WERE READ.** Both suite runs, the docs run and every probe went through a scratch
-   `runner.py` or probe script. Each used `subprocess.run` with the three variables popped from the environment (plus
-   `REMEDY_UI_NO_AUTO_BUILD=1` for the base) and stdout and stderr piped to a file under `~/remedy-gate-scratch/f275-r106/`.
-   The scripts printed the real return codes. The Bash guard rejects `; echo $?` compounds and blocks reading the
-   scratch directory with grep or cat, so every reading of the logs went through Python scripts under `.remedy-wt/r106w/`.
-   STOP was read with `ls`, exit 2.
-5. **THE SUITE RAN WITH `-n auto`, not serially.** The block orders this for the gate procedure's sake, against
-   amend0914-f275-sprint rule 4's "serially". I record it as ordered, not as my own departure.
-6. **`git branch -D`, not `-d`.** The temporary branch pointed at `d0aa833b`, an ancestor of HEAD, so the two are
-   equivalent here.
-7. **PUSH GROUPING.** C0a and C0b travelled with the push after C1. The Bundle's commit sequence is unchanged.
-8. **THE SHELL'S STARTING DIRECTORY.** The session's working directory was `.remedy-wt/r101`, the reviewer's scratch.
+1. **THE JOB LEFT ITS OWN WORKTREE AND BRANCH, AND I REMOVED ONLY THE WORKTREE.** `run_job` isolated the job in a git
+   worktree it created inside the disposable one, at `.remedy-wt/r107w/wt/.remedy-wt/job-c9720cf080b84cc0`, on branch
+   `remedy/job-c9720cf080b84cc0`, and left it `retained`.
+   - After the run, `git worktree list` showed three rows.
+   - That worktree's `git status --porcelain` was empty, its HEAD was `d7b73d61`, and the job's result diff was 0 bytes.
+   - To reach constraint 6's one row, I removed it with `git worktree remove`, without `--force`, before removing the
+     disposable worktree as SPEC U orders.
+   - I did NOT delete the branch `remedy/job-c9720cf080b84cc0`. It points at `d7b73d61` and has no commit of its own.
+     Constraint 6 names `tmp/f275-r107-selfuse` as the one branch created and deleted, and 15 earlier `remedy/job-*`
+     branches already stand in the repository.
+   - The job record under the ignored `.data/jobs/` still reads `worktree_cleanup_status` `retained`. That is now stale
+     for this one job.
+2. **EVIDENCE-FILE SHAPE BEYOND SPEC U3'S LIST.**
+   - `result_state.txt` also carries the exact call and a `tasks: 1` line.
+   - `execution_config.txt` renders the value with Python's `repr` of the `ExecutionConfig` dataclass.
+   - `timing.txt` also carries the start and end epochs and the run process's return code. The wall clock is the
+     launcher's measurement around the whole process, including interpreter start and the two role-config prints.
+   - `full_transcript.txt` holds the run process's stdout and stderr under `STDOUT:` and `STDERR:` headings. The four
+     stdout lines are my script's own prints: the role resolution, the call and the return. `run_job` wrote nothing to
+     either stream, and stderr was empty.
+3. **HOW THE RUNS WERE LAUNCHED.**
+   - The self-use run went through `u2_launch.py`, which ran `u2_inner.py` in a child process with stdout and stderr
+     going to files. The child pickled the returned triple, and `u3.py` wrote the evidence from that pickle after the
+     process had exited.
+   - The serial suite took 23:36, so `suite_launch.py` started `suite_wait.py` detached (`start_new_session=True`).
+     `suite_wait.py` ran the exact SPEC S command from the primary root, with `PYTHONPATH`, `REMEDY_PROJECT` and
+     `REMEDY_DATA_DIR` popped and `PYTHONDONTWRITEBYTECODE=1`. It wrote stdout, stderr and the return code under
+     `.remedy-wt/r107w/`, and I polled with `sleep`.
+   - The Bash guard rejects `$?`, so STOP was read with `ls`, exit 2.
+4. **THE ENVIRONMENT OF U1 AND U2.** `REMEDY_LOOP_DIR`, `REMEDY_MODEL`, `REMEDY_REPO` and `REMEDY_SUBAGENT_MODEL` were
+   set. A grep of `packages/` and `apps/` finds no reader of any of them. `PYTHONPATH`, `REMEDY_PROJECT` and
+   `REMEDY_DATA_DIR` were not set. The block orders an environment only for the suite, so I left the run's environment
+   as it was. The job's record went to the default data root, the ignored `.data/` of the primary checkout.
+5. **AN OBSERVATION, NOT REGISTERED AND NOT REPAIRED.** `resolve_role_config` resolved the model `muse-glimmer:latest`
+   for both roles. The run's `execution_config`, however, reads `builder_model=''` and `reviewer_model=''` with source
+   `default`, because `run_next_self_use_item` forwards only the provider name. Registering it is the reviewer's call.
+6. **PUSH GROUPING.** C0a and C0b travelled with the push after C1. The Bundle's commit sequence is unchanged.
+7. **THE SHELL'S STARTING DIRECTORY.** The session's working directory was `.remedy-wt/r101`, the reviewer's scratch.
    No command ran from it and nothing under it was opened. Every git command used `git -C /home/decodeux/Repos/remedy`.
 
 ## Next
 
-The reviewer reads the gate evidence under `.agent/gate_f275_r106/` and issues the gate verdict. That includes ruling
-on the 13 BASE-ONLY ids of Deviation 1. Per `.agent/plan.md`'s Next Steps, the self-use precondition, the
-re-assignment of open findings to F273 and the §3 checklist consolidation follow.
+The reviewer books round 107's verdict. Then CLOSURE ROUND A of `.agent/plan.md`: it registers the two defect strings
+above as findings, rotates the ledger, runs the evidence job and builds the review package.
 
 Operator questions open: 1
 
