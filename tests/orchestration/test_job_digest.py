@@ -546,7 +546,7 @@ def _normalize(envelope, job):
     The full UUID is replaced BEFORE its prefix, so the prefix substitution
     cannot eat the first eight characters of the id and leave a tail behind.
     """
-    job_id = str(getattr(job, "id", "") or "")
+    job_id = str(getattr(job, "job_id", "") or "")
     prefix = job_id[:8]
 
     def _replace(value):

@@ -117,9 +117,9 @@ class TestEveryConstructionKeywordIsADeclaredField:
         its subject is the literal keyword a reader sees and believes, and a splat is a
         different thing. The runtime behaviour demonstrated is identical.
         """
-        from packages.orchestration.pingpong_job import TaskEntry
+        from packages.core.models import Task
 
-        task = TaskEntry(**{"title": "d", })
+        task = Task(**{"description": "d", "type": "write_readme"})
         assert not hasattr(task, "type")
         assert task.model_extra is None
 

@@ -1462,7 +1462,7 @@ class TestCommandDoorImportGuard:
         ("packages.orchestration.hunk_ledger", "HUNK_STATE_PENDING"),   # F033 D4
         ("packages.orchestration.hunk_ledger", "HUNK_STATE_REJECTED"),  # F033 D4
         ("packages.orchestration.safe_points", "request_stop"),            # D5
-        ("packages.orchestration.storage", "save_job"),                    # D21
+        ("packages.orchestration.pingpong_job", "save_job_plan"),          # D21
         ("packages.orchestration.timeline", "append_run_event"),           # D23
     })
 
@@ -1487,12 +1487,12 @@ class TestCommandDoorImportGuard:
         "shutil",
     })
 
-    #: `storage` is the one write-side module the door may reach, and only for
+    #: `pingpong_job` is the one write-side module the door may reach, and only for
     #: the single name DECISION F009 D21 puts in the effect table: the answer is
-    #: durable only once `save_job` returns. Any OTHER name from it is the
+    #: durable only once `save_job_plan` returns. Any OTHER name from it is the
     #: "handler touching storage directly" the Acceptance forbids.
-    STORAGE_MODULE = "packages.orchestration.storage"
-    STORAGE_ALLOWED_NAMES = frozenset({"save_job"})
+    STORAGE_MODULE = "packages.orchestration.pingpong_job"
+    STORAGE_ALLOWED_NAMES = frozenset({"save_job_plan"})
 
     @staticmethod
     def _door_imports(source: str, method_names) -> set:
@@ -1564,8 +1564,8 @@ class TestCommandDoorImportGuard:
             "class _RemedyHandler:\n"
             "    def _dispatch_job_stop(self):\n"
             "        from packages.orchestration.source_apply import apply_source_patch\n"
-            "        from packages.orchestration.storage import delete_job\n"
-            "        return apply_source_patch, delete_job\n"
+            "        from packages.orchestration.pingpong_job import _persist_job\n"
+            "        return apply_source_patch, _persist_job\n"
         )
         found = self._door_imports(violation, self.DOOR_METHODS)
         assert ("packages.orchestration.source_apply",

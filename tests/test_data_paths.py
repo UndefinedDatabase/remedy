@@ -333,11 +333,11 @@ class TestRoutedHandler:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.guide import _cmd_guide_job
         from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        job = JobPlan(job_id=mint_job_id(), job_title="routed-handler")
-        save_job_plan(job)
+        job_id = str(uuid4())
+        save_job_plan(JobPlan(job_id=job_id, job_title="routed-handler"))
         exit_code = None
         try:
-            _cmd_guide_job(str(job.id)[:8], json_output=True)
+            _cmd_guide_job(job_id[:8], json_output=True)
         except SystemExit as exc:
             exit_code = exc.code
         captured = capsys.readouterr()
@@ -427,13 +427,13 @@ class TestRoutedHandler:
         from apps.cli.commands.project import _cmd_attach_project_job
         from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.project_registry import RemyProject, load_project, save_project
-        job = JobPlan(job_id=mint_job_id(), job_title="attach-by-prefix")
-        save_job_plan(job)
+        job_id = str(uuid4())
+        save_job_plan(JobPlan(job_id=job_id, job_title="attach-by-prefix"))
         project = RemyProject(name="attach-by-prefix")
         save_project(project)
-        short = str(job.id)[:8]
+        short = job_id[:8]
         _cmd_attach_project_job(str(project.id), short)
-        assert load_project(project.id).job_ids == [str(job.id)]
+        assert load_project(project.id).job_ids == [job_id]
         assert f"Attached job {short} " in capsys.readouterr().out
 
     def test_stopping_by_an_unhyphenated_id_files_the_stop_under_the_canonical_id(
@@ -444,11 +444,11 @@ class TestRoutedHandler:
         from apps.cli.commands.job_stop_cmd import _cmd_job_stop
         from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         from packages.orchestration.safe_points import stop_requested
-        job = JobPlan(job_id=mint_job_id(), job_title="stop-by-hex")
-        save_job_plan(job)
-        _cmd_job_stop(job.id.hex)
-        assert stop_requested(str(job.id)) is not None
-        assert stop_requested(job.id.hex) is None
+        uid = uuid4()
+        save_job_plan(JobPlan(job_id=str(uid), job_title="stop-by-hex"))
+        _cmd_job_stop(uid.hex)
+        assert stop_requested(str(uid)) is not None
+        assert stop_requested(uid.hex) is None
 
 
 class TestSingleReaderInvariant:

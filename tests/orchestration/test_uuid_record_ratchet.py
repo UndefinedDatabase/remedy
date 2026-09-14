@@ -82,9 +82,9 @@ class TestNoRecordOutsideTheClassicPairDeclaresAUuidId:
 
     def test_the_matcher_can_see_a_uuid_field_at_all(self):
         """The discriminator. Without it the test above passes on a broken matcher."""
-        from packages.orchestration.pingpong_job import JobPlan
+        from packages.core.models import Job
 
-        assert "id" in _uuid_fields(JobPlan), (
+        assert "id" in _uuid_fields(Job), (
             "the matcher cannot see `Job.id`, which IS a uuid.UUID, so a green "
             "no-offenders reading proves nothing"
         )
