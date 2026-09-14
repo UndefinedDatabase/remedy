@@ -128,7 +128,7 @@ def build_test_failure_artifact(
         TestFailureArtifact with safe fields only.
     """
     artifact_id = uuid4().hex[:12]
-    job_id = str(job.job_id) if hasattr(job, "id") else ""
+    job_id = str(job.job_id) if hasattr(job, "job_id") else ""
     task_id = str(job.tasks[0].task_id) if hasattr(job, "tasks") and job.tasks else ""
 
     # Extract from TestRunRecord dataclass

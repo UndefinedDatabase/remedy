@@ -1163,6 +1163,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "tasks": task_items,
         "activity": activity_items,
         "phases": phases,
+        "prompt_trace": _build_prompt_trace(_resolve_evidence_dir(str(job.job_id))),
         "graph_summary": {
             "node_count": graph_node_count,
             "edge_count": graph_edge_count,

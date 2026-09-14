@@ -827,13 +827,13 @@ def assert_verify_first(tasks: list[Any]) -> None:
         raise MissionVerifyFirstError(
             "a follow-up plan must begin with the injected verify task "
             f"(task_type {MISSION_VERIFY_TASK_TYPE!r}); the plan starts with: "
-            f"{getattr(tasks[0], 'description', '?')!r}")
+            f"{getattr(tasks[0], 'title', '?')!r}")
     for task in tasks[1:]:
         flight = task.inputs.get("flight") if isinstance(task.inputs, dict) else None
         declared = list((flight or {}).get("depends_on") or [])
         if MISSION_VERIFY_PLANNED_ID not in [str(d) for d in declared]:
             raise MissionVerifyFirstError(
-                f"follow-up task {getattr(task, 'description', '?')!r} does not "
+                f"follow-up task {getattr(task, 'title', '?')!r} does not "
                 f"depend on the verify task {MISSION_VERIFY_PLANNED_ID} — it "
                 f"could start before the previous state was verified")
 

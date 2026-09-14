@@ -79,7 +79,7 @@ def run_reviewer(
 
     # Build safe context for reviewer
     context: dict[str, Any] = {
-        "job_name": job.job_title[:80] if hasattr(job, "name") else "",
+        "job_name": str(job.job_title)[:80] if hasattr(job, "job_title") else "",
         "task_count": len(job.tasks),
         "completed_tasks": [],
         "current_test_status": "unknown",
