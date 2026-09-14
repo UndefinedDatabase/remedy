@@ -1,0 +1,6 @@
+STDOUT:
+resolve_role_config('builder'): provider='ollama' model='muse-glimmer:latest' effort='medium'
+resolve_role_config('reviewer'): provider='ollama' model='muse-glimmer:latest' effort='medium'
+CALL: run_next_self_use_item('/home/decodeux/Repos/remedy/.remedy-wt/r107w/dest', repo_path='/home/decodeux/Repos/remedy/.remedy-wt/r107w/wt', queue_path='/home/decodeux/Repos/remedy/scripts/self_use_queue.json')
+RETURNED: entry SU-014 job_file /home/decodeux/Repos/remedy/.remedy-wt/r107w/dest/SU-014.md job_id c9720cf080b84cc0 state RunState.BLOCKED
+STDERR:
