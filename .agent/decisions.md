@@ -13551,3 +13551,15 @@ CHOSEN, THIRD: A RECORD'S `created_at` IS THE STRING IT STORES, so the test cons
 CONSEQUENCE. `job show --json` changes its keys to the record's; that is the record flip itself reaching the one command that prints the record whole, not a separate ruling. What the overlay fixes, and that it newly breaks nothing, is measured by the gates of round 96's block and recorded in the round 96 ledger entry by the round that books its verdict. `R-0809`, `R-0880` and `R-0883` stay open, and no finding is registered or resolved.
 
 HOW TO REVERSE. Delete the round 96 overlay carriers under `.agent/authored/` and this paragraph block; those calls then raise in the flipped tree again.
+
+## DECISION F275 D71 (2026-09-14, F275 round 97) — the eighth overlay: the orchestrator loop and the watchdog load a mission's jobs through the job-id shape check, the event writer checks a job id the same way, and a job's tasks are read by the unified task record's names
+
+CONTEXT. In the flipped tree at `844a7f21`, with seven overlays applied, `orchestrator_loop._as_uuid` — defined once and referenced three times in its module and once from `watchdog.py`, 5 references in all — turns a job id into a `UUID`, which the sixteen-hex id the unified store mints cannot become; every caller catches the error and treats the job as unreadable, so a mission's loop and its watchdog never see that job's decisions or its milestone evidence. `emit_important_event` refuses the same id through 1 `UUID` call and reports it invalid. And 15 reads of `.id` or `.description` off a task taken from a job's tasks, in five functions, still spell the classic task record.
+
+CHOSEN, FIRST: THE SHAPE CHECK, NOT A PARSE. `_as_uuid` is deleted, its callers and the event writer pass the id through `normalize_job_id`, the disk-free shape check DECISION F275 D62 ruled for a job-store load under `packages/`, which accepts a UUID and a sixteen-hex id alike. ALTERNATIVE: keeping `_as_uuid` as a name for `normalize_job_id`, rejected because a second name for one function is how the two would drift apart again.
+
+CHOSEN, SECOND: A JOB'S TASKS SPELL THE UNIFIED TASK RECORD. The 15 reads become `task_id` and `title`, as DECISION F275 D69 ruled for a job's own reads.
+
+CONSEQUENCE. No probe of round 97's block red-proves a task read, so for those reads the full suite, per DECISION F275 D48, is the only backstop. What the overlay fixes, and that it newly breaks nothing, is measured by the gates of round 97's block and recorded in the round 97 ledger entry by the round that books its verdict. `R-0809`, `R-0880` and `R-0883` stay open, and no finding is registered or resolved.
+
+HOW TO REVERSE. Delete the round 97 overlay carriers under `.agent/authored/` and this paragraph block; a mission's loop then cannot read its jobs in the flipped tree again.
