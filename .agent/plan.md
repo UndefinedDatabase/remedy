@@ -13,20 +13,19 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 97 ADDS THE FLIP'S EIGHTH OVERLAY, on top of the first seven, under DECISION F275 D64's
-method. The orchestrator loop and the watchdog load a mission's jobs through the job-id shape
-check instead of a `UUID` parse, the important-event writer checks a job id the same way, and
-code reading a task it took from a job's tasks reads the unified task record's `task_id` and
-`title`. The diff is carried in a carrier, so no path under `packages/`, `apps/` or `tests/`
-moves; the round books the round 96 verdict and its prose slip.
+ROUND 98 ADDS THE FLIP'S NINTH OVERLAY, on top of the first eight, under DECISION F275 D64's
+method. A job load whose `except Exception` handler stands for a missing job, and whose result
+is read after that handler, calls the unified store's raising loader, so the handler runs
+again; and the runtime test helper writes its job where, and in the shape, the unified store
+reads one. The diff is carried in a carrier, so no path under `packages/`, `apps/` or `tests/`
+moves; the round books the round 97 verdict and its prose slip.
 
 ## Next Steps
 
 1. MORE OVERLAYS, one residue group each, every one applied on top of those before it:
    production code that hands a `JobPlan` a `JobBudgets` model where the record holds its
    serialized dict; the `mission` and `decision resolve --as-mission` commands finding no
-   previous job; command-line tests whose job the flipped store does not find, among them the
-   test-run, contract and self-dogfood runtimes; the classic-shaped tests of routed handlers in
+   previous job; the self-dogfood runtimes; the classic-shaped tests of routed handlers in
    `tests/test_data_paths.py`; and what is left of the classic runner under `job resume`, which
    still builds a classic job.
 2. THE FLIP: the transform, then every overlay in round order, landed as a series of commits
