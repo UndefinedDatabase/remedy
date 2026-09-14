@@ -218,3 +218,16 @@ WHAT MOVED. Nothing under `packages/`, `apps/`, `tests/`, `docs/` or `scripts/`.
 WHAT THE NEXT SESSION DOES FIRST. Phase 1 rule 1 BEFORE rule 2: read `.agent/STOP` from disk, and while it exists write the handoff and end without a round. Once the operator has removed it, no handback is pending review. Round 101 books the `Gate: F275 R100` paragraph above in its first record-writing commit and adds the next overlay per `.agent/plan.md`, starting with the production code that hands a `JobPlan` a `JobBudgets` model. The reviewer's scratch `.remedy-wt/r101/rv_setup11.py <name> chain11` builds the chain through round 100 in a named worktree. `.remedy-wt/r98/suite_d100.out` is that chain's fresh full-suite transcript, and `.remedy-wt/r101/bad_chain11.txt` lists its 53 bad nodes.
 
 Operator questions open: 1
+
+## Operator amendment amend0914-f275-sprint (2026-09-14)
+
+The next round is THE FLIP ROUND: rules in the amend0914-f275-sprint
+paragraph of `docs/agents/self_drive_protocol.md`. One commit books the
+round 100 verdict, the next is the flip itself (transform plus every
+committed overlay carrier, ONE commit, the operator's second oversize
+grant), then one full-suite run with its transcript committed. Q1 is
+answered — the flip lands as one commit — and deleted; the operator
+questions file reads EMPTY. The overlay method of DECISION F275 D64
+retires at the flip commit. From now on the full suite runs once per
+round, by the worker, in the primary checkout; the reviewer reads that
+transcript instead of re-running it.
