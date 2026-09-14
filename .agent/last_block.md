@@ -1,12 +1,12 @@
-── STEP T003 — F275 — ROUND 101 ──
-Goal: THE FLIP. Book the round 100 verdict, one registration and one decision in a single
-commit; re-check the eleven thin sites of DECISION F275 D48 by their witnesses; then land the
-transform and every committed overlay carrier of rounds 90 to 100, in the primary checkout, as
-ONE declared-oversize commit; then run the full suite once and commit its transcript.
+── STEP T003 — F275 — ROUND 102 ──
+Goal: The first BRIDGE round. Book round 101's verdict; let `ruff`'s own fixer take the import
+rows the flip added; repair eleven guard and pin nodes the transform renamed without reading;
+run the full suite once and show its bad-node set strictly shrinking with no node newly bad.
 
-Base commit: `5ce0c5a2`. Round type: SPLIT. This is the first round under operator amendment
-amend0914-f275-sprint in `docs/agents/self_drive_protocol.md`: read that paragraph before
-anything else, since it overrides the overlay rounds' rituals.
+Base commit: `7f2991c9`. Round type: SPLIT. Operator amendment amend0914-f275-sprint in
+`docs/agents/self_drive_protocol.md` governs this round; read that paragraph first. The
+production edits are import order and unused imports made by `ruff --fix`, so no mutation
+probe is ordered.
 
 THE FRAME RULE, per item 37 of §3, stated as the property MEASURED over the final bytes: NO LINE
 of this block is a run of a single repeated character, and every box-drawing rule inside the
@@ -14,78 +14,41 @@ STEP and SLICE header lines is exactly two characters long.
 
 ## Bundle — the ordered commit sequence
 
-C0 `.agent/authored/f275-r101.md` and `.agent/last_block.md`, both the block as received
-C1 THE BOOKKEEPING COMMIT: `.agent/plan.md` gets slice PLAN101 as a full replacement;
-   `.agent/live_review.md` gets slice RECORD101 appended; `.agent/decisions.md` gets slice
-   DEC101 appended
-C2 THE FLIP, per SPEC F
-C3 `.agent/authored/f275-r101-suite.txt`, per SPEC S
-C4 `.agent/handoff.md`, the handback; `.agent/operator_questions.md` gets slice OPQ101 as a full
-   replacement
+C0 `.agent/authored/f275-r102.md` and `.agent/last_block.md`, both the block as received
+C1 THE BOOKKEEPING COMMIT: `.agent/plan.md` gets slice PLAN102 as a full replacement;
+   `.agent/live_review.md` gets slice RECORD102 appended; `.agent/prose_slips.md` gets slice
+   SLIP102 appended; `.agent/decisions.md` gets slice DEC102 appended
+C2 SPEC L, the import rows
+C3 SPEC E, the eleven nodes
+C4 `.agent/authored/f275-r102-suite.txt`, per SPEC S
+C5 `.agent/handoff.md`, the handback
 
-C1 is the FIRST SUBSTANTIVE COMMIT, per item 23 of §3. No prose slip is carried.
+C1 is the FIRST SUBSTANTIVE COMMIT, per item 23 of §3.
 
 ## Change — exactly these paths and no others
 
-The Bundle's `.agent/` paths, and at C2 the tracked paths under `packages/`, `apps/` and
-`tests/` that SPEC F changes and nothing else.
+The Bundle's `.agent/` paths; at C2 the paths SPEC L's fixer changes; at C3 the paths SPEC E
+names.
 
-## SPEC T — the thin sites, after C0 and strictly before C1
+## SPEC L — at C2
 
-Each site is `<path>:<line>:<col>` at `ef75e213`, then its one witness from round 74:
-T1 `apps/cli/commands/job.py:351:21` `tests/test_run_log_cli.py::TestPlanJobLocalRunLog::test_planning_completed_noop_outcome`
-T2 `packages/orchestration/brain_detail.py:360:30` `tests/test_brain_detail.py::TestBuildBrainNodeDetail::test_task_node_affected_files_from_repo_applied`
-T3 `packages/orchestration/builder_bridge.py:483:28` `tests/orchestration/test_builder_repair_loop.py::TestRepairLoopDiffChannel::test_a_conflicting_diff_is_discarded_whole_and_the_round_falls_back`
-T4 `packages/orchestration/builder_bridge.py:489:20` the same witness as T3
-T5 `packages/orchestration/builder_bridge.py:491:46` the same witness as T3
-T6 `packages/orchestration/event_replay.py:386:19` `tests/orchestration/test_event_replay.py::TestResumeDryRun::test_dry_run_from_apply_resumable`
-T7 `packages/orchestration/ui_server.py:3144:40` `tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_an_effect_that_raises_is_500_and_audited_rejected_effect`
-T8 `packages/orchestration/ui_server.py:3226:32` `tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_exposed_id_with_no_dispatch_branch_is_the_501_guard`
-T9 `packages/orchestration/ui_view_model.py:966:22` `tests/ui_contracts/test_graph_architecture.py::TestDiagnosticsLayerSchema::test_diagnostics_nodes_separate`
-T10 `packages/orchestration/ui_view_model.py:1097:59` `tests/ui_contracts/test_ux_quality.py::TestChecklistSchemaAndLabels::test_memory_candidate_in_checklist`
-T11 `packages/orchestration/verifier.py:209:75` `tests/test_verifier.py::test_verify_fails_when_artifact_task_id_does_not_match`
-For each site: its line's text at `ef75e213`, read with `git show`, must be the text of the
-same line number of the file in the primary checkout. Run the witness ALONE, `cwd` the primary
-checkout, with `PYTHONPATH`, `REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed and `COVERAGE_FILE`
-under `.remedy-wt/r101w/`: `python3 -B -m pytest -q -p no:randomly -p no:cacheprovider
---cov=<the site's directory, dotted> --cov-report= --cov-fail-under=0 <witness>`. Export the
-data with `python3 -m coverage json`. Among the `ast` statements whose line span holds the
-site's line, take the one with the greatest first line; the site is REACHED when that first
-line is among the file's executed lines. A text mismatch, a witness that does not pass or a
-site not REACHED is a STOP: commit nothing further and write only the handback.
+From the primary checkout's root: `ruff check --fix --select I001,F401` followed by exactly the
+paths `git diff --name-only b184040c ebc0182c` prints. No other edit. One commit.
 
-## SPEC F — the flip, at C2, in the PRIMARY checkout on the branch
+## SPEC E — at C3
 
-F1 THE INPUTS, exactly as G4 of `.agent/authored/f275-r100.md` orders the generator (it defers
-to the G4 of `f275-r90.md` and `f275-r87.md`): `tree_base` from `git archive ef75e213`,
-`tree_tip` from `git archive 844a7f21`, the shift and delete controls, the committed fences
-extracted and the pinned digests checked first, and the generator run. Plain directories under
-`.remedy-wt/r101w/`, never worktrees. The round 100 worker's scripts under `.remedy-wt/r100w/`
-may be ported.
-F2 THE TRANSFORM, the committed fence of `.agent/authored/f275-r69-transform-guarded.part1.py.md`
-and `.part2.py.md` joined, run with its first argument the primary checkout's root and then the
-TIP re-keyed set, its owners file and `/home/decodeux/Repos/remedy/.remedy-wt/r61_status.json`.
-Then `git add -A`.
-F3 THE CARRIERS, all under `.agent/authored/`, in this order: `f275-r90-overlay.md`;
-`f275-r91-overlay.md`; `f275-r92-overlay-1.md` to `-4.md`; `f275-r93-overlay-1.md` and `-2.md`;
-`f275-r94-overlay-1.md` and `-2.md`; `f275-r95-overlay-1.md` to `-4.md`;
-`f275-r96-overlay-1.md`; `f275-r97-overlay-1.md`; `f275-r98-overlay-1.md`;
-`f275-r99-overlay-1.md`; `f275-r100-overlay-1.md`. The fence of each carrier as COMMITTED at
-`5ce0c5a2` is written to scratch and applied from the root with `git apply --check`, then
-`git apply`; `git add -A` once after each overlay's parts.
-F4 ONE COMMIT of everything staged. Nothing else is edited: no import sorting, no `ruff --fix`,
-no repair of any test, however red. The handback declares C2 oversize with the reason "the
-record flip is atomic by construction, DECISION F272 D15".
-F5 On any non-zero exit inside F1 to F3, restore with `git restore --staged --worktree --
-packages apps tests`, show `git status --porcelain` empty, commit nothing further and write only
-the handback.
+Slice EDITS102 is a JSON object: each key a path, each value a list of `[old, new]` pairs. Load
+the slice's bytes with `json.loads`. For each path in the object's order, and each pair in list
+order, `old` must occur EXACTLY ONCE in the file as it stands after C2 and the pairs before it;
+then it is replaced by `new`. A count other than one is a STOP: restore the path with `git
+checkout -- <path>`, commit nothing further and write only the handback. No other edit.
 
-## SPEC S — the suite, once, after C2 and before C3
+## SPEC S — the suite, once, after C3 and before C4
 
 The round's FIRST AND ONLY full-suite run, from the primary checkout's root, serially:
 `python3 -B -m pytest -q -p no:randomly -p no:cacheprovider --tb=short -rfEs`, with
 `PYTHONPATH`, `REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed and `PYTHONDONTWRITEBYTECODE=1`,
-stdout and stderr saved under `.remedy-wt/r101w/`. A bad node is the text after a line-initial
+stdout and stderr saved under `.remedy-wt/r102w/`. A bad node is the text after a line-initial
 `FAILED ` or `ERROR ` up to the first ` - ` or the line's end. The transcript file holds: line 1
 `EXIT=<pytest's return code>`; line 2 the run's last output line with its leading and trailing
 `=` and spaces stripped; then every distinct bad node, sorted, one per line; nothing after the
@@ -93,92 +56,91 @@ last line's newline.
 
 ## Constraints
 
-1. NO SLICE IS EDITED. PLAN101, RECORD101, DEC101 and OPQ101 land byte for byte; a
-   discrepancy inside one is DECLARED, never repaired.
-2. READ `.agent/STOP` before C0, before F2 and before C4, with real exit codes. If it appears,
-   finish the commit in hand, write the handback and end; from F2 to F4 the flip is the commit
-   in hand.
-3. No `.py` file under `.agent/`; scratch under `.remedy-wt/r101w/`, uncommitted, every scratch
+1. NO SLICE IS EDITED. PLAN102, RECORD102, SLIP102, DEC102 and EDITS102 are used byte for byte;
+   a discrepancy inside one is DECLARED, never repaired.
+2. READ `.agent/STOP` before C0, before C2 and before C5, with real exit codes. If it appears,
+   finish the commit in hand, write the handback and end.
+3. No `.py` file under `.agent/`; scratch under `.remedy-wt/r102w/`, uncommitted, every scratch
    output path absolute. The reviewer's `.remedy-wt/r101/` is not opened.
-4. The appends at C1 have a ZERO deletion column. Every commit except C2 stays under 500
-   insertions.
+4. The appends at C1 have a ZERO deletion column. Every commit stays under 500 insertions.
 5. No `gh`, no `remedy`, no pull request, no branch created or deleted, no merge, NEVER a
-   force-push, no history rewrite. Push after C1, C2, C3 and C4. No worktree is created.
-6. THE BLOCK'S OWN SIZE, measured on its final bytes: 276 lines TOTAL and 194 lines of
+   force-push, no history rewrite. Push after C1, C3, C4 and C5. No worktree is created.
+6. THE BLOCK'S OWN SIZE, measured on its final bytes: 283 lines TOTAL and 160 lines of
    PROSE, against the caps of 490 and 400.
-7. GATE ORDER. G2 runs after C0 and before C1, because DEC101 cites it. G1 runs at C1. G3's
-   staged readings run before C2's commit and its tree readings after it. G4 runs after C2 and
-   before C3. G5 and G6 run after C3 and before C4. No gate runs after C4; C4's own numbers are
-   the reviewer's.
-8. A red suite is not a stop, per amendment amend0914 rule 3; it is reported.
-9. Every commit message ends with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`, and
+7. GATE ORDER. G1 runs at C1. G2 runs after C3. G3 runs after G2 and before the suite. G4 runs
+   after the suite and before C4, with its committed-transcript reading at C4. G5 and G6 run
+   after C4 and before C5. No gate runs after C5; C5's own numbers are the reviewer's.
+8. Every commit message ends with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`, and
    no subject carries a leading-slash token or an absolute path.
 
 ## Done when — the gates, each run for real and its exit code recorded
 
-G1 TRANSPORT AND BOOKKEEPING, at C1. The sha256 of `.agent/authored/f275-r101.md` at C0 equals
+G1 TRANSPORT AND BOOKKEEPING, at C1. The sha256 of `.agent/authored/f275-r102.md` at C0 equals
 the digest received with the block, and `.agent/last_block.md` at C0 is byte-identical to it.
 Extract the slices by their markers, report how many were FOUND, and check each against its
-BEGIN-marker sha256. `.agent/plan.md` at C1 is byte-identical to PLAN101, with at most 50 lines,
-one `## Goal` and one `## Next Steps`. For each append: the pre-commit blob read with `git show
-5ce0c5a2:<path>`, 1163586 bytes for `.agent/live_review.md` and 1315515 for
-`.agent/decisions.md`, followed by the slice, equals the file at C1. Lines matching
-`^Gate: F\d+ R\d+ — ` read 122 at `5ce0c5a2` and 123 at C1, with `Gate: F275 R100 — ` once.
-The open set BY DISTINCT ID, the ids of `^- R-\d{4} — ` paragraphs minus the ids of
-`^Done: R-\d{4}` lines, reads 88 at `5ce0c5a2` and 89 at C1, the only id added `R-0884`, with
-`R-0809`, `R-0880` and `R-0883` open.
+BEGIN-marker sha256. `.agent/plan.md` at C1 is byte-identical to PLAN102, with at most 50 lines,
+one `## Goal` and one `## Next Steps`. For each append, the blob `git show 7f2991c9:<path>`
+followed by the slice equals the file at C1: 1168612 bytes for `.agent/live_review.md`, 305304
+for `.agent/prose_slips.md` and 1318510 for `.agent/decisions.md`. Lines matching
+`^Gate: F\d+ R\d+ — ` read 123 at `7f2991c9` and 124 at C1, with `Gate: F275 R101 — ` once. The
+open set BY DISTINCT ID, the ids of `^- R-\d{4} — ` paragraphs minus the ids of `^Done: R-\d{4}`
+lines, reads 89 at `7f2991c9` and at C1 with identical membership.
 
-G2 THE THIN SITES, per SPEC T. One row per site: text match, witness exit code and tally,
-statement first line, REACHED. The reviewer read every text matching, every witness exit 0 at
-`1 passed`, and 11 of 11 REACHED. Then the same check once more with each site paired with the
-NEXT site's witness, T11 taking T1's: the reviewer read 2 of 11 REACHED.
+G2 THE CODE, after C3. At C2: the fixer's own summary line, which the reviewer read as
+`Found 354 errors (354 fixed, 0 remaining).`; `git show --numstat` of C2 lists only paths the
+flip changed, and the reviewer read 184 paths, 355 insertions and 527 deletions. At C3: every
+pair's count, each 1. Then `git rev-parse C3:packages`, `C3:apps` and `C3:tests` read the
+reviewer's dry-run trees d3a40d00c8222f687bb9f7136f18592ed20288e2,
+625e9faa3c5ef8f34f7e6b11a45ba05360191ec2 and 50b1076580d05561527332c701393243b3b2c274.
+`ruff check . --output-format concise` rows as a MULTISET with line and column dropped, at
+`5ce0c5a2` from a `git archive` tree under `.remedy-wt/r102w/` and at C3 in the primary
+checkout: the reviewer read 26 and 11, with no row at C3 absent at `5ce0c5a2`.
 
-G3 THE FLIP. F1: the pinned and fence digests as the round 100 block states them; the generator
-reading 56 paths differing BASE and TIP, 2183 ruled sites recovered at TIP, SHIFT and DELETE
-with 0 UNRESOLVED, line-key control 1895, 1886 and 1886, owner check at TIP 1908 CONFIRMED, 275
-REFUSED and 0 CONTRADICTED; the TIP re-keyed set sha256
-c382cd6689a4272a134647d9d9b1cc41562ce7a7943af2fed7e651f1d77d720e and its owners file
-5e62adf8e08beec147c1024840688f928cc716eeb9d8a87675f7dc1361ea04b0. F2: PRECONDITION 2183
-resolving and 0 not, 264 files rewritten, 6097 total rewrites, 0 broken. F3: every part's
-`git apply --check` and `git apply` exit 0, and `git diff --name-only` empty after each
-`git add -A`. Before the commit, `git diff --cached --numstat 5ce0c5a2`: 293 paths, every one a
-`.py` file under `packages/`, `apps/` or `tests/`, 5839 insertions and 5584 deletions; and
-`git status --porcelain` lists nothing unstaged. After it, `git rev-parse C2:packages`,
-`C2:apps` and `C2:tests` read the reviewer's dry-run trees
-87f977028b9c4f18c17a57dfb05ed120c0bffc91, 38d2d958335dde62b90355eca2baf66bdee434d1 and
-ccc0800528099881ae1ed164f72a419056270861, and `C2:docs`, `C2:scripts` and `C2:.agent` equal
-C1's.
+G3 THE TARGETED FILES, before the suite. `python3 -B -m pytest -q -p no:randomly -p
+no:cacheprovider` with SPEC S's environment over `tests/test_data_paths.py`,
+`tests/orchestration/test_job_digest.py`, `tests/orchestration/test_uuid_record_ratchet.py`,
+`tests/test_model_construction_keywords.py`, `tests/ui_server/test_command_channel.py` and
+`tests/orchestration/test_ci_budgets.py`: exit 0 with no failure and no error. The reviewer's
+worktree read 250 passed.
 
-G4 THE SUITE, per SPEC S. Before the run, `packages.orchestration.pingpong_job.__file__` is
-printed and lies inside the primary checkout. Report pytest's real exit code, the summary line,
-the count of distinct bad nodes and that count per test file. After the run and before C3,
-`git status --porcelain` lists only the transcript file; at C3 the committed transcript equals
-the file rebuilt from the saved stdout. The reviewer's own fresh worktree of the same tree read
-`46 failed, 18389 passed, 29 skipped, 1 warning, 7 errors`; the primary checkout may differ and
-no count is ordered.
+G4 THE BRIDGE, per SPEC S. BASE is the set of bad nodes in `.agent/authored/f275-r101-suite.txt`
+at `7f2991c9`. Report pytest's real exit code, the summary line, the count of distinct bad
+nodes, FIXED (in BASE and not bad now) and NEWLY BAD (bad now and not in BASE), each by node id.
+Each NEWLY BAD node is re-run by its node id ALONE three times with SPEC S's environment, and
+reported FLAKY with the three tallies only if all three pass; the reviewer saw
+`tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_job_id_is_checked_after_the_credentials`
+fail once under the full suite and pass ten times alone. NEWLY BAD less FLAKY: MUST be empty.
+FIXED MUST hold these nodes: `tests/orchestration/test_ci_budgets.py::test_this_repository_really_is_at_or_below_the_lint_ceiling`;
+`tests/ui_server/test_command_channel.py::TestCommandDoorImportGuard::test_the_door_imports_exactly_the_allowed_set`;
+in `tests/test_data_paths.py::TestRoutedHandler`, `test_a_routed_handler_accepts_a_short_classic_prefix`,
+`test_attaching_by_short_prefix_stores_the_full_job_id` and
+`test_stopping_by_an_unhyphenated_id_files_the_stop_under_the_canonical_id`; in
+`tests/orchestration/test_job_digest.py`, `test_the_normalized_envelope_equals_its_stored_golden`
+with each of `[blocked_with_decisions]`, `[budget_stopped]`, `[green]` and `[mid_run]`;
+`tests/orchestration/test_uuid_record_ratchet.py::TestNoRecordOutsideTheClassicPairDeclaresAUuidId::test_the_matcher_can_see_a_uuid_field_at_all`;
+and `tests/test_model_construction_keywords.py::TestEveryConstructionKeywordIsADeclaredField::test_an_undeclared_keyword_really_is_dropped_rather_than_rejected`.
+At C4 the committed transcript equals the file rebuilt from the saved stdout, and before C4
+`git status --porcelain` listed only that file.
 
-G5 TREE, CANARY, LINT, PATH SET, after C3. `git status --porcelain` prints `''` and
+G5 TREE, CANARY, PATH SET, OPEN SET, after C4. `git status --porcelain` prints `''` and
 `git worktree list` one row. The canary `python3 -B -m pytest tests/cli/test_golden_path.py -q`:
-exit code and tally REPORTED. `ruff check . --output-format concise` rows as a MULTISET with
-line and column dropped, at `5ce0c5a2` from a `git archive` tree under `.remedy-wt/r101w/` and
-at C3 in the primary checkout: report both counts, and the added and removed rows counted by
-rule code; the reviewer read 26 at base and 366 in its dry run, added `I001` 320, `F401` 18 and
-`F821` 3, removed `F401` 1. The changed-path set of `5ce0c5a2`..C3, less C2's paths, against
-the Bundle's paths less C4's: MISSING and EXTRA by name.
+exit code and tally REPORTED. The changed-path set of `7f2991c9`..C4 against the union of the
+Bundle's `.agent/` paths other than `.agent/handoff.md`, C2's paths and C3's paths: MISSING and
+EXTRA by name. The open set at C4 equals C1's.
 
-G6 THE INSERTION CAP over `5ce0c5a2`..C3: one row per commit with insertions, deletions and
-staged path count, and the commits reaching 500 insertions, named.
+G6 THE INSERTION CAP over `7f2991c9`..C4: one row per commit with insertions, deletions and
+staged path count, and the number of commits reaching 500 insertions.
 
 Handback: `.agent/handoff.md` per `docs/agents/handback_template.md`, Session line
-`SESSION 35 of feature F275 · round 101 · rounds so far 101`; the Commits table read from
-`git show --numstat` and compared cell by cell against G6, C4's row carrying no numbers and
-saying why; the oversize declaration of C2; one Verification line per gate with its REAL exit
-code; External actions; Authored-text proofs; Item-status; Deviations; one sentence of context
-self-assessment; `## Next` stating `Operator questions open: 1`. NO SCOPE REPORT AND NO
-SESSION-LIMIT BANNER, by amendment amend0911-f275-to-scope.
+`SESSION 35 of feature F275 · round 102 · rounds so far 102`; the Commits table read from
+`git show --numstat` and compared cell by cell against G6, C5's row carrying no numbers and
+saying why; one Verification line per gate with its REAL exit code; External actions;
+Authored-text proofs; Item-status; Deviations; one sentence of context self-assessment;
+`## Next` stating `Operator questions open: 1`. NO SCOPE REPORT AND NO SESSION-LIMIT BANNER,
+by amendment amend0911-f275-to-scope.
 
-── SLICE PLAN101 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
-BEGIN PLAN101 sha256=bb72bb684b5f4329f67509976b24b0502d9d032994fe645ca20adf02a6d308d9
+── SLICE PLAN102 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
+BEGIN PLAN102 sha256=b84b5c90f0e43c4d244ba2fc5f81d561192e14349de3e8493e4baf930ab801f6
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -189,29 +151,29 @@ Branch: feature/f275-one-world-completion-part-three, cut from `main` at
 Finish what F274 could not reach inside its own limit: the two carry-overs F260's Design
 names, DECISION F260 D3, the prototype-cluster deletion itself, the atomic record flip that
 T002 rules but does not perform, and the classic runner. Operator ruling amend0908-f275-finish
-orders T001 PERFORMED, not prepared. T001 and T002 are DONE, and the classic runner's whole
-command surface is gone as of round 34.
+orders T001 PERFORMED, not prepared. T001 and T002 are DONE, the classic runner's whole
+command surface is gone as of round 34, and the record flip landed in round 101.
 
 ## Current Step
 
-ROUND 101 IS THE FLIP ROUND, per operator amendment amend0914-f275-sprint. One bookkeeping
-commit books the round 100 verdict, registers as `R-0884` the structured acceptance form that
-DECISION F275 D22 left to the flip, and records DECISION F275 D75, under which the eleven thin
-sites of DECISION F275 D48 are re-checked by their own witnesses before the flip. The next
-commit is THE FLIP: the transform in the primary checkout, then every committed overlay carrier
-of rounds 90 to 100 in round and part order, staged and landed as ONE declared-oversize commit.
-The full suite then runs once in the primary checkout and its transcript is committed. The
-overlay method of DECISION F275 D64 is retired from the flip commit onward.
+ROUND 102 IS THE FIRST BRIDGE ROUND, per operator amendment amend0914-f275-sprint rule 3. It
+removes the lint rows and the guard and pin failures the flip left: `ruff`'s own fixer sorts
+the import blocks and drops the unused imports in the files the flip changed, the three
+routed-handler tests of `tests/test_data_paths.py` build a unified record with a classic-shaped
+id, the job digest's golden normalizer reads the unified record's id, two guard tests about
+the classic pydantic models import those models again, and the command door's import guard
+rules `save_job_plan` where it ruled `save_job`. The full suite runs once and its bad-node set
+must be a strict subset of round 101's committed transcript.
 
 ## Next Steps
 
-1. BRIDGE ROUNDS on the real tree, one residue group each, every one strictly shrinking the
-   bad-node set of the committed transcript before it with no node newly bad: production code
-   that hands a `JobPlan` a `JobBudgets` model where the record holds its serialized dict; the
-   classic-shaped tests of routed handlers in `tests/test_data_paths.py`; what is left of the
-   classic runner under `job resume`, whose kill-and-resume fixture still builds a classic job;
-   the job digest's stored goldens; and the rows `ruff check` gains from the transform — until
-   a round's transcript reads exit 0.
+1. MORE BRIDGE ROUNDS on the real tree, each strictly shrinking the committed bad-node set with
+   no node newly bad: production code that hands a `JobPlan` a `JobBudgets` model where the
+   record holds its serialized dict, and the `job resume` tests of `tests/cli/test_plan_approval.py`;
+   what is left of the classic runner under `job resume`, whose kill-and-resume fixture still
+   builds a classic job; the scoped job listings; and the single failures left in the job
+   context command, the golden path, the runtime smokes, the repair loop, the proposed-task
+   store, the cockpit adapter and the task runner — until a round's transcript reads exit 0.
 2. THE CLASSIC STORE, with the which-store branches and adapters the flip leaves unreached.
 3. THE CLOSURE SEQUENCE.
 
@@ -219,58 +181,103 @@ overlay method of DECISION F275 D64 is retired from the flip commit onward.
 
 - THE LIMIT IS LIFTED, not reached: amendment amend0911-f275-to-scope withdraws the 20
   sessions and 60 rounds without a replacement, so this feature closes only at full scope.
-- THE BRANCH IS RED FROM THE FLIP COMMIT until a bridge round's transcript reads exit 0, and
-  hosted CI on the branch is expected to be red in that span, per amend0914 rule 3.
+- THE BRANCH IS RED until a bridge round's transcript reads exit 0, and hosted CI on the branch
+  is expected to be red in that span, per amend0914 rule 3.
 - THE BRIDGE IS BOUNDED at eight rounds after the flip commit: a ninth writes an operator
   question and stops, and a round that adds a bad node is FAIL.
+- A SERVER-START RACE: a command-channel test read its server's info file before the server
+  wrote it once in the reviewer's full run after the flip and passed ten times alone.
 - ONE ROUTED LOAD IS REACHED BY NO TEST until `R-0883` is repaired.
-- The open set is 88 by distinct id at this round's base, with `R-0809`, `R-0880` and `R-0883`
-  open, and 89 once `R-0884` is registered. Four are High — R-0803, R-0804, R-0806 and R-0807 —
-  all F273's, per DECISION F272 D12.
-END PLAN101
+- The open set is 89 by distinct id, with `R-0809`, `R-0880`, `R-0883` and `R-0884` open.
+  Four are High — R-0803, R-0804, R-0806 and R-0807 — all F273's, per DECISION F272 D12.
+END PLAN102
 
-── SLICE RECORD101 ── target `.agent/live_review.md` ── APPEND ──
-BEGIN RECORD101 sha256=f3608a56b67c6c5b3bce168f26f72ebe0a15996beb3e804e3206cba949410499
+── SLICE RECORD102 ── target `.agent/live_review.md` ── APPEND ──
+BEGIN RECORD102 sha256=5d9cc617b65dedd3cf21afbc0c09150eb1cd48979fbbbf0ee39ab57b1850b08a
 
-Gate: F275 R100 — the F275 round 100 entry. VERDICT PASS. Written by the planner and reviewer of session 34 after reading the committed range `71dbb930`..`0b063277` and RE-DERIVING EVERY GATE THE WORKER DID NOT RUN, and G4, independently; the worker's report and its transcripts were evidence for no line below. The round moved no path under `packages/`, `apps/`, `tests/`, `docs/` or `scripts/`; its code is the diff carried in `.agent/authored/f275-r100-overlay-1.md`. The worker met `.agent/STOP` at C4 and ran none of G1, G2, G3, G6 or G7; each is read here. TRANSPORT AND RECORD. The committed `.agent/authored/f275-r100.md` equals the reviewer's original at 23680 bytes, `.agent/last_block.md` equals it from its own commit through `0b063277`, and all three slices match their BEGIN-marker digests; the block reads 276 lines TOTAL and 209 PROSE, no line a run of one character. `.agent/plan.md` equals PLAN100, 49 lines, one `## Goal` and one `## Next Steps`. Both appends are exact under reader A, 1160621 plus 2965 into the review record and 1307742 plus 2655 into the decisions, with reader B holding at N counted from each slice as 3 and 6, and a letter flipped in each FIRST appended paragraph rejected by both readers. The ledger's `Gate: F<n> R<n> — ` head matches 122 heads, `Gate: F275 R99` once. Eight commits each staged one path, the largest the carrier at 459 insertions, none at 500. The carrier holds 33 prose lines and one fence of 424 lines, 17775 bytes, byte-identical to the reviewer's own dry-run diff. THE OVERLAY HOLDS UNDER THE REVIEWER'S RE-RUN. In a fresh worktree at `844a7f21`, transformed from the reviewer's generator scratch, the committed overlays of rounds 90 to 99 applied and staged with every `git apply --check` and `git apply` at exit 0. Read from that index with `ast` over `tests/`, the proposed-task reads were 11, the brain-node reads 2, the `__import__` constructions 2, the job-double `id` and `name` targets 37 and the `job_id` and `job_title` targets 1. The committed round 100 fence then applied with exit 0 on exactly its 17 paths, nothing missing or extra, and the same readings were 0, 0, 0, 0 and 38. `ruff` over the 17 paths exited 1 in both states with 34 rows each, none added or removed as a multiset with line and column dropped. The full suite was not re-run: the reviewer's own first full run of the byte-identical diff in a fresh chain tree read 46 failed, 18389 passed, 29 skipped and 7 errors, 53 bad nodes, against 70 in the reviewer's fresh run of the chain before it. That is 17 fixed and none newly bad, and the fixed nodes per file equal the worker's G5 table. In the primary checkout at `0b063277` the canary read 42, and `ruff check .` read 26 rows against 26 at `71dbb930`, the difference empty. The changed paths are the Bundle's, and the open set stayed 88 with identical membership, `R-0809`, `R-0880` and `R-0883` open.
+Gate: F275 R101 — the F275 round 101 entry. VERDICT PASS. Written by the planner and reviewer of session 35 after reading the committed range `5ce0c5a2`..`7f2991c9` and re-deriving every reading that bears on a product path; the worker's report and its transcripts were evidence for no line below. It is booked here by the first commit of round 102 that writes the record, per operator amendment amend0827-process-diet rule 1. THE FLIP LANDED as `ebc0182c`, 293 paths, 5839 insertions and 5584 deletions, declared oversize under operator amendment amend0914-f275-sprint rule 1.
 
-- R-0884 — Low, AFTER THE RECORD FLIP A TASK'S ACCEPTANCE CRITERIA ARE ONE STRING, AND THE PER-CRITERION `required` FLAG OF THE CLASSIC `AcceptanceCheck` HAS NO FIELD TO LIVE IN. Raised by the planner and reviewer of session 35 of F275 while preparing round 101, because DECISION F275 D22 orders the flip round to register the structured acceptance form rather than invent a home for it. THE DEFECT: at `844a7f21` the classic `Task` of `packages/core/models.py` carries `acceptance_checks: list[AcceptanceCheck]`, each check a `description` and a `required` flag defaulting to true, while the unified `TaskEntry` of `packages/orchestration/pingpong_job.py` carries `acceptance: str`. At `844a7f21` the two production constructions that build a task's structured checks are `map_flight_plan_to_tasks` in `packages/orchestration/flight_plan.py` and `build_verify_first_task` in `packages/orchestration/mission_state.py`. MEASURED by the reviewer in its own dry run of the flip, `844a7f21` transformed with every committed overlay carrier of rounds 90 to 100 applied and staged, index tree `dacb1830`: both constructions build a `TaskEntry` with `acceptance=` text, the flight plan's criteria joined with newlines by the overlay DECISION F275 D68 rules, and `git grep -n acceptance_checks -- packages apps` over that tree lists no construction passing a task's `acceptance_checks`; the one keyword argument of that name left builds a `PlannerOutput` in `packages/orchestration/structured_planner.py`. WHY LOW: every criterion either construction builds is required, as D68 measured, so no reader observes a lost flag; what is lost is the ability to mark a criterion optional and to read a task's criteria as a list. WHY NOT F275's: D22 places the structured form outside the flip, and amendment amend0908-f275-finish rule 4 registers a lost behaviour against an inheriting feature instead of keeping a shim. FIX: give `TaskEntry` a structured acceptance list that the record serializes, or rule in a dated decision that a task's criteria are text and delete `AcceptanceCheck` together with the classic `Task`. Owner: F273.
-END RECORD101
+WHAT THE TRANSPORT PROOF COVERS, per item 37 of §3. The committed `.agent/authored/f275-r101.md` and `.agent/last_block.md` equal the reviewer's original at 26772 bytes from `475a36a2` through `7f2991c9`; `.agent/plan.md` equals PLAN101 and `.agent/operator_questions.md` equals OPQ101 at `7f2991c9`. Both appends at `b184040c` are exact: 1163586 bytes followed by RECORD101 in the review record, and 1315515 followed by DEC101 in the decisions. The ledger's `Gate: F<n> R<n> — ` heads read 122 at `5ce0c5a2` and 123 at `b184040c`, and the open set went from 88 to 89 with `R-0884` the only id added, `R-0809`, `R-0880` and `R-0883` open.
 
-── SLICE DEC101 ── target `.agent/decisions.md` ── APPEND ──
-BEGIN DEC101 sha256=bdeb7d5bfb613f2e24b1aa3f07e18d4bb379c310eb0b8d30e9b832ec0e92fe97
+THE FLIP IS THE TREE THE REVIEWER BUILT. Before authoring, the reviewer transformed its own worktree at `844a7f21` from its own generator output and applied the committed carriers of rounds 90 to 100; the `packages`, `apps` and `tests` trees of `ebc0182c` are identical to that tree's, `87f97702`, `38d2d958` and `ccc08005`, and `docs`, `scripts` and `.agent` do not change in that commit. Every other commit of the range touches `.agent/` alone, and `ebc0182c` is the only one at 500 insertions or more. The reviewer's own thin-site check at `5ce0c5a2` read all eleven sites of DECISION F275 D48 reached by their named witnesses, and 2 of 11 with each site given the next site's witness.
 
-## DECISION F275 D75 (2026-09-14, F275 round 101) — the flip round re-checks DECISION F275 D48's eleven thin sites by running each named witness alone under coverage, and registers the structured acceptance form DECISION F275 D22 left to it
+THE SUITE. The committed transcript `.agent/authored/f275-r101-suite.txt` reads exit 1 with 33 failed, 18408 passed, 23 skipped and 7 errors, and lists 40 distinct bad nodes, sorted. The reviewer's own full run in the primary checkout at `7f2991c9`, the first of the three that amendment amend0914 rule 4 grants the reviewer, read 34 failed, 18407 passed, 23 skipped and 7 errors, 41 bad nodes: the transcript's 40, and `tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_job_id_is_checked_after_the_credentials`, whose failure is a `JSONDecodeError` on the test server's info file read before the server wrote it, and which passed in ten of ten runs alone. No node is bad in the transcript and good in the reviewer's run. All 40 are among the 53 bad nodes of the reviewer's fresh round 100 worktree run. The reviewer's dry-run tree, identical in `packages`, `apps` and `tests`, read `ruff check .` at 366 rows against 26 at `5ce0c5a2`: added `I001` 320, `F401` 18 and `F821` 3, which the bridge owes.
 
-CONTEXT. DECISION F275 D48 carries into the flip round eleven production sites that round 74 found witnessed by exactly one test each, and obliges that round to re-derive the thin set before it flips, a site dropped to zero witnesses being a stop. Round 74 derived its witnesses from one run of the whole suite with coverage recorded per test. Operator amendment amend0914-f275-sprint, rule 4, allows the full suite exactly once per round, run by the worker after its last code commit, so a whole-suite coverage run before the flip would be a second run. DECISION F275 D22 also obliges the flip round to register the structured acceptance form as a finding naming its owning feature, and DECISION F275 D68 left that registration with the flip round.
+ONE WORDING DEFECT OF THE BLOCK, declared by the worker. G3 ordered the staged numstat against `5ce0c5a2`, which also counts the five `.agent/` paths C0 and C1 had already committed; the worker reported both readings, and the ordered figures of 293 paths, 5839 insertions and 5584 deletions are the reading against `b184040c`. It is booked as one line in `.agent/prose_slips.md` by the commit that books this entry.
+END RECORD102
 
-CHOSEN, FIRST: THE ELEVEN ARE RE-CHECKED BY THEIR OWN WITNESSES. Each site D48 names is located by its line text at `ef75e213`, and its one witness from round 74 is run alone under coverage; the site counts as reached when the statement holding its line ran. The reviewer's reading at `5ce0c5a2`, taken before round 101's block was written: the eleven lines carry identical text at identical line numbers, every witness passes, and all eleven statements ran. With each site paired instead with the next site's witness, cyclically, the same check read 2 of 11, so it can fail. G2 of round 101's block re-takes the reading before the commit that lands this paragraph. ALTERNATIVE: a whole-suite coverage run before the flip, rejected because rule 4 allows the round one full-suite run and that run belongs after the flip. WHAT THIS DOES NOT SEE: a site round 74 found witnessed by two or more tests that has since lost every one of them. For those, the full suite after the flip stays the backstop D48 names. The ruling is reversible and is entered in `.agent/operator_questions.md` by round 101's handback commit.
+── SLICE SLIP102 ── target `.agent/prose_slips.md` ── APPEND ──
+BEGIN SLIP102 sha256=be33cf0f09cc92c8abe625aa649c4ce689eef188dc65ca81b4ff5a15c0da36f0
 
-CHOSEN, SECOND: THE STRUCTURED ACCEPTANCE FORM IS `R-0884`, registered in the same commit as this paragraph, Low and owned by F273, the findings-paydown feature that amendment amend0911-feedback rule A names as the default owner. ALTERNATIVE: a structured acceptance list added to `TaskEntry` inside the flip, rejected by D22 and by amend0914 rule 1, which composes the flip commit from the transform and the committed carriers alone.
+2026-09-14 · F275 R101 · G3 of the round 101 block ordered the flip's staged numstat as `git diff --cached --numstat 5ce0c5a2` while the same block's C0 and C1 had already committed five `.agent/` paths after that base, so the literal command read 298 rows and +6370 -5820 against the ordered 293 and +5839 -5584; the worker reported both and declared it. THE RULE THAT FOLLOWS: a staged-diff reading names the commit the index was built on, never the round's base, when commits of the same round precede it.
+END SLIP102
 
-CONSEQUENCE. The flip lands as round 101's C2, and DECISION F275 D64's overlay method is retired from that commit onward, per amend0914 rule 2. `R-0809`, `R-0880` and `R-0883` stay open, and the open set goes from 88 to 89.
+── SLICE DEC102 ── target `.agent/decisions.md` ── APPEND ──
+BEGIN DEC102 sha256=776a61f8f665c80608c81fa77a5cd4af1525f561238a2ccbd55cf68bf9a21857
 
-HOW TO REVERSE. Delete this paragraph block and the registration of `R-0884`. D48's obligation then stands unmet for a flip that has already landed, and a whole-suite coverage run over the flipped tree is owed in its place.
-END DEC101
+## DECISION F275 D76 (2026-09-14, F275 round 102) — the first bridge round: `ruff`'s own fixer takes the flip's import rows, a guard test about the classic models keeps the classic models, and the command door rules the unified store's writer
 
-── SLICE OPQ101 ── target `.agent/operator_questions.md` ── FULL REPLACEMENT ──
-BEGIN OPQ101 sha256=f8e82c23d021921910e2e5611416aa17a96e56a00be6fccd580bca42d13adf1d
-# Operator questions — what the loop needs decodeux to know or decide
+CONTEXT. Round 101's flip left 40 bad test nodes in its committed transcript, and `ruff check .` rows far above the repository's frozen ceiling of 26. In the reviewer's dry-run tree of the flip, identical to `ebc0182c` in `packages`, `apps` and `tests`, the rows added are 320 import-order rows, 18 unused imports and 3 undefined names, all in files the flip changed. Eleven of the bad nodes are guards and pins whose subject the transform renamed without reading: the lint ceiling itself; the command door's import guard, which still rules `storage.save_job` while the door imports `pingpong_job.save_job_plan`; three routed-handler tests in `tests/test_data_paths.py` that call a `mint_job_id` they never import and read `id` off a unified record; the four job digest goldens, whose normalizer reads the job's id with `getattr(job, "id", "")`, a string the transform does not rewrite; and two guard tests whose subject is a classic pydantic model, the UUID ratchet's discriminator and the undeclared-keyword premise, which now point at unified dataclasses that are neither UUID-typed nor pydantic.
 
-> Written per `docs/agents/self_drive_protocol.md`, operator amendment
-> amend0911-feedback rule C (2026-09-11). Read by `remedy-decisions` on the
-> operator's machine and by the orchestrator at every relay. Every entry's body
-> stands alone in plain sentences; the heading carries the technical reference.
-> Soft cap five; entries leave only by the operator's answer, recorded as a dated
-> DECISION by the operator's next amendment, which deletes the entry.
+CHOSEN, FIRST: THE LINT ROWS ARE `ruff`'S OWN FIX. `ruff check --fix --select I001,F401` runs over the paths `ebc0182c` changed and nothing else. It also clears 15 rows those files already carried at `5ce0c5a2`, so the reviewer's dry run reads 11 rows, each of them also present at `5ce0c5a2`. The production edits are import order and unused imports only, so no mutation probe applies. ALTERNATIVE: sorting only the import blocks the transform touched, rejected because `I001` is reported per import block and the fixer cannot be told which of a file's blocks to leave.
 
-### Q2 — Narrower safety check before rename (2026-09-14, F275, round 101)
+CHOSEN, SECOND: A GUARD KEEPS ITS SUBJECT. The ratchet's discriminator and the undeclared-keyword premise import `packages.core.models` again, because the property each pins belongs to the classic models, which exist until the classic store is deleted. The three routed-handler tests keep their classic-shaped premise on the unified record: each saves a `JobPlan` whose `job_id` is a string UUID, and passes its first eight characters or its unhyphenated hex, the shape of an id written before the flip. ALTERNATIVE: a minted sixteen-hex id, rejected because such an id has no hyphens, so the stop test's two assertions would read the same string and contradict each other.
 
-What needs deciding. An earlier ruling said that before the big rename lands, the loop must measure again, across the whole test suite, how many tests exercise each line the rename changes without having confirmed that line's type, and must stop if any line has lost every test. Eleven of those lines were each exercised by exactly one test. Doing that measurement the way it was first done needs a full run of the test suite with coverage recording, and your newest rule allows exactly one full run per round, after the rename. I decided to check only the eleven named lines, each by running its one test on its own with coverage before the rename, and to stop if any of them is no longer reached. When I checked before handing the work over, all eleven were reached, and the worker checks again before the rename.
+CHOSEN, THIRD: THE DOOR'S ONE WRITE-SIDE IMPORT IS `pingpong_job.save_job_plan`, in `ALLOWED_IMPORTS`, as `STORAGE_MODULE` with its one allowed name, and in the violation fixture, which imports `_persist_job` from that module. The guard's comment asks for the ruling decision beside a change to its allowed set; amendment amend0914-f275-sprint rule 5 puts this paragraph in the round's bookkeeping commit, which precedes the test edit.
 
-Why it matters. The narrower check cannot see a line that used to be exercised by several tests and has since lost all of them. Such a line would only show up if the rename broke it and some other test happened to notice. The full test run after the rename remains the main safety net either way.
+CONSEQUENCE. Eleven nodes leave the bad set if nothing else moves, and amend0914 rule 3 binds round 102's transcript against round 101's. `R-0809`, `R-0880`, `R-0883` and `R-0884` stay open.
 
-My recommendation. Keep the narrower check. The lines most exposed were the eleven with a single test, and repeating the whole measurement would add a second full run, with coverage recording, to a round your rule limits to one.
+HOW TO REVERSE. Delete this paragraph block and revert round 102's two code commits; the eleven nodes are bad again, and `ruff check .` reads above its ceiling again.
+END DEC102
 
-What happens if you say nothing. The rename lands after the narrower check, and the remaining work continues under one full test run per round.
-END OPQ101
+── SLICE EDITS102 ── target SPEC E, applied to the paths it names ── JSON INPUT ──
+BEGIN EDITS102 sha256=da534028847ffa5c0c23d10009c969b269e42695a1b49284b45165b4c939a61f
+{
+ "tests/test_data_paths.py": [
+  [
+   "        job = JobPlan(job_id=mint_job_id(), job_title=\"routed-handler\")\n        save_job_plan(job)\n        exit_code = None\n        try:\n            _cmd_guide_job(str(job.id)[:8], json_output=True)\n",
+   "        job_id = str(uuid4())\n        save_job_plan(JobPlan(job_id=job_id, job_title=\"routed-handler\"))\n        exit_code = None\n        try:\n            _cmd_guide_job(job_id[:8], json_output=True)\n"
+  ],
+  [
+   "        job = JobPlan(job_id=mint_job_id(), job_title=\"attach-by-prefix\")\n        save_job_plan(job)\n        project = RemyProject(name=\"attach-by-prefix\")\n        save_project(project)\n        short = str(job.id)[:8]\n        _cmd_attach_project_job(str(project.id), short)\n        assert load_project(project.id).job_ids == [str(job.id)]\n",
+   "        job_id = str(uuid4())\n        save_job_plan(JobPlan(job_id=job_id, job_title=\"attach-by-prefix\"))\n        project = RemyProject(name=\"attach-by-prefix\")\n        save_project(project)\n        short = job_id[:8]\n        _cmd_attach_project_job(str(project.id), short)\n        assert load_project(project.id).job_ids == [job_id]\n"
+  ],
+  [
+   "        job = JobPlan(job_id=mint_job_id(), job_title=\"stop-by-hex\")\n        save_job_plan(job)\n        _cmd_job_stop(job.id.hex)\n        assert stop_requested(str(job.id)) is not None\n        assert stop_requested(job.id.hex) is None\n",
+   "        uid = uuid4()\n        save_job_plan(JobPlan(job_id=str(uid), job_title=\"stop-by-hex\"))\n        _cmd_job_stop(uid.hex)\n        assert stop_requested(str(uid)) is not None\n        assert stop_requested(uid.hex) is None\n"
+  ]
+ ],
+ "tests/orchestration/test_job_digest.py": [
+  [
+   "    job_id = str(getattr(job, \"id\", \"\") or \"\")\n",
+   "    job_id = str(getattr(job, \"job_id\", \"\") or \"\")\n"
+  ]
+ ],
+ "tests/orchestration/test_uuid_record_ratchet.py": [
+  [
+   "        from packages.orchestration.pingpong_job import JobPlan\n\n        assert \"id\" in _uuid_fields(JobPlan), (\n",
+   "        from packages.core.models import Job\n\n        assert \"id\" in _uuid_fields(Job), (\n"
+  ]
+ ],
+ "tests/test_model_construction_keywords.py": [
+  [
+   "        from packages.orchestration.pingpong_job import TaskEntry\n\n        task = TaskEntry(**{\"title\": \"d\", })\n",
+   "        from packages.core.models import Task\n\n        task = Task(**{\"description\": \"d\", \"type\": \"write_readme\"})\n"
+  ]
+ ],
+ "tests/ui_server/test_command_channel.py": [
+  [
+   "        (\"packages.orchestration.storage\", \"save_job\"),                    # D21\n",
+   "        (\"packages.orchestration.pingpong_job\", \"save_job_plan\"),          # D21\n"
+  ],
+  [
+   "    #: `storage` is the one write-side module the door may reach, and only for\n    #: the single name DECISION F009 D21 puts in the effect table: the answer is\n    #: durable only once `save_job` returns. Any OTHER name from it is the\n    #: \"handler touching storage directly\" the Acceptance forbids.\n    STORAGE_MODULE = \"packages.orchestration.storage\"\n    STORAGE_ALLOWED_NAMES = frozenset({\"save_job\"})\n",
+   "    #: `pingpong_job` is the one write-side module the door may reach, and only for\n    #: the single name DECISION F009 D21 puts in the effect table: the answer is\n    #: durable only once `save_job_plan` returns. Any OTHER name from it is the\n    #: \"handler touching storage directly\" the Acceptance forbids.\n    STORAGE_MODULE = \"packages.orchestration.pingpong_job\"\n    STORAGE_ALLOWED_NAMES = frozenset({\"save_job_plan\"})\n"
+  ],
+  [
+   "            \"        from packages.orchestration.storage import delete_job\\n\"\n            \"        return apply_source_patch, delete_job\\n\"\n",
+   "            \"        from packages.orchestration.pingpong_job import _persist_job\\n\"\n            \"        return apply_source_patch, _persist_job\\n\"\n"
+  ]
+ ]
+}
+END EDITS102
