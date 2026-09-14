@@ -13,22 +13,22 @@ command surface is gone as of round 34.
 
 ## Current Step
 
-ROUND 96 ADDS THE FLIP'S SEVENTH OVERLAY, on top of the first six, under DECISION F275 D64's
-method. The unified record's JSON form is its exporter's: `job show --json` prints it, tests
-round-trip a record through the exporter and the importer instead of pydantic calls, an old
-record a test loads has the unified shape, a record's `created_at` is the ISO string it stores,
-and the fulfillment record's `created_at` is formatted again. The diff is carried in a carrier,
-so no path under `packages/`, `apps/` or `tests/` moves; the round books the round 95 verdict and
-its prose slip.
+ROUND 97 ADDS THE FLIP'S EIGHTH OVERLAY, on top of the first seven, under DECISION F275 D64's
+method. The orchestrator loop and the watchdog load a mission's jobs through the job-id shape
+check instead of a `UUID` parse, the important-event writer checks a job id the same way, and
+code reading a task it took from a job's tasks reads the unified task record's `task_id` and
+`title`. The diff is carried in a carrier, so no path under `packages/`, `apps/` or `tests/`
+moves; the round books the round 96 verdict and its prose slip.
 
 ## Next Steps
 
 1. MORE OVERLAYS, one residue group each, every one applied on top of those before it:
    production code that hands a `JobPlan` a `JobBudgets` model where the record holds its
-   serialized dict; the mission end-to-end fixture and `mission continue` finding no previous
-   job; command-line tests whose job the flipped store does not find; the classic-shaped tests
-   of routed handlers in `tests/test_data_paths.py`; and what is left of the classic runner
-   under `job resume`, which still builds a classic job.
+   serialized dict; the `mission` and `decision resolve --as-mission` commands finding no
+   previous job; command-line tests whose job the flipped store does not find, among them the
+   test-run, contract and self-dogfood runtimes; the classic-shaped tests of routed handlers in
+   `tests/test_data_paths.py`; and what is left of the classic runner under `job resume`, which
+   still builds a classic job.
 2. THE FLIP: the transform, then every overlay in round order, landed as a series of commits
    each under the 500-insertion cap inside one round, carrying DECISION F275 D48's obligations
    and registering the structured acceptance form DECISION F275 D22 leaves to it, unless the
