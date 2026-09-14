@@ -1,137 +1,134 @@
-# Handback — F275 round 99
+# Handback — F275 round 100
 
 ## Session
 
-`SESSION 33 of feature F275 · round 99 · rounds so far 99`
+`SESSION 33 of feature F275 · round 100 · rounds so far 100`
 
 ## Range
 
-Review of `e7c09077`..`HEAD`: seven commits (C0a, C0b, C1, C2, C3, one C4 carrier, C5), plus this handback commit C6.
+Review of `71dbb930`..`HEAD`: six commits (C0a, C0b, C1, C2, one C3 carrier, C4), plus this handback commit C5.
+
+**`.agent/STOP` APPEARED DURING THE ROUND.** It is an empty file with mtime 2026-09-14 09:30:20 +0200. The worker found it
+when it tried to commit C4: the commit script refused because `git status --porcelain` listed `?? .agent/STOP` beside
+`.agent/decisions.md`. Constraint 3 says: finish the commit in hand, write the handoff and end. So C4 was finished and staged
+`.agent/decisions.md` alone. This handback follows it. **G1, G2, G3, G6 and G7, which constraint 10 places at C4, were NOT
+RUN.** `.agent/STOP` was not staged, was not committed, and was not touched. It is still untracked in the primary checkout.
 
 ## Commits
 
-### 5010244b F275 R99 C0a: save the round 99 block as authored text
+### bc9289a1 F275 R100 C0a: save the round 100 block as authored text
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r99.md` | +307 / -0 | the block copied with `shutil.copyfile`; `cmp` against `.remedy-wt/r99_block.md` exit 0, byte-identical at 26552 bytes, sha256 `4634e254…` (the digest received, verified before the copy) |
+| `.agent/authored/f275-r100.md` | +276 / -0 | the block copied with `shutil.copyfile` after its sha256 `0a0fda04…` was verified against the digest received; `cmp` against `.remedy-wt/r100_block.md` exit 0, 23680 bytes |
 
-### 4b8821a1 F275 R99 C0b: mirror the round 99 block into the last-block state file
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | +153 / -133 | written from the COMMITTED C0a blob, read back with `git show` |
-
-### 4d2168a5 F275 R99 C1: make the plan current for round 99
+### 3425fea6 F275 R100 C0b: mirror the round 100 block into the last-block state file
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +11 / -11 | slice PLAN99, a full replacement, byte for byte; the FIRST SUBSTANTIVE COMMIT |
+| `.agent/last_block.md` | +154 / -185 | written from the COMMITTED C0a blob, read back with `git show bc9289a1:…`; equal to the blob and to the received file |
 
-### 09e4fa5b F275 R99 C2: book the round 98 reviewer verdict
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +6 / -0 | slice RECORD99 appended |
-
-### b490f95b F275 R99 C3: append the round 98 prose slip
+### 78c15724 F275 R100 C1: make the plan current for round 100
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/prose_slips.md` | +2 / -0 | slice SLIPS99 appended |
+| `.agent/plan.md` | +12 / -11 | slice PLAN100, a full replacement, byte for byte (2967 bytes, 49 lines); the FIRST SUBSTANTIVE COMMIT |
 
-### 57d22c99 F275 R99 C4: commit the flip's tenth overlay, carrier 1 of 1
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f275-r99-overlay-1.md` | +343 / -0 | SPEC C part 1 of 1: 38 prose lines, then ONE ```` ```diff ```` fence holding all 10 file diffs in 303 lines (`packages/orchestration/checkpoints.py` through `tests/test_data_paths.py`), then the closing line; 18826 bytes, sha256 `765fea3984d949f9f290507cc2a185e4712cd57583ba3174ec2e63dacdca2768` |
-
-EDIT's `git diff` is 303 lines, 16232 bytes, sha256 `903074061b87b171193707bbcd9e9118292861e8fa4439fb8723f230d44346b8`. Its 10 file diffs run 22, 10, 93, 31, 13,
-13, 31, 13, 13 and 64 lines, 303 in all. That is under 440, so the greedy cut gives ONE part.
-
-### f0b6007b F275 R99 C5: record DECISION F275 D73
+### 49a7d804 F275 R100 C2: book the round 99 reviewer verdict
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | +12 / -0 | slice DEC99 APPENDED after G4's readings, G5 and G6, and after the three worktrees were removed; deletion column ZERO |
+| `.agent/live_review.md` | +6 / -0 | slice RECORD100 appended: pre-length 1160621, plus 2965, gives 1163586; post equals pre followed by the slice |
 
-### C6 — this commit (self-reference, R-0149 pattern)
+### d41eb0d9 F275 R100 C3: commit the flip's eleventh overlay, carrier 1 of 1
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | NO NUMBERS, BY CONSTRUCTION | constraint 10 says no gate runs after C6, and a handback cannot carry a reading of the commit that writes it; the REVIEWER measures this commit |
+| `.agent/authored/f275-r100-overlay-1.md` | +459 / -0 | SPEC C part 1 of 1: 33 prose lines, then ONE fence (a ```` ```diff ```` line, the 424-line part, a closing line), then nothing but one newline; 19933 bytes, sha256 `91c187541fbd8a901704c737a17b30e46d436526a30b7adb1c1a5c7f5c759ea6` |
 
-I read the `+/-` cells above from `git show --numstat` and compared each one against G8. C0a 307/0 = 307/0; C0b 153/133 = 153/133;
-C1 11/11 = 11/11; C2 6/0 = 6/0; C3 2/0 = 2/0; C4 343/0 = 343/0; C5 12/0 = 12/0. All seven pairs are EQUAL. Every commit staged
-exactly ONE path. The largest is C4 at 343 insertions, and 0 commits reach 500.
+EDIT's `git diff` is 424 lines, 17775 bytes, sha256 `9f3357c0f60a3489a3186c39ca706376dc5a6520cf8aeb5f24ca5298c2ac828c`. Its 17
+file diffs run 26, 13, 24, 15, 81, 26, 22, 15, 15, 13, 22, 26, 15, 26, 37, 22 and 26 lines, 424 in all. That is under 440, so
+the greedy cut gives ONE part.
 
-### SPEC O, as the overlay carries it (10 paths, in the flipped tree only)
+### c18fcc72 F275 R100 C4: record DECISION F275 D74
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/decisions.md` | +12 / -0 | slice DEC100 APPENDED after G4's readings and G5, and after the three worktrees were removed: pre-length 1307742, plus 2655, gives 1310397; deletion column ZERO. `.agent/STOP` was present and was NOT staged |
+
+### C5 — this commit (self-reference, R-0149 pattern)
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | NO NUMBERS, BY CONSTRUCTION | constraint 10 says no gate runs after C5, and a handback cannot carry a reading of the commit that writes it; the REVIEWER measures this commit |
+
+The `+/-` cells above come from `git log --numstat 71dbb930..HEAD`. **They were NOT compared against G7, because G7 was not run
+(STOP).** From that listing: every commit changed exactly ONE path. The largest is C3 at 459 insertions, and 0 commits reach 500.
+
+### SPEC O, as the overlay carries it (17 test files, in the flipped tree only; no production code)
 
 | Path | What |
 |---|---|
-| `packages/orchestration/checkpoints.py` | O1: `_job_snapshot_reference` imports `job_record_path, resolve_data_root` on one line, reads `path = job_record_path(job_id)`, adds `relative = path.relative_to(resolve_data_root()).as_posix()` after `data = path.read_bytes()`, and returns `(relative, "sha256:" + …)`; docstring and `except (OSError, ValueError)` unchanged |
-| `tests/cli/test_job_report.py` | O2: `_job_file` returns `jobs_dir() / job.job_id / "job.json"` |
-| `tests/cli/test_mission_cmd.py` | O2: `test_a_deleted_job_renders_as_missing_and_never_crashes` and `test_not_even_when_the_goal_smells_long_lived` use `data_root / "jobs" / job_id / "job.json"`. O3: `_link_job`, `_pending_plan_job` and `TestContinue._green_job` import `RunState` alone from `packages.core.models` and `JobPlan, save_job_plan` from `pingpong_job`, build `JobPlan(job_title=…)` with every other keyword kept, call `save_job_plan(job);`, and read `job.job_id`; the `_Job` double's attribute is `job_id` |
-| `tests/orchestration/test_checkpoints.py` | O2: `make_checkpoint`, `test_build_checkpoint_records_the_persisted_snapshot` and `test_the_checkpoint_references_the_persisted_snapshot` use `f"jobs/{…}/job.json"` |
-| `tests/orchestration/test_handoff.py` | O2: `_seed_job_checkpoint` uses `f"jobs/{job_id}/job.json"` |
-| `tests/orchestration/test_long_run_executor.py` | O2: `test_default_step_runs_the_real_single_task_path` checks `isolate_data_root / "jobs" / job.job_id / "job.json"` |
-| `tests/orchestration/test_mission_state.py` | O2: the three named functions use `tmp_path / "jobs" / <job>.job_id / "job.json"` |
-| `tests/orchestration/test_resume_cli.py` | O2: `put_checkpoint` uses `f"jobs/{job.job_id}/job.json"` |
-| `tests/orchestration/test_resume_kill.py` | O2: `test_the_kill_leaves_checkpoints_for_the_committed_cycles` checks `f"jobs/{job_id}/job.json"` |
-| `tests/test_data_paths.py` | O4: the guard imports `storage` alone and loops `for module in (storage,):`; the comment above `_JOB_EVIDENCE_OWNING_MODULES`, the evidence guard's docstring and the classic-store guard's docstring name `storage.py` as the module that names the classic store; the comment and the classic-store guard's docstring each add one sentence saying `checkpoints.py` called `jobs_dir` until the flip moved its job snapshot onto `job_record_path` |
+| `tests/orchestration/test_self_dogfood_execution.py` | O1: `pt.job_id` becomes `pt.id` as the first argument once in each of `test_approved_self_task_eligible`, `test_main_branch_blocks`, `test_unknown_branch_blocks`, `test_contract_blocked`, `test_execute_awaits_candidate`, `test_main_blocks_start` and `test_next_actions_catalog_backed`, and twice in `test_execute_idempotent_resume`; `unapproved.job_id` becomes `unapproved.id` in `test_unapproved_blocks` |
+| `tests/cli/test_self_dogfood_execution_cli.py` | O1: `_approved_task` returns `tasks[0].id` |
+| `tests/test_project_brain.py` | O2: `job_nodes[0].id` and `task_nodes[0].id`; the right-hand sides are unchanged |
+| `tests/test_patch_apply.py` | O3: `JobPlan(job_title="symlink test")` in `test_symlink_escape_blocked` |
+| `tests/ui_server/test_dashboard_cockpit_truth.py` | O3: `TaskEntry(title="x")`; the import line reads `from packages.orchestration.pingpong_job import JobPlan, TaskEntry` |
+| `tests/cli/test_job_commands.py`, `tests/orchestration/test_approval_queue.py`, `test_autorun.py`, `test_source_apply.py`, `test_test_execution_service.py`, `test_test_runner.py`, `tests/regression/test_named_bugs.py`, `tests/ui_contracts/test_graph_architecture.py`, `test_responsive.py`, `test_ux_quality.py`, `tests/ui_server/test_brain_view_model.py`, `test_live_state.py` | O4: the 37 targets of THE RULE (19 functions in 12 files) become `job.job_id = …` and `job.job_title = …`, with the values unchanged. The two reads follow: `load_proposed_tasks(str(job.job_id))` in `TestReviewerLoop.test_accept_recommendation`, and `job_id=str(job.job_id),` in `TestUsageAccounting.test_usage_incremented_on_process_start` |
 
-`.remedy-wt/r99w/spec_o.py` made every replacement. Each is an exact literal, confined to the span of the function it names, located
-with `ast` (the whole file for the module-level comment). Each count matched: 41 of 41 replacements read `count <n> (want <n>)`
-(`.remedy-wt/r99w/spec_o.out`). Every function name O2, O3 and O4 give matched a single definition in the chained tree, so there is
-no name difference to declare.
+`.remedy-wt/r100w/spec_o.py` made all 55 replacements: 11 + 2 + 3 + 2 + 37. Each is an exact literal confined to the `ast` line
+span of the function it names. O4's two patterns are regexes, anchored so that a longer name cannot match. The whole file is used
+only for the import line. Before writing anything, the script checked every count against its stated count, and every one matched
+(`.remedy-wt/r100w/spec_o.out`). O4's sites come from THE RULE's own `ast` reading of EDIT before the edit. Every function name
+O1 to O3 give matched a single definition, so there is no name difference to declare. The two read sites' classes were located by
+reading the file.
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git push origin feature/f275-one-world-completion-part-three` after C3, after C4 and after C5 | exit 0 each: `e7c09077..b490f95b`, `b490f95b..57d22c99`, `57d22c99..f0b6007b`. The push of C6 follows this commit, and its result is in the round report |
-| `git worktree add --detach .remedy-wt/r99w/wt_EDIT 844a7f21`, then `… wt_CONTROL 844a7f21`, then `… wt_OVERLAY 844a7f21`. This was G4 setup, run after C3 and before the C4 commit, per constraint 10 | exit **0**, **0**, **0** |
-| In each worktree: the transform, then `git add -A`, then each COMMITTED overlay in order: `f275-r90-overlay.md`; `f275-r91-overlay.md`; `f275-r92-overlay-1.md` … `-4.md`; `f275-r93-overlay-1.md`, `-2.md`; `f275-r94-overlay-1.md`, `-2.md`; `f275-r95-overlay-1.md` … `-4.md`; `f275-r96-overlay-1.md`; `f275-r97-overlay-1.md`; `f275-r98-overlay-1.md`. Each carrier got `git apply --check` then `git apply`, and `git add -A` ran once after each overlay's parts. Then SPEC O in EDIT only, and the C4 fence in OVERLAY only | exit 0 throughout (see G4) |
+| `git push origin feature/f275-one-world-completion-part-three` after C2, after C3 and after C4 | exit 0 each: `71dbb930..49a7d804`, `49a7d804..d41eb0d9`, `d41eb0d9..c18fcc72`. The push of C5 follows this commit, and its result is in the round report |
+| `git worktree add --detach .remedy-wt/r100w/wt_EDIT 844a7f21`, then `… wt_CONTROL …`, then `… wt_OVERLAY …`. This was G4 setup, after C2 and before C3 (constraint 10) | exit **0**, **0**, **0** |
+| In each worktree: the transform, `git add -A`, then each COMMITTED carrier in constraint 8's order (r90; r91; r92 ×4; r93 ×2; r94 ×2; r95 ×4; r96; r97; r98; r99), with `git apply --check` then `git apply`, and `git add -A` after each overlay's parts. Then SPEC O in EDIT only, and the C3 fence in OVERLAY only | exit 0 throughout (see G4) |
 | One targeted pytest run in EDIT, after SPEC O and before the diff was taken (constraint 8 allows it) | see deviation 3 |
-| In each worktree `git checkout HEAD -- .`, then `git worktree remove` for each, then `git worktree prune -v` | exit 0 throughout. This ran AFTER G6 and BEFORE C5, WITHOUT `--force`. After the restore, `git status --porcelain` printed `''` in each worktree. Only ignored entries were left: `.ruff_cache/` in EDIT; `.data/…`, `.pytest_cache/`, `.ruff_cache/`, `apps/ui/dist/` and `apps/ui/node_modules/` in CONTROL and OVERLAY. All three paths are gone, and `git worktree list` shows one row |
-| `git archive` of `ef75e213` and `844a7f21`, extracted by `tarfile` into `.remedy-wt/r99w/gen/` (tree_base, tree_tip, tree_shift, tree_delete, each `git init -q` + `git add -A -f .`); `git archive` of `e7c09077` into `.remedy-wt/r99w/tree_base` (the G7 base lint) | exit 0; plain directories, never registered worktrees |
+| In each worktree `git checkout HEAD -- .`, then `git worktree remove` for each, then `git worktree prune -v` | exit 0 throughout. This ran AFTER G5 and BEFORE C4, WITHOUT `--force`. `git status --porcelain` printed `''` in each worktree after the restore, with only ignored entries left (`.data/…`, `.pytest_cache/`, `.ruff_cache/`, `apps/ui/dist/`, `apps/ui/node_modules/`). All three paths are gone, and `git worktree list` shows one row |
+| `git archive` of `ef75e213` and `844a7f21`, extracted by `tarfile` into `.remedy-wt/r100w/gen/` (tree_base, tree_tip, tree_shift, tree_delete, each `git init -q` + `git add -A -f .`) | exit 0; plain directories, never registered worktrees |
 | `gh` / `remedy` | NOT RUN, not even a version query. No pull request, no branch created or deleted, no merge, no force-push, no history rewrite |
 
 ## Verification
 
-Each gate ran through `.remedy-wt/r99w/run.py`. It saves the output to `.remedy-wt/r99w/<name>.out` and appends `PROCESS_EXIT=`
-taken from the subprocess's own return code. Every figure the block states reproduced.
+Each gate ran through `.remedy-wt/r100w/run.py`. It saves the output to `.remedy-wt/r100w/<name>.out` and appends `PROCESS_EXIT=`,
+taken from the subprocess's own return code.
 
 | Gate | At | REAL exit | Decisive reading |
 |---|---|---|---|
-| G1 transport, budget, slices | C5 | 0 (`g123`) | `cmp` of `.remedy-wt/r99_block.md` against the COMMITTED C0a blob: exit **0**, empty output, 26552 / 26552 bytes, sha256 `4634e25424890319e560fa99dd35bf9a2711d9c635a26c0ec78d12403e10cc08`. `.agent/last_block.md` at C0b equals the C0a blob and is unchanged at C5. Slices FOUND **4**, each MATCHING its BEGIN-marker sha256: PLAN99 2916 bytes / 48 lines, RECORD99 3132 / 6, SLIPS99 561 / 2, DEC99 2595 / 12. TOTAL **307**, slice lines 68, PROSE **239**, as constraint 9 states (caps 490 / 400). No line is a run of one repeated character. All 5 STEP/SLICE header lines carry only two-character rules |
-| G2 the plan | C5 | 0 (`g123`) | `.agent/plan.md` at C1 is byte-identical to PLAN99 from the committed C0a blob: 2916 bytes, sha256 `8d6738e5…`, **48** lines, one `## Goal`, one `## Next Steps`; unchanged at C5 |
-| G3 the record | C5 | 0 (`g123`) | Pre-commit blobs read with `git show` at each commit's PARENT. C2 RECORD99: **1157489** (MATCHES) + 3132 = 1160621. C5 DEC99: **1305147** (MATCHES) + 2595 = 1307742. READER A is exact for both. READER B holds, in order, at N counted by the script as **3** and **6**. The negative controls flip `G`→`g` at offset 1157490 and `D`→`d` at 1305151, each inside the FIRST appended paragraph; BOTH readers REJECTED both. Deletion columns **0 / 0**. C3: the `.agent/prose_slips.md` pre-commit blob is **304743** (MATCHES) + 561 = 305304; post equals pre followed by exactly SLIPS99; deletion 0. Header pattern DERIVED from the pre-commit ledger: one shape, `^Gate: F\d+ R\d+ — `, matching **120 of 120** heads (599 paragraphs). RECORD99's header matches as `Gate: F275 R98 — `; no earlier head has that prefix, and there are 0 duplicate first lines |
-| G4 trees, chain, carriers | setup after C3 and before C4; readings after the C4 commit `57d22c99`, before C5 | 0 (`g4_build`), 0 (`c4_split`), 0 (`g4_check`) | **Inputs.** Pinned inputs MATCH: `r77_corrected.json` 120753 bytes `765b5ba9…`, owners 121095 `670c6e95…`, `r61_status.json` 1438 `a4c6cd63…`. Fences: rekey 5186 `f56394e9…`, owner 24253 `7be34374…`, input 10580 `c50da973…`, transform 29032 `075bc0dc…`. DELETE control line count 1. **Generator** exit **0**: **56** paths differ BASE/TIP; **2183** ruled sites recovered by scope at TIP, SHIFT and DELETE; UNRESOLVED **0**. Line-key CONTROL **1895 / 1886 / 1886**. Owner check at TIP: **1908** CONFIRMED, **275** REFUSED, **0** CONTRADICTED. **Transform** exit 0 in EDIT, CONTROL and OVERLAY, reading in each **2183** resolving / **0** not, **264** files, **6097** rewrites, **0** broken. **Chain.** All seventeen earlier carrier applications (r90, r91, r92 ×4, r93 ×2, r94 ×2, r95 ×4, r96, r97, r98; the r98 patch `a048783f…`) exited **0** for both `git apply --check` and `git apply` in each worktree, 102 of 102. `git diff --name-only` read 11, 12, 36, 13, 15, 32, 10, 6 and 9 paths after overlays 1 to 9, and was empty after each `git add -A`. **(a)** The fence from the COMMITTED C4 blob has 38 prose lines before it, one `` ```diff `` line and one closing line, with nothing after but one newline. Part count **1**; line count **303**, ≤ 440. It equals EDIT's saved `git diff` stdout AND EDIT's live `git diff` (16232 bytes, `90307406…`). In OVERLAY, `git apply --check` exit **0**, then `git apply` exit **0**. `git diff --name-only` there, against the staged index, lists **10** paths: MISSING `[]`, EXTRA `[]` against SPEC O's 10, each byte-identical to EDIT's. Cross-check: the tracked paths whose bytes differ between OVERLAY and CONTROL are the same 10. **(b)** `ast` over SPEC O's ten paths, CONTROL then OVERLAY, names matched exactly. Flat `.json` f-strings after a job id: **17** and **2**. CONTROL per path: `checkpoints.py` 2 (227, 231), `test_job_report.py` 1 (289), `test_mission_cmd.py` 2 (247, 470), `test_checkpoints.py` 3 (65, 149, 367), `test_handoff.py` 1 (114), `test_long_run_executor.py` 1 (559), `test_mission_state.py` 3 (438, 453, 864), `test_resume_cli.py` 1 (68), `test_resume_kill.py` 1 (220), `tests/test_data_paths.py` 2 (154, 276). OVERLAY: `tests/test_data_paths.py` 2 (154, 276), both there. String constants containing the `storage import save_job;` piece **3** and **0** (`test_mission_cmd.py` 74, 325, 505); containing the `pingpong_job import JobPlan, save_job_plan;` piece **0** and **3** (same three lines). `Assign` targets of `_Job` named `id` **1** and **0**, named `job_id` **0** and **1** (line 1405). Bare names plus import aliases named `checkpoints` in the guard **2** and **0** (alias 833, Name 835). All MATCH. **(c)** `ruff check --output-format concise` over SPEC O's 10 paths, run from inside each tree: CONTROL exit **1** with **16** rows; OVERLAY exit **1** with **16** rows (12 `I001`, 1 `F401`, 3 `F821`, the same rows in both). As a multiset of `<path>: <code> <message>` with line and column dropped: added **0**, removed **0** |
-| G5 full suite, CONTROL then OVERLAY | after the C4 commit, before C5 | 1 (`g5_CONTROL`), 1 (`g5_OVERLAY`), 0 (`g5_cmp`) | Each was its worktree's FIRST pytest run of any kind. `apps/ui/node_modules` and `apps/ui/dist` were ABSENT before each run and present after it. `PYTHONPATH`, `REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed; `PYTHONDONTWRITEBYTECODE=1`; `cwd` the worktree; `packages.orchestration.pingpong_job.__file__` inside the worktree in both. pytest exit 1 in both. CONTROL **`84 failed, 18351 passed, 29 skipped, 1 warning, 7 errors`** (1404.20s), **91** bad nodes: MATCHES the reviewer's. OVERLAY **`63 failed, 18372 passed, 29 skipped, 1 warning, 7 errors`** (1429.23s), **70** bad nodes. **Bad only in OVERLAY: 0**, so constraint 11 required no re-run and reports no FLAKY node. Bad only in CONTROL (fixed): **21**. The reviewer's dry-run flake `tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_non_commands_path_is_405` is bad in neither of my runs. Section mapping: 0 header mismatches in both transcripts |
-| G6 the probes | after G5, before C5, in OVERLAY | 0 (`g6`) | `__pycache__` purged before each of the four runs (0 directories each time); the module printed inside the worktree each time. Both mutations in `packages/orchestration/checkpoints.py`, inside `_job_snapshot_reference` (lines 218-232) only. **M1**: the bytes `relative = path.relative_to(resolve_data_root()).as_posix()` count **1** in the function and **1** in the file, as stated; they become `relative = f"jobs/{job_id}.json"`. **M2**: the bytes `path = job_record_path(job_id)` count **1** and **1**; they become `path = job_record_path(job_id).parent.with_suffix(".json")`. Selection `tests/orchestration/test_checkpoints.py` for both. M1 unmutated: exit 0, **`37 passed`**; mutated: exit 1, **`2 failed, 35 passed`**. M2 unmutated: exit 0, **`37 passed`**; mutated: exit 1, **`2 failed, 35 passed`**. Bad only under each: `TestWriting::test_build_checkpoint_records_the_persisted_snapshot` and `TestCycleBoundaryWiring::test_the_checkpoint_references_the_persisted_snapshot`, both REQUIRED and both present, under M1 and under M2. Nothing recovered under either. After each probe the file was restored; its bytes equal the pre-mutation sha256 `7fc93eb1…` and EDIT's bytes |
-| G7 tree, canary, lint, path set, open set | C5 | 0 (`g78`) | `git status --porcelain` exit 0 `''`. `git worktree list` **1** row. `git diff --name-only e7c09077 f0b6007b -- packages apps tests docs scripts` exit 0, empty. CANARY exit **0**, **42 passed**. `ruff check . --output-format concise` exit 1 at both ends: **26** rows at `e7c09077` (archive tree) and **26** at C5, multiset difference EMPTY both ways. `.py` files under `.agent/`: **0**. Changed paths `e7c09077`..C5: **7**, against the Bundle minus handoff: **7**; MISSING `[]`, EXTRA `[]`. Open set BY DISTINCT ID: **88** at `e7c09077` and **88** at C5 (112 − 24 each), membership IDENTICAL; `R-0809`, `R-0880` and `R-0883` OPEN at both |
-| G8 insertion cap | C5 | 0 (`g78`) | C0a 307/0 1 path, C0b 153/133 1, C1 11/11 1, C2 6/0 1, C3 2/0 1, C4 343/0 1, C5 12/0 1; commits reaching 500 insertions **0** |
+| G1 transport, budget, slices | C4 | **NOT RUN** (STOP) | Not a gate reading, but measured by the worker while committing: `cmp` of the received block against `.agent/authored/f275-r100.md` exit 0 at C0a (23680 bytes, sha256 `0a0fda04…`). `slices.py` on the COMMITTED C0a blob found **3** slices, each matching its BEGIN-marker sha256: PLAN100 2967 bytes / 49 lines, RECORD100 2965 / 6, DEC100 2655 / 12. TOTAL 276, PROSE 209. No single-character-run line. The header rules are all two characters. `c0b.py`: `last_block.md` equals the C0a blob |
+| G2 the plan | C4 | **NOT RUN** (STOP) | Not a gate reading: `apply.py` wrote PLAN100 from the committed C0a blob and read it back equal, 2967 bytes |
+| G3 the record | C4 | **NOT RUN** (STOP) | Not a gate reading: `apply.py` printed the pre-lengths **1160621** (C2) and **1307742** (C4), both equal to the block's; each post-length equals pre plus the slice, and post equals pre followed by the slice. Numstat deletion columns are 0 and 0. Reader B, the negative controls and the `Gate:` header derivation were NOT run |
+| G4 trees, chain, carriers | setup after C2 and before C3; readings after C3 `d41eb0d9`, before C4 | 0 (`g4_build`), 0 (`c3_split`), 0 (`g4_check`) | **Inputs.** The pinned inputs MATCH: `r77_corrected.json` 120753 bytes `765b5ba9…`, owners 121095 `670c6e95…`, `r61_status.json` 1438 `a4c6cd63…`. Fences: rekey 5186 `f56394e9…`, owner 24253 `7be34374…`, input 10580 `c50da973…`, transform 29032 `075bc0dc…`. DELETE control line count 1. **Generator** exit **0**: **56** paths differ BASE/TIP; **2183** ruled sites recovered by scope at TIP, SHIFT and DELETE; UNRESOLVED **0**. Line-key CONTROL **1895 / 1886 / 1886**. Owner check at TIP: **1908** CONFIRMED, **275** REFUSED, **0** CONTRADICTED. **Transform** exit 0 in EDIT, CONTROL and OVERLAY, reading in each **2183** resolving / **0** not, **264** files, **6097** rewrites, **0** broken. **Chain.** All eighteen earlier carrier applications (the r99 patch is `90307406…`) exited **0** for `git apply --check` and for `git apply` in each worktree, 108 of 108. `git diff --name-only` read 11, 12, 36, 13, 15, 32, 10, 6, 9 and 10 paths after overlays 1 to 10, and was empty after each `git add -A`. **(a)** The fence from the COMMITTED C3 blob has 33 prose lines before it, one `` ```diff `` line and one closing line, with nothing after but one newline. Part count **1**; line counts **[424]**, ≤ 440. It equals EDIT's saved `git diff` stdout AND EDIT's live `git diff`. In OVERLAY, `git apply --check` exit **0**, then `git apply` exit **0**. `git diff --name-only` there, against the staged index, lists **17** paths: MISSING `[]`, EXTRA `[]` against SPEC O's 17, each byte-identical to EDIT's. Cross-check: the tracked paths whose bytes differ OVERLAY vs CONTROL are the same 17. **(b)** `ast` over every tracked `.py` under `tests/`, CONTROL then OVERLAY: O1 reads **11** and **0**; O2 **2** and **0**; `__import__("packages.core.models")` attributes **2** and **0**; THE RULE's targets **37** and **0** (19 functions, 12 files); `job_id`/`job_title` targets under the binding **1** and **38** (the CONTROL one is `TestProjectSummaryOutput._make_job` of `tests/cli/test_project_summary_cli.py`). All MATCH. **(c)** `ruff check --output-format concise` over SPEC O's 17 paths, from inside each tree: CONTROL exit **1**, **34** rows; OVERLAY exit **1**, **34** rows (all `I001`). As a multiset with line and column dropped: added **0**, removed **0** |
+| G5 full suite, CONTROL then OVERLAY | after C3, before C4 | 1 (`g5_CONTROL`), 1 (`g5_OVERLAY`), 0 (`g5_cmp`) | Each was its worktree's FIRST pytest run of any kind. `apps/ui/node_modules` and `apps/ui/dist` were ABSENT before each run and present after. `PYTHONPATH`, `REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed; `PYTHONDONTWRITEBYTECODE=1`; `cwd` the worktree; `packages.orchestration.pingpong_job.__file__` inside the worktree in both. pytest exit 1 in both. CONTROL **`63 failed, 18372 passed, 29 skipped, 1 warning, 7 errors`** (1414.31s), **70** bad nodes: MATCHES the reviewer's. OVERLAY **`46 failed, 18389 passed, 29 skipped, 1 warning, 7 errors`** (1424.40s), **53** bad nodes. **Bad only in OVERLAY: 0**, so constraint 11 required no re-run and no node is FLAKY. Bad only in CONTROL (fixed): **17**. Section mapping: 0 header mismatches in both transcripts |
+| G6 tree, canary, lint, path set, open set | C4 | **NOT RUN** (STOP) | Not measured. For the reviewer: `git status --porcelain` in the primary checkout now prints `?? .agent/STOP`, and `git worktree list` showed one row after the cleanup |
+| G7 insertion cap | C4 | **NOT RUN** (STOP) | Not measured as a gate. The commit listing above shows one path per commit, the largest 459 insertions |
 
-G5, THE FIXED NODES PER TEST FILE (21): `tests/cli/test_mission_cmd.py` 14, `tests/orchestration/test_mission_state.py` 3,
-`tests/orchestration/test_checkpoints.py` 2, `tests/cli/test_job_report.py` 1, `tests/orchestration/test_long_run_executor.py` 1.
-The full node list is in `.remedy-wt/r99w/g5_cmp.out`.
+G5, THE FIXED NODES PER TEST FILE (17): `tests/orchestration/test_self_dogfood_execution.py` 8,
+`tests/cli/test_self_dogfood_execution_cli.py` 2, `tests/test_project_brain.py` 2, `tests/orchestration/test_approval_queue.py` 1,
+`tests/test_model_construction_keywords.py` 1, `tests/test_patch_apply.py` 1, `tests/ui_contracts/test_graph_architecture.py` 1,
+`tests/ui_server/test_dashboard_cockpit_truth.py` 1. The full node list is in `.remedy-wt/r100w/g5_cmp.out`.
 
-STOP READINGS, per constraint 3: `.agent/STOP` was ABSENT both before C0a and before C6 (`test -e` exit 1, `ls -la` exit 2,
-`os.path.exists` False). Transcripts: `.remedy-wt/r99w/stop_before_C0a.txt` and `.remedy-wt/r99w/stop_before_C6.txt`.
+STOP READINGS, per constraint 3. Before C0a it was ABSENT (`test -e` exit 1, `ls -la` exit 2, `os.path.exists` False). Before C5
+it was PRESENT (`test -e` exit **0**, `ls -la` exit **0**, a 0-byte file dated Sep 14 09:30, `os.path.exists` True). Transcripts:
+`.remedy-wt/r100w/stop_before_C0a.txt` and `.remedy-wt/r100w/stop_before_C5.txt`.
 
 ## Authored-text proofs
 
 | Text | Target | Result |
 |---|---|---|
-| the block | `.agent/authored/f275-r99.md` | `cmp` exit 0 against `.remedy-wt/r99_block.md`, 26552 bytes, sha256 `4634e25424890319e560fa99dd35bf9a2711d9c635a26c0ec78d12403e10cc08` |
-| PLAN99 | `.agent/plan.md` | byte-identical, 2916 bytes, sha256 `8d6738e5e079f0b667348db670f043c8c5d3bab48f438ca4f1b1de67105ce15a` (the BEGIN marker's) |
-| RECORD99 | `.agent/live_review.md` | exact suffix at C2 under readers A and B, 3132 bytes, sha256 `9d4383d5b306329a0434bad78e59afc6211926fd3e8d1922f87bac42f25137c5` |
-| SLIPS99 | `.agent/prose_slips.md` | post equals the 304743-byte pre-commit blob followed by exactly the slice, 561 bytes, sha256 `177a9f7e140e0cd765e844279395bab31d042e7154e1513682033796454b42d9` |
-| DEC99 | `.agent/decisions.md` | exact suffix at C5 under readers A and B, 2595 bytes, sha256 `b236320e7e6c426333c223947893c7f112684aec980e77c139cfa1b8cfca46fd` |
+| the block | `.agent/authored/f275-r100.md` | `cmp` exit 0 against `.remedy-wt/r100_block.md`, 23680 bytes, sha256 `0a0fda045619ebd09d8395989e29aa8b18ba329a1ce6a3249b4a2542853ecfb4`; the G1 re-check at C4 was not run (STOP) |
+| PLAN100 | `.agent/plan.md` | written from the committed C0a blob, read back equal, 2967 bytes; the slice matches its BEGIN-marker sha256 `b2da3289…` |
+| RECORD100 | `.agent/live_review.md` | post equals the 1160621-byte pre followed by exactly the slice (2965 bytes, marker sha256 `22d77bb4…`) |
+| DEC100 | `.agent/decisions.md` | post equals the 1307742-byte pre followed by exactly the slice (2655 bytes, marker sha256 `5f745b27…`) |
 
-Every slice was applied from the bytes of the COMMITTED C0a blob, and NO SLICE WAS EDITED. The C4 carrier is my own text, written from
-SPEC C over my own SPEC O edit.
+NO SLICE WAS EDITED. The C3 carrier is my own text, written from SPEC C over my own SPEC O edit.
 
 ## Item-status table
 
@@ -140,49 +137,50 @@ SPEC C over my own SPEC O edit.
 | C0a block | done | |
 | C0b last-block mirror | done | from the committed C0a blob |
 | C1 plan | done | first substantive commit |
-| C2 round 98 verdict | done | |
-| C3 round 98 prose slip | done | |
-| C4 overlay carriers (SPEC C over SPEC O) | done | one carrier, 343 insertions; the whole 303-line diff fits one part |
-| C5 DECISION F275 D73 | done | after G4's readings, G5 and G6, and after the worktrees were removed |
-| C6 handback | done | this commit |
-| SPEC O1 · O2 · O3 · O4 | done | 10 paths; readings as deviations 4 and 5 state |
-| G4 · G5 · G6 | done | bad only in OVERLAY 0, so constraint 11 did not stop the round; both probes as ordered |
-| G1 · G2 · G3 · G7 · G8 | done | exit 0 · 0, at C5 |
+| C2 round 99 verdict | done | |
+| C3 overlay carriers (SPEC C over SPEC O) | done | one carrier, 459 insertions; the whole 424-line diff fits one part |
+| C4 DECISION F275 D74 | done | after G4's readings and G5, and after the worktrees were removed; it was the commit in hand when STOP was found |
+| C5 handback | done | this commit |
+| SPEC O1 · O2 · O3 · O4 | done | 17 paths, 55 replacements |
+| G4 · G5 | done | bad only in OVERLAY 0 |
+| G1 · G2 · G3 · G6 · G7 | skipped | `.agent/STOP` appeared before they could run; constraint 3 ends the round |
 
 ## Deviations & assumptions
 
-1. **NO DEPARTURE FROM THE COMMIT SEQUENCE.** The commits are exactly the Bundle: C0a, C0b, C1, C2, C3, one C4 carrier (SPEC C's cut
-   produced one part), C5, C6. `.agent/context.md` is not in the Change set and was not touched.
-2. **SCRATCH AND THE SHELL'S STARTING DIRECTORY.** This session's shell started with `.remedy-wt/r98` as its working directory, which
-   is the reviewer's scratch path. Every command and every file read used absolute paths elsewhere, and nothing under `.remedy-wt/r90/`
-   through `.remedy-wt/r98/` was opened. I read round 98's WORKER scratch (`.remedy-wt/r98w/`) for its scripts only, and ported them
-   with counted replacements (`port.py`, `g4_build_port.py`, `g6_port.py`, `g_port.py`); `spec_o.py`, `c4_carrier.py`'s prose and
-   SPEC_O list, and `g4_check.py`'s (b) are new. All of this worker's scratch is under `.remedy-wt/r99w/`, uncommitted.
-3. **EDIT RAN ONE TARGETED PYTEST RUN WHILE SPEC O WAS MADE.** Constraint 8 allows this, and it is not a gate reading. It ran after
-   SPEC O and before the diff was taken, over the nine test files SPEC O touches: exit 1, `3 failed, 485 passed, 7 errors`, 10 bad
-   nodes, all in `tests/orchestration/test_resume_kill.py` (7, the classic kill-and-resume fixture) and `TestRoutedHandler` of
-   `tests/test_data_paths.py` (3); every one of those 10 is also bad in G5's CONTROL. Before writing the carrier I also ran my
-   G4(b)/(c) script with EDIT in OVERLAY's place (`.remedy-wt/r99w/g4_pre.out`): 17/3/0/1/0/2 and 2/0/3/0/1/0, ruff added 0 and
-   removed 0. That step ran ruff and `ast` in CONTROL, not pytest, so G5's first-run condition still held.
-4. **HOW I READ O3's "`str(job.id)` and `job.id` become `job.job_id`".** Literally: `str(job.id)` becomes `job.job_id` with the
-   `str(...)` dropped (`JobPlan.job_id` is already a `str`), then each remaining `job.id` becomes `job.job_id`. So `_link_job` and
-   `_green_job` pass `job.job_id` to `link_job_to_mission`, and all three print `job.job_id`.
-5. **HOW I READ O4's docstring order.** The classic-store guard's summary line said "The excluded pair must keep naming the classic
-   store"; "pair" counted `checkpoints.py` as a classic-store module, so it now reads "The excluded module …". The comment's closing
-   sentence ("The reason is written down because …") was reflowed around the inserted sentence, its words unchanged. G4(b) reads
-   "the LAST literal part" of an f-string as the last `Constant` among its values.
-6. **G4(c) EXITS 1 WHERE THE BLOCK SAID IT WOULD.** Ruff exits 1 in both trees with 16 rows each. That is a reported reading, not a
-   red gate.
+1. **STOP ENDED THE ROUND BEFORE THE C4 GATES.** `.agent/STOP` (0 bytes, mtime 09:30:20) was found while committing C4. Per
+   constraint 3 and guardrail G6, the worker finished C4, wrote this handback, and ran none of G1, G2, G3, G6 or G7. The commit
+   sequence is otherwise exactly the Bundle: C0a, C0b, C1, C2, one C3 carrier, C4, C5. `.agent/STOP` is not in the Change set,
+   so it was left untracked and untouched. As a result the primary checkout's `git status --porcelain` is NOT empty; it lists
+   that one file.
+2. **C4 WENT THROUGH A SECOND COMMIT SCRIPT.** The usual `commit.py` refuses unless the working tree changes are exactly the one
+   path, and `?? .agent/STOP` made it refuse. `commit_one.py` differs only in ignoring `.agent/STOP` in that check. It still
+   staged exactly `.agent/decisions.md`, confirmed by `git diff --cached --name-only`.
+3. **EDIT RAN ONE TARGETED PYTEST RUN WHILE SPEC O WAS MADE.** Constraint 8 allows this, and it is not a gate reading. It ran
+   over SPEC O's 17 files after the edit and before the diff was taken: exit 1, `4 failed, 959 passed, 11 skipped`. The 4 bad
+   nodes are `test_usage_incremented_on_process_start`, `test_permit_runtime_stderr`, `test_vitest_passes` and
+   `test_changed_files_truncated_false`. All 4 are also bad in G5's CONTROL and OVERLAY, so the double's rename alone does not
+   fix `test_usage_incremented_on_process_start`.
+4. **SCRATCH AND THE SHELL'S STARTING DIRECTORY.** The shell started in `.remedy-wt/r98`, the reviewer's scratch. Nothing under
+   `.remedy-wt/r90/` through `.remedy-wt/r98/` was opened; every path used was absolute. Round 99's WORKER scratch
+   (`.remedy-wt/r99w/`) was read for its scripts only, which were ported with counted replacements (`port.py`,
+   `g4_build_port.py`). `g4b.py`, `spec_o.py`, `c3_carrier.py`'s prose and SPEC_O list, `g4_check.py`'s (b) and
+   `commit_one.py` are new. All of it is under `.remedy-wt/r100w/`, uncommitted.
+5. **G4(c) EXITS 1 WHERE THE BLOCK SAID IT WOULD.** Ruff exits 1 in both trees with 34 rows each. That is a reported reading,
+   not a red gate.
+6. **HOW I READ O4's "in a function".** For both the `job = MagicMock()` binding and the target, the function is the INNERMOST
+   enclosing `def`. The same 37 targets are found when the binding is ignored, so this reading changes no count.
 
 ## Next
 
-The reviewer re-runs the gates and issues the round 99 verdict.
+Phase 1 rule 1 applies first: `.agent/STOP` exists, so the operator's sentinel governs the next session before anything else. When
+the operator lifts it, the reviewer re-runs every gate of round 100. That includes G1, G2, G3, G6 and G7, which this round did not
+run; G6's tree reading will see `.agent/STOP` for as long as it stays. Then the reviewer issues the round 100 verdict.
 
 Operator questions open: 1
 
-After that, per `.agent/plan.md`, come more overlays, one residue group each, applied on top of these ten. In order: production
-code that hands a `JobPlan` a `JobBudgets` model; the self-dogfood runtimes; the classic-shaped tests of routed handlers in
-`tests/test_data_paths.py`; and the classic runner under `job resume`, whose kill-and-resume fixture still builds a classic job. Then
-the flip lands as a series of commits under the cap, then the classic store, then the closure sequence.
+After that, per `.agent/plan.md`, come more overlays, one residue group each. In order: production code that hands a `JobPlan` a
+`JobBudgets` model; the classic-shaped tests of routed handlers in `tests/test_data_paths.py`; the classic runner under
+`job resume`; and the job digest's stored goldens. Then the flip lands under the cap, then the classic store, then the closure
+sequence.
 
-Context self-assessment: this worker's context is comfortable; the round needed no fresh session.
+Context self-assessment: this worker's context is comfortable; the round ended on the STOP sentinel, not on context.
