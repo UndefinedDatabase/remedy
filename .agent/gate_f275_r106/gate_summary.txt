@@ -1,0 +1,20 @@
+INTEGRATION GATE, F275 round 106, per docs/agents/integration_gate.md and SPEC G of the round 106 block
+
+G-BRANCH  primary checkout at C2 64674850, tree clean, apps/ui/dist not rebuilt
+  python3 -m pytest -n auto -q -rfE
+  exit 0 | 18442 passed, 23 skipped, 1 warning in 161.95s (0:02:41) | failed nodes 0 | wall 162.7 s
+
+G-BASE    throwaway worktree on tmp/f275-r106-base at d0aa833b8286e567e9d23aa2789a42592b720ae6
+  (a) copies: node_modules 43005 files / 27 symlinks (primary 43005 / 27); dist 4 files / 0 symlinks (primary 4 / 0)
+  (b) newest src mtime 1789415825.8548944, dist stamp 1789415885.0
+  (c)-(e) dist files 4 before and 4 after; inside the run window: 0
+  REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q -rfE
+  exit 1 | 13 failed, 19758 passed, 23 skipped, 1 warning in 177.68s (0:02:57) | failed nodes 13 | wall 178.3 s
+  'React UI not built': 0; the warnings summary names the worktree's own model_routing.py: True
+  worktree removed without --force, pruned, tmp/f275-r106-base deleted
+
+G-COMPARE
+  BRANCH-ONLY 0 ids; no serial re-run was owed
+  BASE-ONLY   13 ids; none attributed to a missing artifact; 11 import the primary checkout through the
+              editable install in a subprocess and pass alone with PYTHONPATH on the worktree, 2 pass alone in the
+              gate environment; per-id readings in attribution.txt

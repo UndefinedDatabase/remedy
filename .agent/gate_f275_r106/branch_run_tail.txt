@@ -1,0 +1,6 @@
+command: python3 -m pytest -n auto -q -rfE
+cwd: the primary checkout, tree clean; PYTHONPATH, REMEDY_PROJECT and REMEDY_DATA_DIR removed
+commit: 64674850ccf09ec2c2cea5bb588f6cfe7726a4fc (C2)
+exit code: 0
+final summary line: 18442 passed, 23 skipped, 1 warning in 161.95s (0:02:41)
+wall time: 162.7 s (2026-09-14T19:54:08.669280+00:00 to 2026-09-14T19:56:51.353010+00:00)

@@ -1,0 +1,7 @@
+command: REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q -rfE
+cwd: throwaway worktree .remedy-wt/r106w/base on branch tmp/f275-r106-base; PYTHONPATH, REMEDY_PROJECT and REMEDY_DATA_DIR removed
+commit: d0aa833b8286e567e9d23aa2789a42592b720ae6 (merge base of the branch and main)
+exit code: 1
+final summary line: 13 failed, 19758 passed, 23 skipped, 1 warning in 177.68s (0:02:57)
+wall time: 178.3 s (2026-09-14T19:58:21.135197+00:00 to 2026-09-14T20:01:19.404795+00:00)
+count of 'React UI not built' in its output: 0

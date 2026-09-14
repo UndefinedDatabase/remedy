@@ -1,0 +1,31 @@
+BRANCH-ONLY: NONE
+
+BASE-ONLY: 13 ids. NONE of them is attributed to a missing artifact of the base worktree: the copies
+restored apps/ui/node_modules and apps/ui/dist, 'React UI not built' reads 0 and no dist mtime fell in the window.
+Each id was re-run ALONE in the base worktree before its removal, first in the gate's own environment and then
+with PYTHONPATH set to the worktree. The import probes, run with the gate's environment:
+  IMPORT PROBE cwd=neutral tmp dir exit 0 -> /home/decodeux/Repos/remedy/apps/cli/main.py | /home/decodeux/Repos/remedy/packages/orchestration/data_paths.py
+  IMPORT PROBE cwd=base worktree exit 0 -> /home/decodeux/Repos/remedy/.remedy-wt/r106w/base/apps/cli/main.py | /home/decodeux/Repos/remedy/.remedy-wt/r106w/base/packages/orchestration/data_paths.py
+  IMPORT PROBE cwd=neutral tmp dir, PYTHONPATH=base worktree exit 0 -> /home/decodeux/Repos/remedy/.remedy-wt/r106w/base/apps/cli/main.py | /home/decodeux/Repos/remedy/.remedy-wt/r106w/base/packages/orchestration/data_paths.py
+
+CLASS 1, 11 ids: the editable install resolves the PRIMARY checkout for a subprocess whose cwd is outside the worktree.
+Each test runs `python3 -m apps.cli.main job create` with cwd set to a temporary target repository, which imports the
+branch's code from the primary checkout and mints a branch-shaped 16-hex job id; its next subprocess inherits the
+worktree's cwd, imports the base's code, and the base rejects that id ('invalid job ID' or 'Job ID format invalid').
+Reading: the base run was not wholly base code; not a missing artifact, and not a defect of the base code, since each
+passes alone once PYTHONPATH pins every subprocess to the worktree.
+tests/orchestration/test_test_runner.py::TestPermitGuidanceArgOrder::test_permit_runtime_stderr | alone, gate env: exit 1 (1 failed in 1.30s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.99s)
+tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_argv_is_list | alone, gate env: exit 1 (1 failed in 0.96s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.96s)
+tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_have_required_keys | alone, gate env: exit 1 (1 failed in 0.97s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.94s)
+tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_output_is_pure_json | alone, gate env: exit 1 (1 failed in 0.93s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.95s)
+tests/test_command_discovery.py::TestCLIDiscoverCommands::test_text_output_does_not_crash | alone, gate env: exit 1 (1 failed in 0.93s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.95s)
+tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_counts | alone, gate env: exit 1 (1 failed in 0.93s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.95s)
+tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_selected_test_candidate | alone, gate env: exit 1 (1 failed in 0.93s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.95s)
+tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_version_1 | alone, gate env: exit 1 (1 failed in 0.94s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.95s)
+tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_output_is_pure_json | alone, gate env: exit 1 (1 failed in 0.93s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.96s)
+tests/test_test_runner.py::TestCliRunTestsLocal::test_no_target_repo_exits_1 | alone, gate env: exit 1 (1 failed in 0.94s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 1.00s)
+tests/test_test_runner.py::TestCliRunTestsLocal::test_permission_missing_exits_1 | alone, gate env: exit 1 (1 failed in 0.76s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.80s)
+
+CLASS 2, 2 ids: pass alone in the gate's own environment; a concurrency collision of the parallel run, not a missing artifact.
+tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup | the base run's failure reads a machine-wide `pgrep -f apps.cli.grouped.*--help` match after cleanup; the file is deleted on the branch | alone, gate env: exit 0 (1 passed in 0.29s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.29s)
+tests/orchestration/test_product_smoke.py::TestAppStartsGreen::test_a_clean_app_passes | the base run's failure reads 'OSError: [Errno 98] Address already in use' on port 5273 | alone, gate env: exit 0 (1 passed in 0.41s) | alone, PYTHONPATH=worktree: exit 0 (1 passed in 0.41s)
