@@ -628,7 +628,7 @@ def run_job_fulfill(
     from packages.core.models import Artifact, ArtifactKind, RunState
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.permissions import Capability, set_permission
-    from packages.orchestration.pingpong_job import TaskEntry, load_job_plan, save_job_plan
+    from packages.orchestration.pingpong_job import TaskEntry, load_job_plan, require_job_plan, save_job_plan
     from packages.orchestration.timeline import append_run_event
 
     if data_dir is None:
@@ -636,7 +636,7 @@ def run_job_fulfill(
     data_dir = Path(data_dir)
 
     record = JobFulfillmentRecord(job_id=job_id, mode="fixture_demo")
-    job = load_job_plan(normalize_job_id(job_id), data_dir)
+    job = require_job_plan(normalize_job_id(job_id), data_dir)
     record.repo_safe_name = repo_root.name
 
     append_run_event(data_dir, job_id, event="fulfillment_started", metadata={

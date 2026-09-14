@@ -5,13 +5,15 @@ tests: it compiles one task's context and renders what that task would receive
 and what was left out, without sending anything to a provider and without
 writing a byte to disk.
 
-The fenced scope compiled here is exactly the task's own declared write scope: a
-unified ``TaskEntry``'s ``files_hint`` field, or a classic Task's
-``inputs["flight"]["files_hint"]``. Remedy deliberately does NOT consult the
-job's scope-fence globs (``remedy job fences``, F017) in this view — merging
-fence allow-globs into the compiled scope is out of scope for this round, so a
-reader looking for that behaviour finds this sentence instead of guessing that
-it silently happened.
+The fenced scope compiled here is exactly the task's own declared write scope:
+its flight-plan block's ``inputs["flight"]["files_hint"]`` first, because
+``map_flight_plan_to_tasks`` writes a flight-planned task's scope there and
+``_task_planned_id`` reads that block first too, and otherwise the task's own
+``files_hint`` field, which a job file's task carries. Remedy deliberately does
+NOT consult the job's scope-fence globs (``remedy job fences``, F017) in this
+view — merging fence allow-globs into the compiled scope is out of scope for
+this round, so a reader looking for that behaviour finds this sentence instead
+of guessing that it silently happened.
 
 Exit codes:
 * 0 — compiled and rendered;
@@ -132,10 +134,13 @@ def _task_planned_id(task: Any) -> str:
 def _task_files_hint(task: Any) -> list[str]:
     """The task's declared write scope. An absent hint is an EMPTY scope, which
     is a real answer this command renders — not an error."""
-    # A `TaskEntry` carries the fenced scope as its OWN `files_hint` field; the
-    # classic Task carries it inside the flight-plan block.
-    own = getattr(task, "files_hint", None)
-    hint = own if isinstance(own, list) else _task_flight_inputs(task).get("files_hint")
+    # The flight-plan block's `files_hint` wins, and the task's OWN `files_hint`
+    # field is the fallback: `map_flight_plan_to_tasks` writes a flight-planned
+    # task's scope into the flight block and leaves the task's own field empty,
+    # and `_task_planned_id` above reads the flight block first for the same
+    # reason. A job file's task has no flight block and carries its own field.
+    flight_hint = _task_flight_inputs(task).get("files_hint")
+    hint = flight_hint if isinstance(flight_hint, list) else getattr(task, "files_hint", None)
     return [str(entry) for entry in hint] if isinstance(hint, list) else []
 
 

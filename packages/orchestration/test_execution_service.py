@@ -55,7 +55,7 @@ from packages.orchestration.command_discovery import (
 from packages.orchestration.data_paths import normalize_job_id, resolve_data_root
 from packages.orchestration.exec_guard import ExecGuardPolicy, plan_child_spawn
 from packages.orchestration.permissions import Capability, is_allowed
-from packages.orchestration.pingpong_job import load_job_plan, require_job_plan, save_job_plan
+from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 from packages.orchestration.run_contract import (
     ContractAction,
     ensure_contract,
@@ -891,7 +891,7 @@ def _persist_test_record(
     Idempotent: no-op if test_run_id already present.
     """
     try:
-        job = load_job_plan(job_id, data_dir)
+        job = require_job_plan(job_id, data_dir)
         if "test_runs" not in job.metadata:
             job.metadata["test_runs"] = []
         # Idempotency: skip if already recorded (Step 1117)
@@ -945,7 +945,7 @@ def _create_failure_artifact(
             persist_failure_artifact,
         )
         from packages.orchestration.test_runner import TestRunRecord
-        job = load_job_plan(job_id, data_dir)
+        job = require_job_plan(job_id, data_dir)
 
         # Idempotency: check for existing artifact for this test_run_id (Step 1117)
         for art in (job.artifacts or []):
@@ -1021,7 +1021,7 @@ def finalize_test_outcome(
     usage_ok = False
     record_ok = False
     try:
-        job = load_job_plan(job_id, data_dir)
+        job = require_job_plan(job_id, data_dir)
         usage = load_usage(job)
         # Idempotency: don't double-count if test_run_id already recorded
         existing_ids = {r.get("test_run_id") for r in job.metadata.get("test_runs", [])}

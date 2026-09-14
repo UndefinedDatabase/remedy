@@ -306,7 +306,7 @@ def _cmd_do_mission(
                 flight_plan=fp_dict,
                 tasks=tasks,
                 state=RunState.PLANNED,
-                budgets=job_budgets,
+                budgets=job_budgets.model_dump(mode="json") if job_budgets is not None else None,
                 fences=job_fences,
             )
             save_job_plan(job)

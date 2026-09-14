@@ -126,21 +126,21 @@ def run_json(args: list[str], root: Path) -> dict:
 
 def create_env(base: Path) -> tuple[Path, str]:
     root = base / "data"
-    jid = str(uuid4())
-    jobs_dir = root / "jobs"
-    jobs_dir.mkdir(parents=True, exist_ok=True)
+    # The unified job record: a sixteen-hex id and `jobs/<id>/job.json`.
+    jid = uuid4().hex[:16]
+    record_dir = root / "jobs" / jid
+    record_dir.mkdir(parents=True, exist_ok=True)
     job_data = {
-        "id": jid,
-        "name": "runtime-smoke",
-        "user_prompt": None,
+        "job_id": jid,
+        "job_title": "runtime-smoke",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "tasks": [],
-        "state": "pending",
+        "status": "pending",
         "artifacts": [],
         "budget": {"max_steps": 10, "max_tokens": 0, "max_cost_usd": 0.0},
         "metadata": {},
     }
-    (jobs_dir / f"{jid}.json").write_text(json.dumps(job_data, indent=2))
+    (record_dir / "job.json").write_text(json.dumps(job_data, indent=2))
     return root, jid
 
 
@@ -206,7 +206,7 @@ def smoke_propose(base: Path) -> None:
     assert data["materialized_count"] == 1
 
     # verify job
-    job = json.loads((root / "jobs" / f"{jid}.json").read_text())
+    job = json.loads((root / "jobs" / jid / "job.json").read_text())
     assert len(job["tasks"]) == 1
 
     # verify events
@@ -237,7 +237,7 @@ def smoke_worker(base: Path) -> None:
     assert data["work_performed"] is True
 
     # verify job
-    job = json.loads((root / "jobs" / f"{jid}.json").read_text())
+    job = json.loads((root / "jobs" / jid / "job.json").read_text())
     assert len(job["tasks"]) == 1
     assert job["tasks"][0]["status"] == "completed"
 
