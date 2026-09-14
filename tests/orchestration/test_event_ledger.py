@@ -7,24 +7,24 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from packages.orchestration.data_paths import mint_job_id
 
 
-def _make_job(**overrides) -> Job:
+def _make_job(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "description": "test job",
         "tasks": [
-            Task(description="task 1", status=RunState.COMPLETED),
+            TaskEntry(title="task 1", status=RunState.COMPLETED),
         ],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _make_events() -> list[dict]:
@@ -261,17 +261,17 @@ class TestEventLedgerBrainNode:
     def test_event_ledger_node_in_graph(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.project_brain import build_project_brain
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(
-            id=uuid4(), name="brain-el", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="brain-el", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         )
-        save_job(job)
+        save_job_plan(job)
         events = [
-            {"event": "job_created", "run_id": "r1", "job_id": str(job.id),
+            {"event": "job_created", "run_id": "r1", "job_id": str(job.job_id),
              "timestamp": "2026-01-01T00:00:00", "outcome": "ok", "metadata": {}},
-            {"event": "test_run_completed", "run_id": "r1", "job_id": str(job.id),
+            {"event": "test_run_completed", "run_id": "r1", "job_id": str(job.job_id),
              "timestamp": "2026-01-01T00:01:00", "outcome": "failed", "metadata": {}},
         ]
         graph = build_project_brain(job, events)

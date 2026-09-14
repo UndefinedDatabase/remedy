@@ -39,9 +39,10 @@ def _require_job(job_id: str, args: Any) -> bool:
     Returns True if job exists, False + printed error if not.
     """
     try:
-        from packages.orchestration.storage import JobNotFoundError, JobStoreError, load_job
+        from packages.orchestration.storage import JobNotFoundError, JobStoreError
+        from packages.orchestration.pingpong_job import require_job_plan
         uid = lookup_job_id(job_id)
-        load_job(uid)
+        require_job_plan(uid)
         return True
     except (ValueError, TypeError):
         msg = f"Invalid job ID: {job_id}"

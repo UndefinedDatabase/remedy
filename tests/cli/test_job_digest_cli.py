@@ -21,10 +21,11 @@ import pytest
 
 from apps.cli.command_catalog import CATALOG, get_command
 from apps.cli.commands.job import _cmd_job_digest
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.job_digest import build_job_digest
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
 from packages.orchestration.timeline import load_run_events
 
 pytestmark = pytest.mark.integration
@@ -43,19 +44,19 @@ def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
 
 def saved_job(*, state: RunState = RunState.COMPLETED,
               terminal: str = "all_green",
-              task_status: RunState = RunState.COMPLETED) -> Job:
-    job = Job(
-        name="digest-job",
+              task_status: RunState = RunState.COMPLETED) -> JobPlan:
+    job = JobPlan(
+        job_title="digest-job",
         user_prompt="build the thing",
         mission="Build the thing",
-        tasks=[Task(description=f"task {i}", inputs={"task_type": "documentation"})
+        tasks=[TaskEntry(title=f"task {i}", inputs={"task_type": "documentation"})
                for i in range(2)],
         state=state,
         metadata={"target_repo": "/tmp/repo", "cycle_terminal_status": terminal},
     )
     for task in job.tasks:
         task.status = task_status
-    save_job(job)
+    save_job_plan(job)
     return job
 
 
@@ -70,22 +71,22 @@ class TestJsonModeMatchesTheEnvelopeExactly:
 
     def test_the_json_payload_equals_build_job_digest_independently_computed(self, capsys):
         job = saved_job()
-        _cmd_job_digest(str(job.id), json_output=True)
+        _cmd_job_digest(str(job.job_id), json_output=True)
         payload = json.loads(capsys.readouterr().out)
 
         expected = build_job_digest(
-            job, load_run_events(resolve_data_root(), job.id))
+            job, load_run_events(resolve_data_root(), job.job_id))
         assert payload == expected
 
     def test_the_payload_is_not_wrapped_in_an_extra_key(self, capsys):
         """Direct discriminator for mutation (b): a `{'digest': ...}` wrapper
         would still be valid JSON but would not equal the digest dict itself."""
         job = saved_job()
-        _cmd_job_digest(str(job.id), json_output=True)
+        _cmd_job_digest(str(job.job_id), json_output=True)
         payload = json.loads(capsys.readouterr().out)
         assert "digest" not in payload
         assert set(payload.keys()) == set(
-            build_job_digest(job, load_run_events(resolve_data_root(), job.id)).keys())
+            build_job_digest(job, load_run_events(resolve_data_root(), job.job_id)).keys())
 
 
 class TestBareModeIsNotJson:
@@ -95,18 +96,18 @@ class TestBareModeIsNotJson:
 
     def test_bare_output_does_not_parse_as_json(self, capsys):
         job = saved_job()
-        _cmd_job_digest(str(job.id))
+        _cmd_job_digest(str(job.job_id))
         out = capsys.readouterr().out
         with pytest.raises(json.JSONDecodeError):
             json.loads(out)
 
     def test_bare_output_names_the_job_id_and_the_digest_state(self, capsys):
         job = saved_job()
-        _cmd_job_digest(str(job.id))
+        _cmd_job_digest(str(job.job_id))
         out = capsys.readouterr().out
         expected = build_job_digest(
-            job, load_run_events(resolve_data_root(), job.id))
-        assert str(job.id) in out
+            job, load_run_events(resolve_data_root(), job.job_id))
+        assert str(job.job_id) in out
         assert expected["state"] in out
 
 
@@ -145,10 +146,10 @@ class TestShortIdPrefixResolves:
 
     def test_an_eight_character_prefix_matches_the_full_id_digest(self, capsys):
         job = saved_job()
-        _cmd_job_digest(str(job.id), json_output=True)
+        _cmd_job_digest(str(job.job_id), json_output=True)
         full_payload = json.loads(capsys.readouterr().out)
 
-        _cmd_job_digest(str(job.id)[:8], json_output=True)
+        _cmd_job_digest(str(job.job_id)[:8], json_output=True)
         prefix_payload = json.loads(capsys.readouterr().out)
 
         assert prefix_payload == full_payload

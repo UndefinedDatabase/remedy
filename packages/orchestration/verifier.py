@@ -47,7 +47,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.task_registry import get_task_type_spec
 from packages.orchestration.verifier_profiles import get_verifier_profile
 
@@ -125,7 +125,7 @@ class VerificationResult:
 
 
 def verify_task_output(
-    job: Job,
+    job: JobPlan,
     task_id: str,
     contract: TaskContract | None = None,
 ) -> VerificationResult:
@@ -152,7 +152,7 @@ def verify_task_output(
 
     checks: list[VerificationCheckResult] = []
 
-    task = next((t for t in job.tasks if t.id == task_id), None)
+    task = next((t for t in job.tasks if t.task_id == task_id), None)
     if task is None:
         return VerificationResult(
             task_id=task_id,
@@ -181,7 +181,7 @@ def verify_task_output(
 
         # Check 2: referenced artifact exists
         artifact_id = task.output_artifact_ids[0]
-        artifact = next((a for a in job.artifacts if a.id == artifact_id), None)
+        artifact = next((a for a in job.artifacts if str(a.id) == artifact_id), None)
         artifact_exists = artifact is not None
         checks.append(
             VerificationCheckResult(
@@ -198,7 +198,7 @@ def verify_task_output(
             return VerificationResult(task_id=task_id, passed=False, checks=checks)
 
         # Check 3: artifact.task_id matches task.id
-        task_id_matches = artifact.task_id == str(task.id)
+        task_id_matches = artifact.task_id == str(task.task_id)
         checks.append(
             VerificationCheckResult(
                 check="artifact_task_id_matches",
@@ -206,7 +206,7 @@ def verify_task_output(
                 message=(
                     "OK"
                     if task_id_matches
-                    else f"artifact.task_id={artifact.task_id} != task.id={task.id}"
+                    else f"artifact.task_id={artifact.task_id} != task.id={task.task_id}"
                 ),
             )
         )

@@ -336,10 +336,10 @@ def _inspect(job_id: str, task_id: str, data_dir: Path) -> Any:
     """Run the existing safe context inspection for a job. Returns ContextInspection or None."""
     try:
         from packages.orchestration.context_inspector import inspect_context
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         from packages.orchestration.timeline import load_run_events
-        job = load_job(normalize_job_id(job_id), data_dir)
-        events = load_run_events(data_dir, job.id)
+        job = load_job_plan(normalize_job_id(job_id), data_dir)
+        events = load_run_events(data_dir, job.job_id)
         return inspect_context(job, events, task_id=task_id or None)
     except Exception:
         # Best-effort read-only helper — any failure (missing job, import, parse) → no inspection.

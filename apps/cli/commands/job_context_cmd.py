@@ -115,13 +115,18 @@ def _task_flight_inputs(task: Any) -> dict:
 
 
 def _task_planned_id(task: Any) -> str:
-    """The planned id (`T001`) `map_flight_plan_to_tasks` wrote, or ""."""
-    # A `TaskEntry` IS its planned id — it carries `T001` as its own field and
-    # no flight-plan block at all — so that spelling wins where it is present.
-    own = getattr(task, "task_id", "")
-    if own:
-        return str(own)
-    return str(_task_flight_inputs(task).get("planned_id") or "")
+    """The planned id (`T001`) `map_flight_plan_to_tasks` wrote, else the task's own id.
+
+    The flight-plan block wins because a task mapped from a flight plan mints its
+    own `task_id` beside the planned id, and `--task T001` names the plan's id.
+    """
+    planned = _task_flight_inputs(task).get("planned_id")
+    if planned:
+        # The flight-plan block wins: the minted `task_id` beside it is not the
+        # id the plan and its operator use. A job file's task has no such block
+        # and carries `T001` as its own id, which the fallback returns.
+        return str(planned)
+    return str(getattr(task, "task_id", "") or "")
 
 
 def _task_files_hint(task: Any) -> list[str]:
@@ -260,8 +265,8 @@ def _cmd_job_context(
         export_omitted_context_json,
     )
     from packages.orchestration.data_paths import resolve_any_job_id
-    from packages.orchestration.pingpong_job import load_job_plan
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.pingpong_job import require_job_plan
+    from packages.orchestration.storage import JobNotFoundError
 
     try:
         # Resolving across BOTH stores is what lets this command answer for a
@@ -269,13 +274,9 @@ def _cmd_job_context(
         # resolvers, `resolve_job_id` searched the classic store alone and so
         # answered "no job matches prefix" for every one of them; the two names
         # are now one function, and this call site keeps `resolve_any_job_id`
-        # because that name states what it needs. WHY the unified record is read
-        # FIRST: it is the same order
-        # `apps/cli/commands/job_stop_cmd.py::_load_job` already reads in.
+        # because that name states what it needs.
         resolved = resolve_any_job_id(job_id_str)
-        job = load_job_plan(resolved)
-        if job is None:
-            job = load_job(resolved)
+        job = require_job_plan(resolved)
     except JobNotFoundError:
         print(f"Job not found: {job_id_str}", file=sys.stderr)
         sys.exit(1)

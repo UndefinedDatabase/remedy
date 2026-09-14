@@ -46,7 +46,7 @@ class TestProjectSummaryOutput:
 
     def _make_job(self, state="planned"):
         job = MagicMock()
-        job.id = uuid4()
+        job.job_id = uuid4()
         job.state.value = state
         job.state.__str__ = lambda s: state
         job.tasks = []
@@ -74,13 +74,13 @@ class TestProjectSummaryOutput:
         proj = self._make_project()
         j1 = self._make_job("completed")
         j2 = self._make_job("blocked")
-        proj.job_ids = [str(j1.id), str(j2.id)]
+        proj.job_ids = [str(j1.job_id), str(j2.job_id)]
 
         events = {
-            str(j1.id): [
+            str(j1.job_id): [
                 {"event": "task_created", "timestamp": "2026-06-01T00:00:00Z", "metadata": {}},
             ],
-            str(j2.id): [
+            str(j2.job_id): [
                 {"event": "stop_reason_recorded", "timestamp": "2026-06-02T00:00:00Z",
                  "outcome": "open", "metadata": {"stop_reason": "approval_required"}},
             ],
@@ -118,7 +118,7 @@ class TestProjectSummaryOutput:
         proj = self._make_project()
         job = self._make_job()
         job.metadata = {"secret": "sk-secret-key-12345"}
-        events = {str(job.id): [
+        events = {str(job.job_id): [
             {"event": "task_created", "timestamp": "2026-06-01T00:00:00Z",
              "metadata": {"raw_output": "SECRET_CONTENT", "command_output": "LEAKED"}},
         ]}
@@ -140,11 +140,11 @@ class TestProjectSummaryOutput:
         j1 = self._make_job()
         j2 = self._make_job()
         events = {
-            str(j1.id): [
+            str(j1.job_id): [
                 {"event": "stop_reason_recorded", "timestamp": "2026-06-01",
                  "metadata": {"stop_reason": "approval_required"}},
             ],
-            str(j2.id): [
+            str(j2.job_id): [
                 {"event": "stop_reason_recorded", "timestamp": "2026-06-02",
                  "metadata": {"stop_reason": "approval_required"}},
             ],

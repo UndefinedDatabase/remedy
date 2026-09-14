@@ -11,7 +11,8 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Protocol, runtime_checkable
 
-from packages.core.models import AcceptanceCheck, Artifact, Job, Task
+from packages.core.models import AcceptanceCheck, Artifact
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 
 @runtime_checkable
@@ -22,11 +23,11 @@ class LLMWorker(Protocol):
     No provider-specific assumptions.
     """
 
-    async def execute(self, task: Task) -> Artifact:
+    async def execute(self, task: TaskEntry) -> Artifact:
         """Execute the task and return the resulting artifact."""
         ...
 
-    async def stream(self, task: Task) -> AsyncIterator[str]:
+    async def stream(self, task: TaskEntry) -> AsyncIterator[str]:
         """Stream output tokens while executing a task.
 
         Note: streams str tokens rather than a full Artifact — full streaming
@@ -96,7 +97,7 @@ class RunContractProvider(Protocol):
     Provider-neutral — no model names, no network calls.
     """
 
-    def build(self, job: Job) -> dict[str, object]:
+    def build(self, job: JobPlan) -> dict[str, object]:
         """Return a JSON-serializable run contract for the job."""
         ...
 
@@ -109,6 +110,6 @@ class TokenPolicyProvider(Protocol):
     Provider-neutral — no model names, no network calls.
     """
 
-    def build(self, job: Job) -> dict[str, object]:
+    def build(self, job: JobPlan) -> dict[str, object]:
         """Return a JSON-serializable token policy for the job."""
         ...

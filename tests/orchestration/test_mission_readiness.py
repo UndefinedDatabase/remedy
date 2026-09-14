@@ -20,11 +20,13 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, Task
+from packages.core.models import Artifact, ArtifactKind
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration import mission_readiness as OV
 from packages.orchestration import repair_loop as RL
 from packages.orchestration.data_paths import normalize_job_id
-from packages.orchestration.storage import load_job, save_job
+from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+from packages.orchestration.data_paths import mint_job_id
 
 
 @pytest.fixture()
@@ -35,22 +37,22 @@ def env(tmp_path, monkeypatch):
 
 
 def _job(data_dir, *, tasks=True, perms=True):
-    t = [Task(description="t")] if tasks else []
-    job = Job(id=uuid4(), name="ov", tasks=t, metadata={"target_repo": "."})
-    save_job(job, root=data_dir)
+    t = [TaskEntry(title="t")] if tasks else []
+    job = JobPlan(job_id=mint_job_id(), job_title="ov", tasks=t, metadata={"target_repo": "."})
+    save_job_plan(job, root=data_dir)
     return job
 
 
 def _add_failure(data_dir, job, *, resolved=False, related_files=None, safe_summary="fail"):
     t = job.tasks[0]
-    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.id),
+    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.task_id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",
                             "related_test_run_id": "tr", "related_apply_id": "ap",
-                            "related_task_id": str(t.id), "exit_code": 1,
+                            "related_task_id": str(t.task_id), "exit_code": 1,
                             "safe_summary": safe_summary, "related_files": related_files or [],
                             **({"failure_resolved": True} if resolved else {})})
     job.artifacts.append(fa)
-    save_job(job, root=data_dir)
+    save_job_plan(job, root=data_dir)
     return str(fa.id)
 
 
@@ -80,7 +82,7 @@ class TestPolicy:
 class TestReadinessTruth:
     def test_default_policy_never_unattended(self, env):
         job = _job(env)
-        rep = OV.build_overnight_readiness(str(job.id), env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         assert rep.ready is True
         assert rep.can_run_unattended is False  # default policy is report-only
 
@@ -89,8 +91,8 @@ class TestReadinessTruth:
         job = _job(env)
         # Inject events claiming snapshot/test/proof — must not change durable truth.
         for ev in ("snapshot_create_completed", "test_run_completed", "proof_collected"):
-            append_run_event(env, str(job.id), event=ev, metadata={"exit_code": 0})
-        rep = OV.build_overnight_readiness(str(job.id), env)
+            append_run_event(env, str(job.job_id), event=ev, metadata={"exit_code": 0})
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         assert rep.can_run_unattended is False
         snap = next(i for i in rep.checklist if i.id == "snapshot_verified")
         assert snap.status != "done"  # no durable verified snapshot
@@ -104,8 +106,8 @@ class TestReadinessTruth:
         job, iid = make_continue_job(env, repo)
         fn, _ = _fake_test(env, status="passed")
         monkeypatch.setattr(tes, "execute_test_run", fn)
-        dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), env)
-        rep = OV.build_overnight_readiness(str(job.id), env)
+        dc.run_do_continue(dc.ContinueRequest(job_id=str(job.job_id)), env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         assert rep.evidence_summary["verified_snapshots"] >= 1
         snap = next(i for i in rep.checklist if i.id == "snapshot_verified")
         assert snap.status == "done"
@@ -113,26 +115,26 @@ class TestReadinessTruth:
     def test_unresolved_failure_blocks_unattended(self, env):
         job = _job(env)
         _add_failure(env, job)
-        rep = OV.build_overnight_readiness(str(job.id), env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         assert "unresolved_failures" in rep.blockers
         assert rep.can_run_unattended is False
 
     def test_repair_pending_blocks_unattended(self, env):
         job = _job(env)
         fa = _add_failure(env, job)
-        job2 = load_job(normalize_job_id(str(job.id)), env)
-        att = RL.RepairAttempt(attempt_id="a1", job_id=str(job.id), failure_artifact_id=fa,
+        job2 = load_job_plan(normalize_job_id(str(job.job_id)), env)
+        att = RL.RepairAttempt(attempt_id="a1", job_id=str(job.job_id), failure_artifact_id=fa,
                                repair_intent_id="ri-1", status="approval_required",
                                source="cli_v1", created_at="t")
         RL.save_repair_attempt(job2, att)
-        rep = OV.build_overnight_readiness(str(job.id), env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         assert "repair_pending_approval" in rep.blockers
         na = rep.next_action
-        assert na.command == f"remedy patch approve {job.id} ri-1"
+        assert na.command == f"remedy patch approve {job.job_id} ri-1"
 
     def test_no_command_for_missing_entity(self, env):
         job = _job(env)  # no intents, no failures
-        rep = OV.build_overnight_readiness(str(job.id), env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         # Must not suggest approve/continue/repair when nothing exists.
         assert "approve" not in rep.next_action.command
         assert "do continue" not in rep.next_action.command
@@ -140,13 +142,13 @@ class TestReadinessTruth:
 
     def test_provider_not_supported(self, env):
         job = _job(env)
-        rep = OV.build_overnight_readiness(str(job.id), env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         prov = next(c for c in rep.capabilities if c.name == "can_provider_build")
         assert prov.status == "not_supported"
 
     def test_overnight_capability_blocked_by_default(self, env):
         job = _job(env)
-        rep = OV.build_overnight_readiness(str(job.id), env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         ovr = next(c for c in rep.capabilities if c.name == "can_run_overnight")
         assert ovr.status == "blocked"
 
@@ -165,8 +167,8 @@ class TestReadinessTruth:
         c = dataclasses.replace(c, max_test_runs=1, max_loops=1)
         save_contract(job, c)
         u = load_usage(job); u.test_runs_used = 1; u.loops_used = 1; save_usage(job, u)
-        save_job(job, root=env)
-        rep = OV.build_overnight_readiness(str(job.id), env)
+        save_job_plan(job, root=env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         assert "budget_exhausted" in rep.blockers
         assert any(r.id == "budget_exhausted" and r.severity == "blocker" for r in rep.risks)
         assert rep.can_run_unattended is False
@@ -174,14 +176,14 @@ class TestReadinessTruth:
     def test_review_findings_dimension_explicit_unknown(self, env):
         # R-0080: open-review-findings dimension must be explicit, not omitted.
         job = _job(env)
-        rep = OV.build_overnight_readiness(str(job.id), env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         assert any(r.id == "review_findings_unknown" for r in rep.risks)
 
     def test_next_actions_catalog_backed(self, env):
         from packages.orchestration.do_run import validate_next_safe_action_command
         job = _job(env)
         fa = _add_failure(env, job)
-        rep = OV.build_overnight_readiness(str(job.id), env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         assert validate_next_safe_action_command(rep.next_action.command)
 
 # ---------------------------------------------------------------------------
@@ -194,10 +196,10 @@ class TestRedaction:
         job = _job(env)
         _add_failure(env, job, related_files=["/home/u/.env", "/etc/passwd"],
                      safe_summary="token=sk-secret-123 Traceback (most recent call last)")
-        rep = OV.build_overnight_readiness(str(job.id), env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
         blobs = [
             json.dumps(OV.export_readiness_json(rep)),
-            OV.render_overnight_report_markdown(OV.build_overnight_report(str(job.id), env)),
+            OV.render_overnight_report_markdown(OV.build_overnight_report(str(job.job_id), env)),
         ]
         for b in blobs:
             assert "/home/" not in b

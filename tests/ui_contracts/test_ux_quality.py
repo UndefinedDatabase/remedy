@@ -14,7 +14,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -25,51 +26,49 @@ UI_SRC = ROOT / "apps" / "ui" / "src"
 UI_ROOT = ROOT / "apps" / "ui"
 
 
-def _make_job(**overrides) -> Job:
+def _make_job(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "tasks": [Task(description="task 1", status=RunState.COMPLETED)],
+        "tasks": [TaskEntry(title="task 1", status=RunState.COMPLETED)],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 # ── Step 71.1: Token Policy Applied ──────────────────────────────────────
 
 
-def _make_job_s74(**overrides) -> Job:
+def _make_job_s74(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "tasks": [Task(description="task 1", status=RunState.COMPLETED)],
+        "tasks": [TaskEntry(title="task 1", status=RunState.COMPLETED)],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _make_job_s80(**overrides: object) -> Job:
+def _make_job_s80(**overrides: object) -> JobPlan:
     defaults = dict(
-        name="test-ui-job",
+        job_title="test-ui-job",
         user_prompt="Test prompt for UI",
-        tasks=[Task(description="Write a README")],
+        tasks=[TaskEntry(title="Write a README")],
     )
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _make_job_s91():
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -79,8 +78,8 @@ def _make_job_s91():
 
 def _make_job_s101(task_count: int = 3):
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -101,12 +100,13 @@ def _make_job_s101(task_count: int = 3):
 
 
 def _make_job_s111(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -122,12 +122,13 @@ def _make_job_s111(*, tasks=None, name="test"):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -143,14 +144,15 @@ def _make_job_s127(*, tasks=None, name="test"):
 
 
 def _make_job_s141(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
             task_type = t.get("type", "readme_draft")
             inputs = dict(t.get("metadata", {}))
             inputs.setdefault("task_type", task_type)
-            task = Task(description=t.get("description", task_type), inputs=inputs)
+            task = TaskEntry(title=t.get("description", task_type), inputs=inputs)
             if "status" in t:
                 task.status = RunState(t["status"])
             job.tasks.append(task)
@@ -162,8 +164,8 @@ def _make_job_s141(*, tasks=None, name="test"):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def _make_job_s163(name: str = "Test goal") -> Job:
-    job = Job(name=name)
+def _make_job_s163(name: str = "Test goal") -> JobPlan:
+    job = JobPlan(job_title=name)
     job.metadata = job.metadata or {}
     return job
 
@@ -176,7 +178,7 @@ def _get_viewer_html():
     from packages.orchestration.project_brain import build_project_brain
 
     job = _make_job()
-    events = [{"event": "job_created", "run_id": "r1", "job_id": str(job.id),
+    events = [{"event": "job_created", "run_id": "r1", "job_id": str(job.job_id),
                 "timestamp": "2026-01-01", "outcome": "ok", "metadata": {}}]
     graph = build_project_brain(job, events)
     data = build_brain_viewer_data(job, graph, events)
@@ -798,7 +800,7 @@ class TestTaskProgressApiSchema:
     def test_verified_from_event(self):
         from packages.orchestration.ui_view_model import build_task_progress
         job = _make_job_s127(tasks=[{"type": "t1", "status": "completed"}])
-        task_id = str(job.tasks[0].id)
+        task_id = str(job.tasks[0].task_id)
         events = [{"event": "task_run_completed", "task_id": task_id}]
         tp = build_task_progress(job, events)
         assert tp["tasks"][0]["verified"] is True
@@ -806,7 +808,7 @@ class TestTaskProgressApiSchema:
     def test_proof_status_from_event(self):
         from packages.orchestration.ui_view_model import build_task_progress
         job = _make_job_s127(tasks=[{"type": "t1", "status": "completed"}])
-        task_id = str(job.tasks[0].id)
+        task_id = str(job.tasks[0].task_id)
         events = [{"event": "proof_collected", "task_id": task_id}]
         tp = build_task_progress(job, events)
         assert tp["tasks"][0]["proof_status"] == "collected"
@@ -814,7 +816,7 @@ class TestTaskProgressApiSchema:
     def test_test_status_pass(self):
         from packages.orchestration.ui_view_model import build_task_progress
         job = _make_job_s127(tasks=[{"type": "t1", "status": "completed"}])
-        task_id = str(job.tasks[0].id)
+        task_id = str(job.tasks[0].task_id)
         events = [{"event": "test_run_completed", "task_id": task_id,
                     "metadata": {"exit_code": 0}}]
         tp = build_task_progress(job, events)
@@ -823,7 +825,7 @@ class TestTaskProgressApiSchema:
     def test_test_status_fail(self):
         from packages.orchestration.ui_view_model import build_task_progress
         job = _make_job_s127(tasks=[{"type": "t1", "status": "completed"}])
-        task_id = str(job.tasks[0].id)
+        task_id = str(job.tasks[0].task_id)
         events = [{"event": "test_run_completed", "task_id": task_id,
                     "metadata": {"exit_code": 1}}]
         tp = build_task_progress(job, events)
@@ -862,7 +864,7 @@ class TestUXZoomAndLabelVisibility:
         job = _make_job_s127(tasks=[{"type": "t1", "status": "running"}])
         vm = build_brain_view_model(job, [])
         assert vm["visible_counts_by_zoom"][0] == 1
-        assert vm["visible_node_ids_by_zoom"][0] == [str(job.id)]
+        assert vm["visible_node_ids_by_zoom"][0] == [str(job.job_id)]
 
     def test_zoom_in_reveals_more(self):
         from packages.orchestration.ui_view_model import build_brain_view_model
@@ -880,7 +882,7 @@ class TestUXZoomAndLabelVisibility:
         job = _make_job_s127()
         events = [{
             "event": "job_continued",
-            "metadata": {"child_job_id": str(uuid4()), "origin_node_id": str(job.id)},
+            "metadata": {"child_job_id": str(uuid4()), "origin_node_id": str(job.job_id)},
         }]
         vm = build_brain_view_model(job, events)
         child_nodes = [n for n in vm["nodes"] if n["type"] == "job" and not n["is_origin"]]
@@ -916,9 +918,9 @@ class TestUXZoomAndLabelVisibility:
 
     def test_renderer_no_full_graph_default(self):
         """Full graph requires explicit toggle — dashboard contract enforces this."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.ui_server import _build_dashboard
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         dashboard = _build_dashboard(job)
         assert dashboard["graph_summary"]["full_graph_requires_explicit_toggle"] is True
 
@@ -939,14 +941,14 @@ class TestCommitReadinessSchemaCompleteness:
     """Commit-readiness schema must be complete and safe."""
 
     def test_full_schema(self):
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(name="schema")
-        save_job(job)
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_title="schema")
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=True)
+            _cmd_commit_readiness(str(job.job_id), json_output=True)
             data = json.loads(mock_print.call_args[0][0])
             required = {
                 "version", "job_id", "repo_path", "ready", "reasons",
@@ -959,39 +961,39 @@ class TestCommitReadinessSchemaCompleteness:
             assert not missing, f"Missing: {missing}"
 
     def test_changed_files_truncated_false(self):
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(name="trunc-false")
-        save_job(job)
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_title="trunc-false")
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=True)
+            _cmd_commit_readiness(str(job.job_id), json_output=True)
             data = json.loads(mock_print.call_args[0][0])
             assert data["changed_files_truncated"] is False
 
     def test_missing_tests_not_ready(self):
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(name="missing-tests")
-        save_job(job)
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_title="missing-tests")
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=True)
+            _cmd_commit_readiness(str(job.job_id), json_output=True)
             data = json.loads(mock_print.call_args[0][0])
             assert data["ready"] is False
             assert any("tests" in r for r in data["reasons"])
 
     def test_missing_proof_not_ready(self):
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(name="missing-proof")
-        save_job(job)
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_title="missing-proof")
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=True)
+            _cmd_commit_readiness(str(job.job_id), json_output=True)
             data = json.loads(mock_print.call_args[0][0])
             assert data["proof_present"] is False
             assert any("proof" in r for r in data["reasons"])
@@ -1015,28 +1017,28 @@ class TestCommitReadinessSchemaCompleteness:
             assert "shell=True" not in stripped
 
     def test_no_raw_leaks(self):
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(name="leaks")
-        save_job(job)
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_title="leaks")
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=True)
+            _cmd_commit_readiness(str(job.job_id), json_output=True)
             output = mock_print.call_args[0][0]
             for bad in ("raw_output", "command_output", "Traceback",
                          "diff_preview", "approval_reason"):
                 assert bad not in output
 
     def test_human_output_concise(self):
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(name="human")
-        save_job(job)
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_title="human")
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=False)
+            _cmd_commit_readiness(str(job.job_id), json_output=False)
             calls = [str(c) for c in mock_print.call_args_list]
             output = "\n".join(calls)
             assert "Commit readiness:" in output

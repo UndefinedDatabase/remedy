@@ -50,7 +50,7 @@ def create_candidate(
 
     candidate: dict[str, Any] = {
         "id": uuid4().hex[:12],
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "kind": kind,
         "status": "pending",
         "safe_summary": summary[:200],
@@ -82,7 +82,7 @@ def approve_candidate(job: Any, candidate_id: str) -> bool:
                     key=f"learned:{c['kind']}:{c['id']}",
                     value=c["safe_summary"],
                     project_id=None,
-                    job_id=str(job.id),
+                    job_id=str(job.job_id),
                     tags=[c["kind"], "learned"],
                     approved=True,
                 )

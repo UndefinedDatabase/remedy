@@ -15,7 +15,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -24,51 +25,49 @@ UI_SRC = ROOT / "apps" / "ui" / "src"
 UI_ROOT = ROOT / "apps" / "ui"
 
 
-def _make_job(**overrides) -> Job:
+def _make_job(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": str(uuid4()),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "tasks": [Task(description="task 1", status=RunState.COMPLETED)],
+        "tasks": [TaskEntry(title="task 1", status=RunState.COMPLETED)],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 # ── Step 71.1: Token Policy Applied ──────────────────────────────────────
 
 
-def _make_job_s74(**overrides) -> Job:
+def _make_job_s74(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": str(uuid4()),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "tasks": [Task(description="task 1", status=RunState.COMPLETED)],
+        "tasks": [TaskEntry(title="task 1", status=RunState.COMPLETED)],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _make_job_s80(**overrides: object) -> Job:
+def _make_job_s80(**overrides: object) -> JobPlan:
     defaults = dict(
-        name="test-ui-job",
+        job_title="test-ui-job",
         user_prompt="Test prompt for UI",
-        tasks=[Task(description="Write a README")],
+        tasks=[TaskEntry(title="Write a README")],
     )
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _make_job_s91():
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -84,7 +83,7 @@ def _get_viewer_html():
     from packages.orchestration.project_brain import build_project_brain
 
     job = _make_job()
-    events = [{"event": "job_created", "run_id": "r1", "job_id": str(job.id),
+    events = [{"event": "job_created", "run_id": "r1", "job_id": str(job.job_id),
                 "timestamp": "2026-01-01", "outcome": "ok", "metadata": {}}]
     graph = build_project_brain(job, events)
     data = build_brain_viewer_data(job, graph, events)
@@ -158,7 +157,7 @@ class TestBrainViewerShell:
         from packages.orchestration.project_brain import build_project_brain
 
         job = _make_job()
-        events = [{"event": "job_created", "run_id": "r1", "job_id": str(job.id),
+        events = [{"event": "job_created", "run_id": "r1", "job_id": str(job.job_id),
                     "timestamp": "2026-01-01", "outcome": "ok", "metadata": {}}]
         graph = build_project_brain(job, events)
         data = build_brain_viewer_data(job, graph, events)
@@ -403,9 +402,9 @@ class TestGuidanceRail:
 class TestViewerPreview:
     def test_viewer_path_json(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job = _make_job_s74()
-        save_job(job)
+        save_job_plan(job)
 
         import io
 
@@ -413,7 +412,7 @@ class TestViewerPreview:
         old = sys.stdout
         sys.stdout = buf = io.StringIO()
         try:
-            _cmd_viewer_path(str(job.id), json_output=True)
+            _cmd_viewer_path(str(job.job_id), json_output=True)
         finally:
             sys.stdout = old
         out = buf.getvalue()
@@ -424,9 +423,9 @@ class TestViewerPreview:
 
     def test_viewer_path_text(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job = _make_job_s74()
-        save_job(job)
+        save_job_plan(job)
 
         import io
 
@@ -434,7 +433,7 @@ class TestViewerPreview:
         old = sys.stdout
         sys.stdout = buf = io.StringIO()
         try:
-            _cmd_viewer_path(str(job.id), json_output=False)
+            _cmd_viewer_path(str(job.job_id), json_output=False)
         finally:
             sys.stdout = old
         out = buf.getvalue().strip()
@@ -442,9 +441,9 @@ class TestViewerPreview:
 
     def test_export_viewer(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job = _make_job_s74()
-        save_job(job)
+        save_job_plan(job)
 
         from apps.cli.commands.brain import _cmd_export_viewer
         export_dir = tmp_path / "exported"
@@ -452,7 +451,7 @@ class TestViewerPreview:
         old = sys.stdout
         sys.stdout = buf = io.StringIO()
         try:
-            _cmd_export_viewer(str(job.id), str(export_dir))
+            _cmd_export_viewer(str(job.job_id), str(export_dir))
         finally:
             sys.stdout = old
 
@@ -470,9 +469,9 @@ class TestViewerPreview:
 
     def test_open_graceful_fallback(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job = _make_job_s74()
-        save_job(job)
+        save_job_plan(job)
 
         # Mock subprocess.Popen to raise
         import subprocess
@@ -489,7 +488,7 @@ class TestViewerPreview:
         sys.stdout = io.StringIO()
         sys.stderr = io.StringIO()
         try:
-            _cmd_brain_open(str(job.id))
+            _cmd_brain_open(str(job.job_id))
         finally:
             sys.stdout = old_out
             sys.stderr = old_err

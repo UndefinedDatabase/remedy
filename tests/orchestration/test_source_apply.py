@@ -10,31 +10,27 @@ from pathlib import Path
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from packages.core.models import (
-    Artifact,
-    ArtifactKind,
-    Job,
-    RunState,
-    Task,
-)
-from packages.orchestration.storage import save_job
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.data_paths import mint_job_id
 
 
-def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> Job:
+def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
     meta: dict = {}
     if project_id:
         meta["project_id"] = project_id
     if target_repo:
         meta["target_repo"] = target_repo
-    return Job(
-        id=uuid4(),
-        name="test job",
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="test job",
         user_prompt="test prompt",
         state=RunState.RUNNING,
         tasks=[
-            Task(
-                id=uuid4(),
-                description="task",
+            TaskEntry(
+                task_id="T001",
+                title="task",
                 status=RunState.PENDING,
                 inputs={"task_type": "patch"},
                 output_artifact_ids=[],
@@ -47,8 +43,8 @@ def _make_job(*, project_id: str | None = None, target_repo: str | None = None) 
 
 def _make_job_s91():
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -58,8 +54,8 @@ def _make_job_s91():
 
 def _make_job_s101(task_count: int = 3):
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -79,7 +75,7 @@ def _make_job_s101(task_count: int = 3):
 # ---------------------------------------------------------------------------
 
 
-def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
+def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[JobPlan, str, Path]:
     """Create a job with an approved patch intent and attached repo."""
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
@@ -115,9 +111,9 @@ def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
         },
     )
 
-    job = Job(
-        id=uuid4(),
-        name="patch job",
+    job = JobPlan(
+        job_id=mint_job_id(),
+        job_title="patch job",
         user_prompt="apply test",
         state=RunState.RUNNING,
         tasks=[],
@@ -144,7 +140,7 @@ def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
     )
     save_contract(job, contract)
 
-    save_job(job)
+    save_job_plan(job)
     return job, intent_id, repo
 
 
@@ -206,7 +202,7 @@ class TestPatchRevert:
         assert result.snapshot_id, "snapshot_id must be set on applied result"
 
         # New snapshot storage path (unified Repository Snapshot service)
-        snap_root = tmp_path / "workspaces" / str(job.id) / "repository_snapshots"
+        snap_root = tmp_path / "workspaces" / str(job.job_id) / "repository_snapshots"
         assert any(snap_root.iterdir()), "snapshot directory must contain at least one entry"
         snap_dir = snap_root / result.snapshot_id
         assert (snap_dir / "manifest.json").exists(), "manifest.json must exist"
@@ -222,7 +218,7 @@ class TestPatchRevert:
 
         # Revert via unified Repository Snapshot service
         from packages.orchestration.repository_snapshot import revert_repository_apply
-        result = revert_repository_apply(str(job.id), intent_id, repo, tmp_path)
+        result = revert_repository_apply(str(job.job_id), intent_id, repo, tmp_path)
         assert result.success, f"Revert failed: {result.block_reason} — {result.safe_summary}"
         assert target.read_text() == original
 
@@ -246,14 +242,14 @@ class TestPatchRevert:
                 }],
             },
         )
-        job = Job(
-            id=uuid4(), name="create job", user_prompt="create",
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="create job", user_prompt="create",
             state=RunState.RUNNING, tasks=[], artifacts=[artifact],
             metadata={"target_repo": str(repo)},
         )
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
         set_permission(job, Capability.repo_generated_write, allow=True)
-        save_job(job)
+        save_job_plan(job)
 
         # Explicit legacy snapshot (Step 1141: apply_patch_intent no longer writes legacy snapshot)
         from packages.orchestration.patch_revert import store_pre_apply_snapshot
@@ -264,8 +260,8 @@ class TestPatchRevert:
         assert (repo / "new_file.md").exists()
 
         from packages.orchestration.patch_revert import revert_patch_intent
-        from packages.orchestration.storage import load_job
-        job = load_job(job.id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        job = load_job_plan(job.job_id)
         result = revert_patch_intent(job, intent_id, data_dir=tmp_path)
         assert result.state == "reverted"
         assert not (repo / "new_file.md").exists()
@@ -281,11 +277,11 @@ class TestPatchRevert:
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
 
         from packages.orchestration.patch_revert import revert_patch_intent
-        from packages.orchestration.storage import load_job
-        job = load_job(job.id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        job = load_job_plan(job.job_id)
         revert_patch_intent(job, intent_id, data_dir=tmp_path)
 
-        job = load_job(job.id)
+        job = load_job_plan(job.job_id)
         result2 = revert_patch_intent(job, intent_id, data_dir=tmp_path)
         assert result2.state == "noop"
         assert result2.outcome == "already_reverted"
@@ -310,12 +306,12 @@ class TestPatchRevert:
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
 
         from packages.orchestration.patch_revert import revert_patch_intent
-        from packages.orchestration.storage import load_job
-        job = load_job(job.id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        job = load_job_plan(job.job_id)
         revert_patch_intent(job, intent_id, data_dir=tmp_path)
 
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
         revert_events = [e for e in events if e.get("event") == "patch_intent_reverted"]
         assert len(revert_events) >= 1
         meta = revert_events[0]["metadata"]
@@ -337,12 +333,12 @@ class TestPatchRevert:
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
 
         from packages.orchestration.patch_revert import revert_patch_intent
-        from packages.orchestration.storage import load_job
-        job = load_job(job.id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        job = load_job_plan(job.job_id)
         revert_patch_intent(job, intent_id, data_dir=tmp_path)
 
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
 
         from packages.orchestration.project_brain import NT_PATCH_REVERT, build_project_brain
         graph = build_project_brain(job, events)
@@ -360,12 +356,12 @@ class TestPatchRevert:
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
 
         from packages.orchestration.patch_revert import revert_patch_intent
-        from packages.orchestration.storage import load_job
-        job = load_job(job.id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        job = load_job_plan(job.job_id)
         revert_patch_intent(job, intent_id, data_dir=tmp_path)
 
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(tmp_path, job.id)
+        events = load_run_events(tmp_path, job.job_id)
         for ev in events:
             if ev.get("event") == "patch_intent_reverted":
                 meta_str = json.dumps(ev["metadata"])
@@ -397,7 +393,7 @@ class TestChangeSet:
 
         from packages.orchestration.change_set import derive_change_set, export_change_list_json
         changes = derive_change_set(job, [])
-        exported = export_change_list_json(str(job.id), changes)
+        exported = export_change_list_json(str(job.job_id), changes)
         assert exported["version"] == 1
         assert "job_id" in exported
         assert "changes" in exported
@@ -408,7 +404,7 @@ class TestChangeSet:
 
         from packages.orchestration.change_set import derive_change_set, export_change_show_json
         changes = derive_change_set(job, [])
-        exported = export_change_show_json(str(job.id), changes[0])
+        exported = export_change_show_json(str(job.job_id), changes[0])
         required = {"version", "job_id", "intent_id", "status", "target_path",
                      "risk", "approval", "apply", "proof", "test", "revert", "memory"}
         assert required <= set(exported.keys())
@@ -435,7 +431,7 @@ class TestChangeSet:
 
         from packages.orchestration.change_set import derive_change_set, export_change_show_json
         changes = derive_change_set(job, [])
-        exported = export_change_show_json(str(job.id), changes[0])
+        exported = export_change_show_json(str(job.job_id), changes[0])
         exported_str = json.dumps(exported)
         assert "Original content" not in exported_str
         assert "Added line" not in exported_str
@@ -649,7 +645,8 @@ class TestSourceApply:
         import dataclasses
         from uuid import uuid4 as _uuid4
 
-        from packages.core.models import Job, RunState
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.permissions import Capability, set_permission
         from packages.orchestration.run_contract import (
             ContractAction,
@@ -657,7 +654,7 @@ class TestSourceApply:
             save_contract,
         )
         from packages.orchestration.source_apply import apply_structured_patch, revert_apply
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.structured_patch import FileOp, StructuredPatch
 
         repo = tmp_path / "repo"
@@ -681,8 +678,8 @@ class TestSourceApply:
                 }],
             },
         )
-        job = Job(
-            id=_uuid4(), name="snap-revert-test", user_prompt="test",
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="snap-revert-test", user_prompt="test",
             state=RunState.RUNNING, tasks=[], artifacts=[artifact], metadata={},
         )
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
@@ -695,7 +692,7 @@ class TestSourceApply:
             denied_actions=tuple(a for a in contract.denied_actions if a != ContractAction.REVERT),
         )
         save_contract(job, contract)
-        save_job(job, root=data_dir)
+        save_job_plan(job, root=data_dir)
 
         (repo / "orig.py").write_text("original")
         patch = StructuredPatch(
@@ -711,7 +708,7 @@ class TestSourceApply:
 
         # Revert via durable snapshot — returns RepositoryRevertResult (Step 1140)
         revert_result = revert_apply(
-            result.apply_id, repo, job_id=str(job.id), data_dir=data_dir
+            result.apply_id, repo, job_id=str(job.job_id), data_dir=data_dir
         )
         assert revert_result.success, f"Revert failed: {revert_result.block_reason}"
         assert (repo / "orig.py").read_text() == "original"

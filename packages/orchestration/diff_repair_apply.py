@@ -152,7 +152,7 @@ def apply_diff_repair(
         patch,
         Path(repo_path),
         data_dir=str(data_dir) if data_dir else None,
-        job_id=getattr(job, "id", None),
+        job_id=getattr(job, "job_id", None),
         job=job,
         intent_id=intent_id,
     )

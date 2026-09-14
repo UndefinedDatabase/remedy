@@ -48,7 +48,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_REJECTED,
@@ -78,7 +79,7 @@ from packages.orchestration.project_brain import (
     NT_VERIFICATION,
     build_project_brain,
 )
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
 
 # ---------------------------------------------------------------------------
 # Sentinels
@@ -104,24 +105,24 @@ _ALL_SENTINELS = [
 # ---------------------------------------------------------------------------
 
 
-def _make_job(**kwargs) -> Job:
-    defaults: dict = {"name": "Test detail job", "state": RunState.PENDING}
+def _make_job(**kwargs) -> JobPlan:
+    defaults: dict = {"job_title": "Test detail job", "state": RunState.PENDING}
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _pending_task(**kwargs) -> Task:
-    return Task(description="write docs", inputs={"task_type": "write_readme"}, **kwargs)
+def _pending_task(**kwargs) -> TaskEntry:
+    return TaskEntry(title="write docs", inputs={"task_type": "write_readme"}, **kwargs)
 
 
-def _completed_task(**kwargs) -> Task:
-    t = Task(description="task done", inputs={"task_type": "write_readme"}, **kwargs)
+def _completed_task(**kwargs) -> TaskEntry:
+    t = TaskEntry(title="task done", inputs={"task_type": "write_readme"}, **kwargs)
     t.status = RunState.COMPLETED
     return t
 
 
 def _add_patch_artifact(
-    job: Job,
+    job: JobPlan,
     *,
     risk: str = RISK_MEDIUM,
     task_id=None,
@@ -150,7 +151,7 @@ def _add_patch_artifact(
     return artifact, make_intent_id(artifact.id, 0)
 
 
-def _build(job: Job, events=None, *, constitution=None) -> object:
+def _build(job: JobPlan, events=None, *, constitution=None) -> object:
     return build_project_brain(job, events or [], constitution=constitution)
 
 
@@ -254,13 +255,13 @@ class TestBuildBrainNodeDetail:
     # ── job node ─────────────────────────────────────────────────────────────
 
     def test_job_node_detail(self):
-        job = _make_job(name="Fix the README")
+        job = _make_job(job_title="Fix the README")
         job.tasks.append(_pending_task())
         graph = _build(job)
         job_node = next(n for n in graph.nodes if n.type == NT_JOB)
         detail = build_brain_node_detail(job, graph, job_node.id, [])
         assert detail.node_type == NT_JOB
-        assert detail.job_id == str(job.id)
+        assert detail.job_id == str(job.job_id)
         assert "Fix the README" in detail.explanation
         assert detail.status == "pending"
 
@@ -299,7 +300,7 @@ class TestBuildBrainNodeDetail:
             name="a",
             content="x",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=str(task.id),
+            task_id=str(task.task_id),
             metadata={"repo_applied_files": ["docs/README.md", "docs/API.md"]},
         )
         job.artifacts.append(artifact)
@@ -402,7 +403,7 @@ class TestBuildBrainNodeDetail:
         job = _make_job()
         task = _completed_task()
         job.tasks.append(task)
-        events = [_task_completed_event(str(job.id), str(task.id))]
+        events = [_task_completed_event(str(job.job_id), str(task.task_id))]
         graph = _build(job, events)
         ver_node = next(n for n in graph.nodes if n.type == NT_VERIFICATION)
         detail = build_brain_node_detail(job, graph, ver_node.id, events)
@@ -416,7 +417,7 @@ class TestBuildBrainNodeDetail:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        events = [_perm_denied_event(str(job.id), str(task.id))]
+        events = [_perm_denied_event(str(job.job_id), str(task.task_id))]
         graph = _build(job, events)
         blk_node = next(n for n in graph.nodes if n.type == NT_BLOCKER)
         detail = build_brain_node_detail(job, graph, blk_node.id, events)
@@ -428,7 +429,7 @@ class TestBuildBrainNodeDetail:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        events = [_perm_denied_event(str(job.id), str(task.id))]
+        events = [_perm_denied_event(str(job.job_id), str(task.task_id))]
         graph = _build(job, events)
         blk_node = next(n for n in graph.nodes if n.type == NT_BLOCKER)
         detail = build_brain_node_detail(job, graph, blk_node.id, events)
@@ -440,7 +441,7 @@ class TestBuildBrainNodeDetail:
         job = _make_job()
         events = [{
             "event": "job_created",
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "run_id": "r0",
             "timestamp": "2026-05-06T09:59:00+00:00",
             "outcome": "created",
@@ -459,7 +460,7 @@ class TestBuildBrainNodeDetail:
 
     def test_agent_loop_node_detail(self):
         job = _make_job()
-        events = [_agent_loop_event(str(job.id))]
+        events = [_agent_loop_event(str(job.job_id))]
         graph = _build(job, events)
         al_node = next(n for n in graph.nodes if n.type == NT_AGENT_LOOP)
         detail = build_brain_node_detail(job, graph, al_node.id, events)
@@ -585,7 +586,7 @@ class TestSummarizeBrainNodeDetail:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        events = [_perm_denied_event(str(job.id), str(task.id))]
+        events = [_perm_denied_event(str(job.job_id), str(task.task_id))]
         graph = _build(job, events)
         blk_node = next(n for n in graph.nodes if n.type == NT_BLOCKER)
         detail = build_brain_node_detail(job, graph, blk_node.id, events)
@@ -617,9 +618,9 @@ class TestExportBrainNodeDetailJson:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        _, intent_id = _add_patch_artifact(job, task_id=task.id)
+        _, intent_id = _add_patch_artifact(job, task_id=task.task_id)
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
-        events = [_task_completed_event(str(job.id), str(task.id))]
+        events = [_task_completed_event(str(job.job_id), str(task.task_id))]
         graph = _build(job, events)
         node = next(n for n in graph.nodes if n.type == NT_JOB)
         detail = build_brain_node_detail(job, graph, node.id, events)
@@ -660,7 +661,7 @@ class TestRedactionHardening:
             name="proposal",
             content=ARTIFACT_CONTENT_MUST_NOT_RENDER,
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=str(task.id),
+            task_id=str(task.task_id),
             metadata={
                 "patch_intent_explanations": [
                     {
@@ -681,10 +682,10 @@ class TestRedactionHardening:
         events = [
             {
                 "event": "task_run_completed",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r1",
                 "timestamp": "2026-05-06T10:01:00+00:00",
-                "task_id": str(task.id),
+                "task_id": str(task.task_id),
                 "outcome": "pass",
                 "message": EVENT_MESSAGE_MUST_NOT_RENDER,
                 "metadata": {"output": RAW_COMMAND_OUTPUT_MUST_NOT_RENDER},
@@ -750,8 +751,8 @@ class TestRedactionHardening:
 
 
 class TestCLIBrainNode:
-    def _job_node_id(self, job: Job) -> str:
-        return str(job.id)
+    def _job_node_id(self, job: JobPlan) -> str:
+        return str(job.job_id)
 
     def test_invalid_uuid_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -776,50 +777,50 @@ class TestCLIBrainNode:
     def test_unknown_node_exits_1(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
         with pytest.raises(SystemExit) as exc:
-            monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), "does-not-exist"])
+            monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), "does-not-exist"])
             main()
         assert exc.value.code == 1
 
     def test_valid_job_and_node_prints_detail(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), self._job_node_id(job)])
         main()
         out = capsys.readouterr().out
         assert "Remedy Brain Node Detail" in out
-        assert str(job.id)[:8] in out
+        assert str(job.job_id)[:8] in out
 
     def test_json_flag_returns_parseable_json(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), self._job_node_id(job), "--json"])
         main()
         out = capsys.readouterr().out
         data = json.loads(out)
-        assert data["node_id"] == str(job.id)
+        assert data["node_id"] == str(job.job_id)
         assert data["node_type"] == NT_JOB
 
     def test_json_flag_top_level_keys(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), self._job_node_id(job), "--json"])
         main()
         data = json.loads(capsys.readouterr().out)
         expected = {
@@ -832,25 +833,25 @@ class TestCLIBrainNode:
     def test_exactly_one_run_log_file_created(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), self._job_node_id(job)])
         main()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         assert len(list(runs_dir.glob("*.jsonl"))) == 1
 
     def test_run_log_metadata_exact_keys(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), self._job_node_id(job)])
         main()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = [
             json.loads(line)
             for line in next(runs_dir.glob("*.jsonl")).read_text().splitlines()
@@ -871,13 +872,13 @@ class TestCLIBrainNode:
             kind=ArtifactKind.PLANNING,
         )
         job.artifacts.append(artifact)
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), self._job_node_id(job)])
         main()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         raw = next(runs_dir.glob("*.jsonl")).read_text()
         assert ARTIFACT_CONTENT_MUST_NOT_RENDER not in raw
 
@@ -886,11 +887,11 @@ class TestCLIBrainNode:
         job = _make_job()
         _, intent_id = _add_patch_artifact(job, content=ARTIFACT_CONTENT_MUST_NOT_RENDER)
         set_approval_state(job, intent_id, APPROVAL_APPROVED, reason=APPROVAL_REASON_MUST_NOT_RENDER)
-        save_job(job)
+        save_job_plan(job)
         import sys
 
         from apps.cli.main import main
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job), "--json"])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.job_id), self._job_node_id(job), "--json"])
         main()
         out = capsys.readouterr().out
         for sentinel in _ALL_SENTINELS:
@@ -907,8 +908,8 @@ class TestMemoryEntryDetail:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.memory.local_gateway import store_memory
         job = _make_job()
-        save_job(job)
-        entry = store_memory(key="test_k", value="secret_v", job_id=str(job.id),
+        save_job_plan(job)
+        entry = store_memory(key="test_k", value="secret_v", job_id=str(job.job_id),
                              tags=["t1"], approved=True)
         graph = build_project_brain(job, [])
         mem_node_id = f"memory:{entry.id}"
@@ -921,8 +922,8 @@ class TestMemoryEntryDetail:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.memory.local_gateway import store_memory
         job = _make_job()
-        save_job(job)
-        entry = store_memory(key="k", value="MUST_NOT_RENDER_VALUE", job_id=str(job.id),
+        save_job_plan(job)
+        entry = store_memory(key="k", value="MUST_NOT_RENDER_VALUE", job_id=str(job.job_id),
                              approved=True)
         graph = build_project_brain(job, [])
         mem_node_id = f"memory:{entry.id}"

@@ -36,8 +36,10 @@ from packages.orchestration.pingpong_job import (
     list_job_plans_safe,
     load_job_plan,
     load_job_plan_safe,
+    require_job_plan,
     save_job_plan,
 )
+from packages.orchestration.storage import JobNotFoundError, JobStoreError
 
 
 def _plan(job_id: str, created_at: str = "2026-09-10T12:00:00+00:00") -> JobPlan:
@@ -154,6 +156,31 @@ class TestCorruptionVisibilityOfOneRecord:
         assert missing_safe != rotten_safe
         assert missing_safe == (None, False)
         assert rotten_safe == (None, True)
+
+
+class TestTheRaisingLoader:
+    """The raising loader answers a caller that catches the way the classic loader did."""
+
+    def test_h2_an_absent_record_raises_job_not_found_naming_the_id_asked_for(
+        self, tmp_path: Path
+    ) -> None:
+        with pytest.raises(JobNotFoundError) as caught:
+            require_job_plan("dddd000000000001", tmp_path)
+
+        assert caught.value.job_id == "dddd000000000001"
+
+    def test_h3_an_unreadable_record_raises_job_store_error(self, tmp_path: Path) -> None:
+        _corrupt(tmp_path, "dddd000000000002")
+
+        with pytest.raises(JobStoreError):
+            require_job_plan("dddd000000000002", tmp_path)
+
+    def test_h4_a_saved_record_comes_back_equal_to_what_the_plain_reader_reads(
+        self, tmp_path: Path
+    ) -> None:
+        save_job_plan(_plan("dddd000000000003"), tmp_path)
+
+        assert require_job_plan("dddd000000000003", tmp_path) == load_job_plan("dddd000000000003", tmp_path)
 
 
 class TestListingTheUnifiedStore:

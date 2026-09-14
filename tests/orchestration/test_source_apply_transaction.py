@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.source_apply import (
     _apply_hunks,
     apply_structured_patch,
@@ -26,9 +26,9 @@ class TestTransactionRollback:
             set_approval_state,
         )
         from packages.orchestration.permissions import Capability, set_permission
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(name="txn-test")
+        job = JobPlan(job_title="txn-test")
         set_permission(job, Capability.repo_generated_write, allow=True)
 
         artifact = Artifact(task_id=str(uuid4()), name="test-patch", content="")
@@ -37,7 +37,7 @@ class TestTransactionRollback:
              "reason": "test", "summary": "test patch"}
         ]}
         job.artifacts.append(artifact)
-        save_job(job)
+        save_job_plan(job)
 
         intent_id = make_intent_id(artifact.id, 0)
         set_approval_state(job, intent_id, APPROVAL_APPROVED)

@@ -16,8 +16,8 @@ _ROOT = Path(__file__).resolve().parent.parent.parent
 
 def _make_job():
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -26,12 +26,13 @@ def _make_job():
 
 
 def _make_job_s111(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -47,12 +48,13 @@ def _make_job_s111(*, tasks=None, name="test"):
 
 
 def _make_job_s122(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -68,12 +70,13 @@ def _make_job_s122(*, tasks=None, name="test"):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -89,15 +92,16 @@ def _make_job_s127(*, tasks=None, name="test"):
 
 
 def _make_job_s135(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
             task_type = t.get("type", "readme_draft")
             inputs = dict(t.get("metadata", {}))
             inputs.setdefault("task_type", task_type)
-            task = Task(
-                description=t.get("description", task_type),
+            task = TaskEntry(
+                title=t.get("description", task_type),
                 inputs=inputs,
             )
             if "status" in t:
@@ -176,13 +180,13 @@ class TestFixtureBuilderStructuredPatch:
 
     def test_fixture_builder_creates_patch(self):
         """Fixture builder should use structured patch model."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="test fixture")
-            from packages.orchestration.storage import save_job
-            save_job(job)
+            job = JobPlan(job_title="test fixture")
+            from packages.orchestration.pingpong_job import save_job_plan
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
 
@@ -196,13 +200,13 @@ class TestFixtureBuilderStructuredPatch:
 
     def test_fixture_builder_creates_files(self):
         """Fixture builder should create test and source files."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="test fixture")
-            from packages.orchestration.storage import save_job
-            save_job(job)
+            job = JobPlan(job_title="test fixture")
+            from packages.orchestration.pingpong_job import save_job_plan
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
 
@@ -215,13 +219,13 @@ class TestFixtureBuilderStructuredPatch:
 
     def test_fixture_test_passes(self):
         """The fixture test should actually pass after apply."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="test fixture")
-            from packages.orchestration.storage import save_job
-            save_job(job)
+            job = JobPlan(job_title="test fixture")
+            from packages.orchestration.pingpong_job import save_job_plan
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
 
@@ -292,13 +296,13 @@ class TestCalcFixtureBuilderWithProof:
 
     def test_fixture_creates_calc_and_makefile(self):
         """Fixture builder creates calc.py, tests/test_calc.py, Makefile."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="test fixture")
-            save_job(job)
+            job = JobPlan(job_title="test fixture")
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
 
@@ -309,13 +313,13 @@ class TestCalcFixtureBuilderWithProof:
 
     def test_fixture_test_passes(self):
         """calc fixture test should pass after apply."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="test fixture calc")
-            save_job(job)
+            job = JobPlan(job_title="test fixture calc")
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
 
@@ -324,13 +328,13 @@ class TestCalcFixtureBuilderWithProof:
 
     def test_fixture_proof_collected(self):
         """Fixture builder at autonomy 4+ should collect proof."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="test proof")
-            save_job(job)
+            job = JobPlan(job_title="test proof")
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
 
@@ -339,13 +343,13 @@ class TestCalcFixtureBuilderWithProof:
 
     def test_makefile_has_test_target(self):
         """Makefile must have a test target."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="test makefile")
-            save_job(job)
+            job = JobPlan(job_title="test makefile")
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
 
@@ -425,13 +429,13 @@ class TestFixtureBuilderFakeE2ERepair:
     """Autocoder fixture builder proves real code change path."""
 
     def test_fixture_file_fixed(self):
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="e2e")
-            save_job(job)
+            job = JobPlan(job_title="e2e")
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
             result = _run_fixture_builder(job, "Fix calc", Path(tmp), data_dir, autonomy_level=4)
@@ -443,13 +447,13 @@ class TestFixtureBuilderFakeE2ERepair:
 
     def test_fixture_structured_patch_path(self):
         """Must use structured patch, not direct file write."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="patch-path")
-            save_job(job)
+            job = JobPlan(job_title="patch-path")
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
             result = _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
@@ -457,13 +461,13 @@ class TestFixtureBuilderFakeE2ERepair:
             assert result.get("source_patch_applied") is True
 
     def test_fixture_approval_gate(self):
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="approval")
-            save_job(job)
+            job = JobPlan(job_title="approval")
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
             result = _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
@@ -521,13 +525,13 @@ class TestFixtureBuilderWrongCalcRepair:
 
     def test_fixture_starts_with_wrong_calc(self):
         """calc.py should start wrong (subtract instead of add)."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="wrong-calc")
-            save_job(job)
+            job = JobPlan(job_title="wrong-calc")
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
             # Run at low autonomy to see the wrong file exists
@@ -537,13 +541,13 @@ class TestFixtureBuilderWrongCalcRepair:
 
     def test_fixture_fixes_calc(self):
         """After full run, calc.py should have correct add/mul."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="fix-calc")
-            save_job(job)
+            job = JobPlan(job_title="fix-calc")
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
             result = _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
@@ -559,13 +563,13 @@ class TestFixtureBuilderWrongCalcRepair:
         assert 'action="modify"' in src
 
     def test_fixture_structured_patch_path(self):
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="patch-path")
-            save_job(job)
+            job = JobPlan(job_title="patch-path")
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
             result = _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
@@ -574,13 +578,13 @@ class TestFixtureBuilderWrongCalcRepair:
             assert result.get("approval_required") is True
 
     def test_fixture_proof_collected(self):
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="proof")
-            save_job(job)
+            job = JobPlan(job_title="proof")
+            save_job_plan(job)
             from packages.orchestration.data_paths import resolve_data_root
             data_dir = resolve_data_root()
             result = _run_fixture_builder(job, "Prove", Path(tmp), data_dir, autonomy_level=4)
@@ -594,18 +598,18 @@ class TestFixtureBuilderWrongCalcRepair:
 
     def test_no_raw_leaks_in_fixture(self):
         """Fixture builder events should not leak raw content."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
         from packages.orchestration.data_paths import resolve_data_root
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.timeline import load_run_events
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="leak-check")
-            save_job(job)
+            job = JobPlan(job_title="leak-check")
+            save_job_plan(job)
             data_dir = resolve_data_root()
             _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
-            events = load_run_events(data_dir, job.id)
+            events = load_run_events(data_dir, job.job_id)
             events_str = json.dumps(events)
             for bad in ("raw_output", "command_output", "Traceback",
                          "approval_reason", "diff_preview"):
@@ -613,18 +617,18 @@ class TestFixtureBuilderWrongCalcRepair:
 
     def test_source_apply_event_schema(self):
         """source_patch_applied event must have required fields."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autorun import _run_fixture_builder
         from packages.orchestration.data_paths import resolve_data_root
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.timeline import load_run_events
 
         with tempfile.TemporaryDirectory() as tmp:
-            job = Job(name="event-check")
-            save_job(job)
+            job = JobPlan(job_title="event-check")
+            save_job_plan(job)
             data_dir = resolve_data_root()
             _run_fixture_builder(job, "Fix", Path(tmp), data_dir, autonomy_level=4)
-            events = load_run_events(data_dir, job.id)
+            events = load_run_events(data_dir, job.job_id)
             apply_events = [e for e in events if e.get("event") == "source_patch_applied"]
             assert len(apply_events) >= 1
             meta = apply_events[0].get("metadata", {})

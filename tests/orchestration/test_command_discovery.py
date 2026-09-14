@@ -12,18 +12,21 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from packages.orchestration.data_paths import mint_job_id
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _make_job(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -39,12 +42,13 @@ def _make_job(*, tasks=None, name="test"):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -228,13 +232,13 @@ class TestWorkerBrainNode:
     def test_worker_adapter_node_in_graph(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.project_brain import build_project_brain
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(
-            id=uuid4(), name="brain-wa", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="brain-wa", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         )
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         wa_nodes = [n for n in graph.nodes if n.type == "worker_adapter"]
         assert len(wa_nodes) >= 1

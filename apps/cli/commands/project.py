@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.orchestration.data_paths import lookup_job_id
-from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job, save_job
+from packages.orchestration.storage import JobNotFoundError
+from packages.orchestration.pingpong_job import list_job_plans, require_job_plan, save_job_plan
 
 if TYPE_CHECKING:
     import argparse
@@ -94,8 +95,8 @@ def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None
     except ProjectNotFoundError:
         print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
-    all_jobs = list_jobs()
-    linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+    all_jobs = list_job_plans()
+    linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
     if json_output:
         print(_json.dumps(export_project_json(project, linked_jobs), indent=2))
     else:
@@ -155,7 +156,7 @@ def _cmd_attach_project_job(project_id_str: str, job_id_str: str) -> None:
         sys.exit(1)
     try:
         job_id = lookup_job_id(job_id_str)
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except (ValueError, JobNotFoundError):
         print(f"ERROR: job not found: {job_id_str}", file=sys.stderr)
         sys.exit(1)
@@ -163,7 +164,7 @@ def _cmd_attach_project_job(project_id_str: str, job_id_str: str) -> None:
     save_project(project)
     if job.metadata.get("project_id") != project_id_str:
         job.metadata["project_id"] = project_id_str
-        save_job(job)
+        save_job_plan(job)
     if added:
         print(f"Attached job {job_id[:8]} to project {str(pid)[:8]}")
     else:
@@ -196,8 +197,8 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
         print(f"Error: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
 
-    all_jobs = list_jobs()
-    linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+    all_jobs = list_job_plans()
+    linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
     snapshot = derive_project_context_coverage(project, linked_jobs)
 
     if json_output:
@@ -237,15 +238,15 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
         print(f"Error: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
 
-    all_jobs = list_jobs()
-    linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+    all_jobs = list_job_plans()
+    linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
 
     data_dir = resolve_data_root()
     all_events: dict[str, list[dict]] = {}
     consts: dict[str, object | None] = {}
     for job in linked_jobs:
-        jid = str(job.id)
-        all_events[jid] = load_run_events(data_dir, job.id)
+        jid = str(job.job_id)
+        all_events[jid] = load_run_events(data_dir, job.job_id)
         target_repo = job.metadata.get("target_repo")
         if target_repo:
             try:
@@ -293,14 +294,14 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
         print(f"Error: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
 
-    all_jobs = list_jobs()
-    linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+    all_jobs = list_job_plans()
+    linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
 
     data_dir = resolve_data_root()
     all_events: dict[str, list[dict]] = {}
     for job in linked_jobs:
-        jid = str(job.id)
-        all_events[jid] = load_run_events(data_dir, job.id)
+        jid = str(job.job_id)
+        all_events[jid] = load_run_events(data_dir, job.job_id)
 
     summary = build_project_summary(project, linked_jobs, all_events)
     patterns = detect_patterns(linked_jobs, all_events)
@@ -451,7 +452,7 @@ def _cmd_project_adopt(
     resolved_id = resolve_job_id(job_id_str)
 
     try:
-        job = load_job(resolved_id)
+        job = require_job_plan(resolved_id)
     except JobNotFoundError:
         print(f"Error: job not found: {resolved_id[:8]}", file=sys.stderr)
         sys.exit(3)
@@ -464,8 +465,8 @@ def _cmd_project_adopt(
         sys.exit(2)
 
     job.project_id = str(project.id)
-    save_job(job)
-    attach_job(project, str(job.id))
+    save_job_plan(job)
+    attach_job(project, str(job.job_id))
     save_project(project)
     print(f"Adopted {resolved_id[:8]} into project {project.slug or project.id}.")
 

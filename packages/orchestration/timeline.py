@@ -16,7 +16,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration._symbols import (
     FAIL as _FAIL,
 )
@@ -105,14 +106,14 @@ def load_run_events(data_dir: Path, job_id: str) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-def summarize_timeline(job: Job, events: list[dict[str, Any]]) -> str:
+def summarize_timeline(job: JobPlan, events: list[dict[str, Any]]) -> str:
     """Return a human-readable multiline string summarising the job timeline."""
     parts: list[str] = []
 
     # ── Header ──────────────────────────────────────────────────────────
     parts.append("Remedy Timeline")
-    short_id = str(job.id)[:8]
-    name = job.name if len(job.name) <= 60 else job.name[:60] + "…"
+    short_id = str(job.job_id)[:8]
+    name = job.job_title if len(job.job_title) <= 60 else job.job_title[:60] + "…"
     parts.append(f"Job: {short_id} — {name}")
     parts.append(f"State: {job.state.value}")
 
@@ -373,7 +374,7 @@ def _fmt_elapsed(meta: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _derive_status(job: Job) -> str:
+def _derive_status(job: JobPlan) -> str:
     total = len(job.tasks)
     completed = sum(1 for t in job.tasks if t.status == RunState.COMPLETED)
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
@@ -390,9 +391,9 @@ def _derive_status(job: Job) -> str:
     return f"  {job.state.value.capitalize()}."
 
 
-def _derive_next_action(job: Job, events: list[dict[str, Any]]) -> str:
+def _derive_next_action(job: JobPlan, events: list[dict[str, Any]]) -> str:
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
-    job_id_str = str(job.id)
+    job_id_str = str(job.job_id)
 
     # Most recent terminal event
     terminal_events = [

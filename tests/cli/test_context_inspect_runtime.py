@@ -15,31 +15,30 @@ import sys
 from pathlib import Path
 from uuid import uuid4
 
-from packages.core.models import Artifact, ArtifactKind, Job, Task
+from packages.core.models import Artifact, ArtifactKind
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _create_temp_job(tmp_path: Path, repo_path: Path, tasks: list[Task] | None = None) -> Job:
+def _create_temp_job(tmp_path: Path, repo_path: Path, tasks: list[TaskEntry] | None = None) -> JobPlan:
     """Create and persist a Job with repo_path in artifact metadata."""
-    task = tasks[0] if tasks else Task(description="Fix auth bug")
+    task = tasks[0] if tasks else TaskEntry(title="Fix auth bug")
     art = Artifact(
         name="repo-ref",
         content="",
         kind=ArtifactKind.UNKNOWN,
         metadata={"repo_path": str(repo_path)},
     )
-    job = Job(
-        name="test-runtime-job",
+    job = JobPlan(
+        job_title="test-runtime-job",
         user_prompt="Fix the bug",
         tasks=tasks or [task],
         artifacts=[art],
     )
-    jobs_dir = tmp_path / "jobs"
-    jobs_dir.mkdir(parents=True, exist_ok=True)
-    (jobs_dir / f"{job.id}.json").write_text(job.model_dump_json(indent=2))
+    save_job_plan(job, tmp_path)
     return job
 
 
@@ -90,7 +89,7 @@ class TestContextInspectRuntime:
         job = _create_temp_job(data_dir, repo)
 
         result = _run_grouped_cli(
-            ["context", "inspect", str(job.id), "--json"],
+            ["context", "inspect", str(job.job_id), "--json"],
             env_extra={"REMEDY_DATA_DIR": str(data_dir)},
         )
 
@@ -98,7 +97,7 @@ class TestContextInspectRuntime:
         assert "Traceback" not in result.stderr
         data = json.loads(result.stdout)
         assert data["version"] == 1
-        assert data["job_id"] == str(job.id)
+        assert data["job_id"] == str(job.job_id)
         assert "included_paths" in data
         assert "excluded_paths" in data
         assert "budget" in data
@@ -114,7 +113,7 @@ class TestContextInspectRuntime:
         job = _create_temp_job(data_dir, repo)
 
         result = _run_grouped_cli(
-            ["context", "inspect", str(job.id), "--json"],
+            ["context", "inspect", str(job.job_id), "--json"],
             env_extra={"REMEDY_DATA_DIR": str(data_dir)},
         )
 
@@ -132,7 +131,7 @@ class TestContextInspectRuntime:
         job = _create_temp_job(data_dir, repo)
 
         result = _run_grouped_cli(
-            ["context", "inspect", str(job.id), "--json"],
+            ["context", "inspect", str(job.job_id), "--json"],
             env_extra={"REMEDY_DATA_DIR": str(data_dir)},
         )
 
@@ -151,7 +150,7 @@ class TestContextInspectRuntime:
         job = _create_temp_job(data_dir, repo)
 
         result = _run_grouped_cli(
-            ["context", "inspect", str(job.id), "--json"],
+            ["context", "inspect", str(job.job_id), "--json"],
             env_extra={"REMEDY_DATA_DIR": str(data_dir)},
         )
 
@@ -167,7 +166,7 @@ class TestContextInspectRuntime:
         job = _create_temp_job(data_dir, repo)
 
         result = _run_grouped_cli(
-            ["context", "inspect", str(job.id)],
+            ["context", "inspect", str(job.job_id)],
             env_extra={"REMEDY_DATA_DIR": str(data_dir)},
         )
 
@@ -193,7 +192,7 @@ class TestContextInspectRuntimeMissingTask:
         fake_task_id = str(uuid4())
 
         result = _run_grouped_cli(
-            ["context", "inspect", str(job.id), fake_task_id, "--json"],
+            ["context", "inspect", str(job.job_id), fake_task_id, "--json"],
             env_extra={"REMEDY_DATA_DIR": str(data_dir)},
         )
 
@@ -210,7 +209,7 @@ class TestContextInspectRuntimeMissingTask:
         fake_task_id = str(uuid4())
 
         result = _run_grouped_cli(
-            ["context", "inspect", str(job.id), fake_task_id, "--json"],
+            ["context", "inspect", str(job.job_id), fake_task_id, "--json"],
             env_extra={"REMEDY_DATA_DIR": str(data_dir)},
         )
 

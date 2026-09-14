@@ -127,11 +127,11 @@ class TestDoMission:
 
     def test_old_job_json_without_mission_loads(self, tmp_path):
         """Pre-F147 job JSON without mission field must still load."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import _import_job
 
         old_json = json.dumps({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "name": "legacy job",
+            "job_id": "0000000000000001",
+            "job_title": "legacy job",
             "user_prompt": "do something",
             "created_at": "2026-01-01T00:00:00Z",
             "tasks": [],
@@ -140,9 +140,9 @@ class TestDoMission:
             "budget": {},
             "metadata": {},
         })
-        job = Job.model_validate_json(old_json)
-        assert job.mission is None
-        assert job.name == "legacy job"
+        job = _import_job(json.loads(old_json))
+        assert job.mission == ""
+        assert job.job_title == "legacy job"
 
     def test_long_mission_stored_fully(self, tmp_path):
         repo = _git_repo(tmp_path)
@@ -194,21 +194,21 @@ class TestDoMission:
 
     def test_job_show_silent_for_legacy_job(self, tmp_path, monkeypatch):
         """Legacy job without intake → no Intake block."""
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
 
         env = _env(tmp_path)
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        legacy = Job(
-            name="legacy",
+        legacy = JobPlan(
+            job_title="legacy",
             user_prompt="do something",
             state="pending",
         )
-        save_job(legacy)
+        save_job_plan(legacy)
         repo = _git_repo(tmp_path)
 
         show = subprocess.run(
-            [*_CLI, "job", "show", str(legacy.id)],
+            [*_CLI, "job", "show", str(legacy.job_id)],
             capture_output=True, text=True, timeout=30,
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
@@ -868,7 +868,7 @@ class TestShortIdResolution:
         )
         assert result.returncode == 0, result.stderr
         data = json.loads(result.stdout)
-        assert data["id"] == job_id
+        assert data["job_id"] == job_id
 
     def test_decision_list_accepts_short_id(self, tmp_path):
         """remedy decision list <short> resolves to full UUID."""

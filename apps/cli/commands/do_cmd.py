@@ -186,7 +186,8 @@ def _cmd_do_mission(
         )
         sys.exit(3)
 
-    from packages.core.models import Job, RunState
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan
     from packages.orchestration.intake import (
         compose_intake_prompt,
         heuristic_intake,
@@ -195,7 +196,7 @@ def _cmd_do_mission(
         run_intake,
     )
     from packages.orchestration.job_runner import plan_job
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
 
     call_fn = None
     intake_result = None
@@ -299,8 +300,8 @@ def _cmd_do_mission(
                         if k in JobFences.model_fields})
                 except Exception:
                     pass
-            job = Job(
-                name=mission[:80], mission=mission, user_prompt=mission,
+            job = JobPlan(
+                job_title=mission[:80], mission=mission, user_prompt=mission,
                 project_id=str(project.id),
                 intake=intake_result.value.model_dump(),
                 flight_plan=fp_dict,
@@ -309,10 +310,10 @@ def _cmd_do_mission(
                 budgets=job_budgets,
                 fences=job_fences,
             )
-            save_job(job)
+            save_job_plan(job)
             from packages.orchestration.data_paths import job_evidence_export_dir
             write_plan_md(
-                fp_result.plan, job_evidence_export_dir(str(job.id)),
+                fp_result.plan, job_evidence_export_dir(str(job.job_id)),
                 transformations=fp_result.transformations)
             if yes:
                 # F034: --yes covers approval AND clarifications. Every open
@@ -322,9 +323,9 @@ def _cmd_do_mission(
                 # orchestrator loop runs the SAME approval, not a copy of it.
                 from packages.orchestration.flight_plan import auto_approve_flight_plan
                 fp_dict = auto_approve_flight_plan(
-                    fp_dict, job_evidence_export_dir(str(job.id)))
+                    fp_dict, job_evidence_export_dir(str(job.job_id)))
                 job.flight_plan = fp_dict
-                save_job(job)
+                save_job_plan(job)
                 plan_label = (
                     f"flight plan {fp_result.plan.schema_v} (approved via --yes)"
                 )
@@ -333,13 +334,13 @@ def _cmd_do_mission(
                     f"flight plan {fp_result.plan.schema_v} (awaiting approval)"
                 )
         else:
-            job = Job(
-                name=mission[:80], mission=mission, user_prompt=mission,
+            job = JobPlan(
+                job_title=mission[:80], mission=mission, user_prompt=mission,
                 project_id=str(project.id),
                 intake=intake_result.value.model_dump(),
                 state=RunState.PENDING,
             )
-            save_job(job)
+            save_job_plan(job)
             from packages.orchestration.data_paths import job_evidence_export_dir
             from packages.orchestration.failure_postmortem import (
                 FailureSignals,
@@ -350,8 +351,8 @@ def _cmd_do_mission(
                 error_class="parse",
                 error_text=fp_result.error_hint or "flight plan parse failure",
             )
-            pm = build_job_rollup(job_id=str(job.id), signals=signals)
-            ev_dir = job_evidence_export_dir(str(job.id))
+            pm = build_job_rollup(job_id=str(job.job_id), signals=signals)
+            ev_dir = job_evidence_export_dir(str(job.job_id))
             ev_dir.mkdir(parents=True, exist_ok=True)
             try:
                 write_postmortem(ev_dir, pm, root=ev_dir)
@@ -365,35 +366,35 @@ def _cmd_do_mission(
             sys.exit(1)
 
     if job is None:
-        job = Job(
-            name=mission[:80], mission=mission, user_prompt=mission,
+        job = JobPlan(
+            job_title=mission[:80], mission=mission, user_prompt=mission,
             project_id=str(project.id),
             intake=intake_result.value.model_dump(),
         )
         plan_result = plan_job(job)
         job = plan_result.job
-        save_job(job)
+        save_job_plan(job)
 
     if prompt_traces:
         from packages.orchestration.prompt_trace import write_trace_jsonl
         from packages.orchestration.run_log import RunLogWriter
-        log = RunLogWriter(job_id=job.id)
+        log = RunLogWriter(job_id=job.job_id)
         try:
             write_trace_jsonl(prompt_traces, log.path.parent / "prompt_trace.jsonl")
         except OSError:
             pass
 
     from packages.orchestration.project_registry import attach_job, save_project
-    attach_job(project, str(job.id))
+    attach_job(project, str(job.job_id))
     save_project(project)
 
-    short_id = str(job.id)[:8]
+    short_id = str(job.job_id)[:8]
     display_mission = mission if len(mission) <= _MISSION_DISPLAY_MAX else mission[:_MISSION_DISPLAY_MAX] + "…"
 
     if json_output:
         import json as _json
         print(_json.dumps({
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "short_id": short_id,
             "project_slug": project.slug,
             "state": job.state.value,
@@ -404,7 +405,7 @@ def _cmd_do_mission(
                 "fallback_reason": intake_fallback_reason,
             },
             "tasks": [
-                {"task_id": str(t.id), "description": t.description}
+                {"task_id": str(t.task_id), "description": t.title}
                 for t in job.tasks
             ],
             "plan_label": plan_label,
@@ -430,7 +431,7 @@ def _cmd_do_mission(
     print("Tasks:")
     for t in job.tasks:
         task_type = t.inputs.get("task_type", "")
-        print(f"  - {task_type}: {t.description}")
+        print(f"  - {task_type}: {t.title}")
     print(f"plan: {plan_label}")
     print("Next: remedy status")
 
@@ -2929,11 +2930,12 @@ def _cmd_do_replan(
 ) -> None:
     """Regenerate the flight plan for an existing job."""
     from packages.orchestration.data_paths import job_evidence_export_dir, resolve_job_id
-    from packages.orchestration.storage import JobNotFoundError, load_job, save_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 
     job_id = resolve_job_id(job_id_str)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -2991,7 +2993,7 @@ def _cmd_do_replan(
         )
         sys.exit(1)
 
-    ev_dir = job_evidence_export_dir(str(job.id))
+    ev_dir = job_evidence_export_dir(str(job.job_id))
     try:
         new_fp_dict, version = replan(
             fp, fp_result.plan, ev_dir,
@@ -3005,14 +3007,14 @@ def _cmd_do_replan(
     new_fp_dict["_normalization"] = fp_result.transformations
     job.flight_plan = new_fp_dict
     job.tasks = map_flight_plan_to_tasks(fp_result.plan)
-    save_job(job)
+    save_job_plan(job)
 
     # APPEND, never write: this job's first run already left its intake and
     # flight-plan traces in the same per-job file (F105 R28).
     if replan_traces:
         from packages.orchestration.prompt_trace import append_trace_jsonl
         from packages.orchestration.run_log import RunLogWriter
-        log = RunLogWriter(job_id=job.id)
+        log = RunLogWriter(job_id=job.job_id)
         try:
             append_trace_jsonl(replan_traces, log.path.parent / "prompt_trace.jsonl")
         except OSError:
@@ -3020,12 +3022,12 @@ def _cmd_do_replan(
 
     if json_output:
         print(json.dumps({
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "version": version,
             "approval": new_fp_dict.get("_approval", "pending"),
         }, indent=2))
     else:
-        print(f"Replanned job {str(job.id)[:8]} → version {version} (awaiting approval)")
+        print(f"Replanned job {str(job.job_id)[:8]} → version {version} (awaiting approval)")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {

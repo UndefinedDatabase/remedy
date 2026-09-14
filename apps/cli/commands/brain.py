@@ -8,7 +8,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from packages.orchestration.data_paths import lookup_job_id, resolve_data_root
-from packages.orchestration.storage import JobNotFoundError, load_job
+from packages.orchestration.storage import JobNotFoundError
+from packages.orchestration.pingpong_job import require_job_plan
 
 if TYPE_CHECKING:
     import argparse
@@ -21,7 +22,7 @@ def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -53,7 +54,7 @@ def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
     task_count = sum(1 for n in graph.nodes if n.type == "task")
     patch_intent_count = sum(1 for n in graph.nodes if n.type == "patch_intent")
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
     log.log(
         "project_brain_inspected", outcome="inspected",
         node_count=len(graph.nodes), edge_count=len(graph.edges),
@@ -68,7 +69,7 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -104,7 +105,7 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
     else:
         print(summarize_brain_node_detail(detail))
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
     log.log(
         "brain_node_inspected", outcome="inspected",
         node_id=detail.node_id, node_type=detail.node_type,
@@ -119,7 +120,7 @@ def _cmd_brain_view(job_id_str: str) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -155,7 +156,7 @@ def _cmd_brain_view(job_id_str: str) -> None:
 
     print(f"Brain Viewer: {index_path}")
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
     log.log(
         "brain_viewer_prepared", outcome="prepared",
         node_count=len(graph.nodes), edge_count=len(graph.edges),
@@ -172,7 +173,7 @@ def _prepare_viewer(job_id_str: str):
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -231,7 +232,7 @@ def _cmd_viewer_path(job_id_str: str, *, json_output: bool = False) -> None:
         import json as _j
         print(_j.dumps({
             "version": 1,
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "index_path": str(index_path),
             "viewer_data_path": str(index_path.parent / "viewer_data.json"),
             "node_count": len(graph.nodes),
@@ -261,7 +262,7 @@ def _cmd_export_viewer(job_id_str: str, out_path: str) -> None:
     # Write manifest
     manifest = {
         "version": 1,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "project_id": str(job.metadata.get("project_id", "")),
         "created_at": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "index_path": "index.html",
@@ -285,7 +286,7 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -323,7 +324,7 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
     else:
         print(summarize_context_coverage(snapshot))
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
     log.log(
         "context_coverage_inspected", outcome="inspected",
         score=snapshot.score,
@@ -339,7 +340,7 @@ def _cmd_trust_report(job_id_str: str) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -364,7 +365,7 @@ def _cmd_timeline(job_id_str: str) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -385,7 +386,7 @@ def _cmd_cockpit(job_id_str: str) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -410,7 +411,7 @@ def _cmd_constitution(job_id_str: str) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -426,7 +427,7 @@ def _cmd_constitution(job_id_str: str) -> None:
     constitution = load_project_constitution(repo_root)
     print(render_constitution(constitution, repo_root))
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
     log.log(
         "project_constitution_loaded", outcome="loaded",
         source_count=len(constitution.source_files),
@@ -445,7 +446,7 @@ def _cmd_brain_continue(
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -493,7 +494,7 @@ def _cmd_agent_loop(job_id_str: str) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -508,7 +509,7 @@ def _cmd_agent_loop(job_id_str: str) -> None:
 
     print(summarize_agent_loop_state(job, state))
 
-    log = RunLogWriter(job_id=job.id)
+    log = RunLogWriter(job_id=job.job_id)
     log.log(
         "agent_loop_inspected", outcome="inspected",
         stage=state.current_stage.value, decision=state.decision.value,

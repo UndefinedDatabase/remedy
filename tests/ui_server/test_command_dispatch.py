@@ -19,18 +19,18 @@ from pathlib import Path
 
 import pytest
 
-from packages.core.models import Job, Task
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 # Pinned as a literal for the reason its sibling gives: a test that imports the
 # constant it checks cannot catch a rename of the header the browser must send.
 CSRF_HEADER = "X-Remedy-CSRF"
 
 
-def _make_job() -> Job:
-    return Job(
-        name="test-command-dispatch-job",
+def _make_job() -> JobPlan:
+    return JobPlan(
+        job_title="test-command-dispatch-job",
         user_prompt="Test prompt for the command dispatch effects",
-        tasks=[Task(description="Write a README")],
+        tasks=[TaskEntry(title="Write a README")],
     )
 
 
@@ -71,10 +71,10 @@ class TestJobStopDispatchEffects:
     @pytest.fixture(autouse=True)
     def _setup_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         self.job = _make_job()
-        save_job(self.job)
-        self.job_id = str(self.job.id)
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
         self.control = tmp_path / "control"
 
@@ -164,11 +164,11 @@ class TestFlightPlanApprovalDispatchEffects:
     @pytest.fixture(autouse=True)
     def _setup_pending_plan(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         self.job = _make_job()
         self.job.flight_plan = {"_approval": "pending"}
-        save_job(self.job)
-        self.job_id = str(self.job.id)
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
 
     def _approve(self, port, token, nonce, answers=None):
@@ -191,13 +191,13 @@ class TestFlightPlanApprovalDispatchEffects:
 
     def test_an_accepted_fp_approval_really_resolved_the_plan(self):
         """The effect ran: the plan is `approved` in a job RELOADED from storage."""
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
         port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
         status, body = self._approve(port, token, "nonce-fp-effect")
 
         assert status == 200, body
-        reloaded = load_job(self.job.id)
+        reloaded = load_job_plan(self.job.job_id)
         assert reloaded.flight_plan["_approval"] == "approved", reloaded.flight_plan
 
     def test_a_supplied_clarification_answer_is_recorded_as_human(self):
@@ -208,17 +208,17 @@ class TestFlightPlanApprovalDispatchEffects:
         `answered_by` says `human` — the field the assumption log reports, and
         the one that stays `default` if the door drops the answers it was sent.
         """
-        from packages.orchestration.storage import load_job, save_job
+        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
         self.job.flight_plan = {"_approval": "pending", "clarifications_resolved": [
             {"id": "q1", "question": "Which store?", "default_answer": "sqlite"}]}
-        save_job(self.job)
+        save_job_plan(self.job)
         port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
         status, body = self._approve(port, token, "nonce-fp-answered",
                                      answers={"q1": "use PostgreSQL"})
 
         assert status == 200, body
-        resolved = load_job(self.job.id).flight_plan["clarifications_resolved"]
+        resolved = load_job_plan(self.job.job_id).flight_plan["clarifications_resolved"]
         assert resolved[0]["answer"] == "use PostgreSQL", resolved
         assert resolved[0]["answered_by"] == "human", resolved
 
@@ -230,17 +230,17 @@ class TestFlightPlanApprovalDispatchEffects:
         one edit away from "fixing" it into a double write. Counting the calls
         is what makes the omission a decision rather than an oversight.
         """
-        from packages.orchestration import storage
+        from packages.orchestration import pingpong_job
 
-        real_save_job = storage.save_job
+        real_save_job = pingpong_job.save_job_plan
         saves = []
 
         def counting_save_job(job, *args, **kwargs):
-            saves.append(str(job.id))
+            saves.append(str(job.job_id))
             return real_save_job(job, *args, **kwargs)
 
         port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
-        monkeypatch.setattr(storage, "save_job", counting_save_job)
+        monkeypatch.setattr(pingpong_job, "save_job_plan", counting_save_job)
         status, body = self._approve(port, token, "nonce-fp-save-once")
 
         assert status == 200, body
@@ -289,10 +289,10 @@ class TestApproveHunksDispatchEffects:
     @pytest.fixture(autouse=True)
     def _setup_job_with_a_diff(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         self.job = _make_job()
-        save_job(self.job)
-        self.job_id = str(self.job.id)
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
         self.control = tmp_path / "control"
         self.diff_text = _three_hunk_diff()
@@ -346,9 +346,9 @@ class TestApproveHunksDispatchEffects:
         from packages.orchestration.hunk_decision_record import (
             HUNK_DECISIONS_METADATA_KEY,
         )
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
-        return load_job(self.job.id).metadata.get(HUNK_DECISIONS_METADATA_KEY)
+        return load_job_plan(self.job.job_id).metadata.get(HUNK_DECISIONS_METADATA_KEY)
 
     def test_an_accepted_submission_records_the_decision_and_persists_it(self):
         """The effect ran AND `save_job` returned — proved by loading the job back."""

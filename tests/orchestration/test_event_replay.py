@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from uuid import uuid4
+from packages.orchestration.data_paths import mint_job_id
 
 
 def _write_events(tmp_path, job_id, events):
@@ -345,10 +346,11 @@ class TestCheckpointDataContract:
 class TestDryRunValidation:
     def test_dry_run_no_permission_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job, RunState
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
         jid = uuid4()
-        job = Job(id=jid, name="test", state=RunState.COMPLETED)
+        job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED)
         events = [
             {"event": "autorun_started", "metadata": {}},
             {"event": "patch_intent_applied", "metadata": {}},
@@ -360,11 +362,12 @@ class TestDryRunValidation:
 
     def test_dry_run_no_repo_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job, RunState
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
         from packages.orchestration.permissions import Capability, set_permission
         jid = uuid4()
-        job = Job(id=jid, name="test", state=RunState.COMPLETED, metadata={})
+        job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED, metadata={})
         set_permission(job, Capability.repo_test_run, allow=True)
         events = [
             {"event": "autorun_started", "metadata": {}},
@@ -377,11 +380,12 @@ class TestDryRunValidation:
 
     def test_dry_run_creates_no_events(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job, RunState
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
         from packages.orchestration.timeline import load_run_events
         jid = uuid4()
-        job = Job(id=jid, name="test", state=RunState.COMPLETED)
+        job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED)
         events = [{"event": "autorun_started", "metadata": {}}]
         _write_events(tmp_path, str(jid), events)
         before = load_run_events(tmp_path, str(jid))
@@ -418,10 +422,11 @@ class TestDocsExist:
 class TestResumeDryRun:
     def test_dry_run_from_approved_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job, RunState
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
         jid = uuid4()
-        job = Job(id=jid, name="test", state=RunState.COMPLETED)
+        job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED)
         events = [
             {"event": "autorun_started", "metadata": {}},
             {"event": "source_context_injected", "metadata": {}},
@@ -435,7 +440,8 @@ class TestResumeDryRun:
 
     def test_dry_run_from_apply_resumable(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job, RunState
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
         from packages.orchestration.permissions import Capability, set_permission
         jid = uuid4()
@@ -444,7 +450,7 @@ class TestResumeDryRun:
         (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\n")
         (repo / "tests").mkdir()
         (repo / "tests" / "test_x.py").write_text("def test_x(): pass\n")
-        job = Job(id=jid, name="test", state=RunState.COMPLETED,
+        job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED,
                   metadata={"target_repo": str(repo)})
         set_permission(job, Capability.repo_test_run, allow=True)
         events = [
@@ -461,20 +467,22 @@ class TestResumeDryRun:
 
     def test_dry_run_checkpoint_not_found(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job, RunState
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
         jid = uuid4()
-        job = Job(id=jid, name="test", state=RunState.COMPLETED)
+        job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED)
         dr = resume_dry_run(job, "nonexistent", str(tmp_path))
         assert dr.can_resume is False
         assert dr.blocked_reason == "checkpoint_not_found"
 
     def test_dry_run_not_resumable(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job, RunState
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.event_replay import resume_dry_run
-        jid = uuid4()
-        job = Job(id=jid, name="test", state=RunState.COMPLETED)
+        jid = mint_job_id()
+        job = JobPlan(job_id=jid, job_title="test", state=RunState.COMPLETED)
         events = [
             {"event": "autorun_started", "metadata": {}},
             {"event": "autorun_provider_error", "metadata": {"stop_reason": "provider_unavailable"}},

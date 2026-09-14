@@ -18,10 +18,12 @@ from uuid import uuid4
 import pytest
 
 from apps.cli.commands import job as job_cmd
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import data_paths, event_replay
 from packages.orchestration import worktrees as W
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.data_paths import mint_job_id
 
 
 @pytest.fixture(autouse=True)
@@ -90,7 +92,7 @@ def _persist_interrupted_run(run_id: str, job_id: str, repo: Path, handle) -> Pa
 @pytest.fixture
 def interrupted(repo, monkeypatch):
     """A job whose run was killed while it owned a worktree with real work in it."""
-    jid = uuid4()
+    jid = mint_job_id()
     run_id = "runkilled01"
 
     handle = W.create(run_id, repo)
@@ -99,7 +101,7 @@ def interrupted(repo, monkeypatch):
     W.release_lock(handle)                      # the process dies; no remove()
 
     run_dir = _persist_interrupted_run(run_id, str(jid), repo, handle)
-    save_job(Job(id=jid, name="killed", state=RunState.RUNNING))
+    save_job_plan(JobPlan(job_id=jid, job_title="killed", state=RunState.RUNNING))
     _write_events(str(jid))
 
     # The continuation past the checkpoint is not what is under test — and it must

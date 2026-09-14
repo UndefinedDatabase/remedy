@@ -8,7 +8,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from packages.orchestration.data_paths import lookup_job_id, resolve_data_root
-from packages.orchestration.storage import JobNotFoundError, load_job
+from packages.orchestration.storage import JobNotFoundError
+from packages.orchestration.pingpong_job import require_job_plan
 
 if TYPE_CHECKING:
     import argparse
@@ -21,7 +22,7 @@ def _cmd_file_why(job_id_str: str, path: str, *, json_output: bool = False) -> N
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)

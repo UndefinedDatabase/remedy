@@ -222,13 +222,14 @@ def _job_snapshot_reference(job_id: str) -> tuple[str, str]:
     could not measure the snapshot says so rather than inventing a digest.
     """
     try:
-        from packages.orchestration.data_paths import jobs_dir
+        from packages.orchestration.data_paths import job_record_path, resolve_data_root
 
-        path = jobs_dir() / f"{job_id}.json"
+        path = job_record_path(job_id)
         data = path.read_bytes()
+        relative = path.relative_to(resolve_data_root()).as_posix()
     except (OSError, ValueError):
         return ("", "")
-    return (f"jobs/{job_id}.json", "sha256:" + hashlib.sha256(data).hexdigest())
+    return (relative, "sha256:" + hashlib.sha256(data).hexdigest())
 
 
 def resolve_worktree_head(job_id: str) -> str:

@@ -16,7 +16,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from packages.core.models import Artifact, Job
+from packages.core.models import Artifact
+from packages.orchestration.pingpong_job import JobPlan
 from packages.memory import local_gateway
 from packages.memory.models import MemoryEntry
 from packages.orchestration import decision_evidence, stop_reasons
@@ -874,8 +875,8 @@ def _patch_approval_decision(explanation: dict) -> HumanDecision:
         content="",
         metadata={"patch_intent_explanations": [explanation]},
     )
-    job = Job(
-        name="f032-t002c-job",
+    job = JobPlan(
+        job_title="f032-t002c-job",
         user_prompt="Drive the patch-approval branch",
         tasks=[],
         artifacts=[artifact],
@@ -1048,8 +1049,8 @@ STOP_REASON_DOWNSIDE = (
 
 def _no_repo_stop_decision() -> HumanDecision:
     """The card the real branch builds from the derived no-target-repo stop."""
-    job = Job(
-        name="f032-t002d-job",
+    job = JobPlan(
+        job_title="f032-t002d-job",
         user_prompt="Drive the stop-reason branch",
         tasks=[],
         metadata={},
@@ -1546,7 +1547,7 @@ FLIGHT_PLAN_RESOLVED_DOWNSIDE = (
 
 def _flight_plan_decision(flight_plan: dict) -> HumanDecision:
     """The card the real branch builds from one stored flight plan."""
-    job = Job(name="t", flight_plan=flight_plan)
+    job = JobPlan(job_title="t", flight_plan=flight_plan)
     decisions = [d for d in list_decisions(job, [])
                  if d.type == "flight_plan_approval"]
     assert len(decisions) == 1
@@ -1848,9 +1849,9 @@ TASK_DECISION_IMPACT = "the release branch stays unbuilt until this is answered"
 _TASK_DECISION_NOW = datetime(2026, 8, 28, 12, 0, 0, tzinfo=timezone.utc)
 
 
-def _escalation_job(**kwargs) -> tuple[Job, dict]:
+def _escalation_job(**kwargs) -> tuple[JobPlan, dict]:
     """A job carrying ONE escalation record, built by its only real writer."""
-    job = Job(name="task-decision-evidence")
+    job = JobPlan(job_title="task-decision-evidence")
     record = enqueue_task_decision(
         job,
         task_id=kwargs.pop("task_id", "task-1"),
@@ -1861,12 +1862,12 @@ def _escalation_job(**kwargs) -> tuple[Job, dict]:
     return job, record
 
 
-def _task_decisions(job: Job) -> list[HumanDecision]:
+def _task_decisions(job: JobPlan) -> list[HumanDecision]:
     return [d for d in list_decisions(job, [])
             if d.type == "task_decision"]
 
 
-def _one_task_decision(job: Job) -> HumanDecision:
+def _one_task_decision(job: JobPlan) -> HumanDecision:
     decisions = _task_decisions(job)
     assert len(decisions) == 1
     return decisions[0]

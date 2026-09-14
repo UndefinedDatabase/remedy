@@ -13,16 +13,16 @@ from pathlib import Path
 from packages.orchestration import do_continue as dc
 from packages.orchestration import repair_loop as RL
 from packages.orchestration.data_paths import normalize_job_id
-from packages.orchestration.storage import load_job, save_job
+from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 from tests.orchestration.test_do_continue import _fake_test, env, make_continue_job  # noqa: F401
 
 
 def _attach_repair(data_dir, job, intent_id, *, expected_effect):
     """Make the approved intent a repair intent: add a failure + RepairAttempt."""
     from packages.core.models import Artifact, ArtifactKind
-    task_id = str(job.tasks[0].id)
+    task_id = str(job.tasks[0].task_id)
     fa = Artifact(
-        name="tf", content="fail", kind=ArtifactKind.VERIFICATION, task_id=str(job.tasks[0].id),
+        name="tf", content="fail", kind=ArtifactKind.VERIFICATION, task_id=str(job.tasks[0].task_id),
         metadata={
             "test_failure": True, "failure_kind": "test_failed",
             "related_test_run_id": "tr-orig", "related_apply_id": "ap-orig",
@@ -31,9 +31,9 @@ def _attach_repair(data_dir, job, intent_id, *, expected_effect):
         },
     )
     job.artifacts.append(fa)
-    save_job(job, root=data_dir)
+    save_job_plan(job, root=data_dir)
     attempt = RL.RepairAttempt(
-        attempt_id="att-" + intent_id[:6], job_id=str(job.id),
+        attempt_id="att-" + intent_id[:6], job_id=str(job.job_id),
         failure_artifact_id=str(fa.id), repair_intent_id=intent_id,
         status="approval_required", expected_effect=expected_effect,
         repair_kind="source_fixture" if expected_effect == "source_fix" else "docs_fixture",
@@ -47,7 +47,7 @@ def _run(data_dir, job, monkeypatch, *, status="passed", evidence="complete", fa
     import packages.orchestration.test_execution_service as tes
     fn, calls = _fake_test(data_dir, status=status, evidence=evidence, fa_id=fa_id)
     monkeypatch.setattr(tes, "execute_test_run", fn)
-    result = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
+    result = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.job_id)), data_dir)
     return result, calls
 
 
@@ -67,7 +67,7 @@ class TestRepairApplyCycle:
         assert result.repair_status == "tested_passed"
         assert result.repair_resolved_failure is True
         assert calls["n"] == 1
-        job2 = load_job(normalize_job_id(str(job.id)), data_dir)
+        job2 = load_job_plan(normalize_job_id(str(job.job_id)), data_dir)
         fa = next(a for a in job2.artifacts if str(a.id) == fa_id)
         assert fa.metadata.get("failure_resolved") is True
         assert fa.metadata.get("resolved_by_repair_attempt_id") == att_id
@@ -80,7 +80,7 @@ class TestRepairApplyCycle:
         assert result.is_repair is True
         assert result.repair_status == "tested_passed"
         assert result.repair_resolved_failure is False  # no overclaim
-        job2 = load_job(normalize_job_id(str(job.id)), data_dir)
+        job2 = load_job_plan(normalize_job_id(str(job.job_id)), data_dir)
         fa = next(a for a in job2.artifacts if str(a.id) == fa_id)
         assert not fa.metadata.get("failure_resolved")
 
@@ -91,7 +91,7 @@ class TestRepairApplyCycle:
         result, _ = _run(data_dir, job, monkeypatch, status="failed", fa_id="new-fa")
         assert result.repair_status == "tested_failed"
         assert result.repair_resolved_failure is False
-        job2 = load_job(normalize_job_id(str(job.id)), data_dir)
+        job2 = load_job_plan(normalize_job_id(str(job.job_id)), data_dir)
         fa = next(a for a in job2.artifacts if str(a.id) == fa_id)
         assert not fa.metadata.get("failure_resolved")
 
@@ -115,8 +115,8 @@ class TestProofAwareness:
         _attach_repair(data_dir, job, iid, expected_effect="source_fix")
         from packages.orchestration.proof_chain import PROOF_VERIFIED, build_proof_chain
         from packages.orchestration.timeline import load_run_events
-        job2 = load_job(normalize_job_id(str(job.id)), data_dir)
-        events = load_run_events(data_dir, str(job.id))
+        job2 = load_job_plan(normalize_job_id(str(job.job_id)), data_dir)
+        events = load_run_events(data_dir, str(job.job_id))
         chain = build_proof_chain(job2, events, data_dir=data_dir)
         for c in chain.changes:
             if c.intent_id == iid:
@@ -140,7 +140,7 @@ class TestIdempotency:
         r2, c2 = _run(data_dir, job, monkeypatch, status="passed")
         assert c2["n"] == 0  # test not re-run
         assert r2.repair_status == "tested_passed"
-        job2 = load_job(normalize_job_id(str(job.id)), data_dir)
+        job2 = load_job_plan(normalize_job_id(str(job.job_id)), data_dir)
         attempts = RL.load_repair_attempts(job2)
         assert len(attempts) == 1
         fa = next(a for a in job2.artifacts if str(a.id) == fa_id)

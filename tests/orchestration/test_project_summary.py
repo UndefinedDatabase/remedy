@@ -26,15 +26,15 @@ from packages.orchestration.project_summary import (
 
 @dataclass
 class _FakeJob:
-    id: Any = None
+    job_id: Any = None
     state: Any = "planned"
     tasks: list = field(default_factory=list)
     artifacts: list = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self):
-        if self.id is None:
-            self.id = uuid4()
+        if self.job_id is None:
+            self.job_id = uuid4()
 
 
 @dataclass
@@ -75,8 +75,8 @@ class TestProjectSummary:
 
     def test_one_job_project(self):
         job = _FakeJob()
-        project = _FakeProject(job_ids=[str(job.id)])
-        events = {str(job.id): [
+        project = _FakeProject(job_ids=[str(job.job_id)])
+        events = {str(job.job_id): [
             {"event": "task_created", "timestamp": "2026-06-01T00:00:00Z", "metadata": {}},
         ]}
         summary = build_project_summary(project, [job], events)
@@ -87,7 +87,7 @@ class TestProjectSummary:
         j1 = _FakeJob(state="completed")
         j2 = _FakeJob(state="blocked")
         j3 = _FakeJob(state="planned")
-        project = _FakeProject(job_ids=[str(j.id) for j in [j1, j2, j3]])
+        project = _FakeProject(job_ids=[str(j.job_id) for j in [j1, j2, j3]])
         summary = build_project_summary(project, [j1, j2, j3], {})
         assert summary.completed_job_count == 1
         assert summary.blocked_job_count == 1
@@ -95,22 +95,22 @@ class TestProjectSummary:
 
     def test_blocked_job_appears_in_blockers(self):
         job = _FakeJob(state="blocked")
-        events = {str(job.id): [
+        events = {str(job.job_id): [
             {"event": "stop_reason_recorded", "timestamp": "2026-06-01T00:00:00Z",
              "outcome": "open", "metadata": {"stop_reason": "approval_required"}},
         ]}
-        project = _FakeProject(job_ids=[str(job.id)])
+        project = _FakeProject(job_ids=[str(job.job_id)])
         summary = build_project_summary(project, [job], events)
         assert len(summary.blockers) >= 1
         assert "approval_required" in summary.blockers[0]
 
     def test_no_raw_leaks(self):
         job = _FakeJob(metadata={"secret_key": "sk-12345"})
-        events = {str(job.id): [
+        events = {str(job.job_id): [
             {"event": "task_created", "timestamp": "2026-06-01T00:00:00Z",
              "metadata": {"raw_output": "SECRET DATA"}},
         ]}
-        project = _FakeProject(job_ids=[str(job.id)])
+        project = _FakeProject(job_ids=[str(job.job_id)])
         summary = build_project_summary(project, [job], events)
         data = export_project_summary_json(summary)
         full = json.dumps(data)
@@ -139,11 +139,11 @@ class TestPatternDetection:
         j1 = _FakeJob()
         j2 = _FakeJob()
         events = {
-            str(j1.id): [
+            str(j1.job_id): [
                 {"event": "stop_reason_recorded", "timestamp": "2026-06-01T00:00:00Z",
                  "metadata": {"stop_reason": "approval_required"}},
             ],
-            str(j2.id): [
+            str(j2.job_id): [
                 {"event": "stop_reason_recorded", "timestamp": "2026-06-02T00:00:00Z",
                  "metadata": {"stop_reason": "approval_required"}},
             ],
@@ -157,11 +157,11 @@ class TestPatternDetection:
         j1 = _FakeJob()
         j2 = _FakeJob()
         events = {
-            str(j1.id): [
+            str(j1.job_id): [
                 {"event": "patch_intent_applied", "timestamp": "2026-06-01",
                  "metadata": {"target_path": "app.py"}},
             ],
-            str(j2.id): [
+            str(j2.job_id): [
                 {"event": "patch_intent_applied", "timestamp": "2026-06-02",
                  "metadata": {"target_path": "app.py"}},
             ],
@@ -175,11 +175,11 @@ class TestPatternDetection:
         j1 = _FakeJob()
         j2 = _FakeJob()
         events = {
-            str(j1.id): [
+            str(j1.job_id): [
                 {"event": "builder_patch_parsed", "timestamp": "2026-06-01",
                  "metadata": {"parse_success": False, "error_kind": "prose_only"}},
             ],
-            str(j2.id): [
+            str(j2.job_id): [
                 {"event": "builder_patch_parsed", "timestamp": "2026-06-02",
                  "metadata": {"parse_success": False, "error_kind": "prose_only"}},
             ],
@@ -190,7 +190,7 @@ class TestPatternDetection:
 
     def test_single_occurrence_low_severity(self):
         job = _FakeJob()
-        events = {str(job.id): [
+        events = {str(job.job_id): [
             {"event": "stop_reason_recorded", "timestamp": "2026-06-01",
              "metadata": {"stop_reason": "test_failed_after_apply"}},
         ]}
@@ -199,7 +199,7 @@ class TestPatternDetection:
 
     def test_no_raw_leaks_in_patterns(self):
         j1 = _FakeJob()
-        events = {str(j1.id): [
+        events = {str(j1.job_id): [
             {"event": "stop_reason_recorded", "timestamp": "2026-06-01",
              "metadata": {"stop_reason": "test_failed", "raw_output": "LEAKED"}},
             {"event": "stop_reason_recorded", "timestamp": "2026-06-02",
@@ -321,11 +321,11 @@ class TestStrongerPatterns:
         j1 = _FakeJob()
         j2 = _FakeJob()
         events = {
-            str(j1.id): [
+            str(j1.job_id): [
                 {"event": "test_run_completed", "timestamp": "2026-06-01",
                  "metadata": {"status": "failed"}},
             ],
-            str(j2.id): [
+            str(j2.job_id): [
                 {"event": "test_run_completed", "timestamp": "2026-06-02",
                  "metadata": {"status": "failed"}},
             ],
@@ -339,11 +339,11 @@ class TestStrongerPatterns:
         j1 = _FakeJob()
         j2 = _FakeJob()
         events = {
-            str(j1.id): [
+            str(j1.job_id): [
                 {"event": "stop_reason_recorded", "timestamp": "2026-06-01",
                  "metadata": {"stop_reason": "permission_denied"}},
             ],
-            str(j2.id): [
+            str(j2.job_id): [
                 {"event": "stop_reason_recorded", "timestamp": "2026-06-02",
                  "metadata": {"stop_reason": "permission_denied"}},
             ],
@@ -356,11 +356,11 @@ class TestStrongerPatterns:
         j1 = _FakeJob()
         j2 = _FakeJob()
         events = {
-            str(j1.id): [
+            str(j1.job_id): [
                 {"event": "stop_reason_recorded", "timestamp": "2026-06-01",
                  "metadata": {"stop_reason": "provider_unavailable"}},
             ],
-            str(j2.id): [
+            str(j2.job_id): [
                 {"event": "stop_reason_recorded", "timestamp": "2026-06-02",
                  "metadata": {"stop_reason": "provider_unavailable"}},
             ],
@@ -372,7 +372,7 @@ class TestStrongerPatterns:
     def test_repeated_repair_exhaustion(self):
         j1 = _FakeJob()
         events = {
-            str(j1.id): [
+            str(j1.job_id): [
                 {"event": "repair_loop_stopped", "timestamp": "2026-06-01",
                  "metadata": {"reason": "repair_budget_exhausted"}},
                 {"event": "repair_loop_stopped", "timestamp": "2026-06-02",
@@ -385,7 +385,7 @@ class TestStrongerPatterns:
 
     def test_one_off_not_over_severity(self):
         job = _FakeJob()
-        events = {str(job.id): [
+        events = {str(job.job_id): [
             {"event": "test_run_completed", "timestamp": "2026-06-01",
              "metadata": {"status": "failed"}},
         ]}

@@ -17,7 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 
 
 @dataclass(frozen=True)
@@ -34,12 +35,12 @@ class GuidanceCard:
 
 
 def build_guidance_cards(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
 ) -> list[GuidanceCard]:
     """Derive guidance cards from current job state. No raw content."""
     cards: list[GuidanceCard] = []
-    job_id = str(job.id)[:8]
+    job_id = str(job.job_id)[:8]
 
     # 1. Readiness
     try:
@@ -180,7 +181,7 @@ def build_guidance_cards(
 
 
 def export_guidance_json(
-    job: Job,
+    job: JobPlan,
     cards: list[GuidanceCard],
 ) -> dict[str, Any]:
     """Export guidance as JSON-serialisable dict."""
@@ -188,7 +189,7 @@ def export_guidance_json(
     return {
         "version": 1,
         "scope": "job",
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "cards": [
             {
                 "id": c.id,
@@ -206,9 +207,9 @@ def export_guidance_json(
     }
 
 
-def summarize_guidance(job: Job, cards: list[GuidanceCard]) -> str:
+def summarize_guidance(job: JobPlan, cards: list[GuidanceCard]) -> str:
     """Return human-readable guidance summary."""
-    lines = [f"Guidance for job {str(job.id)[:8]}:", ""]
+    lines = [f"Guidance for job {str(job.job_id)[:8]}:", ""]
     for c in cards:
         marker = {"high": "!!", "medium": " !", "low": " -", "info": "  "}.get(c.severity, "  ")
         lines.append(f"  {marker} {c.title}")

@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.project_scope import ProjectScope, job_in_scope, scoped_jobs
 
 _CLI = [sys.executable, "-m", "apps.cli.grouped"]
@@ -304,8 +304,8 @@ class TestScopedListingsCLI:
 # ---------------------------------------------------------------------------
 
 
-def _job(project_id: str | None = None, name: str = "j") -> Job:
-    return Job(name=name, project_id=project_id)
+def _job(project_id: str | None = None, name: str = "j") -> JobPlan:
+    return JobPlan(job_title=name, project_id=project_id)
 
 
 class TestTwoProjectIsolation:
@@ -352,7 +352,7 @@ class TestScopedJobsIntegration:
 
         scope = ProjectScope(project_id=_P1, all_projects=False, source="flag")
         with patch(
-            "packages.orchestration.storage.list_jobs_safe",
+            "packages.orchestration.pingpong_job.list_job_plans_safe",
             return_value=(mock_jobs, False, []),
         ), patch(
             "packages.orchestration.project_scope._project_count",
@@ -360,7 +360,7 @@ class TestScopedJobsIntegration:
         ):
             jobs, degraded, skipped = scoped_jobs(scope)
 
-        names = [j.name for j in jobs]
+        names = [j.job_title for j in jobs]
         assert "alpha" in names
         assert "beta" not in names
         assert "old" not in names
@@ -374,7 +374,7 @@ class TestScopedJobsIntegration:
 
         scope = ProjectScope(project_id=None, all_projects=True, source="flag")
         with patch(
-            "packages.orchestration.storage.list_jobs_safe",
+            "packages.orchestration.pingpong_job.list_job_plans_safe",
             return_value=(mock_jobs, True, ["bad.json"]),
         ):
             jobs, degraded, skipped = scoped_jobs(scope)

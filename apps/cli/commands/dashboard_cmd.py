@@ -16,7 +16,8 @@ if TYPE_CHECKING:
 def _cmd_dashboard_job(job_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.dashboard import build_job_dashboard, summarize_job_dashboard
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
     from packages.orchestration.timeline import load_run_events
 
     try:
@@ -25,7 +26,7 @@ def _cmd_dashboard_job(job_id_str: str, *, json_output: bool = False) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -45,7 +46,7 @@ def _cmd_dashboard_project(project_id_str: str, *, json_output: bool = False) ->
 
     from packages.orchestration.dashboard import build_project_dashboard
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job
+    from packages.orchestration.pingpong_job import load_job_plan
     from packages.orchestration.timeline import load_run_events
 
     try:
@@ -59,7 +60,7 @@ def _cmd_dashboard_project(project_id_str: str, *, json_output: bool = False) ->
     all_events: dict[str, list] = {}
     for jid in project.get("job_ids", []):
         try:
-            j = load_job(lookup_job_id(jid))
+            j = load_job_plan(lookup_job_id(jid))
             jobs.append(j)
             all_events[jid] = load_run_events(data_dir, jid)
         except Exception:

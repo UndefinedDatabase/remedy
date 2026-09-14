@@ -24,10 +24,11 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.cockpit import summarize_cockpit
 from packages.orchestration.permissions import Capability, set_permission
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,18 +39,18 @@ def _ts(offset: int = 0) -> str:
     return f"2026-05-04T10:{offset:02d}:00+00:00"
 
 
-def _make_job(**kwargs) -> Job:
-    defaults: dict = {"name": "Test cockpit job", "state": RunState.PENDING}
+def _make_job(**kwargs) -> JobPlan:
+    defaults: dict = {"job_title": "Test cockpit job", "state": RunState.PENDING}
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _make_pending_task(**kwargs) -> Task:
-    return Task(description="do work", inputs={"task_type": "write_readme"}, **kwargs)
+def _make_pending_task(**kwargs) -> TaskEntry:
+    return TaskEntry(title="do work", inputs={"task_type": "write_readme"}, **kwargs)
 
 
-def _completed_task(**kwargs) -> Task:
-    t = Task(description="done", inputs={"task_type": "write_readme"}, **kwargs)
+def _completed_task(**kwargs) -> TaskEntry:
+    t = TaskEntry(title="done", inputs={"task_type": "write_readme"}, **kwargs)
     t.status = RunState.COMPLETED
     return t
 
@@ -91,7 +92,7 @@ class TestCockpitHeader:
     def test_includes_short_job_id(self):
         job = _make_job()
         out = summarize_cockpit(job, [])
-        assert str(job.id)[:8] in out
+        assert str(job.job_id)[:8] in out
 
     def test_includes_job_state(self):
         job = _make_job(state=RunState.COMPLETED)
@@ -111,7 +112,7 @@ class TestCockpitHeader:
         assert "unplanned" in out.lower() or "no tasks" in out.lower()
 
     def test_truncates_long_job_name(self):
-        job = _make_job(name="X" * 80)
+        job = _make_job(job_title="X" * 80)
         out = summarize_cockpit(job, [])
         assert "…" in out
         assert "X" * 80 not in out
@@ -150,7 +151,7 @@ class TestSituationLastRun:
 
     def test_completed_run_shows_passed(self):
         job = _make_job()
-        events = _task_run_succeeded(str(job.id))
+        events = _task_run_succeeded(str(job.job_id))
         out = summarize_cockpit(job, events)
         assert "passed" in out.lower() or "Last run: passed" in out
 
@@ -158,10 +159,10 @@ class TestSituationLastRun:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "task_run_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "permission_denied",
              "metadata": {"capability": "workspace_write"}},
         ]
@@ -173,13 +174,13 @@ class TestSituationLastRun:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "verification_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "verification_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "fail",
              "metadata": {"failure_count": 2, "failed_checks": ["required_section:Summary:"]}},
-            {"event": "task_run_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(2), "task_id": task_id, "outcome": "fail",
              "metadata": {}},
         ]
@@ -214,7 +215,7 @@ class TestNeedsAttention:
     def test_nothing_needs_attention_when_clean(self):
         job = _make_job(state=RunState.COMPLETED)
         job.tasks.append(_completed_task())
-        events = _task_run_succeeded(str(job.id))
+        events = _task_run_succeeded(str(job.job_id))
         out = summarize_cockpit(job, events)
         assert "Nothing needs your attention" in out
 
@@ -229,8 +230,8 @@ class TestNeedsAttention:
     def test_medium_patch_risk_raises_attention(self):
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id) + [
-            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+        events = _task_run_succeeded(str(job.job_id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
              "metadata": {"intent_count": 1, "risk_levels": ["medium"]}},
         ]
@@ -240,8 +241,8 @@ class TestNeedsAttention:
     def test_high_patch_risk_raises_attention(self):
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id) + [
-            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+        events = _task_run_succeeded(str(job.job_id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
              "metadata": {"intent_count": 1, "risk_levels": ["high"]}},
         ]
@@ -251,8 +252,8 @@ class TestNeedsAttention:
     def test_unknown_patch_risk_raises_attention(self):
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id) + [
-            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+        events = _task_run_succeeded(str(job.job_id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
              "metadata": {"intent_count": 1, "risk_levels": ["unknown"]}},
         ]
@@ -263,8 +264,8 @@ class TestNeedsAttention:
         job = _make_job(state=RunState.COMPLETED)
         job.tasks.append(_completed_task())
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id) + [
-            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+        events = _task_run_succeeded(str(job.job_id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
              "metadata": {"intent_count": 1, "risk_levels": ["low"]}},
         ]
@@ -275,16 +276,16 @@ class TestNeedsAttention:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "verification_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "verification_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "fail",
              "metadata": {
                  "failure_count": 1,
                  "failed_checks": ["required_section:Summary:"],
              }},
-            {"event": "task_run_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(2), "task_id": task_id, "outcome": "fail",
              "metadata": {}},
         ]
@@ -296,7 +297,7 @@ class TestNeedsAttention:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
             # No terminal event — interrupted
@@ -309,8 +310,8 @@ class TestNeedsAttention:
         job.tasks.append(_completed_task())
         task_id = str(uuid4())
         set_permission(job, Capability.repo_generated_write, allow=False)
-        events = _task_run_succeeded(str(job.id), task_id) + [
-            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+        events = _task_run_succeeded(str(job.job_id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
              "metadata": {"intent_count": 1, "risk_levels": ["low"]}},
         ]
@@ -360,7 +361,7 @@ class TestCanAutoContinue:
         job.tasks.append(_make_pending_task())
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
         ]
@@ -374,7 +375,7 @@ class TestCanAutoContinue:
         job.tasks.append(_make_pending_task())
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
         ]
@@ -394,7 +395,7 @@ class TestNextBestAction:
         job.tasks.append(_make_pending_task())
         out = summarize_cockpit(job, [])
         assert "job resume" in out
-        assert str(job.id) in out
+        assert str(job.job_id) in out
 
     def test_workspace_denied_suggests_set_permission(self):
         job = _make_job()
@@ -416,7 +417,7 @@ class TestNextBestAction:
         job.tasks.append(_make_pending_task())
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
         ]
@@ -429,7 +430,7 @@ class TestNextBestAction:
         job.tasks.append(_make_pending_task())
         task_id = str(uuid4())
         events = [
-            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+            {"event": "patch_intent_created", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id, "outcome": "created",
              "metadata": {"intent_count": 1, "risk_levels": ["medium"]}},
         ]
@@ -446,15 +447,15 @@ class TestImportantArtifacts:
     def test_workspace_file_shown(self):
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id)
+        events = _task_run_succeeded(str(job.job_id), task_id)
         out = summarize_cockpit(job, events)
         assert "/ws/readme.txt" in out
 
     def test_repo_file_shown(self):
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id) + [
-            {"event": "repo_application_completed", "job_id": str(job.id), "run_id": "r",
+        events = _task_run_succeeded(str(job.job_id), task_id) + [
+            {"event": "repo_application_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(10), "task_id": task_id, "outcome": "applied",
              "metadata": {"file_count": 1, "files": ["/repo/README.md"]}},
         ]
@@ -464,8 +465,8 @@ class TestImportantArtifacts:
     def test_patch_intent_count_shown(self):
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id) + [
-            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+        events = _task_run_succeeded(str(job.job_id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
              "metadata": {"intent_count": 3, "risk_levels": ["low"]}},
         ]
@@ -476,7 +477,7 @@ class TestImportantArtifacts:
     def test_run_log_dir_shown_when_data_dir_provided(self):
         job = _make_job()
         out = summarize_cockpit(job, [], data_dir=Path("/tmp/remedy"))
-        assert str(job.id) in out
+        assert str(job.job_id) in out
         assert "run log" in out.lower() or "runs" in out
 
     def test_run_log_dir_absent_when_data_dir_none(self):
@@ -484,8 +485,8 @@ class TestImportantArtifacts:
         job = _make_job(state=RunState.COMPLETED)
         job.tasks.append(_completed_task())
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id) + [
-            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+        events = _task_run_succeeded(str(job.job_id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
              "metadata": {"intent_count": 2, "risk_levels": ["low"]}},
         ]
@@ -505,8 +506,8 @@ class TestImportantArtifacts:
         job.tasks.append(_completed_task())
         task_id = str(uuid4())
         # patch with low risk so no patch-risk attention item either
-        events = _task_run_succeeded(str(job.id), task_id) + [
-            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+        events = _task_run_succeeded(str(job.job_id), task_id) + [
+            {"event": "patch_intent_created", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(10), "task_id": task_id, "outcome": "created",
              "metadata": {"intent_count": 1, "risk_levels": ["low"]}},
         ]
@@ -524,7 +525,7 @@ class TestImportantArtifacts:
 class TestRedactionAndSafety:
     def test_unknown_events_do_not_crash(self):
         job = _make_job()
-        events = [{"event": "totally_unknown_zyx", "job_id": str(job.id), "run_id": "r",
+        events = [{"event": "totally_unknown_zyx", "job_id": str(job.job_id), "run_id": "r",
                    "timestamp": _ts(0), "metadata": {}}]
         out = summarize_cockpit(job, events)  # must not raise
         assert "Remedy Cockpit" in out
@@ -540,7 +541,7 @@ class TestRedactionAndSafety:
         """Artifact content is never rendered; only paths and counts."""
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id)
+        events = _task_run_succeeded(str(job.job_id), task_id)
         out = summarize_cockpit(job, events)
         # The workspace event has workspace_file path — that is safe.
         # What must NOT appear: artifact content or diff previews.
@@ -551,7 +552,7 @@ class TestRedactionAndSafety:
         """Even if a planning_failed event has message with raw text, cockpit never shows it."""
         job = _make_job()
         events = [
-            {"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "planning_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "outcome": "error",
              "message": "secret-token MUST_NOT_APPEAR",
              "metadata": {}},
@@ -577,10 +578,10 @@ class TestRedactionAndSafety:
 
 
 class TestCmdCockpit:
-    def _save(self, tmp_path, monkeypatch, **kwargs) -> Job:
+    def _save(self, tmp_path, monkeypatch, **kwargs) -> JobPlan:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job(**kwargs)
-        save_job(job)
+        save_job_plan(job)
         return job
 
     def test_prints_cockpit_for_valid_job(self, tmp_path, monkeypatch, capsys):
@@ -588,19 +589,19 @@ class TestCmdCockpit:
 
         from apps.cli.commands.brain import _cmd_cockpit
 
-        _cmd_cockpit(str(job.id))
+        _cmd_cockpit(str(job.job_id))
         out = capsys.readouterr().out
         assert "Remedy Cockpit" in out
-        assert str(job.id)[:8] in out
+        assert str(job.job_id)[:8] in out
 
     def test_includes_next_best_action(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
         job.tasks.append(_make_pending_task())
-        save_job(job)
+        save_job_plan(job)
 
         from apps.cli.commands.brain import _cmd_cockpit
 
-        _cmd_cockpit(str(job.id))
+        _cmd_cockpit(str(job.job_id))
         out = capsys.readouterr().out
         assert "Next best action" in out
 
@@ -628,6 +629,6 @@ class TestCmdCockpit:
 
         from apps.cli.commands.brain import _cmd_cockpit
 
-        _cmd_cockpit(str(job.id))  # must not raise
+        _cmd_cockpit(str(job.job_id))  # must not raise
         out = capsys.readouterr().out
         assert "Remedy Cockpit" in out

@@ -1,7 +1,7 @@
 """Tests for dashboard truth contract fixes (Step 293)."""
 from __future__ import annotations
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.ui_server import (
     _build_dashboard,
     _event_backed_actor,
@@ -11,12 +11,12 @@ from packages.orchestration.ui_server import (
 
 class TestNextActionCommand:
     def test_next_action_has_command_field(self):
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         dash = _build_dashboard(job)
         assert "command" in dash["next_action"]
 
     def test_next_action_command_is_runnable(self):
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         dash = _build_dashboard(job)
         cmd = dash["next_action"]["command"]
         assert cmd and isinstance(cmd, str)
@@ -56,7 +56,7 @@ class TestTaskTestStatusScoped:
 
 class TestGraphSummaryFromRealData:
     def test_graph_summary_present(self):
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         dash = _build_dashboard(job)
         gs = dash["graph_summary"]
         assert "node_count" in gs
@@ -64,7 +64,7 @@ class TestGraphSummaryFromRealData:
         assert gs["source"] == "project_brain"
 
     def test_graph_summary_honest_for_empty_job(self):
-        job = Job(name="empty")
+        job = JobPlan(job_title="empty")
         dash = _build_dashboard(job)
         gs = dash["graph_summary"]
         assert isinstance(gs["node_count"], int)

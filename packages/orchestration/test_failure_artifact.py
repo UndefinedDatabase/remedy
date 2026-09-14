@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 # ---------------------------------------------------------------------------
 # Failure kinds (Step 941)
@@ -128,8 +128,8 @@ def build_test_failure_artifact(
         TestFailureArtifact with safe fields only.
     """
     artifact_id = uuid4().hex[:12]
-    job_id = str(job.id) if hasattr(job, "id") else ""
-    task_id = str(job.tasks[0].id) if hasattr(job, "tasks") and job.tasks else ""
+    job_id = str(job.job_id) if hasattr(job, "id") else ""
+    task_id = str(job.tasks[0].task_id) if hasattr(job, "tasks") and job.tasks else ""
 
     # Extract from TestRunRecord dataclass
     if hasattr(test_result, "test_run_id"):
@@ -321,7 +321,7 @@ def persist_failure_artifact(job: Any, failure: TestFailureArtifact) -> Any:
         name=f"test-failure-{failure.artifact_id}",
         content=safe_content,
         kind=ArtifactKind.VERIFICATION,
-        task_id=str(UUID(failure.task_id)) if failure.task_id else None,
+        task_id=failure.task_id or None,
         metadata={
             "test_failure": True,
             "failure_kind": failure.failure_kind,
@@ -341,8 +341,8 @@ def persist_failure_artifact(job: Any, failure: TestFailureArtifact) -> Any:
     job.artifacts.append(artifact)
     failure.artifact_id = str(artifact.id)
 
-    from packages.orchestration.storage import save_job
-    save_job(job)
+    from packages.orchestration.pingpong_job import save_job_plan
+    save_job_plan(job)
     return artifact
 
 
@@ -390,14 +390,14 @@ def create_fix_task_from_failure(
 
     Returns the created Task.
     """
-    from packages.core.models import Task
+    from packages.orchestration.pingpong_job import TaskEntry
 
     description = f"Fix failing tests after {failure.failing_phase}"
     if failure.failure_kind != FAILURE_UNKNOWN:
         description += f" ({failure.failure_kind})"
 
-    task = Task(
-        description=description[:200],
+    task = TaskEntry(
+        title=description[:200],
         inputs={
             "failure_artifact_id": failure.artifact_id,
             "original_task_id": failure.task_id,
@@ -407,8 +407,8 @@ def create_fix_task_from_failure(
     )
     job.tasks.append(task)
 
-    from packages.orchestration.storage import save_job
-    save_job(job)
+    from packages.orchestration.pingpong_job import save_job_plan
+    save_job_plan(job)
     return task
 
 

@@ -31,11 +31,12 @@ from typing import TYPE_CHECKING, Any
 # them at runtime from the job record's plain JSON.
 from packages.core.models import Artifact, Budget, JobFences, RunState
 
-# F260 D2: one minting function per KIND of id. This module names JOBs and
+# F260 D2: one minting function per KIND of id. This module names JOBs, TASKs and
 # EPISODEs, so it mints through data_paths rather than spelling uuid4 inline.
-# Module-level and not function-scoped: JobPlan's default_factory below is read
-# when the class body runs, which a local import could never reach.
-from packages.orchestration.data_paths import mint_episode_id, mint_job_id
+# Module-level and not function-scoped: the default_factory of JobPlan and of
+# TaskEntry below is read when the class body runs, which a local import could
+# never reach.
+from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_task_id
 
 if TYPE_CHECKING:
     from packages.orchestration.schemas.models import PlannedTask
@@ -150,7 +151,10 @@ class TaskProofSummary:
 @dataclass
 class TaskEntry:
     """A single task within a job."""
-    task_id: str = ""          # T001, T002, ... (by parse order)
+    # A job file's tasks are numbered T001, T002, ... by parse order, and the
+    # parser passes those ids; a task built by code mints its id, as the classic
+    # Task did.
+    task_id: str = field(default_factory=mint_task_id)
     source_heading_number: int = 0  # Original ## Task N number
     title: str = ""
     task_class: str = TASK_CLASS_DEFAULT
@@ -499,6 +503,25 @@ def load_job_plan_safe(job_id: str, root: Path | None = None) -> tuple[JobPlan |
         return (_import_job(_json.loads(job_file.read_text())), False)
     except (OSError, _json.JSONDecodeError, KeyError, ValueError, TypeError):
         return (None, True)
+
+
+# WHY: every caller that catches ``JobNotFoundError`` needs the raise the classic ``storage.load_job`` gave it.
+def require_job_plan(job_id: str, root: Path | None = None) -> JobPlan:
+    """Load one JobPlan, or RAISE what the classic ``storage.load_job`` raised.
+
+    The contract: the plan ``load_job_plan_safe`` reads comes back; when there is no
+    plan, a record that exists and cannot be read raises ``JobStoreError``, and a job
+    with no record raises ``JobNotFoundError(job_id)``. Both are the classes the
+    classic loader's callers already catch. It never returns ``None``.
+    """
+    from packages.orchestration.storage import JobNotFoundError, JobStoreError
+
+    plan, degraded = load_job_plan_safe(job_id, root)
+    if plan is None:
+        if degraded:
+            raise JobStoreError(f"Unreadable job record for {job_id}")
+        raise JobNotFoundError(job_id)
+    return plan
 
 
 def list_job_plans_safe(root: Path | None = None) -> tuple[list[JobPlan], bool, list[str]]:

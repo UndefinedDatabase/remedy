@@ -11,21 +11,23 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from packages.orchestration.data_paths import mint_job_id
 
 
 def _job_with_repo(env, files):
-    from packages.core.models import Job, RunState, Task
-    from packages.orchestration.storage import save_job
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    from packages.orchestration.pingpong_job import save_job_plan
     repo = env / f"repo-{uuid4().hex[:6]}"
     repo.mkdir(parents=True)
     for rel, content in files.items():
         p = repo / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content)
-    job = Job(id=uuid4(), name="te", user_prompt="x", state=RunState.RUNNING,
-              tasks=[Task(description="t")], artifacts=[], metadata={"target_repo": str(repo)})
-    save_job(job, root=env)
-    return str(job.id)
+    job = JobPlan(job_id=mint_job_id(), job_title="te", user_prompt="x", state=RunState.RUNNING,
+              tasks=[TaskEntry(title="t")], artifacts=[], metadata={"target_repo": str(repo)})
+    save_job_plan(job, root=env)
+    return str(job.job_id)
 
 
 @pytest.fixture()

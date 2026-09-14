@@ -13,11 +13,13 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration import real_test_execution as rte
+from packages.orchestration.data_paths import mint_job_id
 
 
 def _job(env: Path, *, files: dict[str, str] | None = None, repo: bool = True) -> str:
-    from packages.core.models import Job, RunState, Task
-    from packages.orchestration.storage import save_job
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    from packages.orchestration.pingpong_job import save_job_plan
     meta: dict = {}
     if repo:
         rp = env / f"repo-{uuid4().hex[:6]}"
@@ -25,10 +27,10 @@ def _job(env: Path, *, files: dict[str, str] | None = None, repo: bool = True) -
         for rel, content in (files or {"a.py": "x = 1\n"}).items():
             (rp / rel).write_text(content)
         meta["target_repo"] = str(rp)
-    job = Job(id=uuid4(), name="m", user_prompt="x", state=RunState.RUNNING,
-              tasks=[Task(description="t")], artifacts=[], metadata=meta)
-    save_job(job, root=env)
-    return str(job.id)
+    job = JobPlan(job_id=mint_job_id(), job_title="m", user_prompt="x", state=RunState.RUNNING,
+              tasks=[TaskEntry(title="t")], artifacts=[], metadata=meta)
+    save_job_plan(job, root=env)
+    return str(job.job_id)
 
 
 @pytest.fixture()

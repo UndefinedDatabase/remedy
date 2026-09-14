@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.permissions import (
     Capability,
     effective_permissions,
@@ -22,9 +23,9 @@ from packages.orchestration.permissions import (
 # ---------------------------------------------------------------------------
 
 
-def _make_job(**metadata_overrides) -> Job:
+def _make_job(**metadata_overrides) -> JobPlan:
     """Build a minimal Job for permission tests."""
-    job = Job(name="test", state=RunState.PENDING)
+    job = JobPlan(job_title="test", state=RunState.PENDING)
     job.metadata.update(metadata_overrides)
     return job
 

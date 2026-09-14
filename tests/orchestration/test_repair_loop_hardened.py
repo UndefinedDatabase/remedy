@@ -14,9 +14,9 @@ from tests.orchestration.small_repo_fixtures import (
 class TestDeterministicRepairLoop:
     def test_succeeds_in_two_cycles(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
         cycle_patches = [fixture_patch_repair_cycle1(), fixture_patch_repair_cycle2()]
@@ -30,8 +30,8 @@ class TestDeterministicRepairLoop:
                 structured_patch_format="json",
             )
 
-        job = Job(name="repair-test")
-        save_job(job)
+        job = JobPlan(job_title="repair-test")
+        save_job_plan(job)
         result = run_builder_bridge_loop(
             build_fn, repo, job=job, data_dir=tmp_path / "data",
             max_cycles=3,
@@ -43,9 +43,9 @@ class TestDeterministicRepairLoop:
 
     def test_malformed_patch_stops_safely(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
 
@@ -56,8 +56,8 @@ class TestDeterministicRepairLoop:
                 structured_patch_text="Just fix the code please",
             )
 
-        job = Job(name="test")
-        save_job(job)
+        job = JobPlan(job_title="test")
+        save_job_plan(job)
         result = run_builder_bridge_loop(
             build_fn, repo, job=job, data_dir=tmp_path / "data",
             max_cycles=3,
@@ -68,9 +68,9 @@ class TestDeterministicRepairLoop:
 
     def test_repeated_patch_stops_safely(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
         same_patch = json.dumps(fixture_patch_repair_cycle1())
@@ -82,8 +82,8 @@ class TestDeterministicRepairLoop:
                 structured_patch_text=same_patch,
             )
 
-        job = Job(name="test")
-        save_job(job)
+        job = JobPlan(job_title="test")
+        save_job_plan(job)
         result = run_builder_bridge_loop(
             build_fn, repo, job=job, data_dir=tmp_path / "data",
             max_cycles=3,
@@ -94,9 +94,9 @@ class TestDeterministicRepairLoop:
 
     def test_max_cycles_exhausted_stops_safely(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
         counter = [0]
@@ -111,8 +111,8 @@ class TestDeterministicRepairLoop:
                 structured_patch_text=json.dumps(patch),
             )
 
-        job = Job(name="test")
-        save_job(job)
+        job = JobPlan(job_title="test")
+        save_job_plan(job)
         result = run_builder_bridge_loop(
             build_fn, repo, job=job, data_dir=tmp_path / "data",
             max_cycles=2,
@@ -122,9 +122,9 @@ class TestDeterministicRepairLoop:
 
     def test_source_apply_approval_gate_intact(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
 
@@ -135,8 +135,8 @@ class TestDeterministicRepairLoop:
                 structured_patch_text=json.dumps(fixture_patch_repair_cycle2()),
             )
 
-        job = Job(name="test")
-        save_job(job)
+        job = JobPlan(job_title="test")
+        save_job_plan(job)
         result = run_builder_bridge_loop(
             build_fn, repo, job=job, data_dir=tmp_path / "data",
             autonomy_level=2, max_cycles=2,
@@ -147,9 +147,9 @@ class TestDeterministicRepairLoop:
 
     def test_no_raw_output_leaks_in_repair_events(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.timeline import load_run_events
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
@@ -163,14 +163,14 @@ class TestDeterministicRepairLoop:
                 structured_patch_text=json.dumps(patches[idx]),
             )
 
-        job = Job(name="test")
-        save_job(job)
+        job = JobPlan(job_title="test")
+        save_job_plan(job)
         run_builder_bridge_loop(
             build_fn, repo, job=job, data_dir=tmp_path / "data",
             max_cycles=3,
         )
 
-        events = load_run_events(tmp_path / "data", job.id)
+        events = load_run_events(tmp_path / "data", job.job_id)
         for event in events:
             meta_str = str(event.get("metadata", {}))
             assert "return a - b" not in meta_str
@@ -179,9 +179,9 @@ class TestDeterministicRepairLoop:
 
     def test_events_recorded_per_cycle(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge_loop
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.orchestration.timeline import load_run_events
 
         repo = create_repair_scenario_repo(tmp_path / "repo")
@@ -195,14 +195,14 @@ class TestDeterministicRepairLoop:
                 structured_patch_text=json.dumps(patches[idx]),
             )
 
-        job = Job(name="test")
-        save_job(job)
+        job = JobPlan(job_title="test")
+        save_job_plan(job)
         run_builder_bridge_loop(
             build_fn, repo, job=job, data_dir=tmp_path / "data",
             max_cycles=3,
         )
 
-        events = load_run_events(tmp_path / "data", job.id)
+        events = load_run_events(tmp_path / "data", job.job_id)
         cycle_events = [e for e in events if e["event"] == "repair_loop_cycle_started"]
         assert len(cycle_events) == 2
         success_events = [e for e in events if e["event"] == "repair_loop_succeeded"]

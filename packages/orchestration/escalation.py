@@ -43,7 +43,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 
 #: The additive task outcome.  A task step reports it instead of a failure when
 #: it cannot proceed without a human answer.
@@ -99,7 +99,7 @@ __all__ = [
 ]
 
 
-def _metadata(job: Job | Any) -> dict[str, Any]:
+def _metadata(job: JobPlan | Any) -> dict[str, Any]:
     """The job's metadata dict, created on first use.
 
     Both Core ``Job`` and the pingpong ``JobPlan`` are accepted; a job shape
@@ -116,7 +116,7 @@ def _metadata(job: Job | Any) -> dict[str, Any]:
     return meta
 
 
-def escalation_records(job: Job | Any) -> list[dict[str, Any]]:
+def escalation_records(job: JobPlan | Any) -> list[dict[str, Any]]:
     """Every escalation record on *job*, in creation order.
 
     The live list is returned, so callers that append go through the helpers
@@ -128,7 +128,7 @@ def escalation_records(job: Job | Any) -> list[dict[str, Any]]:
     return [r for r in records if isinstance(r, dict)]
 
 
-def _stored_records(job: Job | Any) -> list[dict[str, Any]]:
+def _stored_records(job: JobPlan | Any) -> list[dict[str, Any]]:
     """The stored list itself, created if absent — the write path."""
     meta = _metadata(job)
     records = meta.get(JOB_METADATA_ESCALATIONS_KEY)
@@ -138,19 +138,19 @@ def _stored_records(job: Job | Any) -> list[dict[str, Any]]:
     return records
 
 
-def open_task_decisions(job: Job | Any) -> list[dict[str, Any]]:
+def open_task_decisions(job: JobPlan | Any) -> list[dict[str, Any]]:
     """Records still waiting for an answer, in creation order."""
     return [r for r in escalation_records(job)
             if r.get("status") == ESCALATION_STATUS_OPEN]
 
 
-def answered_task_decisions(job: Job | Any) -> list[dict[str, Any]]:
+def answered_task_decisions(job: JobPlan | Any) -> list[dict[str, Any]]:
     """Records that have an answer — human or auto-applied default."""
     return [r for r in escalation_records(job)
             if r.get("status") == ESCALATION_STATUS_ANSWERED]
 
 
-def awaiting_decision_task_ids(job: Job | Any) -> set[UUID]:
+def awaiting_decision_task_ids(job: JobPlan | Any) -> set[str]:
     """Task ids whose branch is paused on an OPEN decision.
 
     This is what the executor withholds from the ready set: the tasks
@@ -159,16 +159,17 @@ def awaiting_decision_task_ids(job: Job | Any) -> set[UUID]:
     bookkeeping, which is why the awaiting state is derived and never stored
     twice.
     """
-    awaiting: set[UUID] = set()
+    known = {str(task.task_id) for task in getattr(job, "tasks", ()) or ()}
+    awaiting: set[str] = set()
     for record in open_task_decisions(job):
-        try:
-            awaiting.add(UUID(str(record.get("task_id"))))
-        except (TypeError, ValueError):
-            continue                        # a malformed id blocks nothing
+        task_id = str(record.get("task_id") or "")
+        # An id naming no task of this job blocks nothing.
+        if task_id and task_id in known:
+            awaiting.add(task_id)
     return awaiting
 
 
-def find_task_decision(job: Job | Any, decision_id: str) -> dict[str, Any] | None:
+def find_task_decision(job: JobPlan | Any, decision_id: str) -> dict[str, Any] | None:
     """The record with this decision id, or None."""
     for record in escalation_records(job):
         if record.get("decision_id") == decision_id:
@@ -209,7 +210,7 @@ def _normalized_question(text: Any) -> str:
 
 
 def enqueue_task_decision(
-    job: Job | Any,
+    job: JobPlan | Any,
     *,
     task_id: Any,
     question: str,
@@ -255,7 +256,7 @@ def enqueue_task_decision(
     return record
 
 
-def _record_answer_on_task(job: Job | Any, record: Mapping[str, Any]) -> None:
+def _record_answer_on_task(job: JobPlan | Any, record: Mapping[str, Any]) -> None:
     """Put the answer where the next attempt of that task will read it.
 
     Without this the branch would resume as ignorant as it paused.  Additive:
@@ -282,7 +283,7 @@ def _record_answer_on_task(job: Job | Any, record: Mapping[str, Any]) -> None:
 
 
 def answer_task_decision(
-    job: Job | Any,
+    job: JobPlan | Any,
     decision_id: str,
     *,
     answer: str,
@@ -307,7 +308,7 @@ def answer_task_decision(
 
 
 def auto_apply_safe_default(
-    job: Job | Any,
+    job: JobPlan | Any,
     record: Mapping[str, Any],
     *,
     now: datetime,
@@ -334,7 +335,7 @@ def _cell(text: Any) -> str:
     return " ".join(str(text or "").split()).replace("|", "\\|") or "-"
 
 
-def render_escalation_assumptions_md(job: Job | Any) -> str:
+def render_escalation_assumptions_md(job: JobPlan | Any) -> str:
     """The mid-run assumption log: what was asked, answered, and by whom.
 
     Deliberately separate from the flight plan's ``assumptions.md`` — see the
@@ -375,7 +376,7 @@ def render_escalation_assumptions_md(job: Job | Any) -> str:
     return "\n".join(lines)
 
 
-def write_escalation_assumptions_md(job: Job | Any, evidence_dir: Path) -> Path:
+def write_escalation_assumptions_md(job: JobPlan | Any, evidence_dir: Path) -> Path:
     """Write the mid-run assumption log into the job's evidence area."""
     evidence_dir = Path(evidence_dir)
     evidence_dir.mkdir(parents=True, exist_ok=True)

@@ -12,33 +12,29 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import (
-    Artifact,
-    ArtifactKind,
-    Job,
-    RunState,
-    Task,
-)
-from packages.orchestration.storage import save_job
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.data_paths import mint_job_id
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
-def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> Job:
+def _make_job(*, project_id: str | None = None, target_repo: str | None = None) -> JobPlan:
     meta: dict = {}
     if project_id:
         meta["project_id"] = project_id
     if target_repo:
         meta["target_repo"] = target_repo
-    return Job(
-        id=uuid4(),
-        name="test job",
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="test job",
         user_prompt="test prompt",
         state=RunState.RUNNING,
         tasks=[
-            Task(
-                id=uuid4(),
-                description="task",
+            TaskEntry(
+                task_id="T001",
+                title="task",
                 status=RunState.PENDING,
                 inputs={"task_type": "patch"},
                 output_artifact_ids=[],
@@ -49,47 +45,45 @@ def _make_job(*, project_id: str | None = None, target_repo: str | None = None) 
     )
 
 
-def _make_job_s68(**overrides) -> Job:
+def _make_job_s68(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": str(uuid4()),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "description": "test job",
         "tasks": [
-            Task(description="task 1", status=RunState.COMPLETED),
+            TaskEntry(title="task 1", status=RunState.COMPLETED),
         ],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _make_job_s71(**overrides) -> Job:
+def _make_job_s71(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": str(uuid4()),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "tasks": [Task(description="task 1", status=RunState.COMPLETED)],
+        "tasks": [TaskEntry(title="task 1", status=RunState.COMPLETED)],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 # ── Step 71.1: Token Policy Applied ──────────────────────────────────────
 
 
 def _make_job_s111(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -104,7 +98,7 @@ def _make_job_s111(*, tasks=None, name="test"):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
+def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[JobPlan, str, Path]:
     """Create a job with an approved patch intent and attached repo."""
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
 
@@ -140,9 +134,9 @@ def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
         },
     )
 
-    job = Job(
-        id=uuid4(),
-        name="patch job",
+    job = JobPlan(
+        job_id=mint_job_id(),
+        job_title="patch job",
         user_prompt="apply test",
         state=RunState.RUNNING,
         tasks=[],
@@ -151,7 +145,7 @@ def _make_job_with_intent(tmp_path: Path, monkeypatch) -> tuple[Job, str, Path]:
     )
     set_approval_state(job, intent_id, APPROVAL_APPROVED)
     set_permission(job, Capability.repo_generated_write, allow=True)
-    save_job(job)
+    save_job_plan(job)
     return job, intent_id, repo
 
 
@@ -181,7 +175,7 @@ class TestTokenEconomy:
     def test_token_policy_json_has_all_fields(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.token_policy import (
             build_default_token_policy,
@@ -221,9 +215,9 @@ class TestTokenPolicyApplied:
     def test_autonomy_loop_emits_event(self, tmp_path, monkeypatch):
         """Autonomy loop must emit token_policy_applied at start."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job = _make_job_s68()
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.autonomy_loop import run_autonomy_loop
         from packages.orchestration.data_paths import resolve_data_root
@@ -231,7 +225,7 @@ class TestTokenPolicyApplied:
 
         run_autonomy_loop(job, [], max_cycles=1, autonomy_level=0)
 
-        events = load_run_events(resolve_data_root(), job.id)
+        events = load_run_events(resolve_data_root(), job.job_id)
         tpa = [e for e in events if e.get("event") == "token_policy_applied"]
         assert len(tpa) >= 1, "must emit token_policy_applied"
         meta = tpa[0].get("metadata", {})
@@ -271,16 +265,16 @@ class TestTokenPolicyAppliedSchema:
 
     def test_autonomy_loop_emits(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job = _make_job_s71()
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.autonomy_loop import run_autonomy_loop
         from packages.orchestration.data_paths import resolve_data_root
         from packages.orchestration.timeline import load_run_events
 
         run_autonomy_loop(job, [], max_cycles=1, autonomy_level=0)
-        events = load_run_events(resolve_data_root(), job.id)
+        events = load_run_events(resolve_data_root(), job.job_id)
         tpa = [e for e in events if e.get("event") == "token_policy_applied"]
         assert len(tpa) >= 1
         meta = tpa[0].get("metadata", {})
@@ -290,9 +284,9 @@ class TestTokenPolicyAppliedSchema:
 
     def test_event_ledger_includes_tpa(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job = _make_job_s71()
-        save_job(job)
+        save_job_plan(job)
 
         from packages.orchestration.autonomy_loop import run_autonomy_loop
         from packages.orchestration.data_paths import resolve_data_root
@@ -300,8 +294,8 @@ class TestTokenPolicyAppliedSchema:
         from packages.orchestration.timeline import load_run_events
 
         run_autonomy_loop(job, [], max_cycles=1, autonomy_level=0)
-        events = load_run_events(resolve_data_root(), job.id)
-        ledger = list_events(str(job.id), events)
+        events = load_run_events(resolve_data_root(), job.job_id)
+        ledger = list_events(str(job.job_id), events)
         tpa_ledger = [e for e in ledger if e.event_type == "token_policy_applied"]
         assert len(tpa_ledger) >= 1
 

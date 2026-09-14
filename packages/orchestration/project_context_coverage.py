@@ -273,7 +273,7 @@ def derive_project_context_coverage(
                 if not present:
                     # Check any linked job
                     for j in jobs:
-                        if has_approved_memory(job_id=str(j.id)):
+                        if has_approved_memory(job_id=str(j.job_id)):
                             present = True
                             break
             except (ImportError, ValueError, OSError):

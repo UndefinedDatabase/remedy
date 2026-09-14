@@ -38,7 +38,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from packages.core.models import Job, JobBudgets, RunState
+from packages.core.models import JobBudgets, RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.loop_spec import (
     INERT_TRIGGER_NOTICE,
     LOOP_TEMPLATE_VARS,
@@ -131,8 +132,8 @@ def loop_budgets_to_job_budgets(budgets: LoopBudgets | None) -> JobBudgets | Non
 def _materialize_loop_job(spec: LoopSpec, prompt: str, project_id: str, *,
                           extra_metadata: Mapping[str, object] | None = None,
                           mission: str | None = None,
-                          save: Callable[[Job], None] | None = None,
-                          root: Path | None = None) -> Job:
+                          save: Callable[[JobPlan], None] | None = None,
+                          root: Path | None = None) -> JobPlan:
     """Build, plan and persist the job a loop firing produces.
 
     The three metadata keys T002 established are written first; *extra_metadata*
@@ -148,7 +149,7 @@ def _materialize_loop_job(spec: LoopSpec, prompt: str, project_id: str, *,
     goes; only the DEFAULT save consults *root* (DECISION F045 D6).
     """
     from packages.orchestration.job_runner import plan_job
-    from packages.orchestration.storage import save_job as _save_job
+    from packages.orchestration.pingpong_job import save_job_plan as _save_job
 
     metadata: dict[str, object] = {
         "project_id": project_id,
@@ -157,8 +158,8 @@ def _materialize_loop_job(spec: LoopSpec, prompt: str, project_id: str, *,
     }
     if extra_metadata:
         metadata.update(extra_metadata)
-    job = Job(
-        name=prompt[:50],
+    job = JobPlan(
+        job_title=prompt[:50],
         user_prompt=prompt,
         mission=mission,
         state=RunState.PENDING,
@@ -177,8 +178,8 @@ def _materialize_loop_job(spec: LoopSpec, prompt: str, project_id: str, *,
 # WHY: the single entry point from a declarative loop to the normal job
 # pipeline; every loop_ref in evidence originates here.
 def loop_to_job(spec: LoopSpec, *, project_id: str, date: str | None = None,
-                save: Callable[[Job], None] | None = None,
-                root: Path | None = None) -> Job:
+                save: Callable[[JobPlan], None] | None = None,
+                root: Path | None = None) -> JobPlan:
     """Turn a job-action loop into a NORMAL job, planned and persisted.
 
     Deliberately the same shape as
@@ -223,7 +224,7 @@ class LoopRunOutcome:
     unless the trigger is inert, in which case it is ``INERT_TRIGGER_NOTICE``.
     """
 
-    job: Job
+    job: JobPlan
     mission_id: str | None = None
     notice: str | None = None
 
@@ -231,7 +232,7 @@ class LoopRunOutcome:
 # WHY: the one dispatch point from a declarative loop to real work; every action
 # kind is routed here and nowhere else.
 def run_loop(spec: LoopSpec, *, project_id: str, date: str | None = None,
-             save: Callable[[Job], None] | None = None,
+             save: Callable[[JobPlan], None] | None = None,
              root: Path | None = None) -> LoopRunOutcome:
     """Materialize *spec* according to its ``action.kind``.
 
@@ -282,7 +283,7 @@ def run_loop(spec: LoopSpec, *, project_id: str, date: str | None = None,
                             "mission_role": MISSION_ROLE_INITIAL},
             mission=mission.goal,
             save=save, root=root)
-        link_job_to_mission(project_id, mission.id, str(job.id),
+        link_job_to_mission(project_id, mission.id, str(job.job_id),
                             MISSION_ROLE_INITIAL, root=root)
         return LoopRunOutcome(job=job, mission_id=mission.id, notice=notice)
 
@@ -292,7 +293,7 @@ def run_loop(spec: LoopSpec, *, project_id: str, date: str | None = None,
 
 # WHY: the last-run display reads provenance out of the job store, so the scan
 # for a loop's own runs lives next to the key that records them.
-def last_run_for_loop(name: str, *, root: Path | None = None) -> Job | None:
+def last_run_for_loop(name: str, *, root: Path | None = None) -> JobPlan | None:
     """The most recent job carrying ``loop_ref == name``, or ``None``.
 
     Reads the store through ``storage.list_jobs_safe``, which ALREADY sorts by
@@ -300,9 +301,9 @@ def last_run_for_loop(name: str, *, root: Path | None = None) -> Job | None:
     ``max()`` and no re-sort. That helper SKIPS unreadable job files, so a loop
     whose only run will not parse reports ``None`` rather than a wrong run.
     """
-    from packages.orchestration.storage import list_jobs_safe
+    from packages.orchestration.pingpong_job import list_job_plans_safe
 
-    jobs, _degraded, _skipped = list_jobs_safe(root)
+    jobs, _degraded, _skipped = list_job_plans_safe(root)
     for job in jobs:
         if job.metadata.get(LOOP_REF_METADATA_KEY) == name:
             return job

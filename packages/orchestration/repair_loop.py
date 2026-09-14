@@ -63,7 +63,7 @@ def start_repair_loop_v0(
     No real provider. No apply. No test execution. Stops before risky action.
     """
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import load_job_plan, require_job_plan, save_job_plan
     from packages.orchestration.test_failure_artifact import (
         TestFailureArtifact,
         create_fix_task_from_failure,
@@ -81,7 +81,7 @@ def start_repair_loop_v0(
 
     # --- Phase: load ---
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except Exception:
         result.stop_reason = "job_not_found"
         result.stop_detail = f"Job {job_id[:8]} not found"
@@ -100,7 +100,7 @@ def start_repair_loop_v0(
     )
 
     repair_contract = ensure_contract(job)
-    save_job(job)  # persist contract if newly created
+    save_job_plan(job)  # persist contract if newly created
 
     fix_decision = evaluate_run_action(repair_contract, "create_fix_task")
     if not fix_decision.allowed:
@@ -165,13 +165,13 @@ def start_repair_loop_v0(
     if existing_fix:
         fix_task = existing_fix
         result.phases.append({"phase": "fix_task", "status": "completed",
-                              "safe_summary": f"Fix task already exists: {str(fix_task.id)[:8]}"})
+                              "safe_summary": f"Fix task already exists: {str(fix_task.task_id)[:8]}"})
     else:
         fix_task = create_fix_task_from_failure(job, failure)
         result.phases.append({"phase": "fix_task", "status": "completed",
-                              "safe_summary": f"Fix task created: {str(fix_task.id)[:8]}"})
+                              "safe_summary": f"Fix task created: {str(fix_task.task_id)[:8]}"})
 
-    result.fix_task_id = str(fix_task.id)
+    result.fix_task_id = str(fix_task.task_id)
 
     # --- Phase: optional fixture patch intent ---
     if create_patch_intent:
@@ -182,7 +182,7 @@ def start_repair_loop_v0(
             name=f"fixture-repair-{failure.artifact_id[:8]}",
             content=f"Fixture repair proposal for: {failure.safe_summary[:100]}",
             kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=str(fix_task.id),
+            task_id=str(fix_task.task_id),
             metadata={
                 "fixture": True,
                 "repair": True,
@@ -201,7 +201,7 @@ def start_repair_loop_v0(
             },
         )
         job.artifacts.append(repair_art)
-        save_job(job)
+        save_job_plan(job)
 
         intent_id = make_intent_id(repair_art.id, 0)
         result.repair_artifact_id = str(repair_art.id)
@@ -222,11 +222,11 @@ def start_repair_loop_v0(
         for e in existing_events
     )
     if not already_emitted:
-        emit_failure_events(data_dir, job_id, failure, fix_task_id=str(fix_task.id))
+        emit_failure_events(data_dir, job_id, failure, fix_task_id=str(fix_task.task_id))
 
     append_run_event(data_dir, job_id, event="repair_loop_stopped", metadata={
         "job_id": job_id,
-        "fix_task_id": str(fix_task.id),
+        "fix_task_id": str(fix_task.task_id),
         "failure_artifact_id": failure_artifact_id,
         "stop_reason": "awaiting_approval" if create_patch_intent else "fix_task_created",
     })
@@ -244,12 +244,12 @@ def start_repair_loop_v0(
         "contract_id": repair_contract.contract_id,
     })
 
-    save_job(job)
+    save_job_plan(job)
 
     # --- Stop ---
     if create_patch_intent and result.repair_patch_intent_id:
         from packages.orchestration.approval_queue import get_patch_intent
-        reloaded = load_job(job_id)
+        reloaded = load_job_plan(job_id)
         verified_intent = get_patch_intent(reloaded, result.repair_patch_intent_id)
         if verified_intent is not None:
             result.stop_reason = "approval_required"
@@ -602,13 +602,14 @@ def build_repair_context(
     failure artifacts return status="blocked" with a safe blocker code.
     """
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
 
     ctx = RepairContextSummary(job_id=job_id, failure_artifact_id=failure_artifact_id)
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
 
     try:
-        job = load_job(normalize_job_id(job_id), ddir)
+        job = require_job_plan(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         ctx.status = "blocked"
         ctx.blocker = "job_not_found"
@@ -714,7 +715,7 @@ def find_repair_attempt(job: Any, failure_artifact_id: str, source: str = "cli_v
 
 def save_repair_attempt(job: Any, attempt: RepairAttempt) -> None:
     """Persist a repair attempt into job.metadata (atomic dict update)."""
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
 
     if job.metadata is None:
         job.metadata = {}
@@ -724,7 +725,7 @@ def save_repair_attempt(job: Any, attempt: RepairAttempt) -> None:
     attempt.updated_at = _now()
     attempts[_attempt_key(attempt.failure_artifact_id, attempt.source)] = attempt.to_dict()
     job.metadata[_ATTEMPTS_KEY] = attempts
-    save_job(job)
+    save_job_plan(job)
 
 
 # ---------------------------------------------------------------------------
@@ -783,14 +784,15 @@ def evaluate_repair_eligibility(
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = RepairEligibility(job_id=job_id, failure_artifact_id=failure_artifact_id)
 
     # 1. Job exists.
     try:
-        job = load_job(normalize_job_id(job_id), ddir)
+        job = require_job_plan(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         elig.blockers.append("job_not_found")
         elig.next_safe_action = _na("List jobs", "remedy job list --json", "Job not found.")
@@ -889,16 +891,16 @@ def _find_fix_task(job: Any, failure_artifact_id: str) -> Any:
 
 def create_or_reuse_fix_task(job: Any, ctx: RepairContextSummary, attempt_id: str) -> Any:
     """Create (or reuse) a Fix Task linked to the failure (Step 1198). Idempotent."""
-    from packages.core.models import Task
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import TaskEntry
+    from packages.orchestration.pingpong_job import save_job_plan
 
     existing = _find_fix_task(job, ctx.failure_artifact_id)
     if existing is not None:
         return existing
 
     run_short = (ctx.test_run_id or ctx.failure_artifact_id)[:8]
-    task = Task(
-        description=f"Fix failing test from {run_short}"[:200],
+    task = TaskEntry(
+        title=f"Fix failing test from {run_short}"[:200],
         inputs={
             "failure_artifact_id": ctx.failure_artifact_id,
             "test_run_id": ctx.test_run_id,
@@ -912,7 +914,7 @@ def create_or_reuse_fix_task(job: Any, ctx: RepairContextSummary, attempt_id: st
         },
     )
     job.tasks.append(task)
-    save_job(job)
+    save_job_plan(job)
     return task
 
 
@@ -948,7 +950,7 @@ def build_fixture_repair(
 
     from packages.core.models import Artifact, ArtifactKind
     from packages.orchestration.approval_queue import get_patch_intent, make_intent_id
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
 
     existing = _find_repair_artifact(job, attempt_id)
     if existing is not None:
@@ -983,7 +985,7 @@ def build_fixture_repair(
         name=f"repair-v1-{fa_short}",
         content=f"Repair proposal for failure {fa_short} ({ctx.failure_kind}).",
         kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=str(fix_task.id),
+        task_id=str(fix_task.task_id),
         metadata={
             "repair_v1": True,
             "fixture": True,
@@ -1010,7 +1012,7 @@ def build_fixture_repair(
         },
     )
     job.artifacts.append(repair_art)
-    save_job(job)
+    save_job_plan(job)
 
     intent_id = make_intent_id(repair_art.id, 0)
     # Verify the intent is real + resolvable before claiming it exists.
@@ -1079,7 +1081,8 @@ def run_repair_attempt(
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     phases: list[dict[str, str]] = []
@@ -1101,7 +1104,7 @@ def run_repair_attempt(
         )
 
     try:
-        job = load_job(normalize_job_id(job_id), ddir)
+        job = require_job_plan(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         return RepairAttemptResult(
             job_id=job_id, failure_artifact_id=failure_artifact_id,
@@ -1149,7 +1152,7 @@ def run_repair_attempt(
 
     # --- Fix task ---
     fix_task = create_or_reuse_fix_task(job, ctx, attempt.attempt_id)
-    attempt.repair_task_id = str(fix_task.id)
+    attempt.repair_task_id = str(fix_task.task_id)
     attempt.status = RepairStatus.FIX_TASK_CREATED
     _emit_repair(ddir, job_id, "repair_fix_task_created",
                  {"fix_task_id": attempt.repair_task_id, "failure_artifact_id": failure_artifact_id})
@@ -1344,7 +1347,7 @@ def resolve_failure_if_repaired(
     resolves a source failure (no overclaim). Mutates + saves the job. Returns
     True only when the failure was newly resolved.
     """
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
 
     if expected_effect != EXPECT_SOURCE_FIX:
         return False
@@ -1367,18 +1370,18 @@ def resolve_failure_if_repaired(
     target.metadata["resolved_by_repair_attempt_id"] = repair_attempt_id
     target.metadata["resolved_by_test_run_id"] = test_run_id
     target.metadata["resolved_at"] = _now()
-    save_job(job)
+    save_job_plan(job)
     return True
 
 
 def _link_new_failure(job: Any, new_failure_artifact_id: str, attempt: RepairAttempt) -> None:
     """Link a post-repair failure to its repair attempt + the prior failure."""
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
     for art in job.artifacts:
         if str(art.id) == new_failure_artifact_id and (art.metadata or {}).get("test_failure"):
             art.metadata["repair_attempt_id"] = attempt.attempt_id
             art.metadata["supersedes_failure_artifact_id"] = attempt.failure_artifact_id
-            save_job(job)
+            save_job_plan(job)
             return
 
 
@@ -1402,12 +1405,13 @@ def reconcile_repair_after_continue(
     Never applies code, never runs tests; it only reflects the outcome.
     """
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     out = RepairReconcileResult()
     try:
-        job = load_job(normalize_job_id(job_id), ddir)
+        job = require_job_plan(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         return out
 

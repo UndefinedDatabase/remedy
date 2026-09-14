@@ -268,7 +268,7 @@ def _detect_stale_handoff(items: list) -> None:
 def _detect_evidence_gaps(job: Any, items: list) -> None:
     if job is None:
         return
-    job_id = str(job.id)
+    job_id = str(job.job_id)
     # Failure artifact without a repair attempt; repair without pending intent.
     try:
         from packages.orchestration.repair_loop import load_repair_attempts
@@ -370,8 +370,9 @@ def build_self_dogfood_inspection(
     job = None
     if job_id:
         try:
-            from packages.orchestration.storage import JobNotFoundError, load_job
-            job = load_job(normalize_job_id(job_id), ddir)
+            from packages.orchestration.storage import JobNotFoundError
+            from packages.orchestration.pingpong_job import require_job_plan
+            job = require_job_plan(normalize_job_id(job_id), ddir)
             insp.sources_checked.append(SelfImprovementSource("job", SourceStatus.AVAILABLE))
         except (ValueError, JobNotFoundError):
             insp.sources_checked.append(SelfImprovementSource("job", SourceStatus.MISSING))
@@ -462,13 +463,14 @@ def propose_self_improvement(
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     result = SelfDogfoodResult(job_id=job_id)
 
     try:
-        load_job(normalize_job_id(job_id), ddir)
+        require_job_plan(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         result.stop_reason = "job_not_found"
         result.evidence_status = "unknown"
@@ -476,7 +478,7 @@ def propose_self_improvement(
         result.next_safe_action = SelfImprovementAction("List jobs", "remedy job list --json", "")
         return result
 
-    from packages.orchestration.storage import load_job as _lj
+    from packages.orchestration.pingpong_job import load_job_plan as _lj
     job = _lj(normalize_job_id(job_id), ddir)
     contract = ensure_contract(job)
     if not evaluate_run_action(contract, ContractAction.SELF_PROPOSE_TASK).allowed:

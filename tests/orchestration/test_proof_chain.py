@@ -16,12 +16,8 @@ from __future__ import annotations
 
 import json
 
-from packages.core.models import (
-    Artifact,
-    ArtifactKind,
-    Job,
-    Task,
-)
+from packages.core.models import Artifact, ArtifactKind
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.approval_queue import make_intent_id
 from packages.orchestration.proof_chain import (
     PROOF_FAILED,
@@ -55,7 +51,7 @@ from packages.orchestration.proof_chain import (
 
 
 def _make_job(*, tasks=None, artifacts=None, user_prompt="Fix the bug"):
-    job = Job(name="test-job", user_prompt=user_prompt)
+    job = JobPlan(job_title="test-job", user_prompt=user_prompt)
     if tasks:
         job.tasks = tasks
     if artifacts:
@@ -90,8 +86,8 @@ def _explanation_record(target_path, *, action="modify", risk="medium"):
 
 def _make_full_chain_job(*, test_linked=True):
     """Create a job with one task, one intent, approved + applied + proof + linked test passed."""
-    task = Task(description="Fix auth bug")
-    task_id = task.id
+    task = TaskEntry(title="Fix auth bug")
+    task_id = task.task_id
 
     explanations = [_explanation_record("src/auth.py")]
     art = _make_artifact_with_intents(task_id, explanations)
@@ -478,12 +474,12 @@ class TestBuildProofChain:
 
     def test_unlinked_test_not_verified(self):
         """CRITICAL: unlinked test does NOT verify when multiple changes exist"""
-        task = Task(description="Fix bug")
+        task = TaskEntry(title="Fix bug")
         explanations = [
             _explanation_record("src/a.py"),
             _explanation_record("src/b.py"),
         ]
-        art = _make_artifact_with_intents(task.id, explanations)
+        art = _make_artifact_with_intents(task.task_id, explanations)
         iid_a = make_intent_id(art.id, 0)
         iid_b = make_intent_id(art.id, 1)
         approvals = {
@@ -635,9 +631,9 @@ class TestRedaction:
 
     def test_summary_bounded_many_changes(self):
         """Even with many changes, summary stays bounded"""
-        task = Task(description="Multi-file fix")
+        task = TaskEntry(title="Multi-file fix")
         explanations = [_explanation_record(f"src/file_{i}.py") for i in range(20)]
-        art = _make_artifact_with_intents(task.id, explanations)
+        art = _make_artifact_with_intents(task.task_id, explanations)
         job = _make_job(tasks=[task], artifacts=[art])
         chain = build_proof_chain(job, [])
         text = summarize_proof_chain(chain)
@@ -658,9 +654,9 @@ class TestNextSafeAction:
         assert chain.next_safe_action_obj is not None
 
     def test_pending_approval_action(self):
-        task = Task(description="Fix bug")
+        task = TaskEntry(title="Fix bug")
         explanations = [_explanation_record("src/bug.py")]
-        art = _make_artifact_with_intents(task.id, explanations)
+        art = _make_artifact_with_intents(task.task_id, explanations)
         job = _make_job(tasks=[task], artifacts=[art])
         chain = build_proof_chain(job, [])
         assert "approve" in chain.next_safe_action.lower() or "pending" in chain.next_safe_action.lower()
@@ -684,9 +680,9 @@ class TestNextSafeAction:
 class TestIncompleteChains:
 
     def _make_intent_only_job(self, state="pending", *, snapshot_verified: bool = False):
-        task = Task(description="Task")
+        task = TaskEntry(title="Task")
         explanations = [_explanation_record("src/file.py")]
-        art = _make_artifact_with_intents(task.id, explanations)
+        art = _make_artifact_with_intents(task.task_id, explanations)
         intent_id = make_intent_id(art.id, 0)
         approvals = {}
         if state != "pending":
@@ -756,12 +752,12 @@ class TestIncompleteChains:
 
     def test_unrelated_later_test_does_not_verify(self):
         """Generic test after apply on multi-change job → INCOMPLETE"""
-        task = Task(description="Multi-file fix")
+        task = TaskEntry(title="Multi-file fix")
         explanations = [
             _explanation_record("src/a.py"),
             _explanation_record("src/b.py"),
         ]
-        art = _make_artifact_with_intents(task.id, explanations)
+        art = _make_artifact_with_intents(task.task_id, explanations)
         iid_a = make_intent_id(art.id, 0)
         iid_b = make_intent_id(art.id, 1)
         approvals = {
@@ -844,8 +840,8 @@ class TestIncompleteChains:
         assert c.test_link == TEST_LINK_INTENT
 
     def test_task_linked_missing_timestamp_can_verify(self):
-        task = Task(description="Task")
-        art = _make_artifact_with_intents(task.id, [_explanation_record("src/file.py")])
+        task = TaskEntry(title="Task")
+        art = _make_artifact_with_intents(task.task_id, [_explanation_record("src/file.py")])
         iid = make_intent_id(art.id, 0)
         art.metadata["patch_intent_approvals"] = {iid: {"state": "approved", "decided_at": "", "decided_by": ""}}
         art.metadata["patch_intent_apply_records"] = {iid: {"snapshot_verified": True}}
@@ -853,7 +849,7 @@ class TestIncompleteChains:
         events = [
             {"event": "patch_intent_applied", "metadata": {"intent_id": iid, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
             {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": iid, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
-            {"event": "test_run_completed", "metadata": {"task_id": str(task.id), "status": "passed", "exit_code": 0}},
+            {"event": "test_run_completed", "metadata": {"task_id": str(task.task_id), "status": "passed", "exit_code": 0}},
         ]
         c = build_proof_chain(job, events).changes[0]
         assert c.proof_status == PROOF_VERIFIED
@@ -861,9 +857,9 @@ class TestIncompleteChains:
 
     def test_task_execution_blocked_linked(self):
         """task_execution_blocked for linked task → FAILED"""
-        task = Task(description="Task")
+        task = TaskEntry(title="Task")
         explanations = [_explanation_record("src/file.py")]
-        art = _make_artifact_with_intents(task.id, explanations)
+        art = _make_artifact_with_intents(task.task_id, explanations)
         intent_id = make_intent_id(art.id, 0)
         approvals = {intent_id: {"state": "approved", "decided_at": "", "decided_by": ""}}
         art.metadata["patch_intent_approvals"] = approvals
@@ -871,7 +867,7 @@ class TestIncompleteChains:
         events = [
             {"event": "patch_intent_applied", "metadata": {"intent_id": intent_id, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
             {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": intent_id, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
-            {"event": "task_execution_blocked", "metadata": {"task_id": str(task.id)}},
+            {"event": "task_execution_blocked", "metadata": {"task_id": str(task.task_id)}},
         ]
         chain = build_proof_chain(job, events)
         assert chain.changes[0].proof_status == PROOF_FAILED
@@ -892,9 +888,9 @@ class TestSummary:
         assert "[OK]" in text
 
     def test_summary_incomplete(self):
-        task = Task(description="Task")
+        task = TaskEntry(title="Task")
         explanations = [_explanation_record("src/file.py")]
-        art = _make_artifact_with_intents(task.id, explanations)
+        art = _make_artifact_with_intents(task.task_id, explanations)
         job = _make_job(tasks=[task], artifacts=[art])
         text = summarize_proof_chain(build_proof_chain(job, []))
         assert "[...]" in text
@@ -944,8 +940,8 @@ class TestFileProvenanceAlignment:
     def test_provenance_omits_unlinked_global_test(self):
         """file.why must not show a generic test as proof when ordering is unknown."""
         from packages.orchestration.file_provenance import build_file_provenance
-        task = Task(description="Task")
-        art = _make_artifact_with_intents(task.id, [_explanation_record("src/file.py")])
+        task = TaskEntry(title="Task")
+        art = _make_artifact_with_intents(task.task_id, [_explanation_record("src/file.py")])
         iid = make_intent_id(art.id, 0)
         art.metadata["patch_intent_approvals"] = {iid: {"state": "approved", "decided_at": "", "decided_by": ""}}
         job = _make_job(tasks=[task], artifacts=[art])
@@ -971,8 +967,8 @@ class TestFileProvenanceAlignment:
 
     def test_change_proof_path_does_not_turn_multichange_generic_test_into_sole_change(self):
         """Path filtering must not make a multi-change generic test look like sole-change proof."""
-        task = Task(description="Multi-file fix")
-        art = _make_artifact_with_intents(task.id, [_explanation_record("src/a.py"), _explanation_record("src/b.py")])
+        task = TaskEntry(title="Multi-file fix")
+        art = _make_artifact_with_intents(task.task_id, [_explanation_record("src/a.py"), _explanation_record("src/b.py")])
         iid_a = make_intent_id(art.id, 0)
         iid_b = make_intent_id(art.id, 1)
         art.metadata["patch_intent_approvals"] = {
@@ -1018,9 +1014,9 @@ class TestCommandCatalogTruth:
         assert obj.command == ""  # no action needed = no command
 
     def test_pending_action_has_valid_command(self):
-        task = Task(description="Fix bug")
+        task = TaskEntry(title="Fix bug")
         explanations = [_explanation_record("src/bug.py")]
-        art = _make_artifact_with_intents(task.id, explanations)
+        art = _make_artifact_with_intents(task.task_id, explanations)
         job = _make_job(tasks=[task], artifacts=[art])
         chain = build_proof_chain(job, [])
         obj = chain.next_safe_action_obj
@@ -1068,7 +1064,7 @@ class TestProofChainDurableTruth:
         data_dir = tmp_path / "data"; data_dir.mkdir()
         repo = tmp_path / "repo"; repo.mkdir()
         job, events, iid = _make_full_chain_job()
-        self._durable(data_dir, repo, str(job.id), iid)
+        self._durable(data_dir, repo, str(job.job_id), iid)
         chain = build_proof_chain(job, events, data_dir=data_dir)
         assert chain.changes[0].proof_status == PROOF_VERIFIED
 
@@ -1078,7 +1074,7 @@ class TestProofChainDurableTruth:
         repo = tmp_path / "repo"; repo.mkdir()
         job, events, iid = _make_full_chain_job()
         # Apply record references a snapshot that does not exist on disk.
-        self._durable(data_dir, repo, str(job.id), iid, make_snapshot=False)
+        self._durable(data_dir, repo, str(job.job_id), iid, make_snapshot=False)
         chain = build_proof_chain(job, events, data_dir=data_dir)
         assert chain.changes[0].proof_status != PROOF_VERIFIED
         assert "no_snapshot_proof" in chain.changes[0].missing_links
@@ -1087,7 +1083,7 @@ class TestProofChainDurableTruth:
         data_dir = tmp_path / "data"; data_dir.mkdir()
         repo = tmp_path / "repo"; repo.mkdir()
         job, events, iid = _make_full_chain_job()
-        self._durable(data_dir, repo, str(job.id), iid, state="reverted")
+        self._durable(data_dir, repo, str(job.job_id), iid, state="reverted")
         chain = build_proof_chain(job, events, data_dir=data_dir)
         assert chain.changes[0].apply_state == "reverted"
         assert chain.changes[0].proof_status != PROOF_VERIFIED
@@ -1101,14 +1097,14 @@ class TestProofChainDurableTruth:
         data_dir = tmp_path / "data"; data_dir.mkdir()
         repo = tmp_path / "repo"; repo.mkdir()
         job, events, iid = _make_full_chain_job()
-        sid = self._durable(data_dir, repo, str(job.id), iid, state="applied")
+        sid = self._durable(data_dir, repo, str(job.job_id), iid, state="applied")
         # Simulate a drift-blocked revert: snapshot flagged blocked_drift,
         # apply record stays applied with revert_state drifted.
-        _update_snapshot_state(sid, str(job.id), "blocked_drift", data_dir)
-        rec = load_durable_apply_record(iid, str(job.id), data_dir)
+        _update_snapshot_state(sid, str(job.job_id), "blocked_drift", data_dir)
+        rec = load_durable_apply_record(iid, str(job.job_id), data_dir)
         import dataclasses
         save_durable_apply_record(
-            dataclasses.replace(rec, revert_state="drifted"), str(job.id), data_dir
+            dataclasses.replace(rec, revert_state="drifted"), str(job.job_id), data_dir
         )
         chain = build_proof_chain(job, events, data_dir=data_dir)
         # Drift block leaves the apply active and provable.
@@ -1120,8 +1116,8 @@ class TestProofChainDurableTruth:
         data_dir = tmp_path / "data"; data_dir.mkdir()
         repo = tmp_path / "repo"; repo.mkdir()
         job, events, iid = _make_full_chain_job()
-        sid = self._durable(data_dir, repo, str(job.id), iid)
-        for blob in _snapshot_dir(str(job.id), sid, data_dir).glob("blob_*.bin"):
+        sid = self._durable(data_dir, repo, str(job.job_id), iid)
+        for blob in _snapshot_dir(str(job.job_id), sid, data_dir).glob("blob_*.bin"):
             blob.unlink()
         chain = build_proof_chain(job, events, data_dir=data_dir)
         assert chain.changes[0].proof_status != PROOF_VERIFIED
@@ -1131,8 +1127,8 @@ class TestProofChainDurableTruth:
         data_dir = tmp_path / "data"; data_dir.mkdir()
         repo = tmp_path / "repo"; repo.mkdir()
         job, events, iid = _make_full_chain_job()
-        sid = self._durable(data_dir, repo, str(job.id), iid)
-        manifest = _snapshot_dir(str(job.id), sid, data_dir) / "manifest.json"
+        sid = self._durable(data_dir, repo, str(job.job_id), iid)
+        manifest = _snapshot_dir(str(job.job_id), sid, data_dir) / "manifest.json"
         data = json.loads(manifest.read_text())
         data["path_count"] = 999
         manifest.write_text(json.dumps(data, indent=2, sort_keys=True))

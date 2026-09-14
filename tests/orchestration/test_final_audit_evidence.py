@@ -258,7 +258,7 @@ class TestCockpitBridgeAdapter:
         assert len(adapter.tasks) == 1
         assert adapter.tasks[0].id == "T001"
         assert adapter.tasks[0].description == "Fix bug"
-        assert adapter.tasks[0].status.value == "completed"
+        assert adapter.tasks[0].status == "completed"
         assert adapter.artifacts == []
         assert adapter._is_job_plan is True
 

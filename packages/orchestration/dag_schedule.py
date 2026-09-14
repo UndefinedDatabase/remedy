@@ -35,7 +35,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
-from packages.core.models import RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import TaskEntry
 
 #: Task states that block everything downstream of them.  A task rolled back
 #: to PENDING after a failed attempt is NOT in here — in-run failure tracking
@@ -66,13 +67,13 @@ class TaskNode:
     has_unresolved_dependency: bool = False
 
 
-def _flight_meta(task: Task) -> Mapping[str, Any] | None:
+def _flight_meta(task: TaskEntry) -> Mapping[str, Any] | None:
     """The task's flight metadata, or None when it carries none."""
     flight = task.inputs.get("flight")
     return flight if isinstance(flight, Mapping) else None
 
 
-def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
+def build_graph(tasks: Sequence[TaskEntry]) -> tuple[TaskNode, ...]:
     """Resolve every task's dependencies to task ids, in plan order.
 
     Applies the two rules from the module docstring: flight metadata resolves
@@ -89,15 +90,15 @@ def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
             continue
         # First declaration wins, so a duplicated planned id cannot silently
         # redirect earlier tasks' edges to a later task.
-        by_planned.setdefault(str(planned_id), task.id)
+        by_planned.setdefault(str(planned_id), task.task_id)
 
     nodes: list[TaskNode] = []
     for index, task in enumerate(tasks):
         flight = _flight_meta(task)
         if flight is None:
             # Legacy rule: depend on the predecessor; the first task is free.
-            predecessor = (tasks[index - 1].id,) if index > 0 else ()
-            nodes.append(TaskNode(task_id=task.id, index=index,
+            predecessor = (tasks[index - 1].task_id,) if index > 0 else ()
+            nodes.append(TaskNode(task_id=task.task_id, index=index,
                                   depends_on=predecessor))
             continue
 
@@ -106,7 +107,7 @@ def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
         unresolved = False
         for dep in declared:
             target = by_planned.get(str(dep))
-            if target is None or target == task.id:
+            if target is None or target == task.task_id:
                 # Names no task in the plan, or names itself: a dependency
                 # that can never complete.
                 unresolved = True
@@ -114,7 +115,7 @@ def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
             if target not in resolved:
                 resolved.append(target)
         nodes.append(TaskNode(
-            task_id=task.id,
+            task_id=task.task_id,
             index=index,
             depends_on=tuple(resolved),
             has_unresolved_dependency=unresolved,
@@ -122,7 +123,7 @@ def build_graph(tasks: Sequence[Task]) -> tuple[TaskNode, ...]:
     return tuple(nodes)
 
 
-def ready_set(tasks: Sequence[Task]) -> list[str]:
+def ready_set(tasks: Sequence[TaskEntry]) -> list[str]:
     """Ids of the PENDING tasks whose dependencies are ALL completed.
 
     Returned in plan order — stable and deterministic, with no timestamp or
@@ -130,7 +131,7 @@ def ready_set(tasks: Sequence[Task]) -> list[str]:
     dependency is not COMPLETED, including a dependency that is itself still
     pending, running, failed, or unresolvable.
     """
-    status_by_id = {task.id: task.status for task in tasks}
+    status_by_id = {task.task_id: task.status for task in tasks}
     ready: list[str] = []
     for node in build_graph(tasks):
         if status_by_id.get(node.task_id) != RunState.PENDING:
@@ -143,7 +144,7 @@ def ready_set(tasks: Sequence[Task]) -> list[str]:
     return ready
 
 
-def blocked_downstream(tasks: Sequence[Task],
+def blocked_downstream(tasks: Sequence[TaskEntry],
                        blocked_ids: Iterable[str]) -> set[str]:
     """Transitive dependents of ``blocked_ids`` — the skipped-blocked set.
 
@@ -165,7 +166,7 @@ def blocked_downstream(tasks: Sequence[Task],
         for dep in node.depends_on:
             dependents.setdefault(dep, []).append(node.task_id)
 
-    status_by_id = {task.id: task.status for task in tasks}
+    status_by_id = {task.task_id: task.status for task in tasks}
     blocked: set[str] = set()
     # Plan-order queue: deterministic traversal, though the result is a set.
     queue = [seed for seed in (node.task_id for node in nodes)

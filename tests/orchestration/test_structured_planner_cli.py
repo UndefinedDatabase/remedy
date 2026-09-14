@@ -8,8 +8,9 @@ from unittest.mock import patch
 
 import pytest
 
-from packages.core.models import Job, RunState
-from packages.orchestration.storage import save_job
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
+from packages.orchestration.pingpong_job import save_job_plan
 
 VALID_PLAN = json.dumps({
     "schema_v": "pp1", "summary": "plan it",
@@ -43,10 +44,10 @@ class _FakePlanner:
             ProposedTask(task_type="legacy", description="legacy path")])
 
 
-def _make_job(tmp_path, monkeypatch) -> Job:
+def _make_job(tmp_path, monkeypatch) -> JobPlan:
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-    job = Job(name="test", state=RunState.PENDING)
-    save_job(job)
+    job = JobPlan(job_title="test", state=RunState.PENDING)
+    save_job_plan(job)
     return job
 
 
@@ -81,7 +82,7 @@ class TestStructuredPlannerCli:
         job = _make_job(tmp_path, monkeypatch)
         planner = _FakePlanner([VALID_PLAN])
         with _patch_planner(planner):
-            _run(job.id)
+            _run(job.job_id)
         assert planner.raw_calls, "structured mode did not call plan_raw"
         assert planner.legacy_called is False
 
@@ -89,7 +90,7 @@ class TestStructuredPlannerCli:
         job = _make_job(tmp_path, monkeypatch)
         planner = _FakePlanner([VALID_PLAN])
         with _patch_planner(planner):
-            _run(job.id)
+            _run(job.job_id)
         _prompt, schema = planner.raw_calls[0]
         props = schema.get("properties", {})
         assert "schema_v" in props
@@ -101,18 +102,18 @@ class TestStructuredPlannerCli:
         job = _make_job(tmp_path, monkeypatch)
         planner = _FakePlanner(["not json", VALID_PLAN])
         with _patch_planner(planner):
-            _run(job.id)
+            _run(job.job_id)
         assert len(planner.raw_calls) == 2
-        names = [e.get("event") for e in _events(tmp_path, job.id)]
+        names = [e.get("event") for e in _events(tmp_path, job.job_id)]
         assert "planning_completed" in names
 
     def test_two_invalid_outputs_stop_as_parse(self, tmp_path, monkeypatch):
         job = _make_job(tmp_path, monkeypatch)
         planner = _FakePlanner(["bad1", "bad2", "bad3"])
         with _patch_planner(planner), pytest.raises(SystemExit):
-            _run(job.id)
+            _run(job.job_id)
         assert len(planner.raw_calls) == 2  # never a third call
-        failed = [e for e in _events(tmp_path, job.id) if e["event"] == "planning_failed"]
+        failed = [e for e in _events(tmp_path, job.job_id) if e["event"] == "planning_failed"]
         assert failed and failed[-1].get("metadata", {}).get("error_category") == "parse"
 
     def test_compatibility_flag_uses_legacy_path(self, tmp_path, monkeypatch):
@@ -120,7 +121,7 @@ class TestStructuredPlannerCli:
         job = _make_job(tmp_path, monkeypatch)
         planner = _FakePlanner([VALID_PLAN])
         with _patch_planner(planner):
-            _run(job.id)
+            _run(job.job_id)
         assert planner.legacy_called is True
         assert planner.raw_calls == []
 
@@ -134,16 +135,16 @@ class TestStructuredPlannerCli:
                 raise AssertionError("legacy plan must not be called")
 
         with _patch_planner(_NoRawPlanner()), pytest.raises(SystemExit):
-            _run(job.id)
-        failed = [e for e in _events(tmp_path, job.id) if e["event"] == "planning_failed"]
+            _run(job.job_id)
+        failed = [e for e in _events(tmp_path, job.job_id) if e["event"] == "planning_failed"]
         assert failed and failed[-1].get("metadata", {}).get("error_category") == "config"
 
     def test_planner_prompt_traces_initial_and_retry(self, tmp_path, monkeypatch):
         job = _make_job(tmp_path, monkeypatch)
         planner = _FakePlanner(["bad", VALID_PLAN])
         with _patch_planner(planner):
-            _run(job.id)
-        traces = _plan_traces(tmp_path, job.id)
+            _run(job.job_id)
+        traces = _plan_traces(tmp_path, job.job_id)
         assert len(traces) == 2, f"expected 2 planner traces, got {len(traces)}"
         assert all(t["schema_v"] == "pp1" for t in traces)
         assert traces[0]["prompt_kind"] == "plan"
@@ -155,8 +156,8 @@ class TestStructuredPlannerCli:
         job = _make_job(tmp_path, monkeypatch)
         planner = _FakePlanner(["bad1", "bad2"])
         with _patch_planner(planner), pytest.raises(SystemExit):
-            _run(job.id)
-        traces = _plan_traces(tmp_path, job.id)
+            _run(job.job_id)
+        traces = _plan_traces(tmp_path, job.job_id)
         assert len(traces) == 2
         assert traces[1]["prompt_kind"] == "plan-retry"
 
@@ -168,8 +169,8 @@ class TestPlannerTraceMatchesSentPrompt:
         job = _make_job(tmp_path, monkeypatch)
         planner = _FakePlanner(["bad", VALID_PLAN])
         with _patch_planner(planner):
-            _run(job.id)
-        traces = _plan_traces(tmp_path, job.id)
+            _run(job.job_id)
+        traces = _plan_traces(tmp_path, job.job_id)
         sent_prompts = [prompt for (prompt, _schema) in planner.raw_calls]
         assert len(traces) == len(sent_prompts) == 2
         for trace, sent in zip(traces, sent_prompts):
@@ -205,8 +206,8 @@ class TestPlannerTracedBeforeCall:
         job = _make_job(tmp_path, monkeypatch)
         planner = _FakePlanner([VALID_PLAN])
         with _patch_planner(planner):
-            _run(job.id)
-        traces = _plan_traces(tmp_path, job.id)
+            _run(job.job_id)
+        traces = _plan_traces(tmp_path, job.job_id)
         assert len(planner.raw_calls) == 1 and len(traces) == 1
         assert traces[0]["schema_v"] == "pp1"
         assert traces[0]["prompt_kind"] == "plan"
@@ -215,8 +216,8 @@ class TestPlannerTracedBeforeCall:
         job = _make_job(tmp_path, monkeypatch)
         planner = _FakePlanner(["bad", VALID_PLAN])
         with _patch_planner(planner):
-            _run(job.id)
-        traces = _plan_traces(tmp_path, job.id)
+            _run(job.job_id)
+        traces = _plan_traces(tmp_path, job.job_id)
         assert len(planner.raw_calls) == 2 and len(traces) == 2
         assert [t["prompt_kind"] for t in traces] == ["plan", "plan-retry"]
         assert all(t["schema_v"] == "pp1" for t in traces)
@@ -225,8 +226,8 @@ class TestPlannerTracedBeforeCall:
         job = _make_job(tmp_path, monkeypatch)
         planner = _RaisingPlanner(["bad", VALID_PLAN], raise_on=(2,))
         with _patch_planner(planner), pytest.raises(SystemExit):
-            _run(job.id)
-        traces = _plan_traces(tmp_path, job.id)
+            _run(job.job_id)
+        traces = _plan_traces(tmp_path, job.job_id)
         assert len(planner.raw_calls) == 2, "two real provider calls"
         assert len(traces) == 2, "both traces persisted despite the exception"
         assert [t["prompt_kind"] for t in traces] == ["plan", "plan-retry"]
@@ -236,12 +237,12 @@ class TestPlannerTracedBeforeCall:
         job = _make_job(tmp_path, monkeypatch)
         planner = _RaisingPlanner([VALID_PLAN], raise_on=(1,))
         with _patch_planner(planner), pytest.raises(SystemExit):
-            _run(job.id)
-        traces = _plan_traces(tmp_path, job.id)
+            _run(job.job_id)
+        traces = _plan_traces(tmp_path, job.job_id)
         assert len(planner.raw_calls) == 1, "one real provider call"
         assert len(traces) == 1, "its trace persists even though plan_raw raised"
         assert traces[0]["schema_v"] == "pp1"
-        failed = [e for e in _events(tmp_path, job.id) if e["event"] == "planning_failed"]
+        failed = [e for e in _events(tmp_path, job.job_id) if e["event"] == "planning_failed"]
         cat = failed[-1].get("metadata", {}).get("error_category")
         assert cat == "RuntimeError"      # provider error class, NOT parse
         assert cat != "parse"
@@ -251,8 +252,8 @@ class TestPlannerTracedBeforeCall:
         job = _make_job(tmp_path, monkeypatch)
         planner = _RaisingPlanner(["bad", VALID_PLAN], raise_on=(2,))
         with _patch_planner(planner), pytest.raises(SystemExit):
-            _run(job.id)
-        traces = _plan_traces(tmp_path, job.id)
+            _run(job.job_id)
+        traces = _plan_traces(tmp_path, job.job_id)
         sent = [p for (p, _s) in planner.raw_calls]
         assert len(traces) == len(sent) == 2
         for trace, prompt in zip(traces, sent):
@@ -268,8 +269,8 @@ class TestPlannerTracedBeforeCall:
                 raise AssertionError("legacy plan must not be called")
 
         with _patch_planner(_NoRawPlanner()), pytest.raises(SystemExit):
-            _run(job.id)
-        assert _plan_traces(tmp_path, job.id) == [], "no provider call -> no trace"
+            _run(job.job_id)
+        assert _plan_traces(tmp_path, job.job_id) == [], "no provider call -> no trace"
 
 
 class TestPlannerTraceCarriesItsSegmentManifest:
@@ -281,8 +282,8 @@ class TestPlannerTraceCarriesItsSegmentManifest:
         job = _make_job(tmp_path, monkeypatch)
         planner = _FakePlanner(["bad", VALID_PLAN])
         with _patch_planner(planner):
-            _run(job.id)
-        traces = _plan_traces(tmp_path, job.id)
+            _run(job.job_id)
+        traces = _plan_traces(tmp_path, job.job_id)
         assert len(traces) == 2
         for trace in traces:
             assert trace["segment_manifest"], "planner trace carries no manifest"

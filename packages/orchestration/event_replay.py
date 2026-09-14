@@ -346,20 +346,20 @@ def resume_dry_run(
     data_dir: str | Path,
 ) -> ResumeDryRun:
     """Preview resume without mutation. Validates real capabilities."""
-    replay = replay_job(str(job.id), data_dir)
+    replay = replay_job(str(job.job_id), data_dir)
     checkpoints = find_checkpoints(replay)
 
     cp = next((c for c in checkpoints if c.id == checkpoint_id), None)
     if not cp:
         return ResumeDryRun(
-            job_id=str(job.id), checkpoint_id=checkpoint_id,
+            job_id=str(job.job_id), checkpoint_id=checkpoint_id,
             can_resume=False, blocked_reason="checkpoint_not_found",
             safety_summary="No matching checkpoint found in event history.",
         )
 
     if not cp.safe_to_resume:
         return ResumeDryRun(
-            job_id=str(job.id), checkpoint_id=checkpoint_id,
+            job_id=str(job.job_id), checkpoint_id=checkpoint_id,
             checkpoint_kind=cp.kind, can_resume=False,
             blocked_reason=cp.blocked_reason or "not_resumable",
             required_capabilities=cp.required_capabilities,
@@ -371,7 +371,7 @@ def resume_dry_run(
         blocker = _validate_from_apply(job)
         if blocker:
             return ResumeDryRun(
-                job_id=str(job.id), checkpoint_id=checkpoint_id,
+                job_id=str(job.job_id), checkpoint_id=checkpoint_id,
                 checkpoint_kind=cp.kind, can_resume=False,
                 blocked_reason=blocker,
                 required_capabilities=cp.required_capabilities,
@@ -383,7 +383,7 @@ def resume_dry_run(
     }
 
     return ResumeDryRun(
-        job_id=str(job.id), checkpoint_id=checkpoint_id,
+        job_id=str(job.job_id), checkpoint_id=checkpoint_id,
         checkpoint_kind=cp.kind, can_resume=True,
         would_run_stage=stage_map.get(cp.resume_mode, "unknown"),
         required_capabilities=cp.required_capabilities,
@@ -425,7 +425,7 @@ def execute_resume_from_apply(
     from packages.orchestration.timeline import append_run_event
 
     result = ResumeResult(checkpoint_id=checkpoint_id, checkpoint_kind="source_apply_proven", resume_mode="from_apply")
-    jid = job.id
+    jid = job.job_id
 
     # Validate
     blocker = _validate_from_apply(job)

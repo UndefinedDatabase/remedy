@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from packages.core.models import Job
+    from packages.orchestration.pingpong_job import JobPlan
 
 
 @dataclass(frozen=True)
@@ -70,7 +70,7 @@ def _project_count() -> int:
 
 
 def job_in_scope(
-    job: Job,
+    job: JobPlan,
     scope: ProjectScope,
     *,
     _legacy_visible: bool | None = None,
@@ -101,16 +101,16 @@ def scoped_jobs(
     scope: ProjectScope,
     *,
     root: Path | None = None,
-) -> tuple[list[Job], bool, list[str]]:
+) -> tuple[list[JobPlan], bool, list[str]]:
     """Return jobs visible under *scope*.
 
     Returns ``(jobs, degraded, skipped_files)`` — same shape as
     ``storage.list_jobs_safe`` with the unreadable-files honesty count
     passed through.
     """
-    from packages.orchestration.storage import list_jobs_safe
+    from packages.orchestration.pingpong_job import list_job_plans_safe
 
-    all_jobs, degraded, skipped = list_jobs_safe(root)
+    all_jobs, degraded, skipped = list_job_plans_safe(root)
     legacy_visible = scope.all_projects or _project_count() <= 1
     filtered = [
         j for j in all_jobs

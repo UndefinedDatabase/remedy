@@ -1,7 +1,8 @@
 """Tests: approved memory feeds into planning safely."""
 from __future__ import annotations
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.llm_planner import plan_job_with_llm
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 
@@ -21,7 +22,7 @@ _fake_planner.last_prompt = ""
 class TestPlannerWithNoMemory:
     def test_no_memory_behaves_as_before(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test-job", user_prompt="Fix the bug")
+        job = JobPlan(job_title="test-job", user_prompt="Fix the bug")
         result = plan_job_with_llm(job, _fake_planner)
         assert result.changed is True
         assert job.state == RunState.PLANNED
@@ -29,7 +30,7 @@ class TestPlannerWithNoMemory:
 
     def test_no_memory_no_memory_section_in_prompt(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test-job", user_prompt="Fix the bug")
+        job = JobPlan(job_title="test-job", user_prompt="Fix the bug")
         plan_job_with_llm(job, _fake_planner)
         assert "Project Memory" not in _fake_planner.last_prompt
 
@@ -46,7 +47,7 @@ class TestPlannerWithApprovedMemory:
             approved=True,
             tags=["testing"],
         )
-        job = Job(name="test-job", user_prompt="Fix the tests")
+        job = JobPlan(job_title="test-job", user_prompt="Fix the tests")
         job.metadata["project_id"] = "proj1"
         result = plan_job_with_llm(job, _fake_planner)
         assert result.changed is True
@@ -63,7 +64,7 @@ class TestPlannerWithApprovedMemory:
             project_id="proj1",
             approved=False,
         )
-        job = Job(name="test-job", user_prompt="Fix")
+        job = JobPlan(job_title="test-job", user_prompt="Fix")
         job.metadata["project_id"] = "proj1"
         plan_job_with_llm(job, _fake_planner)
         assert "secret-plan" not in _fake_planner.last_prompt
@@ -75,7 +76,7 @@ class TestPlannerMemoryMetadata:
         from packages.memory.local_gateway import store_memory
 
         store_memory(key="pattern", value="Info", project_id="proj1", approved=True)
-        job = Job(name="test-job", user_prompt="Plan")
+        job = JobPlan(job_title="test-job", user_prompt="Plan")
         job.metadata["project_id"] = "proj1"
         plan_job_with_llm(job, _fake_planner)
 
@@ -86,7 +87,7 @@ class TestPlannerMemoryMetadata:
 
     def test_no_memory_metadata_when_empty(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test-job", user_prompt="Plan")
+        job = JobPlan(job_title="test-job", user_prompt="Plan")
         plan_job_with_llm(job, _fake_planner)
 
         artifact = job.artifacts[0]
@@ -97,7 +98,7 @@ class TestPlannerMemoryMetadata:
         from packages.memory.local_gateway import store_memory
 
         store_memory(key="rule", value="Sensitive details here", project_id="proj1", approved=True)
-        job = Job(name="test-job", user_prompt="Plan")
+        job = JobPlan(job_title="test-job", user_prompt="Plan")
         job.metadata["project_id"] = "proj1"
         plan_job_with_llm(job, _fake_planner)
 
@@ -118,7 +119,7 @@ class TestPlannerMemoryBudget:
                 value="x" * 200,
                 project_id="proj1", approved=True,
             )
-        job = Job(name="test-job", user_prompt="Plan")
+        job = JobPlan(job_title="test-job", user_prompt="Plan")
         job.metadata["project_id"] = "proj1"
         plan_job_with_llm(job, _fake_planner)
 

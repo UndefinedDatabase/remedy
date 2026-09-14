@@ -425,8 +425,8 @@ class TestJobTruthExtraction:
     def test_empty_job_truth(self, tmp_path, monkeypatch):
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         from apps.cli.commands.job import _extract_job_truth
-        from packages.core.models import Job
-        job = Job(name='empty test')
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(job_title='empty test')
         truth = _extract_job_truth(job)
         assert truth['artifact_count'] == 0
         assert truth['patch_intent_ids'] == []
@@ -437,8 +437,9 @@ class TestJobTruthExtraction:
     def test_job_with_artifact_counts(self, tmp_path, monkeypatch):
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         from apps.cli.commands.job import _extract_job_truth
-        from packages.core.models import Artifact, Job
-        job = Job(name='artifact test', artifacts=[
+        from packages.core.models import Artifact
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(job_title='artifact test', artifacts=[
             Artifact(name='plan', content='plan output'),
             Artifact(name='build', content='build output'),
         ])
@@ -449,13 +450,14 @@ class TestJobTruthExtraction:
     def test_job_with_patch_intent(self, tmp_path, monkeypatch):
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         from apps.cli.commands.job import _extract_job_truth
-        from packages.core.models import Artifact, Job
+        from packages.core.models import Artifact
+        from packages.orchestration.pingpong_job import JobPlan
         art = Artifact(
             name='patch',
             content='diff output',
             metadata={'patch_intent_count': 1},
         )
-        job = Job(name='patch test', artifacts=[art])
+        job = JobPlan(job_title='patch test', artifacts=[art])
         truth = _extract_job_truth(job)
         assert truth['artifact_count'] == 1
         assert len(truth['patch_intent_ids']) == 1
@@ -464,7 +466,8 @@ class TestJobTruthExtraction:
     def test_patch_applied_clears_approval(self, tmp_path, monkeypatch):
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         from apps.cli.commands.job import _extract_job_truth
-        from packages.core.models import Artifact, Job
+        from packages.core.models import Artifact
+        from packages.orchestration.pingpong_job import JobPlan
         intent_id = 'abcd1234-0'
         art = Artifact(
             name='patch',
@@ -476,7 +479,7 @@ class TestJobTruthExtraction:
                 },
             },
         )
-        job = Job(name='applied test', artifacts=[art])
+        job = JobPlan(job_title='applied test', artifacts=[art])
         truth = _extract_job_truth(job)
         assert truth['approval_required'] is False
 
@@ -485,21 +488,22 @@ class TestJobStatusReportTruthFields:
     """Status and report JSON include enriched truth fields."""
 
     def _make_job_and_save(self, tmp_path):
-        from packages.core.models import Artifact, Job, RunState, Task
-        from packages.orchestration.storage import save_job
+        from packages.core.models import Artifact, RunState
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+        from packages.orchestration.pingpong_job import save_job_plan
         art = Artifact(
             name='builder output',
             content='diff --git a/foo.py',
             metadata={'patch_intent_count': 1},
         )
-        task = Task(description='Fix the bug', inputs={'task_type': 'code_repair'})
-        job = Job(
-            name='Demo fix',
+        task = TaskEntry(title='Fix the bug', inputs={'task_type': 'code_repair'})
+        job = JobPlan(
+            job_title='Demo fix',
             state=RunState.PAUSED,
             tasks=[task],
             artifacts=[art],
         )
-        save_job(job, root=tmp_path)
+        save_job_plan(job, root=tmp_path)
         return job
 
     def test_status_json_has_truth_fields(self, tmp_path, monkeypatch):
@@ -512,7 +516,7 @@ class TestJobStatusReportTruthFields:
         from apps.cli.commands.job import _cmd_job_status
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            _cmd_job_status(str(job.id), json_output=True)
+            _cmd_job_status(str(job.job_id), json_output=True)
         data = json.loads(buf.getvalue())
         assert data['artifact_count'] == 1
         assert data['approval_required'] is True
@@ -529,7 +533,7 @@ class TestJobStatusReportTruthFields:
         from apps.cli.commands.job import _cmd_job_report
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            _cmd_job_report(str(job.id), json_output=True)
+            _cmd_job_report(str(job.job_id), json_output=True)
         data = json.loads(buf.getvalue())
         assert data['artifact_count'] == 1
         assert data['approval_required'] is True
@@ -580,14 +584,14 @@ class TestNoProviderNoApplyProof:
         import json
 
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(name='no-apply proof')
-        save_job(job, root=tmp_path)
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_title='no-apply proof')
+        save_job_plan(job, root=tmp_path)
         from apps.cli.commands.job import _cmd_job_report
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            _cmd_job_report(str(job.id), json_output=True)
+            _cmd_job_report(str(job.job_id), json_output=True)
         data = json.loads(buf.getvalue())
         assert data['code_applied'] is False, 'v1 must never report code_applied=True'
 
@@ -597,14 +601,14 @@ class TestNoProviderNoApplyProof:
         import json
 
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(name='no-apply-action proof')
-        save_job(job, root=tmp_path)
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_title='no-apply-action proof')
+        save_job_plan(job, root=tmp_path)
         from apps.cli.commands.job import _cmd_job_status
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            _cmd_job_status(str(job.id), json_output=True)
+            _cmd_job_status(str(job.job_id), json_output=True)
         data = json.loads(buf.getvalue())
         nsa = data.get('next_safe_action', '')
         assert 'apply' not in nsa.lower() or 'patch approve' in nsa.lower(), \

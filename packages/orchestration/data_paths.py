@@ -21,6 +21,7 @@ Public API::
     mint_job_id() -> str                     # a job id (16-hex, DECISION F260 D2)
     mint_run_id() -> str                     # a run id
     mint_episode_id() -> str                 # a run-episode id
+    mint_task_id() -> str                    # a task id no job file numbered
     job_dir(job_id, root: Path | None = None) -> Path
     job_record_path(job_id, root: Path | None = None) -> Path
     job_record_paths(root: Path | None = None) -> list[Path]
@@ -162,12 +163,12 @@ def control_dir(root: Path | None = None) -> Path:
 
 
 # DECISION F260 D2 (2026-09-06): every Remedy id is ``uuid4().hex[:16]``, but ONE
-# SHAPE IS NOT ONE FUNCTION. The same sixteen hex characters already name four
+# SHAPE IS NOT ONE FUNCTION. The same sixteen hex characters already name five
 # different kinds of thing, so passing a run id where a job id belongs is not a
 # type error and never will be. A name is the weakest distinction Python gives
 # away for free, and it is the one thing that makes such a swap greppable, so
 # each kind is minted by its own ``def`` below. ``safe_points.new_request_id``
-# is the fourth kind and stays where the stop request lives.
+# is the fifth kind and stays where the stop request lives.
 
 
 def mint_job_id() -> str:
@@ -182,6 +183,11 @@ def mint_run_id() -> str:
 
 def mint_episode_id() -> str:
     """Mint the id of one EPISODE — one execution attempt of a run; a resume gets its own."""
+    return uuid4().hex[:16]
+
+
+def mint_task_id() -> str:
+    """Mint the id of one TASK that no job file numbered — a task built by code, not parsed."""
     return uuid4().hex[:16]
 
 

@@ -37,7 +37,8 @@ import enum
 from dataclasses import dataclass, field
 from typing import Any
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration._symbols import (
     NEXT as _NEXT,
 )
@@ -130,10 +131,10 @@ class AgentLoopState:
 # ---------------------------------------------------------------------------
 
 
-def default_agent_loop_state(job: Job, *, max_cycles: int = 3) -> AgentLoopState:
+def default_agent_loop_state(job: JobPlan, *, max_cycles: int = 3) -> AgentLoopState:
     """Return a fresh, zero-cycle loop state for a job."""
     return AgentLoopState(
-        job_id=job.id,
+        job_id=job.job_id,
         current_stage=AgentLoopStage.PLANNED,
         cycle=0,
         max_cycles=max_cycles,
@@ -147,7 +148,7 @@ def default_agent_loop_state(job: Job, *, max_cycles: int = 3) -> AgentLoopState
 
 
 def derive_agent_loop_state(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     *,
     max_cycles: int = 3,
@@ -171,7 +172,7 @@ def derive_agent_loop_state(
     blocked_reason = _find_current_blocker(job, events)
     if blocked_reason:
         return AgentLoopState(
-            job_id=job.id,
+            job_id=job.job_id,
             current_stage=AgentLoopStage.BLOCKED,
             cycle=0,
             max_cycles=max_cycles,
@@ -198,7 +199,7 @@ def derive_agent_loop_state(
 
     if pending_non_low:
         return AgentLoopState(
-            job_id=job.id,
+            job_id=job.job_id,
             current_stage=AgentLoopStage.REVIEW,
             cycle=0,
             max_cycles=max_cycles,
@@ -216,7 +217,7 @@ def derive_agent_loop_state(
     )
     if all_tasks_done and all_non_low_approved:
         return AgentLoopState(
-            job_id=job.id,
+            job_id=job.job_id,
             current_stage=AgentLoopStage.COMPLETED,
             cycle=0,
             max_cycles=max_cycles,
@@ -232,7 +233,7 @@ def derive_agent_loop_state(
     has_pending = any(t.status == RunState.PENDING for t in job.tasks)
     stage = AgentLoopStage.BUILD if has_pending else AgentLoopStage.PLANNED
     return AgentLoopState(
-        job_id=job.id,
+        job_id=job.job_id,
         current_stage=stage,
         cycle=0,
         max_cycles=max_cycles,
@@ -245,7 +246,7 @@ def derive_agent_loop_state(
     )
 
 
-def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
+def summarize_agent_loop_state(job: JobPlan, state: AgentLoopState) -> str:
     """Return a human-readable agent loop state report for a job.
 
     Read-only: never mutates job, state, or any filesystem resource.
@@ -255,8 +256,8 @@ def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
     intents = list_patch_intents(job)
     pending_tasks = [t for t in job.tasks if t.status == RunState.PENDING]
 
-    short_id = str(job.id)[:8]
-    name     = job.name if len(job.name) <= 60 else job.name[:60] + "…"
+    short_id = str(job.job_id)[:8]
+    name     = job.job_title if len(job.job_title) <= 60 else job.job_title[:60] + "…"
 
     parts: list[str] = []
     parts.append("Remedy Agent Loop")
@@ -323,7 +324,7 @@ def summarize_agent_loop_state(job: Job, state: AgentLoopState) -> str:
 
 
 def _find_current_blocker(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
 ) -> str | None:
     """Return a ``blocked_reason`` string if there is a current blocking condition.
@@ -383,7 +384,7 @@ def _find_current_blocker(
                 continue
             # Stale if the task is no longer PENDING in the job model.
             task_still_pending = any(
-                str(t.id) == task_id and t.status == RunState.PENDING
+                str(t.task_id) == task_id and t.status == RunState.PENDING
                 for t in job.tasks
             )
             if not task_still_pending:
@@ -408,8 +409,8 @@ def _format_blocker(blocked_reason: str) -> str:
     return blocked_reason
 
 
-def _next_action(job: Job, state: AgentLoopState) -> str:
-    full_id = str(job.id)
+def _next_action(job: JobPlan, state: AgentLoopState) -> str:
+    full_id = str(job.job_id)
     d = state.decision
 
     if d == AgentLoopDecision.BLOCKED:

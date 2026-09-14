@@ -21,7 +21,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, Task
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.brain_detail import (
     build_brain_node_detail,
 )
@@ -34,18 +34,19 @@ from packages.orchestration.project_brain import (
     NT_WORKER_ADAPTER,
     build_project_brain,
 )
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.data_paths import mint_job_id
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_job() -> Job:
-    return Job(
-        id=uuid4(),
-        name="test-job",
+def _make_job() -> JobPlan:
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="test-job",
         user_prompt="test prompt",
-        tasks=[Task(id=uuid4(), description="task-0")],
+        tasks=[TaskEntry(task_id="T001", title="task-0")],
     )
 
 
@@ -57,7 +58,7 @@ def _make_job() -> Job:
 class TestBrainGraphNewNodes:
     def test_graph_has_run_contract_node(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         rc_nodes = [n for n in graph.nodes if n.type == NT_RUN_CONTRACT]
         assert len(rc_nodes) == 1
@@ -65,7 +66,7 @@ class TestBrainGraphNewNodes:
 
     def test_graph_has_token_policy_node(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         tp_nodes = [n for n in graph.nodes if n.type == NT_TOKEN_POLICY]
         assert len(tp_nodes) == 1
@@ -73,28 +74,28 @@ class TestBrainGraphNewNodes:
 
     def test_graph_has_worker_adapter_nodes(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         wa_nodes = [n for n in graph.nodes if n.type == NT_WORKER_ADAPTER]
         assert len(wa_nodes) >= 5
 
     def test_run_contract_edge_exists(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         rc_edges = [e for e in graph.edges if e.type == ET_HAS_RUN_CONTRACT]
         assert len(rc_edges) == 1
 
     def test_token_policy_edge_exists(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         tp_edges = [e for e in graph.edges if e.type == ET_HAS_TOKEN_POLICY]
         assert len(tp_edges) == 1
 
     def test_worker_adapter_edges_exist(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         wa_edges = [e for e in graph.edges if e.type == ET_HAS_WORKER_ADAPTER]
         assert len(wa_edges) >= 5
@@ -103,7 +104,7 @@ class TestBrainGraphNewNodes:
 class TestBrainDetailNewTypes:
     def test_run_contract_detail(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         detail = build_brain_node_detail(job, graph, "run_contract", [])
         assert detail.node_type == NT_RUN_CONTRACT
@@ -111,7 +112,7 @@ class TestBrainDetailNewTypes:
 
     def test_token_policy_detail(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         detail = build_brain_node_detail(job, graph, "token_policy", [])
         assert detail.node_type == NT_TOKEN_POLICY
@@ -119,7 +120,7 @@ class TestBrainDetailNewTypes:
 
     def test_worker_adapter_detail(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         detail = build_brain_node_detail(job, graph, "worker_adapter:ollama", [])
         assert detail.node_type == NT_WORKER_ADAPTER
@@ -144,7 +145,7 @@ class TestProtocolInterfaces:
         from packages.contracts.interfaces import RunContractProvider
 
         class FakeProvider:
-            def build(self, job: Job) -> dict:
+            def build(self, job: JobPlan) -> dict:
                 return {}
 
         assert isinstance(FakeProvider(), RunContractProvider)
@@ -153,7 +154,7 @@ class TestProtocolInterfaces:
         from packages.contracts.interfaces import TokenPolicyProvider
 
         class FakeProvider:
-            def build(self, job: Job) -> dict:
+            def build(self, job: JobPlan) -> dict:
                 return {}
 
         assert isinstance(FakeProvider(), TokenPolicyProvider)
@@ -188,7 +189,7 @@ class TestBrainNodeMetadataAlignment:
 
     def test_run_contract_node_metadata_keys(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         rc = [n for n in graph.nodes if n.type == NT_RUN_CONTRACT][0]
         expected = {"autonomy_level", "allowed_action_count", "denied_action_count", "max_loops", "scope"}
@@ -196,7 +197,7 @@ class TestBrainNodeMetadataAlignment:
 
     def test_token_policy_node_metadata_keys(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         tp = [n for n in graph.nodes if n.type == NT_TOKEN_POLICY][0]
         expected = {"scope", "zero_token_step_count", "local_first_step_count", "expensive_step_count"}
@@ -204,7 +205,7 @@ class TestBrainNodeMetadataAlignment:
 
     def test_worker_adapter_node_metadata_scalar(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         wa = [n for n in graph.nodes if n.type == NT_WORKER_ADAPTER][0]
         assert "supported_role_count" in wa.metadata
@@ -213,7 +214,7 @@ class TestBrainNodeMetadataAlignment:
 
     def test_run_contract_metadata_values(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         rc = [n for n in graph.nodes if n.type == NT_RUN_CONTRACT][0]
         assert rc.metadata["autonomy_level"] == 1
@@ -223,7 +224,7 @@ class TestBrainNodeMetadataAlignment:
 
     def test_token_policy_metadata_values(self, tmp_path) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         tp = [n for n in graph.nodes if n.type == NT_TOKEN_POLICY][0]
         assert tp.metadata["scope"] == "job"
@@ -239,9 +240,9 @@ class TestBrainNodeMetadataAlignment:
 class TestCLIRunContract:
     def test_json_output_is_pure_json(self, tmp_path, monkeypatch, capsys) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(sys, "argv", [
-            "remedy", "policy", "contract", str(job.id), "--json",
+            "remedy", "policy", "contract", str(job.job_id), "--json",
         ])
         from apps.cli.main import main
         with pytest.raises(SystemExit, match="0|None") if False else _no_exit(monkeypatch):
@@ -256,9 +257,9 @@ class TestCLIRunContract:
 
     def test_json_has_no_secret_leaks(self, tmp_path, monkeypatch, capsys) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(sys, "argv", [
-            "remedy", "policy", "contract", str(job.id), "--json",
+            "remedy", "policy", "contract", str(job.job_id), "--json",
         ])
         from apps.cli.main import main
         with _no_exit(monkeypatch):
@@ -271,9 +272,9 @@ class TestCLIRunContract:
 class TestCLITokenPolicy:
     def test_json_output_is_pure_json(self, tmp_path, monkeypatch, capsys) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(sys, "argv", [
-            "remedy", "policy", "token", str(job.id), "--json",
+            "remedy", "policy", "token", str(job.job_id), "--json",
         ])
         from apps.cli.main import main
         with _no_exit(monkeypatch):
@@ -286,9 +287,9 @@ class TestCLITokenPolicy:
 
     def test_json_has_no_secret_leaks(self, tmp_path, monkeypatch, capsys) -> None:
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(sys, "argv", [
-            "remedy", "policy", "token", str(job.id), "--json",
+            "remedy", "policy", "token", str(job.job_id), "--json",
         ])
         from apps.cli.main import main
         with _no_exit(monkeypatch):
@@ -300,9 +301,9 @@ class TestCLITokenPolicy:
     def test_category_names_allowed_in_output(self, tmp_path, monkeypatch, capsys) -> None:
         """Category names like 'api_keys' are expected in forbidden_context — not leaks."""
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         monkeypatch.setattr(sys, "argv", [
-            "remedy", "policy", "token", str(job.id), "--json",
+            "remedy", "policy", "token", str(job.job_id), "--json",
         ])
         from apps.cli.main import main
         with _no_exit(monkeypatch):

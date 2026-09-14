@@ -41,7 +41,7 @@ from packages.orchestration.markdown_output_safety import (
 from packages.orchestration.task_registry import get_task_type_spec
 
 if TYPE_CHECKING:
-    from packages.core.models import Job
+    from packages.orchestration.pingpong_job import JobPlan
 
 
 def _resolve_repo_path(task_type: str) -> str | None:
@@ -200,7 +200,7 @@ def apply_task_output_to_repo(
 
 
 def check_and_apply_to_repo(
-    job: Job,
+    job: JobPlan,
     artifact: Artifact,
     repo_root: Path,
 ) -> list[str]:
@@ -228,7 +228,7 @@ def check_and_apply_to_repo(
 
     from packages.orchestration.data_paths import resolve_data_root
     _evidence_dir = resolve_data_root()
-    _job_id = str(getattr(job, "id", "") or "")
+    _job_id = str(getattr(job, "job_id", "") or "")
 
     return apply_task_output_to_repo(
         artifact, repo_root,

@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING
 from packages.orchestration.data_paths import resolve_data_root
 
 if TYPE_CHECKING:
-    from packages.core.models import Job
+    from packages.orchestration.pingpong_job import JobPlan
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ def _file_hash(data: bytes) -> str:
 
 
 def store_pre_apply_snapshot(
-    job: Job,
+    job: JobPlan,
     intent_id: str,
     target_path: str,
     action: str,
@@ -85,7 +85,7 @@ def store_pre_apply_snapshot(
 
     Returns True if snapshot was stored, False if already exists (no overwrite).
     """
-    snap_dir = _snapshot_dir(str(job.id), intent_id, data_dir)
+    snap_dir = _snapshot_dir(str(job.job_id), intent_id, data_dir)
     meta_path = snap_dir / "metadata.json"
 
     # Don't overwrite existing snapshot (idempotent)
@@ -130,7 +130,7 @@ def store_pre_apply_snapshot(
 
 
 def revert_patch_intent(
-    job: Job,
+    job: JobPlan,
     intent_id: str,
     *,
     data_dir: Path | None = None,
@@ -142,7 +142,7 @@ def revert_patch_intent(
     """
     from packages.orchestration.approval_queue import get_patch_intent
     from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
 
     def _blocked(reason: str, target_path: str = "", action: str = "") -> PatchRevertResult:
         return PatchRevertResult(
@@ -180,7 +180,7 @@ def revert_patch_intent(
         return _blocked("unsafe_path", target_path, action)
 
     # Check snapshot exists
-    snap_dir = _snapshot_dir(str(job.id), intent_id, data_dir)
+    snap_dir = _snapshot_dir(str(job.job_id), intent_id, data_dir)
     meta_path = snap_dir / "metadata.json"
     if not meta_path.exists():
         return _blocked("snapshot_missing", target_path, action)
@@ -238,15 +238,15 @@ def revert_patch_intent(
             "target_path": target_path,
             "action": action,
         }
-        save_job(job)
+        save_job_plan(job)
 
     # Emit run-log event
     actual_data_dir = data_dir or resolve_data_root()
-    log = RunLogWriter(job_id=job.id, data_root=actual_data_dir)
+    log = RunLogWriter(job_id=job.job_id, data_root=actual_data_dir)
     from packages.orchestration.run_log import RunEvent
     log.append(RunEvent(
         event="patch_intent_reverted",
-        job_id=str(job.id),
+        job_id=str(job.job_id),
         run_id=log.run_id,
         timestamp=datetime.now(timezone.utc).isoformat(),
         outcome="reverted",

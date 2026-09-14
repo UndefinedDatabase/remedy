@@ -9,7 +9,8 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from packages.core.models import Artifact, Job, RunState, Task
+from packages.core.models import Artifact, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.job_runner import PlanJobResult
 from packages.orchestration.llm_planner import (
     annotate_planning_result,
@@ -49,14 +50,14 @@ def _stub_planner(output: PlannerOutput):
 # ---------------------------------------------------------------------------
 
 def test_plan_job_with_llm_produces_tasks():
-    job = Job(name="test", user_prompt="build a CLI")
+    job = JobPlan(job_title="test", user_prompt="build a CLI")
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert len(result.job.tasks) == 3
 
 
 def test_plan_job_with_llm_task_types_match():
     output = _make_output()
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(output))
     task_types = [t.inputs.get("task_type") for t in result.job.tasks]
     assert task_types == ["analyse_requirements", "implement_feature", "write_tests"]
@@ -64,13 +65,13 @@ def test_plan_job_with_llm_task_types_match():
 
 def test_plan_job_with_llm_task_descriptions_match():
     output = _make_output()
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(output))
-    assert result.job.tasks[0].description == "Understand the requirements."
+    assert result.job.tasks[0].title == "Understand the requirements."
 
 
 def test_plan_job_with_llm_produces_artifact():
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert len(result.job.artifacts) == 1
     assert result.job.artifacts[0].name == "planning_output"
@@ -78,27 +79,27 @@ def test_plan_job_with_llm_produces_artifact():
 
 def test_plan_job_with_llm_artifact_contains_summary():
     output = _make_output(summary="My unique summary text.")
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(output))
     assert "My unique summary text." in result.job.artifacts[0].content
 
 
 def test_plan_job_with_llm_artifact_task_id_is_none():
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert result.job.artifacts[0].task_id is None
 
 
 def test_plan_job_with_llm_artifact_no_legacy_planner_key():
     """The removed 'planner':'llm' key must not appear in planning artifact metadata."""
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert "planner" not in result.job.artifacts[0].metadata
 
 
 def test_plan_job_with_llm_artifact_metadata_has_summary():
     """Planning artifact metadata always contains the summary key."""
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert result.job.artifacts[0].metadata.get("summary") == "Implement a CLI tool."
 
@@ -109,7 +110,7 @@ def test_plan_job_with_llm_artifact_metadata_has_summary():
 
 def test_acceptance_checks_in_artifact_content():
     output = _make_output(acceptance_checks=["all tests pass", "no lint errors"])
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(output))
     content = result.job.artifacts[0].content
     assert "all tests pass" in content
@@ -118,14 +119,14 @@ def test_acceptance_checks_in_artifact_content():
 
 def test_notes_in_artifact_content():
     output = _make_output(notes=["assumes Python 3.10+"])
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(output))
     assert "assumes Python 3.10+" in result.job.artifacts[0].content
 
 
 def test_empty_optional_fields_no_section_in_content():
     output = _make_output(acceptance_checks=[], notes=[])
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(output))
     content = result.job.artifacts[0].content
     assert "Acceptance Checks:" not in content
@@ -137,13 +138,13 @@ def test_empty_optional_fields_no_section_in_content():
 # ---------------------------------------------------------------------------
 
 def test_plan_job_with_llm_state_is_planned():
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert result.job.state == RunState.PLANNED
 
 
 def test_plan_job_with_llm_changed_true():
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert result.changed is True
 
@@ -153,25 +154,25 @@ def test_plan_job_with_llm_changed_true():
 # ---------------------------------------------------------------------------
 
 def test_plan_job_with_llm_no_op_if_already_planned():
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     plan_job_with_llm(job, _stub_planner(_make_output()))  # first call
-    first_task_ids = [t.id for t in job.tasks]
+    first_task_ids = [t.task_id for t in job.tasks]
 
     result2 = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert result2.changed is False
-    assert [t.id for t in result2.job.tasks] == first_task_ids
+    assert [t.task_id for t in result2.job.tasks] == first_task_ids
 
 
 def test_plan_job_with_llm_no_op_if_has_tasks():
-    job = Job(name="test")
-    job.tasks = [Task(description="pre-existing")]
+    job = JobPlan(job_title="test")
+    job.tasks = [TaskEntry(title="pre-existing")]
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert result.changed is False
     assert len(result.job.tasks) == 1
 
 
 def test_plan_job_with_llm_no_op_if_has_artifacts():
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     job.artifacts = [Artifact(name="pre-existing", content="x")]
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert result.changed is False
@@ -188,7 +189,7 @@ def test_plan_job_with_llm_propagates_validation_error():
         # Simulate a provider that returns invalid data
         PlannerOutput.model_validate({"summary": 123, "proposed_tasks": "not-a-list"})
 
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     with pytest.raises(ValidationError):
         plan_job_with_llm(job, bad_planner)
 
@@ -198,7 +199,7 @@ def test_plan_job_with_llm_propagates_provider_exceptions():
     def failing_planner(_prompt):
         raise RuntimeError("Ollama server unreachable")
 
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     with pytest.raises(RuntimeError, match="Ollama server unreachable"):
         plan_job_with_llm(job, failing_planner)
 
@@ -235,7 +236,7 @@ def test_planner_output_rejects_empty_proposed_tasks():
 # ---------------------------------------------------------------------------
 
 def _make_planned_result() -> PlanJobResult:
-    job = Job(name="test", user_prompt="do something")
+    job = JobPlan(job_title="test", user_prompt="do something")
     return plan_job_with_llm(job, _stub_planner(_make_output()))
 
 
@@ -277,8 +278,8 @@ def test_annotate_elapsed_ms_is_non_negative():
 
 def test_annotate_no_op_when_not_changed():
     """annotate_planning_result is safe to call even on a no-op result."""
-    job = Job(name="test")
-    job.tasks = [Task(description="pre-existing")]  # triggers no-op in plan_job_with_llm
+    job = JobPlan(job_title="test")
+    job.tasks = [TaskEntry(title="pre-existing")]  # triggers no-op in plan_job_with_llm
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
     assert result.changed is False
 
@@ -289,7 +290,7 @@ def test_annotate_no_op_when_not_changed():
 
 def test_annotate_finds_artifact_by_name_not_index():
     """annotate_planning_result targets the named artifact even if it is not at index 0."""
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(_make_output()))
 
     # Insert a non-planning artifact before the planning one
@@ -322,7 +323,7 @@ def test_duplicate_task_types_get_suffix():
             ProposedTask(task_type="write_tests", description="Third test task."),
         ],
     )
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(output))
     task_types = [t.inputs["task_type"] for t in result.job.tasks]
     assert task_types == ["write_tests", "write_tests_2", "write_tests_3"]
@@ -331,7 +332,7 @@ def test_duplicate_task_types_get_suffix():
 def test_unique_task_types_unchanged():
     """Non-duplicate task_type values are passed through unmodified."""
     output = _make_output()  # analyse_requirements, implement_feature, write_tests
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(output))
     task_types = [t.inputs["task_type"] for t in result.job.tasks]
     assert task_types == ["analyse_requirements", "implement_feature", "write_tests"]
@@ -347,7 +348,7 @@ def test_mixed_unique_and_duplicate_task_types():
             ProposedTask(task_type="analyse", description="Analyse again."),
         ],
     )
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(output))
     task_types = [t.inputs["task_type"] for t in result.job.tasks]
     assert task_types == ["analyse", "implement", "analyse_2"]
@@ -362,9 +363,9 @@ def test_dedup_preserves_task_descriptions():
             ProposedTask(task_type="write_tests", description="Integration tests."),
         ],
     )
-    job = Job(name="test")
+    job = JobPlan(job_title="test")
     result = plan_job_with_llm(job, _stub_planner(output))
-    descriptions = [t.description for t in result.job.tasks]
+    descriptions = [t.title for t in result.job.tasks]
     assert descriptions == ["Unit tests.", "Integration tests."]
 
 # F115 — the planner prompt is composed, and composing it changes no byte.
@@ -411,7 +412,7 @@ def test_plan_job_with_llm_hands_down_the_composition_it_sends():
         sent.append(prompt)
         return _make_output()
 
-    job = Job(name="test-job", user_prompt="Fix the bug")
+    job = JobPlan(job_title="test-job", user_prompt="Fix the bug")
     plan_job_with_llm(job, _capture, on_prompt_composed=seen.append)
     assert len(seen) == 1
     assert sent == [seen[0].text]

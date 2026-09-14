@@ -17,15 +17,16 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _make_job(task_count: int = 3):
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -46,12 +47,13 @@ def _make_job(task_count: int = 3):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -66,11 +68,11 @@ def _make_job_s127(*, tasks=None, name="test"):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def _make_job_s261(**kw: Any) -> Job:
-    return Job(name=kw.pop("name", "test"), state=kw.pop("state", RunState.PENDING), **kw)
+def _make_job_s261(**kw: Any) -> JobPlan:
+    return JobPlan(job_title=kw.pop("name", "test"), state=kw.pop("state", RunState.PENDING), **kw)
 
 
-def _make_approved_job() -> tuple[Job, str]:
+def _make_approved_job() -> tuple[JobPlan, str]:
     """Create a job with repo_generated_write + an approved patch intent.
 
     A REAL Job: this one is handed to the apply path, which resolves fences off

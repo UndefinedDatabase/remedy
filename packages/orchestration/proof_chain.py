@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Proof status enum
@@ -542,7 +542,7 @@ def derive_next_safe_action(chain: ProofChain) -> str:
 
 
 def build_proof_chain(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     path: str | None = None,
     data_dir: Path | None = None,
@@ -562,8 +562,8 @@ def build_proof_chain(
     from packages.orchestration.approval_queue import list_patch_intents
     from packages.orchestration.change_set import derive_change_set
 
-    job_id_str = str(job.id)
-    goal = job.user_prompt or job.name or ""
+    job_id_str = str(job.job_id)
+    goal = job.user_prompt or job.job_title or ""
     if len(goal) > 200:
         goal = goal[:200] + "…"
 
@@ -600,7 +600,7 @@ def build_proof_chain(
     # Build task title map
     task_titles: dict[str, str] = {}
     for t in job.tasks:
-        task_titles[str(t.id)] = t.description[:100] if t.description else ""
+        task_titles[str(t.task_id)] = t.title[:100] if t.title else ""
 
     proof_changes: list[ProofChange] = []
     for c in changes_raw:

@@ -10,7 +10,8 @@ from uuid import UUID
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.task_runner import (
     annotate_task_result,
@@ -23,12 +24,12 @@ from packages.orchestration.verifier import VerificationCheckResult, Verificatio
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_job(n_tasks: int = 3, state: RunState = RunState.PLANNED) -> Job:
+def _make_job(n_tasks: int = 3, state: RunState = RunState.PLANNED) -> JobPlan:
     tasks = [
-        Task(description=f"Task {i}", inputs={"task_type": f"type_{i}"})
+        TaskEntry(title=f"Task {i}", inputs={"task_type": f"type_{i}"})
         for i in range(n_tasks)
     ]
-    return Job(name="test-job", tasks=tasks, state=state)
+    return JobPlan(job_title="test-job", tasks=tasks, state=state)
 
 
 def _stub_builder(context: TaskExecutionContext) -> BuilderOutput:
@@ -52,7 +53,7 @@ def test_run_next_task_changed_true():
 
 def test_run_next_task_executes_first_pending():
     job = _make_job(3)
-    first_id = job.tasks[0].id
+    first_id = job.tasks[0].task_id
     result = run_next_task(job, _stub_builder)
     assert result.task_id == first_id
 
@@ -62,7 +63,7 @@ def test_run_next_task_skips_non_pending():
     job = _make_job(3)
     job.tasks[0].status = RunState.COMPLETED
     result = run_next_task(job, _stub_builder)
-    assert result.task_id == job.tasks[1].id
+    assert result.task_id == job.tasks[1].task_id
 
 
 # ---------------------------------------------------------------------------
@@ -101,9 +102,9 @@ def test_context_fields_populated_correctly():
     run_next_task(job, capturing_builder)
     ctx = received[0]
 
-    assert ctx.job_id == str(job.id)
+    assert ctx.job_id == str(job.job_id)
     assert ctx.job_prompt == "do something cool"
-    assert ctx.task_id == str(task.id)
+    assert ctx.task_id == str(task.task_id)
     assert ctx.task_type == "type_0"
     assert ctx.task_description == "Task 0"
 
@@ -131,11 +132,11 @@ def test_context_includes_prior_task_summaries():
         art = Artifact(
             name=f"task_output_type_{i}",
             content="...",
-            task_id=str(t.id),
+            task_id=str(t.task_id),
             metadata={"task_type": f"type_{i}", "summary": f"done task {i + 1}"},
         )
         job.artifacts.append(art)
-        t.output_artifact_ids.append(art.id)
+        t.output_artifact_ids.append(str(art.id))
 
     run_next_task(job, capturing_builder)  # task 2 — receives summaries from 0 and 1
 
@@ -211,7 +212,7 @@ def test_context_planning_summary_from_legacy_artifact():
 
 def test_artifact_task_id_matches_executed_task():
     job = _make_job(1)
-    task_id = job.tasks[0].id
+    task_id = job.tasks[0].task_id
     run_next_task(job, _stub_builder)
     task_artifacts = [a for a in job.artifacts if a.task_id is not None]
     assert len(task_artifacts) == 1
@@ -223,7 +224,7 @@ def test_output_artifact_ids_updated():
     run_next_task(job, _stub_builder)
     task = job.tasks[0]
     assert len(task.output_artifact_ids) == 1
-    assert task.output_artifact_ids[0] == job.artifacts[-1].id
+    assert task.output_artifact_ids[0] == str(job.artifacts[-1].id)
 
 
 def test_artifact_name_contains_task_type():
@@ -288,11 +289,11 @@ def test_sequential_execution_advances_through_tasks():
     """run_next_task always picks the next PENDING task regardless of RUNNING tasks."""
     job = _make_job(3)
     r1 = run_next_task(job, _stub_builder)
-    assert r1.task_id == job.tasks[0].id
+    assert r1.task_id == job.tasks[0].task_id
     r2 = run_next_task(job, _stub_builder)
-    assert r2.task_id == job.tasks[1].id
+    assert r2.task_id == job.tasks[1].task_id
     r3 = run_next_task(job, _stub_builder)
-    assert r3.task_id == job.tasks[2].id
+    assert r3.task_id == job.tasks[2].task_id
     # All three tasks are RUNNING (not COMPLETED); job is RUNNING.
     # finalize_task() must be called on each to advance to COMPLETED.
     assert job.state == RunState.RUNNING
@@ -517,7 +518,7 @@ def test_finalize_task_failed_artifact_remains_in_job_artifacts():
     finalize_task(result, _failing_vr(result.task_id, "workspace file missing"))
 
     # Artifact stays in job.artifacts even though task no longer references it
-    assert any(a.id == failed_artifact_id for a in job.artifacts)
+    assert any(str(a.id) == failed_artifact_id for a in job.artifacts)
 
 
 def test_finalize_task_records_failure_in_artifact_metadata():
@@ -580,14 +581,14 @@ def test_consecutive_failures_annotate_each_artifact_separately():
     finalize_task(result2, _failing_vr(result2.task_id, "second failure reason"))
 
     # artifact1: has metadata from FIRST failure
-    artifact1 = next(a for a in job.artifacts if a.id == artifact1_id)
+    artifact1 = next(a for a in job.artifacts if str(a.id) == artifact1_id)
     assert artifact1.metadata["verification_passed"] is False
     assert any("first failure reason" in f for f in artifact1.metadata["verification_failures"])
     # artifact1 must NOT have been overwritten with second failure data
     assert not any("second failure reason" in f for f in artifact1.metadata["verification_failures"])
 
     # artifact2: has metadata from SECOND failure
-    artifact2 = next(a for a in job.artifacts if a.id == artifact2_id)
+    artifact2 = next(a for a in job.artifacts if str(a.id) == artifact2_id)
     assert artifact2.metadata["verification_passed"] is False
     assert any("second failure reason" in f for f in artifact2.metadata["verification_failures"])
 
@@ -617,7 +618,7 @@ def test_consecutive_failures_both_artifacts_preserved_in_job():
     artifact2_id = job.tasks[0].output_artifact_ids[0]
     finalize_task(result2, _failing_vr(result2.task_id, "fail 2"))
 
-    artifact_ids_in_job = {a.id for a in job.artifacts}
+    artifact_ids_in_job = {str(a.id) for a in job.artifacts}
     assert artifact1_id in artifact_ids_in_job
     assert artifact2_id in artifact_ids_in_job
 
@@ -627,7 +628,7 @@ def test_finalize_task_no_op_when_not_changed():
     result = run_next_task(job, _stub_builder)
     assert result.changed is False
     # Must not raise
-    finalize_task(result, _passing_vr(result.task_id or job.id))
+    finalize_task(result, _passing_vr(result.task_id or job.job_id))
 
 
 def test_finalize_task_raises_if_task_not_in_job():
@@ -668,6 +669,6 @@ def test_finalize_task_raises_if_artifact_not_found_in_job_artifacts():
     result = run_next_task(job, _stub_builder)
     # Replace artifact ID in task with a dangling UUID so the lookup fails
     phantom_id = _uuid4()
-    job.tasks[0].output_artifact_ids[0] = phantom_id
+    job.tasks[0].output_artifact_ids[0] = str(phantom_id)
     with pytest.raises(RuntimeError, match="not found in job.artifacts"):
         finalize_task(result, _failing_vr(result.task_id, "some failure"))

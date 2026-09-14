@@ -376,7 +376,7 @@ def materialize_accepted_candidate(
     from packages.core.models import Artifact, ArtifactKind
     from packages.orchestration.approval_queue import get_patch_intent, make_intent_id
 
-    result = ProviderPatchMaterializationResult(job_id=str(job.id))
+    result = ProviderPatchMaterializationResult(job_id=str(job.job_id))
     candidate_hash = hashlib.sha256(raw_patch.encode("utf-8", errors="replace")).hexdigest()
 
     # Idempotency: same candidate hash → return the existing material/intent.
@@ -413,7 +413,7 @@ def materialize_accepted_candidate(
     entry = ProviderPatchMaterialEntry(target_path=ext.target_path, action=ext.action,
                                        line_count=len(ext.added_lines))
     material = ProviderPatchMaterial(
-        material_id=material_id, job_id=str(job.id), quarantine_id=report.quarantine_id,
+        material_id=material_id, job_id=str(job.job_id), quarantine_id=report.quarantine_id,
         trust_report_id=report.report_id, failure_artifact_id=report.failure_artifact_id,
         repair_attempt_id=report.repair_attempt_id, candidate_hash=candidate_hash,
         patch_format=candidate.patch_format, target_path_count=1, operation_count=1,
@@ -421,7 +421,7 @@ def materialize_accepted_candidate(
         entries=[entry], created_at=_now(),
     )
 
-    if not store_material(str(job.id), data_dir, material, raw_patch):
+    if not store_material(str(job.job_id), data_dir, material, raw_patch):
         result.state = MaterialState.FAILED
         result.reason = "material_store_failed"
         result.safe_summary = "Patch material could not be stored privately."

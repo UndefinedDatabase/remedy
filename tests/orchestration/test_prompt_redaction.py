@@ -1,7 +1,7 @@
 """Tests: planning artifact does not contain raw prompt or memory content."""
 from __future__ import annotations
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.llm_planner import plan_job_with_llm
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 
@@ -20,7 +20,7 @@ _fake_planner.last_prompt = ""
 class TestPlanningArtifactRedaction:
     def test_no_raw_prompt_in_artifact_content(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test", user_prompt="Fix the auth vulnerability in login.py")
+        job = JobPlan(job_title="test", user_prompt="Fix the auth vulnerability in login.py")
         plan_job_with_llm(job, _fake_planner)
         content = job.artifacts[0].content
         assert "Fix the auth vulnerability" not in content
@@ -31,7 +31,7 @@ class TestPlanningArtifactRedaction:
         from packages.memory.local_gateway import store_memory
         store_memory(key="pattern-tip", value="Use bcrypt", project_id="proj1", approved=True)
 
-        job = Job(name="test", user_prompt="Fix auth")
+        job = JobPlan(job_title="test", user_prompt="Fix auth")
         job.metadata["project_id"] = "proj1"
         plan_job_with_llm(job, _fake_planner)
         content = job.artifacts[0].content
@@ -40,7 +40,7 @@ class TestPlanningArtifactRedaction:
 
     def test_prompt_hash_in_metadata(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test", user_prompt="Fix bug")
+        job = JobPlan(job_title="test", user_prompt="Fix bug")
         plan_job_with_llm(job, _fake_planner)
         meta = job.artifacts[0].metadata
         assert meta["prompt_present"] is True
@@ -52,7 +52,7 @@ class TestPlanningArtifactRedaction:
         from packages.memory.local_gateway import store_memory
         store_memory(key="tip", value="info", project_id="proj1", approved=True)
 
-        job = Job(name="test", user_prompt="Plan")
+        job = JobPlan(job_title="test", user_prompt="Plan")
         job.metadata["project_id"] = "proj1"
         plan_job_with_llm(job, _fake_planner)
         meta = job.artifacts[0].metadata
@@ -61,7 +61,7 @@ class TestPlanningArtifactRedaction:
 
     def test_planner_still_receives_full_prompt(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test", user_prompt="Fix the login bug")
+        job = JobPlan(job_title="test", user_prompt="Fix the login bug")
         plan_job_with_llm(job, _fake_planner)
         # Provider still gets full prompt
         assert "Fix the login bug" in _fake_planner.last_prompt
@@ -71,7 +71,7 @@ class TestPlanningArtifactRedaction:
         from packages.memory.local_gateway import store_memory
         store_memory(key="tip", value="info", project_id="proj1", approved=True)
 
-        job = Job(name="test", user_prompt="Plan")
+        job = JobPlan(job_title="test", user_prompt="Plan")
         job.metadata["project_id"] = "proj1"
         # No data_dir in job metadata — event emission should not crash
         result = plan_job_with_llm(job, _fake_planner)

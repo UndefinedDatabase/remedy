@@ -17,7 +17,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, Task
+from packages.core.models import Artifact, ArtifactKind
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration import self_dogfood as SD
 from packages.orchestration import self_dogfood_execution as SE
 from packages.orchestration.proposed_tasks import (
@@ -26,7 +27,8 @@ from packages.orchestration.proposed_tasks import (
     save_proposed_tasks,
     transition_status,
 )
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.data_paths import mint_job_id
 
 
 @pytest.fixture()
@@ -43,20 +45,20 @@ def env(tmp_path, monkeypatch):
 
 
 def _approved_task(data_dir, *, failure=True, repo="."):
-    t = Task(description="t")
+    t = TaskEntry(title="t")
     arts = []
     if failure:
-        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.id),
+        fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.task_id),
                       metadata={"test_failure": True, "failure_kind": "test_failed",
-                                "related_task_id": str(t.id), "related_files": ["docs/guide.md"],
+                                "related_task_id": str(t.task_id), "related_files": ["docs/guide.md"],
                                 "safe_summary": "doc gap"})
         arts.append(fa)
-    job = Job(id=uuid4(), name="ov", tasks=[t], artifacts=arts, metadata={"target_repo": repo})
-    save_job(job, root=data_dir)
-    SD.propose_self_improvement(str(job.id), top=1, data_dir=data_dir)
-    tasks = load_proposed_tasks(str(job.id), data_dir)
+    job = JobPlan(job_id=mint_job_id(), job_title="ov", tasks=[t], artifacts=arts, metadata={"target_repo": repo})
+    save_job_plan(job, root=data_dir)
+    SD.propose_self_improvement(str(job.job_id), top=1, data_dir=data_dir)
+    tasks = load_proposed_tasks(str(job.job_id), data_dir)
     transition_status(tasks[0], ProposedTaskStatus.APPROVED_FOR_BUILD, by="human")
-    save_proposed_tasks(str(job.id), tasks, data_dir)
+    save_proposed_tasks(str(job.job_id), tasks, data_dir)
     return job, tasks[0]
 
 
@@ -68,7 +70,7 @@ def _approved_task(data_dir, *, failure=True, repo="."):
 class TestEligibility:
     def test_approved_self_task_eligible(self, env):
         job, pt = _approved_task(env)
-        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.id), env)
+        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.job_id), env)
         assert e.eligible and e.item_fingerprint
 
     def test_missing_task(self, env):
@@ -77,22 +79,22 @@ class TestEligibility:
 
     def test_unapproved_blocks(self, env):
         job, _ = _approved_task(env)
-        SD.propose_self_improvement(str(job.id), top=2, data_dir=env)
-        tasks = load_proposed_tasks(str(job.id), env)
+        SD.propose_self_improvement(str(job.job_id), top=2, data_dir=env)
+        tasks = load_proposed_tasks(str(job.job_id), env)
         unapproved = next(t for t in tasks if t.status == ProposedTaskStatus.PROPOSED)
-        e = SE.evaluate_self_execution_eligibility(unapproved.id, str(job.id), env)
+        e = SE.evaluate_self_execution_eligibility(unapproved.id, str(job.job_id), env)
         assert not e.eligible and e.stop_reason == SE.StopReason.NOT_APPROVED
 
     def test_main_branch_blocks(self, env, monkeypatch):
         monkeypatch.setattr(SE, "current_branch", lambda: "main")
         job, pt = _approved_task(env)
-        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.id), env)
+        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.job_id), env)
         assert not e.eligible and e.stop_reason == SE.StopReason.MAIN_BRANCH_UNSAFE
 
     def test_unknown_branch_blocks(self, env, monkeypatch):
         monkeypatch.setattr(SE, "current_branch", lambda: "")
         job, pt = _approved_task(env)
-        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.id), env)
+        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.job_id), env)
         assert not e.eligible and e.stop_reason == SE.StopReason.MAIN_BRANCH_UNSAFE
 
     def test_contract_blocked(self, env):
@@ -105,8 +107,8 @@ class TestEligibility:
         c = build_default_run_contract(job)
         c = dataclasses.replace(c, allowed_actions=tuple(
             a for a in c.allowed_actions if a != ContractAction.SELF_EXECUTE_PREPARE))
-        save_contract(job, c); save_job(job, root=env)
-        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.id), env)
+        save_contract(job, c); save_job_plan(job, root=env)
+        e = SE.evaluate_self_execution_eligibility(pt.id, str(job.job_id), env)
         assert not e.eligible and e.stop_reason == SE.StopReason.CONTRACT_BLOCKED
 
 
@@ -118,22 +120,22 @@ class TestEligibility:
 class TestStartAndIdempotency:
     def test_execute_awaits_candidate(self, env):
         job, pt = _approved_task(env)
-        r = SE.start_self_execution(pt.id, str(job.id), env)
+        r = SE.start_self_execution(pt.id, str(job.job_id), env)
         assert r.state == SE.AttemptState.AWAITING_EXTERNAL_CANDIDATE
         assert r.request_package_id
         assert r.next_safe_action == "remedy self status --json"
 
     def test_execute_idempotent_resume(self, env):
         job, pt = _approved_task(env)
-        r1 = SE.start_self_execution(pt.id, str(job.id), env)
-        r2 = SE.start_self_execution(pt.id, str(job.id), env)
+        r1 = SE.start_self_execution(pt.id, str(job.job_id), env)
+        r2 = SE.start_self_execution(pt.id, str(job.job_id), env)
         assert r1.attempt_id == r2.attempt_id
         assert len(SE.list_attempts(env)) == 1
 
     def test_main_blocks_start(self, env, monkeypatch):
         monkeypatch.setattr(SE, "current_branch", lambda: "main")
         job, pt = _approved_task(env)
-        r = SE.start_self_execution(pt.id, str(job.id), env)
+        r = SE.start_self_execution(pt.id, str(job.job_id), env)
         assert r.state == SE.AttemptState.BLOCKED
         assert r.stop_reason == SE.StopReason.MAIN_BRANCH_UNSAFE
         assert SE.list_attempts(env) == []
@@ -210,7 +212,7 @@ class TestArchitectureGuards:
         # not a string this test supplies, which is what it used to assert.
         from packages.orchestration.do_run import validate_next_safe_action_command
         job, pt = _approved_task(env)
-        r = SE.start_self_execution(pt.id, str(job.id), env)
+        r = SE.start_self_execution(pt.id, str(job.job_id), env)
         assert r.next_safe_action
         assert validate_next_safe_action_command(r.next_safe_action)
         rec = SE.reconcile_self_attempt(r.attempt_id, env)

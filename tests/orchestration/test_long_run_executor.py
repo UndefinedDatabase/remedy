@@ -8,6 +8,7 @@ clock and deadlines go through an injected clock.
 """
 from __future__ import annotations
 
+import copy
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -15,7 +16,8 @@ from pathlib import Path
 import pytest
 
 import packages.orchestration.long_run_executor as lre
-from packages.core.models import Job, JobBudgets, RunState, Task
+from packages.core.models import JobBudgets, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.config import get_key_spec
 from packages.orchestration.long_run_executor import (
@@ -77,12 +79,12 @@ def control_root(tmp_path: Path) -> Path:
     return root
 
 
-def make_job(task_count: int = 1, *, name: str = "cycle-job") -> Job:
-    return Job(
-        name=name,
+def make_job(task_count: int = 1, *, name: str = "cycle-job") -> JobPlan:
+    return JobPlan(
+        job_title=name,
         user_prompt="build the thing",
         tasks=[
-            Task(description=f"task {i}", inputs={"task_type": "documentation"})
+            TaskEntry(title=f"task {i}", inputs={"task_type": "documentation"})
             for i in range(task_count)
         ],
         state=RunState.PLANNED,
@@ -118,39 +120,39 @@ class FakeClock:
         return current
 
 
-def completing_step(job: Job, provider_call) -> TaskAttempt:
+def completing_step(job: JobPlan, provider_call) -> TaskAttempt:
     """A task step that completes the first PENDING task, calling the provider."""
     task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
     if task is None:
         return TaskAttempt()
     provider_call(
         TaskExecutionContext(
-            job_id=str(job.id),
+            job_id=str(job.job_id),
             job_prompt=job.user_prompt,
-            task_id=str(task.id),
+            task_id=str(task.task_id),
             task_type=task.inputs.get("task_type", "unknown"),
-            task_description=task.description,
+            task_description=task.title,
         )
     )
     task.status = RunState.COMPLETED
     if all(t.status == RunState.COMPLETED for t in job.tasks):
         job.state = RunState.COMPLETED
-    return TaskAttempt(task_id=task.id, executed=True, verified=True)
+    return TaskAttempt(task_id=task.task_id, executed=True, verified=True)
 
 
-def never_called_step(job: Job, provider_call) -> TaskAttempt:
+def never_called_step(job: JobPlan, provider_call) -> TaskAttempt:
     raise AssertionError("a cycle started after should_stop said stop")
 
 
-def passing_verify(job: Job, cycle_index: int, verify_command) -> str:
+def passing_verify(job: JobPlan, cycle_index: int, verify_command) -> str:
     return VERIFY_PASSED
 
 
-def failing_verify(job: Job, cycle_index: int, verify_command) -> str:
+def failing_verify(job: JobPlan, cycle_index: int, verify_command) -> str:
     return VERIFY_FAILED
 
 
-def no_save(job: Job) -> None:
+def no_save(job: JobPlan) -> None:
     """Persistence is exercised separately; most matrix tests stay in memory."""
     return None
 
@@ -185,7 +187,7 @@ class TestTerminalStatusMatrix:
 
     def test_stopped_by_operator(self, control_root):
         job = make_job(3)
-        request_stop(str(job.id), reason="operator asked", control_root_path=control_root)
+        request_stop(str(job.job_id), reason="operator asked", control_root_path=control_root)
         result = run_cycles(
             job, CycleLimits(max_cycles=5), FakeProvider(),
             task_step=never_called_step, verify=passing_verify,
@@ -290,10 +292,10 @@ class TestOrdering:
         job = make_job(4)
         order: list[str] = []
 
-        def stopping_step(j: Job, provider_call) -> TaskAttempt:
+        def stopping_step(j: JobPlan, provider_call) -> TaskAttempt:
             order.append("cycle")
             if len(order) == 1:
-                request_stop(str(j.id), reason="mid-run", control_root_path=control_root)
+                request_stop(str(j.job_id), reason="mid-run", control_root_path=control_root)
             return completing_step(j, provider_call)
 
         result = run_cycles(
@@ -307,7 +309,7 @@ class TestOrdering:
 
     def test_stop_before_the_first_cycle_runs_nothing(self, control_root):
         job = make_job(2)
-        request_stop(str(job.id), reason="before start", control_root_path=control_root)
+        request_stop(str(job.job_id), reason="before start", control_root_path=control_root)
         result = run_cycles(
             job, CycleLimits(max_cycles=5), FakeProvider(),
             task_step=never_called_step, clock=FakeClock(), save=no_save,
@@ -359,10 +361,10 @@ class TestFiveCycleFixture:
         job = make_job(5)
         seen: list[int] = []
 
-        def step(j: Job, provider_call) -> TaskAttempt:
+        def step(j: JobPlan, provider_call) -> TaskAttempt:
             seen.append(len(seen) + 1)
             if len(seen) == 3:
-                request_stop(str(j.id), reason="stop at three",
+                request_stop(str(j.job_id), reason="stop at three",
                              control_root_path=control_root)
             return completing_step(j, provider_call)
 
@@ -460,10 +462,10 @@ class TestReadyBatch:
         on how many tasks a cycle runs, and the set is recomputed after each.
         """
         job = make_job(4)
-        assert ready_tasks(job, 2) == [job.tasks[0].id]
+        assert ready_tasks(job, 2) == [job.tasks[0].task_id]
 
         job.tasks[0].status = RunState.COMPLETED
-        assert ready_tasks(job, 2) == [job.tasks[1].id]
+        assert ready_tasks(job, 2) == [job.tasks[1].task_id]
 
     def test_independent_tasks_fill_the_batch_up_to_its_cap(self):
         job = make_job(4)
@@ -471,7 +473,7 @@ class TestReadyBatch:
         # the cap is what limits the batch.
         for index, task in enumerate(job.tasks):
             task.inputs["flight"] = {"planned_id": f"T{index}", "depends_on": []}
-        assert ready_tasks(job, 2) == [job.tasks[0].id, job.tasks[1].id]
+        assert ready_tasks(job, 2) == [job.tasks[0].task_id, job.tasks[1].task_id]
         assert len(ready_tasks(job, 10)) == 4
 
     def test_batch_larger_than_remaining_tasks_is_fine(self, control_root):
@@ -554,7 +556,7 @@ class TestDefaultTaskStep:
         assert provider.calls == 2
         assert result.terminal_status == TERMINAL_ALL_GREEN
         assert all(t.status == RunState.COMPLETED for t in job.tasks)
-        assert (isolate_data_root / "jobs" / f"{job.id}.json").is_file()
+        assert (isolate_data_root / "jobs" / job.job_id / "job.json").is_file()
 
     def test_provider_failure_is_recorded_and_the_task_stays_pending(
         self, isolate_data_root, control_root
@@ -586,7 +588,7 @@ class TestCycleEvidence:
             task_step=completing_step, verify=passing_verify,
             clock=FakeClock(), save=no_save, control_root_path=control_root,
         )
-        records = read_cycle_records(str(job.id))
+        records = read_cycle_records(str(job.job_id))
         assert result.cycles_run == 4
         assert len(records) == 4
         assert [r["cycle_index"] for r in records] == [1, 2, 3, 4]
@@ -598,8 +600,8 @@ class TestCycleEvidence:
             FakeProvider(), task_step=completing_step, verify=passing_verify,
             clock=FakeClock(), save=no_save, control_root_path=control_root,
         )
-        record = read_cycle_records(str(job.id))[0]
-        assert record["job_id"] == str(job.id)
+        record = read_cycle_records(str(job.job_id))[0]
+        assert record["job_id"] == str(job.job_id)
         assert record["tasks_attempted"] == 1
         assert record["tasks_completed"] == 1
         assert record["tasks_failed"] == 0
@@ -615,8 +617,8 @@ class TestCycleEvidence:
             task_step=completing_step, clock=FakeClock(), save=no_save,
             control_root_path=control_root,
         )
-        expected = isolate_data_root / "jobs" / str(job.id) / "evidence" / "cycles"
-        assert cycle_evidence_dir(str(job.id)) == expected
+        expected = isolate_data_root / "jobs" / str(job.job_id) / "evidence" / "cycles"
+        assert cycle_evidence_dir(str(job.job_id)) == expected
         assert (expected / "cycle_0001.json").is_file()
 
     def test_evidence_can_be_switched_off(self, control_root):
@@ -626,17 +628,17 @@ class TestCycleEvidence:
             task_step=completing_step, clock=FakeClock(), save=no_save,
             control_root_path=control_root, record_evidence=False,
         )
-        assert read_cycle_records(str(job.id)) == []
+        assert read_cycle_records(str(job.job_id)) == []
 
     def test_no_records_when_no_cycle_ran(self, control_root):
         job = make_job(2)
-        request_stop(str(job.id), reason="stop first", control_root_path=control_root)
+        request_stop(str(job.job_id), reason="stop first", control_root_path=control_root)
         run_cycles(
             job, CycleLimits(max_cycles=3), FakeProvider(),
             task_step=never_called_step, clock=FakeClock(), save=no_save,
             control_root_path=control_root,
         )
-        assert read_cycle_records(str(job.id)) == []
+        assert read_cycle_records(str(job.job_id)) == []
 
 
 # ---------------------------------------------------------------------------
@@ -721,9 +723,9 @@ class TestCycleConfig:
 # ---------------------------------------------------------------------------
 
 
-def _single_pass(job: Job, provider) -> None:
+def _single_pass(job: JobPlan, provider) -> None:
     """Today's single pass, exactly as `remedy job resume` performs it."""
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
     from packages.orchestration.task_runner import (
         finalize_task,
         materialize_task_output,
@@ -735,15 +737,17 @@ def _single_pass(job: Job, provider) -> None:
     result = run_next_task(job, provider)
     if not result.changed:
         return
-    materialize_task_output(result, LocalWorkspaceRuntime(job_id=job.id))
+    materialize_task_output(result, LocalWorkspaceRuntime(job_id=job.job_id))
     vr = verify_task_output(result.job, result.task_id)
     finalize_task(result, vr)
-    save_job(result.job)
+    save_job_plan(result.job)
 
 
-def _normalize(job: Job) -> dict:
+def _normalize(job: JobPlan) -> dict:
     """Job JSON with the randomly generated artifact ids replaced by ordinals."""
-    payload = json.loads(job.model_dump_json())
+    from packages.orchestration.pingpong_job import _export_job
+
+    payload = json.loads(json.dumps(_export_job(job)))
     mapping: dict[str, str] = {}
     for i, artifact in enumerate(payload.get("artifacts", [])):
         mapping[artifact["id"]] = f"artifact-{i}"
@@ -758,12 +762,12 @@ class TestSinglePassRegression:
         self, isolate_data_root, control_root
     ):
         job = make_job(3)
-        single = job.model_copy(deep=True)
-        cycled = job.model_copy(deep=True)
+        single = copy.deepcopy(job)
+        cycled = copy.deepcopy(job)
 
         _single_pass(single, FakeProvider())
         single_workspace = sorted(
-            p.name for p in (isolate_data_root / "workspaces" / str(job.id)).rglob("*")
+            p.name for p in (isolate_data_root / "workspaces" / str(job.job_id)).rglob("*")
             if p.is_file()
         )
 
@@ -771,7 +775,7 @@ class TestSinglePassRegression:
                    task_step=default_task_step, clock=FakeClock(),
                    control_root_path=control_root)
         cycled_workspace = sorted(
-            p.name for p in (isolate_data_root / "workspaces" / str(job.id)).rglob("*")
+            p.name for p in (isolate_data_root / "workspaces" / str(job.job_id)).rglob("*")
             if p.is_file()
         )
 
@@ -845,14 +849,14 @@ class TestJobRunCommand:
         single pass — it is a real loop run.  What is pinned is unchanged: the
         flag is trimmed to the cap and the operator is told so."""
         from apps.cli.commands import job as job_cmd
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.providers.ollama_builder import provider as provider_mod
 
         monkeypatch.setattr(provider_mod, "OllamaBuilder", FakeBuilder)
 
         job = make_job(2)
-        save_job(job)
-        job_cmd._cmd_job_run_cycles(str(job.id), cycles=99, yes=True)
+        save_job_plan(job)
+        job_cmd._cmd_job_run_cycles(str(job.job_id), cycles=99, yes=True)
 
         err = capsys.readouterr().err
         assert "capped to 8" in err and "F075" in err
@@ -866,25 +870,25 @@ class TestJobRunCommand:
 
     def test_multi_cycle_path_runs_the_loop_after_the_gate(self, monkeypatch, capsys):
         from apps.cli.commands import job as job_cmd
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.providers.ollama_builder import provider as provider_mod
 
         monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 5)
         monkeypatch.setattr(provider_mod, "OllamaBuilder", FakeBuilder)
 
         job = make_job(2)
-        save_job(job)
-        job_cmd._cmd_job_run_cycles(str(job.id), cycles=3, yes=True)
+        save_job_plan(job)
+        job_cmd._cmd_job_run_cycles(str(job.job_id), cycles=3, yes=True)
 
         out = capsys.readouterr().out
         assert "cycles=2/3" in out
         assert f"terminal={TERMINAL_ALL_GREEN}" in out
-        assert len(read_cycle_records(str(job.id))) == 2
+        assert len(read_cycle_records(str(job.job_id))) == 2
 
     def test_a_capped_config_value_names_the_config_key(self, monkeypatch, capsys):
         from apps.cli.commands import job as job_cmd
 
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         from packages.providers.ollama_builder import provider as provider_mod
 
         monkeypatch.setattr(provider_mod, "OllamaBuilder", FakeBuilder)
@@ -892,9 +896,9 @@ class TestJobRunCommand:
         from packages.orchestration.config import reset_config
         reset_config()
         job = make_job(2)
-        save_job(job)
+        save_job_plan(job)
         try:
-            job_cmd._cmd_job_run_cycles(str(job.id), yes=True)
+            job_cmd._cmd_job_run_cycles(str(job.job_id), yes=True)
         finally:
             reset_config()
         err = capsys.readouterr().err
@@ -937,16 +941,16 @@ class TestJobRunCommand:
 # ---------------------------------------------------------------------------
 
 
-def make_diamond_job(name: str = "diamond-job") -> Job:
+def make_diamond_job(name: str = "diamond-job") -> JobPlan:
     """A -> (B, C) -> D, expressed the way ``map_flight_plan_to_tasks`` does.
 
     Plan order puts B before C, so a scheduler that just took the first PENDING
     task would pick the blocked branch and never reach C — which is exactly the
     behavior F050 replaces.
     """
-    def task(planned_id: str, *depends_on: str) -> Task:
-        return Task(
-            description=f"task {planned_id}",
+    def task(planned_id: str, *depends_on: str) -> TaskEntry:
+        return TaskEntry(
+            title=f"task {planned_id}",
             inputs={
                 "task_type": "documentation",
                 "flight": {"planned_id": planned_id,
@@ -955,22 +959,22 @@ def make_diamond_job(name: str = "diamond-job") -> Job:
             },
         )
 
-    return Job(
-        name=name,
+    return JobPlan(
+        job_title=name,
         user_prompt="build the thing",
         tasks=[task("A"), task("B", "A"), task("C", "A"), task("D", "B", "C")],
         state=RunState.PLANNED,
     )
 
 
-def planned_id_of(job: Job, task_id) -> str:
+def planned_id_of(job: JobPlan, task_id) -> str:
     for task in job.tasks:
-        if str(task.id) == str(task_id):
+        if str(task.task_id) == str(task_id):
             return task.inputs["flight"]["planned_id"]
     raise AssertionError(f"no task {task_id} in this job")
 
 
-def task_by_planned_id(job: Job, planned_id: str) -> Task:
+def task_by_planned_id(job: JobPlan, planned_id: str) -> TaskEntry:
     for task in job.tasks:
         if task.inputs.get("flight", {}).get("planned_id") == planned_id:
             return task
@@ -989,9 +993,9 @@ class SteeredStep:
         self.fail = set(fail_planned_ids)
         self.executed: list[str] = []
 
-    def __call__(self, job: Job, provider_call, task_id=None) -> TaskAttempt:
+    def __call__(self, job: JobPlan, provider_call, task_id=None) -> TaskAttempt:
         if task_id is not None:
-            task = next((t for t in job.tasks if t.id == task_id), None)
+            task = next((t for t in job.tasks if t.task_id == task_id), None)
         else:
             task = next((t for t in job.tasks
                          if t.status == RunState.PENDING), None)
@@ -1001,22 +1005,22 @@ class SteeredStep:
         planned_id = task.inputs["flight"]["planned_id"]
         provider_call(
             TaskExecutionContext(
-                job_id=str(job.id),
+                job_id=str(job.job_id),
                 job_prompt=job.user_prompt,
-                task_id=str(task.id),
+                task_id=str(task.task_id),
                 task_type=task.inputs.get("task_type", "unknown"),
-                task_description=task.description,
+                task_description=task.title,
             )
         )
         self.executed.append(planned_id)
         if planned_id in self.fail:
             task.status = RunState.PENDING          # the runner's rollback
-            return TaskAttempt(task_id=task.id, executed=True, verified=False,
+            return TaskAttempt(task_id=task.task_id, executed=True, verified=False,
                                error=f"verification_failed: {planned_id}")
         task.status = RunState.COMPLETED
         if all(t.status == RunState.COMPLETED for t in job.tasks):
             job.state = RunState.COMPLETED
-        return TaskAttempt(task_id=task.id, executed=True, verified=True)
+        return TaskAttempt(task_id=task.task_id, executed=True, verified=True)
 
 
 def run_diamond(control_root: Path, *fail: str, batch_size: int = 1):
@@ -1165,18 +1169,18 @@ class TestLinearPlansAreUnchanged:
 
     def test_a_failed_legacy_task_blocks_its_successors(self, control_root):
         job = make_job(3)
-        failing_ids = {job.tasks[1].id}
+        failing_ids = {job.tasks[1].task_id}
 
-        def step(job_: Job, provider_call) -> TaskAttempt:
+        def step(job_: JobPlan, provider_call) -> TaskAttempt:
             task = next((t for t in job_.tasks
                          if t.status == RunState.PENDING), None)
             if task is None:
                 return TaskAttempt()
-            if task.id in failing_ids:
-                return TaskAttempt(task_id=task.id, executed=True,
+            if task.task_id in failing_ids:
+                return TaskAttempt(task_id=task.task_id, executed=True,
                                    verified=False, error="boom")
             task.status = RunState.COMPLETED
-            return TaskAttempt(task_id=task.id, executed=True, verified=True)
+            return TaskAttempt(task_id=task.task_id, executed=True, verified=True)
 
         result = run_cycles(
             job, CycleLimits(max_cycles=5, batch_size=1), FakeProvider(),
@@ -1186,7 +1190,7 @@ class TestLinearPlansAreUnchanged:
         # Task 2 failed, so task 3 (its successor in the legacy chain) is
         # skipped-blocked rather than run out of order.
         assert result.terminal_status == TERMINAL_BLOCKED
-        assert result.cycles[-1].skipped_blocked_task_ids == (str(job.tasks[2].id),)
+        assert result.cycles[-1].skipped_blocked_task_ids == (str(job.tasks[2].task_id),)
         assert job.tasks[2].status == RunState.PENDING
 
 

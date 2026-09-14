@@ -17,6 +17,7 @@ import pytest
 from apps.cli.commands.job_context_cmd import list_repo_candidate_paths
 from packages.orchestration.token_economy import estimate_text_tokens
 from tests.cli.runtime_helpers import run_grouped_cli
+from packages.orchestration.data_paths import mint_job_id
 
 #: The fenced file: it imports its direct neighbor, which imports one file
 #: further out, and a fourth file nothing imports at all. That shape is exactly
@@ -82,16 +83,16 @@ def _make_repo(tmp_path):
 
 def _make_job(data_dir, repo, *, files_hint=("alpha.py",), attach_repo=True):
     """Persist a real Job whose single task carries a real flight-plan block."""
-    from packages.core.models import Job, Task
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    from packages.orchestration.pingpong_job import save_job_plan
 
-    task = Task(
-        description="edit alpha",
+    task = TaskEntry(
+        title="edit alpha",
         inputs={"flight": {"planned_id": "T001", "files_hint": list(files_hint)}},
     )
     metadata = {"target_repo": str(repo)} if attach_repo else {}
-    job = Job(id=uuid4(), name="f107-context", tasks=[task], metadata=metadata)
-    save_job(job, root=data_dir)
+    job = JobPlan(job_id=mint_job_id(), job_title="f107-context", tasks=[task], metadata=metadata)
+    save_job_plan(job, root=data_dir)
     return job, task
 
 
@@ -111,7 +112,7 @@ def _run_json(env, job_id, *extra):
 def test_fenced_file_is_tier_one_and_rendered_full(tmp_path, env):
     repo = _make_repo(tmp_path)
     job, _task = _make_job(env, repo)
-    data = _run_json(env, str(job.id), "--task", "T001")
+    data = _run_json(env, str(job.job_id), "--task", "T001")
 
     alpha = _entry(data["included"], "alpha.py")
     assert alpha["tier"] == 1
@@ -125,7 +126,7 @@ def test_fenced_file_is_tier_one_and_rendered_full(tmp_path, env):
 def test_direct_import_neighbor_appears_at_tier_two(tmp_path, env):
     repo = _make_repo(tmp_path)
     job, _task = _make_job(env, repo)
-    data = _run_json(env, str(job.id), "--task", "T001")
+    data = _run_json(env, str(job.job_id), "--task", "T001")
 
     beta = _entry(data["included"], "beta.py")
     assert beta["tier"] == 2
@@ -140,7 +141,7 @@ def test_direct_import_neighbor_appears_at_tier_two(tmp_path, env):
 def test_unrelated_module_is_omitted_for_distance(tmp_path, env):
     repo = _make_repo(tmp_path)
     job, _task = _make_job(env, repo)
-    data = _run_json(env, str(job.id), "--task", "T001")
+    data = _run_json(env, str(job.job_id), "--task", "T001")
 
     omitted = _entry(data["omissions"], "unrelated.py")
     assert omitted["reason"] == "distance"
@@ -152,9 +153,9 @@ def test_unrelated_module_is_omitted_for_distance(tmp_path, env):
 def test_json_view_carries_the_same_paths_as_the_text_view(tmp_path, env):
     repo = _make_repo(tmp_path)
     job, _task = _make_job(env, repo)
-    data = _run_json(env, str(job.id), "--task", "T001")
+    data = _run_json(env, str(job.job_id), "--task", "T001")
 
-    text = run_grouped_cli(["job", "context", str(job.id), "--task", "T001"], env)
+    text = run_grouped_cli(["job", "context", str(job.job_id), "--task", "T001"], env)
     assert text.returncode == 0, text.stderr
     text_paths = {
         token
@@ -172,10 +173,10 @@ def test_planned_id_and_task_uuid_prefix_reach_the_same_task(tmp_path, env):
     repo = _make_repo(tmp_path)
     job, task = _make_job(env, repo)
 
-    by_planned = _run_json(env, str(job.id), "--task", "T001")
-    by_prefix = _run_json(env, str(job.id), "--task", str(task.id)[:8])
-    assert by_planned["task_id"] == str(task.id)
-    assert by_prefix["task_id"] == str(task.id)
+    by_planned = _run_json(env, str(job.job_id), "--task", "T001")
+    by_prefix = _run_json(env, str(job.job_id), "--task", str(task.task_id)[:8])
+    assert by_planned["task_id"] == str(task.task_id)
+    assert by_prefix["task_id"] == str(task.task_id)
     assert by_prefix["included"] == by_planned["included"]
     assert by_prefix["omissions"] == by_planned["omissions"]
 
@@ -184,11 +185,11 @@ def test_unknown_task_exits_three_and_names_nothing_it_did_not_find(tmp_path, en
     repo = _make_repo(tmp_path)
     job, task = _make_job(env, repo)
 
-    r = run_grouped_cli(["job", "context", str(job.id), "--task", "T999"], env)
+    r = run_grouped_cli(["job", "context", str(job.job_id), "--task", "T999"], env)
     assert r.returncode == 3
     assert "T999" in r.stderr
     assert "T001" not in r.stderr
-    assert str(task.id) not in r.stderr
+    assert str(task.task_id) not in r.stderr
     assert "Traceback" not in r.stderr
 
 
@@ -196,7 +197,7 @@ def test_job_without_target_repo_exits_two(tmp_path, env):
     repo = _make_repo(tmp_path)
     job, _task = _make_job(env, repo, attach_repo=False)
 
-    r = run_grouped_cli(["job", "context", str(job.id), "--task", "T001"], env)
+    r = run_grouped_cli(["job", "context", str(job.job_id), "--task", "T001"], env)
     assert r.returncode == 2
     assert "target_repo" in r.stderr
     assert "Traceback" not in r.stderr
@@ -216,10 +217,10 @@ def test_empty_files_hint_is_rendered_rather_than_treated_as_an_error(tmp_path, 
     repo = _make_repo(tmp_path)
     job, _task = _make_job(env, repo, files_hint=())
 
-    r = run_grouped_cli(["job", "context", str(job.id), "--task", "T001"], env)
+    r = run_grouped_cli(["job", "context", str(job.job_id), "--task", "T001"], env)
     assert r.returncode == 0, r.stderr
     assert "Fenced paths (0)" in r.stdout
-    data = _run_json(env, str(job.id), "--task", "T001")
+    data = _run_json(env, str(job.job_id), "--task", "T001")
     assert data["fenced_paths"] == []
     assert data["included"] == []
     assert data["estimated_tokens"] == 0

@@ -12,19 +12,21 @@ import pytest
 
 from packages.orchestration.data_paths import normalize_job_id
 from tests.cli.runtime_helpers import run_grouped_cli
+from packages.orchestration.data_paths import mint_job_id
 
 
 def _job(data_dir):
-    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-    from packages.orchestration.storage import save_job
-    task = Task(description="t")
-    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.id),
+    from packages.core.models import Artifact, ArtifactKind, RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    from packages.orchestration.pingpong_job import save_job_plan
+    task = TaskEntry(title="t")
+    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.task_id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",
-                            "related_task_id": str(task.id), "safe_summary": "boom"})
-    job = Job(id=uuid4(), name="ov-sd", user_prompt="x", state=RunState.RUNNING,
+                            "related_task_id": str(task.task_id), "safe_summary": "boom"})
+    job = JobPlan(job_id=mint_job_id(), job_title="ov-sd", user_prompt="x", state=RunState.RUNNING,
               tasks=[task], artifacts=[fa], metadata={"target_repo": "."})
-    save_job(job, root=data_dir)
-    return str(job.id)
+    save_job_plan(job, root=data_dir)
+    return str(job.job_id)
 
 
 @pytest.fixture()
@@ -97,13 +99,13 @@ def test_propose_contract_denied(env):
         build_default_run_contract,
         save_contract,
     )
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
     job_id = _job(env)
-    job = load_job(normalize_job_id(job_id), env)
+    job = load_job_plan(normalize_job_id(job_id), env)
     c = build_default_run_contract(job)
     c = dataclasses.replace(c, allowed_actions=tuple(
         a for a in c.allowed_actions if a != ContractAction.SELF_PROPOSE_TASK))
-    save_contract(job, c); save_job(job, root=env)
+    save_contract(job, c); save_job_plan(job, root=env)
     r = run_grouped_cli(["self", "propose", job_id, "--top", "1", "--json"], env)
     d = json.loads(r.stdout)
     assert d["stop_reason"] == "contract_blocked"

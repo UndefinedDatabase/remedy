@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.ui_server import _build_dashboard, _RemedyHandler
 
 
@@ -37,23 +37,23 @@ class TestReadOnlyMethods:
 
 class TestDashboardCockpitContract:
     def test_has_cockpit_sections(self):
-        dash = _build_dashboard(Job(name="contract"))
+        dash = _build_dashboard(JobPlan(job_title="contract"))
         assert "tests" in dash["metrics"]
         assert "proof" in dash["metrics"]
         assert "snapshot" in dash
         assert "continuation" in dash
 
     def test_snapshot_section_has_source(self):
-        dash = _build_dashboard(Job(name="contract"))
+        dash = _build_dashboard(JobPlan(job_title="contract"))
         assert "source" in dash["snapshot"]
 
     def test_continuation_section_shape(self):
-        dash = _build_dashboard(Job(name="contract"))
+        dash = _build_dashboard(JobPlan(job_title="contract"))
         for key in ("available", "last_result", "last_stop_reason"):
             assert key in dash["continuation"]
 
     def test_redaction_no_raw_content(self):
-        payload = json.dumps(_build_dashboard(Job(name="contract")), default=str)
+        payload = json.dumps(_build_dashboard(JobPlan(job_title="contract")), default=str)
         assert "/home/" not in payload
         assert "Traceback" not in payload
         assert "diff --git" not in payload

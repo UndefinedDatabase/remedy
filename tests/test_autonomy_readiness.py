@@ -7,7 +7,8 @@ import subprocess
 import sys
 from uuid import uuid4
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.autonomy_readiness import (
     LEVELS,
     assess_job_readiness,
@@ -15,14 +16,15 @@ from packages.orchestration.autonomy_readiness import (
     export_readiness_json,
     summarize_readiness,
 )
+from packages.orchestration.data_paths import mint_job_id
 
 
-def _make_job(**extra_meta) -> Job:
-    return Job(
-        id=uuid4(),
-        name="readiness-test",
+def _make_job(**extra_meta) -> JobPlan:
+    return JobPlan(
+        job_id=mint_job_id(),
+        job_title="readiness-test",
         user_prompt="test readiness",
-        tasks=[Task(description="t", status=RunState.PENDING)],
+        tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         metadata=extra_meta,
     )
 
@@ -46,9 +48,9 @@ class TestReadinessBasic:
         assert report.levels[1].eligible is True
 
     def test_level_1_not_eligible_without_repo(self):
-        job = Job(
-            id=uuid4(), name="no-repo", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="no-repo", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         )
         report = assess_job_readiness(job, [])
         assert report.levels[1].eligible is False
@@ -180,16 +182,16 @@ class TestReadinessCLI:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         import packages.orchestration.storage as _storage
         monkeypatch.setattr(_storage, "_DATA_DIR", tmp_path / "jobs")
-        from packages.orchestration.storage import save_job
-        job = Job(
-            id=uuid4(), name="done", user_prompt="done",
-            tasks=[Task(description="t", status=RunState.COMPLETED)],
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="done", user_prompt="done",
+            tasks=[TaskEntry(title="t", status=RunState.COMPLETED)],
         )
-        save_job(job)
+        save_job_plan(job)
         import os
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
         result = subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped", "readiness", "job", str(job.id), "--json"],
+            [sys.executable, "-m", "apps.cli.grouped", "readiness", "job", str(job.job_id), "--json"],
             capture_output=True, text=True, timeout=30, env=env,
         )
         assert result.returncode == 0, f"stderr={result.stderr}"
@@ -202,12 +204,12 @@ class TestReadinessBrainNode:
     def test_brain_has_readiness_node(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.project_brain import build_project_brain
-        from packages.orchestration.storage import save_job
-        job = Job(
-            id=uuid4(), name="brain-test", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="brain-test", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         )
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         types = {n.type for n in graph.nodes}
         assert "autonomy_readiness" in types
@@ -215,12 +217,12 @@ class TestReadinessBrainNode:
     def test_readiness_node_safe_metadata(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.project_brain import build_project_brain
-        from packages.orchestration.storage import save_job
-        job = Job(
-            id=uuid4(), name="brain-test", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="brain-test", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         )
-        save_job(job)
+        save_job_plan(job)
         graph = build_project_brain(job, [])
         ar_nodes = [n for n in graph.nodes if n.type == "autonomy_readiness"]
         assert ar_nodes
@@ -279,7 +281,7 @@ class TestVerifiedSnapshotSignal:
         data_dir = tmp_path / "data"; data_dir.mkdir()
         repo = tmp_path / "repo"; repo.mkdir()
         job = _make_job()
-        self._durable_verified(data_dir, repo, str(job.id))
+        self._durable_verified(data_dir, repo, str(job.job_id))
         assert _has_verified_snapshot(job, data_dir) is True
 
     def test_missing_blob_false(self, tmp_path):
@@ -288,8 +290,8 @@ class TestVerifiedSnapshotSignal:
         data_dir = tmp_path / "data"; data_dir.mkdir()
         repo = tmp_path / "repo"; repo.mkdir()
         job = _make_job()
-        sid = self._durable_verified(data_dir, repo, str(job.id))
-        for b in _snapshot_dir(str(job.id), sid, data_dir).glob("blob_*.bin"):
+        sid = self._durable_verified(data_dir, repo, str(job.job_id))
+        for b in _snapshot_dir(str(job.job_id), sid, data_dir).glob("blob_*.bin"):
             b.unlink()
         assert _has_verified_snapshot(job, data_dir) is False
 
@@ -299,8 +301,8 @@ class TestVerifiedSnapshotSignal:
         data_dir = tmp_path / "data"; data_dir.mkdir()
         repo = tmp_path / "repo"; repo.mkdir()
         job = _make_job()
-        sid = self._durable_verified(data_dir, repo, str(job.id))
-        manifest = _snapshot_dir(str(job.id), sid, data_dir) / "manifest.json"
+        sid = self._durable_verified(data_dir, repo, str(job.job_id))
+        manifest = _snapshot_dir(str(job.job_id), sid, data_dir) / "manifest.json"
         d = json.loads(manifest.read_text()); d["path_count"] = 999
         manifest.write_text(json.dumps(d, indent=2, sort_keys=True))
         assert _has_verified_snapshot(job, data_dir) is False
@@ -310,7 +312,7 @@ class TestVerifiedSnapshotSignal:
         data_dir = tmp_path / "data"; data_dir.mkdir()
         repo = tmp_path / "repo"; repo.mkdir()
         job = _make_job()
-        self._durable_verified(data_dir, repo, str(job.id), state="reverted")
+        self._durable_verified(data_dir, repo, str(job.job_id), state="reverted")
         # Reverted apply is not "currently applied" → not revert-capable readiness.
         assert _has_verified_snapshot(job, data_dir) is False
 
@@ -322,7 +324,7 @@ class TestVerifiedSnapshotSignal:
             target_repo="/tmp/test",
             permissions={"repo_generated_write": "allow", "repo_test_run": "allow"},
         )
-        self._durable_verified(data_dir, repo, str(job.id))
+        self._durable_verified(data_dir, repo, str(job.job_id))
         events = [
             {"event": "patch_apply_proof_recorded", "metadata": {}},
             {"event": "test_run_completed", "metadata": {}},

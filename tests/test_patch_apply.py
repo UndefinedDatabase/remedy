@@ -27,7 +27,8 @@ import pytest
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
-from packages.core.models import Artifact, ArtifactKind, Job
+from packages.core.models import Artifact, ArtifactKind
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_REJECTED,
@@ -47,9 +48,9 @@ from packages.orchestration.patch_intent import RISK_HIGH, RISK_LOW, RISK_MEDIUM
 from packages.orchestration.permissions import Capability, set_permission
 
 
-def _make_job(*, with_repo: bool = True, tmp_repo: Path | None = None) -> tuple[Job, Path | None]:
+def _make_job(*, with_repo: bool = True, tmp_repo: Path | None = None) -> tuple[JobPlan, Path | None]:
     """Create a minimal job, optionally with a target_repo attached."""
-    job = Job(name="test apply job")
+    job = JobPlan(job_title="test apply job")
     repo: Path | None = None
     if with_repo:
         repo = tmp_repo or Path(tempfile.mkdtemp())
@@ -58,7 +59,7 @@ def _make_job(*, with_repo: bool = True, tmp_repo: Path | None = None) -> tuple[
 
 
 def _add_artifact(
-    job: Job,
+    job: JobPlan,
     *,
     action: str = "modify",
     risk: str = RISK_LOW,
@@ -92,11 +93,11 @@ def _add_artifact(
     return make_intent_id(artifact.id, 0)
 
 
-def _approve(job: Job, intent_id: str) -> None:
+def _approve(job: JobPlan, intent_id: str) -> None:
     set_approval_state(job, intent_id, APPROVAL_APPROVED)
 
 
-def _grant_repo_write(job: Job) -> None:
+def _grant_repo_write(job: JobPlan) -> None:
     set_permission(job, Capability.repo_generated_write, allow=True)
 
 
@@ -174,7 +175,7 @@ class TestPathSafety:
         except (OSError, NotImplementedError):
             pytest.skip("symlink creation not available on this platform")
 
-        job = __import__("packages.core.models", fromlist=["Job"]).Job(name="symlink test")
+        job = JobPlan(job_title="symlink test")
         job.metadata["target_repo"] = str(repo_dir)
 
         # Build an intent pointing at escape/file.md — passes path component checks
@@ -214,7 +215,7 @@ class TestPathSafety:
         # External file must not have been created
         assert not (external_dir / "file.md").exists()
         # Run log event must still be emitted (structurally)
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = []
         if runs_dir.exists():
             for jsonl in sorted(runs_dir.glob("*.jsonl")):
@@ -370,7 +371,7 @@ class TestPermissions:
     def test_blocked_when_repo_not_directory(self, tmp_path):
         fake = tmp_path / "notadir.txt"
         fake.write_text("not a dir")
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         job.metadata["target_repo"] = str(fake)
         intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
         _approve(job, intent_id)
@@ -770,7 +771,7 @@ class TestApplyBehavior:
 
 
 class TestApplyRecord:
-    def _get_record(self, job: Job, intent_id: str) -> dict | None:
+    def _get_record(self, job: JobPlan, intent_id: str) -> dict | None:
         for art in job.artifacts:
             records = art.metadata.get("patch_intent_apply_records", {})
             if intent_id in records:
@@ -839,7 +840,7 @@ class TestApplyRecord:
                 f"proof contains raw content keys: {set(proof.keys()) & raw_content_keys}"
 
     def test_apply_state_visible_after_reload(self, tmp_path):
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         job, _ = _make_job(tmp_repo=tmp_path)
         intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
         _approve(job, intent_id)
@@ -847,7 +848,7 @@ class TestApplyRecord:
         result = apply_patch_intent(job, intent_id, data_dir=tmp_path)
         assert result.state == "applied"
         # Reload and check record
-        job2 = load_job(job.id, tmp_path)
+        job2 = load_job_plan(job.job_id, tmp_path)
         record = None
         for art in job2.artifacts:
             records = art.metadata.get("patch_intent_apply_records", {})
@@ -881,7 +882,7 @@ class TestRunLog:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        ev = self._find_apply_event(tmp_path, str(job.id))
+        ev = self._find_apply_event(tmp_path, str(job.job_id))
         assert ev is not None
 
     def test_run_log_exact_metadata_keys(self, tmp_path):
@@ -890,7 +891,7 @@ class TestRunLog:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        ev = self._find_apply_event(tmp_path, str(job.id))
+        ev = self._find_apply_event(tmp_path, str(job.job_id))
         meta = ev["metadata"]
         expected = {
             "intent_id",
@@ -910,7 +911,7 @@ class TestRunLog:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        ev = self._find_apply_event(tmp_path, str(job.id))
+        ev = self._find_apply_event(tmp_path, str(job.job_id))
         assert ev["metadata"]["outcome"] == "applied"
 
     def test_run_log_noop_emitted(self, tmp_path):
@@ -921,7 +922,7 @@ class TestRunLog:
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
         # Second event should have outcome=noop
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = []
         for jsonl in sorted(runs_dir.glob("*.jsonl")):
             for line in jsonl.read_text().splitlines():
@@ -937,7 +938,7 @@ class TestRunLog:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = []
         if runs_dir.exists():
             for jsonl in sorted(runs_dir.glob("*.jsonl")):
@@ -955,7 +956,7 @@ class TestRunLog:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        ev = self._find_apply_event(tmp_path, str(job.id))
+        ev = self._find_apply_event(tmp_path, str(job.job_id))
         ev_str = json.dumps(ev)
         assert "RUNLOG_SECRET_XYZ" not in ev_str
 
@@ -965,7 +966,7 @@ class TestRunLog:
         set_approval_state(job, intent_id, APPROVAL_APPROVED, reason="MY_PRIVATE_REASON")
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        ev = self._find_apply_event(tmp_path, str(job.id))
+        ev = self._find_apply_event(tmp_path, str(job.job_id))
         ev_str = json.dumps(ev)
         assert "MY_PRIVATE_REASON" not in ev_str
 
@@ -975,7 +976,7 @@ class TestRunLog:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        ev = self._find_apply_event(tmp_path, str(job.id))
+        ev = self._find_apply_event(tmp_path, str(job.job_id))
         meta = ev["metadata"]
         # metadata must not contain diff_preview or patch content
         assert "diff_preview" not in meta
@@ -1007,27 +1008,27 @@ class TestCLI:
         assert code == 1
 
     def test_pending_intent_exits_1(self, tmp_path):
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job, _ = _make_job(tmp_repo=tmp_path)
         intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
         _grant_repo_write(job)
-        save_job(job)
+        save_job_plan(job)
         from unittest.mock import patch as mock_patch
-        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.id), intent_id]):
+        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.job_id), intent_id]):
             from apps.cli.main import main
             with pytest.raises(SystemExit) as exc_info:
                 main()
             assert exc_info.value.code == 1
 
     def test_approved_intent_applies(self, tmp_path, capsys):
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job, _ = _make_job(tmp_repo=tmp_path)
         intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
         _approve(job, intent_id)
         _grant_repo_write(job)
-        save_job(job)
+        save_job_plan(job)
         from unittest.mock import patch as mock_patch
-        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.id), intent_id]):
+        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.job_id), intent_id]):
             from apps.cli.main import main
             try:
                 main()
@@ -1048,16 +1049,16 @@ class TestCLI:
         assert "Traceback" not in captured.out
 
     def test_stdout_does_not_echo_raw_content(self, tmp_path, capsys):
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job, _ = _make_job(tmp_repo=tmp_path)
         intent_id = _add_artifact(
             job, action="create", risk=RISK_LOW, proposed=["STDOUT_SECRET_ZYX"]
         )
         _approve(job, intent_id)
         _grant_repo_write(job)
-        save_job(job)
+        save_job_plan(job)
         from unittest.mock import patch as mock_patch
-        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.id), intent_id]):
+        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.job_id), intent_id]):
             from apps.cli.main import main
             try:
                 main()
@@ -1067,14 +1068,14 @@ class TestCLI:
         assert "STDOUT_SECRET_ZYX" not in captured.out
 
     def test_json_flag_produces_json(self, tmp_path, capsys):
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         job, _ = _make_job(tmp_repo=tmp_path)
         intent_id = _add_artifact(job, action="create", risk=RISK_LOW)
         _approve(job, intent_id)
         _grant_repo_write(job)
-        save_job(job)
+        save_job_plan(job)
         from unittest.mock import patch as mock_patch
-        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.id), intent_id, "--json"]):
+        with mock_patch.object(sys, "argv", ["remedy", "patch", "apply", str(job.job_id), intent_id, "--json"]):
             from apps.cli.main import main
             try:
                 main()
@@ -1159,7 +1160,7 @@ class TestTimeline:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._load_events(tmp_path, str(job.id))
+        events = self._load_events(tmp_path, str(job.job_id))
         out = summarize_timeline(job, events)
         assert "patch intent applied" in out
 
@@ -1170,7 +1171,7 @@ class TestTimeline:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._load_events(tmp_path, str(job.id))
+        events = self._load_events(tmp_path, str(job.job_id))
         out = summarize_timeline(job, events)
         assert "outcome=applied" in out
 
@@ -1181,7 +1182,7 @@ class TestTimeline:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._load_events(tmp_path, str(job.id))
+        events = self._load_events(tmp_path, str(job.job_id))
         out = summarize_timeline(job, events)
         assert intent_id[:8] in out
 
@@ -1525,7 +1526,7 @@ class TestRunLogProof:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        events = self._find_events_by_name(tmp_path, str(job.job_id), "patch_apply_proof_recorded")
         assert len(events) == 1, "exactly one proof event must be emitted after create"
 
     def test_proof_event_emitted_after_modify(self, tmp_path):
@@ -1535,7 +1536,7 @@ class TestRunLogProof:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        events = self._find_events_by_name(tmp_path, str(job.job_id), "patch_apply_proof_recorded")
         assert len(events) == 1
 
     def test_proof_event_exact_metadata_keys(self, tmp_path):
@@ -1544,7 +1545,7 @@ class TestRunLogProof:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        events = self._find_events_by_name(tmp_path, str(job.job_id), "patch_apply_proof_recorded")
         meta = events[0]["metadata"]
         expected = {
             "intent_id", "target_path", "action", "outcome",
@@ -1563,7 +1564,7 @@ class TestRunLogProof:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        events = self._find_events_by_name(tmp_path, str(job.job_id), "patch_apply_proof_recorded")
         assert len(events) == 0, "proof event must not be emitted for blocked apply"
 
     def test_proof_event_not_emitted_on_noop(self, tmp_path):
@@ -1573,7 +1574,7 @@ class TestRunLogProof:
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)  # noop
-        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        events = self._find_events_by_name(tmp_path, str(job.job_id), "patch_apply_proof_recorded")
         assert len(events) == 1, "proof event must not be emitted on noop (second apply)"
 
     def test_proof_event_after_sha_is_valid_hex(self, tmp_path):
@@ -1582,7 +1583,7 @@ class TestRunLogProof:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        events = self._find_events_by_name(tmp_path, str(job.job_id), "patch_apply_proof_recorded")
         sha = events[0]["metadata"]["after_sha256"]
         assert len(sha) == 64
         assert all(c in "0123456789abcdef" for c in sha)
@@ -1594,7 +1595,7 @@ class TestRunLogProof:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._find_events_by_name(tmp_path, str(job.id), "patch_apply_proof_recorded")
+        events = self._find_events_by_name(tmp_path, str(job.job_id), "patch_apply_proof_recorded")
         ev_str = json.dumps(events[0])
         assert "PROOF_SECRET_XYZ" not in ev_str
 
@@ -1721,7 +1722,7 @@ class TestTimelineProof:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._load_events(tmp_path, str(job.id))
+        events = self._load_events(tmp_path, str(job.job_id))
         out = summarize_timeline(job, events)
         assert "patch apply proof" in out
 
@@ -1732,7 +1733,7 @@ class TestTimelineProof:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._load_events(tmp_path, str(job.id))
+        events = self._load_events(tmp_path, str(job.job_id))
         out = summarize_timeline(job, events)
         assert "after_sha=" in out
 
@@ -1743,7 +1744,7 @@ class TestTimelineProof:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        events = self._load_events(tmp_path, str(job.id))
+        events = self._load_events(tmp_path, str(job.job_id))
         out = summarize_timeline(job, events)
         assert "Δbytes=" in out or "bytes=" in out
 
@@ -1769,7 +1770,7 @@ class TestProofDictIdentity:
         return {}
 
     def _get_runlog_proof(self, tmp_path: Path, job, intent_id: str) -> dict:
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         if not runs_dir.exists():
             return {}
         for jsonl in sorted(runs_dir.glob("*.jsonl")):

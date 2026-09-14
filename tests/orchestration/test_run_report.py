@@ -974,7 +974,7 @@ class TestTheApplyStateIsAttachedByTheFullTaskId:
 
     def test_two_tasks_sharing_eight_id_characters_keep_their_own_state(
             self, monkeypatch):
-        """``TaskOutcome.task_id`` is ``str(t.id)[:8]`` — a TRUNCATION.
+        """``TaskOutcome.task_id`` is ``str(t.task_id)[:8]`` — a TRUNCATION.
 
         The fold keys on the FULL id. An attach that looked the state up by the
         truncated value would give these two tasks each other's answer (or, with
@@ -1102,17 +1102,17 @@ def _public_api_block(docstring: str) -> str:
 
 class _FakeTask:
     def __init__(self, task_id: str, description: str, status: str):
-        self.id = task_id
-        self.description = description
+        self.task_id = task_id
+        self.title = description
         self.status = status
 
 
 class _FakeJob:
-    """The duck-typed shape collect_report_sources reads off a core Job."""
+    """The duck-typed shape collect_report_sources reads off a job record."""
 
     def __init__(self):
-        self.id = "44444444-4444-4444-8444-444444444444"
-        self.name = "fake job"
+        self.job_id = "44444444-4444-4444-8444-444444444444"
+        self.job_title = "fake job"
         self.project_id = "remedy"
         self.mission = "Do the thing"
         self.state = "completed"

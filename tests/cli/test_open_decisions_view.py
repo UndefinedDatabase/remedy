@@ -14,7 +14,8 @@ from pathlib import Path
 import pytest
 
 from apps.cli.commands.job import _cmd_job_report, _cmd_job_status
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.decision_queue import (
     HumanDecision,
     list_decisions,
@@ -28,7 +29,7 @@ from packages.orchestration.escalation import (
     enqueue_task_decision,
     task_decision_answer_command,
 )
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
 
 UTC = timezone.utc
 T0 = datetime(2026, 7, 30, 12, 0, 0, tzinfo=UTC)
@@ -48,17 +49,17 @@ def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
 
 
 def make_job(*, name: str = "view-job", state: RunState = RunState.PAUSED,
-             target_repo: str = "/tmp/repo") -> Job:
+             target_repo: str = "/tmp/repo") -> JobPlan:
     """A job with a repo attached, so the queue's baseline is empty.
 
     Without ``target_repo`` the queue derives its own ``no_target_repo`` blocker
     (stop_reasons.py) — real behavior, pinned by its own test below, but noise
     for the assertions about task decisions.
     """
-    return Job(
-        name=name,
+    return JobPlan(
+        job_title=name,
         user_prompt="build the thing",
-        tasks=[Task(description=f"task {i}", inputs={"task_type": "documentation"})
+        tasks=[TaskEntry(title=f"task {i}", inputs={"task_type": "documentation"})
                for i in range(2)],
         state=state,
         metadata={"target_repo": target_repo},
@@ -66,13 +67,13 @@ def make_job(*, name: str = "view-job", state: RunState = RunState.PAUSED,
 
 
 def saved_job_with_open_decision(*, question: str = "Which database?",
-                                 options=("postgres", "sqlite")) -> tuple[Job, dict]:
+                                 options=("postgres", "sqlite")) -> tuple[JobPlan, dict]:
     """A persisted blocked job whose first task awaits a decision."""
     job = make_job()
     record = enqueue_task_decision(
-        job, task_id=job.tasks[0].id, question=question,
+        job, task_id=job.tasks[0].task_id, question=question,
         options=options, safe_default="", now=T0)
-    save_job(job)
+    save_job_plan(job)
     return job, record
 
 
@@ -173,21 +174,21 @@ class TestJobStatusView:
     def test_the_open_decision_block_is_printed_first(self, capsys):
         job, record = saved_job_with_open_decision()
 
-        _cmd_job_status(str(job.id))
+        _cmd_job_status(str(job.job_id))
         out = capsys.readouterr().out.splitlines()
 
         assert out[0] == "Open decisions: 1 — the run needs an answer"
         assert out[0:1] and out[1].strip().startswith("[blocker] task_decision")
         # The job summary follows the block, never precedes it.
         assert any(line.startswith("Job ") for line in out)
-        assert out.index(f"Job {job.id}") > 0
+        assert out.index(f"Job {job.job_id}") > 0
 
     def test_the_exact_answer_command_is_in_the_output(self, capsys):
         job, record = saved_job_with_open_decision()
         expected = task_decision_answer_command(
-            str(job.id), record["decision_id"], "postgres")
+            str(job.job_id), record["decision_id"], "postgres")
 
-        _cmd_job_status(str(job.id))
+        _cmd_job_status(str(job.job_id))
         out = capsys.readouterr().out
 
         assert expected in out
@@ -195,7 +196,7 @@ class TestJobStatusView:
     def test_awaiting_decision_is_the_first_blocker(self, capsys):
         job, _ = saved_job_with_open_decision()
 
-        _cmd_job_status(str(job.id), json_output=True)
+        _cmd_job_status(str(job.job_id), json_output=True)
         status = json.loads(capsys.readouterr().out)
 
         assert status["blockers"][0] == "awaiting_decision"
@@ -203,7 +204,7 @@ class TestJobStatusView:
     def test_the_json_carries_the_open_decisions_and_the_count(self, capsys):
         job, record = saved_job_with_open_decision()
 
-        _cmd_job_status(str(job.id), json_output=True)
+        _cmd_job_status(str(job.job_id), json_output=True)
         status = json.loads(capsys.readouterr().out)
 
         assert status["open_decision_count"] == 1
@@ -213,28 +214,28 @@ class TestJobStatusView:
     def test_the_next_safe_action_answers_the_decision(self, capsys):
         job, record = saved_job_with_open_decision()
 
-        _cmd_job_status(str(job.id), json_output=True)
+        _cmd_job_status(str(job.job_id), json_output=True)
         status = json.loads(capsys.readouterr().out)
 
         assert status["next_safe_action"] == task_decision_answer_command(
-            str(job.id), record["decision_id"], "postgres")
+            str(job.job_id), record["decision_id"], "postgres")
 
     def test_a_job_without_open_decisions_is_unchanged(self, capsys):
         job = make_job(state=RunState.PLANNED)
-        save_job(job)
+        save_job_plan(job)
 
-        _cmd_job_status(str(job.id))
+        _cmd_job_status(str(job.job_id))
         out = capsys.readouterr().out.splitlines()
 
-        assert out[0] == f"Job {job.id}"
+        assert out[0] == f"Job {job.job_id}"
         assert "Open decisions" not in capsys.readouterr().out
 
     def test_an_answered_decision_disappears_from_the_view(self, capsys):
         job, record = saved_job_with_open_decision()
         answer_task_decision(job, record["decision_id"], answer="postgres", now=T0)
-        save_job(job)
+        save_job_plan(job)
 
-        _cmd_job_status(str(job.id), json_output=True)
+        _cmd_job_status(str(job.job_id), json_output=True)
         status = json.loads(capsys.readouterr().out)
 
         assert status["open_decision_count"] == 0
@@ -250,18 +251,18 @@ class TestJobReportView:
     def test_the_open_decision_block_is_printed_first(self, capsys):
         job, _ = saved_job_with_open_decision()
 
-        _cmd_job_report(str(job.id))
+        _cmd_job_report(str(job.job_id))
         out = capsys.readouterr().out.splitlines()
 
         assert out[0] == "Open decisions: 1 — the run needs an answer"
-        assert out.index(f"Job Report: {job.id}") > 0
+        assert out.index(f"Job Report: {job.job_id}") > 0
 
     def test_the_final_next_action_line_names_the_answer_command(self, capsys):
         job, record = saved_job_with_open_decision()
         expected = task_decision_answer_command(
-            str(job.id), record["decision_id"], "postgres")
+            str(job.job_id), record["decision_id"], "postgres")
 
-        _cmd_job_report(str(job.id))
+        _cmd_job_report(str(job.job_id))
         out = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
 
         assert out[-1].strip() == f"Next:      {expected}"
@@ -269,25 +270,25 @@ class TestJobReportView:
     def test_the_json_report_carries_the_open_decisions(self, capsys):
         job, record = saved_job_with_open_decision()
 
-        _cmd_job_report(str(job.id), json_output=True)
+        _cmd_job_report(str(job.job_id), json_output=True)
         report = json.loads(capsys.readouterr().out)
 
         assert report["open_decision_count"] == 1
         assert report["open_decisions"][0]["id"] == record["decision_id"]
         assert report["next_safe_action"] == task_decision_answer_command(
-            str(job.id), record["decision_id"], "postgres")
+            str(job.job_id), record["decision_id"], "postgres")
 
     def test_two_tasks_asking_the_same_question_are_both_listed(self, capsys):
         job = make_job()
         first = enqueue_task_decision(
-            job, task_id=job.tasks[0].id, question="Which database?",
+            job, task_id=job.tasks[0].task_id, question="Which database?",
             options=("postgres",), now=T0)
         second = enqueue_task_decision(
-            job, task_id=job.tasks[1].id, question="Which database?",
+            job, task_id=job.tasks[1].task_id, question="Which database?",
             options=("postgres",), now=T0)
-        save_job(job)
+        save_job_plan(job)
 
-        _cmd_job_report(str(job.id), json_output=True)
+        _cmd_job_report(str(job.job_id), json_output=True)
         report = json.loads(capsys.readouterr().out)
 
         listed = [d["id"] for d in report["open_decisions"]]
@@ -298,12 +299,12 @@ class TestJobReportView:
 
     def test_a_job_without_open_decisions_reports_as_before(self, capsys):
         job = make_job(state=RunState.PLANNED)
-        save_job(job)
+        save_job_plan(job)
 
-        _cmd_job_report(str(job.id))
+        _cmd_job_report(str(job.job_id))
         out = capsys.readouterr().out.splitlines()
 
-        assert out[0] == f"Job Report: {job.id}"
+        assert out[0] == f"Job Report: {job.job_id}"
 
 
 # ---------------------------------------------------------------------------
@@ -324,9 +325,9 @@ def test_the_block_is_queue_wide_not_task_decision_only(capsys):
     # A job with no repo attached has an open blocker of a different type; it
     # renders first too.  The view surfaces the QUEUE, not one producer.
     job = make_job(target_repo="")
-    save_job(job)
+    save_job_plan(job)
 
-    _cmd_job_status(str(job.id), json_output=True)
+    _cmd_job_status(str(job.job_id), json_output=True)
     status = json.loads(capsys.readouterr().out)
 
     assert status["open_decision_count"] == 1

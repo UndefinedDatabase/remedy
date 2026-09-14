@@ -8,7 +8,7 @@ the fp:approval decision payload, and the zero-clarification regression
 
 from __future__ import annotations
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.decision_queue import export_decision_json, list_decisions
 from packages.orchestration.flight_plan import (
     _build_plan_prompt,
@@ -333,13 +333,13 @@ class TestPlannerPrompt:
 
 class TestApprovalDecisionPayload:
 
-    def _pending_job(self, *clarifications) -> Job:
+    def _pending_job(self, *clarifications) -> JobPlan:
         plan = carry_intake_clarifications(_plan(), _intake(*clarifications))
         fp = plan.model_dump()
         fp["_approval"] = "pending"
-        return Job(name="t", flight_plan=fp)
+        return JobPlan(job_title="t", flight_plan=fp)
 
-    def _fp_decision(self, job: Job):
+    def _fp_decision(self, job: JobPlan):
         found = [d for d in list_decisions(job, [])
                  if d.type == "flight_plan_approval"]
         assert len(found) == 1, "exactly ONE decision per plan"
@@ -374,13 +374,13 @@ class TestApprovalDecisionPayload:
 
     def test_zero_clarifications_matches_plain_plan(self):
         bundled_job = self._pending_job()
-        plain_job = Job(name="t", flight_plan={"_approval": "pending"})
+        plain_job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
         bundled = self._fp_decision(bundled_job)
         plain = self._fp_decision(plain_job)
 
         def _shape(d, job):
             # The job id is the only legitimate difference between the two.
-            return tuple(a.replace(str(job.id)[:8], "<job>") for a in d.next_actions)
+            return tuple(a.replace(str(job.job_id)[:8], "<job>") for a in d.next_actions)
 
         assert bundled.payload == {"options": ["approve", "reject"]}
         assert bundled.safe_summary == plain.safe_summary
@@ -402,5 +402,5 @@ class TestApprovalDecisionPayload:
         assert c.answered_by == ""
         fp = legacy.model_dump()
         fp["_approval"] = "pending"
-        d = self._fp_decision(Job(name="t", flight_plan=fp))
+        d = self._fp_decision(JobPlan(job_title="t", flight_plan=fp))
         assert d.payload == {"options": ["approve", "reject"]}

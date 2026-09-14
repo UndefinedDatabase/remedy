@@ -217,7 +217,7 @@ class TestKillAndResume:
         assert checkpoint is not None, "no checkpoint survived the kill"
         # Cycles 1..KILL_ON_CYCLE-1 committed; the killed one never did.
         assert checkpoint.cycle_index == KILL_ON_CYCLE - 1
-        assert checkpoint.job_snapshot_path == f"jobs/{job_id}.json"
+        assert checkpoint.job_snapshot_path == f"jobs/{job_id}/job.json"
 
     def test_the_in_flight_task_was_never_recorded_as_executed(
             self, killed_run, data_dir):
@@ -256,10 +256,10 @@ class TestKillAndResume:
 
         # And the job really is finished.
 
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
-        job = load_job(normalize_job_id(job_id))
-        assert all(t.status.value == "completed" for t in job.tasks)
+        job = load_job_plan(normalize_job_id(job_id))
+        assert all(t.status == "completed" for t in job.tasks)
 
     def test_the_f047_resume_path_accepts_the_killed_job(
             self, killed_run, data_dir, monkeypatch, capsys):

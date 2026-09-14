@@ -72,13 +72,13 @@ def _link_job(data_root: Path, project_id: str, mission_id: str, *,
     """Persist a job in the given state and link it into the mission's chain."""
     script = (
         "import sys; sys.path.insert(0, '.');"
-        "from packages.core.models import Job, RunState;"
-        "from packages.orchestration.storage import save_job;"
+        "from packages.core.models import RunState;"
+        "from packages.orchestration.pingpong_job import JobPlan, save_job_plan;"
         "from packages.orchestration.mission_state import link_job_to_mission;"
-        f"job = Job(name='fixture', state=RunState({state!r}));"
-        "save_job(job);"
-        f"link_job_to_mission({project_id!r}, {mission_id!r}, str(job.id), {role!r});"
-        "print(job.id)"
+        f"job = JobPlan(job_title='fixture', state=RunState({state!r}));"
+        "save_job_plan(job);"
+        f"link_job_to_mission({project_id!r}, {mission_id!r}, job.job_id, {role!r});"
+        "print(job.job_id)"
     )
     proc = subprocess.run(
         [sys.executable, "-c", script], cwd=str(REPO_ROOT), capture_output=True,
@@ -244,7 +244,7 @@ class TestShow:
         data_root, project_id = project
         mission_id = _start(data_root, project_id, "Keep it working")
         job_id = _link_job(data_root, project_id, mission_id, role="initial")
-        (data_root / "jobs" / f"{job_id}.json").unlink()
+        (data_root / "jobs" / job_id / "job.json").unlink()
 
         proc = _run(["mission", "show", mission_id, "--project", project_id],
                     data_root)
@@ -323,16 +323,16 @@ def _pending_plan_job(repo: Path, data_root: Path, goal: str,
     """Persist a job with a pending flight plan and the given intake hint."""
     script = (
         "import sys; sys.path.insert(0, '.');"
-        "from packages.core.models import Job, RunState;"
-        "from packages.orchestration.storage import save_job;"
+        "from packages.core.models import RunState;"
+        "from packages.orchestration.pingpong_job import JobPlan, save_job_plan;"
         "from packages.orchestration.project_registry import resolve_project;"
         f"project = resolve_project({str(repo)!r});"
-        f"job = Job(name='fixture', mission={goal!r}, project_id=str(project.id),"
+        f"job = JobPlan(job_title='fixture', mission={goal!r}, project_id=str(project.id),"
         f"  intake={{'schema_v': 'ji1', 'goal': {goal!r},"
         f"           'mission_candidate': {mission_candidate!r}}},"
         "   flight_plan={'schema_v': 'flight_plan_v1', '_approval': 'pending'},"
         "   state=RunState.PLANNED);"
-        "save_job(job); print(job.id)"
+        "save_job_plan(job); print(job.job_id)"
     )
     proc = subprocess.run(
         [sys.executable, "-c", script], cwd=str(REPO_ROOT), capture_output=True,
@@ -467,7 +467,7 @@ class TestPlainDoFlowCreatesNoMission:
         out = _run_in(repo, ["do", "Maintain the CI pipeline continuously",
                              "--no-llm", "--json"], data_root).stdout
         job_id = json.loads(out)["job_id"]
-        job = json.loads((data_root / "jobs" / f"{job_id}.json").read_text())
+        job = json.loads((data_root / "jobs" / job_id / "job.json").read_text())
 
         assert job["intake"]["mission_candidate"] is True
         assert _missions_on_disk(data_root) == []
@@ -503,14 +503,14 @@ class TestContinue:
                    *, command: str = "check the importer") -> str:
         script = (
             "import sys; sys.path.insert(0, '.');"
-            "from packages.core.models import Job, RunState;"
-            "from packages.orchestration.storage import save_job;"
+            "from packages.core.models import RunState;"
+            "from packages.orchestration.pingpong_job import JobPlan, save_job_plan;"
             "from packages.orchestration.mission_state import link_job_to_mission;"
-            f"job = Job(name='job one', state=RunState('completed'),"
+            f"job = JobPlan(job_title='job one', state=RunState('completed'),"
             f"  project_id={project_id!r}, metadata={{'verify_command': {command!r}}});"
-            "save_job(job);"
-            f"link_job_to_mission({project_id!r}, {mission_id!r}, str(job.id), 'initial');"
-            "print(job.id)"
+            "save_job_plan(job);"
+            f"link_job_to_mission({project_id!r}, {mission_id!r}, job.job_id, 'initial');"
+            "print(job.job_id)"
         )
         proc = subprocess.run(
             [sys.executable, "-c", script], cwd=str(REPO_ROOT),
@@ -1402,7 +1402,7 @@ class TestMissionReadinessIsWiredToTheCarriedModule:
         from packages.orchestration.ui_server import _build_overnight_section
 
         class _Job:
-            id = "11111111-2222-3333-4444-555555555555"
+            job_id = "11111111-2222-3333-4444-555555555555"
 
         section = _build_overnight_section(_Job(), Path(".data"))
 

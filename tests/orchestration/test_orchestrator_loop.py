@@ -529,7 +529,7 @@ class _FakeJob:
     """The smallest thing the dispatch seam has to return: an id and no plan."""
 
     def __init__(self, job_id: str = "job-0001"):
-        self.id = job_id
+        self.job_id = job_id
         self.flight_plan = None
 
 
@@ -1498,7 +1498,7 @@ class TestTheLoopExecutesWhatItDispatches:
 
         self._run(tmp_path, mission, execute, dispatched)
         assert len(seen) == 1, "exactly one execution per dispatch"
-        assert str(seen[0].id) == "job-0001", "the job just created, not another"
+        assert str(seen[0].job_id) == "job-0001", "the job just created, not another"
 
     def test_what_execution_produced_is_on_the_ledger(self, tmp_path, mission,
                                                       dispatched):

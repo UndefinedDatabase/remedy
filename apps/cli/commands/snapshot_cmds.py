@@ -18,7 +18,8 @@ def _cmd_snapshot_inspect(job_id_str: str, snapshot_id: str, *, as_json: bool = 
 
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.repository_snapshot import load_snapshot
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
 
     try:
         job_id = lookup_job_id(job_id_str)
@@ -30,7 +31,7 @@ def _cmd_snapshot_inspect(job_id_str: str, snapshot_id: str, *, as_json: bool = 
         sys.exit(1)
 
     try:
-        load_job(job_id)
+        require_job_plan(job_id)
     except JobNotFoundError:
         if as_json:
             print(_json.dumps({"error": "job_not_found", "job_id": job_id_str}))
@@ -94,7 +95,8 @@ def _cmd_snapshot_list_applies(job_id_str: str, *, as_json: bool = False) -> Non
 
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.repository_snapshot import load_durable_apply_record
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
 
     try:
         job_id = lookup_job_id(job_id_str)
@@ -106,7 +108,7 @@ def _cmd_snapshot_list_applies(job_id_str: str, *, as_json: bool = False) -> Non
         sys.exit(1)
 
     try:
-        load_job(job_id)
+        require_job_plan(job_id)
     except JobNotFoundError:
         if as_json:
             print(_json.dumps({"error": "job_not_found", "job_id": job_id_str}))

@@ -12,35 +12,35 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
-def _make_job(**overrides) -> Job:
+def _make_job(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "description": "test job",
         "tasks": [
-            Task(description="task 1", status=RunState.COMPLETED),
+            TaskEntry(title="task 1", status=RunState.COMPLETED),
         ],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _make_job_s122(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -56,12 +56,13 @@ def _make_job_s122(*, tasks=None, name="test"):
 
 
 def _make_job_s127(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -76,8 +77,8 @@ def _make_job_s127(*, tasks=None, name="test"):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def _make_job_s163(name: str = "Test goal") -> Job:
-    job = Job(name=name)
+def _make_job_s163(name: str = "Test goal") -> JobPlan:
+    job = JobPlan(job_title=name)
     job.metadata = job.metadata or {}
     return job
 
@@ -135,8 +136,8 @@ class TestBrainViewModel:
     def _make_job(self):
         # Use a minimal mock job
         job = MagicMock()
-        job.id = uuid4()
-        job.name = "test-job"
+        job.job_id = uuid4()
+        job.job_title = "test-job"
         job.state.value = "active"
         job.tasks = []
         job.artifacts = []
@@ -241,8 +242,8 @@ class TestBrainViewModel:
 class TestNodeDetail:
     def _make_job(self):
         job = MagicMock()
-        job.id = uuid4()
-        job.name = "test-job"
+        job.job_id = uuid4()
+        job.job_title = "test-job"
         job.state.value = "active"
         job.tasks = []
         job.artifacts = []
@@ -265,8 +266,8 @@ class TestNodeDetail:
     def test_detail_missing_node(self):
         from packages.orchestration.ui_view_model import build_node_detail
         job = MagicMock()
-        job.id = uuid4()
-        job.name = "test"
+        job.job_id = uuid4()
+        job.job_title = "test"
         job.state.value = "active"
         job.tasks = []
         job.artifacts = []
@@ -471,7 +472,7 @@ class TestNodeDetailEdgeMeaningContract:
     def test_node_detail_exact_schema(self):
         from packages.orchestration.ui_view_model import build_node_detail
         job = _make_job_s127(tasks=[{"type": "t1", "status": "running"}])
-        nd = build_node_detail(job, [], str(job.id))
+        nd = build_node_detail(job, [], str(job.job_id))
         required = {
             "version", "job_id", "node_id", "title", "status",
             "status_text", "why_this_matters", "evidence_summary",
@@ -483,21 +484,21 @@ class TestNodeDetailEdgeMeaningContract:
     def test_node_detail_job_id(self):
         from packages.orchestration.ui_view_model import build_node_detail
         job = _make_job_s127()
-        nd = build_node_detail(job, [], str(job.id))
-        assert nd["job_id"] == str(job.id)
+        nd = build_node_detail(job, [], str(job.job_id))
+        assert nd["job_id"] == str(job.job_id)
 
     def test_node_detail_advanced_collapsed(self):
         """Advanced section exists but is a dict, not exposed as default fields."""
         from packages.orchestration.ui_view_model import build_node_detail
         job = _make_job_s127()
-        nd = build_node_detail(job, [], str(job.id))
+        nd = build_node_detail(job, [], str(job.job_id))
         assert isinstance(nd["advanced"], dict)
         assert "node_type" in nd["advanced"]
 
     def test_node_detail_no_raw_leaks(self):
         from packages.orchestration.ui_view_model import build_node_detail
         job = _make_job_s127(tasks=[{"type": "t1", "status": "running"}])
-        nd = build_node_detail(job, [], str(job.id))
+        nd = build_node_detail(job, [], str(job.job_id))
         nd_str = json.dumps(nd)
         for bad in ("raw_output", "command_output", "Traceback", "diff_preview"):
             assert bad not in nd_str

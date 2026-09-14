@@ -33,7 +33,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
-from uuid import UUID
 
 # ---------------------------------------------------------------------------
 # Path sanitization (no absolute path leaks in dashboard JSON)
@@ -158,7 +157,7 @@ def _load_events(job: Any) -> list[dict[str, Any]]:
         return _load_job_plan_events(job)
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.timeline import load_run_events
-    return load_run_events(resolve_data_root(), job.id)
+    return load_run_events(resolve_data_root(), job.job_id)
 
 
 def _resolve_evidence_dir(job_id: str) -> Path | None:
@@ -230,38 +229,23 @@ def _safe_error(code: int, message: str) -> tuple[int, dict[str, Any]]:
 
 
 def _load_job(job_id_str: str) -> Any:
-    """Load a Job by UUID or JobPlan hex ID, return (job, error_tuple)."""
-    import re
+    """Load a job record by id, return (job, error_tuple)."""
+    from packages.orchestration.data_paths import JobIdInvalid, normalize_job_id
+    from packages.orchestration.pingpong_job import load_job_plan
 
-    uuid_was_valid = False
-    # Try core UUID job first
     try:
-        job_id = UUID(job_id_str)
-        uuid_was_valid = True
-        from packages.orchestration.storage import JobNotFoundError, JobStoreError, load_job
-        job = load_job(job_id)
-        return job, None
-    except ValueError:
-        pass
-    except (FileNotFoundError, ImportError, JobNotFoundError, JobStoreError):
-        pass
-
-    # Valid UUID that wasn't found — 404 not 400
-    if uuid_was_valid:
+        job_id = normalize_job_id(job_id_str)
+    except JobIdInvalid:
+        if re.fullmatch(r"[0-9a-fA-F]+", job_id_str):
+            return None, _safe_error(404, "job not found")
+        return None, _safe_error(400, "invalid job id")
+    try:
+        job = load_job_plan(job_id)
+    except OSError:
+        job = None
+    if job is None:
         return None, _safe_error(404, "job not found")
-
-    # Try job-flow JobPlan short hex ID (must look like hex)
-    if re.fullmatch(r"[0-9a-fA-F]+", job_id_str):
-        try:
-            from packages.orchestration.pingpong_job import load_job_plan
-            plan = load_job_plan(job_id_str)
-            if plan is not None:
-                return _JobPlanAdapter(plan), None
-        except (ImportError, OSError):
-            pass
-        return None, _safe_error(404, "job not found")
-
-    return None, _safe_error(400, "invalid job id")
+    return job, None
 
 
 def _task_test_status(task_id: str, events: list[dict]) -> str:
@@ -552,7 +536,7 @@ def _build_test_execution_section(job: Any) -> dict[str, Any]:
     + failure artifact only. No raw output, no mutation, no fake live."""
     try:
         from packages.orchestration.real_test_execution import list_test_runs
-        runs = list_test_runs(str(job.id))
+        runs = list_test_runs(str(job.job_id))
         latest = runs[-1] if runs else None
         return {
             "latest_test_status": (latest or {}).get("status", "none"),
@@ -560,7 +544,7 @@ def _build_test_execution_section(job: Any) -> dict[str, Any]:
             "failure_artifact_id": (latest or {}).get("failure_artifact_id", ""),
             "test_run_count": len(runs),
             "next_safe_action": (f"remedy test result {(latest or {}).get('test_run_id')} --json"
-                                 if latest else f"remedy test run {str(job.id)} --json"),
+                                 if latest else f"remedy test run {str(job.job_id)} --json"),
             "live": False, "source": "real_test_execution",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -577,15 +561,15 @@ def _build_snapshot_rollback_section(job: Any) -> dict[str, Any]:
             list_rollback_proofs,
             list_snapshot_proofs,
         )
-        snaps = list_snapshot_proofs(job_id=str(job.id))
-        rbs = list_rollback_proofs(job_id=str(job.id))
+        snaps = list_snapshot_proofs(job_id=str(job.job_id))
+        rbs = list_rollback_proofs(job_id=str(job.job_id))
         return {
             "snapshot_recorded": bool(snaps),
             "snapshot_proof_count": len(snaps),
             "restore_available": any(r.get("restore_available") for r in rbs),
             "restore_tested": False,
             "rollback_proof_count": len(rbs),
-            "next_safe_action": f"remedy snapshot create {str(job.id)} --json",
+            "next_safe_action": f"remedy snapshot create {str(job.job_id)} --json",
             "live": False, "source": "real_test_execution",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -611,12 +595,12 @@ def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
             build_snapshot_truth,
             list_durable_apply_ids,
         )
-        apply_ids = list_durable_apply_ids(str(job.id), data_dir)
+        apply_ids = list_durable_apply_ids(str(job.job_id), data_dir)
         verified = 0
         reverted = 0
         drift = False
         for aid in apply_ids:
-            truth = build_snapshot_truth(str(job.id), apply_id=aid, data_dir=data_dir)
+            truth = build_snapshot_truth(str(job.job_id), apply_id=aid, data_dir=data_dir)
             if (truth.apply_state == "applied"
                     and truth.snapshot_verified_now
                     and truth.recovery_material_available
@@ -714,7 +698,7 @@ def _build_repair_section(job: Any) -> dict[str, Any]:
                 resolved_failure_count += 1
     next_action = ""
     if pending_intent_id:
-        next_action = f"remedy patch approve {job.id} {pending_intent_id}"
+        next_action = f"remedy patch approve {job.job_id} {pending_intent_id}"
     return {
         "attempt_count": attempt_count,
         "pending_approval_count": pending_approval,
@@ -744,7 +728,7 @@ def _build_overnight_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
             build_overnight_readiness,
             export_readiness_json,
         )
-        d = export_readiness_json(build_overnight_readiness(str(job.id), data_dir))
+        d = export_readiness_json(build_overnight_readiness(str(job.job_id), data_dir))
         checklist = d.get("checklist", [])
         na = d.get("next_action")
         return {
@@ -769,7 +753,7 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
     claim. LIVE is always false — estimates + metadata only."""
     try:
         from packages.orchestration.token_economy import token_economy_report
-        rep = token_economy_report(str(job.id))
+        rep = token_economy_report(str(job.job_id))
         est = rep.get("context_budget_estimate", {}) or {}
         pack = rep.get("context_pack_recommendation", {}) or {}
         decision = rep.get("decision", {}) or {}
@@ -825,7 +809,7 @@ def _build_self_dogfood_section(job: Any) -> dict[str, Any]:
     latest status only. No buttons, no mutation, no raw findings."""
     try:
         from packages.orchestration.proposed_tasks import load_proposed_tasks_safe
-        tasks, _ = load_proposed_tasks_safe(str(job.id))
+        tasks, _ = load_proposed_tasks_safe(str(job.job_id))
         sd = [t for t in tasks if getattr(t, "task_type", "") == "self_dogfood"]
         def _st(t):
             s = getattr(t, "status", "")
@@ -850,7 +834,7 @@ def _build_self_execution_section(job: Any) -> dict[str, Any]:
     Counts + latest state only. No buttons, no mutation, no raw content."""
     try:
         from packages.orchestration.self_dogfood_execution import list_attempts
-        attempts = [a for a in list_attempts() if a.get("job_id") == str(job.id)]
+        attempts = [a for a in list_attempts() if a.get("job_id") == str(job.job_id)]
         by_state: dict[str, int] = {}
         for a in attempts:
             by_state[a.get("state", "")] = by_state.get(a.get("state", ""), 0) + 1
@@ -873,7 +857,7 @@ def _build_orchestrator_section(job: Any) -> dict[str, Any]:
     decision only. No buttons, no mutation, no raw content."""
     try:
         from packages.orchestration.orchestrator_brain import list_decisions
-        decisions = list_decisions(f"job:{job.id}")
+        decisions = list_decisions(f"job:{job.job_id}")
         if not decisions:
             return {"decision_count": 0, "latest_stop_reason": "none", "confidence": "",
                     "next_safe_action": "", "loop_guard_status": "", "model_routing_tier": "",
@@ -1070,8 +1054,8 @@ def _build_job_plan_dashboard(job: Any) -> dict[str, Any]:
     for idx, t in enumerate(job.tasks):
         tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
         task_items.append({
-            "id": str(t.id),
-            "title": t.description[:80] if t.description else f"Task {idx + 1}",
+            "id": str(t.task_id),
+            "title": t.title[:80] if t.title else f"Task {idx + 1}",
             "status": tstat,
             "source": "job_plan",
         })
@@ -1122,7 +1106,7 @@ def _build_job_plan_dashboard(job: Any) -> dict[str, Any]:
 
     return {
         "version": 3,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "generated_at": generated_at,
         "source": "job_plan_adapter",
         "live": {
@@ -1304,10 +1288,10 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
     task_items: list[dict[str, Any]] = []
     for idx, t in enumerate(job.tasks):
         tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
-        tid = str(t.id)
+        tid = str(t.task_id)
         task_items.append({
             "id": tid,
-            "title": t.description[:80] if t.description else f"Task {idx + 1}",
+            "title": t.title[:80] if t.title else f"Task {idx + 1}",
             "status": tstat,
             "verified": tstat == "completed",
             "source": "real",
@@ -1366,7 +1350,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
     try:
         from packages.orchestration.proposed_tasks import can_finalize
         finalize_ok, finalize_reason = can_finalize(
-            str(job.id),
+            str(job.job_id),
             pending_task_count=pending_task_count,
             blocked_task_count=blocked_task_count,
             pending_approvals=pending_approvals,
@@ -1411,7 +1395,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
 
     return {
         "version": 3,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "generated_at": generated_at,
         "source": "server",
         "live": {
@@ -1477,7 +1461,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "computed_from": "job_model_and_event_ledger",
         },
         "timeline_events": timeline_events,
-        "proposed_tasks": _build_proposed_tasks_section(str(job.id)),
+        "proposed_tasks": _build_proposed_tasks_section(str(job.job_id)),
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
         "project_summary": _build_project_summary_section(job),
@@ -1491,7 +1475,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         # Primary truth is in metrics, tasks, phases, truth, live.
         # Do not use legacy fields as core truth in new consumers.
         "legacy": {
-            "job_name": job.name,
+            "job_name": job.job_title,
             "task_count": task_count,
             "guidance": guidance_cards,
             "lifecycle": lifecycle,
@@ -1561,7 +1545,7 @@ def _build_resume_section(job: Any, events: list[dict[str, Any]]) -> dict[str, A
             replay_job,
         )
         data_dir = resolve_data_root()
-        replay = replay_job(str(job.id), data_dir)
+        replay = replay_job(str(job.job_id), data_dir)
         cps = find_checkpoints(replay)
 
         safe_cps = [c for c in cps if c.safe_to_resume]
@@ -1606,7 +1590,7 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
             build_project_summary,
             detect_patterns,
         )
-        from packages.orchestration.storage import list_jobs
+        from packages.orchestration.pingpong_job import list_job_plans
         from packages.orchestration.timeline import load_run_events
 
         project_id = job.metadata.get("project_id")
@@ -1615,13 +1599,13 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
 
         from uuid import UUID
         project = load_project(UUID(project_id))
-        all_jobs = list_jobs()
-        linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+        all_jobs = list_job_plans()
+        linked_jobs = [j for j in all_jobs if str(j.job_id) in project.job_ids]
 
         data_dir = resolve_data_root()
         all_events: dict[str, list[dict]] = {}
         for j in linked_jobs:
-            all_events[str(j.id)] = load_run_events(data_dir, j.id)
+            all_events[str(j.job_id)] = load_run_events(data_dir, j.job_id)
 
         summary = build_project_summary(project, linked_jobs, all_events)
         patterns = detect_patterns(linked_jobs, all_events)
@@ -1895,7 +1879,7 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
 
     # Next command
     next_command = _pipeline_next_command(
-        str(job.id), stop_reason, approval_required, intent_id,
+        str(job.job_id), stop_reason, approval_required, intent_id,
         source_apply_status, tests_status,
     )
 
@@ -2067,7 +2051,7 @@ def _build_diff_json(job: Any) -> dict[str, Any]:
     filesystem logic, no path building and no error handling of its own, because
     `build_diff_view` never raises and names every absence in its own envelope."""
     from packages.orchestration.diff_view_source import build_diff_view
-    return build_diff_view(_resolve_evidence_dir(str(job.id)))
+    return build_diff_view(_resolve_evidence_dir(str(job.job_id)))
 
 
 def _build_task_run_diff_json(job: Any, task_id: str) -> dict[str, Any]:
@@ -2075,7 +2059,7 @@ def _build_task_run_diff_json(job: Any, task_id: str) -> dict[str, Any]:
     `_build_diff_json` is one: `build_diff_view` never raises and names every absence,
     including an unknown task id, in its own envelope."""
     from packages.orchestration.diff_view_source import build_diff_view
-    return build_diff_view(_resolve_evidence_dir(str(job.id)), task_id=task_id)
+    return build_diff_view(_resolve_evidence_dir(str(job.job_id)), task_id=task_id)
 
 
 def _build_layers_json() -> dict[str, Any]:
@@ -2114,7 +2098,7 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
 
     # Compute view-model hash for change detection
     node_count = len(events)
-    raw = f"{job.id}:{state}:{node_count}"
+    raw = f"{job.job_id}:{state}:{node_count}"
     vm_hash = _hl.md5(raw.encode()).hexdigest()[:12]
 
     # Latest event
@@ -2163,9 +2147,9 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
     for t in job.tasks:
         tstat = t.status.value if hasattr(t.status, "value") else str(t.status)
         if tstat == "running":
-            active_task_id = str(t.id)
+            active_task_id = str(t.task_id)
         if tstat == "completed":
-            latest_completed_task_id = str(t.id)
+            latest_completed_task_id = str(t.task_id)
 
     # Repair loop detection
     repair_loop_used = any(
@@ -2210,7 +2194,7 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
 
     return {
         "version": 3,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "cursor": cursor,
         "stage": stage,
         "running": state in ("active", "running"),
@@ -2280,7 +2264,7 @@ def _build_events_since_json(job: Any, cursor: str) -> dict[str, Any]:
     ]
     return {
         "version": 1,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "cursor": str(len(events)),
         "events": safe,
     }
@@ -2951,7 +2935,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 # are out the status line is spent and cannot say "not found".
                 self._send_json(*err)
                 return
-            if not acquire_sse_slot(str(job.id)):
+            if not acquire_sse_slot(str(job.job_id)):
                 # 429 for the same reason and in the same window: a refused
                 # stream must not consume the capacity it was refused.
                 self._send_json(*_safe_error(429, "too many streams for this job"))
@@ -2966,7 +2950,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 )
                 self._send_sse_stream(job, str(start))
             finally:
-                release_sse_slot(str(job.id))
+                release_sse_slot(str(job.job_id))
             return
 
         # /api/layers
@@ -3094,11 +3078,11 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             return
         payload, shape_error = self._read_command_payload()
         if shape_error:
-            self._audit_attempt(str(job.id), "rejected_shape", create=True)
+            self._audit_attempt(str(job.job_id), "rejected_shape", create=True)
             self._send_json(*shape_error)
             return
         if not self._command_is_ui_exposed(payload["command"]):
-            self._audit_attempt(str(job.id), "rejected_command", create=True,
+            self._audit_attempt(str(job.job_id), "rejected_command", create=True,
                                 payload=payload)
             self._send_json(*_command_field_error(
                 "command", COMMAND_NOT_EXPOSED_MESSAGE))
@@ -3109,14 +3093,14 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # decision this server already made, so charging for it would penalise the
         # client for the server's own idempotency guarantee, in precisely the
         # retry-after-a-timeout case the nonce exists to serve.
-        replayed = self._replayed_command_result(str(job.id), payload["client_nonce"])
+        replayed = self._replayed_command_result(str(job.job_id), payload["client_nonce"])
         if replayed is not None:
             # D15 audits the replay with the ORIGINAL attempt's outcome, and finding
             # R-0636 rules what that token may be: a replay REPEATS an acceptance
             # rather than being one, so `replayed` is its own token. T5_F035 and
             # T9_F167 read this file to count what the door did, and one token for
             # both events would make them indistinguishable to both. R-0636's payer.
-            self._audit_attempt(str(job.id), "replayed", create=True,
+            self._audit_attempt(str(job.job_id), "replayed", create=True,
                                 payload=payload)
             self._send_json(replayed["status"], replayed["body"])
             return
@@ -3125,8 +3109,8 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # refused anyway would let a mid-rollout or simply buggy client lock
         # ITSELF out of a job with malformed bodies — a denial of service
         # produced by the guard rather than prevented by it.
-        if not self._rate_limit_admits_command(str(job.id)):
-            self._audit_attempt(str(job.id), "rejected_rate", create=True, payload=payload)
+        if not self._rate_limit_admits_command(str(job.job_id)):
+            self._audit_attempt(str(job.job_id), "rejected_rate", create=True, payload=payload)
             self._send_json(*_safe_error(429, COMMAND_RATE_LIMIT_MESSAGE))
             return
         # D5 maps `job.stop` to `safe_points.request_stop`; D18 fixes the order of
@@ -3137,21 +3121,21 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         # returns the ORIGINAL result and there is none before the other two.
         if payload["command"] == JOB_STOP_COMMAND_ID:
             try:
-                accepted_body = self._dispatch_job_stop(str(job.id), payload)
+                accepted_body = self._dispatch_job_stop(str(job.job_id), payload)
             except (OSError, RuntimeError, ValueError, TypeError):
                 # D18, clause four: an effect that RAISED is neither `accepted`,
                 # which would be false, nor unaudited, which would break D6.
-                self._audit_attempt(str(job.id), "rejected_effect", create=True,
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
                                     payload=payload)
                 self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
                 return
             # D18, clause three: BOTH writes below fail SOFT. The stop is already
             # durable, so refusing after the fact would report a stop that really
             # was requested as one that was not.
-            self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
-            self._publish_command_result(str(job.id), payload["client_nonce"],
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
                                          accepted_body)
-            self._emit_command_accepted_event(str(job.id), accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
         # D5 maps `decision.resolve` to `answer_task_decision` followed by
@@ -3164,7 +3148,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             except (OSError, RuntimeError, ValueError, TypeError):
                 # D18, clause four: an effect that RAISED is neither `accepted`,
                 # which would be false, nor unaudited, which would break D6.
-                self._audit_attempt(str(job.id), "rejected_effect", create=True,
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
                                     payload=payload)
                 self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
                 return
@@ -3172,7 +3156,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 # D21, clause three: the effect RAN and DECLINED — the decision
                 # is absent or is no longer open. Nothing changed on disk, so
                 # nothing is published and a retry cannot answer it differently.
-                self._audit_attempt(str(job.id), "rejected_state", create=True,
+                self._audit_attempt(str(job.job_id), "rejected_state", create=True,
                                     payload=payload)
                 self._send_json(*_safe_error(409, COMMAND_DECISION_STATE_MESSAGE))
                 return
@@ -3180,10 +3164,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             # below fail SOFT. The answer is already persisted, so refusing
             # after the fact would report an answer that really was written as
             # one that was not.
-            self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
-            self._publish_command_result(str(job.id), payload["client_nonce"],
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
                                          accepted_body)
-            self._emit_command_accepted_event(str(job.id), accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
         # DECISION F033 D4 maps `patch.approve-hunks` to `record_hunk_decision_from_view`
@@ -3196,7 +3180,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             except (OSError, RuntimeError, ValueError, TypeError):
                 # D18, clause four: an effect that RAISED is neither `accepted`,
                 # which would be false, nor unaudited, which would break D6.
-                self._audit_attempt(str(job.id), "rejected_effect", create=True,
+                self._audit_attempt(str(job.job_id), "rejected_effect", create=True,
                                     payload=payload)
                 self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
                 return
@@ -3205,7 +3189,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 # `record_hunk_decision_from_view` writes NOTHING to `job.metadata` on
                 # a refusal, so nothing changed on disk, nothing is published, and a
                 # retry of the same decision cannot answer it differently.
-                self._audit_attempt(str(job.id), "rejected_state", create=True,
+                self._audit_attempt(str(job.job_id), "rejected_state", create=True,
                                     payload=payload)
                 self._send_json(*_safe_error(
                     409, COMMAND_HUNK_DECISION_STATE_MESSAGE))
@@ -3213,17 +3197,17 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             # D18, clause three: both writes below fail SOFT. The decision is already
             # persisted, so refusing after the fact would report a decision that
             # really was recorded as one that was not.
-            self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
-            self._publish_command_result(str(job.id), payload["client_nonce"],
+            self._audit_attempt(str(job.job_id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.job_id), payload["client_nonce"],
                                          accepted_body)
-            self._emit_command_accepted_event(str(job.id), accepted_body)
+            self._emit_command_accepted_event(str(job.job_id), accepted_body)
             self._send_json(200, accepted_body)
             return
         # An id `_command_is_ui_exposed` admitted that no clause above dispatches.
         # DECISION F009 D22: this is a GUARD, not a placeholder — unreachable
         # while the exposed subset holds exactly the three ids named above, and the
         # alternative is a request that gets no response at all.
-        self._audit_attempt(str(job.id), "not_implemented", create=True, payload=payload)
+        self._audit_attempt(str(job.job_id), "not_implemented", create=True, payload=payload)
         self._send_json(*_safe_error(501, COMMAND_NOT_DISPATCHED_MESSAGE))
 
     def _dispatch_job_stop(self, job_id: str, payload: Any) -> dict[str, Any]:
@@ -3289,7 +3273,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         from datetime import datetime, timezone
 
         from packages.orchestration.escalation import answer_task_decision
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         args = payload.get("args")
         args = args if isinstance(args, dict) else {}
         decision_id = args.get("decision_id")
@@ -3330,7 +3314,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             now=datetime.now(timezone.utc))
         if record is None:
             return None
-        save_job(job)
+        save_job_plan(job)
         return {"command": payload["command"], "outcome": "accepted",
                 "decision_id": str(record.get("decision_id", ""))}
 
@@ -3377,7 +3361,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             HUNK_STATE_PENDING,
             HUNK_STATE_REJECTED,
         )
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         args = payload.get("args")
         args = args if isinstance(args, dict) else {}
         task_run = args.get("task_run")
@@ -3386,7 +3370,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         rejected = args.get("rejected")
         # The CANONICAL id, for the reason finding R-0744 records: the evidence index
         # is keyed by the full lowercase hyphenated form and nothing else resolves it.
-        evidence_dir = resolve_job_evidence_dir(str(job.id))
+        evidence_dir = resolve_job_evidence_dir(str(job.job_id))
         view = build_diff_view(evidence_dir, task_id=task_run)
         # BOTH halves of the attempt key come from the ENVELOPE, which is the same key
         # the CLI door composes — so one decision has ONE key whichever door records it.
@@ -3402,7 +3386,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         )
         if isinstance(result, HunkApprovalRefusal):
             return None
-        save_job(job)
+        save_job_plan(job)
         states = [entry.state for entry in result.ledger.entries]
         return {"command": payload["command"], "outcome": "accepted",
                 "attempt_key": result.attempt_key,

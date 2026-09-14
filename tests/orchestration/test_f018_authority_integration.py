@@ -172,9 +172,10 @@ class TestBuildRunManifestDictBudgets:
 
     def test_jobbudgets_model_on_job_captured(self):
         """Core Job with JobBudgets model → model_dump produces dict."""
-        from packages.core.models import Job, JobBudgets
+        from packages.core.models import JobBudgets
+        from packages.orchestration.pingpong_job import JobPlan
 
-        job = Job(name="test", user_prompt="test")
+        job = JobPlan(job_title="test", user_prompt="test")
         job.budgets = JobBudgets(max_total_tokens=50000)
         dumped = job.budgets.model_dump(mode="json")
         assert dumped["max_total_tokens"] == 50000
@@ -332,10 +333,10 @@ class TestDecisionIdentity:
     """Finding #10: decision ID derived from event request_id."""
 
     def test_budget_decision_uses_event_request_id(self):
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.decision_queue import list_decisions
 
-        job = Job(name="test", user_prompt="test")
+        job = JobPlan(job_title="test", user_prompt="test")
         job.metadata["budget_stop_reason"] = "budget_exhausted: max_provider_calls"
         events = [{
             "event": "job_stopped",
@@ -404,18 +405,19 @@ class TestRunContractReconciliation:
     """Finding #13: ensure_contract reconciles with JobBudgets."""
 
     def test_reconciles_tokens_on_budget_change(self):
-        from packages.core.models import Job, JobBudgets
+        from packages.core.models import JobBudgets
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.run_contract import (
             RunContract,
             ensure_contract,
             save_contract,
         )
 
-        job = Job(name="test", user_prompt="test")
+        job = JobPlan(job_title="test", user_prompt="test")
         old_contract = RunContract(
             version=1,
             contract_id="rc-test",
-            job_id=str(job.id),
+            job_id=str(job.job_id),
             max_tokens=200000,
             max_runtime_seconds=600,
         )
@@ -426,18 +428,18 @@ class TestRunContractReconciliation:
         assert contract.max_tokens == 50000
 
     def test_no_reconciliation_when_no_budgets(self):
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.run_contract import (
             RunContract,
             ensure_contract,
             save_contract,
         )
 
-        job = Job(name="test", user_prompt="test")
+        job = JobPlan(job_title="test", user_prompt="test")
         old_contract = RunContract(
             version=1,
             contract_id="rc-test",
-            job_id=str(job.id),
+            job_id=str(job.job_id),
             max_tokens=200000,
         )
         save_contract(job, old_contract)
@@ -613,10 +615,10 @@ class TestJobplanStopCreatesDecision:
 
     def test_jobplan_stop_creates_decision(self):
         """Core Job with budget stop fields → list_decisions creates budget decision."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.decision_queue import list_decisions
 
-        job = Job(name="stopjob", user_prompt="test")
+        job = JobPlan(job_title="stopjob", user_prompt="test")
         job.metadata["budget_stop_reason"] = "budget_exhausted: max_provider_calls"
         events = [{
             "event": "job_stopped",

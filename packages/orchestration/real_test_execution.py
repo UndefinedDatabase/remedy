@@ -225,8 +225,8 @@ def resolve_allowed_command(
     ddir = _resolve_ddir(data_dir)
     try:
         from packages.orchestration.command_discovery import discover_commands
-        from packages.orchestration.storage import load_job
-        job = load_job(normalize_job_id(job_id), ddir)
+        from packages.orchestration.pingpong_job import require_job_plan
+        job = require_job_plan(normalize_job_id(job_id), ddir)
     except Exception:
         return False, None, "job not found or unloadable"
     repo = (job.metadata or {}).get("target_repo", "")
@@ -320,8 +320,8 @@ def list_test_runs(job_id: str, data_dir: Path | None = None) -> list[dict]:
     """List a job's persisted safe test records (job.metadata['test_runs']). No raw output."""
     ddir = _resolve_ddir(data_dir)
     try:
-        from packages.orchestration.storage import load_job
-        job = load_job(normalize_job_id(job_id), ddir)
+        from packages.orchestration.pingpong_job import require_job_plan
+        job = require_job_plan(normalize_job_id(job_id), ddir)
     except Exception:
         return []
     runs = (job.metadata or {}).get("test_runs", [])
@@ -332,13 +332,13 @@ def get_test_run(test_run_id: str, data_dir: Path | None = None) -> dict | None:
     ddir = _resolve_ddir(data_dir)
     # Scan all jobs' test_runs for the id.
     try:
-        from packages.orchestration.storage import list_jobs, load_job
-        for jref in list_jobs(ddir):
-            jid = jref.get("id") if isinstance(jref, dict) else getattr(jref, "id", None)
+        from packages.orchestration.pingpong_job import list_job_plans, require_job_plan
+        for jref in list_job_plans(ddir):
+            jid = jref.get("id") if isinstance(jref, dict) else getattr(jref, "job_id", None)
             if jid is None:
                 continue
             try:
-                job = load_job(normalize_job_id(str(jid)), ddir)
+                job = require_job_plan(normalize_job_id(str(jid)), ddir)
             except Exception:
                 continue
             for r in (job.metadata or {}).get("test_runs", []):
@@ -425,8 +425,8 @@ def create_snapshot_proof(job_id: str, *, data_dir: Path | None = None) -> Snaps
     ddir = _resolve_ddir(data_dir)
     proof = SnapshotProof(snapshot_id=f"snap-{uuid4().hex[:12]}", job_id=job_id, created_at=_now())
     try:
-        from packages.orchestration.storage import load_job
-        job = load_job(normalize_job_id(job_id), ddir)
+        from packages.orchestration.pingpong_job import load_job_plan
+        job = load_job_plan(normalize_job_id(job_id), ddir)
         repo = (job.metadata or {}).get("target_repo", "")
     except Exception:
         repo = ""

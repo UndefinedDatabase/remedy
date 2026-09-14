@@ -191,7 +191,7 @@ def derive_stop_reasons(
     """Derive stop reasons from job state and events. Does not persist."""
 
     reasons: list[StopReason] = []
-    job_id = str(job.id)
+    job_id = str(job.job_id)
     now = datetime.now(timezone.utc).isoformat()
 
     # No target repo

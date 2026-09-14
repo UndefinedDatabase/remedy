@@ -8,7 +8,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.approval_queue import make_intent_id, set_approval_state
 from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.permissions import Capability, set_permission
@@ -17,7 +18,8 @@ from packages.orchestration.run_contract import (
     build_default_run_contract,
     save_contract,
 )
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.data_paths import mint_job_id
 
 ARTIFACT_CONTENT = "Summary:\n  - safe doc\nProposed Changes:\n  - add a line\nNotes:\n  - none\n"
 
@@ -37,7 +39,7 @@ def make_continue_job(
 ):
     """Build a continuation-ready job. Returns (job, intent_id)."""
     repo_root.mkdir(parents=True, exist_ok=True)
-    task = Task(description="Continue task")
+    task = TaskEntry(title="Continue task")
     explanations = [
         {"file": target_path, "action": "create", "risk": "low",
          "reason": "", "summary": "safe doc"}
@@ -49,11 +51,11 @@ def make_continue_job(
         )
     art = Artifact(
         name="build", content=ARTIFACT_CONTENT, kind=ArtifactKind.BUILDER_PROPOSAL,
-        task_id=str(task.id),
+        task_id=str(task.task_id),
         metadata={"patch_intent_explanations": explanations, "patch_intent_approvals": {}},
     )
-    job = Job(
-        id=uuid4(), name="cont-job", user_prompt="continue", state=RunState.RUNNING,
+    job = JobPlan(
+        job_id=mint_job_id(), job_title="cont-job", user_prompt="continue", state=RunState.RUNNING,
         tasks=[task], artifacts=[art],
         metadata={"target_repo": str(repo_root.resolve())},
     )
@@ -80,7 +82,7 @@ def make_continue_job(
         max_test_runs=max_test_runs,
     )
     save_contract(job, contract)
-    save_job(job, root=data_dir)
+    save_job_plan(job, root=data_dir)
     return job, intent_id
 
 
@@ -100,7 +102,7 @@ def env(tmp_path, monkeypatch):
 class TestEligibility:
     def _elig(self, job, data_dir, intent_id=None):
         from packages.orchestration.do_continue import evaluate_continue_eligibility
-        return evaluate_continue_eligibility(str(job.id), intent_id, data_dir)
+        return evaluate_continue_eligibility(str(job.job_id), intent_id, data_dir)
 
     def test_eligible_happy_path(self, env):
         data_dir, repo = env
@@ -164,7 +166,7 @@ class TestEligibility:
         data_dir, repo = env
         job, iid = make_continue_job(data_dir, repo)
         job.metadata["target_repo"] = ""
-        save_job(job, root=data_dir)
+        save_job_plan(job, root=data_dir)
         e = self._elig(job, data_dir)
         assert not e.eligible
         assert "no_target_repo" in e.blockers
@@ -221,7 +223,7 @@ class TestRunDoContinue:
         from packages.orchestration import do_continue as dc
         fn, calls = _fake_test(data_dir, status=status, evidence=evidence, fa_id=fa_id)
         monkeypatch.setattr(tes, "execute_test_run", fn)
-        result = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
+        result = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.job_id)), data_dir)
         return result, calls
 
     def test_passing_test_completed_verified(self, env, monkeypatch):
@@ -284,8 +286,8 @@ class TestRunDoContinue:
             return orig_apply(job_, iid_, **kw)
         monkeypatch.setattr(pa, "apply_patch_intent", _counting_apply)
 
-        r1 = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
-        r2 = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
+        r1 = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.job_id)), data_dir)
+        r2 = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.job_id)), data_dir)
         # Apply ran once; second cycle resumed. Test budget consumed once.
         assert acalls["n"] == 1
         assert tcalls["n"] == 1
@@ -297,8 +299,8 @@ class TestRunDoContinue:
         # Apply manually (simulate crash after apply, before test).
 
         from packages.orchestration.patch_apply import apply_patch_intent
-        from packages.orchestration.storage import load_job
-        apply_patch_intent(load_job(normalize_job_id(str(job.id)), data_dir), iid, data_dir=data_dir)
+        from packages.orchestration.pingpong_job import load_job_plan
+        apply_patch_intent(load_job_plan(normalize_job_id(str(job.job_id)), data_dir), iid, data_dir=data_dir)
         # Now continue — should resume apply, run test exactly once.
         result, calls = self._run(data_dir, job, monkeypatch)
         assert calls["n"] == 1
@@ -316,8 +318,8 @@ class TestRunDoContinue:
             _repo_key,
         )
         lease = ContinuationLease(
-            job_id=str(job.id), repo_key=_repo_key(job), intent_id=iid,
-            lease_dir=_continue_dir(str(job.id), data_dir) / "leases",
+            job_id=str(job.job_id), repo_key=_repo_key(job), intent_id=iid,
+            lease_dir=_continue_dir(str(job.job_id), data_dir) / "leases",
         )
         assert lease.acquire()
         try:
@@ -400,18 +402,18 @@ class TestCrashAtomicTestPhase:
         # Apply first so the test phase is the one in flight.
 
         from packages.orchestration.patch_apply import apply_patch_intent
-        from packages.orchestration.storage import load_job
-        apply_patch_intent(load_job(normalize_job_id(str(job.id)), data_dir), iid, data_dir=data_dir)
+        from packages.orchestration.pingpong_job import load_job_plan
+        apply_patch_intent(load_job_plan(normalize_job_id(str(job.job_id)), data_dir), iid, data_dir=data_dir)
         # Simulate a crash mid-test: an in_flight TEST checkpoint with no completion.
         from packages.orchestration import do_continue as dc
-        dc.save_checkpoint(str(job.id), data_dir, dc.ContinueCheckpoint(
+        dc.save_checkpoint(str(job.job_id), data_dir, dc.ContinueCheckpoint(
             phase=dc.ContinuePhase.TEST, status="in_flight",
             at="2030-01-01T00:00:00+00:00", ids={"apply_id": iid},
         ))
         import packages.orchestration.test_execution_service as tes
         fn, calls = _fake_test(data_dir, status="passed")
         monkeypatch.setattr(tes, "execute_test_run", fn)
-        result = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.id)), data_dir)
+        result = dc.run_do_continue(dc.ContinueRequest(job_id=str(job.job_id)), data_dir)
         # Never re-ran the test; never claimed success.
         assert calls["n"] == 0
         assert result.stop_reason == dc.ContinueStopReason.EVIDENCE_INCOMPLETE

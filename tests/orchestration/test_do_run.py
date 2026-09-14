@@ -24,7 +24,7 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.data_paths import normalize_job_id
 from packages.orchestration.do_run import (
     DO_PHASES,
@@ -96,7 +96,7 @@ class TestPhaseModel:
 
     def test_contract_defaults(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         c = build_default_run_contract(job)
         assert c.stop_before_apply is True
         assert c.max_loops == 10
@@ -140,10 +140,10 @@ class TestDoRunFlow:
 
     def test_patch_intent_created_has_created_at(self, tmp_path):
         from packages.orchestration.approval_queue import list_patch_intents
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
         result = _run_with_tmp(tmp_path, autonomy=3)
-        job = load_job(normalize_job_id(result.job_id), root=tmp_path / "data")
+        job = load_job_plan(normalize_job_id(result.job_id), root=tmp_path / "data")
         intents = list_patch_intents(job)
         assert intents[0]["created_at"]
 
@@ -339,7 +339,7 @@ class TestApprovalGate:
 
     def test_patch_intent_not_approved(self, tmp_path):
         """Step 933: patch_intent_approvals is empty (not pre-approved)."""
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
         repo = _make_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -347,7 +347,7 @@ class TestApprovalGate:
         os.environ["REMEDY_DATA_DIR"] = str(data_dir)
         try:
             result = run_do("test", str(repo), autonomy_level=3)
-            job = load_job(result.job_id)
+            job = load_job_plan(result.job_id)
         finally:
             if old:
                 os.environ["REMEDY_DATA_DIR"] = old
@@ -590,18 +590,18 @@ class TestContractConsolidation:
 
     def test_contract_has_source(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        c = build_default_run_contract(Job(name="test"))
+        c = build_default_run_contract(JobPlan(job_title="test"))
         assert c.source == "default_v1"
 
     def test_contract_has_allowed_actions(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        c = build_default_run_contract(Job(name="test"))
+        c = build_default_run_contract(JobPlan(job_title="test"))
         assert len(c.allowed_actions) > 0
         assert "plan" in c.allowed_actions
 
     def test_contract_has_denied_actions(self):
         from packages.orchestration.run_contract import build_default_run_contract
-        c = build_default_run_contract(Job(name="test"))
+        c = build_default_run_contract(JobPlan(job_title="test"))
         assert len(c.denied_actions) > 0
         assert "apply" in c.denied_actions
 
@@ -686,7 +686,7 @@ class TestSystemArtifactKeepsTaskIdAbsent:
         data_dir = tmp_path / "data"
         data_dir.mkdir(parents=True, exist_ok=True)
         monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
-        job = Job(name="no-tasks")
+        job = JobPlan(job_title="no-tasks")
         assert job.tasks == []
         artifact = _run_build_phase(job, "a goal", tmp_path, data_dir)
         assert artifact.task_id is None

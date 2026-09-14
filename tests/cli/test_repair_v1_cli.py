@@ -10,29 +10,31 @@ from uuid import uuid4
 import pytest
 
 from tests.cli.runtime_helpers import run_grouped_cli
+from packages.orchestration.data_paths import mint_job_id
 
 
 def _make_job_with_failure(data_dir):
-    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-    from packages.orchestration.storage import save_job
+    from packages.core.models import Artifact, ArtifactKind, RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    from packages.orchestration.pingpong_job import save_job_plan
 
-    task = Task(description="orig")
+    task = TaskEntry(title="orig")
     fa = Artifact(
         name="test-failure", content="Test test_failed: exit 1",
-        kind=ArtifactKind.VERIFICATION, task_id=str(task.id),
+        kind=ArtifactKind.VERIFICATION, task_id=str(task.task_id),
         metadata={
             "test_failure": True, "failure_kind": "test_failed",
             "related_test_run_id": "tr-abc12345", "related_apply_id": "ap-1",
-            "related_task_id": str(task.id), "failing_phase": "test",
+            "related_task_id": str(task.task_id), "failing_phase": "test",
             "command_safe": "pytest -q", "exit_code": 1,
             "related_files": [], "safe_summary": "Test test_failed: exit 1",
         },
     )
-    job = Job(id=uuid4(), name="cli-repair", user_prompt="x", state=RunState.RUNNING,
+    job = JobPlan(job_id=mint_job_id(), job_title="cli-repair", user_prompt="x", state=RunState.RUNNING,
               tasks=[task], artifacts=[fa],
               metadata={"target_repo": "."})
-    save_job(job, root=data_dir)
-    return str(job.id), str(fa.id)
+    save_job_plan(job, root=data_dir)
+    return str(job.job_id), str(fa.id)
 
 
 @pytest.fixture()
@@ -106,27 +108,28 @@ def test_no_traceback_text_output(env):
 
 def _make_job_with_source_failure(data_dir):
     """Failure carrying a safe opt-in source-fixture target."""
-    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-    from packages.orchestration.storage import save_job
+    from packages.core.models import Artifact, ArtifactKind, RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    from packages.orchestration.pingpong_job import save_job_plan
 
-    task = Task(description="orig")
+    task = TaskEntry(title="orig")
     fa = Artifact(
         name="test-failure", content="Test test_failed: exit 1",
-        kind=ArtifactKind.VERIFICATION, task_id=str(task.id),
+        kind=ArtifactKind.VERIFICATION, task_id=str(task.task_id),
         metadata={
             "test_failure": True, "failure_kind": "test_failed",
             "related_test_run_id": "tr-abc12345", "related_apply_id": "ap-1",
-            "related_task_id": str(task.id), "failing_phase": "test",
+            "related_task_id": str(task.task_id), "failing_phase": "test",
             "command_safe": "pytest -q", "exit_code": 1,
             "related_files": [], "safe_summary": "Test test_failed: exit 1",
             "repair_fixture_target": "src/fix_me.py",
         },
     )
-    job = Job(id=uuid4(), name="cli-repair-src", user_prompt="x", state=RunState.RUNNING,
+    job = JobPlan(job_id=mint_job_id(), job_title="cli-repair-src", user_prompt="x", state=RunState.RUNNING,
               tasks=[task], artifacts=[fa],
               metadata={"target_repo": "."})
-    save_job(job, root=data_dir)
-    return str(job.id), str(fa.id)
+    save_job_plan(job, root=data_dir)
+    return str(job.job_id), str(fa.id)
 
 
 def test_docs_only_classification_in_status(env):

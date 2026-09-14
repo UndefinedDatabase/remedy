@@ -110,13 +110,13 @@ class TestMapFlightPlanToTasks:
             flight = task.inputs["flight"]
             assert flight["planned_id"] == f"T{i + 1:03d}"
             assert flight["title"] == f"Task {i + 1}"
-            assert f"Thing {i + 1} done" in task.acceptance_checks[0].description
+            assert task.acceptance.splitlines() == [f"Thing {i + 1} done"]
 
     def test_description_combines_title_and_goal(self):
         fp = FlightPlan(**json.loads(_valid_plan_json(1)))
         tasks = map_flight_plan_to_tasks(fp)
-        assert "Task 1" in tasks[0].description
-        assert "Do thing 1" in tasks[0].description
+        assert "Task 1" in tasks[0].title
+        assert "Do thing 1" in tasks[0].title
 
     def test_depends_on_preserved(self):
         fp = FlightPlan(**json.loads(_valid_plan_json(3)))

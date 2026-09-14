@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import ui_server as mod
 
 #: One tick's metadata in the shape `safe_points._budget_tick_payload` writes
@@ -165,13 +165,13 @@ class TestTheDashboardCarriesTheSection:
     def test_the_dashboard_carries_the_final_figure(self, monkeypatch):
         events = _run_of_two_ticks()
         monkeypatch.setattr(mod, "_load_events", lambda job: events)
-        dash = mod._build_dashboard(Job(name="budget-final"))
+        dash = mod._build_dashboard(JobPlan(job_title="budget-final"))
         assert dash["budget_final"] == LAST_TICK_METADATA
 
     def test_the_addition_left_the_estimate_beside_it_alone(self, monkeypatch):
         events = _run_of_two_ticks()
         monkeypatch.setattr(mod, "_load_events", lambda job: events)
-        dash = mod._build_dashboard(Job(name="budget-final"))
+        dash = mod._build_dashboard(JobPlan(job_title="budget-final"))
         # The two are DIFFERENT quantities and the reconciliation authority is
         # the tick: `token_usage` stays the estimate it always was.
         assert dash["token_usage"]["estimated"] is True
@@ -180,6 +180,6 @@ class TestTheDashboardCarriesTheSection:
 
     def test_a_job_with_no_tick_carries_the_key_holding_none(self, monkeypatch):
         monkeypatch.setattr(mod, "_load_events", lambda job: [_event("task_started", {})])
-        dash = mod._build_dashboard(Job(name="budget-final"))
+        dash = mod._build_dashboard(JobPlan(job_title="budget-final"))
         assert "budget_final" in dash
         assert dash["budget_final"] is None

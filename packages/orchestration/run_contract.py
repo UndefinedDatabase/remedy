@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Canonical action vocabulary (Step 1068)
@@ -395,7 +395,7 @@ _CLOUD_ACTIONS = frozenset({
 })
 
 
-def build_default_run_contract(job: Job) -> RunContract:
+def build_default_run_contract(job: JobPlan) -> RunContract:
     """Build a sensible default RunContract for a job.
 
     Deterministic — derives contract from job metadata only.
@@ -416,8 +416,8 @@ def build_default_run_contract(job: Job) -> RunContract:
 
     return RunContract(
         version=1,
-        contract_id=f"rc-{str(job.id)[:8]}",
-        job_id=str(job.id),
+        contract_id=f"rc-{str(job.job_id)[:8]}",
+        job_id=str(job.job_id),
         scope="job",
         autonomy_level=1,
         allowed_actions=_DEFAULT_ALLOWED_ACTIONS,
@@ -465,12 +465,12 @@ def _contract_from_dict(data: dict[str, Any]) -> RunContract:
     return RunContract(**cleaned)
 
 
-def save_contract(job: Job, contract: RunContract) -> None:
+def save_contract(job: JobPlan, contract: RunContract) -> None:
     """Store a RunContract in job.metadata. Caller must persist the job."""
     job.metadata[_CONTRACT_META_KEY] = export_run_contract_json(contract)
 
 
-def load_contract(job: Job) -> RunContract | None:
+def load_contract(job: JobPlan) -> RunContract | None:
     """Load the persisted RunContract from job.metadata, or None if absent."""
     data = job.metadata.get(_CONTRACT_META_KEY)
     if not isinstance(data, dict):
@@ -478,7 +478,7 @@ def load_contract(job: Job) -> RunContract | None:
     return _contract_from_dict(data)
 
 
-def ensure_contract(job: Job) -> RunContract:
+def ensure_contract(job: JobPlan) -> RunContract:
     """Return the persisted contract, creating and saving one if absent.
 
     Guarantees stable contract_id and created_at across reloads.
@@ -495,7 +495,7 @@ def ensure_contract(job: Job) -> RunContract:
     return contract
 
 
-def _reconcile_budget_fields(job: Job, contract: RunContract) -> RunContract:
+def _reconcile_budget_fields(job: JobPlan, contract: RunContract) -> RunContract:
     """If JobBudgets diverged from the persisted contract, update contract."""
     budgets = getattr(job, "budgets", None)
     if budgets is None:
@@ -551,12 +551,12 @@ def _reconcile_budget_fields(job: Job, contract: RunContract) -> RunContract:
     return updated
 
 
-def needs_contract_migration(job: Job) -> bool:
+def needs_contract_migration(job: JobPlan) -> bool:
     """Check if a job needs contract migration (no persisted contract)."""
     return not isinstance(job.metadata.get(_CONTRACT_META_KEY), dict)
 
 
-def migrate_contract(job: Job) -> RunContract:
+def migrate_contract(job: JobPlan) -> RunContract:
     """Migrate an old job to have a persisted contract.
 
     Idempotent — returns existing contract if already present.
@@ -602,12 +602,12 @@ def _usage_to_dict(usage: RunUsage) -> dict[str, Any]:
     }
 
 
-def save_usage(job: Job, usage: RunUsage) -> None:
+def save_usage(job: JobPlan, usage: RunUsage) -> None:
     """Store usage in job.metadata. Caller must persist the job."""
     job.metadata[_USAGE_META_KEY] = _usage_to_dict(usage)
 
 
-def load_usage(job: Job) -> RunUsage:
+def load_usage(job: JobPlan) -> RunUsage:
     """Load usage from job.metadata. Returns zero usage if absent."""
     data = job.metadata.get(_USAGE_META_KEY)
     if not isinstance(data, dict):

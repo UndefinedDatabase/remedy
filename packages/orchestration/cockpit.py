@@ -18,7 +18,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_PENDING,
@@ -60,7 +61,7 @@ from packages.orchestration._symbols import (
 
 
 def summarize_cockpit(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     *,
     data_dir: Path | None = None,
@@ -77,8 +78,8 @@ def summarize_cockpit(
     parts: list[str] = []
 
     # ── Header ──────────────────────────────────────────────────────────
-    short_id = str(job.id)[:8]
-    name = job.name if len(job.name) <= 60 else job.name[:60] + "…"
+    short_id = str(job.job_id)[:8]
+    name = job.job_title if len(job.job_title) <= 60 else job.job_title[:60] + "…"
     parts.append("Remedy Cockpit")
     parts.append(f"Job: {short_id} — {name}")
     parts.append(f"State: {job.state.value}")
@@ -180,7 +181,7 @@ def _extract_signals(events: list[dict[str, Any]]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _render_situation(job: Job, signals: dict[str, Any]) -> list[str]:
+def _render_situation(job: JobPlan, signals: dict[str, Any]) -> list[str]:
     lines: list[str] = []
 
     # Last run status
@@ -244,7 +245,7 @@ def _render_situation(job: Job, signals: dict[str, Any]) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _approval_counts(job: Job) -> dict[str, int]:
+def _approval_counts(job: JobPlan) -> dict[str, int]:
     """Count approval states across all patch intents in the job.
 
     Returns a dict with keys APPROVAL_PENDING, APPROVAL_APPROVED, APPROVAL_REJECTED.
@@ -263,7 +264,7 @@ def _approval_counts(job: Job) -> dict[str, int]:
 # ---------------------------------------------------------------------------
 
 
-def _derive_attention(job: Job, signals: dict[str, Any]) -> list[str]:
+def _derive_attention(job: JobPlan, signals: dict[str, Any]) -> list[str]:
     items: list[str] = []
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
 
@@ -332,7 +333,7 @@ def _derive_attention(job: Job, signals: dict[str, Any]) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _can_auto_continue(job: Job, signals: dict[str, Any]) -> tuple[bool, str]:
+def _can_auto_continue(job: JobPlan, signals: dict[str, Any]) -> tuple[bool, str]:
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
 
     if not pending:
@@ -352,7 +353,7 @@ def _can_auto_continue(job: Job, signals: dict[str, Any]) -> tuple[bool, str]:
 
 
 def _collect_artifacts(
-    job: Job,
+    job: JobPlan,
     signals: dict[str, Any],
     data_dir: Path | None,
 ) -> list[tuple[str, str]]:
@@ -378,7 +379,7 @@ def _collect_artifacts(
         items.append(("patch intents:", f"{count}  risk={risk_str}"))
 
     if data_dir is not None:
-        items.append(("run log dir:", str(run_log_dir(job.id, data_dir))))
+        items.append(("run log dir:", str(run_log_dir(job.job_id, data_dir))))
 
     return items
 
@@ -388,10 +389,10 @@ def _collect_artifacts(
 # ---------------------------------------------------------------------------
 
 
-def _derive_next_action(job: Job, signals: dict[str, Any]) -> str:
+def _derive_next_action(job: JobPlan, signals: dict[str, Any]) -> str:
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
     ws_ok = is_allowed(job, Capability.workspace_write)
-    job_id_str = str(job.id)
+    job_id_str = str(job.job_id)
 
     # Hard blocker: workspace permission denied
     if pending and not ws_ok:

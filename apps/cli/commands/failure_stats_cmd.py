@@ -50,7 +50,7 @@ def _cmd_stats_failures(*, job: str = "", since: str = "",
         scope = resolve_scope(project_flag=project, all_projects=all_projects)
         if not scope.all_projects:
             jobs, _degraded, _skipped = scoped_jobs(scope)
-            scoped_ids = {str(j.id) for j in jobs}
+            scoped_ids = {str(j.job_id) for j in jobs}
 
     try:
         result = collect_failures(job=job or "", since=since, job_ids=scoped_ids)

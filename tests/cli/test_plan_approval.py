@@ -7,7 +7,7 @@ import os
 import subprocess
 import sys
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.decision_queue import DECISION_TYPES, list_decisions
 
 _CLI = [sys.executable, "-m", "apps.cli.grouped"]
@@ -22,7 +22,7 @@ class TestFlightPlanApprovalDecisionType:
 class TestFlightPlanApprovalDecision:
 
     def test_pending_creates_blocker(self):
-        job = Job(name="t", flight_plan={"_approval": "pending"})
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
         fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"]
         assert len(fp) == 1
         assert fp[0].severity == "blocker"
@@ -30,22 +30,22 @@ class TestFlightPlanApprovalDecision:
         assert fp[0].id == "fp:approval"
 
     def test_approved_no_decision(self):
-        job = Job(name="t", flight_plan={"_approval": "approved"})
+        job = JobPlan(job_title="t", flight_plan={"_approval": "approved"})
         fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"]
         assert len(fp) == 0
 
     def test_rejected_no_decision(self):
-        job = Job(name="t", flight_plan={"_approval": "rejected"})
+        job = JobPlan(job_title="t", flight_plan={"_approval": "rejected"})
         fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"]
         assert len(fp) == 0
 
     def test_no_flight_plan_no_decision(self):
-        job = Job(name="t")
+        job = JobPlan(job_title="t")
         fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"]
         assert len(fp) == 0
 
     def test_next_actions(self):
-        job = Job(name="t", flight_plan={"_approval": "pending"})
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
         fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"][0]
         actions = " ".join(fp.next_actions)
         assert "remedy decision resolve" in actions
@@ -53,7 +53,7 @@ class TestFlightPlanApprovalDecision:
         assert "--reason reject" in actions
 
     def test_safe_summary(self):
-        job = Job(name="t", flight_plan={"_approval": "pending"})
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
         fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"][0]
         assert "awaiting approval" in fp.safe_summary.lower()
 
@@ -260,8 +260,8 @@ class TestFlightPlanLabel:
         _cmd_do_mission("test mission", repo=str(repo), json_output=True)
         job_id = json.loads(captured.getvalue())["job_id"]
 
-        from packages.orchestration.storage import load_job
-        saved = load_job(job_id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        saved = load_job_plan(job_id)
         assert saved.flight_plan["_normalization"] == [{
             "kind": "split",
             "source_ids": ["T000"],
@@ -296,15 +296,15 @@ class TestFlightPlanLabel:
         assert exc_info.value.code != 0
 
         # Verify saved job: state != planned, tasks empty
-        from packages.orchestration.storage import list_jobs
-        jobs = list_jobs()
+        from packages.orchestration.pingpong_job import list_job_plans
+        jobs = list_job_plans()
         assert len(jobs) == 1
         saved_job = jobs[0]
         assert saved_job.state.value != "planned"
         assert saved_job.tasks == []
 
         # Verify postmortem exists under evidence dir
-        ev_dir = data_dir / "evidence_exports" / str(saved_job.id)
+        ev_dir = data_dir / "evidence_exports" / str(saved_job.job_id)
         postmortem_files = list(ev_dir.glob("*postmortem*")) if ev_dir.exists() else []
         assert len(postmortem_files) > 0, f"postmortem file must exist in {ev_dir}"
 
@@ -314,39 +314,40 @@ class TestApprovalGateEnforcement:
 
     def test_run_refused_while_pending(self, tmp_path, monkeypatch):
         from packages.orchestration.flight_plan import flight_plan_blocks_execution
-        job = Job(name="t", flight_plan={"_approval": "pending"})
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
         assert flight_plan_blocks_execution(job) == "pending"
 
     def test_run_refused_while_rejected(self):
         from packages.orchestration.flight_plan import flight_plan_blocks_execution
-        job = Job(name="t", flight_plan={"_approval": "rejected"})
+        job = JobPlan(job_title="t", flight_plan={"_approval": "rejected"})
         assert flight_plan_blocks_execution(job) == "rejected"
 
     def test_approved_not_blocked(self):
         from packages.orchestration.flight_plan import flight_plan_blocks_execution
-        job = Job(name="t", flight_plan={"_approval": "approved"})
+        job = JobPlan(job_title="t", flight_plan={"_approval": "approved"})
         assert flight_plan_blocks_execution(job) is None
 
     def test_no_plan_not_blocked(self):
         from packages.orchestration.flight_plan import flight_plan_blocks_execution
-        job = Job(name="t")
+        job = JobPlan(job_title="t")
         assert flight_plan_blocks_execution(job) is None
 
     def test_rejected_cli_exit_3(self, tmp_path):
         """R-0130: rejected plan refuses execution at CLI level."""
-        from packages.core.models import Task, RunState
-        from packages.orchestration.storage import save_job
+        from packages.core.models import RunState
+        from packages.orchestration.pingpong_job import TaskEntry
+        from packages.orchestration.pingpong_job import save_job_plan
         env = _env(tmp_path)
         repo = _git_repo(tmp_path)
         subprocess.run(
             [*_CLI, "init"], capture_output=True, text=True, timeout=30,
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
-        job = Job(
-            name="rejected-test",
+        job = JobPlan(
+            job_title="rejected-test",
             state=RunState.PLANNED,
             flight_plan={"_approval": "rejected"},
-            tasks=[Task(description="X")],
+            tasks=[TaskEntry(title="X")],
         )
         env_with_data = {**env, "REMEDY_DATA_DIR": str(tmp_path / "data")}
         save_result = subprocess.run(
@@ -382,40 +383,40 @@ class TestDecisionResolve:
     """R-0120: approve/reject via remedy decision resolve."""
 
     def test_approve_flow(self, tmp_path, monkeypatch):
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        job = Job(name="t", flight_plan={"_approval": "pending"})
-        save_job(job)
-        short_id = str(job.id)[:8]
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
+        save_job_plan(job)
+        short_id = str(job.job_id)[:8]
 
         from apps.cli.commands.decision import _cmd_decision_resolve
         _cmd_decision_resolve(short_id, "fp:approval", reason="approve")
 
-        from packages.orchestration.storage import load_job
-        updated = load_job(job.id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        updated = load_job_plan(job.job_id)
         assert updated.flight_plan["_approval"] == "approved"
 
     def test_reject_flow(self, tmp_path, monkeypatch):
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        job = Job(name="t", flight_plan={"_approval": "pending"})
-        save_job(job)
-        short_id = str(job.id)[:8]
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
+        save_job_plan(job)
+        short_id = str(job.job_id)[:8]
 
         from apps.cli.commands.decision import _cmd_decision_resolve
         _cmd_decision_resolve(short_id, "fp:approval", reason="reject")
 
-        from packages.orchestration.storage import load_job
-        updated = load_job(job.id)
+        from packages.orchestration.pingpong_job import load_job_plan
+        updated = load_job_plan(job.job_id)
         assert updated.flight_plan["_approval"] == "rejected"
 
     def test_bad_reason_exits(self, tmp_path, monkeypatch):
         import pytest
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        job = Job(name="t", flight_plan={"_approval": "pending"})
-        save_job(job)
-        short_id = str(job.id)[:8]
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
+        save_job_plan(job)
+        short_id = str(job.job_id)[:8]
 
         from apps.cli.commands.decision import _cmd_decision_resolve
         with pytest.raises(SystemExit) as exc_info:
@@ -478,7 +479,7 @@ class TestAutoApproval:
 
         data = json.loads(captured.getvalue())
         fp_decisions = [
-            d for d in list_decisions(Job(name="t",
+            d for d in list_decisions(JobPlan(job_title="t",
                 flight_plan={"_approval": "approved",
                              "_approval_audit": {"mode": "auto_yes",
                                                  "reason": "auto-approved via --yes"}}), [])

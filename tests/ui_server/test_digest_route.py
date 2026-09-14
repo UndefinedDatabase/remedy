@@ -19,7 +19,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, Task
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.job_digest import JOB_DIGEST_VERSION, build_job_digest
 from packages.orchestration.ui_server import _load_events
 
@@ -39,14 +39,14 @@ DIGEST_KEYS = {
 }
 
 
-def _make_job() -> Job:
+def _make_job() -> JobPlan:
     # A real plan of work — one task — and no target_repo in metadata, so the
     # decision queue derives a card and the digest's decision and action
     # sections are non-trivial rather than every-field-absent.
-    return Job(
-        name="f040-digest-endpoint-job",
+    return JobPlan(
+        job_title="f040-digest-endpoint-job",
         user_prompt="Test the digest endpoint",
-        tasks=[Task(description="write a readme")],
+        tasks=[TaskEntry(title="write a readme")],
     )
 
 
@@ -55,9 +55,9 @@ class TestDigestRoute:
     def _setup_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         self.job = _make_job()
-        from packages.orchestration.storage import save_job
-        save_job(self.job)
-        self.job_id = str(self.job.id)
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(self.job)
+        self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
 
     def _start_server(self, **kwargs):

@@ -74,7 +74,7 @@ def build_project_summary(
     pending_work: list[str] = []
 
     for job in jobs:
-        jid = str(job.id)
+        jid = str(job.job_id)
         state = job.state.value if hasattr(job.state, "value") else str(job.state)
         events = all_events.get(jid, [])
 
@@ -117,7 +117,7 @@ def build_project_summary(
                 total_tokens += est
 
     for job in jobs:
-        jid = str(job.id)
+        jid = str(job.job_id)
         events = all_events.get(jid, [])
         stop_events = [e for e in events if e.get("event") == "stop_reason_recorded"]
         for se in stop_events:
@@ -208,7 +208,7 @@ def detect_patterns(
     repair_exhaustions: list[tuple[str, str]] = []
 
     for job in jobs:
-        jid = str(job.id)
+        jid = str(job.job_id)
         events = all_events.get(jid, [])
 
         for ev in events:

@@ -33,7 +33,8 @@ from pathlib import Path
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import hunk_apply
 from packages.orchestration.diff_parser import parse_unified_diff_to_view
 from packages.orchestration.hunk_apply import (
@@ -46,6 +47,7 @@ from packages.orchestration.hunk_subset_diff import (
     SUBSET_REFUSAL_ABSENT_HUNK,
     ApprovedSubsetDiff,
 )
+from packages.orchestration.data_paths import mint_job_id
 
 ORIGINAL = "\n".join(f"line {number:02d}" for number in range(1, 21)) + "\n"
 
@@ -103,12 +105,12 @@ def _tree_digests(root: Path) -> dict[str, str]:
     }
 
 
-def _approved_job(*, allow_write: bool = True, state: str = "approved") -> tuple[Job, str]:
+def _approved_job(*, allow_write: bool = True, state: str = "approved") -> tuple[JobPlan, str]:
     """A job carrying ``repo_generated_write`` and one patch intent in ``state``, and that
     intent's id. Both knobs exist so the two boundary tests can turn exactly one of them off."""
-    job = Job(
-        id=uuid4(),
-        name="hunk apply job",
+    job = JobPlan(
+        job_id=mint_job_id(),
+        job_title="hunk apply job",
         user_prompt="land the approved hunks",
         state=RunState.RUNNING,
         tasks=[],

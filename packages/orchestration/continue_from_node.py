@@ -17,10 +17,12 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.project_brain import ProjectBrainGraph
 from packages.orchestration.run_log import RunLogWriter
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.data_paths import mint_job_id
 
 
 @dataclass(frozen=True)
@@ -36,7 +38,7 @@ class ContinueResult:
 
 
 def continue_from_node(
-    parent_job: Job,
+    parent_job: JobPlan,
     graph: ProjectBrainGraph,
     node_id: str,
     prompt: str,
@@ -61,13 +63,13 @@ def continue_from_node(
     parent_repo = parent_job.metadata.get("target_repo")
 
     # Build child job
-    child_id = uuid4()
+    child_id = mint_job_id()
     child_meta: dict[str, Any] = {
-        "parent_job_id": str(parent_job.id),
+        "parent_job_id": str(parent_job.job_id),
         "origin_node_id": node_id,
         "origin_node_type": node.type,
         "origin_node_label": node.label[:80],
-        "origin_reason": f"Continued from {node.type} node in job {str(parent_job.id)[:8]}",
+        "origin_reason": f"Continued from {node.type} node in job {str(parent_job.job_id)[:8]}",
     }
     if parent_project_id:
         child_meta["project_id"] = parent_project_id
@@ -75,20 +77,20 @@ def continue_from_node(
         child_meta["target_repo"] = parent_repo
 
     # Create task if task_type provided
-    tasks: list[Task] = []
+    tasks: list[TaskEntry] = []
     if task_type:
         task_id = uuid4()
-        tasks.append(Task(
-            id=task_id,
-            description=prompt[:200] if len(prompt) > 200 else prompt,
+        tasks.append(TaskEntry(
+            task_id="T001",
+            title=prompt[:200] if len(prompt) > 200 else prompt,
             status=RunState.PENDING,
             inputs={"task_type": task_type},
             output_artifact_ids=[],
         ))
 
-    child_job = Job(
-        id=child_id,
-        name=prompt[:100] if len(prompt) > 100 else prompt,
+    child_job = JobPlan(
+        job_id=child_id,
+        job_title=prompt[:100] if len(prompt) > 100 else prompt,
         user_prompt=prompt,
         state=RunState.PLANNED if tasks else RunState.PENDING,
         tasks=tasks,
@@ -97,7 +99,7 @@ def continue_from_node(
         project_id=parent_project_id,
     )
 
-    save_job(child_job)
+    save_job_plan(child_job)
 
     # Link child to project if inherited
     if parent_project_id:
@@ -120,11 +122,11 @@ def continue_from_node(
             )
 
     # Emit run-log event on parent job
-    parent_log = RunLogWriter(job_id=parent_job.id)
+    parent_log = RunLogWriter(job_id=parent_job.job_id)
     parent_log.log(
         "continued_from_node",
         outcome="spawned_child",
-        parent_job_id=str(parent_job.id),
+        parent_job_id=str(parent_job.job_id),
         child_job_id=str(child_id),
         origin_node_id=node_id,
         origin_node_type=node.type,
@@ -137,7 +139,7 @@ def continue_from_node(
     child_log.log(
         "continued_from_node",
         outcome="created",
-        parent_job_id=str(parent_job.id),
+        parent_job_id=str(parent_job.job_id),
         child_job_id=str(child_id),
         origin_node_id=node_id,
         origin_node_type=node.type,
@@ -146,7 +148,7 @@ def continue_from_node(
     )
 
     return ContinueResult(
-        parent_job_id=str(parent_job.id),
+        parent_job_id=str(parent_job.job_id),
         child_job_id=str(child_id),
         origin_node_id=node_id,
         origin_node_type=node.type,

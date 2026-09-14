@@ -332,10 +332,10 @@ class TestRoutedHandler:
     ):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.guide import _cmd_guide_job
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(id=uuid4(), name="routed-handler")
-        save_job(job)
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_id=mint_job_id(), job_title="routed-handler")
+        save_job_plan(job)
         exit_code = None
         try:
             _cmd_guide_job(str(job.id)[:8], json_output=True)
@@ -350,12 +350,12 @@ class TestRoutedHandler:
         """Raised by the ``load_job`` spy, so a handler stops right after its load."""
 
     def _spy_on_load_job(self, monkeypatch) -> list[str]:
-        """Replace the storage ``load_job`` with a spy recording ``str()`` of each id it is handed.
+        """Replace ``load_job_plan`` and ``require_job_plan`` with a spy recording ``str()`` of each id.
 
-        The handlers import ``load_job`` inside the function, so the module attribute
-        is the one they read at call time.
+        The handlers import the loader inside the function, so the ``pingpong_job`` module
+        attribute is the one they read at call time.
         """
-        from packages.orchestration import storage
+        from packages.orchestration import pingpong_job
 
         seen: list[str] = []
 
@@ -363,7 +363,8 @@ class TestRoutedHandler:
             seen.append(str(job_id))
             raise self._LoadJobReached(str(job_id))
 
-        monkeypatch.setattr(storage, "load_job", spy)
+        monkeypatch.setattr(pingpong_job, "load_job_plan", spy)
+        monkeypatch.setattr(pingpong_job, "require_job_plan", spy)
         return seen
 
     @pytest.mark.parametrize(
@@ -425,11 +426,11 @@ class TestRoutedHandler:
         """``project attach-job`` files the id it resolved, never the prefix it was typed as."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.project import _cmd_attach_project_job
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.project_registry import RemyProject, load_project, save_project
-        from packages.orchestration.storage import save_job
-        job = Job(id=uuid4(), name="attach-by-prefix")
-        save_job(job)
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_id=mint_job_id(), job_title="attach-by-prefix")
+        save_job_plan(job)
         project = RemyProject(name="attach-by-prefix")
         save_project(project)
         short = str(job.id)[:8]
@@ -443,11 +444,11 @@ class TestRoutedHandler:
         """``job stop``'s loader loads the id as given, so its caller normalises an unhyphenated one."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from apps.cli.commands.job_stop_cmd import _cmd_job_stop
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.safe_points import stop_requested
-        from packages.orchestration.storage import save_job
-        job = Job(id=uuid4(), name="stop-by-hex")
-        save_job(job)
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_id=mint_job_id(), job_title="stop-by-hex")
+        save_job_plan(job)
         _cmd_job_stop(job.id.hex)
         assert stop_requested(str(job.id)) is not None
         assert stop_requested(job.id.hex) is None
@@ -496,8 +497,8 @@ class TestMintIds:
     """
 
     def _minters(self) -> list:
-        from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id
-        return [mint_job_id, mint_run_id, mint_episode_id]
+        from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id, mint_task_id
+        return [mint_job_id, mint_run_id, mint_episode_id, mint_task_id]
 
     def test_each_mints_sixteen_lowercase_hex_chars(self):
         for mint in self._minters():
@@ -517,6 +518,13 @@ class TestMintIds:
         assert mint_job_id is not mint_run_id
         assert mint_job_id is not mint_episode_id
         assert mint_run_id is not mint_episode_id
+
+    def test_the_task_minter_is_a_fourth_distinct_function(self):
+        """The TASK kind gets its own function too, not an alias of the other three."""
+        from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id, mint_task_id
+        assert mint_task_id is not mint_job_id
+        assert mint_task_id is not mint_run_id
+        assert mint_task_id is not mint_episode_id
 
     def test_minted_ids_match_the_short_hex_pattern(self):
         """What lets the existing prefix resolvers accept a minted id at all."""
@@ -544,14 +552,15 @@ class TestMintIds:
 # ``jobs_dir() / <id> / 'evidence'`` onto the one spelling" — so a later reader
 # knows what earns a place here rather than guessing from the list.
 #
-# ``packages/orchestration/checkpoints.py`` and ``packages/orchestration/
-# storage.py`` are DELIBERATELY EXCLUDED and correctly keep their ``jobs_dir``
-# calls. They name the CLASSIC job store, ``<data_root>/jobs/<uuid>.json``,
-# which is one FILE per job and a different concept from a job's evidence
-# DIRECTORY; that store is deleted in F260 T004, not here. The reason is written
-# down because an exclusion a later reader cannot justify is one a later reader
-# deletes — or, worse, "fixes" by migrating the classic store onto an evidence
-# path it was never meant to share.
+# ``packages/orchestration/storage.py`` is DELIBERATELY EXCLUDED and correctly
+# keeps its ``jobs_dir`` calls. It names the CLASSIC job store,
+# ``<data_root>/jobs/<uuid>.json``, which is one FILE per job and a different
+# concept from a job's evidence DIRECTORY; that store is deleted in F260 T004,
+# not here. ``packages/orchestration/checkpoints.py`` called ``jobs_dir`` too
+# until the flip moved its job snapshot onto ``data_paths.job_record_path``.
+# The reason is written down because an exclusion a later reader cannot justify
+# is one a later reader deletes — or, worse, "fixes" by migrating the classic
+# store onto an evidence path it was never meant to share.
 _JOB_EVIDENCE_OWNING_MODULES = (
     "packages.orchestration.pingpong_job",
     "packages.orchestration.job_evidence",
@@ -781,9 +790,9 @@ class TestJobAndRunLayout:
         back. Only reading the module itself sees it, which is why BOTH readings
         ship rather than either one alone.
 
-        ``checkpoints.py`` and ``storage.py`` are not in this set on purpose:
-        they name the CLASSIC store ``<data_root>/jobs/<uuid>.json``, a file per
-        job rather than a job's evidence directory, and F260 T004 deletes it.
+        ``storage.py`` is not in this set on purpose: it names the CLASSIC
+        store ``<data_root>/jobs/<uuid>.json``, a file per job rather than a
+        job's evidence directory, and F260 T004 deletes it.
         """
         import importlib
 
@@ -815,16 +824,17 @@ class TestJobAndRunLayout:
             assert Path(module.__file__).is_file(), f"{modname} has no source file"
 
     def test_the_classic_store_modules_still_call_jobs_dir(self):
-        """The excluded pair must keep naming the classic store, not lose it quietly.
+        """The excluded module must keep naming the classic store, not lose it quietly.
 
         This is the other half of the non-vacuity reading: if ``jobs_dir`` had
         simply been deleted everywhere, the absence guard above would pass for
-        the wrong reason. ``checkpoints.py`` and ``storage.py`` are the modules
-        that legitimately still call it, until F260 T004 deletes that store.
+        the wrong reason. ``storage.py`` is the module that legitimately still
+        calls it, until F260 T004 deletes that store. ``checkpoints.py`` called
+        it too until the flip moved its job snapshot onto ``job_record_path``.
         """
-        from packages.orchestration import checkpoints, storage
+        from packages.orchestration import storage
 
-        for module in (checkpoints, storage):
+        for module in (storage,):
             hits = self._jobs_dir_references(module)
             assert hits, (
                 f"{module.__name__} no longer references jobs_dir; the classic "

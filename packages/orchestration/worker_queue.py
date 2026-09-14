@@ -429,7 +429,8 @@ def _run_via_task_execution(
 ) -> WorkerResult:
     """Execute one pending Job.tasks item through the modular task_execution port."""
     from packages.core.models import RunState
-    from packages.orchestration.storage import JobNotFoundError, JobStoreError, load_job, save_job
+    from packages.orchestration.storage import JobNotFoundError, JobStoreError
+    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
     from packages.orchestration.task_execution import BudgetGate, TaskExecutionRequest, execute_task
 
     root = Path(data_dir)
@@ -448,7 +449,7 @@ def _run_via_task_execution(
     result.budget_status = "ok"
 
     try:
-        job = load_job(entry.job_id, root)
+        job = require_job_plan(entry.job_id, root)
     except JobNotFoundError:
         transition_state(entry.job_id, "blocked", data_dir, blocked_reason="job_not_found")
         result.last_lifecycle_state = "blocked"
@@ -478,14 +479,14 @@ def _run_via_task_execution(
         result.why_it_stopped = "all_tasks_done"
         return result
 
-    task_id_str = str(pending_task.id)
+    task_id_str = str(pending_task.task_id)
     result.last_task_id = task_id_str
-    result.last_job_id = str(job.id)
+    result.last_job_id = str(job.job_id)
 
     writer = None
     try:
         from packages.orchestration.run_log import RunLogWriter
-        writer = RunLogWriter(job.id, data_root=root)
+        writer = RunLogWriter(job.job_id, data_root=root)
     except (ImportError, OSError):
         pass
 
@@ -499,9 +500,9 @@ def _run_via_task_execution(
         writer.log("task_execution_started", task_id=task_id_str, outcome="started", **event_meta)
 
     req = TaskExecutionRequest(
-        job_id=str(job.id),
+        job_id=str(job.job_id),
         task_id=task_id_str,
-        task_description=pending_task.description[:80],
+        task_description=pending_task.title[:80],
         task_inputs=dict(pending_task.inputs) if pending_task.inputs else {},
         provider=provider,
     )
@@ -531,7 +532,7 @@ def _run_via_task_execution(
         result.blocked_reason = (exec_result.outcome or "unknown")[:200]
         pending_task.inputs["blocked_reason"] = (exec_result.outcome or "unknown")[:200]
 
-    save_job(job, root)
+    save_job_plan(job, root)
 
     if writer:
         end_event = f"task_execution_{exec_result.status}"
@@ -580,8 +581,9 @@ def _run_via_legacy_autorun(
     """Legacy autorun path for providers not yet on task_execution port."""
     try:
         from packages.orchestration.autorun import run_autorun
-        from packages.orchestration.storage import JobNotFoundError, load_job
-        job = load_job(entry.job_id)
+        from packages.orchestration.storage import JobNotFoundError
+        from packages.orchestration.pingpong_job import require_job_plan
+        job = require_job_plan(entry.job_id)
         ar = run_autorun(job, builder_provider=provider, data_dir=str(data_dir))
         stage = ar.stage if hasattr(ar, "stage") else ""
         stop = ar.stop_reason if hasattr(ar, "stop_reason") else ""

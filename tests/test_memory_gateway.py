@@ -219,11 +219,11 @@ class TestMemoryCLI:
 
 class TestContextCoverageMemorySignal:
     def test_project_memory_present_with_approved_entries(self, tmp_path, monkeypatch) -> None:
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.context_coverage import derive_context_coverage
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test", user_prompt="test")
+        job = JobPlan(job_title="test", user_prompt="test")
         job.metadata["project_id"] = "test_proj_cc"
 
         # Without approved memory

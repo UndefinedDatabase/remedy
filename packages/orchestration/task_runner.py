@@ -51,7 +51,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.artifact_index import planning_artifact
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.path_utils import sanitize_path_component
@@ -68,12 +69,12 @@ class RunTaskResult:
     changed:  True if a task was executed; False if no pending task was found.
     """
 
-    job: Job
+    job: JobPlan
     task_id: str | None
     changed: bool
 
 
-def _find_next_pending(job: Job, *, task_id: str | None = None) -> Task | None:
+def _find_next_pending(job: JobPlan, *, task_id: str | None = None) -> TaskEntry | None:
     """Return the first task with status PENDING, or None.
 
     With *task_id*, return that task only if it is PENDING — the caller has
@@ -83,13 +84,13 @@ def _find_next_pending(job: Job, *, task_id: str | None = None) -> Task | None:
     for task in job.tasks:
         if task.status != RunState.PENDING:
             continue
-        if task_id is not None and task.id != task_id:
+        if task_id is not None and task.task_id != task_id:
             continue
         return task
     return None
 
 
-def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
+def _build_execution_context(job: JobPlan, task: TaskEntry) -> TaskExecutionContext:
     """Build a TaskExecutionContext from the current job and task state.
 
     Extracts planning_summary from the planning artifact located via
@@ -109,7 +110,7 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
     for t in job.tasks:
         if t.status == RunState.COMPLETED:
             for artifact in job.artifacts:
-                if artifact.task_id == str(t.id):
+                if artifact.task_id == str(t.task_id):
                     s = artifact.metadata.get("summary")
                     if s:
                         prior_summaries.append(s)
@@ -123,7 +124,7 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
         project_id = job.metadata.get("project_id")
         ctx = build_memory_context(
             project_id=project_id,
-            job_id=str(job.id) if not project_id else None,
+            job_id=str(job.job_id) if not project_id else None,
             budget=500,
         )
         section = format_memory_section(ctx)
@@ -140,11 +141,11 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
         pass
 
     return TaskExecutionContext(
-        job_id=str(job.id),
+        job_id=str(job.job_id),
         job_prompt=job.user_prompt,
-        task_id=str(task.id),
+        task_id=str(task.task_id),
         task_type=task_type,
-        task_description=task.description,
+        task_description=task.title,
         planning_summary=planning_summary,
         prior_task_summaries=prior_summaries,
         memory_context=memory_context,
@@ -153,7 +154,7 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
 
 
 def run_next_task(
-    job: Job,
+    job: JobPlan,
     call_builder: Callable[[TaskExecutionContext], BuilderOutput],
     *,
     task_id: str | None = None,
@@ -205,9 +206,9 @@ def run_next_task(
 
     content_lines = [
         "Builder Execution Output",
-        f"Task:  {task.id}",
+        f"Task:  {task.task_id}",
         f"Type:  {task_type}",
-        f"Desc:  {task.description}",
+        f"Desc:  {task.title}",
         "",
         f"Summary: {output.summary}",
         "",
@@ -233,7 +234,7 @@ def run_next_task(
         name=f"task_output_{task_type}",
         content="\n".join(content_lines),
         mime_type="text/plain",
-        task_id=str(task.id),
+        task_id=str(task.task_id),
         kind=ArtifactKind.BUILDER_PROPOSAL,
         metadata={
             "task_type": task_type,
@@ -244,10 +245,10 @@ def run_next_task(
 
     # Task intentionally stays RUNNING here — finalize_task() will mark it
     # COMPLETED only after verify_task_output() passes (Step 7 verifier gate).
-    task.output_artifact_ids.append(artifact.id)
+    task.output_artifact_ids.append(str(artifact.id))
     job.artifacts.append(artifact)
 
-    return RunTaskResult(job=job, task_id=task.id, changed=True)
+    return RunTaskResult(job=job, task_id=task.task_id, changed=True)
 
 
 def annotate_task_result(
@@ -324,7 +325,7 @@ def finalize_task(result: RunTaskResult, vr: VerificationResult) -> None:
         return
 
     task = next(
-        (t for t in result.job.tasks if t.id == result.task_id),
+        (t for t in result.job.tasks if t.task_id == result.task_id),
         None,
     )
     if task is None:
@@ -362,7 +363,7 @@ def finalize_task(result: RunTaskResult, vr: VerificationResult) -> None:
         # Locate the current attempt's artifact by ID (not by task_id scan —
         # multiple failed artifacts share the same task_id).
         artifact = next(
-            (a for a in result.job.artifacts if a.id == current_artifact_id),
+            (a for a in result.job.artifacts if str(a.id) == current_artifact_id),
             None,
         )
         if artifact is None:
@@ -441,7 +442,7 @@ def materialize_task_output(
     # invariant violation (result.changed=True means a task was executed and
     # must be present in job.tasks).
     task_index, task_obj = next(
-        ((i, t) for i, t in enumerate(result.job.tasks) if t.id == result.task_id),
+        ((i, t) for i, t in enumerate(result.job.tasks) if t.task_id == result.task_id),
         (None, None),
     )
     if task_obj is None:
@@ -463,7 +464,7 @@ def materialize_task_output(
         )
     artifact_id = task_obj.output_artifact_ids[0]
     artifact = next(
-        (a for a in result.job.artifacts if a.id == artifact_id),
+        (a for a in result.job.artifacts if str(a.id) == artifact_id),
         None,
     )
     if artifact is None:

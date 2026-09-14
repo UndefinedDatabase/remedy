@@ -37,8 +37,9 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
-from packages.orchestration.storage import save_job
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from packages.orchestration.pingpong_job import save_job_plan
 from packages.orchestration.timeline import (
     append_run_event,
     load_run_events,
@@ -72,10 +73,10 @@ def _runs_path(data_dir: Path, job_id) -> Path:
     return data_dir / "job_logs" / str(job_id)
 
 
-def _make_job(**kwargs) -> Job:
-    defaults: dict = {"name": "Test job", "state": RunState.PENDING}
+def _make_job(**kwargs) -> JobPlan:
+    defaults: dict = {"job_title": "Test job", "state": RunState.PENDING}
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _simple_events(job_id_str: str, run_id: str = "run1") -> list[dict[str, Any]]:
@@ -302,7 +303,7 @@ class TestSummarizeTimelineHeader:
     def test_includes_job_short_id(self):
         job = _make_job()
         out = summarize_timeline(job, [])
-        assert str(job.id)[:8] in out
+        assert str(job.job_id)[:8] in out
 
     def test_includes_state(self):
         job = _make_job(state=RunState.COMPLETED)
@@ -311,7 +312,7 @@ class TestSummarizeTimelineHeader:
 
     def test_includes_task_counts(self):
         job = _make_job()
-        task = Task(description="t", inputs={"task_type": "write_readme"})
+        task = TaskEntry(title="t", inputs={"task_type": "write_readme"})
         task.status = RunState.COMPLETED
         job.tasks.append(task)
         out = summarize_timeline(job, [])
@@ -320,7 +321,7 @@ class TestSummarizeTimelineHeader:
 
     def test_truncates_long_job_name(self):
         long_name = "A" * 80
-        job = _make_job(name=long_name)
+        job = _make_job(job_title=long_name)
         out = summarize_timeline(job, [])
         assert "…" in out
         assert "A" * 80 not in out
@@ -349,7 +350,7 @@ class TestSummarizeTimelineHeader:
 class TestRenderJobCreated:
     def test_job_created_renders_ok(self):
         job = _make_job()
-        events = [{"event": "job_created", "job_id": str(job.id), "run_id": "r",
+        events = [{"event": "job_created", "job_id": str(job.job_id), "run_id": "r",
                    "timestamp": _ts(0), "outcome": "created", "metadata": {}}]
         out = summarize_timeline(job, events)
         assert "Job created" in out
@@ -359,9 +360,9 @@ class TestRenderPlanningEvents:
     def test_planning_completed_changed(self):
         job = _make_job()
         events = [
-            {"event": "planning_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "planning_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "metadata": {}},
-            {"event": "planning_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "planning_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "outcome": "changed", "model": "qwen3",
              "metadata": {"task_count": 3, "elapsed_ms": 5000}},
         ]
@@ -374,9 +375,9 @@ class TestRenderPlanningEvents:
     def test_planning_started_not_rendered_separately(self):
         job = _make_job()
         events = [
-            {"event": "planning_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "planning_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "metadata": {}},
-            {"event": "planning_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "planning_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "outcome": "changed", "metadata": {"task_count": 1}},
         ]
         out = summarize_timeline(job, events)
@@ -385,14 +386,14 @@ class TestRenderPlanningEvents:
 
     def test_planning_completed_noop(self):
         job = _make_job()
-        events = [{"event": "planning_completed", "job_id": str(job.id), "run_id": "r",
+        events = [{"event": "planning_completed", "job_id": str(job.job_id), "run_id": "r",
                    "timestamp": _ts(0), "outcome": "noop", "metadata": {}}]
         out = summarize_timeline(job, events)
         assert "already planned" in out or "no change" in out
 
     def test_planning_failed_renders_detail(self):
         job = _make_job()
-        events = [{"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+        events = [{"event": "planning_failed", "job_id": str(job.job_id), "run_id": "r",
                    "timestamp": _ts(0), "outcome": "error", "message": "planning failed",
                    "metadata": {"error_category": "RuntimeError"}}]
         out = summarize_timeline(job, events)
@@ -402,7 +403,7 @@ class TestRenderPlanningEvents:
     def test_planning_failed_without_error_category_renders_unknown_error(self):
         """When error_category is absent, timeline must show 'unknown error', not raw message."""
         job = _make_job()
-        events = [{"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+        events = [{"event": "planning_failed", "job_id": str(job.job_id), "run_id": "r",
                    "timestamp": _ts(0), "outcome": "error",
                    "message": "secret-token SHOULD_NOT_RENDER",
                    "metadata": {}}]
@@ -415,7 +416,7 @@ class TestRenderPlanningEvents:
     def test_planning_failed_message_field_never_rendered_as_detail(self):
         """message field is silenced even when it looks like a connection error with secrets."""
         job = _make_job()
-        events = [{"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+        events = [{"event": "planning_failed", "job_id": str(job.job_id), "run_id": "r",
                    "timestamp": _ts(0), "outcome": "error",
                    "message": "connection refused password=abc",
                    "metadata": {}}]
@@ -427,7 +428,7 @@ class TestRenderPlanningEvents:
     def test_planning_failed_error_category_wins_over_message(self):
         """When both error_category and a sensitive message are present, error_category wins."""
         job = _make_job()
-        events = [{"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+        events = [{"event": "planning_failed", "job_id": str(job.job_id), "run_id": "r",
                    "timestamp": _ts(0), "outcome": "error",
                    "message": "secret-token SHOULD_NOT_RENDER",
                    "metadata": {"error_category": "RuntimeError"}}]
@@ -441,7 +442,7 @@ class TestRenderPlanningEvents:
 class TestRenderTaskRunNoop:
     def test_no_pending_tasks_renders(self):
         job = _make_job()
-        events = [{"event": "task_run_noop", "job_id": str(job.id), "run_id": "r",
+        events = [{"event": "task_run_noop", "job_id": str(job.job_id), "run_id": "r",
                    "timestamp": _ts(0), "outcome": "no_pending_tasks", "metadata": {}}]
         out = summarize_timeline(job, events)
         assert "No pending tasks" in out
@@ -451,10 +452,10 @@ class TestRenderTaskRunNoop:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "task_run_noop", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_noop", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "no_change",
              "metadata": {"task_type": "write_readme", "reason": "builder_returned_no_change"}},
         ]
@@ -469,14 +470,14 @@ class TestRenderTaskRunNoop:
         job = _make_job()
         task_id = str(uuid4())
         no_pending_events = [
-            {"event": "task_run_noop", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_noop", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "outcome": "no_pending_tasks", "metadata": {}}
         ]
         no_change_events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "task_run_noop", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_noop", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "no_change",
              "metadata": {}},
         ]
@@ -490,10 +491,10 @@ class TestRenderPermissionDenied:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "task_run_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "permission_denied",
              "metadata": {"capability": "workspace_write", "task_type": "write_readme"}},
         ]
@@ -505,10 +506,10 @@ class TestRenderPermissionDenied:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "task_run_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "permission_denied",
              "metadata": {"capability": "workspace_write", "task_type": "write_readme"}},
         ]
@@ -521,25 +522,25 @@ class TestRenderVerificationFailed:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "builder_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "builder_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id,
              "model": "qwen3", "metadata": {}},
-            {"event": "builder_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "builder_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(2), "task_id": task_id,
              "metadata": {"elapsed_ms": 1000}},
-            {"event": "workspace_materialized", "job_id": str(job.id), "run_id": "r",
+            {"event": "workspace_materialized", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(3), "task_id": task_id,
              "metadata": {"workspace_file": "/tmp/ws.txt"}},
-            {"event": "verification_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "verification_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(4), "task_id": task_id, "outcome": "fail",
              "metadata": {
                  "failure_count": 2,
                  "failed_checks": ["required_section:Summary:", "min_proposed_changes"],
              }},
-            {"event": "task_run_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(5), "task_id": task_id, "outcome": "fail",
              "metadata": {"task_type": "write_readme"}},
         ]
@@ -551,13 +552,13 @@ class TestRenderVerificationFailed:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "verification_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "verification_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "fail",
              "metadata": {"failure_count": 1, "failed_checks": ["required_section:Summary:"]}},
-            {"event": "task_run_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(2), "task_id": task_id, "outcome": "fail",
              "metadata": {"task_type": "write_readme"}},
         ]
@@ -570,20 +571,20 @@ class TestRenderRepoApplication:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "builder_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "builder_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "metadata": {}},
-            {"event": "workspace_materialized", "job_id": str(job.id), "run_id": "r",
+            {"event": "workspace_materialized", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(2), "task_id": task_id,
              "metadata": {"workspace_file": "/ws/readme.txt"}},
-            {"event": "verification_passed", "job_id": str(job.id), "run_id": "r",
+            {"event": "verification_passed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(3), "task_id": task_id, "outcome": "pass", "metadata": {}},
-            {"event": "repo_application_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "repo_application_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(4), "task_id": task_id, "outcome": "applied",
              "metadata": {"file_count": 1, "files": ["/repo/README.md"]}},
-            {"event": "task_run_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(5), "task_id": task_id, "outcome": "pass",
              "metadata": {}},
         ]
@@ -594,20 +595,20 @@ class TestRenderRepoApplication:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "builder_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "builder_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "metadata": {}},
-            {"event": "workspace_materialized", "job_id": str(job.id), "run_id": "r",
+            {"event": "workspace_materialized", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(2), "task_id": task_id,
              "metadata": {"workspace_file": "/ws/readme.txt"}},
-            {"event": "verification_passed", "job_id": str(job.id), "run_id": "r",
+            {"event": "verification_passed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(3), "task_id": task_id, "outcome": "pass", "metadata": {}},
-            {"event": "repo_application_skipped", "job_id": str(job.id), "run_id": "r",
+            {"event": "repo_application_skipped", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(4), "task_id": task_id, "outcome": "skipped",
              "metadata": {"reason": "permission_denied"}},
-            {"event": "task_run_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(5), "task_id": task_id, "outcome": "pass",
              "metadata": {}},
         ]
@@ -621,20 +622,20 @@ class TestRenderPatchIntent:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "builder_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "builder_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "metadata": {}},
-            {"event": "workspace_materialized", "job_id": str(job.id), "run_id": "r",
+            {"event": "workspace_materialized", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(2), "task_id": task_id,
              "metadata": {"workspace_file": "/ws/readme.txt"}},
-            {"event": "verification_passed", "job_id": str(job.id), "run_id": "r",
+            {"event": "verification_passed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(3), "task_id": task_id, "outcome": "pass", "metadata": {}},
-            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+            {"event": "patch_intent_created", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(4), "task_id": task_id, "outcome": "created",
              "metadata": {"intent_count": 2, "risk_levels": ["low", "medium"]}},
-            {"event": "task_run_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(5), "task_id": task_id, "outcome": "pass",
              "metadata": {}},
         ]
@@ -648,7 +649,7 @@ class TestRenderUnknownEvents:
     def test_unknown_event_outside_task_block_does_not_crash(self):
         job = _make_job()
         events = [
-            {"event": "totally_unknown_event_xyz", "job_id": str(job.id), "run_id": "r",
+            {"event": "totally_unknown_event_xyz", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "metadata": {}},
         ]
         out = summarize_timeline(job, events)  # must not raise
@@ -658,12 +659,12 @@ class TestRenderUnknownEvents:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "surprise_event", "job_id": str(job.id), "run_id": "r",
+            {"event": "surprise_event", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "metadata": {}},
-            {"event": "task_run_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(2), "task_id": task_id, "outcome": "pass",
              "metadata": {}},
         ]
@@ -675,7 +676,7 @@ class TestRenderUnknownEvents:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
         ]
@@ -696,13 +697,13 @@ class TestDeriveStatus:
 
     def test_pending_tasks_shown(self):
         job = _make_job()
-        job.tasks.append(Task(description="t", inputs={}))
+        job.tasks.append(TaskEntry(title="t", inputs={}))
         out = summarize_timeline(job, [])
         assert "Pending" in out or "pending" in out
 
     def test_all_completed(self):
         job = _make_job(state=RunState.COMPLETED)
-        t = Task(description="t", inputs={})
+        t = TaskEntry(title="t", inputs={})
         t.status = RunState.COMPLETED
         job.tasks.append(t)
         out = summarize_timeline(job, [])
@@ -712,19 +713,19 @@ class TestDeriveStatus:
 class TestDeriveNextAction:
     def test_pending_tasks_suggests_run(self):
         job = _make_job()
-        job.tasks.append(Task(description="t", inputs={}))
+        job.tasks.append(TaskEntry(title="t", inputs={}))
         out = summarize_timeline(job, [])
         assert "job resume" in out
-        assert str(job.id) in out
+        assert str(job.job_id) in out
 
     def test_permission_denied_suggests_set_permission(self):
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "task_run_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "permission_denied",
              "metadata": {"capability": "workspace_write"}},
         ]
@@ -736,13 +737,13 @@ class TestDeriveNextAction:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id,
              "metadata": {"task_type": "write_readme"}},
-            {"event": "patch_intent_created", "job_id": str(job.id), "run_id": "r",
+            {"event": "patch_intent_created", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "created",
              "metadata": {"intent_count": 1, "risk_levels": ["high"]}},
-            {"event": "task_run_completed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_completed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(2), "task_id": task_id, "outcome": "pass", "metadata": {}},
         ]
         out = summarize_timeline(job, events)
@@ -750,7 +751,7 @@ class TestDeriveNextAction:
 
     def test_no_pending_suggests_inspect(self):
         job = _make_job(state=RunState.COMPLETED)
-        t = Task(description="t", inputs={})
+        t = TaskEntry(title="t", inputs={})
         t.status = RunState.COMPLETED
         job.tasks.append(t)
         out = summarize_timeline(job, [])
@@ -763,10 +764,10 @@ class TestDeriveNextAction:
 
 
 class TestCmdTimeline:
-    def _make_and_save_job(self, tmp_path, monkeypatch) -> Job:
+    def _make_and_save_job(self, tmp_path, monkeypatch) -> JobPlan:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="test job", state=RunState.PENDING)
-        save_job(job)
+        job = JobPlan(job_title="test job", state=RunState.PENDING)
+        save_job_plan(job)
         return job
 
     def _write_events(self, tmp_path, job_id, events: list[dict]) -> None:
@@ -780,25 +781,25 @@ class TestCmdTimeline:
         self, tmp_path, monkeypatch, capsys
     ):
         job = self._make_and_save_job(tmp_path, monkeypatch)
-        self._write_events(tmp_path, job.id, _simple_events(str(job.id)))
+        self._write_events(tmp_path, job.job_id, _simple_events(str(job.job_id)))
 
         from apps.cli.commands.brain import _cmd_timeline
 
-        _cmd_timeline(str(job.id))
+        _cmd_timeline(str(job.job_id))
 
         out = capsys.readouterr().out
         assert "Remedy Timeline" in out
-        assert str(job.id)[:8] in out
+        assert str(job.job_id)[:8] in out
 
     def test_prints_planning_completed_in_output(
         self, tmp_path, monkeypatch, capsys
     ):
         job = self._make_and_save_job(tmp_path, monkeypatch)
-        self._write_events(tmp_path, job.id, _simple_events(str(job.id)))
+        self._write_events(tmp_path, job.job_id, _simple_events(str(job.job_id)))
 
         from apps.cli.commands.brain import _cmd_timeline
 
-        _cmd_timeline(str(job.id))
+        _cmd_timeline(str(job.job_id))
 
         out = capsys.readouterr().out
         assert "Planning completed" in out
@@ -810,7 +811,7 @@ class TestCmdTimeline:
 
         from apps.cli.commands.brain import _cmd_timeline
 
-        _cmd_timeline(str(job.id))  # must not raise
+        _cmd_timeline(str(job.job_id))  # must not raise
 
         out = capsys.readouterr().out
         assert "No run logs found" in out
@@ -821,7 +822,7 @@ class TestCmdTimeline:
         from apps.cli.commands.brain import _cmd_timeline
 
         # Should not raise SystemExit
-        _cmd_timeline(str(job.id))
+        _cmd_timeline(str(job.job_id))
 
     def test_invalid_job_id_exits_1(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -845,11 +846,11 @@ class TestCmdTimeline:
         self, tmp_path, monkeypatch, capsys
     ):
         job = self._make_and_save_job(tmp_path, monkeypatch)
-        self._write_events(tmp_path, job.id, _simple_events(str(job.id)))
+        self._write_events(tmp_path, job.job_id, _simple_events(str(job.job_id)))
 
         from apps.cli.commands.brain import _cmd_timeline
 
-        _cmd_timeline(str(job.id))
+        _cmd_timeline(str(job.job_id))
 
         out = capsys.readouterr().out
         assert "Next suggested action" in out

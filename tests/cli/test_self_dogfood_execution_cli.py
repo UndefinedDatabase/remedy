@@ -12,10 +12,12 @@ from uuid import uuid4
 import pytest
 
 from tests.cli.runtime_helpers import run_grouped_cli
+from packages.orchestration.data_paths import mint_job_id
 
 
 def _approved_task(data_dir):
-    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+    from packages.core.models import Artifact, ArtifactKind, RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
     from packages.orchestration import self_dogfood as SD
     from packages.orchestration.proposed_tasks import (
         ProposedTaskStatus,
@@ -23,19 +25,19 @@ def _approved_task(data_dir):
         save_proposed_tasks,
         transition_status,
     )
-    from packages.orchestration.storage import save_job
-    task = Task(description="t")
-    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.id),
+    from packages.orchestration.pingpong_job import save_job_plan
+    task = TaskEntry(title="t")
+    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.task_id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",
-                            "related_task_id": str(task.id), "safe_summary": "boom"})
-    job = Job(id=uuid4(), name="ov-se", user_prompt="x", state=RunState.RUNNING,
+                            "related_task_id": str(task.task_id), "safe_summary": "boom"})
+    job = JobPlan(job_id=mint_job_id(), job_title="ov-se", user_prompt="x", state=RunState.RUNNING,
               tasks=[task], artifacts=[fa], metadata={"target_repo": "."})
-    save_job(job, root=data_dir)
-    SD.propose_self_improvement(str(job.id), top=1, data_dir=data_dir)
-    tasks = load_proposed_tasks(str(job.id), data_dir)
+    save_job_plan(job, root=data_dir)
+    SD.propose_self_improvement(str(job.job_id), top=1, data_dir=data_dir)
+    tasks = load_proposed_tasks(str(job.job_id), data_dir)
     transition_status(tasks[0], ProposedTaskStatus.APPROVED_FOR_BUILD, by="human")
-    save_proposed_tasks(str(job.id), tasks, data_dir)
-    return str(job.id), tasks[0].id
+    save_proposed_tasks(str(job.job_id), tasks, data_dir)
+    return str(job.job_id), tasks[0].id
 
 
 @pytest.fixture()

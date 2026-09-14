@@ -14,7 +14,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -25,31 +26,29 @@ ORCH = REPO_ROOT / "packages" / "orchestration"
 CLI_COMMANDS = REPO_ROOT / "apps" / "cli" / "commands"
 
 
-def _make_job(**overrides) -> Job:
+def _make_job(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "description": "test job",
         "tasks": [
-            Task(description="task 1", status=RunState.COMPLETED),
+            TaskEntry(title="task 1", status=RunState.COMPLETED),
         ],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _make_job_s80(**overrides: object) -> Job:
+def _make_job_s80(**overrides: object) -> JobPlan:
     defaults = dict(
-        name="test-ui-job",
+        job_title="test-ui-job",
         user_prompt="Test prompt for UI",
-        tasks=[Task(description="Write a README")],
+        tasks=[TaskEntry(title="Write a README")],
     )
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _make_events() -> list[dict]:
@@ -96,7 +95,7 @@ class TestDashboard:
         from packages.orchestration.dashboard import build_job_dashboard
         job = _make_job()
         events = [
-            {"event": "test_run_completed", "run_id": "r1", "job_id": str(job.id),
+            {"event": "test_run_completed", "run_id": "r1", "job_id": str(job.job_id),
              "timestamp": "2026-01-01T00:01:00", "outcome": "failed",
              "metadata": {"status": "failed", "command": "pytest", "test_run_id": "tr1"}},
         ]
@@ -115,7 +114,7 @@ class TestDashboard:
     def test_build_project_dashboard(self):
         from packages.orchestration.dashboard import build_project_dashboard
         job = _make_job()
-        data = build_project_dashboard("proj1", [job], {str(job.id): _make_events()})
+        data = build_project_dashboard("proj1", [job], {str(job.job_id): _make_events()})
         assert data["version"] == 1
         assert data["scope"] == "project"
         assert data["job_count"] == 1
@@ -163,11 +162,11 @@ class TestUIServer:
         from packages.orchestration.ui_server import start_ui_server
 
         job = _make_job_s80()
-        from packages.orchestration.storage import save_job
-        save_job(job)
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(job)
 
         with pytest.raises(SystemExit):
-            start_ui_server(str(job.id), host="0.0.0.0", port=0)
+            start_ui_server(str(job.job_id), host="0.0.0.0", port=0)
 
     def test_safe_error_format(self):
         from packages.orchestration.ui_server import _safe_error
@@ -520,13 +519,13 @@ class TestReadinessEndpointUsesAutonomyReadiness:
 
     def test_readiness_runtime_with_empty_job(self):
         """Runtime test: assess_job_readiness returns real report for minimal job."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autonomy_readiness import (
             assess_job_readiness,
             export_readiness_json,
         )
 
-        job = Job(name="test-readiness", user_prompt="test")
+        job = JobPlan(job_title="test-readiness", user_prompt="test")
         report = assess_job_readiness(job, [])
         data = export_readiness_json(report)
 
@@ -540,13 +539,13 @@ class TestReadinessEndpointUsesAutonomyReadiness:
 
     def test_readiness_runtime_with_events(self):
         """Level 1 requires attached_repo + tasks."""
-        from packages.core.models import Job, Task
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
         from packages.orchestration.autonomy_readiness import assess_job_readiness
 
-        job = Job(
-            name="test-readiness",
+        job = JobPlan(
+            job_title="test-readiness",
             user_prompt="test",
-            tasks=[Task(description="do thing")],
+            tasks=[TaskEntry(title="do thing")],
             metadata={"target_repo": "/tmp/fake"},
         )
         report = assess_job_readiness(job, [])
@@ -555,10 +554,10 @@ class TestReadinessEndpointUsesAutonomyReadiness:
 
     def test_build_readiness_json_helper(self):
         """Runtime test: _build_readiness_json returns real data."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.ui_server import _build_readiness_json
 
-        job = Job(name="test", user_prompt="test")
+        job = JobPlan(job_title="test", user_prompt="test")
         result = _build_readiness_json(job)
         assert "version" in result
         assert "error" not in result or "readiness unavailable" not in result.get("error", "")

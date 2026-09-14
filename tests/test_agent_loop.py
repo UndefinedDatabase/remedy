@@ -42,7 +42,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.agent_loop import (
     AgentAdapterSpec,
     AgentLoopDecision,
@@ -64,30 +65,30 @@ from packages.orchestration.patch_intent import (
     RISK_UNKNOWN,
 )
 from packages.orchestration.permissions import Capability, set_permission
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_job(**kwargs) -> Job:
-    defaults: dict = {"name": "Test loop job", "state": RunState.PENDING}
+def _make_job(**kwargs) -> JobPlan:
+    defaults: dict = {"job_title": "Test loop job", "state": RunState.PENDING}
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _pending_task(**kwargs) -> Task:
-    return Task(description="write docs", inputs={"task_type": "write_readme"}, **kwargs)
+def _pending_task(**kwargs) -> TaskEntry:
+    return TaskEntry(title="write docs", inputs={"task_type": "write_readme"}, **kwargs)
 
 
-def _completed_task(**kwargs) -> Task:
-    t = Task(description="done", inputs={"task_type": "write_readme"}, **kwargs)
+def _completed_task(**kwargs) -> TaskEntry:
+    t = TaskEntry(title="done", inputs={"task_type": "write_readme"}, **kwargs)
     t.status = RunState.COMPLETED
     return t
 
 
-def _add_patch_artifact(job: Job, *, risk: str = RISK_MEDIUM, intent_count: int = 1) -> str:
+def _add_patch_artifact(job: JobPlan, *, risk: str = RISK_MEDIUM, intent_count: int = 1) -> str:
     """Add a patch-intent artifact to job. Returns the first intent_id."""
     explanations = [
         {
@@ -148,7 +149,7 @@ class TestModels:
     def test_default_state_fields(self):
         job = _make_job()
         state = default_agent_loop_state(job)
-        assert state.job_id == job.id
+        assert state.job_id == job.job_id
         assert state.current_stage == AgentLoopStage.PLANNED
         assert state.cycle == 0
         assert state.max_cycles == 3
@@ -226,7 +227,7 @@ class TestDeriveLoopState:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
+        events = [_perm_denied_event(str(job.job_id), task_id=str(task.task_id))]
         state = derive_agent_loop_state(job, events)
         assert state.decision == AgentLoopDecision.BLOCKED
         assert state.current_stage == AgentLoopStage.BLOCKED
@@ -238,7 +239,7 @@ class TestDeriveLoopState:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
+        events = [_perm_denied_event(str(job.job_id), task_id=str(task.task_id))]
         state = derive_agent_loop_state(job, events)
         assert state.blocked_reason == "permission_denied:workspace_write"
 
@@ -246,7 +247,7 @@ class TestDeriveLoopState:
         """No task_id → cannot prove stale → still blocked when pending tasks exist."""
         job = _make_job()
         job.tasks.append(_pending_task())
-        events = [_perm_denied_event(str(job.id))]  # no task_id
+        events = [_perm_denied_event(str(job.job_id))]  # no task_id
         state = derive_agent_loop_state(job, events)
         assert state.decision == AgentLoopDecision.BLOCKED
 
@@ -254,7 +255,7 @@ class TestDeriveLoopState:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
+        events = [_perm_denied_event(str(job.job_id), task_id=str(task.task_id))]
         state = derive_agent_loop_state(job, events)
         assert state.decision == AgentLoopDecision.BLOCKED
 
@@ -266,8 +267,8 @@ class TestDeriveLoopState:
         job = _make_job()
         job.tasks.append(task)
         events = [
-            _perm_denied_event(str(job.id), task_id=str(task.id)),
-            _task_completed_event(str(job.id), str(task.id)),
+            _perm_denied_event(str(job.job_id), task_id=str(task.task_id)),
+            _task_completed_event(str(job.job_id), str(task.task_id)),
         ]
         state = derive_agent_loop_state(job, events)
         assert state.decision != AgentLoopDecision.BLOCKED
@@ -279,8 +280,8 @@ class TestDeriveLoopState:
         job.tasks.append(task)
         _add_patch_artifact(job, risk=RISK_MEDIUM)
         events = [
-            _perm_denied_event(str(job.id), task_id=str(task.id)),
-            _task_completed_event(str(job.id), str(task.id)),
+            _perm_denied_event(str(job.job_id), task_id=str(task.task_id)),
+            _task_completed_event(str(job.job_id), str(task.task_id)),
         ]
         state = derive_agent_loop_state(job, events)
         assert state.decision == AgentLoopDecision.NEEDS_APPROVAL
@@ -294,8 +295,8 @@ class TestDeriveLoopState:
         intent_id = _add_patch_artifact(job, risk=RISK_MEDIUM)
         set_approval_state(job, intent_id, APPROVAL_APPROVED)
         events = [
-            _perm_denied_event(str(job.id), task_id=str(task.id)),
-            _task_completed_event(str(job.id), str(task.id)),
+            _perm_denied_event(str(job.job_id), task_id=str(task.task_id)),
+            _task_completed_event(str(job.job_id), str(task.task_id)),
         ]
         state = derive_agent_loop_state(job, events)
         assert state.decision == AgentLoopDecision.COMPLETE
@@ -303,7 +304,7 @@ class TestDeriveLoopState:
     def test_no_tasks_plus_old_perm_denied_gives_planned_not_blocked(self):
         """Old perm_denied event with no pending tasks → planned/continue, not blocked."""
         job = _make_job()
-        events = [_perm_denied_event(str(job.id))]
+        events = [_perm_denied_event(str(job.job_id))]
         state = derive_agent_loop_state(job, events)
         assert state.decision == AgentLoopDecision.CONTINUE
         assert state.current_stage == AgentLoopStage.PLANNED
@@ -314,7 +315,7 @@ class TestDeriveLoopState:
         task = _completed_task()
         job = _make_job()
         job.tasks.append(task)
-        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
+        events = [_perm_denied_event(str(job.job_id), task_id=str(task.task_id))]
         state = derive_agent_loop_state(job, events)
         assert state.decision != AgentLoopDecision.BLOCKED
 
@@ -323,7 +324,7 @@ class TestDeriveLoopState:
         job = _make_job()
         ev = {
             "event": "task_run_failed",
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "run_id": "r1",
             "timestamp": "2026-05-06T10:00:00+00:00",
             "metadata": {"outcome": "permission_denied"},
@@ -416,7 +417,7 @@ class TestDeriveLoopState:
     def test_job_id_preserved(self):
         job = _make_job()
         state = derive_agent_loop_state(job, [])
-        assert state.job_id == job.id
+        assert state.job_id == job.job_id
 
     def test_custom_max_cycles_preserved(self):
         job = _make_job()
@@ -433,7 +434,7 @@ class TestDeriveLoopState:
         job = _make_job()
         job.tasks.append(_pending_task())
         events = [
-            {"event": "project_constitution_loaded", "job_id": str(job.id),
+            {"event": "project_constitution_loaded", "job_id": str(job.job_id),
              "run_id": "r1", "timestamp": "2026-05-06T10:00:00+00:00",
              "metadata": {"source_count": 3}},
         ]
@@ -458,10 +459,10 @@ class TestSummarizeLoopState:
         job = _make_job()
         state = default_agent_loop_state(job)
         out = summarize_agent_loop_state(job, state)
-        assert str(job.id)[:8] in out
+        assert str(job.job_id)[:8] in out
 
     def test_job_name_shown(self):
-        job = _make_job(name="My agent job")
+        job = _make_job(job_title="My agent job")
         state = default_agent_loop_state(job)
         out = summarize_agent_loop_state(job, state)
         assert "My agent job" in out
@@ -528,7 +529,7 @@ class TestSummarizeLoopState:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
+        events = [_perm_denied_event(str(job.job_id), task_id=str(task.task_id))]
         state = derive_agent_loop_state(job, events)
         out = summarize_agent_loop_state(job, state)
         assert "job permit" in out
@@ -541,7 +542,7 @@ class TestSummarizeLoopState:
         # Event with no task_id and no capability in metadata
         ev = {
             "event": "task_run_failed",
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "run_id": "r1",
             "timestamp": "2026-05-06T10:00:00+00:00",
             "outcome": "permission_denied",
@@ -572,7 +573,7 @@ class TestSummarizeLoopState:
         job = _make_job()
         task = _pending_task()
         job.tasks.append(task)
-        events = [_perm_denied_event(str(job.id), task_id=str(task.id))]
+        events = [_perm_denied_event(str(job.job_id), task_id=str(task.task_id))]
         state = derive_agent_loop_state(job, events)
         out = summarize_agent_loop_state(job, state)
         assert "permission_denied (workspace_write)" in out
@@ -616,7 +617,7 @@ class TestSummarizeLoopState:
         events = [
             {
                 "event": "task_run_failed",
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "run_id": "r1",
                 "timestamp": "2026-05-06T10:00:00+00:00",
                 "outcome": "permission_denied",
@@ -630,7 +631,7 @@ class TestSummarizeLoopState:
 
     def test_long_name_truncated(self):
         name = "A" * 80
-        job = _make_job(name=name)
+        job = _make_job(job_title=name)
         state = default_agent_loop_state(job)
         out = summarize_agent_loop_state(job, state)
         assert name not in out
@@ -661,7 +662,7 @@ class TestRedactionHardening:
         "ARTIFACT_CONTENT_MUST_NOT_RENDER",
     }
 
-    def _make_job_with_sentinels(self) -> Job:
+    def _make_job_with_sentinels(self) -> JobPlan:
         job = _make_job()
         job.tasks.append(_completed_task())
         artifact = Artifact(
@@ -705,7 +706,7 @@ class TestRedactionHardening:
 
     def test_no_sentinels_in_summary_output(self):
         job = self._make_job_with_sentinels()
-        events = self._sentinel_events(str(job.id))
+        events = self._sentinel_events(str(job.job_id))
         state = derive_agent_loop_state(job, events)
         out = summarize_agent_loop_state(job, state)
         for sentinel in self.SENTINELS:
@@ -714,11 +715,11 @@ class TestRedactionHardening:
     def test_no_sentinels_in_run_log_event(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._make_job_with_sentinels()
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_agent_loop
-        _cmd_agent_loop(str(job.id))
+        _cmd_agent_loop(str(job.job_id))
         capsys.readouterr()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         combined = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
         for sentinel in self.SENTINELS:
             assert sentinel not in combined, f"sentinel {sentinel!r} leaked into run log"
@@ -747,21 +748,21 @@ class TestCLIAgentLoop:
     def test_valid_job_prints_report(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_agent_loop
-        _cmd_agent_loop(str(job.id))
+        _cmd_agent_loop(str(job.job_id))
         out = capsys.readouterr().out
         assert "Remedy Agent Loop" in out
-        assert str(job.id)[:8] in out
+        assert str(job.job_id)[:8] in out
 
     def test_cli_logs_agent_loop_inspected_event(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_agent_loop
-        _cmd_agent_loop(str(job.id))
+        _cmd_agent_loop(str(job.job_id))
         capsys.readouterr()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -774,11 +775,11 @@ class TestCLIAgentLoop:
         """agent_loop_inspected metadata must contain exactly the fixed schema."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_agent_loop
-        _cmd_agent_loop(str(job.id))
+        _cmd_agent_loop(str(job.job_id))
         capsys.readouterr()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -798,22 +799,22 @@ class TestCLIAgentLoop:
             content="ARTIFACT RAW CONTENT MUST NOT BE LOGGED",
             kind=ArtifactKind.BUILDER_PROPOSAL,
         ))
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_agent_loop
-        _cmd_agent_loop(str(job.id))
+        _cmd_agent_loop(str(job.job_id))
         capsys.readouterr()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         combined = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
         assert "ARTIFACT RAW CONTENT MUST NOT BE LOGGED" not in combined
 
     def test_exactly_one_run_log_file_created(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_agent_loop
-        _cmd_agent_loop(str(job.id))
+        _cmd_agent_loop(str(job.job_id))
         capsys.readouterr()
-        runs_dir = tmp_path / "job_logs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.job_id)
         assert len(list(runs_dir.glob("*.jsonl"))) == 1
 
     def test_cli_output_no_raw_approval_reason(self, tmp_path, monkeypatch, capsys):
@@ -822,8 +823,8 @@ class TestCLIAgentLoop:
         job.tasks.append(_completed_task())
         intent_id = _add_patch_artifact(job, risk=RISK_MEDIUM)
         set_approval_state(job, intent_id, APPROVAL_APPROVED, reason="top secret reason")
-        save_job(job)
+        save_job_plan(job)
         from apps.cli.commands.brain import _cmd_agent_loop
-        _cmd_agent_loop(str(job.id))
+        _cmd_agent_loop(str(job.job_id))
         out = capsys.readouterr().out
         assert "top secret reason" not in out

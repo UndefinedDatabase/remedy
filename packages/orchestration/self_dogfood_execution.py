@@ -431,7 +431,8 @@ def evaluate_self_execution_eligibility(
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     elig = SelfExecEligibility(proposed_task_id=proposed_task_id)
@@ -471,7 +472,7 @@ def evaluate_self_execution_eligibility(
 
     # Contract gate.
     try:
-        job = load_job(normalize_job_id(jid), ddir)
+        job = require_job_plan(normalize_job_id(jid), ddir)
     except (ValueError, JobNotFoundError):
         elig.blockers.append("no_job")
         elig.stop_reason = StopReason.NO_JOB
@@ -648,7 +649,8 @@ def reconcile_self_attempt(
     approval, proof). Never applies, approves, runs tests, or calls a provider."""
     from packages.orchestration.approval_queue import APPROVAL_APPROVED, get_patch_intent
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     a = _load_attempt(attempt_id, ddir)
@@ -662,7 +664,7 @@ def reconcile_self_attempt(
         return _result_from_attempt(a)
 
     try:
-        job = load_job(normalize_job_id(a.job_id), ddir)
+        job = require_job_plan(normalize_job_id(a.job_id), ddir)
     except (ValueError, JobNotFoundError):
         a.stop_reason = StopReason.NO_JOB
         save_attempt(a, ddir)
@@ -706,7 +708,7 @@ def _intent_proof_status(job: Any, intent_id: str, data_dir: Path) -> str:
     try:
         from packages.orchestration.proof_chain import build_proof_chain
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(data_dir, str(job.id))
+        events = load_run_events(data_dir, str(job.job_id))
         chain = build_proof_chain(job, events, data_dir=data_dir)
         change = next((c for c in chain.changes if c.intent_id == intent_id), None)
         if change is not None:

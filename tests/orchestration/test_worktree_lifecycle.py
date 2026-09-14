@@ -19,7 +19,8 @@ from uuid import uuid4
 import pytest
 
 from apps.cli.commands import job as job_cmd
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import data_paths, event_replay
 from packages.orchestration import worktree_resume as WR
 from packages.orchestration import worktrees as W
@@ -28,7 +29,8 @@ from packages.orchestration.pingpong_loop import (
     run_pingpong,
 )
 from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
+from packages.orchestration.data_paths import mint_job_id
 
 _REAL_UPDATE = WR._update_persisted_run
 _REAL_REMOVE = W.remove
@@ -174,8 +176,8 @@ def _interrupt(repo: Path, run_id: str, content: str):
 
 @pytest.fixture
 def job_with_events(repo):
-    jid = uuid4()
-    save_job(Job(id=jid, name="killed", state=RunState.RUNNING))
+    jid = mint_job_id()
+    save_job_plan(JobPlan(job_id=jid, job_title="killed", state=RunState.RUNNING))
     _write_events(str(jid))
     return {"job_id": str(jid), "checkpoint": f"{jid}-applied", "repo": repo}
 

@@ -46,13 +46,13 @@ def _make_job(tmp_path):
     old = os.environ.get("REMEDY_DATA_DIR")
     os.environ["REMEDY_DATA_DIR"] = str(data_dir)
 
-    from packages.core.models import Job, Task
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    from packages.orchestration.pingpong_job import save_job_plan
 
-    job = Job(name="test-job", user_prompt="test")
-    task = Task(description="initial task")
+    job = JobPlan(job_title="test-job", user_prompt="test")
+    task = TaskEntry(title="initial task")
     job.tasks = [task]
-    save_job(job)
+    save_job_plan(job)
     return job, task, data_dir, old
 
 
@@ -103,9 +103,9 @@ class TestFailureArtifactModel:
 class TestBuildFailureArtifact:
 
     def test_build_from_record(self, tmp_path):
-        from packages.core.models import Job, Task
-        job = Job(name="test", user_prompt="t")
-        task = Task(description="t")
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+        job = JobPlan(job_title="test", user_prompt="t")
+        task = TaskEntry(title="t")
         job.tasks = [task]
 
         class FakeRecord:
@@ -129,9 +129,9 @@ class TestBuildFailureArtifact:
         assert len(failure.related_changes) == 2
 
     def test_build_from_event_dict(self, tmp_path):
-        from packages.core.models import Job, Task
-        job = Job(name="test", user_prompt="t")
-        task = Task(description="t")
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+        job = JobPlan(job_title="test", user_prompt="t")
+        task = TaskEntry(title="t")
         job.tasks = [task]
 
         event = {
@@ -145,8 +145,8 @@ class TestBuildFailureArtifact:
         assert failure.exit_code == 137
 
     def test_build_fallback(self, tmp_path):
-        from packages.core.models import Job
-        job = Job(name="test", user_prompt="t")
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(job_title="test", user_prompt="t")
         failure = build_test_failure_artifact(job, 42)
         assert failure.failure_kind == FAILURE_UNKNOWN
         assert failure.artifact_id
@@ -180,9 +180,9 @@ class TestRedaction:
         assert len(safe) <= 200
 
     def test_output_ref_is_basename(self):
-        from packages.core.models import Job, Task
-        job = Job(name="test", user_prompt="t")
-        task = Task(description="t")
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+        job = JobPlan(job_title="test", user_prompt="t")
+        task = TaskEntry(title="t")
         job.tasks = [task]
 
         class FakeRecord:
@@ -259,8 +259,8 @@ class TestLinking:
         try:
             failure = TestFailureArtifact(
                 artifact_id="temp",
-                job_id=str(job.id),
-                task_id=str(task.id),
+                job_id=str(job.job_id),
+                task_id=str(task.task_id),
                 failure_kind="test_failed",
                 safe_summary="1 test failed",
             )
@@ -276,8 +276,8 @@ class TestLinking:
         try:
             failure = TestFailureArtifact(
                 artifact_id="fail-1",
-                job_id=str(job.id),
-                task_id=str(task.id),
+                job_id=str(job.job_id),
+                task_id=str(task.task_id),
                 failure_kind="test_failed",
                 safe_summary="1 test failed",
             )
@@ -301,15 +301,15 @@ class TestFailureEvents:
         try:
             failure = TestFailureArtifact(
                 artifact_id="fail-1",
-                job_id=str(job.id),
-                task_id=str(task.id),
+                job_id=str(job.job_id),
+                task_id=str(task.task_id),
                 failure_kind="test_failed",
                 safe_summary="1 test failed",
             )
-            emit_failure_events(data_dir, job.id, failure, fix_task_id="fix-1")
+            emit_failure_events(data_dir, job.job_id, failure, fix_task_id="fix-1")
 
             from packages.orchestration.timeline import load_run_events
-            events = load_run_events(data_dir, job.id)
+            events = load_run_events(data_dir, job.job_id)
             event_types = [e.get("event") for e in events]
             assert "test_failure_artifact_created" in event_types
             assert "repair_task_created" in event_types
@@ -329,8 +329,8 @@ class TestRepairLoopV0:
         job, task, data_dir, old = _make_job(tmp_path)
         failure = TestFailureArtifact(
             artifact_id="temp",
-            job_id=str(job.id),
-            task_id=str(task.id),
+            job_id=str(job.job_id),
+            task_id=str(task.task_id),
             failure_kind="test_failed",
             safe_summary="3 tests failed",
         )
@@ -341,7 +341,7 @@ class TestRepairLoopV0:
         from packages.orchestration.repair_loop import start_repair_loop_v0
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id)
             assert result.fix_task_id
             assert result.stop_reason == "fix_task_created"
         finally:
@@ -351,7 +351,7 @@ class TestRepairLoopV0:
         from packages.orchestration.repair_loop import start_repair_loop_v0
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id)
             phase_names = [p["phase"] for p in result.phases]
             assert "load" in phase_names
             assert "validate" in phase_names
@@ -365,7 +365,7 @@ class TestRepairLoopV0:
         from packages.orchestration.repair_loop import start_repair_loop_v0
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id)
             assert result.next_safe_action is not None
             assert validate_next_safe_action_command(result.next_safe_action.command)
         finally:
@@ -375,7 +375,7 @@ class TestRepairLoopV0:
         from packages.orchestration.repair_loop import start_repair_loop_v0
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id, create_patch_intent=True)
             assert result.repair_artifact_id
             assert result.repair_patch_intent_id
             assert result.stop_reason == "approval_required"
@@ -386,8 +386,8 @@ class TestRepairLoopV0:
         from packages.orchestration.repair_loop import start_repair_loop_v0
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            r1 = start_repair_loop_v0(str(job.id), fail_art_id)
-            r2 = start_repair_loop_v0(str(job.id), fail_art_id)
+            r1 = start_repair_loop_v0(str(job.job_id), fail_art_id)
+            r2 = start_repair_loop_v0(str(job.job_id), fail_art_id)
             assert r1.fix_task_id == r2.fix_task_id
         finally:
             _cleanup_env(old)
@@ -409,7 +409,7 @@ class TestRepairLoopV0:
         from packages.orchestration.repair_loop import start_repair_loop_v0
         job, task, data_dir, old = _make_job(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), "nonexistent-id")
+            result = start_repair_loop_v0(str(job.job_id), "nonexistent-id")
             assert result.stop_reason == "failure_artifact_not_found"
         finally:
             _cleanup_env(old)
@@ -421,10 +421,10 @@ class TestRepairLoopV0:
         )
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id)
             data = export_repair_loop_json(result)
             assert data["version"] == 1
-            assert data["job_id"] == str(job.id)
+            assert data["job_id"] == str(job.job_id)
             assert data["fix_task_id"]
             assert data["next_safe_action"] is not None
             text = json.dumps(data)
@@ -439,7 +439,7 @@ class TestRepairLoopV0:
         )
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id)
             text = summarize_repair_loop(result)
             assert "Repair Loop" in text
             assert "Fix task" in text
@@ -537,8 +537,8 @@ class TestRepairIntentTruth:
         job, task, data_dir, old = _make_job(tmp_path)
         failure = TestFailureArtifact(
             artifact_id="temp",
-            job_id=str(job.id),
-            task_id=str(task.id),
+            job_id=str(job.job_id),
+            task_id=str(task.task_id),
             failure_kind="test_failed",
             safe_summary="3 tests failed",
         )
@@ -549,14 +549,14 @@ class TestRepairIntentTruth:
         """repair_patch_intent_id must be findable via get_patch_intent."""
         from packages.orchestration.approval_queue import get_patch_intent
         from packages.orchestration.repair_loop import start_repair_loop_v0
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id, create_patch_intent=True)
             assert result.repair_patch_intent_id, "Should have repair_patch_intent_id"
 
-            reloaded = load_job(str(job.id))
+            reloaded = load_job_plan(str(job.job_id))
             intent = get_patch_intent(reloaded, result.repair_patch_intent_id)
             assert intent is not None, (
                 f"get_patch_intent returned None for {result.repair_patch_intent_id}"
@@ -568,12 +568,12 @@ class TestRepairIntentTruth:
         """repair_patch_intent_id must appear in list_patch_intents."""
         from packages.orchestration.approval_queue import list_patch_intents
         from packages.orchestration.repair_loop import start_repair_loop_v0
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
-            reloaded = load_job(str(job.id))
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id, create_patch_intent=True)
+            reloaded = load_job_plan(str(job.job_id))
             intents = list_patch_intents(reloaded)
             intent_ids = [i["intent_id"] for i in intents]
             assert result.repair_patch_intent_id in intent_ids
@@ -585,16 +585,16 @@ class TestRepairIntentTruth:
         from packages.orchestration.approval_queue import get_patch_intent
         from packages.orchestration.do_run import validate_next_safe_action_command
         from packages.orchestration.repair_loop import start_repair_loop_v0
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id, create_patch_intent=True)
             assert result.next_safe_action is not None
             assert validate_next_safe_action_command(result.next_safe_action.command)
             # Command references intent_id that exists
             assert result.repair_patch_intent_id in result.next_safe_action.command
-            reloaded = load_job(str(job.id))
+            reloaded = load_job_plan(str(job.job_id))
             assert get_patch_intent(reloaded, result.repair_patch_intent_id) is not None
         finally:
             _cleanup_env(old)
@@ -603,12 +603,12 @@ class TestRepairIntentTruth:
         """Repair intent should be in pending state."""
         from packages.orchestration.approval_queue import get_patch_intent
         from packages.orchestration.repair_loop import start_repair_loop_v0
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
-            reloaded = load_job(str(job.id))
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id, create_patch_intent=True)
+            reloaded = load_job_plan(str(job.job_id))
             intent = get_patch_intent(reloaded, result.repair_patch_intent_id)
             assert intent["state"] == "pending"
         finally:
@@ -618,12 +618,12 @@ class TestRepairIntentTruth:
         """Repair intent metadata must have safe fields, no raw output."""
         from packages.orchestration.approval_queue import get_patch_intent
         from packages.orchestration.repair_loop import start_repair_loop_v0
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
-            reloaded = load_job(str(job.id))
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id, create_patch_intent=True)
+            reloaded = load_job_plan(str(job.job_id))
             intent = get_patch_intent(reloaded, result.repair_patch_intent_id)
             assert intent["target_path"]
             assert intent["action"]
@@ -641,7 +641,7 @@ class TestRepairIntentTruth:
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=False)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id, create_patch_intent=False)
             assert result.repair_patch_intent_id == ""
             assert result.stop_reason == "fix_task_created"
         finally:
@@ -663,9 +663,9 @@ class TestRepairIntentTruth:
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            start_repair_loop_v0(str(job.id), fail_art_id)
-            start_repair_loop_v0(str(job.id), fail_art_id)
-            events = load_run_events(data_dir, job.id)
+            start_repair_loop_v0(str(job.job_id), fail_art_id)
+            start_repair_loop_v0(str(job.job_id), fail_art_id)
+            events = load_run_events(data_dir, job.job_id)
             creation_events = [e for e in events if e.get("event") == "test_failure_artifact_created"]
             assert len(creation_events) == 1, f"Expected 1 creation event, got {len(creation_events)}"
         finally:
@@ -684,8 +684,8 @@ class TestRepairCLIHandlers:
         job, task, data_dir, old = _make_job(tmp_path)
         failure = TestFailureArtifact(
             artifact_id="temp",
-            job_id=str(job.id),
-            task_id=str(task.id),
+            job_id=str(job.job_id),
+            task_id=str(task.task_id),
             failure_kind="test_failed",
             safe_summary="2 tests failed",
         )
@@ -698,7 +698,7 @@ class TestRepairCLIHandlers:
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
             ns = type("NS", (), {
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "failure_artifact_id": fail_art_id,
                 "fixture_patch_intent": "false",
                 "json": False,
@@ -716,7 +716,7 @@ class TestRepairCLIHandlers:
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
             ns = type("NS", (), {
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "failure_artifact_id": fail_art_id,
                 "fixture_patch_intent": "true",
                 "json": False,
@@ -734,7 +734,7 @@ class TestRepairCLIHandlers:
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
             ns = type("NS", (), {
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "failure_artifact_id": fail_art_id,
                 "fixture_patch_intent": "true",
                 "json": True,
@@ -754,7 +754,7 @@ class TestRepairCLIHandlers:
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
             ns = type("NS", (), {
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "failure_artifact_id": fail_art_id,
                 "json": False,
             })()
@@ -770,7 +770,7 @@ class TestRepairCLIHandlers:
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
             ns = type("NS", (), {
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "failure_artifact_id": fail_art_id,
                 "json": True,
             })()
@@ -815,8 +815,8 @@ class TestProofAlignment:
         job, task, data_dir, old = _make_job(tmp_path)
         failure = TestFailureArtifact(
             artifact_id="temp",
-            job_id=str(job.id),
-            task_id=str(task.id),
+            job_id=str(job.job_id),
+            task_id=str(task.task_id),
             failure_kind="test_failed",
             safe_summary="2 tests failed",
         )
@@ -827,7 +827,7 @@ class TestProofAlignment:
         from packages.orchestration.repair_loop import start_repair_loop_v0
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id, create_patch_intent=True)
             assert result.proof_status == "incomplete"
         finally:
             _cleanup_env(old)
@@ -836,7 +836,7 @@ class TestProofAlignment:
         from packages.orchestration.repair_loop import start_repair_loop_v0
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=False)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id, create_patch_intent=False)
             assert result.proof_status == "incomplete"
         finally:
             _cleanup_env(old)
@@ -848,7 +848,7 @@ class TestProofAlignment:
         )
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
-            result = start_repair_loop_v0(str(job.id), fail_art_id, create_patch_intent=True)
+            result = start_repair_loop_v0(str(job.job_id), fail_art_id, create_patch_intent=True)
             data = export_repair_loop_json(result)
             assert data["proof_status"] == "incomplete"
         finally:
@@ -870,7 +870,7 @@ class TestSystemArtifactKeepsTaskIdAbsent:
         try:
             failure = TestFailureArtifact(
                 artifact_id="temp",
-                job_id=str(job.id),
+                job_id=str(job.job_id),
                 task_id="",
                 failure_kind="test_failed",
                 safe_summary="1 test failed",

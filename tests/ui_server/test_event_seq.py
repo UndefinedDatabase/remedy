@@ -19,7 +19,7 @@ from packages.orchestration import ui_server as mod
 
 
 class _FakeJob:
-    id = "11111111-2222-3333-4444-555555555555"
+    job_id = "11111111-2222-3333-4444-555555555555"
 
 
 def _events(count: int) -> list[dict[str, Any]]:

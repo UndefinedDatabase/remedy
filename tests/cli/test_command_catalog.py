@@ -13,7 +13,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -25,11 +26,11 @@ UI_ROOT = ROOT / "apps" / "ui"
 
 
 def _make_job(*, tasks=None, name="test"):
-    job = Job(name=name)
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -45,13 +46,13 @@ def _make_job(*, tasks=None, name="test"):
 
 
 def _make_job_s141(*, tasks=None, name="test"):
-    job = Job(name=name)
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
             task_type = t.get("type", "readme_draft")
             inputs = dict(t.get("metadata", {}))
             inputs.setdefault("task_type", task_type)
-            task = Task(description=t.get("description", task_type), inputs=inputs)
+            task = TaskEntry(title=t.get("description", task_type), inputs=inputs)
             if "status" in t:
                 task.status = RunState(t["status"])
             job.tasks.append(task)

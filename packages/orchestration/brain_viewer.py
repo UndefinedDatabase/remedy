@@ -36,7 +36,7 @@ from html import escape as _html_esc
 from pathlib import Path
 from typing import Any
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.brain_detail import (
     build_brain_node_detail,
     export_brain_node_detail_json,
@@ -157,7 +157,7 @@ class BrainViewerData:
 
 
 def build_brain_viewer_data(
-    job: Job,
+    job: JobPlan,
     graph: ProjectBrainGraph,
     events: list[dict[str, Any]],
 ) -> BrainViewerData:
@@ -182,7 +182,7 @@ def build_brain_viewer_data(
         except (KeyError, ValueError, AttributeError, TypeError, RuntimeError, OSError):
             detail_fallback_count += 1
             node_details[node.id] = {
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "node_id": node.id,
                 "node_type": node.type,
                 "title": node.label[:80],
@@ -200,7 +200,7 @@ def build_brain_viewer_data(
     positions = _compute_positions(graph_dict["nodes"])
 
     return BrainViewerData(
-        job_id=str(job.id),
+        job_id=str(job.job_id),
         generated_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         graph=graph_dict,
         node_details=node_details,

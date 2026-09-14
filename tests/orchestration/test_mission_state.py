@@ -19,7 +19,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.dag_schedule import blocked_downstream, ready_set
 from packages.orchestration.decision_queue import list_decisions
 from packages.orchestration.intake import heuristic_intake, mission_candidate_hint
@@ -73,7 +74,7 @@ from packages.orchestration.mission_state import (
     set_mission_status,
 )
 from packages.orchestration.schemas.models import JobIntake
-from packages.orchestration.storage import load_job, save_job
+from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
 _T0 = datetime(2026, 7, 31, 12, 0, 0, tzinfo=timezone.utc)
 _PROJECT = "proj-alpha"
@@ -414,27 +415,27 @@ class TestMissionChainRendering:
 
     def test_the_chain_renders_each_job_with_its_state(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="job one", state=RunState.COMPLETED)
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="job one", state=RunState.COMPLETED)
+        save_job_plan(job, root=tmp_path)
         mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
-        linked = link_job_to_mission(_PROJECT, mission.id, str(job.id),
+        linked = link_job_to_mission(_PROJECT, mission.id, str(job.job_id),
                                      MISSION_ROLE_INITIAL, root=tmp_path)
 
         rendered = "\n".join(render_mission_chain(linked))
 
-        assert str(job.id) in rendered
+        assert str(job.job_id) in rendered
         assert "completed" in rendered
         assert MISSING_JOB_LABEL not in rendered
 
     def test_a_deleted_job_renders_as_missing_and_never_crashes(
             self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="job one", state=RunState.COMPLETED)
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="job one", state=RunState.COMPLETED)
+        save_job_plan(job, root=tmp_path)
         mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
-        linked = link_job_to_mission(_PROJECT, mission.id, str(job.id),
+        linked = link_job_to_mission(_PROJECT, mission.id, str(job.job_id),
                                      MISSION_ROLE_INITIAL, root=tmp_path)
-        (tmp_path / "jobs" / f"{job.id}.json").unlink()
+        (tmp_path / "jobs" / job.job_id / "job.json").unlink()
 
         rendered = "\n".join(render_mission_chain(linked))
 
@@ -444,12 +445,12 @@ class TestMissionChainRendering:
             self, tmp_path, monkeypatch):
         """Deleted and corrupt are different facts and get different labels."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(name="job one", state=RunState.COMPLETED)
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="job one", state=RunState.COMPLETED)
+        save_job_plan(job, root=tmp_path)
         mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
-        linked = link_job_to_mission(_PROJECT, mission.id, str(job.id),
+        linked = link_job_to_mission(_PROJECT, mission.id, str(job.job_id),
                                      MISSION_ROLE_INITIAL, root=tmp_path)
-        (tmp_path / "jobs" / f"{job.id}.json").write_text("{ not json")
+        (tmp_path / "jobs" / job.job_id / "job.json").write_text("{ not json")
 
         rendered = "\n".join(render_mission_chain(linked))
 
@@ -512,7 +513,7 @@ class TestMissionOfferInThePlanApproval:
     """The offer rides the existing approval decision and defaults to NO."""
 
     def test_a_flagged_intake_adds_the_offer_to_the_payload(self):
-        job = Job(name="t", flight_plan={"_approval": "pending"},
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"},
                   intake={"schema_v": "ji1", "goal": "Keep it green",
                           "mission_candidate": True})
 
@@ -523,7 +524,7 @@ class TestMissionOfferInThePlanApproval:
         assert decision.payload["mission_offer"]["goal"] == "Keep it green"
 
     def test_the_offer_names_the_opt_in_flag(self):
-        job = Job(name="t", flight_plan={"_approval": "pending"},
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"},
                   intake={"schema_v": "ji1", "goal": "Keep it green",
                           "mission_candidate": True})
 
@@ -533,7 +534,7 @@ class TestMissionOfferInThePlanApproval:
         assert any("--as-mission" in action for action in decision.next_actions)
 
     def test_an_unflagged_intake_gets_no_offer(self):
-        job = Job(name="t", flight_plan={"_approval": "pending"},
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"},
                   intake={"schema_v": "ji1", "goal": "Fix the bug",
                           "mission_candidate": False})
 
@@ -544,7 +545,7 @@ class TestMissionOfferInThePlanApproval:
         assert not any("--as-mission" in a for a in decision.next_actions)
 
     def test_a_job_without_intake_gets_no_offer(self):
-        job = Job(name="t", flight_plan={"_approval": "pending"})
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
 
         decision = [d for d in list_decisions(job, [])
                     if d.type == "flight_plan_approval"][0]
@@ -553,7 +554,7 @@ class TestMissionOfferInThePlanApproval:
 
     def test_the_offer_is_one_touchpoint_not_a_second_decision(self):
         """No new human touchpoint: the offer rides the approval that exists."""
-        job = Job(name="t", flight_plan={"_approval": "pending"},
+        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"},
                   intake={"schema_v": "ji1", "goal": "Keep it green",
                           "mission_candidate": True})
 
@@ -566,8 +567,8 @@ class TestMissionOfferInThePlanApproval:
 class TestVerifyFirstStructure:
     """F056 T003 — verification is a task in the plan, not a request in a prompt."""
 
-    def _previous_job(self, command: str = "true") -> Job:
-        return Job(name="previous", metadata={"verify_command": command})
+    def _previous_job(self, command: str = "true") -> JobPlan:
+        return JobPlan(job_title="previous", metadata={"verify_command": command})
 
     def test_the_verify_task_is_built_from_the_previous_job(self):
         previous = self._previous_job("pytest tests/importer")
@@ -575,17 +576,17 @@ class TestVerifyFirstStructure:
 
         assert is_verify_task(task)
         assert task.inputs["verify_command"] == "pytest tests/importer"
-        assert task.inputs["previous_job_id"] == str(previous.id)
-        assert str(previous.id) in task.description
+        assert task.inputs["previous_job_id"] == str(previous.job_id)
+        assert str(previous.job_id) in task.title
 
     def test_a_previous_job_without_a_command_says_so(self):
-        task = build_verify_first_task(Job(name="previous"))
+        task = build_verify_first_task(JobPlan(job_title="previous"))
 
         assert task.inputs["verify_command"] == ""
-        assert "no verification command recorded" in task.description
+        assert "no verification command recorded" in task.title
 
     def test_the_command_may_come_from_the_flight_plan(self):
-        previous = Job(name="previous",
+        previous = JobPlan(job_title="previous",
                        flight_plan={"verify_command": "make smoke"})
 
         assert resolve_verify_command(previous) == "make smoke"
@@ -605,21 +606,21 @@ class TestVerifyFirstStructure:
 
         ready = ready_set(tasks)
 
-        assert ready == [tasks[0].id]
+        assert ready == [tasks[0].task_id]
 
     def test_the_work_becomes_ready_once_verify_completed(self):
         previous = self._previous_job()
         tasks = inject_verify_first(previous, [build_follow_up_task("Add the CSV path")])
         tasks[0].status = RunState.COMPLETED
 
-        assert ready_set(tasks) == [tasks[1].id]
+        assert ready_set(tasks) == [tasks[1].task_id]
 
     def test_a_failed_verify_blocks_the_work_downstream(self):
         previous = self._previous_job()
         tasks = inject_verify_first(previous, [build_follow_up_task("Add the CSV path")])
         tasks[0].status = RunState.FAILED
 
-        assert blocked_downstream(tasks, [tasks[0].id]) == {tasks[1].id}
+        assert blocked_downstream(tasks, [tasks[0].task_id]) == {tasks[1].task_id}
 
     def test_a_plan_that_does_not_start_with_verify_is_refused(self):
         with pytest.raises(MissionVerifyFirstError):
@@ -643,7 +644,7 @@ class TestVerifyTaskExecution:
 
     def _task(self, command: str):
         return build_verify_first_task(
-            Job(name="previous", metadata={"verify_command": command}))
+            JobPlan(job_title="previous", metadata={"verify_command": command}))
 
     def test_a_passing_command_lets_the_follow_up_start(self):
         outcome = run_verify_task(self._task("check the thing"),
@@ -674,7 +675,7 @@ class TestVerifyTaskExecution:
         assert "could not run" in outcome.detail
 
     def test_no_recorded_command_is_reported_unverified_never_passed(self):
-        outcome = run_verify_task(build_verify_first_task(Job(name="previous")))
+        outcome = run_verify_task(build_verify_first_task(JobPlan(job_title="previous")))
 
         assert outcome.result == VERIFY_RESULT_UNVERIFIABLE
         assert outcome.result != VERIFY_RESULT_PASSED
@@ -727,12 +728,12 @@ class TestTwoJobFixtureEndToEnd:
     """
 
     def _mission_with_a_green_first_job(self, tmp_path, command: str):
-        job_one = Job(name="job one", state=RunState.COMPLETED,
+        job_one = JobPlan(job_title="job one", state=RunState.COMPLETED,
                       project_id=_PROJECT, metadata={"verify_command": command})
-        save_job(job_one)
+        save_job_plan(job_one)
         mission = create_mission(_PROJECT, "Keep the importer working",
                                  root=tmp_path)
-        link_job_to_mission(_PROJECT, mission.id, str(job_one.id),
+        link_job_to_mission(_PROJECT, mission.id, str(job_one.job_id),
                             MISSION_ROLE_INITIAL, root=tmp_path)
         return mission, job_one
 
@@ -751,7 +752,7 @@ class TestTwoJobFixtureEndToEnd:
         run = execute_mission_followup(
             job_two,
             runner=lambda argv, cwd: (0, "importer still fine"),
-            work_runner=lambda task: (ran.append(task.description), True)[1],
+            work_runner=lambda task: (ran.append(task.title), True)[1],
         )
 
         assert run.steps[0] == f"verify:{VERIFY_RESULT_PASSED}"
@@ -802,7 +803,7 @@ class TestTwoJobFixtureEndToEnd:
             job_two, runner=lambda argv, cwd: (0, "fine"),
             work_runner=lambda task: True)
 
-        record = read_mission_verify_record(str(job_two.id))
+        record = read_mission_verify_record(str(job_two.job_id))
         assert record["steps"][0].startswith("verify:")
         assert record["verify"]["command"] == "check the importer"
         assert record["verify"]["follow_up_may_start"] is True
@@ -817,7 +818,7 @@ class TestTwoJobFixtureEndToEnd:
         execute_mission_followup(job_two, runner=lambda argv, cwd: (1, "broken"),
                                  work_runner=lambda task: True)
 
-        reloaded = load_job(job_two.id)
+        reloaded = load_job_plan(job_two.job_id)
         assert reloaded.tasks[0].status == RunState.FAILED
         assert reloaded.tasks[1].status == RunState.PENDING
 
@@ -830,11 +831,11 @@ class TestTwoJobFixtureEndToEnd:
         chain = load_mission(_PROJECT, mission.id, root=tmp_path)
 
         assert [(link.job_id, link.role) for link in chain.job_links] == [
-            (str(job_one.id), MISSION_ROLE_INITIAL),
-            (str(job_two.id), MISSION_ROLE_FOLLOW_UP),
+            (str(job_one.job_id), MISSION_ROLE_INITIAL),
+            (str(job_two.job_id), MISSION_ROLE_FOLLOW_UP),
         ]
         rendered = "\n".join(render_mission_chain(chain))
-        assert rendered.index(str(job_one.id)) < rendered.index(str(job_two.id))
+        assert rendered.index(str(job_one.job_id)) < rendered.index(str(job_two.job_id))
 
     def test_the_follow_up_plan_is_verify_first(self, tmp_path):
         mission, job_one = self._mission_with_a_green_first_job(
@@ -844,8 +845,8 @@ class TestTwoJobFixtureEndToEnd:
                                    root=tmp_path)
 
         assert is_verify_task(job_two.tasks[0])
-        assert job_two.tasks[0].inputs["previous_job_id"] == str(job_one.id)
-        assert job_two.tasks[1].description == "Add the CSV path"
+        assert job_two.tasks[0].inputs["previous_job_id"] == str(job_one.job_id)
+        assert job_two.tasks[1].title == "Add the CSV path"
 
     def test_the_first_job_of_an_empty_mission_has_nothing_to_verify(self, tmp_path):
         mission = create_mission(_PROJECT, "Keep the importer working",
@@ -860,7 +861,7 @@ class TestTwoJobFixtureEndToEnd:
     def test_a_gone_previous_job_refuses_rather_than_verifying_blind(self, tmp_path):
         mission, job_one = self._mission_with_a_green_first_job(
             tmp_path, "check the importer")
-        (tmp_path / "jobs" / f"{job_one.id}.json").unlink()
+        (tmp_path / "jobs" / job_one.job_id / "job.json").unlink()
 
         with pytest.raises(MissionError) as exc:
             continue_mission(_PROJECT, mission.id, "Add the CSV path",
@@ -878,11 +879,11 @@ class TestTwoJobFixtureEndToEnd:
     def test_an_unverifiable_previous_job_is_reported_not_claimed_green(
             self, tmp_path):
         """A9: nothing to verify does not block, and is never called a pass."""
-        job_one = Job(name="job one", state=RunState.COMPLETED,
+        job_one = JobPlan(job_title="job one", state=RunState.COMPLETED,
                       project_id=_PROJECT)
-        save_job(job_one)
+        save_job_plan(job_one)
         mission = create_mission(_PROJECT, "Keep it working", root=tmp_path)
-        link_job_to_mission(_PROJECT, mission.id, str(job_one.id),
+        link_job_to_mission(_PROJECT, mission.id, str(job_one.job_id),
                             MISSION_ROLE_INITIAL, root=tmp_path)
         job_two = continue_mission(_PROJECT, mission.id, "Add the CSV path",
                                    root=tmp_path)

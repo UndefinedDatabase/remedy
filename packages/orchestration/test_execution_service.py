@@ -52,7 +52,7 @@ from packages.orchestration.command_discovery import (
     discover_commands,
     select_best_test_candidate,
 )
-from packages.orchestration.data_paths import resolve_data_root
+from packages.orchestration.data_paths import normalize_job_id, resolve_data_root
 from packages.orchestration.exec_guard import ExecGuardPolicy, plan_child_spawn
 from packages.orchestration.permissions import Capability, is_allowed
 from packages.orchestration.run_contract import (
@@ -64,7 +64,8 @@ from packages.orchestration.run_contract import (
     save_usage,
     validate_run_contract,
 )
-from packages.orchestration.storage import JobNotFoundError, load_job, save_job
+from packages.orchestration.storage import JobNotFoundError
+from packages.orchestration.pingpong_job import load_job_plan, require_job_plan, save_job_plan
 from packages.orchestration.test_runner import _EXECUTION_SAFE_EXECUTABLES
 
 # ---------------------------------------------------------------------------
@@ -467,13 +468,13 @@ def _validate_linkage(
 ) -> TestExecutionDecision | None:
     """Validate supplied linkage IDs against the job. Returns error decision or None."""
     if task_id:
-        task_ids = {str(t.id) for t in (job.tasks or [])}
+        task_ids = {str(t.task_id) for t in (job.tasks or [])}
         if task_id not in task_ids:
             return TestExecutionDecision(
                 allowed=False,
                 gate="linkage",
                 reason=f"task_id {task_id!r} not found in job",
-                next_safe_action=f"remedy job show {job.id} --json",
+                next_safe_action=f"remedy job show {job.job_id} --json",
             )
     if intent_id:
         # Intent IDs live in artifacts / metadata — check metadata
@@ -486,7 +487,7 @@ def _validate_linkage(
                 allowed=False,
                 gate="linkage",
                 reason=f"intent_id {intent_id!r} not found in job",
-                next_safe_action=f"remedy job show {job.id} --json",
+                next_safe_action=f"remedy job show {job.job_id} --json",
             )
     if apply_id:
         known_applies: set[str] = set()
@@ -498,7 +499,7 @@ def _validate_linkage(
                 allowed=False,
                 gate="linkage",
                 reason=f"apply_id {apply_id!r} not found in job",
-                next_safe_action=f"remedy job show {job.id} --json",
+                next_safe_action=f"remedy job show {job.job_id} --json",
             )
     return None
 
@@ -582,7 +583,7 @@ def execute_test_run(
 
     # ── Gate 1: Load job ────────────────────────────────────────────────────
     try:
-        job_id_parsed = UUID(request.job_id)
+        job_id_parsed = normalize_job_id(request.job_id)
     except ValueError:
         result.status = "blocked"
         result.stop_reason = "invalid_job_id"
@@ -591,7 +592,7 @@ def execute_test_run(
         return result
 
     try:
-        job = load_job(job_id_parsed, data_dir)
+        job = require_job_plan(job_id_parsed, data_dir)
     except JobNotFoundError:
         result.status = "blocked"
         result.stop_reason = "job_not_found"
@@ -604,8 +605,8 @@ def execute_test_run(
         result.status = "blocked"
         result.stop_reason = "permission_denied"
         result.safe_summary = "Permission repo_test_run not granted."
-        result.next_safe_action = f"remedy job permit {job.id} repo_test_run allow"
-        result.contract_guidance = f"remedy job permit {job.id} repo_test_run allow"
+        result.next_safe_action = f"remedy job permit {job.job_id} repo_test_run allow"
+        result.contract_guidance = f"remedy job permit {job.job_id} repo_test_run allow"
         _emit(data_dir, job_id_parsed, "test_run_blocked", {
             "test_run_id": test_run_id,
             "reason": "permission_denied",
@@ -622,14 +623,14 @@ def execute_test_run(
             result.status = "blocked"
             result.stop_reason = "no_target_repo"
             result.safe_summary = "No target repository attached to job."
-            result.next_safe_action = f"remedy job attach-repo {job.id} <repo_path>"
+            result.next_safe_action = f"remedy job attach-repo {job.job_id} <repo_path>"
             return result
         repo_root = Path(target_repo_str).resolve()
     if not repo_root.is_dir():
         result.status = "blocked"
         result.stop_reason = "target_repo_not_a_directory"
         result.safe_summary = "Target repository path does not exist."
-        result.next_safe_action = f"remedy job attach-repo {job.id} <repo_path>"
+        result.next_safe_action = f"remedy job attach-repo {job.job_id} <repo_path>"
         return result
 
     # ── Gate 4: Load and validate contract ──────────────────────────────────
@@ -640,7 +641,7 @@ def execute_test_run(
         result.status = "blocked"
         result.stop_reason = "contract_invalid"
         result.safe_summary = "Run contract failed validation."
-        result.next_safe_action = f"remedy contract inspect {job.id} --json"
+        result.next_safe_action = f"remedy contract inspect {job.job_id} --json"
         return result
 
     # ── Gate 5: Load usage ───────────────────────────────────────────────────
@@ -656,7 +657,7 @@ def execute_test_run(
         result.next_safe_action = decision.next_safe_action
         if decision.status == "exhausted" and "max_test_runs" in decision.reason:
             result.contract_guidance = (
-                f"remedy contract set {job.id} max_test_runs <n>"
+                f"remedy contract set {job.job_id} max_test_runs <n>"
             )
         _emit(data_dir, job_id_parsed, "test_run_blocked", {
             "test_run_id": test_run_id,
@@ -709,7 +710,7 @@ def execute_test_run(
             result.safe_summary = "Another test run is already active for this repository."
         else:
             result.safe_summary = "Another test run is already active for this job."
-        result.next_safe_action = f"remedy test status {job.id}"
+        result.next_safe_action = f"remedy test status {job.job_id}"
         _emit(data_dir, job_id_parsed, "test_run_blocked", {
             "test_run_id": test_run_id,
             "reason": block_reason,
@@ -728,7 +729,7 @@ def execute_test_run(
                 result.status = "blocked"
                 result.stop_reason = "requested_command_not_found"
                 result.safe_summary = "Requested command id was not discovered for this repository."
-                result.next_safe_action = f"remedy test discover {job.id} --json"
+                result.next_safe_action = f"remedy test discover {job.job_id} --json"
                 _emit(data_dir, job_id_parsed, "test_run_blocked", {
                     "test_run_id": test_run_id,
                     "reason": "requested_command_not_found",
@@ -738,7 +739,7 @@ def execute_test_run(
                 result.status = "blocked"
                 result.stop_reason = "requested_command_not_test"
                 result.safe_summary = "Requested command is not a test command."
-                result.next_safe_action = f"remedy test discover {job.id} --json"
+                result.next_safe_action = f"remedy test discover {job.job_id} --json"
                 _emit(data_dir, job_id_parsed, "test_run_blocked", {
                     "test_run_id": test_run_id,
                     "reason": "requested_command_not_test",
@@ -751,7 +752,7 @@ def execute_test_run(
             result.status = "blocked"
             result.stop_reason = "no_test_command_discovered"
             result.safe_summary = "No safe test command discovered for this repository."
-            result.next_safe_action = f"remedy test discover {job.id} --json"
+            result.next_safe_action = f"remedy test discover {job.job_id} --json"
             _emit(data_dir, job_id_parsed, "test_run_blocked", {
                 "test_run_id": test_run_id,
                 "reason": "no_test_command_discovered",
@@ -762,14 +763,14 @@ def execute_test_run(
             result.status = "blocked"
             result.stop_reason = "high_risk_command"
             result.safe_summary = "Discovered command has high risk rating — blocked."
-            result.next_safe_action = f"remedy test discover {job.id} --json"
+            result.next_safe_action = f"remedy test discover {job.job_id} --json"
             return result
 
         if candidate.argv[0] not in _EXECUTION_SAFE_EXECUTABLES:
             result.status = "blocked"
             result.stop_reason = "executable_not_in_safe_list"
             result.safe_summary = "Discovered executable not in safety allowlist."
-            result.next_safe_action = f"remedy test discover {job.id} --json"
+            result.next_safe_action = f"remedy test discover {job.job_id} --json"
             return result
 
         result.command_safe = candidate.display
@@ -785,7 +786,7 @@ def execute_test_run(
             result.status = "blocked"
             result.stop_reason = "no_runtime_remaining"
             result.safe_summary = "No runtime budget remaining in contract."
-            result.next_safe_action = f"remedy contract set {job.id} max_runtime_seconds <n>"
+            result.next_safe_action = f"remedy contract set {job.job_id} max_runtime_seconds <n>"
             return result
 
         # ── Gate 9: Execute ──────────────────────────────────────────────────
@@ -854,12 +855,12 @@ def execute_test_run(
         # ── Guidance ─────────────────────────────────────────────────────────
         if status in ("failed", "timeout"):
             result.next_safe_action = (
-                f"remedy repair start {job.id} {result.failure_artifact_id} --json"
+                f"remedy repair start {job.job_id} {result.failure_artifact_id} --json"
                 if result.failure_artifact_id
-                else f"remedy job show {job.id} --json"
+                else f"remedy job show {job.job_id} --json"
             )
         elif status == "passed":
-            result.next_safe_action = f"remedy job show {job.id} --json"
+            result.next_safe_action = f"remedy job show {job.job_id} --json"
 
         return result
 
@@ -890,7 +891,7 @@ def _persist_test_record(
     Idempotent: no-op if test_run_id already present.
     """
     try:
-        job = load_job(job_id, data_dir)
+        job = load_job_plan(job_id, data_dir)
         if "test_runs" not in job.metadata:
             job.metadata["test_runs"] = []
         # Idempotency: skip if already recorded (Step 1117)
@@ -917,7 +918,7 @@ def _persist_test_record(
             "linked_apply_id": result.linked_apply_id,
             "created_at": created_at,
         })
-        save_job(job, root=data_dir)
+        save_job_plan(job, root=data_dir)
         return True
     except (OSError, ValueError, KeyError):
         return False
@@ -944,7 +945,7 @@ def _create_failure_artifact(
             persist_failure_artifact,
         )
         from packages.orchestration.test_runner import TestRunRecord
-        job = load_job(job_id, data_dir)
+        job = load_job_plan(job_id, data_dir)
 
         # Idempotency: check for existing artifact for this test_run_id (Step 1117)
         for art in (job.artifacts or []):
@@ -976,7 +977,7 @@ def _create_failure_artifact(
             related_apply_id=apply_id,
         )
         persist_failure_artifact(job, artifact)
-        save_job(job, root=data_dir)
+        save_job_plan(job, root=data_dir)
 
         result.failure_artifact_id = artifact.artifact_id
         _emit(data_dir, job_id, "test_failure_artifact_created", {
@@ -1020,7 +1021,7 @@ def finalize_test_outcome(
     usage_ok = False
     record_ok = False
     try:
-        job = load_job(job_id, data_dir)
+        job = load_job_plan(job_id, data_dir)
         usage = load_usage(job)
         # Idempotency: don't double-count if test_run_id already recorded
         existing_ids = {r.get("test_run_id") for r in job.metadata.get("test_runs", [])}
@@ -1029,7 +1030,7 @@ def finalize_test_outcome(
             usage.runtime_seconds_used += result.duration_ms / 1000.0
         save_usage(job, usage)
         result.usage_after = export_usage_json(usage)
-        save_job(job, root=data_dir)
+        save_job_plan(job, root=data_dir)
         usage_ok = True
     except (OSError, ValueError):
         warnings.append("usage_persist_failed")

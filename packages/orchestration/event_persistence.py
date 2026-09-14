@@ -52,11 +52,10 @@ def emit_important_event(
     if eligible is not None and event_type not in eligible:
         return EventPersistenceResult(event_type, "skipped", "not_eligible")
     try:
-        from uuid import UUID
-
+        from packages.orchestration.data_paths import normalize_job_id
         from packages.orchestration.timeline import append_run_event
         try:
-            UUID(str(job_id))
+            normalize_job_id(str(job_id))
         except (ValueError, TypeError):
             return EventPersistenceResult(event_type, "failed", "invalid_job_id")
         append_run_event(str(data_dir), job_id, event=event_type, metadata=metadata)

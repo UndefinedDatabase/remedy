@@ -20,7 +20,8 @@ from pathlib import Path
 import pytest
 
 import packages.orchestration.checkpoints as cp
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.checkpoints import (
     DEFAULT_RETENTION,
     INTENT_CYCLE,
@@ -61,7 +62,7 @@ def make_checkpoint(index: int, *, job_id: str = JOB_ID, head: str = "abc123"
     return Checkpoint(
         cycle_index=index,
         job_id=job_id,
-        job_snapshot_path=f"jobs/{job_id}.json",
+        job_snapshot_path=f"jobs/{job_id}/job.json",
         job_snapshot_sha256="sha256:" + "0" * 64,
         worktree_head=head,
         budget_spent_tokens=100 * index,
@@ -140,12 +141,12 @@ class TestWriting:
         assert load_latest_valid(JOB_ID).worktree_head == "second"
 
     def test_build_checkpoint_records_the_persisted_snapshot(self):
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(name="cp-job", tasks=[Task(description="d")])
-        save_job(job)
-        checkpoint = build_checkpoint(str(job.id), 1, now=T0)
-        assert checkpoint.job_snapshot_path == f"jobs/{job.id}.json"
+        job = JobPlan(job_title="cp-job", tasks=[TaskEntry(title="d")])
+        save_job_plan(job)
+        checkpoint = build_checkpoint(str(job.job_id), 1, now=T0)
+        assert checkpoint.job_snapshot_path == f"jobs/{job.job_id}/job.json"
         assert checkpoint.job_snapshot_sha256.startswith("sha256:")
         assert checkpoint.created_at == T0.isoformat()
 
@@ -314,23 +315,23 @@ class TestWriteFailureIsContained:
 # ---------------------------------------------------------------------------
 
 
-def _job(task_count: int = 2) -> Job:
-    return Job(
-        name="cp-loop-job",
-        tasks=[Task(description="d") for i in range(task_count)],
+def _job(task_count: int = 2) -> JobPlan:
+    return JobPlan(
+        job_title="cp-loop-job",
+        tasks=[TaskEntry(title="d") for i in range(task_count)],
     )
 
 
-def _run_one_cycle(job: Job, **kwargs):
+def _run_one_cycle(job: JobPlan, **kwargs):
     """One cycle with a task step that completes exactly one task."""
     from packages.orchestration.long_run_executor import CycleLimits, TaskAttempt, run_cycles
 
-    def step(j: Job, _provider):
+    def step(j: JobPlan, _provider):
         pending = [t for t in j.tasks if t.status == RunState.PENDING]
         if not pending:
             return TaskAttempt()
         pending[0].status = RunState.COMPLETED
-        return TaskAttempt(task_id=pending[0].id, executed=True, verified=True)
+        return TaskAttempt(task_id=pending[0].task_id, executed=True, verified=True)
 
     return run_cycles(job, CycleLimits(max_cycles=1), lambda _ctx: None,
                       task_step=step, clock=lambda: T0, **kwargs)
@@ -340,7 +341,7 @@ class TestCycleBoundaryWiring:
     def test_a_cycle_writes_its_checkpoint(self):
         job = _job()
         _run_one_cycle(job)
-        loaded = load_latest_valid(str(job.id))
+        loaded = load_latest_valid(str(job.job_id))
         assert loaded is not None
         assert loaded.cycle_index == 1
         assert loaded.budget_spent_tokens == 0
@@ -348,22 +349,22 @@ class TestCycleBoundaryWiring:
     def test_the_checkpoint_names_the_task_that_would_run_next(self):
         job = _job(task_count=2)
         _run_one_cycle(job)
-        loaded = load_latest_valid(str(job.id))
+        loaded = load_latest_valid(str(job.job_id))
         remaining = [t for t in job.tasks if t.status == RunState.PENDING]
         assert loaded.next_intent["kind"] == INTENT_CYCLE
-        assert loaded.next_intent["task_id"] == str(remaining[0].id)
+        assert loaded.next_intent["task_id"] == str(remaining[0].task_id)
         assert loaded.next_intent["cycle_index"] == 2
 
     def test_nothing_left_to_run_is_recorded_as_such(self):
         job = _job(task_count=1)
         _run_one_cycle(job)
-        assert load_latest_valid(str(job.id)).next_intent == {"kind": INTENT_NONE}
+        assert load_latest_valid(str(job.job_id)).next_intent == {"kind": INTENT_NONE}
 
     def test_the_checkpoint_references_the_persisted_snapshot(self):
         job = _job()
         _run_one_cycle(job)
-        loaded = load_latest_valid(str(job.id))
-        assert loaded.job_snapshot_path == f"jobs/{job.id}.json"
+        loaded = load_latest_valid(str(job.job_id))
+        assert loaded.job_snapshot_path == f"jobs/{job.job_id}/job.json"
         assert loaded.job_snapshot_sha256.startswith("sha256:")
 
     def test_a_failed_checkpoint_write_does_not_break_the_cycle(self, monkeypatch):
@@ -373,12 +374,12 @@ class TestCycleBoundaryWiring:
         result = _run_one_cycle(job)
         assert result.cycles_run == 1
         assert "disk full" in job.metadata["checkpoint_error"]
-        assert checkpoint_paths(str(job.id)) == []
+        assert checkpoint_paths(str(job.job_id)) == []
 
     def test_checkpointing_can_be_switched_off(self):
         job = _job()
         _run_one_cycle(job, record_checkpoint=False)
-        assert checkpoint_paths(str(job.id)) == []
+        assert checkpoint_paths(str(job.job_id)) == []
 
     def test_a_second_run_continues_the_numbering_instead_of_overwriting(self):
         """Cycle numbering belongs to the JOB, not to the process.
@@ -394,14 +395,14 @@ class TestCycleBoundaryWiring:
 
         job = _job(task_count=3)
         _run_one_cycle(job)                       # first process: cycle 1
-        assert next_cycle_index(str(job.id)) == 2
+        assert next_cycle_index(str(job.job_id)) == 2
 
         _run_one_cycle(job)                       # "resumed" process: cycle 2
-        assert [p.name for p in checkpoint_paths(str(job.id))] == [
+        assert [p.name for p in checkpoint_paths(str(job.job_id))] == [
             "checkpoint_0001.json", "checkpoint_0002.json"]
-        assert [r["cycle_index"] for r in read_cycle_records(str(job.id))] == [1, 2]
+        assert [r["cycle_index"] for r in read_cycle_records(str(job.job_id))] == [1, 2]
 
-        executed = [tid for r in read_cycle_records(str(job.id))
+        executed = [tid for r in read_cycle_records(str(job.job_id))
                     for tid in r["executed_task_ids"]]
         assert len(executed) == len(set(executed)) == 2
 
@@ -418,5 +419,5 @@ class TestCycleBoundaryWiring:
         assert DEFAULT_MAX_CYCLES == 1      # ... the rollout default is untouched
         job = _job(task_count=3)
         _run_one_cycle(job)
-        assert [p.name for p in checkpoint_paths(str(job.id))] == [
+        assert [p.name for p in checkpoint_paths(str(job.job_id))] == [
             "checkpoint_0001.json"]

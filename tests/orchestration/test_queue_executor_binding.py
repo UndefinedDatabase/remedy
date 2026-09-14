@@ -19,7 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration import job_queue as queue
 from packages.orchestration.config import reset_config
 from packages.orchestration.data_paths import normalize_job_id
@@ -30,7 +31,7 @@ from packages.orchestration.long_run_executor import (
     queue_binding_enabled,
     run_cycles,
 )
-from packages.orchestration.storage import load_job
+from packages.orchestration.pingpong_job import load_job_plan
 
 PROJECT = "proj-binding"
 
@@ -53,9 +54,9 @@ def binding_on(monkeypatch):
     assert queue_binding_enabled() is True
 
 
-def _idle_job() -> Job:
+def _idle_job() -> JobPlan:
     """A job with no tasks: the loop finds nothing ready and ends idle."""
-    return Job(name="host job", user_prompt="host job", state=RunState.PENDING,
+    return JobPlan(job_title="host job", user_prompt="host job", state=RunState.PENDING,
                project_id=PROJECT)
 
 
@@ -63,7 +64,7 @@ def _never_called(context):  # pragma: no cover - a called provider is the failu
     raise AssertionError("the binding must not make provider calls")
 
 
-def _run_idle(job: Job):
+def _run_idle(job: JobPlan):
     return run_cycles(job, CycleLimits(max_cycles=1), _never_called,
                       record_evidence=False, record_checkpoint=False)
 
@@ -89,7 +90,7 @@ class TestOffByDefault:
     def test_a_job_without_a_project_never_pulls(self, binding_on):
         queue.enqueue(PROJECT, "queued goal", 0)
 
-        result = _run_idle(Job(name="unscoped", user_prompt="unscoped",
+        result = _run_idle(JobPlan(job_title="unscoped", user_prompt="unscoped",
                                state=RunState.PENDING))
 
         assert result.queue_pull is None
@@ -112,7 +113,7 @@ class TestEndToEnd:
         assert queue.claim_holder(PROJECT, entry.id) == ""
 
         # The job exists, is a normal job for this project, and has a plan.
-        queued_job = load_job(normalize_job_id(result.queue_pull.job_id))
+        queued_job = load_job_plan(normalize_job_id(result.queue_pull.job_id))
         assert queued_job.project_id == PROJECT
         assert queued_job.user_prompt == "write the queue docs"
         assert queued_job.tasks, "a pulled goal must arrive planned, not empty"
@@ -151,7 +152,7 @@ class TestEndToEnd:
 
         assert result.queue_pull is not None
         assert result.queue_pull.status == QUEUE_PULL_PLANNED
-        queued_job = load_job(normalize_job_id(result.queue_pull.job_id))
+        queued_job = load_job_plan(normalize_job_id(result.queue_pull.job_id))
         assert queued_job.user_prompt == "Ship the executor binding."
         assert queue.load_entry(PROJECT, entry.id).status == queue.STATUS_DONE
 
@@ -164,7 +165,7 @@ class TestApprovalIsUnchanged:
         result = _run_idle(_idle_job())
 
         assert result.queue_pull is not None
-        queued_job = load_job(normalize_job_id(result.queue_pull.job_id))
+        queued_job = load_job_plan(normalize_job_id(result.queue_pull.job_id))
         assert queued_job.state == RunState.PLANNED
         assert all(task.status == RunState.PENDING for task in queued_job.tasks)
         # _never_called would have raised; asserting it plainly documents the rule.

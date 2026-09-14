@@ -115,7 +115,7 @@ class TestFixturePatchApplication:
 class TestBridgeIntegration:
     def test_fixture_bridge_e2e_missing_function(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import BuilderOutput
 
@@ -127,7 +127,7 @@ class TestBridgeIntegration:
             structured_patch_text=json.dumps(patch),
             structured_patch_format="json",
         )
-        job = Job(name="fixture-smoke")
+        job = JobPlan(job_title="fixture-smoke")
         result = run_builder_bridge(
             output, repo, job=job, data_dir=tmp_path / "data",
             autonomy_level=4,
@@ -139,7 +139,7 @@ class TestBridgeIntegration:
 
     def test_fixture_bridge_e2e_wrong_return(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import BuilderOutput
 
@@ -151,7 +151,7 @@ class TestBridgeIntegration:
             structured_patch_text=json.dumps(patch),
             structured_patch_format="json",
         )
-        job = Job(name="fixture-smoke")
+        job = JobPlan(job_title="fixture-smoke")
         result = run_builder_bridge(
             output, repo, job=job, data_dir=tmp_path / "data",
             autonomy_level=4,
@@ -162,7 +162,7 @@ class TestBridgeIntegration:
 
     def test_no_raw_output_in_bridge_events(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.builder_bridge import run_builder_bridge
         from packages.orchestration.builder_models import BuilderOutput
         from packages.orchestration.timeline import load_run_events
@@ -175,12 +175,12 @@ class TestBridgeIntegration:
             structured_patch_text=json.dumps(patch),
             structured_patch_format="json",
         )
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         run_builder_bridge(
             output, repo, job=job, data_dir=tmp_path / "data",
             autonomy_level=4,
         )
-        events = load_run_events(tmp_path / "data", job.id)
+        events = load_run_events(tmp_path / "data", job.job_id)
         for event in events:
             meta = event.get("metadata", {})
             for key, val in meta.items():

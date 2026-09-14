@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-from packages.core.models import Artifact, ArtifactKind, Job, Task
+from packages.core.models import Artifact, ArtifactKind
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.approval_queue import make_intent_id
 from packages.orchestration.change_set import derive_change_set
 
 
 def _job_with_intents(count: int = 1):
-    task = Task(description="Task")
+    task = TaskEntry(title="Task")
     artifact = Artifact(
         name="patch-intent",
         content="",
         kind=ArtifactKind.PATCH_INTENT,
-        task_id=str(task.id),
+        task_id=str(task.task_id),
         metadata={
             "patch_intent_explanations": [
                 {"file": f"src/file_{idx}.py", "action": "modify", "risk": "medium"}
@@ -29,7 +30,7 @@ def _job_with_intents(count: int = 1):
         intent_ids.append(iid)
         approvals[iid] = {"state": "approved", "decided_at": "", "decided_by": ""}
     artifact.metadata["patch_intent_approvals"] = approvals
-    job = Job(name="job", user_prompt="prompt")
+    job = JobPlan(job_title="job", user_prompt="prompt")
     job.tasks = [task]
     job.artifacts = [artifact]
     return job, intent_ids, task

@@ -4,22 +4,21 @@ from __future__ import annotations
 import json
 from uuid import uuid4
 
-from packages.core.models import Job, RunState
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan
 
 
-def _make_job(**overrides) -> Job:
+def _make_job(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test",
-        "description": "test",
         "tasks": [],
         "state": RunState.COMPLETED,
-        "permissions": {},
         "metadata": {},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _build_dashboard_with_events(job, events, monkeypatch, tmp_path):

@@ -135,7 +135,7 @@ def run_autorun(
     import sys
 
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
 
     data_dir = resolve_data_root()
     result = AutorunResult(job_id="", cycles_run=0, stage="init")
@@ -148,12 +148,12 @@ def run_autorun(
         result.provider = "ollama"
 
     # Phase 1: Create job
-    from packages.core.models import Job
-    job = Job(name=goal[:80], project_id=project_id)
-    save_job(job)
-    result.job_id = str(job.id)
+    from packages.orchestration.pingpong_job import JobPlan
+    job = JobPlan(job_title=goal[:80], project_id=project_id)
+    save_job_plan(job)
+    result.job_id = str(job.job_id)
 
-    _emit(data_dir, job.id, "autorun_started", {
+    _emit(data_dir, job.job_id, "autorun_started", {
         "goal": goal[:200],
         "autonomy_level": autonomy_level,
         "max_cycles": max_cycles,
@@ -165,7 +165,7 @@ def run_autorun(
     if repo.is_dir():
         job.metadata = job.metadata or {}
         job.metadata["repo_path"] = str(repo)
-        save_job(job)
+        save_job_plan(job)
 
     result.stage = "job_created"
 
@@ -317,7 +317,7 @@ def _run_fixture_builder(
         from packages.orchestration.source_context import inject_source_context
         ctx = inject_source_context(job, repo, data_dir=str(data_dir))
         fx["source_context_injected"] = True
-        _emit(data_dir, job.id, "source_context_injected", {
+        _emit(data_dir, job.job_id, "source_context_injected", {
             "file_count": ctx.file_count,
             "manifest_count": ctx.manifest_count,
             "test_file_count": ctx.test_file_count,
@@ -353,7 +353,7 @@ def _run_fixture_builder(
         applicability="applicable",
         requires_approval=True,
     )
-    _emit(data_dir, job.id, "structured_patch_intent_created", {
+    _emit(data_dir, job.job_id, "structured_patch_intent_created", {
         "intent_kind": patch.intent_kind,
         "target_path_count": len(patch.target_paths),
         "risk": patch.risk,
@@ -367,7 +367,7 @@ def _run_fixture_builder(
     if autonomy_level >= 3:
         intent_id = _create_and_approve_fixture_intent(job, "Fix calc functions")
         apply_result = apply_structured_patch(
-            patch, repo, data_dir=str(data_dir), job_id=job.id, job=job,
+            patch, repo, data_dir=str(data_dir), job_id=job.job_id, job=job,
             intent_id=intent_id,
         )
         fx["source_patch_applied"] = apply_result.success
@@ -391,7 +391,7 @@ def _run_fixture_builder(
             )
             passed = proc.returncode == 0
             fx["tests_passed"] = passed
-            _emit(data_dir, job.id, "test_run_completed", {
+            _emit(data_dir, job.job_id, "test_run_completed", {
                 "exit_code": proc.returncode,
                 "passed": passed,
                 "fixture": True,
@@ -402,7 +402,7 @@ def _run_fixture_builder(
                 proof_hash = hashlib.sha256(
                     (fix_content + test_content).encode()
                 ).hexdigest()[:16]
-                _emit(data_dir, job.id, "proof_collected", {
+                _emit(data_dir, job.job_id, "proof_collected", {
                     "content_hash": proof_hash,
                     "source": "fixture_test",
                     "test_passed": True,
@@ -426,7 +426,7 @@ def _run_fixture_builder(
             pass
 
     # Persist final state
-    from packages.orchestration.storage import save_job as _save
+    from packages.orchestration.pingpong_job import save_job_plan as _save
     _save(job)
 
     return fx
@@ -497,7 +497,7 @@ def _run_repair_loop_fixture(
         target_paths=("calc.py",), risk="low",
         applicability="applicable", requires_approval=True,
     )
-    _emit(data_dir, job.id, "structured_patch_intent_created", {
+    _emit(data_dir, job.job_id, "structured_patch_intent_created", {
         "intent_kind": "file_ops", "target_path_count": 1,
         "risk": "low", "cycle": 1,
     })
@@ -506,7 +506,7 @@ def _run_repair_loop_fixture(
 
     if autonomy_level >= 3:
         intent_id1 = _create_and_approve_fixture_intent(job, "Partial fix cycle 1")
-        apply_structured_patch(patch1, repo, data_dir=str(data_dir), job_id=job.id, job=job,
+        apply_structured_patch(patch1, repo, data_dir=str(data_dir), job_id=job.job_id, job=job,
                                intent_id=intent_id1)
         fx["source_patch_applied"] = True
 
@@ -521,15 +521,15 @@ def _run_repair_loop_fixture(
         test_event = {"event": "test_run_completed", "metadata": {
             "exit_code": proc.returncode, "passed": passed, "fixture": True, "cycle": 1,
         }}
-        _emit(data_dir, job.id, "test_run_completed", test_event["metadata"])
+        _emit(data_dir, job.job_id, "test_run_completed", test_event["metadata"])
         fx["tests_passed"] = passed
 
         if not passed and autonomy_level >= 6 and max_cycles >= 2:
             # Repair context
             from packages.orchestration.timeline import load_run_events
-            events = load_run_events(data_dir, job.id)
-            rc = build_repair_context(job.id, test_event, events)
-            _emit(data_dir, job.id, "repair_context_created", {
+            events = load_run_events(data_dir, job.job_id)
+            rc = build_repair_context(job.job_id, test_event, events)
+            _emit(data_dir, job.job_id, "repair_context_created", {
                 "test_run_id": rc["test_run_id"],
                 "related_apply_id": rc["related_apply_id"],
                 "failure_kind": rc["failure_kind"],
@@ -557,12 +557,12 @@ def _run_repair_loop_fixture(
                 target_paths=("calc.py",), risk="low",
                 applicability="applicable", requires_approval=True,
             )
-            _emit(data_dir, job.id, "structured_patch_intent_created", {
+            _emit(data_dir, job.job_id, "structured_patch_intent_created", {
                 "intent_kind": "file_ops", "target_path_count": 1,
                 "risk": "low", "cycle": 2,
             })
             intent_id2 = _create_and_approve_fixture_intent(job, "Repair fix cycle 2")
-            apply_structured_patch(patch2, repo, data_dir=str(data_dir), job_id=job.id, job=job,
+            apply_structured_patch(patch2, repo, data_dir=str(data_dir), job_id=job.job_id, job=job,
                                    intent_id=intent_id2)
 
             proc2 = run_guarded_test_command(
@@ -571,7 +571,7 @@ def _run_repair_loop_fixture(
                 timeout_sec=30, cwd=str(repo),
             )
             passed2 = proc2.returncode == 0
-            _emit(data_dir, job.id, "test_run_completed", {
+            _emit(data_dir, job.job_id, "test_run_completed", {
                 "exit_code": proc2.returncode, "passed": passed2,
                 "fixture": True, "cycle": 2,
             })
@@ -583,7 +583,7 @@ def _run_repair_loop_fixture(
                 proof_hash = hashlib.sha256(
                     (fix_content + test_content).encode()
                 ).hexdigest()[:16]
-                _emit(data_dir, job.id, "proof_collected", {
+                _emit(data_dir, job.job_id, "proof_collected", {
                     "content_hash": proof_hash,
                     "source": "repair_loop_fixture",
                     "test_passed": True,
@@ -593,18 +593,18 @@ def _run_repair_loop_fixture(
                 # Memory candidate from repair success
                 try:
                     from packages.orchestration.memory_candidates import create_candidate
-                    from packages.orchestration.storage import save_job
+                    from packages.orchestration.pingpong_job import save_job_plan
                     create_candidate(
                         job, "repair_pattern",
                         "Repair loop fixed mul function after partial fix",
                         confidence="medium",
                     )
-                    save_job(job)
+                    save_job_plan(job)
                 except Exception:
                     pass
 
     # Persist final state (ensures candidates/metadata survive)
-    from packages.orchestration.storage import save_job as _save
+    from packages.orchestration.pingpong_job import save_job_plan as _save
     _save(job)
 
     return fx
@@ -619,7 +619,7 @@ def _run_ollama_builder(
     Returns dict with safe metadata, stop_reason, stage.
     No raw provider output leaks.
     """
-    from packages.orchestration.storage import save_job
+    from packages.orchestration.pingpong_job import save_job_plan
 
     result: dict[str, Any] = {"stage": "builder_complete", "cycles_run": 0}
     result["structured_patch_attempted"] = True
@@ -629,7 +629,7 @@ def _run_ollama_builder(
         from packages.orchestration.source_context import inject_source_context
         ctx = inject_source_context(job, repo, data_dir=str(data_dir))
         result["source_context_injected"] = True
-        _emit(data_dir, job.id, "source_context_injected", {
+        _emit(data_dir, job.job_id, "source_context_injected", {
             "file_count": ctx.file_count,
             "estimated_tokens": ctx.estimated_tokens,
             "selection_hash": ctx.selection_hash,
@@ -640,7 +640,7 @@ def _run_ollama_builder(
     # Build TaskExecutionContext
     from packages.orchestration.builder_models import TaskExecutionContext
     context = TaskExecutionContext(
-        job_id=str(job.id),
+        job_id=str(job.job_id),
         task_id=str(uuid4()),
         job_prompt=goal,
         task_type="code_change",
@@ -682,25 +682,25 @@ def _run_ollama_builder(
     except ImportError:
         result["stage"] = "provider_error"
         result["stop_reason"] = "provider_unavailable"
-        _emit(data_dir, job.id, "autorun_provider_error", {
+        _emit(data_dir, job.job_id, "autorun_provider_error", {
             "provider": "ollama",
             "error_kind": "import_error",
             "stop_reason": "provider_unavailable",
         })
-        save_job(job)
+        save_job_plan(job)
         return result
     except Exception:
         result["stage"] = "provider_error"
         result["stop_reason"] = "provider_unavailable"
-        _emit(data_dir, job.id, "autorun_provider_error", {
+        _emit(data_dir, job.job_id, "autorun_provider_error", {
             "provider": "ollama",
             "error_kind": "provider_error",
             "stop_reason": "provider_unavailable",
         })
-        save_job(job)
+        save_job_plan(job)
         return result
 
-    _emit(data_dir, job.id, "autorun_builder_completed", {
+    _emit(data_dir, job.job_id, "autorun_builder_completed", {
         "provider": "ollama",
         "has_structured_patch": bool(output.structured_patch_text),
     })
@@ -723,7 +723,7 @@ def _run_ollama_builder(
     result["source_patch_applied"] = bridge_result.apply_success
     result["tests_passed"] = bridge_result.test_passed is True
 
-    save_job(job)
+    save_job_plan(job)
     return result
 
 

@@ -15,7 +15,9 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from packages.orchestration.data_paths import mint_job_id
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -26,33 +28,32 @@ UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
 ORCH = REPO_ROOT / "packages" / "orchestration"
 
 
-def _make_job(**overrides) -> Job:
+def _make_job(**overrides) -> JobPlan:
     defaults = {
-        "id": uuid4(),
-        "name": "test-job",
+        "job_id": uuid4(),
+        "job_title": "test-job",
         "user_prompt": "test prompt",
-        "description": "test job",
         "tasks": [
-            Task(description="task 1", status=RunState.COMPLETED),
+            TaskEntry(title="task 1", status=RunState.COMPLETED),
         ],
         "state": RunState.COMPLETED,
-        "permissions": {"repo_generated_write": "allow", "repo_test_run": "allow"},
         "metadata": {"target_repo": "."},
     }
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _make_job_s135(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
             task_type = t.get("type", "readme_draft")
             inputs = dict(t.get("metadata", {}))
             inputs.setdefault("task_type", task_type)
-            task = Task(
-                description=t.get("description", task_type),
+            task = TaskEntry(
+                title=t.get("description", task_type),
                 inputs=inputs,
             )
             if "status" in t:
@@ -67,14 +68,15 @@ def _make_job_s135(*, tasks=None, name="test"):
 
 
 def _make_job_s141(*, tasks=None, name="test"):
-    from packages.core.models import Job, RunState, Task
-    job = Job(name=name)
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
             task_type = t.get("type", "readme_draft")
             inputs = dict(t.get("metadata", {}))
             inputs.setdefault("task_type", task_type)
-            task = Task(description=t.get("description", task_type), inputs=inputs)
+            task = TaskEntry(title=t.get("description", task_type), inputs=inputs)
             if "status" in t:
                 task.status = RunState(t["status"])
             job.tasks.append(task)
@@ -118,7 +120,7 @@ class TestReadinessDecisionIntegration:
         from packages.orchestration.autonomy_readiness import _collect_signals
         job = _make_job()
         events = [
-            {"event": "test_run_completed", "run_id": "r1", "job_id": str(job.id),
+            {"event": "test_run_completed", "run_id": "r1", "job_id": str(job.job_id),
              "timestamp": "2026-01-01T00:01:00", "outcome": "failed",
              "metadata": {"status": "failed", "command": "pytest", "test_run_id": "tr1"}},
         ]
@@ -271,30 +273,30 @@ class TestCommitReadinessPreviewReadOnly:
 
     def test_readiness_not_ready_no_tests(self):
         """Missing tests -> not ready."""
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(name="readiness-test")
-        save_job(job)
+        job = JobPlan(job_title="readiness-test")
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=True)
+            _cmd_commit_readiness(str(job.job_id), json_output=True)
             data = json.loads(mock_print.call_args[0][0])
             assert data["version"] == 1
             assert data["ready"] is False
             assert any("tests" in r for r in data["reasons"])
 
     def test_readiness_schema(self):
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(name="schema-test")
-        save_job(job)
+        job = JobPlan(job_title="schema-test")
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=True)
+            _cmd_commit_readiness(str(job.job_id), json_output=True)
             data = json.loads(mock_print.call_args[0][0])
             required = {
                 "version", "job_id", "repo_path", "ready", "reasons",
@@ -307,15 +309,15 @@ class TestCommitReadinessPreviewReadOnly:
             assert not missing, f"Missing: {missing}"
 
     def test_readiness_no_proof(self):
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(name="no-proof")
-        save_job(job)
+        job = JobPlan(job_title="no-proof")
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=True)
+            _cmd_commit_readiness(str(job.job_id), json_output=True)
             data = json.loads(mock_print.call_args[0][0])
             assert data["proof_present"] is False
             assert any("proof" in r for r in data["reasons"])
@@ -340,15 +342,15 @@ class TestCommitReadinessPreviewReadOnly:
 
     def test_suggested_message_safe(self):
         """Suggested commit message should not contain raw content."""
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(name="msg-test")
-        save_job(job)
+        job = JobPlan(job_title="msg-test")
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=True)
+            _cmd_commit_readiness(str(job.job_id), json_output=True)
             data = json.loads(mock_print.call_args[0][0])
             msg = data["suggested_commit_message"]
             assert "remedy/" in msg
@@ -419,14 +421,14 @@ class TestCommitReadinessNextActionSurface:
     """Commit-readiness must include grounded next_action."""
 
     def test_next_action_schema(self):
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
-        job = Job(name="na-schema")
-        save_job(job)
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_title="na-schema")
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=True)
+            _cmd_commit_readiness(str(job.job_id), json_output=True)
             data = json.loads(mock_print.call_args[0][0])
             na = data["next_action"]
             for field in ("label", "command", "risk", "requires_human"):
@@ -508,10 +510,10 @@ class TestLiveRunningDefaultsFalseOnFailure:
 class TestDashboardV3RuntimeContract:
     def test_dashboard_v3_runtime(self):
         """Runtime test: _build_dashboard returns exact v2 contract shape."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.ui_server import _build_dashboard
 
-        job = Job(name="truth-test", user_prompt="test contract")
+        job = JobPlan(job_title="truth-test", user_prompt="test contract")
         result = _build_dashboard(job)
 
         # Exact top-level fields
@@ -575,13 +577,13 @@ class TestDashboardV3RuntimeContract:
 
     def test_dashboard_with_tasks(self):
         """Dashboard with real tasks shows them correctly."""
-        from packages.core.models import Job, Task
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
         from packages.orchestration.ui_server import _build_dashboard
 
-        job = Job(
-            name="has-tasks",
+        job = JobPlan(
+            job_title="has-tasks",
             user_prompt="test",
-            tasks=[Task(description="First task"), Task(description="Second task")],
+            tasks=[TaskEntry(title="First task"), TaskEntry(title="Second task")],
         )
         result = _build_dashboard(job)
         assert len(result["tasks"]) == 2
@@ -592,19 +594,19 @@ class TestDashboardV3RuntimeContract:
 
     def test_dashboard_no_fake_task_names(self):
         """Tasks must not have generic fake names."""
-        from packages.core.models import Job, Task
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
         from packages.orchestration.ui_server import _build_dashboard
 
-        job = Job(name="real", user_prompt="test", tasks=[Task(description="Parse the config file")])
+        job = JobPlan(job_title="real", user_prompt="test", tasks=[TaskEntry(title="Parse the config file")])
         result = _build_dashboard(job)
         assert result["tasks"][0]["title"] == "Parse the config file"
 
     def test_dashboard_no_raw_content(self):
         """Dashboard must not expose raw content."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.ui_server import _build_dashboard
 
-        job = Job(name="test", user_prompt="secret prompt with API_KEY=abc123")
+        job = JobPlan(job_title="test", user_prompt="secret prompt with API_KEY=abc123")
         result = _build_dashboard(job)
         payload = json.dumps(result)
         assert "API_KEY" not in payload
@@ -639,10 +641,10 @@ class TestGeneratedCommandCatalogConsistency:
         valid_commands = {f"{c.group_id} {c.subcommand}" for c in CATALOG}
 
         # Check readiness next_actions
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autonomy_readiness import assess_job_readiness
 
-        job = Job(name="test", user_prompt="test")
+        job = JobPlan(job_title="test", user_prompt="test")
         report = assess_job_readiness(job, [])
         for action in report.next_actions:
             if action.startswith("remedy "):
@@ -675,10 +677,10 @@ class TestAutonomyLevelSingleSourceOfTruth:
 
     def test_loop_respects_readiness(self):
         """Loop blocks if requested level exceeds readiness or has blockers."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autonomy_loop import run_autonomy_loop
 
-        job = Job(name="test", user_prompt="test")
+        job = JobPlan(job_title="test", user_prompt="test")
         # Request level 4 (bounded_loop) but job has no signals → blocked
         result = run_autonomy_loop(job, [], max_cycles=1, autonomy_level=4)
         assert result.final_decision == "blocked"
@@ -688,10 +690,10 @@ class TestAutonomyLevelSingleSourceOfTruth:
 
     def test_levels_6_7_blocked(self):
         """Levels 6-7 must be blocked (future only)."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.autonomy_readiness import assess_job_readiness
 
-        job = Job(name="test", user_prompt="test")
+        job = JobPlan(job_title="test", user_prompt="test")
         report = assess_job_readiness(job, [])
         assert report.levels[6].eligible is False
         assert report.levels[7].eligible is False
@@ -707,11 +709,11 @@ class TestMutationExecutionSafetyInvariants:
     # Part A: source_apply permission boundary
     def test_source_apply_permission_denied(self):
         """source_apply blocks without repo_generated_write permission."""
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.source_apply import apply_structured_patch
         from packages.orchestration.structured_patch import StructuredPatch
 
-        job = Job(name="test", user_prompt="test", metadata={"permissions": {}})
+        job = JobPlan(job_title="test", user_prompt="test", metadata={"permissions": {}})
         patch = StructuredPatch(intent_kind="file_ops", file_ops=[], unified_diffs=[])
         result = apply_structured_patch(patch, Path("/tmp/fake"), job=job)
         assert result.success is False
@@ -891,9 +893,9 @@ class TestGitReadinessSignal:
     def test_signal_present(self):
         from packages.orchestration.autonomy_readiness import _collect_signals
 
-        job = Job(
-            id=uuid4(), name="sig-test", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="sig-test", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         )
         signals = _collect_signals(job, [])
         assert "git_status" in signals
@@ -902,9 +904,9 @@ class TestGitReadinessSignal:
     def test_signal_true_with_event(self):
         from packages.orchestration.autonomy_readiness import _collect_signals
 
-        job = Job(
-            id=uuid4(), name="sig-test", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="sig-test", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
         )
         events = [{"event": "git_status_read", "metadata": {}}]
         signals = _collect_signals(job, events)
@@ -984,7 +986,7 @@ class TestStopReasonsDerive:
     def test_derive_no_repo(self):
         from packages.orchestration.stop_reasons import derive_stop_reasons
 
-        job = Job(id=uuid4(), name="d1", user_prompt="test", metadata={})
+        job = JobPlan(job_id=mint_job_id(), job_title="d1", user_prompt="test", metadata={})
         reasons = derive_stop_reasons(job, [])
         codes = [r.reason_code for r in reasons]
         assert "no_target_repo" in codes
@@ -992,8 +994,8 @@ class TestStopReasonsDerive:
     def test_derive_test_failed(self):
         from packages.orchestration.stop_reasons import derive_stop_reasons
 
-        job = Job(
-            id=uuid4(), name="d2", user_prompt="test",
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="d2", user_prompt="test",
             metadata={"target_repo": "/tmp/repo"},
         )
         events = [
@@ -1006,8 +1008,8 @@ class TestStopReasonsDerive:
     def test_derive_dirty_repo(self):
         from packages.orchestration.stop_reasons import derive_stop_reasons
 
-        job = Job(
-            id=uuid4(), name="d3", user_prompt="test",
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="d3", user_prompt="test",
             metadata={"target_repo": "/tmp/repo"},
         )
         events = [
@@ -1045,14 +1047,14 @@ class TestAutonomyLoopBasic:
     def test_level_0_observe(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.autonomy_loop import run_autonomy_loop
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(
-            id=uuid4(), name="loop0", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="loop0", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
             metadata={"target_repo": "."},
         )
-        save_job(job)
+        save_job_plan(job)
         result = run_autonomy_loop(job, [], max_cycles=1, autonomy_level=0)
         assert result.version == 1
         assert result.final_decision == "complete"
@@ -1063,43 +1065,43 @@ class TestAutonomyLoopBasic:
     def test_level_1_needs_approval(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.autonomy_loop import run_autonomy_loop
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(
-            id=uuid4(), name="loop1", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="loop1", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
             metadata={"target_repo": "."},
         )
-        save_job(job)
+        save_job_plan(job)
         result = run_autonomy_loop(job, [], max_cycles=3, autonomy_level=1)
         assert result.final_decision == "needs_approval"
 
     def test_completed_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.autonomy_loop import run_autonomy_loop
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(
-            id=uuid4(), name="loop-done", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.COMPLETED)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="loop-done", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.COMPLETED)],
             state=RunState.COMPLETED,
             metadata={"target_repo": "."},
         )
-        save_job(job)
+        save_job_plan(job)
         result = run_autonomy_loop(job, [], max_cycles=3, autonomy_level=1)
         assert result.final_decision == "complete"
 
     def test_blocked_by_stop_reason(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.autonomy_loop import run_autonomy_loop
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(
-            id=uuid4(), name="loop-blocked", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="loop-blocked", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
             metadata={},  # No target_repo → blocker
         )
-        save_job(job)
+        save_job_plan(job)
         result = run_autonomy_loop(job, [], max_cycles=3, autonomy_level=1)
         assert result.final_decision == "blocked"
         assert len(result.stop_reasons) >= 1
@@ -1114,14 +1116,14 @@ class TestAutonomyLoopExport:
             export_loop_result_json,
             run_autonomy_loop,
         )
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(
-            id=uuid4(), name="loop-ex", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="loop-ex", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
             metadata={"target_repo": "."},
         )
-        save_job(job)
+        save_job_plan(job)
         result = run_autonomy_loop(job, [], max_cycles=1, autonomy_level=0)
         data = export_loop_result_json(result)
         assert data["version"] == 1
@@ -1134,14 +1136,14 @@ class TestAutonomyLoopExport:
             run_autonomy_loop,
             summarize_loop_result,
         )
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(
-            id=uuid4(), name="loop-sum", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
+        job = JobPlan(
+            job_id=mint_job_id(), job_title="loop-sum", user_prompt="test",
+            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
             metadata={"target_repo": "."},
         )
-        save_job(job)
+        save_job_plan(job)
         result = run_autonomy_loop(job, [], max_cycles=1, autonomy_level=0)
         text = summarize_loop_result(result)
         assert "Autonomy Loop" in text

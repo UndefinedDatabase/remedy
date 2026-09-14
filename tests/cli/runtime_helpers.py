@@ -57,20 +57,20 @@ def create_test_env(tmp_path: Path) -> tuple[Path, str]:
     """Create isolated data root with unique Job via direct JSON write."""
     root = tmp_path / "data"
     jid = str(uuid4())
-    jobs_dir = root / "jobs"
-    jobs_dir.mkdir(parents=True, exist_ok=True)
+    job_dir = root / "jobs" / jid
+    job_dir.mkdir(parents=True, exist_ok=True)
     job_data = {
-        "id": jid,
-        "name": "runtime-test",
-        "user_prompt": None,
+        "job_id": jid,
+        "job_title": "runtime-test",
+        "user_prompt": "",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "tasks": [],
-        "state": "pending",
+        "status": "pending",
         "artifacts": [],
         "budget": {"max_steps": 10, "max_tokens": 0, "max_cost_usd": 0.0},
         "metadata": {},
     }
-    (jobs_dir / f"{jid}.json").write_text(json.dumps(job_data, indent=2))
+    (job_dir / "job.json").write_text(json.dumps(job_data, indent=2))
     # Always enable trace for runtime tests
     enable_trace(root)
     return root, jid

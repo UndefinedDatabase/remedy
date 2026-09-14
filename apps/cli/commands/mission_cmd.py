@@ -350,20 +350,20 @@ def _cmd_mission_continue(mission_id: str, next_step: str, *,
         print(_json.dumps({
             "version": 1,
             "mission_id": mission.id,
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "role": job.metadata.get("mission_role", ""),
             "verify_first_task": (
-                {"description": verify.description,
+                {"description": verify.title,
                  "verify_command": verify.inputs.get("verify_command", "")}
                 if verify is not None else None),
-            "tasks": [t.description for t in job.tasks],
+            "tasks": [t.title for t in job.tasks],
         }, sort_keys=True))
         return
 
-    print(str(job.id))
+    print(str(job.job_id))
     print(f"  Mission: {mission.id[:12]}  ({job.metadata.get('mission_role', '')})")
     if verify is not None:
-        print(f"  Task 1 (injected): {verify.description}")
+        print(f"  Task 1 (injected): {verify.title}")
         print("  The follow-up work cannot start until that task completes.")
     else:
         print("  First job of this mission — there is no previous state to verify.")

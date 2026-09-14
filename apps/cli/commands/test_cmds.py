@@ -102,8 +102,8 @@ def _cmd_discover_commands(job_id_str: str, *, as_json: bool) -> None:
         print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        from packages.orchestration.storage import load_job
-        job = load_job(job_id)
+        from packages.orchestration.pingpong_job import require_job_plan
+        job = require_job_plan(job_id)
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -180,7 +180,8 @@ def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
 
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.run_contract import ensure_contract, export_usage_json, load_usage
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
 
     try:
         job_id = lookup_job_id(job_id_str)
@@ -192,7 +193,7 @@ def _cmd_test_status(job_id_str: str, *, as_json: bool = False) -> None:
         sys.exit(1)
 
     try:
-        job = load_job(job_id)
+        job = require_job_plan(job_id)
     except JobNotFoundError:
         if as_json:
             print(_json.dumps({"error": "job_not_found", "job_id": job_id_str}))

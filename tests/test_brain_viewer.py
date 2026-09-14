@@ -25,7 +25,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.brain_viewer import (
     BrainViewerData,
     _compute_positions,
@@ -35,7 +36,7 @@ from packages.orchestration.brain_viewer import (
     write_brain_viewer_files,
 )
 from packages.orchestration.project_brain import build_project_brain
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
 
 # ---------------------------------------------------------------------------
 # Redaction sentinels
@@ -71,10 +72,10 @@ _BRAIN_VIEWER_PREPARED_METADATA_KEYS = frozenset(
 # ---------------------------------------------------------------------------
 
 
-def _make_job(**kwargs) -> Job:
-    defaults: dict = {"name": "Viewer test job", "state": RunState.PENDING}
+def _make_job(**kwargs) -> JobPlan:
+    defaults: dict = {"job_title": "Viewer test job", "state": RunState.PENDING}
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 def _write_run_events(tmp_path: Path, job_id, events: list[dict]) -> None:
@@ -100,7 +101,7 @@ def _read_run_log(tmp_path: Path, job_id) -> list[dict]:
     return events
 
 
-def _poisoned_job() -> Job:
+def _poisoned_job() -> JobPlan:
     """Job with artifact containing all 5 redaction sentinels."""
     job = _make_job()
     content = " ".join(_ALL_SENTINELS)
@@ -197,7 +198,7 @@ class TestBuildBrainViewerData:
         job = _make_job()
         graph = build_project_brain(job, [], constitution=None)
         data = build_brain_viewer_data(job, graph, [])
-        assert data.job_id == str(job.id)
+        assert data.job_id == str(job.job_id)
 
     def test_positions_cover_all_nodes(self):
         job = _make_job()
@@ -321,7 +322,7 @@ class TestWriteBrainViewerFiles:
         job = _make_job()
         graph = build_project_brain(job, [], constitution=None)
         data = build_brain_viewer_data(job, graph, [])
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         index_path = write_brain_viewer_files(data, out_dir)
         return index_path, data
 
@@ -378,7 +379,7 @@ class TestWriteBrainViewerFiles:
 class TestBrainViewerRedaction:
     def _build_poisoned_data(self) -> BrainViewerData:
         job = _poisoned_job()
-        events = _poisoned_events(str(job.id))
+        events = _poisoned_events(str(job.job_id))
         graph = build_project_brain(job, events, constitution=None)
         return build_brain_viewer_data(job, graph, events)
 
@@ -403,10 +404,10 @@ class TestBrainViewerRedaction:
     def test_event_message_sentinel_absent_from_viewer_data(self, tmp_path):
         """EVENT_MESSAGE_MUST_NOT_RENDER from synthetic event must not appear in viewer_data.json."""
         job = _make_job()
-        events = _poisoned_events(str(job.id))
+        events = _poisoned_events(str(job.job_id))
         graph = build_project_brain(job, events, constitution=None)
         data = build_brain_viewer_data(job, graph, events)
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         write_brain_viewer_files(data, out_dir)
         raw = (out_dir / "viewer_data.json").read_text()
         assert "EVENT_MESSAGE_MUST_NOT_RENDER" not in raw
@@ -415,10 +416,10 @@ class TestBrainViewerRedaction:
     def test_event_message_sentinel_absent_from_index_html(self, tmp_path):
         """Event sentinels must not appear in the embedded HTML."""
         job = _make_job()
-        events = _poisoned_events(str(job.id))
+        events = _poisoned_events(str(job.job_id))
         graph = build_project_brain(job, events, constitution=None)
         data = build_brain_viewer_data(job, graph, events)
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         write_brain_viewer_files(data, out_dir)
         html = (out_dir / "index.html").read_text()
         assert "EVENT_MESSAGE_MUST_NOT_RENDER" not in html
@@ -432,13 +433,13 @@ class TestBrainViewerRedaction:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _poisoned_job()
-        save_job(job)
-        _write_run_events(tmp_path, job.id, _poisoned_events(str(job.id)))
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        _write_run_events(tmp_path, job.job_id, _poisoned_events(str(job.job_id)))
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         capsys.readouterr()
 
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         for fname in ("viewer_data.json", "index.html"):
             text = (out_dir / fname).read_text()
             self._no_sentinels(text, fname)
@@ -453,13 +454,13 @@ class TestBrainViewerRedaction:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _poisoned_job()
-        save_job(job)
-        _write_run_events(tmp_path, job.id, _poisoned_events(str(job.id)))
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        _write_run_events(tmp_path, job.job_id, _poisoned_events(str(job.job_id)))
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         capsys.readouterr()
 
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         prepared = next(e for e in events if e.get("event") == "brain_viewer_prepared")
         serialised = json.dumps(prepared)
         self._no_sentinels(serialised, "brain_viewer_prepared run-log event")
@@ -480,8 +481,8 @@ class TestConstitutionGuard:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent" / "repo")
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         # Must not raise or exit with non-zero
         main()
         capsys.readouterr()
@@ -495,11 +496,11 @@ class TestConstitutionGuard:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent" / "repo")
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         capsys.readouterr()
-        assert (tmp_path / "viewers" / str(job.id) / "index.html").exists()
+        assert (tmp_path / "viewers" / str(job.job_id) / "index.html").exists()
 
     def test_stale_repo_stderr_safe_warning(self, tmp_path, monkeypatch, capsys):
         """stderr contains only the safe warning text, not raw exception messages."""
@@ -510,8 +511,8 @@ class TestConstitutionGuard:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent" / "repo")
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         err = capsys.readouterr().err
         assert "Warning: project constitution unavailable for viewer." in err
@@ -525,8 +526,8 @@ class TestConstitutionGuard:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
         job.metadata["target_repo"] = str(tmp_path / "nonexistent" / "repo")
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         err = capsys.readouterr().err
         assert "Traceback" not in err
@@ -543,11 +544,11 @@ class TestConstitutionGuard:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()  # no target_repo
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         capsys.readouterr()
-        assert (tmp_path / "viewers" / str(job.id) / "index.html").exists()
+        assert (tmp_path / "viewers" / str(job.job_id) / "index.html").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -627,10 +628,10 @@ class TestBrainViewCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
-        index_path = tmp_path / "viewers" / str(job.id) / "index.html"
+        index_path = tmp_path / "viewers" / str(job.job_id) / "index.html"
         assert index_path.exists()
 
     def test_happy_path_prints_path(self, tmp_path, monkeypatch, capsys):
@@ -640,8 +641,8 @@ class TestBrainViewCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         out = capsys.readouterr().out
         assert "Brain Viewer:" in out
@@ -654,11 +655,11 @@ class TestBrainViewCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         capsys.readouterr()
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         prepared = [e for e in events if e.get("event") == "brain_viewer_prepared"]
         assert len(prepared) == 1
 
@@ -670,11 +671,11 @@ class TestBrainViewCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         capsys.readouterr()
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         prepared = next(e for e in events if e.get("event") == "brain_viewer_prepared")
         meta = prepared["metadata"]
         actual = set(meta.keys())
@@ -691,11 +692,11 @@ class TestBrainViewCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         capsys.readouterr()
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         prepared = next(e for e in events if e.get("event") == "brain_viewer_prepared")
         assert prepared["metadata"]["mode"] == "static"
 
@@ -709,11 +710,11 @@ class TestBrainViewCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         capsys.readouterr()
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         prepared = next(e for e in events if e.get("event") == "brain_viewer_prepared")
         assert prepared["metadata"]["detail_fallback_count"] == 0
 
@@ -725,10 +726,10 @@ class TestBrainViewCli:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
+        save_job_plan(job)
         cwd = Path.cwd()
         before = set(cwd.glob("*.html")) | set(cwd.glob("*.json"))
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         capsys.readouterr()
         after = set(cwd.glob("*.html")) | set(cwd.glob("*.json"))
@@ -747,7 +748,7 @@ class TestBrainViewerDiagnostics:
         job = _make_job()
         graph = build_project_brain(job, [], constitution=None)
         data = build_brain_viewer_data(job, graph, [])
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         index_path = write_brain_viewer_files(data, out_dir)
         return index_path.read_text()
 
@@ -837,7 +838,7 @@ class TestBrainViewerDiagnostics:
         job = _make_job()
         graph = build_project_brain(job, [], constitution=None)
         data = build_brain_viewer_data(job, graph, [])
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         write_brain_viewer_files(data, out_dir)
         raw = (out_dir / "viewer_data.json").read_text()
         parsed = json.loads(raw)
@@ -849,10 +850,10 @@ class TestBrainViewerDiagnostics:
 
     def test_redaction_sentinels_absent_from_index_html(self, tmp_path):
         job = _poisoned_job()
-        events = _poisoned_events(str(job.id))
+        events = _poisoned_events(str(job.job_id))
         graph = build_project_brain(job, events, constitution=None)
         data = build_brain_viewer_data(job, graph, events)
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         write_brain_viewer_files(data, out_dir)
         html = (out_dir / "index.html").read_text()
         for s in _ALL_SENTINELS:
@@ -869,11 +870,11 @@ class TestBrainViewerDiagnostics:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
-        save_job(job)
-        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.id)])
+        save_job_plan(job)
+        monkeypatch.setattr(sys, "argv", ["remedy", "brain", "view", str(job.job_id)])
         main()
         capsys.readouterr()
-        events = _read_run_log(tmp_path, job.id)
+        events = _read_run_log(tmp_path, job.job_id)
         prepared = next(e for e in events if e.get("event") == "brain_viewer_prepared")
         assert set(prepared["metadata"].keys()) == _BRAIN_VIEWER_PREPARED_METADATA_KEYS
 
@@ -920,7 +921,7 @@ class TestBrainViewerDiagnostics:
         job = _make_job()
         graph = build_project_brain(job, [], constitution=None)
         data = build_brain_viewer_data(job, graph, [])
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         write_brain_viewer_files(data, out_dir)
         parsed = json.loads((out_dir / "viewer_data.json").read_text())
         assert parsed["detail_fallback_count"] == 1
@@ -938,7 +939,7 @@ class TestBrainViewerDataIsland:
         job = _make_job()
         graph = build_project_brain(job, [], constitution=None)
         data = build_brain_viewer_data(job, graph, [])
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         index_path = write_brain_viewer_files(data, out_dir)
         return index_path.read_text()
 
@@ -991,7 +992,7 @@ class TestBrainViewerDataIsland:
         job = _make_job()
         graph = build_project_brain(job, [], constitution=None)
         viewer_data = build_brain_viewer_data(job, graph, [])
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         index_path = write_brain_viewer_files(viewer_data, out_dir)
         html = index_path.read_text()
         island = self._island_data(html)
@@ -1052,10 +1053,10 @@ class TestBrainViewerDataIsland:
 
     def test_sentinels_absent_from_index_html(self, tmp_path):
         job = _poisoned_job()
-        events = _poisoned_events(str(job.id))
+        events = _poisoned_events(str(job.job_id))
         graph = build_project_brain(job, events, constitution=None)
         data = build_brain_viewer_data(job, graph, events)
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         write_brain_viewer_files(data, out_dir)
         html = (out_dir / "index.html").read_text()
         for s in _ALL_SENTINELS:
@@ -1067,7 +1068,7 @@ class TestBrainViewerDataIsland:
         job = _make_job()
         graph = build_project_brain(job, [], constitution=None)
         data = build_brain_viewer_data(job, graph, [])
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         write_brain_viewer_files(data, out_dir)
         parsed = json.loads((out_dir / "viewer_data.json").read_text())
         assert set(parsed.keys()) == _VIEWER_JSON_KEYS
@@ -1136,7 +1137,7 @@ class TestBrainViewerFallbackTruncation:
         job = _make_job()
         graph = build_project_brain(job, [], constitution=None)
         data = build_brain_viewer_data(job, graph, [])
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         index_path = write_brain_viewer_files(data, out_dir)
         html = index_path.read_text()
         assert "showing 50 of" not in html
@@ -1155,10 +1156,10 @@ class TestBrainViewerPlaceholderOrder:
     def test_viewer_data_json_label_stays_literal_in_fallback(self, tmp_path):
         """A node label that is literally '__VIEWER_DATA_JSON__' must appear as
         text in the fallback table cell, not as the injected JSON blob."""
-        job = _make_job(name="__VIEWER_DATA_JSON__")
+        job = _make_job(job_title="__VIEWER_DATA_JSON__")
         graph = build_project_brain(job, [], constitution=None)
         data = build_brain_viewer_data(job, graph, [])
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         index_path = write_brain_viewer_files(data, out_dir)
         html = index_path.read_text()
         # The label must appear as a literal <td> value, not trigger JSON injection
@@ -1174,7 +1175,7 @@ class TestBrainViewerPlaceholderOrder:
         job = _make_job()
         graph = build_project_brain(job, [], constitution=None)
         data = build_brain_viewer_data(job, graph, [])
-        out_dir = tmp_path / "viewers" / str(job.id)
+        out_dir = tmp_path / "viewers" / str(job.job_id)
         index_path = write_brain_viewer_files(data, out_dir)
         html = index_path.read_text()
         assert "__STATIC_FALLBACK__" not in html

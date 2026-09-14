@@ -11,20 +11,22 @@ from uuid import uuid4
 import pytest
 
 from tests.cli.runtime_helpers import run_grouped_cli
+from packages.orchestration.data_paths import mint_job_id
 
 
 def _job(data_dir):
-    from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
-    from packages.orchestration.storage import save_job
-    task = Task(description="t")
-    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.id),
+    from packages.core.models import Artifact, ArtifactKind, RunState
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+    from packages.orchestration.pingpong_job import save_job_plan
+    task = TaskEntry(title="t")
+    fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(task.task_id),
                   metadata={"test_failure": True, "failure_kind": "test_failed",
-                            "related_task_id": str(task.id), "related_files": ["docs/guide.md"],
+                            "related_task_id": str(task.task_id), "related_files": ["docs/guide.md"],
                             "exit_code": 1, "safe_summary": "boom", "command_display": "pytest x"})
-    job = Job(id=uuid4(), name="ov-rr", user_prompt="x", state=RunState.RUNNING,
+    job = JobPlan(job_id=mint_job_id(), job_title="ov-rr", user_prompt="x", state=RunState.RUNNING,
               tasks=[task], artifacts=[fa], metadata={"target_repo": "."})
-    save_job(job, root=data_dir)
-    return str(job.id), str(fa.id)
+    save_job_plan(job, root=data_dir)
+    return str(job.job_id), str(fa.id)
 
 
 @pytest.fixture()

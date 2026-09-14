@@ -289,7 +289,7 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
     from packages.orchestration.project_brain import build_project_brain
 
     graph = build_project_brain(job, events)
-    focus_job_id = str(job.id)
+    focus_job_id = str(job.job_id)
 
     # Build node list with rank/zone/zoom assignments
     raw_nodes = []
@@ -456,10 +456,10 @@ def build_brain_view_model(job: Any, events: list[dict[str, Any]]) -> dict[str, 
 
     return {
         "version": 4,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "layout_engine": "elk-layered",
         "direction": "RIGHT",
-        "origin": str(job.id),
+        "origin": str(job.job_id),
         "total_nodes": len(raw_nodes),
         "total_edges": len(edge_list),
         "default_zoom_level": 0,
@@ -520,7 +520,7 @@ def build_node_detail(job: Any, events: list[dict[str, Any]], node_id: str) -> d
 
     result: dict[str, Any] = {
         "version": 2,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "node_id": node_id,
         "title": target.label,
         "status": target.status or "",
@@ -559,7 +559,7 @@ def build_task_progress(job: Any, events: list[dict[str, Any]]) -> dict[str, Any
         # Determine verified status from events
         verified = False
         for e in events:
-            if e.get("event") == "task_run_completed" and e.get("task_id") == str(task.id):
+            if e.get("event") == "task_run_completed" and e.get("task_id") == str(task.task_id):
                 verified = True
                 break
 
@@ -590,7 +590,7 @@ def build_task_progress(job: Any, events: list[dict[str, Any]]) -> dict[str, Any
         test_status = "none"
         for e in events:
             eid = e.get("task_id") or e.get("metadata", {}).get("task_id", "")
-            if eid == str(task.id):
+            if eid == str(task.task_id):
                 if e.get("event") == "proof_collected":
                     proof_status = "collected"
                 elif e.get("event") == "test_run_completed":
@@ -602,14 +602,14 @@ def build_task_progress(job: Any, events: list[dict[str, Any]]) -> dict[str, Any
         is_reviewer = source == "reviewer"
 
         task_entry = {
-            "id": str(task.id),
-            "title": _short_label(task.task_type if hasattr(task, "task_type") else str(task.id)[:8]),
+            "id": str(task.task_id),
+            "title": _short_label(task.task_type if hasattr(task, "task_type") else str(task.task_id)[:8]),
             "status": ribbon_status,
             "verified": verified,
             "source": source,
             "accepted": ribbon_status != "reviewer-suggested",
             "rank": i + 1,
-            "related_node_id": str(task.id),
+            "related_node_id": str(task.task_id),
             "short_reason": "",
             "proof_status": proof_status,
             "test_status": test_status,
@@ -621,7 +621,7 @@ def build_task_progress(job: Any, events: list[dict[str, Any]]) -> dict[str, Any
 
     return {
         "version": 1,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "tasks": tasks,
     }
 
@@ -630,7 +630,7 @@ def build_next_action(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
     """Build next-action suggestion grounded in actual job state."""
 
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
-    job_id = str(job.id)
+    job_id = str(job.job_id)
 
     # Scan for pending approvals
     has_pending_approval = False
@@ -784,7 +784,7 @@ def build_story(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
             pending += 1
 
     # Headline
-    job_name = job.name if len(job.name) <= 60 else job.name[:57] + "..."
+    job_name = job.job_title if len(job.job_title) <= 60 else job.job_title[:57] + "..."
     headline = f"{job_name}"
     plain_status = human_state(state)
 
@@ -835,7 +835,7 @@ def build_story(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
 
     return {
         "version": 1,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "headline": headline,
         "plain_status": plain_status,
         "primary_next_action": primary_next_action,
@@ -917,7 +917,7 @@ def build_human_node_detail(
 
     return {
         "version": 3,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "node_id": node_id,
         "title": title,
         "state": human_state(target.status),
@@ -963,7 +963,7 @@ def build_diagnostics_nodes(
             })
     return {
         "version": 1,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "layer": "diagnostics",
         "nodes": diag_nodes,
     }
@@ -984,23 +984,23 @@ def build_checklist(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
     items: list[dict[str, Any]] = []
 
     # Goal item
-    job_name = job.name if len(job.name) <= 60 else job.name[:57] + "..."
+    job_name = job.job_title if len(job.job_title) <= 60 else job.job_title[:57] + "..."
     state_val = job.state.value if hasattr(job.state, "value") else str(job.state)
     items.append({
-        "id": str(job.id),
+        "id": str(job.job_id),
         "label": job_name,
         "state": "done" if state_val == "completed" else "current",
         "kind": "goal",
         "checked": state_val == "completed",
         "muted": False,
-        "node_id": str(job.id),
+        "node_id": str(job.job_id),
         "next_action": {},
     })
 
     # Task items
     for task in job.tasks:
         t_status = task.status.value if hasattr(task.status, "value") else str(task.status)
-        desc = task.description if len(task.description) <= 50 else task.description[:47] + "..."
+        desc = task.title if len(task.title) <= 50 else task.title[:47] + "..."
 
         if t_status == "completed":
             cl_state = "done"
@@ -1021,13 +1021,13 @@ def build_checklist(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
             cl_state = "suggested"
 
         items.append({
-            "id": str(task.id),
-            "label": desc if desc and desc != str(task.id) else human_label("task"),
+            "id": str(task.task_id),
+            "label": desc if desc and desc != str(task.task_id) else human_label("task"),
             "state": cl_state,
             "kind": "task",
             "checked": checked,
             "muted": cl_state in ("pending", "suggested"),
-            "node_id": str(task.id),
+            "node_id": str(task.task_id),
             "next_action": {},
         })
 
@@ -1094,7 +1094,7 @@ def build_checklist(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
             "node_id": "",
             "next_action": {
                 "label": "Review candidate",
-                "command": f"remedy memory candidates {str(job.id)[:8]}",
+                "command": f"remedy memory candidates {str(job.job_id)[:8]}",
             } if c.get("status") == "pending" else {},
         })
 
@@ -1114,6 +1114,6 @@ def build_checklist(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
 
     return {
         "version": 1,
-        "job_id": str(job.id),
+        "job_id": str(job.job_id),
         "items": items,
     }

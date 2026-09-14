@@ -45,9 +45,9 @@ def _load_job(job_id: str):
         return plan
 
     try:
-        from packages.orchestration.storage import load_job
+        from packages.orchestration.pingpong_job import load_job_plan
 
-        core = load_job(job_id)
+        core = load_job_plan(job_id)
         return _CoreJobAdapter(core)
     except Exception:
         return None

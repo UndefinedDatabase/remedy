@@ -182,10 +182,11 @@ def _gather_inputs(job_id: str, data_dir: Path) -> _Inputs | None:
     from packages.orchestration.repair_loop import load_repair_attempts
     from packages.orchestration.repository_snapshot import build_snapshot_truth, list_durable_apply_ids
     from packages.orchestration.run_contract import ensure_contract, load_usage
-    from packages.orchestration.storage import JobNotFoundError, load_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan
 
     try:
-        job = load_job(normalize_job_id(job_id), data_dir)
+        job = require_job_plan(normalize_job_id(job_id), data_dir)
     except (ValueError, JobNotFoundError):
         return None
 
@@ -442,7 +443,7 @@ def _build_checklist(inp: _Inputs, job_id: str) -> list[OvernightChecklistItem]:
                      evidence_kind="job", evidence_id=job_id))
     items.append(_ci("task_selected", "Task selected",
                      "done" if inp.job.tasks else "pending", evidence_kind="task",
-                     evidence_id=str(inp.job.tasks[0].id) if inp.job.tasks else ""))
+                     evidence_id=str(inp.job.tasks[0].task_id) if inp.job.tasks else ""))
     items.append(_ci("patch_intent_created", "Patch intent created",
                      "done" if inp.intents else "pending", evidence_kind="intent",
                      evidence_id=inp.intents[0]["intent_id"] if inp.intents else ""))

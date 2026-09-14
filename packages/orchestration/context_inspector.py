@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -481,7 +481,7 @@ def _assess_readiness(
 # ---------------------------------------------------------------------------
 
 
-def _resolve_repo_root(job: Job, explicit_root: Path | None) -> Path | None:
+def _resolve_repo_root(job: JobPlan, explicit_root: Path | None) -> Path | None:
     """Resolve repo root safely. Returns None if unknown."""
     if explicit_root is not None and explicit_root.is_dir():
         return explicit_root
@@ -497,11 +497,11 @@ def _resolve_repo_root(job: Job, explicit_root: Path | None) -> Path | None:
     return None
 
 
-def _collect_task_target_paths(job: Job, task_id: str | None) -> frozenset[str]:
+def _collect_task_target_paths(job: JobPlan, task_id: str | None) -> frozenset[str]:
     """Collect target paths from task inputs (safe metadata only)."""
     paths: set[str] = set()
     for task in job.tasks:
-        if task_id and str(task.id) != task_id:
+        if task_id and str(task.task_id) != task_id:
             continue
         # Extract paths from task inputs if available
         inputs = task.inputs or {}
@@ -525,7 +525,7 @@ def _collect_event_target_paths(events: list[dict[str, Any]]) -> frozenset[str]:
     return frozenset(paths)
 
 
-def _collect_intent_target_paths(job: Job) -> frozenset[str]:
+def _collect_intent_target_paths(job: JobPlan) -> frozenset[str]:
     """Collect target paths from patch intents."""
     from packages.orchestration.approval_queue import list_patch_intents
     paths: set[str] = set()
@@ -565,7 +565,7 @@ def _walk_repo_shallow(
 
 
 def inspect_context(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     *,
     task_id: str | None = None,
@@ -581,7 +581,7 @@ def inspect_context(
         repo_root: Explicit repo root path.
         budget_tokens: Token budget limit.
     """
-    job_id_str = str(job.id)
+    job_id_str = str(job.job_id)
     task_id_str = task_id or ""
     effective_budget = budget_tokens or _DEFAULT_BUDGET_TOKENS
 

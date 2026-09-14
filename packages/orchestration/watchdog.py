@@ -473,6 +473,7 @@ def act_on_trips(
     from datetime import datetime, timezone
 
     from packages.orchestration import orchestrator_loop
+    from packages.orchestration.data_paths import normalize_job_id
     from packages.orchestration.escalation import enqueue_task_decision
     from packages.orchestration.mission_state import (
         MISSION_STATUS_ACTIVE,
@@ -480,7 +481,7 @@ def act_on_trips(
         load_mission,
         set_mission_status,
     )
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 
     ordered = list(trips)
     if not ordered:
@@ -518,7 +519,7 @@ def act_on_trips(
                       "be attached to a decision — a human has to look at "
                       "the mission"))
         try:
-            job = load_job(orchestrator_loop._as_uuid(link.job_id))
+            job = require_job_plan(normalize_job_id(link.job_id))
         except Exception as exc:
             return TripAction(
                 trip=trip,
@@ -530,7 +531,7 @@ def act_on_trips(
                 note=f"job {link.job_id} has no task to attach the decision to")
         record = enqueue_task_decision(
             job,
-            task_id=tasks[0].id,
+            task_id=tasks[0].task_id,
             question=f"{marker} {trip.what}",
             options=(DECISION_OPTION_RESUME, DECISION_OPTION_ABORT),
             # Deliberately EMPTY: this is the value
@@ -540,7 +541,7 @@ def act_on_trips(
             safe_default="",
             impact=(f"mission {mission_id} is paused until this is answered"),
             now=stamp)
-        save_job(job)
+        save_job_plan(job)
         open_records.append(record)
         return TripAction(trip=trip,
                           decision_id=str(record.get("decision_id", "")))

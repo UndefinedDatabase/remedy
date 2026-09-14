@@ -344,12 +344,12 @@ def collect_postmortems(data_root: Path) -> list[dict[str, Any]]:
 def collect_open_decisions(mission: Any) -> list[dict[str, Any]]:
     """Decisions still waiting on a human across the mission's jobs."""
     from packages.orchestration.escalation import open_task_decisions
-    from packages.orchestration.storage import load_job_safe
+    from packages.orchestration.pingpong_job import load_job_plan_safe
 
     open_records: list[dict[str, Any]] = []
     for link in getattr(mission, "job_links", ()) or ():
         try:
-            job, _ = load_job_safe(normalize_job_id(str(link.job_id)))
+            job, _ = load_job_plan_safe(normalize_job_id(str(link.job_id)))
         except (ValueError, OSError):
             continue
         if job is None:

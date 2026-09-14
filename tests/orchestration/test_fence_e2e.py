@@ -19,7 +19,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job
+from packages.core.models import Artifact, ArtifactKind
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.scope_fences import (
     BuiltinResolutionResult,
     EnforceResult,
@@ -300,7 +301,7 @@ class TestSourceApplyFenceE2E:
         )
         from packages.orchestration.permissions import Capability, set_permission
 
-        job = Job(name="test-fence-e2e")
+        job = JobPlan(job_title="test-fence-e2e")
         set_permission(job, Capability.repo_generated_write, allow=True)
         job.metadata["target_repo"] = str(tmp_path)
 
@@ -339,7 +340,7 @@ class TestSourceApplyFenceE2E:
             apply_structured_patch(
                 patch, tmp_path,
                 data_dir=str(tmp_path / "data"),
-                job_id=job.id, job=job, intent_id=intent_id,
+                job_id=job.job_id, job=job, intent_id=intent_id,
             )
         assert not exc_info.value.result.allowed
         assert not (tmp_path / ".git" / "config").exists()
@@ -362,7 +363,7 @@ class TestSourceApplyFenceE2E:
             apply_structured_patch(
                 patch, tmp_path,
                 data_dir=str(tmp_path / "data"),
-                job_id=job.id, job=job, intent_id=intent_id,
+                job_id=job.job_id, job=job, intent_id=intent_id,
             )
         assert "deny_glob" in exc_info.value.result.violations[0].reason
 
@@ -432,33 +433,33 @@ class TestSymlinkSafety:
 
 class TestJobFencesField:
     def test_default_none(self):
-        job = Job(name="test")
+        job = JobPlan(job_title="test")
         assert job.fences is None
 
     def test_backward_compatible_load(self):
-        data = {"name": "old-job", "id": str(uuid4())}
-        job = Job.model_validate(data)
+        from packages.orchestration.pingpong_job import _import_job
+        job = _import_job({"job_id": uuid4().hex[:16], "job_title": "old-job"})
         assert job.fences is None
 
     def test_set_fences(self):
         from packages.core.models import JobFences
-        job = Job(name="test", fences=JobFences(allow=["src/**"], deny=["vendor/**"]))
+        job = JobPlan(job_title="test", fences=JobFences(allow=["src/**"], deny=["vendor/**"]))
         assert job.fences is not None
         assert job.fences.allow == ["src/**"]
         assert job.fences.deny == ["vendor/**"]
 
     def test_round_trip_json(self):
         from packages.core.models import JobFences
-        job = Job(name="test", fences=JobFences(allow=["src/**"], deny=[]))
-        data = job.model_dump()
-        restored = Job.model_validate(data)
+        from packages.orchestration.pingpong_job import _export_job, _import_job
+        job = JobPlan(job_title="test", fences=JobFences(allow=["src/**"], deny=[]))
+        restored = _import_job(json.loads(json.dumps(_export_job(job))))
         assert restored.fences is not None
         assert restored.fences.allow == ["src/**"]
 
     def test_fences_none_round_trip(self):
-        job = Job(name="test")
-        data = job.model_dump()
-        restored = Job.model_validate(data)
+        from packages.orchestration.pingpong_job import _export_job, _import_job
+        job = JobPlan(job_title="test")
+        restored = _import_job(json.loads(json.dumps(_export_job(job))))
         assert restored.fences is None
 
     def test_closed_type_rejects_extra_fields(self):
@@ -750,8 +751,8 @@ class TestRepoApplicatorJobFences:
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
 
-        job = Job(
-            name="test",
+        job = JobPlan(
+            job_title="test",
             fences=JobFences(allow=[], deny=["docs/**"]),
         )
         set_permission(job, Capability.repo_generated_write, allow=True)
@@ -886,7 +887,7 @@ class TestPatchApplyFenceE2E:
         )
         from packages.orchestration.permissions import Capability, set_permission
 
-        job = Job(name="test-patch-fence")
+        job = JobPlan(job_title="test-patch-fence")
         set_permission(job, Capability.repo_generated_write, allow=True)
         job.metadata["target_repo"] = str(tmp_path)
 
@@ -1263,8 +1264,8 @@ class TestRepoApplicatorJobScopedEvidence:
         data_dir = tmp_path / "data"
         monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
 
-        job = Job(
-            name="test-job-scope",
+        job = JobPlan(
+            job_title="test-job-scope",
             fences=JobFences(allow=[], deny=["docs/**"]),
         )
         set_permission(job, Capability.repo_generated_write, allow=True)
@@ -1279,7 +1280,7 @@ class TestRepoApplicatorJobScopedEvidence:
 
         err = exc_info.value
         assert err.artifact_path is not None
-        job_dir = data_dir / "jobs" / str(job.id)
+        job_dir = data_dir / "jobs" / str(job.job_id)
         assert job_dir.is_dir()
         artifacts = list(job_dir.glob("fence_violations*.json"))
         assert len(artifacts) == 1
@@ -1294,8 +1295,8 @@ class TestRepoApplicatorJobScopedEvidence:
         (data_dir / "jobs").write_text("blocker")
         monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
 
-        job = Job(
-            name="test-persist-fail",
+        job = JobPlan(
+            job_title="test-persist-fail",
             fences=JobFences(allow=[], deny=["docs/**"]),
         )
         set_permission(job, Capability.repo_generated_write, allow=True)

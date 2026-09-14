@@ -454,7 +454,8 @@ def build_repair_request_package(
         ensure_contract,
         evaluate_run_action,
     )
-    from packages.orchestration.storage import JobNotFoundError, load_job, save_job
+    from packages.orchestration.storage import JobNotFoundError
+    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
 
     ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
     label = (generator_label or "external").strip() or "external"
@@ -464,7 +465,7 @@ def build_repair_request_package(
         model_hint=hint, generator_label=label)
 
     try:
-        job = load_job(normalize_job_id(job_id), ddir)
+        job = require_job_plan(normalize_job_id(job_id), ddir)
     except (ValueError, JobNotFoundError):
         result.stop_reason = RepairRequestStopReason.JOB_NOT_FOUND
         result.evidence_status = "unknown"
@@ -532,7 +533,7 @@ def build_repair_request_package(
         execution_mode=CandidateGeneratorCapability.MANUAL,
     )
     save_generator_record(job, record)
-    save_job(job, root=ddir)
+    save_job_plan(job, root=ddir)
 
     result.request_package_id = rpid
     result.request_file_id = rpid

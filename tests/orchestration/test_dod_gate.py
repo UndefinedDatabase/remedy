@@ -285,13 +285,13 @@ class TestEndToEnd:
     """
 
     def _job(self, tmp_path: Path):
-        from packages.core.models import Job
+        from packages.orchestration.pingpong_job import JobPlan
         from packages.orchestration.job_fulfillment import create_demo_repo
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import save_job_plan
 
         repo = create_demo_repo(tmp_path)
-        job = Job(name="dod gate e2e", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="dod gate e2e", metadata={"target_repo": str(repo)})
+        save_job_plan(job, root=tmp_path)
         return job, repo
 
     def _fulfill(self, job_id: str, repo: Path, tmp_path: Path):
@@ -299,8 +299,8 @@ class TestEndToEnd:
         return run_job_fulfill(job_id, repo, data_dir=tmp_path)
 
     def _job_state(self, job_id: str, tmp_path: Path) -> str:
-        from packages.orchestration.storage import load_job
-        job = load_job(normalize_job_id(job_id), tmp_path)
+        from packages.orchestration.pingpong_job import load_job_plan
+        job = load_job_plan(normalize_job_id(job_id), tmp_path)
         return job.state.value if hasattr(job.state, "value") else str(job.state)
 
     def test_a_job_without_a_dod_still_ends_green(self, tmp_path, monkeypatch):
@@ -308,39 +308,39 @@ class TestEndToEnd:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job, repo = self._job(tmp_path)
 
-        record = self._fulfill(str(job.id), repo, tmp_path)
+        record = self._fulfill(str(job.job_id), repo, tmp_path)
 
         assert record.status.value == "completed_verified"
         assert record.dod_released is None, "never gated"
-        assert self._job_state(str(job.id), tmp_path) == "completed"
+        assert self._job_state(str(job.job_id), tmp_path) == "completed"
 
     def test_all_blocking_green_lets_the_job_end_green(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job, repo = self._job(tmp_path)
-        store_dod(str(job.id), dod_of(cmd_check("smoke", EXIT_OK)))
+        store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_OK)))
 
-        record = self._fulfill(str(job.id), repo, tmp_path)
+        record = self._fulfill(str(job.job_id), repo, tmp_path)
 
         assert record.dod_released is True
         assert record.status.value == "completed_verified"
         assert record.contract_blockers == []
-        assert self._job_state(str(job.id), tmp_path) == "completed"
+        assert self._job_state(str(job.job_id), tmp_path) == "completed"
 
     def test_a_red_blocking_check_holds_the_job_open(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job, repo = self._job(tmp_path)
-        store_dod(str(job.id), dod_of(cmd_check("smoke", EXIT_BAD)))
+        store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_BAD)))
 
-        record = self._fulfill(str(job.id), repo, tmp_path)
+        record = self._fulfill(str(job.job_id), repo, tmp_path)
 
         assert record.dod_released is False
         assert record.dod_blocking_red == ["smoke"]
         assert record.status.value == "blocked"
         assert any(b.startswith(BLOCKER_PREFIX) for b in record.contract_blockers)
         # Held OPEN, not completed.
-        assert self._job_state(str(job.id), tmp_path) != "completed"
+        assert self._job_state(str(job.job_id), tmp_path) != "completed"
         # And the matrix is there to say why.
-        recorded = load_gate_result(str(job.id))
+        recorded = load_gate_result(str(job.job_id))
         assert recorded is not None and recorded["released"] is False
         assert matrix_rows(recorded)[0][3] == "failed"
 
@@ -348,42 +348,42 @@ class TestEndToEnd:
         """The gate holds, the check is fixed, the gate releases. Same job."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job, repo = self._job(tmp_path)
-        store_dod(str(job.id), dod_of(cmd_check("smoke", EXIT_BAD)))
+        store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_BAD)))
 
-        held = self._fulfill(str(job.id), repo, tmp_path)
+        held = self._fulfill(str(job.job_id), repo, tmp_path)
         assert held.status.value == "blocked"
-        assert self._job_state(str(job.id), tmp_path) != "completed"
+        assert self._job_state(str(job.job_id), tmp_path) != "completed"
 
         # The fix: the same check, now green.
-        store_dod(str(job.id), dod_of(cmd_check("smoke", EXIT_OK)))
-        released = self._fulfill(str(job.id), repo, tmp_path)
+        store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_OK)))
+        released = self._fulfill(str(job.job_id), repo, tmp_path)
 
         assert released.dod_released is True
         assert released.status.value == "completed_verified"
-        assert self._job_state(str(job.id), tmp_path) == "completed"
+        assert self._job_state(str(job.job_id), tmp_path) == "completed"
 
     def test_a_non_blocking_red_does_not_hold_the_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job, repo = self._job(tmp_path)
-        store_dod(str(job.id), dod_of(
+        store_dod(str(job.job_id), dod_of(
             cmd_check("smoke", EXIT_OK),
             cmd_check("nice-to-have", EXIT_BAD, blocking=False)))
 
-        record = self._fulfill(str(job.id), repo, tmp_path)
+        record = self._fulfill(str(job.job_id), repo, tmp_path)
 
         assert record.dod_released is True
         assert record.dod_reported_red == ["nice-to-have"]
         assert record.status.value == "completed_verified"
-        assert self._job_state(str(job.id), tmp_path) == "completed"
+        assert self._job_state(str(job.job_id), tmp_path) == "completed"
 
     def test_the_gate_run_is_recorded_on_the_timeline(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job, repo = self._job(tmp_path)
-        store_dod(str(job.id), dod_of(cmd_check("smoke", EXIT_OK)))
-        self._fulfill(str(job.id), repo, tmp_path)
+        store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_OK)))
+        self._fulfill(str(job.job_id), repo, tmp_path)
 
         from packages.orchestration.timeline import load_run_events
-        events = [e for e in load_run_events(tmp_path, job.id)
+        events = [e for e in load_run_events(tmp_path, job.job_id)
                   if e.get("event") == "dod_gate_evaluated"]
         assert len(events) == 1
         assert events[0]["metadata"]["released"] is True
@@ -395,11 +395,11 @@ class TestEndToEnd:
 
 class TestJobDodCommand:
     def _job(self, tmp_path: Path):
-        from packages.core.models import Job
-        from packages.orchestration.storage import save_job
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.pingpong_job import save_job_plan
 
-        job = Job(name="dod cli", metadata={})
-        save_job(job, root=tmp_path)
+        job = JobPlan(job_title="dod cli", metadata={})
+        save_job_plan(job, root=tmp_path)
         return job
 
     def _run(self, job_id: str, *, json_output: bool = False) -> str:
@@ -416,15 +416,15 @@ class TestJobDodCommand:
     def test_a_job_with_no_dod_says_so(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
-        assert "no Definition of Done" in self._run(str(job.id))
+        assert "no Definition of Done" in self._run(str(job.job_id))
 
     def test_a_compiled_dod_that_has_not_run_lists_the_checks(
             self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
-        store_dod(str(job.id), dod_of(cmd_check("smoke", EXIT_OK)))
+        store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_OK)))
 
-        out = self._run(str(job.id))
+        out = self._run(str(job.job_id))
         assert "compiled, 1 check(s), 1 blocking" in out
         assert "The gate has not run yet" in out
         assert "smoke" in out
@@ -432,12 +432,12 @@ class TestJobDodCommand:
     def test_the_matrix_is_shown_after_the_gate_ran(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
-        store_dod(str(job.id), dod_of(
+        store_dod(str(job.job_id), dod_of(
             cmd_check("smoke", EXIT_BAD),
             cmd_check("soft", EXIT_BAD, blocking=False)))
-        run_job_gate(str(job.id), tmp_path)
+        run_job_gate(str(job.job_id), tmp_path)
 
-        out = self._run(str(job.id))
+        out = self._run(str(job.job_id))
         for column in MATRIX_HEADER:
             assert column in out
         assert "Gate: HOLDING — blocking check(s) red: smoke" in out
@@ -446,18 +446,18 @@ class TestJobDodCommand:
     def test_a_released_gate_reads_as_released(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
-        store_dod(str(job.id), dod_of(cmd_check("smoke", EXIT_OK)))
-        run_job_gate(str(job.id), tmp_path)
+        store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_OK)))
+        run_job_gate(str(job.job_id), tmp_path)
 
-        assert "Gate: RELEASED" in self._run(str(job.id))
+        assert "Gate: RELEASED" in self._run(str(job.job_id))
 
     def test_json_output_carries_the_gate_record(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
-        store_dod(str(job.id), dod_of(cmd_check("smoke", EXIT_OK)))
-        run_job_gate(str(job.id), tmp_path)
+        store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_OK)))
+        run_job_gate(str(job.job_id), tmp_path)
 
-        payload = json.loads(self._run(str(job.id), json_output=True))
+        payload = json.loads(self._run(str(job.job_id), json_output=True))
         assert payload["compiled"] is True
         assert payload["check_count"] == 1
         assert payload["gate"]["released"] is True
@@ -473,8 +473,8 @@ class TestJobDodCommand:
         """It shows the LAST gate run; it never starts a check of its own."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
-        store_dod(str(job.id), dod_of(cmd_check("smoke", EXIT_OK)))
+        store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_OK)))
 
-        self._run(str(job.id))
-        assert load_gate_result(str(job.id)) is None, (
+        self._run(str(job.job_id))
+        assert load_gate_result(str(job.job_id)) is None, (
             "the CLI must not have run the gate")

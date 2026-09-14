@@ -38,7 +38,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration._symbols import (
     INFO as _INFO,
 )
@@ -121,7 +121,7 @@ class BrainNodeDetail:
 
 
 def build_brain_node_detail(
-    job: Job,
+    job: JobPlan,
     graph: ProjectBrainGraph,
     node_id: str,
     events: list[dict[str, Any]],
@@ -139,7 +139,7 @@ def build_brain_node_detail(
         safe_id = node_id[:64] if node_id else "(empty)"
         raise ValueError(f"node not found in graph: {safe_id!r}")
 
-    job_id_str = str(job.id)
+    job_id_str = str(job.job_id)
 
     # ── Connections ─────────────────────────────────────────────────────────
     node_map = {n.id: n for n in graph.nodes}
@@ -280,7 +280,7 @@ def export_brain_node_detail_json(detail: BrainNodeDetail) -> dict[str, Any]:
 
 
 def _detail_job(
-    job: Job,
+    job: JobPlan,
     node: Any,
     job_id_str: str,
     connected: list[dict[str, str]],
@@ -290,7 +290,7 @@ def _detail_job(
     task_count = len(job.tasks)
     artifact_count = len(job.artifacts)
     pending = sum(1 for t in job.tasks if t.status == RunState.PENDING)
-    name_trunc = job.name if len(job.name) <= 80 else job.name[:80] + "…"
+    name_trunc = job.job_title if len(job.job_title) <= 80 else job.job_title[:80] + "…"
 
     explanation = (
         f"Top-level job '{name_trunc}'. "
@@ -337,39 +337,39 @@ def _detail_job(
 
 
 def _detail_task(
-    job: Job,
+    job: JobPlan,
     node: Any,
     job_id_str: str,
     connected: list[dict[str, str]],
 ) -> BrainNodeDetail:
-    task = next((t for t in job.tasks if str(t.id) == node.id), None)
+    task = next((t for t in job.tasks if str(t.task_id) == node.id), None)
     if task is None:
         return _fallback(node, job_id_str, connected, "Task not found in job model.")
 
     task_type = str(task.inputs.get("task_type", "unknown"))
-    desc = task.description if len(task.description) <= 120 else task.description[:120] + "…"
+    desc = task.title if len(task.title) <= 120 else task.title[:120] + "…"
 
     explanation = (
-        f"Task of type '{task_type}'. Status: {task.status.value}. "
+        f"Task of type '{task_type}'. Status: {task.status}. "
         f"Description: {desc}"
     )
 
     # Collect affected files from linked artifact metadata (repo_applied_files only).
     affected: list[str] = []
     for art in job.artifacts:
-        if art.task_id == str(task.id):
+        if art.task_id == str(task.task_id):
             files = art.metadata.get("repo_applied_files", [])
             if isinstance(files, list):
                 affected.extend(str(f) for f in files[:20])
 
     evidence = [
-        f"status: {task.status.value}",
+        f"status: {task.status}",
         f"task_type: {task_type}",
         f"linked_artifacts: {len(task.output_artifact_ids)}",
     ]
 
     next_actions: list[str] = []
-    if task.status.value == "pending":
+    if task.status == "pending":
         next_actions.append(f"remedy job resume {job_id_str}")
 
     return BrainNodeDetail(
@@ -377,7 +377,7 @@ def _detail_task(
         node_id=node.id,
         node_type=NT_TASK,
         title=desc,
-        status=node.status or task.status.value,
+        status=node.status or task.status,
         risk=None,
         explanation=explanation,
         why_it_exists=(
@@ -393,7 +393,7 @@ def _detail_task(
 
 
 def _detail_artifact(
-    job: Job,
+    job: JobPlan,
     node: Any,
     job_id_str: str,
     connected: list[dict[str, str]],
@@ -449,7 +449,7 @@ def _detail_artifact(
 
 
 def _detail_patch_intent(
-    job: Job,
+    job: JobPlan,
     node: Any,
     job_id_str: str,
     connected: list[dict[str, str]],
@@ -515,7 +515,7 @@ def _detail_patch_intent(
 
 
 def _detail_approval(
-    job: Job,
+    job: JobPlan,
     node: Any,
     job_id_str: str,
     connected: list[dict[str, str]],

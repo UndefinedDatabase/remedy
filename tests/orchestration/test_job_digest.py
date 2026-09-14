@@ -27,7 +27,8 @@ from pathlib import Path
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration import budget_guard, decision_inbox
 from packages.orchestration.budget_guard import (
     BudgetCounters,
@@ -117,15 +118,15 @@ def _frozen_inbox_clock(monkeypatch):
     monkeypatch.setattr(decision_inbox, "datetime", _FrozenDatetime)
 
 
-def _make_job(**overrides) -> Job:
+def _make_job(**overrides) -> JobPlan:
     defaults = dict(
-        name="f040-digest-job",
+        job_title="f040-digest-job",
         user_prompt="Test the completion digest",
         tasks=[],
         metadata={"target_repo": "/tmp/repo"},
     )
     defaults.update(overrides)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
 # ---------------------------------------------------------------------------
@@ -133,17 +134,17 @@ def _make_job(**overrides) -> Job:
 # ---------------------------------------------------------------------------
 
 
-def _shape_green() -> tuple[Job, list[dict]]:
+def _shape_green() -> tuple[JobPlan, list[dict]]:
     """Every task completed, nothing open, a terminal status of all_green."""
     return _make_job(
         state=RunState.COMPLETED,
-        tasks=[Task(description="write the composition", status=RunState.COMPLETED),
-               Task(description="write its tests", status=RunState.COMPLETED)],
+        tasks=[TaskEntry(title="write the composition", status=RunState.COMPLETED),
+               TaskEntry(title="write its tests", status=RunState.COMPLETED)],
         metadata={"target_repo": "/tmp/repo", "cycle_terminal_status": "all_green"},
     ), []
 
 
-def _shape_blocked_with_decisions() -> tuple[Job, list[dict]]:
+def _shape_blocked_with_decisions() -> tuple[JobPlan, list[dict]]:
     """Two open decisions with DIFFERENT ages and DIFFERENT blocked subtrees.
 
     The chain is linear, so the first task blocks three downstream and the third
@@ -153,36 +154,36 @@ def _shape_blocked_with_decisions() -> tuple[Job, list[dict]]:
     """
     job = _make_job(
         state=RunState.PAUSED,
-        tasks=[Task(description=f"step {i}") for i in range(4)],
+        tasks=[TaskEntry(title=f"step {i}") for i in range(4)],
         metadata={"target_repo": "/tmp/repo", "cycle_terminal_status": "blocked"},
     )
-    enqueue_task_decision(job, task_id=job.tasks[0].id,
+    enqueue_task_decision(job, task_id=job.tasks[0].task_id,
                           question="Which database?",
                           options=["postgres", "sqlite"],
                           now=FIXED_NOW - timedelta(seconds=600))
-    enqueue_task_decision(job, task_id=job.tasks[2].id,
+    enqueue_task_decision(job, task_id=job.tasks[2].task_id,
                           question="Which index?",
                           now=FIXED_NOW - timedelta(seconds=60))
     return job, []
 
 
-def _shape_budget_stopped() -> tuple[Job, list[dict]]:
+def _shape_budget_stopped() -> tuple[JobPlan, list[dict]]:
     """A terminal status in the budget family, with nothing left to answer."""
     return _make_job(
         state=RunState.PAUSED,
-        tasks=[Task(description="refactor the verifier", status=RunState.FAILED)],
+        tasks=[TaskEntry(title="refactor the verifier", status=RunState.FAILED)],
         metadata={"target_repo": "/tmp/repo",
                   "cycle_terminal_status": "budget_exhausted",
                   "cycle_stop_reason": "budget_exhausted:tokens"},
     ), []
 
 
-def _shape_mid_run() -> tuple[Job, list[dict]]:
+def _shape_mid_run() -> tuple[JobPlan, list[dict]]:
     """Still going: one task done, one waiting, and no terminal status at all."""
     return _make_job(
         state=RunState.RUNNING,
-        tasks=[Task(description="plan the work", status=RunState.COMPLETED),
-               Task(description="do the work", status=RunState.RUNNING)],
+        tasks=[TaskEntry(title="plan the work", status=RunState.COMPLETED),
+               TaskEntry(title="do the work", status=RunState.RUNNING)],
         metadata={"target_repo": "/tmp/repo"},
     ), []
 
@@ -223,7 +224,7 @@ def test_the_envelope_names_the_job_and_its_state(shape):
     job, events = SHAPE_FIXTURES[shape]()
     digest = build_job_digest(job, events)
     sources = build_report_sources(job)
-    assert digest["job_id"] == str(job.id)
+    assert digest["job_id"] == str(job.job_id)
     assert digest["state"] == sources.state
     # The headline is the digest's own prose, but it must NAME the state it
     # reports rather than paraphrasing it into a second vocabulary.
@@ -355,10 +356,10 @@ def test_ownership_is_empty_by_decision_f040_d3(shape):
 # ---------------------------------------------------------------------------
 
 
-def _persist_actuals(job: Job) -> None:
+def _persist_actuals(job: JobPlan) -> None:
     """Give *job* a real persisted plan carrying the actuals record above."""
     save_job_plan(JobPlan(
-        job_id=str(job.id),
+        job_id=str(job.job_id),
         first_running_at=ACTUALS_STARTED_AT,
         budget_actuals=dict(PERSISTED_ACTUALS),
     ))

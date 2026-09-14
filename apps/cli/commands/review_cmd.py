@@ -20,9 +20,9 @@ def _cmd_review_run(args: Any) -> None:
         run_reviewer,
         store_recommendations,
     )
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
-    job = load_job(lookup_job_id(args.job_id))
+    job = load_job_plan(lookup_job_id(args.job_id))
     after_task = getattr(args, "after_task", None)
 
     # Use fixture reviewer if requested
@@ -32,12 +32,12 @@ def _cmd_review_run(args: Any) -> None:
 
     recs = run_reviewer(job, after_task_id=after_task, reviewer_fn=reviewer_fn)
     store_recommendations(job, recs)
-    save_job(job)
+    save_job_plan(job)
 
     if getattr(args, "json", False):
         out = {
             "version": 1,
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "recommendation_count": len(recs),
             "recommendations": [
                 {
@@ -66,9 +66,9 @@ def _cmd_review_list(args: Any) -> None:
     """List reviewer recommendations."""
     from packages.orchestration.list_options import ListOptionError, apply_list_options
     from packages.orchestration.reviewer import list_recommendations
-    from packages.orchestration.storage import load_job
+    from packages.orchestration.pingpong_job import load_job_plan
 
-    job = load_job(lookup_job_id(args.job_id))
+    job = load_job_plan(lookup_job_id(args.job_id))
     recs = list_recommendations(job)
     try:
         recs = apply_list_options(
@@ -90,7 +90,7 @@ def _cmd_review_list(args: Any) -> None:
     if getattr(args, "json", False):
         print(json.dumps({
             "version": 1,
-            "job_id": str(job.id),
+            "job_id": str(job.job_id),
             "recommendations": recs,
         }, indent=2))
     else:
@@ -108,16 +108,16 @@ def _cmd_review_list(args: Any) -> None:
 def _cmd_review_accept(args: Any) -> None:
     """Accept a reviewer recommendation — creates a proposed task for evaluation."""
     from packages.orchestration.reviewer import accept_recommendation
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
-    job = load_job(lookup_job_id(args.job_id))
+    job = load_job_plan(lookup_job_id(args.job_id))
     ok = accept_recommendation(job, args.recommendation_id)
     if ok:
-        save_job(job)
+        save_job_plan(job)
         if getattr(args, "json", False):
             print(json.dumps({
                 "version": 1,
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "recommendation_id": args.recommendation_id,
                 "accepted": True,
                 "proposed_task_created": True,
@@ -128,7 +128,7 @@ def _cmd_review_accept(args: Any) -> None:
         if getattr(args, "json", False):
             print(json.dumps({
                 "version": 1,
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "recommendation_id": args.recommendation_id,
                 "accepted": False,
                 "proposed_task_created": False,
@@ -142,16 +142,16 @@ def _cmd_review_accept(args: Any) -> None:
 def _cmd_review_reject(args: Any) -> None:
     """Reject a reviewer recommendation."""
     from packages.orchestration.reviewer import reject_recommendation
-    from packages.orchestration.storage import load_job, save_job
+    from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
-    job = load_job(lookup_job_id(args.job_id))
+    job = load_job_plan(lookup_job_id(args.job_id))
     ok = reject_recommendation(job, args.recommendation_id)
     if ok:
-        save_job(job)
+        save_job_plan(job)
         if getattr(args, "json", False):
             print(json.dumps({
                 "version": 1,
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "recommendation_id": args.recommendation_id,
                 "rejected": True,
                 "task_appended": False,
@@ -162,7 +162,7 @@ def _cmd_review_reject(args: Any) -> None:
         if getattr(args, "json", False):
             print(json.dumps({
                 "version": 1,
-                "job_id": str(job.id),
+                "job_id": str(job.job_id),
                 "recommendation_id": args.recommendation_id,
                 "rejected": False,
                 "task_appended": False,

@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.builder_models import BuilderOutput
 
 
@@ -46,7 +46,7 @@ class TestFixtureBridgeSmoke:
             structured_patch_format="json",
         )
 
-        job = Job(name="fixture-smoke")
+        job = JobPlan(job_title="fixture-smoke")
         result = run_builder_bridge(
             output, tmp_path, job=job, data_dir=tmp_path, autonomy_level=4,
         )
@@ -79,7 +79,7 @@ class TestFixtureBridgeSmoke:
             structured_patch_text=diff_text,
             structured_patch_format="unified_diff",
         )
-        job = Job(name="diff-smoke")
+        job = JobPlan(job_title="diff-smoke")
         result = run_builder_bridge(
             output, tmp_path, job=job, data_dir=tmp_path, autonomy_level=2,
         )
@@ -100,7 +100,7 @@ class TestFixtureBridgeSmoke:
             summary="Fix", proposed_changes=["Fix"],
             structured_patch_text=fenced,
         )
-        job = Job(name="fenced-smoke")
+        job = JobPlan(job_title="fenced-smoke")
         result = run_builder_bridge(
             output, tmp_path, job=job, data_dir=tmp_path, autonomy_level=4,
         )

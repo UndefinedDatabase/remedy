@@ -248,10 +248,10 @@ def _dossier_section(mission: Mission, root: Path | None,
 
 def _load_job_for_decisions(job_id: str) -> Any:
     """The persisted job, or None. A job that cannot be read is a gap, not a raise."""
-    from packages.orchestration.storage import load_job_safe
+    from packages.orchestration.pingpong_job import load_job_plan_safe
 
     try:
-        job, _degraded = load_job_safe(normalize_job_id(str(job_id)))
+        job, _degraded = load_job_plan_safe(normalize_job_id(str(job_id)))
     except (ValueError, TypeError):
         return None
     if job is not None:

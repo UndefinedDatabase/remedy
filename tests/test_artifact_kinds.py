@@ -21,7 +21,8 @@ from __future__ import annotations
 import json
 from uuid import UUID, uuid4
 
-from packages.core.models import Artifact, ArtifactKind, Job
+from packages.core.models import Artifact, ArtifactKind
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.artifact_index import (
     artifacts_by_kind,
     first_artifact_by_kind,
@@ -156,7 +157,7 @@ class TestArtifactKindField:
 
 class TestPlanningArtifactKind:
     def test_deterministic_planner_sets_planning_kind(self):
-        job = Job(name="test", user_prompt="do stuff")
+        job = JobPlan(job_title="test", user_prompt="do stuff")
         result = plan_job(job)
         assert result.changed is True
         planning = next(
@@ -167,7 +168,7 @@ class TestPlanningArtifactKind:
         assert planning.kind == ArtifactKind.PLANNING
 
     def test_llm_planner_sets_planning_kind(self):
-        job = Job(name="test", user_prompt="do stuff")
+        job = JobPlan(job_title="test", user_prompt="do stuff")
 
         def fake_planner(prompt: str) -> PlannerOutput:
             return PlannerOutput(
@@ -197,7 +198,7 @@ class TestBuilderArtifactKind:
         from packages.orchestration.builder_models import BuilderOutput
         from packages.orchestration.task_runner import run_next_task
 
-        job = Job(name="test", user_prompt="do stuff")
+        job = JobPlan(job_title="test", user_prompt="do stuff")
         plan_job(job)
 
         def fake_builder(ctx):
@@ -407,7 +408,7 @@ class TestPlanningArtifact:
 
     def test_deterministic_planner_artifact_found(self):
         """End-to-end: deterministic planner output is found by planning_artifact."""
-        job = Job(name="test", user_prompt="prompt")
+        job = JobPlan(job_title="test", user_prompt="prompt")
         result = plan_job(job)
         found = planning_artifact(result.job.artifacts)
         assert found is not None
@@ -415,7 +416,7 @@ class TestPlanningArtifact:
 
     def test_llm_planner_artifact_found(self):
         """End-to-end: LLM planner output is found by planning_artifact."""
-        job = Job(name="test", user_prompt="prompt")
+        job = JobPlan(job_title="test", user_prompt="prompt")
 
         def fake_planner(prompt: str) -> PlannerOutput:
             return PlannerOutput(
@@ -452,7 +453,7 @@ _ANNOTATE_KWARGS = dict(
 class TestAnnotatePlanningResult:
     def test_annotates_explicit_planning_kind(self):
         """annotate_planning_result enriches the PLANNING artifact via planning_artifact()."""
-        job = Job(name="j", user_prompt="p")
+        job = JobPlan(job_title="j", user_prompt="p")
         result = plan_job_with_llm(job, _fake_planner)
         annotate_planning_result(result, **_ANNOTATE_KWARGS)
         artifact = planning_artifact(result.job.artifacts)
@@ -465,7 +466,7 @@ class TestAnnotatePlanningResult:
 
     def test_annotates_legacy_artifact(self):
         """annotate_planning_result falls back to legacy name+task_id convention."""
-        job = Job(name="j", user_prompt="p")
+        job = JobPlan(job_title="j", user_prompt="p")
         result = plan_job_with_llm(job, _fake_planner)
         # Locate the planning artifact by kind (not by position) and downgrade it
         # to simulate a pre-Step-14 (legacy) artifact.
@@ -481,7 +482,7 @@ class TestAnnotatePlanningResult:
 
     def test_noop_when_changed_false(self):
         """No metadata is written when result.changed is False."""
-        job = Job(name="j", user_prompt="p")
+        job = JobPlan(job_title="j", user_prompt="p")
         plan_job_with_llm(job, _fake_planner)
         # Planning already done; second call returns changed=False.
         result2 = plan_job_with_llm(job, _fake_planner)
@@ -493,7 +494,7 @@ class TestAnnotatePlanningResult:
 
     def test_noop_when_no_planning_artifact(self):
         """annotate_planning_result is safe when no planning artifact exists."""
-        job = Job(name="j", user_prompt="p")
+        job = JobPlan(job_title="j", user_prompt="p")
         result = plan_job_with_llm(job, _fake_planner)
         result.job.artifacts.clear()
         # Must not raise.

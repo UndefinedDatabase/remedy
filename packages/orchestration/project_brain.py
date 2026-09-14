@@ -75,7 +75,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
-from packages.core.models import Job
+from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration._symbols import (
     FAIL as _FAIL,
 )
@@ -272,7 +272,7 @@ class _Acc:
 
     def __init__(
         self,
-        job: Job,
+        job: JobPlan,
         events: list[dict[str, Any]],
         constitution: object | None,
     ) -> None:
@@ -281,7 +281,7 @@ class _Acc:
         self.constitution = constitution
         self.nodes: list[BrainNode] = []
         self.edges: list[BrainEdge] = []
-        self.job_node_id = str(job.id)
+        self.job_node_id = str(job.job_id)
         self.degraded: list[str] = []
 
     def node_id_set(self) -> set[str]:
@@ -295,26 +295,26 @@ class _Acc:
 
 
 def _build_job_node(acc: _Acc) -> None:
-    short_name = acc.job.name if len(acc.job.name) <= 50 else acc.job.name[:50] + "\u2026"
+    short_name = acc.job.job_title if len(acc.job.job_title) <= 50 else acc.job.job_title[:50] + "\u2026"
     acc.nodes.append(BrainNode(
         id=acc.job_node_id,
         type=NT_JOB,
         label=short_name,
         status=acc.job.state.value,
-        ref_id=str(acc.job.id),
+        ref_id=str(acc.job.job_id),
         metadata={"task_count": len(acc.job.tasks), "artifact_count": len(acc.job.artifacts)},
     ))
 
 
 def _build_task_nodes(acc: _Acc) -> None:
     for task in acc.job.tasks:
-        tid = str(task.id)
-        desc = task.description
+        tid = str(task.task_id)
+        desc = task.title
         label = desc if len(desc) <= 60 else desc[:60] + "\u2026"
         tt = str(task.inputs.get("task_type", "unknown"))
         acc.nodes.append(BrainNode(
             id=tid, type=NT_TASK, label=label,
-            status=task.status.value, ref_id=tid,
+            status=task.status, ref_id=tid,
             metadata={"task_type": tt},
         ))
         acc.edges.append(BrainEdge(source=acc.job_node_id, target=tid, type=ET_HAS_TASK))
@@ -460,7 +460,7 @@ def _build_event_derived_nodes(acc: _Acc) -> None:
             acc.nodes.append(BrainNode(
                 id=aid, type=NT_AGENT_LOOP,
                 label=f"agent loop: {ev_type.replace('agent_loop_', '')}",
-                status=outcome or decision, ref_id=str(acc.job.id),
+                status=outcome or decision, ref_id=str(acc.job.job_id),
                 metadata={"stage": stage, "decision": decision, "cycle": cycle, "event_type": ev_type},
             ))
             acc.edges.append(BrainEdge(source=aid, target=acc.job_node_id, type=ET_INSPECTED))
@@ -473,7 +473,7 @@ def _build_event_derived_nodes(acc: _Acc) -> None:
                 id=rid, type=NT_RUN_EVENT,
                 label=ev_type.replace("_", " "),
                 status=str(outcome) if outcome else "recorded",
-                ref_id=str(acc.job.id), metadata={"event_type": ev_type},
+                ref_id=str(acc.job.job_id), metadata={"event_type": ev_type},
             ))
             acc.edges.append(BrainEdge(source=acc.job_node_id, target=rid, type=ET_EMITTED))
 
@@ -498,7 +498,7 @@ def _build_constitution_node(acc: _Acc) -> None:
     acc.nodes.append(BrainNode(
         id="constitution", type=NT_CONSTITUTION,
         label=con_label, status=con_status,
-        ref_id=str(acc.job.id), metadata=con_meta,
+        ref_id=str(acc.job.job_id), metadata=con_meta,
     ))
     acc.edges.append(BrainEdge(source=acc.job_node_id, target="constitution", type=ET_GOVERNED))
 
@@ -518,10 +518,10 @@ def _build_memory_nodes(acc: _Acc) -> None:
         project_id = acc.job.metadata.get("project_id")
         entries = list_memory(
             project_id=project_id,
-            job_id=str(acc.job.id) if not project_id else None,
+            job_id=str(acc.job.job_id) if not project_id else None,
         )
         if project_id:
-            job_entries = list_memory(job_id=str(acc.job.id))
+            job_entries = list_memory(job_id=str(acc.job.job_id))
             seen = {me.id for me in entries}
             entries += [e for e in job_entries if e.id not in seen]
         for me in entries:
@@ -639,7 +639,7 @@ def _build_worker_adapter_nodes(acc: _Acc) -> None:
 
 def _build_readiness_node(acc: _Acc) -> None:
     try:
-        evts = load_run_events(resolve_data_root(), acc.job.id)
+        evts = load_run_events(resolve_data_root(), acc.job.job_id)
         report = assess_job_readiness(acc.job, evts)
         sigs = report.signals
         acc.nodes.append(BrainNode(
@@ -917,7 +917,7 @@ def _build_continuation_edges(acc: _Acc) -> None:
         acc.nodes.append(BrainNode(
             id=placeholder_id, type=NT_JOB,
             label=f"Child Job {child_id[:8]}", status="linked", ref_id=child_id,
-            metadata={"parent_job_id": str(acc.job.id), "origin_node_id": origin_nid},
+            metadata={"parent_job_id": str(acc.job.job_id), "origin_node_id": origin_nid},
         ))
         if origin_nid in nids:
             acc.edges.append(BrainEdge(source=origin_nid, target=placeholder_id, type=ET_CONTINUED_AS))
@@ -929,7 +929,7 @@ def _build_continuation_edges(acc: _Acc) -> None:
 
 
 def build_project_brain(
-    job: Job,
+    job: JobPlan,
     events: list[dict[str, Any]],
     *,
     constitution: object | None = None,
@@ -978,7 +978,7 @@ def build_project_brain(
     sorted_edges = tuple(sorted(acc.edges, key=lambda e: (e.source, e.target, e.type)))
 
     return ProjectBrainGraph(
-        job_id=job.id, nodes=sorted_nodes, edges=sorted_edges,
+        job_id=job.job_id, nodes=sorted_nodes, edges=sorted_edges,
         degraded=tuple(acc.degraded),
     )
 

@@ -28,7 +28,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, Job, RunState, Task
+from packages.core.models import Artifact, ArtifactKind, RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.approval_queue import (
     APPROVAL_APPROVED,
     APPROVAL_REJECTED,
@@ -37,7 +38,7 @@ from packages.orchestration.approval_queue import (
 )
 from packages.orchestration.patch_intent import RISK_HIGH, RISK_LOW, RISK_MEDIUM, RISK_UNKNOWN
 from packages.orchestration.permissions import Capability, set_permission
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
 from packages.orchestration.trust_report import summarize_trust_report
 
 # ---------------------------------------------------------------------------
@@ -49,24 +50,24 @@ def _ts(offset: int = 0) -> str:
     return f"2026-05-04T10:{offset:02d}:00+00:00"
 
 
-def _make_job(**kwargs) -> Job:
-    defaults: dict = {"name": "Test trust job", "state": RunState.PENDING}
+def _make_job(**kwargs) -> JobPlan:
+    defaults: dict = {"job_title": "Test trust job", "state": RunState.PENDING}
     defaults.update(kwargs)
-    return Job(**defaults)
+    return JobPlan(**defaults)
 
 
-def _make_pending_task(**kwargs) -> Task:
-    return Task(description="write the readme", inputs={"task_type": "write_readme"}, **kwargs)
+def _make_pending_task(**kwargs) -> TaskEntry:
+    return TaskEntry(title="write the readme", inputs={"task_type": "write_readme"}, **kwargs)
 
 
-def _completed_task(**kwargs) -> Task:
-    t = Task(description="done writing readme", inputs={"task_type": "write_readme"}, **kwargs)
+def _completed_task(**kwargs) -> TaskEntry:
+    t = TaskEntry(title="done writing readme", inputs={"task_type": "write_readme"}, **kwargs)
     t.status = RunState.COMPLETED
     return t
 
 
 def _add_patch_artifact(
-    job: Job, *, risk: str = RISK_MEDIUM, intent_count: int = 1
+    job: JobPlan, *, risk: str = RISK_MEDIUM, intent_count: int = 1
 ) -> str:
     """Add a fake patch-intent artifact to the job. Returns the first intent_id."""
     explanations = [
@@ -123,10 +124,10 @@ class TestTrustReportHeader:
     def test_short_job_id_shown(self):
         job = _make_job()
         out = summarize_trust_report(job, [])
-        assert str(job.id)[:8] in out
+        assert str(job.job_id)[:8] in out
 
     def test_job_name_shown(self):
-        job = _make_job(name="My special job")
+        job = _make_job(job_title="My special job")
         out = summarize_trust_report(job, [])
         assert "My special job" in out
 
@@ -160,7 +161,7 @@ class TestUserRequestSection:
         assert "Write a comprehensive README" in out
 
     def test_no_prompt_shows_fallback(self):
-        job = _make_job(name="Unnamed job")
+        job = _make_job(job_title="Unnamed job")
         out = summarize_trust_report(job, [])
         assert "no prompt" in out.lower() or "Unnamed job" in out
 
@@ -219,7 +220,7 @@ class TestExecutionSummarySection:
     def test_run_invocations_counted(self):
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id)
+        events = _task_run_succeeded(str(job.job_id), task_id)
         out = summarize_trust_report(job, events)
         assert "Run invocations" in out
         assert "1" in out
@@ -227,7 +228,7 @@ class TestExecutionSummarySection:
     def test_completed_count_shown(self):
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id)
+        events = _task_run_succeeded(str(job.job_id), task_id)
         out = summarize_trust_report(job, events)
         assert "Completed" in out
 
@@ -235,9 +236,9 @@ class TestExecutionSummarySection:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id, "metadata": {"task_type": "write_readme"}},
-            {"event": "task_run_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "builder_error", "metadata": {}},
         ]
         out = summarize_trust_report(job, events)
@@ -246,7 +247,7 @@ class TestExecutionSummarySection:
     def test_noop_count_shown_when_present(self):
         job = _make_job()
         events = [
-            {"event": "task_run_noop", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_noop", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "outcome": "no_pending_tasks", "metadata": {}},
         ]
         out = summarize_trust_report(job, events)
@@ -256,7 +257,7 @@ class TestExecutionSummarySection:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id, "metadata": {"task_type": "write_readme"}},
             # No terminal event → interrupted
         ]
@@ -267,7 +268,7 @@ class TestExecutionSummarySection:
         """planning_failed event with error_category → safe category label shown."""
         job = _make_job()
         events = [
-            {"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "planning_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "outcome": "error",
              "message": "SECRET_EXCEPTION_TEXT",
              "metadata": {"error_category": "RuntimeError"}},
@@ -280,7 +281,7 @@ class TestExecutionSummarySection:
         """planning_failed event without error_category → 'unknown error', message suppressed."""
         job = _make_job()
         events = [
-            {"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "planning_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "outcome": "error",
              "message": "SECRET_MUST_NOT_APPEAR connection refused password=abc",
              "metadata": {}},
@@ -295,7 +296,7 @@ class TestExecutionSummarySection:
         """planning_failed-only run log should not fall through to the vague fallback."""
         job = _make_job()
         events = [
-            {"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "planning_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "outcome": "error",
              "message": "irrelevant",
              "metadata": {"error_category": "ImportError"}},
@@ -357,7 +358,7 @@ class TestVerificationSection:
     def test_verification_passed_shown(self):
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id)
+        events = _task_run_succeeded(str(job.job_id), task_id)
         out = summarize_trust_report(job, events)
         assert "passed" in out
         assert task_id[:8] in out
@@ -365,7 +366,7 @@ class TestVerificationSection:
     def test_verifier_profile_shown(self):
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id)
+        events = _task_run_succeeded(str(job.job_id), task_id)
         out = summarize_trust_report(job, events)
         assert "markdown_doc" in out
 
@@ -373,12 +374,12 @@ class TestVerificationSection:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id, "metadata": {"task_type": "write_readme"}},
-            {"event": "verification_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "verification_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id, "outcome": "fail",
              "metadata": {"failure_count": 2, "failed_checks": ["check_a", "check_b"]}},
-            {"event": "task_run_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(2), "task_id": task_id, "outcome": "fail", "metadata": {}},
         ]
         out = summarize_trust_report(job, events)
@@ -427,9 +428,9 @@ class TestPermissionsSafetySection:
         job = _make_job()
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id, "metadata": {"task_type": "write_readme"}},
-            {"event": "task_run_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(1), "task_id": task_id,
              "outcome": "permission_denied",
              "metadata": {"capability": "workspace_write"}},
@@ -441,7 +442,7 @@ class TestPermissionsSafetySection:
     def test_no_blocked_events_section_when_clean(self):
         job = _make_job()
         task_id = str(uuid4())
-        events = _task_run_succeeded(str(job.id), task_id)
+        events = _task_run_succeeded(str(job.job_id), task_id)
         out = summarize_trust_report(job, events)
         assert "Blocked run events" not in out
 
@@ -536,7 +537,7 @@ class TestRedactionSection:
     def test_raw_exception_text_not_shown(self):
         job = _make_job()
         events = [
-            {"event": "planning_failed", "job_id": str(job.id), "run_id": "r",
+            {"event": "planning_failed", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "outcome": "error",
              "message": "secret-token MUST_NOT_APPEAR",
              "metadata": {"error_category": "RuntimeError"}},
@@ -571,7 +572,7 @@ class TestRedactionSection:
 
     def test_unknown_events_do_not_crash(self):
         job = _make_job()
-        events = [{"event": "totally_unknown_event_zyx", "job_id": str(job.id),
+        events = [{"event": "totally_unknown_event_zyx", "job_id": str(job.job_id),
                    "run_id": "r", "timestamp": _ts(0), "metadata": {}}]
         out = summarize_trust_report(job, events)
         assert "Remedy Trust Report" in out
@@ -620,7 +621,7 @@ class TestNextSafeAction:
         job.tasks.append(_make_pending_task())
         task_id = str(uuid4())
         events = [
-            {"event": "task_run_started", "job_id": str(job.id), "run_id": "r",
+            {"event": "task_run_started", "job_id": str(job.job_id), "run_id": "r",
              "timestamp": _ts(0), "task_id": task_id, "metadata": {"task_type": "write_readme"}},
         ]
         out = summarize_trust_report(job, events)
@@ -671,10 +672,10 @@ class TestDataDir:
 
 
 class TestCmdTrustReport:
-    def _save(self, tmp_path, monkeypatch, **kwargs) -> Job:
+    def _save(self, tmp_path, monkeypatch, **kwargs) -> JobPlan:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job(**kwargs)
-        save_job(job)
+        save_job_plan(job)
         return job
 
     def test_prints_report_for_valid_job(self, tmp_path, monkeypatch, capsys):
@@ -682,17 +683,17 @@ class TestCmdTrustReport:
 
         from apps.cli.commands.brain import _cmd_trust_report
 
-        _cmd_trust_report(str(job.id))
+        _cmd_trust_report(str(job.job_id))
         out = capsys.readouterr().out
         assert "Remedy Trust Report" in out
-        assert str(job.id)[:8] in out
+        assert str(job.job_id)[:8] in out
 
     def test_report_includes_permissions(self, tmp_path, monkeypatch, capsys):
         job = self._save(tmp_path, monkeypatch)
 
         from apps.cli.commands.brain import _cmd_trust_report
 
-        _cmd_trust_report(str(job.id))
+        _cmd_trust_report(str(job.job_id))
         out = capsys.readouterr().out
         assert "workspace_write" in out
 
@@ -720,6 +721,6 @@ class TestCmdTrustReport:
 
         from apps.cli.commands.brain import _cmd_trust_report
 
-        _cmd_trust_report(str(job.id))  # Must not raise SystemExit
+        _cmd_trust_report(str(job.job_id))  # Must not raise SystemExit
         out = capsys.readouterr().out
         assert "Remedy Trust Report" in out

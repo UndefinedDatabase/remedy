@@ -22,14 +22,15 @@ import pytest
 
 import apps.cli.commands.job as job_cmd
 import packages.orchestration.checkpoints as cp
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.checkpoints import (
     Checkpoint,
     verify_digest_for,
     write_checkpoint,
 )
 from packages.orchestration.safe_points import request_stop, stop_requested
-from packages.orchestration.storage import save_job
+from packages.orchestration.pingpong_job import save_job_plan
 
 
 @pytest.fixture(autouse=True)
@@ -51,20 +52,20 @@ def handed_off(monkeypatch) -> list[tuple]:
     return calls
 
 
-def make_job(*, pending: int = 2, completed: int = 0) -> Job:
-    tasks = [Task(description="d", status=RunState.COMPLETED)
+def make_job(*, pending: int = 2, completed: int = 0) -> JobPlan:
+    tasks = [TaskEntry(title="d", status=RunState.COMPLETED)
              for i in range(completed)]
-    tasks += [Task(description="d") for i in range(pending)]
-    job = Job(name="resume-job", tasks=tasks)
-    save_job(job)
+    tasks += [TaskEntry(title="d") for i in range(pending)]
+    job = JobPlan(job_title="resume-job", tasks=tasks)
+    save_job_plan(job)
     return job
 
 
-def put_checkpoint(job: Job, index: int = 1, *, head: str = "") -> Checkpoint:
+def put_checkpoint(job: JobPlan, index: int = 1, *, head: str = "") -> Checkpoint:
     checkpoint = Checkpoint(
         cycle_index=index,
-        job_id=str(job.id),
-        job_snapshot_path=f"jobs/{job.id}.json",
+        job_id=str(job.job_id),
+        job_snapshot_path=f"jobs/{job.job_id}/job.json",
         job_snapshot_sha256="sha256:" + "0" * 64,
         worktree_head=head,
         budget_spent_tokens=42,
@@ -73,12 +74,12 @@ def put_checkpoint(job: Job, index: int = 1, *, head: str = "") -> Checkpoint:
         next_intent={"kind": "cycle", "cycle_index": index + 1},
         created_at="2026-07-26T12:00:00+00:00",
     )
-    write_checkpoint(str(job.id), checkpoint)
+    write_checkpoint(str(job.job_id), checkpoint)
     return checkpoint
 
 
-def resume(job: Job, **kwargs):
-    return job_cmd._cmd_job_resume(str(job.id), **kwargs)
+def resume(job: JobPlan, **kwargs):
+    return job_cmd._cmd_job_resume(str(job.job_id), **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -91,12 +92,12 @@ class TestPendingStopRequest:
             self, handed_off, capsys):
         job = make_job()
         put_checkpoint(job)
-        request_stop(str(job.id), reason="operator changed their mind")
+        request_stop(str(job.job_id), reason="operator changed their mind")
 
         resume(job)
 
         assert handed_off == []                       # nothing ran
-        assert stop_requested(str(job.id)) is None    # consumed, not merely read
+        assert stop_requested(str(job.job_id)) is None    # consumed, not merely read
         out = capsys.readouterr().out
         assert "stop request consumed" in out
         assert "not resuming" in out
@@ -106,7 +107,7 @@ class TestPendingStopRequest:
         """A stopped job with drifted worktree reports the STOP, not the drift."""
         job = make_job()
         put_checkpoint(job, head="a" * 40)
-        request_stop(str(job.id), reason="stop first")
+        request_stop(str(job.job_id), reason="stop first")
 
         resume(job)
 
@@ -118,8 +119,8 @@ class TestPendingStopRequest:
     def test_it_is_checked_before_the_plan_approval_gate(self, handed_off, capsys):
         job = make_job()
         job.flight_plan = {"_approval": "pending"}
-        save_job(job)
-        request_stop(str(job.id), reason="stop first")
+        save_job_plan(job)
+        request_stop(str(job.job_id), reason="stop first")
 
         resume(job)
 
@@ -131,7 +132,7 @@ class TestPendingStopRequest:
         import json as _json
 
         job = make_job()
-        request_stop(str(job.id), reason="halt")
+        request_stop(str(job.job_id), reason="halt")
         resume(job, json_output=True)
 
         payload = _json.loads(capsys.readouterr().out)
@@ -230,7 +231,7 @@ class TestPlanApprovalGate:
     def test_a_pending_plan_blocks_the_resume(self, handed_off, capsys):
         job = make_job()
         job.flight_plan = {"_approval": "pending"}
-        save_job(job)
+        save_job_plan(job)
         put_checkpoint(job)
 
         with pytest.raises(SystemExit) as exc:
@@ -243,7 +244,7 @@ class TestPlanApprovalGate:
     def test_a_rejected_plan_blocks_the_resume(self, handed_off, capsys):
         job = make_job()
         job.flight_plan = {"_approval": "rejected"}
-        save_job(job)
+        save_job_plan(job)
 
         with pytest.raises(SystemExit) as exc:
             resume(job)
@@ -255,7 +256,7 @@ class TestPlanApprovalGate:
     def test_an_approved_plan_runs(self, handed_off):
         job = make_job()
         job.flight_plan = {"_approval": "approved"}
-        save_job(job)
+        save_job_plan(job)
         put_checkpoint(job)
         resume(job)
         assert len(handed_off) == 1
@@ -288,8 +289,8 @@ class TestDegradations:
 
         job = make_job()
         path = write_checkpoint(
-            str(job.id),
-            Checkpoint(cycle_index=1, job_id=str(job.id), worktree_head="a" * 40))
+            str(job.job_id),
+            Checkpoint(cycle_index=1, job_id=str(job.job_id), worktree_head="a" * 40))
         raw = _json.loads(path.read_text(encoding="utf-8"))
         raw["record"]["worktree_head"] = "tampered"
         path.write_text(_json.dumps(raw), encoding="utf-8")
@@ -317,7 +318,7 @@ class TestDegradations:
         job = make_job(pending=0, completed=2)
         resume(job, json_output=True)
         payload = _json.loads(capsys.readouterr().out)
-        assert payload == {"job_id": str(job.id), "action": "noop",
+        assert payload == {"job_id": str(job.job_id), "action": "noop",
                            "resumed": False, "reason": "all_green"}
 
     def test_a_job_with_no_tasks_at_all_is_not_mistaken_for_all_green(
@@ -344,11 +345,11 @@ class TestDryRunPreview:
             self, handed_off, capsys):
         job = make_job()
         put_checkpoint(job)
-        request_stop(str(job.id), reason="hold on")
+        request_stop(str(job.job_id), reason="hold on")
 
         resume(job, dry_run=True)
 
-        assert stop_requested(str(job.id)) is not None   # NOT consumed
+        assert stop_requested(str(job.job_id)) is not None   # NOT consumed
         assert handed_off == []
         out = capsys.readouterr().out
         assert "resume preview (--dry-run)" in out
@@ -406,7 +407,7 @@ class TestDryRunPreview:
             self, handed_off, capsys):
         job = make_job()
         job.flight_plan = {"_approval": "pending"}
-        save_job(job)
+        save_job_plan(job)
         put_checkpoint(job)
 
         resume(job, dry_run=True)                        # no SystemExit
@@ -422,7 +423,7 @@ class TestDryRunPreview:
 
         job = make_job()
         put_checkpoint(job, index=2)
-        request_stop(str(job.id), reason="halt")
+        request_stop(str(job.job_id), reason="halt")
 
         resume(job, dry_run=True, json_output=True)
 
@@ -433,7 +434,7 @@ class TestDryRunPreview:
         assert payload["stop_request"] == {"pending": True, "reason": "halt"}
         assert payload["checkpoint_index"] == 2
         assert payload["state"] == "from_checkpoint"
-        assert stop_requested(str(job.id)) is not None   # still not consumed
+        assert stop_requested(str(job.job_id)) is not None   # still not consumed
         assert handed_off == []
 
     def test_a_matching_head_previews_as_a_match(self, handed_off, monkeypatch,

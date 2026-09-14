@@ -12,15 +12,16 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import RunState
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _make_job():
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -30,8 +31,8 @@ def _make_job():
 
 def _make_job_s101(task_count: int = 3):
     job = MagicMock()
-    job.id = uuid4()
-    job.name = "test-job"
+    job.job_id = uuid4()
+    job.job_title = "test-job"
     job.state.value = "active"
     job.tasks = []
     job.artifacts = []
@@ -52,11 +53,11 @@ def _make_job_s101(task_count: int = 3):
 
 
 def _make_job_s122(*, tasks=None, name="test"):
-    job = Job(name=name)
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
-            task = Task(
-                description=t.get("description", t.get("type", "task")),
+            task = TaskEntry(
+                title=t.get("description", t.get("type", "task")),
             )
             if "status" in t:
                 task.status = RunState(t["status"])
@@ -72,14 +73,14 @@ def _make_job_s122(*, tasks=None, name="test"):
 
 
 def _make_job_s135(*, tasks=None, name="test"):
-    job = Job(name=name)
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
             task_type = t.get("type", "readme_draft")
             inputs = dict(t.get("metadata", {}))
             inputs.setdefault("task_type", task_type)
-            task = Task(
-                description=t.get("description", task_type),
+            task = TaskEntry(
+                title=t.get("description", task_type),
                 inputs=inputs,
             )
             if "status" in t:
@@ -94,13 +95,13 @@ def _make_job_s135(*, tasks=None, name="test"):
 
 
 def _make_job_s141(*, tasks=None, name="test"):
-    job = Job(name=name)
+    job = JobPlan(job_title=name)
     if tasks:
         for t in tasks:
             task_type = t.get("type", "readme_draft")
             inputs = dict(t.get("metadata", {}))
             inputs.setdefault("task_type", task_type)
-            task = Task(description=t.get("description", task_type), inputs=inputs)
+            task = TaskEntry(title=t.get("description", task_type), inputs=inputs)
             if "status" in t:
                 task.status = RunState(t["status"])
             job.tasks.append(task)
@@ -233,7 +234,7 @@ class TestJobFocusedSingleOrigin:
         vm = build_brain_view_model(job, [])
         origins = [n for n in vm["nodes"] if n["is_origin"]]
         assert len(origins) == 1
-        assert origins[0]["id"] == str(job.id)
+        assert origins[0]["id"] == str(job.job_id)
 
     def test_origin_is_focus_job(self):
         """Origin node id matches the passed job's id."""
@@ -241,8 +242,8 @@ class TestJobFocusedSingleOrigin:
         job = _make_job_s122()
         vm = build_brain_view_model(job, [])
         origin = next(n for n in vm["nodes"] if n["is_origin"])
-        assert origin["id"] == str(job.id)
-        assert vm["origin"] == str(job.id)
+        assert origin["id"] == str(job.job_id)
+        assert vm["origin"] == str(job.job_id)
 
     def test_child_job_not_origin(self):
         """Child/continuation job nodes must NOT be is_origin."""
@@ -253,13 +254,13 @@ class TestJobFocusedSingleOrigin:
             "event": "job_continued",
             "metadata": {
                 "child_job_id": child_id,
-                "origin_node_id": str(job.id),
+                "origin_node_id": str(job.job_id),
             },
         }]
         vm = build_brain_view_model(job, events)
         origins = [n for n in vm["nodes"] if n["is_origin"]]
         assert len(origins) == 1, f"Expected 1 origin, got {len(origins)}"
-        assert origins[0]["id"] == str(job.id)
+        assert origins[0]["id"] == str(job.job_id)
 
     def test_child_job_demoted_zoom(self):
         """Child job nodes should be visible_from_zoom >= 5."""
@@ -270,7 +271,7 @@ class TestJobFocusedSingleOrigin:
             "event": "job_continued",
             "metadata": {
                 "child_job_id": child_id,
-                "origin_node_id": str(job.id),
+                "origin_node_id": str(job.job_id),
             },
         }]
         vm = build_brain_view_model(job, events)
@@ -288,7 +289,7 @@ class TestJobFocusedSingleOrigin:
             "event": "job_continued",
             "metadata": {
                 "child_job_id": child_id,
-                "origin_node_id": str(job.id),
+                "origin_node_id": str(job.job_id),
             },
         }]
         vm = build_brain_view_model(job, events)
@@ -405,53 +406,53 @@ class TestSafeTaskLabelSanitization:
 
     def test_task_with_inputs_task_type(self):
         from apps.cli.commands.repo import _safe_task_label
-        t = Task(description="d", inputs={"task_type": "readme_draft"})
+        t = TaskEntry(title="d", inputs={"task_type": "readme_draft"})
         assert _safe_task_label(t) == "readme_draft"
 
     def test_task_with_inputs_type(self):
         from apps.cli.commands.repo import _safe_task_label
-        t = Task(description="d", inputs={"type": "code_fix"})
+        t = TaskEntry(title="d", inputs={"type": "code_fix"})
         assert _safe_task_label(t) == "code_fix"
 
     def test_task_with_description_only(self):
         from apps.cli.commands.repo import _safe_task_label
-        t = Task(description="Fix the broken auth module")
+        t = TaskEntry(title="Fix the broken auth module")
         assert _safe_task_label(t) == "Fix the broken auth module"
 
     def test_task_with_neither(self):
         from apps.cli.commands.repo import _safe_task_label
-        t = Task(description="")
+        t = TaskEntry(title="")
         assert _safe_task_label(t) == "task"
 
     def test_malicious_multiline_description(self):
         from apps.cli.commands.repo import _safe_task_label
-        t = Task(description="Line one\nLine two\nLine three")
+        t = TaskEntry(title="Line one\nLine two\nLine three")
         label = _safe_task_label(t)
         assert "\n" not in label
         assert label == "Line one"
 
     def test_long_description_truncated(self):
         from apps.cli.commands.repo import _safe_task_label
-        t = Task(description="A" * 200)
+        t = TaskEntry(title="A" * 200)
         label = _safe_task_label(t)
         assert len(label) <= 60
 
     def test_no_raw_leaks(self):
         from apps.cli.commands.repo import _safe_task_label
-        t = Task(description="raw_output is bad", inputs={"task_type": "safe_label"})
+        t = TaskEntry(title="raw_output is bad", inputs={"task_type": "safe_label"})
         label = _safe_task_label(t)
         assert "raw_output" not in label
 
     def test_commit_readiness_no_crash(self):
         """The actual crash site: commit-readiness with real Task objects."""
-        from packages.orchestration.storage import save_job
-        job = Job(name="no-crash")
-        job.tasks.append(Task(description="fix stuff", inputs={"task_type": "bugfix"}))
-        save_job(job)
+        from packages.orchestration.pingpong_job import save_job_plan
+        job = JobPlan(job_title="no-crash")
+        job.tasks.append(TaskEntry(title="fix stuff", inputs={"task_type": "bugfix"}))
+        save_job_plan(job)
 
         from apps.cli.commands.repo import _cmd_commit_readiness
         with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.id), json_output=True)
+            _cmd_commit_readiness(str(job.job_id), json_output=True)
             data = json.loads(mock_print.call_args[0][0])
             assert "suggested_commit_message" in data
             assert "remedy/" in data["suggested_commit_message"]
@@ -459,7 +460,7 @@ class TestSafeTaskLabelSanitization:
 
     def test_commit_readiness_no_task_type_attr(self):
         """Task objects must not require .task_type attribute."""
-        t = Task(description="some work")
+        t = TaskEntry(title="some work")
         assert not hasattr(t, "task_type") or getattr(t, "task_type", None) is None
 
 
