@@ -13575,3 +13575,15 @@ CHOSEN, SECOND: THE TEST HELPER WRITES WHAT THE FLIPPED STORE READS. `create_tes
 CONSEQUENCE. What the overlay fixes, and that it newly breaks nothing, is measured by the gates of round 98's block and recorded in the round 98 ledger entry by the round that books its verdict. `R-0809`, `R-0880` and `R-0883` stay open, and no finding is registered or resolved.
 
 HOW TO REVERSE. Delete the round 98 overlay carriers under `.agent/authored/` and this paragraph block; in the flipped tree those handlers are dead again and the runtime helper's job cannot be read.
+
+## DECISION F275 D73 (2026-09-14, F275 round 99) — the tenth overlay: a job's record on disk is read at the unified store's path, and the mission command tests build their jobs as unified records
+
+CONTEXT. In the flipped tree at `844a7f21`, with nine overlays applied, a job's record is `job.json` inside a directory named by the job id, but the checkpoint writer measures its job snapshot at the classic flat path `jobs/<id>.json`, finds nothing there, and records neither a path nor a digest. Tests that delete, corrupt or read a job's record use the same flat path, and three job fixtures in `tests/cli/test_mission_cmd.py` build a classic `Job` and save it with the classic `save_job` inside a subprocess script, where the transform's `ast` rewrite cannot see them. Over the ten paths the overlay touches, 17 f-strings spell a `.json` file name after a job id, and `tests/test_data_paths.py` pins `checkpoints.py` as a module that must keep calling `jobs_dir`.
+
+CHOSEN, FIRST: THE CHECKPOINT MEASURES THE UNIFIED RECORD. `_job_snapshot_reference` reads `job_record_path(job_id)` and records that path relative to the data root, so the path a checkpoint carries is whatever `data_paths` says a record's path is, per DECISION F260 D1. ALTERNATIVE: spelling `jobs/<id>/job.json` by hand in the checkpoint module, rejected because a layout spelled at a call site is how the flat path outlived the store it named.
+
+CHOSEN, SECOND: THE TESTS FOLLOW THE RECORD. The flat paths in the tests the overlay touches name the record's own directory; the three subprocess fixtures build a `JobPlan` and call `save_job_plan`; a readiness double names its id `job_id`; and the guard that pinned `checkpoints.py` to the classic store ranges over `storage.py` alone, its comments saying why. The 2 flat paths left, both in `tests/test_data_paths.py`, write classic records for the job-id resolver's tests and stay until the classic store goes. ALTERNATIVE: dropping `checkpoints.py` from the guard without a word, rejected because the guard's comments exist to stop an exclusion nobody can explain.
+
+CONSEQUENCE. What the overlay fixes, and that it newly breaks nothing, is measured by the gates of round 99's block and recorded in the round 99 ledger entry by the round that books its verdict. `R-0809`, `R-0880` and `R-0883` stay open, and no finding is registered or resolved.
+
+HOW TO REVERSE. Delete the round 99 overlay carriers under `.agent/authored/` and this paragraph block; in the flipped tree a checkpoint then records no job snapshot again and the mission command tests cannot find their jobs.
