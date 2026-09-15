@@ -1451,7 +1451,7 @@ def _cmd_job_apply(
     json_output: bool = False,
 ) -> None:
     """Review and apply job workspace changes to target repo."""
-    from packages.orchestration.job_promote import (
+    from packages.orchestration.job_apply import (
         export_job_promotion_json,
         promote_job,
         summarize_job_promotion,

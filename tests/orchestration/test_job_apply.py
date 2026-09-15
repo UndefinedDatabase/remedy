@@ -107,7 +107,7 @@ class TestDryRunCompleted:
     def test_completed_job_dry_run_ready(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert result.status == "dry_run"
@@ -119,7 +119,7 @@ class TestDryRunCompleted:
         main_before = (demo_repo / "src" / "main.py").read_text()
 
         job = _run_completed_job(demo_repo)
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         promote_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert (demo_repo / "README.md").read_text() == readme_before
@@ -128,7 +128,7 @@ class TestDryRunCompleted:
     def test_dry_run_human_readable(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             promote_job,
             summarize_job_promotion,
         )
@@ -141,7 +141,7 @@ class TestDryRunCompleted:
     def test_dry_run_json_machine_verifiable(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             export_job_promotion_json,
             promote_job,
         )
@@ -158,7 +158,7 @@ class TestDryRunBlocked:
     def test_blocked_job_blocked(self, isolate_data_root, demo_repo, monkeypatch):
         job = _run_blocked_job(demo_repo, monkeypatch)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert result.status == "blocked"
@@ -167,7 +167,7 @@ class TestDryRunBlocked:
     def test_paused_job_blocked(self, isolate_data_root, demo_repo):
         job = _run_paused_job(demo_repo)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert result.status == "blocked"
@@ -180,7 +180,7 @@ class TestDryRunMissingWorkspace:
         import shutil
         shutil.rmtree(job.job_workspace_path)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert result.status == "blocked"
@@ -206,7 +206,7 @@ class TestDryRunMissingRun:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert result.status == "blocked"
@@ -232,7 +232,7 @@ class TestDryRunBadReviewer:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert result.status == "blocked"
@@ -258,7 +258,7 @@ class TestDryRunFailedTests:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert result.status == "blocked"
@@ -286,7 +286,7 @@ class TestDryRunTargetMutation:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert result.status == "blocked"
@@ -319,7 +319,7 @@ class TestDryRunUnsafePaths:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert result.status == "blocked"
@@ -350,7 +350,7 @@ class TestDryRunUnsafePaths:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), dry_run=True)
 
         assert result.status == "blocked"
@@ -389,7 +389,7 @@ class TestApproveApplies:
     def test_approve_applies_safe_files(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), approve=True)
 
         assert result.status == "promoted"
@@ -399,7 +399,7 @@ class TestApproveApplies:
         """Promote must not create git commits."""
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         promote_job(job.job_id, str(demo_repo), approve=True)
 
         # No .git directory means no commits possible
@@ -409,7 +409,7 @@ class TestApproveApplies:
         """Promote must not push."""
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), approve=True)
 
         assert result.status == "promoted"
@@ -417,7 +417,7 @@ class TestApproveApplies:
     def test_approve_verifies_file_contents(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), approve=True)
 
         workspace = Path(job.job_workspace_path)
@@ -429,7 +429,7 @@ class TestApproveApplies:
     def test_approve_reports_applied_files(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), approve=True)
 
         assert isinstance(result.files_applied, list)
@@ -460,7 +460,7 @@ class TestApproveApplies:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), approve=True)
 
         assert result.status == "blocked"
@@ -490,7 +490,7 @@ class TestApproveApplies:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), approve=True)
 
         assert result.status == "blocked"
@@ -498,7 +498,7 @@ class TestApproveApplies:
     def test_no_unrelated_files_applied(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), approve=True)
 
         # All applied files must have been in the planned set
@@ -510,7 +510,7 @@ class TestApprovePostTest:
     def test_post_apply_test_runs(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(
             job.job_id, str(demo_repo),
             approve=True,
@@ -523,7 +523,7 @@ class TestApprovePostTest:
     def test_post_apply_test_failure_reported(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(
             job.job_id, str(demo_repo),
             approve=True,
@@ -543,7 +543,7 @@ class TestPromotionRecord:
     def test_dry_run_persists_record(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             load_job_promotion,
             promote_job,
         )
@@ -556,7 +556,7 @@ class TestPromotionRecord:
     def test_approved_persists_record(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             load_job_promotion,
             promote_job,
         )
@@ -630,7 +630,7 @@ class TestCLICommandShape:
         assert "dry-run" in captured.out.lower() or "Dry-run" in captured.out
 
     def test_missing_job_blocks(self, isolate_data_root, demo_repo):
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job("nonexistent_job_id", str(demo_repo), dry_run=True)
         assert result.status == "blocked"
         assert "not_found" in result.blocked_reason
@@ -655,7 +655,7 @@ class TestTargetClobberBlocked:
                 target_path.write_text("EXTERNALLY MODIFIED CONTENT\n")
                 break
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), approve=True)
 
         assert result.status == "blocked"
@@ -666,7 +666,7 @@ class TestTargetClobberBlocked:
         """Promote succeeds when target matches baseline (no external edits)."""
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(demo_repo), approve=True)
 
         assert result.status == "promoted"
@@ -716,7 +716,7 @@ class TestWorkspaceSymlinkBlocked:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -760,7 +760,7 @@ class TestWorkspaceSymlinkBlocked:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -806,7 +806,7 @@ class TestWorkspaceSymlinkBlocked:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -847,7 +847,7 @@ class TestMissingApplyManifestBlocks:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -885,7 +885,7 @@ class TestMissingApplyManifestBlocks:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -923,7 +923,7 @@ class TestMissingApplyManifestBlocks:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -942,7 +942,7 @@ class TestPromotionRecordPersistence:
         """Approved promote must block if promotion record can't be persisted."""
         job = _run_completed_job(demo_repo)
 
-        from packages.orchestration import job_promote as jp_mod
+        from packages.orchestration import job_apply
 
         # Use a regular file as promotions dir — mkdir will fail
         blocker = tmp_path / "not_a_dir"
@@ -951,9 +951,9 @@ class TestPromotionRecordPersistence:
         def fake_promotions_dir():
             return blocker / "subdir"
 
-        monkeypatch.setattr(jp_mod, "_promotions_dir", fake_promotions_dir)
+        monkeypatch.setattr(job_apply, "_promotions_dir", fake_promotions_dir)
 
-        result = jp_mod.promote_job(job.job_id, str(demo_repo), approve=True)
+        result = job_apply.promote_job(job.job_id, str(demo_repo), approve=True)
 
         assert result.status == "blocked"
         assert "not_writable" in result.blocked_reason.lower()
@@ -967,7 +967,7 @@ class TestPromotionRecordPersistence:
 class TestRedactionApplied:
     def test_json_export_redacts_secrets(self, isolate_data_root, demo_repo):
         """JSON export must redact secret-like values."""
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             JobPromotionResult,
             export_job_promotion_json,
         )
@@ -986,7 +986,7 @@ class TestRedactionApplied:
 
     def test_text_summary_redacts_secrets(self, isolate_data_root, demo_repo):
         """Text summary must redact secret-like values."""
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             JobPromotionResult,
             summarize_job_promotion,
         )
@@ -1005,7 +1005,7 @@ class TestRedactionApplied:
         """JSON export must sanitize home-directory paths."""
         import os
 
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             JobPromotionResult,
             export_job_promotion_json,
         )
@@ -1214,7 +1214,7 @@ class TestBaselineExistingFilePromote:
         """Reviewed modification to existing file promotes when target matches baseline."""
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "promoted"
@@ -1225,7 +1225,7 @@ class TestBaselineExistingFilePromote:
         """Dry-run shows per-file baseline status."""
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), dry_run=True)
 
         assert result.status == "dry_run"
@@ -1240,7 +1240,7 @@ class TestBaselineExistingFilePromote:
         """JSON export includes file_readiness array."""
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
 
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             export_job_promotion_json,
             promote_job,
         )
@@ -1265,7 +1265,7 @@ class TestTargetChangedSinceJob:
         # Modify target after job
         (target / rel_path).write_text("someone else changed this\n")
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -1287,7 +1287,7 @@ class TestTargetCreatedSinceJob:
         # Create the file in target before promote
         (target / rel_path).write_text("unrelated content\n")
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -1308,7 +1308,7 @@ class TestWorkspaceChangedSinceReview:
         # Tamper with workspace after job completion
         (workspace / rel_path).write_text("tampered content\n")
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -1360,7 +1360,7 @@ class TestLegacyJobsWithoutBaseline:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "promoted"
@@ -1403,7 +1403,7 @@ class TestLegacyJobsWithoutBaseline:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -1554,7 +1554,7 @@ class TestDestSymlinkInsideTarget:
         dest.unlink()
         dest.symlink_to(victim)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -1574,7 +1574,7 @@ class TestDestSymlinkInsideTarget:
         dest.unlink()
         dest.symlink_to(victim)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), dry_run=True)
 
         assert result.status == "blocked"
@@ -1647,7 +1647,7 @@ class TestDestParentSymlinkInsideTarget:
         )
         _persist_job(job)
 
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
         result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -1719,7 +1719,7 @@ class TestDestContainmentRecheckBeforeWrite:
 
         call_count = 0
         original_validate = __import__(
-            "packages.orchestration.job_promote", fromlist=["_validate_dest_containment"]
+            "packages.orchestration.job_apply", fromlist=["_validate_dest_containment"]
         )._validate_dest_containment
 
         def sneaky_validate(tgt, rp):
@@ -1729,8 +1729,8 @@ class TestDestContainmentRecheckBeforeWrite:
                 return f"dest_is_symlink: {rp}"
             return original_validate(tgt, rp)
 
-        from packages.orchestration.job_promote import promote_job
-        with patch("packages.orchestration.job_promote._validate_dest_containment", sneaky_validate):
+        from packages.orchestration.job_apply import promote_job
+        with patch("packages.orchestration.job_apply._validate_dest_containment", sneaky_validate):
             result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -1752,7 +1752,7 @@ class TestFinalRecordFailure:
 
         persist_call_count = 0
         original_persist = __import__(
-            "packages.orchestration.job_promote", fromlist=["_persist_job_promotion"]
+            "packages.orchestration.job_apply", fromlist=["_persist_job_promotion"]
         )._persist_job_promotion
 
         def fail_on_final(jid, res):
@@ -1762,8 +1762,8 @@ class TestFinalRecordFailure:
                 raise OSError("disk full")
             original_persist(jid, res)
 
-        from packages.orchestration.job_promote import promote_job
-        with patch("packages.orchestration.job_promote._persist_job_promotion", fail_on_final):
+        from packages.orchestration.job_apply import promote_job
+        with patch("packages.orchestration.job_apply._persist_job_promotion", fail_on_final):
             result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "promoted_record_update_failed"
@@ -1778,7 +1778,7 @@ class TestFinalRecordFailure:
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
 
         original_persist = __import__(
-            "packages.orchestration.job_promote", fromlist=["_persist_job_promotion"]
+            "packages.orchestration.job_apply", fromlist=["_persist_job_promotion"]
         )._persist_job_promotion
 
         def fail_on_final(jid, res):
@@ -1786,11 +1786,11 @@ class TestFinalRecordFailure:
                 raise OSError("disk full")
             original_persist(jid, res)
 
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             export_job_promotion_json,
             promote_job,
         )
-        with patch("packages.orchestration.job_promote._persist_job_promotion", fail_on_final):
+        with patch("packages.orchestration.job_apply._persist_job_promotion", fail_on_final):
             result = promote_job(job.job_id, str(target), approve=True)
 
         data = export_job_promotion_json(result)
@@ -1806,7 +1806,7 @@ class TestFinalRecordFailure:
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
 
         original_persist = __import__(
-            "packages.orchestration.job_promote", fromlist=["_persist_job_promotion"]
+            "packages.orchestration.job_apply", fromlist=["_persist_job_promotion"]
         )._persist_job_promotion
 
         def fail_on_final(jid, res):
@@ -1814,11 +1814,11 @@ class TestFinalRecordFailure:
                 raise OSError("disk full")
             original_persist(jid, res)
 
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             promote_job,
             summarize_job_promotion,
         )
-        with patch("packages.orchestration.job_promote._persist_job_promotion", fail_on_final):
+        with patch("packages.orchestration.job_apply._persist_job_promotion", fail_on_final):
             result = promote_job(job.job_id, str(target), approve=True)
 
         text = summarize_job_promotion(result)
@@ -1842,8 +1842,8 @@ class TestPreApplyRecordFailure:
         def always_fail(jid, res):
             raise OSError("cannot write pre-apply record")
 
-        from packages.orchestration.job_promote import promote_job
-        with patch("packages.orchestration.job_promote._persist_job_promotion", always_fail):
+        from packages.orchestration.job_apply import promote_job
+        with patch("packages.orchestration.job_apply._persist_job_promotion", always_fail):
             result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -1860,8 +1860,8 @@ class TestPreApplyRecordFailure:
         def always_fail(jid, res):
             raise OSError("disk error")
 
-        from packages.orchestration.job_promote import promote_job
-        with patch("packages.orchestration.job_promote._persist_job_promotion", always_fail):
+        from packages.orchestration.job_apply import promote_job
+        with patch("packages.orchestration.job_apply._persist_job_promotion", always_fail):
             result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "blocked"
@@ -2047,7 +2047,7 @@ class TestPartialApplyRecordFailure:
         job, workspace, target, rel_paths = _make_two_file_baselined_job(tmp_path)
 
         original_validate = __import__(
-            "packages.orchestration.job_promote", fromlist=["_validate_dest_containment"]
+            "packages.orchestration.job_apply", fromlist=["_validate_dest_containment"]
         )._validate_dest_containment
 
         validate_call_count = {}
@@ -2059,7 +2059,7 @@ class TestPartialApplyRecordFailure:
             return original_validate(tgt, rp)
 
         original_persist = __import__(
-            "packages.orchestration.job_promote", fromlist=["_persist_job_promotion"]
+            "packages.orchestration.job_apply", fromlist=["_persist_job_promotion"]
         )._persist_job_promotion
 
         persist_count = 0
@@ -2072,12 +2072,12 @@ class TestPartialApplyRecordFailure:
                 return
             raise OSError("disk full on blocked persist")
 
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             export_job_promotion_json,
             promote_job,
         )
-        with patch("packages.orchestration.job_promote._validate_dest_containment", block_second_on_recheck), \
-             patch("packages.orchestration.job_promote._persist_job_promotion", fail_after_preapply):
+        with patch("packages.orchestration.job_apply._validate_dest_containment", block_second_on_recheck), \
+             patch("packages.orchestration.job_apply._persist_job_promotion", fail_after_preapply):
             result = promote_job(job.job_id, str(target), approve=True)
 
         assert result.status == "promoted_record_update_failed"
@@ -2104,7 +2104,7 @@ class TestPostTestRecordFailure:
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
 
         original_persist = __import__(
-            "packages.orchestration.job_promote", fromlist=["_persist_job_promotion"]
+            "packages.orchestration.job_apply", fromlist=["_persist_job_promotion"]
         )._persist_job_promotion
 
         persist_count = 0
@@ -2119,12 +2119,12 @@ class TestPostTestRecordFailure:
                 raise OSError("disk full on test-failed persist")
             original_persist(jid, res)
 
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             export_job_promotion_json,
             promote_job,
             summarize_job_promotion,
         )
-        with patch("packages.orchestration.job_promote._persist_job_promotion", fail_on_test_failed):
+        with patch("packages.orchestration.job_apply._persist_job_promotion", fail_on_test_failed):
             result = promote_job(
                 job.job_id, str(target), approve=True,
                 test_command="false",
@@ -2144,14 +2144,14 @@ class TestPostTestRecordFailure:
         assert "record update FAILED" in text
 
 
-# F085 T002b — job_promote._run_post_test on the shared `test`-class seam
+# F085 T002b — job_apply._run_post_test on the shared `test`-class seam
 
 
 def test_job_promote_post_test_runs_on_the_guarded_seam(tmp_path, monkeypatch):
     """The spawn goes through `run_guarded_test_command`, and its BYTES decode to str."""
     import subprocess
 
-    from packages.orchestration import job_promote
+    from packages.orchestration import job_apply
 
     seen: dict[str, object] = {}
 
@@ -2159,8 +2159,8 @@ def test_job_promote_post_test_runs_on_the_guarded_seam(tmp_path, monkeypatch):
         seen.update(cmd=list(cmd), timeout_sec=timeout_sec, cwd=cwd)
         return subprocess.CompletedProcess(list(cmd), 0, b"out-line\n", b"err-line\n")
 
-    monkeypatch.setattr(job_promote, "run_guarded_test_command", _fake_guarded)
-    passed, summary = job_promote._run_post_test("pytest -q", tmp_path, timeout_sec=17)
+    monkeypatch.setattr(job_apply, "run_guarded_test_command", _fake_guarded)
+    passed, summary = job_apply._run_post_test("pytest -q", tmp_path, timeout_sec=17)
 
     assert passed is True
     assert seen == {"cmd": ["pytest", "-q"], "timeout_sec": 17, "cwd": str(tmp_path)}
@@ -2250,7 +2250,7 @@ class TestSkipBlockedPartialPromotion:
     def test_two_free_files_promote_and_the_blocked_one_stays_behind(
         self, isolate_data_root, tmp_path,
     ):
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
 
         job, _workspace, target = _make_partially_blocked_job(tmp_path)
 
@@ -2277,7 +2277,7 @@ class TestSkipBlockedPartialPromotion:
         assert result.skip_blocked is True
 
     def test_the_summary_says_what_was_withheld(self, isolate_data_root, tmp_path):
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             promote_job,
             summarize_job_promotion,
         )
@@ -2296,7 +2296,7 @@ class TestSkipBlockedPartialPromotion:
         self, isolate_data_root, tmp_path,
     ):
         """--skip-blocked with no remainder is a block, not an empty success."""
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             promote_job,
             summarize_job_promotion,
         )
@@ -2324,7 +2324,7 @@ class TestWithoutSkipBlockedNothingChanges:
     def test_default_still_blocks_the_whole_promotion(
         self, isolate_data_root, tmp_path,
     ):
-        from packages.orchestration.job_promote import promote_job
+        from packages.orchestration.job_apply import promote_job
 
         job, _workspace, target = _make_partially_blocked_job(tmp_path)
 
@@ -2346,7 +2346,7 @@ class TestWithoutSkipBlockedNothingChanges:
         self, isolate_data_root, tmp_path,
     ):
         """Finding (c): the blocked output owes an honest Next: line."""
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             promote_job,
             summarize_job_promotion,
         )
@@ -2364,7 +2364,7 @@ class TestWithoutSkipBlockedNothingChanges:
 
     def test_the_fence_itself_is_not_weakened(self):
         """--skip-blocked changes one decision; it does not widen what may be written."""
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             _BLOCKED_EXACT,
             _is_blocked_path,
         )
@@ -2379,7 +2379,7 @@ class TestWithoutSkipBlockedNothingChanges:
         self, isolate_data_root, tmp_path,
     ):
         """The Next: line must name the route that actually applies."""
-        from packages.orchestration.job_promote import (
+        from packages.orchestration.job_apply import (
             promote_job,
             summarize_job_promotion,
         )

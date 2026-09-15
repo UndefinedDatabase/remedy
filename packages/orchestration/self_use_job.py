@@ -27,7 +27,7 @@ Deliberate absences:
     and running is ``job run``, which carries its own approval gate.  Keeping
     the two apart is what lets this module be called freely.
   * Remedy deliberately does not PROMOTE a job here.  Promotion stays behind the
-    ``--approve`` barrier in :mod:`packages.orchestration.job_promote`, which
+    ``--approve`` barrier in :mod:`packages.orchestration.job_apply`, which
     never auto-promotes; a self-use job earns no shortcut through it for being
     Remedy's own maintenance.
   * REMEDY DELIBERATELY DOES NOT MARK A QUEUE ITEM CONSUMED.  This module owns

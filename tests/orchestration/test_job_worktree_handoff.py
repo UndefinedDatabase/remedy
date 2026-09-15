@@ -19,13 +19,13 @@ from pathlib import Path
 
 import pytest
 
-from packages.orchestration import job_promote as JP
+from packages.orchestration import job_apply
 from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import worktrees as W
 from packages.orchestration.artifact_contract_gate import check_worktree_artifacts
 from packages.orchestration.data_paths import job_dir
+from packages.orchestration.job_apply import promote_job
 from packages.orchestration.job_evidence import export_job_evidence
-from packages.orchestration.job_promote import promote_job
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     export_job_report,
@@ -190,14 +190,14 @@ class TestCompletedJobPromotion:
     ):
         job, holder = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
         seen: dict = {}
-        real = JP._materialize_promotion_source_owned
+        real = job_apply._materialize_promotion_source_owned
 
         def spy(j):
             src, err = real(j)
             seen["path"] = str(src.path) if src else ""
             return src, err
 
-        monkeypatch.setattr(JP, "_materialize_promotion_source_owned", spy)
+        monkeypatch.setattr(job_apply, "_materialize_promotion_source_owned", spy)
         promote_job(job.job_id, str(repo), dry_run=True)
         assert seen["path"] and seen["path"] != holder["path"]
         assert ".remedy-wt" not in seen["path"]      # not the execution worktree

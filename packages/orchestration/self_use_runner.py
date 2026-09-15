@@ -19,7 +19,7 @@ Public API::
 Deliberate absences:
   * REMEDY DELIBERATELY DOES NOT PROMOTE THE RUN'S RESULT. Promotion stays
     behind the ``--approve`` barrier in
-    :mod:`packages.orchestration.job_promote`, which never auto-promotes;
+    :mod:`packages.orchestration.job_apply`, which never auto-promotes;
     this module calls :func:`~packages.orchestration.pingpong_job.run_job`
     and nothing past it — the same stopping point
     :mod:`packages.orchestration.self_use_job`'s own docstring already names

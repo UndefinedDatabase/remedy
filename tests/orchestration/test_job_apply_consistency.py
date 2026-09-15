@@ -19,9 +19,9 @@ from pathlib import Path
 
 import pytest
 
-from packages.orchestration import job_promote as JP
+from packages.orchestration import job_apply
 from packages.orchestration import worktrees as W
-from packages.orchestration.job_promote import (
+from packages.orchestration.job_apply import (
     export_job_promotion_json,
     promote_job,
     summarize_job_promotion,
@@ -109,7 +109,7 @@ def _edit_script(new_content: str, mode: int | None = None):
 
 
 def _persisted(job_id: str, promotion_id: str) -> dict:
-    path = JP._promotions_dir() / job_id / f"{promotion_id}.json"
+    path = job_apply._promotions_dir() / job_id / f"{promotion_id}.json"
     return json.loads(path.read_text())
 
 
@@ -170,7 +170,7 @@ class TestBaselineModeDrift:
         job = _run_job(repo, monkeypatch, _edit_script("new\n", 0o755))
 
         # The chmod lands AFTER the first readiness pass, before the apply pass.
-        real_check = JP._check_baseline_readiness
+        real_check = job_apply._check_baseline_readiness
         calls = {"n": 0}
 
         def flaky(target, workspace, planned, proofs):
@@ -179,7 +179,7 @@ class TestBaselineModeDrift:
                 (repo / "script.sh").chmod(0o755)
             return real_check(target, workspace, planned, proofs)
 
-        monkeypatch.setattr(JP, "_check_baseline_readiness", flaky)
+        monkeypatch.setattr(job_apply, "_check_baseline_readiness", flaky)
         res = promote_job(job.job_id, str(repo), approve=True)
 
         assert res.status == "blocked"
@@ -212,7 +212,7 @@ class TestBaselineModeDrift:
         _committed_script(repo, 0o644)
         job = _run_job(repo, monkeypatch, _edit_script("new\n", 0o755))
 
-        real = JP._materialize_promotion_source_owned
+        real = job_apply._materialize_promotion_source_owned
 
         def hooked(j):
             src, err = real(j)
@@ -220,7 +220,7 @@ class TestBaselineModeDrift:
                 (src.path / "script.sh").chmod(0o644)    # reviewed mode lost
             return src, err
 
-        monkeypatch.setattr(JP, "_materialize_promotion_source_owned", hooked)
+        monkeypatch.setattr(job_apply, "_materialize_promotion_source_owned", hooked)
         res = promote_job(job.job_id, str(repo), approve=True)
         assert res.status == "blocked"
         assert "mode_check_failed" in res.blocked_reason
@@ -290,7 +290,7 @@ class TestPersistedRecordMatchesResult:
     def test_a_blocked_mode_check_still_persists_the_cleanup(self, repo, monkeypatch):
         _committed_script(repo, 0o644)
         job = _run_job(repo, monkeypatch, _edit_script("new\n", 0o755))
-        real = JP._materialize_promotion_source_owned
+        real = job_apply._materialize_promotion_source_owned
 
         def hooked(j):
             src, err = real(j)
@@ -298,7 +298,7 @@ class TestPersistedRecordMatchesResult:
                 (src.path / "script.sh").chmod(0o644)
             return src, err
 
-        monkeypatch.setattr(JP, "_materialize_promotion_source_owned", hooked)
+        monkeypatch.setattr(job_apply, "_materialize_promotion_source_owned", hooked)
         res = promote_job(job.job_id, str(repo), approve=True)
 
         assert res.status == "blocked"
@@ -337,7 +337,7 @@ def _fail_worktree_remove(monkeypatch):
             return subprocess.CompletedProcess(argv, 1, "", "remove exploded")
         return real_run(argv, *a, **kw)
 
-    monkeypatch.setattr(JP.subprocess, "run", fake_run)
+    monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
 
 
 # ---------------------------------------------------------------------------
@@ -409,7 +409,7 @@ class TestMaterializationFailuresReportCleanup:
                 return subprocess.CompletedProcess(argv, 1, "", "remove exploded")
             return real_run(argv, *a, **kw)
 
-        monkeypatch.setattr(JP.subprocess, "run", fake_run)
+        monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
         res = promote_job(job.job_id, str(repo), dry_run=True)
 
         assert "promotion_worktree_failed" in res.blocked_reason
@@ -433,7 +433,7 @@ class TestMaterializationFailuresReportCleanup:
                 return subprocess.CompletedProcess(argv, 1, "", "remove exploded")
             return real_run(argv, *a, **kw)
 
-        monkeypatch.setattr(JP.subprocess, "run", fake_run)
+        monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
         res = promote_job(job.job_id, str(repo), dry_run=True)
 
         assert "job_diff_apply_failed" in res.blocked_reason
@@ -452,7 +452,7 @@ class TestMaterializationFailuresReportCleanup:
                 raise OSError("git vanished")
             return real_run(argv, *a, **kw)
 
-        monkeypatch.setattr(JP.subprocess, "run", fake_run)
+        monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
         res = promote_job(job.job_id, str(repo), dry_run=True)
 
         assert "promotion_materialization_error" in res.blocked_reason
@@ -513,7 +513,7 @@ _REAL_RUN = subprocess.run
 def _raise_on_git(monkeypatch, subcommand: str, exc: Exception):
     """Make one cleanup git command RAISE (not just fail).
 
-    Patching ``JP.subprocess.run`` patches the module attribute globally, so the
+    Patching ``job_apply.subprocess.run`` patches the module attribute globally, so the
     injected failure is undone with ``_restore_git`` before the test does its own
     housekeeping git calls.
     """
@@ -524,11 +524,11 @@ def _raise_on_git(monkeypatch, subcommand: str, exc: Exception):
             raise exc
         return previous(argv, *a, **kw)
 
-    monkeypatch.setattr(JP.subprocess, "run", fake_run)
+    monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
 
 
 def _restore_git(monkeypatch):
-    monkeypatch.setattr(JP.subprocess, "run", _REAL_RUN)
+    monkeypatch.setattr(job_apply.subprocess, "run", _REAL_RUN)
 
 
 class TestCleanupExceptionSafety:
@@ -675,12 +675,12 @@ class TestCleanupExceptionSafety:
         job = self._job(repo, monkeypatch)
         _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
             ["git", "worktree", "remove"], 120))
-        source, err = JP._materialize_promotion_source_owned(
+        source, err = job_apply._materialize_promotion_source_owned(
             __import__("packages.orchestration.pingpong_job", fromlist=["x"])
             .load_job_plan(job.job_id))
         assert source is not None and not err
 
-        out = JP._cleanup_promotion_source(source)      # total: returns, never raises
+        out = job_apply._cleanup_promotion_source(source)      # total: returns, never raises
 
         assert out["cleanup_status"] == "failed"
         assert "timed out" in out["cleanup_error"]
@@ -692,7 +692,7 @@ class TestCleanupExceptionSafety:
         self, repo, monkeypatch,
     ):
         job = self._job(repo, monkeypatch)
-        monkeypatch.setattr(JP, "_cleanup_promotion_source",
+        monkeypatch.setattr(job_apply, "_cleanup_promotion_source",
                             lambda src: (_ for _ in ()).throw(
                                 RuntimeError("cleanup helper exploded")))
 

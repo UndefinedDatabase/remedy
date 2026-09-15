@@ -18,13 +18,13 @@ from pathlib import Path
 
 import pytest
 
-from packages.orchestration import job_promote as JP
+from packages.orchestration import job_apply
 from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import worktrees as W
 from packages.orchestration.artifact_contract_gate import check_worktree_artifacts
 from packages.orchestration.data_paths import job_dir
+from packages.orchestration.job_apply import promote_job
 from packages.orchestration.job_evidence import export_job_evidence
-from packages.orchestration.job_promote import promote_job
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
     JOB_COMPLETED,
@@ -359,7 +359,7 @@ class TestHandoffCoverage:
         job, _ = _run(repo, monkeypatch, [{"one.txt": "hello\n"}])
 
         # A rogue file reaches the materialized promotion source.
-        real = JP._materialize_promotion_source_owned
+        real = job_apply._materialize_promotion_source_owned
 
         def hooked(j):
             src, err = real(j)
@@ -367,7 +367,7 @@ class TestHandoffCoverage:
                 (src.path / "rogue.txt").write_text("never reviewed\n")
             return src, err
 
-        monkeypatch.setattr(JP, "_materialize_promotion_source_owned", hooked)
+        monkeypatch.setattr(job_apply, "_materialize_promotion_source_owned", hooked)
 
         res = promote_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
@@ -464,7 +464,7 @@ class TestFileModePromotion:
         done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
                        builder_name="fake", reviewer_name="fake", max_rounds=1)
 
-        real = JP._materialize_promotion_source_owned
+        real = job_apply._materialize_promotion_source_owned
 
         def hooked(j):
             src, err = real(j)
@@ -472,7 +472,7 @@ class TestFileModePromotion:
                 (src.path / "script.sh").chmod(0o644)     # the reviewed mode is lost
             return src, err
 
-        monkeypatch.setattr(JP, "_materialize_promotion_source_owned", hooked)
+        monkeypatch.setattr(job_apply, "_materialize_promotion_source_owned", hooked)
         res = promote_job(done.job_id, str(repo), approve=True)
 
         assert res.status == "blocked"
@@ -522,7 +522,7 @@ class TestPromotionCleanupHonesty:
                                 lambda *a, **k: (_ for _ in ()).throw(
                                     OSError("permission denied")))
         else:
-            monkeypatch.setattr(JP.subprocess, "run", fake_run)
+            monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
 
         res = promote_job(job.job_id, str(repo), dry_run=True)
 
@@ -542,9 +542,9 @@ class TestPromotionCleanupHonesty:
                 return subprocess.CompletedProcess(argv, 1, "", "remove exploded")
             return real_run(argv, *a, **kw)
 
-        monkeypatch.setattr(JP.subprocess, "run", fake_run)
+        monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
         res = promote_job(job.job_id, str(repo), approve=True)
-        monkeypatch.setattr(JP.subprocess, "run", real_run)   # only undo the failure
+        monkeypatch.setattr(job_apply.subprocess, "run", real_run)   # only undo the failure
 
         # The promotion really happened; the cleanup really failed. Both are told.
         assert res.status == "promoted_cleanup_failed"
@@ -554,6 +554,6 @@ class TestPromotionCleanupHonesty:
         assert any("cleanup_failed" in r for r in res.blocked_reasons)
 
         record = json.loads(
-            (JP._promotions_dir() / job.job_id / f"{res.promotion_id}.json").read_text()
+            (job_apply._promotions_dir() / job.job_id / f"{res.promotion_id}.json").read_text()
         )
         assert record["temporary_worktree_cleanup"]["cleanup_status"] == "failed"
