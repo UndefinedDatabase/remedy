@@ -298,14 +298,6 @@ class TestUIServerIntegration:
         assert "graph" in data
         conn.close()
 
-    def test_guide_endpoint(self):
-        port, token, t = self._start_server()
-        conn = HTTPConnection("127.0.0.1", port, timeout=5)
-        conn.request("GET", f"/api/jobs/{self.job_id}/guide?token={token}")
-        resp = conn.getresponse()
-        assert resp.status == 200
-        conn.close()
-
     def test_readiness_endpoint(self):
         port, token, t = self._start_server()
         conn = HTTPConnection("127.0.0.1", port, timeout=5)

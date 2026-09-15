@@ -790,7 +790,6 @@ function buildCmdSuggestions(d){
   if(d.node_type==='autonomy_readiness')
     cmds.push({label:'Readiness',cmd:'remedy readiness job '+jid});
   cmds.push({label:'Dashboard',cmd:'remedy dashboard job '+jid});
-  cmds.push({label:'Guide',cmd:'remedy guide job '+jid});
   return cmds;
 }
 window.pick=function(nodeId){

@@ -312,6 +312,7 @@ class TestDeletedCommands:
         "do.job-report",
         "do.plan",
         "do.promote",
+        "guide.job",
         "job.assumptions",
         "job.digest",
         "job.dod",

@@ -8,8 +8,6 @@ Public API::
 
     GuidanceCard (frozen dataclass)
     build_guidance_cards(job, events) -> list[GuidanceCard]
-    export_guidance_json(job, cards) -> dict[str, Any]
-    summarize_guidance(job, cards) -> str
 """
 
 from __future__ import annotations
@@ -178,44 +176,3 @@ def build_guidance_cards(
     ))
 
     return cards
-
-
-def export_guidance_json(
-    job: JobPlan,
-    cards: list[GuidanceCard],
-) -> dict[str, Any]:
-    """Export guidance as JSON-serialisable dict."""
-    high = [c for c in cards if c.severity == "high"]
-    return {
-        "version": 1,
-        "scope": "job",
-        "job_id": str(job.job_id),
-        "cards": [
-            {
-                "id": c.id,
-                "title": c.title,
-                "severity": c.severity,
-                "why_it_matters": c.why_it_matters,
-                "safe_next_action": c.safe_next_action,
-                "command": c.command,
-                "related_node_type": c.related_node_type,
-            }
-            for c in cards
-        ],
-        "summary": f"{len(cards)} guidance card(s), {len(high)} high severity.",
-        "recommended_next_action": cards[0].command if cards else "",
-    }
-
-
-def summarize_guidance(job: JobPlan, cards: list[GuidanceCard]) -> str:
-    """Return human-readable guidance summary."""
-    lines = [f"Guidance for job {str(job.job_id)[:8]}:", ""]
-    for c in cards:
-        marker = {"high": "!!", "medium": " !", "low": " -", "info": "  "}.get(c.severity, "  ")
-        lines.append(f"  {marker} {c.title}")
-        lines.append(f"     {c.why_it_matters}")
-        lines.append(f"     > {c.command}")
-        lines.append("")
-    if not cards:
-        lines.append("  No guidance cards.")
-    return "\n".join(lines)

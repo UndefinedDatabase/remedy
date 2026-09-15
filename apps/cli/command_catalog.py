@@ -131,7 +131,6 @@ GROUPS: dict[str, GroupDef] = {
     "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False),
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons.", user_facing=False),
     "dashboard": GroupDef("dashboard", "Dashboard", "Project and job dashboards.", user_facing=False),
-    "guide": GroupDef("guide", "Guide", "Human guidance rail — next safe actions.", user_facing=False),
     "repair": GroupDef("repair", "Repair", "Test failure repair.", user_facing=False),
     "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
     "token": GroupDef("token", "Token", "Token economy and cost budgets.", user_facing=False),
@@ -1785,18 +1784,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_PROJECT_ID, _JSON_OPT),
         supports_json=True,
-    ),
-
-    # ── guide ─────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="guide.job",
-        group_id="guide",
-        subcommand="job",
-        description="Show human guidance rail for a job — next safe actions.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("readiness.job", "decision.list", "dashboard.job"),
     ),
 
     # ── ui ───────────────────────────────────────────────────────────────

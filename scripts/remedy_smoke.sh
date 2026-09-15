@@ -1881,38 +1881,6 @@ print('    viewer UX panels: OK (' + str(len(checks)) + ' checks)')
 " "${VIEW_DIR}"
 
     # -------------------------------------------------------------------------
-    # 12al. Guidance rail (Step 78)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12al"
-    echo "--- 12al. Guidance rail"
-    GUIDE_JSON="$(remedy guide job "${JOB_ID}" --json)" || {
-        echo "ERROR: guide job failed" >&2
-        return 1
-    }
-    python3 -c "
-import json, sys
-data = json.loads('''${GUIDE_JSON}''')
-required = {'version', 'scope', 'job_id', 'cards', 'summary', 'recommended_next_action'}
-got = set(data.keys())
-missing = required - got
-if missing:
-    print('ERROR: guide JSON missing keys: ' + repr(missing), file=sys.stderr)
-    sys.exit(1)
-if data['version'] != 1:
-    print('ERROR: guide version != 1', file=sys.stderr)
-    sys.exit(1)
-if not isinstance(data['cards'], list):
-    print('ERROR: cards not a list', file=sys.stderr)
-    sys.exit(1)
-for card in data['cards']:
-    for k in ('id', 'title', 'severity', 'why_it_matters', 'safe_next_action', 'command'):
-        if k not in card:
-            print('ERROR: card missing: ' + k, file=sys.stderr)
-            sys.exit(1)
-print('    guidance rail: OK (cards=' + str(len(data['cards'])) + ')')
-"
-
-    # -------------------------------------------------------------------------
     # 12am. Viewer path / export (Step 79)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12am"

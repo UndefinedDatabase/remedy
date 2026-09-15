@@ -311,13 +311,13 @@ class TestRoutedHandler:
         self, monkeypatch, tmp_path, capsys
     ):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.commands.guide import _cmd_guide_job
+        from apps.cli.commands.brain import _cmd_brain
         from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job_id = str(uuid4())
         save_job_plan(JobPlan(job_id=job_id, job_title="routed-handler"))
         exit_code = None
         try:
-            _cmd_guide_job(job_id[:8], json_output=True)
+            _cmd_brain(job_id[:8], json_output=True)
         except SystemExit as exc:
             exit_code = exc.code
         captured = capsys.readouterr()

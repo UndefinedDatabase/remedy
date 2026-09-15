@@ -754,19 +754,6 @@ class TestNoBroadExceptAndDegradedSignals:
                 if isinstance(node.type, ast.Name) and node.type.id == "Exception":
                     pytest.fail(f"broad 'except Exception' at line {node.lineno}")
 
-    def test_guide_json_returns_degraded_signal(self):
-        """_build_guide_json failure returns structured degraded signal."""
-        from packages.orchestration.ui_server import _build_guide_json
-
-        job = _make_job_s261()
-        # Force failure by patching guidance import
-        with patch.dict("sys.modules", {"packages.orchestration.guidance": None}):
-            result = _build_guide_json(job)
-        assert result.get("degraded") is True or result.get("error") is not None
-        # No traceback in result
-        result_str = json.dumps(result)
-        assert "Traceback" not in result_str
-
     def test_live_review_has_steps_section(self):
         """live_review.md contains a Steps section."""
         content = Path(".agent/live_review.md").read_text()

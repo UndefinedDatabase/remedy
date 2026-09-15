@@ -1735,25 +1735,6 @@ def _build_readiness_json(job: Any) -> dict[str, Any]:
         return {"version": 2, "error": f"readiness unavailable: {type(exc).__name__}"}
 
 
-def _build_guide_json(job: Any) -> dict[str, Any]:
-    """Build safe guidance payload."""
-    try:
-        from packages.orchestration.guidance import (
-            build_guidance_cards,
-            export_guidance_json,
-        )
-
-        events = _load_events(job)
-        cards = build_guidance_cards(job, events)
-        return export_guidance_json(job, cards)
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {
-            "version": 1, "cards": [],
-            "error": "guidance unavailable",
-            "degraded": True, "error_kind": "guidance_build_failed", "source": "server",
-        }
-
-
 def _build_brain_view_model_json(job: Any) -> dict[str, Any]:
     """Build semantic zoom view-model for the PixiJS brain canvas."""
     from packages.orchestration.ui_view_model import build_brain_view_model
@@ -2632,7 +2613,6 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "task-progress": _build_task_progress_json,
                 "decisions": _build_decisions_json,
                 "next-action": _build_next_action_json,
-                "guide": _build_guide_json,
                 "events": _build_events_json,
                 "readiness": _build_readiness_json,
                 "story": _build_story_json,

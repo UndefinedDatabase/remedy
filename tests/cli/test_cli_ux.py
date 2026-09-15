@@ -601,4 +601,16 @@ class TestGroupDefIntegrity:
             assert GROUPS[gid].user_facing is False
 
     def test_all_groups_still_in_catalog(self):
-        assert len(GROUPS) >= 40
+        """Every group DECISION amend0905-vocab D4 keeps is still in the catalog.
+
+        The floor this replaces promised that no group is deleted, only hidden; D4 deletes every group it
+        does not name, so the promise holds for its named groups only. `run` joins when F261 creates it.
+        """
+        kept = {
+            "do", "mission", "job", "decision", "status", "stats", "teach", "memory", "ui", "config",
+            "doctor", "project", "init", "worker", "runtime",
+            "brain", "event", "patch", "test", "blocker", "change", "file", "snapshot", "self", "ci",
+            "integrity", "dev",
+            "roadmap",
+        }
+        assert sorted(kept - set(GROUPS)) == []

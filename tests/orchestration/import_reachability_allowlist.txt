@@ -20,7 +20,6 @@ apps.cli.commands.do_cmd
 apps.cli.commands.event
 apps.cli.commands.failure_stats_cmd
 apps.cli.commands.file
-apps.cli.commands.guide
 apps.cli.commands.init_cmd
 apps.cli.commands.integrity_cmd
 apps.cli.commands.job
