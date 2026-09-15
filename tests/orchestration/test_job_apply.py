@@ -567,6 +567,23 @@ class TestJobApplyRecord:
         assert loaded["status"] == "applied"
         assert len(loaded["files_applied"]) > 0
 
+    def test_the_record_is_stored_under_job_apply_records_by_its_job_apply_id(self, isolate_data_root, demo_repo):
+        job = _run_completed_job(demo_repo)
+
+        from packages.orchestration.job_apply import apply_job
+        result = apply_job(job.job_id, str(demo_repo), dry_run=True)
+
+        stored = isolate_data_root / "job_apply_records" / job.job_id / f"{result.job_apply_id}.json"
+        assert json.loads(stored.read_text())["job_apply_id"] == result.job_apply_id
+
+    def test_the_summary_names_the_job_apply_record(self, isolate_data_root, demo_repo):
+        job = _run_completed_job(demo_repo)
+
+        from packages.orchestration.job_apply import apply_job, summarize_job_apply
+        result = apply_job(job.job_id, str(demo_repo), dry_run=True)
+
+        assert f"Job apply record: {result.job_apply_id}" in summarize_job_apply(result)
+
 
 # ---------------------------------------------------------------------------
 # Step 4946: CLI command shape tests
@@ -584,6 +601,12 @@ class TestCLICommandShape:
         assert cmd.may_mutate_repo is True
         assert cmd.may_execute_commands is True
         assert cmd.supports_json is True
+
+    def test_the_skip_blocked_help_speaks_of_applying(self):
+        from apps.cli.command_catalog import CATALOG
+        cmd = next(c for c in CATALOG if c.command_id == "job.apply")
+        help_text = next(a.help for a in cmd.args if a.name == "--skip-blocked")
+        assert "promot" not in help_text.lower()
 
     def test_handler_exists(self):
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
