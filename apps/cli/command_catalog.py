@@ -138,7 +138,6 @@ GROUPS: dict[str, GroupDef] = {
     "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
     "token": GroupDef("token", "Token", "Token economy and cost budgets.", user_facing=False),
     "context-pack": GroupDef("context-pack", "Context Pack", "Context budget optimizer.", user_facing=False),
-    "rollback": GroupDef("rollback", "Rollback", "Rollback proof.", user_facing=False),
     "review": GroupDef("review", "Review", "Reviewer recommendations.", user_facing=False),
     "propose": GroupDef("propose", "Propose", "Proposed task evaluation.", user_facing=False),
     "dev": GroupDef("dev", "Dev", "Developer utilities.", user_facing=False),
@@ -754,7 +753,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("test.run", "test.discover"),
     ),
-    # ── real test execution v1 (result/list/integrity; snapshot/rollback proof) ──
+    # ── real test execution v1 (result/list/integrity; snapshot proof) ──
     CommandEntry(
         command_id="test.result",
         group_id="test",
@@ -793,7 +792,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
-        related=("snapshot.show", "rollback.proof"),
+        related=("snapshot.show",),
     ),
     CommandEntry(
         command_id="snapshot.show",
@@ -804,30 +803,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(ArgDef("snapshot_id", "Snapshot proof ID"), _JSON_OPT),
         supports_json=True,
         related=("snapshot.create",),
-    ),
-    CommandEntry(
-        command_id="rollback.proof",
-        group_id="rollback",
-        subcommand="proof",
-        description="Record an honest rollback proof for a snapshot (write_metadata; restore_available only if a real verified restore exists; never auto-reverts).",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("--snapshot-id", "Snapshot proof ID to base the rollback proof on", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("rollback.show", "snapshot.create"),
-    ),
-    CommandEntry(
-        command_id="rollback.show",
-        group_id="rollback",
-        subcommand="show",
-        description="Show a rollback proof by rollback_proof_id (read-only).",
-        action_class="read_only",
-        args=(ArgDef("rollback_proof_id", "Rollback proof ID"), _JSON_OPT),
-        supports_json=True,
-        related=("rollback.proof",),
     ),
 
     # ── repair (Token-Aware Repair Loop v1/v2) ───────────────────────────

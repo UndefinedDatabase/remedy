@@ -324,6 +324,8 @@ class TestDeletedCommands:
         "orchestrator.idea",
         "orchestrator.inspect",
         "orchestrator.report",
+        "rollback.proof",
+        "rollback.show",
     )
 
     def test_no_deleted_id_is_left_in_the_catalog(self) -> None:

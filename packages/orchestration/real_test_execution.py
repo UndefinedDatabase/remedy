@@ -3,7 +3,7 @@ Real Test Execution + Snapshot/Rollback Proof v1 (Steps 1877-1916).
 
 The first safe execution gate for Overnight Mode. Remedy can run ALLOWED test commands through the
 EXISTING bounded safe runner, turn results into durable evidence, create Test Failure Artifacts on
-failure, and record honest Snapshot/Rollback Proof that the Mission Contract can consume.
+failure, record honest Snapshot Proof, and read and audit Rollback Proof records already on disk.
 
   Workers execute. Remedy governs. Tests and rollback proof become durable gates.
 
@@ -28,8 +28,6 @@ Public API::
     get_test_run(test_run_id, data_dir=None) -> dict | None
     create_snapshot_proof(job_id, *, data_dir=None) -> SnapshotProof
     get_snapshot_proof / list_snapshot_proofs
-    create_rollback_proof(job_id, snapshot_id, *, data_dir=None) -> RollbackProof
-    get_rollback_proof
     test_execution_integrity(data_dir=None) -> dict
     export_*_json(...)
 """
@@ -40,7 +38,7 @@ import hashlib
 import json
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -159,38 +157,12 @@ class SnapshotProof:
         }
 
 
-@dataclass
-class RollbackProof:
-    rollback_proof_id: str = ""
-    job_id: str = ""
-    snapshot_id: str = ""
-    created_at: str = ""
-    restore_available: bool = False
-    restore_tested: bool = False
-    strategy: str = "none_v1"
-    safe_summary: str = ""
-    limitations: list[str] = field(default_factory=list)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "rollback_proof_id": self.rollback_proof_id, "job_id": self.job_id,
-            "snapshot_id": self.snapshot_id, "created_at": self.created_at,
-            "restore_available": self.restore_available, "restore_tested": self.restore_tested,
-            "strategy": self.strategy, "safe_summary": _scrub_public(self.safe_summary)[:300],
-            "limitations": list(self.limitations), "schema_version": SCHEMA_VERSION,
-        }
-
-
 def export_test_run_result_json(r: TestRunResult) -> dict[str, Any]:
     return r.to_dict()
 
 
 def export_snapshot_proof_json(s: SnapshotProof) -> dict[str, Any]:
     return s.to_dict()
-
-
-def export_rollback_proof_json(r: RollbackProof) -> dict[str, Any]:
-    return r.to_dict()
 
 
 # ---------------------------------------------------------------------------
@@ -363,10 +335,6 @@ def _snap_path(job_id: str, snapshot_id: str, data_dir: Path) -> Path:
     return _rte_root(job_id, data_dir) / "snapshots" / f"{snapshot_id}.json"
 
 
-def _rollback_path(job_id: str, rollback_id: str, data_dir: Path) -> Path:
-    return _rte_root(job_id, data_dir) / "rollbacks" / f"{rollback_id}.json"
-
-
 def _atomic_write(path: Path, data: bytes, mode: int = 0o600) -> bool:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -486,54 +454,12 @@ def get_snapshot_proof(snapshot_id: str, data_dir: Path | None = None) -> dict |
 
 
 # ---------------------------------------------------------------------------
-# Rollback proof (Step 1882) — honest restore availability; never auto-reverts.
+# Rollback proof (Step 1882) — the reader of recorded proofs; nothing here writes one.
 # ---------------------------------------------------------------------------
-
-
-def create_rollback_proof(job_id: str, snapshot_id: str, *,
-                          data_dir: Path | None = None) -> RollbackProof:
-    """Record an HONEST rollback proof. v1 performs NO revert and NEVER sets restore_tested. Restore
-    is available ONLY when apply-scoped recovery material is verified (via build_snapshot_truth);
-    a metadata snapshot proof yields restore_available=False with explicit limitations."""
-    ddir = _resolve_ddir(data_dir)
-    rp = RollbackProof(rollback_proof_id=f"rbk-{uuid4().hex[:12]}", job_id=job_id,
-                       snapshot_id=snapshot_id, created_at=_now())
-    restore_available = False
-    limitations = ["v1 performs no revert; restore_tested is always False"]
-    # If a verified apply-scoped recovery exists for this job, restore MAY be available.
-    try:
-        from packages.orchestration.repository_snapshot import build_snapshot_truth
-        truth = build_snapshot_truth(job_id, data_dir=ddir)
-        if getattr(truth, "recovery_material_available", False) and getattr(truth, "snapshot_exists", False):
-            restore_available = True
-            rp.strategy = "apply_scoped_recovery"
-        else:
-            limitations.append("no verified apply-scoped recovery material for this job")
-    except Exception:
-        limitations.append("snapshot truth unavailable")
-    # A metadata-only snapshot proof never provides restore, regardless of the above.
-    snap = get_snapshot_proof(snapshot_id, ddir)
-    if snap is not None and snap.get("strategy") in ("metadata_only", "unavailable"):
-        restore_available = False
-        limitations.append("referenced snapshot is metadata-only (no recovery content)")
-    rp.restore_available = restore_available
-    rp.restore_tested = False
-    rp.limitations = limitations
-    rp.safe_summary = ("Rollback restore AVAILABLE (apply-scoped recovery verified); not yet tested."
-                       if restore_available else
-                       "Rollback restore NOT available — metadata snapshot only; no revert in v1.")
-    _atomic_write(_rollback_path(job_id, rp.rollback_proof_id, ddir),
-                  json.dumps(rp.to_dict(), indent=2).encode("utf-8"))
-    return rp
 
 
 def list_rollback_proofs(job_id: str | None = None, data_dir: Path | None = None) -> list[dict]:
     return _load_proofs("rollbacks", job_id, _resolve_ddir(data_dir))
-
-
-def get_rollback_proof(rollback_proof_id: str, data_dir: Path | None = None) -> dict | None:
-    return next((r for r in list_rollback_proofs(data_dir=data_dir)
-                 if r.get("rollback_proof_id") == rollback_proof_id), None)
 
 
 # ---------------------------------------------------------------------------

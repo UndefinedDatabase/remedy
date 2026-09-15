@@ -1,5 +1,10 @@
 # Real Test Execution + Snapshot/Rollback Proof v1 (Steps 1877-1916)
 
+> **Status (2026-09-15):** the `rollback` command group and the rollback proof writer, getter and
+> exporter were deleted by F261 round 14 (DECISION F261 D13); `list_rollback_proofs` and
+> `audit_rollback_safety` remain for the cockpit and `test integrity`, and the snapshot and revert
+> commands carry the restore check.
+
 ## Why this exists
 
 The Overnight Mission Contract already knows tests/snapshot/proof can be required gates. This block
@@ -61,11 +66,9 @@ remedy test list <job_id> --json
 remedy test integrity --json
 remedy snapshot create <job_id> --json
 remedy snapshot show <snapshot_id> --json
-remedy rollback proof <job_id> --snapshot-id <id> --json
-remedy rollback show <rollback_proof_id> --json
 ```
 
-`snapshot create` / `rollback proof` are `write_metadata`; result/list/show/integrity are read-only.
+`snapshot create` is `write_metadata`; result/list/show/integrity are read-only.
 None carry `may_execute_commands` (execution stays on the existing `test run`).
 
 ## What is not automated yet
