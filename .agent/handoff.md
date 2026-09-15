@@ -166,3 +166,49 @@ each table was verified against its digest before it was copied and applied.
 3. The rename of `job_promote.py` to `job_apply.py`.
 
 Operator questions open: 1
+
+## Session close — session 36, written after the reviewer's verdict on round 5
+
+The planner and reviewer of session 36 reviewed round 5 and ended the session after six
+delegated rounds, all PASS: F275 round 110, which repaired pull request 250's hosted CI before
+the Open PR Gate merged it as `7cdde89b`, and F261 rounds 1 to 5. Context self-assessment: the
+reviewer's context had grown long across six rounds of research helpers and dry runs, and the
+next step of T002 opens with fresh research and several rulings, so the session ends at a round
+boundary rather than inside that research. Nothing is half-written; the branch is pushed.
+
+### The verdict to book
+
+Round 6's first commit that writes the record appends the paragraph below to
+`.agent/live_review.md` byte for byte, preceded by one empty line, per operator amendment
+amend0827-process-diet rule 1.
+
+Gate: F261 R5 — the F261 round 5 entry. VERDICT PASS. Written by the planner and reviewer of session 36 after reading the committed range `350fa353`..`2cef254d` and re-deriving the readings below; the worker's report was evidence for none of them. It is carried by `.agent/handoff.md` in the session-close commit that follows `2cef254d` and booked by the first commit of round 6 that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f261-r5.md` at `c0b5045a` and `.agent/last_block.md` at `871488f1` are byte-identical to the reviewer's scratch original, sha256 `6351d01cd98d59f4ce598f7e8278ccfd457be8e48e78f9cab50ee7138424e69c`, and `.agent/authored/f261-r5-delete-1.jsonl` at `592ab167` and `.agent/authored/f261-r5-delete-2.jsonl` at `3b860345` are byte-identical to the reviewer's tables. THE STATE: at `de5cd238` and again at `2cef254d`, `.agent/plan.md` equals PLAN5, `.agent/live_review.md` and `.agent/decisions.md` equal their `350fa353` blobs followed by RECORD5 and DEC4, and `docs/roadmap/features/T2_F268.md` equals its `350fa353` blob with pair P268B applied. THE DELETIONS: at `592ab167` the `apps`, `packages`, `tests`, `scripts` and `README.md` objects equal the reviewer's dry run of table 1, and at `3b860345` its dry run of tables 1 and 2, which had reproduced the research helper's trees `77eef6c5` and `ef2bc0e5` exactly; `docs` at both equals its object at `de5cd238`, and each commit's `--no-renames` path set is the dry run's plus its own carrier. In the reviewer's dry run a full suite under `-n auto` read 15 failed and 18152 passed, every failure in `tests/ui_server` or `test_vitest_passes`, classes the helper's base control also failed, and a `do.promote` handler-table entry failed `TestDeletedCommands::test_no_deleted_id_is_left_in_the_dispatch_table` alone. THE REVIEWER'S RUN in the primary checkout at `2cef254d` of `tests/test_command_catalog.py`, `tests/cli/test_cli_ux.py`, `tests/cli/test_product_spine.py`, `tests/orchestration/test_evidence_bundle.py`, `tests/orchestration/test_repair_loop.py`, `tests/orchestration/test_import_reachability.py`, `tests/cli/test_advertised_commands.py`, `tests/docs/`, `tests/ui_server/test_dashboard_contract.py` and `tests/cli/test_golden_path.py` read 766 passed. The open set reads 96 by distinct id at `2cef254d`.
+
+### What the next session needs to know
+
+- T002's next step is the rename of `packages/orchestration/job_promote.py` to
+  `job_apply.py` with its two test files, then its identifiers, then its output-visible words,
+  each commit under the insertion cap; DECISION F261 D4 fixes that order and keeps
+  `promote_ready` and the recommended-action strings of `final_verifier.py` as evidence words.
+- Rulings still open for T002, to be made in the rounds that need them: whether the
+  Acceptance grep for `promote` yields to the keep-by-sense clause of DECISION amend0905-vocab
+  D5 for the model-routing and other senses; whether the staging-to-target writes of
+  `packages/orchestration/staging_workspace.py` and `packages/orchestration/job_fulfillment.py`
+  are the job-result sense; whether `job show` keeps JSON on stdout and gains `--json` for
+  R-0896; which report variants and which failing sections `job show --full` carries; and
+  whether renaming `promoted` statuses to `applied` collides with the existing task and manifest
+  status `applied`.
+- D5 says its kept occurrences were recorded in `.agent/live_review.md`; no such list is
+  there, so T002 writes it.
+- The reviewer's research found that `job show` stdout is parsed as JSON by
+  `tests/cli/test_golden_path.py`, `tests/cli/test_plan_approval.py` and
+  `scripts/remedy_smoke.sh`, so `--full` may only add keys to that JSON.
+
+### Next
+
+1. Phase 1 rule 1: the next session reads `.agent/STOP` first; then the Open PR Gate, which finds
+   no open pull request for this branch.
+2. Round 6's first record commit books `Gate: F261 R5` from this section.
+3. The rename of `job_promote.py` to `job_apply.py`.
+
+Operator questions open: 1
