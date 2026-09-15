@@ -11,26 +11,24 @@ command, and every retired word deleted rather than aliased, per
 
 ## Current Step
 
-ROUND 13 opens T003. It books round 12's PASS, records DECISION F261 D12 and writes
-`.agent/f261_t003_inventory.md`, then gives `GroupDef` a `hidden` field that keeps a group out
-of both root helps and renames the `plan` group to the hidden `roadmap` group, one table per
-commit.
+ROUND 14 continues T003. It books round 13's PASS, registers R-0903 for F273 and records
+DECISION F261 D13, then deletes the `orchestrator` group, the `rollback` group and the `loop`
+command group with the package code only they called, one table per commit.
 
 ## Next Steps
 
-1. T003's deletion rounds in the order `.agent/f261_t003_inventory.md` proposes, each
-   re-measured before it is authored, beginning with `orchestrator`, `rollback` and the `loop`
-   command.
-2. The prunes of `do`, `job`, `mission` and `worker`, the `--builder` and `--reviewer` flags
-   with R-0767 and R-0894, `teach` to `teacher`, the `settings` alias and the `flight_plan`
-   rename, with R-0900.
+1. The loop modules with the run report's loop reference, the `queue` command group, and
+   `job_queue.py` with its binding, configuration keys and queue directory, with their
+   deletion paragraph, as `.agent/f261_t003_inventory.md` proposes.
+2. The rest of T003 in the inventory's order, each round re-measured before it is authored,
+   with R-0767, R-0894 and R-0900.
 3. T004.
 
 ## Risks
 
-- 97 findings are open by distinct id before and after this round's record; three are High,
-  R-0803, R-0804 and R-0807.
-- The inventory proposes sixteen rounds after this one, past F261's soft limit of 25 rounds;
-  the session that reaches the limit owes the scope report and the split-and-close default.
-- `job show` prints JSON that the canary, `tests/cli/test_plan_approval.py` and
-  `scripts/remedy_smoke.sh` parse, so every change to it only adds keys.
+- 97 findings are open by distinct id before this round's record and 98 after it; three are
+  High, R-0803, R-0804 and R-0807.
+- The inventory proposes more rounds than F261's soft limit of 25 leaves; the session that
+  reaches the limit owes the scope report and the split-and-close default.
+- A deletion's consumers include shell strings, subprocess help calls and the UI event
+  catalog, so every deletion round runs the whole suite on its committed tree.
