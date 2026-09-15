@@ -191,11 +191,11 @@ class TestCliCommandTruth:
         assert "job-run" in cmd
         assert "job run" not in cmd.replace("job-run", "")
 
-    def test_next_command_uses_hyphen_for_completed(self, isolate_data_root, demo_repo):
+    def test_next_command_names_job_apply_for_completed(self, isolate_data_root, demo_repo):
         result = _run_success_job(demo_repo)
         cmd = _suggest_next_command(result)
-        assert "job-promote" in cmd
-        assert "job promote" not in cmd.replace("job-promote", "")
+        assert cmd.startswith(f"remedy job apply {result.job_id} ")
+        assert "do job-promote" not in cmd
 
     def test_next_command_uses_hyphen_for_blocked(self, isolate_data_root, demo_repo):
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
@@ -217,7 +217,8 @@ class TestCliCommandTruth:
         result = _run_success_job(demo_repo)
         report_json = json.dumps(export_job_report(result))
         text = format_job_report_text(result)
-        for stale in ["remedy do job run", "remedy do job plan", "remedy do job report"]:
+        for stale in ["remedy do job run", "remedy do job plan", "remedy do job report",
+                      "remedy do job-promote"]:
             # Must not appear as bare space-separated (allow "job-run" etc)
             cleaned = report_json.replace("job-run", "JR").replace("job-plan", "JP").replace("job-report", "JRE")
             assert stale not in cleaned

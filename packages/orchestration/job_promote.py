@@ -1318,7 +1318,7 @@ def summarize_job_promotion(result: JobPromotionResult) -> str:
                              f"baseline={fr.baseline_status} ws={fr.workspace_status}")
         lines.append("")
         lines.append(
-            f"To apply: remedy do job-promote {result.job_id}"
+            f"To apply: remedy job apply {result.job_id}"
             f" --repo <target> --approve"
         )
 

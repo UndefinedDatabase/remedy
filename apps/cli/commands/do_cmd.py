@@ -1622,7 +1622,7 @@ def _cmd_do_job_resume(
         print(f"  {t.task_id}: {t.status}")
 
 
-def _cmd_do_job_promote(
+def _cmd_job_apply(
     job_id: str,
     *,
     repo: str = ".",
@@ -1687,7 +1687,7 @@ def _build_next_approve_command(
     if not promote_ready:
         return ""
     import shlex
-    parts = [f"remedy do job-promote {job_id}"]
+    parts = [f"remedy job apply {job_id}"]
     parts.append(f"--repo {shlex.quote(repo)}")
     parts.append("--approve")
     if test_command:
@@ -1702,7 +1702,7 @@ def _build_next_approve_command_safe(
     if not promote_ready:
         return ""
     import shlex
-    parts = [f"remedy do job-promote {job_id}"]
+    parts = [f"remedy job apply {job_id}"]
     parts.append("--repo <repo>")
     parts.append("--approve")
     if test_command:
@@ -3159,7 +3159,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job_id,
         json_output=getattr(args, "json", False),
     ),
-    "do.job-promote": lambda args: _cmd_do_job_promote(
+    "job.apply": lambda args: _cmd_job_apply(
         args.job_id,
         repo=getattr(args, "repo", None) or ".",
         approve=getattr(args, "approve", False),

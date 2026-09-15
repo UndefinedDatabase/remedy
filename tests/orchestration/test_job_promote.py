@@ -136,7 +136,7 @@ class TestDryRunCompleted:
         text = summarize_job_promotion(result)
 
         assert "dry-run" in text.lower() or "Dry-run" in text
-        assert "remedy do job-promote" in text
+        assert "remedy job apply" in text
 
     def test_dry_run_json_machine_verifiable(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
@@ -379,7 +379,7 @@ class TestApproveRequiresFlag:
             test_command="",
             json=True,
         )
-        COMMAND_HANDLERS["do.job-promote"](args)
+        COMMAND_HANDLERS["job.apply"](args)
         captured = capsys.readouterr()
         output = json.loads(captured.out)
         assert output["status"] == "dry_run"
@@ -577,7 +577,7 @@ class TestCLICommandShape:
     def test_catalog_has_job_promote(self):
         from apps.cli.command_catalog import CATALOG
         cmd = next(
-            (c for c in CATALOG if c.command_id == "do.job-promote"),
+            (c for c in CATALOG if c.command_id == "job.apply"),
             None,
         )
         assert cmd is not None
@@ -587,7 +587,7 @@ class TestCLICommandShape:
 
     def test_handler_exists(self):
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        assert "do.job-promote" in COMMAND_HANDLERS
+        assert "job.apply" in COMMAND_HANDLERS
 
     def test_cli_dry_run_json(self, isolate_data_root, demo_repo, capsys):
         job = _run_completed_job(demo_repo)
@@ -604,7 +604,7 @@ class TestCLICommandShape:
             test_command="",
             json=True,
         )
-        COMMAND_HANDLERS["do.job-promote"](args)
+        COMMAND_HANDLERS["job.apply"](args)
         captured = capsys.readouterr()
         output = json.loads(captured.out)
         assert output["status"] == "dry_run"
@@ -625,7 +625,7 @@ class TestCLICommandShape:
             test_command="",
             json=False,
         )
-        COMMAND_HANDLERS["do.job-promote"](args)
+        COMMAND_HANDLERS["job.apply"](args)
         captured = capsys.readouterr()
         assert "dry-run" in captured.out.lower() or "Dry-run" in captured.out
 
@@ -1046,7 +1046,7 @@ class TestCLICommandPaths:
             test_command="",
             json=True,
         )
-        COMMAND_HANDLERS["do.job-promote"](args)
+        COMMAND_HANDLERS["job.apply"](args)
         captured = capsys.readouterr()
         output = json.loads(captured.out)
         assert output["status"] == "promoted"
@@ -1066,7 +1066,7 @@ class TestCLICommandPaths:
             test_command="",
             json=True,
         )
-        COMMAND_HANDLERS["do.job-promote"](args)
+        COMMAND_HANDLERS["job.apply"](args)
         captured = capsys.readouterr()
         output = json.loads(captured.out)
         assert output["status"] == "blocked"
@@ -1085,7 +1085,7 @@ class TestCLICommandPaths:
             test_command="",
             json=False,
         )
-        COMMAND_HANDLERS["do.job-promote"](args)
+        COMMAND_HANDLERS["job.apply"](args)
         captured = capsys.readouterr()
         assert "BLOCKED" in captured.out or "blocked" in captured.out
 
@@ -1470,7 +1470,7 @@ class TestBaselineProofModel:
 
 
 class TestGroupedCLIJobPromote:
-    """Subprocess tests using run_grouped_cli for do job-promote."""
+    """Subprocess tests using run_grouped_cli for job apply."""
 
     def test_dry_run_json_via_grouped_cli(self, isolate_data_root, tmp_path):
         """Grouped CLI dry-run produces valid JSON output."""
@@ -1479,7 +1479,7 @@ class TestGroupedCLIJobPromote:
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
 
         result = run_grouped_cli(
-            ["do", "job-promote", job.job_id, "--repo", str(target), "--dry-run", "--json"],
+            ["job", "apply", job.job_id, "--repo", str(target), "--dry-run", "--json"],
             isolate_data_root,
         )
 
@@ -1496,7 +1496,7 @@ class TestGroupedCLIJobPromote:
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
 
         result = run_grouped_cli(
-            ["do", "job-promote", job.job_id, "--repo", str(target), "--approve", "--json"],
+            ["job", "apply", job.job_id, "--repo", str(target), "--approve", "--json"],
             isolate_data_root,
         )
 
@@ -1513,7 +1513,7 @@ class TestGroupedCLIJobPromote:
         (target / rel_path).write_text("tampered\n")
 
         result = run_grouped_cli(
-            ["do", "job-promote", job.job_id, "--repo", str(target), "--approve", "--json"],
+            ["job", "apply", job.job_id, "--repo", str(target), "--approve", "--json"],
             isolate_data_root,
         )
 
@@ -1527,7 +1527,7 @@ class TestGroupedCLIJobPromote:
         from tests.cli.runtime_helpers import run_grouped_cli
 
         result = run_grouped_cli(
-            ["do", "job-promote", "fake-id", "--repo", str(tmp_path), "--dry-run", "--json"],
+            ["job", "apply", "fake-id", "--repo", str(tmp_path), "--dry-run", "--json"],
             isolate_data_root,
         )
 
@@ -1888,7 +1888,7 @@ class TestGroupedCLINewFailureModes:
         dest.symlink_to(victim)
 
         result = run_grouped_cli(
-            ["do", "job-promote", job.job_id, "--repo", str(target), "--approve", "--json"],
+            ["job", "apply", job.job_id, "--repo", str(target), "--approve", "--json"],
             isolate_data_root,
         )
 
@@ -1959,7 +1959,7 @@ class TestGroupedCLINewFailureModes:
         _persist_job(job)
 
         result = run_grouped_cli(
-            ["do", "job-promote", job.job_id, "--repo", str(target), "--approve", "--json"],
+            ["job", "apply", job.job_id, "--repo", str(target), "--approve", "--json"],
             isolate_data_root,
         )
 
@@ -2415,7 +2415,7 @@ class TestSkipBlockedThroughTheGroupedCLI:
     def test_the_flag_is_declared_as_a_boolean_flag(self):
         from apps.cli.command_catalog import CATALOG
 
-        entry = next(c for c in CATALOG if c.command_id == "do.job-promote")
+        entry = next(c for c in CATALOG if c.command_id == "job.apply")
         arg = next(a for a in entry.args if a.name == "--skip-blocked")
         assert arg.is_flag is True, (
             "--skip-blocked must be declared is_flag=True or its default becomes "
@@ -2430,7 +2430,7 @@ class TestSkipBlockedThroughTheGroupedCLI:
         job, _workspace, target = _make_partially_blocked_job(tmp_path)
 
         result = run_grouped_cli(
-            ["do", "job-promote", job.job_id, "--repo", str(target),
+            ["job", "apply", job.job_id, "--repo", str(target),
              "--approve", "--json"],
             isolate_data_root,
         )
@@ -2452,7 +2452,7 @@ class TestSkipBlockedThroughTheGroupedCLI:
         job, _workspace, target = _make_partially_blocked_job(tmp_path)
 
         result = run_grouped_cli(
-            ["do", "job-promote", job.job_id, "--repo", str(target),
+            ["job", "apply", job.job_id, "--repo", str(target),
              "--approve", "--skip-blocked", "--json"],
             isolate_data_root,
         )

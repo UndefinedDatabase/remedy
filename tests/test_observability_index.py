@@ -60,7 +60,7 @@ def _write_complete_evidence(root: Path, *, raw_prompt: str = "RAW_SECRET_PROMPT
             "human_decision_required": True,
             "changed_files": ["src/ok.py"],
             "test_summary": ["pytest: passed"],
-            "recommended_next_action": "remedy do job-promote JOB-1 --approve",
+            "recommended_next_action": "remedy job apply JOB-1 --approve",
             "missing_observability_artifacts": [],
         },
     }))

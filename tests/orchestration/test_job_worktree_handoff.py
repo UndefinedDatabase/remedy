@@ -512,7 +512,7 @@ class TestEndToEndJobFlow:
         assert report["has_workspace_changes"] is True
         assert report["worktree"]["workspace_expected_present"] is False
         assert report["result_diff"]["sha256"] == job.result_diff_sha256
-        assert "job-promote" in report["next_command"]
+        assert "remedy job apply" in report["next_command"]
 
         out = tmp_path / "ev"
         export_job_evidence(job.job_id, str(out))

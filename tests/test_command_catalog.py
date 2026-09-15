@@ -272,6 +272,7 @@ class TestRenamedCommands:
 
     RENAMED = (
         ("do.job-evidence", "job.evidence"),
+        ("do.job-promote", "job.apply"),
     )
 
     def test_no_old_id_is_left_in_the_catalog(self) -> None:
