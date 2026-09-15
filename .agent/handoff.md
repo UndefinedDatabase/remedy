@@ -170,3 +170,60 @@ before it was applied and copied.
 1. Phase 1 rule 1: the next session reads `.agent/STOP` first.
 2. The reviewer's verdict on round 9.
 3. The folds of `job summary`, `job digest`, `job status` and `job report`.
+
+## Session close — session 37, written after the reviewer's verdict on round 9
+
+The planner and reviewer of session 37 reviewed rounds 6 to 9 of F261 and ended the session after
+those four delegated rounds, all PASS. Context self-assessment: the reviewer's context carries the
+protocol, four rounds of research and four dry-run chains with their diffs, and its assembler and
+sweeps caught five of its own authoring slips before emission, the signal operator amendment
+amend0905-throughput names; the next step, the folds of `job status` and `job report`, is the
+largest of T002 and opens with fresh research, so the session ends below the six-round target at
+this round boundary rather than inside that research. Nothing is half-written; the branch is pushed.
+
+### The verdict to book
+
+Round 10's first commit that writes the record appends the paragraph below to
+`.agent/live_review.md` byte for byte, preceded by one empty line, per operator amendment
+amend0827-process-diet rule 1.
+
+Gate: F261 R9 — the F261 round 9 entry. VERDICT PASS. Written by the planner and reviewer of session 37 after reading the committed range `aff2b676`..`2923b992` and re-deriving the readings below; the worker's report was evidence for none of them. It is carried by `.agent/handoff.md` in the session-close commit that follows `2923b992` and booked by the first commit of round 10 that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f261-r9.md` at `da6f26fe` and `.agent/last_block.md` at `743c09be` are byte-identical to the reviewer's scratch original, sha256 `41710658bb8d027160387a4b0f83c8a2d96d3eaa63d1881a214641ca8c4c4fdb`, and the three tables committed at `9d6b8791`, `d683f3ed` and `64e54c35` are byte-identical to the reviewer's. THE STATE: at `873d8e49` and again at `2923b992`, `.agent/plan.md` equals PLAN9 and `.agent/live_review.md` and `.agent/decisions.md` equal their `aff2b676` blobs followed by RECORD9 and DEC8. THE FOLDS: at `9d6b8791`, `d683f3ed` and `64e54c35` the `apps`, `packages`, `tests`, `scripts`, `docs` and `README.md` objects equal the reviewer's dry-run commits of the tables, which had reproduced the research helper's trees exactly; each commit's `--no-renames` path set is the dry run's plus its carrier, and `git show --numstat` reads 74, 213 and 91 insertions. In the dry run's production diff each section builder computes what its deleted handler computed, with the handler's prints turned into returned lines, and `_build_show_sections` turns a `ShowSectionError` into an envelope with that error's code. At `64e54c35` the fixed-string grep of the three quoted ids and handler names prints only their `DELETED` entries in `tests/test_command_catalog.py`, the grep of `remedy job assumptions`, `fences` or `dod` exits 1 with no output, and ruff over the round's touched `.py` files exits 0. In the reviewer's dry run a full suite under `-n auto` without `tests/ui_server` read 1 failed, `test_vitest_passes`, and 17684 passed; over `tests/cli/test_job_show.py`, `tests/test_command_catalog.py`, `tests/cli/test_decision_answers.py`, `tests/orchestration/test_fence_e2e.py`, `tests/orchestration/test_fence_production_e2e.py` and `tests/orchestration/test_dod_gate.py`, which passed 256 unmutated, restoring a `job.fences` handler row failed 1 test, raising a plain `RuntimeError` for a missing target repository failed 1, swapping two registry entries failed 1, dropping the dod `check_count` key failed 2 and emptying the assumptions markdown failed 2. THE REVIEWER'S RUN in the primary checkout at `2923b992` of those six files, `tests/cli/test_advertised_commands.py`, `tests/docs/`, `tests/ui_server/test_dashboard_contract.py` and `tests/cli/test_golden_path.py` read 688 passed, and `git branch --list 'remedy/job-*'` read 16 lines. The open set reads 97 by distinct id at `2923b992`.
+
+### What the next session needs to know
+
+- T002's folds left are `job summary`, `job digest`, `job status` and `job report` with its
+  `--final` and `--interim` forms, then `do job-report`. The pattern is on disk: DECISIONs F261 D7
+  and D8, the commits `720874b8`, `9d6b8791`, `d683f3ed` and `64e54c35`, and
+  `tests/cli/test_job_show.py`. A section that cannot describe its job raises `ShowSectionError`.
+- Research taken at `22173331` and NOT re-verified by the reviewer, for sizing only: `job status`
+  has 17 tests in 4 files and `scripts/remedy_smoke.sh` parses its JSON; `job report` has about
+  40 tests in 6 files, `report --final` exits 1 for a job that is not terminal, and
+  `packages/orchestration/job_fulfillment.py` prints `job report` hints; `packages/orchestration/event_replay.py`
+  and `packages/orchestration/ui_server.py` print `job summary <id> --json` hints; the UI server
+  reads the digest's library directly; `_suggest_next_command` in
+  `packages/orchestration/pingpong_job.py` returns `remedy do job-report <id>` for a blocked job
+  and `tests/orchestration/test_job_task_runner.py` asserts it. Re-measure before authoring.
+- Open rulings for those folds: how the `--final` and `--interim` reports sit in the `report`
+  section, and whether `do job-report` joins `report` or becomes a section of its own, which
+  DECISION F261 D7 left to its fold.
+- A PROBE HAZARD AND A GUARDRAIL SLIP. Calling `run_job` with a working directory inside a
+  checkout creates a `remedy/job-*` branch and worktree in that checkout. Round 8's research
+  helper, a subagent of this session, did so once in the primary repository, then removed that
+  worktree and deleted that branch with `git branch -d`, a branch deletion outside the Open PR
+  Gate that guardrail G2 of `docs/agents/self_drive_protocol.md` does not permit. The branch
+  pointed at `22173331` and carried no commit of its own, `git branch --list 'remedy/job-*'`
+  read 16 lines before the helper's task and after it, and no commit was lost. Every later brief and block of the session forbade calling
+  a runner and gated the branch count at 16; the next session's helpers need the same forbid.
+- Research suites run in fresh worktrees wrote gitignored vite caches under the primary
+  checkout's `apps/ui/node_modules`; no tracked file changed.
+- Findings registered this session: R-0898 and R-0899, owner F273, and R-0900, owner F261 for
+  T003. R-0896 and R-0806 are resolved.
+
+### Next
+
+1. Phase 1 rule 1: the next session reads `.agent/STOP` first; then the Open PR Gate, which finds
+   no open pull request for this branch.
+2. Round 10's first record commit books `Gate: F261 R9` from this section.
+3. The folds of `job summary`, `job digest`, `job status` and `job report`.
+
+Operator questions open: 0
