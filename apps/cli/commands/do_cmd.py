@@ -1247,61 +1247,6 @@ def _print_scope_summary(validation: Any) -> None:
     print(f"  Pending: {', '.join(pending) if pending else 'none'}")
 
 
-def _cmd_do_plan(
-    *,
-    task_file: str = "",
-    repo: str = ".",
-    json_output: bool = False,
-) -> None:
-    """Create a deterministic scope plan from a task file."""
-    if not task_file:
-        print("Error: --task-file is required for planning.", file=sys.stderr)
-        sys.exit(2)
-
-    from packages.orchestration.pingpong_loop import load_task_file
-    try:
-        task_input = load_task_file(task_file)
-    except ValueError as exc:
-        if json_output:
-            print(json.dumps({"error": str(exc)}, indent=2))
-        else:
-            print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(2)
-
-    from packages.orchestration.scope_plan import (
-        export_scope_plan,
-        extract_scope_plan,
-        persist_scope_plan,
-    )
-
-    plan = extract_scope_plan(
-        task_input.body,
-        task_sha256=task_input.sha256,
-        repo_path=repo,
-        task_title=task_input.title,
-        task_input_kind=task_input.kind,
-        task_tokens_estimated=task_input.tokens_estimated,
-    )
-    scope_file = persist_scope_plan(plan)
-    data = export_scope_plan(plan)
-
-    if json_output:
-        print(json.dumps(data, indent=2))
-    else:
-        print(f"Scope plan created: {plan.plan_id}")
-        print(f"Task: {plan.task_title}")
-        print(f"Features: {len(plan.features)}")
-        for f in plan.features:
-            marker = "*" if f.default_selected else " "
-            print(f"  [{marker}] {f.id}: {f.title} ({f.status})")
-        if plan.warnings:
-            for w in plan.warnings:
-                print(f"  Warning: {w}")
-        print(f"\nScope file: {scope_file}")
-        print("Edit user_decision in the scope file, then run:")
-        print(f"  remedy do run --task-file {task_file} --scope-file {scope_file} --approve-scope --repo {repo}")
-
-
 def _cmd_job_run(
     job_id: str,
     *,
@@ -1796,11 +1741,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "do.replan": lambda args: _cmd_do_replan(
         args.job_id,
-        json_output=getattr(args, "json", False),
-    ),
-    "do.plan": lambda args: _cmd_do_plan(
-        task_file=getattr(args, "task_file", None) or "",
-        repo=getattr(args, "repo", None) or ".",
         json_output=getattr(args, "json", False),
     ),
     "do.promote": lambda args: _cmd_do_promote(

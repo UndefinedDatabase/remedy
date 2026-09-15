@@ -257,7 +257,6 @@ pip install -e ".[dev]"          # add ,ollama for the local planner provider
 remedy doctor                              # check local health
 remedy config show                         # view current settings
 remedy job create --plan plan.yaml         # create a job from a plan
-remedy do plan <job-id>                    # generate a job plan (F261 renames the command)
 remedy do run <job-id>                     # run the job
 remedy do report <job-id>                  # generate the report
 remedy job stop <job-id>                   # stop at next safe point (F011)

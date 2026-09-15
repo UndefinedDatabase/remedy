@@ -2098,22 +2098,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=False,
     ),
     CommandEntry(
-        command_id="do.plan",
-        group_id="do",
-        subcommand="plan",
-        description="Create a deterministic scope plan from a task file (no provider calls).",
-        action_class="read_only",
-        supports_json=True,
-        related=("do.run",),
-        args=(
-            ArgDef("--task-file", "Path to task file", required=False, is_option=True, default=""),
-            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
-            ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-    ),
-    CommandEntry(
         command_id="do.continue",
         group_id="do",
         subcommand="continue",

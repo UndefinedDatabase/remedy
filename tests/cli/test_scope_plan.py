@@ -5,8 +5,6 @@ import io
 import json
 from contextlib import redirect_stdout
 
-import pytest
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -268,75 +266,6 @@ class TestScopeValidation:
             assert len(result.approved_features) >= 1
             assert len(result.deferred_features) >= 1
             assert len(result.denied_features) >= 1
-
-
-# ---------------------------------------------------------------------------
-# Step 4719: CLI planning tests
-# ---------------------------------------------------------------------------
-
-class TestCliPlan:
-    """Test do plan CLI command."""
-
-    def test_plan_creates_scope(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        task_path = tmp_path / "task.md"
-        task_path.write_text(SAMPLE_TASK, encoding="utf-8")
-
-        from apps.cli.commands.do_cmd import _cmd_do_plan
-
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            _cmd_do_plan(task_file=str(task_path), repo=".", json_output=True)
-
-        output = buf.getvalue()
-        data = json.loads(output)
-        assert "plan_id" in data
-        assert "features" in data
-        assert "scope_file" in data
-        assert data["task_sha256"]
-
-    def test_plan_does_not_call_provider(self, tmp_path, monkeypatch):
-        """Planning must not call any provider."""
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        task_path = tmp_path / "task.md"
-        task_path.write_text(SAMPLE_TASK, encoding="utf-8")
-
-        from apps.cli.commands.do_cmd import _cmd_do_plan
-
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            _cmd_do_plan(task_file=str(task_path), repo=".", json_output=True)
-
-        # If we reach here, no provider was called
-        data = json.loads(buf.getvalue())
-        assert data["plan_id"]
-
-    def test_plan_does_not_mutate_repo(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        repo = tmp_path / "repo"
-        repo.mkdir()
-        (repo / "README.md").write_text("# Test\n")
-        before = (repo / "README.md").read_text()
-
-        task_path = tmp_path / "task.md"
-        task_path.write_text(SAMPLE_TASK, encoding="utf-8")
-
-        from apps.cli.commands.do_cmd import _cmd_do_plan
-
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            _cmd_do_plan(task_file=str(task_path), repo=str(repo), json_output=True)
-
-        after = (repo / "README.md").read_text()
-        assert before == after
-
-    def test_plan_missing_task_file_blocks(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from apps.cli.commands.do_cmd import _cmd_do_plan
-
-        with pytest.raises(SystemExit) as exc:
-            _cmd_do_plan(task_file="", repo=".", json_output=False)
-        assert exc.value.code == 2
 
 
 # ---------------------------------------------------------------------------
