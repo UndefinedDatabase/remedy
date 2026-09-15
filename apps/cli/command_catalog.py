@@ -264,10 +264,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.show",
         group_id="job",
         subcommand="show",
-        description="Show job details (always JSON).",
+        description="Show job details; the output is always JSON, so --json is accepted and changes nothing.",
         action_class="read_only",
-        args=(_JOB_ID,),
-        supports_json=False,
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("job.list", "brain.graph"),
     ),
     CommandEntry(

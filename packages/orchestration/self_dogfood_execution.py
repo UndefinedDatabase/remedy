@@ -721,7 +721,7 @@ def _next_action_for(a: SelfImprovementAttempt) -> str:
     if s == AttemptState.AWAITING_EXTERNAL_CANDIDATE:
         return "remedy self status --json"
     if s == AttemptState.INTENT_PENDING_APPROVAL and a.patch_intent_id:
-        return f"remedy patch approve {a.job_id} {a.patch_intent_id} --json"
+        return f"remedy patch approve {a.job_id} {a.patch_intent_id}"
     if s == AttemptState.INTENT_APPROVED and a.patch_intent_id:
         return f"remedy do continue {a.job_id} --intent-id {a.patch_intent_id} --json"
     if s == AttemptState.COMPLETED:

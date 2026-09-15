@@ -521,7 +521,7 @@ def _generate_options(s: OrchestratorSituation, sig: dict[str, Any], job_id: str
         # Pending approval (human decision unblocks the most).
         for iid in sig.get("pending_intents", [])[:1]:
             opts.append(_opt(OptionKind.APPROVE_INTENT, "Approve a pending patch intent",
-                             command=f"remedy patch approve {job_id} {iid} --json",
+                             command=f"remedy patch approve {job_id} {iid}",
                              entity_ids=[iid], risk="medium",
                              outcome="Unblocks apply via do continue.",
                              why_now="A patch intent is pending human approval.",
