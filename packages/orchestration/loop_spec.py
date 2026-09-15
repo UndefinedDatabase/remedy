@@ -182,7 +182,7 @@ def validate_loop_specs(project_path: Path | None = None) -> list[str]:
 
     Never raises: a spec-level error becomes a message, and so does a
     file-level one (unparseable TOML, a ``loop`` key that is not an array of
-    tables), because ``remedy loop validate`` must be able to report a broken
+    tables), because a validating caller must be able to report a broken
     config rather than crash on it. A missing file yields ``[]``.
     """
     try:

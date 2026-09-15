@@ -1,9 +1,8 @@
 """F114 T002 — the shared cost-preview confirmation helper.
 
 Renders an upfront USD estimate band and confirms before an expensive
-command runs. A SHARED module (unlike loop_cmd.py's own local
-`_confirm_materialization`/`_stdin_is_a_tty` copy) so a future expensive
-command reuses this rather than growing a third copy of the same shape.
+command runs. A SHARED module so a future expensive command reuses this
+rather than growing a copy of the same shape.
 No command calls this yet - wiring a real command to it is T003.
 """
 from __future__ import annotations

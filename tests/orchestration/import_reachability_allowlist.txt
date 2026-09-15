@@ -27,7 +27,6 @@ apps.cli.commands.job
 apps.cli.commands.job_context_cmd
 apps.cli.commands.job_rerun_cmd
 apps.cli.commands.job_stop_cmd
-apps.cli.commands.loop_cmd
 apps.cli.commands.memory
 apps.cli.commands.mission_cmd
 apps.cli.commands.patch
