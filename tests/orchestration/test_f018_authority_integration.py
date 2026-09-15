@@ -67,23 +67,8 @@ class TestBudgetResolutionProjectRoot:
         assert result.max_total_tokens == 99999
 
 
-class TestJobPlanBudgetPath:
-    """Finding #3: do job-plan and job run accept budget keyword args."""
-
-    def test_job_plan_accepts_budget_kwargs(self):
-        """Call _cmd_do_job_plan with budget kwargs — must not raise TypeError."""
-        from apps.cli.commands.do_cmd import _cmd_do_job_plan
-
-        with pytest.raises(SystemExit) as exc_info:
-            _cmd_do_job_plan(
-                job_file="",
-                repo=".",
-                max_total_tokens="50000",
-                max_provider_calls=None,
-                max_wall_clock_minutes=None,
-                deadline=None,
-            )
-        assert exc_info.value.code == 1
+class TestJobRunBudgetPath:
+    """Finding #3: job run accepts budget keyword args."""
 
     def test_job_run_accepts_budget_kwargs(self):
         """Call _cmd_job_run with budget kwargs — must not raise TypeError on signature."""

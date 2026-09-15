@@ -218,11 +218,11 @@ class TestCliCommandTruth:
         report_json = json.dumps(export_job_report(result))
         text = format_job_report_text(result)
         for stale in ["remedy do job run", "remedy do job plan", "remedy do job report",
-                      "remedy do job-promote", "remedy do job-run"]:
-            # A spaced `do` form never parsed, and a renamed `do` word parses no more (allow "job-plan" etc)
-            cleaned = report_json.replace("job-plan", "JP").replace("job-report", "JRE")
+                      "remedy do job-promote", "remedy do job-run", "remedy do job-plan"]:
+            # A spaced `do` form never parsed, and a renamed or deleted `do` word parses no more (allow "job-report")
+            cleaned = report_json.replace("job-report", "JRE")
             assert stale not in cleaned
-            cleaned_text = text.replace("job-plan", "JP").replace("job-report", "JRE")
+            cleaned_text = text.replace("job-report", "JRE")
             assert stale not in cleaned_text
 
 
@@ -232,11 +232,6 @@ class TestCliCommandTruth:
 
 
 class TestCliE2E:
-    def test_catalog_has_job_plan(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = [c.command_id for c in CATALOG]
-        assert "do.job-plan" in ids
-
     def test_catalog_has_job_run(self):
         from apps.cli.command_catalog import CATALOG
         ids = [c.command_id for c in CATALOG]
@@ -249,7 +244,6 @@ class TestCliE2E:
 
     def test_handlers_exist(self):
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        assert "do.job-plan" in COMMAND_HANDLERS
         assert "job.run" in COMMAND_HANDLERS
         assert "do.job-report" in COMMAND_HANDLERS
 
@@ -1181,11 +1175,6 @@ class TestCatalogMetadata:
         from apps.cli.command_catalog import CATALOG
         entry = [c for c in CATALOG if c.command_id == "job.run"][0]
         assert entry.may_mutate_repo is False
-
-    def test_job_plan_no_execute(self):
-        from apps.cli.command_catalog import CATALOG
-        entry = [c for c in CATALOG if c.command_id == "do.job-plan"][0]
-        assert entry.may_execute_commands is False
 
     def test_job_report_no_execute(self):
         from apps.cli.command_catalog import CATALOG

@@ -301,6 +301,7 @@ class TestDeletedCommands:
 
     DELETED = (
         "do.job-flow",
+        "do.job-plan",
     )
 
     def test_no_deleted_id_is_left_in_the_catalog(self) -> None:

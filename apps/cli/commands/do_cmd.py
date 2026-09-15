@@ -1302,72 +1302,6 @@ def _cmd_do_plan(
         print(f"  remedy do run --task-file {task_file} --scope-file {scope_file} --approve-scope --repo {repo}")
 
 
-def _cmd_do_job_plan(
-    *,
-    job_file: str = "",
-    repo: str = ".",
-    max_total_tokens: str | None = None,
-    max_provider_calls: str | None = None,
-    max_wall_clock_minutes: str | None = None,
-    max_cost_usd: str | None = None,
-    deadline: str | None = None,
-    json_output: bool = False,
-) -> None:
-    """Parse a job file into ordered tasks (no provider calls)."""
-    from packages.orchestration.pingpong_job import plan_job_from_file
-
-    if not job_file:
-        print("Error: --job-file is required", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
-    try:
-        budgets = resolve_job_budgets(
-            cli_max_total_tokens=max_total_tokens,
-            cli_max_provider_calls=max_provider_calls,
-            cli_max_wall_clock_minutes=max_wall_clock_minutes,
-            cli_max_cost_usd=max_cost_usd,
-            cli_deadline=deadline,
-            project_root=repo,
-        )
-    except (BudgetConfigError, ValueError) as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(2)
-
-    job = plan_job_from_file(job_file, repo)
-
-    if job.error:
-        print(f"Error: {job.error}", file=sys.stderr)
-        sys.exit(1)
-
-    if budgets is not None:
-        job.budgets = budgets.model_dump(mode="json")
-        from packages.orchestration.pingpong_job import save_job_plan
-        save_job_plan(job)
-
-    if json_output:
-        print(json.dumps({
-            "job_id": job.job_id,
-            "job_title": job.job_title,
-            "status": job.state,
-            "budgets": job.budgets,
-            "tasks": [
-                {"task_id": t.task_id, "title": t.title, "status": t.status}
-                for t in job.tasks
-            ],
-            "next_command": f"remedy job run {job.job_id}",
-        }, indent=2))
-    else:
-        print(f"Job planned: {job.job_id}")
-        print(f"Title: {job.job_title}")
-        print(f"Tasks: {len(job.tasks)}")
-        for t in job.tasks:
-            print(f"  {t.task_id}: {t.title}")
-        if budgets is not None:
-            print(f"Budgets: {job.budgets}")
-        print(f"\nNext: remedy job run {job.job_id}")
-
-
 def _cmd_job_run(
     job_id: str,
     *,
@@ -1901,16 +1835,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.continue": lambda args: _cmd_do_continue(
         args.job_id,
         intent_id=getattr(args, "intent_id", None),
-        json_output=getattr(args, "json", False),
-    ),
-    "do.job-plan": lambda args: _cmd_do_job_plan(
-        job_file=getattr(args, "job_file", None) or "",
-        repo=getattr(args, "repo", None) or ".",
-        max_total_tokens=getattr(args, "max_total_tokens", None),
-        max_provider_calls=getattr(args, "max_provider_calls", None),
-        max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
-        max_cost_usd=getattr(args, "max_cost_usd", None),
-        deadline=getattr(args, "deadline", None),
         json_output=getattr(args, "json", False),
     ),
     "job.run": lambda args: _cmd_job_run(

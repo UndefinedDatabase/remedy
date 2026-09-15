@@ -344,7 +344,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         supports_json=True,
         args=(
-            ArgDef("job_id", "Job ID (from do job-plan) to check"),
+            ArgDef("job_id", "Job ID to check"),
             ArgDef("--check-manifest", "Compare the stored run-input manifest against the current would-be inputs and report drift", required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
@@ -360,7 +360,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         supports_json=True,
         args=(
-            ArgDef("job_id", "Job ID (from do job-plan) to stop"),
+            ArgDef("job_id", "Job ID to stop"),
             ArgDef("--reason", "Why the job is being stopped (recorded in the evidence)", required=False, is_option=True, default=""),
             ArgDef("--source", "Who requested the stop (default: cli)", required=False, is_option=True, default="cli"),
             ArgDef("--status", "Show pending and consumed stop requests instead of requesting one", required=False, is_option=True, is_flag=True),
@@ -2226,36 +2226,15 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
 
     # ── do.job-* ──────────────────────────────────────────────────────
     CommandEntry(
-        command_id="do.job-plan",
-        group_id="do",
-        subcommand="job-plan",
-        description="Parse a job file into ordered tasks (no provider calls).",
-        action_class="read_only",
-        supports_json=True,
-        related=("job.run", "do.job-report"),
-        args=(
-            ArgDef("--job-file", "Path to Markdown job file", required=True, is_option=True),
-            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
-            ArgDef("--max-total-tokens", "Maximum total tokens (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-provider-calls", "Maximum provider calls (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-wall-clock-minutes", "Maximum wall-clock minutes (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-cost-usd", "Maximum cost in USD (F104 budget)", required=False, is_option=True, default=None),
-            ArgDef("--deadline", "UTC deadline as ISO 8601 string (F018 budget)", required=False, is_option=True, default=None),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-    ),
-    CommandEntry(
         command_id="job.run",
         group_id="job",
         subcommand="run",
         description="Run pending job tasks sequentially through Builder/Reviewer/Repair.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-plan", "do.job-report"),
+        related=("do.job-report",),
         args=(
-            ArgDef("job_id", "Job ID from do job-plan"),
+            ArgDef("job_id", "Job ID"),
             ArgDef("--builder", "Builder provider: fake, claude, claude-cli (default: fake, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--reviewer", "Reviewer provider: fake, claude, claude-cli (default: fake, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--max-rounds", "Max ping-pong rounds per task (default: 3, persisted on continuation)", required=False, is_option=True, default=None),
@@ -2525,7 +2504,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Show a job report with task statuses and run IDs.",
         action_class="read_only",
         supports_json=True,
-        related=("do.job-plan", "job.run"),
+        related=("job.run",),
         args=(
             ArgDef("job_id", "Job ID"),
             _JSON_OPT,
@@ -2541,7 +2520,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Export a self-contained evidence bundle for an entire job.",
         action_class="test_execution",
         supports_json=True,
-        related=("do.job-plan", "job.run", "do.job-report"),
+        related=("job.run", "do.job-report"),
         args=(
             ArgDef("job_id", "Job ID"),
             ArgDef("--out", "Output directory for bundle files", required=False, is_option=True, default=""),
@@ -2558,7 +2537,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Review and apply job workspace changes to target repo. Dry-run by default; --approve applies.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-plan", "job.run", "job.evidence"),
+        related=("job.run", "job.evidence"),
         args=(
             ArgDef("job_id", "Job ID"),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
