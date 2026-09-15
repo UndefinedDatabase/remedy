@@ -11,24 +11,22 @@ command, and every retired word deleted rather than aliased, per
 
 ## Current Step
 
-ROUND 11 finishes the read views of T002. It books round 10's PASS, registers R-0902 and
-records DECISION F261 D10, then points the `job report` and `do job-report` hints at
-`job show --full` with R-0901, folds `job report` into the `report` section, deletes
-`do job-report`, and makes `job show` name an unreadable job record, one table per commit,
-and appends the Landed lines of R-0901 and R-0902.
+ROUND 12 finishes T002. It books round 11's PASS and the resolutions of R-0901 and R-0902 and
+records DECISION F261 D11, then gives the job-result sense of `promote` apply words in the
+staging pipeline, at the run level and in the builder's repair prompt, and adds
+`tests/docs/test_retired_promote_word.py`, which holds the senses DECISION amend0905-vocab D5
+keeps by file and token, one table per commit.
 
 ## Next Steps
 
-1. The run-level promote words DECISION F261 D6 leaves, ruled by sense, with the kept-by-sense
-   list DECISION amend0905-vocab D5 names written into the record and a test for the
-   Acceptance grep of the retired word.
-2. T003, the prune to D4, with R-0900; then T004.
+1. T003, the prune to D4, with R-0900, its split planned by group before its first round.
+2. T004, the descriptions, role labels, help wrapping and the remaining Acceptance tests.
 
 ## Risks
 
-- 98 findings are open by distinct id before this round's record and 99 after it; three are
+- 99 findings are open by distinct id before this round's record and 97 after it; three are
   High, R-0803, R-0804 and R-0807.
 - `job show` prints JSON that the canary, `tests/cli/test_plan_approval.py` and
   `scripts/remedy_smoke.sh` parse, so every change to it only adds keys.
-- `job show --full` builds every section, the run report's sources among them, so it is the
-  slowest read of a job.
+- T003 deletes groups and flags across the catalog and is the slice most likely to exceed the
+  commit-size cap.
