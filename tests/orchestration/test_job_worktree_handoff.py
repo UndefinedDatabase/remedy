@@ -1,7 +1,7 @@
 """F006 hand-off — the COMPLETE real flow, end to end, with fake providers only.
 
     parse_job_file → run_job (job-owned worktree) → job evidence
-                   → promotion dry-run → explicitly approved promotion
+                   → apply dry-run → explicitly approved apply
 
 and the complete interrupted-task flow:
 
@@ -108,7 +108,7 @@ def _run_job(repo: Path, monkeypatch, files: dict[str, str], text=ONE_TASK, seen
 
 
 # ---------------------------------------------------------------------------
-# Finding 1 — a completed worktree job is promotable WITHOUT its workspace
+# Finding 1 — a completed worktree job can be applied WITHOUT its workspace
 # ---------------------------------------------------------------------------
 
 class TestCompletedJobApply:
@@ -522,7 +522,7 @@ class TestEndToEndJobFlow:
         dry = apply_job(job.job_id, str(repo), dry_run=True)
         assert dry.status == "dry_run" and dry.files_planned == ["one.txt"]
 
-        # Nothing was promoted automatically; the checkout is byte-identical.
+        # Nothing was applied automatically; the checkout is byte-identical.
         assert _git(repo, "status", "--porcelain") == status_before == ""
         assert _git(repo, "rev-parse", "HEAD").strip() == head_before
         assert not (repo / "one.txt").exists()

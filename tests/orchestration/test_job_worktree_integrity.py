@@ -1,10 +1,10 @@
 """F006 integrity — checkpoints survive GC, the hand-off is exactly the reviewed
-work, promotion preserves file modes, and temporary cleanup never lies.
+work, the apply preserves file modes, and temporary cleanup never lies.
 
 * Finding 1 — active tree checkpoints are protected by private Remedy refs.
 * Finding 2 — the root diff must equal the union of the applied task manifests.
-* Finding 3 — promotion reproduces the reviewed git file mode, not just the bytes.
-* Finding 4 — temporary promotion cleanup is checked and reported honestly.
+* Finding 3 — the apply reproduces the reviewed git file mode, not just the bytes.
+* Finding 4 — temporary apply cleanup is checked and reported honestly.
 
 Temporary git repositories, fake providers and monkeypatching only. No provider
 call is ever made.
@@ -358,7 +358,7 @@ class TestHandoffCoverage:
     ):
         job, _ = _run(repo, monkeypatch, [{"one.txt": "hello\n"}])
 
-        # A rogue file reaches the materialized promotion source.
+        # A rogue file reaches the materialized apply source.
         real = job_apply._materialize_apply_source_owned
 
         def hooked(j):
@@ -377,7 +377,7 @@ class TestHandoffCoverage:
 
 
 # ---------------------------------------------------------------------------
-# Finding 3 — promotion preserves the reviewed file mode
+# Finding 3 — the apply preserves the reviewed file mode
 # ---------------------------------------------------------------------------
 
 def _is_exec(p: Path) -> bool:
@@ -481,7 +481,7 @@ class TestFileModeApply:
 
 
 # ---------------------------------------------------------------------------
-# Finding 4 — temporary promotion cleanup is observable and honest
+# Finding 4 — temporary apply cleanup is observable and honest
 # ---------------------------------------------------------------------------
 
 class TestApplyCleanupHonesty:
@@ -546,7 +546,7 @@ class TestApplyCleanupHonesty:
         res = apply_job(job.job_id, str(repo), approve=True)
         monkeypatch.setattr(job_apply.subprocess, "run", real_run)   # only undo the failure
 
-        # The promotion really happened; the cleanup really failed. Both are told.
+        # The apply really happened; the cleanup really failed. Both are told.
         assert res.status == "applied_cleanup_failed"
         assert res.files_applied == ["one.txt"]
         assert (repo / "one.txt").read_text() == "hello\n"

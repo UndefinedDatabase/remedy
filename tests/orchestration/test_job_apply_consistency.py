@@ -1,7 +1,7 @@
-"""F006 promotion consistency — baseline modes, persisted cleanup, honest failures.
+"""F006 apply consistency — baseline modes, persisted cleanup, honest failures.
 
-* Finding 1 — target file-MODE drift blocks promotion, not just content drift.
-* Finding 2 — the persisted promotion record matches the returned result, cleanup
+* Finding 1 — target file-MODE drift blocks the apply, not just content drift.
+* Finding 2 — the persisted job apply record matches the returned result, cleanup
   fields included, for every outcome.
 * Finding 3 — a materialization failure never swallows a cleanup failure.
 * Finding 4 — a partial success plus a failed cleanup is unmistakable in the CLI
@@ -129,7 +129,7 @@ class TestBaselineModeDrift:
         assert "target_mode_changed_since_job: script.sh" in res.blocked_reason
         statuses = {r.path: r.baseline_status for r in res.file_readiness}
         assert statuses["script.sh"] == "target_mode_changed_since_job"
-        assert (repo / "script.sh").read_text() == "old\n"    # nothing promoted
+        assert (repo / "script.sh").read_text() == "old\n"    # nothing applied
         assert os.access(repo / "script.sh", os.X_OK)         # chmod not reverted
 
     def test_content_unchanged_but_target_chmod_to_0644_blocks(self, repo, monkeypatch):
@@ -478,7 +478,7 @@ class TestCleanupFailureSummaries:
         text = summarize_job_apply(res)
         assert "The target was changed." in text
         assert "Files applied: ['one.txt']" in text
-        assert "Temporary promotion cleanup failed." in text
+        assert "Temporary apply cleanup failed." in text
         assert "Manual cleanup is required." in text
         assert "git worktree list" in text          # the stale registration is named
 
@@ -491,7 +491,7 @@ class TestCleanupFailureSummaries:
 
         text = summarize_job_apply(res)
         assert "The target was NOT changed (dry-run only)." in text
-        assert "Temporary promotion cleanup failed." in text
+        assert "Temporary apply cleanup failed." in text
         assert "Manual cleanup is required." in text
         assert not (repo / "one.txt").exists()
 

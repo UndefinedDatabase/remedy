@@ -1,7 +1,7 @@
-"""Job promotion — apply reviewed job workspace changes into target repo.
+"""Job apply — apply reviewed job workspace changes into target repo.
 
-Promotion is a separate explicit human-approved action.
-Never auto-promotes. Requires --approve flag.
+Applying is a separate explicit human-approved action.
+Never auto-applies. Requires --approve flag.
 No git commit, no git push, no git reset, no git checkout.
 
 Public API:
@@ -162,7 +162,7 @@ def _validate_dest_containment(
 
 @dataclass
 class FileReadiness:
-    """Per-file baseline readiness status for promotion."""
+    """Per-file baseline readiness status for applying."""
     path: str = ""
     kind: str = ""  # created | modified
     baseline_status: str = ""
@@ -185,7 +185,7 @@ def _consolidate_file_proofs(
                     "final_workspace_sha256": proof.final_workspace_sha256,
                     # The reviewed change includes the file mode, so drift detection
                     # must see it: an external chmod on an otherwise untouched
-                    # target file would silently be reverted by promotion.
+                    # target file would silently be reverted by applying.
                     "baseline_mode": proof.baseline_mode,
                     "final_mode": proof.final_mode,
                 }
@@ -268,7 +268,7 @@ def _check_baseline_readiness(
                 b_status = "target_changed_since_job"
             elif baseline_mode and current_mode != baseline_mode:
                 # Content still matches the baseline, but somebody chmod'ed the
-                # target after the job ran. Promoting would silently revert that.
+                # target after the job ran. Applying would silently revert that.
                 blocks.append(f"target_mode_changed_since_job: {rel_path}")
                 b_status = "target_mode_changed_since_job"
             else:
@@ -296,7 +296,7 @@ def _check_baseline_readiness(
 
 @dataclass
 class TaskApplySummary:
-    """Per-task promotion readiness summary."""
+    """Per-task apply readiness summary."""
     task_id: str = ""
     title: str = ""
     status: str = ""
@@ -310,7 +310,7 @@ class TaskApplySummary:
 
 @dataclass
 class JobApplyResult:
-    """Result of a job promotion attempt."""
+    """Result of a job apply attempt."""
     job_id: str = ""
     job_apply_id: str = field(default_factory=lambda: uuid4().hex[:16])
     status: str = ""  # blocked, dry_run, approved_apply_started, applied, applied_test_failed, applied_record_update_failed
@@ -327,7 +327,7 @@ class JobApplyResult:
     files_skipped: list[str] = field(default_factory=list)
     #: True when the operator passed --skip-blocked, i.e. acknowledged the blocked
     #: set and asked for the remainder anyway. ``files_blocked`` still names every
-    #: path that was withheld, so a promotion that skipped is never silent.
+    #: path that was withheld, so an apply that skipped is never silent.
     skip_blocked: bool = False
     file_readiness: list[FileReadiness] = field(default_factory=list)
     blocked_reason: str = ""
@@ -354,7 +354,7 @@ class JobApplyResult:
 
 
 # ---------------------------------------------------------------------------
-# Promotion logic
+# Apply logic
 # ---------------------------------------------------------------------------
 
 def _block(
@@ -377,7 +377,7 @@ def _safe_persist(
     *,
     final: bool = False,
 ) -> None:
-    """Persist promotion record, structuring any failure after target mutation.
+    """Persist job apply record, structuring any failure after target mutation.
 
     ``final=True`` is the one post-cleanup write: a failure there is reported
     honestly rather than pretending a durable record (or a durable preview) exists.
@@ -446,7 +446,7 @@ def _run_post_test(
 
 
 # ---------------------------------------------------------------------------
-# F006: materialize a promotion source from the verified JobPlan hand-off
+# F006: materialize an apply source from the verified JobPlan hand-off
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -543,7 +543,7 @@ def _run_cleanup_git(argv: list[str], *, cwd: str, timeout: int) -> tuple[bool, 
     """Run one cleanup git command. NEVER raises: returns (ok, error_text).
 
     A cleanup step that explodes (timeout, missing git, any OS error) must not
-    abort the rest of the cleanup or replace the promotion outcome — it must be
+    abort the rest of the cleanup or replace the apply outcome — it must be
     recorded and the remaining steps must still run.
     """
     try:
@@ -574,12 +574,12 @@ def _failed_cleanup(error: str) -> dict[str, Any]:
 
 
 def _cleanup_apply_source(source: ApplySource | None) -> dict[str, Any]:
-    """Remove the temporary promotion worktree — and SAY what actually happened.
+    """Remove the temporary apply worktree — and SAY what actually happened.
 
     TOTAL function: it never raises. Every step (remove, prune, physical delete,
     inventory, path check) is guarded independently, each failure is recorded, and
     the remaining steps still run — a cleanup exception must never escape and take
-    the promotion result, the applied-file list and the durable record with it.
+    the apply result, the applied-file list and the durable record with it.
     """
     out: dict[str, Any] = {
         "temporary_worktree_removed": False,
@@ -653,12 +653,12 @@ def apply_job(
     test_command: str = "",
     skip_blocked: bool = False,
 ) -> JobApplyResult:
-    """Promote reviewed job workspace changes into target repo.
+    """Apply reviewed job workspace changes into target repo.
 
-    Without --approve, returns dry-run preview only. Never auto-promotes.
+    Without --approve, returns dry-run preview only. Never auto-applies.
     No git commit, no git push, no git reset, no git checkout.
 
-    Every promoted file must come from a task apply manifest.
+    Every applied file must come from a task apply manifest.
     No workspace fallback scanning. Baseline-aware target safety.
 
     ``skip_blocked`` is the operator's SECOND, explicit decision, taken after
@@ -743,7 +743,7 @@ def apply_job(
         if t.apply_manifest.status != "applied":
             return _block(result, f"apply_manifest_not_applied: {t.task_id} status={t.apply_manifest.status}")
 
-    # --- Promotion source ---
+    # --- Apply source ---
     # F006: a completed worktree job has NO live workspace by design (a clean
     # cleanup removed it). Its hand-off is the recorded base commit plus the
     # verified result.diff, materialized into a TEMPORARY detached worktree here.
@@ -782,7 +782,7 @@ def apply_job(
                 cleanup = _cleanup_apply_source(apply_source)
             except Exception as exc:
                 # _cleanup_apply_source is total, but a cleanup bug must still
-                # never destroy the promotion outcome or the durable record.
+                # never destroy the apply outcome or the durable record.
                 cleanup = _failed_cleanup(
                     f"cleanup raised unexpectedly: {type(exc).__name__}: {exc}")
             out.temporary_worktree_removed = cleanup["temporary_worktree_removed"]
@@ -791,7 +791,7 @@ def apply_job(
             out.cleanup_error = cleanup["cleanup_error"]
 
     if apply_source is not None and out.cleanup_status == "failed":
-        # Never claim a clean run. The promotion outcome and the applied-file list
+        # Never claim a clean run. The apply outcome and the applied-file list
         # are preserved: the target WAS touched if the status says so. A cleanup
         # failure during a materialization failure reports BOTH.
         if out.status == "applied":
@@ -823,8 +823,8 @@ def _check_source_coverage(job: Any, result: JobApplyResult, workspace: Path) ->
     """The materialized source's changed paths must equal the reviewed file set.
 
     An extra file in the root diff (a finalization hook writing ``rogue.txt``) would
-    otherwise be materialized into the promotion source and quietly ignored, so the
-    hand-off, the task evidence and the promotion would all disagree. Any extra or
+    otherwise be materialized into the apply source and quietly ignored, so the
+    hand-off, the task evidence and the apply would all disagree. Any extra or
     missing path blocks.
     """
     import subprocess
@@ -871,19 +871,19 @@ def _apply_from_workspace(
     skip_blocked: bool = False,
     persist_final: bool = True,
 ) -> JobApplyResult:
-    """The existing baseline-aware promotion, against a resolved source.
+    """The existing baseline-aware apply, against a resolved source.
 
     ``persist_final=False`` means an outer owner (the temporary-worktree lifecycle)
     will write the ONE final record after cleanup, so this function must not write
     a record that would later disagree with the returned object.
 
     ``skip_blocked`` CHANGES ONE DECISION AND NOTHING ELSE: whether a non-empty
-    blocked set aborts the whole promotion. It does not widen what may be written.
+    blocked set aborts the whole apply. It does not widen what may be written.
     Every blocked path is still detected by the same ``_is_blocked_path``,
     ``_validate_dest_containment`` and ``_validate_source_containment`` checks, is
     still kept out of ``planned``, is still never opened for writing, and is still
     named in ``files_blocked`` and in the summary. What it buys is the operator's
-    second explicit decision, taken AFTER reading that list: promote the remainder
+    second explicit decision, taken AFTER reading that list: apply the remainder
     as its own atomic change set. That is a different question from "apply
     everything or nothing", and answering it does not make the fence weaker —
     a silent skip would, and this is the opposite of silent.
@@ -965,7 +965,7 @@ def _apply_from_workspace(
 
     if not planned:
         # Reached with a non-empty blocked set only when --skip-blocked was passed
-        # and EVERY file was blocked: there is no remainder to promote, so the
+        # and EVERY file was blocked: there is no remainder to apply, so the
         # honest answer is still a block rather than an empty success.
         return _block(result, "no_files_to_apply")
 
@@ -1002,7 +1002,7 @@ def _apply_from_workspace(
         _persist_outcome([])
         return result
 
-    # --- Preflight promotion record writability ---
+    # --- Preflight job apply record writability ---
     try:
         record_dir = _job_apply_records_dir() / job_id
         record_dir.mkdir(parents=True, exist_ok=True)
@@ -1019,7 +1019,7 @@ def _apply_from_workspace(
     if not clean2:
         return _block(result, f"baseline_check_before_apply_failed: {blocks2}")
 
-    # --- Durable pre-apply promotion record ---
+    # --- Durable pre-apply record ---
     result.status = "approved_apply_started"
     result.files_applied = []
     try:
@@ -1086,7 +1086,7 @@ def _apply_from_workspace(
             src_mode, dst_mode = _mode_of(ws_file), _mode_of(dest)
             if src_mode != dst_mode:
                 # A filesystem that cannot represent the reviewed mode must block,
-                # not claim a faithful promotion.
+                # not claim a faithful apply.
                 result.status = "blocked"
                 result.blocked_reason = (
                     f"post_apply_mode_mismatch: {rel_path}: "
@@ -1102,7 +1102,7 @@ def _apply_from_workspace(
             _persist_outcome(applied)
             return result
 
-    # --- Post-promotion tests ---
+    # --- Post-apply tests ---
     if test_command:
         passed, summary = _run_post_test(test_command, target)
         result.post_test_passed = passed
@@ -1132,7 +1132,7 @@ def _persist_job_apply_record(
     job_id: str,
     result: JobApplyResult,
 ) -> None:
-    """Persist promotion record. Raises on write failure for approved promotes."""
+    """Persist job apply record. Raises on write failure for approved applies."""
     record_dir = _job_apply_records_dir() / job_id
     record_dir.mkdir(parents=True, exist_ok=True)
     record_file = record_dir / f"{result.job_apply_id}.json"
@@ -1225,11 +1225,11 @@ def _blocked_path_names(files_blocked: list[str]) -> list[str]:
 
 
 def _next_step_for_apply(result: JobApplyResult) -> str:
-    """The honest ``Next:`` line a stalled promotion owes its operator.
+    """The honest ``Next:`` line a stalled apply owes its operator.
 
     Every other stalled surface in Remedy ends with one — `remedy do`,
     `remedy status`, the orchestrator's ``next_safe_action``, the proof chain —
-    and a blocked promotion used to print its reason and stop, leaving the
+    and a blocked apply used to print its reason and stop, leaving the
     operator's only remaining move to go and read the source.
 
     The line names the route that ACTUALLY applies to the block in hand.
@@ -1244,8 +1244,8 @@ def _next_step_for_apply(result: JobApplyResult) -> str:
         remaining = len(result.files_planned)
         return (
             f"Next: remove {listed} from the job workspace and re-run, or re-run "
-            f"with --skip-blocked to promote the remaining {remaining} file(s) and "
-            f"deliberately leave {listed} unpromoted."
+            f"with --skip-blocked to apply the remaining {remaining} file(s) and "
+            f"deliberately leave {listed} not applied."
         )
 
     if reason == "no_files_to_apply" and result.files_blocked:
@@ -1253,7 +1253,7 @@ def _next_step_for_apply(result: JobApplyResult) -> str:
         listed = ", ".join(names) if names else "every file"
         return (
             f"Next: every file in this job is protected ({listed}), so there is no "
-            f"remainder for --skip-blocked to promote. Remove the protected path(s) "
+            f"remainder for --skip-blocked to apply. Remove the protected path(s) "
             f"from the job workspace and re-run."
         )
 
@@ -1267,7 +1267,7 @@ def summarize_job_apply(result: JobApplyResult) -> str:
     lines = [
         f"Job: {result.job_id}",
         f"Title: {result.job_title}",
-        f"Promotion: {result.job_apply_id}",
+        f"Job apply record: {result.job_apply_id}",
         f"Status: {result.status}",
         f"Approved: {result.approved}",
         f"Target: {_sanitize_path(result.target_repo)}",
@@ -1288,7 +1288,7 @@ def summarize_job_apply(result: JobApplyResult) -> str:
             lines.append("The target was NOT changed"
                          + (" (dry-run only)." if result.dry_run or not result.approved
                             else "."))
-        lines.append("Temporary promotion cleanup failed.")
+        lines.append("Temporary apply cleanup failed.")
         lines.append(f"Cleanup error: {result.cleanup_error}")
         if not result.temporary_registration_removed:
             lines.append(
@@ -1296,7 +1296,7 @@ def summarize_job_apply(result: JobApplyResult) -> str:
                 "(check `git worktree list`)."
             )
         if not result.temporary_worktree_removed:
-            lines.append("A temporary promotion directory may remain on disk.")
+            lines.append("A temporary apply directory may remain on disk.")
         lines.append("Manual cleanup is required.")
 
     if result.task_summaries:
@@ -1328,11 +1328,11 @@ def summarize_job_apply(result: JobApplyResult) -> str:
         for f in result.files_applied:
             lines.append(f"  {f}")
         if result.skip_blocked and result.files_blocked:
-            # Never let a partial promotion read as a whole one: say what was
+            # Never let a partial apply read as a whole one: say what was
             # withheld, in the same breath as what was applied.
             lines.append(
                 f"--skip-blocked deliberately left {len(result.files_blocked)} "
-                f"protected path(s) unpromoted; they were not written to the target "
+                f"protected path(s) not applied; they were not written to the target "
                 f"and are listed below."
             )
         if result.post_test_passed is not None:
@@ -1349,7 +1349,7 @@ def summarize_job_apply(result: JobApplyResult) -> str:
 
     elif result.status == "applied_record_update_failed":
         lines.append("")
-        lines.append(f"WARNING: Applied {len(result.files_applied)} file(s) but promotion record update FAILED.")
+        lines.append(f"WARNING: Applied {len(result.files_applied)} file(s) but job apply record update FAILED.")
         lines.append(f"Reason: {result.blocked_reason}")
         lines.append("Target files may have changed. Manual review required.")
         lines.append("Pre-apply record exists. Final record could not be written.")
@@ -1374,7 +1374,7 @@ def summarize_job_apply(result: JobApplyResult) -> str:
         for f in result.files_skipped:
             lines.append(f"  {f}")
 
-    # A blocked promotion ALWAYS ends with its next step, after the file lists so
+    # A blocked apply ALWAYS ends with its next step, after the file lists so
     # the operator reads the paths before the route through them.
     if result.status == "blocked":
         lines.append("")

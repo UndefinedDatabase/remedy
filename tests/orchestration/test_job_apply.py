@@ -1,7 +1,7 @@
-"""Tests for job promotion (Steps 4945-4960).
+"""Tests for job apply (Steps 4945-4960).
 
-Covers: dry-run, approved promote, readiness gates, path safety,
-post-apply tests, promotion record, no-commit/no-push guarantees.
+Covers: dry-run, approved apply, readiness gates, path safety,
+post-apply tests, job apply record, no-commit/no-push guarantees.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from packages.orchestration.pingpong_job import (
 from packages.orchestration.pingpong_provider import FakeProvider
 
 _TWO_TASK_JOB = """\
-# Job: Promote Test
+# Job: Apply Test
 
 ## Task 1
 Add a test file.
@@ -358,7 +358,7 @@ class TestDryRunUnsafePaths:
 
 
 # ---------------------------------------------------------------------------
-# Step 4953: Approved promote behavior tests
+# Step 4953: Approved apply behavior tests
 # ---------------------------------------------------------------------------
 
 
@@ -396,7 +396,7 @@ class TestApproveApplies:
         assert len(result.files_applied) > 0
 
     def test_approve_does_not_commit(self, isolate_data_root, demo_repo, tmp_path):
-        """Promote must not create git commits."""
+        """Apply must not create git commits."""
         job = _run_completed_job(demo_repo)
 
         from packages.orchestration.job_apply import apply_job
@@ -406,7 +406,7 @@ class TestApproveApplies:
         assert not (demo_repo / ".git").exists()
 
     def test_approve_does_not_push(self, isolate_data_root, demo_repo):
-        """Promote must not push."""
+        """Apply must not push."""
         job = _run_completed_job(demo_repo)
 
         from packages.orchestration.job_apply import apply_job
@@ -535,7 +535,7 @@ class TestApprovePostTest:
 
 
 # ---------------------------------------------------------------------------
-# Step 4951: Promotion record tests
+# Step 4951: Job apply record tests
 # ---------------------------------------------------------------------------
 
 
@@ -643,7 +643,7 @@ class TestCLICommandShape:
 
 class TestTargetClobberBlocked:
     def test_target_modified_after_job_blocks(self, isolate_data_root, demo_repo):
-        """Promote must block when target file changed since job started."""
+        """Apply must block when target file changed since job started."""
         job = _run_completed_job(demo_repo)
 
         # Find a file and write different content to target
@@ -663,7 +663,7 @@ class TestTargetClobberBlocked:
         assert "target_changed_since_job" in reason or "target_created_since_job" in reason
 
     def test_clean_target_allows_apply(self, isolate_data_root, demo_repo):
-        """Promote succeeds when target matches baseline (no external edits)."""
+        """Apply succeeds when target matches baseline (no external edits)."""
         job = _run_completed_job(demo_repo)
 
         from packages.orchestration.job_apply import apply_job
@@ -931,7 +931,7 @@ class TestMissingApplyManifestBlocks:
 
 
 # ---------------------------------------------------------------------------
-# Step 4967: Promotion record persistence tests
+# Step 4967: Job apply record persistence tests
 # ---------------------------------------------------------------------------
 
 
@@ -939,12 +939,12 @@ class TestJobApplyRecordPersistence:
     def test_unwritable_job_apply_record_dir_blocks_approved(
         self, isolate_data_root, demo_repo, tmp_path, monkeypatch
     ):
-        """Approved promote must block if promotion record can't be persisted."""
+        """Approved apply must block if job apply record can't be persisted."""
         job = _run_completed_job(demo_repo)
 
         from packages.orchestration import job_apply
 
-        # Use a regular file as promotions dir — mkdir will fail
+        # Use a regular file as job apply records dir — mkdir will fail
         blocker = tmp_path / "not_a_dir"
         blocker.write_text("block")
 
@@ -1205,13 +1205,13 @@ def _make_new_file_job(tmp_path, *, content="new content\n"):
 
 
 # ---------------------------------------------------------------------------
-# Step 4981: Legitimate existing-file modification promotes
+# Step 4981: Legitimate existing-file modification applies
 # ---------------------------------------------------------------------------
 
 
 class TestBaselineExistingFileApply:
     def test_existing_file_modification_applies(self, isolate_data_root, tmp_path):
-        """Reviewed modification to existing file promotes when target matches baseline."""
+        """Reviewed modification to existing file applies when target matches baseline."""
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
 
         from packages.orchestration.job_apply import apply_job
@@ -1259,7 +1259,7 @@ class TestBaselineExistingFileApply:
 
 class TestTargetChangedSinceJob:
     def test_target_changed_blocks(self, isolate_data_root, tmp_path):
-        """Promote blocks when target file was modified after job completion."""
+        """Apply blocks when target file was modified after job completion."""
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
 
         # Modify target after job
@@ -1281,10 +1281,10 @@ class TestTargetChangedSinceJob:
 
 class TestTargetCreatedSinceJob:
     def test_target_created_blocks(self, isolate_data_root, tmp_path):
-        """Promote blocks when target file appeared after job expected to create it."""
+        """Apply blocks when target file appeared after job expected to create it."""
         job, workspace, target, rel_path = _make_new_file_job(tmp_path)
 
-        # Create the file in target before promote
+        # Create the file in target before apply
         (target / rel_path).write_text("unrelated content\n")
 
         from packages.orchestration.job_apply import apply_job
@@ -1302,7 +1302,7 @@ class TestTargetCreatedSinceJob:
 
 class TestWorkspaceChangedSinceReview:
     def test_workspace_changed_blocks(self, isolate_data_root, tmp_path):
-        """Promote blocks when workspace file was modified after review."""
+        """Apply blocks when workspace file was modified after review."""
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
 
         # Tamper with workspace after job completion
@@ -1490,7 +1490,7 @@ class TestGroupedCLIJobApply:
         assert len(data["file_readiness"]) == 1
 
     def test_approve_via_grouped_cli(self, isolate_data_root, tmp_path):
-        """Grouped CLI approve promotes and returns promoted status."""
+        """Grouped CLI approve applies and returns applied status."""
         from tests.cli.runtime_helpers import run_grouped_cli
 
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
@@ -1544,7 +1544,7 @@ class TestGroupedCLIJobApply:
 
 class TestDestSymlinkInsideTarget:
     def test_dest_symlink_blocks_apply(self, isolate_data_root, tmp_path):
-        """Approved promote blocks when dest path is a symlink, even inside target."""
+        """Approved apply blocks when dest path is a symlink, even inside target."""
         job, workspace, target, rel_path = _make_baselined_job(
             tmp_path, existing_content="victim baseline\n", new_content="job final\n",
         )
@@ -1588,7 +1588,7 @@ class TestDestSymlinkInsideTarget:
 
 class TestDestParentSymlinkInsideTarget:
     def test_dest_parent_symlink_blocks_apply(self, isolate_data_root, tmp_path):
-        """Approved promote blocks when dest parent is symlinked."""
+        """Approved apply blocks when dest parent is symlinked."""
         import hashlib
 
         from packages.orchestration.pingpong_job import (
@@ -1745,7 +1745,7 @@ class TestDestContainmentRecheckBeforeWrite:
 
 class TestFinalRecordFailure:
     def test_final_record_failure_structured(self, isolate_data_root, tmp_path):
-        """Final promotion record failure returns structured result, not exception."""
+        """Final job apply record failure returns structured result, not exception."""
         from unittest.mock import patch
 
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
@@ -2170,11 +2170,11 @@ def test_job_apply_post_test_runs_on_the_guarded_seam(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Operator order amend0828-daily-driver, point 1 — deliberate partial promotion
+# Operator order amend0828-daily-driver, point 1 — deliberate partial apply
 #
 # Reproduces the 2026-08-25 dogfooding finding in T0_F017 exactly: a builder
 # wrote an unasked-for `.gitignore` beside two reviewed files, `.gitignore` is in
-# `_BLOCKED_EXACT`, and the whole promotion died with `files_applied: []`. The
+# `_BLOCKED_EXACT`, and the whole apply died with `files_applied: []`. The
 # guardrail is correct and stays; what was missing is the operator's SECOND
 # decision, taken after reading the blocked list.
 # ---------------------------------------------------------------------------
@@ -2190,7 +2190,7 @@ def _make_partially_blocked_job(tmp_path, *, free_paths=_OPERATOR_FREE_PATHS,
     """A completed job whose apply manifest holds free files AND one blocked path.
 
     Every file is a create (it does not exist in the target), so the baseline
-    proof is the new-file shape and nothing but the fence can stop a promotion.
+    proof is the new-file shape and nothing but the fence can stop an apply.
     """
     import hashlib
 
@@ -2245,7 +2245,7 @@ def _make_partially_blocked_job(tmp_path, *, free_paths=_OPERATOR_FREE_PATHS,
 
 
 class TestSkipBlockedPartialApply:
-    """--skip-blocked promotes the remainder and provably leaves the blocked path."""
+    """--skip-blocked applies the remainder and provably leaves the blocked path."""
 
     def test_two_free_files_apply_and_the_blocked_one_stays_behind(
         self, isolate_data_root, tmp_path,
@@ -2288,7 +2288,7 @@ class TestSkipBlockedPartialApply:
         )
         text = summarize_job_apply(result)
 
-        assert "--skip-blocked deliberately left 1 protected path(s) unpromoted" in text
+        assert "--skip-blocked deliberately left 1 protected path(s) not applied" in text
         assert "were not written to the target" in text
         assert _OPERATOR_BLOCKED_PATH in text
 
@@ -2406,7 +2406,7 @@ class TestSkipBlockedThroughTheGroupedCLI:
 
     Declared without ``is_flag=True`` it falls through to the catalog's generic
     valued-option branch, whose default is the STRING ``"false"`` — which is
-    truthy, so the partial promotion would arm itself on every run and the
+    truthy, so the partial apply would arm itself on every run and the
     all-or-nothing rule would silently stop holding. That is exactly the hazard
     the ``is_flag`` field exists for, so the shape is pinned here rather than
     left to the option's spelling.
@@ -2419,7 +2419,7 @@ class TestSkipBlockedThroughTheGroupedCLI:
         arg = next(a for a in entry.args if a.name == "--skip-blocked")
         assert arg.is_flag is True, (
             "--skip-blocked must be declared is_flag=True or its default becomes "
-            "the truthy string 'false' and partial promotion arms itself"
+            "the truthy string 'false' and partial apply arms itself"
         )
 
     def test_absent_flag_still_blocks_through_the_real_cli(
