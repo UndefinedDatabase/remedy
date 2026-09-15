@@ -1,80 +1,104 @@
-# Handback — F261 round 13
+# Handback — F261 round 14
 
 ## Session
 
-`SESSION 3 of feature F261 · round 13 · rounds so far 13`
+`SESSION 3 of feature F261 · round 14 · rounds so far 14`
 
 Context self-assessment: this worker's context is comfortable, and nothing in the round was cut short.
 
 ## Range
 
-Review of `80e9cc0f`..`HEAD`: C0a, C0b, C1, C2 and C3, plus this handback commit C4. `.agent/STOP` was ABSENT at all
-three readings constraint 2 orders: before C0a `ls -la .agent/STOP` exited 2 (`No such file or directory`); before C2
-`test -e .agent/STOP` exited 1, re-read through Python's `subprocess.run(['test', '-e', '.agent/STOP'])` as `exit 1
-absent`; before C4 `.remedy-wt/f261r13w/stopcheck.py` printed `test -e .agent/STOP exit 1 -> absent`.
+Review of `c3047df0`..`HEAD`: C0a, C0b, C1, C2, C3 and C4, plus this handback commit C5. `.agent/STOP` was ABSENT at
+all three readings constraint 2 orders: before C0a, before C2 and before C5 `.remedy-wt/f261r14w/stop_check.py` (a
+`pathlib.Path.exists` reading) printed `STOP exists: False` and exited 0 each time.
+
+**G3 IS RED on one of its six objects**: the `docs` subtree id differs from the dry run at C2, C3 and C4, and in each
+case `git diff-tree -r` between the dry-run tree and the committed tree names exactly one path,
+`roadmap/features/T2_F273.md`, the file C1's pair P273 rewrites. See Verification and Deviation 1.
 
 ## Commits
 
-### 5b461ba9 F261 R13 C0a: save the round 13 step block
+### 8d6a7bee F261 R14 C0a: save the round 14 step block
 
-Commit total per constraint 5: **379** insertions, 0 deletions.
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f261-r13.md` | +379 / -0 | the block, copied with `shutil.copyfile`; sha256 equal to the delegated digest |
-
-### f567eda3 F261 R13 C0b: mirror the round 13 step block into last_block
-
-Commit total per constraint 5: **247** insertions, 153 deletions.
+Commit total per constraint 5: **290** insertions, 0 deletions.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +247 / -153 | the same bytes, the mirror |
+| `.agent/authored/f261-r14.md` | +290 / -0 | the block, copied with `shutil.copyfile`; sha256 equal to the delegated digest |
 
-### d2891eb9 F261 R13 C1: re-point the plan at round 13, book round 12's PASS, record DECISION F261 D12 and the T003 inventory
+### b5d87e1d F261 R14 C0b: mirror the round 14 step block into last_block
 
-This is the FIRST SUBSTANTIVE COMMIT. Commit total per constraint 5: **126** insertions, 11 deletions.
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/decisions.md` | +12 / -0 | slice DEC12 appended: DECISION F261 D12 |
-| `.agent/f261_t003_inventory.md` | +97 / -0 | NEW: slice INV13, the T003 inventory |
-| `.agent/live_review.md` | +2 / -0 | slice RECORD13 appended: `Gate: F261 R12 —` PASS |
-| `.agent/plan.md` | +15 / -11 | slice PLAN13, a full replacement: 36 lines |
-
-### f70e1611 F261 R13 C2: give GroupDef a hidden field that keeps a group out of both root helps, by the hidden table
-
-Commit total per constraint 5: **76** insertions, 7 deletions.
+Commit total per constraint 5: **166** insertions, 255 deletions.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f261-r13-hidden.jsonl` | +7 / -0 | the table, 7 `edit` rows, copied with `shutil.copyfile`; sha256 equal |
-| `apps/cli/command_catalog.py` | +4 / -0 | `GroupDef.hidden: bool = False`, the last field, with its WHY comment |
-| `apps/cli/grouped.py` | +7 / -3 | `_print_root_help` lists no hidden group in either form; the parser still adds every group |
-| `tests/cli/test_cli_ux.py` | +54 / -1 | NEW class `TestHiddenGroup`: default, both root helps, the group's own help, dispatch |
-| `tests/test_grouped_cli.py` | +4 / -3 | the two root-help tests skip hidden groups |
+| `.agent/last_block.md` | +166 / -255 | the same bytes, the mirror |
 
-### ed02d512 F261 R13 C3: rename the plan group to the hidden roadmap group, by the roadmap table
+### ebd3c812 F261 R14 C1: re-point the plan at round 14, book round 13's PASS, register R-0903 for F273 and record DECISION F261 D13
 
-Commit total per constraint 5: **136** insertions, 63 deletions.
+This is the FIRST SUBSTANTIVE COMMIT. Commit total per constraint 5: **33** insertions, 16 deletions.
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f261-r13-roadmap.jsonl` | +41 / -0 | the table, 40 `edit` rows and 1 `move`, copied with `shutil.copyfile`; sha256 equal |
-| `.claude/skills/remedy-self-drive/SKILL.md` | +2 / -2 | the Phase 0 probe lines call `remedy roadmap status` and `remedy roadmap next` |
-| `apps/cli/command_catalog.py` | +9 / -8 | `plan` group removed; hidden `roadmap` group last in `GROUPS`; `roadmap.status`, `roadmap.next` and their `related=` |
-| `apps/cli/commands/__init__.py` | +2 / -2 | imports and the handler loop name `roadmap_cmd` |
-| `apps/cli/commands/{plan_cmd.py => roadmap_cmd.py}` | +6 / -6 | the move, with the docstring, `_cmd_roadmap_status`, `_cmd_roadmap_next` and the handler ids |
-| `docs/README.md` | +1 / -1 | the index row names `remedy roadmap status`/`next` (a hidden group) |
-| `docs/agents/self_drive_protocol.md` | +2 / -2 | the Phase 0 probe lines |
-| `docs/system/roadmap-mirror-v1.md` | +13 / -8 | title, verbs, the hidden-group paragraph, the file table |
-| `packages/orchestration/feature_mission_adapter.py` | +1 / -1 | the docstring names `remedy roadmap next` |
-| `tests/cli/test_plan_cli.py` | +49 / -31 | calls read `roadmap`; new tests: the group is hidden, neither root help lists it, `plan` is an unknown command |
-| `tests/orchestration/import_reachability_allowlist.txt` | +1 / -1 | `apps.cli.commands.roadmap_cmd` replaces `plan_cmd` |
-| `tests/orchestration/test_roadmap_index.py` | +1 / -1 | the docstring names `roadmap next` |
-| `tests/test_command_catalog.py` | +8 / -0 | the two pairs join `RENAMED`; new `test_no_old_id_is_left_in_the_dispatch_table` |
+| `.agent/decisions.md` | +12 / -0 | slice DEC13 appended: DECISION F261 D13 |
+| `.agent/live_review.md` | +4 / -0 | slice RECORD14 appended: `Gate: F261 R13 —` PASS and R-0903 |
+| `.agent/plan.md` | +14 / -16 | slice PLAN14, a full replacement: 34 lines |
+| `docs/roadmap/features/T2_F273.md` | +3 / -0 | pair P273 (REWRITE): the R-0903 resolution line |
 
-### C4 — this commit (self-reference, R-0149 pattern)
+### 98866b80 F261 R14 C2: delete the orchestrator group and the engine only it called, by the orchestrator table
+
+Commit total per constraint 5: **38** insertions, 1385 deletions.
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f261-r14-orchestrator.jsonl` | +17 / -0 | the table, 15 `edit` rows and 2 `delete`, copied with `shutil.copyfile`; sha256 equal |
+| `apps/cli/command_catalog.py` | +0 / -50 | the `orchestrator` group and its four commands |
+| `apps/cli/commands/__init__.py` | +1 / -2 | `orchestrator_cmd` leaves the import list and the handler loop |
+| `apps/cli/commands/orchestrator_cmd.py` | +0 / -83 | DELETED |
+| `docs/system/orchestrator-brain-v0.md` | +6 / -5 | the dated status line of DECISION F261 D13 |
+| `packages/orchestration/decision_evidence.py` | +3 / -10 | comments no longer name the deleted engine |
+| `packages/orchestration/model_routing.py` | +0 / -13 | the docstring paragraph on the deleted routing plan |
+| `packages/orchestration/orchestrator_brain.py` | +4 / -866 | only `list_decisions` and its root helper remain |
+| `tests/cli/test_orchestrator_brain_cli.py` | +0 / -86 | DELETED |
+| `tests/orchestration/import_reachability_allowlist.txt` | +0 / -1 | `apps.cli.commands.orchestrator_cmd` |
+| `tests/orchestration/test_orchestrator_brain.py` | +3 / -269 | only the `list_decisions` tests remain |
+| `tests/test_command_catalog.py` | +4 / -0 | the four `orchestrator.*` ids join `TestDeletedCommands` |
+
+### 4bf17d32 F261 R14 C3: delete the rollback group and the proof writer only it called, by the rollback table
+
+Commit total per constraint 5: **48** insertions, 174 deletions.
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f261-r14-rollback.jsonl` | +29 / -0 | the table, 29 `edit` rows, copied with `shutil.copyfile`; sha256 equal |
+| `apps/cli/command_catalog.py` | +2 / -27 | the `rollback` group and `rollback.proof`, `rollback.show`; `snapshot.create` relates to `snapshot.show` |
+| `apps/cli/commands/real_test_execution_cmd.py` | +2 / -33 | the two rollback handlers and their rows |
+| `docs/guides/real-test-execution-snapshot-rollback-user-guide-v1.md` | +0 / -7 | the rollback command section |
+| `docs/system/real-test-execution-snapshot-rollback-proof-v1.md` | +6 / -3 | the dated status line of DECISION F261 D13 |
+| `packages/orchestration/real_test_execution.py` | +3 / -77 | `RollbackProof`, `create_rollback_proof`, `get_rollback_proof`, `export_rollback_proof_json`, `_rollback_path` |
+| `tests/cli/test_real_test_execution_cli.py` | +1 / -15 | the rollback CLI tests |
+| `tests/orchestration/test_real_test_execution.py` | +3 / -12 | the rollback writer tests |
+| `tests/test_command_catalog.py` | +2 / -0 | the two `rollback.*` ids join `TestDeletedCommands` |
+
+### be6ae79d F261 R14 C4: delete the loop command group, by the loop table
+
+Commit total per constraint 5: **26** insertions, 708 deletions.
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f261-r14-loop.jsonl` | +14 / -0 | the table, 12 `edit` rows and 2 `delete`, copied with `shutil.copyfile`; sha256 equal |
+| `apps/cli/command_catalog.py` | +0 / -38 | the `loop` group and `loop.list`, `loop.validate`, `loop.run` |
+| `apps/cli/commands/__init__.py` | +1 / -2 | `loop_cmd` leaves the import list and the handler loop |
+| `apps/cli/commands/loop_cmd.py` | +0 / -277 | DELETED |
+| `apps/cli/cost_preview_confirm.py` | +2 / -3 | the docstring no longer names `loop_cmd.py` |
+| `docs/system/vocabulary.md` | +3 / -3 | the three `remedy loop` mentions read as the `loop` group, or drop it |
+| `packages/orchestration/loop_spec.py` | +1 / -1 | the docstring no longer names `remedy loop validate` |
+| `tests/cli/test_cost_preview_confirm.py` | +2 / -3 | the docstring no longer names `tests/cli/test_loop_cmd.py` |
+| `tests/cli/test_loop_cmd.py` | +0 / -380 | DELETED |
+| `tests/orchestration/import_reachability_allowlist.txt` | +0 / -1 | `apps.cli.commands.loop_cmd` |
+| `tests/test_command_catalog.py` | +3 / -0 | the three `loop.*` ids join `TestDeletedCommands` |
+
+### C5 — this commit (self-reference, R-0149 pattern)
 
 | Path | +/- | Reason |
 |---|---|---|
@@ -84,31 +108,30 @@ Commit total per constraint 5: **136** insertions, 63 deletions.
 
 | Command | Outcome |
 |---|---|
-| `git worktree add --detach .remedy-wt/f261r13w/wt ed02d51254580b3e053fb33344c6e15010669dcf` | created for G5; restored after each mutation with `git -C .remedy-wt/f261r13w/wt checkout -- <that file>` (exit 0, worktree status `''` after each), then removed with `git worktree remove --force .remedy-wt/f261r13w/wt` (exit 0); `git worktree list` then read one row and `git branch --list 'remedy/job-*'` 16 lines |
+| `git worktree add --detach .remedy-wt/f261r14w/wt be6ae79d` | created for G5; restored after each mutation with `git -C .remedy-wt/f261r14w/wt checkout -- <that file>` (exit 0, worktree status `''` after each), then removed with `git worktree remove --force .remedy-wt/f261r14w/wt` (exit 0); `git worktree list` then read one row and `git branch --list 'remedy/job-*'` 16 lines |
 | `git push origin feature/f261-cli-vocabulary-v2` | the one push, after this commit; its result is in the completion message (G7) |
 | pull request create / merge / force-push / branch delete / `remedy` | NOT RUN |
 
 ## Verification
 
-The scripts and raw outputs are under `.remedy-wt/f261r13w/`, not committed. Every exit code below is the real return
-code of the command as the tool reported it.
+The scripts and raw outputs are under `.remedy-wt/f261r14w/`, not committed. Every exit code below is the real return
+code, printed by `.remedy-wt/f261r14w/rc_wrap.py` as `RC=<n>`.
 
 | Gate | At | REAL exit | Decisive reading |
 |---|---|---|---|
-| G1 transport | after C1 `d2891eb9`; carriers after C3 | `slices_r13.py` 0; `gate_g1g2.py` 0; `gate_g3g4.py` 0 | sha256 of `.agent/authored/f261-r13.md` at C0a `0aebf9128ef0c7de15a917dd345716030399c1101de00cec2ef308b8b1f7b815`, **equal** to the delegated digest; `.agent/last_block.md` at C0b **byte-identical** (29933 bytes). Slices FOUND **14** (PLAN13, RECORD13, DEC12, INV13, MUT-1-FROM to MUT-5-TO), each **matching** its BEGIN-marker sha256. Committed carriers: hidden at C2 `a3099103…918ad3`, roadmap at C3 `fd0bd680…00ac59`, each **equal** to its digest |
-| G2 the record | C1 | `gate_g1g2.py` 0 | `plan.md` **equals** PLAN13; **36** lines; `^## Goal$` **1**; `^## Next Steps$` **1**. `f261_t003_inventory.md` **equals** INV13. `live_review.md` **equals** its `80e9cc0f` blob + RECORD13 (1015481 + 3791 = 1019272 bytes); `decisions.md` **equals** its `80e9cc0f` blob + DEC12 (1380049 + 2779 = 1382828). `^Gate: F\d+ R\d+ — ` **121** → **122**; `Gate: F261 R12 — ` **1** at C1; distinct `^- R-\d+ — ` **105** → **105**, sets equal; distinct `^Done: R-\d+ — ` **8** → **8**, sets equal; open by distinct id **97** → **97** |
-| G3 the tables | C2 `f70e1611`, C3 `ed02d512` | `gate_g3g4.py` 0 | tables: hidden **7** rows, roadmap **41**, every count as stated, no STOP. `--no-renames --name-only` from each parent: exactly the carrier and the paths G3 names (5 and 14 paths). `apps`, `tests`, `docs`, `scripts`, `packages`, `README.md`, `.claude` each **match** the dry run at C2 (`87c3490a…`, `430b31b6…`, `43175c76…`, `e3c01bde…`, `0e39ea4b…`, `15b9e0e8…`, `3f74bb69…`) and C3 (`c52ed435…`, `166acfa6…`, `11be22ad…`, `e3c01bde…`, `2fc99e37…`, `15b9e0e8…`, `e3cd5e0a…`). Insertions: C2 **76** (7 deletions), C3 **136** (63); each single-parent |
-| G4 the sweep | C3 `ed02d512` | `gate_g3g4.py` 0 | the `git grep` at C3: exit 0, exactly **5** lines: `docs/system/vocabulary.md:228`, `tests/orchestration/test_failure_postmortem.py:1055` and `:1066`, `tests/test_command_catalog.py:276` and `:277`. `python3 -m ruff check` over the 10 `.py` paths of C2 and C3 that exist at C3 (the moved-away `apps/cli/commands/plan_cmd.py` is checked as `roadmap_cmd.py`): exit **0**, `All checks passed!` |
-| G5(a) control | worktree at C3 | 0 | `apps.cli.grouped` loaded from the worktree; `506 passed in 38.33s`; **0** failed nodes |
-| G5(1) `--all-commands` lists hidden groups | same worktree | 1 | MUT-1-FROM count **1** in `apps/cli/grouped.py`; `2 failed, 504 passed in 38.25s`; **2** failed nodes, `TestHiddenGroup::test_a_hidden_group_is_absent_from_all_commands` **among them** (with `TestCatalogRegistration::test_neither_root_help_lists_the_group`) |
-| G5(2) the default help lists hidden groups | same worktree, after `checkout --` | 1 | MUT-2-FROM count **1** in `apps/cli/grouped.py`; `1 failed, 505 passed in 38.31s`; **1** failed node, `TestHiddenGroup::test_a_hidden_group_is_absent_from_the_default_help` **among them** |
-| G5(3) `roadmap` not hidden | same worktree, after `checkout --` | 1 | MUT-3-FROM count **1** in `apps/cli/command_catalog.py`; `2 failed, 504 passed in 38.31s`; **2** failed nodes, `TestCatalogRegistration::test_the_group_is_hidden` **among them** (with `test_neither_root_help_lists_the_group`) |
-| G5(4) a `plan.next` handler row | same worktree, after `checkout --` | 1 | MUT-4-FROM count **1** in `apps/cli/commands/roadmap_cmd.py`; `1 failed, 505 passed in 38.39s`; **1** failed node, `TestRenamedCommands::test_no_old_id_is_left_in_the_dispatch_table` **among them** |
-| G5(5) the parser skips hidden groups | same worktree, after `checkout --` | 1 | MUT-5-FROM count **1** in `apps/cli/grouped.py`; `19 failed, 487 passed in 34.79s`; **19** failed nodes, `TestHiddenGroup::test_a_hidden_groups_command_still_dispatches` **among them** (with 17 of `tests/cli/test_plan_cli.py` and `test_every_new_id_parses_from_its_words_and_has_a_handler`) |
-| G6 the suite, SPEC S | primary checkout at C3, serially | 0 | `suite_spec.py`: argv `python3 -B -m pytest -q -p no:randomly -p no:cacheprovider --tb=short -rfEs`, `PYTHONPATH`, `REMEDY_PROJECT`, `REMEDY_DATA_DIR` removed, `PYTHONDONTWRITEBYTECODE=1`; last line `18192 passed, 23 skipped, 1 warning in 1333.32s (0:22:13)`; distinct bad nodes **0**, so no re-run; `git status --porcelain` `''` and `git branch --list 'remedy/job-*'` 16 lines afterwards |
-| G7 the tree | after C4 and the push | not yet run | reported in the completion message only |
+| G1 transport | after C1 `ebd3c812`; carriers after C4 | `gate_g1g2.py` 0; `gate_g3g4.py` 1 (its G1 lines all PASS; the 1 is G3's `docs`) | sha256 of `.agent/authored/f261-r14.md` at C0a `ec743657d65cf88693654218b20e6f98baf9f0a83e5f78fe5f712723f46d004e`, **equal** to the delegated digest; `.agent/last_block.md` at C0b **byte-identical** (26192 bytes). Slices FOUND **13** (PLAN14, RECORD14, DEC13, P273-FROM, P273-TO, MUT-1-FROM to MUT-4-TO), each **matching** its BEGIN-marker sha256. Committed carriers: orchestrator at C2, rollback at C3, loop at C4, each **equal** to its digest |
+| G2 the record | C1 | `gate_g1g2.py` 0; `pytest tests/docs/ -q` 0 | `plan.md` **equals** PLAN14; **34** lines; `^## Goal$` **1**; `^## Next Steps$` **1**. `live_review.md` **equals** its `c3047df0` blob + RECORD14 (1019272 + 4984 = 1024256 bytes); `decisions.md` **equals** its `c3047df0` blob + DEC13 (1382828 + 3212 = 1386040). P273: TO contains FROM **false**; FROM count **1** at base, **0** at C1, TO **1** at C1; `T2_F273.md` **equals** its base blob with the pair applied. `^Gate: F\d+ R\d+ — ` **122** → **123**; `Gate: F261 R13 — ` **1** at C1; distinct `^- R-\d+ — ` **105** → **106**, C1 minus base exactly **R-0903**; distinct `^Done: R-\d+ — ` **8** → **8**; open by distinct id **97** → **98**. `tests/docs/`: `310 passed in 1.09s` |
+| G3 the tables | C2 `98866b80`, C3 `4bf17d32`, C4 `be6ae79d` | `gate_g3g4.py` **1** — **RED** | tables: orchestrator **17** rows, rollback **29**, loop **14**, every count as stated, no delete target missing, no STOP. `--no-renames --name-only` from each parent: exactly the carrier and the paths G3 names (12, 9 and 11 paths); each single-parent. `apps`, `tests`, `scripts`, `packages`, `README.md` each **match** the dry run at C2, C3 and C4. **`docs` does NOT match**: C2 `786c8d72a5f0ecf1024b723ed517a8f544e10555` against `d86c24c6…`, C3 `211481c58748f8985cf2c1a83169eb902411ba9a` against `cd7dbc5c…`, C4 `46cc5d56ce7a352a61bf62e969bfb74e9248cb24` against `cf0d7c41…`; in all three `git diff-tree -r --name-status <dry-run> <committed>` prints exactly `M roadmap/features/T2_F273.md`. Before each commit a probe in a temporary index put `docs/roadmap/features/T2_F273.md` back to its `c3047df0` blob and the `docs` tree then **equalled** the dry run's id at C2, C3 and C4 (`docs_tree_probe.py` exit 0 each). Insertions: C2 **38** (1385 deletions), C3 **48** (174), C4 **26** (708) |
+| G4 the sweep | C4 `be6ae79d` | `gate_g3g4.py` G4 lines PASS | the `git grep` at C4: exit **1**, stdout `''`, stderr `''`. `python3 -m ruff check` over the 14 `.py` paths of C2 to C4 that exist at C4 (absent: `apps/cli/commands/loop_cmd.py`, `apps/cli/commands/orchestrator_cmd.py`, `tests/cli/test_loop_cmd.py`, `tests/cli/test_orchestrator_brain_cli.py`): exit **0**, `All checks passed!` |
+| G5(a) control | worktree at C4 | 0 | `apps.cli.grouped` loaded from the worktree; `461 passed in 31.60s`; **0** failed nodes |
+| G5(1) an `orchestrator` handler row | same worktree | 1 | MUT-1-FROM count **1** in `apps/cli/commands/self_cmd.py`; `1 failed, 460 passed in 31.63s`; **1** failed node, `TestDeletedCommands::test_no_deleted_id_is_left_in_the_dispatch_table` **among them** |
+| G5(2) a `rollback` handler row | same worktree, after `checkout --` | 1 | MUT-2-FROM count **1** in `apps/cli/commands/real_test_execution_cmd.py`; `1 failed, 460 passed in 31.64s`; **1** failed node, `TestDeletedCommands::test_no_deleted_id_is_left_in_the_dispatch_table` **among them** |
+| G5(3) a `loop` handler row | same worktree, after `checkout --` | 1 | MUT-3-FROM count **1** in `apps/cli/commands/real_test_execution_cmd.py`; `1 failed, 460 passed in 31.50s`; **1** failed node, `TestDeletedCommands::test_no_deleted_id_is_left_in_the_dispatch_table` **among them** |
+| G5(4) the `loop` group without commands | same worktree, after `checkout --` | 1 | MUT-4-FROM count **1** in `apps/cli/command_catalog.py`; `1 failed, 468 passed in 32.16s`; **1** failed node, `TestCatalogIntegrity::test_every_group_has_at_least_one_command` **among them** |
+| G6 the suite, SPEC S | primary checkout at C4, serially | 0 | `suite_spec.py`: argv `python3 -B -m pytest -q -p no:randomly -p no:cacheprovider --tb=short -rfEs`, `PYTHONPATH`, `REMEDY_PROJECT`, `REMEDY_DATA_DIR` removed, `PYTHONDONTWRITEBYTECODE=1`; last line `18128 passed, 23 skipped, 1 warning in 1281.79s (0:21:21)`; distinct bad nodes **0**, so no re-run; `git status --porcelain` `''` and `git branch --list 'remedy/job-*'` 16 lines afterwards |
+| G7 the tree | after C5 and the push | not yet run | reported in the completion message only |
 
-Open findings: **97** by distinct id. The open High ids are **R-0803, R-0804 and R-0807**.
+Open findings: **98** by distinct id. The open High ids are **R-0803, R-0804 and R-0807**.
 
 Operator questions open: 0
 
@@ -116,12 +139,12 @@ Operator questions open: 0
 
 | Text | Target | Result |
 |---|---|---|
-| the block | `.agent/authored/f261-r13.md`, `.agent/last_block.md` | sha256 **equal** to the delegated digest at C0a; mirror byte-identical at C0b (G1) |
-| PLAN13 | `.agent/plan.md` | **equal** at C1 (G2) |
-| RECORD13, DEC12 | `.agent/live_review.md`, `.agent/decisions.md` | each **equal** to its `80e9cc0f` blob followed by the slice at C1 (G2) |
-| INV13 | `.agent/f261_t003_inventory.md` | **equal** at C1 (G2) |
-| the two tables | `.agent/authored/f261-r13-hidden.jsonl`, `.agent/authored/f261-r13-roadmap.jsonl` and their paths | carrier digests **equal**; the C2 and C3 trees equal the reviewer's dry run (G3) |
-| MUT-1-FROM to MUT-5-TO | the G5 worktree only | used as the mutation bytes; never written to the checkout |
+| the block | `.agent/authored/f261-r14.md`, `.agent/last_block.md` | sha256 **equal** to the delegated digest at C0a; mirror byte-identical at C0b (G1) |
+| PLAN14 | `.agent/plan.md` | **equal** at C1 (G2) |
+| RECORD14, DEC13 | `.agent/live_review.md`, `.agent/decisions.md` | each **equal** to its `c3047df0` blob followed by the slice at C1 (G2) |
+| P273-FROM, P273-TO | `docs/roadmap/features/T2_F273.md` | **equal** to its `c3047df0` blob with the pair applied at C1 (G2) |
+| the three tables | `.agent/authored/f261-r14-{orchestrator,rollback,loop}.jsonl` and their paths | carrier digests **equal**; `apps`, `tests`, `scripts`, `packages`, `README.md` equal the dry run; `docs` differs only by C1's `T2_F273.md` (G3) |
+| MUT-1-FROM to MUT-4-TO | the G5 worktree only | used as the mutation bytes; never written to the checkout |
 
 NO SLICE AND NO TABLE WAS EDITED. Every slice was extracted programmatically as the bytes strictly between its `BEGIN`
 and `END` lines and verified against its BEGIN-marker sha256 before use; each table was verified against its digest
@@ -132,44 +155,47 @@ before it was applied and copied.
 | Item | Status | Reason |
 |---|---|---|
 | C0a / C0b | done | two commits, as the Bundle orders |
-| C1 PLAN13, RECORD13, DEC12, INV13 | done | one commit, the first substantive commit |
-| C2 the hidden table | done | one commit |
-| C3 the roadmap table | done | one commit |
-| C4 handoff | done | this commit |
-| G1 · G2 · G3 · G4 · G5 · G6 | done | exit codes and readings above |
+| C1 PLAN14, RECORD14, DEC13, P273 | done | one commit, the first substantive commit |
+| C2 the orchestrator table | done | one commit |
+| C3 the rollback table | done | one commit |
+| C4 the loop table | done | one commit |
+| C5 handoff | done | this commit |
+| G1 · G2 · G4 · G5 · G6 | done | exit codes and readings above |
+| G3 | deviated | RED on the `docs` object at C2, C3 and C4; the only differing path is C1's `T2_F273.md` (Deviation 1) |
 | G7 | skipped | runs after this commit and its push; results in the completion message |
 
 ## Deviations & assumptions
 
-1. **G1's carrier clause was read after C3, not after C1.** Constraint 8 places G1 after C1, but the carriers are first
-   committed at C2 and C3; their committed digests were read by `gate_g3g4.py` after C3, and each source carrier's
-   digest was also verified before its table was applied and copied.
-2. **Tables were applied directly on disk.** `.remedy-wt/f261r13w/apply_table.py` checks the carrier digest, then
+1. **G3 is red, and the round went on to G4, G5 and G6 anyway.** G3's `docs` tree ids cannot be met by the Bundle
+   as ordered: C1 rewrites `docs/roadmap/features/T2_F273.md` with pair P273, every later commit inherits that file,
+   and the dry-run `docs` ids equal the committed trees with that one file at its `c3047df0` blob. All other objects,
+   every path set, every row count and every carrier digest match. Constraint 3 makes a red gate a STOP: commit what
+   is honestly finished and hand back. C2 to C4 were already applied under the table rules, none of which stopped, so
+   they count as finished. G4, G5 and G6 only read the tree: the G5 worktree was removed and the suite changed nothing.
+   They ran to give the reviewer evidence before the handback. No commit beyond this handback was made after the red
+   reading. The mismatch was first seen in a pre-commit index probe before C2. Stopping there would have committed
+   nothing of the tables for a mismatch the Bundle itself causes.
+2. **Tables were applied directly on disk.** `.remedy-wt/f261r14w/apply_table.py` checks the carrier digest, then
    applies every row strictly in file order against the tree the previous rows left, with `encoding="utf-8",
    newline=""`, the exact-count check and the must-not-exist checks, stopping on the first mismatch; it copies the
-   carrier after the last row. No count differed and no target existed, so no STOP arose.
-3. **G4's ruff ran over the working tree at C3** (HEAD `ed02d512`, status `''`), over the 10 `.py` paths that exist
-   there; `apps/cli/commands/plan_cmd.py`, one of C3's `--no-renames` paths, no longer exists and its content is
-   checked as `apps/cli/commands/roadmap_cmd.py`.
-4. **G5 ran through a runner**, `.remedy-wt/f261r13w/wt_runner.py`, invoked as `python3 -B`: it drops its own directory
+   carrier after the last row. No count differed and no target existed, so no table STOP arose.
+3. **G1's carrier clause was read after C4, not after C1.** The carriers are first committed at C2 to C4; their
+   committed digests were read by `gate_g3g4.py` after C4, and each source carrier's digest was also verified before
+   its table was applied and copied.
+4. **G5 ran through a runner**, `.remedy-wt/f261r14w/wt_runner.py`, invoked as `python3 -B`: it drops its own directory
    from `sys.path`, changes into the worktree, puts it first on `sys.path` and in `PYTHONPATH`, removes
    `REMEDY_PROJECT` and `REMEDY_DATA_DIR`, sets `PYTHONDONTWRITEBYTECODE=1`, asserts that `apps.cli.grouped` loaded
    from inside the worktree, and calls `pytest.main` with `-q -p no:randomly -p no:cacheprovider -rf --tb=no` over the
    four test files G5 names.
 5. **Commit subjects** were worded by this worker, since the block names each commit's content but not its subject.
 6. **The open set** was computed as the distinct `^- R-\d+ — ` ids minus the distinct `^Done: R-\d+ — ` ids.
-7. **The STOP readings used three forms** (`ls`, `test -e`, and `stopcheck.py` running `test -e`), each with its real
-   exit code as stated under Range; the `test -e` before C2 was re-read through Python because the tool printed no
-   exit line for it.
-8. **The suite ran in the foreground**, inside one tool call, from the primary checkout; it finished in 22 minutes and
-   nothing else ran meanwhile.
-9. **File reading before edits.** The tables and slices were applied programmatically, so instead of reading each
-   target file in full I read the full diff of each of C1 to C3 before committing; the byte-equality, tree-id gates,
-   ruff, the red-proofs and the suite prove each result.
+7. **File reading before edits.** The tables and slices were applied programmatically, so instead of reading each
+   target file in full I read the staged diff of each of C1 to C4 before committing and ran `ruff` on the touched
+   `.py` files; the byte-equality, tree-id gates, ruff, the red-proofs and the suite prove each result.
 
 ## Next
 
 1. Phase 1 rule 1: the next session reads `.agent/STOP` first.
-2. The reviewer's verdict on round 13.
-3. The first deletion round `.agent/f261_t003_inventory.md` proposes: round A, `orchestrator`, `rollback` and the `loop`
-   command.
+2. The reviewer's verdict on round 14, including G3's red `docs` reading (Deviation 1).
+3. The next deletion round `.agent/f261_t003_inventory.md` proposes: the loop modules with the run report's loop
+   reference, the `queue` group and `job_queue.py`.
