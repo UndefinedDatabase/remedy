@@ -236,15 +236,9 @@ class TestCliE2E:
         ids = [c.command_id for c in CATALOG]
         assert "job.run" in ids
 
-    def test_catalog_has_job_report(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = [c.command_id for c in CATALOG]
-        assert "do.job-report" in ids
-
     def test_handlers_exist(self):
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
         assert "job.run" in COMMAND_HANDLERS
-        assert "do.job-report" in COMMAND_HANDLERS
 
     def test_job_plan_json_has_next_command(self, isolate_data_root, demo_repo):
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
@@ -1171,11 +1165,6 @@ class TestCatalogMetadata:
         entry = [c for c in CATALOG if c.command_id == "job.run"][0]
         assert entry.may_mutate_repo is False
 
-    def test_job_report_no_execute(self):
-        from apps.cli.command_catalog import CATALOG
-        entry = [c for c in CATALOG if c.command_id == "do.job-report"][0]
-        assert entry.may_execute_commands is False
-
 
 # ---------------------------------------------------------------------------
 # Step 4852 — Target repo mutation guard NEGATIVE test
@@ -1824,9 +1813,10 @@ class TestCliPauseContinueSmoke:
         assert out1["repair_rounds_source"] == "cli"
         assert out1["execution_config"]["repair_rounds_allowed"] == 1
 
-        # Step 3: Report
-        args_report = types.SimpleNamespace(job_id=job.job_id, json=True)
-        COMMAND_HANDLERS["do.job-report"](args_report)
+        # Step 3: Report, read from `job show`
+        from apps.cli.grouped import main
+
+        main(["job", "show", job.job_id])
         report1 = json.loads(capsys.readouterr().out)
         assert report1["status"] == "paused"
         assert report1["execution_config"]["repair_rounds_allowed"] == 1
@@ -1842,7 +1832,7 @@ class TestCliPauseContinueSmoke:
         assert out2["execution_config"]["repair_rounds_allowed"] == 1
 
         # Step 5: Final report
-        COMMAND_HANDLERS["do.job-report"](args_report)
+        main(["job", "show", job.job_id])
         report2 = json.loads(capsys.readouterr().out)
         assert report2["status"] == "completed"
 
@@ -2335,8 +2325,9 @@ class TestCommandPathFullConfigContinuation:
         COMMAND_HANDLERS["job.run"](args2)
         capsys.readouterr()
 
-        args_report = types.SimpleNamespace(job_id=job.job_id, json=True)
-        COMMAND_HANDLERS["do.job-report"](args_report)
+        from apps.cli.grouped import main
+
+        main(["job", "show", job.job_id])
         report = json.loads(capsys.readouterr().out)
 
         assert report["execution_config"]["max_rounds"] == 7
@@ -2446,8 +2437,9 @@ class TestCommandPathExplicitOverrides:
         COMMAND_HANDLERS["job.run"](args2)
         capsys.readouterr()
 
-        args_report = types.SimpleNamespace(job_id=job.job_id, json=True)
-        COMMAND_HANDLERS["do.job-report"](args_report)
+        from apps.cli.grouped import main
+
+        main(["job", "show", job.job_id])
         report = json.loads(capsys.readouterr().out)
         assert report["execution_config"]["max_rounds"] == 3
         assert report["execution_config"]["max_rounds_source"] == "cli"

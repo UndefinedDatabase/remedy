@@ -348,7 +348,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=False,
-        related=("job.show", "do.job-report"),
+        related=("job.show",),
     ),
     CommandEntry(
         command_id="job.stop",
@@ -366,7 +366,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=False,
-        related=("job.run", "do.job-report"),
+        related=("job.run", "job.show"),
     ),
     CommandEntry(
         command_id="job.budget",
@@ -2045,7 +2045,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Attest a manual operator repair as a valid evidence path for one task.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-report", "job.run"),
+        related=("job.show", "job.run"),
         args=(
             ArgDef("job_id", "Job ID owning the task"),
             ArgDef("task_id", "Task ID (e.g. T001) being attested"),
@@ -2104,7 +2104,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Run pending job tasks sequentially through Builder/Reviewer/Repair.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-report",),
+        related=("job.show",),
         args=(
             ArgDef("job_id", "Job ID"),
             ArgDef("--builder", "Builder provider: fake, claude, claude-cli (default: fake, persisted on continuation)", required=False, is_option=True, default=None),
@@ -2350,7 +2350,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Resume an interrupted job (16-char JobPlan ID) in its job-owned worktree.",
         action_class="write_metadata",
         supports_json=True,
-        related=("job.run", "do.job-report"),
+        related=("job.run", "job.show"),
         args=(
             ArgDef("job_id", "JobPlan ID (16-character hex)"),
             ArgDef("--builder", "Builder provider name", required=False, is_option=True),
@@ -2369,21 +2369,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=True,
     ),
-    CommandEntry(
-        command_id="do.job-report",
-        group_id="do",
-        subcommand="job-report",
-        description="Show a job report with task statuses and run IDs.",
-        action_class="read_only",
-        supports_json=True,
-        related=("job.run",),
-        args=(
-            ArgDef("job_id", "Job ID"),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-    ),
 
     CommandEntry(
         command_id="job.evidence",
@@ -2392,7 +2377,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Export a self-contained evidence bundle for an entire job.",
         action_class="test_execution",
         supports_json=True,
-        related=("job.run", "do.job-report"),
+        related=("job.run", "job.show"),
         args=(
             ArgDef("job_id", "Job ID"),
             ArgDef("--out", "Output directory for bundle files", required=False, is_option=True, default=""),

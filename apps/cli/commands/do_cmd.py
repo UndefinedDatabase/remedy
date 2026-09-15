@@ -1475,29 +1475,6 @@ def _cmd_job_apply(
         print(summarize_job_apply(result))
 
 
-def _cmd_do_job_report(
-    job_id: str,
-    *,
-    json_output: bool = False,
-) -> None:
-    """Show a job report."""
-    from packages.orchestration.pingpong_job import (
-        export_job_report,
-        format_job_report_text,
-        load_job_plan,
-    )
-
-    job = load_job_plan(job_id)
-    if job is None:
-        print(f"Error: job not found: {job_id}", file=sys.stderr)
-        sys.exit(1)
-
-    if json_output:
-        print(json.dumps(export_job_report(job), indent=2))
-    else:
-        print(format_job_report_text(job))
-
-
 def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) -> None:
     """Record this export in the existing job evidence index (best effort).
 
@@ -1741,10 +1718,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         repair_rounds=getattr(args, "repair_rounds", None),
         test_command=getattr(args, "test_command", None),
         invocation=_invocation_from_args(args),
-        json_output=getattr(args, "json", False),
-    ),
-    "do.job-report": lambda args: _cmd_do_job_report(
-        args.job_id,
         json_output=getattr(args, "json", False),
     ),
     "job.apply": lambda args: _cmd_job_apply(

@@ -301,6 +301,7 @@ class TestDeletedCommands:
     DELETED = (
         "do.job-flow",
         "do.job-plan",
+        "do.job-report",
         "do.plan",
         "do.promote",
         "job.assumptions",
