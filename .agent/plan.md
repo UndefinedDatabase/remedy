@@ -1,33 +1,39 @@
-# Plan — F275 One world completion, part three
+# Plan — F261 CLI vocabulary v2 (rename & prune)
 
-Branch: feature/f275-one-world-completion-part-three, cut from `main` at
-`a5bf894946ab6de053a4232109d6341a63533768`, the merge commit of pull request 246. F275 closed
-at `76283e69`, and pull request 250 carries the branch into `main`.
+Branch: feature/f261-cli-vocabulary-v2, cut from `main` at
+`7cdde89b5d0dc8ef1fb96980105870e956699873`, the merge commit of pull request 250.
 
 ## Goal
 
-Turn pull request 250's hosted CI green so that the Open PR Gate can merge it. Its only hosted
-run, `34901124355` on `76283e69`, failed two tests of the event-name coupling ratchet: the
-workflow checks out a single commit, and the ratchet reads the modules this branch deleted out
-of git history. That defect is finding R-0889.
+The catalog `apps/cli/command_catalog.py` equals DECISION amend0905-vocab D4: one name per
+command, and every retired word deleted rather than aliased, per
+`docs/roadmap/features/T2_F261.md`.
 
 ## Current Step
 
-REPAIR ROUND 110 on the open pull request, by operator amendment amend0820-gate-autonomy. Its
-bookkeeping commit books round 109's PASS and registers R-0889. Its fix commit makes the hosted
-workflow's checkout fetch the full history and adds a guard that pins it. The worker then runs
-the full suite once, commits the transcript, and hands back.
+ROUND 1 claims F261, cuts the branch, re-points this file and `.agent/context.md`, re-heads
+`.agent/live_review.md`, books F275's round 110 verdict and the resolution of R-0889, registers
+F275's closure candidate as R-0890, empties `.agent/candidates.md`, and records DECISION F261 D1,
+which re-scopes T001 against the catalog measured at `7cdde89b`. Its code commit lands T001's
+first rename, `do job-evidence` to `job evidence`, with a guard that the old id stays deleted.
 
 ## Next Steps
 
-1. The reviewer gives round 110 its verdict and watches the hosted CI run on the pushed tip.
-2. With that run green, the Open PR Gate merges pull request 250.
-3. The first reviewed round after the merge books round 110's verdict and the resolution of
-   R-0889, and registers or resolves the closure candidate in `.agent/candidates.md`.
+1. T001's renames `do job-promote` to `job apply` and `do job-run` to `job run`, one per
+   commit, each adding its pair to the rename guard.
+2. The deletion of `do job-flow` with its deletion paragraph, in two commits: the command and
+   its tests, then the helpers only it used and the script that runs it.
+3. The deletions of `do job-plan` and `do plan`, each with its deletion paragraph.
+4. T002: `apply` replaces `promote`, and `job show --full` absorbs the read commands and
+   `do job-report`.
+5. T003, the prune to D4; then T004, descriptions, role labels, help wrapping and the tests.
 
 ## Risks
 
-- The hosted job now fetches the whole history: `git count-objects -vH` in the primary
-  checkout at `76283e69` reads 74.10 MiB of packs, against a job cap of 90 minutes.
-- The closure candidate stays in `.agent/candidates.md` through this round, because the
-  Open PR Gate precedes the candidates rule in Phase 1 of the self-drive protocol.
+- 90 findings are open by distinct id; four are High, R-0803, R-0804, R-0806 and R-0807, all
+  owned by F273. R-0805, R-0806 and R-0809 are named in this feature's Acceptance.
+- The canary `tests/cli/test_golden_path.py` names none of T001's commands, so it cannot catch
+  a T001 rename; `TestRenamedCommands` in `tests/test_command_catalog.py` and
+  `tests/cli/test_advertised_commands.py` are the guards that can.
+- A deleted `do` word falls through to `do run` and is read as a goal; DECISION F261 D1
+  records why no refusal is added.
