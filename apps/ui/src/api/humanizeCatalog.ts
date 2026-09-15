@@ -8,6 +8,7 @@
 export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "agent_loop_inspected": "The agent loop's current state was inspected.",
   "api_retry": "A provider API call failed and was retried.",
+  "apply_dry_run_completed": "The apply dry run finished.",
   "brain_node_inspected": "A node in the project brain was inspected.",
   "brain_viewer_prepared": "The brain viewer's data was prepared for display.",
   "budget.tick": "The job's budget spend was measured at a safe point.",
@@ -43,7 +44,6 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "project_brain_inspected": "The project brain was inspected.",
   "project_constitution_loaded": "The project constitution was loaded.",
   "project_memory_recalled": "Project memory was recalled for this run.",
-  "promotion_dry_run_completed": "The promotion dry run finished.",
   "provider_error": "The provider reported an error.",
   "provider_result": "The provider returned its final result.",
   "readiness_assessed": "The project's readiness was assessed.",

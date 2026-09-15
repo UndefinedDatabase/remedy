@@ -218,7 +218,7 @@ class TestEvidenceBundleBuilder:
         bundle = build_evidence_bundle(data)
         assert bundle["manifest"]["run_id"] == "test_run_001"
         assert bundle["manifest"]["final_status"] == "staged_review_passed"
-        assert bundle["manifest"]["promotion_readiness"]["ready"] is True
+        assert bundle["manifest"]["apply_readiness"]["ready"] is True
 
     def test_passed_after_repair_run(self):
         """Bundle for a passed-after-repair run."""
@@ -230,14 +230,14 @@ class TestEvidenceBundleBuilder:
         bundle = build_evidence_bundle(data)
         assert bundle["manifest"]["final_status"] == "staged_review_passed"
         assert bundle["repair_loop"]["repair_rounds_used"] == 1
-        assert bundle["manifest"]["promotion_readiness"]["ready"] is True
+        assert bundle["manifest"]["apply_readiness"]["ready"] is True
 
     def test_repair_exhausted_run(self):
         """Bundle for a repair-exhausted run."""
         data = _make_run_data(final_status="repair_exhausted", repair_used=2)
         bundle = build_evidence_bundle(data)
         assert bundle["manifest"]["final_status"] == "repair_exhausted"
-        assert bundle["manifest"]["promotion_readiness"]["ready"] is False
+        assert bundle["manifest"]["apply_readiness"]["ready"] is False
 
     def test_manifest_has_final_status(self):
         """manifest.json includes final_status."""
@@ -368,7 +368,7 @@ class TestEvidenceCli:
         assert "error" not in result
         manifest = json.loads((out_dir / "manifest.json").read_text())
         assert manifest["final_status"] == "repair_exhausted"
-        assert manifest["promotion_readiness"]["ready"] is False
+        assert manifest["apply_readiness"]["ready"] is False
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 """Evidence bundle builder — exports a self-contained, safe proof bundle for a Remedy run.
 
-Read-only: never calls providers, never mutates target repo, never auto-promotes.
+Read-only: never calls providers, never mutates target repo, never applies changes by itself.
 Redaction: no raw task body by default, no env/API keys, no absolute staging paths,
 no hidden provider prompts, no .env files, no raw repo file contents beyond safe diff.
 """
@@ -181,15 +181,15 @@ def _build_manifest(
             "token_accounting.json": "present",
             "provider_evidence.json": "present",
         },
-        "promotion_readiness": _assess_promotion_readiness(run_data),
+        "apply_readiness": _assess_apply_readiness(run_data),
     }
     return manifest
 
 
-def _assess_promotion_readiness(
+def _assess_apply_readiness(
     run_data: dict[str, Any],
 ) -> dict[str, Any]:
-    """Assess whether this run is promotion-ready."""
+    """Assess whether this run is ready to apply."""
     final_status = run_data.get("final_status", "")
     is_passed = final_status == "staged_review_passed"
 
@@ -204,9 +204,9 @@ def _assess_promotion_readiness(
         "last_test_passed": last_test_passed,
         "ready": is_passed and last_test_passed is not False,
         "proof_summary": (
-            "promotion-ready: review passed, tests passed"
+            "ready to apply: review passed, tests passed"
             if is_passed and last_test_passed is not False
-            else f"not promotion-ready: final_status={final_status}"
+            else f"not ready to apply: final_status={final_status}"
         ),
     }
 
@@ -283,8 +283,8 @@ def _build_summary_md(
         lines.append("")
 
     # Readiness
-    readiness = _assess_promotion_readiness(run_data)
-    lines.append("## Promotion Readiness")
+    readiness = _assess_apply_readiness(run_data)
+    lines.append("## Apply Readiness")
     lines.append(f"- {readiness['proof_summary']}")
     lines.append("")
 

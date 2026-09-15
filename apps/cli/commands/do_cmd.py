@@ -1036,9 +1036,9 @@ def _cmd_do_evidence(
         for filename, path in result.get("files", {}).items():
             print(f"  {filename}")
         status = result.get("manifest", {}).get("final_status", "")
-        readiness = result.get("manifest", {}).get("promotion_readiness", {})
+        readiness = result.get("manifest", {}).get("apply_readiness", {})
         print(f"\nRun status: {status}")
-        print(f"Promotion ready: {readiness.get('ready', False)}")
+        print(f"Ready to apply: {readiness.get('ready', False)}")
 
 
 def _print_text_report(run_id: str, data: dict) -> None:

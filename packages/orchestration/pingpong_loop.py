@@ -403,7 +403,7 @@ class FinalAdjudication:
     reason: str = ""
     tests_passed: bool | None = None
     open_findings: list[str] = field(default_factory=list)
-    promotion_allowed: bool = False
+    apply_allowed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -412,7 +412,7 @@ class FinalAdjudication:
             "reason": self.reason,
             "tests_passed": self.tests_passed,
             "open_findings": self.open_findings,
-            "promotion_allowed": self.promotion_allowed,
+            "apply_allowed": self.apply_allowed,
         }
 
 
@@ -435,7 +435,7 @@ def run_final_adjudication(
         adj.status = "blocked"
         adj.severity = "blocker"
         adj.reason = "target_mutation_detected"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
         return adj
 
     # review_inconsistent must never adjudicate as ready
@@ -443,21 +443,21 @@ def run_final_adjudication(
         adj.status = "needs_human_review"
         adj.severity = "high"
         adj.reason = "review_inconsistent"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
         return adj
 
     if tests_passed is False:
         adj.status = "not_ready"
         adj.severity = "high"
         adj.reason = "tests_failed"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
         return adj
 
     if not open_findings:
         adj.status = "ready"
         adj.severity = "none"
         adj.reason = "no_open_findings"
-        adj.promotion_allowed = True
+        adj.apply_allowed = True
         return adj
 
     # Has open findings — classify by severity
@@ -466,17 +466,17 @@ def run_final_adjudication(
         adj.status = "blocked"
         adj.severity = "blocker"
         adj.reason = "blocker_findings_remain"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
     elif "high" in severities or "critical" in severities:
         adj.status = "not_ready"
         adj.severity = "high"
         adj.reason = "repair_exhausted_with_open_findings"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
     else:
         adj.status = "needs_human_review"
         adj.severity = "medium"
         adj.reason = "repair_exhausted_with_minor_findings"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
 
     return adj
 
@@ -5145,13 +5145,13 @@ def summarize_pingpong(result: PingPongResult) -> str:
         if result.final_adjudication:
             adj = result.final_adjudication
             lines.append(f"Final adjudication: {adj['status']} — {adj['reason']}")
-            lines.append(f"Promotion: {'allowed' if adj['promotion_allowed'] else 'blocked'}")
+            lines.append(f"Apply: {'allowed' if adj['apply_allowed'] else 'blocked'}")
     elif repair_status == "stopped_on_test_failure":
         lines.append("Repair loop: stopped — tests failed, repair disabled")
         if result.final_adjudication:
             adj = result.final_adjudication
             lines.append(f"Final adjudication: {adj['status']} — {adj['reason']}")
-            lines.append(f"Promotion: {'allowed' if adj['promotion_allowed'] else 'blocked'}")
+            lines.append(f"Apply: {'allowed' if adj['apply_allowed'] else 'blocked'}")
     elif repair_status == "blocked_inconsistent_review":
         lines.append("Repair loop: blocked by inconsistent review")
     elif repair_status == "disabled":
