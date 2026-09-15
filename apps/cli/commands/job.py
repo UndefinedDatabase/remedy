@@ -484,6 +484,122 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
     return status, lines
 
 
+def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job report` command, all three of its modes: the progress view and the F053 run report.
+
+    The data is the former `--json` progress payload, then `run_report`: the run report's mode,
+    its structured sources and its markdown. The mode is `final` when the job reached a reported
+    terminal and `interim` otherwise, so a run still in progress is never shown an unbannered
+    account (R-0161): the interim markdown opens with its snapshot banner. Strictly READ-ONLY —
+    rendering a snapshot writes no report file and never mutates the job it describes.
+    """
+    import json
+    from dataclasses import asdict
+
+    from packages.orchestration.long_run_executor import REPORTED_TERMINALS
+    from packages.orchestration.run_report import (
+        MODE_FINAL,
+        MODE_INTERIM,
+        build_report_sources,
+        render_report,
+    )
+
+    truth = _extract_job_truth(job)
+    open_decision_view = _open_decisions_view(job)
+
+    state = job.state.value if hasattr(job.state, "value") else str(job.state)
+    task_count = len(job.tasks)
+    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
+
+    task_details = []
+    for t in job.tasks:
+        t_state = t.status.value if hasattr(t.status, "value") else str(t.status)
+        task_details.append({
+            "task_id": str(t.task_id),
+            "status": t_state,
+            "description": t.title[:120] if t.title else "",
+            "type": t.inputs.get("task_type", "unknown") if t.inputs else "unknown",
+        })
+
+    # Include fulfillment data if available
+    fulfillment_data: dict = {}
+    try:
+        from packages.orchestration.job_fulfillment import (
+            export_job_fulfillment_json,
+            list_fulfillment_records,
+        )
+        records = list_fulfillment_records(str(job.job_id), resolve_data_root())
+        if records:
+            fulfillment_data = export_job_fulfillment_json(records[-1])
+    except Exception:  # noqa: BLE001 — a read view never fails on the fulfillment record
+        pass
+
+    report = {
+        "job_id": str(job.job_id),
+        "name": job.job_title,
+        "state": state,
+        "task_count": task_count,
+        "done_count": done_count,
+        "pending_count": pending_count,
+        "event_count": truth["event_count"],
+        "artifact_count": truth["artifact_count"],
+        "patch_intent_ids": truth["patch_intent_ids"],
+        "approval_required": truth["approval_required"],
+        "latest_stop_reason": truth["latest_stop_reason"],
+        "code_applied": truth["code_applied"],
+        "fulfillment_status": truth.get("fulfillment_status", ""),
+        "staging_used": truth.get("staging_used", False),
+        "staging_promoted": truth.get("staging_promoted", False),
+        "fulfillment_blockers": truth.get("fulfillment_blockers", []),
+        # F051: a blocked run's next action is the command that answers its
+        # most urgent open decision — that is what unblocks it.
+        "next_safe_action": (open_decision_view["next_action"]
+                             or truth.get("fulfillment_next_action", "")),
+        "open_decisions": open_decision_view["open_decisions"],
+        "open_decision_count": len(open_decision_view["open_decisions"]),
+        "tasks": task_details,
+    }
+    if fulfillment_data:
+        report["fulfillment"] = fulfillment_data
+
+    lines = [
+        *open_decision_view["lines"],
+        f"Job Report: {job.job_id}",
+        f"  Name:      {job.job_title}",
+        f"  State:     {state}",
+        f"  Tasks:     {done_count}/{task_count} done, {pending_count} pending",
+        f"  Events:    {truth['event_count']}",
+        f"  Artifacts: {truth['artifact_count']}",
+    ]
+    if truth["approval_required"]:
+        lines.append("  Approval:  REQUIRED")
+    if truth["latest_stop_reason"]:
+        lines.append(f"  Stop:      {truth['latest_stop_reason']}")
+    lines.append(f"  Applied:   {'Yes' if truth['code_applied'] else 'No'}")
+    if task_details:
+        lines.append("  Task details:")
+        lines.extend(f"    [{td['status']:<10}] {td['type']}: {td['description']}" for td in task_details)
+    # The last line of the progress view is what to do next. For a blocked run
+    # with open decisions that is the answer command, spelled out (F051).
+    if report["next_safe_action"]:
+        lines.append(f"  Next:      {report['next_safe_action']}")
+
+    # The F053 run report, built from ONE read of its sources.
+    terminal = str((job.metadata or {}).get("cycle_terminal_status", "") or "")
+    mode = MODE_FINAL if terminal in REPORTED_TERMINALS else MODE_INTERIM
+    sources = build_report_sources(job)
+    markdown = render_report(job, mode, sources=sources)
+    report["run_report"] = {
+        "mode": mode,
+        "sources": json.loads(json.dumps(asdict(sources), sort_keys=True, default=str)),
+        "markdown": markdown,
+    }
+    lines.append("")
+    lines.extend(markdown.splitlines())
+    return report, lines
+
+
 def _dod_section(job: JobPlan) -> tuple[dict, list[str]]:
     """The former `job dod` command: the Definition-of-Done matrix, live (F061 T004).
 
@@ -542,6 +658,7 @@ _SHOW_SECTIONS: tuple[tuple[str, Callable[[JobPlan], tuple[dict, list[str]]]], .
     ("digest", _digest_section),
     ("summary", _summary_section),
     ("status", _status_section),
+    ("report", _report_section),
     ("dod", _dod_section),
 )
 
@@ -1847,174 +1964,6 @@ def _open_decisions_view(job: JobPlan) -> dict:
         return {'lines': [], 'open_decisions': [], 'next_action': ''}
 
 
-def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
-                        json_output: bool = False) -> None:
-    """The F053 run report: one human-readable account of a run.
-
-    `--final` renders the account of a terminal job; `--interim` renders the
-    same structure for a run still in progress, headed by a loud snapshot
-    label.  Both are strictly READ-ONLY — the interim path in particular never
-    writes and never mutates job state, because rendering a progress snapshot
-    must not perturb the run it is describing.
-
-    `--final` REFUSES a job that has not reached a reported terminal (R-0161).
-    Rendering one anyway would produce an unbannered report of a run that is
-    still moving — exactly the mislabeled snapshot the interim banner exists to
-    prevent, one typo away. The refusal names the state and points at
-    `--interim`; it never renders anyway and never silently switches mode,
-    because a command that quietly does something else than asked is how a
-    snapshot gets mistaken for a final account.
-    """
-    import json as _json
-    from dataclasses import asdict
-
-    from packages.orchestration.long_run_executor import REPORTED_TERMINALS
-    from packages.orchestration.run_report import (
-        MODE_FINAL,
-        MODE_INTERIM,
-        build_report_sources,
-        render_report,
-    )
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError:
-        # A clean error, never a traceback: an unknown id is a normal thing for
-        # a human to type.
-        if json_output:
-            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
-        else:
-            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
-        sys.exit(1)
-
-    terminal = str((job.metadata or {}).get('cycle_terminal_status', '') or '')
-    if not interim and terminal not in REPORTED_TERMINALS:
-        state = job.state.value if hasattr(job.state, 'value') else str(job.state)
-        if json_output:
-            print(_json.dumps({
-                'error': 'run_not_terminal',
-                'job_id': str(job.job_id),
-                'state': state,
-                'terminal_status': terminal,
-                'hint': 'use --interim for a snapshot',
-            }))
-        else:
-            print(f'Error: run still in progress (state: {state}) — '
-                  'use --interim for a snapshot', file=sys.stderr)
-        sys.exit(1)
-
-    sources = build_report_sources(job)
-    if json_output:
-        print(_json.dumps(asdict(sources), indent=2, sort_keys=True, default=str))
-        return
-    print(render_report(job, MODE_INTERIM if interim else MODE_FINAL,
-                        sources=sources))
-
-
-def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
-    """Job report -- safe read-only report of job progress and evidence."""
-    import json as _json
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError:
-        if json_output:
-            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
-        else:
-            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
-        sys.exit(1)
-
-    truth = _extract_job_truth(job)
-    open_decision_view = _open_decisions_view(job)
-
-    state = job.state.value if hasattr(job.state, 'value') else str(job.state)
-    task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'completed')
-    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'pending')
-
-    task_details = []
-    for t in job.tasks:
-        t_state = t.status.value if hasattr(t.status, 'value') else str(t.status)
-        task_details.append({
-            'task_id': str(t.task_id),
-            'status': t_state,
-            'description': t.title[:120] if t.title else '',
-            'type': t.inputs.get('task_type', 'unknown') if t.inputs else 'unknown',
-        })
-
-    # Include fulfillment data if available
-    fulfillment_data: dict = {}
-    try:
-        from packages.orchestration.job_fulfillment import (
-            export_job_fulfillment_json,
-            list_fulfillment_records,
-        )
-        data_dir = resolve_data_root()
-        records = list_fulfillment_records(str(job.job_id), data_dir)
-        if records:
-            fulfillment_data = export_job_fulfillment_json(records[-1])
-    except Exception:
-        pass
-
-    report = {
-        'job_id': str(job.job_id),
-        'name': job.job_title,
-        'state': state,
-        'task_count': task_count,
-        'done_count': done_count,
-        'pending_count': pending_count,
-        'event_count': truth['event_count'],
-        'artifact_count': truth['artifact_count'],
-        'patch_intent_ids': truth['patch_intent_ids'],
-        'approval_required': truth['approval_required'],
-        'latest_stop_reason': truth['latest_stop_reason'],
-        'code_applied': truth['code_applied'],
-        'fulfillment_status': truth.get('fulfillment_status', ''),
-        'staging_used': truth.get('staging_used', False),
-        'staging_promoted': truth.get('staging_promoted', False),
-        'fulfillment_blockers': truth.get('fulfillment_blockers', []),
-        # F051: a blocked run's next action is the command that answers its
-        # most urgent open decision — that is what unblocks it.
-        'next_safe_action': (open_decision_view['next_action']
-                             or truth.get('fulfillment_next_action', '')),
-        'open_decisions': open_decision_view['open_decisions'],
-        'open_decision_count': len(open_decision_view['open_decisions']),
-        'tasks': task_details,
-    }
-    if fulfillment_data:
-        report['fulfillment'] = fulfillment_data
-
-    if json_output:
-        print(_json.dumps(report, indent=2))
-    else:
-        for line in open_decision_view['lines']:
-            print(line)
-        print(f'Job Report: {job.job_id}')
-        print(f'  Name:      {job.job_title}')
-        print(f'  State:     {state}')
-        print(f'  Tasks:     {done_count}/{task_count} done, {pending_count} pending')
-        print(f'  Events:    {truth["event_count"]}')
-        print(f'  Artifacts: {truth["artifact_count"]}')
-        if truth['approval_required']:
-            print('  Approval:  REQUIRED')
-        if truth['latest_stop_reason']:
-            print(f'  Stop:      {truth["latest_stop_reason"]}')
-        print(f'  Applied:   {"Yes" if truth["code_applied"] else "No"}')
-        if task_details:
-            print('  Task details:')
-            for td in task_details:
-                s = td['status']
-                ty = td['type']
-                desc = td['description']
-                print(f'    [{s:<10}] {ty}: {desc}')
-        # The last line a human reads is what to do next.  For a blocked run
-        # with open decisions that is the answer command, spelled out (F051).
-        if report['next_safe_action']:
-            print(f'  Next:      {report["next_safe_action"]}')
-
-
 def _cmd_job_fulfill(
     job_id_str: str,
     *,
@@ -2385,22 +2334,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
             dry_run=getattr(args, "dry_run", False),
             unattended=getattr(args, "unattended", False),
             yes=getattr(args, "yes", False),
-            json_output=getattr(args, "json", False),
-        )
-    ),
-    # `remedy job report` has three modes and ONE name (the F047 `job resume`
-    # pattern, see .agent/decisions.md): --final/--interim render the F053 run
-    # report; without either flag the existing progress view runs UNCHANGED, so
-    # no existing invocation changes behavior.
-    "job.report": lambda args: (
-        _cmd_job_run_report(
-            args.job_id,
-            interim=getattr(args, "interim", False),
-            json_output=getattr(args, "json", False),
-        )
-        if (getattr(args, "final", False) or getattr(args, "interim", False))
-        else _cmd_job_report(
-            args.job_id,
             json_output=getattr(args, "json", False),
         )
     ),

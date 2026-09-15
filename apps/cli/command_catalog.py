@@ -270,7 +270,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
                    "and the job's sections (its permissions, fences, assumptions, "
-                   "completion digest, summary, status and Definition of Done)",
+                   "completion digest, summary, status, report and Definition of Done)",
                    required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
@@ -394,29 +394,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.create", "job.resume"),
     ),
 
-    # ONE command, three modes on the same name (the F047 `job resume`
-    # pattern): bare and --json keep the existing progress view exactly as it
-    # was; --final renders the F053 run report of a terminal job; --interim
-    # renders the labeled snapshot of a run still in progress.
-    CommandEntry(
-        command_id="job.report",
-        group_id="job",
-        subcommand="report",
-        description=("Read-only report of job progress, tasks, and evidence "
-                     "(--final / --interim render the F053 run report)."),
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--final", "Render the F053 final run report (markdown)",
-                   required=False, is_option=True, is_flag=True),
-            ArgDef("--interim", "Render a labeled snapshot of a running job",
-                   required=False, is_option=True, is_flag=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("job.show",),
-    ),
-
     CommandEntry(
         command_id="job.context",
         group_id="job",
@@ -441,7 +418,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("job.show", "job.report"),
+        related=("job.show",),
     ),
 
     # ── queue (F048) ─────────────────────────────────────────────────────

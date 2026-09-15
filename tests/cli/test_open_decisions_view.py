@@ -1,8 +1,8 @@
 """F051 T003 — open decisions render FIRST, with the command that answers them.
 
 Covers the pure view helpers in ``decision_queue`` and the two CLI views that
-use them (the ``status`` section of ``remedy job show <id> --full`` and
-``remedy job report``), in text and JSON.
+use them (the ``status`` and ``report`` sections of
+``remedy job show <id> --full``), in text and JSON.
 The point being pinned: a returning human sees what the run needs before
 anything else, and the exact command is in the output — never paraphrased.
 """
@@ -14,7 +14,6 @@ from pathlib import Path
 
 import pytest
 
-from apps.cli.commands.job import _cmd_job_report
 from apps.cli.grouped import main
 from packages.core.models import RunState
 from packages.orchestration.decision_queue import (
@@ -84,6 +83,20 @@ def show_status(capsys, job_id: str) -> tuple[dict, str]:
     shown = capsys.readouterr()
     text = shown.err.split("--- Status ---\n", 1)[1].split("\n--- ", 1)[0]
     return json.loads(shown.out)["sections"]["status"], text
+
+
+def show_report(capsys, job_id: str) -> tuple[dict, list[str]]:
+    """`job show <id> --full`: the report section's envelope, and the lines of its progress view.
+
+    The section's text is the progress view, a blank line, then the run report's markdown.
+    """
+    main(["job", "show", job_id, "--full"])
+    shown = capsys.readouterr()
+    section = json.loads(shown.out)["sections"]["report"]
+    text = shown.err.split("--- Report ---\n", 1)[1].split("\n--- ", 1)[0]
+    markdown = section["data"]["run_report"]["markdown"]
+    assert text.endswith("\n\n" + markdown)
+    return section, text[:-len("\n" + markdown)].splitlines()
 
 
 def decision(id_: str, *, status: str = "open", severity: str = "blocker",
@@ -255,7 +268,7 @@ class TestJobStatusView:
 
 
 # ---------------------------------------------------------------------------
-# remedy job report
+# The `report` section of `remedy job show <id> --full` (formerly its own command)
 # ---------------------------------------------------------------------------
 
 
@@ -263,8 +276,7 @@ class TestJobReportView:
     def test_the_open_decision_block_is_printed_first(self, capsys):
         job, _ = saved_job_with_open_decision()
 
-        _cmd_job_report(str(job.job_id))
-        out = capsys.readouterr().out.splitlines()
+        _section, out = show_report(capsys, str(job.job_id))
 
         assert out[0] == "Open decisions: 1 — the run needs an answer"
         assert out.index(f"Job Report: {job.job_id}") > 0
@@ -274,16 +286,17 @@ class TestJobReportView:
         expected = task_decision_answer_command(
             str(job.job_id), record["decision_id"], "postgres")
 
-        _cmd_job_report(str(job.job_id))
-        out = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
+        _section, progress = show_report(capsys, str(job.job_id))
+        out = [line for line in progress if line.strip()]
 
         assert out[-1].strip() == f"Next:      {expected}"
 
     def test_the_json_report_carries_the_open_decisions(self, capsys):
         job, record = saved_job_with_open_decision()
 
-        _cmd_job_report(str(job.job_id), json_output=True)
-        report = json.loads(capsys.readouterr().out)
+        section, _progress = show_report(capsys, str(job.job_id))
+        assert section["ok"] is True
+        report = section["data"]
 
         assert report["open_decision_count"] == 1
         assert report["open_decisions"][0]["id"] == record["decision_id"]
@@ -300,8 +313,9 @@ class TestJobReportView:
             options=("postgres",), now=T0)
         save_job_plan(job)
 
-        _cmd_job_report(str(job.job_id), json_output=True)
-        report = json.loads(capsys.readouterr().out)
+        section, _progress = show_report(capsys, str(job.job_id))
+        assert section["ok"] is True
+        report = section["data"]
 
         listed = [d["id"] for d in report["open_decisions"]]
         assert listed == [first["decision_id"], second["decision_id"]]
@@ -313,8 +327,7 @@ class TestJobReportView:
         job = make_job(state=RunState.PLANNED)
         save_job_plan(job)
 
-        _cmd_job_report(str(job.job_id))
-        out = capsys.readouterr().out.splitlines()
+        _section, out = show_report(capsys, str(job.job_id))
 
         assert out[0] == f"Job Report: {job.job_id}"
 

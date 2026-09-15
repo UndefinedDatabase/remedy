@@ -486,7 +486,7 @@ class TestNoProviderExecution:
 
 
 # ---------------------------------------------------------------------------
-# Integration test: job report after fulfilled (Step 3320, 3375, 3392)
+# Integration test: the report section of job show --full after fulfilled (Step 3320, 3375, 3392)
 # ---------------------------------------------------------------------------
 
 
@@ -505,16 +505,21 @@ class TestJobReportAfterFulfilled:
         save_job_plan(job, root=tmp_path)
         run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
-        from apps.cli.commands.job import _cmd_job_report
+        from apps.cli.grouped import main
 
         buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            _cmd_job_report(str(job.job_id), json_output=True)
-        data = json.loads(buf.getvalue())
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
+            main(["job", "show", str(job.job_id), "--full", "--json"])
+        section = json.loads(buf.getvalue())["sections"]["report"]
+        assert section["ok"] is True
+        data = section["data"]
         assert data["state"] == "completed"
         assert data["code_applied"] is True
         assert data["approval_required"] is False
         assert data["fulfillment_status"] == "completed_verified"
+        # The latest fulfillment record rides after the progress keys, before the run report.
+        assert list(data)[-2:] == ["fulfillment", "run_report"]
+        assert data["fulfillment"]["status"] == "completed_verified"
 
 
 # ---------------------------------------------------------------------------
@@ -1570,10 +1575,6 @@ class TestDemoDocsCommands:
         """job fulfill --fixture-demo must be a valid CLI subcommand."""
         from apps.cli.commands.job import COMMAND_HANDLERS
         assert "job.fulfill" in COMMAND_HANDLERS, "job.fulfill not in CLI COMMAND_HANDLERS"
-
-    def test_report_command_exists(self):
-        from apps.cli.commands.job import COMMAND_HANDLERS
-        assert "job.report" in COMMAND_HANDLERS
 
     def test_demo_docs_command_shapes(self):
         """All remedy commands in demo docs must be valid shapes."""

@@ -308,6 +308,7 @@ class TestDeletedCommands:
         "job.dod",
         "job.fences",
         "job.permissions",
+        "job.report",
         "job.status",
         "job.summary",
     )
