@@ -11,27 +11,28 @@ command, and every retired word deleted rather than aliased, per
 
 ## Current Step
 
-ROUND 7 continues T002. It books round 6's PASS and records DECISION F261 D6, then renames the
-output-visible words of `job apply` in three commits, its status values and reason codes, the
-job apply record's key, directory and temporary prefix, and its printed text, prose and
-`--skip-blocked` help, and adds guards for the record and that help in a fourth commit; each
-applies a table the round saves under `.agent/authored/`.
+ROUND 8 continues T002. It books round 7's PASS, registers R-0898, R-0899 and R-0900 and
+records DECISION F261 D7. Then, in three commits, `job show` takes the `--json` its hints name
+and a guard checks every advertised flag (R-0896), prints the last-round findings of blocked
+tasks with a `--full` overflow (R-0806), and gains the `--full` sections with `job permissions`
+folded in as the first; a last record commit marks R-0896 and R-0806 landed.
 
 ## Next Steps
 
-1. `job show --full` composing the read commands as sections, with the blocked-task findings
-   R-0806 asks for and the fix R-0896 needs.
-2. One commit per folded read command and `do job-report`, each adding its id to the guard.
+1. The folds of `job assumptions`, `job fences` and `job dod` into sections of `job show --full`,
+   one command per commit, each adding its id to the deleted-command guard.
+2. The folds of `job summary`, `job digest`, `job status` and `job report`, then `do job-report`,
+   the same way.
 3. The run-level promote words DECISION F261 D6 leaves, ruled by sense, with the kept-by-sense
    list DECISION amend0905-vocab D5 names written into the record and a test for the
    Acceptance grep of the retired word.
-4. T003, the prune to D4, and T004.
+4. T003, the prune to D4, with R-0900; then T004.
 
 ## Risks
 
-- 96 findings are open by distinct id before and after this round's record; four are High,
-  R-0803, R-0804, R-0806 and R-0807.
+- 96 findings are open by distinct id before this round's record and 99 after it; four are
+  High, R-0803, R-0804, R-0806 and R-0807.
 - `job show` prints JSON that the canary, `tests/cli/test_plan_approval.py` and
-  `scripts/remedy_smoke.sh` parse, so its `--full` form only adds keys to that JSON.
-- Job apply records written before this round stay under `job_promotions/`, and nothing reads
-  them after it.
+  `scripts/remedy_smoke.sh` parse, so every change to it only adds keys.
+- `job fences` refuses a job whose repository was never attached with `job attach-repo`; its
+  section reports that as an error envelope rather than an exit.
