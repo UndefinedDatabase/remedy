@@ -49,6 +49,10 @@ class GroupDef:
     label: str
     description: str
     user_facing: bool = True
+    #: A hidden group appears in no help at all, neither `remedy --help` nor
+    #: `remedy --all-commands`, and stays callable: its own help and its commands
+    #: still work (DECISION amend0905-vocab D4).
+    hidden: bool = False
 
 
 @dataclass(frozen=True)

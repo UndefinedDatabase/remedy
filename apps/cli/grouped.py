@@ -338,6 +338,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     group_parsers = root.add_subparsers(dest="_group", parser_class=_SilentParser)
 
+    # Every group is parsed, a hidden one too: `hidden` is a property of the root help only.
     for group_id, group_def in GROUPS.items():
         group_parser = group_parsers.add_parser(
             group_id,
@@ -375,15 +376,18 @@ _QUICK_START = """\
 
 
 def _print_root_help(*, show_all: bool = False) -> None:
-    """Print Bootcamp-style root help and exit 0."""
+    """Print Bootcamp-style root help and exit 0.
+
+    A hidden group is listed in neither form (DECISION amend0905-vocab D4).
+    """
     if show_all:
-        groups = [(gid, gdef.description) for gid, gdef in GROUPS.items()]
+        groups = [(gid, gdef.description) for gid, gdef in GROUPS.items() if not gdef.hidden]
         title = "All Commands"
     else:
         groups = [
             (gid, gdef.description)
             for gid, gdef in GROUPS.items()
-            if gdef.user_facing
+            if gdef.user_facing and not gdef.hidden
         ]
         title = "Commands"
     print(render_root_help(

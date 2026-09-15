@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
-from apps.cli.command_catalog import GROUPS
+from apps.cli.command_catalog import GROUPS, GroupDef, get_commands_for_group
 from apps.cli.grouped import main as grouped_main
 
 # ---------------------------------------------------------------------------
@@ -96,6 +97,58 @@ class TestHiddenCallable:
     def test_hidden_group_callable(self):
         for group_id in _INTERNAL_GROUPS:
             assert group_id in GROUPS, f"{group_id} should still be in GROUPS"
+
+
+# ---------------------------------------------------------------------------
+# 4b. A hidden group is in no help at all and stays callable (amend0905-vocab D4)
+# ---------------------------------------------------------------------------
+
+def _listed_groups(out: str) -> list[str]:
+    """The first column of every box row of a root help page, the options excluded."""
+    names = [line[1:].split()[0] for line in out.splitlines()
+             if line.startswith("\u2502") and line[1:-1].strip()]
+    return [name for name in names if not name.startswith("-")]
+
+
+def _hide(monkeypatch, *group_ids: str) -> None:
+    for group_id in group_ids:
+        monkeypatch.setitem(GROUPS, group_id, replace(GROUPS[group_id], hidden=True))
+
+
+class TestHiddenGroup:
+    def test_a_group_is_not_hidden_unless_it_says_so(self):
+        assert GroupDef("x", "X", "An x.").hidden is False
+        assert GroupDef("x", "X", "An x.", False, True).hidden is True
+
+    def test_a_hidden_group_is_absent_from_the_default_help(self, capsys, monkeypatch):
+        _hide(monkeypatch, "runtime")
+        grouped_main(["--help"])
+        listed = _listed_groups(capsys.readouterr().out)
+        assert "runtime" not in listed
+        assert "stats" in listed
+
+    def test_a_hidden_group_is_absent_from_all_commands(self, capsys, monkeypatch):
+        _hide(monkeypatch, "runtime", "ci")
+        grouped_main(["--all-commands"])
+        listed = _listed_groups(capsys.readouterr().out)
+        assert "runtime" not in listed and "ci" not in listed
+        assert "stats" in listed and "dev" in listed
+
+    def test_a_hidden_groups_own_help_still_lists_its_commands(self, capsys, monkeypatch):
+        _hide(monkeypatch, "runtime")
+        grouped_main(["runtime", "--help"])
+        out = capsys.readouterr().out
+        assert "Usage: remedy runtime" in out
+        assert set(_listed_groups(out)) == {c.subcommand for c in get_commands_for_group("runtime")}
+
+    def test_a_hidden_groups_command_still_dispatches(self, monkeypatch):
+        import apps.cli.grouped as grouped
+
+        _hide(monkeypatch, "ci")
+        calls = []
+        monkeypatch.setattr(grouped, "_get_dispatch_table", lambda: {"ci.run": calls.append})
+        grouped_main(["ci", "run", "--json"])
+        assert [args._command_id for args in calls] == ["ci.run"]
 
 
 # ---------------------------------------------------------------------------
