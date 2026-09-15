@@ -1,0 +1,2 @@
+["edit", "packages/orchestration/pingpong_loop.py", "Do not promote, commit, or push.", "Do not apply changes to the target repository, commit, or push.", 1]
+["edit", "tests/orchestration/test_builder_prompt_golden.py", "Do not promote, commit, or push.", "Do not apply changes to the target repository, commit, or push.", 2]

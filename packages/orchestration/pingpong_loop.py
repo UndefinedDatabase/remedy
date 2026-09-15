@@ -1086,7 +1086,7 @@ def compose_builder_prompt(
             "## REPAIR TASK — Fix Reviewer Findings\n",
             "This is a repair round. Fix ONLY the reviewer findings below.\n"
             "Do not make unrelated changes. Work only in staging.\n"
-            "Do not touch the target repo. Do not promote, commit, or push.\n",
+            "Do not touch the target repo. Do not apply changes to the target repository, commit, or push.\n",
         ]
         for f in findings:
             repair_parts.append(f"- [{f.severity}] {f.id}: {f.summary}")
