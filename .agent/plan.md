@@ -11,21 +11,21 @@ command, and every retired word deleted rather than aliased, per
 
 ## Current Step
 
-ROUND 6 continues T002. It books round 5's PASS and records DECISION F261 D5, then renames
-`packages/orchestration/job_promote.py` to `job_apply.py` with its two test files in one commit
-and its Python identifiers to apply words in a second, each applying a table the round saves
-under `.agent/authored/`. No string value, JSON key or name on disk changes in this round.
+ROUND 7 continues T002. It books round 6's PASS and records DECISION F261 D6, then renames the
+output-visible words of `job apply` in three commits, its status values and reason codes, the
+job apply record's key, directory and temporary prefix, and its printed text, prose and
+`--skip-blocked` help, and adds guards for the record and that help in a fourth commit; each
+applies a table the round saves under `.agent/authored/`.
 
 ## Next Steps
 
-1. The output-visible promote words of `job_apply.py`: its status values, reason codes, the
-   record key `promotion_id`, the directory `job_promotions` and its human text, with the
-   kept-by-sense list DECISION amend0905-vocab D5 names written into the record.
-2. `job show --full` composing the read commands as sections, with the blocked-task findings
+1. `job show --full` composing the read commands as sections, with the blocked-task findings
    R-0806 asks for and the fix R-0896 needs.
-3. One commit per folded read command and `do job-report`, each adding its id to the guard.
-4. The remaining run-level promote words, and a test for the Acceptance grep of the retired
-   word; then T003, the prune to D4, and T004.
+2. One commit per folded read command and `do job-report`, each adding its id to the guard.
+3. The run-level promote words DECISION F261 D6 leaves, ruled by sense, with the kept-by-sense
+   list DECISION amend0905-vocab D5 names written into the record and a test for the
+   Acceptance grep of the retired word.
+4. T003, the prune to D4, and T004.
 
 ## Risks
 
@@ -33,5 +33,5 @@ under `.agent/authored/`. No string value, JSON key or name on disk changes in t
   R-0803, R-0804, R-0806 and R-0807.
 - `job show` prints JSON that the canary, `tests/cli/test_plan_approval.py` and
   `scripts/remedy_smoke.sh` parse, so its `--full` form only adds keys to that JSON.
-- Renaming the status `promoted` to `applied` meets the task and manifest status `applied`
-  that already exists; the words round rules on it before it renames.
+- Job apply records written before this round stay under `job_promotions/`, and nothing reads
+  them after it.
