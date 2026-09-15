@@ -40,6 +40,7 @@ from packages.orchestration.pingpong_job import (
 )
 from packages.orchestration.pingpong_loop import load_run
 from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.run_log import RunLogWriter
 
 
 @pytest.fixture
@@ -288,7 +289,7 @@ class TestSections:
         shown = _show(capsys, str(job.job_id), "--full")
 
         registered = [name for name, _builder in job_commands._SHOW_SECTIONS]
-        assert registered == ["permissions", "fences", "assumptions", "digest", "dod"]
+        assert registered == ["permissions", "fences", "assumptions", "digest", "summary", "dod"]
         assert list(json.loads(shown.out)["sections"]) == registered
         assert registered == [name for name in job_commands._SHOW_SECTION_ORDER if name in registered]
         assert job_commands._SHOW_SECTION_ORDER == (
@@ -334,3 +335,61 @@ class TestSections:
         }
         assert "--- Fences ---" in shown.err
         assert "  Error: no_such_view: the job has nothing to show" in shown.err
+
+
+def _summary_section(shown) -> tuple[dict, list[str]]:
+    """The summary section's envelope, and its text lines on stderr up to the next heading."""
+    text = shown.err.split("--- Summary ---\n", 1)[1].split("\n--- ", 1)[0]
+    return json.loads(shown.out)["sections"]["summary"], text.splitlines()
+
+
+class TestSummarySection:
+    """The former `job summary` command is the `summary` section of `job show --full`."""
+
+    KEYS = ["job_id", "name", "state", "task_count", "done_count", "pending_count",
+            "event_count", "demo_mode", "data_honest", "synthetic_fields"]
+
+    def _job(self) -> JobPlan:
+        job = JobPlan(job_title="summary job", state=RunState.PENDING, tasks=[
+            TaskEntry(task_id="T001", title="done", status=RunState.COMPLETED),
+            TaskEntry(task_id="T002", title="waiting", status=RunState.PENDING),
+        ])
+        save_job_plan(job)
+        return job
+
+    def test_a_job_without_run_events_is_demo_mode(self, data_root, capsys) -> None:
+        job = self._job()
+
+        section, lines = _summary_section(_show(capsys, str(job.job_id), "--full"))
+
+        assert section["ok"] is True
+        data = section["data"]
+        assert list(data) == self.KEYS
+        assert data["job_id"] == str(job.job_id)
+        assert (data["task_count"], data["done_count"], data["pending_count"]) == (2, 1, 1)
+        assert data["event_count"] == 0
+        assert data["demo_mode"] is True
+        assert data["data_honest"] is True
+        assert data["synthetic_fields"] == 1
+        assert "  Mode:    DEMO (no events yet)" in lines
+        assert "  Tasks:   1/2 done, 1 pending" in lines
+
+    def test_a_job_with_run_events_is_live(self, data_root, capsys) -> None:
+        job = self._job()
+        # The run log `job create` writes, under the data root `load_run_events` reads.
+        log = RunLogWriter(job_id=job.job_id, data_root=data_root)
+        log.log("job_created", outcome="created")
+        log.log("planning_completed", outcome="changed")
+
+        section, lines = _summary_section(_show(capsys, str(job.job_id), "--full"))
+
+        assert section["ok"] is True
+        data = section["data"]
+        assert list(data) == self.KEYS
+        assert (data["task_count"], data["done_count"], data["pending_count"]) == (2, 1, 1)
+        assert data["event_count"] == 2
+        assert data["demo_mode"] is False
+        assert data["data_honest"] is True
+        assert data["synthetic_fields"] == 0
+        assert "  Mode:    LIVE" in lines
+        assert "  Events:  2" in lines

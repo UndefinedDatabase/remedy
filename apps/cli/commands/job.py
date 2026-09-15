@@ -365,6 +365,43 @@ def _digest_section(job: JobPlan) -> tuple[dict, list[str]]:
     return digest, lines
 
 
+def _summary_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job summary` command: an honest summary of job state — truth contract."""
+    from packages.orchestration.timeline import load_run_events
+
+    events = load_run_events(resolve_data_root(), job.job_id)
+
+    state = job.state.value if hasattr(job.state, "value") else str(job.state)
+    task_count = len(job.tasks)
+    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
+    event_count = len(events)
+    has_real_events = event_count > 0
+
+    summary = {
+        "job_id": str(job.job_id),
+        "name": job.job_title,
+        "state": state,
+        "task_count": task_count,
+        "done_count": done_count,
+        "pending_count": pending_count,
+        "event_count": event_count,
+        "demo_mode": not has_real_events,
+        "data_honest": True,
+        "synthetic_fields": 0 if has_real_events else 1,
+    }
+    mode_label = "LIVE" if has_real_events else "DEMO (no events yet)"
+    lines = [
+        f"Job {job.job_id}",
+        f"  Name:    {job.job_title}",
+        f"  State:   {state}",
+        f"  Mode:    {mode_label}",
+        f"  Tasks:   {done_count}/{task_count} done, {pending_count} pending",
+        f"  Events:  {event_count}",
+    ]
+    return summary, lines
+
+
 def _dod_section(job: JobPlan) -> tuple[dict, list[str]]:
     """The former `job dod` command: the Definition-of-Done matrix, live (F061 T004).
 
@@ -421,6 +458,7 @@ _SHOW_SECTIONS: tuple[tuple[str, Callable[[JobPlan], tuple[dict, list[str]]]], .
     ("fences", _fences_section),
     ("assumptions", _assumptions_section),
     ("digest", _digest_section),
+    ("summary", _summary_section),
     ("dod", _dod_section),
 )
 
@@ -1324,54 +1362,6 @@ def _cmd_job_resume(
         yes=yes,
         json_output=json_output,
     )
-
-
-def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
-    """Print an honest summary of job state — truth contract."""
-    import json as _json
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-    events = load_run_events(data_dir, job.job_id)
-
-    state = job.state.value if hasattr(job.state, "value") else str(job.state)
-    task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
-    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
-    event_count = len(events)
-    has_real_events = event_count > 0
-
-    summary = {
-        "job_id": str(job.job_id),
-        "name": job.job_title,
-        "state": state,
-        "task_count": task_count,
-        "done_count": done_count,
-        "pending_count": pending_count,
-        "event_count": event_count,
-        "demo_mode": not has_real_events,
-        "data_honest": True,
-        "synthetic_fields": 0 if has_real_events else 1,
-    }
-
-    if json_output:
-        print(_json.dumps(summary, indent=2))
-    else:
-        mode_label = "LIVE" if has_real_events else "DEMO (no events yet)"
-        print(f"Job {job.job_id}")
-        print(f"  Name:    {job.job_title}")
-        print(f"  State:   {state}")
-        print(f"  Mode:    {mode_label}")
-        print(f"  Tasks:   {done_count}/{task_count} done, {pending_count} pending")
-        print(f"  Events:  {event_count}")
 
 
 def _cmd_checkpoints(job_id_str: str, *, json_output: bool = False) -> None:
@@ -2384,10 +2374,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False),
     ),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
-    "job.summary": lambda args: _cmd_job_summary(
-        args.job_id,
-        json_output=getattr(args, "json", False),
-    ),
     "job.checkpoints": lambda args: _cmd_checkpoints(
         args.job_id,
         json_output=getattr(args, "json", False),

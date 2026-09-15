@@ -270,7 +270,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
                    "and the job's sections (its permissions, fences, assumptions, "
-                   "completion digest and Definition of Done)",
+                   "completion digest, summary and Definition of Done)",
                    required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
@@ -395,17 +395,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
-        command_id="job.summary",
-        group_id="job",
-        subcommand="summary",
-        description="Print an honest summary of job state (truth contract).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("job.show",),
-    ),
-
-    CommandEntry(
         command_id="job.status",
         group_id="job",
         subcommand="status",
@@ -413,7 +402,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
-        related=("job.summary", "job.show"),
+        related=("job.show",),
     ),
     # ONE command, three modes on the same name (the F047 `job resume`
     # pattern): bare and --json keep the existing progress view exactly as it
@@ -435,7 +424,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("job.status", "job.summary"),
+        related=("job.status", "job.show"),
     ),
 
     CommandEntry(

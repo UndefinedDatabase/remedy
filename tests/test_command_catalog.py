@@ -308,6 +308,7 @@ class TestDeletedCommands:
         "job.dod",
         "job.fences",
         "job.permissions",
+        "job.summary",
     )
 
     def test_no_deleted_id_is_left_in_the_catalog(self) -> None:

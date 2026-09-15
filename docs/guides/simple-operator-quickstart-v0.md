@@ -74,7 +74,7 @@ See `docs/core-product-spine-v0.md` for the full command taxonomy.
 
 | Normal command           | Advanced equivalent(s)                                     |
 |--------------------------|------------------------------------------------------------|
-| `job status <id>`        | `job summary <id> --json`, `job show <id>`                 |
+| `job status <id>`        | `job show <id>`                                            |
 | `job report <id>`        | `mission report <run_id> --job-id <id>`                    |
 | `job run-loop <id>`      | `mission run <run_id> --job-id <id>`                       |
 | `doctor core`            | (no low-level equivalent — this is the check)              |

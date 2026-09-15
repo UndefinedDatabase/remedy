@@ -1664,15 +1664,15 @@ def _pipeline_next_command(
     if stop_reason in ("provider_output_prose_only", "provider_output_malformed"):
         return "remedy do \"<goal>\" --repo . --builder-provider fixture --json"
     if stop_reason == "test_failed_after_apply":
-        return f"remedy job summary {job_id} --json"
+        return f"remedy job show {job_id} --full --json"
     if stop_reason == "repair_budget_exhausted":
-        return f"remedy job summary {job_id} --json"
+        return f"remedy job show {job_id} --full --json"
     if approval_required and intent_id:
         return f"remedy patch show {job_id} {intent_id}"
     if source_apply_status == "applied" and tests_status == "none":
         return f"remedy test discover {job_id} --json"
     if tests_status == "pass":
-        return f"remedy job summary {job_id} --json"
+        return f"remedy job show {job_id} --full --json"
     return "remedy dev status --json"
 
 

@@ -413,24 +413,13 @@ class TestEventLedgerLiveActivity:
 class TestJobSummaryCommandContract:
     def test_job_summary_command_exists(self):
         src = (CLI_COMMANDS / "job.py").read_text()
-        assert "_cmd_job_summary" in src
-        assert '"job.summary"' in src
+        assert "def _summary_section(job: JobPlan)" in src
+        assert '("summary", _summary_section)' in src
 
     def test_job_summary_outputs_demo_mode(self):
         src = (CLI_COMMANDS / "job.py").read_text()
         assert "demo_mode" in src
         assert "data_honest" in src
-
-    def test_job_summary_in_catalog(self):
-        catalog = (REPO_ROOT / "apps" / "cli" / "command_catalog.py").read_text()
-        assert "job.summary" in catalog
-
-    def test_job_summary_supports_json(self):
-        catalog = (REPO_ROOT / "apps" / "cli" / "command_catalog.py").read_text()
-        # Find the job.summary entry and confirm supports_json=True
-        idx = catalog.index("job.summary")
-        block = catalog[idx:idx+400]
-        assert "supports_json=True" in block
 
     def test_no_shell_true_in_subprocess_calls(self):
         """Verify no subprocess calls use shell=True (comments mentioning it are OK)."""
