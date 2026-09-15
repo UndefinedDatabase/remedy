@@ -494,7 +494,7 @@ class TestApplyCleanupHonesty:
         res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.cleanup_status == "clean" and res.cleanup_error == ""
         assert res.temporary_worktree_removed and res.temporary_registration_removed
-        assert "remedy-promo" not in _git(repo, "worktree", "list", "--porcelain")
+        assert "remedy-job-apply" not in _git(repo, "worktree", "list", "--porcelain")
         assert len(W.list_worktrees(repo)) == 1
 
     @pytest.mark.parametrize("stage", ["remove", "prune", "inventory", "rmtree"])
@@ -554,6 +554,6 @@ class TestApplyCleanupHonesty:
         assert any("cleanup_failed" in r for r in res.blocked_reasons)
 
         record = json.loads(
-            (job_apply._apply_records_dir() / job.job_id / f"{res.promotion_id}.json").read_text()
+            (job_apply._job_apply_records_dir() / job.job_id / f"{res.job_apply_id}.json").read_text()
         )
         assert record["temporary_worktree_cleanup"]["cleanup_status"] == "failed"

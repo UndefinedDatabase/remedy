@@ -108,8 +108,8 @@ def _edit_script(new_content: str, mode: int | None = None):
     return write
 
 
-def _persisted(job_id: str, promotion_id: str) -> dict:
-    path = job_apply._apply_records_dir() / job_id / f"{promotion_id}.json"
+def _persisted(job_id: str, job_apply_id: str) -> dict:
+    path = job_apply._job_apply_records_dir() / job_id / f"{job_apply_id}.json"
     return json.loads(path.read_text())
 
 
@@ -240,7 +240,7 @@ _CLEANUP_FIELDS = (
 
 
 def _assert_record_matches(res) -> dict:
-    record = _persisted(res.job_id, res.promotion_id)
+    record = _persisted(res.job_id, res.job_apply_id)
     assert record["status"] == res.status
     cleanup = record["temporary_worktree_cleanup"]
     for field in _CLEANUP_FIELDS:
@@ -458,7 +458,7 @@ class TestMaterializationFailuresReportCleanup:
         assert "apply_materialization_error" in res.blocked_reason
         assert res.cleanup_status == "clean"
         assert len(W.list_worktrees(repo)) == 1
-        assert "remedy-promo" not in _git(repo, "worktree", "list", "--porcelain")
+        assert "remedy-job-apply" not in _git(repo, "worktree", "list", "--porcelain")
 
 
 # ---------------------------------------------------------------------------

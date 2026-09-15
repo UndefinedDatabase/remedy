@@ -539,7 +539,7 @@ class TestApprovePostTest:
 # ---------------------------------------------------------------------------
 
 
-class TestApplyRecord:
+class TestJobApplyRecord:
     def test_dry_run_persists_record(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
 
@@ -549,7 +549,7 @@ class TestApplyRecord:
         )
         result = apply_job(job.job_id, str(demo_repo), dry_run=True)
 
-        loaded = load_job_apply_record(job.job_id, result.promotion_id)
+        loaded = load_job_apply_record(job.job_id, result.job_apply_id)
         assert loaded is not None
         assert loaded["status"] == "dry_run"
 
@@ -562,7 +562,7 @@ class TestApplyRecord:
         )
         result = apply_job(job.job_id, str(demo_repo), approve=True)
 
-        loaded = load_job_apply_record(job.job_id, result.promotion_id)
+        loaded = load_job_apply_record(job.job_id, result.job_apply_id)
         assert loaded is not None
         assert loaded["status"] == "applied"
         assert len(loaded["files_applied"]) > 0
@@ -935,8 +935,8 @@ class TestMissingApplyManifestBlocks:
 # ---------------------------------------------------------------------------
 
 
-class TestApplyRecordPersistence:
-    def test_unwritable_apply_record_dir_blocks_approved(
+class TestJobApplyRecordPersistence:
+    def test_unwritable_job_apply_record_dir_blocks_approved(
         self, isolate_data_root, demo_repo, tmp_path, monkeypatch
     ):
         """Approved promote must block if promotion record can't be persisted."""
@@ -948,10 +948,10 @@ class TestApplyRecordPersistence:
         blocker = tmp_path / "not_a_dir"
         blocker.write_text("block")
 
-        def fake_apply_records_dir():
+        def fake_job_apply_records_dir():
             return blocker / "subdir"
 
-        monkeypatch.setattr(job_apply, "_apply_records_dir", fake_apply_records_dir)
+        monkeypatch.setattr(job_apply, "_job_apply_records_dir", fake_job_apply_records_dir)
 
         result = job_apply.apply_job(job.job_id, str(demo_repo), approve=True)
 
@@ -1769,7 +1769,7 @@ class TestFinalRecordFailure:
         assert result.status == "applied_record_update_failed"
         assert "disk full" in result.blocked_reason
         assert rel_path in result.files_applied
-        assert result.promotion_id
+        assert result.job_apply_id
 
     def test_final_record_failure_json_parseable(self, isolate_data_root, tmp_path):
         """JSON export of applied_record_update_failed is parseable."""
@@ -1797,7 +1797,7 @@ class TestFinalRecordFailure:
         json_str = json.dumps(data)
         parsed = json.loads(json_str)
         assert parsed["status"] == "applied_record_update_failed"
-        assert "apply_record_update_failed" in parsed["blocked_reason"]
+        assert "job_apply_record_update_failed" in parsed["blocked_reason"]
 
     def test_final_record_failure_text_readable(self, isolate_data_root, tmp_path):
         """Text summary of applied_record_update_failed is human-readable."""
@@ -2083,7 +2083,7 @@ class TestPartialApplyRecordFailure:
         assert result.status == "applied_record_update_failed"
         assert "first.py" in result.files_applied
         assert "second.py" not in result.files_applied
-        assert result.promotion_id
+        assert result.job_apply_id
 
         data = export_job_apply_json(result)
         json_str = json.dumps(data)
@@ -2132,7 +2132,7 @@ class TestPostTestRecordFailure:
 
         assert result.status == "applied_record_update_failed"
         assert rel_path in result.files_applied
-        assert result.promotion_id
+        assert result.job_apply_id
 
         data = export_job_apply_json(result)
         json_str = json.dumps(data)

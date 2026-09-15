@@ -181,9 +181,9 @@ class TestCompletedJobApply:
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
         apply_job(job.job_id, str(repo), dry_run=True)
         apply_job(job.job_id, str(repo), approve=True)
-        # Only the main checkout remains registered; no promo-* worktree survives.
+        # Only the main checkout remains registered; no job-apply-* worktree survives.
         assert len(W.list_worktrees(repo)) == 1
-        assert "remedy-promo" not in _git(repo, "worktree", "list", "--porcelain")
+        assert "remedy-job-apply" not in _git(repo, "worktree", "list", "--porcelain")
 
     def test_the_apply_source_is_never_the_recorded_execution_path(
         self, repo, monkeypatch,

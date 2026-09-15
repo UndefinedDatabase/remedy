@@ -312,7 +312,7 @@ class TaskApplySummary:
 class JobApplyResult:
     """Result of a job promotion attempt."""
     job_id: str = ""
-    promotion_id: str = field(default_factory=lambda: uuid4().hex[:16])
+    job_apply_id: str = field(default_factory=lambda: uuid4().hex[:16])
     status: str = ""  # blocked, dry_run, approved_apply_started, applied, applied_test_failed, applied_record_update_failed
     approved: bool = False
     dry_run: bool = False
@@ -389,7 +389,7 @@ def _safe_persist(
             original_status = result.status
             result.status = "record_update_failed"
             result.blocked_reason = (
-                f"apply_record_update_failed: {exc} — "
+                f"job_apply_record_update_failed: {exc} — "
                 f"original_status={original_status}; no durable record exists"
             )
             result.blocked_reasons.append(result.blocked_reason)
@@ -400,7 +400,7 @@ def _safe_persist(
             original_reason = result.blocked_reason
             result.status = "applied_record_update_failed"
             result.blocked_reason = (
-                f"apply_record_update_failed: {exc} — "
+                f"job_apply_record_update_failed: {exc} — "
                 f"original_status={original_status}, "
                 f"original_reason={original_reason}, "
                 f"target files may have changed ({len(applied)} applied)"
@@ -503,7 +503,7 @@ def _materialize_apply_source_owned(job: Any) -> tuple[ApplySource | None, str]:
     if not W.commit_exists(repo, base):
         return None, f"base_commit_missing: {base[:12]}"
 
-    temp_root = Path(tempfile.mkdtemp(prefix="remedy-promo-"))
+    temp_root = Path(tempfile.mkdtemp(prefix="remedy-job-apply-"))
     ws = temp_root / "source"
     source = ApplySource(path=ws, repo=repo, temp_root=temp_root)
 
@@ -1004,13 +1004,13 @@ def _apply_from_workspace(
 
     # --- Preflight promotion record writability ---
     try:
-        record_dir = _apply_records_dir() / job_id
+        record_dir = _job_apply_records_dir() / job_id
         record_dir.mkdir(parents=True, exist_ok=True)
         test_file = record_dir / ".write_test"
         test_file.write_text("test")
         test_file.unlink()
     except OSError as exc:
-        return _block(result, f"apply_record_not_writable: {exc}")
+        return _block(result, f"job_apply_record_not_writable: {exc}")
 
     # --- Recheck baseline readiness immediately before apply ---
     clean2, blocks2, _ = _check_baseline_readiness(
@@ -1123,9 +1123,9 @@ def _apply_from_workspace(
 # Persistence
 # ---------------------------------------------------------------------------
 
-def _apply_records_dir() -> Path:
+def _job_apply_records_dir() -> Path:
     from packages.orchestration.data_paths import resolve_data_root
-    return resolve_data_root() / "job_promotions"
+    return resolve_data_root() / "job_apply_records"
 
 
 def _persist_job_apply_record(
@@ -1133,15 +1133,15 @@ def _persist_job_apply_record(
     result: JobApplyResult,
 ) -> None:
     """Persist promotion record. Raises on write failure for approved promotes."""
-    record_dir = _apply_records_dir() / job_id
+    record_dir = _job_apply_records_dir() / job_id
     record_dir.mkdir(parents=True, exist_ok=True)
-    record_file = record_dir / f"{result.promotion_id}.json"
+    record_file = record_dir / f"{result.job_apply_id}.json"
     data = export_job_apply_json(result)
     record_file.write_text(json.dumps(data, indent=2) + "\n")
 
 
-def load_job_apply_record(job_id: str, promotion_id: str) -> dict[str, Any] | None:
-    record_file = _apply_records_dir() / job_id / f"{promotion_id}.json"
+def load_job_apply_record(job_id: str, job_apply_id: str) -> dict[str, Any] | None:
+    record_file = _job_apply_records_dir() / job_id / f"{job_apply_id}.json"
     if not record_file.exists():
         return None
     try:
@@ -1157,7 +1157,7 @@ def load_job_apply_record(job_id: str, promotion_id: str) -> dict[str, Any] | No
 def export_job_apply_json(result: JobApplyResult) -> dict[str, Any]:
     raw = {
         "job_id": result.job_id,
-        "promotion_id": result.promotion_id,
+        "job_apply_id": result.job_apply_id,
         "status": result.status,
         "approved": result.approved,
         "dry_run": result.dry_run,
@@ -1267,7 +1267,7 @@ def summarize_job_apply(result: JobApplyResult) -> str:
     lines = [
         f"Job: {result.job_id}",
         f"Title: {result.job_title}",
-        f"Promotion: {result.promotion_id}",
+        f"Promotion: {result.job_apply_id}",
         f"Status: {result.status}",
         f"Approved: {result.approved}",
         f"Target: {_sanitize_path(result.target_repo)}",
