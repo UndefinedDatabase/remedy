@@ -57,7 +57,7 @@ class TestJobFulfillmentFenceEnforcement:
         job = _make_job(data_dir, repo, fences=fences)
         record = self._run(job.job_id, repo, data_dir)
         assert record.stop_reason == "fence_violation"
-        assert record.staging_promoted is False
+        assert record.applied_to_target is False
         assert not record.changed_target_files
         target = repo / "docs" / "CHANGES.md"
         assert not target.exists()
@@ -68,7 +68,7 @@ class TestJobFulfillmentFenceEnforcement:
         job = _make_job(data_dir, repo)
         record = self._run(job.job_id, repo, data_dir)
         assert record.stop_reason == "fence_violation"
-        assert record.staging_promoted is False
+        assert record.applied_to_target is False
 
     def test_env_deny_blocks_fulfillment(self, env, monkeypatch):
         data_dir, repo = env
@@ -76,7 +76,7 @@ class TestJobFulfillmentFenceEnforcement:
         job = _make_job(data_dir, repo)
         record = self._run(job.job_id, repo, data_dir)
         assert record.stop_reason == "fence_violation"
-        assert record.staging_promoted is False
+        assert record.applied_to_target is False
         target = repo / "docs" / "CHANGES.md"
         assert not target.exists()
 

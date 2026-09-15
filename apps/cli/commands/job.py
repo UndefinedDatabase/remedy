@@ -467,7 +467,7 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
         "latest_stop_reason": truth["latest_stop_reason"],
         "fulfillment_status": truth.get("fulfillment_status", ""),
         "staging_used": truth.get("staging_used", False),
-        "staging_promoted": truth.get("staging_promoted", False),
+        "applied_to_target": truth.get("applied_to_target", False),
         "blockers": blockers,
         "next_safe_action": next_action,
         # F051: open decisions first, with the exact command that answers each.
@@ -558,7 +558,7 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
         "code_applied": truth["code_applied"],
         "fulfillment_status": truth.get("fulfillment_status", ""),
         "staging_used": truth.get("staging_used", False),
-        "staging_promoted": truth.get("staging_promoted", False),
+        "applied_to_target": truth.get("applied_to_target", False),
         "fulfillment_blockers": truth.get("fulfillment_blockers", []),
         # F051: a blocked run's next action is the command that answers its
         # most urgent open decision — that is what unblocks it.
@@ -1896,7 +1896,7 @@ def _extract_job_truth(job: JobPlan) -> dict:
     fulfillment_status = ''
     fulfillment_id = ''
     staging_used = False
-    staging_promoted = False
+    applied_to_target = False
     fulfillment_blockers: list[str] = []
     fulfillment_next_action = ''
     try:
@@ -1907,7 +1907,7 @@ def _extract_job_truth(job: JobPlan) -> dict:
             fulfillment_status = latest.status.value
             fulfillment_id = latest.fulfillment_id
             staging_used = latest.staging_used
-            staging_promoted = latest.staging_promoted
+            applied_to_target = latest.applied_to_target
             fulfillment_blockers = latest.contract_blockers or []
             fulfillment_next_action = latest.next_safe_action or ''
             # Surface fulfillment stop_reason as latest_stop_reason
@@ -1922,9 +1922,9 @@ def _extract_job_truth(job: JobPlan) -> dict:
     except Exception:
         pass
 
-    # When staging was used, staging_promoted is authoritative for code_applied
+    # When staging was used, applied_to_target is authoritative for code_applied
     if staging_used:
-        code_applied = staging_promoted
+        code_applied = applied_to_target
 
     return {
         'artifact_count': artifact_count,
@@ -1936,7 +1936,7 @@ def _extract_job_truth(job: JobPlan) -> dict:
         'fulfillment_status': fulfillment_status,
         'fulfillment_id': fulfillment_id,
         'staging_used': staging_used,
-        'staging_promoted': staging_promoted,
+        'applied_to_target': applied_to_target,
         'fulfillment_blockers': fulfillment_blockers,
         'fulfillment_next_action': fulfillment_next_action,
     }

@@ -80,8 +80,8 @@ class TestFulfillmentModel:
             proof_status="verified",
             final_review_status="pass",
             staging_used=True,
-            staging_promoted=True,
-            promotion_files=["CHANGELOG.md"],
+            applied_to_target=True,
+            files_applied_to_target=["CHANGELOG.md"],
             status=JobFulfillmentStatus.COMPLETED_VERIFIED,
         )
         passed, blockers = contract.check(record)
@@ -280,8 +280,8 @@ class TestCompletionContract:
             proof_accepted_reason="Fixture demo: explicit acceptance",
             final_review_status="pass",
             staging_used=True,
-            staging_promoted=True,
-            promotion_files=["CHANGELOG.md"],
+            applied_to_target=True,
+            files_applied_to_target=["CHANGELOG.md"],
         )
         passed, blockers = JobFulfillmentContract().check(rec)
         assert passed
@@ -309,8 +309,8 @@ class TestCompletionContract:
             task_ids=["t1"], apply_ids=["a1"], test_passed=True,
             proof_status="verified", final_review_status="pass",
             staging_used=True,
-            staging_promoted=True,
-            promotion_files=["CHANGELOG.md"],
+            applied_to_target=True,
+            files_applied_to_target=["CHANGELOG.md"],
         )
         passed, blockers = JobFulfillmentContract().check(rec)
         assert passed
@@ -555,7 +555,7 @@ class TestJobStatusAfterFulfilled:
         assert data["code_applied"] is True
         assert data["fulfillment_status"] == "completed_verified"
         assert data["staging_used"] is True
-        assert data["staging_promoted"] is True
+        assert data["applied_to_target"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -610,7 +610,7 @@ class TestFailurePaths:
 
         # With modify intent, apply succeeds and fulfillment completes
         assert record.status.value == "completed_verified"
-        assert record.staging_promoted
+        assert record.applied_to_target
 
 
 # ---------------------------------------------------------------------------
@@ -881,17 +881,17 @@ class TestStagingWorkspace:
 
 
 # ---------------------------------------------------------------------------
-# Unit tests: promotion gate (Steps 3534-3536)
+# Unit tests: target apply gate (Steps 3534-3536)
 # ---------------------------------------------------------------------------
 
 
-class TestPromotionGate:
+class TestTargetApplyGate:
 
-    def test_promotion_requires_gates_passed(self, tmp_path):
+    def test_target_apply_requires_gates_passed(self, tmp_path):
         from packages.orchestration.staging_workspace import (
             StagingApplyRecord,
             StagingWorkspace,
-            promote_staged_changes,
+            apply_staged_changes_to_target,
         )
 
         ws = StagingWorkspace(
@@ -900,15 +900,15 @@ class TestPromotionGate:
             job_id="j1",
         )
         records = [StagingApplyRecord(relative_path="f.md", action="create")]
-        result = promote_staged_changes(ws, records, gates_passed=False)
-        assert not result.promoted
+        result = apply_staged_changes_to_target(ws, records, gates_passed=False)
+        assert not result.applied
         assert result.reason == "gates_not_passed"
 
-    def test_promotion_creates_new_files(self, tmp_path):
+    def test_target_apply_creates_new_files(self, tmp_path):
         from packages.orchestration.staging_workspace import (
             StagingApplyRecord,
             StagingWorkspace,
-            promote_staged_changes,
+            apply_staged_changes_to_target,
         )
 
         staging = tmp_path / "staging"
@@ -920,17 +920,17 @@ class TestPromotionGate:
 
         ws = StagingWorkspace(staging_dir=staging, target_repo=target, job_id="j2")
         records = [StagingApplyRecord(relative_path="new.md", action="create")]
-        result = promote_staged_changes(ws, records, gates_passed=True)
+        result = apply_staged_changes_to_target(ws, records, gates_passed=True)
 
-        assert result.promoted
-        assert "new.md" in result.files_promoted
+        assert result.applied
+        assert "new.md" in result.files_applied_to_target
         assert (target / "new.md").exists()
 
-    def test_promotion_skips_existing_target_for_create(self, tmp_path):
+    def test_target_apply_skips_existing_target_for_create(self, tmp_path):
         from packages.orchestration.staging_workspace import (
             StagingApplyRecord,
             StagingWorkspace,
-            promote_staged_changes,
+            apply_staged_changes_to_target,
         )
 
         staging = tmp_path / "staging"
@@ -943,7 +943,7 @@ class TestPromotionGate:
 
         ws = StagingWorkspace(staging_dir=staging, target_repo=target, job_id="j3")
         records = [StagingApplyRecord(relative_path="exists.md", action="create")]
-        result = promote_staged_changes(ws, records, gates_passed=True)
+        result = apply_staged_changes_to_target(ws, records, gates_passed=True)
 
         assert "exists.md" in result.files_skipped
         # Original content preserved
@@ -976,15 +976,15 @@ class TestStagedFulfillment:
         assert record.staging_used is True
         assert record.status.value == "completed_verified"
 
-    def test_staging_promoted_on_success(self, tmp_path, monkeypatch):
+    def test_applied_to_target_on_success(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.job_fulfillment import run_job_fulfill
 
         job, repo = self._setup_job(tmp_path)
         record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
-        assert record.staging_promoted is True
-        assert len(record.promotion_files) > 0
+        assert record.applied_to_target is True
+        assert len(record.files_applied_to_target) > 0
 
     def test_target_repo_restored_after_staging(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -1000,16 +1000,16 @@ class TestStagedFulfillment:
         assert final_job.metadata["target_repo"] == str(repo.resolve())
         assert "staging" not in final_job.metadata["target_repo"]
 
-    def test_files_exist_in_real_repo_after_promotion(self, tmp_path, monkeypatch):
+    def test_files_exist_in_real_repo_after_target_apply(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.job_fulfillment import run_job_fulfill
 
         job, repo = self._setup_job(tmp_path)
         record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
-        # Files should exist in real repo after promotion
+        # Files should exist in real repo after the target apply
         for f in record.changed_files:
-            assert (repo / f).exists(), f"File {f} not in target repo after promotion"
+            assert (repo / f).exists(), f"File {f} not in target repo after the target apply"
 
     def test_staging_discarded_on_test_failure(self, tmp_path, monkeypatch):
         """Target repo must be untouched when tests fail in staging."""
@@ -1040,7 +1040,7 @@ class TestStagedFulfillment:
         # Should not be completed
         assert record.status.value != "completed_verified"
         assert record.staging_used is True
-        assert record.staging_promoted is False
+        assert record.applied_to_target is False
 
         # target_repo restored to real repo
         final_job = load_job_plan(normalize_job_id(str(job.job_id)), tmp_path)
@@ -1058,11 +1058,11 @@ class TestStagedFulfillment:
         data = export_job_fulfillment_json(record)
 
         assert "staging_used" in data
-        assert "staging_promoted" in data
+        assert "applied_to_target" in data
         assert "staged_files" in data
-        assert "promotion_files" in data
+        assert "files_applied_to_target" in data
         assert data["staging_used"] is True
-        assert data["staging_promoted"] is True
+        assert data["applied_to_target"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -1073,7 +1073,7 @@ class TestStagedFulfillment:
 class TestStagingCleanup:
 
     def test_no_staging_dir_after_success(self, tmp_path, monkeypatch):
-        """Staging dir must be cleaned up after successful promotion."""
+        """Staging dir must be cleaned up after a successful target apply."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         import glob as glob_mod
 
@@ -1099,7 +1099,7 @@ class TestStagingCleanup:
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# v0.3 Regression Tests — Metadata, Filtered Copy, Promotion Safety
+# v0.3 Regression Tests — Metadata, Filtered Copy, Target Apply Safety
 # ---------------------------------------------------------------------------
 
 
@@ -1189,14 +1189,14 @@ class TestFilteredCopySafety:
         assert len(ws.excluded_symlinks) >= 1
 
 
-class TestPromotionSafety:
-    """Promotion must enforce MD-only and prefix-based append-only."""
+class TestTargetApplySafety:
+    """The target apply must enforce MD-only and prefix-based append-only."""
 
     def test_non_markdown_blocked(self, tmp_path):
         from packages.orchestration.staging_workspace import (
             StagingApplyRecord,
             StagingWorkspace,
-            promote_staged_changes,
+            apply_staged_changes_to_target,
         )
 
         target = tmp_path / "target"
@@ -1210,8 +1210,8 @@ class TestPromotionSafety:
             relative_path="config.py", action="create", scope="staged",
         )]
 
-        result = promote_staged_changes(ws, records, gates_passed=True)
-        assert not result.promoted
+        result = apply_staged_changes_to_target(ws, records, gates_passed=True)
+        assert not result.applied
         assert "config.py" in result.files_blocked
         assert any("non_markdown" in b for b in result.blockers)
         assert not (target / "config.py").exists()
@@ -1220,7 +1220,7 @@ class TestPromotionSafety:
         from packages.orchestration.staging_workspace import (
             StagingApplyRecord,
             StagingWorkspace,
-            promote_staged_changes,
+            apply_staged_changes_to_target,
         )
 
         target = tmp_path / "target"
@@ -1239,8 +1239,8 @@ class TestPromotionSafety:
             relative_path="doc.md", action="modify", scope="staged",
         )]
 
-        result = promote_staged_changes(ws, records, gates_passed=True)
-        assert result.promoted
+        result = apply_staged_changes_to_target(ws, records, gates_passed=True)
+        assert result.applied
         final = (target / "doc.md").read_text()
         assert final == appended
 
@@ -1248,7 +1248,7 @@ class TestPromotionSafety:
         from packages.orchestration.staging_workspace import (
             StagingApplyRecord,
             StagingWorkspace,
-            promote_staged_changes,
+            apply_staged_changes_to_target,
         )
 
         target = tmp_path / "target"
@@ -1267,8 +1267,8 @@ class TestPromotionSafety:
             relative_path="doc.md", action="modify", scope="staged",
         )]
 
-        result = promote_staged_changes(ws, records, gates_passed=True)
-        assert not result.promoted
+        result = apply_staged_changes_to_target(ws, records, gates_passed=True)
+        assert not result.applied
         assert "doc.md" in result.files_blocked
         assert any("prefix_mismatch" in b for b in result.blockers)
         assert (target / "doc.md").read_text() == original
@@ -1277,7 +1277,7 @@ class TestPromotionSafety:
         from packages.orchestration.staging_workspace import (
             StagingApplyRecord,
             StagingWorkspace,
-            promote_staged_changes,
+            apply_staged_changes_to_target,
         )
 
         target = tmp_path / "target"
@@ -1290,8 +1290,8 @@ class TestPromotionSafety:
             relative_path="../../../etc/passwd.md", action="create", scope="staged",
         )]
 
-        result = promote_staged_changes(ws, records, gates_passed=True)
-        assert not result.promoted
+        result = apply_staged_changes_to_target(ws, records, gates_passed=True)
+        assert not result.applied
 
 
 class TestCodeAppliedTruth:
@@ -1341,7 +1341,7 @@ class TestCodeAppliedTruth:
 
 
 # ---------------------------------------------------------------------------
-# v0.4 Regression Tests — Staged Tests, Target Truth, Promotion Contract
+# v0.4 Regression Tests — Staged Tests, Target Truth, Target Apply Contract
 # ---------------------------------------------------------------------------
 
 
@@ -1387,7 +1387,7 @@ class TestStagedTestExecution:
 
 
 class TestCodeAppliedTruthV04:
-    """code_applied must reflect target promotion truth, not staged apply."""
+    """code_applied must reflect target apply truth, not staged apply."""
 
     def test_successful_fulfillment_code_applied_true(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -1402,8 +1402,8 @@ class TestCodeAppliedTruthV04:
         save_job_plan(job, root=tmp_path)
 
         record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
-        assert record.staging_promoted is True
-        assert len(record.promotion_files) > 0
+        assert record.applied_to_target is True
+        assert len(record.files_applied_to_target) > 0
 
     def test_failing_test_code_applied_false(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -1419,7 +1419,7 @@ class TestCodeAppliedTruthV04:
         save_job_plan(job, root=tmp_path)
 
         record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
-        assert record.staging_promoted is False
+        assert record.applied_to_target is False
         assert record.status.value == "blocked"
 
 
@@ -1480,10 +1480,10 @@ class TestApplyScope:
                     )
 
 
-class TestPromotionContract:
-    """Contract must require target promotion for completed_verified."""
+class TestTargetApplyContract:
+    """Contract must require the target apply for completed_verified."""
 
-    def test_requires_target_promotion(self):
+    def test_requires_target_apply(self):
         from packages.orchestration.job_fulfillment import (
             JobFulfillmentContract,
             JobFulfillmentRecord,
@@ -1499,15 +1499,15 @@ class TestPromotionContract:
             proof_accepted_reason="fixture demo",
             final_review_status="pass",
             staging_used=True,
-            staging_promoted=False,  # NOT promoted
-            promotion_files=[],
+            applied_to_target=False,  # NOT applied
+            files_applied_to_target=[],
         )
         contract = JobFulfillmentContract()
         passed, blockers = contract.check(record)
         assert not passed
-        assert "target_not_promoted" in blockers or "no_promotion_files" in blockers
+        assert "target_not_applied" in blockers or "no_files_applied_to_target" in blockers
 
-    def test_promoted_allows_completion(self):
+    def test_applied_to_target_allows_completion(self):
         from packages.orchestration.job_fulfillment import (
             JobFulfillmentContract,
             JobFulfillmentRecord,
@@ -1523,12 +1523,12 @@ class TestPromotionContract:
             proof_accepted_reason="fixture demo",
             final_review_status="pass",
             staging_used=True,
-            staging_promoted=True,
-            promotion_files=["CHANGELOG.md"],
+            applied_to_target=True,
+            files_applied_to_target=["CHANGELOG.md"],
         )
         contract = JobFulfillmentContract()
         passed, blockers = contract.check(record)
-        assert passed, f"Contract should pass with promotion, got blockers: {blockers}"
+        assert passed, f"Contract should pass with the target apply, got blockers: {blockers}"
 
 
 class TestExistingMarkdownFulfillment:
@@ -1618,9 +1618,9 @@ class TestBlockedFulfillmentTruthV05:
         _, record = self._run_blocked(tmp_path, monkeypatch)
         assert record.changed_target_files == []
 
-    def test_blocked_staging_not_promoted(self, tmp_path, monkeypatch):
+    def test_blocked_staging_not_applied_to_target(self, tmp_path, monkeypatch):
         _, record = self._run_blocked(tmp_path, monkeypatch)
-        assert record.staging_promoted is False
+        assert record.applied_to_target is False
 
     def test_blocked_code_applied_false(self, tmp_path, monkeypatch):
         job, _ = self._run_blocked(tmp_path, monkeypatch)
@@ -1642,9 +1642,9 @@ class TestBlockedFulfillmentTruthV05:
 
 
 class TestSuccessfulFulfillmentTruthV05:
-    """Successful fulfillment must show promoted target files."""
+    """Successful fulfillment must show the files applied to the target."""
 
-    def test_changed_target_files_match_promotion(self, tmp_path, monkeypatch):
+    def test_changed_target_files_match_target_apply(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
         from packages.orchestration.pingpong_job import JobPlan, save_job_plan
@@ -1655,7 +1655,7 @@ class TestSuccessfulFulfillmentTruthV05:
         record = run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
         assert record.status.value == "completed_verified"
-        assert record.changed_target_files == record.promotion_files
+        assert record.changed_target_files == record.files_applied_to_target
         assert len(record.changed_target_files) > 0
         # staged_files may be broader than changed_target_files
         for f in record.changed_target_files:
@@ -1724,12 +1724,12 @@ class TestChangedFilesPublicTruth:
         )
         rec = JobFulfillmentRecord(job_id="test-123", mode="fixture_demo")
         rec.changed_files = ["staged_only.md"]
-        rec.changed_target_files = ["promoted.md"]
+        rec.changed_target_files = ["applied.md"]
         rec.staged_files = ["staged_only.md"]
         exported = export_job_fulfillment_json(rec)
-        assert exported["changed_files"] == ["promoted.md"], \
+        assert exported["changed_files"] == ["applied.md"], \
             "Public changed_files must equal changed_target_files"
-        assert exported["changed_target_files"] == ["promoted.md"]
+        assert exported["changed_target_files"] == ["applied.md"]
         assert exported["staged_files"] == ["staged_only.md"]
 
     def test_blocked_export_changed_files_empty(self):

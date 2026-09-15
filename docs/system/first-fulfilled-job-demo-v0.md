@@ -5,7 +5,7 @@
 A job is created, tasks are planned, a fixture worker produces artifacts,
 a review catches one finding, a repair task fixes it, approval is granted,
 the patch is applied in an isolated staging workspace, tests pass in staging,
-proof is built, staged changes are promoted to the target repo, the job
+proof is built, staged changes are applied to the target repo, the job
 reaches completed_verified, and next suggestions are generated.
 
 All of this happens through existing safe gates:
@@ -52,7 +52,7 @@ remedy propose defer "$JOB_ID" <task_id> --json
 | `proof_status` | `verified` or `accepted` | Proof confirmed |
 | `final_review_status` | `pass` | All contract gates passed |
 | `staging_used` | `true` | Apply/test ran in isolated staging |
-| `staging_promoted` | `true` | Staged changes promoted to target |
+| `applied_to_target` | `true` | Staged changes applied to target |
 | `next_suggestion_ids` | 3 items | Proposed next steps |
 
 ### The `status` section of `job show --full --json` (after fulfill)
@@ -64,7 +64,7 @@ remedy propose defer "$JOB_ID" <task_id> --json
 | `code_applied` | `true` | Changes were applied |
 | `fulfillment_status` | `completed_verified` | Fulfillment completed |
 | `staging_used` | `true` | Staging workspace was used |
-| `staging_promoted` | `true` | Changes promoted to target |
+| `applied_to_target` | `true` | Changes applied to target |
 
 ### The `report` section of `job show --full --json` (after fulfill)
 
@@ -81,7 +81,7 @@ service discovers and runs tests automatically.
 
 - **No-test repos** block honestly with `stop_reason=no_test_command`.
 - **Failing-test repos** block honestly with `stop_reason=test_not_passed:failed`.
-- **Target repo is unchanged** until promotion succeeds. Blocked jobs leave
+- **Target repo is unchanged** until the target apply succeeds. Blocked jobs leave
   target untouched.
 - **Proof** may be `accepted` with reason in fixture mode because fixture
   workers do not emit all proof chain events.
@@ -97,7 +97,7 @@ When fulfillment is blocked:
 |-------|-------|---------|
 | `status` | `blocked` | Fulfillment stopped |
 | `code_applied` | `false` | Target was not modified |
-| `staging_promoted` | `false` | Staged changes not promoted |
+| `applied_to_target` | `false` | Staged changes not applied |
 | `changed_target_files` | `[]` | No target files changed |
 | `stop_reason` | descriptive | Why it blocked |
 | `next_safe_action` | command | What to do next |
@@ -119,8 +119,8 @@ Staged files are listed in `staged_files` but are NOT target changes.
 3. **Explicit override**: staging apply uses `target_repo_override`, not metadata mutation
 4. **Scoped cleanup**: staging parent always removed via try/finally, not atexit
 5. **Bounded write**: only `.md` files written through patch apply gate
-6. **MD-only promotion**: non-markdown files blocked during promotion with blockers recorded
-7. **Prefix-based append**: modify promotion requires staged content to start with exact target content
+6. **MD-only target apply**: non-markdown files blocked during the target apply with blockers recorded
+7. **Prefix-based append**: a modify applied to the target requires staged content to start with exact target content
 8. **Env file exclusion**: `.env`, `.env.*`, `.env-*` files excluded from staging copy
 9. **Symlink escape detection**: symlinks resolving outside repo root excluded from staging
 10. **No provider call**: fixture mode, no API key needed

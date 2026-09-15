@@ -31,11 +31,11 @@ pytestmark = pytest.mark.integration
 UTC = timezone.utc
 T0 = datetime(2026, 7, 31, 12, 0, 0, tzinfo=UTC)
 
-#: Every key of the former `job report --json` payload, in its order.
+#: Every key of the former `job report --json` payload, in its order; DECISION F261 D11 renamed one of them.
 PROGRESS_KEYS = [
     "job_id", "name", "state", "task_count", "done_count", "pending_count", "event_count",
     "artifact_count", "patch_intent_ids", "approval_required", "latest_stop_reason",
-    "code_applied", "fulfillment_status", "staging_used", "staging_promoted",
+    "code_applied", "fulfillment_status", "staging_used", "applied_to_target",
     "fulfillment_blockers", "next_safe_action", "open_decisions", "open_decision_count", "tasks",
 ]
 

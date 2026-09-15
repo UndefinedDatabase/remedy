@@ -1,7 +1,7 @@
-"""Staging Workspace — isolated apply/test/proof before target promotion.
+"""Staging Workspace — isolated apply/test/proof before the target apply.
 
 Creates a filtered copy of the target repo, runs all gates in isolation,
-and promotes changed files to the real target only after all gates pass.
+and applies changed files to the real target only after all gates pass.
 
 Design:
   - Filtered copy excludes: .git, .env*, node_modules, venv, __pycache__, .data
@@ -9,8 +9,8 @@ Design:
   - Apply uses patch_apply with target_repo_override (no metadata mutation)
   - Tests run with cwd=staging dir
   - Proof built against staging artifacts
-  - Promotion: Markdown-only, prefix-based append-only for existing files
-  - Non-markdown files blocked during promotion with blockers recorded
+  - Target apply: Markdown-only, prefix-based append-only for existing files
+  - Non-markdown files blocked during the target apply with blockers recorded
   - Failure discards staging dir entirely — target untouched
 """
 from __future__ import annotations
@@ -100,20 +100,20 @@ class StagingApplyRecord:
     scope: str = "staged"  # "staged" | "target"
     bytes_written: int = 0
     staged: bool = True
-    promoted: bool = False
-    promoted_at: str = ""
+    applied_to_target: bool = False
+    applied_to_target_at: str = ""
 
 
 @dataclass
-class PromotionResult:
-    """Result of promoting staged changes to target repo."""
-    promoted: bool = False
-    files_promoted: list[str] = field(default_factory=list)
+class TargetApplyResult:
+    """Result of applying staged changes to the target repo."""
+    applied: bool = False
+    files_applied_to_target: list[str] = field(default_factory=list)
     files_skipped: list[str] = field(default_factory=list)
     files_blocked: list[str] = field(default_factory=list)
     blockers: list[str] = field(default_factory=list)
     reason: str = ""
-    promoted_at: str = ""
+    applied_to_target_at: str = ""
 
 
 @dataclass
@@ -123,7 +123,7 @@ class StagingResult:
     apply_records: list[StagingApplyRecord] = field(default_factory=list)
     test_passed: bool = False
     proof_status: str = ""
-    promotion: PromotionResult | None = None
+    target_apply: TargetApplyResult | None = None
     discarded: bool = False
     discard_reason: str = ""
 
@@ -236,38 +236,38 @@ def find_staged_changes(workspace: StagingWorkspace) -> list[StagingApplyRecord]
 
 
 # ---------------------------------------------------------------------------
-# Promotion gate
+# Target apply gate
 # ---------------------------------------------------------------------------
 
-def promote_staged_changes(
+def apply_staged_changes_to_target(
     workspace: StagingWorkspace,
     apply_records: list[StagingApplyRecord],
     *,
     gates_passed: bool = False,
-) -> PromotionResult:
-    """Promote staged changes to target repo.
+) -> TargetApplyResult:
+    """Apply staged changes to the target repo.
 
     Only runs if gates_passed=True. Rules:
     - New .md files: copy from staging to target
     - Modified .md files: prefix-based append-only (staged must start with
       exact target content; only the suffix is appended)
-    - Non-.md files: BLOCKED (not promoted, recorded in blockers)
+    - Non-.md files: BLOCKED (not applied, recorded in blockers)
     - No file deletions. No overwrites of existing content.
     - Path containment verified for all operations.
     """
     if not gates_passed:
-        return PromotionResult(
-            promoted=False,
+        return TargetApplyResult(
+            applied=False,
             reason="gates_not_passed",
         )
 
     if not workspace.active:
-        return PromotionResult(
-            promoted=False,
+        return TargetApplyResult(
+            applied=False,
             reason="workspace_not_active",
         )
 
-    promoted_files: list[str] = []
+    files_applied_to_target: list[str] = []
     skipped_files: list[str] = []
     blocked_files: list[str] = []
     blockers: list[str] = []
@@ -303,10 +303,10 @@ def promote_staged_changes(
                 continue
             target_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(str(staged_path), str(target_path))
-            rec.promoted = True
-            rec.promoted_at = now
+            rec.applied_to_target = True
+            rec.applied_to_target_at = now
             rec.scope = "target"
-            promoted_files.append(rec.relative_path)
+            files_applied_to_target.append(rec.relative_path)
 
         elif rec.action == "modify":
             if not target_path.exists():
@@ -328,19 +328,19 @@ def promote_staged_changes(
                 with open(target_path, "a", encoding="utf-8") as f:
                     f.write(new_suffix)
 
-            rec.promoted = True
-            rec.promoted_at = now
+            rec.applied_to_target = True
+            rec.applied_to_target_at = now
             rec.scope = "target"
-            promoted_files.append(rec.relative_path)
+            files_applied_to_target.append(rec.relative_path)
 
-    return PromotionResult(
-        promoted=len(promoted_files) > 0,
-        files_promoted=promoted_files,
+    return TargetApplyResult(
+        applied=len(files_applied_to_target) > 0,
+        files_applied_to_target=files_applied_to_target,
         files_skipped=skipped_files,
         files_blocked=blocked_files,
         blockers=blockers,
-        reason="promoted" if promoted_files else "no_changes",
-        promoted_at=now,
+        reason="applied_to_target" if files_applied_to_target else "no_changes",
+        applied_to_target_at=now,
     )
 
 
@@ -362,7 +362,7 @@ def discard_staging(workspace: StagingWorkspace, reason: str = "") -> None:
 def export_staging_result_json(result: StagingResult) -> dict[str, Any]:
     """Export staging result as safe JSON (no absolute paths)."""
     ws = result.workspace
-    promo = result.promotion
+    target_apply = result.target_apply
     return {
         "staging_active": ws.active if ws else False,
         "files_copied": ws.files_copied if ws else 0,
@@ -373,11 +373,11 @@ def export_staging_result_json(result: StagingResult) -> dict[str, Any]:
         "apply_count": len(result.apply_records),
         "test_passed": result.test_passed,
         "proof_status": result.proof_status,
-        "promoted": promo.promoted if promo else False,
-        "files_promoted": promo.files_promoted if promo else [],
-        "files_skipped": promo.files_skipped if promo else [],
-        "files_blocked": promo.files_blocked if promo else [],
-        "blockers": promo.blockers if promo else [],
+        "applied_to_target": target_apply.applied if target_apply else False,
+        "files_applied_to_target": target_apply.files_applied_to_target if target_apply else [],
+        "files_skipped": target_apply.files_skipped if target_apply else [],
+        "files_blocked": target_apply.files_blocked if target_apply else [],
+        "blockers": target_apply.blockers if target_apply else [],
         "discarded": result.discarded,
         "discard_reason": result.discard_reason,
     }
