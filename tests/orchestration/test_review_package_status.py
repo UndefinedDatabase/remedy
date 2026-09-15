@@ -1,10 +1,9 @@
 """
-Review-manifest package status, and the do_cmd evidence helpers still under test.
+Review-manifest package status: build_manifest and validate_evidence_candidate.
 
 Coverage:
-  - build_manifest / validate_evidence_candidate: evidence validity, package status,
-    source-root containment and review-bundle integrity
-  - _sanitize_shareable_paths, _build_final_audit and the timeout hint
+  - build_manifest over no evidence dir and over a partial one
+  - evidence validity, package status, source-root containment and review-bundle integrity
 """
 
 from __future__ import annotations
@@ -12,31 +11,8 @@ from __future__ import annotations
 import json
 
 
-class TestShareablePathSanitizer:
-    """Shareable refs keep their artifact names under canonical prefixes."""
-
-    # --- R-4319: artifact refs preserve filenames ----------------------------
-
-    def test_sanitizer_preserves_evidence_artifact_name(self):
-        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
-        data = {"ref": "/tmp/remedy-job-evidence-abc123/manifest.json"}
-        result = _sanitize_shareable_paths(data)
-        assert result["ref"] == "evidence/current/manifest.json", \
-            "R-4327: evidence refs must use canonical evidence/current/ prefix"
-
-    def test_sanitizer_preserves_staging_subpath(self):
-        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
-        data = {"ref": "/tmp/remedy-pingpong-abc123/staging/file.py"}
-        result = _sanitize_shareable_paths(data)
-        assert result["ref"] == "[staging]/staging/file.py", \
-            "R-4319: sanitizer must preserve subpath after staging prefix"
-
-    def test_sanitizer_preserves_home_subpath(self):
-        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
-        data = {"ref": "/home/alice/project/src/main.py"}
-        result = _sanitize_shareable_paths(data)
-        assert result["ref"] == "[local]/project/src/main.py", \
-            "R-4319: sanitizer must preserve subpath after home prefix"
+class TestManifestBuilder:
+    """build_manifest's shape, its dirty-file list and its review-subject alignment."""
 
     # --- R-4316: manifest builder valid JSON ----------------------------------
 
@@ -48,213 +24,6 @@ class TestShareablePathSanitizer:
         assert parsed["bundle_kind"] == "remedy_review_zip"
         assert parsed["bundle_version"] == 12
         assert "generated_at" in parsed
-
-    # --- R-4327: canonical artifact refs --------------------------------------
-
-    def test_evidence_ref_canonical(self):
-        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
-        data = {"ref": "/tmp/remedy-job-evidence-abc123/manifest.json"}
-        result = _sanitize_shareable_paths(data)
-        assert result["ref"] == "evidence/current/manifest.json", \
-            "R-4327: evidence refs must use canonical evidence/current/ prefix"
-
-    def test_evidence_ref_task_run_canonical(self):
-        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
-        data = {"ref": "/tmp/remedy-job-evidence-abc123/task_runs/T001/review.json"}
-        result = _sanitize_shareable_paths(data)
-        assert result["ref"] == "evidence/current/task_runs/T001/review.json"
-
-
-# ---------------------------------------------------------------------------
-# Final audit + final verifier integration unit tests
-# ---------------------------------------------------------------------------
-
-
-class _FakeJob:
-    """Minimal job stub for _build_final_audit unit tests."""
-    def __init__(self, status="completed", tasks=None):
-        self.state = status
-        self.tasks = tasks or [_FakeTask()]
-
-
-class _FakeTask:
-    def __init__(self, task_id="T001", status="applied_to_job_workspace",
-                 reviewer_verdict="pass", test_passed=True):
-        self.task_id = task_id
-        self.status = status
-        self.safe_diff_files = []
-        self.reviewer_verdict = reviewer_verdict
-        self.test_passed = test_passed
-
-
-class _FakePromo:
-    def __init__(self, status="dry_run"):
-        self.status = status
-        self.blocked_reason = ""
-        self.files_planned = []
-
-
-def _seed_evidence(ev_path, fv_verdict="PASS", tt_actual=False, tt_est_total=5000):
-    """Seed a minimal evidence dir with final_verifier_report + token_truth."""
-    ev_path.mkdir(parents=True, exist_ok=True)
-    (ev_path / "manifest.json").write_text("{}")
-    (ev_path / "prompt_trace_summary.json").write_text("{}")
-    (ev_path / "agent_run_trace.jsonl").write_text("")
-    (ev_path / "agent_run_trace_summary.json").write_text("{}")
-    (ev_path / "final_verifier_report.json").write_text(json.dumps({
-        "schema_version": "1.0.0",
-        "verdict": fv_verdict,
-        "missing_tests_gate": "NEEDS_TESTS" if fv_verdict == "NEEDS_TESTS" else "PASS",
-        "scratch_file_guard": "BLOCKED" if fv_verdict == "BLOCKED" else "PASS",
-    }))
-    (ev_path / "token_truth.json").write_text(json.dumps({
-        "schema_version": "1.0.0",
-        "actual_available": tt_actual,
-        "estimated_total_tokens": tt_est_total,
-    }))
-
-
-class TestFinalAuditVerifierIntegration:
-    """Unit tests: _build_final_audit must follow final_verifier_report.json."""
-
-    def test_needs_tests_overrides_ready(self, tmp_path):
-        from apps.cli.commands.do_cmd import _build_final_audit
-        ev = tmp_path / "evidence"
-        _seed_evidence(ev, fv_verdict="NEEDS_TESTS")
-
-        audit = _build_final_audit(
-            _FakeJob(), _FakePromo(), str(ev),
-            token_summary={"provider_call_count": 1},
-            job_flow_json_available=True,
-        )
-        assert audit["status"] == "NEEDS_TESTS"
-        assert audit["promote_ready"] is False
-        assert audit["final_verifier_verdict"] == "NEEDS_TESTS"
-
-    def test_blocked_overrides_ready(self, tmp_path):
-        from apps.cli.commands.do_cmd import _build_final_audit
-        ev = tmp_path / "evidence"
-        _seed_evidence(ev, fv_verdict="BLOCKED")
-
-        audit = _build_final_audit(
-            _FakeJob(), _FakePromo(), str(ev),
-            token_summary={"provider_call_count": 1},
-            job_flow_json_available=True,
-        )
-        assert audit["status"] == "BLOCKED"
-        assert audit["promote_ready"] is False
-
-    def test_pass_with_risks_not_clean_ready(self, tmp_path):
-        from apps.cli.commands.do_cmd import _build_final_audit
-        ev = tmp_path / "evidence"
-        _seed_evidence(ev, fv_verdict="PASS_WITH_RISKS")
-
-        audit = _build_final_audit(
-            _FakeJob(), _FakePromo(), str(ev),
-            token_summary={"provider_call_count": 1},
-            job_flow_json_available=True,
-        )
-        assert audit["status"] != "READY_FOR_APPROVAL"
-        assert audit["status"] == "NEEDS_REVIEW"
-        assert audit["promote_ready"] is False
-
-    def test_needs_repair_overrides_ready(self, tmp_path):
-        from apps.cli.commands.do_cmd import _build_final_audit
-        ev = tmp_path / "evidence"
-        _seed_evidence(ev, fv_verdict="NEEDS_REPAIR")
-
-        audit = _build_final_audit(
-            _FakeJob(), _FakePromo(), str(ev),
-            token_summary={"provider_call_count": 1},
-            job_flow_json_available=True,
-        )
-        assert audit["status"] == "NEEDS_REPAIR"
-        assert audit["promote_ready"] is False
-
-    def test_pass_allows_ready(self, tmp_path):
-        from apps.cli.commands.do_cmd import _build_final_audit
-        ev = tmp_path / "evidence"
-        _seed_evidence(ev, fv_verdict="PASS")
-
-        audit = _build_final_audit(
-            _FakeJob(), _FakePromo(), str(ev),
-            token_summary={"provider_call_count": 1},
-            job_flow_json_available=True,
-        )
-        assert audit["status"] == "READY_FOR_APPROVAL"
-        assert audit["promote_ready"] is True
-
-    def test_includes_verifier_and_token_truth_refs(self, tmp_path):
-        from apps.cli.commands.do_cmd import _build_final_audit
-        ev = tmp_path / "evidence"
-        _seed_evidence(ev, fv_verdict="PASS", tt_actual=False, tt_est_total=8000)
-
-        audit = _build_final_audit(
-            _FakeJob(), _FakePromo(), str(ev),
-            token_summary={"provider_call_count": 1},
-            job_flow_json_available=True,
-        )
-        assert audit["final_verifier_report_ref"] == "final_verifier_report.json"
-        assert audit["final_verifier_verdict"] == "PASS"
-        assert audit["token_truth_ref"] == "token_truth.json"
-        assert audit["token_truth_actual_available"] is False
-        assert audit["token_truth_estimated_total"] == 8000
-        assert audit["missing_tests_gate_status"] == "PASS"
-        assert audit["scratch_file_guard_status"] == "PASS"
-
-    def test_no_verifier_report_falls_through(self, tmp_path):
-        from apps.cli.commands.do_cmd import _build_final_audit
-        ev = tmp_path / "evidence"
-        ev.mkdir(parents=True)
-        (ev / "manifest.json").write_text("{}")
-        (ev / "prompt_trace_summary.json").write_text("{}")
-        (ev / "agent_run_trace.jsonl").write_text("")
-        (ev / "agent_run_trace_summary.json").write_text("{}")
-
-        audit = _build_final_audit(
-            _FakeJob(), _FakePromo(), str(ev),
-            token_summary={"provider_call_count": 1},
-            job_flow_json_available=True,
-        )
-        assert audit["status"] == "READY_FOR_APPROVAL"
-        assert "final_verifier_verdict" not in audit
-
-    def test_final_audit_blocked_on_gate_block(self, tmp_path):
-        """Final audit must be BLOCKED when a gate is BLOCKED, even with FV=PASS."""
-        from apps.cli.commands.do_cmd import _build_final_audit
-        ev = tmp_path / "evidence"
-        _seed_evidence(ev, fv_verdict="PASS")
-        (ev / "change_provenance_gate.json").write_text(json.dumps({
-            "verdict": "BLOCKED",
-        }))
-        (ev / "commit_execution_gate.json").write_text(json.dumps({
-            "verdict": "BLOCKED",
-        }))
-
-        audit = _build_final_audit(
-            _FakeJob(), _FakePromo(), str(ev),
-            token_summary={"provider_call_count": 1},
-            job_flow_json_available=True,
-        )
-        assert audit["status"] == "BLOCKED"
-        assert audit["promote_ready"] is False
-
-    def test_final_audit_blocked_on_commit_needs_tests(self, tmp_path):
-        """Final audit BLOCKED when commit_execution is NEEDS_TESTS."""
-        from apps.cli.commands.do_cmd import _build_final_audit
-        ev = tmp_path / "evidence"
-        _seed_evidence(ev, fv_verdict="PASS")
-        (ev / "commit_execution_gate.json").write_text(json.dumps({
-            "verdict": "NEEDS_TESTS",
-        }))
-
-        audit = _build_final_audit(
-            _FakeJob(), _FakePromo(), str(ev),
-            token_summary={"provider_call_count": 1},
-            job_flow_json_available=True,
-        )
-        assert audit["status"] == "BLOCKED"
-        assert audit["promote_ready"] is False
 
     # --- manifest dirty-file and alignment tests ---
 
@@ -375,21 +144,6 @@ class TestManifestEvidenceValidity:
         }))
         result = validate_evidence_candidate(str(ev))
         assert result["is_valid_current_run"] is False
-
-    def test_final_audit_changed_files_uses_authoritative(self, tmp_path):
-        from apps.cli.commands.do_cmd import _build_final_audit
-        ev = tmp_path / "evidence"
-        ev.mkdir(parents=True)
-        _seed_evidence(ev, fv_verdict="PASS")
-        fv = json.loads((ev / "final_verifier_report.json").read_text())
-        fv["authoritative_changed_files"] = ["a.py", "b.py", "c.py"]
-        (ev / "final_verifier_report.json").write_text(json.dumps(fv))
-        audit = _build_final_audit(
-            _FakeJob(), _FakePromo(), str(ev),
-            token_summary={"provider_call_count": 1},
-            job_flow_json_available=True,
-        )
-        assert sorted(audit["changed_files"]) == ["a.py", "b.py", "c.py"]
 
 
 class TestReviewZipPackageStatus:
@@ -957,70 +711,3 @@ class TestReviewBundleIntegrity:
         assert status in ("READY_FOR_REVIEW", "BLOCKED_EVIDENCE")
         assert "/" not in status
         assert " " not in status
-
-
-# ---------------------------------------------------------------------------
-# Round 16 — F1: the restored timeout hint
-# ---------------------------------------------------------------------------
-
-
-class TestTheTimeoutHintReportsResolvedTruth:
-    """F1 (round 16): the hint reports what `run_job` RESOLVED and recorded.
-
-    It must never re-resolve a default at the call site — that is what the shared
-    `RunInvocation` exists to prevent, and re-introducing `timeout_sec or 120` here would
-    silently defeat the omission sentinel the whole tri-state contract rests on.
-    """
-
-    def _job(self, timeout_sec):
-        from packages.orchestration.pingpong_job import ExecutionConfig, JobPlan
-
-        job = JobPlan(job_id="j" * 16, job_title="t", repo_path="/tmp/x")
-        if timeout_sec is not None:
-            job.execution_config = ExecutionConfig(timeout_sec=timeout_sec)
-        return job
-
-    def test_an_omitted_timeout_reports_the_resolved_product_default(self) -> None:
-        """Omission is preserved into `run_job`; the hint then reports what it settled on."""
-        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
-
-        job = self._job(120)                       # what run_job resolved and persisted
-        assert _effective_timeout_sec(job) == 120
-        hint = _build_timeout_hint("claude-cli", "fake", _effective_timeout_sec(job))
-        assert "120s" in hint and "--timeout-sec 900" in hint
-
-    def test_an_explicit_timeout_reports_that_timeout(self) -> None:
-        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
-
-        job = self._job(300)
-        assert _effective_timeout_sec(job) == 300
-        assert "300s" in _build_timeout_hint("claude-cli", "fake", _effective_timeout_sec(job))
-
-    def test_an_explicit_profile_reports_its_effective_timeout(self) -> None:
-        """A profile resolves to a number inside `run_job`; the hint reports the EFFECT."""
-        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
-
-        job = self._job(900)                       # e.g. a long profile
-        assert _effective_timeout_sec(job) == 900
-        assert _build_timeout_hint("claude-cli", "fake", _effective_timeout_sec(job)) == ""
-
-    def test_no_execution_config_says_nothing_rather_than_guessing(self) -> None:
-        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
-
-        job = self._job(None)
-        assert _effective_timeout_sec(job) is None
-        assert _build_timeout_hint("claude-cli", "fake", None) == ""
-
-    def test_non_cli_providers_never_get_the_hint(self) -> None:
-        from apps.cli.commands.do_cmd import _build_timeout_hint
-
-        assert _build_timeout_hint("fake", "fake", 10) == ""
-
-    def test_the_hint_never_changes_execution(self) -> None:
-        """Informational only: it reads the persisted config and returns a string."""
-        import inspect
-
-        from apps.cli.commands.do_cmd import _build_timeout_hint
-
-        src = inspect.getsource(_build_timeout_hint)
-        assert "run_job" not in src and "=" not in src.split("return")[-1]

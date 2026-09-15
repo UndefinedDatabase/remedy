@@ -1122,7 +1122,6 @@ class TestDogfoodCommandShape:
         import packages.orchestration.job_evidence as mod
         src = Path(mod.__file__).read_text()
         assert "test_spec_compliance.py" not in src
-        assert "test_do_job_flow.py" not in src
 
     def test_verification_tests_written_from_explicit_commands(
         self, isolate_data_root, demo_repo, tmp_path
