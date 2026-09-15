@@ -681,7 +681,7 @@ class TestAutoSelectLatestEvidence:
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
         assert "2 deprecated remedy-job-evidence-* dir(s)" in proc.stderr
         assert "--evidence-dir" in proc.stderr
-        assert "do job-evidence" in proc.stderr
+        assert "To index: 'job evidence'." in proc.stderr
 
     def test_missing_command_transcript_creates_zip_with_warning(self, tmp_path: Path):
         """Missing command_transcript.json → zip created, validation records it.

@@ -123,14 +123,14 @@ def mirror_job_run_into_ledger(job_id: str) -> dict[str, Any]:
     after a run that had spent real money. The mirror is armed in exactly one
     place — ``_resolve_job_ledger_project_id``, reached only from
     ``export_job_evidence`` — and only two commands used to reach it,
-    `do job-evidence` and `do job-flow`. A run that is never exported has no cost
+    `job evidence` and `do job-flow`. A run that is never exported has no cost
     row, and `remedy stats backfill-ledger` cannot help either, because it mirrors
     an evidence DIRECTORY that was never written.
 
     Rather than record from the loop, which would move DECISION D16's
     per-finalized-task-run granularity, this reuses the seam that already exists:
     the job's evidence is exported to its own default location, which arms the
-    live mirror exactly as `do job-evidence` does. One call, no second capture
+    live mirror exactly as `job evidence` does. One call, no second capture
     path, and no new ledger writer to keep in step with the old one.
 
     NEVER FATAL. A job that ran is a job that ran; a failure to mirror its cost

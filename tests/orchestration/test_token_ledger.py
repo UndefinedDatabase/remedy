@@ -1388,7 +1388,7 @@ class TestLiveMirrorOnTheProductionPath:
     """Finding R-0220: a REAL job must yield rows with nobody passing ``ledger_*``.
 
     Every test in this class calls ``export_job_evidence`` — the production
-    caller behind `remedy do job-evidence` and `do job-flow` — and passes NO
+    caller behind `remedy job evidence` and `do job-flow` — and passes NO
     ``ledger_*`` argument. A test that supplies the target itself proves only
     the hand-passed path, which was already green and is exactly what let the
     feature ship switched off.
@@ -2335,7 +2335,7 @@ class TestCostTruthOnTheJobRunPath:
     def test_mirroring_twice_adds_no_second_row(
         self, live_data_root, live_job_repo,
     ):
-        """`do job-run` then `do job-evidence` must not double-count the money."""
+        """`do job-run` then `job evidence` must not double-count the money."""
         from packages.orchestration.job_evidence import mirror_job_run_into_ledger
         from packages.orchestration.project_registry import register_project_repo
 
@@ -2363,7 +2363,7 @@ class TestCostTruthOnTheJobRunPath:
 class TestJobRunActuallyCallsTheMirror:
     """A working seam nobody calls is the original defect in another dress.
 
-    The finding was never that the mirror could not record — `do job-evidence`
+    The finding was never that the mirror could not record — `job evidence`
     already proved it could. It was that `remedy do job-run` did not reach it.
     So the wiring is asserted on the COMMAND, not only on the function.
     """

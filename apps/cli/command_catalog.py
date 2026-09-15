@@ -2535,9 +2535,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
-        command_id="do.job-evidence",
-        group_id="do",
-        subcommand="job-evidence",
+        command_id="job.evidence",
+        group_id="job",
+        subcommand="evidence",
         description="Export a self-contained evidence bundle for an entire job.",
         action_class="test_execution",
         supports_json=True,
@@ -2558,7 +2558,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Review and apply job workspace changes to target repo. Dry-run by default; --approve applies.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-plan", "do.job-run", "do.job-evidence"),
+        related=("do.job-plan", "do.job-run", "job.evidence"),
         args=(
             ArgDef("job_id", "Job ID"),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
@@ -2578,7 +2578,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Run the full safe job workflow (plan, run, report, evidence, promote dry-run). Stops at the dry-run, exports evidence, and never changes the target repo; an explicit `job-promote --approve` is required to apply.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-plan", "do.job-run", "do.job-report", "do.job-evidence", "do.job-promote"),
+        related=("do.job-plan", "do.job-run", "do.job-report", "job.evidence", "do.job-promote"),
         args=(
             ArgDef("--job-file", "Path to Markdown job file", required=True, is_option=True),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),

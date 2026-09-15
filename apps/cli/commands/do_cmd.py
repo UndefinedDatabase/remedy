@@ -1501,7 +1501,7 @@ def _cmd_do_job_run(
 
     # F103 cost truth on the job path: a run that spent money must leave a cost
     # row, so the evidence export that arms the live ledger mirror runs here
-    # rather than waiting for someone to type `do job-evidence`. Never fatal.
+    # rather than waiting for someone to type `job evidence`. Never fatal.
     from packages.orchestration.job_evidence import mirror_job_run_into_ledger
     cost_mirror = mirror_job_run_into_ledger(job.job_id)
 
@@ -1517,13 +1517,13 @@ def _cmd_do_job_run(
         else:
             print(
                 f"Cost NOT recorded to the ledger: {cost_mirror['error']}\n"
-                f"Next: run `remedy do job-evidence {job.job_id}` and then "
+                f"Next: run `remedy job evidence {job.job_id}` and then "
                 f"`remedy stats backfill-ledger` to reconcile it.",
                 file=sys.stderr,
             )
 
 
-def _cmd_do_job_evidence(
+def _cmd_job_evidence(
     job_id: str,
     *,
     out: str = "",
@@ -1549,7 +1549,7 @@ def _cmd_do_job_evidence(
     )
 
     if not result.get("error"):
-        _index_job_evidence(job_id, result.get("out_dir", out), "do.job-evidence")
+        _index_job_evidence(job_id, result.get("out_dir", out), "job.evidence")
 
     if result.get("error"):
         print(f"Error: {result['error']}", file=sys.stderr)
@@ -2156,7 +2156,7 @@ def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) -> 
 def _persist_evidence_index(job_id: str, evidence_out: str, trace_summary: dict) -> None:
     """Write evidence location index under Remedy data dir for cockpit bridge.
 
-    Delegates to the shared index writer so job-flow and job-evidence produce one
+    Delegates to the shared index writer so `do job-flow` and `job evidence` produce one
     record format (no second index).
     """
     try:
@@ -2720,7 +2720,7 @@ def _cmd_do_job_flow(
     from packages.orchestration.review_subject import read_declared_base
     evidence_out = out or str(_jeed(job_id))
     # F6 (round 17): forward the operator's declared review base, read ONCE here at the top level.
-    # `do job-evidence` already did this; `do job-flow` did not, so a clean committed feature
+    # `job evidence` already did this; `do job-flow` did not, so a clean committed feature
     # branch exported through the full workflow lost its committed ReviewSubject entirely —
     # `export_job_evidence` correctly reads no ambient environment (F6, round 16), so a base that
     # is not passed is a base that does not exist.
@@ -3168,7 +3168,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         skip_blocked=getattr(args, "skip_blocked", False),
         json_output=getattr(args, "json", False),
     ),
-    "do.job-evidence": lambda args: _cmd_do_job_evidence(
+    "job.evidence": lambda args: _cmd_job_evidence(
         args.job_id,
         out=getattr(args, "out", None) or "",
         verification_command=getattr(args, "verification_command", None),

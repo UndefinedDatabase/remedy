@@ -3784,7 +3784,7 @@ def _write_run_manifest_record(job: JobPlan, *, status: str, episode_id: str,
 def _task_stream_dir(job_id: str, task_id: str):
     """Return the per-task F004 raw stream evidence directory (hidden data dir).
 
-    Streams land beside the job's persisted evidence so `job-evidence` picks them
+    Streams land beside the job's persisted evidence so `job evidence` picks them
     up as ``task_runs/<task>/`` artifacts without polluting the repository.
 
     ``data_paths`` owns the evidence root (DECISION F260 D1); only the

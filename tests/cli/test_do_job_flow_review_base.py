@@ -1,6 +1,6 @@
 """F6 (round 17) — `do job-flow` forwards the explicit review base.
 
-`do job-evidence` reads the operator's `REMEDY_REVIEW_BASE` declaration once and passes it to
+`job evidence` reads the operator's `REMEDY_REVIEW_BASE` declaration once and passes it to
 `export_job_evidence`; `do job-flow` called `export_job_evidence(job_id, evidence_out)` with no
 base. Since round 16 the export reads NO ambient environment (a base not passed is a base that
 does not exist), so a clean committed feature branch exported through the full workflow lost its
@@ -22,7 +22,7 @@ from packages.orchestration.review_subject import (
 
 class TestBothExportCallsForwardTheBase:
     def test_do_cmd_forwards_declared_base_in_every_export_call(self):
-        """Neither `do job-evidence` nor `do job-flow` may call the export without the base."""
+        """Neither `job evidence` nor `do job-flow` may call the export without the base."""
         import apps.cli.commands.do_cmd as do_cmd
 
         src = inspect.getsource(do_cmd)

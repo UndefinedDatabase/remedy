@@ -94,9 +94,9 @@ class TestJobEvidenceCliDefaults:
     def test_default_out_goes_to_hidden_dir_and_indexes(self, isolate_data_root, tmp_path, capsys):
         repo = _repo(tmp_path / "repo", dirty=["pkg/mod.py"])
         job = self._plan(repo)
-        from apps.cli.commands.do_cmd import _cmd_do_job_evidence
+        from apps.cli.commands.do_cmd import _cmd_job_evidence
 
-        _cmd_do_job_evidence(job.job_id, json_output=True)
+        _cmd_job_evidence(job.job_id, json_output=True)
         capsys.readouterr()
 
         expected = job_evidence_export_dir(job.job_id)
@@ -123,10 +123,10 @@ class TestJobEvidenceCliDefaults:
     def test_explicit_out_still_supported(self, isolate_data_root, tmp_path, capsys):
         repo = _repo(tmp_path / "repo2", dirty=["pkg/mod.py"])
         job = self._plan(repo)
-        from apps.cli.commands.do_cmd import _cmd_do_job_evidence
+        from apps.cli.commands.do_cmd import _cmd_job_evidence
 
         custom = tmp_path / "custom_out"
-        _cmd_do_job_evidence(job.job_id, out=str(custom), json_output=True)
+        _cmd_job_evidence(job.job_id, out=str(custom), json_output=True)
         capsys.readouterr()
         assert custom.is_dir()
         rec = find_record(job.job_id)

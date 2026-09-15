@@ -265,3 +265,26 @@ class TestRequiredCommands:
         catalog_ids = {cmd.command_id for cmd in CATALOG}
         for cid in self.REQUIRED:
             assert cid in catalog_ids, f"Missing required command: {cid}"
+
+
+class TestRenamedCommands:
+    """F261 renames a command by deleting its old id outright: no alias (DECISION F261 D-B)."""
+
+    RENAMED = (
+        ("do.job-evidence", "job.evidence"),
+    )
+
+    def test_no_old_id_is_left_in_the_catalog(self) -> None:
+        catalog_ids = {cmd.command_id for cmd in CATALOG}
+        assert [old for old, _new in self.RENAMED if old in catalog_ids] == []
+
+    def test_every_new_id_parses_from_its_words_and_has_a_handler(self) -> None:
+        from apps.cli.grouped import _get_dispatch_table, build_parser
+
+        parser = build_parser()
+        dispatch = _get_dispatch_table()
+        for _old, new in self.RENAMED:
+            group, subcommand = new.split(".", 1)
+            args, _unknown = parser.parse_known_args([group, subcommand, "an-id"])
+            assert args._command_id == new
+            assert new in dispatch

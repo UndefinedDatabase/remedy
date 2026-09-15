@@ -174,7 +174,7 @@ if [[ -z "$EVIDENCE_DIR" ]]; then
   elif [[ -n "$REQUESTED_JOB_ID" ]]; then
     # An explicit job id must never be silently substituted. Try to export it.
     echo "No indexed evidence for job $REQUESTED_JOB_ID ($SEL_REASON) — exporting it now."
-    if python3 -m apps.cli.grouped do job-evidence "$REQUESTED_JOB_ID" --json >/dev/null 2>&1; then
+    if python3 -m apps.cli.grouped job evidence "$REQUESTED_JOB_ID" --json >/dev/null 2>&1; then
       SELECT_OUT="$(python3 scripts/select_review_evidence.py --repo "$ROOT" --job-id "$REQUESTED_JOB_ID" --include-recent "$INCLUDE_RECENT" 2>/dev/null || true)"
       SEL_STATUS="$(echo "$SELECT_OUT" | sed -n 's/^STATUS=//p')"
       SEL_DIR="$(echo "$SELECT_OUT" | sed -n 's/^EVIDENCE_DIR=//p')"
@@ -203,7 +203,7 @@ if [[ -z "$EVIDENCE_DIR" && -z "$REQUESTED_JOB_ID" ]]; then
   if [[ "$LEGACY_COUNT" -gt 0 ]]; then
     echo "WARNING: $LEGACY_COUNT deprecated remedy-job-evidence-* dir(s) in repo root — IGNORED." >&2
     echo "Auto-selection from root dirs is disabled (cannot distinguish features)." >&2
-    echo "To use one: --evidence-dir <path>. To index: 'do job-evidence'." >&2
+    echo "To use one: --evidence-dir <path>. To index: 'job evidence'." >&2
   fi
   echo "No matching review evidence exists for the current branch/worktree."
   echo "This is a code snapshot, not a final review package."

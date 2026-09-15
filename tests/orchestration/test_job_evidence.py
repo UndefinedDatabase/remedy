@@ -794,7 +794,7 @@ class TestCLIJsonRedaction:
             out=out_dir,
             json=True,
         )
-        COMMAND_HANDLERS["do.job-evidence"](args)
+        COMMAND_HANDLERS["job.evidence"](args)
 
         captured = capsys.readouterr()
         output = json.loads(captured.out)
@@ -814,7 +814,7 @@ class TestCLIJsonRedaction:
             out=out_dir,
             json=False,
         )
-        COMMAND_HANDLERS["do.job-evidence"](args)
+        COMMAND_HANDLERS["job.evidence"](args)
 
         captured = capsys.readouterr()
         assert "exported to" in captured.out.lower()
@@ -875,11 +875,11 @@ class TestDogfoodCommandShape:
     def test_command_catalog_has_job_evidence(self):
         from apps.cli.command_catalog import CATALOG
         cmd = next(
-            (c for c in CATALOG if c.command_id == "do.job-evidence"),
+            (c for c in CATALOG if c.command_id == "job.evidence"),
             None,
         )
         assert cmd is not None
-        # job-evidence now executes explicit verification commands, so it is
+        # job evidence now executes explicit verification commands, so it is
         # no longer read_only — catalog integrity forbids that combination.
         assert cmd.action_class == "test_execution"
         assert cmd.may_mutate_repo is False
@@ -888,7 +888,7 @@ class TestDogfoodCommandShape:
 
     def test_handler_exists(self):
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        assert "do.job-evidence" in COMMAND_HANDLERS
+        assert "job.evidence" in COMMAND_HANDLERS
 
     def test_evidence_export_writes_missing_tests_gate(self, isolate_data_root, demo_repo, tmp_path):
         job = _run_completed_job(demo_repo)
@@ -1171,7 +1171,7 @@ class TestDogfoodCommandShape:
             out=out_dir,
             json=True,
         )
-        COMMAND_HANDLERS["do.job-evidence"](args)
+        COMMAND_HANDLERS["job.evidence"](args)
 
         captured = capsys.readouterr()
         output = json.loads(captured.out)
