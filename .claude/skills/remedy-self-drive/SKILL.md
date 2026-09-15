@@ -26,8 +26,8 @@ git status --porcelain
 git branch --show-current
 git log --oneline -n 8
 gh pr list --state open --json number,headRefName,baseRefName,isDraft
-remedy plan status
-remedy plan next
+remedy roadmap status
+remedy roadmap next
 ```
 Then read from disk: `.agent/handoff.md`, `.agent/plan.md`,
 `.agent/live_review.md`, `.agent/candidates.md`, and the active feature

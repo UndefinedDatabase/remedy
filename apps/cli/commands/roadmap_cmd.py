@@ -1,6 +1,6 @@
-"""CLI handlers for the ``plan`` command group (F080 T001/T002).
+"""CLI handlers for the hidden ``roadmap`` command group (F080 T001/T002).
 
-``remedy plan status`` and ``remedy plan next`` READ the roadmap mirror
+``remedy roadmap status`` and ``remedy roadmap next`` READ the roadmap mirror
 and PROPOSE — they never start a job, never write markdown, and never
 check a checkbox. The only thing they write is the generated index
 under the data root (one-way mirror, see roadmap_index.py).
@@ -65,7 +65,7 @@ def _consistency_lines(index) -> list[str]:
     return lines
 
 
-def _cmd_plan_status(args: Any) -> None:
+def _cmd_roadmap_status(args: Any) -> None:
     """Show the active/next roadmap feature, its blockers and its milestone."""
     from packages.orchestration.roadmap_index import (
         RoadmapGrammarError,
@@ -112,7 +112,7 @@ def _cmd_plan_status(args: Any) -> None:
     print("\n".join(lines))
 
 
-def _cmd_plan_next(args: Any) -> None:
+def _cmd_roadmap_next(args: Any) -> None:
     """Propose the next feature to work on. Proposes — starts nothing."""
     from packages.orchestration.roadmap_index import RoadmapGrammarError, proposed_feature
 
@@ -149,6 +149,6 @@ def _cmd_plan_next(args: Any) -> None:
 
 
 COMMAND_HANDLERS = {
-    "plan.status": lambda args: _cmd_plan_status(args),
-    "plan.next": lambda args: _cmd_plan_next(args),
+    "roadmap.status": lambda args: _cmd_roadmap_status(args),
+    "roadmap.next": lambda args: _cmd_roadmap_next(args),
 }

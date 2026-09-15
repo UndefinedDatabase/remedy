@@ -273,11 +273,19 @@ class TestRenamedCommands:
         ("do.job-evidence", "job.evidence"),
         ("do.job-promote", "job.apply"),
         ("do.job-run", "job.run"),
+        ("plan.next", "roadmap.next"),
+        ("plan.status", "roadmap.status"),
     )
 
     def test_no_old_id_is_left_in_the_catalog(self) -> None:
         catalog_ids = {cmd.command_id for cmd in CATALOG}
         assert [old for old, _new in self.RENAMED if old in catalog_ids] == []
+
+    def test_no_old_id_is_left_in_the_dispatch_table(self) -> None:
+        from apps.cli.grouped import _get_dispatch_table
+
+        dispatch = _get_dispatch_table()
+        assert [old for old, _new in self.RENAMED if old in dispatch] == []
 
     def test_every_new_id_parses_from_its_words_and_has_a_handler(self) -> None:
         from apps.cli.grouped import _get_dispatch_table, build_parser

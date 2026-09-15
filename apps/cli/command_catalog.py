@@ -119,7 +119,6 @@ GROUPS: dict[str, GroupDef] = {
     "teach": GroupDef("teach", "Teach", "Explain a run. Read-only, never steers it."),
     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project dev server."),
     "stats": GroupDef("stats", "Stats", "Honest counts from the evidence on disk."),
-    "plan": GroupDef("plan", "Plan", "Read-only roadmap mirror — what is active, what is next. Proposes, never starts."),
     # -- Advanced / internal commands (callable but hidden from default help) --
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False),
     "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
@@ -148,6 +147,8 @@ GROUPS: dict[str, GroupDef] = {
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
     "contract": GroupDef("contract", "Contract", "Run contract inspection.", user_facing=False),
     "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False),
+    # -- Hidden: in no help at all, callable (DECISION amend0905-vocab D4) --
+    "roadmap": GroupDef("roadmap", "Roadmap", "Read-only roadmap mirror — what is active, what is next. Proposes, never starts.", user_facing=False, hidden=True),
 }
 
 
@@ -2851,10 +2852,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
 
     # ── progress ────────────────────────────────────────────────────────
 
-    # ── plan (F080: the roadmap mirror; proposes, never starts) ─────────
+    # ── roadmap (F080: the roadmap mirror; hidden; proposes, never starts) ─
     CommandEntry(
-        command_id="plan.status",
-        group_id="plan",
+        command_id="roadmap.status",
+        group_id="roadmap",
         subcommand="status",
         description="Show the active roadmap feature, its blockers and its milestone.",
         action_class="read_only",
@@ -2863,11 +2864,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--json", "Output as JSON", required=False, is_option=True),
         ),
         supports_json=True,
-        related=("plan.next",),
+        related=("roadmap.next",),
     ),
     CommandEntry(
-        command_id="plan.next",
-        group_id="plan",
+        command_id="roadmap.next",
+        group_id="roadmap",
         subcommand="next",
         description="Propose the next roadmap feature and its file path. Starts nothing.",
         action_class="read_only",
@@ -2876,7 +2877,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--json", "Output as JSON", required=False, is_option=True),
         ),
         supports_json=True,
-        related=("plan.status",),
+        related=("roadmap.status",),
     ),
 
     # ── ci ─────────────────────────────────────────────────────────────

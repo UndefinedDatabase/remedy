@@ -99,7 +99,7 @@ Specifications and design documents for the built system.
 | [repair-loop-v1.md](system/repair-loop-v1.md) | Repair loop v1 (bounded, approval-gated) |
 | [repair-request-builder-v0.md](system/repair-request-builder-v0.md) | Provider-agnostic repair request builder |
 | [reviewer-safety.md](system/reviewer-safety.md) | Reviewer and test safety constraints |
-| [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | One-way roadmap mirror, `remedy plan status`/`next`, feature→mission adapter |
+| [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | One-way roadmap mirror, `remedy roadmap status`/`next` (a hidden group), feature→mission adapter |
 | [run-contract-v1.md](system/run-contract-v1.md) | Run contract (apply/test gates, budgets) |
 | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | Self-dogfood execution (bounded self-improvement) |
 | [self-dogfood-v0.md](system/self-dogfood-v0.md) | Self-dogfood readiness + improvement planner |
