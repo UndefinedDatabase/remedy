@@ -134,7 +134,7 @@ class TestCompletedJobApply:
 
         res = apply_job(job.job_id, str(repo), approve=True)
 
-        assert res.status == "promoted", res.blocked_reason
+        assert res.status == "applied", res.blocked_reason
         assert (repo / "one.txt").read_text() == "hello\n"
         # No commit, no merge, no push: only the working tree changed.
         assert _git(repo, "rev-parse", "HEAD").strip() == head_before
@@ -533,7 +533,7 @@ class TestEndToEndJobFlow:
         assert not (repo / "one.txt").exists()        # still nothing
 
         res = apply_job(job.job_id, str(repo), approve=True)
-        assert res.status == "promoted"
+        assert res.status == "applied"
         assert (repo / "one.txt").read_text() == "hello\n"
         assert _git(repo, "rev-parse", "HEAD").strip() == _git(
             repo, "rev-parse", job.worktree_base_commit).strip()   # no commit

@@ -273,7 +273,7 @@ class TestPersistedRecordMatchesResult:
         job = self._job(repo, monkeypatch)
         res = apply_job(job.job_id, str(repo), approve=True)
 
-        assert res.status == "promoted"
+        assert res.status == "applied"
         record = _assert_record_matches(res)
         assert record["temporary_worktree_cleanup"]["cleanup_status"] == "clean"
         assert record["files_applied"] == ["one.txt"]
@@ -282,7 +282,7 @@ class TestPersistedRecordMatchesResult:
         job = self._job(repo, monkeypatch)
         res = apply_job(job.job_id, str(repo), approve=True, test_command="false")
 
-        assert res.status == "promoted_test_failed"
+        assert res.status == "applied_test_failed"
         record = _assert_record_matches(res)
         assert record["temporary_worktree_cleanup"]["cleanup_status"] == "clean"
         assert (repo / "one.txt").exists()          # the files really were applied
@@ -322,7 +322,7 @@ class TestPersistedRecordMatchesResult:
         _fail_worktree_remove(monkeypatch)
         res = apply_job(job.job_id, str(repo), approve=True)
 
-        assert res.status == "promoted_cleanup_failed"
+        assert res.status == "applied_cleanup_failed"
         assert res.files_applied == ["one.txt"]
         record = _assert_record_matches(res)
         assert record["files_applied"] == ["one.txt"]
@@ -412,7 +412,7 @@ class TestMaterializationFailuresReportCleanup:
         monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
         res = apply_job(job.job_id, str(repo), dry_run=True)
 
-        assert "promotion_worktree_failed" in res.blocked_reason
+        assert "apply_worktree_failed" in res.blocked_reason
         assert res.cleanup_status in ("clean", "failed")
         # Whatever happened, it is REPORTED — never silently dropped.
         assert res.cleanup_status == "clean" or res.cleanup_error
@@ -455,7 +455,7 @@ class TestMaterializationFailuresReportCleanup:
         monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
         res = apply_job(job.job_id, str(repo), dry_run=True)
 
-        assert "promotion_materialization_error" in res.blocked_reason
+        assert "apply_materialization_error" in res.blocked_reason
         assert res.cleanup_status == "clean"
         assert len(W.list_worktrees(repo)) == 1
         assert "remedy-promo" not in _git(repo, "worktree", "list", "--porcelain")
@@ -640,7 +640,7 @@ class TestCleanupExceptionSafety:
 
         res = apply_job(job.job_id, str(repo), approve=True)   # must NOT raise
 
-        assert res.status == "promoted_cleanup_failed"
+        assert res.status == "applied_cleanup_failed"
         assert res.files_applied == ["one.txt"]
         assert (repo / "one.txt").read_text() == "hello\n"      # the target DID change
         assert res.cleanup_status == "failed"
@@ -698,7 +698,7 @@ class TestCleanupExceptionSafety:
 
         res = apply_job(job.job_id, str(repo), approve=True)   # must NOT raise
 
-        assert res.status == "promoted_cleanup_failed"
+        assert res.status == "applied_cleanup_failed"
         assert res.files_applied == ["one.txt"]
         assert "cleanup raised unexpectedly" in res.cleanup_error
         _assert_record_matches(res)

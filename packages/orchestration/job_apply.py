@@ -313,7 +313,7 @@ class JobApplyResult:
     """Result of a job promotion attempt."""
     job_id: str = ""
     promotion_id: str = field(default_factory=lambda: uuid4().hex[:16])
-    status: str = ""  # blocked, dry_run, approved_apply_started, promoted, promoted_test_failed, promoted_record_update_failed
+    status: str = ""  # blocked, dry_run, approved_apply_started, applied, applied_test_failed, applied_record_update_failed
     approved: bool = False
     dry_run: bool = False
     target_repo: str = ""
@@ -389,7 +389,7 @@ def _safe_persist(
             original_status = result.status
             result.status = "record_update_failed"
             result.blocked_reason = (
-                f"promotion_record_update_failed: {exc} — "
+                f"apply_record_update_failed: {exc} — "
                 f"original_status={original_status}; no durable record exists"
             )
             result.blocked_reasons.append(result.blocked_reason)
@@ -398,9 +398,9 @@ def _safe_persist(
         if applied:
             original_status = result.status
             original_reason = result.blocked_reason
-            result.status = "promoted_record_update_failed"
+            result.status = "applied_record_update_failed"
             result.blocked_reason = (
-                f"promotion_record_update_failed: {exc} — "
+                f"apply_record_update_failed: {exc} — "
                 f"original_status={original_status}, "
                 f"original_reason={original_reason}, "
                 f"target files may have changed ({len(applied)} applied)"
@@ -516,7 +516,7 @@ def _materialize_apply_source_owned(job: Any) -> tuple[ApplySource | None, str]:
             cwd=str(repo), capture_output=True, text=True, timeout=120,
         )
         if proc.returncode != 0:
-            return source, f"promotion_worktree_failed: {proc.stderr.strip()[:200]}"
+            return source, f"apply_worktree_failed: {proc.stderr.strip()[:200]}"
         source.materialized = True
 
         diff_arg = str(src)
@@ -534,7 +534,7 @@ def _materialize_apply_source_owned(job: Any) -> tuple[ApplySource | None, str]:
         if applied.returncode != 0:
             return source, f"job_diff_apply_failed: {applied.stderr.strip()[:200]}"
     except Exception as exc:
-        return source, f"promotion_materialization_error: {type(exc).__name__}: {exc}"
+        return source, f"apply_materialization_error: {type(exc).__name__}: {exc}"
 
     return source, ""
 
@@ -794,14 +794,14 @@ def apply_job(
         # Never claim a clean run. The promotion outcome and the applied-file list
         # are preserved: the target WAS touched if the status says so. A cleanup
         # failure during a materialization failure reports BOTH.
-        if out.status == "promoted":
-            out.status = "promoted_cleanup_failed"
+        if out.status == "applied":
+            out.status = "applied_cleanup_failed"
         elif out.status == "dry_run":
             out.status = "dry_run_cleanup_failed"
         elif out.status == "blocked" and not out.files_applied:
             out.status = "materialization_failed_cleanup_failed"
         out.blocked_reasons = list(out.blocked_reasons) + [
-            f"temporary_promotion_cleanup_failed: {out.cleanup_error}"
+            f"temporary_apply_cleanup_failed: {out.cleanup_error}"
         ]
 
     # ONE final persistence, after cleanup, for every materialized outcome — so the
@@ -834,7 +834,7 @@ def _check_source_coverage(job: Any, result: JobApplyResult, workspace: Path) ->
         cwd=str(workspace), capture_output=True, text=True, timeout=120,
     )
     if proc.returncode != 0:
-        return f"promotion_source_inspect_failed: {proc.stderr.strip()[:150]}"
+        return f"apply_source_inspect_failed: {proc.stderr.strip()[:150]}"
     changed = sorted({
         entry[3:] for entry in proc.stdout.split("\0") if len(entry) > 3
     })
@@ -847,7 +847,7 @@ def _check_source_coverage(job: Any, result: JobApplyResult, workspace: Path) ->
 
     if result.unexpected_source_files or result.missing_source_files:
         return (
-            "promotion_coverage_failed: "
+            "apply_coverage_failed: "
             f"unexpected={result.unexpected_source_files} "
             f"missing={result.missing_source_files}"
         )
@@ -967,7 +967,7 @@ def _apply_from_workspace(
         # Reached with a non-empty blocked set only when --skip-blocked was passed
         # and EVERY file was blocked: there is no remainder to promote, so the
         # honest answer is still a block rather than an empty success.
-        return _block(result, "no_promotable_files")
+        return _block(result, "no_files_to_apply")
 
     # --- Baseline-aware readiness check ---
     proofs = _consolidate_file_proofs(job)
@@ -1010,7 +1010,7 @@ def _apply_from_workspace(
         test_file.write_text("test")
         test_file.unlink()
     except OSError as exc:
-        return _block(result, f"promotion_record_not_writable: {exc}")
+        return _block(result, f"apply_record_not_writable: {exc}")
 
     # --- Recheck baseline readiness immediately before apply ---
     clean2, blocks2, _ = _check_baseline_readiness(
@@ -1108,12 +1108,12 @@ def _apply_from_workspace(
         result.post_test_passed = passed
         result.post_test_summary = summary
         if not passed:
-            result.status = "promoted_test_failed"
+            result.status = "applied_test_failed"
             result.finished_at = datetime.now(timezone.utc).isoformat()
             _persist_outcome(applied)
             return result
 
-    result.status = "promoted"
+    result.status = "applied"
     result.finished_at = datetime.now(timezone.utc).isoformat()
     _persist_outcome(applied)
     return result
@@ -1248,7 +1248,7 @@ def _next_step_for_apply(result: JobApplyResult) -> str:
             f"deliberately leave {listed} unpromoted."
         )
 
-    if reason == "no_promotable_files" and result.files_blocked:
+    if reason == "no_files_to_apply" and result.files_blocked:
         names = _blocked_path_names(result.files_blocked)
         listed = ", ".join(names) if names else "every file"
         return (
@@ -1322,7 +1322,7 @@ def summarize_job_apply(result: JobApplyResult) -> str:
             f" --repo <target> --approve"
         )
 
-    elif result.status == "promoted":
+    elif result.status == "applied":
         lines.append("")
         lines.append(f"Applied {len(result.files_applied)} file(s):")
         for f in result.files_applied:
@@ -1342,12 +1342,12 @@ def summarize_job_apply(result: JobApplyResult) -> str:
         lines.append("")
         lines.append("No commits or pushes were made. Review and commit manually.")
 
-    elif result.status == "promoted_test_failed":
+    elif result.status == "applied_test_failed":
         lines.append("")
         lines.append(f"Applied {len(result.files_applied)} file(s) but post-test FAILED.")
         lines.append("Manual review required. Changes are in working tree, not committed.")
 
-    elif result.status == "promoted_record_update_failed":
+    elif result.status == "applied_record_update_failed":
         lines.append("")
         lines.append(f"WARNING: Applied {len(result.files_applied)} file(s) but promotion record update FAILED.")
         lines.append(f"Reason: {result.blocked_reason}")

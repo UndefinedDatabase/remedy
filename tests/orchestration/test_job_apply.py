@@ -392,7 +392,7 @@ class TestApproveApplies:
         from packages.orchestration.job_apply import apply_job
         result = apply_job(job.job_id, str(demo_repo), approve=True)
 
-        assert result.status == "promoted"
+        assert result.status == "applied"
         assert len(result.files_applied) > 0
 
     def test_approve_does_not_commit(self, isolate_data_root, demo_repo, tmp_path):
@@ -412,7 +412,7 @@ class TestApproveApplies:
         from packages.orchestration.job_apply import apply_job
         result = apply_job(job.job_id, str(demo_repo), approve=True)
 
-        assert result.status == "promoted"
+        assert result.status == "applied"
 
     def test_approve_verifies_file_contents(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
@@ -518,7 +518,7 @@ class TestApprovePostTest:
         )
 
         assert result.post_test_passed is True
-        assert result.status == "promoted"
+        assert result.status == "applied"
 
     def test_post_apply_test_failure_reported(self, isolate_data_root, demo_repo):
         job = _run_completed_job(demo_repo)
@@ -531,7 +531,7 @@ class TestApprovePostTest:
         )
 
         assert result.post_test_passed is False
-        assert result.status == "promoted_test_failed"
+        assert result.status == "applied_test_failed"
 
 
 # ---------------------------------------------------------------------------
@@ -564,7 +564,7 @@ class TestApplyRecord:
 
         loaded = load_job_apply_record(job.job_id, result.promotion_id)
         assert loaded is not None
-        assert loaded["status"] == "promoted"
+        assert loaded["status"] == "applied"
         assert len(loaded["files_applied"]) > 0
 
 
@@ -669,7 +669,7 @@ class TestTargetClobberBlocked:
         from packages.orchestration.job_apply import apply_job
         result = apply_job(job.job_id, str(demo_repo), approve=True)
 
-        assert result.status == "promoted"
+        assert result.status == "applied"
         assert result.target_clean is True
 
 
@@ -993,7 +993,7 @@ class TestRedactionApplied:
 
         result = JobApplyResult(
             job_id="test",
-            status="promoted",
+            status="applied",
             target_repo="/home/user/project",
             post_test_summary="password=s3cr3t_p@ssw0rd",
         )
@@ -1049,7 +1049,7 @@ class TestCLICommandPaths:
         COMMAND_HANDLERS["job.apply"](args)
         captured = capsys.readouterr()
         output = json.loads(captured.out)
-        assert output["status"] == "promoted"
+        assert output["status"] == "applied"
         assert len(output["files_applied"]) > 0
 
     def test_cli_blocked_json(self, isolate_data_root, demo_repo, capsys):
@@ -1217,7 +1217,7 @@ class TestBaselineExistingFileApply:
         from packages.orchestration.job_apply import apply_job
         result = apply_job(job.job_id, str(target), approve=True)
 
-        assert result.status == "promoted"
+        assert result.status == "applied"
         assert rel_path in result.files_applied
         assert (target / rel_path).read_text() == "modified\n"
 
@@ -1363,7 +1363,7 @@ class TestLegacyJobsWithoutBaseline:
         from packages.orchestration.job_apply import apply_job
         result = apply_job(job.job_id, str(target), approve=True)
 
-        assert result.status == "promoted"
+        assert result.status == "applied"
 
     def test_legacy_existing_file_blocks(self, isolate_data_root, tmp_path):
         """Legacy job modifying existing file (no baseline) blocks safely."""
@@ -1502,7 +1502,7 @@ class TestGroupedCLIJobApply:
 
         assert result.returncode == 0, f"stderr: {result.stderr}"
         data = json.loads(result.stdout)
-        assert data["status"] == "promoted"
+        assert data["status"] == "applied"
         assert (target / rel_path).read_text() == "modified\n"
 
     def test_blocked_job_via_grouped_cli(self, isolate_data_root, tmp_path):
@@ -1758,7 +1758,7 @@ class TestFinalRecordFailure:
         def fail_on_final(jid, res):
             nonlocal persist_call_count
             persist_call_count += 1
-            if res.status == "promoted":
+            if res.status == "applied":
                 raise OSError("disk full")
             original_persist(jid, res)
 
@@ -1766,13 +1766,13 @@ class TestFinalRecordFailure:
         with patch("packages.orchestration.job_apply._persist_job_apply_record", fail_on_final):
             result = apply_job(job.job_id, str(target), approve=True)
 
-        assert result.status == "promoted_record_update_failed"
+        assert result.status == "applied_record_update_failed"
         assert "disk full" in result.blocked_reason
         assert rel_path in result.files_applied
         assert result.promotion_id
 
     def test_final_record_failure_json_parseable(self, isolate_data_root, tmp_path):
-        """JSON export of promoted_record_update_failed is parseable."""
+        """JSON export of applied_record_update_failed is parseable."""
         from unittest.mock import patch
 
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
@@ -1782,7 +1782,7 @@ class TestFinalRecordFailure:
         )._persist_job_apply_record
 
         def fail_on_final(jid, res):
-            if res.status == "promoted":
+            if res.status == "applied":
                 raise OSError("disk full")
             original_persist(jid, res)
 
@@ -1796,11 +1796,11 @@ class TestFinalRecordFailure:
         data = export_job_apply_json(result)
         json_str = json.dumps(data)
         parsed = json.loads(json_str)
-        assert parsed["status"] == "promoted_record_update_failed"
-        assert "promotion_record_update_failed" in parsed["blocked_reason"]
+        assert parsed["status"] == "applied_record_update_failed"
+        assert "apply_record_update_failed" in parsed["blocked_reason"]
 
     def test_final_record_failure_text_readable(self, isolate_data_root, tmp_path):
-        """Text summary of promoted_record_update_failed is human-readable."""
+        """Text summary of applied_record_update_failed is human-readable."""
         from unittest.mock import patch
 
         job, workspace, target, rel_path = _make_baselined_job(tmp_path)
@@ -1810,7 +1810,7 @@ class TestFinalRecordFailure:
         )._persist_job_apply_record
 
         def fail_on_final(jid, res):
-            if res.status == "promoted":
+            if res.status == "applied":
                 raise OSError("disk full")
             original_persist(jid, res)
 
@@ -2080,7 +2080,7 @@ class TestPartialApplyRecordFailure:
              patch("packages.orchestration.job_apply._persist_job_apply_record", fail_after_preapply):
             result = apply_job(job.job_id, str(target), approve=True)
 
-        assert result.status == "promoted_record_update_failed"
+        assert result.status == "applied_record_update_failed"
         assert "first.py" in result.files_applied
         assert "second.py" not in result.files_applied
         assert result.promotion_id
@@ -2088,7 +2088,7 @@ class TestPartialApplyRecordFailure:
         data = export_job_apply_json(result)
         json_str = json.dumps(data)
         parsed = json.loads(json_str)
-        assert parsed["status"] == "promoted_record_update_failed"
+        assert parsed["status"] == "applied_record_update_failed"
 
 
 # ---------------------------------------------------------------------------
@@ -2115,7 +2115,7 @@ class TestPostTestRecordFailure:
             if persist_count == 1:
                 original_persist(jid, res)
                 return
-            if res.status == "promoted_test_failed":
+            if res.status == "applied_test_failed":
                 raise OSError("disk full on test-failed persist")
             original_persist(jid, res)
 
@@ -2130,14 +2130,14 @@ class TestPostTestRecordFailure:
                 test_command="false",
             )
 
-        assert result.status == "promoted_record_update_failed"
+        assert result.status == "applied_record_update_failed"
         assert rel_path in result.files_applied
         assert result.promotion_id
 
         data = export_job_apply_json(result)
         json_str = json.dumps(data)
         parsed = json.loads(json_str)
-        assert parsed["status"] == "promoted_record_update_failed"
+        assert parsed["status"] == "applied_record_update_failed"
 
         text = summarize_job_apply(result)
         assert "WARNING" in text
@@ -2258,7 +2258,7 @@ class TestSkipBlockedPartialApply:
             job.job_id, str(target), approve=True, skip_blocked=True,
         )
 
-        assert result.status == "promoted", result.blocked_reason
+        assert result.status == "applied", result.blocked_reason
         assert sorted(result.files_applied) == sorted(_OPERATOR_FREE_PATHS)
 
         # The two free files really landed, with their workspace bytes.
@@ -2309,7 +2309,7 @@ class TestSkipBlockedPartialApply:
         )
 
         assert result.status == "blocked"
-        assert result.blocked_reason == "no_promotable_files"
+        assert result.blocked_reason == "no_files_to_apply"
         assert result.files_applied == []
         assert not (target / _OPERATOR_BLOCKED_PATH).exists()
 
@@ -2460,7 +2460,7 @@ class TestSkipBlockedThroughTheGroupedCLI:
         data = json.loads(result.stdout)
 
         assert data["skip_blocked"] is True
-        assert data["status"] == "promoted"
+        assert data["status"] == "applied"
         assert sorted(data["files_applied"]) == sorted(_OPERATOR_FREE_PATHS)
         for rel in _OPERATOR_FREE_PATHS:
             assert (target / rel).is_file()

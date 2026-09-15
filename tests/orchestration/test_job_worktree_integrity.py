@@ -371,7 +371,7 @@ class TestHandoffCoverage:
 
         res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
-        assert "promotion_coverage_failed" in res.blocked_reason
+        assert "apply_coverage_failed" in res.blocked_reason
         assert res.unexpected_source_files == ["rogue.txt"]
         assert not (repo / "one.txt").exists()
 
@@ -416,7 +416,7 @@ class TestFileModeApply:
         assert proof.baseline_mode == "100644" and proof.final_mode == "100755"
 
         res = apply_job(done.job_id, str(repo), approve=True)
-        assert res.status == "promoted", res.blocked_reason
+        assert res.status == "applied", res.blocked_reason
         assert _is_exec(repo / "script.sh")                     # the chmod survived
         assert res.modes_applied["script.sh"] == "100755"
 
@@ -429,7 +429,7 @@ class TestFileModeApply:
         assert proof.baseline_mode == "100755" and proof.final_mode == "100644"
 
         res = apply_job(done.job_id, str(repo), approve=True)
-        assert res.status == "promoted", res.blocked_reason
+        assert res.status == "applied", res.blocked_reason
         assert not _is_exec(repo / "script.sh")
 
     def test_a_newly_created_executable_keeps_its_mode(self, repo, monkeypatch):
@@ -451,7 +451,7 @@ class TestFileModeApply:
         assert proof.existed_before_job is False and proof.final_mode == "100755"
 
         res = apply_job(done.job_id, str(repo), approve=True)
-        assert res.status == "promoted", res.blocked_reason
+        assert res.status == "applied", res.blocked_reason
         assert (repo / "tool.sh").read_text().startswith("#!/bin/sh")
         assert _is_exec(repo / "tool.sh")
         # Bytes AND mode match, with no commit, merge or push.
@@ -547,7 +547,7 @@ class TestApplyCleanupHonesty:
         monkeypatch.setattr(job_apply.subprocess, "run", real_run)   # only undo the failure
 
         # The promotion really happened; the cleanup really failed. Both are told.
-        assert res.status == "promoted_cleanup_failed"
+        assert res.status == "applied_cleanup_failed"
         assert res.files_applied == ["one.txt"]
         assert (repo / "one.txt").read_text() == "hello\n"
         assert res.cleanup_status == "failed"
