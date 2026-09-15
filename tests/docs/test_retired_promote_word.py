@@ -88,9 +88,6 @@ KEPT_BY_SENSE: dict[str, tuple[str, frozenset[str]]] = {
     "packages/orchestration/final_verifier.py": (E, frozenset({
         "promote", "promoting",
     })),
-    "packages/orchestration/job_queue.py": (K5_STORAGE, frozenset({
-        "promoted",
-    })),
     "packages/orchestration/manual_attestation.py": (E, frozenset({
         "promote_ready",
     })),
