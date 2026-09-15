@@ -199,3 +199,62 @@ before it was applied and copied.
 2. The reviewer's verdict on round 14, including G3's red `docs` reading (Deviation 1).
 3. The next deletion round `.agent/f261_t003_inventory.md` proposes: the loop modules with the run report's loop
    reference, the `queue` group and `job_queue.py`.
+
+## Session close — session 38, written after the reviewer's verdict on round 14
+
+The planner and reviewer of session 38 reviewed rounds 10 to 14 of F261 and ends the session after
+those five delegated rounds, all PASS. Context self-assessment: the reviewer's context carries the
+protocol, five rounds of research, dry runs and verdicts and the whole T003 measurement, and its
+authoring slips are accumulating, the signal operator amendment amend0905-throughput names: one
+reached the worker in round 14 as a gate no commit could meet, and two more, a mutation's bytes and
+a command id in a decision, were caught by the reviewer's own checks before emission. The next
+step opens a deletion slice whose rulings need fresh measurement, so the session ends at this round
+boundary. Nothing is half-written; the branch is pushed.
+
+### The verdict to book
+
+Round 15's first commit that writes the record appends the paragraph below to
+`.agent/live_review.md` byte for byte, preceded by one empty line, per operator amendment
+amend0827-process-diet rule 1.
+
+Gate: F261 R14 — the F261 round 14 entry. VERDICT PASS. Written by the planner and reviewer of session 38 after reading the committed range `c3047df0`..`71fb95dc` and re-deriving the readings below; the worker's report was evidence for none of them. It is carried by `.agent/handoff.md` in the session-close commit that follows `71fb95dc` and booked by the first commit of round 15 that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f261-r14.md` at `8d6a7bee` and `.agent/last_block.md` at `b5d87e1d` are byte-identical to the reviewer's scratch original, sha256 `ec743657d65cf88693654218b20e6f98baf9f0a83e5f78fe5f712723f46d004e`, and the three tables committed at `98866b80`, `4bf17d32` and `be6ae79d` are byte-identical to the reviewer's. THE STATE: at `ebd3c812` and again at `71fb95dc`, `.agent/plan.md` equals PLAN14, `.agent/live_review.md` and `.agent/decisions.md` equal their `c3047df0` blobs followed by RECORD14 and DEC13, and `docs/roadmap/features/T2_F273.md` equals its `c3047df0` blob with the pair P273 applied. THE TABLE COMMITS: at `98866b80`, `4bf17d32` and `be6ae79d` the `apps`, `tests`, `scripts`, `packages` and `README.md` objects equal the reviewer's dry-run commits of the tables, which had reproduced the research helper's trees exactly, and the `docs` object differs from the dry run's by `docs/roadmap/features/T2_F273.md` alone, which at each of those commits equals the P273 result; each commit's `--no-renames` path set is the dry run's plus its carrier, and `git show --numstat` reads 38, 48 and 26 insertions. G3 of the block ordered the `docs` object equal to the dry run's, which the reviewer had measured before applying the record slices, so no commit carrying C1's pair could meet it; the worker read that gate red, measured that the one differing file was the one C1 changes, and declared the deviation, and the slip is the reviewer's. In the dry run's production diff each deleted group leaves with its handlers, its catalog entries, its tests and the package code only it called; `list_decisions`, `list_rollback_proofs` and `audit_rollback_safety` stay for the cockpit and `test integrity`, `snapshot create` relates to `snapshot show`, and the two pages keep their text under dated status lines. At `71fb95dc` the grep of `remedy orchestrator`, `remedy rollback`, `remedy loop`, the two deleted handler modules and the three deleted rollback functions over `apps`, `packages`, `scripts`, `tests`, `docs` without `docs/roadmap`, and `README.md` exits 1 with no output. In the reviewer's dry run a full suite under `-n auto` without `tests/ui_server` read 1 failed, `test_vitest_passes`, and 17618 passed, and the cockpit, docs, canary and smoke-script tests read 633 passed. Over `tests/test_command_catalog.py`, `tests/cli/test_cli_ux.py`, `tests/test_grouped_cli.py` and `tests/orchestration/test_import_reachability.py`, which passed 461 unmutated, an `orchestrator`, a `rollback` and a `loop` handler row each failed 1 test and the `loop` group restored without commands failed 1. The record slices and the pair applied on top of the dry run passed `tests/docs/` and the other files the reviewer ran among those that read the edited state files, apart from `test_vitest_passes`, at 840 passed. THE REVIEWER'S RUN in the primary checkout at `71fb95dc` of those four files, the orchestrator, real test execution, cost preview, decision evidence, model routing, loop spec and loop run tests, `tests/ui_server/test_dashboard_cockpit_truth.py`, `tests/ui_server/test_dashboard_contract.py`, `tests/cli/test_golden_path.py`, `tests/cli/test_advertised_commands.py`, `tests/docs/` and `tests/test_remedy_smoke_script.py` read 1727 passed and 3 skipped, and `git branch --list 'remedy/job-*'` read 16 lines. The open set reads 98 by distinct id at `71fb95dc`.
+
+### The prose slip to book
+
+The same first commit appends this line to `.agent/prose_slips.md`, preceded by one empty line:
+
+2026-09-15 · F261 R14 · G3 of the round 14 block ordered each table commit's `docs` object equal to the reviewer's dry run, which applied the tables before the record slices, while C1 of the same block rewrote `docs/roadmap/features/T2_F273.md`; the gate was unmeetable by construction, the worker declared it after measuring that file as the only difference, and the rule that follows is that a dry run whose record commit touches a gated object applies the record first.
+
+### What the next session needs to know
+
+- T003 follows `.agent/f261_t003_inventory.md`, measured at `80e9cc0f` and not re-verified; its
+  round B is next: the loop modules `packages/orchestration/loop_spec.py` and `loop_run.py` with
+  the run report's `loop_ref`, the `queue` command group, and `packages/orchestration/job_queue.py`
+  with the F048 binding in `long_run_executor.py`, its configuration keys and `queue_dir`, with a
+  deletion paragraph; the queue heir the feature file names, `mission list --status planned`, is
+  not built, so that paragraph registers it.
+- The method of rounds 10 to 14 held: a research helper builds JSON-lines tables in its own
+  detached worktree; the reviewer re-applies them on the real tip, compares tree ids, reads the
+  production diff, runs its own mutations and a full suite under `-n auto` without
+  `tests/ui_server`, applies the record slices on top for the state-file tests, removes its
+  worktree, and gates the worker on tree ids. When a record commit touches `docs/` or any other
+  gated object, the dry run applies the record before measuring tree ids.
+- Deletion consumers an importer sweep misses: `tests/test_remedy_smoke_script.py` reads
+  `scripts/remedy_smoke.sh` as text, `tests/ui_contracts/test_humanize_catalog.py` pins UI event
+  keys to emitters, `tests/orchestration/test_command_discovery.py` runs help in a subprocess,
+  and `tests/cli/test_advertised_commands.py` reads hints in `apps`, `packages`, `scripts`,
+  `docs/system` and `docs/guides`. `tests/cli/test_cli_ux.py` asserts at least 40 groups; 41
+  remain after round 14.
+- Findings registered this session: R-0901 and R-0902, owner F261, fixed by round 11 and resolved
+  in round 12's record; R-0903, owner F273, with its Acceptance line in `T2_F273.md`.
+- Every helper brief and block forbade calling a runner; `git branch --list 'remedy/job-*'`
+  read 16 lines at every gate of the session.
+
+### Next
+
+1. Phase 1 rule 1: the next session reads `.agent/STOP` first; then the Open PR Gate, which finds
+   no open pull request for this branch.
+2. Round 15's first record commit books `Gate: F261 R14` and the prose slip from this section.
+3. Round B of `.agent/f261_t003_inventory.md`.
+
+Operator questions open: 0
