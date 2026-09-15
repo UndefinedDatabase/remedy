@@ -230,6 +230,15 @@ _SHOW_SECTION_ORDER = (
 )
 
 
+class ShowSectionError(Exception):
+    """A section cannot describe its job; its envelope carries this code and message."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
 def _permissions_section(job: JobPlan) -> tuple[dict, list[str]]:
     """The former `job permissions` command: every capability's effective state."""
     from packages.orchestration.permissions import effective_permissions
@@ -239,6 +248,70 @@ def _permissions_section(job: JobPlan) -> tuple[dict, list[str]]:
     lines.extend(f"  {row['capability']:<24} {row['effective']:<6}  [{row['status']}]"
                  for row in rows)
     return {"rows": rows}, lines
+
+
+def _fences_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job fences` command: the job's effective scope fences (F017 T003)."""
+    from pathlib import Path
+
+    from packages.orchestration.scope_fences import FenceConfigError, resolve_fence_spec_effective
+
+    short_id = str(job.job_id)[:8]
+    repo_str = job.metadata.get("target_repo", "") or ""
+    if not repo_str:
+        raise ShowSectionError("no_target_repo", f"Job {short_id} has no target_repo attached")
+    repo_root = Path(repo_str)
+    if not repo_root.is_dir():
+        raise ShowSectionError("target_repo_missing", f"Target repo does not exist: {repo_str}")
+
+    job_fences_dict = None
+    if job.fences is not None:
+        job_fences_dict = {"allow": job.fences.allow, "deny": job.fences.deny}
+
+    try:
+        eff = resolve_fence_spec_effective(repo_root, job_fences=job_fences_dict)
+    except FenceConfigError as exc:
+        raise ShowSectionError("fence_config_error", f"Fence config error: {exc}") from exc
+    except RuntimeError as exc:
+        # The builtin denies could not be resolved: the data root failed to resolve.
+        raise ShowSectionError("builtin_resolution_failed", f"Builtin resolution failed: {exc}") from exc
+    spec = eff.spec
+
+    warnings: list[str] = list(eff.warnings)
+    if not spec.allow_globs and not spec.deny_globs:
+        warnings.append("no configured allow/deny globs — defaults apply (allow all, builtin denies only)")
+
+    def _rule_dict(r):
+        return {"pattern": r.pattern, "kind": r.kind, "source": r.source, "reason": r.reason}
+
+    data = {
+        "job_id": str(job.job_id),
+        "source": eff.source,
+        "case_sensitivity": eff.case_sensitivity,
+        "allow_rules": [_rule_dict(r) for r in eff.allow_rules],
+        "deny_rules": [_rule_dict(r) for r in eff.deny_rules],
+        "builtin_rules": [_rule_dict(r) for r in eff.builtin_rules],
+        "allow_globs": list(spec.allow_globs),
+        "deny_globs": list(spec.deny_globs),
+        "warnings": warnings,
+    }
+    lines = [f"Scope fences for job {short_id}:", f"  Source: {eff.source}", f"  Case:   {eff.case_sensitivity}"]
+    if eff.allow_rules:
+        lines.append("  Allow rules:")
+        lines.extend(f"    {r.pattern:30s} [{r.source}]" for r in eff.allow_rules)
+    else:
+        lines.append("  Allow:  (all — no restrictions)")
+    if eff.deny_rules:
+        lines.append("  Deny rules:")
+        lines.extend(f"    {r.pattern:30s} [{r.source}]" for r in eff.deny_rules)
+    else:
+        lines.append("  Deny:   (none beyond builtins)")
+    lines.append("  Builtin rules:")
+    lines.extend(f"    {r.pattern:30s} [{r.source}] {r.reason}" for r in eff.builtin_rules)
+    if warnings:
+        lines.append("  Warnings:")
+        lines.extend(f"    {w}" for w in warnings)
+    return data, lines
 
 
 def _assumptions_section(job: JobPlan) -> tuple[dict, list[str]]:
@@ -267,6 +340,7 @@ def _assumptions_section(job: JobPlan) -> tuple[dict, list[str]]:
 #: former read command into `job show --full` adds exactly one entry here.
 _SHOW_SECTIONS: tuple[tuple[str, Callable[[JobPlan], tuple[dict, list[str]]]], ...] = (
     ("permissions", _permissions_section),
+    ("fences", _fences_section),
     ("assumptions", _assumptions_section),
 )
 
@@ -274,8 +348,10 @@ _SHOW_SECTIONS: tuple[tuple[str, Callable[[JobPlan], tuple[dict, list[str]]]], .
 def _build_show_sections(job: JobPlan) -> tuple[dict[str, dict], list[str]]:
     """Every registered section in its envelope, and the text printed for them on stderr.
 
-    A section that raises becomes ``section_failed`` instead of failing the command:
-    one unreadable view never hides the others, and `job show --full` still exits 0.
+    A section that cannot describe its job raises `ShowSectionError` and becomes an error
+    envelope with that error's own code; a section that raises anything else becomes
+    ``section_failed``. Neither fails the command: one unreadable view never hides the
+    others, and `job show --full` still exits 0.
     """
     sections: dict[str, dict] = {}
     text: list[str] = []
@@ -283,13 +359,16 @@ def _build_show_sections(job: JobPlan) -> tuple[dict[str, dict], list[str]]:
         text.append(f"\n--- {name.capitalize()} ---")
         try:
             data, lines = builder(job)
+        except ShowSectionError as exc:
+            code, message = exc.code, exc.message
         except Exception as exc:  # noqa: BLE001 — a read view never fails on one section
-            message = f"{type(exc).__name__}: {exc}"
-            sections[name] = {"ok": False, "error": {"code": "section_failed", "message": message}}
-            text.append(f"  Error: section_failed: {message}")
+            code, message = "section_failed", f"{type(exc).__name__}: {exc}"
+        else:
+            sections[name] = {"ok": True, "data": data}
+            text.extend(lines)
             continue
-        sections[name] = {"ok": True, "data": data}
-        text.extend(lines)
+        sections[name] = {"ok": False, "error": {"code": code, "message": message}}
+        text.append(f"  Error: {code}: {message}")
     return sections, text
 
 
@@ -2054,91 +2133,6 @@ def _cmd_job_fulfill(
         print(summarize_job_fulfillment(record))
 
 
-def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
-    """Show effective scope fences for a job (F017 T003)."""
-    import json as _json
-    from pathlib import Path
-
-    from packages.orchestration.scope_fences import (
-        FenceConfigError,
-        resolve_fence_spec_effective,
-    )
-
-    try:
-        job = require_job_plan(resolve_job_id(job_id_str))
-    except JobNotFoundError:
-        print(f"Job not found: {job_id_str}", file=sys.stderr)
-        sys.exit(1)
-
-    repo_str = job.metadata.get("target_repo", "") or ""
-    if not repo_str:
-        print(f"Job {job_id_str[:8]} has no target_repo attached", file=sys.stderr)
-        sys.exit(2)
-    repo_root = Path(repo_str)
-    if not repo_root.is_dir():
-        print(f"Target repo does not exist: {repo_str}", file=sys.stderr)
-        sys.exit(2)
-
-    job_fences_dict = None
-    if job.fences is not None:
-        job_fences_dict = {"allow": job.fences.allow, "deny": job.fences.deny}
-
-    try:
-        eff = resolve_fence_spec_effective(repo_root, job_fences=job_fences_dict)
-    except FenceConfigError as exc:
-        print(f"Fence config error: {exc}", file=sys.stderr)
-        sys.exit(3)
-    except RuntimeError as exc:
-        print(f"Builtin resolution failed: {exc}", file=sys.stderr)
-        sys.exit(4)
-    spec = eff.spec
-
-    warnings: list[str] = list(eff.warnings)
-    if not spec.allow_globs and not spec.deny_globs:
-        warnings.append("no configured allow/deny globs — defaults apply (allow all, builtin denies only)")
-
-    def _rule_dict(r):
-        return {"pattern": r.pattern, "kind": r.kind, "source": r.source, "reason": r.reason}
-
-    result = {
-        "job_id": job_id_str,
-        "source": eff.source,
-        "case_sensitivity": eff.case_sensitivity,
-        "allow_rules": [_rule_dict(r) for r in eff.allow_rules],
-        "deny_rules": [_rule_dict(r) for r in eff.deny_rules],
-        "builtin_rules": [_rule_dict(r) for r in eff.builtin_rules],
-        "allow_globs": list(spec.allow_globs),
-        "deny_globs": list(spec.deny_globs),
-        "warnings": warnings,
-    }
-
-    if json_output:
-        print(_json.dumps(result, indent=2))
-    else:
-        print(f"Scope fences for job {job_id_str[:8]}:")
-        print(f"  Source: {eff.source}")
-        print(f"  Case:   {eff.case_sensitivity}")
-        if eff.allow_rules:
-            print("  Allow rules:")
-            for r in eff.allow_rules:
-                print(f"    {r.pattern:30s} [{r.source}]")
-        else:
-            print("  Allow:  (all — no restrictions)")
-        if eff.deny_rules:
-            print("  Deny rules:")
-            for r in eff.deny_rules:
-                print(f"    {r.pattern:30s} [{r.source}]")
-        else:
-            print("  Deny:   (none beyond builtins)")
-        print("  Builtin rules:")
-        for r in eff.builtin_rules:
-            print(f"    {r.pattern:30s} [{r.source}] {r.reason}")
-        if warnings:
-            print("  Warnings:")
-            for w in warnings:
-                print(f"    {w}")
-
-
 # Renders a money figure for `remedy job budget`, or says out loud that there is
 # none. An unmeasured figure is NEVER rendered as a measured zero (P6) — the
 # text mirror of the null that `BudgetPrediction.to_json` keeps in JSON.
@@ -2484,10 +2478,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "job.digest": lambda args: _cmd_job_digest(args.job_id,
         json_output=getattr(args, "json", False)),
-    "job.fences": lambda args: _cmd_job_fences(
-        args.job_id,
-        json_output=getattr(args, "json", False),
-    ),
     "job.dod": lambda args: _cmd_job_dod(
         args.job_id,
         json_output=getattr(args, "json", False),

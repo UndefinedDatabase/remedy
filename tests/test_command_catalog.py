@@ -304,6 +304,7 @@ class TestDeletedCommands:
         "do.plan",
         "do.promote",
         "job.assumptions",
+        "job.fences",
         "job.permissions",
     )
 

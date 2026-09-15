@@ -10,9 +10,10 @@ its flight-plan block's ``inputs["flight"]["files_hint"]`` first, because
 ``map_flight_plan_to_tasks`` writes a flight-planned task's scope there and
 ``_task_planned_id`` reads that block first too, and otherwise the task's own
 ``files_hint`` field, which a job file's task carries. Remedy deliberately does
-NOT consult the job's scope-fence globs (``remedy job fences``, F017) in this
-view — merging fence allow-globs into the compiled scope is out of scope for
-this round, so a reader looking for that behaviour finds this sentence instead
+NOT consult the job's scope-fence globs (the ``fences`` section of
+``remedy job show <id> --full``, F017) in this view — merging fence allow-globs
+into the compiled scope is out of scope for this round, so a reader looking for
+that behaviour finds this sentence instead
 of guessing that it silently happened.
 
 Exit codes:

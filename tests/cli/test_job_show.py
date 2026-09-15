@@ -288,7 +288,7 @@ class TestSections:
         shown = _show(capsys, str(job.job_id), "--full")
 
         registered = [name for name, _builder in job_commands._SHOW_SECTIONS]
-        assert registered == ["permissions", "assumptions"]
+        assert registered == ["permissions", "fences", "assumptions"]
         assert list(json.loads(shown.out)["sections"]) == registered
         assert registered == [name for name in job_commands._SHOW_SECTION_ORDER if name in registered]
         assert job_commands._SHOW_SECTION_ORDER == (
@@ -314,3 +314,23 @@ class TestSections:
         }
         assert "--- Permissions ---" in shown.err
         assert "  Error: section_failed: RuntimeError: the section broke" in shown.err
+
+    def test_a_show_section_error_becomes_its_own_code_and_the_command_exits_zero(
+            self, data_root, capsys, monkeypatch) -> None:
+        def cannot_describe(job):
+            raise job_commands.ShowSectionError("no_such_view", "the job has nothing to show")
+
+        monkeypatch.setattr(job_commands, "_SHOW_SECTIONS", (("fences", cannot_describe),))
+        job = _plain_job()
+
+        # `main` returning rather than raising SystemExit is the exit code 0.
+        shown = _show(capsys, str(job.job_id), "--full")
+
+        assert json.loads(shown.out)["sections"] == {
+            "fences": {
+                "ok": False,
+                "error": {"code": "no_such_view", "message": "the job has nothing to show"},
+            },
+        }
+        assert "--- Fences ---" in shown.err
+        assert "  Error: no_such_view: the job has nothing to show" in shown.err

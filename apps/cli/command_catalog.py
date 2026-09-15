@@ -269,7 +269,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
-                   "and the job's sections (its permissions and assumptions)",
+                   "and the job's sections (its permissions, fences and assumptions)",
                    required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
@@ -452,17 +452,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
-        command_id="job.fences",
-        group_id="job",
-        subcommand="fences",
-        description="Show effective scope fences for a job (F017).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("job.status", "job.show"),
-    ),
-
-    CommandEntry(
         command_id="job.context",
         group_id="job",
         subcommand="context",
@@ -471,7 +460,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JOB_ID, _TASK_OPT, _JSON_OPT),
         supports_json=True,
-        related=("job.fences", "job.show"),
+        related=("job.show",),
     ),
 
     CommandEntry(

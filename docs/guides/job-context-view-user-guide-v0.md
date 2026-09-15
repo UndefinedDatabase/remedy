@@ -16,7 +16,8 @@ commands accept one.
 
 The fenced scope is exactly the task's own `inputs["flight"]["files_hint"]` — the write
 scope the flight plan gave that task. Remedy deliberately does NOT consult the job's
-scope-fence globs (`remedy job fences`, F017) here: merging fence allow-globs into the
+scope-fence globs (the `fences` section of `remedy job show <id> --full`, F017) here:
+merging fence allow-globs into the
 compiled scope is out of scope for this version, so a view that showed them would be
 showing something the compiler never used. A task with no `files_hint` has an EMPTY
 scope; that is a real answer the view prints, not an error.
@@ -179,7 +180,8 @@ The same run as above:
 
 ## Related
 
-- `remedy job fences` — the job's scope fence, which this view intentionally ignores.
+- `remedy job show <id> --full` — its `fences` section is the job's scope fence, which this
+  view intentionally ignores.
 - `remedy job show` — the job and its tasks.
 - The compiler itself: `packages/orchestration/context_compiler.py`; the feature brief is
   [T2_F107.md](../roadmap/features/T2_F107.md).

@@ -539,18 +539,21 @@ class TestConfigScopeKeys:
 
 
 class TestJobFencesCLI:
-    def test_command_registered(self):
+    """The fences view is the ``fences`` section of `job show --full` since F261, not a command."""
+
+    def test_the_view_is_reachable_from_a_read_only_json_command(self):
         from apps.cli.command_catalog import get_command
-        cmd = get_command("job.fences")
+        cmd = get_command("job.show")
         assert cmd is not None
         assert cmd.group_id == "job"
-        assert cmd.subcommand == "fences"
+        assert "--full" in [arg.name for arg in cmd.args]
         assert cmd.action_class == "read_only"
         assert cmd.supports_json
 
-    def test_handler_registered(self):
-        from apps.cli.commands.job import COMMAND_HANDLERS
-        assert "job.fences" in COMMAND_HANDLERS
+    def test_the_section_is_registered_behind_a_handler(self):
+        from apps.cli.commands.job import _SHOW_SECTIONS, COMMAND_HANDLERS
+        assert "job.show" in COMMAND_HANDLERS
+        assert "fences" in [name for name, _builder in _SHOW_SECTIONS]
 
 
 # ═══════════════════════════════════════════════════════════════════════════
