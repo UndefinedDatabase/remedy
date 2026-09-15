@@ -1,46 +1,39 @@
-# Context — F275 One world completion, part three
+# Context — F261 CLI vocabulary v2 (rename & prune)
 
 ## Active Branch
-feature/f275-one-world-completion-part-three, cut from `main` at
-`a5bf894946ab6de053a4232109d6341a63533768`, the merge commit of pull request 246.
+feature/f261-cli-vocabulary-v2, cut from `main` at
+`7cdde89b5d0dc8ef1fb96980105870e956699873`, the merge commit of pull request 250.
 
 ## Scope
-F275 (Tier 2; depends on F259's binding vocabulary page, on the record F260 closed at, on the
-run re-key and unified record F272 closed at, and on the deletion map, the import-reachability
-ratchet and the consumer-edge cuts F274 closed at; blocks F261, F266, F268, F269, F270, F271
-and F263): the remainder DECISION F274 D8 split off F274 at the standing soft limit. Task
-slicing per `docs/roadmap/features/T2_F275.md`: T001 the reachability-gated cluster deletion
-with its two carry-overs and DECISION F260 D3, T002 measure the flip and rule the cap, T003
-the classic runner.
+F261 (Tier 2; depends on F259, F260, F272, F274 and F275; blocks F266, F268, F269, F270,
+F271 and F263): the catalog equals DECISION amend0905-vocab D4. Task slicing per
+`docs/roadmap/features/T2_F261.md`: T001 dissolves the plan triplet and the `job-*` family,
+T002 makes `apply` replace `promote` and builds `job show --full`, T003 prunes to D4, and T004
+lands descriptions, role labels, help wrapping and the catalog tests. DECISION F261 D1
+re-scopes T001 against the catalog measured at `7cdde89b`.
 
 ## Do not touch
-Everything `T2_F272.md`'s and `T2_F274.md`'s "Do not touch" sections name, unchanged: the
-scope-fence builtin deny list (F017), the approval gate, STATUS semantics. No command is
-RENAMED here — F261 owns renames. No module outside F260's Design lists is deleted, and a
-module the reachability probe REACHES is reported with its import chain and deferred in
-DECISION F260 D3, never deleted.
+The concept model (F259 owns the words), the job model (F260 owns what a job is), STATUS
+semantics, and the behaviour behind a surviving name: this feature renames and prunes.
+Accepted `[x]` evidence under `docs/roadmap/` stays byte-identical.
 
 ## Assumptions
-- Cleanliness before compatibility: no migration shim, no compatibility reader, no alias. A
-  helper accepting both records is what AGENTS.md Scope Control forbids by name.
-- F272's and F274's rulings stay binding here and are NOT restated; both feature files keep
-  their DECISION sections unedited for exactly that purpose. F272 D13, D14 parts 1 and 3, and
-  D15 are starting conditions, as are F274 D1 through D7.
-- NEVER SPLIT INSIDE T001's DELETION. DECISION F274 D1 rules that this prohibition binds the
-  `git rm` sequence and NOT its prerequisites: the carry-overs and DECISION F260 D3 leave the
-  tree consistent at every commit boundary and may land across sessions.
+- Cleanliness before compatibility (DECISION D-A): no alias and no migration shim. A renamed
+  command's old id is deleted in the same commit (DECISION D-B), and every test or script that
+  depends on it is converted in that commit.
+- One rename per commit, and `TestRenamedCommands` in `tests/test_command_catalog.py` gains
+  that rename's pair in the same commit.
 
 ## Constraints
-The bullets in this first group are STANDING project constraints, carried forward from the
-context this file replaces.
+The bullets below are STANDING project constraints, carried forward from the context this
+file replaces.
 
 - A round touching `docs/roadmap/**` also gates
   `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
-- A round rewriting `.agent/` state gates the four state readers:
+- A round rewriting `.agent/` state gates the four state readers, run as four:
   `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
   `tests/regression/test_resource_safety.py` and
   `tests/orchestration/test_integrity_gate.py`.
-- THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE.
 - Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
 - Destructive verification runs only inside a disposable git worktree, never in the primary
   checkout, which satisfies `git status --porcelain` empty at every verdict.
@@ -48,13 +41,12 @@ context this file replaces.
   every gate of this feature orders.
 - `remedy` (the built CLI) is DENIED to this session's reviewer, subagents included; a round
   needing it delegates the run to the worker and reports the exact output.
-- This session's shell guard refuses some command FORMS outright — shell loops, `$(...)`
-  substitution, and `$?` inside a compound command — so checks of that shape are re-expressed
-  in Python and the re-expression is reported. A pipe into `tail` also MASKS the real exit
-  code, so a gate reporting one redirects to a file instead of piping.
-- A fresh worktree has neither `apps/ui/node_modules` nor a built `apps/ui/dist`, so a full
-  suite run there carries a known environment failure class that a control run must establish
-  before any mutated run is read as evidence.
+- The shell guard refuses shell loops, `$(...)` substitution and `$?` inside a compound
+  command, so such checks are written in Python; a pipe into `tail` masks the real exit code.
+- The editable install resolves `apps` and `packages` to the PRIMARY checkout, so a test run
+  inside a worktree puts the worktree first on `sys.path` and proves where the modules loaded
+  from before its result is read.
+- A fresh worktree has neither `apps/ui/node_modules` nor a built `apps/ui/dist`.
 
 This feature is NOT UI work — no design-reference binding applies.
 
