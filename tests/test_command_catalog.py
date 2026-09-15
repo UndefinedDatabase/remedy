@@ -303,6 +303,7 @@ class TestDeletedCommands:
         "do.job-flow",
         "do.job-plan",
         "do.plan",
+        "do.promote",
     )
 
     def test_no_deleted_id_is_left_in_the_catalog(self) -> None:

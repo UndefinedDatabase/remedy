@@ -550,7 +550,6 @@ class TestSummarizePromotionDryRun:
         result = promote_run(run_id, target_repo=str(demo_repo), dry_run=True)
         summary = summarize_promotion(result)
         assert "preview only" in summary.lower()
-        assert "To apply:" in summary
 
 
 class TestSummarizePromotionApproved:

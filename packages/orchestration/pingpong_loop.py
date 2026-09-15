@@ -175,8 +175,7 @@ class PingPongResult:
     reviewer_prompt_chars: int = 0
     repair_prompt_chars: int = 0
     context_chars: int = 0
-    # Run metadata for next_commands
-    original_repo_arg: str = ""
+    # Run metadata
     test_command: str = ""
     claude_cli_write_mode: str = "none"
     # Task input metadata
@@ -2941,7 +2940,6 @@ def run_pingpong(
         reviewer_model=reviewer_model,
         max_rounds=max_rounds,
         started_at=datetime.now(timezone.utc).isoformat(),
-        original_repo_arg=repo_path,
         test_command=test_command,
         claude_cli_write_mode=claude_cli_write_mode,
         repair_rounds_allowed=repair_rounds,
@@ -4292,26 +4290,10 @@ def list_runs() -> list[dict[str, str]]:
 def _build_next_commands(result: PingPongResult) -> dict[str, Any]:
     """Build copy-paste next commands with actual run_id."""
     rid = result.run_id
-    repo = result.original_repo_arg or "."
     cmds: dict[str, Any] = {
         "report": f"remedy do report {rid}",
         "report_json": f"remedy do report {rid} --json",
-        "promote_dry_run": f"remedy do promote {rid} --repo {shlex.quote(repo)} --dry-run",
-        "promote_dry_run_json": f"remedy do promote {rid} --repo {shlex.quote(repo)} --dry-run --json",
-        "promote_approve": f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve",
-        "promote_approve_json": f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve --json",
     }
-    # Include promote with test command if one was used
-    if result.test_command:
-        tc = shlex.quote(result.test_command)
-        cmds["promote_approve_with_test"] = (
-            f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve"
-            f" --test-command {tc}"
-        )
-        cmds["promote_approve_with_test_json"] = (
-            f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve"
-            f" --test-command {tc} --json"
-        )
 
     # Shell flow: complete copy-paste block with automatic RUN_ID
     flow_lines = [
@@ -4321,15 +4303,7 @@ def _build_next_commands(result: PingPongResult) -> dict[str, Any]:
         "# 1. Review the run report",
         "remedy do report $RUN_ID --json",
         "",
-        "# 2. Dry-run promotion (no mutation)",
-        f"remedy do promote $RUN_ID --repo {shlex.quote(repo)} --dry-run --json",
-        "",
-        "# 3. Review dry-run output first. Then run the approve line:",
-        f"remedy do promote $RUN_ID --repo {shlex.quote(repo)} --approve"
-        + (f" --test-command {shlex.quote(result.test_command)}" if result.test_command else "")
-        + " --json",
-        "",
-        "# 4. Final report",
+        "# 2. Final report",
         "remedy do report $RUN_ID",
     ]
     cmds["shell_flow"] = "\n".join(flow_lines)

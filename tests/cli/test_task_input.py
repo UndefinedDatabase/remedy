@@ -371,7 +371,6 @@ class TestExistingFlowsUnbroken:
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
         data = export_pingpong_json(result)
         assert "report" in data["next_commands"]
-        assert "promote_approve" in data["next_commands"]
 
     def test_existing_provider_evidence(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))

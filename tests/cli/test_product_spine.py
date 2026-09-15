@@ -299,10 +299,6 @@ class TestJobFirstHappyPath:
         from apps.cli.grouped import _QUICK_START
         assert "do report" in _QUICK_START
 
-    def test_happy_path_has_do_promote(self):
-        from apps.cli.grouped import _QUICK_START
-        assert "do promote" in _QUICK_START
-
     def test_happy_path_no_mission_as_primary(self):
         from apps.cli.grouped import _QUICK_START
         assert "mission run" not in _QUICK_START, \

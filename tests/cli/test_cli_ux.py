@@ -108,9 +108,6 @@ class TestHappyPath:
         out = capsys.readouterr().out
         assert "do run" in out
         assert "do report" in out
-        assert "do promote" in out
-        assert "--dry-run" in out
-        assert "--approve" in out
 
 
 # ---------------------------------------------------------------------------
@@ -135,39 +132,13 @@ class TestNextCommands:
         result, data = _make_run(tmp_path, monkeypatch)
         nc = data.get("next_commands", {})
         assert "report" in nc
-        assert "promote_dry_run" in nc
-        assert "promote_approve" in nc
         assert result.run_id in nc["report"]
-        assert result.run_id in nc["promote_approve"]
 
     def test_no_git_in_next_commands(self, tmp_path, monkeypatch):
         _, data = _make_run(tmp_path, monkeypatch)
         nc_str = json.dumps(data.get("next_commands", {}))
         assert "git commit" not in nc_str
         assert "git push" not in nc_str
-
-    def test_next_commands_preserve_repo(self, tmp_path, monkeypatch):
-        """next_commands preserve original repo argument."""
-        demo = tmp_path / "repo"
-        demo.mkdir(exist_ok=True)
-        (demo / "README.md").write_text("# Test\n")
-        result, data = _make_run(tmp_path, monkeypatch, repo_arg=str(demo))
-        nc = data["next_commands"]
-        assert str(demo) in nc["promote_approve"] or "." in nc["promote_approve"]
-
-    def test_next_commands_with_test_command(self, tmp_path, monkeypatch):
-        """When test command used, next_commands include promote with test."""
-        _, data = _make_run(tmp_path, monkeypatch, test_command="python3 -m pytest tests/ -q")
-        nc = data["next_commands"]
-        assert "promote_approve_with_test_json" in nc
-        assert "pytest" in nc["promote_approve_with_test_json"]
-
-    def test_next_commands_shell_quote_test(self, tmp_path, monkeypatch):
-        """Test command is shell-quoted in next_commands."""
-        _, data = _make_run(tmp_path, monkeypatch, test_command="echo 'hello world'")
-        nc = data["next_commands"]
-        # Should be quoted safely (no raw unquoted spaces)
-        assert "promote_approve_with_test" in nc
 
 
 # ---------------------------------------------------------------------------
@@ -419,16 +390,6 @@ class TestShellFlow:
         assert "git commit" not in flow
         assert "git push" not in flow
 
-    def test_shell_flow_has_dry_run(self, tmp_path, monkeypatch):
-        _, data = _make_run(tmp_path, monkeypatch)
-        flow = data["next_commands"]["shell_flow"]
-        assert "--dry-run" in flow
-
-    def test_shell_flow_has_approve(self, tmp_path, monkeypatch):
-        _, data = _make_run(tmp_path, monkeypatch)
-        flow = data["next_commands"]["shell_flow"]
-        assert "--approve" in flow
-
 
 # ---------------------------------------------------------------------------
 # Quick start tests
@@ -559,22 +520,6 @@ class TestConciseTextReport:
         _cmd_do_report(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Promotion: promoted" in out
-
-    def test_text_report_shows_next_steps(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
-        p = FakeProvider()
-        demo = tmp_path / "repo"
-        demo.mkdir()
-        (demo / "README.md").write_text("# Test\n")
-        result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p, repair_rounds=2)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
-        out = capsys.readouterr().out
-        assert "Next steps:" in out
-        assert "--dry-run" in out
-        assert "--approve" in out
 
 
 # ---------------------------------------------------------------------------

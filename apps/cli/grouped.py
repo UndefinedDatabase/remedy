@@ -370,8 +370,6 @@ _QUICK_START = """\
    1. remedy do run "<goal>" --repo . --builder claude-cli --reviewer claude-cli --json | tee /tmp/remedy-run.json
    2. RUN_ID=$(python3 -c "import json; print(json.load(open('/tmp/remedy-run.json'))['run_id'])")
    3. remedy do report $RUN_ID --json
-   4. remedy do promote $RUN_ID --repo . --dry-run --json
-   5. remedy do promote $RUN_ID --repo . --approve
 
  Show all commands:  remedy --all-commands"""
 

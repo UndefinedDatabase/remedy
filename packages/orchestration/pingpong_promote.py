@@ -734,10 +734,6 @@ def summarize_promotion(result: PromotionResult) -> str:
         lines.append("No target files changed.")
         if result.applied_files:
             lines.append(f"Would apply: {', '.join(result.applied_files)}")
-        lines.append(
-            f"To apply: remedy do promote {result.run_id}"
-            f" --repo {result.target_repo} --approve"
-        )
 
     elif result.status == "promoted":
         lines.append(f"Applied files: {', '.join(result.applied_files)}")

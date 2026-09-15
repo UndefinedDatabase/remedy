@@ -1153,10 +1153,6 @@ def _print_text_report(run_id: str, data: dict) -> None:
             print(f"Requested target: {promo.get('requested_target_repo', '')}")
     else:
         print("\nPromotion: not promoted")
-        if data.get("final_status") == "staged_review_passed":
-            print("\nNext steps:")
-            print(f"  remedy do promote {run_id} --repo . --dry-run")
-            print(f"  remedy do promote {run_id} --repo . --approve")
 
     # Token accounting
     ta = data.get("token_accounting", {})
@@ -1200,36 +1196,6 @@ def _parse_fixture_builder(val: object) -> bool | str:
         file=sys.stderr,
     )
     sys.exit(2)
-
-
-def _cmd_do_promote(
-    run_id: str,
-    *,
-    repo: str = ".",
-    approve: bool = False,
-    dry_run: bool = False,
-    test_command: str = "",
-    json_output: bool = False,
-) -> None:
-    """Promote reviewed staged artifacts into target repo."""
-    from packages.orchestration.pingpong_promote import (
-        export_promotion_json,
-        promote_run,
-        summarize_promotion,
-    )
-
-    result = promote_run(
-        run_id,
-        target_repo=repo,
-        approve=approve,
-        dry_run=dry_run,
-        test_command=test_command,
-    )
-
-    if json_output:
-        print(json.dumps(export_promotion_json(result), indent=2))
-    else:
-        print(summarize_promotion(result))
 
 
 def _print_scope_summary(validation: Any) -> None:
@@ -1741,14 +1707,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "do.replan": lambda args: _cmd_do_replan(
         args.job_id,
-        json_output=getattr(args, "json", False),
-    ),
-    "do.promote": lambda args: _cmd_do_promote(
-        args.run_id,
-        repo=getattr(args, "repo", None) or ".",
-        approve=getattr(args, "approve", False),
-        dry_run=getattr(args, "dry_run", False),
-        test_command=getattr(args, "test_command", None) or "",
         json_output=getattr(args, "json", False),
     ),
     "do.repair-attest": lambda args: _cmd_do_repair_attest(
