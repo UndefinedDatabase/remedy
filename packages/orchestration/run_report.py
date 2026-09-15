@@ -17,7 +17,8 @@ Deliberate absences (searched-for behavior that is NOT here):
     cycle records own those, and a second arithmetic path would be a second
     truth.
   * Remedy deliberately does not write the report from here.  The terminal
-    -state writer and the ``remedy job report`` CLI are F053 T002; this
+    -state writer is F053 T002, and the ``report`` section of
+    ``remedy job show <id> --full`` renders from the same sources; this
     module only turns sources into text.
   * Remedy deliberately does not read ``docs/roadmap/STATUS.md`` here.  The
     milestone distance and the capability lines come from a STATUS mirror

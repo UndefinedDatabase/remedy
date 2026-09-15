@@ -3311,7 +3311,7 @@ def _suggest_next_command(job: JobPlan) -> str:
     if job.state == JOB_COMPLETED:
         return f"remedy job apply {job.job_id} --repo . --dry-run"
     if job.state == JOB_BLOCKED:
-        return f"remedy do job-report {job.job_id}"
+        return f"remedy job show {job.job_id} --full"
     pending = [t for t in job.tasks if t.status == TASK_PENDING]
     if pending:
         return f"remedy job run {job.job_id}"

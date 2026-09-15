@@ -441,10 +441,8 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
         next_action = f"remedy propose list {jid} --json"
     elif pending_count > 0:
         next_action = "remedy job resume <job_id> --json"
-    elif state in ("completed", "failed"):
-        next_action = f"remedy job report {jid} --json"
     else:
-        next_action = f"remedy job report {jid} --json"
+        next_action = f"remedy job show {jid} --full --json"
 
     status = {
         "job_id": jid,

@@ -10,7 +10,7 @@ Specifically:
 
 1. `do run` creates a job with tasks and artifacts
 2. The `status` section of `job show --full` shows artifact count, approval state, and next safe action
-3. `job report` shows task details, patch intents, and `code_applied: false`
+3. The `report` section of `job show --full` shows task details, patch intents, and `code_applied: false`
 4. No code is applied, no PR created, no provider executed, no repo mutated
 
 ## Demo command sequence
@@ -32,11 +32,8 @@ JOB_ID=$(remedy do run "Fix the bug in main.py" \
   --repo "$DEMO_REPO" --json --fixture-builder true --autonomy-level 2 \
   | python3 -c "import sys,json; print(json.load(sys.stdin).get('job_id',''))")
 
-# 4. Check job status
+# 4. Check job status and read the job report
 remedy job show "$JOB_ID" --full --json
-
-# 5. Read job report
-remedy job report "$JOB_ID" --json
 
 # Cleanup
 rm -rf "$DEMO_REPO"
@@ -54,9 +51,9 @@ rm -rf "$DEMO_REPO"
 | `patch_intent_ids` | non-empty list (if patch) | Identifies what needs approval |
 | `latest_stop_reason` | `approval_required` or `autonomy_too_low` | Why the job stopped |
 | `next_safe_action` | approval or run-loop command | What the operator should do next |
-| `code_applied` | (not in status) | Status does not claim apply |
+| `code_applied` | `false` | Nothing is applied without approval |
 
-### `job report --json`
+### The `report` section of `job show --full --json`
 
 | Field | Expected value | Meaning |
 |-------|---------------|---------|

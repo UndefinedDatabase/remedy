@@ -593,7 +593,7 @@ def _approve_and_apply_intent(
     if apply_result.state == "blocked":
         record.status = JobFulfillmentStatus.BLOCKED
         record.stop_reason = f"apply_blocked:{apply_result.blocked_reason}"
-        record.next_safe_action = f"remedy job report {record.job_id} --json"
+        record.next_safe_action = f"remedy job show {record.job_id} --full --json"
         save_fulfillment_record(record, data_dir)
         return job, False
 
@@ -913,7 +913,7 @@ def run_job_fulfill(
         if not test_passed:
             record.status = JobFulfillmentStatus.BLOCKED
             record.stop_reason = f"test_not_passed:{test_res.status}:{test_res.stop_reason}"
-            record.next_safe_action = f"remedy job report {job_id} --json"
+            record.next_safe_action = f"remedy job show {job_id} --full --json"
             discard_staging(staging_ws, "test_failed")
             staging_result.discarded = True
             staging_result.discard_reason = "test_failed"
@@ -1049,7 +1049,7 @@ def run_job_fulfill(
 
             record.status = JobFulfillmentStatus.BLOCKED
             record.stop_reason = f"contract_not_satisfied:{record.contract_blockers}"
-            record.next_safe_action = f"remedy job report {job_id} --json"
+            record.next_safe_action = f"remedy job show {job_id} --full --json"
     finally:
         # Scoped cleanup: always remove staging parent on any exit path
         if staging_parent.exists():

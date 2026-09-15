@@ -8,16 +8,13 @@ Start here. These are the main commands for working with Remedy.
 # 1. Create and start a job
 remedy do run "Fix the login bug" --repo /path/to/project
 
-# 2. Check job state
+# 2. Check job state and read the job report
 remedy job show <job_id> --full --json
 
-# 3. Read the job report
-remedy job report <job_id> --json
-
-# 4. Open the UI
+# 3. Open the UI
 remedy ui <job_id>
 
-# 5. Review results
+# 4. Review results
 remedy review run <job_id> --json
 ```
 
@@ -39,16 +36,9 @@ remedy job show <job_id> --full --json
 ```
 
 Read-only view of job state: tasks done, pending, blockers, and
-the next safe action. No execution, no side effects.
-
-### Read the job report
-
-```bash
-remedy job report <job_id> --json
-```
-
-Read-only report of job progress: task details, evidence count,
-artifact count. No raw logs or output.
+the next safe action. Its `report` section is the job's progress
+report: task details, evidence count, artifact count, and the run
+report. No raw logs, no execution, no side effects.
 
 ### Check core health
 
@@ -74,8 +64,7 @@ See `docs/core-product-spine-v0.md` for the full command taxonomy.
 
 | Normal command           | Advanced equivalent(s)                                     |
 |--------------------------|------------------------------------------------------------|
-| `job show <id> --full`   | `job show <id>`                                            |
-| `job report <id>`        | `mission report <run_id> --job-id <id>`                    |
+| `job show <id> --full`   | `job show <id>`, `mission report <run_id> --job-id <id>`   |
 | `job run-loop <id>`      | `mission run <run_id> --job-id <id>`                       |
 | `doctor core`            | (no low-level equivalent — this is the check)              |
 
@@ -92,7 +81,6 @@ remedy job fulfill "$JOB_ID" --fixture-demo --json
 
 # Check result
 remedy job show "$JOB_ID" --full --json
-remedy job report "$JOB_ID" --json
 remedy propose list "$JOB_ID" --json
 ```
 

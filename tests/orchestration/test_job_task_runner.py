@@ -197,7 +197,7 @@ class TestCliCommandTruth:
         assert cmd.startswith(f"remedy job apply {result.job_id} ")
         assert "do job-promote" not in cmd
 
-    def test_next_command_uses_hyphen_for_blocked(self, isolate_data_root, demo_repo):
+    def test_next_command_names_job_show_full_for_blocked(self, isolate_data_root, demo_repo):
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         result = run_job(
             job.job_id,
@@ -206,7 +206,7 @@ class TestCliCommandTruth:
             max_rounds=1, repair_rounds=0,
         )
         cmd = _suggest_next_command(result)
-        assert "job-report" in cmd
+        assert cmd == f"remedy job show {result.job_id} --full"
 
     def test_report_json_next_command_copyable(self, isolate_data_root, demo_repo):
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
@@ -218,12 +218,11 @@ class TestCliCommandTruth:
         report_json = json.dumps(export_job_report(result))
         text = format_job_report_text(result)
         for stale in ["remedy do job run", "remedy do job plan", "remedy do job report",
-                      "remedy do job-promote", "remedy do job-run", "remedy do job-plan"]:
-            # A spaced `do` form never parsed, and a renamed or deleted `do` word parses no more (allow "job-report")
-            cleaned = report_json.replace("job-report", "JRE")
-            assert stale not in cleaned
-            cleaned_text = text.replace("job-report", "JRE")
-            assert stale not in cleaned_text
+                      "remedy do job-promote", "remedy do job-run", "remedy do job-plan",
+                      "remedy do job-report", "remedy job report"]:
+            # A spaced `do` form never parsed, and a renamed or deleted `do` or `job` word parses no more
+            assert stale not in report_json
+            assert stale not in text
 
 
 # ---------------------------------------------------------------------------

@@ -25,16 +25,13 @@ remedy job attach-repo "$JOB_ID" /path/to/demo/repo  # see Repo Requirements bel
 # 2. Run fulfillment in fixture-demo mode
 remedy job fulfill "$JOB_ID" --fixture-demo --json
 
-# 3. Check final status
+# 3. Check final status and read the full report
 remedy job show "$JOB_ID" --full --json
 
-# 4. Read the full report
-remedy job report "$JOB_ID" --json
-
-# 5. List proposed next tasks
+# 4. List proposed next tasks
 remedy propose list "$JOB_ID" --json
 
-# 6. User decides on suggestions
+# 5. User decides on suggestions
 remedy propose approve "$JOB_ID" <task_id> --json
 remedy propose reject "$JOB_ID" <task_id> --json
 remedy propose defer "$JOB_ID" <task_id> --json
@@ -69,7 +66,7 @@ remedy propose defer "$JOB_ID" <task_id> --json
 | `staging_used` | `true` | Staging workspace was used |
 | `staging_promoted` | `true` | Changes promoted to target |
 
-### `job report --json` (after fulfill)
+### The `report` section of `job show --full --json` (after fulfill)
 
 | Field | Expected | Meaning |
 |-------|----------|---------|

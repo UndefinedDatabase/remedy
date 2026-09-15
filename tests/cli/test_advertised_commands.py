@@ -359,7 +359,7 @@ def test_scanner_ignores_prose_that_merely_starts_with_a_group_name() -> None:
 
 def test_scanner_finds_a_real_next_action_f_string() -> None:
     found = scan_advertised_commands(
-        'record.next_safe_action = f"remedy job report {record.job_id} --json"'
+        'record.next_safe_action = f"remedy job show {record.job_id} --full --json"'
     )
 
-    assert ("job", "report") in found
+    assert ("job", "show") in found

@@ -728,7 +728,7 @@ class TestFulfilledDemoGuide:
         path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
         text = path.read_text()
         assert 'job show "$JOB_ID" --full --json' in text
-        assert "job report" in text
+        assert '# 3. Check final status and read the full report\nremedy job show "$JOB_ID" --full --json' in text
 
     def test_guide_mentions_propose(self):
         path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"

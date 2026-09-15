@@ -308,7 +308,7 @@ class TestCommandTaxonomyDocs:
     def test_spine_doc_has_job_first_flow(self):
         text = self._read_doc("core-product-spine-v0.md")
         assert "job show <job_id> --full" in text
-        assert "job report" in text
+        assert "2. Check job state and read the report  →  remedy job show <job_id> --full --json" in text
 
     def test_spine_doc_mission_is_advanced(self):
         text = self._read_doc("core-product-spine-v0.md")
@@ -317,7 +317,7 @@ class TestCommandTaxonomyDocs:
     def test_quickstart_doc_job_first(self):
         text = self._read_doc("simple-operator-quickstart-v0.md")
         assert "job show <job_id> --full" in text
-        assert "job report" in text
+        assert "# 2. Check job state and read the job report\nremedy job show <job_id> --full --json" in text
 
     def test_quickstart_no_mission_as_primary(self):
         text = self._read_doc("simple-operator-quickstart-v0.md")
