@@ -33,7 +33,6 @@ apps.cli.commands.patch
 apps.cli.commands.policy
 apps.cli.commands.project
 apps.cli.commands.propose_cmd
-apps.cli.commands.queue_cmd
 apps.cli.commands.readiness
 apps.cli.commands.real_test_execution_cmd
 apps.cli.commands.repair_cmd

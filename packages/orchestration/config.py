@@ -520,7 +520,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         key="queue.reclaim_ttl_minutes",
         env_var="REMEDY_QUEUE_RECLAIM_TTL_MINUTES",
         description=(
-            "How old a queue claim must be before `remedy queue reclaim` will "
+            "How old a queue claim must be before a reclaim will "
             "re-offer it (F048). Age alone is never enough: the owning consumer "
             "must ALSO be verifiably gone — same host, dead pid — because a slow "
             "consumer is not an absent one, and there are no silent takeovers."

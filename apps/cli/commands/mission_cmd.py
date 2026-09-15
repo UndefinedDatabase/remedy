@@ -16,8 +16,8 @@ because someone answered the plan-approval opt-in with yes.  A plain do-flow
 leaves no mission behind.
 
 Scoping follows F148: the project comes from ``--project``, ``REMEDY_PROJECT``
-or the working directory, exactly as ``remedy job list`` and ``remedy queue``
-resolve it.  There is no cross-project mission; ``--all-projects`` only widens
+or the working directory, exactly as ``remedy job list`` resolves it.  There
+is no cross-project mission; ``--all-projects`` only widens
 the LISTING over the project areas that exist on disk.
 """
 from __future__ import annotations

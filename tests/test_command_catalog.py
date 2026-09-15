@@ -327,6 +327,10 @@ class TestDeletedCommands:
         "orchestrator.idea",
         "orchestrator.inspect",
         "orchestrator.report",
+        "queue.add",
+        "queue.list",
+        "queue.reclaim",
+        "queue.rm",
         "rollback.proof",
         "rollback.show",
     )
