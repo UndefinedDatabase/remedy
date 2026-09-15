@@ -5,7 +5,7 @@ Never auto-promotes. Requires --approve flag.
 No git commit, no git push, no git reset, no git checkout.
 
 Public API:
-    promote_job(job_id, target_repo, *, approve, dry_run, test_command) -> JobPromotionResult
+    apply_job(job_id, target_repo, *, approve, dry_run, test_command) -> JobApplyResult
 """
 from __future__ import annotations
 
@@ -295,7 +295,7 @@ def _check_baseline_readiness(
 # ---------------------------------------------------------------------------
 
 @dataclass
-class TaskPromoSummary:
+class TaskApplySummary:
     """Per-task promotion readiness summary."""
     task_id: str = ""
     title: str = ""
@@ -309,7 +309,7 @@ class TaskPromoSummary:
 
 
 @dataclass
-class JobPromotionResult:
+class JobApplyResult:
     """Result of a job promotion attempt."""
     job_id: str = ""
     promotion_id: str = field(default_factory=lambda: uuid4().hex[:16])
@@ -320,7 +320,7 @@ class JobPromotionResult:
     job_status: str = ""
     job_title: str = ""
     job_workspace_path: str = ""
-    task_summaries: list[TaskPromoSummary] = field(default_factory=list)
+    task_summaries: list[TaskApplySummary] = field(default_factory=list)
     files_planned: list[str] = field(default_factory=list)
     files_applied: list[str] = field(default_factory=list)
     files_blocked: list[str] = field(default_factory=list)
@@ -358,11 +358,11 @@ class JobPromotionResult:
 # ---------------------------------------------------------------------------
 
 def _block(
-    result: JobPromotionResult,
+    result: JobApplyResult,
     reason: str,
     *,
     persist: bool = True,
-) -> JobPromotionResult:
+) -> JobApplyResult:
     result.status = "blocked"
     result.blocked_reason = reason
     result.blocked_reasons.append(reason)
@@ -372,7 +372,7 @@ def _block(
 
 def _safe_persist(
     job_id: str,
-    result: JobPromotionResult,
+    result: JobApplyResult,
     applied: list[str],
     *,
     final: bool = False,
@@ -383,7 +383,7 @@ def _safe_persist(
     honestly rather than pretending a durable record (or a durable preview) exists.
     """
     try:
-        _persist_job_promotion(job_id, result)
+        _persist_job_apply_record(job_id, result)
     except OSError as exc:
         if final and not applied:
             original_status = result.status
@@ -450,7 +450,7 @@ def _run_post_test(
 # ---------------------------------------------------------------------------
 
 @dataclass
-class PromotionSource:
+class ApplySource:
     """A temporary, read-only materialization of a completed job's hand-off."""
 
     path: Path
@@ -459,21 +459,21 @@ class PromotionSource:
     materialized: bool = False
 
 
-def _materialize_promotion_source(job: Any) -> tuple[PromotionSource | None, str]:
+def _materialize_apply_source(job: Any) -> tuple[ApplySource | None, str]:
     """Deprecated shim kept for callers/tests that only want (source, error).
 
-    The lifecycle owner is :func:`_materialize_promotion_source_owned`, which never
+    The lifecycle owner is :func:`_materialize_apply_source_owned`, which never
     cleans up behind the caller's back: a temporary worktree that could not be
     removed must reach the caller, not vanish into a discarded return value.
     """
-    source, err = _materialize_promotion_source_owned(job)
+    source, err = _materialize_apply_source_owned(job)
     if source is not None and err:
         # A partially materialized source with an error: the OWNER cleans it up.
         return None, err
     return source, err
 
 
-def _materialize_promotion_source_owned(job: Any) -> tuple[PromotionSource | None, str]:
+def _materialize_apply_source_owned(job: Any) -> tuple[ApplySource | None, str]:
     """Rebuild the completed job's result from base commit + verified result.diff.
 
     The execution worktree is deliberately disposable: after a clean cleanup the
@@ -505,7 +505,7 @@ def _materialize_promotion_source_owned(job: Any) -> tuple[PromotionSource | Non
 
     temp_root = Path(tempfile.mkdtemp(prefix="remedy-promo-"))
     ws = temp_root / "source"
-    source = PromotionSource(path=ws, repo=repo, temp_root=temp_root)
+    source = ApplySource(path=ws, repo=repo, temp_root=temp_root)
 
     # From here on a temporary directory (and possibly a registered worktree) may
     # exist, so the SOURCE is always returned — even on failure — and the caller
@@ -573,7 +573,7 @@ def _failed_cleanup(error: str) -> dict[str, Any]:
     }
 
 
-def _cleanup_promotion_source(source: PromotionSource | None) -> dict[str, Any]:
+def _cleanup_apply_source(source: ApplySource | None) -> dict[str, Any]:
     """Remove the temporary promotion worktree — and SAY what actually happened.
 
     TOTAL function: it never raises. Every step (remove, prune, physical delete,
@@ -644,7 +644,7 @@ def _cleanup_promotion_source(source: PromotionSource | None) -> dict[str, Any]:
     return out
 
 
-def promote_job(
+def apply_job(
     job_id: str,
     target_repo: str = ".",
     *,
@@ -652,7 +652,7 @@ def promote_job(
     dry_run: bool = False,
     test_command: str = "",
     skip_blocked: bool = False,
-) -> JobPromotionResult:
+) -> JobApplyResult:
     """Promote reviewed job workspace changes into target repo.
 
     Without --approve, returns dry-run preview only. Never auto-promotes.
@@ -663,7 +663,7 @@ def promote_job(
 
     ``skip_blocked`` is the operator's SECOND, explicit decision, taken after
     reading the blocked list — it does not weaken the fence. See
-    ``_promote_from_workspace`` for what it does and, more importantly, does not
+    ``_apply_from_workspace`` for what it does and, more importantly, does not
     change.
     """
     from packages.orchestration.pingpong_job import (
@@ -673,7 +673,7 @@ def promote_job(
         load_job_plan,
     )
 
-    result = JobPromotionResult(
+    result = JobApplyResult(
         job_id=job_id,
         approved=approve,
         dry_run=dry_run,
@@ -701,7 +701,7 @@ def promote_job(
 
     # --- Task summaries ---
     for t in job.tasks:
-        result.task_summaries.append(TaskPromoSummary(
+        result.task_summaries.append(TaskApplySummary(
             task_id=t.task_id,
             title=t.title,
             status=t.status,
@@ -750,16 +750,16 @@ def promote_job(
     # This function is the single lifecycle owner: from the moment a temporary
     # directory may exist, every exit path runs the checked cleanup, records its
     # result on the returned object, and persists that final record exactly once.
-    promo_source: PromotionSource | None = None
+    apply_source: ApplySource | None = None
     out = result
     try:
         if getattr(job, "isolation_mode", "copy") == "worktree":
-            promo_source, perr = _materialize_promotion_source_owned(job)
+            apply_source, perr = _materialize_apply_source_owned(job)
             if perr:
                 out = _block(result, perr, persist=False)
             else:
-                out = _promote_from_workspace(
-                    job, result, promo_source.path, target_repo,
+                out = _apply_from_workspace(
+                    job, result, apply_source.path, target_repo,
                     approve=approve, dry_run=dry_run, test_command=test_command,
                     skip_blocked=skip_blocked,
                     persist_final=False,
@@ -771,17 +771,17 @@ def promote_job(
             workspace = Path(ws_path)
             if not workspace.is_dir():
                 return _block(result, f"workspace_missing: {ws_path}")
-            return _promote_from_workspace(
+            return _apply_from_workspace(
                 job, result, workspace, target_repo,
                 approve=approve, dry_run=dry_run, test_command=test_command,
                 skip_blocked=skip_blocked,
             )
     finally:
-        if promo_source is not None:
+        if apply_source is not None:
             try:
-                cleanup = _cleanup_promotion_source(promo_source)
+                cleanup = _cleanup_apply_source(apply_source)
             except Exception as exc:
-                # _cleanup_promotion_source is total, but a cleanup bug must still
+                # _cleanup_apply_source is total, but a cleanup bug must still
                 # never destroy the promotion outcome or the durable record.
                 cleanup = _failed_cleanup(
                     f"cleanup raised unexpectedly: {type(exc).__name__}: {exc}")
@@ -790,7 +790,7 @@ def promote_job(
             out.cleanup_status = cleanup["cleanup_status"]
             out.cleanup_error = cleanup["cleanup_error"]
 
-    if promo_source is not None and out.cleanup_status == "failed":
+    if apply_source is not None and out.cleanup_status == "failed":
         # Never claim a clean run. The promotion outcome and the applied-file list
         # are preserved: the target WAS touched if the status says so. A cleanup
         # failure during a materialization failure reports BOTH.
@@ -806,7 +806,7 @@ def promote_job(
 
     # ONE final persistence, after cleanup, for every materialized outcome — so the
     # persisted record's cleanup fields and status match the object the CLI got.
-    if promo_source is not None:
+    if apply_source is not None:
         _safe_persist(job_id, out, out.files_applied, final=True)
     return out
 
@@ -819,7 +819,7 @@ def _reviewed_files_and_proofs(job: Any) -> tuple[list[str], dict[str, Any]]:
     return _reviewed_task_files(job), _latest_task_proofs(job)
 
 
-def _check_source_coverage(job: Any, result: JobPromotionResult, workspace: Path) -> str:
+def _check_source_coverage(job: Any, result: JobApplyResult, workspace: Path) -> str:
     """The materialized source's changed paths must equal the reviewed file set.
 
     An extra file in the root diff (a finalization hook writing ``rogue.txt``) would
@@ -859,9 +859,9 @@ def _mode_of(path: Path) -> str:
     return W.file_mode(path)
 
 
-def _promote_from_workspace(
+def _apply_from_workspace(
     job: Any,
-    result: JobPromotionResult,
+    result: JobApplyResult,
     workspace: Path,
     target_repo: str,
     *,
@@ -870,7 +870,7 @@ def _promote_from_workspace(
     test_command: str,
     skip_blocked: bool = False,
     persist_final: bool = True,
-) -> JobPromotionResult:
+) -> JobApplyResult:
     """The existing baseline-aware promotion, against a resolved source.
 
     ``persist_final=False`` means an outer owner (the temporary-worktree lifecycle)
@@ -1004,9 +1004,9 @@ def _promote_from_workspace(
 
     # --- Preflight promotion record writability ---
     try:
-        promo_dir = _promotions_dir() / job_id
-        promo_dir.mkdir(parents=True, exist_ok=True)
-        test_file = promo_dir / ".write_test"
+        record_dir = _apply_records_dir() / job_id
+        record_dir.mkdir(parents=True, exist_ok=True)
+        test_file = record_dir / ".write_test"
         test_file.write_text("test")
         test_file.unlink()
     except OSError as exc:
@@ -1023,7 +1023,7 @@ def _promote_from_workspace(
     result.status = "approved_apply_started"
     result.files_applied = []
     try:
-        _persist_job_promotion(job_id, result)
+        _persist_job_apply_record(job_id, result)
     except OSError as exc:
         return _block(result, f"pre_apply_record_failed: {exc}")
 
@@ -1123,29 +1123,29 @@ def _promote_from_workspace(
 # Persistence
 # ---------------------------------------------------------------------------
 
-def _promotions_dir() -> Path:
+def _apply_records_dir() -> Path:
     from packages.orchestration.data_paths import resolve_data_root
     return resolve_data_root() / "job_promotions"
 
 
-def _persist_job_promotion(
+def _persist_job_apply_record(
     job_id: str,
-    result: JobPromotionResult,
+    result: JobApplyResult,
 ) -> None:
     """Persist promotion record. Raises on write failure for approved promotes."""
-    promo_dir = _promotions_dir() / job_id
-    promo_dir.mkdir(parents=True, exist_ok=True)
-    promo_file = promo_dir / f"{result.promotion_id}.json"
-    data = export_job_promotion_json(result)
-    promo_file.write_text(json.dumps(data, indent=2) + "\n")
+    record_dir = _apply_records_dir() / job_id
+    record_dir.mkdir(parents=True, exist_ok=True)
+    record_file = record_dir / f"{result.promotion_id}.json"
+    data = export_job_apply_json(result)
+    record_file.write_text(json.dumps(data, indent=2) + "\n")
 
 
-def load_job_promotion(job_id: str, promotion_id: str) -> dict[str, Any] | None:
-    promo_file = _promotions_dir() / job_id / f"{promotion_id}.json"
-    if not promo_file.exists():
+def load_job_apply_record(job_id: str, promotion_id: str) -> dict[str, Any] | None:
+    record_file = _apply_records_dir() / job_id / f"{promotion_id}.json"
+    if not record_file.exists():
         return None
     try:
-        return json.loads(promo_file.read_text())
+        return json.loads(record_file.read_text())
     except (OSError, json.JSONDecodeError):
         return None
 
@@ -1154,7 +1154,7 @@ def load_job_promotion(job_id: str, promotion_id: str) -> dict[str, Any] | None:
 # Export / summary (redacted, baseline-aware)
 # ---------------------------------------------------------------------------
 
-def export_job_promotion_json(result: JobPromotionResult) -> dict[str, Any]:
+def export_job_apply_json(result: JobApplyResult) -> dict[str, Any]:
     raw = {
         "job_id": result.job_id,
         "promotion_id": result.promotion_id,
@@ -1224,7 +1224,7 @@ def _blocked_path_names(files_blocked: list[str]) -> list[str]:
     return [entry.split(":", 1)[0].strip() for entry in files_blocked]
 
 
-def _next_step_for_promotion(result: JobPromotionResult) -> str:
+def _next_step_for_apply(result: JobApplyResult) -> str:
     """The honest ``Next:`` line a stalled promotion owes its operator.
 
     Every other stalled surface in Remedy ends with one — `remedy do`,
@@ -1263,7 +1263,7 @@ def _next_step_for_promotion(result: JobPromotionResult) -> str:
     )
 
 
-def summarize_job_promotion(result: JobPromotionResult) -> str:
+def summarize_job_apply(result: JobApplyResult) -> str:
     lines = [
         f"Job: {result.job_id}",
         f"Title: {result.job_title}",
@@ -1378,6 +1378,6 @@ def summarize_job_promotion(result: JobPromotionResult) -> str:
     # the operator reads the paths before the route through them.
     if result.status == "blocked":
         lines.append("")
-        lines.append(_next_step_for_promotion(result))
+        lines.append(_next_step_for_apply(result))
 
     return _redact_secrets("\n".join(lines) + "\n")

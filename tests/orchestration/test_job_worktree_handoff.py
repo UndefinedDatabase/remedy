@@ -24,7 +24,7 @@ from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import worktrees as W
 from packages.orchestration.artifact_contract_gate import check_worktree_artifacts
 from packages.orchestration.data_paths import job_dir
-from packages.orchestration.job_apply import promote_job
+from packages.orchestration.job_apply import apply_job
 from packages.orchestration.job_evidence import export_job_evidence
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
@@ -111,14 +111,14 @@ def _run_job(repo: Path, monkeypatch, files: dict[str, str], text=ONE_TASK, seen
 # Finding 1 — a completed worktree job is promotable WITHOUT its workspace
 # ---------------------------------------------------------------------------
 
-class TestCompletedJobPromotion:
+class TestCompletedJobApply:
     def test_dry_run_is_ready_not_workspace_missing(self, repo, monkeypatch):
         job, holder = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
         assert job.state == JOB_COMPLETED
         assert job.worktree_cleanup_status == "clean"
         assert not Path(holder["path"]).exists()     # workspace is gone by design
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert res.status == "dry_run", res.blocked_reason
         assert res.blocked_reason == ""
@@ -126,13 +126,13 @@ class TestCompletedJobPromotion:
         assert not (repo / "one.txt").exists()       # dry-run mutates nothing
         assert _git(repo, "status", "--porcelain") == ""
 
-    def test_approved_promotion_places_the_reviewed_files_in_the_target(
+    def test_approved_apply_places_the_reviewed_files_in_the_target(
         self, repo, monkeypatch,
     ):
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
         head_before = _git(repo, "rev-parse", "HEAD").strip()
 
-        res = promote_job(job.job_id, str(repo), approve=True)
+        res = apply_job(job.job_id, str(repo), approve=True)
 
         assert res.status == "promoted", res.blocked_reason
         assert (repo / "one.txt").read_text() == "hello\n"
@@ -145,7 +145,7 @@ class TestCompletedJobPromotion:
         job, _ = _run_job(repo, monkeypatch, {"base.txt": "changed by job\n"})
         (repo / "base.txt").write_text("changed by someone else\n")
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
         assert "baseline_check_failed" in res.blocked_reason
 
@@ -153,7 +153,7 @@ class TestCompletedJobPromotion:
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
         (job_dir(job.job_id) / "result.diff").write_bytes(b"tampered\n")
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
         assert "job_result_diff_invalid" in res.blocked_reason
         assert "sha256" in res.blocked_reason
@@ -162,7 +162,7 @@ class TestCompletedJobPromotion:
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
         (job_dir(job.job_id) / "result.diff").unlink()
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
         assert "job_result_diff_invalid" in res.blocked_reason
 
@@ -173,32 +173,32 @@ class TestCompletedJobPromotion:
         data["worktree"]["base_commit"] = "0" * 40
         path.write_text(json.dumps(data, indent=2))
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
         assert "base_commit_missing" in res.blocked_reason
 
-    def test_temporary_promotion_worktrees_are_always_removed(self, repo, monkeypatch):
+    def test_temporary_apply_worktrees_are_always_removed(self, repo, monkeypatch):
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        promote_job(job.job_id, str(repo), dry_run=True)
-        promote_job(job.job_id, str(repo), approve=True)
+        apply_job(job.job_id, str(repo), dry_run=True)
+        apply_job(job.job_id, str(repo), approve=True)
         # Only the main checkout remains registered; no promo-* worktree survives.
         assert len(W.list_worktrees(repo)) == 1
         assert "remedy-promo" not in _git(repo, "worktree", "list", "--porcelain")
 
-    def test_the_promotion_source_is_never_the_recorded_execution_path(
+    def test_the_apply_source_is_never_the_recorded_execution_path(
         self, repo, monkeypatch,
     ):
         job, holder = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
         seen: dict = {}
-        real = job_apply._materialize_promotion_source_owned
+        real = job_apply._materialize_apply_source_owned
 
         def spy(j):
             src, err = real(j)
             seen["path"] = str(src.path) if src else ""
             return src, err
 
-        monkeypatch.setattr(job_apply, "_materialize_promotion_source_owned", spy)
-        promote_job(job.job_id, str(repo), dry_run=True)
+        monkeypatch.setattr(job_apply, "_materialize_apply_source_owned", spy)
+        apply_job(job.job_id, str(repo), dry_run=True)
         assert seen["path"] and seen["path"] != holder["path"]
         assert ".remedy-wt" not in seen["path"]      # not the execution worktree
 
@@ -498,7 +498,7 @@ class TestJobPlanResumeCli:
 # ---------------------------------------------------------------------------
 
 class TestEndToEndJobFlow:
-    def test_plan_run_report_evidence_promote_dry_run(self, repo, monkeypatch, tmp_path):
+    def test_plan_run_report_evidence_apply_dry_run(self, repo, monkeypatch, tmp_path):
         status_before = _git(repo, "status", "--porcelain")
         head_before = _git(repo, "rev-parse", "HEAD").strip()
 
@@ -519,7 +519,7 @@ class TestEndToEndJobFlow:
         assert "unavailable" not in (out / "workspace.diff").read_text()
         assert check_worktree_artifacts(str(out))["verdict"] == "PASS"
 
-        dry = promote_job(job.job_id, str(repo), dry_run=True)
+        dry = apply_job(job.job_id, str(repo), dry_run=True)
         assert dry.status == "dry_run" and dry.files_planned == ["one.txt"]
 
         # Nothing was promoted automatically; the checkout is byte-identical.
@@ -529,10 +529,10 @@ class TestEndToEndJobFlow:
 
     def test_the_explicit_approval_step_is_separate(self, repo, monkeypatch):
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        promote_job(job.job_id, str(repo), dry_run=True)
+        apply_job(job.job_id, str(repo), dry_run=True)
         assert not (repo / "one.txt").exists()        # still nothing
 
-        res = promote_job(job.job_id, str(repo), approve=True)
+        res = apply_job(job.job_id, str(repo), approve=True)
         assert res.status == "promoted"
         assert (repo / "one.txt").read_text() == "hello\n"
         assert _git(repo, "rev-parse", "HEAD").strip() == _git(

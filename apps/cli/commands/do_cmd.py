@@ -1452,15 +1452,15 @@ def _cmd_job_apply(
 ) -> None:
     """Review and apply job workspace changes to target repo."""
     from packages.orchestration.job_apply import (
-        export_job_promotion_json,
-        promote_job,
-        summarize_job_promotion,
+        apply_job,
+        export_job_apply_json,
+        summarize_job_apply,
     )
 
     if not approve and not dry_run:
         dry_run = True
 
-    result = promote_job(
+    result = apply_job(
         job_id,
         target_repo=repo,
         approve=approve,
@@ -1470,9 +1470,9 @@ def _cmd_job_apply(
     )
 
     if json_output:
-        print(json.dumps(export_job_promotion_json(result), indent=2))
+        print(json.dumps(export_job_apply_json(result), indent=2))
     else:
-        print(summarize_job_promotion(result))
+        print(summarize_job_apply(result))
 
 
 def _cmd_do_job_report(

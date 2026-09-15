@@ -23,7 +23,7 @@ from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import worktrees as W
 from packages.orchestration.artifact_contract_gate import check_worktree_artifacts
 from packages.orchestration.data_paths import job_dir
-from packages.orchestration.job_apply import promote_job
+from packages.orchestration.job_apply import apply_job
 from packages.orchestration.job_evidence import export_job_evidence
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
@@ -281,7 +281,7 @@ class TestHandoffCoverage:
         assert done.worktree_cleanup_status == "retained"
         assert Path(holder["path"]).is_dir()
 
-    def test_a_blocked_coverage_job_cannot_be_promoted(self, repo, monkeypatch):
+    def test_a_blocked_coverage_job_cannot_be_applied(self, repo, monkeypatch):
         job = parse_job_file(ONE_TASK, str(repo))
         holder: dict = {}
         _spy(monkeypatch, holder)
@@ -290,7 +290,7 @@ class TestHandoffCoverage:
         done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
                        builder_name="fake", reviewer_name="fake", max_rounds=1)
 
-        res = promote_job(done.job_id, str(repo), dry_run=True)
+        res = apply_job(done.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
         assert "job_not_completed" in res.blocked_reason
         assert not (repo / "one.txt").exists()
@@ -353,13 +353,13 @@ class TestHandoffCoverage:
         assert any("omits reviewed files" in i or "!=" in i
                    for i in check["handoff_coverage_issues"])
 
-    def test_promotion_blocks_when_the_source_carries_an_extra_file(
+    def test_apply_blocks_when_the_source_carries_an_extra_file(
         self, repo, monkeypatch,
     ):
         job, _ = _run(repo, monkeypatch, [{"one.txt": "hello\n"}])
 
         # A rogue file reaches the materialized promotion source.
-        real = job_apply._materialize_promotion_source_owned
+        real = job_apply._materialize_apply_source_owned
 
         def hooked(j):
             src, err = real(j)
@@ -367,9 +367,9 @@ class TestHandoffCoverage:
                 (src.path / "rogue.txt").write_text("never reviewed\n")
             return src, err
 
-        monkeypatch.setattr(job_apply, "_materialize_promotion_source_owned", hooked)
+        monkeypatch.setattr(job_apply, "_materialize_apply_source_owned", hooked)
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
         assert "promotion_coverage_failed" in res.blocked_reason
         assert res.unexpected_source_files == ["rogue.txt"]
@@ -384,7 +384,7 @@ def _is_exec(p: Path) -> bool:
     return os.access(p, os.X_OK)
 
 
-class TestFileModePromotion:
+class TestFileModeApply:
     def _job_with_script(self, repo, monkeypatch, mode: int, content="#!/bin/sh\n"):
         (repo / "script.sh").write_text("#!/bin/sh\necho old\n")
         (repo / "script.sh").chmod(mode)
@@ -406,7 +406,7 @@ class TestFileModePromotion:
         prov = _ModeBuilder(holder, [{}])
         return job, holder, prov
 
-    def test_0644_to_0755_survives_promotion(self, repo, monkeypatch):
+    def test_0644_to_0755_survives_apply(self, repo, monkeypatch):
         job, holder, prov = self._job_with_script(repo, monkeypatch, 0o644)
         prov.target_mode = 0o755
         done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
@@ -415,12 +415,12 @@ class TestFileModePromotion:
         proof = done.tasks[0].apply_manifest.applied_file_proofs[0]
         assert proof.baseline_mode == "100644" and proof.final_mode == "100755"
 
-        res = promote_job(done.job_id, str(repo), approve=True)
+        res = apply_job(done.job_id, str(repo), approve=True)
         assert res.status == "promoted", res.blocked_reason
         assert _is_exec(repo / "script.sh")                     # the chmod survived
         assert res.modes_applied["script.sh"] == "100755"
 
-    def test_0755_to_0644_survives_promotion(self, repo, monkeypatch):
+    def test_0755_to_0644_survives_apply(self, repo, monkeypatch):
         job, holder, prov = self._job_with_script(repo, monkeypatch, 0o755)
         prov.target_mode = 0o644
         done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
@@ -428,7 +428,7 @@ class TestFileModePromotion:
         proof = done.tasks[0].apply_manifest.applied_file_proofs[0]
         assert proof.baseline_mode == "100755" and proof.final_mode == "100644"
 
-        res = promote_job(done.job_id, str(repo), approve=True)
+        res = apply_job(done.job_id, str(repo), approve=True)
         assert res.status == "promoted", res.blocked_reason
         assert not _is_exec(repo / "script.sh")
 
@@ -450,7 +450,7 @@ class TestFileModePromotion:
         proof = done.tasks[0].apply_manifest.applied_file_proofs[0]
         assert proof.existed_before_job is False and proof.final_mode == "100755"
 
-        res = promote_job(done.job_id, str(repo), approve=True)
+        res = apply_job(done.job_id, str(repo), approve=True)
         assert res.status == "promoted", res.blocked_reason
         assert (repo / "tool.sh").read_text().startswith("#!/bin/sh")
         assert _is_exec(repo / "tool.sh")
@@ -458,13 +458,13 @@ class TestFileModePromotion:
         assert _git(repo, "rev-parse", "HEAD").strip() == _git(
             repo, "rev-parse", done.worktree_base_commit).strip()
 
-    def test_a_mode_changed_after_review_blocks_promotion(self, repo, monkeypatch):
+    def test_a_mode_changed_after_review_blocks_apply(self, repo, monkeypatch):
         job, holder, prov = self._job_with_script(repo, monkeypatch, 0o644)
         prov.target_mode = 0o755
         done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
                        builder_name="fake", reviewer_name="fake", max_rounds=1)
 
-        real = job_apply._materialize_promotion_source_owned
+        real = job_apply._materialize_apply_source_owned
 
         def hooked(j):
             src, err = real(j)
@@ -472,8 +472,8 @@ class TestFileModePromotion:
                 (src.path / "script.sh").chmod(0o644)     # the reviewed mode is lost
             return src, err
 
-        monkeypatch.setattr(job_apply, "_materialize_promotion_source_owned", hooked)
-        res = promote_job(done.job_id, str(repo), approve=True)
+        monkeypatch.setattr(job_apply, "_materialize_apply_source_owned", hooked)
+        res = apply_job(done.job_id, str(repo), approve=True)
 
         assert res.status == "blocked"
         assert "mode_check_failed" in res.blocked_reason
@@ -484,14 +484,14 @@ class TestFileModePromotion:
 # Finding 4 — temporary promotion cleanup is observable and honest
 # ---------------------------------------------------------------------------
 
-class TestPromotionCleanupHonesty:
+class TestApplyCleanupHonesty:
     def _completed(self, repo, monkeypatch):
         job, _ = _run(repo, monkeypatch, [{"one.txt": "hello\n"}])
         return job
 
     def test_a_normal_run_leaves_no_temporary_worktree(self, repo, monkeypatch):
         job = self._completed(repo, monkeypatch)
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.cleanup_status == "clean" and res.cleanup_error == ""
         assert res.temporary_worktree_removed and res.temporary_registration_removed
         assert "remedy-promo" not in _git(repo, "worktree", "list", "--porcelain")
@@ -524,14 +524,14 @@ class TestPromotionCleanupHonesty:
         else:
             monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert res.cleanup_status == "failed"
         assert res.cleanup_error
         assert res.status == "dry_run_cleanup_failed"     # never a silent clean run
         assert not (repo / "one.txt").exists()            # dry-run mutated nothing
 
-    def test_an_approved_promotion_with_a_failing_cleanup_says_so(
+    def test_an_approved_apply_with_a_failing_cleanup_says_so(
         self, repo, monkeypatch,
     ):
         job = self._completed(repo, monkeypatch)
@@ -543,7 +543,7 @@ class TestPromotionCleanupHonesty:
             return real_run(argv, *a, **kw)
 
         monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
-        res = promote_job(job.job_id, str(repo), approve=True)
+        res = apply_job(job.job_id, str(repo), approve=True)
         monkeypatch.setattr(job_apply.subprocess, "run", real_run)   # only undo the failure
 
         # The promotion really happened; the cleanup really failed. Both are told.
@@ -554,6 +554,6 @@ class TestPromotionCleanupHonesty:
         assert any("cleanup_failed" in r for r in res.blocked_reasons)
 
         record = json.loads(
-            (job_apply._promotions_dir() / job.job_id / f"{res.promotion_id}.json").read_text()
+            (job_apply._apply_records_dir() / job.job_id / f"{res.promotion_id}.json").read_text()
         )
         assert record["temporary_worktree_cleanup"]["cleanup_status"] == "failed"

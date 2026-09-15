@@ -22,9 +22,9 @@ import pytest
 from packages.orchestration import job_apply
 from packages.orchestration import worktrees as W
 from packages.orchestration.job_apply import (
-    export_job_promotion_json,
-    promote_job,
-    summarize_job_promotion,
+    apply_job,
+    export_job_apply_json,
+    summarize_job_apply,
 )
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
@@ -109,7 +109,7 @@ def _edit_script(new_content: str, mode: int | None = None):
 
 
 def _persisted(job_id: str, promotion_id: str) -> dict:
-    path = job_apply._promotions_dir() / job_id / f"{promotion_id}.json"
+    path = job_apply._apply_records_dir() / job_id / f"{promotion_id}.json"
     return json.loads(path.read_text())
 
 
@@ -124,7 +124,7 @@ class TestBaselineModeDrift:
 
         (repo / "script.sh").chmod(0o755)          # an external chmod, post-job
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
         assert "target_mode_changed_since_job: script.sh" in res.blocked_reason
         statuses = {r.path: r.baseline_status for r in res.file_readiness}
@@ -138,7 +138,7 @@ class TestBaselineModeDrift:
 
         (repo / "script.sh").chmod(0o644)
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
         assert "target_mode_changed_since_job" in res.blocked_reason
 
@@ -149,7 +149,7 @@ class TestBaselineModeDrift:
         (repo / "script.sh").write_text("someone else\n")
         (repo / "script.sh").chmod(0o755)
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
         assert "target_changed_since_job" in res.blocked_reason
 
@@ -157,7 +157,7 @@ class TestBaselineModeDrift:
         _committed_script(repo, 0o644)
         job = _run_job(repo, monkeypatch, _edit_script("new\n", 0o755))
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "dry_run", res.blocked_reason
         assert res.files_planned == ["script.sh"]
         statuses = {r.path: r.baseline_status for r in res.file_readiness}
@@ -180,7 +180,7 @@ class TestBaselineModeDrift:
             return real_check(target, workspace, planned, proofs)
 
         monkeypatch.setattr(job_apply, "_check_baseline_readiness", flaky)
-        res = promote_job(job.job_id, str(repo), approve=True)
+        res = apply_job(job.job_id, str(repo), approve=True)
 
         assert res.status == "blocked"
         assert "baseline_check_before_apply_failed" in res.blocked_reason
@@ -199,12 +199,12 @@ class TestBaselineModeDrift:
         assert proof.existed_before_job is False
         assert proof.baseline_mode == "" and proof.final_mode == "100755"
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "dry_run"
 
         # The existing creation-collision rule still applies.
         (repo / "tool.sh").write_text("someone got there first\n")
-        res2 = promote_job(job.job_id, str(repo), dry_run=True)
+        res2 = apply_job(job.job_id, str(repo), dry_run=True)
         assert res2.status == "blocked"
         assert "target_created_since_job" in res2.blocked_reason
 
@@ -212,7 +212,7 @@ class TestBaselineModeDrift:
         _committed_script(repo, 0o644)
         job = _run_job(repo, monkeypatch, _edit_script("new\n", 0o755))
 
-        real = job_apply._materialize_promotion_source_owned
+        real = job_apply._materialize_apply_source_owned
 
         def hooked(j):
             src, err = real(j)
@@ -220,8 +220,8 @@ class TestBaselineModeDrift:
                 (src.path / "script.sh").chmod(0o644)    # reviewed mode lost
             return src, err
 
-        monkeypatch.setattr(job_apply, "_materialize_promotion_source_owned", hooked)
-        res = promote_job(job.job_id, str(repo), approve=True)
+        monkeypatch.setattr(job_apply, "_materialize_apply_source_owned", hooked)
+        res = apply_job(job.job_id, str(repo), approve=True)
         assert res.status == "blocked"
         assert "mode_check_failed" in res.blocked_reason
         assert not os.access(repo / "script.sh", os.X_OK)
@@ -247,7 +247,7 @@ def _assert_record_matches(res) -> dict:
         assert cleanup[field] == getattr(res, field), field
     assert record["files_applied"] == res.files_applied
     # And the whole exported view agrees with the returned object.
-    assert record == export_job_promotion_json(res)
+    assert record == export_job_apply_json(res)
     return record
 
 
@@ -259,7 +259,7 @@ class TestPersistedRecordMatchesResult:
 
     def test_clean_dry_run_persists_a_clean_cleanup(self, repo, monkeypatch):
         job = self._job(repo, monkeypatch)
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert res.status == "dry_run"
         assert res.cleanup_status == "clean"
@@ -269,9 +269,9 @@ class TestPersistedRecordMatchesResult:
         assert cleanup["temporary_worktree_removed"] is True
         assert cleanup["temporary_registration_removed"] is True
 
-    def test_clean_approved_promotion_persists_a_clean_cleanup(self, repo, monkeypatch):
+    def test_clean_approved_apply_persists_a_clean_cleanup(self, repo, monkeypatch):
         job = self._job(repo, monkeypatch)
-        res = promote_job(job.job_id, str(repo), approve=True)
+        res = apply_job(job.job_id, str(repo), approve=True)
 
         assert res.status == "promoted"
         record = _assert_record_matches(res)
@@ -280,7 +280,7 @@ class TestPersistedRecordMatchesResult:
 
     def test_a_failed_post_test_still_persists_the_cleanup(self, repo, monkeypatch):
         job = self._job(repo, monkeypatch)
-        res = promote_job(job.job_id, str(repo), approve=True, test_command="false")
+        res = apply_job(job.job_id, str(repo), approve=True, test_command="false")
 
         assert res.status == "promoted_test_failed"
         record = _assert_record_matches(res)
@@ -290,7 +290,7 @@ class TestPersistedRecordMatchesResult:
     def test_a_blocked_mode_check_still_persists_the_cleanup(self, repo, monkeypatch):
         _committed_script(repo, 0o644)
         job = _run_job(repo, monkeypatch, _edit_script("new\n", 0o755))
-        real = job_apply._materialize_promotion_source_owned
+        real = job_apply._materialize_apply_source_owned
 
         def hooked(j):
             src, err = real(j)
@@ -298,8 +298,8 @@ class TestPersistedRecordMatchesResult:
                 (src.path / "script.sh").chmod(0o644)
             return src, err
 
-        monkeypatch.setattr(job_apply, "_materialize_promotion_source_owned", hooked)
-        res = promote_job(job.job_id, str(repo), approve=True)
+        monkeypatch.setattr(job_apply, "_materialize_apply_source_owned", hooked)
+        res = apply_job(job.job_id, str(repo), approve=True)
 
         assert res.status == "blocked"
         record = _assert_record_matches(res)
@@ -308,7 +308,7 @@ class TestPersistedRecordMatchesResult:
     def test_cleanup_failure_after_a_dry_run_is_persisted(self, repo, monkeypatch):
         job = self._job(repo, monkeypatch)
         _fail_worktree_remove(monkeypatch)
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert res.status == "dry_run_cleanup_failed"
         record = _assert_record_matches(res)
@@ -320,7 +320,7 @@ class TestPersistedRecordMatchesResult:
     ):
         job = self._job(repo, monkeypatch)
         _fail_worktree_remove(monkeypatch)
-        res = promote_job(job.job_id, str(repo), approve=True)
+        res = apply_job(job.job_id, str(repo), approve=True)
 
         assert res.status == "promoted_cleanup_failed"
         assert res.files_applied == ["one.txt"]
@@ -373,7 +373,7 @@ class TestMaterializationFailuresReportCleanup:
         job = self._job(repo, monkeypatch)
         _break_diff(job)
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert res.status == "blocked"
         assert "job_diff_not_applicable" in res.blocked_reason
@@ -389,7 +389,7 @@ class TestMaterializationFailuresReportCleanup:
         _break_diff(job)
         _fail_worktree_remove(monkeypatch)
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert res.status == "materialization_failed_cleanup_failed"
         assert "job_diff_not_applicable" in res.blocked_reason   # original reason kept
@@ -410,7 +410,7 @@ class TestMaterializationFailuresReportCleanup:
             return real_run(argv, *a, **kw)
 
         monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert "promotion_worktree_failed" in res.blocked_reason
         assert res.cleanup_status in ("clean", "failed")
@@ -434,7 +434,7 @@ class TestMaterializationFailuresReportCleanup:
             return real_run(argv, *a, **kw)
 
         monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert "job_diff_apply_failed" in res.blocked_reason
         assert res.status == "materialization_failed_cleanup_failed"
@@ -453,7 +453,7 @@ class TestMaterializationFailuresReportCleanup:
             return real_run(argv, *a, **kw)
 
         monkeypatch.setattr(job_apply.subprocess, "run", fake_run)
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert "promotion_materialization_error" in res.blocked_reason
         assert res.cleanup_status == "clean"
@@ -470,12 +470,12 @@ class TestCleanupFailureSummaries:
         return _run_job(repo, monkeypatch,
                         lambda ws: [(ws / "one.txt").write_text("hello\n")] and ["one.txt"])
 
-    def test_a_promoted_cleanup_failure_says_the_target_changed(self, repo, monkeypatch):
+    def test_an_applied_cleanup_failure_says_the_target_changed(self, repo, monkeypatch):
         job = self._job(repo, monkeypatch)
         _fail_worktree_remove(monkeypatch)
-        res = promote_job(job.job_id, str(repo), approve=True)
+        res = apply_job(job.job_id, str(repo), approve=True)
 
-        text = summarize_job_promotion(res)
+        text = summarize_job_apply(res)
         assert "The target was changed." in text
         assert "Files applied: ['one.txt']" in text
         assert "Temporary promotion cleanup failed." in text
@@ -487,9 +487,9 @@ class TestCleanupFailureSummaries:
     ):
         job = self._job(repo, monkeypatch)
         _fail_worktree_remove(monkeypatch)
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
-        text = summarize_job_promotion(res)
+        text = summarize_job_apply(res)
         assert "The target was NOT changed (dry-run only)." in text
         assert "Temporary promotion cleanup failed." in text
         assert "Manual cleanup is required." in text
@@ -497,14 +497,14 @@ class TestCleanupFailureSummaries:
 
     def test_a_clean_run_summary_makes_no_cleanup_noise(self, repo, monkeypatch):
         job = self._job(repo, monkeypatch)
-        res = promote_job(job.job_id, str(repo), dry_run=True)
-        text = summarize_job_promotion(res)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
+        text = summarize_job_apply(res)
         assert "Temp worktree cleanup: clean" in text
         assert "Manual cleanup is required." not in text
 
 
 # ---------------------------------------------------------------------------
-# Cleanup exception safety — a throwing cleanup must never escape promote_job()
+# Cleanup exception safety — a throwing cleanup must never escape apply_job()
 # ---------------------------------------------------------------------------
 
 _REAL_RUN = subprocess.run
@@ -542,7 +542,7 @@ class TestCleanupExceptionSafety:
         _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
             ["git", "worktree", "remove", "--force", "..."], 120))
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)   # must NOT raise
+        res = apply_job(job.job_id, str(repo), dry_run=True)   # must NOT raise
 
         assert res.status == "dry_run_cleanup_failed"
         assert res.cleanup_status == "failed"
@@ -559,7 +559,7 @@ class TestCleanupExceptionSafety:
         job = self._job(repo, monkeypatch)
         _raise_on_git(monkeypatch, "remove", exc)
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert res.status == "dry_run_cleanup_failed"
         assert res.cleanup_status == "failed" and res.cleanup_error
@@ -576,7 +576,7 @@ class TestCleanupExceptionSafety:
         job = self._job(repo, monkeypatch)
         _raise_on_git(monkeypatch, "prune", exc)
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert res.status == "dry_run_cleanup_failed"
         assert res.cleanup_status == "failed"
@@ -593,7 +593,7 @@ class TestCleanupExceptionSafety:
         _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
             ["git", "worktree", "remove"], 120))
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         # rmtree still removed the directory; the STALE REGISTRATION is reported.
         assert res.temporary_worktree_removed is True
@@ -608,9 +608,9 @@ class TestCleanupExceptionSafety:
         _raise_on_git(monkeypatch, "prune", subprocess.TimeoutExpired(
             ["git", "worktree", "prune"], 60))
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
         assert res.temporary_registration_removed is False
-        text = summarize_job_promotion(res)
+        text = summarize_job_apply(res)
         assert "A temporary git worktree registration may remain" in text
         assert "Manual cleanup is required." in text
 
@@ -626,19 +626,19 @@ class TestCleanupExceptionSafety:
                             lambda *a, **k: (_ for _ in ()).throw(
                                 RuntimeError("inventory broken")))
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert res.status == "dry_run_cleanup_failed"
         assert "worktree inventory failed" in res.cleanup_error
         assert res.temporary_registration_removed is False
         _assert_record_matches(res)
 
-    def test_an_approved_promotion_survives_a_cleanup_timeout(self, repo, monkeypatch):
+    def test_an_approved_apply_survives_a_cleanup_timeout(self, repo, monkeypatch):
         job = self._job(repo, monkeypatch)
         _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
             ["git", "worktree", "remove", "--force", "..."], 120))
 
-        res = promote_job(job.job_id, str(repo), approve=True)   # must NOT raise
+        res = apply_job(job.job_id, str(repo), approve=True)   # must NOT raise
 
         assert res.status == "promoted_cleanup_failed"
         assert res.files_applied == ["one.txt"]
@@ -647,7 +647,7 @@ class TestCleanupExceptionSafety:
         record = _assert_record_matches(res)
         assert record["files_applied"] == ["one.txt"]
 
-        text = summarize_job_promotion(res)
+        text = summarize_job_apply(res)
         assert "The target was changed." in text
         assert "Files applied: ['one.txt']" in text
         assert "Manual cleanup is required." in text
@@ -662,7 +662,7 @@ class TestCleanupExceptionSafety:
         _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
             ["git", "worktree", "remove"], 120))
 
-        res = promote_job(job.job_id, str(repo), dry_run=True)
+        res = apply_job(job.job_id, str(repo), dry_run=True)
 
         assert res.status == "materialization_failed_cleanup_failed"
         assert "job_diff_not_applicable" in res.blocked_reason   # original reason kept
@@ -675,12 +675,12 @@ class TestCleanupExceptionSafety:
         job = self._job(repo, monkeypatch)
         _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
             ["git", "worktree", "remove"], 120))
-        source, err = job_apply._materialize_promotion_source_owned(
+        source, err = job_apply._materialize_apply_source_owned(
             __import__("packages.orchestration.pingpong_job", fromlist=["x"])
             .load_job_plan(job.job_id))
         assert source is not None and not err
 
-        out = job_apply._cleanup_promotion_source(source)      # total: returns, never raises
+        out = job_apply._cleanup_apply_source(source)      # total: returns, never raises
 
         assert out["cleanup_status"] == "failed"
         assert "timed out" in out["cleanup_error"]
@@ -692,11 +692,11 @@ class TestCleanupExceptionSafety:
         self, repo, monkeypatch,
     ):
         job = self._job(repo, monkeypatch)
-        monkeypatch.setattr(job_apply, "_cleanup_promotion_source",
+        monkeypatch.setattr(job_apply, "_cleanup_apply_source",
                             lambda src: (_ for _ in ()).throw(
                                 RuntimeError("cleanup helper exploded")))
 
-        res = promote_job(job.job_id, str(repo), approve=True)   # must NOT raise
+        res = apply_job(job.job_id, str(repo), approve=True)   # must NOT raise
 
         assert res.status == "promoted_cleanup_failed"
         assert res.files_applied == ["one.txt"]
