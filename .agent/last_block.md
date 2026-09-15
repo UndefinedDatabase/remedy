@@ -1,11 +1,10 @@
-── STEP T002/4 — F261 — ROUND 8 ──
-Goal: Book round 7's PASS, register R-0898 to R-0900, record DECISION F261 D7, and give `job show`
-its `--json`, the findings of blocked tasks and the `--full` sections with `job permissions`
-folded in, in three commits by applying three tables; mark R-0896 and R-0806 landed; run the
-suite once.
+── STEP T002/5 — F261 — ROUND 9 ──
+Goal: Book round 8's PASS and the resolutions of R-0896 and R-0806, record DECISION F261 D8, and
+fold `job assumptions`, `job fences` and `job dod` into `job show --full` in three commits by
+applying three tables; run the suite once.
 
-Base commit: `22173331`, on `feature/f261-cli-vocabulary-v2`. SESSION 2 of F261. Read AGENTS.md,
-docs/agents/self_drive_protocol.md, and DECISION F261 D7 once C1 has landed it.
+Base commit: `aff2b676`, on `feature/f261-cli-vocabulary-v2`. SESSION 2 of F261. Read AGENTS.md,
+docs/agents/self_drive_protocol.md, and DECISIONs F261 D7 and D8 once C1 has landed D8.
 
 THE FRAME RULE, per item 37 of §3, measured over the final bytes: NO LINE of this block is a run
 of a single repeated character, and every box-drawing rule inside the STEP and SLICE header
@@ -14,50 +13,46 @@ lines is exactly two characters long.
 ENVIRONMENT: `VAR=x cmd`, `env` and `export` are denied, so set environment in-process; `cp` is
 denied, so copy with `shutil.copyfile`; bare `ruff` is denied, so use `python3 -m ruff check`.
 Shell loops, `$(...)` and `$?` in a compound command are refused by form, so write such checks
-as Python scripts under `.remedy-wt/f261r8w/`; a pipe into `tail` hides pytest's exit code. The
-editable install resolves `apps` and `packages` to the PRIMARY checkout, so a pytest run inside a
-worktree goes through a runner script that changes into the worktree, puts it first on
-`sys.path` and in `PYTHONPATH`, and asserts `apps.cli.commands.job` loaded from inside it.
-Never call `run_job` or a runner yourself: a job run started from inside a checkout creates a
-`remedy/job-*` branch in it. `git branch --list 'remedy/job-*'` reads 16 lines now; keep it so.
+as Python scripts under `.remedy-wt/f261r9w/`, and never name a script after a standard-library
+module; a pipe into `tail` hides pytest's exit code. The editable install resolves `apps` and
+`packages` to the PRIMARY checkout, so a pytest run inside a worktree goes through a runner
+script that changes into the worktree, puts it first on `sys.path` and in `PYTHONPATH`, and
+asserts `apps.cli.commands.job` loaded from inside it. Never call `run_job` or a runner yourself:
+a job run started from inside a checkout creates a `remedy/job-*` branch in it.
+`git branch --list 'remedy/job-*'` reads 16 lines now; keep it so.
 
 ## Bundle — the ordered commit sequence
 
-C0a `.agent/authored/f261-r8.md`, the block file the delegating message names, by
+C0a `.agent/authored/f261-r9.md`, the block file the delegating message names, by
     `shutil.copyfile`
 C0b `.agent/last_block.md`, the same bytes
-C1  THE RECORD, one commit: `.agent/plan.md` becomes slice PLAN8; slice RECORD8 is appended to
-    `.agent/live_review.md` and slice DEC7 to `.agent/decisions.md`; pair P273 is applied
-C2  `--json` AND THE FLAG GUARD: copy `.remedy-wt/f261-block/f261-r8-show-1.jsonl` to
-    `.agent/authored/f261-r8-show-1.jsonl` and apply it per THE TABLES, in one commit
-C3  THE FINDINGS OF BLOCKED TASKS: the same with `f261-r8-show-2.jsonl`, in one commit
-C4  THE SECTIONS AND THE PERMISSIONS FOLD: the same with `f261-r8-show-3.jsonl`, in one commit
-C5  THE LANDED LINES: slice LANDED8 is appended to `.agent/live_review.md`, in one commit
-C6  `.agent/handoff.md`, the handback; then `git push origin feature/f261-cli-vocabulary-v2`
+C1  THE RECORD, one commit: `.agent/plan.md` becomes slice PLAN9; slice RECORD9 is appended to
+    `.agent/live_review.md` and slice DEC8 to `.agent/decisions.md`
+C2  THE ASSUMPTIONS FOLD: copy `.remedy-wt/f261-block/f261-r9-fold-1.jsonl` to
+    `.agent/authored/f261-r9-fold-1.jsonl` and apply it per THE TABLES, in one commit
+C3  THE FENCES FOLD: the same with `f261-r9-fold-2.jsonl`, in one commit
+C4  THE DOD FOLD: the same with `f261-r9-fold-3.jsonl`, in one commit
+C5  `.agent/handoff.md`, the handback; then `git push origin feature/f261-cli-vocabulary-v2`
 
 C1 is the FIRST SUBSTANTIVE COMMIT, per item 23 of §3. No pull request is created.
 
 ## Change — exactly these paths and no others
 
-C0a to C1: `.agent/authored/f261-r8.md`, `.agent/last_block.md`, `.agent/plan.md`,
-`.agent/live_review.md`, `.agent/decisions.md` and `docs/roadmap/features/T2_F273.md`. C2 to C4:
-each table's own carrier and the paths G3 names. C5: `.agent/live_review.md`. C6:
-`.agent/handoff.md`.
+C0a to C1: `.agent/authored/f261-r9.md`, `.agent/last_block.md`, `.agent/plan.md`,
+`.agent/live_review.md` and `.agent/decisions.md`. C2 to C4: each table's own carrier and the
+paths G3 names. C5: `.agent/handoff.md`.
 
-## The pair and the appends
+## The appends
 
-P273 `docs/roadmap/features/T2_F273.md`: FROM slice P273-FROM, which occurs exactly once there at
-`22173331`, TO slice ACC273. The containment test printed `TO contains FROM: true`, so
-P273 is APPEND-shaped and is proved by whole-file equality, with no FROM-zero count. RECORD8,
-DEC7 and LANDED8 each begin with an empty line, and every target ends in a newline at the commit
-before its append: an append is the file's bytes followed by the slice's bytes, and nothing else.
+RECORD9 and DEC8 each begin with an empty line, and both targets end in a newline at `aff2b676`:
+an append is the file's bytes followed by the slice's bytes, and nothing else.
 
 ## THE TABLES
 
 Each carrier holds one JSON array per line. Their sha256 digests, to verify before copying:
-`f261-r8-show-1.jsonl` `011479d6fa07a1fbb37e760db790334562cf5297243d4c7da3b1a183cf23190e`,
-`f261-r8-show-2.jsonl` `b8134144d0ec1c953be1171392245c29678133b3552ef10dd7da5c107cb13169`,
-`f261-r8-show-3.jsonl` `10d1c62056bcb60e99e9536742188d6e4b74f69eb05df984c55b40cb9f475b98`.
+`f261-r9-fold-1.jsonl` `a1a7ae9b68ba24d067b58ca05998e396571be911cec0592f86256d131a0f9fa1`,
+`f261-r9-fold-2.jsonl` `b5dbef9a488431e85ef88dcd3ff95087ca8feb66ee57925041332cd24028fc03`,
+`f261-r9-fold-3.jsonl` `683e6c0595e342975b74272131c7892ee12be9c8ca72dae88a8e04e607165491`.
 Apply the rows strictly
 in file order, each against the tree as the previous rows left it, from the repository root:
 `["edit", path, old, new, count]` opens the path with `encoding="utf-8", newline=""`, requires
@@ -67,15 +62,15 @@ must not exist; `["create", path, content]` writes `content` to a path that must
 the same encoding and newline setting. A count that differs or a target that exists is a STOP:
 touch nothing further, commit nothing of that table, and hand back with the row and the reading.
 Stage each commit with `git add -A` after its table and its carrier. The tables are the
-reviewer's measured dry run of DECISION F261 D7: show-1 its CHOSEN FIRST, show-2 its CHOSEN
-SECOND, and show-3 its CHOSEN THIRD and FOURTH.
+reviewer's measured dry run of DECISION F261 D8: fold-1 its CHOSEN SECOND, fold-2 its CHOSEN
+FIRST and THIRD, and fold-3 its CHOSEN FOURTH.
 
-## SPEC S — the suite, once, after G6 and before C6
+## SPEC S — the suite, once, after G5 and before C5
 
 From the primary checkout's root, serially:
 `python3 -B -m pytest -q -p no:randomly -p no:cacheprovider --tb=short -rfEs`, with `PYTHONPATH`,
 `REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed and `PYTHONDONTWRITEBYTECODE=1`, output under
-`.remedy-wt/f261r8w/`. Report pytest's return code, the run's last output line, and every
+`.remedy-wt/f261r9w/`. Report pytest's return code, the run's last output line, and every
 distinct bad node, the text after a line-initial `FAILED ` or `ERROR ` up to the first ` - `.
 Re-run each bad node alone, once, the same way, and report that return code beside it.
 
@@ -83,108 +78,97 @@ Re-run each bad node alone, once, the same way, and report that return code besi
 
 1. NO SLICE AND NO TABLE IS EDITED. Extract each slice as the bytes strictly between its
    `BEGIN <NAME>` and `END <NAME>` lines and verify its sha256 before use.
-2. READ `.agent/STOP` before C0a, before C2 and before C6, with real exit codes. If it exists:
+2. READ `.agent/STOP` before C0a, before C2 and before C5, with real exit codes. If it exists:
    finish a half-written commit, write the handoff, push, stop.
 3. A red gate is a STOP: commit what is honestly finished, hand back with the raw output.
-4. Scratch, runner scripts and your worktree live under `.remedy-wt/f261r8w/`, uncommitted; no
+4. Scratch, runner scripts and your worktree live under `.remedy-wt/f261r9w/`, uncommitted; no
    `.py` file under `.agent/`. Under `.remedy-wt/` open only `.remedy-wt/f261-block/` and your
    own directory. `git worktree list` reads one row now; leave it so. Create no symlink.
 5. Every commit stays under 500 insertions, read as the first column of `git show --numstat
    --format= <commit>` with git's default rename detection.
 6. NEVER merge, open a pull request, force-push, rewrite history or delete a branch. No `remedy`.
-   Write no `Done:` paragraph.
-7. THE BLOCK'S OWN SIZE, measured on its final bytes: 295 lines TOTAL and 216 lines of PROSE,
+   Write no `Done:` paragraph beyond the two RECORD9 carries.
+7. THE BLOCK'S OWN SIZE, measured on its final bytes: 286 lines TOTAL and 220 lines of PROSE,
    against the caps of 490 and 400.
-8. GATE ORDER. G1 and G2 after C1; G3 after C4; G4 and G5 after C4; G6 after C5; then SPEC S,
-   whose result is G7; G8 after C6 and the push, reported in the completion message only.
+8. GATE ORDER. G1 and G2 after C1; G3, G4 and G5 after C4; then SPEC S, whose result is G6; G7
+   after C5 and the push, reported in the completion message only.
 9. Every commit message ends with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`, and
    no subject carries a leading-slash token or an absolute path.
 
 ## Done when — every gate run for real, its exit code recorded
 
-G1 TRANSPORT. The sha256 of `.agent/authored/f261-r8.md` at C0a equals the digest the delegating
+G1 TRANSPORT. The sha256 of `.agent/authored/f261-r9.md` at C0a equals the digest the delegating
 message gives, and `.agent/last_block.md` at C0b is byte-identical to it; the slices FOUND, each
 matching its BEGIN-marker sha256; each committed carrier's sha256 equals its digest above.
 
-G2 THE RECORD, at C1. `.agent/plan.md` is byte-identical to PLAN8, at most 50 lines, with
-`^## Goal$` once and `^## Next Steps$` once. `.agent/live_review.md` equals its `22173331` blob
-followed by RECORD8, `.agent/decisions.md` its `22173331` blob followed by DEC7, and
-`docs/roadmap/features/T2_F273.md` its `22173331` blob with P273's FROM replaced by its TO. Over
-`.agent/live_review.md`: `^Gate: F\d+ R\d+ — ` reads 116 at `22173331` and 117 at C1, with
-`Gate: F261 R7 — ` once at C1; distinct `^- R-\d+ — ` ids 100 and 103, C1 minus base exactly
-`R-0898`, `R-0899` and `R-0900` and base minus C1 empty; distinct `^Done: R-\d+ — ` ids 4 and 4;
-the open set by distinct id 96 and 99.
+G2 THE RECORD, at C1. `.agent/plan.md` is byte-identical to PLAN9, at most 50 lines, with
+`^## Goal$` once and `^## Next Steps$` once. `.agent/live_review.md` equals its `aff2b676` blob
+followed by RECORD9, and `.agent/decisions.md` its `aff2b676` blob followed by DEC8. Over
+`.agent/live_review.md`: `^Gate: F\d+ R\d+ — ` reads 117 at `aff2b676` and 118 at C1, with
+`Gate: F261 R8 — ` once at C1; distinct `^- R-\d+ — ` ids 103 and 103; distinct
+`^Done: R-\d+ — ` ids 4 and 6, C1 minus base exactly `R-0806` and `R-0896`; the open set by
+distinct id 99 and 97.
 
-G3 THE SHOW COMMITS, at C2, C3 and C4. `git diff --no-renames --name-only` from each commit's
-parent prints exactly that commit's carrier and: at C2 `apps/cli/command_catalog.py`,
-`packages/orchestration/orchestrator_brain.py`, `packages/orchestration/repair_request_builder.py`,
-`packages/orchestration/self_dogfood_execution.py`, `tests/cli/test_advertised_commands.py` and
-`tests/cli/test_job_show.py`; at C3 `apps/cli/command_catalog.py`, `apps/cli/commands/job.py`,
-`packages/orchestration/pingpong_job.py` and `tests/cli/test_job_show.py`; at C4
-`apps/cli/command_catalog.py`, `apps/cli/commands/job.py`, `docs/system/architecture.md`,
-`packages/orchestration/brain_detail.py`, `tests/cli/test_job_show.py`, `tests/test_cli_main.py`
-and `tests/test_command_catalog.py`. `git rev-parse <commit>:<dir>` equals the dry run: C2
-`apps` `6a32ca216cc190667fe7b1f9e820e29a1cbc6ea4`, `packages` `66fcac08a584e67ca3a58a2b0b38e4cf0668982c`, `tests`
-`6da54dc5daa809801c3e2f67b1ae83025bf73687`; C3 `apps` `cd096440309b99f46c9e20c66a62eba77ffa7256`, `packages`
-`8ae6a584e763323ca50553a6a6a59a6fb715ba08`, `tests` `97fe2f2fc7f457be5cb77c8346b5cdaa3c3fdf4d`; C4 `apps`
-`92dc18cc92bfadca14f92eca739feb89321faa0a`, `packages` `f614c5a23cbda685b1072e09f5f9b89341e6a79e`, `tests`
-`6207c33baa1eb1cc2b5bf33b000972226a10477a`, `docs/system` `a2a587aab4c1f6bc716cc64968b72472e4d4de9c`. At each of those commits
-`scripts` and `README.md` equal their objects at `22173331`, and `docs/roadmap` its object at
-C1; at C2 and C3 `docs` equals its object at C1. Report each commit's insertions per constraint 5.
+G3 THE FOLDS, at C2, C3 and C4. `git diff --no-renames --name-only` from each commit's parent
+prints exactly that commit's carrier and: at C2 `apps/cli/command_catalog.py`,
+`apps/cli/commands/job.py`, `tests/cli/test_decision_answers.py`, `tests/cli/test_job_show.py` and
+`tests/test_command_catalog.py`; at C3 `apps/cli/command_catalog.py`, `apps/cli/commands/job.py`,
+`apps/cli/commands/job_context_cmd.py`, `docs/guides/job-context-view-user-guide-v0.md`,
+`tests/cli/test_job_show.py`, `tests/orchestration/test_fence_e2e.py`,
+`tests/orchestration/test_fence_production_e2e.py` and `tests/test_command_catalog.py`; at C4
+`apps/cli/command_catalog.py`, `apps/cli/commands/job.py`, `tests/cli/test_job_show.py`,
+`tests/orchestration/test_dod_gate.py` and `tests/test_command_catalog.py`. `git rev-parse
+<commit>:<dir>` equals the dry run: C2 `apps` `fd8eab43e8389f8b8ee15c1cbe2514b71815a787`, `tests`
+`2b5ab527538225353c7ece866f80bd41309c653b`; C3 `apps` `d14bb7f2a5433e2e9e228ddcc090d5143e5c19bc`, `tests`
+`fdbb77e587d38bcd66874fc2d7a2d8910414fa68`, `docs` `d74ed73f2a078c66e6c60f11370bfb581892e704`; C4 `apps`
+`d8be0bc2889f21334572707612fb0ff623e4c1ac`, `tests` `7979b693ff9c8c975ec10b733fedc3bbf3023e01`, `docs` the same as C3. At
+each of those commits `packages`, `scripts` and `README.md` equal their objects at `aff2b676`,
+and at C2 `docs` does too. Report each commit's insertions per constraint 5.
 
-G4 THE SWEEP, at C4. `git grep -n -I -F -e job.permissions -e _cmd_show_permissions <C4> -- apps
-packages scripts tests docs ':!docs/roadmap'` prints exactly one line, the `DELETED` entry
-`"job.permissions",` in `tests/test_command_catalog.py`. `python3 -m ruff check` over every `.py`
-path of C2, C3 and C4 exits 0.
+G4 THE SWEEP, at C4. `git grep -n -I -F -e '"job.assumptions"' -e '"job.fences"' -e '"job.dod"'
+-e _cmd_job_assumptions -e _cmd_job_fences -e _cmd_job_dod <C4> -- apps packages scripts tests
+docs README.md ':!docs/roadmap'` prints exactly three lines, the `DELETED` entries of those three
+ids in `tests/test_command_catalog.py`. `git grep -n -I -E 'remedy job (assumptions|fences|dod)\b'
+<C4> -- apps packages scripts tests docs README.md ':!docs/roadmap'` exits 1 and prints nothing.
+`python3 -m ruff check` over every `.py` path of C2, C3 and C4 exits 0.
 
-G5 THE RED-PROOF, in `git worktree add --detach .remedy-wt/f261r8w/wt <C4's sha>`, each run
-through the runner over `tests/cli/test_job_show.py`, `tests/cli/test_advertised_commands.py` and
-`tests/test_command_catalog.py` with `-rf --tb=no`. Each mutation replaces bytes whose count in the
-named file must read 1 and is restored afterwards with
-`git -C .remedy-wt/f261r8w/wt checkout -- <that file>`. (a) CONTROL: must exit 0.
-(b) `apps/cli/command_catalog.py`: the bytes of slice MUT-B-FROM become those of slice MUT-B-TO:
-must exit 1 with `test_every_advertised_flag_is_declared_by_its_command` among the failed nodes.
-(c) `packages/orchestration/pingpong_job.py`: `BLOCKED_TASK_FINDINGS_CAP = 10` becomes
-`BLOCKED_TASK_FINDINGS_CAP = 11`: must exit 1 with
-`TestBlockedTaskFindings::test_the_default_shows_ten_findings_and_names_the_overflow` failed.
-(d) The same file: `last = rounds[-1]` becomes `last = rounds[0]`: must exit 1 with
-`TestBlockedTaskFindings::test_only_the_last_round_of_the_blocked_task_appears` failed.
-(e) `apps/cli/commands/job.py`: `except Exception as exc:  # noqa: BLE001` becomes
-`except KeyError as exc:  # noqa: BLE001`: must exit 1 with
-`TestSections::test_a_raising_section_becomes_section_failed_and_the_command_exits_zero` failed.
-(f) The same file: `    "job.budget": lambda args: _cmd_job_budget(` becomes
-`    "job.permissions": lambda args: None,` followed by a newline and those same bytes: must exit 1
-with `TestDeletedCommands::test_no_deleted_id_is_left_in_the_dispatch_table` failed.
-(g) The same file: `shown["blocked_task_findings"] = collect_blocked_task_findings(job, full=full)`
-becomes `shown["blocked_task_findings"] = []`: must exit 1 with
-`TestABlockedFakeRunShowsItsFindingText::test_the_persisted_finding_summary_appears_in_job_show`
-failed. Report each exit code, summary line and number of failed nodes; then
-`git worktree remove --force .remedy-wt/f261r8w/wt` and read `git branch --list 'remedy/job-*'`.
+G5 THE RED-PROOF, in `git worktree add --detach .remedy-wt/f261r9w/wt <C4's sha>`, each run
+through the runner over `tests/cli/test_job_show.py`, `tests/test_command_catalog.py`,
+`tests/cli/test_decision_answers.py`, `tests/orchestration/test_fence_e2e.py`,
+`tests/orchestration/test_fence_production_e2e.py` and `tests/orchestration/test_dod_gate.py`
+with `-rf --tb=no`. Every mutation is in `apps/cli/commands/job.py`, replaces the bytes of slice
+MUT-<n>-FROM, whose count there must read 1, with those of slice MUT-<n>-TO, and is restored with
+`git -C .remedy-wt/f261r9w/wt checkout -- apps/cli/commands/job.py`. (a) CONTROL: must exit 0.
+Each of (1) to (5) must exit 1 with the named node among the failed nodes:
+(1) a `job.fences` handler row: `TestDeletedCommands::test_no_deleted_id_is_left_in_the_dispatch_table`;
+(2) a plain `RuntimeError` for a missing target repo:
+`TestCLIJobFences::test_missing_target_repo_is_a_no_target_repo_error`;
+(3) two registry entries swapped: `TestSections::test_full_prints_the_registered_sections_in_the_d4_order`;
+(4) the dod `check_count` key dropped: `TestJobDodCommand::test_json_output_carries_the_gate_record`;
+(5) empty assumptions markdown: `TestAssumptionsCommand::test_the_section_holds_the_log`.
+Report each exit code, summary line and number of failed nodes; then
+`git worktree remove --force .remedy-wt/f261r9w/wt` and read `git branch --list 'remedy/job-*'`.
 
-G6 THE LANDED LINES, at C5. `.agent/live_review.md` equals its C4 blob followed by LANDED8;
-`^Landed: R-0896 — ` and `^Landed: R-0806 — ` each occur once among the lines C5 adds; the open
-set reads 99 by distinct id, equal as a set to C4's.
+G6 THE SUITE, SPEC S at C4: must exit 0 with no bad node; report the last output line.
 
-G7 THE SUITE, SPEC S at C5: must exit 0 with no bad node; report the last output line.
-
-G8 THE TREE, after C6 and the push. `git status --porcelain` prints `''`; C0a to C6 are
-single-parent commits in that order on `22173331`; `git rev-parse HEAD` equals
+G7 THE TREE, after C5 and the push. `git status --porcelain` prints `''`; C0a to C5 are
+single-parent commits in that order on `aff2b676`; `git rev-parse HEAD` equals
 `git rev-parse origin/feature/f261-cli-vocabulary-v2`; `git worktree list` prints one row, and
 `git branch --list 'remedy/job-*'` prints 16 lines.
 
-## The handback, C6
+## The handback, C5
 
 `.agent/handoff.md` per `docs/agents/handback_template.md`, Session line
-`SESSION 2 of feature F261 · round 8 · rounds so far 8`, with one sentence of context
-self-assessment. `## Commits` lists C0a to C5, each row's `+/-` cell equal to constraint 5's
-reading of that commit and its deletions column; C6's own numbers appear nowhere, per item 31 of
-§3. `## Verification` gives G1 to G7 with real exit codes. It states the open findings at 99 by
-distinct id, with the High ids R-0803, R-0804, R-0806 and R-0807 and with R-0896 and R-0806
-landed, and `Operator questions open: 0`. Its `## Next` names, in order: Phase 1 rule 1; the
-reviewer's verdict on round 8; the folds of `job assumptions`, `job fences` and `job dod`.
+`SESSION 2 of feature F261 · round 9 · rounds so far 9`, with one sentence of context
+self-assessment. `## Commits` lists C0a to C4, each row's `+/-` cell equal to constraint 5's
+reading of that commit and its deletions column; C5's own numbers appear nowhere, per item 31 of
+§3. `## Verification` gives G1 to G6 with real exit codes. It states the open findings at 97 by
+distinct id, with the High ids R-0803, R-0804 and R-0807, and `Operator questions open: 0`. Its
+`## Next` names, in order: Phase 1 rule 1; the reviewer's verdict on round 9; the folds of
+`job summary`, `job digest`, `job status` and `job report`.
 
-── SLICE PLAN8 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
-BEGIN PLAN8 sha256=77721d550611aadc57b8c7471612b19c8e99792787dce5c70ed696b0234ca4f7
+── SLICE PLAN9 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
+BEGIN PLAN9 sha256=f0f9b6c004095f37bf13cee577e1918cb738d5b47042e5ce58e947a9608aae2a
 # Plan — F261 CLI vocabulary v2 (rename & prune)
 
 Branch: feature/f261-cli-vocabulary-v2, cut from `main` at
@@ -198,18 +182,15 @@ command, and every retired word deleted rather than aliased, per
 
 ## Current Step
 
-ROUND 8 continues T002. It books round 7's PASS, registers R-0898, R-0899 and R-0900 and
-records DECISION F261 D7. Then, in three commits, `job show` takes the `--json` its hints name
-and a guard checks every advertised flag (R-0896), prints the last-round findings of blocked
-tasks with a `--full` overflow (R-0806), and gains the `--full` sections with `job permissions`
-folded in as the first; a last record commit marks R-0896 and R-0806 landed.
+ROUND 9 continues T002. It books round 8's PASS and the resolutions of R-0896 and R-0806,
+records DECISION F261 D8, then folds `job assumptions`, `job fences` and `job dod` into
+sections of `job show --full`, one command per commit, each applying a table the round saves
+under `.agent/authored/` and adding the command's id to the deleted-command guard.
 
 ## Next Steps
 
-1. The folds of `job assumptions`, `job fences` and `job dod` into sections of `job show --full`,
-   one command per commit, each adding its id to the deleted-command guard.
-2. The folds of `job summary`, `job digest`, `job status` and `job report`, then `do job-report`,
-   the same way.
+1. The folds of `job summary`, `job digest`, `job status` and `job report`, one per commit.
+2. The fold of `do job-report`, with its hints and `related=` tuples.
 3. The run-level promote words DECISION F261 D6 leaves, ruled by sense, with the kept-by-sense
    list DECISION amend0905-vocab D5 names written into the record and a test for the
    Acceptance grep of the retired word.
@@ -217,79 +198,89 @@ folded in as the first; a last record commit marks R-0896 and R-0806 landed.
 
 ## Risks
 
-- 96 findings are open by distinct id before this round's record and 99 after it; four are
-  High, R-0803, R-0804, R-0806 and R-0807.
+- 99 findings are open by distinct id before this round's record and 97 after it; three are
+  High, R-0803, R-0804 and R-0807.
 - `job show` prints JSON that the canary, `tests/cli/test_plan_approval.py` and
   `scripts/remedy_smoke.sh` parse, so every change to it only adds keys.
-- `job fences` refuses a job whose repository was never attached with `job attach-repo`; its
-  section reports that as an error envelope rather than an exit.
-END PLAN8
+- `job status` and `job report` carry most of the read tests and printed hints left to fold.
+END PLAN9
 
-── SLICE RECORD8 ── target `.agent/live_review.md` ── APPEND ──
-BEGIN RECORD8 sha256=1b65d9217e07dba5dd611922665f6f696eae18a88728798afa44d82b29b76847
+── SLICE RECORD9 ── target `.agent/live_review.md` ── APPEND ──
+BEGIN RECORD9 sha256=8d867688ff198f78b7277b319f7e95233ae22c55015b9870da5cbd0c4143caf6
 
-Gate: F261 R7 — the F261 round 7 entry. VERDICT PASS. Written by the planner and reviewer of session 37 after reading the committed range `8b07c95b`..`22173331` and re-deriving the readings below; the worker's report was evidence for none of them. It is booked here by the first commit of round 8 that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f261-r7.md` at `82f2f088` and `.agent/last_block.md` at `ab225280` are byte-identical to the reviewer's scratch original, sha256 `b3aba0b5f49dae402c943a75bb806675477743918f7ea2bb3abd8cbf9379f6e9`, and the four tables committed at `a8ac671a`, `0e7e2182`, `cc56e9e4` and `c7d8f7a6` are byte-identical to the reviewer's. THE STATE: at `9984586e` and again at `22173331`, `.agent/plan.md` equals PLAN7 and `.agent/live_review.md` and `.agent/decisions.md` equal their `8b07c95b` blobs followed by RECORD7 and DEC6. THE WORDS: at `a8ac671a`, `0e7e2182`, `cc56e9e4` and `c7d8f7a6` the `apps`, `packages`, `tests`, `scripts`, `docs` and `README.md` objects equal the reviewer's dry-run commits of the tables, which had reproduced the research helper's trees exactly; each commit's `--no-renames` path set is the dry run's plus its carrier, and `git show --numstat` reads 90, 54, 174 and 25 insertions. In the dry run the `.py` lines the three words tables change reduce, with names, strings and comments blanked, to the token skeletons of the lines they replace, except five prose lines that gained a word; and no new status value, reason code, key, directory or prefix occurred outside `.agent/` at `8b07c95b`. At `c7d8f7a6` the grep of the old status values, reason codes, key, directory, prefix and helper names exits 1 with no output, the case-insensitive `promot` grep over `job_apply.py` and its four test files prints only the guard's own assertion, and the grep of the old record test names over `tests/orchestration` exits 1. In the reviewer's dry run a full suite under `-n auto` without `tests/ui_server` read 1 failed, `test_vitest_passes`, and 17664 passed; over the four test files, which passed 172 unmutated, reverting the `applied` status failed 25 tests, and reverting the `job_apply_records` directory, the `job_apply_id` key, the `Job apply record: ` text or the `--skip-blocked` help failed 1 each. THE REVIEWER'S RUN in the primary checkout at `22173331` of the four test files, `tests/test_command_catalog.py`, `tests/docs/`, `tests/cli/test_advertised_commands.py`, `tests/ui_server/test_dashboard_contract.py` and `tests/cli/test_golden_path.py` read 629 passed. The open set reads 96 by distinct id at `22173331`.
+Gate: F261 R8 — the F261 round 8 entry. VERDICT PASS. Written by the planner and reviewer of session 37 after reading the committed range `22173331`..`aff2b676` and re-deriving the readings below; the worker's report was evidence for none of them. It is booked here by the first commit of round 9 that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f261-r8.md` at `505deb15` and `.agent/last_block.md` at `83dff65a` are byte-identical to the reviewer's scratch original, sha256 `2da5521352b55cac563eadaa828144af0435198ab6609057f822824147439e7a`, and the three tables committed at `9d8d57f6`, `068ee126` and `720874b8` are byte-identical to the reviewer's. THE STATE: at `1c3bf3e3` and again at `720874b8`, `.agent/plan.md` equals PLAN8, `.agent/live_review.md` and `.agent/decisions.md` equal their `22173331` blobs followed by RECORD8 and DEC7, and `docs/roadmap/features/T2_F273.md` equals its `22173331` blob with pair P273 applied; at `178ae847` and again at `aff2b676` the record is that blob followed by RECORD8 and LANDED8. THE SHOW COMMITS: at `9d8d57f6`, `068ee126` and `720874b8` the `apps`, `packages`, `tests`, `scripts`, `README.md` and `docs/system` objects equal the reviewer's dry-run commits of the tables, which had reproduced the research helper's trees exactly, and `docs/roadmap` equals its object at `1c3bf3e3`; each commit's `--no-renames` path set is the dry run's plus its carrier, and `git show --numstat` reads 199, 308 and 177 insertions. At `720874b8` the fixed-string grep of `job.permissions` and `_cmd_show_permissions` prints only the `DELETED` entry of `tests/test_command_catalog.py`, and ruff over the round's touched `.py` files exits 0. In the reviewer's dry run a full suite under `-n auto` without `tests/ui_server` read 1 failed, `test_vitest_passes`, and 17681 passed, `tests/ui_server/test_dashboard_contract.py` read 73 passed, and the record slices applied on top of the dry run passed `tests/docs/` and every test file that reads the edited state files, apart from `tests/ui_server` and `test_vitest_passes` failing for the worktree's missing UI build. Over `tests/cli/test_job_show.py`, `tests/cli/test_advertised_commands.py` and `tests/test_command_catalog.py`, which passed 52 unmutated, removing `--json` from `job show` failed 5 tests, raising the findings cap to eleven failed 1, reading the first round instead of the last failed 3, narrowing the section guard to `KeyError` failed 1, restoring a `job.permissions` handler row failed 1, and replacing the findings with an empty list failed 6, the fake-provider acceptance test among them. THE REVIEWER'S RUN in the primary checkout at `aff2b676` of `tests/cli/test_job_show.py`, `tests/cli/test_advertised_commands.py`, `tests/test_command_catalog.py`, `tests/test_cli_main.py`, `tests/test_brain_detail.py`, `tests/cli/test_plan_approval.py`, `tests/docs/`, `tests/ui_server/test_dashboard_contract.py` and `tests/cli/test_golden_path.py` read 603 passed, and `git branch --list 'remedy/job-*'` read 16 lines before and after the round. The open set reads 99 by distinct id at `aff2b676`.
 
-- R-0898 — Medium, `job summary`, `job status` AND `job report` COUNT A TASK AS DONE ONLY WHEN ITS STATUS READS `completed`, SO A JOB FINISHED BY THE JOB RUNNER READS `0/N done` HOWEVER MANY OF ITS TASKS PASSED. Raised by the planner and reviewer of session 37 while preparing F261 round 8, after searching the open set for `done_count` and the `completed` comparison under §3 item 30: no open finding describes it. THE DEFECT, measured at `22173331`: `_cmd_job_summary`, `_cmd_job_status` and `_cmd_job_report` in `apps/cli/commands/job.py` each count as done the tasks whose status equals `"completed"`, and `all_tasks_done` in `packages/orchestration/job_fulfillment.py` makes the same comparison; the job runner in `packages/orchestration/pingpong_job.py` marks a finished task `passed` or `applied_to_job_workspace`, while `RunState.COMPLETED` is written to a task only by `job_fulfillment.py`, `mission_state.py`, `task_runner.py` and `worker_queue.py`. The reviewer saved, under a scratch data root, a job in state `completed` whose two tasks read `applied_to_job_workspace` and `passed`, and ran the three commands with `--json`: each printed `done_count` 0 and `pending_count` 0 for `task_count` 2. WHY MEDIUM: the view described as the truth contract prints a finished job as having done nothing. WHY F273's: F261 folds these views into `job show --full` without changing what they compute, per its Do-not-touch. FIX: one done predicate over both task vocabularies, used by the three views and by `all_tasks_done`, and a test over a job whose tasks passed and were applied. Owner: F273.
+Done: R-0896 — RESOLVED by F261 round 8. `9d8d57f6` declares `--json` on `job show`, whose output is the same with or without it, drops `--json` from the three `patch approve` hints that never had it, and adds `test_every_advertised_flag_is_declared_by_its_command` and `test_every_operator_facing_advertised_flag_is_declared_by_its_command` to `tests/cli/test_advertised_commands.py`, which hold every `--flag` after a `remedy <group> <sub>` hint against the arguments that command declares. Verified by the reviewer of session 37: the objects of `9d8d57f6` equal the reviewer's dry run, in which removing `--json` from `job show` failed both new tests among 5; `git grep -n "job show .*--json"` over `apps`, `packages`, `scripts`, `docs/system` and `docs/guides` printed 19 lines at `22173331`, and the flag tests pass over all of them in the reviewer's run at `aff2b676`. A hint that names only a group is not flag-checked; that form is R-0900.
 
-- R-0899 — Medium, SECTION 3 OF `scripts/remedy_smoke.sh` READS A `state` KEY THAT `job show` DOES NOT PRINT, SO ITS PLANNED-STATE CHECK FAILS WHENEVER THE SCRIPT REACHES IT. Raised by the planner and reviewer of session 37 while preparing F261 round 8, after searching the open set for the script and the key under §3 item 30: no open finding describes it. THE DEFECT, read at `22173331`: after `remedy job create --task-type`, the script parses the output of `remedy job show` and exits 1 unless `job.get('state', '')` equals `planned`; `_export_job` in `packages/orchestration/pingpong_job.py`, which `job show` prints, writes the job's state under the key `status` and writes no key `state`. The reviewer read the code and did not run the script. WHY MEDIUM: the product smoke cannot pass its own job-creation check, so that gate reads red for a working job and proves nothing about it. WHY F273's: it is a one-key repair in a script no F261 slice owns. FIX: read `status`, and a test that runs the section's parser against the `job show` output of a created job. Owner: F273.
+Done: R-0806 — RESOLVED by F261 round 8. `068ee126` makes `job show` print `blocked_task_findings`: for every blocked task, the reviewer findings of its run's last round with `id`, `severity`, `file` and `summary`, where `summary` is the title, ten by default and every one with `--full`, and the same findings on stderr. The acceptance test is `tests/cli/test_job_show.py::TestABlockedFakeRunShowsItsFindingText::test_the_persisted_finding_summary_appears_in_job_show`, which blocks a job through the fake provider in a temporary git repository and finds the persisted finding summaries in the command's JSON and stderr; it was added at `068ee126` and passes in the reviewer's run at `aff2b676`. Verified by the reviewer of session 37: the objects of `068ee126` equal the reviewer's dry run, in which replacing the findings with an empty list failed that test, raising the cap to eleven failed the ten-finding test, and reading the first round instead of the last failed three tests.
+END RECORD9
 
-- R-0900 — Medium, PRINTED NEXT STEPS NAME `remedy do --continue <job-id>`, A FORM THE CLI REJECTS, AND `docs/system/architecture.md` DOCUMENTS `remedy brain <job_id>` LINES THE `brain` GROUP HAS NO COMMAND FOR. Raised by the planner and reviewer of session 37 while preparing F261 round 8, whose advertised-flag check reads only hints that name a group and a subcommand, after searching the open set under §3 item 30: no open finding describes it. THE DEFECT, read at `22173331`: `packages/orchestration/do_continue.py` sets `next_safe_action` to `remedy do --continue {job_id} --json` and, for more than one approved intent, to `remedy do --continue {job_id} --intent-id <id> --json`, while the catalog's continuation command is `do continue <job_id>`; `docs/guides/do-continue-v1.md` is titled with the same form; and `docs/system/architecture.md` lists `remedy brain <job_id>` and `remedy brain <job_id> --json`, while every `brain` command takes a subcommand. `tests/cli/test_advertised_commands.py` resolves a group-only match against the group list alone, so every one of these lines passes it. WHY MEDIUM: the continuation a blocked cycle recommends exits 2, the R-0896 shape. WHY F261's: T003 deletes `do continue` and repoints its hints, and T004 re-derives the documented command lines. FIX: each such line names a command the catalog carries, and a test covers the group-only form. Owner: F261.
-END RECORD8
+── SLICE DEC8 ── target `.agent/decisions.md` ── APPEND ──
+BEGIN DEC8 sha256=7b3c0f88db4699850d6213ad7bbd07f9d39ec66a128b53e89b5d649cc3a4f157
 
-── SLICE DEC7 ── target `.agent/decisions.md` ── APPEND ──
-BEGIN DEC7 sha256=50174a6bd1c9a14c3073ba74c8cda51621b1acae8835402962f31dc81e0eea93
+## DECISION F261 D8 (2026-09-15, F261 round 9) — the deletion paragraph of `job assumptions`, `job fences` and `job dod`, and the error a section names
 
-## DECISION F261 D7 (2026-09-15, F261 round 8) — `job show` takes `--json` and `--full`, prints the findings of blocked tasks and carries the read views as sections; the deletion paragraph of `job permissions`
+CONTEXT. DECISION F261 D7 made the read views of a job sections of `job show --full` and folded `job permissions` first. This round folds three more, one per commit. Measured at `aff2b676` by the reviewer's research helper and re-read by the reviewer on the dry-run trees.
 
-CONTEXT. DECISION amend0905-vocab D4 binds `job show <id> [--full]` and makes permissions, fences, assumptions, digest, summary, status, report and dod sections of `--full` rather than commands. DECISION F261 D4 ordered `--full` next and left its shape to the round that builds it; R-0806 asks `job show` for the findings of blocked tasks, and R-0896 for the `job show --json` that printed hints name. Measured at `22173331` by the reviewer's research helper and re-read by the reviewer on the dry-run trees: `job show` prints `_export_job` as one JSON document, which `tests/cli/test_golden_path.py`, `tests/cli/test_plan_approval.py` and `scripts/remedy_smoke.sh` parse whole, and prints its intake block on stderr.
+CHOSEN, FIRST: A SECTION MAY NAME ITS OWN ERROR. A builder that cannot describe its job raises `ShowSectionError(code, message)`, defined in `apps/cli/commands/job.py`; `_build_show_sections` turns it into `{"ok": false, "error": {"code": code, "message": message}}` and the stderr line `Error: <code>: <message>`. Any other exception stays `section_failed`, and `job show --full` still exits 0.
 
-CHOSEN, FIRST: `--json`. `job show` declares `--json`, and its output is the same JSON with or without it, rather than every hint losing the flag: nineteen next-step hints, one of them in `docs/guides/do-run-v1.md`, name the flag a user copies. `tests/cli/test_advertised_commands.py` now holds every `--flag` after a `remedy <group> <sub>` hint against the flags that command declares; the three `patch approve ... --json` hints it found lose the flag, which `patch approve` never declared. A group-only hint names no command and is not flag-checked; the defects of that form are R-0900.
+CHOSEN, SECOND: `job assumptions`. Deleted: the catalog entry `job.assumptions`, its handler-table row and `_cmd_job_assumptions`. THE HEIR is the `assumptions` section: `markdown` holds the assumption log `render_assumptions_md` renders from the job's flight plan, and `evidence_copy` the path of an existing `assumptions.md` evidence copy or null; its text is the former output. Like the command, the view only checks whether that file exists and writes nothing.
 
-CHOSEN, SECOND: THE FINDINGS OF BLOCKED TASKS. After every key it carried, the JSON gains `blocked_task_findings`: for each blocked task in task order, its run id, the number of its run's last round, that round's reviewer findings with `id`, `severity`, `file` and `summary` copied verbatim, at most ten of them, and their total and the number omitted. `summary` is the title R-0806 names, because the run record has no other. `--full` omits none. The shown findings also print on stderr beside the intake block. The reader never raises: a task without a readable run shows none.
+CHOSEN, THIRD: `job fences`. Deleted: the catalog entry `job.fences`, its handler-table row and `_cmd_job_fences`. `job context` now relates to `job show` alone, and the docstring of `apps/cli/commands/job_context_cmd.py` and `docs/guides/job-context-view-user-guide-v0.md` name the `fences` section instead. THE HEIR is the `fences` section. Its data is the former `--json` payload, with `job_id` the full job id where the command echoed the id as typed. The command's non-zero exits become error envelopes: `no_target_repo` for a job without `target_repo` in its metadata and `target_repo_missing` for a missing directory (each exit 2), `fence_config_error` (exit 3), and `builtin_resolution_failed` when the builtin denies cannot be resolved (exit 4).
 
-CHOSEN, THIRD: THE SECTIONS. With `--full` the JSON also gains `sections`, whose keys follow D4's order and hold only the views folded so far, each `{"ok": true, "data": ...}` or `{"ok": false, "error": {"code": ..., "message": ...}}`. A view that raises becomes the code `section_failed`, and `job show --full` exits 0 for every job that exists. Each view's former text prints on stderr under its own heading. The registry is `_SHOW_SECTIONS` in `apps/cli/commands/job.py`, and each fold adds one entry. A view whose former command exited non-zero for a job it could not describe, `job fences` for a job without an attached repository among them, reports that as an error envelope with its own code when it folds.
+CHOSEN, FOURTH: `job dod`. Deleted: the catalog entry `job.dod`, its handler-table row and `_cmd_job_dod`. THE HEIR is the `dod` section: its data holds the five keys of the former `--json` payload, `job_id`, `compiled`, `origin`, `check_count` and `gate`, in that order rather than sorted; its text is the former matrix, under the heading `--- Dod ---`.
 
-CHOSEN, FOURTH: THE DELETION OF `job permissions`. Deleted: the catalog entry `job.permissions`, its handler-table row and `_cmd_show_permissions`. `job.permissions` joins `TestDeletedCommands` and leaves `TestRequiredCommands`, `job permit` relates to `job show`, and the blocker hint of `packages/orchestration/brain_detail.py` and the permissions paragraph of `docs/system/architecture.md` name `remedy job show <id> --full`. THE HEIR is the `permissions` section: its data is the rows `effective_permissions` returns, and its text is the former command's.
+CONSEQUENCE. `remedy job assumptions`, `remedy job fences` and `remedy job dod` exit with an argument error, and their ids join `TestDeletedCommands`. The registry holds `permissions`, `fences`, `assumptions` and `dod`, in D4's order. For a job whose fences cannot be resolved, `job show --full` exits 0 and says why inside the section. HOW TO REVERSE: revert the round's three table commits and delete this section.
+END DEC8
 
-CONSEQUENCE. `job show` gains one key by default and two with `--full`, and every parser of it keeps working. `remedy job permissions <id>` exits with an argument error. The remaining views fold one per commit in later rounds, each with its own deletion paragraph; whether `do job-report` joins the `report` section or becomes a section of its own is ruled when it folds. HOW TO REVERSE: revert the round's three table commits and delete this section.
-END DEC7
+── SLICE MUT-1-FROM ── G5 (1) only, never a file ──
+BEGIN MUT-1-FROM sha256=22233892605d17303cd9a816b9b5c2bdf5437a8af11309548ed1fe992b6e55cf
+    "job.digest": lambda args: _cmd_job_digest(args.job_id,
+END MUT-1-FROM
 
-── SLICE P273-FROM ── target `docs/roadmap/features/T2_F273.md` ── FROM OF P273 ──
-BEGIN P273-FROM sha256=12a68827ef6563e070221a34747c2d36e96a7674b52e09566b11244f725032b3
-- R-0890 carries a resolution line naming the test that proves an unflagged self-use run
-  records the role config's builder and reviewer model.
-END P273-FROM
+── SLICE MUT-1-TO ── G5 (1) only, never a file ──
+BEGIN MUT-1-TO sha256=aca2ba87b604e2d44c85100c89e431d936dccb8bee6e723ad245e1f2ed88a89d
+    "job.fences": lambda args: None,
+    "job.digest": lambda args: _cmd_job_digest(args.job_id,
+END MUT-1-TO
 
-── SLICE ACC273 ── target `docs/roadmap/features/T2_F273.md` ── TO OF P273 ──
-BEGIN ACC273 sha256=2103e972ce9303e858656440d8ca563d077899494a0c768ee19252087baba257
-- R-0890 carries a resolution line naming the test that proves an unflagged self-use run
-  records the role config's builder and reviewer model.
-- R-0898 carries a resolution line naming the test that proves a job whose tasks passed and
-  were applied reads them as done in the job's summary, status and report views.
-- R-0899 carries a resolution line naming the test that runs the job-creation check of
-  `scripts/remedy_smoke.sh` against the `job show` output of a created job.
-END ACC273
+── SLICE MUT-2-FROM ── G5 (2) only, never a file ──
+BEGIN MUT-2-FROM sha256=db637940426523d45e725a7d6dc2a4e94c79a4d0d27fd1cae9e63590bab80d6f
+        raise ShowSectionError("no_target_repo", f"Job {short_id} has no target_repo attached")
+END MUT-2-FROM
 
-── SLICE LANDED8 ── target `.agent/live_review.md` ── APPEND AT C5 ──
-BEGIN LANDED8 sha256=da87ce51cada40db44656a356aaf0c8ec45b767728ced72b532055f82634ac11
+── SLICE MUT-2-TO ── G5 (2) only, never a file ──
+BEGIN MUT-2-TO sha256=6f48df5de2f51b3e6a8b0c5a1bd9f107357053093a6e9fb2f9236013f1b56dab
+        raise RuntimeError("no_target_repo", f"Job {short_id} has no target_repo attached")
+END MUT-2-TO
 
-Landed: R-0896 — `job show` declares `--json`, and `tests/cli/test_advertised_commands.py` now fails for a flag that a `remedy <group> <sub>` hint passes and that command does not declare; landed by C2 of `.agent/authored/f261-r8.md`, which that block's Bundle orders before this line.
+── SLICE MUT-3-FROM ── G5 (3) only, never a file ──
+BEGIN MUT-3-FROM sha256=14bb0ed20c5461f62ffb93cde6a3cfb969c694af086c55706b42865eaff7df07
+    ("fences", _fences_section),
+    ("assumptions", _assumptions_section),
+END MUT-3-FROM
 
-Landed: R-0806 — `job show` prints the last-round reviewer findings of every blocked task, ten by default and all of them with `--full`, and `tests/cli/test_job_show.py` finds a blocked fake-provider run's persisted finding text in its output; landed by C3 of `.agent/authored/f261-r8.md`, which that block's Bundle orders before this line.
-END LANDED8
+── SLICE MUT-3-TO ── G5 (3) only, never a file ──
+BEGIN MUT-3-TO sha256=e5507fb0a91c31d7c06c432474797a20cf1681474da514be637cbd003534aaa3
+    ("assumptions", _assumptions_section),
+    ("fences", _fences_section),
+END MUT-3-TO
 
-── SLICE MUT-B-FROM ── G5 (b) only, never a file ──
-BEGIN MUT-B-FROM sha256=fa2da571dcd9ed3082fe15fb3e218b18b423c9be5bde291ae5a566d27ee30d67
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("job.list", "brain.graph"),
-END MUT-B-FROM
+── SLICE MUT-4-FROM ── G5 (4) only, never a file ──
+BEGIN MUT-4-FROM sha256=aa1c0178fbb3fd6414db1e345fbd74b1908f539297138f8784015fee19031203
+        "check_count": 0 if dod is None else len(dod.checks),
+END MUT-4-FROM
 
-── SLICE MUT-B-TO ── G5 (b) only, never a file ──
-BEGIN MUT-B-TO sha256=44b2185ed1b7547619ea8c5d94fc76b0ab31cd50d804ea8641268e405237a8b6
-        ),
-        supports_json=True,
-        related=("job.list", "brain.graph"),
-END MUT-B-TO
+── SLICE MUT-4-TO ── G5 (4) only, never a file ──
+BEGIN MUT-4-TO sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+END MUT-4-TO
+
+── SLICE MUT-5-FROM ── G5 (5) only, never a file ──
+BEGIN MUT-5-FROM sha256=9c1a75f5f1f3c999eaced49e5cede7480b085b64c52cce345d63894e7b64b4ef
+    return {"markdown": markdown, "evidence_copy": evidence_copy}, lines
+END MUT-5-FROM
+
+── SLICE MUT-5-TO ── G5 (5) only, never a file ──
+BEGIN MUT-5-TO sha256=97da22c2b58c73510e70f4162951ae20a640bc8dcdea4e6c0d6b58caec2bc056
+    return {"markdown": "", "evidence_copy": evidence_copy}, lines
+END MUT-5-TO
