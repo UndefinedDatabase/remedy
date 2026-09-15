@@ -540,7 +540,7 @@ def _decision_lines(sources: ReportSources) -> list[str]:
         lines += ["No open decisions.", ""]
         return lines
     # Rendered verbatim from decision_queue.render_open_decisions_lines so the
-    # report and `remedy job status` cannot drift apart.
+    # report and the status section of `remedy job show <id> --full` cannot drift apart.
     lines += list(sources.open_decision_lines) or [
         f"Open decisions: {sources.open_decision_count} (detail {NOT_RECORDED})"]
     lines.append("")

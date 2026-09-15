@@ -9,7 +9,7 @@ Start here. These are the main commands for working with Remedy.
 remedy do run "Fix the login bug" --repo /path/to/project
 
 # 2. Check job state
-remedy job status <job_id> --json
+remedy job show <job_id> --full --json
 
 # 3. Read the job report
 remedy job report <job_id> --json
@@ -35,7 +35,7 @@ This is the normal entry point for Remedy.
 ### Check job status
 
 ```bash
-remedy job status <job_id> --json
+remedy job show <job_id> --full --json
 ```
 
 Read-only view of job state: tasks done, pending, blockers, and
@@ -74,7 +74,7 @@ See `docs/core-product-spine-v0.md` for the full command taxonomy.
 
 | Normal command           | Advanced equivalent(s)                                     |
 |--------------------------|------------------------------------------------------------|
-| `job status <id>`        | `job show <id>`                                            |
+| `job show <id> --full`   | `job show <id>`                                            |
 | `job report <id>`        | `mission report <run_id> --job-id <id>`                    |
 | `job run-loop <id>`      | `mission run <run_id> --job-id <id>`                       |
 | `doctor core`            | (no low-level equivalent — this is the check)              |
@@ -91,7 +91,7 @@ remedy job attach-repo "$JOB_ID" /path/to/repo
 remedy job fulfill "$JOB_ID" --fixture-demo --json
 
 # Check result
-remedy job status "$JOB_ID" --json
+remedy job show "$JOB_ID" --full --json
 remedy job report "$JOB_ID" --json
 remedy propose list "$JOB_ID" --json
 ```

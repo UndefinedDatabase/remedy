@@ -270,7 +270,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
                    "and the job's sections (its permissions, fences, assumptions, "
-                   "completion digest, summary and Definition of Done)",
+                   "completion digest, summary, status and Definition of Done)",
                    required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
@@ -394,16 +394,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.create", "job.resume"),
     ),
 
-    CommandEntry(
-        command_id="job.status",
-        group_id="job",
-        subcommand="status",
-        description="Show job status — state, tasks, blockers, next safe action.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("job.show",),
-    ),
     # ONE command, three modes on the same name (the F047 `job resume`
     # pattern): bare and --json keep the existing progress view exactly as it
     # was; --final renders the F053 run report of a terminal job; --interim
@@ -424,7 +414,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("job.status", "job.show"),
+        related=("job.show",),
     ),
 
     CommandEntry(
@@ -451,7 +441,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("job.status", "job.report"),
+        related=("job.show", "job.report"),
     ),
 
     # ── queue (F048) ─────────────────────────────────────────────────────

@@ -2545,10 +2545,12 @@ print(job.job_id[:8])
     echo "    approved: OK"
 
     # Status shows the job
-    STATUS_JSON="$(remedy job status "${FP_JOB_ID}" --json)"
-    python3 -c "
+    # The status section of job show --full. Its JSON carries escaped newlines (the
+    # assumptions section's markdown), so it reaches python on stdin, not in a literal.
+    STATUS_JSON="$(remedy job show "${FP_JOB_ID}" --full --json)"
+    printf '%s\n' "${STATUS_JSON}" | python3 -c "
 import json, sys
-st = json.loads('''${STATUS_JSON}''')
+st = json.load(sys.stdin)['sections']['status']['data']
 assert st['name'] == 'smoke-approval', 'wrong name: ' + st['name']
 assert st['state'] == 'planned', 'wrong state: ' + st['state']
 assert st['pending_count'] == 1, 'wrong pending: ' + str(st['pending_count'])

@@ -9,7 +9,7 @@ happened and what the next safe action is.
 Specifically:
 
 1. `do run` creates a job with tasks and artifacts
-2. `job status` shows artifact count, approval state, and next safe action
+2. The `status` section of `job show --full` shows artifact count, approval state, and next safe action
 3. `job report` shows task details, patch intents, and `code_applied: false`
 4. No code is applied, no PR created, no provider executed, no repo mutated
 
@@ -33,7 +33,7 @@ JOB_ID=$(remedy do run "Fix the bug in main.py" \
   | python3 -c "import sys,json; print(json.load(sys.stdin).get('job_id',''))")
 
 # 4. Check job status
-remedy job status "$JOB_ID" --json
+remedy job show "$JOB_ID" --full --json
 
 # 5. Read job report
 remedy job report "$JOB_ID" --json
@@ -44,7 +44,7 @@ rm -rf "$DEMO_REPO"
 
 ## Expected output fields
 
-### `job status --json`
+### The `status` section of `job show --full --json`
 
 | Field | Expected value | Meaning |
 |-------|---------------|---------|

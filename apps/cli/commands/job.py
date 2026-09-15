@@ -402,6 +402,90 @@ def _summary_section(job: JobPlan) -> tuple[dict, list[str]]:
     return summary, lines
 
 
+def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job status` command: a safe read-only view of current job state.
+
+    The job's open decisions come first, in the data and in the text (F051). The next safe
+    action names the job by its full id, where the command echoed the id as typed.
+    """
+    truth = _extract_job_truth(job)
+    open_decision_view = _open_decisions_view(job)
+    jid = str(job.job_id)
+
+    state = job.state.value if hasattr(job.state, "value") else str(job.state)
+    task_count = len(job.tasks)
+    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
+
+    blockers: list[str] = []
+    # F051: an open decision comes first — it is what the run needs from a human.
+    if open_decision_view["open_decisions"]:
+        blockers.append("awaiting_decision")
+    if truth["approval_required"]:
+        blockers.append("approval_required")
+    elif pending_count > 0 and state == "pending":
+        blockers.append("job_not_started")
+    if state == "blocked":
+        blockers.append("job_blocked")
+    # Surface fulfillment blockers
+    if truth.get("fulfillment_blockers"):
+        blockers.extend(truth["fulfillment_blockers"])
+
+    if open_decision_view["next_action"]:
+        next_action = open_decision_view["next_action"]
+    elif truth["approval_required"]:
+        next_action = "remedy patch approve <job_id> <patch_intent_id>"
+    elif truth.get("fulfillment_next_action"):
+        next_action = truth["fulfillment_next_action"]
+    elif state == "completed" and truth.get("fulfillment_status") == "completed_verified":
+        next_action = f"remedy propose list {jid} --json"
+    elif pending_count > 0:
+        next_action = "remedy job resume <job_id> --json"
+    elif state in ("completed", "failed"):
+        next_action = f"remedy job report {jid} --json"
+    else:
+        next_action = f"remedy job report {jid} --json"
+
+    status = {
+        "job_id": jid,
+        "name": job.job_title,
+        "state": state,
+        "task_count": task_count,
+        "done_count": done_count,
+        "pending_count": pending_count,
+        "event_count": truth["event_count"],
+        "artifact_count": truth["artifact_count"],
+        "patch_intent_ids": truth["patch_intent_ids"],
+        "approval_required": truth["approval_required"],
+        "code_applied": truth["code_applied"],
+        "latest_stop_reason": truth["latest_stop_reason"],
+        "fulfillment_status": truth.get("fulfillment_status", ""),
+        "staging_used": truth.get("staging_used", False),
+        "staging_promoted": truth.get("staging_promoted", False),
+        "blockers": blockers,
+        "next_safe_action": next_action,
+        # F051: open decisions first, with the exact command that answers each.
+        "open_decisions": open_decision_view["open_decisions"],
+        "open_decision_count": len(open_decision_view["open_decisions"]),
+    }
+
+    lines = [
+        *open_decision_view["lines"],
+        f"Job {job.job_id}",
+        f"  Name:      {job.job_title}",
+        f"  State:     {state}",
+        f"  Tasks:     {done_count}/{task_count} done, {pending_count} pending",
+        f"  Events:    {truth['event_count']}",
+        f"  Artifacts: {truth['artifact_count']}",
+    ]
+    if truth["approval_required"]:
+        lines.append("  Approval:  REQUIRED")
+    if blockers:
+        lines.append(f"  Blockers:  {', '.join(blockers)}")
+    lines.append(f"  Next:      {next_action}")
+    return status, lines
+
+
 def _dod_section(job: JobPlan) -> tuple[dict, list[str]]:
     """The former `job dod` command: the Definition-of-Done matrix, live (F061 T004).
 
@@ -459,6 +543,7 @@ _SHOW_SECTIONS: tuple[tuple[str, Callable[[JobPlan], tuple[dict, list[str]]]], .
     ("assumptions", _assumptions_section),
     ("digest", _digest_section),
     ("summary", _summary_section),
+    ("status", _status_section),
     ("dod", _dod_section),
 )
 
@@ -1764,99 +1849,6 @@ def _open_decisions_view(job: JobPlan) -> dict:
         return {'lines': [], 'open_decisions': [], 'next_action': ''}
 
 
-def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
-    """Job status -- safe read-only view of current job state."""
-    import json as _json
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError:
-        if json_output:
-            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
-        else:
-            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
-        sys.exit(1)
-
-    truth = _extract_job_truth(job)
-    open_decision_view = _open_decisions_view(job)
-
-    state = job.state.value if hasattr(job.state, 'value') else str(job.state)
-    task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'completed')
-    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'pending')
-
-    blockers: list[str] = []
-    # F051: an open decision comes first — it is what the run needs from a human.
-    if open_decision_view['open_decisions']:
-        blockers.append('awaiting_decision')
-    if truth['approval_required']:
-        blockers.append('approval_required')
-    elif pending_count > 0 and state == 'pending':
-        blockers.append('job_not_started')
-    if state == 'blocked':
-        blockers.append('job_blocked')
-    # Surface fulfillment blockers
-    if truth.get('fulfillment_blockers'):
-        blockers.extend(truth['fulfillment_blockers'])
-
-    if open_decision_view['next_action']:
-        next_action = open_decision_view['next_action']
-    elif truth['approval_required']:
-        next_action = 'remedy patch approve <job_id> <patch_intent_id>'
-    elif truth.get('fulfillment_next_action'):
-        next_action = truth['fulfillment_next_action']
-    elif state == 'completed' and truth.get('fulfillment_status') == 'completed_verified':
-        next_action = f'remedy propose list {job_id_str} --json'
-    elif pending_count > 0:
-        next_action = 'remedy job resume <job_id> --json'
-    elif state in ('completed', 'failed'):
-        next_action = f'remedy job report {job_id_str} --json'
-    else:
-        next_action = f'remedy job report {job_id_str} --json'
-
-    status = {
-        'job_id': str(job.job_id),
-        'name': job.job_title,
-        'state': state,
-        'task_count': task_count,
-        'done_count': done_count,
-        'pending_count': pending_count,
-        'event_count': truth['event_count'],
-        'artifact_count': truth['artifact_count'],
-        'patch_intent_ids': truth['patch_intent_ids'],
-        'approval_required': truth['approval_required'],
-        'code_applied': truth['code_applied'],
-        'latest_stop_reason': truth['latest_stop_reason'],
-        'fulfillment_status': truth.get('fulfillment_status', ''),
-        'staging_used': truth.get('staging_used', False),
-        'staging_promoted': truth.get('staging_promoted', False),
-        'blockers': blockers,
-        'next_safe_action': next_action,
-        # F051: open decisions first, with the exact command that answers each.
-        'open_decisions': open_decision_view['open_decisions'],
-        'open_decision_count': len(open_decision_view['open_decisions']),
-    }
-
-    if json_output:
-        print(_json.dumps(status, indent=2))
-    else:
-        for line in open_decision_view['lines']:
-            print(line)
-        print(f'Job {job.job_id}')
-        print(f'  Name:      {job.job_title}')
-        print(f'  State:     {state}')
-        print(f'  Tasks:     {done_count}/{task_count} done, {pending_count} pending')
-        print(f'  Events:    {truth["event_count"]}')
-        print(f'  Artifacts: {truth["artifact_count"]}')
-        if truth['approval_required']:
-            print('  Approval:  REQUIRED')
-        if blockers:
-            bl = ', '.join(blockers)
-            print(f'  Blockers:  {bl}')
-        print(f'  Next:      {next_action}')
-
-
 def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
                         json_output: bool = False) -> None:
     """The F053 run report: one human-readable account of a run.
@@ -2397,10 +2389,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
             yes=getattr(args, "yes", False),
             json_output=getattr(args, "json", False),
         )
-    ),
-    "job.status": lambda args: _cmd_job_status(
-        args.job_id,
-        json_output=getattr(args, "json", False),
     ),
     # `remedy job report` has three modes and ONE name (the F047 `job resume`
     # pattern, see .agent/decisions.md): --final/--interim render the F053 run

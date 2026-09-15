@@ -518,7 +518,7 @@ class TestJobReportAfterFulfilled:
 
 
 # ---------------------------------------------------------------------------
-# Integration test: job status after fulfilled (Step 3321, 3375-3377, 3393)
+# Integration test: the status section of job show --full after fulfilled (Step 3321, 3375-3377, 3393)
 # ---------------------------------------------------------------------------
 
 
@@ -537,12 +537,14 @@ class TestJobStatusAfterFulfilled:
         save_job_plan(job, root=tmp_path)
         run_job_fulfill(str(job.job_id), repo, data_dir=tmp_path)
 
-        from apps.cli.commands.job import _cmd_job_status
+        from apps.cli.grouped import main
 
         buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            _cmd_job_status(str(job.job_id), json_output=True)
-        data = json.loads(buf.getvalue())
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
+            main(["job", "show", str(job.job_id), "--full", "--json"])
+        section = json.loads(buf.getvalue())["sections"]["status"]
+        assert section["ok"] is True
+        data = section["data"]
         assert data["state"] == "completed"
         assert data["approval_required"] is False
         assert data["code_applied"] is True
@@ -725,7 +727,7 @@ class TestFulfilledDemoGuide:
     def test_guide_mentions_status_report(self):
         path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
         text = path.read_text()
-        assert "job status" in text
+        assert 'job show "$JOB_ID" --full --json' in text
         assert "job report" in text
 
     def test_guide_mentions_propose(self):
@@ -1568,10 +1570,6 @@ class TestDemoDocsCommands:
         """job fulfill --fixture-demo must be a valid CLI subcommand."""
         from apps.cli.commands.job import COMMAND_HANDLERS
         assert "job.fulfill" in COMMAND_HANDLERS, "job.fulfill not in CLI COMMAND_HANDLERS"
-
-    def test_status_command_exists(self):
-        from apps.cli.commands.job import COMMAND_HANDLERS
-        assert "job.status" in COMMAND_HANDLERS
 
     def test_report_command_exists(self):
         from apps.cli.commands.job import COMMAND_HANDLERS

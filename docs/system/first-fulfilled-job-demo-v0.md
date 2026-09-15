@@ -26,7 +26,7 @@ remedy job attach-repo "$JOB_ID" /path/to/demo/repo  # see Repo Requirements bel
 remedy job fulfill "$JOB_ID" --fixture-demo --json
 
 # 3. Check final status
-remedy job status "$JOB_ID" --json
+remedy job show "$JOB_ID" --full --json
 
 # 4. Read the full report
 remedy job report "$JOB_ID" --json
@@ -58,7 +58,7 @@ remedy propose defer "$JOB_ID" <task_id> --json
 | `staging_promoted` | `true` | Staged changes promoted to target |
 | `next_suggestion_ids` | 3 items | Proposed next steps |
 
-### `job status --json` (after fulfill)
+### The `status` section of `job show --full --json` (after fulfill)
 
 | Field | Expected | Meaning |
 |-------|----------|---------|

@@ -1,7 +1,8 @@
 """F051 T003 — open decisions render FIRST, with the command that answers them.
 
 Covers the pure view helpers in ``decision_queue`` and the two CLI views that
-use them (``remedy job status`` and ``remedy job report``), in text and JSON.
+use them (the ``status`` section of ``remedy job show <id> --full`` and
+``remedy job report``), in text and JSON.
 The point being pinned: a returning human sees what the run needs before
 anything else, and the exact command is in the output — never paraphrased.
 """
@@ -13,7 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from apps.cli.commands.job import _cmd_job_report, _cmd_job_status
+from apps.cli.commands.job import _cmd_job_report
+from apps.cli.grouped import main
 from packages.core.models import RunState
 from packages.orchestration.decision_queue import (
     HumanDecision,
@@ -74,6 +76,14 @@ def saved_job_with_open_decision(*, question: str = "Which database?",
         options=options, safe_default="", now=T0)
     save_job_plan(job)
     return job, record
+
+
+def show_status(capsys, job_id: str) -> tuple[dict, str]:
+    """`job show <id> --full`: the status section's envelope, and its text on stderr up to the next heading."""
+    main(["job", "show", job_id, "--full"])
+    shown = capsys.readouterr()
+    text = shown.err.split("--- Status ---\n", 1)[1].split("\n--- ", 1)[0]
+    return json.loads(shown.out)["sections"]["status"], text
 
 
 def decision(id_: str, *, status: str = "open", severity: str = "blocker",
@@ -165,7 +175,7 @@ class TestRenderedBlock:
 
 
 # ---------------------------------------------------------------------------
-# remedy job status
+# The `status` section of `remedy job show <id> --full` (formerly its own command)
 # ---------------------------------------------------------------------------
 
 
@@ -173,8 +183,8 @@ class TestJobStatusView:
     def test_the_open_decision_block_is_printed_first(self, capsys):
         job, record = saved_job_with_open_decision()
 
-        _cmd_job_status(str(job.job_id))
-        out = capsys.readouterr().out.splitlines()
+        _section, text = show_status(capsys, str(job.job_id))
+        out = text.splitlines()
 
         assert out[0] == "Open decisions: 1 — the run needs an answer"
         assert out[0:1] and out[1].strip().startswith("[blocker] task_decision")
@@ -187,24 +197,25 @@ class TestJobStatusView:
         expected = task_decision_answer_command(
             str(job.job_id), record["decision_id"], "postgres")
 
-        _cmd_job_status(str(job.job_id))
-        out = capsys.readouterr().out
+        _section, out = show_status(capsys, str(job.job_id))
 
         assert expected in out
 
     def test_awaiting_decision_is_the_first_blocker(self, capsys):
         job, _ = saved_job_with_open_decision()
 
-        _cmd_job_status(str(job.job_id), json_output=True)
-        status = json.loads(capsys.readouterr().out)
+        section, _text = show_status(capsys, str(job.job_id))
+        assert section["ok"] is True
+        status = section["data"]
 
         assert status["blockers"][0] == "awaiting_decision"
 
     def test_the_json_carries_the_open_decisions_and_the_count(self, capsys):
         job, record = saved_job_with_open_decision()
 
-        _cmd_job_status(str(job.job_id), json_output=True)
-        status = json.loads(capsys.readouterr().out)
+        section, _text = show_status(capsys, str(job.job_id))
+        assert section["ok"] is True
+        status = section["data"]
 
         assert status["open_decision_count"] == 1
         assert status["open_decisions"][0]["id"] == record["decision_id"]
@@ -213,8 +224,9 @@ class TestJobStatusView:
     def test_the_next_safe_action_answers_the_decision(self, capsys):
         job, record = saved_job_with_open_decision()
 
-        _cmd_job_status(str(job.job_id), json_output=True)
-        status = json.loads(capsys.readouterr().out)
+        section, _text = show_status(capsys, str(job.job_id))
+        assert section["ok"] is True
+        status = section["data"]
 
         assert status["next_safe_action"] == task_decision_answer_command(
             str(job.job_id), record["decision_id"], "postgres")
@@ -223,19 +235,20 @@ class TestJobStatusView:
         job = make_job(state=RunState.PLANNED)
         save_job_plan(job)
 
-        _cmd_job_status(str(job.job_id))
-        out = capsys.readouterr().out.splitlines()
+        _section, text = show_status(capsys, str(job.job_id))
+        out = text.splitlines()
 
         assert out[0] == f"Job {job.job_id}"
-        assert "Open decisions" not in capsys.readouterr().out
+        assert "Open decisions" not in text
 
     def test_an_answered_decision_disappears_from_the_view(self, capsys):
         job, record = saved_job_with_open_decision()
         answer_task_decision(job, record["decision_id"], answer="postgres", now=T0)
         save_job_plan(job)
 
-        _cmd_job_status(str(job.job_id), json_output=True)
-        status = json.loads(capsys.readouterr().out)
+        section, _text = show_status(capsys, str(job.job_id))
+        assert section["ok"] is True
+        status = section["data"]
 
         assert status["open_decision_count"] == 0
         assert "awaiting_decision" not in status["blockers"]
@@ -326,8 +339,9 @@ def test_the_block_is_queue_wide_not_task_decision_only(capsys):
     job = make_job(target_repo="")
     save_job_plan(job)
 
-    _cmd_job_status(str(job.job_id), json_output=True)
-    status = json.loads(capsys.readouterr().out)
+    section, _text = show_status(capsys, str(job.job_id))
+    assert section["ok"] is True
+    status = section["data"]
 
     assert status["open_decision_count"] == 1
     assert status["open_decisions"][0]["type"] == "stop_reason"

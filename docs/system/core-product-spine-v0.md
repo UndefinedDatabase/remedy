@@ -28,7 +28,7 @@ operator approval.
 
 ```
 1. Create a job       →  remedy do run "<goal>" --repo <path>
-2. Check job state    →  remedy job status <job_id> --json
+2. Check job state    →  remedy job show <job_id> --full --json
 3. Read the report    →  remedy job report <job_id> --json
 4. Open the UI        →  remedy ui <job_id>
 5. Review results     →  remedy review run <job_id> --json
@@ -80,7 +80,7 @@ references a specific command template that constrains what the worker can do.
 | Command | What it does | Mutates? | Executes? |
 |---------|-------------|----------|-----------|
 | `do "<goal>" --repo <path>` | Create and start a job | Yes | No* |
-| `job status <id> --json` | Show job state | No | No |
+| `job show <id> --full --json` | Show job state | No | No |
 | `job report <id> --json` | Read job progress report | No | No |
 | `job run <id> --json` | Run pending tasks through Builder/Reviewer/Repair | Yes | Yes |
 | `ui <id>` | Open interactive UI | No | No |

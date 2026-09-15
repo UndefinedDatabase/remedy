@@ -707,12 +707,14 @@ class TestApprovalGoldenPathCLI:
 
         # 5. status shows job
         status = subprocess.run(
-            [*_CLI, "job", "status", short_id, "--json"],
+            [*_CLI, "job", "show", short_id, "--full", "--json"],
             capture_output=True, text=True, timeout=30,
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
         assert status.returncode == 0, status.stderr
-        st = json.loads(status.stdout)
+        section = json.loads(status.stdout)["sections"]["status"]
+        assert section["ok"] is True, section
+        st = section["data"]
         assert st["name"] == "approval-smoke"
         assert st["state"] == "planned"
         assert st["pending_count"] == 1

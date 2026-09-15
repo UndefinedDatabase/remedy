@@ -249,24 +249,12 @@ class TestFastLaneSelfTest:
 class TestJobCentricCatalog:
     """Job commands are primary; mission is advanced."""
 
-    def test_job_status_in_catalog(self):
-        from apps.cli.command_catalog import get_command
-        cmd = get_command("job.status")
-        assert cmd is not None
-        assert cmd.action_class == "read_only"
-        assert cmd.supports_json
-
     def test_job_report_in_catalog(self):
         from apps.cli.command_catalog import get_command
         cmd = get_command("job.report")
         assert cmd is not None
         assert cmd.action_class == "read_only"
         assert cmd.supports_json
-
-    def test_job_status_has_handler(self):
-        from apps.cli.commands import collect_all_handlers
-        handlers = collect_all_handlers()
-        assert "job.status" in handlers
 
     def test_job_report_has_handler(self):
         from apps.cli.commands import collect_all_handlers
@@ -319,7 +307,7 @@ class TestCommandTaxonomyDocs:
 
     def test_spine_doc_has_job_first_flow(self):
         text = self._read_doc("core-product-spine-v0.md")
-        assert "job status" in text
+        assert "job show <job_id> --full" in text
         assert "job report" in text
 
     def test_spine_doc_mission_is_advanced(self):
@@ -328,7 +316,7 @@ class TestCommandTaxonomyDocs:
 
     def test_quickstart_doc_job_first(self):
         text = self._read_doc("simple-operator-quickstart-v0.md")
-        assert "job status" in text
+        assert "job show <job_id> --full" in text
         assert "job report" in text
 
     def test_quickstart_no_mission_as_primary(self):
@@ -356,21 +344,6 @@ class TestCommandTaxonomyDocs:
 class TestJobFacadeNoAgent:
     """Job status/report work without .agent directory."""
 
-    def test_job_status_handler_no_agent(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        import contextlib
-        import io
-
-        from apps.cli.commands.job import _cmd_job_status
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            try:
-                _cmd_job_status("00000000-0000-0000-0000-000000000000", json_output=True)
-            except SystemExit:
-                pass
-        output = buf.getvalue()
-        assert "job_not_found" in output or "error" in output
-
     def test_job_report_handler_no_agent(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         import contextlib
@@ -396,12 +369,12 @@ class TestJobFacadeNoAgent:
         import contextlib
         import io
 
-        from apps.cli.commands.job import _cmd_job_status
+        from apps.cli.grouped import main
         out, err = io.StringIO(), io.StringIO()
         code = None
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             try:
-                _cmd_job_status("not-a-uuid", json_output=True)
+                main(["job", "show", "not-a-uuid", "--full", "--json"])
             except SystemExit as exc:
                 code = exc.code
         assert code not in (None, 0)
@@ -508,11 +481,13 @@ class TestJobStatusReportTruthFields:
 
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         job = self._make_job_and_save(tmp_path)
-        from apps.cli.commands.job import _cmd_job_status
+        from apps.cli.grouped import main
         buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            _cmd_job_status(str(job.job_id), json_output=True)
-        data = json.loads(buf.getvalue())
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
+            main(["job", "show", str(job.job_id), "--full", "--json"])
+        section = json.loads(buf.getvalue())["sections"]["status"]
+        assert section["ok"] is True
+        data = section["data"]
         assert data['artifact_count'] == 1
         assert data['approval_required'] is True
         assert 'patch_intent_ids' in data
@@ -537,7 +512,7 @@ class TestJobStatusReportTruthFields:
         assert len(data['tasks']) == 1
 
     def test_report_invalid_id_safe(self):
-        """Same contract as job status: named stderr error, no partial JSON."""
+        """Same contract as job show: named stderr error, no partial JSON."""
         import contextlib
         import io
 
@@ -598,11 +573,13 @@ class TestNoProviderNoApplyProof:
         from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job = JobPlan(job_title='no-apply-action proof')
         save_job_plan(job, root=tmp_path)
-        from apps.cli.commands.job import _cmd_job_status
+        from apps.cli.grouped import main
         buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            _cmd_job_status(str(job.job_id), json_output=True)
-        data = json.loads(buf.getvalue())
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
+            main(["job", "show", str(job.job_id), "--full", "--json"])
+        section = json.loads(buf.getvalue())["sections"]["status"]
+        assert section["ok"] is True
+        data = section["data"]
         nsa = data.get('next_safe_action', '')
         assert 'apply' not in nsa.lower() or 'patch approve' in nsa.lower(), \
             'Next safe action must not suggest applying code directly'
