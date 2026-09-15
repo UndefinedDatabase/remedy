@@ -789,7 +789,6 @@ function buildCmdSuggestions(d){
     cmds.push({label:'Blockers',cmd:'remedy blocker list '+jid});
   if(d.node_type==='autonomy_readiness')
     cmds.push({label:'Readiness',cmd:'remedy readiness job '+jid});
-  cmds.push({label:'Dashboard',cmd:'remedy dashboard job '+jid});
   return cmds;
 }
 window.pick=function(nodeId){

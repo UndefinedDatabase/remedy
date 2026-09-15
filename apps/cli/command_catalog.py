@@ -130,7 +130,6 @@ GROUPS: dict[str, GroupDef] = {
     "repo": GroupDef("repo", "Repo", "Read-only repository inspection.", user_facing=False),
     "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False),
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons.", user_facing=False),
-    "dashboard": GroupDef("dashboard", "Dashboard", "Project and job dashboards.", user_facing=False),
     "repair": GroupDef("repair", "Repair", "Test failure repair.", user_facing=False),
     "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
     "token": GroupDef("token", "Token", "Token economy and cost budgets.", user_facing=False),
@@ -1766,26 +1765,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID,),
     ),
 
-    # ── dashboard ──────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="dashboard.job",
-        group_id="dashboard",
-        subcommand="job",
-        description="Show the job dashboard overview.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="dashboard.project",
-        group_id="dashboard",
-        subcommand="project",
-        description="Show the project dashboard overview.",
-        action_class="read_only",
-        args=(_PROJECT_ID, _JSON_OPT),
-        supports_json=True,
-    ),
-
     # ── ui ───────────────────────────────────────────────────────────────
     CommandEntry(
         command_id="ui.start",
@@ -1800,7 +1779,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--no-open", "Do not open browser automatically", required=False, is_option=True, default="false"),
             ArgDef("--info-file", "Write server info JSON to this path", required=False, is_option=True),
         ),
-        related=("brain.view", "dashboard.job"),
+        related=("brain.view",),
     ),
     CommandEntry(
         command_id="ui.latest",

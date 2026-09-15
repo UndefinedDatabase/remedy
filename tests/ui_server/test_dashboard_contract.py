@@ -51,16 +51,6 @@ def _make_job_s80(**overrides: object) -> JobPlan:
     return JobPlan(**defaults)
 
 
-def _make_events() -> list[dict]:
-    return [
-        {"event": "job_created", "run_id": "r1", "job_id": "j1",
-         "timestamp": "2026-01-01T00:00:00", "outcome": "ok", "metadata": {}},
-        {"event": "patch_intent_created", "run_id": "r1", "job_id": "j1",
-         "timestamp": "2026-01-01T00:01:00", "outcome": "ok",
-         "metadata": {"intent_id": "pi1", "target_path": "foo.py", "action": "create"}},
-    ]
-
-
 # ── Step 68.1: Event Schema Registry ────────────────────────────────────
 
 
@@ -74,58 +64,6 @@ def _get_app_html(job_id: str = "test-job", token: str = "test-token") -> str:
 # ---------------------------------------------------------------------------
 
 
-
-
-class TestDashboard:
-    def test_build_job_dashboard(self):
-        from packages.orchestration.dashboard import build_job_dashboard
-        job = _make_job()
-        data = build_job_dashboard(job, _make_events())
-        assert data["version"] == 1
-        assert data["scope"] == "job"
-        assert "readiness" in data
-        assert "decisions" in data
-        assert "test_status" in data
-        assert "git_status" in data or data["git_status"] == {}
-        assert "memory" in data
-        assert "events" in data
-        assert "next_actions" in data
-
-    def test_build_job_dashboard_decisions(self):
-        from packages.orchestration.dashboard import build_job_dashboard
-        job = _make_job()
-        events = [
-            {"event": "test_run_completed", "run_id": "r1", "job_id": str(job.job_id),
-             "timestamp": "2026-01-01T00:01:00", "outcome": "failed",
-             "metadata": {"status": "failed", "command": "pytest", "test_run_id": "tr1"}},
-        ]
-        data = build_job_dashboard(job, events)
-        assert data["decisions"]["open_count"] >= 1
-
-    def test_summarize_job_dashboard(self):
-        from packages.orchestration.dashboard import build_job_dashboard, summarize_job_dashboard
-        job = _make_job()
-        data = build_job_dashboard(job, _make_events())
-        text = summarize_job_dashboard(data)
-        assert "Dashboard" in text
-        assert "Readiness" in text
-        assert "Decisions" in text
-
-    def test_build_project_dashboard(self):
-        from packages.orchestration.dashboard import build_project_dashboard
-        job = _make_job()
-        data = build_project_dashboard("proj1", [job], {str(job.job_id): _make_events()})
-        assert data["version"] == 1
-        assert data["scope"] == "project"
-        assert data["job_count"] == 1
-        assert "readiness_summary" in data
-        assert "open_decision_count" in data
-
-    def test_build_project_dashboard_empty(self):
-        from packages.orchestration.dashboard import build_project_dashboard
-        data = build_project_dashboard("proj1", [], {})
-        assert data["job_count"] == 0
-        assert data["readiness_summary"]["min_level"] == 0
 
 
 # ── Step 71: Context Optimizer ──────────────────────────────────────────

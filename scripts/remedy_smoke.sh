@@ -1743,46 +1743,6 @@ print('    decision_queue: OK (types=' + str(len(DECISION_TYPES)) + ')')
 "
 
     # -------------------------------------------------------------------------
-    # 12ag. Dashboard (Step 70)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12ag"
-    echo "--- 12ag. Dashboard"
-    python3 -c "
-import sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: dashboard: ' + msg, file=sys.stderr)
-        sys.exit(1)
-
-from packages.orchestration.dashboard import (
-    build_job_dashboard, build_project_dashboard, summarize_job_dashboard,
-)
-from packages.core.models import RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry
-
-job = JobPlan(job_title='smoke-dash', user_prompt='t',
-    tasks=[TaskEntry(title='x', status=RunState.COMPLETED)],
-    metadata={'target_repo': '.'})
-events = [{'event': 'job_created', 'run_id': 'r1', 'job_id': job.job_id,
-    'timestamp': '2026-01-01', 'outcome': 'ok', 'metadata': {}}]
-
-data = build_job_dashboard(job, events)
-chk(data['version'] == 1, 'bad version')
-chk(data['scope'] == 'job', 'bad scope')
-for k in ('readiness', 'decisions', 'test_status', 'token_policy', 'memory', 'events', 'next_actions'):
-    chk(k in data, 'missing key: ' + k)
-
-text = summarize_job_dashboard(data)
-chk('Dashboard' in text, 'missing Dashboard in text')
-
-pdata = build_project_dashboard('p1', [job], {job.job_id: events})
-chk(pdata['version'] == 1, 'project bad version')
-chk(pdata['job_count'] == 1, 'project bad job_count')
-
-print('    dashboard: OK (keys=' + str(len(data)) + ')')
-"
-
-    # -------------------------------------------------------------------------
     # 12ai. Brain nodes: decision_queue (Step 69)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12ai"

@@ -13,7 +13,6 @@ apps.cli.commands.ci_cmd
 apps.cli.commands.config_cmd
 apps.cli.commands.context
 apps.cli.commands.contract_cmd
-apps.cli.commands.dashboard_cmd
 apps.cli.commands.decision
 apps.cli.commands.dev
 apps.cli.commands.do_cmd
@@ -99,7 +98,6 @@ packages.orchestration.continue_from_node
 packages.orchestration.cost_preview
 packages.orchestration.cost_report
 packages.orchestration.dag_schedule
-packages.orchestration.dashboard
 packages.orchestration.data_paths
 packages.orchestration.dead_model_list
 packages.orchestration.decision_evidence

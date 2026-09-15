@@ -153,18 +153,7 @@ def build_guidance_cards(
     except (ImportError, Exception):
         pass
 
-    # 7. Dashboard
-    cards.append(GuidanceCard(
-        id="dashboard",
-        title="View dashboard",
-        severity="info",
-        why_it_matters="Dashboard shows overall job health.",
-        safe_next_action="Open job dashboard.",
-        command=f"remedy dashboard job {job_id}",
-        related_node_type="job",
-    ))
-
-    # 8. Brain viewer
+    # 7. Brain viewer
     cards.append(GuidanceCard(
         id="viewer",
         title="Open brain viewer",
