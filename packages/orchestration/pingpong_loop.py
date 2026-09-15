@@ -4053,25 +4053,6 @@ def run_pingpong(
             result.safe_diff_files = diff_files
             result.safe_diff_truncated = diff_trunc
 
-        # --- Persist artifacts for promotion (before discard) ---
-        # Only persist when reviewer passed AND adjudication allows (or no adjudication needed)
-        # Defense-in-depth: also check final test_passed is not False
-        last_test = result.rounds[-1].test_passed if result.rounds else None
-        promotion_eligible = (
-            result.final_status == "staged_review_passed"
-            and not result.target_mutated
-            and last_test is not False
-            and (result.final_adjudication is None
-                 or result.final_adjudication.get("promotion_allowed", False))
-        )
-        if (result.staged_files
-                and staging.exists()
-                and promotion_eligible):
-            from packages.orchestration.pingpong_promote import persist_artifacts
-            run_dir = data_paths.run_dir(result.run_id)
-            run_dir.mkdir(parents=True, exist_ok=True)
-            persist_artifacts(run_dir, staging, original, result.staged_files)
-
         # F006 hand-off: persist the run's deterministic result.diff, then release
         # the physical worktree while KEEPING the result branch. Never a merge.
         # Same path for success, block, and any exception that reaches here.

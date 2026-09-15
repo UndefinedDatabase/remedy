@@ -444,27 +444,6 @@ class TestAdjudicationE2E:
 
 
 # ---------------------------------------------------------------------------
-# Step 4763: Promotion readiness blocked
-# ---------------------------------------------------------------------------
-
-class TestPromotionBlocked:
-    """Promotion not ready after exhausted/inconsistent."""
-
-    def test_exhausted_blocks_promotion_artifacts(self, demo_repo: Path):
-        provider = FakeProvider(fail_on_round=1, pass_on_round=99)
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_provider=provider, reviewer_provider=provider,
-            max_rounds=5, repair_rounds=1,
-        )
-        # Promotion artifacts should NOT be persisted
-        from packages.orchestration import data_paths
-        run_dir = data_paths.run_dir(result.run_id)
-        artifacts = run_dir / "artifacts"
-        assert not artifacts.exists()
-
-
-# ---------------------------------------------------------------------------
 # Step 4764: Full repair loop JSON schema
 # ---------------------------------------------------------------------------
 

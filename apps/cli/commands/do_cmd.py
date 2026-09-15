@@ -1006,10 +1006,6 @@ def _cmd_do_report(
         sys.exit(1)
 
     if json_output:
-        from packages.orchestration.pingpong_promote import load_promotion
-        promo = load_promotion(run_id)
-        if promo:
-            data["promotion"] = promo
         print(json.dumps(data, indent=2))
     else:
         _print_text_report(run_id, data)
@@ -1130,29 +1126,6 @@ def _print_text_report(run_id: str, data: dict) -> None:
         print("\nChanged in staging:")
         for f in staged:
             print(f"  - {f}")
-
-    # Promotion
-    from packages.orchestration.pingpong_promote import load_promotion
-    promo = load_promotion(run_id)
-    if promo:
-        print(f"\nPromotion: {promo.get('status', 'unknown')}")
-        if promo.get("applied_files"):
-            print("Promoted to repo:")
-            for f in promo["applied_files"]:
-                print(f"  - {f}")
-        if promo.get("post_test_passed") is not None:
-            print(f"Post-promotion tests: {'passed' if promo['post_test_passed'] else 'FAILED'}")
-        if promo.get("blocked_reason"):
-            print(f"Blocked: {promo['blocked_reason']}")
-        if promo.get("unexpected_artifacts"):
-            print(f"Unexpected artifacts: {', '.join(promo['unexpected_artifacts'])}")
-        if promo.get("duplicate_artifacts"):
-            print(f"Duplicate artifacts: {', '.join(promo['duplicate_artifacts'])}")
-        if promo.get("target_repo_mismatch"):
-            print(f"Run repo: {promo.get('run_repo', '')}")
-            print(f"Requested target: {promo.get('requested_target_repo', '')}")
-    else:
-        print("\nPromotion: not promoted")
 
     # Token accounting
     ta = data.get("token_accounting", {})

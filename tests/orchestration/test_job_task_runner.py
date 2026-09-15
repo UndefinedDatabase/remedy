@@ -838,10 +838,6 @@ class TestExistingFlowsPreserved:
         from packages.orchestration.pingpong_evidence import export_evidence
         assert callable(export_evidence)
 
-    def test_promotion_import_still_works(self):
-        from packages.orchestration.pingpong_promote import promote_run
-        assert callable(promote_run)
-
 
 # ---------------------------------------------------------------------------
 # Persistence round-trip

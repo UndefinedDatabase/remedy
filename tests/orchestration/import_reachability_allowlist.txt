@@ -179,7 +179,6 @@ packages.orchestration.permissions
 packages.orchestration.pingpong_evidence
 packages.orchestration.pingpong_job
 packages.orchestration.pingpong_loop
-packages.orchestration.pingpong_promote
 packages.orchestration.pingpong_provider
 packages.orchestration.planner_models
 packages.orchestration.product_smoke

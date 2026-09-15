@@ -505,22 +505,6 @@ class TestConciseTextReport:
         assert "Reviewer:" in out
         assert "Status:" in out
 
-    def test_text_report_shows_promotion(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_promote import promote_run
-        from packages.orchestration.pingpong_provider import FakeProvider
-        p = FakeProvider()
-        demo = tmp_path / "repo"
-        demo.mkdir()
-        (demo / "README.md").write_text("# Test\n")
-        result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p, repair_rounds=2)
-        promote_run(result.run_id, target_repo=str(demo), approve=True)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
-        out = capsys.readouterr().out
-        assert "Promotion: promoted" in out
-
 
 # ---------------------------------------------------------------------------
 # Existing flows still work (smoke)
@@ -537,21 +521,6 @@ class TestExistingFlowsSmoke:
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p, repair_rounds=2)
         assert result.final_status == "staged_review_passed"
-
-    def test_promote_safety_still_works(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_promote import promote_run
-        from packages.orchestration.pingpong_provider import FakeProvider
-        p = FakeProvider()
-        demo = tmp_path / "repo"
-        demo.mkdir()
-        (demo / "README.md").write_text("# Test\n")
-        result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p, repair_rounds=2)
-        dr = promote_run(result.run_id, target_repo=str(demo), dry_run=True)
-        assert dr.status == "dry_run"
-        ap = promote_run(result.run_id, target_repo=str(demo), approve=True)
-        assert ap.status == "promoted"
 
     def test_json_still_parseable(self, tmp_path, monkeypatch):
         _, data = _make_run(tmp_path, monkeypatch)

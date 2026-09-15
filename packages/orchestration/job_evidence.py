@@ -2584,10 +2584,7 @@ def _write_task_run_evidence(
                           f"Run data not found for {task.run_id}")
         return
 
-    from packages.orchestration.pingpong_promote import load_promotion
-    promotion_data = load_promotion(task.run_id)
-
-    bundle = build_evidence_bundle(run_data, promotion_data)
+    bundle = build_evidence_bundle(run_data)
 
     # Include prompt traces from persisted run dir
     from packages.orchestration.data_paths import run_dir
