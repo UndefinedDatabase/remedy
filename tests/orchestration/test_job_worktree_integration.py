@@ -1,6 +1,6 @@
 """F006 primary path — the REAL planned-job runner must use a job-owned worktree.
 
-Drives the actual `parse_job_file()` → `run_job()` path (and the real CLI job-run
+Drives the actual `parse_job_file()` → `run_job()` path (and the real CLI job run
 entry point) against a temporary git repository with fake providers. A git job that
 produces ``isolation_mode = copy`` is a failure, not a fallback.
 

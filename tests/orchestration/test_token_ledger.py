@@ -2167,7 +2167,7 @@ class TestQuerySegmentShares:
 # Operator order amend0828-daily-driver, point 2 — cost truth on the JOB RUNNER
 #
 # The 2026-08-25 dogfooding finding in T2_F103: two real claude-cli calls with
-# measured usage ran under `remedy do job-run`, and `remedy stats cost` then
+# measured usage ran under `remedy job run`, and `remedy stats cost` then
 # reported "0 ledger(s) read". The scope was right and the report was honest —
 # the ledger simply did not exist, because the live mirror is armed only from
 # `export_job_evidence` and the job runner never reached it.
@@ -2254,7 +2254,7 @@ class TestCostTruthOnTheJobRunPath:
         project = register_project_repo("cost-truth", str(live_job_repo))
         job = _run_measured_job(live_job_repo)
 
-        # This is the ONE call `remedy do job-run` now makes. Nothing else here
+        # This is the ONE call `remedy job run` now makes. Nothing else here
         # arms the ledger, and no ledger_* argument is passed by hand.
         mirror = mirror_job_run_into_ledger(job.job_id)
         assert mirror["ledger_mirrored"] is True, mirror["error"]
@@ -2335,7 +2335,7 @@ class TestCostTruthOnTheJobRunPath:
     def test_mirroring_twice_adds_no_second_row(
         self, live_data_root, live_job_repo,
     ):
-        """`do job-run` then `job evidence` must not double-count the money."""
+        """`job run` then `job evidence` must not double-count the money."""
         from packages.orchestration.job_evidence import mirror_job_run_into_ledger
         from packages.orchestration.project_registry import register_project_repo
 
@@ -2364,7 +2364,7 @@ class TestJobRunActuallyCallsTheMirror:
     """A working seam nobody calls is the original defect in another dress.
 
     The finding was never that the mirror could not record — `job evidence`
-    already proved it could. It was that `remedy do job-run` did not reach it.
+    already proved it could. It was that `remedy job run` did not reach it.
     So the wiring is asserted on the COMMAND, not only on the function.
     """
 
@@ -2388,10 +2388,10 @@ class TestJobRunActuallyCallsTheMirror:
 
         monkeypatch.setattr(job_evidence, "mirror_job_run_into_ledger", _record)
 
-        do_cmd._cmd_do_job_run("jid-under-test")
+        do_cmd._cmd_job_run("jid-under-test")
 
         assert seen == ["jid-under-test"], (
-            "remedy do job-run did not mirror its own run into the ledger: "
+            "remedy job run did not mirror its own run into the ledger: "
             "stats cost would still be empty after a real run"
         )
 
@@ -2412,7 +2412,7 @@ class TestJobRunActuallyCallsTheMirror:
                             "error": "boom"},
         )
 
-        do_cmd._cmd_do_job_run("jid-under-test")
+        do_cmd._cmd_job_run("jid-under-test")
 
         err = capsys.readouterr().err
         assert "Cost NOT recorded to the ledger" in err

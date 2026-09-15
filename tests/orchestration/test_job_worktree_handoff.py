@@ -472,11 +472,11 @@ class TestJobPlanResumeCli:
         # A fake-provider run through the REAL CLI command: `fake` is Remedy's
         # built-in fake provider, so no provider call leaves the process.
         # max-tasks is an F012 material control and travels in RunInvocation,
-        # not as a bare kwarg (do_cmd._cmd_do_job_run docstring).
+        # not as a bare kwarg (do_cmd._cmd_job_run docstring).
         from apps.cli.commands.run_invocation import RunInvocation
-        do_cmd._cmd_do_job_run(job.job_id, builder="fake", reviewer="fake",
-                               max_rounds=1, json_output=True,
-                               invocation=RunInvocation(max_tasks=1))
+        do_cmd._cmd_job_run(job.job_id, builder="fake", reviewer="fake",
+                            max_rounds=1, json_output=True,
+                            invocation=RunInvocation(max_tasks=1))
         capsys.readouterr()
 
         do_cmd._cmd_do_job_resume(job.job_id, builder="fake", reviewer="fake",

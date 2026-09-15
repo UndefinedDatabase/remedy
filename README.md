@@ -166,13 +166,13 @@ hook them to yet. Caps are config defaults labeled with an honest
 default basis until a calibration feature replaces them with measured
 ones).
 
-F114 cost preview per command (`remedy job run` — the one command wired to
+F114 cost preview per command (`remedy job resume` — the one command wired to
 it so far — prints an upfront cost-band estimate with its basis before an
 expensive run starts and requires confirmation above a configured
 threshold in attended mode; `--yes` and `--unattended` both skip the
 prompt with an audited line, and a non-tty pipe with neither flag exits
 with the estimate and the `--yes` hint rather than hanging. Real cost
-bands for `job.run` are not calibrated yet, so its own estimate reads
+bands for `job.resume` are not calibrated yet, so its own estimate reads
 `ESTIMATE_UNAVAILABLE` today — still confirmed, never silently skipped).
 
 Accepted in Tier 5 so far:

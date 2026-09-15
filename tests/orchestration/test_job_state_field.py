@@ -141,14 +141,14 @@ class TestTheRenameLeftNoSilentReaderBehind:
         """F018: raw budget flags must not silently override a stopped job's
         limits. With the retired read the test was ``"" == "stopped"``, so the
         refusal never fired and the job re-ran under the new limits."""
-        from apps.cli.commands.do_cmd import _cmd_do_job_run
+        from apps.cli.commands.do_cmd import _cmd_job_run
         from packages.orchestration.pingpong_job import save_job_plan
 
         self._isolated_data_root(tmp_path, monkeypatch)
         save_job_plan(JobPlan(job_id="0123456789abcdef", state="stopped"))
 
         with pytest.raises(SystemExit) as exc:
-            _cmd_do_job_run("0123456789abcdef", max_cost_usd="5.0")
+            _cmd_job_run("0123456789abcdef", max_cost_usd="5.0")
 
         assert exc.value.code == 2
         assert "budget limits cannot be changed" in capsys.readouterr().err

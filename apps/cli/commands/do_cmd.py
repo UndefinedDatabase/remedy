@@ -704,8 +704,8 @@ def pingpong_effective_model(provider_name: str) -> str:
     told which model answered them; printing this at startup is what makes that
     visible.
 
-    Remedy deliberately does NOT add a model option to this path. `remedy do
-    job-run` is the path that carries `--builder-model` and `--reviewer-model`;
+    Remedy deliberately does NOT add a model option to this path. `remedy job
+    run` is the path that carries `--builder-model` and `--reviewer-model`;
     this function only reports, and adding an option here is recorded as an
     operator finding rather than built.
 
@@ -843,7 +843,7 @@ def _cmd_do_pingpong(
             can actually answer, not to weaken the id rule.
 
             So the BUDGET GUARD is consulted directly, and it is the only
-            safe-point authority a job-less run has. `remedy do job-run`,
+            safe-point authority a job-less run has. `remedy job run`,
             which does mint a job id, keeps the full unified check.
 
             No budget tick is emitted for the same reason: a tick is written to
@@ -1355,7 +1355,7 @@ def _cmd_do_job_plan(
                 {"task_id": t.task_id, "title": t.title, "status": t.status}
                 for t in job.tasks
             ],
-            "next_command": f"remedy do job-run {job.job_id}",
+            "next_command": f"remedy job run {job.job_id}",
         }, indent=2))
     else:
         print(f"Job planned: {job.job_id}")
@@ -1365,10 +1365,10 @@ def _cmd_do_job_plan(
             print(f"  {t.task_id}: {t.title}")
         if budgets is not None:
             print(f"Budgets: {job.budgets}")
-        print(f"\nNext: remedy do job-run {job.job_id}")
+        print(f"\nNext: remedy job run {job.job_id}")
 
 
-def _cmd_do_job_run(
+def _cmd_job_run(
     job_id: str,
     *,
     builder: str | None = None,
@@ -3120,7 +3120,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         deadline=getattr(args, "deadline", None),
         json_output=getattr(args, "json", False),
     ),
-    "do.job-run": lambda args: _cmd_do_job_run(
+    "job.run": lambda args: _cmd_job_run(
         args.job_id,
         builder=getattr(args, "builder", None),
         reviewer=getattr(args, "reviewer", None),

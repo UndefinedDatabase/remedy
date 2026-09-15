@@ -68,7 +68,7 @@ class TestBudgetResolutionProjectRoot:
 
 
 class TestJobPlanBudgetPath:
-    """Finding #3: do job-plan and job-run accept budget keyword args."""
+    """Finding #3: do job-plan and job run accept budget keyword args."""
 
     def test_job_plan_accepts_budget_kwargs(self):
         """Call _cmd_do_job_plan with budget kwargs — must not raise TypeError."""
@@ -86,10 +86,10 @@ class TestJobPlanBudgetPath:
         assert exc_info.value.code == 1
 
     def test_job_run_accepts_budget_kwargs(self):
-        """Call _cmd_do_job_run with budget kwargs — must not raise TypeError on signature."""
-        from apps.cli.commands.do_cmd import _cmd_do_job_run
+        """Call _cmd_job_run with budget kwargs — must not raise TypeError on signature."""
+        from apps.cli.commands.do_cmd import _cmd_job_run
 
-        _cmd_do_job_run(
+        _cmd_job_run(
             job_id="nonexistent_deadbeef",
             max_total_tokens="50000",
             max_provider_calls=None,

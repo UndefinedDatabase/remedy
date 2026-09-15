@@ -117,7 +117,7 @@ def _resolve_job_ledger_project_id(job: Any) -> str | None:
 def mirror_job_run_into_ledger(job_id: str) -> dict[str, Any]:
     """Export a finished job's evidence so its cost reaches the F103 token ledger.
 
-    THIS IS THE JOB RUNNER'S COST-TRUTH SEAM. `remedy do job-run` used to complete
+    THIS IS THE JOB RUNNER'S COST-TRUTH SEAM. `remedy job run` used to complete
     a job, write ``jobs/<id>/job.json`` and its run log, and touch no ledger
     at all, so `remedy stats cost` reported "No ledger on disk for this scope"
     after a run that had spent real money. The mirror is armed in exactly one

@@ -368,7 +368,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=False,
-        related=("do.job-run", "do.job-report"),
+        related=("job.run", "do.job-report"),
     ),
     CommandEntry(
         command_id="job.budget",
@@ -2153,7 +2153,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Attest a manual operator repair as a valid evidence path for one task.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-report", "do.job-run"),
+        related=("do.job-report", "job.run"),
         args=(
             ArgDef("job_id", "Job ID owning the task"),
             ArgDef("task_id", "Task ID (e.g. T001) being attested"),
@@ -2232,7 +2232,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Parse a job file into ordered tasks (no provider calls).",
         action_class="read_only",
         supports_json=True,
-        related=("do.job-run", "do.job-report"),
+        related=("job.run", "do.job-report"),
         args=(
             ArgDef("--job-file", "Path to Markdown job file", required=True, is_option=True),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
@@ -2247,9 +2247,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=False,
     ),
     CommandEntry(
-        command_id="do.job-run",
-        group_id="do",
-        subcommand="job-run",
+        command_id="job.run",
+        group_id="job",
+        subcommand="run",
         description="Run pending job tasks sequentially through Builder/Reviewer/Repair.",
         action_class="write_metadata",
         supports_json=True,
@@ -2499,7 +2499,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Resume an interrupted job (16-char JobPlan ID) in its job-owned worktree.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-run", "do.job-report"),
+        related=("job.run", "do.job-report"),
         args=(
             ArgDef("job_id", "JobPlan ID (16-character hex)"),
             ArgDef("--builder", "Builder provider name", required=False, is_option=True),
@@ -2525,7 +2525,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Show a job report with task statuses and run IDs.",
         action_class="read_only",
         supports_json=True,
-        related=("do.job-plan", "do.job-run"),
+        related=("do.job-plan", "job.run"),
         args=(
             ArgDef("job_id", "Job ID"),
             _JSON_OPT,
@@ -2541,7 +2541,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Export a self-contained evidence bundle for an entire job.",
         action_class="test_execution",
         supports_json=True,
-        related=("do.job-plan", "do.job-run", "do.job-report"),
+        related=("do.job-plan", "job.run", "do.job-report"),
         args=(
             ArgDef("job_id", "Job ID"),
             ArgDef("--out", "Output directory for bundle files", required=False, is_option=True, default=""),
@@ -2558,7 +2558,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Review and apply job workspace changes to target repo. Dry-run by default; --approve applies.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-plan", "do.job-run", "job.evidence"),
+        related=("do.job-plan", "job.run", "job.evidence"),
         args=(
             ArgDef("job_id", "Job ID"),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
@@ -2578,7 +2578,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Run the full safe job workflow (plan, run, report, evidence, promote dry-run). Stops at the dry-run, exports evidence, and never changes the target repo; an explicit `job apply --approve` is required to apply.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-plan", "do.job-run", "do.job-report", "job.evidence", "job.apply"),
+        related=("do.job-plan", "job.run", "do.job-report", "job.evidence", "job.apply"),
         args=(
             ArgDef("--job-file", "Path to Markdown job file", required=True, is_option=True),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),

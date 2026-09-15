@@ -189,7 +189,7 @@ class TestTeachNarrateIsReadOnly:
 
 
 class TestTeachReachesTaskJobs:
-    """The teacher can explain a `remedy do job-run` job.
+    """The teacher can explain a `remedy job run` job.
 
     Operator dogfooding on 2026-08-25: `remedy teach narrate edbbc42bba4c4b00`
     answered "no job matches prefix" while that job's run log sat on disk. A job

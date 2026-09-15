@@ -82,7 +82,7 @@ references a specific command template that constrains what the worker can do.
 | `do "<goal>" --repo <path>` | Create and start a job | Yes | No* |
 | `job status <id> --json` | Show job state | No | No |
 | `job report <id> --json` | Read job progress report | No | No |
-| `do job-run <id> --json` | Run pending tasks through Builder/Reviewer/Repair | Yes | Yes |
+| `job run <id> --json` | Run pending tasks through Builder/Reviewer/Repair | Yes | Yes |
 | `ui <id>` | Open interactive UI | No | No |
 | `review run <id> --json` | Reviewer recommendations | No | No |
 | `config list/show/get` | View config | No | No |

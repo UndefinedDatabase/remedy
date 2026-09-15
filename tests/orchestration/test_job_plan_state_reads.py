@@ -14,7 +14,7 @@ this file:
 
 * ``apps/cli/commands/do_cmd.py`` refused budget flags on a STOPPED job. With
   the dead read the comparison was ``"" == "stopped"``, so the refusal never
-  fired and ``remedy do job-run --max-cost-usd`` silently re-ran a stopped job
+  fired and ``remedy job run --max-cost-usd`` silently re-ran a stopped job
   under new limits — the exact override F018 put that guard there to prevent.
 * ``packages/orchestration/job_evidence.py``'s ``_linked_job_summary`` reported
   ``status: "unknown"`` for every linked job, including jobs that loaded

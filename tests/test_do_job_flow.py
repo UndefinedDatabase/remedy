@@ -2218,7 +2218,7 @@ class TestRoleOverrideHandlerWiring:
         return ns
 
     def _job_run_ns(self, **overrides):
-        ns = build_parser().parse_args(["do", "job-run", "job-id"])
+        ns = build_parser().parse_args(["job", "run", "job-id"])
         for k, v in overrides.items():
             setattr(ns, k, v)
         return ns
@@ -2232,7 +2232,7 @@ class TestRoleOverrideHandlerWiring:
     def test_job_run_rejects_invalid_role_provider(self) -> None:
         ns = self._job_run_ns(reviewer_provider="bogus")
         with pytest.raises(SystemExit) as exc:
-            COMMAND_HANDLERS["do.job-run"](ns)
+            COMMAND_HANDLERS["job.run"](ns)
         assert exc.value.code == 2
 
 
@@ -2287,12 +2287,12 @@ class TestRoleOverridePassthroughE2E:
 # T003: CLI per-role flag registration (argparse layer)
 #
 # Verifies that --builder/reviewer/repair-provider|model|effort flags are
-# reachable from the CLI for both do.job-run and do.job-flow commands.
+# reachable from the CLI for both job.run and do.job-flow commands.
 # ---------------------------------------------------------------------------
 
 
 class TestCliRoleFlags:
-    """Verify the 9 per-role CLI flags parse correctly for job-flow and job-run."""
+    """Verify the 9 per-role CLI flags parse correctly for job-flow and job run."""
 
     def _parse(self, argv: list[str]):
         return build_parser().parse_args(argv)
@@ -2362,67 +2362,67 @@ class TestCliRoleFlags:
         ])
         assert ns.repair_effort == "max"
 
-    # --- do.job-run: all 9 flags parse to correct attributes -----------------
+    # --- job.run: all 9 flags parse to correct attributes --------------------
 
     def test_job_run_builder_provider(self) -> None:
         ns = self._parse([
-            "do", "job-run", "job-id-123",
+            "job", "run", "job-id-123",
             "--builder-provider", "claude-cli",
         ])
         assert ns.builder_provider == "claude-cli"
 
     def test_job_run_builder_model(self) -> None:
         ns = self._parse([
-            "do", "job-run", "job-id-123",
+            "job", "run", "job-id-123",
             "--builder-model", "claude-opus-4-20250514",
         ])
         assert ns.builder_model == "claude-opus-4-20250514"
 
     def test_job_run_builder_effort(self) -> None:
         ns = self._parse([
-            "do", "job-run", "job-id-123",
+            "job", "run", "job-id-123",
             "--builder-effort", "medium",
         ])
         assert ns.builder_effort == "medium"
 
     def test_job_run_reviewer_provider(self) -> None:
         ns = self._parse([
-            "do", "job-run", "job-id-123",
+            "job", "run", "job-id-123",
             "--reviewer-provider", "fixture",
         ])
         assert ns.reviewer_provider == "fixture"
 
     def test_job_run_reviewer_model(self) -> None:
         ns = self._parse([
-            "do", "job-run", "job-id-123",
+            "job", "run", "job-id-123",
             "--reviewer-model", "gpt-4o",
         ])
         assert ns.reviewer_model == "gpt-4o"
 
     def test_job_run_reviewer_effort(self) -> None:
         ns = self._parse([
-            "do", "job-run", "job-id-123",
+            "job", "run", "job-id-123",
             "--reviewer-effort", "high",
         ])
         assert ns.reviewer_effort == "high"
 
     def test_job_run_repair_provider(self) -> None:
         ns = self._parse([
-            "do", "job-run", "job-id-123",
+            "job", "run", "job-id-123",
             "--repair-provider", "ollama",
         ])
         assert ns.repair_provider == "ollama"
 
     def test_job_run_repair_model(self) -> None:
         ns = self._parse([
-            "do", "job-run", "job-id-123",
+            "job", "run", "job-id-123",
             "--repair-model", "codellama",
         ])
         assert ns.repair_model == "codellama"
 
     def test_job_run_repair_effort(self) -> None:
         ns = self._parse([
-            "do", "job-run", "job-id-123",
+            "job", "run", "job-id-123",
             "--repair-effort", "low",
         ])
         assert ns.repair_effort == "low"
@@ -2439,7 +2439,7 @@ class TestCliRoleFlags:
             assert getattr(ns, attr) is None, f"{attr} should default to None"
 
     def test_job_run_defaults_none(self) -> None:
-        ns = self._parse(["do", "job-run", "job-id-123"])
+        ns = self._parse(["job", "run", "job-id-123"])
         for attr in (
             "builder_provider", "builder_model", "builder_effort",
             "reviewer_provider", "reviewer_model", "reviewer_effort",
@@ -2483,14 +2483,14 @@ class TestCliRoleFlags:
     # --- Catalog registration: both commands list all 9 role flags -----------
 
     def test_job_run_catalog_has_role_flags(self) -> None:
-        cmd = get_command("do.job-run")
+        cmd = get_command("job.run")
         arg_names = {a.name for a in cmd.args}
         for flag in (
             "--builder-provider", "--builder-model", "--builder-effort",
             "--reviewer-provider", "--reviewer-model", "--reviewer-effort",
             "--repair-provider", "--repair-model", "--repair-effort",
         ):
-            assert flag in arg_names, f"do.job-run missing {flag}"
+            assert flag in arg_names, f"job.run missing {flag}"
 
     def test_job_flow_catalog_has_role_flags(self) -> None:
         cmd = get_command("do.job-flow")

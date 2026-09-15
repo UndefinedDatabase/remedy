@@ -106,10 +106,10 @@ class TestCatalogExpensive:
             f"F114 T003 marks exactly the one expensive command; found {marked}"
         )
 
-    def test_job_run_is_expensive(self) -> None:
+    def test_job_resume_is_expensive(self) -> None:
         assert get_command("job.resume").is_expensive is True
 
-    def test_job_run_has_a_yes_flag_to_skip_the_cost_confirmation(self) -> None:
+    def test_job_resume_has_a_yes_flag_to_skip_the_cost_confirmation(self) -> None:
         args = get_command("job.resume").args
         yes_args = [a for a in args if a.name == "--yes"]
         assert len(yes_args) == 1, "job.resume must declare exactly one --yes arg"
@@ -273,6 +273,7 @@ class TestRenamedCommands:
     RENAMED = (
         ("do.job-evidence", "job.evidence"),
         ("do.job-promote", "job.apply"),
+        ("do.job-run", "job.run"),
     )
 
     def test_no_old_id_is_left_in_the_catalog(self) -> None:
