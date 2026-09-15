@@ -288,7 +288,7 @@ class TestSections:
         shown = _show(capsys, str(job.job_id), "--full")
 
         registered = [name for name, _builder in job_commands._SHOW_SECTIONS]
-        assert "permissions" in registered
+        assert registered == ["permissions", "assumptions"]
         assert list(json.loads(shown.out)["sections"]) == registered
         assert registered == [name for name in job_commands._SHOW_SECTION_ORDER if name in registered]
         assert job_commands._SHOW_SECTION_ORDER == (

@@ -241,11 +241,33 @@ def _permissions_section(job: JobPlan) -> tuple[dict, list[str]]:
     return {"rows": rows}, lines
 
 
+def _assumptions_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job assumptions` command: the assumption log (F034), and its evidence copy.
+
+    Rendered from the job's own flight plan, so it tells the truth even for a job
+    approved before the evidence file was written. The evidence copy is reported
+    only when it already exists: the view reads it, and writes nothing.
+    """
+    from packages.orchestration.data_paths import job_evidence_export_dir
+    from packages.orchestration.flight_plan import render_assumptions_md
+
+    fp = getattr(job, "flight_plan", None)
+    clarifications = fp.get("clarifications_resolved") if isinstance(fp, dict) else None
+    markdown = render_assumptions_md(clarifications)
+    lines = [markdown]
+    log_path = job_evidence_export_dir(str(job.job_id)) / "assumptions.md"
+    evidence_copy = str(log_path) if log_path.exists() else None
+    if evidence_copy is not None:
+        lines.append(f"Evidence copy: {evidence_copy}")
+    return {"markdown": markdown, "evidence_copy": evidence_copy}, lines
+
+
 #: The sections that exist so far, as (name, builder) pairs in `_SHOW_SECTION_ORDER`
 #: order. A builder returns the section's JSON data and its text lines. Folding a
 #: former read command into `job show --full` adds exactly one entry here.
 _SHOW_SECTIONS: tuple[tuple[str, Callable[[JobPlan], tuple[dict, list[str]]]], ...] = (
     ("permissions", _permissions_section),
+    ("assumptions", _assumptions_section),
 )
 
 
@@ -1143,32 +1165,6 @@ def _cmd_job_resume(
         yes=yes,
         json_output=json_output,
     )
-
-
-def _cmd_job_assumptions(job_id_str: str) -> None:
-    """Print the job's assumption log (F034).
-
-    Rendered from the job's own flight plan, so it tells the truth even
-    for a job approved before the evidence file was written. When the
-    evidence copy exists, its path is reported alongside.
-    """
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.data_paths import job_evidence_export_dir
-    from packages.orchestration.flight_plan import render_assumptions_md
-
-    fp = getattr(job, "flight_plan", None)
-    clarifications = fp.get("clarifications_resolved") if isinstance(fp, dict) else None
-    print(render_assumptions_md(clarifications))
-
-    log_path = job_evidence_export_dir(str(job.job_id)) / "assumptions.md"
-    if log_path.exists():
-        print(f"Evidence copy: {log_path}")
 
 
 def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
@@ -2438,7 +2434,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False),
     ),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
-    "job.assumptions": lambda args: _cmd_job_assumptions(args.job_id),
     "job.summary": lambda args: _cmd_job_summary(
         args.job_id,
         json_output=getattr(args, "json", False),

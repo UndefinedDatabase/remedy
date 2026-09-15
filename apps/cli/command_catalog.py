@@ -269,7 +269,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
-                   "and the job's sections (its permissions)",
+                   "and the job's sections (its permissions and assumptions)",
                    required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
@@ -391,16 +391,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(_JOB_ID,),
         related=("job.create", "job.resume"),
-    ),
-
-    CommandEntry(
-        command_id="job.assumptions",
-        group_id="job",
-        subcommand="assumptions",
-        description="Print the job's assumption log (clarification answers and their sources).",
-        action_class="read_only",
-        args=(_JOB_ID,),
-        related=("decision.resolve",),
     ),
 
     CommandEntry(
