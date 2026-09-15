@@ -269,8 +269,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
-                   "and the job's sections (its permissions, fences, assumptions and "
-                   "Definition of Done)",
+                   "and the job's sections (its permissions, fences, assumptions, "
+                   "completion digest and Definition of Done)",
                    required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
@@ -436,20 +436,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("job.status", "job.summary"),
-    ),
-
-    # F040 T003: the CLI's little sibling of the completion digest HTTP route
-    # — same two calls (`resolve_job_id`/`load_job` then `load_run_events`),
-    # same `build_job_digest` envelope, so the two surfaces can never disagree.
-    CommandEntry(
-        command_id="job.digest",
-        group_id="job",
-        subcommand="digest",
-        description="Print the job's completion digest (state, cost, decisions, primary action).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("job.report", "job.summary"),
     ),
 
     CommandEntry(

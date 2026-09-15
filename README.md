@@ -224,7 +224,7 @@ not a gate).
 F040 completion/return digest (a hero card condensing state, cost with its
 basis, open decisions and one recommended action into a single glance, shown
 at job end or on the first UI open after an absence; the same envelope is
-served to `remedy job digest <id>` so the CLI and the route can never
+served to `remedy job show <id> --full` so the CLI and the route can never
 disagree; a dismissal persists per job and new activity re-arms it).
 
 F258 self-use track v2 (the queue now replenishes itself: a generator appends

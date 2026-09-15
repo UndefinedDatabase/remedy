@@ -1,14 +1,16 @@
-"""F040 T003 — `remedy job digest <id>` is the CLI's own view of the
-completion digest, the HTTP route's little sibling.
+"""F040 T003 — the `digest` section of `remedy job show <id> --full`, formerly the
+`job digest` command, is the CLI's own view of the completion digest, the HTTP
+route's little sibling.
 
 The property this file exists to defend: the CLI and the route can never
 print a different envelope for the same job, because both reach it through
 the SAME two calls (`resolve_job_id`/`load_job` then `load_run_events`) and
 the SAME `build_job_digest` composition. Each test below carries its own
-discriminator, matching the four mutations this round's guard is red-proved
-against: (a) bare mode leaking JSON, (b) the JSON envelope gaining an extra
-wrapping key, (c) the not-found message losing its `--json`/bare split, and
-(d) short-id-prefix resolution being skipped.
+discriminator, matching the mutations the guard was red-proved against:
+(a) the section's text leaking JSON, (b) the JSON envelope gaining an extra
+wrapping key, and (d) short-id-prefix resolution being skipped. Mutation (c),
+the not-found message losing its `--json`/bare split, left with the command:
+an unknown id is `job show`'s own error, tested with `job show`.
 """
 
 from __future__ import annotations
@@ -19,8 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from apps.cli.command_catalog import CATALOG, get_command
-from apps.cli.commands.job import _cmd_job_digest
+from apps.cli.grouped import main
 from packages.core.models import RunState
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.job_digest import build_job_digest
@@ -59,19 +60,28 @@ def saved_job(*, state: RunState = RunState.COMPLETED,
     return job
 
 
+def show_digest(capsys, job_id: str) -> tuple[dict, str]:
+    """`job show <id> --full`: the digest section's envelope, and its text on stderr up to the next heading."""
+    main(["job", "show", job_id, "--full"])
+    shown = capsys.readouterr()
+    text = shown.err.split("--- Digest ---\n", 1)[1].split("\n--- ", 1)[0]
+    return json.loads(shown.out)["sections"]["digest"], text
+
+
 class TestJsonModeMatchesTheEnvelopeExactly:
     """The exact-equality assertion that catches mutations (a) and (b) both:
-    (a) would leak JSON in bare mode, not the JSON body itself, but (a)'s
-    real failure surfaces via TestBareModeIsNotJson below; here the
-    discriminator is that the printed payload must be BYTE-FOR-BYTE the same
+    (a) would leak JSON into the section's text, not the JSON body itself, but
+    (a)'s real failure surfaces via TestBareModeIsNotJson below; here the
+    discriminator is that the section's data must be BYTE-FOR-BYTE the same
     dict `build_job_digest` returns for this job — an extra wrapping key
     (mutation b) breaks the `==` immediately.
     """
 
     def test_the_json_payload_equals_build_job_digest_independently_computed(self, capsys):
         job = saved_job()
-        _cmd_job_digest(str(job.job_id), json_output=True)
-        payload = json.loads(capsys.readouterr().out)
+        section, _text = show_digest(capsys, str(job.job_id))
+        assert section["ok"] is True
+        payload = section["data"]
 
         expected = build_job_digest(
             job, load_run_events(resolve_data_root(), job.job_id))
@@ -81,61 +91,31 @@ class TestJsonModeMatchesTheEnvelopeExactly:
         """Direct discriminator for mutation (b): a `{'digest': ...}` wrapper
         would still be valid JSON but would not equal the digest dict itself."""
         job = saved_job()
-        _cmd_job_digest(str(job.job_id), json_output=True)
-        payload = json.loads(capsys.readouterr().out)
+        section, _text = show_digest(capsys, str(job.job_id))
+        payload = section["data"]
         assert "digest" not in payload
         assert set(payload.keys()) == set(
             build_job_digest(job, load_run_events(resolve_data_root(), job.job_id)).keys())
 
 
 class TestBareModeIsNotJson:
-    """Direct discriminator for mutation (a): `if True:` would make bare
-    mode also emit the JSON envelope, which parses cleanly as JSON — the
-    opposite of what this test wants."""
+    """Direct discriminator for mutation (a): text lines that were the JSON
+    envelope would parse cleanly as JSON — the opposite of what this test
+    wants."""
 
     def test_bare_output_does_not_parse_as_json(self, capsys):
         job = saved_job()
-        _cmd_job_digest(str(job.job_id))
-        out = capsys.readouterr().out
+        _section, out = show_digest(capsys, str(job.job_id))
         with pytest.raises(json.JSONDecodeError):
             json.loads(out)
 
     def test_bare_output_names_the_job_id_and_the_digest_state(self, capsys):
         job = saved_job()
-        _cmd_job_digest(str(job.job_id))
-        out = capsys.readouterr().out
+        _section, out = show_digest(capsys, str(job.job_id))
         expected = build_job_digest(
             job, load_run_events(resolve_data_root(), job.job_id))
         assert str(job.job_id) in out
         assert expected["state"] in out
-
-
-class TestUnknownJobId:
-    """Direct discriminator for mutation (c): deleting the `if
-    json_output:`/`else:` split would make the plain-text stderr line print
-    even under `--json`, so bare-mode's stderr message would leak into the
-    `--json` invocation's stdout-only contract."""
-
-    UNKNOWN = "ffffffff-ffff-4fff-8fff-ffffffffffff"
-
-    def test_bare_mode_exits_1_with_a_clean_stderr_message(self, capsys):
-        with pytest.raises(SystemExit) as exc:
-            _cmd_job_digest(self.UNKNOWN)
-        assert exc.value.code == 1
-        captured = capsys.readouterr()
-        assert captured.err.strip() == f"Error: job not found: {self.UNKNOWN}"
-        assert "Traceback" not in captured.err
-        assert captured.out == ""
-
-    def test_json_mode_exits_1_with_a_json_payload_on_stdout(self, capsys):
-        with pytest.raises(SystemExit) as exc:
-            _cmd_job_digest(self.UNKNOWN, json_output=True)
-        assert exc.value.code == 1
-        captured = capsys.readouterr()
-        assert captured.err == ""
-        payload = json.loads(captured.out)
-        assert payload["error"] == "job_not_found"
-        assert payload["job_id"] == self.UNKNOWN
 
 
 class TestShortIdPrefixResolves:
@@ -145,22 +125,9 @@ class TestShortIdPrefixResolves:
 
     def test_an_eight_character_prefix_matches_the_full_id_digest(self, capsys):
         job = saved_job()
-        _cmd_job_digest(str(job.job_id), json_output=True)
-        full_payload = json.loads(capsys.readouterr().out)
+        full_section, _text = show_digest(capsys, str(job.job_id))
+        assert full_section["ok"] is True
 
-        _cmd_job_digest(str(job.job_id)[:8], json_output=True)
-        prefix_payload = json.loads(capsys.readouterr().out)
+        prefix_section, _text = show_digest(capsys, str(job.job_id)[:8])
 
-        assert prefix_payload == full_payload
-
-
-class TestCatalogRegistration:
-
-    def test_the_catalog_registers_job_digest_exactly_once(self):
-        matches = [e for e in CATALOG if e.command_id == "job.digest"]
-        assert len(matches) == 1, matches
-
-    def test_the_command_declares_job_id_and_json_args(self):
-        names = [a.name for a in get_command("job.digest").args]
-        assert "job_id" in names
-        assert "--json" in names
+        assert prefix_section == full_section
