@@ -320,6 +320,10 @@ class TestDeletedCommands:
         "job.report",
         "job.status",
         "job.summary",
+        "orchestrator.decide",
+        "orchestrator.idea",
+        "orchestrator.inspect",
+        "orchestrator.report",
     )
 
     def test_no_deleted_id_is_left_in_the_catalog(self) -> None:

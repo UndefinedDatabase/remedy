@@ -136,7 +136,6 @@ GROUPS: dict[str, GroupDef] = {
     "guide": GroupDef("guide", "Guide", "Human guidance rail — next safe actions.", user_facing=False),
     "repair": GroupDef("repair", "Repair", "Test failure repair.", user_facing=False),
     "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
-    "orchestrator": GroupDef("orchestrator", "Orchestrator", "Orchestrator brain — evidence-backed decisions.", user_facing=False),
     "token": GroupDef("token", "Token", "Token economy and cost budgets.", user_facing=False),
     "context-pack": GroupDef("context-pack", "Context Pack", "Context budget optimizer.", user_facing=False),
     "rollback": GroupDef("rollback", "Rollback", "Rollback proof.", user_facing=False),
@@ -2620,55 +2619,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
         related=("self.inspect", "self.plan"),
-    ),
-
-    # ── orchestrator (main brain — read/metadata-only) ────────────────────
-    CommandEntry(
-        command_id="orchestrator.inspect",
-        group_id="orchestrator",
-        subcommand="inspect",
-        description="Read-only: build the orchestrator situation (options/risks/loop guard/routing).",
-        action_class="read_only",
-        args=(ArgDef("--job-id", "Optional job to include", required=False, is_option=True), _JSON_OPT),
-        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
-        related=("orchestrator.decide", "orchestrator.report"),
-    ),
-    CommandEntry(
-        command_id="orchestrator.decide",
-        group_id="orchestrator",
-        subcommand="decide",
-        description="Decide the single safest next action (read/metadata-only decision trace).",
-        action_class="write_metadata",
-        args=(
-            ArgDef("--job-id", "Optional job to include", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
-        related=("orchestrator.inspect", "orchestrator.report"),
-    ),
-    CommandEntry(
-        command_id="orchestrator.report",
-        group_id="orchestrator",
-        subcommand="report",
-        description="Read-only: orchestrator report (situation, best next action, why-not, routing).",
-        action_class="read_only",
-        args=(
-            ArgDef("--job-id", "Optional job to include", required=False, is_option=True),
-            ArgDef("--markdown", "Render as markdown", required=False, is_option=True, default="false"),
-            _JSON_OPT,
-        ),
-        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
-        related=("orchestrator.inspect", "orchestrator.decide"),
-    ),
-    CommandEntry(
-        command_id="orchestrator.idea",
-        group_id="orchestrator",
-        subcommand="idea",
-        description="Metadata-only: capture a user idea as a safe, classified roadmap hint.",
-        action_class="write_metadata",
-        args=(ArgDef("text", "Idea text"), _JSON_OPT),
-        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
-        related=("orchestrator.inspect",),
     ),
 
     # ── review ───────────────────────────────────────────────────────────

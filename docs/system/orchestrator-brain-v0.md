@@ -2,16 +2,17 @@
 
 > **Status (roadmap):** Superseded/extended by the Orchestrator Loop in the roadmap
 > (F070, `docs/roadmap/features/T3_F070.md`). On conflict the roadmap wins.
+>
+> **Status (2026-09-15):** the `orchestrator` command group and the engine this page
+> describes were deleted by F261 round 14 (DECISION F261 D13); only
+> `list_decisions`, which the cockpit's orchestrator section reads, remains in
+> `packages/orchestration/orchestrator_brain.py`. The page is kept as the record of
+> the idea its heirs inherit.
 
 The orchestrator reads the current project/job/system state from **safe summaries**,
 builds a Situation, generates deterministic Options, scores them, guards against
 repeated failed loops, defines a **model routing plan** (never a model call), and
 selects exactly **one** structured next-step Decision with rationale.
-
-    remedy orchestrator inspect [--job-id <id>]   # read-only situation
-    remedy orchestrator decide  [--job-id <id>]   # one decision (metadata-only trace)
-    remedy orchestrator report  [--job-id <id>] [--markdown]
-    remedy orchestrator idea "<text>"             # capture a roadmap hint
 
 ## Core principle
 

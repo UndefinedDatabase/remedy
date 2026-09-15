@@ -30,7 +30,6 @@ apps.cli.commands.job_stop_cmd
 apps.cli.commands.loop_cmd
 apps.cli.commands.memory
 apps.cli.commands.mission_cmd
-apps.cli.commands.orchestrator_cmd
 apps.cli.commands.patch
 apps.cli.commands.policy
 apps.cli.commands.project
