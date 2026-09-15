@@ -335,6 +335,54 @@ def _assumptions_section(job: JobPlan) -> tuple[dict, list[str]]:
     return {"markdown": markdown, "evidence_copy": evidence_copy}, lines
 
 
+def _dod_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job dod` command: the Definition-of-Done matrix, live (F061 T004).
+
+    Strictly READ-ONLY: it shows the last recorded gate run and never runs a check
+    itself. A job with no DoD says so plainly rather than printing an empty table,
+    because an empty matrix reads like "nothing failed".
+    """
+    from packages.orchestration.dod_gate import MATRIX_HEADER, load_dod, load_gate_result, matrix_rows
+
+    jid = str(job.job_id)
+    dod = load_dod(jid)
+    recorded = load_gate_result(jid)
+    data = {
+        "job_id": jid,
+        "compiled": None if dod is None else dod.compiled,
+        "origin": None if dod is None else dod.origin,
+        "check_count": 0 if dod is None else len(dod.checks),
+        "gate": recorded,
+    }
+    if dod is None:
+        return data, [f"Job {jid}: no Definition of Done has been compiled."]
+
+    label = "compiled" if dod.compiled else "deterministic (compiled=false)"
+    lines = [f"Definition of Done for job {jid} — {label}, "
+             f"{len(dod.checks)} check(s), {len(dod.blocking_checks)} blocking", ""]
+    if recorded is None:
+        lines.append("The gate has not run yet — no check has produced evidence.")
+        lines.extend(f"  {check.id:<24} {check.kind:<14} "
+                     f"{'blocking' if check.blocking else 'reported'}  not run" for check in dod.checks)
+        return data, lines
+
+    rows = matrix_rows(recorded)
+    widths = [max(len(MATRIX_HEADER[i]), *(len(r[i]) for r in rows)) for i in range(len(MATRIX_HEADER))]
+    lines.append("  ".join(h.ljust(widths[i]) for i, h in enumerate(MATRIX_HEADER)))
+    lines.append("  ".join("-" * w for w in widths))
+    lines.extend("  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)) for row in rows)
+    lines.append("")
+    if recorded.get("released"):
+        lines.append("Gate: RELEASED — every blocking check is green.")
+    else:
+        blocking = ", ".join(recorded.get("blocking_red") or []) or "unnamed"
+        lines.append(f"Gate: HOLDING — blocking check(s) red: {blocking}")
+    reported = recorded.get("reported_red") or []
+    if reported:
+        lines.append(f"Non-blocking reds (reported, not gating): {', '.join(reported)}")
+    return data, lines
+
+
 #: The sections that exist so far, as (name, builder) pairs in `_SHOW_SECTION_ORDER`
 #: order. A builder returns the section's JSON data and its text lines. Folding a
 #: former read command into `job show --full` adds exactly one entry here.
@@ -342,6 +390,7 @@ _SHOW_SECTIONS: tuple[tuple[str, Callable[[JobPlan], tuple[dict, list[str]]]], .
     ("permissions", _permissions_section),
     ("fences", _fences_section),
     ("assumptions", _assumptions_section),
+    ("dod", _dod_section),
 )
 
 
@@ -2004,81 +2053,6 @@ def _cmd_job_digest(job_id_str: str, *, json_output: bool = False) -> None:
     print(f'  Next:      {digest["primary_action"]["label"]}')
 
 
-def _cmd_job_dod(job_id_str: str, *, json_output: bool = False) -> None:
-    """`remedy job dod <id>` — the Definition-of-Done matrix, live (F061 T004).
-
-    Strictly READ-ONLY: it prints the last recorded gate run and never runs a
-    check itself. A job with no DoD says so plainly rather than printing an
-    empty table, because an empty matrix reads like "nothing failed".
-    """
-    import json as _json
-
-    from packages.orchestration.dod_gate import (
-        MATRIX_HEADER,
-        load_dod,
-        load_gate_result,
-        matrix_rows,
-    )
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        require_job_plan(job_id)
-    except JobNotFoundError:
-        if json_output:
-            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
-        else:
-            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
-        sys.exit(1)
-
-    jid = str(job_id)
-    dod = load_dod(jid)
-    recorded = load_gate_result(jid)
-
-    if json_output:
-        print(_json.dumps({
-            'job_id': jid,
-            'compiled': None if dod is None else dod.compiled,
-            'origin': None if dod is None else dod.origin,
-            'check_count': 0 if dod is None else len(dod.checks),
-            'gate': recorded,
-        }, indent=2, sort_keys=True))
-        return
-
-    if dod is None:
-        print(f'Job {jid}: no Definition of Done has been compiled.')
-        return
-
-    label = 'compiled' if dod.compiled else 'deterministic (compiled=false)'
-    print(f'Definition of Done for job {jid} — {label}, '
-          f'{len(dod.checks)} check(s), {len(dod.blocking_checks)} blocking')
-    print()
-
-    if recorded is None:
-        print('The gate has not run yet — no check has produced evidence.')
-        for check in dod.checks:
-            print(f'  {check.id:<24} {check.kind:<14} '
-                  f'{"blocking" if check.blocking else "reported"}  not run')
-        return
-
-    rows = matrix_rows(recorded)
-    widths = [max(len(MATRIX_HEADER[i]), *(len(r[i]) for r in rows))
-              for i in range(len(MATRIX_HEADER))]
-    print('  '.join(h.ljust(widths[i]) for i, h in enumerate(MATRIX_HEADER)))
-    print('  '.join('-' * w for w in widths))
-    for row in rows:
-        print('  '.join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
-    print()
-
-    if recorded.get('released'):
-        print('Gate: RELEASED — every blocking check is green.')
-    else:
-        blocking = ', '.join(recorded.get('blocking_red') or []) or 'unnamed'
-        print(f'Gate: HOLDING — blocking check(s) red: {blocking}')
-    reported = recorded.get('reported_red') or []
-    if reported:
-        print(f'Non-blocking reds (reported, not gating): {", ".join(reported)}')
-
-
 def _cmd_job_fulfill(
     job_id_str: str,
     *,
@@ -2478,10 +2452,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "job.digest": lambda args: _cmd_job_digest(args.job_id,
         json_output=getattr(args, "json", False)),
-    "job.dod": lambda args: _cmd_job_dod(
-        args.job_id,
-        json_output=getattr(args, "json", False),
-    ),
     "job.fulfill": lambda args: _cmd_job_fulfill(
         args.job_id,
         fixture_demo=getattr(args, "fixture_demo", False),

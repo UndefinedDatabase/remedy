@@ -389,7 +389,7 @@ class TestEndToEnd:
 
 
 # ---------------------------------------------------------------------------
-# `remedy job dod <id>`
+# The `dod` section of `remedy job show <id> --full` (formerly its own command)
 # ---------------------------------------------------------------------------
 
 class TestJobDodCommand:
@@ -400,34 +400,37 @@ class TestJobDodCommand:
         save_job_plan(job, root=tmp_path)
         return job
 
-    def _run(self, job_id: str, *, json_output: bool = False) -> str:
-        import contextlib
-        import io
+    def _show(self, capsys, job_id: str):
+        """`job show <id> --full`: the dod section's envelope, and its text (the last section) on stderr."""
+        from apps.cli.grouped import main
 
-        from apps.cli.commands.job import _cmd_job_dod
+        main(["job", "show", job_id, "--full"])
+        shown = capsys.readouterr()
+        return json.loads(shown.out)["sections"]["dod"], shown.err.split("--- Dod ---\n", 1)[1]
 
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            _cmd_job_dod(job_id, json_output=json_output)
-        return buf.getvalue()
+    def _text(self, capsys, job_id: str) -> str:
+        return self._show(capsys, job_id)[1]
 
-    def test_a_job_with_no_dod_says_so(self, tmp_path, monkeypatch):
+    def test_a_job_with_no_dod_says_so(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
-        assert "no Definition of Done" in self._run(str(job.job_id))
+        section, text = self._show(capsys, str(job.job_id))
+        assert "no Definition of Done" in text
+        assert section == {"ok": True, "data": {
+            "job_id": str(job.job_id), "compiled": None, "origin": None, "check_count": 0, "gate": None}}
 
     def test_a_compiled_dod_that_has_not_run_lists_the_checks(
-            self, tmp_path, monkeypatch):
+            self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
         store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_OK)))
 
-        out = self._run(str(job.job_id))
+        out = self._text(capsys, str(job.job_id))
         assert "compiled, 1 check(s), 1 blocking" in out
         assert "The gate has not run yet" in out
         assert "smoke" in out
 
-    def test_the_matrix_is_shown_after_the_gate_ran(self, tmp_path, monkeypatch):
+    def test_the_matrix_is_shown_after_the_gate_ran(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
         store_dod(str(job.job_id), dod_of(
@@ -435,44 +438,46 @@ class TestJobDodCommand:
             cmd_check("soft", EXIT_BAD, blocking=False)))
         run_job_gate(str(job.job_id), tmp_path)
 
-        out = self._run(str(job.job_id))
+        out = self._text(capsys, str(job.job_id))
         for column in MATRIX_HEADER:
             assert column in out
         assert "Gate: HOLDING — blocking check(s) red: smoke" in out
         assert "Non-blocking reds (reported, not gating): soft" in out
 
-    def test_a_released_gate_reads_as_released(self, tmp_path, monkeypatch):
+    def test_a_released_gate_reads_as_released(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
         store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_OK)))
         run_job_gate(str(job.job_id), tmp_path)
 
-        assert "Gate: RELEASED" in self._run(str(job.job_id))
+        assert "Gate: RELEASED" in self._text(capsys, str(job.job_id))
 
-    def test_json_output_carries_the_gate_record(self, tmp_path, monkeypatch):
+    def test_json_output_carries_the_gate_record(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
         store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_OK)))
         run_job_gate(str(job.job_id), tmp_path)
 
-        payload = json.loads(self._run(str(job.job_id), json_output=True))
+        section, _text = self._show(capsys, str(job.job_id))
+        payload = section["data"]
+        assert section["ok"] is True
         assert payload["compiled"] is True
         assert payload["check_count"] == 1
         assert payload["gate"]["released"] is True
         assert payload["gate"]["checks"][0]["check_id"] == "smoke"
 
-    def test_an_unknown_job_exits_cleanly(self, tmp_path, monkeypatch):
+    def test_an_unknown_job_exits_cleanly(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         with pytest.raises(SystemExit) as exc:
-            self._run("99999999-9999-4999-8999-999999999999")
+            self._show(capsys, "99999999-9999-4999-8999-999999999999")
         assert exc.value.code == 1
 
-    def test_the_command_is_read_only_and_runs_nothing(self, tmp_path, monkeypatch):
+    def test_the_command_is_read_only_and_runs_nothing(self, tmp_path, monkeypatch, capsys):
         """It shows the LAST gate run; it never starts a check of its own."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = self._job(tmp_path)
         store_dod(str(job.job_id), dod_of(cmd_check("smoke", EXIT_OK)))
 
-        self._run(str(job.job_id))
+        self._show(capsys, str(job.job_id))
         assert load_gate_result(str(job.job_id)) is None, (
             "the CLI must not have run the gate")

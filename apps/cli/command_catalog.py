@@ -269,7 +269,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
-                   "and the job's sections (its permissions, fences and assumptions)",
+                   "and the job's sections (its permissions, fences, assumptions and "
+                   "Definition of Done)",
                    required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
@@ -461,17 +462,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID, _TASK_OPT, _JSON_OPT),
         supports_json=True,
         related=("job.show",),
-    ),
-
-    CommandEntry(
-        command_id="job.dod",
-        group_id="job",
-        subcommand="dod",
-        description="Show the Definition-of-Done check matrix for a job (F061).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("job.report", "job.status"),
     ),
 
     CommandEntry(
