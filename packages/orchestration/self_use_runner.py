@@ -17,9 +17,9 @@ Public API::
         -> tuple[SelfUseQueueEntry, Path, JobPlan]
 
 Deliberate absences:
-  * REMEDY DELIBERATELY DOES NOT PROMOTE THE RUN'S RESULT. Promotion stays
+  * REMEDY DELIBERATELY DOES NOT APPLY THE RUN'S RESULT. Applying stays
     behind the ``--approve`` barrier in
-    :mod:`packages.orchestration.job_apply`, which never auto-promotes;
+    :mod:`packages.orchestration.job_apply`, which never applies by itself;
     this module calls :func:`~packages.orchestration.pingpong_job.run_job`
     and nothing past it — the same stopping point
     :mod:`packages.orchestration.self_use_job`'s own docstring already names
@@ -110,7 +110,7 @@ def run_next_self_use_item(
     Answers ``(entry, job_file_path, result)`` — the queue entry that was
     run, the job file :func:`plan_next_self_use_item` rendered it to, and
     the ``JobPlan`` :func:`run_job` returns (``JOB_COMPLETED`` or
-    ``JOB_BLOCKED``, never promoted). The returned ``JobPlan``'s
+    ``JOB_BLOCKED``, never applied). The returned ``JobPlan``'s
     ``execution_config`` states which provider actually ran.
 
     Raises:

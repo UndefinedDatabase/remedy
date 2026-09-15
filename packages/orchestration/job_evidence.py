@@ -1,6 +1,6 @@
 """Job evidence bundle — exports a self-contained, redacted proof bundle for an entire job.
 
-Read-only: never calls providers, never mutates target repo, never auto-promotes,
+Read-only: never calls providers, never mutates target repo, never applies changes by itself,
 never reruns tasks, never mutates persisted job state.
 
 Reuses single-run evidence redaction from pingpong_evidence. Does not duplicate

@@ -739,7 +739,7 @@ def _token_cost_policy_findings(base: Path) -> dict[str, Any]:
 
 
 def _final_job_review_check(base: Path) -> dict[str, Any]:
-    """Read the final job-level review; unresolved findings block promotion."""
+    """Read the final job-level review; unresolved findings block applying."""
     data = _read_json(base / "final_job_review.json")
     if not isinstance(data, dict):
         return {"present": False, "verdict": "", "findings": [], "blocked": False}

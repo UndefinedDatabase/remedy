@@ -1438,7 +1438,7 @@ _RUNTIME_BOUND_RUN_REQUIRED = frozenset({"run_id", "command", "exit_code", "pass
 _RUNTIME_BOUND_RUN_OPTIONAL = frozenset({"deselected", "duration_seconds"})
 _RUNTIME_CHECK_TYPES = frozenset({"call_exists", "test_execution_binding"})
 #: The FV's OWN commit-readiness view (distinct from the packaged commit gate's verdict); a
-#: pre-acceptance package must never claim it is auto-promotable.
+#: pre-acceptance package must never claim it may be applied automatically.
 _FV_COMMIT_NOT_READY = frozenset({"BLOCKED", "NEEDS_HUMAN_APPROVAL", "NEEDS_APPROVAL",
                                   "NEEDS_REPAIR", "NEEDS_TESTS"})
 
@@ -1938,7 +1938,7 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
                 problems.append(f"{name} embedded {emb}={ev!r} != packaged "
                                 f"{verdicts[gate_file]!r}")
         # F2: the FV's commit-readiness view (distinct name/meaning from the packaged gate verdict)
-        # must not claim an auto-promotable state for a pre-acceptance package.
+        # must not claim an automatically applicable state for a pre-acceptance package.
         ce = gate.get("commit_execution_gate")
         if ce not in _FV_COMMIT_NOT_READY:
             problems.append(f"{name} commit_execution_gate={ce!r} is not a pre-acceptance "

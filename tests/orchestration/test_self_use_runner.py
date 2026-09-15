@@ -82,7 +82,7 @@ def _write_queue(tmp_path: Path, items: list[dict]) -> Path:
 
 
 class TestRunNextSelfUseItem:
-    """Planning happens once, running happens once, promotion never happens."""
+    """Planning happens once, running happens once, applying never happens."""
 
     def test_it_runs_the_planned_item_to_completion(self, tmp_path, isolate_data_root, demo_repo):
         queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])

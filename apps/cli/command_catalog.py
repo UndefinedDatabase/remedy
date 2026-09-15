@@ -98,7 +98,7 @@ class CommandEntry:
 
 GROUPS: dict[str, GroupDef] = {
     # -- Golden path (pinned first in help) --
-    "do": GroupDef("do", "Do", "Run, report, and promote Remedy tasks."),
+    "do": GroupDef("do", "Do", "Run, report, and apply Remedy tasks."),
     "status": GroupDef("status", "Status", "Project status overview."),
     "decision": GroupDef("decision", "Decision", "Human decision queue."),
     # -- User-facing primary commands --

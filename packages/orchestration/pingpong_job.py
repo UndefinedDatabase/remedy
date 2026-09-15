@@ -108,14 +108,14 @@ _UNSAFE_DIRS = frozenset({
 
 @dataclass
 class AppliedFileProof:
-    """Per-file baseline and final hash proof for promotion safety."""
+    """Per-file baseline and final hash proof for apply safety."""
     path: str = ""
     existed_before_job: bool = False
     baseline_sha256: str = ""
     final_workspace_sha256: str = ""
     task_id: str = ""
     run_id: str = ""
-    # F006: the reviewed git file mode. Promotion must reproduce the whole
+    # F006: the reviewed git file mode. An apply must reproduce the whole
     # reviewed change, executable bit included — never just the bytes.
     baseline_mode: str = ""      # "" when the file did not exist before the job
     final_mode: str = ""         # "100644" | "100755"
@@ -1609,7 +1609,7 @@ def _verify_in_place_apply(
 
         manifest.applied_files.append(rel_path)
         existed_before, baseline_hash = job_baselines[rel_path]
-        # The reviewed change includes the git file mode. A promotion that copies
+        # The reviewed change includes the git file mode. An apply that copies
         # only the bytes would silently drop a chmod, so the mode is proven here.
         baseline_mode = (
             W.mode_at(handle, initial_tree, rel_path) if initial_tree else ""

@@ -324,11 +324,11 @@ class TestStrictWorkspaceApply:
 
 
 # ---------------------------------------------------------------------------
-# Step 4836 — Reuse promotion safety
+# Step 4836 — Reuse apply safety
 # ---------------------------------------------------------------------------
 
 
-class TestPromotionSafetyReuse:
+class TestApplySafetyReuse:
     def test_traversal_blocked(self):
         assert "path_traversal" in _is_unsafe_path("../escape.txt")
 

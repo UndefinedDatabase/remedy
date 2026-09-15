@@ -970,7 +970,7 @@ def test_cost_policy_integration(tmp_path: Path) -> None:
 
 
 def test_cost_policy_critical_blocks(tmp_path: Path) -> None:
-    """A 'critical' severity cost-risk finding blocks promotion."""
+    """A 'critical' severity cost-risk finding blocks applying."""
     _seed_pass_task(tmp_path)
     (tmp_path / "token_cost_policy.json").write_text(json.dumps({
         "cost_risk_findings": [
@@ -986,7 +986,7 @@ def test_cost_policy_critical_blocks(tmp_path: Path) -> None:
 
 
 def test_final_review_integration_blocks(tmp_path: Path) -> None:
-    """Final job review with unresolved findings blocks promotion."""
+    """Final job review with unresolved findings blocks applying."""
     _seed_pass_task(tmp_path)
     (tmp_path / "final_job_review.json").write_text(json.dumps({
         "verdict": "NEEDS_REPAIR",

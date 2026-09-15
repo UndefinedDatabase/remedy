@@ -51,7 +51,7 @@ class TestFinalVerifierReproducible:
         ("verdict", "PASS"),
         ("manual_completion", False),
         ("operator_attested_tasks", ["T001", "T999"]),
-        ("commit_execution_gate", "PROMOTE_READY"),
+        ("commit_execution_gate", "APPLY_READY"),
         ("recommended_action", "Approve, no human review needed"),
         ("human_final_reviewer_required", False),
     ])
