@@ -249,7 +249,6 @@ class TestRequiredCommands:
 
     REQUIRED = (
         "job.create", "job.list", "job.show", "job.attach-repo", "job.permit",
-        "job.permissions",
         "project.create", "project.list", "project.show", "project.attach-repo",
         "project.attach-job", "project.context",
         "patch.list", "patch.show", "patch.approve", "patch.reject", "patch.apply",
@@ -304,6 +303,7 @@ class TestDeletedCommands:
         "do.job-plan",
         "do.plan",
         "do.promote",
+        "job.permissions",
     )
 
     def test_no_deleted_id_is_left_in_the_catalog(self) -> None:

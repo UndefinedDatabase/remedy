@@ -618,7 +618,7 @@ def _detail_blocker(
 
     next_actions = [
         f"remedy job permit {job_id_str} {capability} allow",
-        f"remedy job permissions {job_id_str}",
+        f"remedy job show {job_id_str} --full",
     ]
 
     evidence = [

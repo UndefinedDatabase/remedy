@@ -4,9 +4,9 @@ CLI-level tests for permission-related commands in apps/cli/main.py.
 Tests cover:
   - set-permission: reserved capability notice printed to stdout
   - set-permission: no notice for active capabilities
-  - show-permissions: displays all four capabilities
-  - show-permissions: all capabilities labeled [active] or [reserved]
-  - show-permissions: effective allow/deny is reflected correctly
+  - the permissions section of `job show --full`: displays all four capabilities
+  - the permissions section: all capabilities labeled [active] or [reserved]
+  - the permissions section: effective allow/deny is reflected correctly
   - workspace_write denial: exits non-zero before builder call, no state mutation
   - patch intent errors: recorded in metadata, warning emitted, no file written
 
@@ -89,89 +89,93 @@ class TestSetPermissionReservedNotice:
 
 
 # ---------------------------------------------------------------------------
-# show-permissions
+# the permissions section of `job show --full` (the `job permissions` command
+# until F261 T002 folded it in)
 # ---------------------------------------------------------------------------
+
+
+def _permissions_section(job, capsys) -> tuple[dict, str]:
+    """Run `job show <id> --full`; return the section's rows by capability and its text."""
+    import json
+
+    from apps.cli.commands.job import _cmd_show_job
+
+    _cmd_show_job(str(job.job_id), full=True)
+    captured = capsys.readouterr()
+    section = json.loads(captured.out)["sections"]["permissions"]
+    assert section["ok"] is True
+    _, header, text = captured.err.partition("--- Permissions ---\n")
+    assert header, "the permissions section printed no text"
+    return {row["capability"]: row for row in section["data"]["rows"]}, text
 
 
 class TestShowPermissions:
     def test_shows_all_four_capabilities(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.job_id))
-        out = capsys.readouterr().out
-        assert "workspace_write" in out
-        assert "repo_generated_write" in out
-        assert "repo_overwrite" in out
-        assert "shell_exec" in out
+        rows, text = _permissions_section(job, capsys)
+        for capability in ("workspace_write", "repo_generated_write", "repo_overwrite", "shell_exec"):
+            assert capability in rows
+            assert capability in text
 
     def test_reserved_capabilities_are_labeled(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.job_id))
-        out = capsys.readouterr().out
-        assert "[reserved]" in out
+        rows, text = _permissions_section(job, capsys)
+        assert "[reserved]" in text
+        assert any(row["status"] == "reserved" for row in rows.values())
 
     def test_active_capabilities_are_labeled(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.job_id))
-        out = capsys.readouterr().out
-        assert "[active]" in out
+        rows, text = _permissions_section(job, capsys)
+        assert "[active]" in text
+        assert any(row["status"] == "active" for row in rows.values())
 
     def test_workspace_write_line_has_active_label(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.job_id))
-        out = capsys.readouterr().out
-        lines = [l for l in out.splitlines() if "workspace_write" in l]
-        assert any("[active]" in l for l in lines)
+        rows, text = _permissions_section(job, capsys)
+        lines = [line for line in text.splitlines() if "workspace_write" in line]
+        assert any("[active]" in line for line in lines)
+        assert rows["workspace_write"]["status"] == "active"
 
     def test_repo_overwrite_line_has_reserved_label(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.job_id))
-        out = capsys.readouterr().out
-        lines = [l for l in out.splitlines() if "repo_overwrite" in l]
-        assert any("[reserved]" in l for l in lines)
+        rows, text = _permissions_section(job, capsys)
+        lines = [line for line in text.splitlines() if "repo_overwrite" in line]
+        assert any("[reserved]" in line for line in lines)
+        assert rows["repo_overwrite"]["status"] == "reserved"
 
     def test_default_workspace_write_shows_allow(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.commands.job import _cmd_show_permissions
 
-        _cmd_show_permissions(str(job.job_id))
-        out = capsys.readouterr().out
+        rows, text = _permissions_section(job, capsys)
         # workspace_write is allowed by default
-        lines = [l for l in out.splitlines() if "workspace_write" in l]
-        assert any("allow" in l for l in lines)
+        lines = [line for line in text.splitlines() if "workspace_write" in line]
+        assert any("allow" in line for line in lines)
+        assert rows["workspace_write"]["effective"] == "allow"
 
     def test_explicit_allow_reflected(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
         set_permission(job, Capability.repo_generated_write, allow=True)
         save_job_plan(job)
 
-        from apps.cli.commands.job import _cmd_show_permissions
-
-        _cmd_show_permissions(str(job.job_id))
-        out = capsys.readouterr().out
-        lines = [l for l in out.splitlines() if "repo_generated_write" in l]
-        assert any("allow" in l for l in lines)
+        rows, text = _permissions_section(job, capsys)
+        lines = [line for line in text.splitlines() if "repo_generated_write" in line]
+        assert any("allow" in line for line in lines)
+        assert rows["repo_generated_write"]["effective"] == "allow"
 
     def test_explicit_deny_reflected(self, tmp_path, monkeypatch, capsys):
         job = _make_and_save_job(tmp_path, monkeypatch)
         set_permission(job, Capability.workspace_write, allow=False)
         save_job_plan(job)
 
-        from apps.cli.commands.job import _cmd_show_permissions
-
-        _cmd_show_permissions(str(job.job_id))
-        out = capsys.readouterr().out
-        lines = [l for l in out.splitlines() if "workspace_write" in l]
-        assert any("deny" in l for l in lines)
+        rows, text = _permissions_section(job, capsys)
+        lines = [line for line in text.splitlines() if "workspace_write" in line]
+        assert any("deny" in line for line in lines)
+        assert rows["workspace_write"]["effective"] == "deny"
 
 
 # ---------------------------------------------------------------------------

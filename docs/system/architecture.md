@@ -381,8 +381,9 @@ unconditional after the guard passes (the check cannot be reached again).
 Permissions are stored in `job.metadata["permissions"]` as `{"capability": "allow"|"deny"}`.
 Missing keys fall back to `_DEFAULTS`. Explicit `"deny"` overrides a default allow.
 
-**`show-permissions` CLI command (Steps 9.5/9.6):** `remedy job permissions <job_id>`
-displays all capabilities, their effective allow/deny state, and a status label. Every
+**Permissions view (Steps 9.5/9.6):** the `permissions` section of
+`remedy job show <job_id> --full` (a command of its own until F261 T002) displays all
+capabilities, their effective allow/deny state, and a status label. Every
 capability is labeled `[active]` (enforced at runtime) or `[reserved]` (configurable but
 not yet enforced). The symmetric labeling makes capability status unambiguous at a glance.
 

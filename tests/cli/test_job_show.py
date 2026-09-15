@@ -10,6 +10,10 @@ of its run's last round, ten by default and all of them with ``--full``. The
 findings tests write every job and run record by hand under a temporary data root;
 one end-to-end test blocks a task through the real fake-provider runner on a
 temporary git repository, as the acceptance line asks.
+
+Round 8 (DECISION amend0905-vocab D4): `job show --full` carries the job's read
+views as `sections`, in D4's order, each in an ok/error envelope; the former
+`job permissions` command is the first of them.
 """
 from __future__ import annotations
 
@@ -18,6 +22,7 @@ import subprocess
 
 import pytest
 
+import apps.cli.commands.job as job_commands
 from apps.cli.grouped import build_parser, main
 from packages.core.models import RunState
 from packages.orchestration import data_paths
@@ -263,3 +268,49 @@ class TestTheDefaultOutputOnlyGainsTheFindingsKey:
         assert {key: data[key] for key in old} == old
         assert data["blocked_task_findings"] == []
         assert shown.err == ""
+
+
+def _plain_job() -> JobPlan:
+    job = JobPlan(job_title="sections", state=RunState.PENDING)
+    save_job_plan(job)
+    return job
+
+
+class TestSections:
+    def test_the_default_output_has_no_sections_key(self, data_root, capsys) -> None:
+        job = _plain_job()
+
+        assert "sections" not in json.loads(_show(capsys, str(job.job_id)).out)
+
+    def test_full_prints_the_registered_sections_in_the_d4_order(self, data_root, capsys) -> None:
+        job = _plain_job()
+
+        shown = _show(capsys, str(job.job_id), "--full")
+
+        registered = [name for name, _builder in job_commands._SHOW_SECTIONS]
+        assert "permissions" in registered
+        assert list(json.loads(shown.out)["sections"]) == registered
+        assert registered == [name for name in job_commands._SHOW_SECTION_ORDER if name in registered]
+        assert job_commands._SHOW_SECTION_ORDER == (
+            "permissions", "fences", "assumptions", "digest", "summary", "status", "report", "dod",
+        )
+
+    def test_a_raising_section_becomes_section_failed_and_the_command_exits_zero(
+            self, data_root, capsys, monkeypatch) -> None:
+        def explode(job):
+            raise RuntimeError("the section broke")
+
+        monkeypatch.setattr(job_commands, "_SHOW_SECTIONS", (("permissions", explode),))
+        job = _plain_job()
+
+        # `main` returning rather than raising SystemExit is the exit code 0.
+        shown = _show(capsys, str(job.job_id), "--full")
+
+        assert json.loads(shown.out)["sections"] == {
+            "permissions": {
+                "ok": False,
+                "error": {"code": "section_failed", "message": "RuntimeError: the section broke"},
+            },
+        }
+        assert "--- Permissions ---" in shown.err
+        assert "  Error: section_failed: RuntimeError: the section broke" in shown.err

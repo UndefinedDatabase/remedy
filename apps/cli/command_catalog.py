@@ -268,7 +268,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(
             _JOB_ID,
-            ArgDef("--full", "Print every finding of a blocked task instead of the first ten",
+            ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
+                   "and the job's sections (its permissions)",
                    required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
@@ -330,16 +331,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("action", "allow or deny"),
         ),
         requires_permission=True,
-        related=("job.permissions",),
-    ),
-    CommandEntry(
-        command_id="job.permissions",
-        group_id="job",
-        subcommand="permissions",
-        description="Show current permissions for a job.",
-        action_class="read_only",
-        args=(_JOB_ID,),
-        related=("job.permit",),
+        related=("job.show",),
     ),
     CommandEntry(
         command_id="job.rerun",

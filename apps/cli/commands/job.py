@@ -198,10 +198,15 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False) -> None:
     # R-0806: why a task blocked is readable here, without opening evidence JSON.
     # The key is appended, so every key the JSON carried before keeps its place.
     shown["blocked_task_findings"] = collect_blocked_task_findings(job, full=full)
+    section_text: list[str] = []
+    if full:
+        shown["sections"], section_text = _build_show_sections(job)
     print(json.dumps(shown, indent=2))
     if job.intake:
         _print_intake_block(job.intake)
     _print_blocked_task_findings(str(job.job_id), shown["blocked_task_findings"])
+    for line in section_text:
+        print(line, file=sys.stderr)
 
 
 def _print_blocked_task_findings(job_id: str, entries: list[dict]) -> None:
@@ -216,6 +221,54 @@ def _print_blocked_task_findings(job_id: str, entries: list[dict]) -> None:
         if entry["findings_omitted"]:
             print(f"  {entry['task_id']} \u2026 {entry['findings_omitted']} more "
                   f"(job show {job_id} --full)", file=sys.stderr)
+
+
+#: DECISION amend0905-vocab D4: the read views of a job are sections of
+#: `job show --full`, not commands, and they appear in this order.
+_SHOW_SECTION_ORDER = (
+    "permissions", "fences", "assumptions", "digest", "summary", "status", "report", "dod",
+)
+
+
+def _permissions_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job permissions` command: every capability's effective state."""
+    from packages.orchestration.permissions import effective_permissions
+
+    rows = effective_permissions(job)
+    lines = [f"Job {job.job_id} | permissions:"]
+    lines.extend(f"  {row['capability']:<24} {row['effective']:<6}  [{row['status']}]"
+                 for row in rows)
+    return {"rows": rows}, lines
+
+
+#: The sections that exist so far, as (name, builder) pairs in `_SHOW_SECTION_ORDER`
+#: order. A builder returns the section's JSON data and its text lines. Folding a
+#: former read command into `job show --full` adds exactly one entry here.
+_SHOW_SECTIONS: tuple[tuple[str, Callable[[JobPlan], tuple[dict, list[str]]]], ...] = (
+    ("permissions", _permissions_section),
+)
+
+
+def _build_show_sections(job: JobPlan) -> tuple[dict[str, dict], list[str]]:
+    """Every registered section in its envelope, and the text printed for them on stderr.
+
+    A section that raises becomes ``section_failed`` instead of failing the command:
+    one unreadable view never hides the others, and `job show --full` still exits 0.
+    """
+    sections: dict[str, dict] = {}
+    text: list[str] = []
+    for name, builder in _SHOW_SECTIONS:
+        text.append(f"\n--- {name.capitalize()} ---")
+        try:
+            data, lines = builder(job)
+        except Exception as exc:  # noqa: BLE001 — a read view never fails on one section
+            message = f"{type(exc).__name__}: {exc}"
+            sections[name] = {"ok": False, "error": {"code": "section_failed", "message": message}}
+            text.append(f"  Error: section_failed: {message}")
+            continue
+        sections[name] = {"ok": True, "data": data}
+        text.extend(lines)
+    return sections, text
 
 
 def _print_intake_block(intake: dict) -> None:
@@ -438,21 +491,6 @@ def _cmd_set_permission(job_id_str: str, action: str, capability_str: str) -> No
             f"note: {cap.value} is reserved and has no effect in this version "
             "(setting is persisted but not enforced at runtime)"
         )
-
-
-def _cmd_show_permissions(job_id_str: str) -> None:
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.permissions import effective_permissions
-    rows = effective_permissions(job)
-    print(f"Job {job.job_id} | permissions:")
-    for row in rows:
-        print(f"  {row['capability']:<24} {row['effective']:<6}  [{row['status']}]")
 
 
 def _cmd_run_next_task_local(job_id_str: str) -> None:
@@ -2395,7 +2433,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.show": lambda args: _cmd_show_job(args.job_id, full=getattr(args, "full", False)),
     "job.attach-repo": lambda args: _cmd_attach_repo(args.job_id, args.repo_path),
     "job.permit": lambda args: _cmd_set_permission(args.job_id, args.action, args.permission),
-    "job.permissions": lambda args: _cmd_show_permissions(args.job_id),
     "job.budget": lambda args: _cmd_job_budget(
         args.job_id,
         json_output=getattr(args, "json", False),
