@@ -127,7 +127,6 @@ GROUPS: dict[str, GroupDef] = {
     "context": GroupDef("context", "Context", "Context pack and coverage.", user_facing=False),
     "change": GroupDef("change", "Change", "Review change sets (proof chain view).", user_facing=False),
     "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False),
-    "repo": GroupDef("repo", "Repo", "Read-only repository inspection.", user_facing=False),
     "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False),
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons.", user_facing=False),
     "repair": GroupDef("repair", "Repair", "Test failure repair.", user_facing=False),
@@ -1554,35 +1553,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("brain.graph", "patch.show"),
-    ),
-
-    # ── repo ────────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="repo.status",
-        group_id="repo",
-        subcommand="status",
-        description="Show read-only git status of job's target repository.",
-        action_class="read_only",
-        args=(
-            ArgDef("job_id", "Job UUID (reads target_repo from job)", required=False, default=None),
-            ArgDef("--path", "Explicit path (dev override, default: job target_repo or cwd)", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("readiness.job",),
-    ),
-
-    CommandEntry(
-        command_id="repo.commit-readiness",
-        group_id="repo",
-        subcommand="commit-readiness",
-        description="Preview commit readiness — read-only, no git writes.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            _JSON_OPT,
-        ),
-        supports_json=True,
     ),
 
     # ── event ────────────────────────────────────────────────────────────

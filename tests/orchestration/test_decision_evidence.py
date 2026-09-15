@@ -1173,7 +1173,7 @@ def test_a_stop_reason_decision_without_a_triple_is_refused_by_the_gate():
 # `git_status_read` event actually takes.  The thin one is the metadata
 # `_fixture_repo_dirty` in `tests/orchestration/test_decision_inbox.py` writes —
 # `dirty` and nothing else — and the full one is what the only non-test emitter,
-# `apps/cli/commands/repo.py`, writes.  Pinning both is the point: `repo_dirty`
+# the `repo status` command F261 deleted, wrote.  Pinning both is the point: `repo_dirty`
 # is ENFORCED from this round, so an unguarded fingerprint ref would refuse the
 # card on the thin event and take the inbox's per-type parametrization with it.
 # ---------------------------------------------------------------------------
@@ -1234,7 +1234,7 @@ def test_the_thin_git_status_event_still_yields_a_valid_repo_dirty_card():
 
 
 def test_the_repo_dirty_card_cites_the_event_and_the_status_fingerprint():
-    """The full metadata `apps/cli/commands/repo.py` writes yields both refs."""
+    """The full metadata the deleted `repo status` command wrote yields both refs."""
     decision = _repo_dirty_decision(FULL_GIT_STATUS_METADATA)
 
     assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [

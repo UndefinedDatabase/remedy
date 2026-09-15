@@ -356,7 +356,6 @@ class TestRoutedHandler:
             pytest.param("memory", "_cmd_memory_candidates", (), id="memory-candidates"),
             pytest.param("memory", "_cmd_memory_approve_candidate", ("cand-1",), id="memory-approve"),
             pytest.param("memory", "_cmd_memory_reject_candidate", ("cand-1",), id="memory-reject"),
-            pytest.param("repo", "_cmd_commit_readiness", (), id="commit-readiness"),
         ],
     )
     def test_a_loading_handler_hands_load_job_the_id_a_short_prefix_resolves_to(

@@ -141,7 +141,7 @@ class TestDevStatusHonestySchema:
             required = {
                 "version", "cli_ok", "latest_smoke", "ui_contract_ok",
                 "task_progress_ok", "worker_cleanup_ok",
-                "autocoder_fake_e2e_ok", "commit_readiness_ok",
+                "autocoder_fake_e2e_ok",
                 "remaining_blockers",
             }
             missing = required - set(data.keys())
@@ -263,207 +263,11 @@ class TestNextActionGroundedInJobState:
 
 
 
-class TestCommitReadinessPreviewReadOnly:
-    """Commit readiness preview — read-only, no git writes."""
-
-    def test_catalog_entry_exists(self):
-        from apps.cli.command_catalog import CATALOG
-        cmd = next((c for c in CATALOG if c.command_id == "repo.commit-readiness"), None)
-        assert cmd is not None
-
-    def test_readiness_not_ready_no_tests(self):
-        """Missing tests -> not ready."""
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        job = JobPlan(job_title="readiness-test")
-        save_job_plan(job)
-
-        from apps.cli.commands.repo import _cmd_commit_readiness
-        with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.job_id), json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            assert data["version"] == 1
-            assert data["ready"] is False
-            assert any("tests" in r for r in data["reasons"])
-
-    def test_readiness_schema(self):
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        job = JobPlan(job_title="schema-test")
-        save_job_plan(job)
-
-        from apps.cli.commands.repo import _cmd_commit_readiness
-        with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.job_id), json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            required = {
-                "version", "job_id", "repo_path", "ready", "reasons",
-                "changed_files", "changed_files_truncated",
-                "tests_passed", "proof_present",
-                "revert_available", "suggested_commit_message",
-                "next_action",
-            }
-            missing = required - set(data.keys())
-            assert not missing, f"Missing: {missing}"
-
-    def test_readiness_no_proof(self):
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        job = JobPlan(job_title="no-proof")
-        save_job_plan(job)
-
-        from apps.cli.commands.repo import _cmd_commit_readiness
-        with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.job_id), json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            assert data["proof_present"] is False
-            assert any("proof" in r for r in data["reasons"])
-
-    def test_readiness_does_not_mutate_git(self):
-        """No subprocess git add/commit/push in repo.py (strings/comments OK)."""
-        content = Path("apps/cli/commands/repo.py").read_text()
-        assert "subprocess" not in content
-        for line in content.splitlines():
-            stripped = line.strip()
-            if stripped.startswith("#") or stripped.startswith(("'", '"', "print")):
-                continue
-            assert "git push" not in stripped
-
-    def test_readiness_no_shell_true(self):
-        content = Path("apps/cli/commands/repo.py").read_text()
-        for line in content.splitlines():
-            stripped = line.strip()
-            if stripped.startswith("#") or stripped.startswith('"""'):
-                continue
-            assert "shell=True" not in stripped
-
-    def test_suggested_message_safe(self):
-        """Suggested commit message should not contain raw content."""
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        job = JobPlan(job_title="msg-test")
-        save_job_plan(job)
-
-        from apps.cli.commands.repo import _cmd_commit_readiness
-        with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.job_id), json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            msg = data["suggested_commit_message"]
-            assert "remedy/" in msg
-            for bad in ("raw_output", "Traceback", "diff_preview"):
-                assert bad not in msg
-
-
-
-
-class TestDevStatusIncludesCommitReadiness:
-    """Dev status must include commit_readiness_ok."""
-
-    def test_schema_includes_commit_readiness(self):
-        from apps.cli.commands.dev import _dev_status
-        with patch("builtins.print") as mock_print:
-            _dev_status(json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            assert "commit_readiness_ok" in data
-
-    def test_no_smoke_returns_null(self):
-        from apps.cli.commands.dev import _dev_status
-        with patch("apps.cli.commands.dev._find_latest_smoke") as mock_smoke:
-            mock_smoke.return_value = {
-                "found": False, "status": "unknown",
-                "job_id": "", "project_id": "", "smoke_log": "",
-            }
-            with patch("builtins.print") as mock_print:
-                _dev_status(json_output=True)
-                data = json.loads(mock_print.call_args[0][0])
-                assert data["commit_readiness_ok"] is None
-
-    def test_exception_captured_safely(self):
-        """If commit-readiness crashes, dev status still works."""
-        from apps.cli.commands.dev import _dev_status
-        with patch("apps.cli.commands.dev._find_latest_smoke") as mock_smoke:
-            mock_smoke.return_value = {
-                "found": True, "status": "passed",
-                "job_id": str(uuid4()), "project_id": "", "smoke_log": "",
-            }
-            with patch("builtins.print") as mock_print:
-                _dev_status(json_output=True)
-                data = json.loads(mock_print.call_args[0][0])
-                # Job won't exist so commit_readiness should be False
-                assert data["commit_readiness_ok"] is False
-
-    def test_blocker_reported_when_not_ready(self):
-        from apps.cli.commands.dev import _dev_status
-        with patch("apps.cli.commands.dev._find_latest_smoke") as mock_smoke:
-            mock_smoke.return_value = {
-                "found": True, "status": "passed",
-                "job_id": str(uuid4()), "project_id": "", "smoke_log": "",
-            }
-            with patch("builtins.print") as mock_print:
-                _dev_status(json_output=True)
-                data = json.loads(mock_print.call_args[0][0])
-                if data["commit_readiness_ok"] is False:
-                    assert any("commit-readiness" in b for b in data["remaining_blockers"])
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 144 — Smoke Closure
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-
-
-class TestCommitReadinessNextActionSurface:
-    """Commit-readiness must include grounded next_action."""
-
-    def test_next_action_schema(self):
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        job = JobPlan(job_title="na-schema")
-        save_job_plan(job)
-
-        from apps.cli.commands.repo import _cmd_commit_readiness
-        with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.job_id), json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            na = data["next_action"]
-            for field in ("label", "command", "risk", "requires_human"):
-                assert field in na, f"next_action missing: {field}"
-
-    def test_missing_tests_action(self):
-        from apps.cli.commands.repo import _build_readiness_next_action
-        na = _build_readiness_next_action(
-            False, ["tests not passed after apply"], str(uuid4()), [],
-        )
-        assert "test" in na["label"].lower() or "test" in na["command"].lower()
-
-    def test_missing_proof_action(self):
-        from apps.cli.commands.repo import _build_readiness_next_action
-        na = _build_readiness_next_action(
-            False, ["no proof collected"], str(uuid4()), [],
-        )
-        assert "patch" in na["command"].lower()
-
-    def test_missing_revert_action(self):
-        from apps.cli.commands.repo import _build_readiness_next_action
-        na = _build_readiness_next_action(
-            False, ["no revert snapshot available"], str(uuid4()), [],
-        )
-        assert "revert" in na["label"].lower() or "patch" in na["command"].lower()
-
-    def test_ready_action(self):
-        from apps.cli.commands.repo import _build_readiness_next_action
-        na = _build_readiness_next_action(True, [], str(uuid4()), [])
-        assert na["requires_human"] is True
-        assert na["risk"] == "medium"
-
-    def test_no_raw_leaks_in_action(self):
-        from apps.cli.commands.repo import _build_readiness_next_action
-        na = _build_readiness_next_action(
-            False, ["tests not passed after apply"], str(uuid4()), [],
-        )
-        na_str = json.dumps(na)
-        for bad in ("raw_output", "command_output", "Traceback", "diff_preview"):
-            assert bad not in na_str
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -847,28 +651,6 @@ class TestGitStatusReader:
         assert status.is_git_repo is True
         assert status.is_clean is False
         assert "untracked.txt" in status.untracked_files
-
-    def test_export_json(self):
-        from packages.orchestration.git_status import (
-            export_git_status_json,
-            read_git_status,
-        )
-
-        status = read_git_status(".")
-        data = export_git_status_json(status)
-        assert data["version"] == 1
-        assert data["is_git_repo"] is True
-        assert isinstance(data["modified_files"], list)
-
-    def test_summarize(self):
-        from packages.orchestration.git_status import (
-            read_git_status,
-            summarize_git_status,
-        )
-
-        status = read_git_status(".")
-        text = summarize_git_status(status)
-        assert "Branch:" in text
 
     def test_no_shell_true(self):
         """Verify _run_git never uses shell=True."""

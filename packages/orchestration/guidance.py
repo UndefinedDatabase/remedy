@@ -136,24 +136,7 @@ def build_guidance_cards(
             related_node_type="task",
         ))
 
-    # 6. Git status
-    try:
-        from packages.orchestration.git_status import read_job_git_status
-        gs = read_job_git_status(job)
-        if gs and gs.get("dirty"):
-            cards.append(GuidanceCard(
-                id="git_status",
-                title="Working tree has changes",
-                severity="medium",
-                why_it_matters="Uncommitted changes may affect reproducibility.",
-                safe_next_action="Review repo status.",
-                command=f"remedy repo status {job_id}",
-                related_node_type="git_status",
-            ))
-    except (ImportError, Exception):
-        pass
-
-    # 7. Brain viewer
+    # 6. Brain viewer
     cards.append(GuidanceCard(
         id="viewer",
         title="Open brain viewer",

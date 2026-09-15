@@ -594,29 +594,6 @@ class TestSmokeScriptStructuralChecks:
 
 
 
-class TestSmokeCommitReadinessSection:
-    """Smoke script must include commit-readiness check."""
-
-    def test_smoke_has_commit_readiness(self):
-        content = Path("scripts/remedy_smoke.sh").read_text()
-        assert "commit-readiness" in content
-
-    def test_smoke_validates_commit_readiness_schema(self):
-        content = Path("scripts/remedy_smoke.sh").read_text()
-        assert "next_action" in content
-        assert "changed_files_truncated" in content
-
-    def test_smoke_checks_raw_leaks(self):
-        content = Path("scripts/remedy_smoke.sh").read_text()
-        # The commit-readiness section checks for raw leaks
-        assert "raw_output" in content
-        assert "command_output" in content
-
-    def test_smoke_shows_help_on_failure(self):
-        content = Path("scripts/remedy_smoke.sh").read_text()
-        assert "commit-readiness --help" in content
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 145 — Commit-Readiness Next Action Surface
 # ═══════════════════════════════════════════════════════════════════════════

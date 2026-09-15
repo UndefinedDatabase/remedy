@@ -1406,9 +1406,7 @@ def _detail_git_status(
         connected_to=tuple(connected),
         evidence=tuple(evidence),
         affected_files=(),
-        next_actions=(
-            f"remedy repo status {job_id_str} --json",
-        ),
+        next_actions=(),
         redaction_notes=("No file content or diff text is rendered.",),
     )
 

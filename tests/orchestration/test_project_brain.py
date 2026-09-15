@@ -7,9 +7,6 @@ from __future__ import annotations
 
 import ast
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -1420,29 +1417,6 @@ class TestGitStatusBrainNode:
         assert len(git_nodes) == 1
         assert git_nodes[0].metadata["is_git_repo"] is False
         assert git_nodes[0].status == "unavailable"
-
-    def test_job_aware_repo_status(self, tmp_path, monkeypatch):
-        """Job-aware repo status reads target_repo and emits run-log event."""
-        jobs_dir = tmp_path / "jobs"
-        jobs_dir.mkdir()
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-
-        from packages.orchestration.pingpong_job import save_job_plan
-
-        job = JobPlan(
-            job_id=mint_job_id(), job_title="repo-aware", user_prompt="test",
-            tasks=[TaskEntry(title="t", status=RunState.PENDING)],
-            metadata={"target_repo": "."},
-        )
-        save_job_plan(job)
-        env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
-        result = subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped", "repo", "status", str(job.job_id), "--json"],
-            capture_output=True, text=True, timeout=10, env=env,
-        )
-        assert result.returncode == 0
-        data = json.loads(result.stdout)
-        assert data["is_git_repo"] is True
 
 
 

@@ -1344,13 +1344,7 @@ class TestSmokeScriptText:
             "smoke must call remedy worker show"
         )
 
-    # --- Step 65: Repo status + git_status brain (steps 12x-12y) -------------
-
-    def test_smoke_has_repo_status(self):
-        text = _script_text()
-        assert "repo status" in text, (
-            "smoke must call remedy repo status"
-        )
+    # --- Step 65: git_status brain (step 12y) -------------------------------
 
     def test_smoke_brain_checks_git_status_node(self):
         text = _script_text()

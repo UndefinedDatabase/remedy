@@ -26,7 +26,6 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "fulfillment_proof_built": "The fulfillment proof was built.",
   "fulfillment_staged_apply": "Fulfillment applied its changes to the staging area.",
   "fulfillment_started": "Fulfillment started.",
-  "git_status_read": "The repository's git status was read.",
   "job_created": "The job was created.",
   "job_evidence_exported": "The job's evidence bundle was exported.",
   "job_flow_started": "The job flow started.",
