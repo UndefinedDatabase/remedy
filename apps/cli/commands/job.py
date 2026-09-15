@@ -183,10 +183,10 @@ def _scope_label(job: JobPlan, scope: ProjectScope, known_ids: set[str]) -> str:
     return ""
 
 
-def _cmd_show_job(job_id_str: str) -> None:
+def _cmd_show_job(job_id_str: str, *, full: bool = False) -> None:
     import json
 
-    from packages.orchestration.pingpong_job import _export_job
+    from packages.orchestration.pingpong_job import _export_job, collect_blocked_task_findings
 
     job_id = resolve_job_id(job_id_str)
     try:
@@ -194,9 +194,28 @@ def _cmd_show_job(job_id_str: str) -> None:
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
-    print(json.dumps(_export_job(job), indent=2))
+    shown = _export_job(job)
+    # R-0806: why a task blocked is readable here, without opening evidence JSON.
+    # The key is appended, so every key the JSON carried before keeps its place.
+    shown["blocked_task_findings"] = collect_blocked_task_findings(job, full=full)
+    print(json.dumps(shown, indent=2))
     if job.intake:
         _print_intake_block(job.intake)
+    _print_blocked_task_findings(str(job.job_id), shown["blocked_task_findings"])
+
+
+def _print_blocked_task_findings(job_id: str, entries: list[dict]) -> None:
+    """The findings block on stderr, beside the intake block; stdout stays one JSON document."""
+    if not any(entry["findings"] for entry in entries):
+        return
+    print("\n--- Blocked task findings ---", file=sys.stderr)
+    for entry in entries:
+        for finding in entry["findings"]:
+            print(f"  {entry['task_id']} [{finding['severity']}] {finding['file']}: "
+                  f"{finding['summary']} ({finding['id']})", file=sys.stderr)
+        if entry["findings_omitted"]:
+            print(f"  {entry['task_id']} \u2026 {entry['findings_omitted']} more "
+                  f"(job show {job_id} --full)", file=sys.stderr)
 
 
 def _print_intake_block(intake: dict) -> None:
@@ -2373,7 +2392,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         until=getattr(args, "until", None),
         limit=getattr(args, "limit", None),
     ),
-    "job.show": lambda args: _cmd_show_job(args.job_id),
+    "job.show": lambda args: _cmd_show_job(args.job_id, full=getattr(args, "full", False)),
     "job.attach-repo": lambda args: _cmd_attach_repo(args.job_id, args.repo_path),
     "job.permit": lambda args: _cmd_set_permission(args.job_id, args.action, args.permission),
     "job.permissions": lambda args: _cmd_show_permissions(args.job_id),

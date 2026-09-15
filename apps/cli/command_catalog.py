@@ -266,7 +266,12 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="show",
         description="Show job details; the output is always JSON, so --json is accepted and changes nothing.",
         action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
+        args=(
+            _JOB_ID,
+            ArgDef("--full", "Print every finding of a blocked task instead of the first ten",
+                   required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
+        ),
         supports_json=True,
         related=("job.list", "brain.graph"),
     ),

@@ -11,6 +11,7 @@ Public API:
     run_job(job_id, ...) -> JobPlan
     export_job_report(job) -> dict
     format_job_report_text(job) -> str
+    collect_blocked_task_findings(job, full=False) -> list[dict]
     load_job_plan(job_id) -> JobPlan | None
 """
 
@@ -3161,6 +3162,56 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
             "Changes exist only in the isolated job workspace."
         ),
     }
+
+
+#: How many of one blocked task's last-round findings `job show` prints; `--full`
+#: prints every one (R-0806).
+BLOCKED_TASK_FINDINGS_CAP = 10
+
+
+def collect_blocked_task_findings(job: JobPlan, *, full: bool = False) -> list[dict[str, Any]]:
+    """The reviewer findings of the LAST round of every blocked task (R-0806).
+
+    One entry per task whose status is ``blocked``, in task order. Each finding is
+    copied verbatim from the task's run record (``id``, ``severity``, ``file``,
+    ``summary``), at most ``BLOCKED_TASK_FINDINGS_CAP`` of them unless ``full``.
+    This feeds a read view, so it never raises: a task with no run id, or whose run
+    record is missing or unreadable, reports no findings.
+    """
+    from packages.orchestration.pingpong_loop import load_run
+
+    entries: list[dict[str, Any]] = []
+    for task in job.tasks:
+        if task.status != TASK_BLOCKED:
+            continue
+        round_number = None
+        findings: list[dict[str, Any]] = []
+        try:
+            run = load_run(task.run_id) if task.run_id else None
+        except (OSError, ValueError):
+            run = None
+        rounds = run.get("rounds") if isinstance(run, dict) else None
+        if isinstance(rounds, list) and rounds and isinstance(rounds[-1], dict):
+            last = rounds[-1]
+            round_number = last.get("round")
+            reviewer = last.get("reviewer")
+            recorded = reviewer.get("findings") if isinstance(reviewer, dict) else None
+            if isinstance(recorded, list):
+                findings = [
+                    {key: finding.get(key, "") for key in ("id", "severity", "file", "summary")}
+                    for finding in recorded
+                    if isinstance(finding, dict)
+                ]
+        shown = findings if full else findings[:BLOCKED_TASK_FINDINGS_CAP]
+        entries.append({
+            "task_id": task.task_id,
+            "run_id": task.run_id,
+            "round": round_number,
+            "findings": shown,
+            "findings_total": len(findings),
+            "findings_omitted": len(findings) - len(shown),
+        })
+    return entries
 
 
 def format_job_report_text(job: JobPlan) -> str:
