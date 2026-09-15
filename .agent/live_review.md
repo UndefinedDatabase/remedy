@@ -1,52 +1,31 @@
-# Live Review — F275 One world completion, part three
+# Live Review — F261 CLI vocabulary v2 (rename & prune)
 
-> Round-by-round review record, re-headed at the F275 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F274, which is
-> accepted: its STATUS line went `[x]` at `c6003e5d2638efd783f45cb83f1108f906e5ef3b` and its
-> pull request 246 merged at `a5bf894946ab6de053a4232109d6341a63533768`, at this session's
+> Round-by-round review record, re-headed at the F261 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F275, which is
+> accepted: its STATUS line went `[x]` at `76283e6936f5f622e80e5fdacaa5a113ec0f0608` and its
+> pull request 250 merged at `7cdde89b5d0dc8ef1fb96980105870e956699873`, at this session's
 > Open PR Gate. Only the heading, this paragraph and the `## Steps` section below are
-> rewritten. Every finding record below `## Findings` is carried forward BYTE-IDENTICAL — the
-> block that ordered this re-head gates that region's sha256 equal before and after the edit,
-> as its gate G3 — and finding ids continue the monotonic R-XXXX series across the re-head.
-> Measured by the reviewer at `a5bf894946ab6de053a4232109d6341a63533768`, the branch point: 68
-> DISTINCT ids matching `^- R-\d{4} — ` against 3 DISTINCT ids matching `^Done: R-\d{4} — `, so
-> 65 findings are open BY DISTINCT ID. The subtraction is over DISTINCT resolved IDS and not
-> over `Done:` LINES, of which the record carries five: two ids are resolved by two paragraphs
-> each, and counting lines would report the open set two too low. THE NEXT ID THIS FEATURE
-> MINTS IS R-0840.
-> F274's LAST round has an entry here, which is the exception rather than the rule: under
-> docs/agents/self_drive_protocol.md there is no second window, so the reviewer books a
-> branch-terminating verdict into the FIRST commit of the next feature's first round rather
-> than losing it with the session. Records belonging to features already marked `[x]` in
-> docs/roadmap/STATUS.md are not here at all: `scripts/rotate_live_review.py` moves them
-> byte-verbatim into the append-only `.agent/live_review_archive.md` in every closure
-> sequence, under operator amendment amend0905-throughput, and that archive is read on demand
-> by id, never at session start.
+> rewritten. Everything from the `## Findings` line to the end of the file is carried forward
+> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
+> Measured by the reviewer at `7cdde89b5d0dc8ef1fb96980105870e956699873`: 92 DISTINCT ids
+> matching `^- R-\d{4} — ` against 2 DISTINCT ids matching `^Done: R-\d{4} — `, so 90 findings
+> are open BY DISTINCT ID; the record carries four `Done:` lines for those two ids.
+> F275's last round, round 110, has an entry here: its verdict was written into pull request
+> 250, and under docs/agents/self_drive_protocol.md the reviewer books a branch-terminating
+> verdict into the next feature's first round. Records of features already `[x]` in
+> docs/roadmap/STATUS.md move to `.agent/live_review_archive.md` through
+> `scripts/rotate_live_review.py` in each closure sequence, under operator amendment
+> amend0905-throughput.
 
 ## Steps
 
-THE SLICE ORDER BELOW IS THE ONE DECISION amend0907-cluster-first D1 RULED ON 2026-09-07 and
-DECISION F274 D8 CARRIED INTO THIS FEATURE: the deletion runs FIRST, because it was last in
-three consecutive features and each of them closed by split-and-close before reaching it.
-R1 claim F275 in the roadmap ledger, cut the branch, re-point `.agent/plan.md` and
-`.agent/context.md`, re-head this record, book F274's round 23 verdict into it, rule DECISION
-F275 D1 and land the first staged batch of the carried readiness module UNWIRED → the second
-staged batch and the module's own test → the wiring round, which cuts the one surviving
-`packages/orchestration/ui_server.py` edge and removes its line from the deletion map in the
-same commit → DECISION F260 D3, the deletion paragraph, drafted → the prototype cluster
-deletion itself, one commit per module group, which is NEVER SPLIT ACROSS SESSIONS → T002, the
-`Job.id` flip measured with a recording property and its cap route ruled → T003, the classic
-runner, `job.run --cycles`, `job.run-next`, their handlers and tests, and the resolver collapse
-DECISION F260 D5 places in the same commit range → the integration gate → the closure sequence.
-
-The two carry-overs F260's Design orders before the first `git rm` are NOT both owed as work.
-The SECOND — every user-settable route-policy knob checked against F110's config keys — was
-performed at F274 round 3 and registered as R-0831, which is OPEN and stays open until the
-deletion round deletes those knobs with their modules and DECISION F260 D3 names route policy
-among the ideas deleted rather than inherited. The reviewer re-measured it at
-`a5bf894946ab6de053a4232109d6341a63533768` and confirms it unchanged: not one of the eight
-knob names occurs in `packages/orchestration/role_config.py` or
-`packages/orchestration/model_routing.py`. No second id is minted for it, per §3 item 30.
+THE ORDER BELOW IS T2_F261.md's Orchestrator brief, with T001 as DECISION F261 D1 re-scopes it.
+R1 claim F261, re-head this record, book F275 round 110, resolve R-0889, register R-0890, rule
+DECISION F261 D1 and rename `do job-evidence` to `job evidence` → the renames `do job-promote`
+to `job apply` and `do job-run` to `job run` → the deletion of `do job-flow` → the deletions of
+`do job-plan` and `do plan` → T002, `apply` for `promote` and `job show --full` → T003, the
+prune to D4 → T004, descriptions, role labels, help wrapping and the catalog tests → the
+integration gate → the closure sequence.
 
 ## Findings
 
@@ -1322,3 +1301,9 @@ THE EVIDENCE AND THE PACKAGE. The accepted head is `d285f47a8a28f1868da9078ed608
 Gate: F275 R109 — the F275 round 109 entry, CLOSURE ROUND B. VERDICT PASS. Written by the planner and reviewer of session 35 into pull request 250 as a comment, because the closure commit `76283e69` was then the last commit on the branch, and booked here by the first commit of round 110 that writes the record, per operator amendment amend0827-process-diet rule 1. Its readings, re-derived by that reviewer at `76283e69`: `.agent/authored/f275-r109.md` and `.agent/last_block.md` equal the reviewer's block; `.agent/plan.md` equals PLAN109; `.agent/live_review.md` at `53d3337a` equals its blob at `6a194dd0` followed by RECORD109, and the closure commit leaves it unchanged. The closure commit touches exactly `docs/roadmap/STATUS.md`, `README.md`, `scripts/self_use_queue.json`, `.agent/candidates.md` and `.agent/handoff.md`; the F275 STATUS line is byte-identical to the authored line; STATUS holds 77 `[x]` lines and the README says 77, with Tier 2 at 20 of 32; `SU-014` is consumed by `F275`, and the queue diff is that one field; the closure candidate is recorded. `tests/docs/` read 306 passed, `tests/cli/test_golden_path.py` 42 passed and the three self-use suites 54 passed, each exit 0. The package `remedy-review-20260914-230931-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips` hashes to `e18ab493640adf6e5e82b72dea9c59ee9469b730d75085c533645e29a1cd1da0`, recomputed from the file, and its manifest subject runs from the fork point `a5bf8949` to the accepted head `d285f47a`. Open findings 89, the open High ones R-0803, R-0804, R-0806 and R-0807, all F273's per DECISION F272 D12; the close is PASS_WITH_RISKS. The hosted CI run on `76283e69` then failed, which R-0889 below records.
 
 - R-0889 — Medium, THE HOSTED CI CHECKS OUT A SINGLE COMMIT, SO THE EVENT-NAME COUPLING RATCHET MEASURES AN EMPTY HISTORY AND PULL REQUEST 250's CI FAILS. Raised by the planner and reviewer of session 36 of F275 at the Open PR Gate. THE DEFECT, at `76283e69`: the checkout step of `.github/workflows/ci.yml` is `actions/checkout@v4` with no `fetch-depth`, and that action's default fetches a single commit, while `deleted_modules()` in `tests/orchestration/test_event_name_coupling.py`, added by F275 round 35 at `1e65661a`, lists the deleted modules from `git log --diff-filter=D a5bf894946ab6de053a4232109d6341a63533768..HEAD`, a range whose base commit a single-commit clone does not hold, so the list is empty. MEASURED: hosted run `34901124355` on `76283e69`, which `gh run list` read as the branch's only hosted run while `76283e69` was its tip, failed its `standard` stage at 2 failed and 13543 passed while every other stage passed, the two failures being `test_the_instrument_sees_the_deleted_modules_at_all`, reading `assert 0 >= 40`, and `test_no_declared_entry_is_stale`, reading `['context_budget_optimized']` as stale. The reviewer reproduced both in a `git clone --depth 1` of the branch at `76283e69`, where that test file reads 2 failed and 2 passed, while the primary checkout at the same commit, which holds the full history, read 4 passed. WHY MEDIUM: nothing in the product is wrong, but the hosted gate over it cannot pass on this pull request and would stay red on `main` after a merge. WHY F275's: F275 added the history-reading ratchet, and the workflow's triggers at `76283e69` are only pull requests into `main` and pushes to `main`, so pull request 250 is the first hosted run to execute it. FIX: the checkout step fetches the full history with `fetch-depth: 0`, and a test in `tests/orchestration/test_ci_workflow.py` pins that the checkout step carries it; the ratchet itself is neither skipped nor weakened. Owner: F275.
+
+Gate: F275 R110 — the F275 round 110 entry, REPAIR ON PULL REQUEST 250. VERDICT PASS. Written by the planner and reviewer of session 36 into pull request 250 as a comment, because round 110 was the last round of its branch, and booked here by F261's round 1 under operator amendment amend0827-process-diet rule 1. The round existed because hosted run `34901124355` on `76283e69` failed its `standard` stage on the two ratchet tests R-0889 names. Re-derived by that reviewer over `76283e69`..`4c055a51`: `.agent/authored/f275-r110.md` at `28a8d338` and `.agent/last_block.md` at `74a17524` are byte-identical to the reviewer's scratch original, sha256 `c688463ddeb435b3f822ccf51ad811865a0021690a2f71305e2e6f97d9654abe`; `.agent/plan.md` at `313b6f0a` equals PLAN110; `.agent/live_review.md` at `313b6f0a` equals its blob at `76283e69` followed by RECORD110 and is unchanged through `4c055a51`, the open set moving from 89 to 90 by exactly R-0889. `cb8f663b` touches exactly `.github/workflows/ci.yml`, 5 insertions and 0 deletions, and `tests/orchestration/test_ci_workflow.py`, 8 and 0, each equal to its authored slice applied to its blob at `313b6f0a`. The reviewer's runs in the primary checkout at `4c055a51` of the workflow guards, the coupling ratchet, `tests/cli/test_golden_path.py`, `tests/docs/` and `tests/ui_server/test_dashboard_contract.py` read 439 passed, exit 0, and `python3 -m ruff check tests/orchestration/test_ci_workflow.py` passed. The worker's committed transcript `.agent/authored/f275-r110-suite.txt` reads `EXIT=0` with 18443 passed, 23 skipped and no bad node. Hosted run `34905977033` on `4c055a51` concluded `success` with the stages fast, standard, ui, smoke and budgets each passed, and this session then merged pull request 250 at the Open PR Gate as `7cdde89b`.
+
+Done: R-0889 — RESOLVED by F275 round 110. `cb8f663b` gives the checkout step of `.github/workflows/ci.yml` `fetch-depth: 0`, so the hosted job holds the history `deleted_modules()` reads, and appends `test_hosted_workflow_checks_out_the_full_history` to `tests/orchestration/test_ci_workflow.py`, which pins that the key sits inside the checkout step; the ratchet in `tests/orchestration/test_event_name_coupling.py` is unchanged. Verified by the reviewer of session 36: in a disposable worktree at `cb8f663b` the guard file read 1 failed and 5 passed with the `fetch-depth: 0` line deleted, the one failure being the new guard, while the same file passed within the reviewer's run in the primary checkout at `4c055a51`; hosted run `34905977033` on `4c055a51` passed every stage, where run `34901124355` on `76283e69` had failed the two ratchet tests.
+
+- R-0890 — Low, THE SELF-USE RUNNER PASSES `run_job` THE ROLE CONFIG'S PROVIDER NAMES BUT NOT ITS MODEL OR EFFORT, SO THE JOB'S EXECUTION RECORD CARRIES AN EMPTY MODEL WITH SOURCE `default` AND NEVER NAMES THE MODEL THAT RAN. Registered by the planner and reviewer of session 36 from the closure candidate F275's closure gate recorded in `.agent/candidates.md` on 2026-09-14, after searching the open set for the defect under §3 item 30: no open finding describes it, and R-0768, its provider-name counterpart, was resolved by F110 round 2. THE DEFECT, read at `7cdde89b`: `run_next_self_use_item` in `packages/orchestration/self_use_runner.py` reads `resolve_role_config(role).provider` for the builder and the reviewer and hands `run_job` only the provider names; `run_job` in `packages/orchestration/pingpong_job.py` resolves each model and effort through `_resolve_cfg` with a literal `""` default, so `ExecutionConfig` records them empty with source `default`, while a provider name falls back to the role config through `default_role_provider_name` and a model has no such fallback. MEASURED in `.agent/selfuse_f275/`: `full_transcript.txt` names provider `ollama`, model `muse-glimmer:latest` and effort `medium` for both roles, and `execution_config.txt` records `builder_model=''` and `reviewer_model=''`, each with source `default`. WHY LOW: on the one provider the runner reaches, `OllamaPingPongProvider` turns an empty model into the `ollama-default` alias, which `packages/orchestration/model_aliases.py` maps to the same `muse-glimmer:latest` the role config names, so the right model ran and the record is what is wrong; for `claude` an empty model selects the provider's `claude-workhorse` default and for `claude-cli` no `--model` at all, while the role config names `claude-flagship` for both, a mismatch the runner cannot reach while its resolution answers `ollama`. FIX: when the runner fills in a provider name it also passes the role config's model and effort, `run_job`'s product default for each model is the role config's model rather than `""`, and a test asserts that an unflagged self-use run records `builder_model` equal to `resolve_role_config("builder").model`. Owner: F273.
