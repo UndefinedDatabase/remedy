@@ -12,7 +12,14 @@ from typing import TYPE_CHECKING, Any
 from packages.core.models import RunState
 from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
 from packages.orchestration.job_runner import PlanJobResult
-from packages.orchestration.pingpong_job import JobNotFoundError, JobPlan, TaskEntry, require_job_plan, save_job_plan
+from packages.orchestration.pingpong_job import (
+    JobNotFoundError,
+    JobPlan,
+    JobStoreError,
+    TaskEntry,
+    require_job_plan,
+    save_job_plan,
+)
 
 if TYPE_CHECKING:
     import argparse
@@ -191,7 +198,8 @@ def _cmd_show_job(job_id_str: str, *, full: bool = False) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
         job = require_job_plan(job_id)
-    except JobNotFoundError as exc:
+    except (JobNotFoundError, JobStoreError) as exc:
+        # R-0902: a record that exists and cannot be read is named, like a missing one, never a traceback.
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
     shown = _export_job(job)

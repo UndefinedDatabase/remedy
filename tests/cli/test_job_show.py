@@ -393,3 +393,24 @@ class TestSummarySection:
         assert data["synthetic_fields"] == 0
         assert "  Mode:    LIVE" in lines
         assert "  Events:  2" in lines
+
+
+class TestAnUnreadableJobRecord:
+    """R-0902: a job record that exists and cannot be read is a named error on stderr, never a traceback."""
+
+    @pytest.mark.parametrize("flags", [(), ("--full",)], ids=["bare", "full"])
+    def test_job_show_names_the_unreadable_record_and_exits_one(self, data_root, capsys, flags) -> None:
+        job = JobPlan(job_title="rotted job", state=RunState.PENDING)
+        save_job_plan(job)
+        # The path the store itself reads the record from.
+        record = data_paths.job_record_path(job.job_id)
+        assert record.is_file()
+        record.write_text("{not json", encoding="utf-8")
+
+        with pytest.raises(SystemExit) as exc:
+            main(["job", "show", job.job_id, *flags])
+
+        assert exc.value.code == 1
+        shown = capsys.readouterr()
+        assert shown.err == f"Error: Unreadable job record for {job.job_id}\n"
+        assert shown.out == ""
