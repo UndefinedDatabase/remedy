@@ -1388,7 +1388,7 @@ class TestLiveMirrorOnTheProductionPath:
     """Finding R-0220: a REAL job must yield rows with nobody passing ``ledger_*``.
 
     Every test in this class calls ``export_job_evidence`` — the production
-    caller behind `remedy job evidence` and `do job-flow` — and passes NO
+    caller behind `remedy job evidence` and `remedy job run` — and passes NO
     ``ledger_*`` argument. A test that supplies the target itself proves only
     the hand-passed path, which was already green and is exactly what let the
     feature ship switched off.

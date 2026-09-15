@@ -4,7 +4,7 @@ Round 15 changed `apps/cli/commands/do_cmd.py` and shipped the public `do job-fl
 broken with `NameError: timeout_sec is not defined`. Every Missing-Tests gate reported PASS.
 
 Nothing lied. Nothing was asked. The gate required a task's CHANGED test files to be covered by a
-successful run, and the suite that catches this — `tests/test_do_job_flow.py` — was in neither the
+successful run, and the suite that caught this — `tests/test_do_job_flow.py`, since deleted — was in neither the
 changed set nor the authoritative CLI command, which runs only `tests/cli`. A gate that checks
 only the tests you happened to touch cannot notice the one you broke.
 
@@ -23,10 +23,10 @@ from packages.orchestration.missing_tests_gate import (
 
 
 class TestTheRelevanceMap:
-    def test_the_do_command_maps_to_the_job_flow_suite(self):
+    def test_the_do_command_maps_to_its_regression_suite(self):
         """THE finding: this is the mapping whose absence hid a broken public command."""
         assert _relevant_suites_for_source("apps/cli/commands/do_cmd.py") == (
-            "tests/test_do_job_flow.py",)
+            "tests/test_role_override_flags.py",)
 
     def test_an_unmapped_source_file_maps_to_nothing(self):
         """The map is a floor for suites at unconventional paths, not a map of everything."""
@@ -63,8 +63,8 @@ class TestARedRelevantSuiteBlocksTheGate:
 
     def test_a_green_run_covers_its_suite(self):
         cov = self._coverage([{"run_id": "vr-1", "exit_code": 0, "failed": 0,
-                               "test_files": ["tests/test_do_job_flow.py"]}])
-        assert cov.get("tests/test_do_job_flow.py") == ["vr-1"]
+                               "test_files": ["tests/test_role_override_flags.py"]}])
+        assert cov.get("tests/test_role_override_flags.py") == ["vr-1"]
 
     @pytest.mark.parametrize("run", [
         {"run_id": "vr-1", "exit_code": 1, "failed": 69},      # round 15's actual state
@@ -72,30 +72,30 @@ class TestARedRelevantSuiteBlocksTheGate:
         {"run_id": "vr-1", "exit_code": 2, "failed": 0},       # usage error
     ])
     def test_a_red_run_covers_nothing(self, run):
-        run["test_files"] = ["tests/test_do_job_flow.py"]
+        run["test_files"] = ["tests/test_role_override_flags.py"]
         assert self._coverage([run]) == {}
 
     def test_a_task_changing_the_do_command_is_uncovered_without_the_suite(self):
-        """The round-15 shape: the CLI matrix ran, the job-flow suite did not."""
+        """The round-15 shape: the CLI matrix ran, the do_cmd suite did not."""
         changed = ["apps/cli/commands/do_cmd.py"]
         related = sorted({t for f in changed for t in _relevant_suites_for_source(f)})
-        assert related == ["tests/test_do_job_flow.py"]
+        assert related == ["tests/test_role_override_flags.py"]
         cov = self._coverage([{"run_id": "vr-1", "exit_code": 0, "failed": 0,
                                "test_files": ["tests/cli/test_job_commands.py"]}])
         uncovered = [f for f in related if not cov.get(f)]
-        assert uncovered == ["tests/test_do_job_flow.py"], \
+        assert uncovered == ["tests/test_role_override_flags.py"], \
             "a change to the do command must require its regression suite"
 
     def test_the_same_task_is_covered_once_the_suite_runs_green(self):
         changed = ["apps/cli/commands/do_cmd.py"]
         related = sorted({t for f in changed for t in _relevant_suites_for_source(f)})
         cov = self._coverage([{"run_id": "vr-1", "exit_code": 0, "failed": 0,
-                               "test_files": ["tests/test_do_job_flow.py"]}])
+                               "test_files": ["tests/test_role_override_flags.py"]}])
         assert [f for f in related if not cov.get(f)] == []
 
     def test_a_red_suite_leaves_the_task_uncovered(self):
         changed = ["apps/cli/commands/do_cmd.py"]
         related = sorted({t for f in changed for t in _relevant_suites_for_source(f)})
         cov = self._coverage([{"run_id": "vr-1", "exit_code": 1, "failed": 69,
-                               "test_files": ["tests/test_do_job_flow.py"]}])
-        assert [f for f in related if not cov.get(f)] == ["tests/test_do_job_flow.py"]
+                               "test_files": ["tests/test_role_override_flags.py"]}])
+        assert [f for f in related if not cov.get(f)] == ["tests/test_role_override_flags.py"]

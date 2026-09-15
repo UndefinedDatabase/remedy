@@ -8,19 +8,15 @@ Coverage:
   - No absolute local paths leak into the index output
   - No raw full prompts in the index (only summaries with sha256 + token count)
   - Missing data is marked "absent" rather than hidden as empty/zero
-  - The index is generated under the evidence dir bundled at
-    evidence/current/self_run_observability_index.json in the review zip
   - T003: reviewer "pass" + findings is normalized to needs_repair
-  - T004: command transcript mutation reporting agrees with the target guard's
-    noise-exclusion policy for cache-only changes
+  - T004: the target guard's classifier keeps cache-only and operational
+    changes out of content mutations
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-
-import pytest
 
 from scripts.build_observability_index import (
     ABSENT,
@@ -38,7 +34,6 @@ def _write_complete_evidence(root: Path, *, raw_prompt: str = "RAW_SECRET_PROMPT
     ev.mkdir(parents=True)
 
     (ev / "job_flow.json").write_text(json.dumps({
-        "command": "do.job-flow",
         "job_id": "JOB-1",
         "report": {
             "job_id": "JOB-1",
@@ -258,64 +253,6 @@ class TestIncompleteEvidence:
 
 
 # ---------------------------------------------------------------------------
-# T006 / packaging: index lands under evidence/current in the review zip
-# ---------------------------------------------------------------------------
-
-
-class TestIndexInReviewZip:
-    @pytest.fixture
-    def isolate_data(self, tmp_path, monkeypatch):
-        data_dir = tmp_path / "remedy_data"
-        data_dir.mkdir()
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
-        return data_dir
-
-    def test_index_generated_under_evidence_current_prefix(
-        self, capsys, isolate_data, tmp_path
-    ):
-        from apps.cli.grouped import main as grouped_main
-
-        repo = tmp_path / "repo"
-        repo.mkdir()
-        (repo / "README.md").write_text("# Demo\n")
-        job_file = tmp_path / "job.md"
-        job_file.write_text(
-            "# Job: Index Zip\n\n## Task 1\nAdd a file.\n\nAcceptance:\n- file exists\n"
-        )
-        ev = tmp_path / "evidence"
-
-        grouped_main([
-            "do", "job-flow",
-            "--job-file", str(job_file), "--repo", str(repo),
-            "--builder", "fake", "--reviewer", "fake",
-            "--out", str(ev), "--json",
-        ])
-        capsys.readouterr()
-
-        idx = ev / "self_run_observability_index.json"
-        assert idx.exists(), "index must be generated in the evidence dir"
-        # Valid JSON with the expected kind.
-        data = json.loads(idx.read_text())
-        assert data["index_kind"] == "self_run_observability_index"
-
-        # T003: index status must be persisted in an evidence artifact, not only
-        # printed to stdout. job_flow.json is re-persisted after index build.
-        flow = json.loads((ev / "job_flow.json").read_text())
-        assert flow["observability_index_status"] == "generated"
-        assert flow["observability_index_ref"] == "self_run_observability_index.json"
-        assert "observability_index_error" not in flow
-
-        # The review zip bundles the evidence dir under evidence/current/, so
-        # the index ships at this canonical path.
-        from scripts.build_review_manifest import build_manifest
-        manifest = build_manifest(evidence_dir=str(ev))
-        zip_prefix = manifest["current_evidence"]["zip_prefix"]
-        assert zip_prefix == "evidence/current"
-        assert f"{zip_prefix}/self_run_observability_index.json" == \
-            "evidence/current/self_run_observability_index.json"
-
-
-# ---------------------------------------------------------------------------
 # T003: reviewer verdict normalization
 # ---------------------------------------------------------------------------
 
@@ -352,11 +289,11 @@ class TestReviewerVerdictNormalization:
 
 
 # ---------------------------------------------------------------------------
-# T004: command transcript agrees with target guard on cache-only changes
+# T004: the target guard classifies cache-only and operational changes
 # ---------------------------------------------------------------------------
 
 
-class TestTranscriptTargetGuardConsistency:
+class TestTargetGuardChangeClassification:
     def test_cache_only_change_is_not_a_content_mutation(self, tmp_path):
         # The guard classifier and the transcript must agree: cache-only churn
         # is noise, never a target mutation.
@@ -381,33 +318,6 @@ class TestTranscriptTargetGuardConsistency:
         assert meaningful == [], f"cache files must not be meaningful: {meaningful}"
         assert noise, "cache files must be reported as noise"
         assert all(_is_target_noise(n) for n in noise)
-
-    def test_transcript_reports_noise_without_claiming_mutation(self, tmp_path):
-        from apps.cli.commands.do_cmd import _persist_command_transcript
-
-        ev = tmp_path / "evidence"
-        _persist_command_transcript(
-            job_id="JOB-1",
-            evidence_out=str(ev),
-            flow_result={"command": "do.job-flow", "final_audit": {"status": "READY"}},
-            repo="/repo",
-            started_at="2026-06-29T00:00:00+00:00",
-            target_hash_before="0123456789abcdef",
-            target_hash_after="0123456789abcdef",
-            changed_content_files=[],
-            ignored_noise_files=[".pytest_cache/v/lastfailed", "real.pyc"],
-        )
-        ct = json.loads((ev / "command_transcript.json").read_text())
-
-        # Cache-only change → no content mutation, headline flag agrees.
-        assert ct["target_content_mutated"] is False
-        assert ct["target_repo_mutated"] is False
-        assert ct["target_repo_mutated"] is ct["target_content_mutated"]
-        # But the noise IS reported, not hidden.
-        assert ct["target_noise_changed"] is True
-        assert ct["ignored_noise_files"] == sorted(
-            [".pytest_cache/v/lastfailed", "real.pyc"]
-        )
 
     def test_operational_artifact_change_is_not_a_content_mutation(self, tmp_path):
         # Task 2: a Remedy operational artifact (e.g. remedy-review-*.zip) landing
@@ -439,35 +349,6 @@ class TestTranscriptTargetGuardConsistency:
         meaningful, ignored = _check_target_mutation(repo, before)
         assert meaningful == []
         assert zip_name in ignored
-
-    def test_transcript_reports_operational_artifact_without_claiming_mutation(
-        self, tmp_path
-    ):
-        from apps.cli.commands.do_cmd import _persist_command_transcript
-
-        ev = tmp_path / "evidence"
-        zip_name = "remedy-review-20260101-000000.zip"
-        _persist_command_transcript(
-            job_id="JOB-1",
-            evidence_out=str(ev),
-            flow_result={"command": "do.job-flow", "final_audit": {"status": "READY"}},
-            repo="/repo",
-            started_at="2026-06-29T00:00:00+00:00",
-            target_hash_before="0123456789abcdef",
-            target_hash_after="0123456789abcdef",
-            changed_content_files=[],
-            ignored_noise_files=[],
-            ignored_operational_artifacts=[zip_name],
-        )
-        ct = json.loads((ev / "command_transcript.json").read_text())
-
-        # Operational-only change → no content mutation; headline flag agrees.
-        assert ct["target_content_mutated"] is False
-        assert ct["target_repo_mutated"] is False
-        assert ct["target_repo_mutated"] is ct["target_content_mutated"]
-        # But the operational artifact IS reported, not hidden.
-        assert ct["target_operational_artifacts_changed"] is True
-        assert ct["ignored_operational_artifacts"] == [zip_name]
 
     def test_real_source_mutation_still_blocks(self, tmp_path):
         # A genuine source file change must be classified as content (meaningful),

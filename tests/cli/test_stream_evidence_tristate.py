@@ -17,7 +17,6 @@ def _inv(argv):
 _CMDS = [
     ["job", "run", "JOB"],
     ["do", "job-resume", "JOB"],
-    ["do", "job-flow", "--job-file", "x.md"],
 ]
 
 

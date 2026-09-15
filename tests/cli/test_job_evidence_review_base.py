@@ -1,14 +1,12 @@
-"""F6 (round 17) — `do job-flow` forwards the explicit review base.
+"""F6 (round 17) — every `export_job_evidence` call in do_cmd forwards the explicit review base.
 
 `job evidence` reads the operator's `REMEDY_REVIEW_BASE` declaration once and passes it to
-`export_job_evidence`; `do job-flow` called `export_job_evidence(job_id, evidence_out)` with no
-base. Since round 16 the export reads NO ambient environment (a base not passed is a base that
-does not exist), so a clean committed feature branch exported through the full workflow lost its
-committed ReviewSubject entirely — base, HEAD, commits and files all gone, the subject collapsing
-to the empty dirty tree.
+`export_job_evidence`. Since round 16 the export reads NO ambient environment (a base not passed
+is a base that does not exist), so an export call that omits the base loses a clean committed
+feature branch's ReviewSubject entirely — base, HEAD, commits and files all gone, the subject
+collapsing to the empty dirty tree. Round 17 found exactly that at a second call site.
 
-The fix is one line: read the declaration at the top-level job-flow command and pass it. This test
-proves the wiring at the call site and end to end on a real committed branch.
+This test proves the wiring at every call site and end to end on a real committed branch.
 """
 from __future__ import annotations
 
@@ -22,7 +20,7 @@ from packages.orchestration.review_subject import (
 
 class TestBothExportCallsForwardTheBase:
     def test_do_cmd_forwards_declared_base_in_every_export_call(self):
-        """Neither `job evidence` nor `do job-flow` may call the export without the base."""
+        """No `export_job_evidence` call in do_cmd may omit the base."""
         import apps.cli.commands.do_cmd as do_cmd
 
         src = inspect.getsource(do_cmd)
@@ -69,7 +67,7 @@ class TestTheForwardedBaseProducesACommittedSubject:
 
     def test_a_clean_committed_branch_with_a_base_has_base_head_commits_files(self, tmp_path):
         r, base = self._repo(tmp_path)
-        subject = resolve_review_subject(r, base)      # what job-flow now passes
+        subject = resolve_review_subject(r, base)      # what the export call passes
         assert subject.declared is True
         assert subject.base_commit == base
         assert subject.head_commit and subject.head_commit != base

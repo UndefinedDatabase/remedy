@@ -290,3 +290,25 @@ class TestRenamedCommands:
             args, _unknown = parser.parse_known_args([group, subcommand, "an-id"])
             assert args._command_id == new
             assert new in dispatch
+
+
+class TestDeletedCommands:
+    """F261 deletes a command outright: no alias, no attic, no stub (DECISIONs F261 D1 and D-B).
+
+    A deleted id must be absent from the catalog AND from the dispatch table, because either half
+    alone makes the word reachable again, and nothing else in the suite reds when one comes back.
+    """
+
+    DELETED = (
+        "do.job-flow",
+    )
+
+    def test_no_deleted_id_is_left_in_the_catalog(self) -> None:
+        catalog_ids = {cmd.command_id for cmd in CATALOG}
+        assert [cid for cid in self.DELETED if cid in catalog_ids] == []
+
+    def test_no_deleted_id_is_left_in_the_dispatch_table(self) -> None:
+        from apps.cli.grouped import _get_dispatch_table
+
+        dispatch = _get_dispatch_table()
+        assert [cid for cid in self.DELETED if cid in dispatch] == []
