@@ -305,6 +305,7 @@ class TestDeletedCommands:
     """
 
     DELETED = (
+        "context-pack.recommend",
         "contract.check",
         "contract.inspect",
         "context.inspect",
@@ -345,6 +346,10 @@ class TestDeletedCommands:
         "repo.status",
         "rollback.proof",
         "rollback.show",
+        "token.budget-set",
+        "token.budget-show",
+        "token.economy-report",
+        "token.estimate",
     )
 
     def test_no_deleted_id_is_left_in_the_catalog(self) -> None:

@@ -76,20 +76,16 @@ number is verified when it is an estimate.
 - **Context Budget Optimizer enforcement**: a future block can turn these recommendations into an
   enforcing (still human-gated) optimizer.
 
-## CLI
+## No CLI surface
 
-```
-remedy token budget-show <job_id> --json
-remedy token budget-set <job_id> [--max-context-tokens N] [--max-generation-tokens N]
-                                 [--max-total-estimated-tokens N] [--prefer-local-under-tokens N]
-                                 [--require-human-approval-over-tokens N] --json
-remedy token estimate <job_id> [--task-id ID] [--route-id ID] --json
-remedy token economy-report <job_id> [--task-id ID] [--route-id ID] --json
-remedy context-pack recommend <job_id> [--task-id ID] [--route-id ID] --json
-```
-
-All catalog + run_contract backed. `budget-set` is `write_metadata`; the rest are `read_only`. None
-carry `may_execute_commands`. None execute a worker.
+F261 round 18 deleted the `token` group (`budget-show`, `budget-set`, `estimate`,
+`economy-report`) and the `context-pack` group (`recommend`) under DECISION amend0905-vocab D4.
+`packages/orchestration/token_economy.py` stays whole and nothing below changes: the report is
+built by `token_economy_report`, which the web cockpit reads for the `token_economy` section of a
+job's payload (`remedy ui start`), and the band, cost and text estimators are read by the budget
+guard, the cost preview, the mission dossier and the prompt segments. The budget profile now has
+no writer: `load_token_budget_profile` returns the built-in default for every job, so the caps
+below are the defaults until a later round builds the `job budget <id> set` word of D4.
 
 ## Anti-goals (explicit)
 

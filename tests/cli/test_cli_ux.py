@@ -15,7 +15,6 @@ _USER_FACING_GROUPS = {"do", "job", "project", "ui", "doctor", "config", "worker
 
 # Internal groups that MUST NOT appear in default help
 _INTERNAL_GROUPS = {
-    "token", "context-pack",
     "snapshot", "integrity",
 }
 

@@ -40,7 +40,6 @@ apps.cli.commands.stats_ledger_cmd
 apps.cli.commands.status_cmd
 apps.cli.commands.teach_cmd
 apps.cli.commands.test_cmds
-apps.cli.commands.token_cmd
 apps.cli.commands.ui
 apps.cli.commands.worker
 apps.cli.commands.worker_facade_cmd
