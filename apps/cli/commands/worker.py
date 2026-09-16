@@ -216,36 +216,6 @@ def _cmd_worker_unload(
             print("  No models to unload.")
 
 
-def _cmd_worker_run(*, once: bool = False, max_jobs: int = 1, max_seconds: int = 60,
-                    max_steps: int = 1, max_tokens: int = 0, max_runtime_seconds: int = 60,
-                    provider: str = "none", job_id: str = "", json_output: bool = False) -> None:
-    from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.worker_queue import (
-        export_worker_result_json,
-        run_worker_loop,
-        run_worker_once,
-    )
-    data_dir = resolve_data_root()
-    if once:
-        result = run_worker_once(
-            data_dir, provider=provider, job_id=job_id,
-            max_steps=max_steps, max_tokens=max_tokens, max_runtime_seconds=max_runtime_seconds,
-        )
-    else:
-        result = run_worker_loop(data_dir, provider=provider, max_jobs=max_jobs, max_seconds=max_seconds)
-    if json_output:
-        print(_json.dumps(export_worker_result_json(result), sort_keys=True))
-    else:
-        print(f"Worker: {result.worker_id}")
-        print(f"Action: {result.action_taken}")
-        print(f"Jobs processed: {result.jobs_processed}")
-        if result.last_job_id:
-            print(f"Last job: {result.last_job_id[:8]}")
-        print(f"Why stopped: {result.why_it_stopped}")
-        if result.next_command:
-            print(f"Next: {result.next_command}")
-
-
 def _cmd_worker_status_live(*, json_output: bool = False) -> None:
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.worker_queue import export_worker_status_json, get_worker_status
@@ -281,17 +251,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         model=getattr(args, "model", None),
         unload_all=getattr(args, "all", False),
         json_output=args.json,
-    ),
-    "worker.run": lambda args: _cmd_worker_run(
-        once=getattr(args, "once", False),
-        max_jobs=int(getattr(args, "max_jobs", 1) or 1),
-        max_seconds=int(getattr(args, "max_seconds", 60) or 60),
-        max_steps=int(getattr(args, "max_steps", 1) or 1),
-        max_tokens=int(getattr(args, "max_tokens", 0) or 0),
-        max_runtime_seconds=int(getattr(args, "max_runtime_seconds", 60) or 60),
-        provider=getattr(args, "provider", None) or "none",
-        job_id=getattr(args, "job", "") or getattr(args, "job_id", "") or "",
-        json_output=getattr(args, "json", False),
     ),
     "worker.status": lambda args: _cmd_worker_status_live(json_output=args.json),
 }

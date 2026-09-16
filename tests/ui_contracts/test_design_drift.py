@@ -139,7 +139,7 @@ class TestNoCLIInPrimaryUX:
     def test_right_panel_no_remedy_worker_command(self):
         content = RIGHT_PANEL.read_text()
         primary = content.split("advancedSection")[0] if "advancedSection" in content else content
-        assert "remedy worker run" not in primary
+        assert "remedy worker" not in primary
 
     def test_right_panel_no_remedy_patch_command(self):
         content = RIGHT_PANEL.read_text()

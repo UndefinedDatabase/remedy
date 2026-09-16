@@ -153,10 +153,10 @@ class TestNoFakeCompletion:
         result = run_worker_once(tmp_path, provider="none")
         assert result.why_it_stopped == "no_worker_selected"
 
-    def test_provider_none_suggests_real_provider(self, tmp_path):
+    def test_provider_none_advertises_no_command(self, tmp_path):
         enqueue_job("j1", tmp_path)
         result = run_worker_once(tmp_path, provider="none")
-        assert "fixture" in result.next_command or "ollama" in result.next_command
+        assert result.next_command == ""
 
     def test_invalid_provider_no_mutation(self, tmp_path):
         enqueue_job("j1", tmp_path)
@@ -293,45 +293,10 @@ class TestStaleRecovery:
 
 
 class TestCatalogAndCLI:
-    def test_worker_run_in_catalog(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = {e.command_id for e in CATALOG}
-        assert "worker.run" in ids
-
     def test_worker_status_in_catalog(self):
         from apps.cli.command_catalog import CATALOG
         ids = {e.command_id for e in CATALOG}
         assert "worker.status" in ids
-
-    def test_job_enqueue_in_catalog(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = {e.command_id for e in CATALOG}
-        assert "job.enqueue" in ids
-
-    def test_job_pause_in_catalog(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = {e.command_id for e in CATALOG}
-        assert "job.pause" in ids
-
-    def test_job_cancel_in_catalog(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = {e.command_id for e in CATALOG}
-        assert "job.cancel" in ids
-
-    def test_worker_run_not_read_only(self):
-        from apps.cli.command_catalog import CATALOG
-        entry = next(e for e in CATALOG if e.command_id == "worker.run")
-        assert entry.action_class != "read_only"
-
-    def test_job_enqueue_not_read_only(self):
-        from apps.cli.command_catalog import CATALOG
-        entry = next(e for e in CATALOG if e.command_id == "job.enqueue")
-        assert entry.action_class != "read_only"
-
-    def test_job_resume_queue_in_catalog(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = {e.command_id for e in CATALOG}
-        assert "job.resume-queue" in ids
 
 
 class TestNoRawLeaks:
@@ -355,7 +320,7 @@ class TestWorkerDocs:
 
     def test_docs_mention_commands(self):
         text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "worker.md").read_text()
-        for cmd in ("remedy worker run", "remedy worker status", "remedy job enqueue", "remedy job pause", "remedy job cancel"):
+        for cmd in ("remedy worker status",):
             assert cmd in text
 
     def test_docs_no_overnight_autonomy(self):

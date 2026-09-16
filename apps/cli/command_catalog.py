@@ -881,27 +881,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("worker.resources",),
     ),
-
-    CommandEntry(
-        command_id="worker.run",
-        group_id="worker",
-        subcommand="run",
-        description="Run local worker (one job or bounded loop).",
-        action_class="local_state_change",
-        args=(
-            ArgDef("--once", "Process one job and stop", required=False, is_option=True),
-            ArgDef("--max-jobs", "Max jobs to process", required=False, is_option=True, default="1"),
-            ArgDef("--max-seconds", "Max seconds to run", required=False, is_option=True, default="60"),
-            ArgDef("--max-steps", "Max task execution steps (0=no budget)", required=False, is_option=True, default="1"),
-            ArgDef("--max-tokens", "Max token budget (0=unlimited)", required=False, is_option=True, default="0"),
-            ArgDef("--max-runtime-seconds", "Max runtime seconds for execution", required=False, is_option=True, default="60"),
-            ArgDef("--provider", "Builder provider (none|fixture|ollama)", required=False, is_option=True, default="none"),
-            ArgDef("--job", "Specific job ID", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("worker.status", "job.enqueue"),
-    ),
     CommandEntry(
         command_id="worker.status",
         group_id="worker",
@@ -910,7 +889,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
-        related=("worker.run",),
+        related=("worker.list",),
     ),
 
     # ── mission (the F070 orchestrator loop, keyed on a mission id) ──────
@@ -928,21 +907,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("mission.report", "mission.ledger"),
-    ),
-    CommandEntry(
-        command_id="mission.ledger",
-        group_id="mission",
-        subcommand="ledger",
-        description="Render a mission's decision ledger — every orchestrator iteration, across every run (read-only).",
-        action_class="read_only",
-        args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix)"),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.run", "mission.show"),
+        related=("mission.report", "mission.watchdog"),
     ),
     CommandEntry(
         command_id="mission.watchdog",
@@ -956,7 +921,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("mission.ledger", "mission.resume"),
+        related=("mission.show", "mission.resume"),
     ),
     CommandEntry(
         command_id="mission.handoff",
@@ -969,7 +934,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("mission.show", "mission.ledger"),
+        related=("mission.show", "mission.watchdog"),
     ),
     CommandEntry(
         command_id="mission.report",
@@ -1139,44 +1104,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JSON_OPT,),
         supports_json=True,
         related=("mission.report",),
-    ),
-
-    CommandEntry(
-        command_id="job.enqueue",
-        group_id="job",
-        subcommand="enqueue",
-        description="Add a job to the local work queue.",
-        action_class="local_state_change",
-        args=(_JOB_ID,),
-        related=("worker.run", "job.pause"),
-    ),
-    CommandEntry(
-        command_id="job.pause",
-        group_id="job",
-        subcommand="pause",
-        description="Pause a queued or running job.",
-        action_class="local_state_change",
-        args=(_JOB_ID,),
-        related=("job.enqueue", "job.cancel"),
-    ),
-    CommandEntry(
-        command_id="job.cancel",
-        group_id="job",
-        subcommand="cancel",
-        description="Cancel a queued or running job.",
-        action_class="local_state_change",
-        args=(_JOB_ID,),
-        related=("job.pause", "job.enqueue"),
-    ),
-
-    CommandEntry(
-        command_id="job.resume-queue",
-        group_id="job",
-        subcommand="resume-queue",
-        description="Resume a paused job back into the queue.",
-        action_class="local_state_change",
-        args=(_JOB_ID,),
-        related=("job.pause", "job.enqueue"),
     ),
 
     # ── memory ───────────────────────────────────────────────────────────

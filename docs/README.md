@@ -110,7 +110,7 @@ Specifications and design documents for the built system.
 | [test-lanes-v0.md](system/test-lanes-v0.md) | Test lane isolation and routing |
 | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | Token economy + context budget optimizer |
 | [vocabulary.md](system/vocabulary.md) | The binding vocabulary: one row per word with its meaning, its code spelling today and after F260/F261, its CLI spelling and what it is NOT; the do-not-confuse table; the concept diagram; and the rulings that decided them |
-| [worker.md](system/worker.md) | Worker architecture and guide |
+| [worker.md](system/worker.md) | Worker architecture and guide — queue and run commands deleted by F261 round 23 |
 
 ## Guides (`docs/guides/`)
 

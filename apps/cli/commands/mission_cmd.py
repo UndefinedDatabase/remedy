@@ -400,6 +400,7 @@ def _cmd_mission_run_loop(mission_id: str, *, project: str | None = None,
     """
     from packages.orchestration.orchestrator_loop import (
         TERMINAL_NO_PROVIDER,
+        ledger_path,
         loop_limits_from_config,
         read_ledger,
         render_ledger,
@@ -451,33 +452,7 @@ def _cmd_mission_run_loop(mission_id: str, *, project: str | None = None,
     if result.entries:
         print("")
         print(render_ledger([e.to_json() for e in result.entries]))
-    print(f"  Full ledger: remedy mission ledger {mission.id[:12]}")
-
-
-def _cmd_mission_ledger(mission_id: str, *, project: str | None = None,
-                        json_output: bool = False) -> None:
-    """``remedy mission ledger <id>`` — the mission's decision trail, in full.
-
-    Read-only. Renders every iteration the loop ever recorded for this
-    mission, across every run, so a human can reconstruct what was decided
-    without opening a source file.
-    """
-    from packages.orchestration.orchestrator_loop import read_ledger, render_ledger
-
-    project_id = _resolve_project_id(project)
-    mission = _load_mission_or_exit(project_id, mission_id)
-    entries = read_ledger(project_id, mission.id)
-
-    if json_output:
-        print(_json.dumps({"version": 1, "mission_id": mission.id,
-                           "entries": entries}, sort_keys=True))
-        return
-
-    print(mission.id)
-    print(f"  Goal: {mission.goal}")
-    print(f"  Iterations recorded: {len(entries)}")
-    print("")
-    print(render_ledger(entries))
+    print(f"  Full ledger: {ledger_path(project_id, mission.id)}")
 
 
 def _cmd_mission_watchdog(mission_id: str, *, project: str | None = None,
@@ -614,11 +589,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "mission.handoff": lambda args: _cmd_mission_handoff(
         args.mission_id,
-        json_output=getattr(args, "json", False),
-    ),
-    "mission.ledger": lambda args: _cmd_mission_ledger(
-        args.mission_id,
-        project=getattr(args, "project", None),
         json_output=getattr(args, "json", False),
     ),
     "mission.watchdog": lambda args: _cmd_mission_watchdog(

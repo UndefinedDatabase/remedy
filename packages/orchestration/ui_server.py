@@ -1391,7 +1391,7 @@ def _build_worker_section() -> dict[str, Any] | None:
             "heartbeat_at": status.heartbeat_at,
             "stale": status.stale,
             "why_it_stopped": status.why_it_stopped,
-            "next_command": "remedy worker run --once" if not status.worker_id else "",
+            "next_command": "",
             "redaction": "safe_metadata_only",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
