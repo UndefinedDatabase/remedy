@@ -277,3 +277,74 @@ The single expected next action, in order:
 3. **Round 21's work**: the `do continue` hints, then the command and
    `packages/orchestration/do_continue.py`, with **R-0900**, as `.agent/f261_t003_inventory.md`
    proposes in its round H.
+
+## Session close — session 39, written after the reviewer's verdict on round 20
+
+The planner and reviewer of session 39 reviewed rounds 15 to 20 of F261 and ends the session
+after those six delegated rounds, all PASS, which is the operator's per-session target. Context
+self-assessment: the reviewer's context is still comfortable and no run of authoring slips
+accumulated — two slips were declared by workers across six rounds, both about the block's own
+frame rather than its orders, and both are booked; the session ends at the target rather than at
+a limit. Nothing is half-written; the branch is pushed at `7c0de436`.
+
+### The verdict to book
+
+Round 21's first commit that writes the record appends the paragraph below to
+`.agent/live_review.md` byte for byte, preceded by one empty line, per operator amendment
+amend0827-process-diet rule 1.
+
+Gate: F261 R20 — the F261 round 20 entry. VERDICT PASS. Written by the planner and reviewer of session 39 after reading the committed range `71cba20e`..`7c0de436` and re-deriving the readings below; the worker's report was evidence for none of them. It is carried by `.agent/handoff.md` in the session-close commit that follows `7c0de436` and booked by the first commit of round 21 that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f261-r20.md` at `6e3405ba` and `.agent/last_block.md` at `00bef4fc` are byte-identical to the reviewer's scratch original, sha256 `713761a2d0a064666e021dd54249fec39e325d8b352760977530016ee5bb9085`, and the three tables committed at `c26c3a1a`, `f6c723b8` and `bab42400` are byte-identical to the reviewer's, which are the research helper's. THE STATE: at `893a9a95` and again at `7c0de436`, `.agent/plan.md` equals PLAN20, `.agent/live_review.md` and `.agent/decisions.md` equal their `71cba20e` blobs followed by RECORD20 and DEC19, and `docs/roadmap/features/T2_F273.md` equals its `71cba20e` blob with the pair P273 applied. THE TABLE COMMITS: at `c26c3a1a`, `f6c723b8` and `bab42400` the `apps`, `tests`, `docs`, `scripts`, `packages`, `README.md` and `.claude` objects equal the reviewer's dry-run commits, which applied the record before the tables and reproduced the helper's trees exactly; each commit's `--no-renames` path set is the dry run's plus its carrier, and `git show --numstat` reads 7, 21 and 20 insertions. In the dry run's production diff each command leaves with its catalog entry and its handler, `collect_diff_stat` leaves with the handler that was its only caller, `attest_operator_repair`, `resume_job_plan`, `replan` and `ReplanRejectedError` stay behind the test files that drive them, and the six rejections that named `do replan` name no command rather than a deleted one. The sweep pattern of the round 20 block matches 30 lines in 11 files at `71cba20e`, and at `7c0de436` the same `git grep` over `apps`, `packages`, `scripts`, `tests`, `docs` without `docs/roadmap`, `README.md`, `AGENTS.md` and `.claude` exits 1 with no output. In the reviewer's dry run a full suite under `-n auto` without `tests/ui_server` read 1 failed, `test_vitest_passes`, 17268 passed and 29 skipped. Over `tests/test_command_catalog.py`, `tests/cli/test_cli_ux.py`, `tests/test_grouped_cli.py`, `tests/orchestration/test_import_reachability.py` and `tests/cli/test_advertised_commands.py`, which passed 395 unmutated, a `do.repair-attest`, a `do.job-resume` and a `do.replan` handler row each failed 1 test, a `related=` naming `do.job-resume` failed 1, and the `do replan` line restored after the rejection failed 1. THE LINT EXCEPTION the block named reads as the block states it: `python3 -m ruff check` over `tests/orchestration/test_prompt_trace.py` exits 1 with two `I001` findings at `7c0de436`, and the same command over that file's `71cba20e` blob through `--stdin-filename` exits 1 with the same two findings ten lines lower, so the round neither caused nor repaired them. THE REVIEWER'S RUN in the primary checkout at `7c0de436` of those five files, every other test file the round edited, the worktree-integrity, flight-plan, decision-command, manual-completion-bundle and job-evidence tests, `tests/cli/test_golden_path.py`, `tests/docs/`, `tests/test_remedy_smoke_script.py` and `tests/orchestration/test_command_discovery.py` read 1319 passed, `python3 -m ruff check` over thirteen edited files that survive printed `All checks passed!`, and `git branch --list 'remedy/job-*'` read 16 lines. The open set reads 110 by distinct id at `7c0de436`.
+
+### What this session did
+
+Six deletion and rename rounds of T003, each one a research helper's measured tables re-applied
+by the reviewer on the real tip, gated on tree ids: round 15 the loop modules, the `queue` group
+and the F048 job queue (DECISION F261 D14) · round 16 `guide`, `dashboard` and `repo` with the
+group-count guard replaced by a D4 kept-set check (D15) · round 17 `readiness`, `contract` and
+`policy`, declaring two dead event couplings (D16) · round 18 `context`, `token` with
+`context-pack` and `review`, and the repair of the smoke script's group-help loop, which rounds
+16 and 17 had left naming five deleted groups (D17) · round 19 `do report` renamed into the new
+`run` group as `run show` and `run list`, with `do evidence` deleted (D18) · round 20
+`do repair-attest`, `do job-resume` and `do replan` (D19). The catalog is 30 groups at
+`7c0de436`; DECISION amend0905-vocab D4 leaves 29.
+
+### What the next session needs to know
+
+- TWELVE FINDINGS were registered in these six rounds, R-0904 to R-0915. Two are this feature's
+  own and are the largest carried debt: R-0906, that nothing can write a run-contract budget
+  field since `contract set` went, so `test run` is refused for every job whose contract nothing
+  overrides, and R-0909, the same for the token budget profile. Both are repaired by building
+  `job budget <id> set`, the word D4 names and nothing has built; `.agent/plan.md` carries it as
+  a next step. The other ten are F273's and each has its Acceptance line in
+  `docs/roadmap/features/T2_F273.md`.
+- THE METHOD held for six rounds and is worth keeping: a research helper builds JSON-lines edit
+  tables in its own detached worktree and measures every heir by running the command and its
+  proposed heir against one scratch data root; the reviewer re-applies the tables on the real
+  tip AFTER the record commit, compares every subtree id with the helper's, reads the production
+  diff, runs its own mutations and a full suite under `-n auto` without `tests/ui_server`,
+  removes its worktree, and gates the worker on those tree ids. A deletion whose heir the helper
+  cannot find becomes a finding, never a stub.
+- A HELPER'S PROBE OF A COMMAND MAY COST A PROVIDER CALL: round 20's helper ran `do replan` on a
+  fixture and reached a local provider, which produced ten tasks. No `remedy/job-*` branch was
+  created; the count read 16 at every gate of the session.
+- THE INVENTORY `.agent/f261_t003_inventory.md` is at round H of its proposal, the `do continue`
+  hints with the command and `do_continue.py` and R-0900. Its rounds I to P remain after that,
+  which is more than the five rounds F261's soft limit of 25 leaves: THE SESSION THAT REACHES
+  ROUND 25 OWES THE SCOPE REPORT AND EXECUTES THE SPLIT-AND-CLOSE DEFAULT of operator amendment
+  amend0905-throughput, placing the follow-up feature directly after F261 per amend0906.
+- RULINGS THIS SESSION a later round may need: a guard that cannot fail in the adding direction
+  is pinned by a test of its own (round 19's `run` group); an event that loses its only emitter
+  is DECLARED in `KNOWN_DEAD_EVENT_COUPLINGS` with its ceiling raised and a finding, never left
+  invisible (rounds 17 and 18); a capability with no heir is registered, never stubbed; and a
+  defect a previous round of this feature introduced is repaired in the round that finds it,
+  with a finding for the guard that could not see it (round 18, R-0910).
+
+### Next
+
+1. Phase 1 rule 1: the next session reads `.agent/STOP` first; then the Open PR Gate, which
+   finds no open pull request for this branch.
+2. Round 21's first record commit books `Gate: F261 R20` from this section.
+3. Round H of `.agent/f261_t003_inventory.md`: the `do continue` hints, then the command and
+   `packages/orchestration/do_continue.py`, with R-0900.
+
+Operator questions open: 0
