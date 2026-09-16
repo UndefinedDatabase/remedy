@@ -11,29 +11,28 @@ T002 holds, per `docs/roadmap/features/T2_F280.md`.
 
 ## Current Step
 
-ROUND 1 claims F280, cuts the branch, re-points this file and `.agent/context.md`, re-heads
-`.agent/live_review.md`, books F261's round 28 verdict and its prose slip, and records DECISION
-F280 D1. Its table commit hands `job run`'s `--builder-provider` and `--reviewer-provider` to the
-runner, deletes `--builder` and `--reviewer` from `job run`, and refuses `fixture` there.
+ROUND 2 books round 1's PASS, registers R-0932 to R-0934 and records DECISION F280 D2. Its three
+table commits delete the ping-pong path of `do run` with the flags only it reads, delete the
+scope plan module with `run_pingpong`'s scope branches, and turn argparse prefix matching off, so
+no deleted flag survives as an abbreviation of a kept one. The worker runs the suite once.
 
 ## Next Steps
 
-1. The ping-pong path of `do run` with the flags only it reads, `--scope-file`, `--approve-scope`
-   and the scope plan module (R-0894), with `_VALID_PINGPONG_PROVIDERS`, the `--builder` and
-   `--reviewer` special-casing of `apps/cli/grouped.py`, the root help's quick start and the two
-   provider messages that name the deleted flags; then R-0767's resolution.
-2. `job budget <id> set` over the run-contract budget fields and the token budget profile
-   (R-0906, R-0909), then `job fulfill`.
-3. The fixtures and smoke sections moved off `job create`, then `job create`, `job attach-repo`
+1. `job budget <id> set` over the run-contract budget fields and the token budget profile
+   (R-0906, R-0909), then `job fulfill`; the next record books round 2's verdict with the
+   resolutions of R-0767 and R-0894.
+2. The fixtures and smoke sections moved off `job create`, then `job create`, `job attach-repo`
    and `job permit`.
-4. `propose`, with the DECISION on the two surviving gates DECISION F261 D22 names.
-5. The `flight_plan` rename; `worker doctor` and `job run --tasks`; then T002.
+3. `propose`, with the DECISION on the two surviving gates DECISION F261 D22 names.
+4. The `flight_plan` rename; `worker doctor` and `job run --tasks`.
+5. T002, which also re-derives the root help's quick start with the README quickstart (R-0895)
+   and closes the flag scanner's blind spot (R-0934).
 
 ## Risks
 
-- 125 findings are open by distinct id; three are High, R-0803, R-0804 and R-0807, none of them
-  this feature's.
-- Two provider error messages in `packages/orchestration/pingpong_provider.py` name `--builder`
-  and `--reviewer`, which `job run` no longer has, until the next step re-points them.
-- Argparse prefix matching refuses `--builder` on `job run` only as an ambiguous prefix of the
-  three `--builder-*` flags; `TestJobRunProviderWiring` pins the refusal.
+- 128 findings are open by distinct id after this round's record; three are High, R-0803,
+  R-0804 and R-0807, none of them this feature's.
+- The quick start this round writes needs `remedy init` first and stops at the default autonomy
+  level before any build, as DECISION F280 D2 records.
+- Prefix matching is off for every command, so an operator's abbreviated flag now exits 2; the
+  reviewer's scan found no abbreviated Remedy flag in the repository.
