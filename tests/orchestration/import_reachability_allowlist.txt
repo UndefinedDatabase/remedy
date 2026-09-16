@@ -203,7 +203,6 @@ packages.orchestration.schemas
 packages.orchestration.schemas.models
 packages.orchestration.schemas.validation
 packages.orchestration.scope_fences
-packages.orchestration.scope_plan
 packages.orchestration.scratch_file_guard
 packages.orchestration.self_dogfood
 packages.orchestration.self_dogfood_execution
