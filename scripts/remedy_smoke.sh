@@ -286,10 +286,16 @@ print('    Repository structure sanity: OK')
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="3"
     echo "--- 3. Create job"
-    JOB_ID="$(remedy job create "${PROMPT}" \
-        --project "${PROJECT_ID}" \
-        --task-type write_readme \
-        --task-description "Write/update README.md for smoke target.")"
+    JOB_ID="$(SMOKE_PROMPT="${PROMPT}" SMOKE_PROJECT_ID="${PROJECT_ID}" python3 -c "
+import os
+from apps.cli.commands.job import _cmd_create_job
+_cmd_create_job(
+    os.environ['SMOKE_PROMPT'],
+    project_id=os.environ['SMOKE_PROJECT_ID'],
+    task_type='write_readme',
+    task_description='Write/update README.md for smoke target.',
+)
+")"
     if [[ -z "${JOB_ID}" ]]; then
         echo "ERROR: job create did not print a job ID" >&2
         return 1

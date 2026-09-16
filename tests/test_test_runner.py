@@ -843,7 +843,8 @@ class TestCliRunTestsLocal:
                       capture_output=True, env=env, cwd=str(repo))
         assert init.returncode == 0, init.stderr.decode()
         r = sp.run(
-            ["python3", "-m", "apps.cli.main", "job", "create", "test job"],
+            ["python3", "-c",
+             "from apps.cli.commands.job import _cmd_create_job; _cmd_create_job('test job')"],
             capture_output=True, env=env, cwd=str(repo),
         )
         assert r.returncode == 0, r.stderr.decode()
