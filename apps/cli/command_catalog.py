@@ -229,25 +229,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
 
     # ── job ──────────────────────────────────────────────────────────────
     CommandEntry(
-        command_id="job.create",
-        group_id="job",
-        subcommand="create",
-        description="Create a new job from a prompt.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("prompt", "What the job should accomplish"),
-            ArgDef("--project", "Project UUID to link", required=False, is_option=True),
-            ArgDef("--task-type", "Task type override", required=False, is_option=True),
-            ArgDef("--task-description", "Task description override", required=False, is_option=True),
-            ArgDef("--max-total-tokens", "Maximum total tokens for this job (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-provider-calls", "Maximum provider calls for this job (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-wall-clock-minutes", "Maximum wall-clock minutes for this job (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-cost-usd", "Maximum cost in USD for this job (F104 budget)", required=False, is_option=True, default=None),
-            ArgDef("--deadline", "UTC deadline for this job as ISO 8601 string (F018 budget)", required=False, is_option=True, default=None),
-        ),
-        related=("job.show", "job.attach-repo"),
-    ),
-    CommandEntry(
         command_id="job.list",
         group_id="job",
         subcommand="list",
@@ -314,7 +295,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Attach a repository path to a job.",
         action_class="write_metadata",
         args=(_JOB_ID, ArgDef("repo_path", "Path to the repository")),
-        related=("job.create",),
     ),
     CommandEntry(
         command_id="job.permit",
@@ -377,7 +357,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Plan tasks for a job using local LLM.",
         action_class="write_metadata",
         args=(_JOB_ID,),
-        related=("job.create", "job.resume"),
+        related=("job.resume",),
     ),
 
     CommandEntry(

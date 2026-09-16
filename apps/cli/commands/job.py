@@ -2337,17 +2337,6 @@ def _cmd_job_budget_set(
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
-    "job.create": lambda args: _cmd_create_job(
-        args.prompt,
-        project_id=getattr(args, "project", None),
-        task_type=getattr(args, "task_type", None),
-        task_description=getattr(args, "task_description", None),
-        max_total_tokens=getattr(args, "max_total_tokens", None),
-        max_provider_calls=getattr(args, "max_provider_calls", None),
-        max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
-        max_cost_usd=getattr(args, "max_cost_usd", None),
-        deadline=getattr(args, "deadline", None),
-    ),
     "job.list": lambda args: _cmd_list_jobs(
         project=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),

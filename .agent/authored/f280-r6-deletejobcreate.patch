@@ -1,0 +1,288 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 0a8a85b3..2ff42bf0 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -228,25 +228,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
+     ),
+ 
+     # ── job ──────────────────────────────────────────────────────────────
+-    CommandEntry(
+-        command_id="job.create",
+-        group_id="job",
+-        subcommand="create",
+-        description="Create a new job from a prompt.",
+-        action_class="write_metadata",
+-        args=(
+-            ArgDef("prompt", "What the job should accomplish"),
+-            ArgDef("--project", "Project UUID to link", required=False, is_option=True),
+-            ArgDef("--task-type", "Task type override", required=False, is_option=True),
+-            ArgDef("--task-description", "Task description override", required=False, is_option=True),
+-            ArgDef("--max-total-tokens", "Maximum total tokens for this job (F018 budget)", required=False, is_option=True, default=None),
+-            ArgDef("--max-provider-calls", "Maximum provider calls for this job (F018 budget)", required=False, is_option=True, default=None),
+-            ArgDef("--max-wall-clock-minutes", "Maximum wall-clock minutes for this job (F018 budget)", required=False, is_option=True, default=None),
+-            ArgDef("--max-cost-usd", "Maximum cost in USD for this job (F104 budget)", required=False, is_option=True, default=None),
+-            ArgDef("--deadline", "UTC deadline for this job as ISO 8601 string (F018 budget)", required=False, is_option=True, default=None),
+-        ),
+-        related=("job.show", "job.attach-repo"),
+-    ),
+     CommandEntry(
+         command_id="job.list",
+         group_id="job",
+@@ -314,7 +295,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
+         description="Attach a repository path to a job.",
+         action_class="write_metadata",
+         args=(_JOB_ID, ArgDef("repo_path", "Path to the repository")),
+-        related=("job.create",),
+     ),
+     CommandEntry(
+         command_id="job.permit",
+@@ -377,7 +357,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
+         description="Plan tasks for a job using local LLM.",
+         action_class="write_metadata",
+         args=(_JOB_ID,),
+-        related=("job.create", "job.resume"),
++        related=("job.resume",),
+     ),
+ 
+     CommandEntry(
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 9193659d..48f5494f 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -2337,17 +2337,6 @@ def _cmd_job_budget_set(
+ 
+ 
+ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+-    "job.create": lambda args: _cmd_create_job(
+-        args.prompt,
+-        project_id=getattr(args, "project", None),
+-        task_type=getattr(args, "task_type", None),
+-        task_description=getattr(args, "task_description", None),
+-        max_total_tokens=getattr(args, "max_total_tokens", None),
+-        max_provider_calls=getattr(args, "max_provider_calls", None),
+-        max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+-        max_cost_usd=getattr(args, "max_cost_usd", None),
+-        deadline=getattr(args, "deadline", None),
+-    ),
+     "job.list": lambda args: _cmd_list_jobs(
+         project=getattr(args, "project", None),
+         all_projects=getattr(args, "all_projects", False),
+diff --git a/docs/guides/simple-operator-quickstart-v0.md b/docs/guides/simple-operator-quickstart-v0.md
+index a8ac17d3..4e6b94d6 100644
+--- a/docs/guides/simple-operator-quickstart-v0.md
++++ b/docs/guides/simple-operator-quickstart-v0.md
+@@ -71,11 +71,12 @@ See `docs/core-product-spine-v0.md` for the full command taxonomy.
+ Note: `mission` commands are an advanced/internal facade for mission contract
+ bounded loops. For normal operation, use `job` commands.
+ 
+-## First fulfilled job demo (command deleted 2026-09-16)
++## First fulfilled job demo (commands deleted 2026-09-16)
+ 
+ ```bash
+-# Create a job and attach a repo; the fixture fulfillment step that followed is deleted
+-JOB_ID=$(remedy job create "Improve docs")
++# The `create` word under `job` built the job here, until F280 round 6 deleted it; the fixture
++# fulfillment step that followed was deleted by round 3. `do run "<goal>"` is the CLI's own
++# job-creation path today.
+ remedy job attach-repo "$JOB_ID" /path/to/repo
+ 
+ # Check result
+@@ -84,5 +85,5 @@ remedy propose list "$JOB_ID" --json
+ ```
+ 
+ F280 round 3 deleted the `fulfill` word of the `job` group, which ran this demo in fixture mode
+-(no real provider), so the demo no longer runs. See `docs/first-fulfilled-job-demo-v0.md` for
+-what it did.
++(no real provider), and round 6 deleted the `create` word, so the demo no longer runs. See
++`docs/first-fulfilled-job-demo-v0.md` for what it did.
+diff --git a/docs/system/architecture.md b/docs/system/architecture.md
+index fc305ab1..e0938155 100644
+--- a/docs/system/architecture.md
++++ b/docs/system/architecture.md
+@@ -1904,16 +1904,18 @@ remedy project list                                  — list all projects (newe
+ remedy project attach-repo <project_id> <repo_path>  — attach a repo to a project
+ remedy project attach-job <project_id> <job_id>      — link a job to a project
+ remedy project show <project_id> [--json]            — show project summary
+-remedy job create "<prompt>" [--project <project_id>]
+-    [--task-type <type>] [--task-description "<desc>"]
+-                                                       — create job and optionally link;
+-                                                         --task-type creates one Task immediately
+-                                                         and sets state=PLANNED (bypasses plan-job)
+ ```
+ 
++Retired (F280 round 6): the `job create "<prompt>" [--project <project_id>] [--task-type <type>]
++[--task-description "<desc>"]` word — it created a job and optionally linked it to a project;
++`--task-type` created one Task immediately and set `state=PLANNED` (bypassing plan-job). `do run
++"<goal>"` is the CLI's own job-creation path today; `_cmd_create_job` in
++`apps/cli/commands/job.py` still exists for the tests and the smoke script that build a job
++without going through `do run`'s own planning.
++
+ `remedy project show` is the project summary command.  A bare `remedy project` is not an alias for it: a group with no subcommand prints that group's help and runs nothing.
+ 
+-When `--project` is passed to `create-job`:
++When `--project` was passed to the retired `job create` word:
+ - The project is **validated and loaded first**.
+ - If the project is valid: `metadata["project_id"]` is set, the job is created, and both are persisted.
+ - If the project UUID is invalid or not found: the job is still created **without** `metadata["project_id"]`, and a warning is printed to stderr: `Warning: project unavailable; job created without project link.`
+@@ -2927,7 +2929,7 @@ One node per known provider spec.
+ > than repaired sentence by sentence, because a hand-written mirror of the catalog
+ > drifts again after the next feature that adds or deletes a command.
+ 
+-Steps 38–40 restructure the Remedy CLI from flat commands, spelled `create-job` and `brain`, to a group-first layout: `remedy job create`, `remedy brain graph`. The flat spellings are shown without the `remedy` prefix because they no longer run.
++Steps 38–40 restructure the Remedy CLI from flat commands, spelled `create-job` and `brain`, to a group-first layout: `job create` (itself retired by F280 round 6), `remedy brain graph`. The flat spellings are shown without the `remedy` prefix because they no longer run.
+ 
+ ### Command Catalog (`apps/cli/command_catalog.py`)
+ 
+@@ -3077,7 +3079,7 @@ Root help shows only the 12 groups — no old flat commands appear.
+ ### CLI
+ 
+ ```
+-remedy job create "Build a README"
++remedy job list
+ remedy brain graph <job_id> --json
+ remedy worker list --json
+ remedy job              # shows group help
+diff --git a/docs/system/first-fulfilled-job-demo-v0.md b/docs/system/first-fulfilled-job-demo-v0.md
+index de07c84c..b74f04e7 100644
+--- a/docs/system/first-fulfilled-job-demo-v0.md
++++ b/docs/system/first-fulfilled-job-demo-v0.md
+@@ -6,8 +6,10 @@
+ > `packages/orchestration/job_fulfillment.py` is kept and called by tests only, and
+ > `remedy job show <job_id> --full --json` still reads back a fulfillment record written before.
+ > The spine's fixture contract was the only write of a test-run budget above 0 until
+-> `remedy job budget <job_id> set max_test_runs <n>` (DECISION F280 D3). The page is kept as the
+-> record of what was built.
++> `remedy job budget <job_id> set max_test_runs <n>` (DECISION F280 D3). F280 round 6 also
++> deleted the `create` word of the `job` group; `_cmd_create_job` in
++> `apps/cli/commands/job.py` is kept and called by tests and by the smoke script only. The page
++> is kept as the record of what was built.
+ 
+ ## What this demo proves
+ 
+@@ -27,8 +29,8 @@ No real provider. No network. No git operations. No hidden execution.
+ ## Demo command sequence
+ 
+ ```bash
+-# 1. Create a job with a repo attached
+-JOB_ID=$(remedy job create "Improve the project docs")
++# 1. The `create` word under `job` built the job here, until F280 round 6 deleted it;
++#    `do run "<goal>"` is the CLI's own job-creation path today.
+ remedy job attach-repo "$JOB_ID" /path/to/demo/repo  # see Repo Requirements below
+ 
+ # 2. A `fulfill` word under `job` ran fulfillment here in fixture-demo mode, with `--json`,
+diff --git a/docs/system/project-scoping-v0.md b/docs/system/project-scoping-v0.md
+index e5c50620..ec75d6bf 100644
+--- a/docs/system/project-scoping-v0.md
++++ b/docs/system/project-scoping-v0.md
+@@ -40,6 +40,6 @@ Under `--all-projects`, jobs show suffixes:
+ 
+ ## Creation guard
+ 
+-`remedy job create` and `remedy do run` require a resolvable project
+-(exit 3 with fix-it hint if none found). Library functions keep
+-permissive `project_id=None` for test harnesses.
++`remedy do run` requires a resolvable project (exit 3 with fix-it hint if none found); the
++retired `job create` word required one the same way. Library functions keep permissive
++`project_id=None` for test harnesses.
+diff --git a/packages/orchestration/autonomy_readiness.py b/packages/orchestration/autonomy_readiness.py
+index a13bffe9..133a345f 100644
+--- a/packages/orchestration/autonomy_readiness.py
++++ b/packages/orchestration/autonomy_readiness.py
+@@ -295,7 +295,7 @@ def _assess_level(
+     if lvl == 1:
+         # propose: need repo + tasks
+         _check("attached_repo", "remedy job attach-repo <job_id> <path>")
+-        _check("tasks_defined", "remedy job create ... --task-type <type>")
++        _check("tasks_defined", "remedy do run \"<goal>\"")
+ 
+     elif lvl == 2:
+         # approved_apply: need repo + permission + approved patch + proof
+diff --git a/packages/orchestration/cockpit.py b/packages/orchestration/cockpit.py
+index 35e67a2b..d9df1caa 100644
+--- a/packages/orchestration/cockpit.py
++++ b/packages/orchestration/cockpit.py
+@@ -447,5 +447,5 @@ def _derive_next_action(job: JobPlan, signals: dict[str, Any]) -> str:
+     # Nothing left to run
+     return (
+         f"  {_NEXT} No pending tasks. Inspect generated files\n"
+-        f"      or create a new job: remedy job create \"<prompt>\""
++        f"      or create a new job: remedy do run \"<goal>\""
+     )
+diff --git a/packages/orchestration/timeline.py b/packages/orchestration/timeline.py
+index 6a94d526..be534dbb 100644
+--- a/packages/orchestration/timeline.py
++++ b/packages/orchestration/timeline.py
+@@ -432,5 +432,5 @@ def _derive_next_action(job: JobPlan, events: list[dict[str, Any]]) -> str:
+ 
+     return (
+         f"  {_NEXT} No pending tasks. Inspect generated repo/workspace files\n"
+-        f"      or create a new job: remedy job create \"<prompt>\""
++        f"      or create a new job: remedy do run \"<goal>\""
+     )
+diff --git a/packages/orchestration/trust_report.py b/packages/orchestration/trust_report.py
+index 10ea2b2a..def0e926 100644
+--- a/packages/orchestration/trust_report.py
++++ b/packages/orchestration/trust_report.py
+@@ -502,7 +502,7 @@ def _derive_next_action(job: JobPlan, signals: dict[str, Any]) -> str:
+ 
+     return (
+         f"  {_NEXT} No pending tasks. Inspect generated files\n"
+-        f"      or create a new job: remedy job create \"<prompt>\""
++        f"      or create a new job: remedy do run \"<goal>\""
+     )
+ 
+ 
+diff --git a/tests/test_command_catalog.py b/tests/test_command_catalog.py
+index 47fd8484..f2091776 100644
+--- a/tests/test_command_catalog.py
++++ b/tests/test_command_catalog.py
+@@ -247,7 +247,7 @@ class TestRequiredCommands:
+     """Key commands from the spec must exist."""
+ 
+     REQUIRED = (
+-        "job.create", "job.list", "job.show", "job.attach-repo", "job.permit",
++        "job.list", "job.show", "job.attach-repo", "job.permit",
+         "project.create", "project.list", "project.show", "project.attach-repo",
+         "project.attach-job", "project.context",
+         "patch.list", "patch.show", "patch.approve", "patch.reject", "patch.apply",
+@@ -329,6 +329,7 @@ class TestDeletedCommands:
+         "guide.job",
+         "job.assumptions",
+         "job.cancel",
++        "job.create",
+         "job.digest",
+         "job.dod",
+         "job.enqueue",
+diff --git a/tests/test_grouped_cli.py b/tests/test_grouped_cli.py
+index 692d6522..ba7b1870 100644
+--- a/tests/test_grouped_cli.py
++++ b/tests/test_grouped_cli.py
+@@ -325,12 +325,6 @@ class TestBootcampStyleGroupHelp:
+ class TestBootcampStyleCommandHelp:
+     """Command-level help must be clean and contain expected info."""
+ 
+-    def test_job_create_help(self) -> None:
+-        stdout, _, rc = _capture_grouped(["job", "create", "--help"])
+-        assert rc == 0
+-        assert "prompt" in stdout.lower()
+-        assert "Arguments" in stdout or "Options" in stdout
+-
+     def test_patch_apply_help(self) -> None:
+         stdout, _, rc = _capture_grouped(["patch", "apply", "--help"])
+         assert rc == 0
+@@ -367,12 +361,12 @@ class TestBootcampStyleErrors:
+         assert "Error" in combined
+ 
+     def test_missing_args_shows_command_help(self) -> None:
+-        stdout, stderr, rc = _capture_grouped(["job", "create"])
++        stdout, stderr, rc = _capture_grouped(["job", "attach-repo"])
+         assert rc == 2
+         combined = stdout + stderr
+         assert "Traceback" not in combined
+-        # Should show command help with prompt info
+-        assert "prompt" in combined.lower()
++        # Should show command help with an argument's own name
++        assert "repo_path" in combined.lower()
+ 
+     def test_no_old_flat_error_format(self) -> None:
+         """Error must not say 'invalid choice' (old argparse)."""

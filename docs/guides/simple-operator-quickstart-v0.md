@@ -71,11 +71,12 @@ See `docs/core-product-spine-v0.md` for the full command taxonomy.
 Note: `mission` commands are an advanced/internal facade for mission contract
 bounded loops. For normal operation, use `job` commands.
 
-## First fulfilled job demo (command deleted 2026-09-16)
+## First fulfilled job demo (commands deleted 2026-09-16)
 
 ```bash
-# Create a job and attach a repo; the fixture fulfillment step that followed is deleted
-JOB_ID=$(remedy job create "Improve docs")
+# The `create` word under `job` built the job here, until F280 round 6 deleted it; the fixture
+# fulfillment step that followed was deleted by round 3. `do run "<goal>"` is the CLI's own
+# job-creation path today.
 remedy job attach-repo "$JOB_ID" /path/to/repo
 
 # Check result
@@ -84,5 +85,5 @@ remedy propose list "$JOB_ID" --json
 ```
 
 F280 round 3 deleted the `fulfill` word of the `job` group, which ran this demo in fixture mode
-(no real provider), so the demo no longer runs. See `docs/first-fulfilled-job-demo-v0.md` for
-what it did.
+(no real provider), and round 6 deleted the `create` word, so the demo no longer runs. See
+`docs/first-fulfilled-job-demo-v0.md` for what it did.

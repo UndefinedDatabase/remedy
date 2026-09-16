@@ -1904,16 +1904,18 @@ remedy project list                                  — list all projects (newe
 remedy project attach-repo <project_id> <repo_path>  — attach a repo to a project
 remedy project attach-job <project_id> <job_id>      — link a job to a project
 remedy project show <project_id> [--json]            — show project summary
-remedy job create "<prompt>" [--project <project_id>]
-    [--task-type <type>] [--task-description "<desc>"]
-                                                       — create job and optionally link;
-                                                         --task-type creates one Task immediately
-                                                         and sets state=PLANNED (bypasses plan-job)
 ```
+
+Retired (F280 round 6): the `job create "<prompt>" [--project <project_id>] [--task-type <type>]
+[--task-description "<desc>"]` word — it created a job and optionally linked it to a project;
+`--task-type` created one Task immediately and set `state=PLANNED` (bypassing plan-job). `do run
+"<goal>"` is the CLI's own job-creation path today; `_cmd_create_job` in
+`apps/cli/commands/job.py` still exists for the tests and the smoke script that build a job
+without going through `do run`'s own planning.
 
 `remedy project show` is the project summary command.  A bare `remedy project` is not an alias for it: a group with no subcommand prints that group's help and runs nothing.
 
-When `--project` is passed to `create-job`:
+When `--project` was passed to the retired `job create` word:
 - The project is **validated and loaded first**.
 - If the project is valid: `metadata["project_id"]` is set, the job is created, and both are persisted.
 - If the project UUID is invalid or not found: the job is still created **without** `metadata["project_id"]`, and a warning is printed to stderr: `Warning: project unavailable; job created without project link.`
@@ -2927,7 +2929,7 @@ One node per known provider spec.
 > than repaired sentence by sentence, because a hand-written mirror of the catalog
 > drifts again after the next feature that adds or deletes a command.
 
-Steps 38–40 restructure the Remedy CLI from flat commands, spelled `create-job` and `brain`, to a group-first layout: `remedy job create`, `remedy brain graph`. The flat spellings are shown without the `remedy` prefix because they no longer run.
+Steps 38–40 restructure the Remedy CLI from flat commands, spelled `create-job` and `brain`, to a group-first layout: `job create` (itself retired by F280 round 6), `remedy brain graph`. The flat spellings are shown without the `remedy` prefix because they no longer run.
 
 ### Command Catalog (`apps/cli/command_catalog.py`)
 
@@ -3077,7 +3079,7 @@ Root help shows only the 12 groups — no old flat commands appear.
 ### CLI
 
 ```
-remedy job create "Build a README"
+remedy job list
 remedy brain graph <job_id> --json
 remedy worker list --json
 remedy job              # shows group help

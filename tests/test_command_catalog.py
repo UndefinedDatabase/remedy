@@ -247,7 +247,7 @@ class TestRequiredCommands:
     """Key commands from the spec must exist."""
 
     REQUIRED = (
-        "job.create", "job.list", "job.show", "job.attach-repo", "job.permit",
+        "job.list", "job.show", "job.attach-repo", "job.permit",
         "project.create", "project.list", "project.show", "project.attach-repo",
         "project.attach-job", "project.context",
         "patch.list", "patch.show", "patch.approve", "patch.reject", "patch.apply",
@@ -329,6 +329,7 @@ class TestDeletedCommands:
         "guide.job",
         "job.assumptions",
         "job.cancel",
+        "job.create",
         "job.digest",
         "job.dod",
         "job.enqueue",

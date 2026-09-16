@@ -295,7 +295,7 @@ def _assess_level(
     if lvl == 1:
         # propose: need repo + tasks
         _check("attached_repo", "remedy job attach-repo <job_id> <path>")
-        _check("tasks_defined", "remedy job create ... --task-type <type>")
+        _check("tasks_defined", "remedy do run \"<goal>\"")
 
     elif lvl == 2:
         # approved_apply: need repo + permission + approved patch + proof

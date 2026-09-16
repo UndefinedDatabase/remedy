@@ -6,8 +6,10 @@
 > `packages/orchestration/job_fulfillment.py` is kept and called by tests only, and
 > `remedy job show <job_id> --full --json` still reads back a fulfillment record written before.
 > The spine's fixture contract was the only write of a test-run budget above 0 until
-> `remedy job budget <job_id> set max_test_runs <n>` (DECISION F280 D3). The page is kept as the
-> record of what was built.
+> `remedy job budget <job_id> set max_test_runs <n>` (DECISION F280 D3). F280 round 6 also
+> deleted the `create` word of the `job` group; `_cmd_create_job` in
+> `apps/cli/commands/job.py` is kept and called by tests and by the smoke script only. The page
+> is kept as the record of what was built.
 
 ## What this demo proves
 
@@ -27,8 +29,8 @@ No real provider. No network. No git operations. No hidden execution.
 ## Demo command sequence
 
 ```bash
-# 1. Create a job with a repo attached
-JOB_ID=$(remedy job create "Improve the project docs")
+# 1. The `create` word under `job` built the job here, until F280 round 6 deleted it;
+#    `do run "<goal>"` is the CLI's own job-creation path today.
 remedy job attach-repo "$JOB_ID" /path/to/demo/repo  # see Repo Requirements below
 
 # 2. A `fulfill` word under `job` ran fulfillment here in fixture-demo mode, with `--json`,

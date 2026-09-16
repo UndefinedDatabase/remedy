@@ -502,7 +502,7 @@ def _derive_next_action(job: JobPlan, signals: dict[str, Any]) -> str:
 
     return (
         f"  {_NEXT} No pending tasks. Inspect generated files\n"
-        f"      or create a new job: remedy job create \"<prompt>\""
+        f"      or create a new job: remedy do run \"<goal>\""
     )
 
 
