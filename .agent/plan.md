@@ -11,20 +11,19 @@ T002 holds, per `docs/roadmap/features/T2_F280.md`.
 
 ## Current Step
 
-ROUND 2 books round 1's PASS, registers R-0932 to R-0934 and records DECISION F280 D2. Its three
-table commits delete the ping-pong path of `do run` with the flags only it reads, delete the
-scope plan module with `run_pingpong`'s scope branches, and turn argparse prefix matching off, so
-no deleted flag survives as an abbreviation of a kept one. The worker runs the suite once.
+ROUND 3 books round 2's PASS with the resolutions of R-0767 and R-0894, registers R-0935 and
+R-0936, and records DECISIONs F280 D3 and D4. Its first table builds `job budget <id> set` over
+the run contract's budget fields and the token budget profile (R-0906, R-0909); its second deletes
+`job fulfill`. D4 defers `job attach-repo` and `job permit`. The worker runs the suite once.
 
 ## Next Steps
 
-1. `job budget <id> set` over the run-contract budget fields and the token budget profile
-   (R-0906, R-0909), then `job fulfill`; the next record books round 2's verdict with the
-   resolutions of R-0767 and R-0894.
-2. The fixtures and smoke sections moved off `job create`, then `job create`, `job attach-repo`
-   and `job permit`.
-3. `propose`, with the DECISION on the two surviving gates DECISION F261 D22 names.
-4. The `flight_plan` rename; `worker doctor` and `job run --tasks`.
+1. The fixtures and smoke sections moved off `job create`, then `job create` with its hints; the
+   next record books round 3's verdict with the resolutions of R-0906 and R-0909.
+2. `propose`, with the DECISION on the two surviving gates DECISION F261 D22 names.
+3. The `flight_plan` rename; `worker doctor` and `job run --tasks`.
+4. `job attach-repo` and `job permit`, only once a DECISION gives the repository attach and the
+   capability grants another writer, as DECISION F280 D4 requires.
 5. T002, which also re-derives the root help's quick start with the README quickstart (R-0895)
    and closes the flag scanner's blind spot (R-0934).
 
@@ -32,7 +31,8 @@ no deleted flag survives as an abbreviation of a kept one. The worker runs the s
 
 - 128 findings are open by distinct id after this round's record; three are High, R-0803,
   R-0804 and R-0807, none of them this feature's.
-- The quick start this round writes needs `remedy init` first and stops at the default autonomy
-  level before any build, as DECISION F280 D2 records.
-- Prefix matching is off for every command, so an operator's abbreviated flag now exits 2; the
-  reviewer's scan found no abbreviated Remedy flag in the repository.
+- `job attach-repo` and `job permit` are the only command-line writers of a job's repository
+  and of its test and revert grants, so the Acceptance line naming them cannot hold until a
+  later DECISION supplies a writer.
+- R-0935: the run contract never inherits a job's F018 token and wall-clock budgets, so what
+  `job budget <id> set` writes into the contract is not overwritten by them either.
