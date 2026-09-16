@@ -62,13 +62,13 @@ SUMEOF
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="0-group-help"
     echo "--- 0. Verify group help"
-    for grp in job project patch test brain policy worker memory dev readiness context file change repo event blocker decision dashboard guide ui do review; do
+    for grp in job project patch test brain policy worker memory dev readiness file change repo event blocker decision dashboard guide ui do review; do
         remedy "${grp}" >/dev/null 2>&1 || {
             echo "ERROR: 'remedy ${grp}' failed" >&2
             return 1
         }
     done
-    echo "    Group help: OK (job project patch test brain policy worker memory dev readiness context file change repo)"
+    echo "    Group help: OK (job project patch test brain policy worker memory dev readiness file change repo)"
 
     # -------------------------------------------------------------------------
     # 1. Create target repo

@@ -2,14 +2,15 @@
 
 The Context Inspector answers: **"What will the worker see, what will it not see, and why?"**
 
-## CLI Usage
+## No CLI surface
 
-```
-remedy context inspect <job_id> [task_id] [--budget 4000] [--json]
-```
-
-Text output shows readiness, budget, included/excluded paths, and policy gates.
-JSON output includes structured inspection data with no raw file content.
+F261 round 18 deleted the `context inspect` command with the rest of the `context` group
+(DECISION amend0905-vocab D4). `packages/orchestration/context_inspector.py` stays: the do-run
+flow reads it to decide whether a task has enough context, and the token economy report reads
+it for its estimates. What ONE task receives is printed by `remedy job context <job_id> --task
+<task_ref> --json`; the job's context-health score is printed by `remedy brain context
+<job_id> --json`. The readiness, budget, inclusion and policy-gate vocabulary below is the
+inspector's own and still describes what it returns to those readers.
 
 ## Readiness Statuses
 

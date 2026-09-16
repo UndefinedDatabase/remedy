@@ -122,7 +122,6 @@ GROUPS: dict[str, GroupDef] = {
     "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
     "brain": GroupDef("brain", "Brain", "Inspect the project brain graph.", user_facing=False),
     "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded run-loop facade (internal).", user_facing=False),
-    "context": GroupDef("context", "Context", "Context pack and coverage.", user_facing=False),
     "change": GroupDef("change", "Change", "Review change sets (proof chain view).", user_facing=False),
     "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False),
     "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False),
@@ -1432,21 +1431,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
     ),
 
-    # ── context ──────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="context.inspect",
-        group_id="context",
-        subcommand="inspect",
-        description="Inspect what a worker will see — paths, budget, policy gates.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("task_id", "Task UUID (optional, narrows inspection)", required=False, default=None),
-            ArgDef("--budget", "Token budget (default: 4000)", required=False, is_option=True, default="4000"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
     # ── change ───────────────────────────────────────────────────────────
     CommandEntry(
         command_id="change.list",
@@ -1736,7 +1720,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Start a controlled autorun for a goal.",
         action_class="write_metadata",
         supports_json=True,
-        related=("job.show", "context.inspect", "change.proof"),
+        related=("job.show", "change.proof"),
         args=(
             ArgDef("goal", "Goal to accomplish (title when large prompt file used)", required=False),
             ArgDef("--task-file", "Path to large prompt file", required=False, is_option=True, default=""),

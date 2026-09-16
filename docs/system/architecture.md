@@ -1755,7 +1755,7 @@ Not every node will be continuable.  These fields are **not implemented** in v0 
 ### CLI
 
 ```
-remedy context <job_id> [--json]
+remedy brain context <job_id> [--json]
 ```
 
 Text output shows a coverage bar, present signals, missing signals, a meaning section, and next-action hints.  JSON output is pure parseable JSON.
@@ -1848,7 +1848,7 @@ Incremental hardening of Context Coverage v0.
 
 With local memory v0 active, `project_memory` (weight 10) becomes present when approved memory entries exist.  Only `mcp_tool_context` (weight 5) remains always absent in v0, so the maximum achievable score is **95** (with approved memory) or **85** (without).  The score is never normalized to 100.  MemPalace is not yet implemented; local memory v0 is the active backend.
 
-### Stale repo warning in `remedy context`
+### Stale repo warning in `remedy brain context`
 
 `_cmd_context` now mirrors `_cmd_brain_view`: if `target_repo` is set but the path does not exist or is not a directory, it prints a fixed safe warning to stderr and continues without a constitution.  Any unexpected exception from `load_project_constitution` is caught and the same warning is emitted.  The raw exception text is never surfaced.
 

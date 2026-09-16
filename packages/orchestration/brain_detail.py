@@ -917,7 +917,7 @@ def _detail_context_coverage(
         ),
         affected_files=(),
         next_actions=(
-            f"remedy context {job_id_str[:8]}",
+            f"remedy brain context {job_id_str[:8]}",
             f"remedy brain {job_id_str[:8]}",
             f"remedy brain trust {job_id_str[:8]}",
         ),

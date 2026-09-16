@@ -422,9 +422,10 @@ class TestNextSafeActionValidation:
         """remedy patch approve -> patch.approve exists."""
         assert validate_next_safe_action_command("remedy patch approve job123 intent456") is True
 
-    def test_validate_context_inspect(self):
-        """remedy context inspect -> context.inspect exists."""
-        assert validate_next_safe_action_command("remedy context inspect job123 --json") is True
+    def test_validate_job_context(self):
+        """remedy job context -> job.context exists."""
+        assert validate_next_safe_action_command(
+            "remedy job context job123 --task T001 --json") is True
 
     def test_validate_job_show(self):
         """remedy job show -> job.show exists."""
@@ -526,7 +527,7 @@ class TestContextFailureStops:
         assert "Traceback" not in text
 
     def test_context_error_next_action_valid(self, tmp_path):
-        """Context failure next_safe_action points to context inspect."""
+        """Context failure next_safe_action points to the task's compiled context."""
         repo = _make_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -548,7 +549,7 @@ class TestContextFailureStops:
                 os.environ.pop("REMEDY_DATA_DIR", None)
 
         assert result.next_safe_action is not None
-        assert "context inspect" in result.next_safe_action.command
+        assert "job context" in result.next_safe_action.command
         assert validate_next_safe_action_command(result.next_safe_action.command)
 
 
