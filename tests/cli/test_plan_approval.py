@@ -359,7 +359,7 @@ class TestApprovalGateEnforcement:
         )
         assert run.returncode == 3
         assert "flight plan rejected" in run.stderr
-        assert "remedy do replan" in run.stderr
+        assert "replan" not in run.stderr
 
 
 class TestDecisionResolve:

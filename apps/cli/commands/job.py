@@ -939,8 +939,7 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: flight plan rejected. "
-            f"Run: remedy do replan {job_id_str[:8]}",
+            f"Error: flight plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1261,8 +1260,7 @@ def _cmd_job_run_cycles(
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: flight plan rejected. "
-            f"Run: remedy do replan {job_id_str[:8]}",
+            f"Error: flight plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1539,7 +1537,7 @@ def _cmd_job_resume(
         sys.exit(3)
     if block_reason == "rejected":
         print(
-            f"Error: flight plan rejected. Run: remedy do replan {job_id_str[:8]}",
+            f"Error: flight plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1635,8 +1633,7 @@ def _cmd_resume(
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: flight plan rejected. "
-            f"Run: remedy do replan {job_id_str[:8]}",
+            f"Error: flight plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)

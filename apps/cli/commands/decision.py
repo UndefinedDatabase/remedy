@@ -315,8 +315,7 @@ def _cmd_decision_resolve(
                     fp.get("clarifications_resolved")):
                 print(
                     "Error: clarifications already resolved for this job — "
-                    "answers are immutable. Replan to ask again: "
-                    f"remedy do replan {job_id_str}",
+                    "answers are immutable.",
                     file=sys.stderr)
                 sys.exit(1)
             print("Error: no pending flight plan approval for this job.", file=sys.stderr)
@@ -366,7 +365,6 @@ def _cmd_decision_resolve(
             resolve_flight_plan_approval(
                 job, reason="reject", answers=answers, questions=questions)
             print(f"Flight plan rejected for job {job_id_str}.")
-            print(f"Run: remedy do replan {job_id_str}")
     else:
         print(f"Decision '{decision_id}' is derived and cannot be directly resolved.", file=sys.stderr)
         print("Resolve the underlying record (patch intent, test, etc.) instead.", file=sys.stderr)

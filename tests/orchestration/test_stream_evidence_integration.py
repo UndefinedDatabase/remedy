@@ -607,7 +607,7 @@ class TestDoRunStreamEvidenceWiring:
         import apps.cli.commands.do_cmd as do_cmd
 
         src = inspect.getsource(do_cmd)
-        run_lambda = src.split('"do.run": lambda args:', 1)[1].split('"do.replan":', 1)[0]
+        run_lambda = src.split('"do.run": lambda args:', 1)[1].split('"run.show":', 1)[0]
         assert "stream_evidence" in run_lambda
 
     def test_loop_defaults_stream_dir_when_caller_gives_none(self):

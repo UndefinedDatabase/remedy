@@ -322,6 +322,7 @@ class TestDeletedCommands:
         "do.plan",
         "do.promote",
         "do.repair-attest",
+        "do.replan",
         "guide.job",
         "job.assumptions",
         "job.digest",

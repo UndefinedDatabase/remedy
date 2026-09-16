@@ -1395,112 +1395,6 @@ def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) -> 
         pass
 
 
-def _cmd_do_replan(
-    job_id_str: str,
-    *,
-    json_output: bool = False,
-) -> None:
-    """Regenerate the flight plan for an existing job."""
-    from packages.orchestration.data_paths import job_evidence_export_dir, resolve_job_id
-    from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan, save_job_plan
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    fp = getattr(job, "flight_plan", None)
-    if not isinstance(fp, dict):
-        print("Error: job has no flight plan to replan.", file=sys.stderr)
-        sys.exit(1)
-
-    intake = getattr(job, "intake", None)
-    if not isinstance(intake, dict):
-        print("Error: job has no intake data.", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.intake import make_structured_call_fn
-    from packages.orchestration.schemas.models import FlightPlan
-    # Replanning is a flight-plan call: bind the provider's native schema to
-    # FlightPlan, not to the intake model.
-    call_fn = make_structured_call_fn(FlightPlan)
-    if call_fn is None:
-        print("Error: no provider available for replan.", file=sys.stderr)
-        sys.exit(1)
-
-    any_completed = any(
-        getattr(t, "status", None) in ("completed", "passed")
-        for t in getattr(job, "tasks", [])
-    )
-
-    from packages.orchestration.flight_plan import (
-        ReplanRejectedError,
-        compose_flight_plan_prompt,
-        make_flight_plan_call_recorder,
-        map_flight_plan_to_tasks,
-        plan_job_llm,
-        replan,
-    )
-
-    replan_traces: list = []
-    replan_composed = compose_flight_plan_prompt(intake)
-    fp_result = plan_job_llm(
-        intake,
-        call_fn,
-        composed=replan_composed,
-        on_call=make_flight_plan_call_recorder(
-            replan_traces,
-            replan_composed,
-            provider="ollama",
-            provider_kind="ollama",
-        ),
-    )
-    if fp_result.plan is None:
-        print(
-            f"Error: replan failed: {fp_result.error_hint or 'parse failure'}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    ev_dir = job_evidence_export_dir(str(job.job_id))
-    try:
-        new_fp_dict, version = replan(
-            fp, fp_result.plan, ev_dir,
-            any_task_completed=any_completed,
-            transformations=fp_result.transformations,
-        )
-    except ReplanRejectedError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    new_fp_dict["_normalization"] = fp_result.transformations
-    job.flight_plan = new_fp_dict
-    job.tasks = map_flight_plan_to_tasks(fp_result.plan)
-    save_job_plan(job)
-
-    # APPEND, never write: this job's first run already left its intake and
-    # flight-plan traces in the same per-job file (F105 R28).
-    if replan_traces:
-        from packages.orchestration.prompt_trace import append_trace_jsonl
-        from packages.orchestration.run_log import RunLogWriter
-        log = RunLogWriter(job_id=job.job_id)
-        try:
-            append_trace_jsonl(replan_traces, log.path.parent / "prompt_trace.jsonl")
-        except OSError:
-            pass
-
-    if json_output:
-        print(json.dumps({
-            "job_id": str(job.job_id),
-            "version": version,
-            "approval": new_fp_dict.get("_approval", "pending"),
-        }, indent=2))
-    else:
-        print(f"Replanned job {str(job.job_id)[:8]} → version {version} (awaiting approval)")
-
-
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.run": lambda args: _cmd_do(
         getattr(args, "goal", None) or "",
@@ -1541,10 +1435,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         deadline=getattr(args, "deadline", None),
         no_llm=getattr(args, "no_llm", False),
         yes=getattr(args, "yes", False),
-    ),
-    "do.replan": lambda args: _cmd_do_replan(
-        args.job_id,
-        json_output=getattr(args, "json", False),
     ),
     "run.show": lambda args: _cmd_run_show(
         args.run_id,

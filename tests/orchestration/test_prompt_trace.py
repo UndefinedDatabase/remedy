@@ -327,15 +327,6 @@ class TestSegmentManifest:
         append_trace_jsonl([entry], path)
         assert len(path.read_text().strip().split("\n")) == 1
 
-    def test_the_replan_path_records_and_appends_its_traces(self):
-        """Wiring guard: an unwired or truncating replan fails HERE (F105 R28)."""
-        import apps.cli.commands.do_cmd as do_cmd
-
-        source = inspect.getsource(do_cmd)
-        assert "replan_traces" in source
-        assert "append_trace_jsonl" in source
-        assert source.count("on_call=make_flight_plan_call_recorder(") == 2
-
     def test_every_cli_call_site_hands_its_composition_down(self):
         """R-0256 wiring guard: a site that composes twice fails HERE."""
         import apps.cli.commands.do_cmd as do_cmd
@@ -343,7 +334,6 @@ class TestSegmentManifest:
         source = inspect.getsource(do_cmd)
         assert "composed=intake_composed," in source
         assert "composed=plan_composed," in source
-        assert "composed=replan_composed," in source
 
     def test_the_builder_composition_traces_a_real_segment_manifest(self):
         """F115 D1 behaviour: a composed builder prompt traces with real rows.
