@@ -1,10 +1,11 @@
-── STEP T003/5 — F261 — ROUND 17 ──
-Goal: Book round 16's PASS, register R-0906 for this feature and R-0907 for F273, record
-DECISION F261 D16, and delete the `readiness`, `contract` and `policy` groups in three commits
-by applying three tables; run the suite once.
+── STEP T003/6 — F261 — ROUND 18 ──
+Goal: Book round 17's PASS and its prose slip, register R-0908 and R-0910 for F273 and R-0909
+for this feature, record DECISION F261 D17, and delete the `context` group, the `token` group
+with `context-pack` and the `review` group in three commits by applying three tables; run the
+suite once.
 
-Base commit: `bf88d647`, on `feature/f261-cli-vocabulary-v2`. SESSION 4 of F261. Read AGENTS.md,
-docs/agents/self_drive_protocol.md, `.agent/f261_t003_inventory.md`, and DECISION F261 D16 once
+Base commit: `43694261`, on `feature/f261-cli-vocabulary-v2`. SESSION 4 of F261. Read AGENTS.md,
+docs/agents/self_drive_protocol.md, `.agent/f261_t003_inventory.md`, and DECISION F261 D17 once
 C1 has landed it.
 
 THE FRAME RULE, per item 37 of §3, measured over the final bytes: NO LINE of this block that is two or
@@ -14,7 +15,7 @@ lines is exactly two characters long.
 ENVIRONMENT: `VAR=x cmd`, `env` and `export` are denied, so set environment in-process; `cp` is
 denied, so copy with `shutil.copyfile`; bare `ruff` is denied, so use `python3 -m ruff check`.
 Shell loops, `$(...)` and `$?` in a compound command are refused by form, so write such checks
-as Python scripts under `.remedy-wt/f261r16w/`, and never name a script after a standard-library
+as Python scripts under `.remedy-wt/f261r18w/`, and never name a script after a standard-library
 module; a pipe into `tail` hides pytest's exit code. The editable install resolves `apps` and
 `packages` to the PRIMARY checkout, so a pytest run inside a worktree goes through a runner
 script that changes into the worktree, puts it first on `sys.path` and in `PYTHONPATH`, and
@@ -25,41 +26,43 @@ but not committed, `test_every_enumerated_path_exists_in_this_repo` fails; run n
 
 ## Bundle — the ordered commit sequence
 
-C0a `.agent/authored/f261-r17.md`, the block file the delegating message names, by
+C0a `.agent/authored/f261-r18.md`, the block file the delegating message names, by
     `shutil.copyfile`
 C0b `.agent/last_block.md`, the same bytes
-C1  THE RECORD, one commit: `.agent/plan.md` becomes slice PLAN17; slice RECORD17 is appended to
-    `.agent/live_review.md` and slice DEC16 to `.agent/decisions.md`; in `docs/roadmap/features/T2_F273.md` the bytes of slice P273-FROM
+C1  THE RECORD, one commit: `.agent/plan.md` becomes slice PLAN18; slice RECORD18 is appended to
+    `.agent/live_review.md`, slice DEC17 to `.agent/decisions.md` and slice SLIP18 to
+    `.agent/prose_slips.md`; in `docs/roadmap/features/T2_F273.md` the bytes of slice P273-FROM
     are replaced by those of slice P273-TO
-C2  THE READINESS GROUP: copy `.remedy-wt/f261-block/f261-r17-readiness.jsonl` to
-    `.agent/authored/f261-r17-readiness.jsonl` and apply it per THE TABLES, in one commit
-C3  THE CONTRACT GROUP AND ITS HINTS: the same with `f261-r17-contract.jsonl`, in one commit
-C4  THE POLICY GROUP: the same with `f261-r17-policy.jsonl`, in one commit
+C2  THE CONTEXT GROUP: copy `.remedy-wt/f261-block/f261-r18-context.jsonl` to
+    `.agent/authored/f261-r18-context.jsonl` and apply it per THE TABLES, in one commit
+C3  THE TOKEN GROUP WITH CONTEXT-PACK: the same with `f261-r18-token.jsonl`, in one commit
+C4  THE REVIEW GROUP AND THE SMOKE SCRIPT'S GROUP LIST: the same with `f261-r18-review.jsonl`,
+    in one commit
 C5  `.agent/handoff.md`, the handback; then `git push origin feature/f261-cli-vocabulary-v2`
 
 C1 is the FIRST SUBSTANTIVE COMMIT, per item 23 of §3. No pull request is created.
 
 ## Change — exactly these paths and no others
 
-C0a to C1: `.agent/authored/f261-r17.md`, `.agent/last_block.md`, `.agent/plan.md`,
-`.agent/live_review.md`, `.agent/decisions.md` and
+C0a to C1: `.agent/authored/f261-r18.md`, `.agent/last_block.md`, `.agent/plan.md`,
+`.agent/live_review.md`, `.agent/decisions.md`, `.agent/prose_slips.md` and
 `docs/roadmap/features/T2_F273.md`. C2 to C4: each table's own carrier and the paths G3 names.
 C5: `.agent/handoff.md`.
 
 ## The appends and the pair
 
-RECORD17 and DEC16 each begin with an empty line, and both targets end in a
-newline at `bf88d647`: an append is the file's bytes followed by the slice's bytes, and nothing
+RECORD18, DEC17 and SLIP18 each begin with an empty line, and their targets end in a
+newline at `43694261`: an append is the file's bytes followed by the slice's bytes, and nothing
 else. The pair P273: TO contains FROM: false, so it is a REWRITE; P273-FROM occurs once
-in `docs/roadmap/features/T2_F273.md` at `bf88d647`, and at C1 P273-FROM occurs 0 times and
+in `docs/roadmap/features/T2_F273.md` at `43694261`, and at C1 P273-FROM occurs 0 times and
 P273-TO once.
 
 ## THE TABLES
 
 Each carrier holds one JSON array per line. Their sha256 digests, to verify before copying:
-`f261-r17-readiness.jsonl` `53281fb63f49d0f526ecd5568604d19042e798a5146e9564d342a0a2d3a5881a`,
-`f261-r17-contract.jsonl` `b224acf8ef3fb53da03126d3348adb1f1ad57b28a34fdf0d12673868370d21a3`,
-`f261-r17-policy.jsonl` `8c88b9daf6a5e87674569194a303997efec348827111bc168eed4ad8ab6ce339`.
+`f261-r18-context.jsonl` `d8ed7b75a5b2288ffe882beedab6fbb7ab067990d6db406938cc5c4ec3b7c6e0`,
+`f261-r18-token.jsonl` `330f85636d66cc569fe46dc51833b0bf0a73b3ab68fc365a1fbcb5eba78c23ee`,
+`f261-r18-review.jsonl` `07403106a52d0239b43eca5da42163ba0e0e155df90cbc680b293d5dd13b377a`.
 Apply the rows strictly
 in file order, each against the tree as the previous rows left it, from the repository root:
 `["edit", path, old, new, count]` opens the path with `encoding="utf-8", newline=""`, requires
@@ -69,16 +72,16 @@ must not exist; `["create", path, content]` writes `content` to a path that must
 the same encoding and newline setting. A count that differs or a target that exists is a STOP:
 touch nothing further, commit nothing of that table, and hand back with the row and the reading.
 Stage each commit with `git add -A` after its table and its carrier. The tables are the
-reviewer's measured dry run of DECISION F261 D16, applied on top of C1's record: the readiness
-table its CHOSEN FIRST, the contract table its CHOSEN SECOND and the policy table its CHOSEN
-THIRD.
+reviewer's measured dry run of DECISION F261 D17, applied on top of C1's record: the context
+table its CHOSEN FIRST, the token table its CHOSEN SECOND, and the review table its CHOSEN THIRD
+with the two rows the reviewer added for the smoke script's group list.
 
 ## SPEC S — the suite, once, after G5 and before C5
 
 From the primary checkout's root, serially:
 `python3 -B -m pytest -q -p no:randomly -p no:cacheprovider --tb=short -rfEs`, with `PYTHONPATH`,
 `REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed and `PYTHONDONTWRITEBYTECODE=1`, output under
-`.remedy-wt/f261r16w/`. Report pytest's return code, the run's last output line, and every
+`.remedy-wt/f261r18w/`. Report pytest's return code, the run's last output line, and every
 distinct bad node, the text after a line-initial `FAILED ` or `ERROR ` up to the first ` - `.
 Re-run each bad node alone, once, the same way, and report that return code beside it.
 
@@ -89,14 +92,14 @@ Re-run each bad node alone, once, the same way, and report that return code besi
 2. READ `.agent/STOP` before C0a, before C2 and before C5, with real exit codes. If it exists:
    finish a half-written commit, write the handoff, push, stop.
 3. A red gate is a STOP: commit what is honestly finished, hand back with the raw output.
-4. Scratch, runner scripts and your worktree live under `.remedy-wt/f261r16w/`, uncommitted; no
+4. Scratch, runner scripts and your worktree live under `.remedy-wt/f261r18w/`, uncommitted; no
    `.py` file under `.agent/`. Under `.remedy-wt/` open only `.remedy-wt/f261-block/` and your
    own directory. `git worktree list` reads one row now; leave it so. Create no symlink.
 5. Every commit stays under 500 insertions, read as the first column of `git show --numstat
    --format= <commit>` with git's default rename detection.
 6. NEVER merge, open a pull request, force-push, rewrite history or delete a branch. No `remedy`.
    Write no `Done:` paragraph and no `Landed:` line.
-7. THE BLOCK'S OWN SIZE, measured on its final bytes: 352 lines TOTAL and 260 lines of PROSE,
+7. THE BLOCK'S OWN SIZE, measured on its final bytes: 370 lines TOTAL and 271 lines of PROSE,
    against the caps of 490 and 400.
 8. GATE ORDER. G1 and G2 after C1; G3, G4 and G5 after C4; then SPEC S, whose result is G6; G7
    after C5 and the push, reported in the completion message only.
@@ -105,78 +108,82 @@ Re-run each bad node alone, once, the same way, and report that return code besi
 
 ## Done when — every gate run for real, its exit code recorded
 
-G1 TRANSPORT. The sha256 of `.agent/authored/f261-r17.md` at C0a equals the digest the delegating
+G1 TRANSPORT. The sha256 of `.agent/authored/f261-r18.md` at C0a equals the digest the delegating
 message gives, and `.agent/last_block.md` at C0b is byte-identical to it; the slices FOUND, each
 matching its BEGIN-marker sha256; each committed carrier's sha256 equals its digest above.
 
-G2 THE RECORD, at C1. `.agent/plan.md` is byte-identical to PLAN17, at most 50 lines, with
-`^## Goal$` once and `^## Next Steps$` once. `.agent/live_review.md` equals its `bf88d647` blob
-followed by RECORD17 and `.agent/decisions.md` its `bf88d647` blob followed by DEC16.
-`docs/roadmap/features/T2_F273.md` equals its `bf88d647` blob with the pair P273 applied, with
+G2 THE RECORD, at C1. `.agent/plan.md` is byte-identical to PLAN18, at most 50 lines, with
+`^## Goal$` once and `^## Next Steps$` once. `.agent/live_review.md` equals its `43694261` blob
+followed by RECORD18, `.agent/decisions.md` its `43694261` blob followed by DEC17, and
+`.agent/prose_slips.md` its `43694261` blob followed by SLIP18.
+`docs/roadmap/features/T2_F273.md` equals its `43694261` blob with the pair P273 applied, with
 the counts The appends and the pair give. Over `.agent/live_review.md`: `^Gate: F\d+ R\d+ — `
-reads 125 at `bf88d647` and 126 at C1, with `Gate: F261 R16 — ` once at C1; distinct
-`^- R-\d+ — ` ids 108 and 110, C1 minus base exactly `R-0906` and `R-0907`; distinct `^Done: R-\d+ — ` ids 8
-and 8; the open set by distinct id 100 and 102. `python3 -m pytest tests/docs/ -q` exits 0 at C1.
+reads 126 at `43694261` and 127 at C1, with `Gate: F261 R17 — ` once at C1; distinct
+`^- R-\d+ — ` ids 110 and 113, C1 minus base exactly `R-0908`, `R-0909` and `R-0910`; distinct `^Done: R-\d+ — ` ids 8
+and 8; the open set by distinct id 102 and 105. `python3 -m pytest tests/docs/ -q` exits 0 at C1.
 
 G3 THE TABLES, at C2, C3 and C4. `git diff --no-renames --name-only` from each commit's parent
-prints exactly that commit's carrier and: at C2 `apps/cli/command_catalog.py`, `apps/cli/commands/__init__.py`, `apps/cli/commands/readiness.py`, `apps/ui/src/api/actionClass.test.ts`, `apps/ui/src/api/humanizeCatalog.ts`, `docs/system/architecture.md`, `packages/orchestration/brain_detail.py`, `packages/orchestration/brain_viewer.py`, `packages/orchestration/guidance.py`, `scripts/remedy_smoke.sh`, `tests/orchestration/import_reachability_allowlist.txt`, `tests/test_autonomy_readiness.py`, `tests/test_command_catalog.py`, `tests/test_data_paths.py` and `tests/test_remedy_smoke_script.py`; at C3 `apps/cli/command_catalog.py`, `apps/cli/commands/__init__.py`, `apps/cli/commands/contract_cmd.py`, `docs/system/quality-baseline-v0.md`, `docs/system/real-test-execution-v1.md`, `docs/system/repair-loop-v1.md`, `docs/system/run-contract-v1.md`, `packages/orchestration/do_continue.py`, `packages/orchestration/repair_loop.py`, `packages/orchestration/run_contract.py`, `packages/orchestration/self_dogfood.py`, `packages/orchestration/self_dogfood_execution.py`, `packages/orchestration/test_execution_service.py`, `pyproject.toml`, `tests/cli/test_cli_ux.py`, `tests/cli/test_contract_runtime.py`, `tests/orchestration/import_reachability_allowlist.txt` and `tests/test_command_catalog.py`; at C4
-`apps/cli/command_catalog.py`, `apps/cli/commands/__init__.py`, `apps/cli/commands/policy.py`, `apps/ui/src/api/humanizeCatalog.ts`, `docs/system/architecture.md`, `packages/orchestration/brain_detail.py`, `packages/orchestration/guidance.py`, `scripts/remedy_smoke.sh`, `tests/orchestration/import_reachability_allowlist.txt`, `tests/orchestration/test_event_name_coupling.py`, `tests/test_command_catalog.py`, `tests/test_execution_foundation.py`, `tests/test_grouped_cli.py` and `tests/test_remedy_smoke_script.py`. `git rev-parse <commit>:<object>` equals the reviewer's dry run, which applied C1's
+prints exactly that commit's carrier and: at C2 `apps/cli/command_catalog.py`, `apps/cli/commands/__init__.py`, `apps/cli/commands/context.py`, `docs/guides/do-run-v1.md`, `docs/system/architecture.md`, `docs/system/context-inspector.md`, `packages/orchestration/brain_detail.py`, `packages/orchestration/do_run.py`, `packages/orchestration/token_economy.py`, `scripts/remedy_smoke.sh`, `tests/cli/test_context_inspect_cli.py`, `tests/cli/test_context_inspect_runtime.py`, `tests/orchestration/import_reachability_allowlist.txt`, `tests/orchestration/test_do_run.py`, `tests/orchestration/test_token_economy.py`, `tests/test_command_catalog.py`, `tests/test_context_coverage.py` and `tests/test_project_context_coverage.py`; at C3 `apps/cli/command_catalog.py`, `apps/cli/commands/__init__.py`, `apps/cli/commands/token_cmd.py`, `docs/guides/token-economy-user-guide-v0.md`, `docs/system/token-economy-context-budget-optimizer-v0.md`, `packages/orchestration/token_economy.py`, `tests/cli/test_cli_ux.py`, `tests/cli/test_token_cli.py`, `tests/orchestration/import_reachability_allowlist.txt` and `tests/test_command_catalog.py`; at C4
+`apps/cli/command_catalog.py`, `apps/cli/commands/__init__.py`, `apps/cli/commands/dev.py`, `apps/cli/commands/review_cmd.py`, `docs/guides/simple-operator-quickstart-v0.md`, `docs/system/core-product-spine-v0.md`, `docs/system/orchestrator-loop.md`, `packages/orchestration/ui_view_model.py`, `scripts/remedy_smoke.sh`, `tests/cli/test_job_commands.py`, `tests/cli/test_review_cmd.py`, `tests/orchestration/import_reachability_allowlist.txt`, `tests/test_cli_execution_loop_closure.py`, `tests/test_command_catalog.py` and `tests/test_data_paths.py`. `git rev-parse <commit>:<object>` equals the reviewer's dry run, which applied C1's
 record before the tables, for `apps`, `tests`, `docs`, `scripts`, `packages` and `README.md` in
-that order: C2 `64b96c3cfe93b2d5a6fc8b00518d1dfbf5fc8795`, `4227848131d304116cfa0d994ac747915a366e48`, `b8bda65ced35f1228dcddb728f1cd1fff50f86af`, `8cee7c743b6d65101fb284637d9db112c5248f35`, `35148a28175e50db86fae55328e2c612e34f1d6c`, `15b9e0e8fec9721c7c17a872cc8f1a2bed3a2952`; C3 `8e208dce75af1b68d22f30356175ae1a7b804f35`, `71a19b9cd924ce7f6eb9d9fee692a0b4ab5e4eaf`, `c2410d195b4c22d1b3ba0f1f85793e0b11aebd66`, `8cee7c743b6d65101fb284637d9db112c5248f35`, `7eaa0ad5890313a7dff4000c92384a77edcbd535`, `15b9e0e8fec9721c7c17a872cc8f1a2bed3a2952`; C4 `8a2b5ba003ff088791183387a48ba091920925fa`, `31412c90e3171055e857dca191ba4a7fe148f017`, `7eb0caab58166e1598fa2e90a8e83c7e45624823`, `3439f8f1e6698ee3ea69f6b2245854ade46c1f37`, `ed064a2b9369cd2917994191fee6e03739021cba`, `15b9e0e8fec9721c7c17a872cc8f1a2bed3a2952`.
+that order: C2 `de7e75f66ad6fbae57992d4f0d4226290cc5e5f7`, `7222a99c21e7078850fccf480621874c90175e00`, `31e2b724b03c6e5220fffd5ebdf9d87cde9d1923`, `6314b0d79f5e9a2460c3a22154f06656a67e8f61`, `2365aad43df49bb0895e901df33fa92d966cd8fb`, `15b9e0e8fec9721c7c17a872cc8f1a2bed3a2952`; C3 `fcfb42a7caebdddf412a9fa8460c1d0c79105bb7`, `2d162d7aa1d1e8b2c1b650491a86802b780fe055`, `d244ee0962f4a7b94b1496befeb74274c815222d`, `6314b0d79f5e9a2460c3a22154f06656a67e8f61`, `0a778e160c1b3f097404ed582d115a22198d7643`, `15b9e0e8fec9721c7c17a872cc8f1a2bed3a2952`; C4 `fcec307eb88f40cf88e241874719f1d67134986f`, `bbd5299ed5d8176353e98530b78e88bcba40e04c`, `e2bf8ac067db46dfe88c725c5e8e89233b358446`, `208d836b3d5d6532fe9354d9455ab71c67639ed2`, `bdd606d30705ed68d6e4ad96783661ff319a8dc4`, `15b9e0e8fec9721c7c17a872cc8f1a2bed3a2952`.
 Report each commit's insertions per constraint 5.
 
-G4 THE SWEEP, at C4. `git grep -n -I -E 'remedy (readiness|contract|policy)\b|commands/(readiness|policy|contract_cmd)\.py|apps\.cli\.commands\.(readiness|policy|contract_cmd)|_cmd_readiness_(job|project)|_cmd_run_contract|_cmd_token_policy|_cmd_token_explain|_cmd_contract_(inspect|check|set)'
+G4 THE SWEEP, at C4. `git grep -n -I -E 'remedy (context|context-pack|token|review)\b|commands/(context|token_cmd|review_cmd)\.py|apps\.cli\.commands\.(context|token_cmd|review_cmd)\b|_cmd_context_inspect|_cmd_context_pack_recommend|_cmd_token_(budget_show|budget_set|estimate|economy_report)|_cmd_review_(run|list|accept|reject)'
 <C4> -- apps packages scripts tests docs README.md AGENTS.md .claude ':!docs/roadmap'` exits 1
 and prints nothing. `python3 -m ruff check` over every `.py` path of C2 to C4 that still exists
-at C4 exits 0.
+at C4 exits 0. Every word of the `for grp in` list of section 0 of `scripts/remedy_smoke.sh` at C4
+is a key of `GROUPS` in `apps/cli/command_catalog.py` at C4; report the words and the count. At
+`43694261` that same reading names 5 words that are not.
 
-G5 THE RED-PROOF, in `git worktree add --detach .remedy-wt/f261r17w/wt <C4's sha>`, each run
+G5 THE RED-PROOF, in `git worktree add --detach .remedy-wt/f261r18w/wt <C4's sha>`, each run
 through the runner over `tests/test_command_catalog.py`, `tests/cli/test_cli_ux.py`,
 `tests/test_grouped_cli.py`, `tests/orchestration/test_import_reachability.py`,
-`tests/cli/test_advertised_commands.py` and `tests/orchestration/test_event_name_coupling.py`
-with `-rf --tb=no`. Mutation <n> is in the file its line below names, replaces the bytes of slice
+`tests/cli/test_advertised_commands.py` and `tests/test_remedy_smoke_script.py` with
+`-rf --tb=no`. Mutation <n> is in the file its line below names, replaces the bytes of slice
 MUT-<n>-FROM, whose count there must read 1, with those of slice MUT-<n>-TO, and is restored with
-`git -C .remedy-wt/f261r17w/wt checkout -- <that file>`. (a) CONTROL: must exit 0. Each numbered
-mutation must exit 1 with the named node among the failed nodes:
-(1) `apps/cli/commands/dev.py`, a `readiness` handler row, (2) the same file, a `contract`
-handler row, and (3) the same file, a `policy` handler row: each
+`git -C .remedy-wt/f261r18w/wt checkout -- <that file>`. (a) CONTROL: must exit 0. Each of (1) to
+(7) must exit 1 with the named node among the failed nodes:
+(1) `apps/cli/commands/dev.py`, a `context` handler row, (2) the same file, a `token` handler
+row, and (3) the same file, a `review` handler row: each
 `TestDeletedCommands::test_no_deleted_id_is_left_in_the_dispatch_table`; (4)
-`apps/cli/command_catalog.py`, the `policy` group restored without commands:
+`apps/cli/command_catalog.py`, the `token` group restored without commands:
 `TestCatalogIntegrity::test_every_group_has_at_least_one_command`; (5) the same file, a
-`related=` naming `policy.contract`:
+`related=` naming `review.list`:
 `TestCatalogIntegrity::test_every_related_reference_resolves_to_a_live_command`; (6)
-`packages/orchestration/brain_detail.py`, the readiness node's hint pointed back at
-`readiness job`: `test_every_advertised_command_exists_in_the_catalog`; (7)
-`tests/orchestration/test_event_name_coupling.py`, `token_policy_inspected` undeclared:
-`TestEventNameCouplingRatchet::test_every_dead_coupling_is_declared`; (8)
-`tests/cli/test_cli_ux.py`, `contract` named an internal group again:
+`packages/orchestration/ui_view_model.py`, a `review list` command in the view model:
+`test_every_advertised_command_exists_in_the_catalog`; (7) `tests/cli/test_cli_ux.py`, `token`
+and `context-pack` named internal groups again:
 `TestGroupDefIntegrity::test_internal_groups_marked`.
+(8) IS A PROBE, NOT A COLOUR: put `policy`, a group this branch deleted, back into the `for grp
+in` list of section 0 of `scripts/remedy_smoke.sh` and run the same selection. Report its exit
+code and summary line whatever they are; the reading is evidence for R-0910, which registers
+that no guard reads that list, and neither colour is a STOP.
 Report each exit code, summary line and number of failed nodes; then
-`git worktree remove --force .remedy-wt/f261r17w/wt` and read `git branch --list 'remedy/job-*'`.
+`git worktree remove --force .remedy-wt/f261r18w/wt` and read `git branch --list 'remedy/job-*'`.
 
 G6 THE SUITE, SPEC S at C4: must exit 0 with no bad node; report the last output line. A bad
 node whose lone re-run exits 0 is reported as such with both readings, and is not a STOP; a bad
 node whose lone re-run fails is.
 
 G7 THE TREE, after C5 and the push. `git status --porcelain` prints `''`; C0a to C5 are
-single-parent commits in that order on `bf88d647`; `git rev-parse HEAD` equals
+single-parent commits in that order on `43694261`; `git rev-parse HEAD` equals
 `git rev-parse origin/feature/f261-cli-vocabulary-v2`; `git worktree list` prints one row, and
 `git branch --list 'remedy/job-*'` prints 16 lines.
 
 ## The handback, C5
 
 `.agent/handoff.md` per `docs/agents/handback_template.md`, Session line
-`SESSION 4 of feature F261 · round 17 · rounds so far 17`, with one sentence of context
+`SESSION 4 of feature F261 · round 18 · rounds so far 18`, with one sentence of context
 self-assessment. `## Commits` lists C0a to C4, each row's `+/-` cell equal to constraint 5's
 reading of that commit and its deletions column; C5's own numbers appear nowhere, per item 31 of
-§3. `## Verification` gives G1 to G6 with real exit codes. It states the open findings at 102 by
+§3. `## Verification` gives G1 to G6 with real exit codes. It states the open findings at 105 by
 distinct id, with the High ids R-0803, R-0804 and R-0807, and `Operator questions open: 0`. Its
-`## Next` names, in order: Phase 1 rule 1; the reviewer's verdict on round 17; the `context`
-group, the `token` group with `context-pack`, and the `review` group, as the inventory
-proposes.
+`## Next` names, in order: Phase 1 rule 1; the reviewer's verdict on round 18; `do report`
+becoming `run show` and `run list` with `do evidence`, as the inventory proposes.
 
-── SLICE PLAN17 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
-BEGIN PLAN17 sha256=6566d9abdc5888f04dfc42ec08daa5f599e7d8ebcc0480d25b6d2793c1160904
+── SLICE PLAN18 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
+BEGIN PLAN18 sha256=a5d4dfc6aefdc42e09104687aa757ea5ce7d1d3190cc3c741965c1a86e0911c3
 # Plan — F261 CLI vocabulary v2 (rename & prune)
 
 Branch: feature/f261-cli-vocabulary-v2, cut from `main` at
@@ -190,70 +197,83 @@ command, and every retired word deleted rather than aliased, per
 
 ## Current Step
 
-ROUND 17 continues T003. It books round 16's PASS, registers R-0906 for this feature and R-0907
-for F273 and records DECISION F261 D16, then deletes the `readiness` group, the `contract` group
-with its hints, and the `policy` group, one table per commit.
+ROUND 18 continues T003. It books round 17's PASS and a prose slip, registers R-0908 and R-0910
+for F273 and R-0909 for this feature and records DECISION F261 D17, then deletes the `context`
+group, the `token` group with `context-pack`, and the `review` group, one table per commit, and
+takes the groups rounds 16 and 17 deleted out of the smoke script's group-help loop.
 
 ## Next Steps
 
-1. The `context` group, the `token` group with `context-pack`, and the `review` group, as
+1. `do report` becomes `run show` and `run list`, and `do evidence` goes, as
    `.agent/f261_t003_inventory.md` proposes.
 2. The rest of T003 in the inventory's order, each round re-measured before it is authored,
    with R-0767, R-0894 and R-0900.
-3. `job budget <id> set` over the run-contract budget fields, the word DECISION amend0905-vocab
-   D4 gives the write that `contract set` performed, with R-0906.
+3. `job budget <id> set` over the run-contract budget fields and the token budget profile, the
+   word DECISION amend0905-vocab D4 gives those writes, with R-0906 and R-0909.
 4. T004.
 
 ## Risks
 
-- 100 findings are open by distinct id before this round's record and 102 after it; three are
+- 102 findings are open by distinct id before this round's record and 105 after it; three are
   High, R-0803, R-0804 and R-0807.
 - The inventory proposes more rounds than F261's soft limit of 25 leaves; the session that
   reaches the limit owes the scope report and the split-and-close default.
-- A deletion's consumers include shell strings, subprocess help calls, event readers, the UI
-  event catalog and the readiness signals, so every deletion round runs the whole suite on its
-  committed tree.
-END PLAN17
+- A deletion's consumers include shell strings a guard cannot read, subprocess help calls,
+  event readers and the UI event catalog, so every deletion round runs the whole suite on its
+  committed tree and re-reads the smoke script.
+END PLAN18
 
-── SLICE RECORD17 ── target `.agent/live_review.md` ── APPEND ──
-BEGIN RECORD17 sha256=defe5e1474dea6d7a8ab13f753b27c705751b985b7556fed088717f985577183
+── SLICE RECORD18 ── target `.agent/live_review.md` ── APPEND ──
+BEGIN RECORD18 sha256=9d8c657980d487916de8c9f1983dede3866fc1127d8330f585265cad1310c5ed
 
-Gate: F261 R16 — the F261 round 16 entry. VERDICT PASS. Written by the planner and reviewer of session 39 after reading the committed range `782b4e02`..`bf88d647` and re-deriving the readings below; the worker's report was evidence for none of them. It is booked here by the first commit of round 17 that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f261-r16.md` at `d11fd434` and `.agent/last_block.md` at `4613018a` are byte-identical to the reviewer's scratch original, sha256 `30c5067a9e6531a00ade3ee4a2ab9a5dc15e6b01c85a50f055cb6ec5677b7d94`, and the three tables committed at `995dd07e`, `5db11427` and `ae95e09d` are byte-identical to the reviewer's. THE STATE: at `decdbbcc` and again at `bf88d647`, `.agent/plan.md` equals PLAN16, `.agent/live_review.md`, `.agent/decisions.md` and `.agent/prose_slips.md` equal their `782b4e02` blobs followed by RECORD16, DEC15 and SLIP16, and `docs/roadmap/features/T2_F273.md` equals its `782b4e02` blob with the pair P273 applied. THE TABLE COMMITS: at `995dd07e`, `5db11427` and `ae95e09d` the `apps`, `tests`, `docs`, `scripts`, `packages`, `README.md` and `.claude` objects equal the reviewer's dry-run commits, which applied the record before the tables; the first two tables are the research helper's and reproduced its trees, and the third is the helper's repo table with one row the reviewer added, which declares `git_status_read` in `KNOWN_DEAD_EVENT_COUPLINGS` with the ceiling raised to 2 so that no commit of the round leaves `test_every_dead_coupling_is_declared` red, and whose tree differs from the helper's only in that file's comment. Each commit's `--no-renames` path set is the dry run's plus its carrier, and `git show --numstat` reads 44, 21 and 63 insertions. In the dry run's production diff each deleted group leaves with its handlers, catalog entries and tests, the `guide` route of the cockpit server whose payload was the `guide job` output, the two guidance exports, `packages/orchestration/dashboard.py`, the two git-status exports and the commit-readiness block of `dev status`; `build_guidance_cards` and `read_git_status` stay for the cockpit and the brain graph, and every deleted symbol's production callers at `782b4e02` were in the deleted code. The sweep pattern of the round 16 block matches in 24 files at `782b4e02`, and at `bf88d647` the same `git grep` over `apps`, `packages`, `scripts`, `tests`, `docs` without `docs/roadmap`, `README.md`, `AGENTS.md` and `.claude` exits 1 with no output. In the reviewer's dry run a full suite under `-n auto` without `tests/ui_server` read 1 failed, `test_vitest_passes`, 17415 passed and 29 skipped, and the ten `tests/ui_server` files naming a deleted group read 328 passed. Over `tests/test_command_catalog.py`, `tests/cli/test_cli_ux.py`, `tests/test_grouped_cli.py`, `tests/orchestration/test_import_reachability.py`, `tests/cli/test_advertised_commands.py` and `tests/orchestration/test_event_name_coupling.py`, which passed 443 unmutated, a `guide` handler row failed 1 test, the `repo` group restored without commands failed 1, the `ci` group removed failed 6 with `test_all_groups_still_in_catalog` among them, a `related=` naming `dashboard.job` failed 1, the `repo commit-readiness` hint restored failed 1, and `git_status_read` undeclared failed 1. THE REVIEWER'S RUN in the primary checkout at `bf88d647` of those six files, every other test file the round edited, `tests/ui_contracts/`, `tests/orchestration/test_test_runner.py`, `tests/cli/test_golden_path.py`, `tests/docs/`, `tests/orchestration/test_command_discovery.py` and those ten `tests/ui_server` files read 2641 passed and 11 skipped, `test_vitest_passes` alone read 1 passed, `python3 -m ruff check` over sixteen edited files printed `All checks passed!`, and `git branch --list 'remedy/job-*'` read 16 lines. The open set reads 100 by distinct id at `bf88d647`.
+Gate: F261 R17 — the F261 round 17 entry. VERDICT PASS. Written by the planner and reviewer of session 39 after reading the committed range `bf88d647`..`43694261` and re-deriving the readings below; the worker's report was evidence for none of them. It is booked here by the first commit of round 18 that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f261-r17.md` at `09d7dd18` and `.agent/last_block.md` at `a4d1bf03` are byte-identical to the reviewer's scratch original, sha256 `74be83b2d80f3da704da0464a9c4a324d605139376bcab0a68c1fbf0b7740d83`, and the three tables committed at `2f46e267`, `130e68f0` and `23204d61` are byte-identical to the reviewer's, which are the research helper's. THE STATE: at `a0860e35` and again at `43694261`, `.agent/plan.md` equals PLAN17, `.agent/live_review.md` and `.agent/decisions.md` equal their `bf88d647` blobs followed by RECORD17 and DEC16, and `docs/roadmap/features/T2_F273.md` equals its `bf88d647` blob with the pair P273 applied. THE TABLE COMMITS: at `2f46e267`, `130e68f0` and `23204d61` the `apps`, `tests`, `docs`, `scripts`, `packages`, `README.md` and `.claude` objects equal the reviewer's dry-run commits, which applied the record before the tables and reproduced the helper's trees exactly; each commit's `--no-renames` path set is the dry run's plus its carrier, and `git show --numstat` reads 54, 69 and 65 insertions. In the dry run's production diff each group leaves with its handler module, its catalog entries and its tests, `packages/orchestration/autonomy_readiness.py`, `run_contract.py` and `token_policy.py` stay with every production caller that reads them, the guidance card whose import named nothing goes, and every surviving hint that named a deleted command is re-pointed at `job show --full` or `mission readiness` or dropped. The sweep pattern of the round 17 block matches in 21 files at `bf88d647`, and at `43694261` the same `git grep` over `apps`, `packages`, `scripts`, `tests`, `docs` without `docs/roadmap`, `README.md`, `AGENTS.md` and `.claude` exits 1 with no output. In the reviewer's dry run a full suite under `-n auto` without `tests/ui_server` read 1 failed, `test_vitest_passes`, 17350 passed and 29 skipped, and the eight `tests/ui_server` files naming a deleted group read 312 passed. Over `tests/test_command_catalog.py`, `tests/cli/test_cli_ux.py`, `tests/test_grouped_cli.py`, `tests/orchestration/test_import_reachability.py`, `tests/cli/test_advertised_commands.py` and `tests/orchestration/test_event_name_coupling.py`, which passed 416 unmutated, a `readiness`, a `contract` and a `policy` handler row each failed 1 test, the `policy` group restored without commands failed 1, a `related=` naming `policy.contract` failed 1, the readiness node's hint pointed back at the deleted command failed 1, `token_policy_inspected` undeclared failed 1, and `contract` named an internal group again failed 3 with `test_internal_groups_marked` among them. The worker declared that constraint 4 and SPEC S of the block name the previous round's scratch directory while G5 names this round's, and resolved it in favour of G5's literal command; the directories are uncommitted scratch, nothing of the round depended on the name, and the slip is the reviewer's. THE REVIEWER'S RUN in the primary checkout at `43694261` of those six files, every other test file the round edited, the run contract, repair loop, do-continue and test-execution tests, `tests/ui_contracts/`, `tests/orchestration/test_test_runner.py`, `tests/cli/test_golden_path.py`, `tests/docs/`, `tests/orchestration/test_command_discovery.py` and five `tests/ui_server` files read 2428 passed and 4 skipped, `python3 -m ruff check` over nineteen edited files that survive printed `All checks passed!`, and `git branch --list 'remedy/job-*'` read 16 lines. The open set reads 102 by distinct id at `43694261`.
 
-- R-0906 — Medium, DELETING `contract set` LEAVES NO COMMAND THAT CAN RAISE `max_test_runs`, SO `remedy test run` IS REFUSED FOR EVERY JOB WHOSE CONTRACT NOTHING OVERRIDES, AND THE WORD DECISION amend0905-vocab D4 GIVES THAT WRITE, `job budget <id> set`, DOES NOT EXIST. Raised by the planner and reviewer of session 39 while preparing F261 round 17, after searching the open set for the `contract` and `policy` commands and for the run contract under §3 item 30: no open finding describes it. THE DEFECT, read at `bf88d647`: `build_default_run_contract` in `packages/orchestration/run_contract.py` sets `max_test_runs=0`, and `evaluate_run_action` refuses the run-test action while that field is 0, with the reason "max_test_runs is 0 — set it above 0 to enable test execution"; `_cmd_contract_set` in `apps/cli/commands/contract_cmd.py` was the only caller of `save_contract` that wrote a user-chosen field, the two that remain being `do_run.py`, which overrides `stop_before_apply`, `autonomy_level` and `max_loops` only, and `job_fulfillment.py`, which writes the fixture contract. The `job.budget` entry of `apps/cli/command_catalog.py` is `action_class="read_only"` and takes a job id and `--json`, so the `set` form D4 names is not built. This round deletes the `contract` group and empties that refusal's `next_safe_action`, which until now named `contract set`, and with it the next actions of the `stop_before_apply_true` and `test_budget_unconfigured` blockers of `evaluate_continue_eligibility` in `packages/orchestration/do_continue.py` and the `contract_guidance` line `execute_test_run` printed for an exhausted test budget, each of which named the same deleted write. WHY MEDIUM: a surviving user-facing command is refused for every job the operator did not fix by hand, and the refusal now names no way out; nothing is written and nothing prints anything false. WHY F261's: `job budget <id> [set …]` is a word of D4, and this feature's Goal is the catalog equal to D4, so the write belongs to a later round of T003 or T004 rather than to findings paydown. FIX: build `job budget <id> set <field> <value>` over the run-contract budget fields, with a test that raises `max_test_runs` and runs `test run` against the raised budget, and point the refusal's `next_safe_action`, the two `do continue` blockers and the exhausted-budget guidance at it. Owner: F261.
+- R-0908 — Medium, DELETING THE `review` GROUP LEAVES THE REVIEWER RECOMMENDATIONS WITH NO WRITER WHILE TWO COCKPIT SURFACES STILL READ THEM, AND NOTHING TURNS A RECOMMENDATION INTO A PROPOSED TASK ANY MORE. Raised by the planner and reviewer of session 39 while preparing F261 round 18, after searching the open set for the reviewer recommendations and the `review` commands under §3 item 30: R-0844 describes `review bundle`, a different command F275 deleted, and no open finding describes these readers. THE DEFECT, read at `43694261` and on the reviewer's dry-run trees: `store_recommendations`, `accept_recommendation` and `reject_recommendation` in `packages/orchestration/reviewer.py` were reachable only from `apps/cli/commands/review_cmd.py`, which this round deletes, while `packages/orchestration/ui_server.py` and `packages/orchestration/ui_view_model.py` still read `job.metadata["reviewer_recommendations"]`, so both render a list nothing fills; `propose_from_recommendation` in `packages/orchestration/proposed_tasks.py` keeps one caller, `reviewer.py`, which no production code calls, so the step that turned a reviewer recommendation into a proposed task has no surface. In the same module `run_reviewer` keeps one production caller, `apps/cli/commands/dev.py`, which only asserts that it is callable for the `reviewer_loop_ok` key of `dev status`, and `_fixture_reviewer` and `list_recommendations` keep callers under `tests/` alone; four exports of `packages/orchestration/token_economy.py` are in the same state after the `token` group goes. WHY MEDIUM: a user-observable step of the operator's loop leaves with no heir, and two cockpit surfaces show an empty list where they used to show its result; nothing prints anything false. WHY F273's: deleting a reader with its cockpit surface, or giving the recommendations a writer, changes surviving surfaces, and deleting a public export with its tests is findings paydown; F261 prunes the catalog. FIX: delete the two cockpit readers with the tests that pin them and the reviewer symbols no surviving surface calls, or give the recommendations a writer on a surviving command and name it in the cockpit; and either way say in `docs/system/` which step of the operator's loop replaced `review accept`. Owner: F273.
 
-- R-0907 — Low, WITH THE `policy` GROUP GONE NOTHING EMITS `run_contract_inspected` OR `token_policy_inspected`, SO NO JOB CAN REACH AUTONOMY READINESS LEVEL 4 AGAIN, AND SIX EXPORTS OF THE THREE MODULES THIS ROUND KEEPS ARE NOW CALLED BY TESTS ALONE. Raised by the planner and reviewer of session 39 while preparing F261 round 17, after searching the open set for the readiness signals and these event names under §3 item 30: no open finding describes them, and R-0905, which records the same class for `git_status_read`, names neither event. THE DEFECT, read at `bf88d647` and on the reviewer's dry-run trees: `_cmd_token_policy` and `_cmd_run_contract` in `apps/cli/commands/policy.py` are the only emitters of the two events, and `_assess_level` in `packages/orchestration/autonomy_readiness.py` checks the signals `run_contract` and `token_policy`, which `_has_run_contract` and `_has_token_policy` derive from them, before it grants level 4, `bounded_loop`; both signals therefore read false for every job whose run log this round's commits precede, and levels 4 and above become unreachable. DECISION F261 D16 declares both names in `KNOWN_DEAD_EVENT_COUPLINGS` of `tests/orchestration/test_event_name_coupling.py` so the coupling stays visible. In the same three modules `assess_project_readiness` and `summarize_readiness` of `autonomy_readiness.py`, `summarize_run_contract` and `export_run_action_decision_json` of `run_contract.py`, and `export_token_policy_json` and `summarize_token_policy` of `token_policy.py` lose their last production caller with the three groups and keep callers under `tests/` only; with `assess_project_readiness` goes the project-scope readiness the deleted `readiness project` printed, which no surviving command offers. WHY LOW: each reader returns an honest result for a job nobody inspected by hand, and no command prints anything false. WHY F273's: raising a readiness level again means giving the two events an emitter or changing what a level requires, and deleting a public export with its tests is findings paydown; F261 prunes the catalog and does not change what a surviving surface decides. FIX: give each event an emitter in a surviving command, or drop the two signals from level 4 and say so where the levels are documented; delete each test-only export with its tests, or name the surviving caller that keeps it; and in either case take the two names out of `KNOWN_DEAD_EVENT_COUPLINGS` and lower `_COUPLING_CEILING` in the same commit. Owner: F273.
-END RECORD17
+- R-0909 — Medium, DELETING `token budget-set` LEAVES THE PER-JOB TOKEN BUDGET PROFILE WITH NO WRITER, SO EVERY JOB SILENTLY RUNS ON THE BUILT-IN DEFAULT WHEREVER THAT PROFILE IS READ. Raised by the planner and reviewer of session 39 while preparing F261 round 18, after searching the open set for the token budget profile under §3 item 30: no open finding describes it, and R-0906, which this finding names, describes the run contract's budget fields rather than this store. THE DEFECT, read at `43694261` and on the reviewer's dry-run trees: `save_token_budget_profile` in `packages/orchestration/token_economy.py` was reachable only from `apps/cli/commands/token_cmd.py`, which this round deletes, while `load_token_budget_profile` keeps reading `budget_profile.json` under a job's workspace for `token_economy_report`, which the cockpit's token-economy section and the run contract's report read; with no writer it returns the built-in default for every job, and `token_economy_integrity` scans a directory nothing fills. WHY MEDIUM: a budget the operator could set per job is now fixed for every job, and a surviving surface reports that default as the job's profile; nothing prints anything false. WHY F261's: the write word DECISION amend0905-vocab D4 gives is `job budget <id> set`, the same word R-0906 needs and the same feature's Goal, so the repair belongs to a later round of this feature. FIX: give `job budget <id> set` the token profile fields beside the run-contract budget fields R-0906 names, with a test that sets one and reads it back through the token economy report, or delete the profile store with its readers and say where a per-job token budget lives instead. Owner: F261.
 
-── SLICE DEC16 ── target `.agent/decisions.md` ── APPEND ──
-BEGIN DEC16 sha256=f529f4781cc3eb54a3818f9441a64674ab06ea472f3714040318d25a1353b7b3
+- R-0910 — Medium, SECTION 0 OF THE SMOKE SCRIPT RUNS EVERY GROUP WORD THROUGH A SHELL VARIABLE, SO NO ADVERTISED-COMMAND GUARD CAN SEE IT, AND ROUNDS 16 AND 17 LEFT FIVE DELETED GROUPS IN IT FOR A ROUND EACH. Raised by the planner and reviewer of session 39 while preparing F261 round 18, after its research helper measured the line and after searching the open set for the smoke script's group help under §3 item 30: no open finding describes it. THE DEFECT, read at `43694261`: `scripts/remedy_smoke.sh` section 0 loops `for grp in job project patch test brain policy worker memory dev readiness file change repo event blocker decision dashboard guide ui do` and runs `remedy "${grp}"`, returning 1 on the first failure, while `policy`, `readiness`, `repo`, `dashboard` and `guide` are the groups F261 rounds 16 and 17 deleted, so the section fails on `policy`; the two regular expressions of `tests/cli/test_advertised_commands.py` need a literal lowercase word after `remedy`, so neither can read a word out of `"${grp}"`, and no other test reads that list against the catalog. The helper measured the blindness directly: restoring `context` to that loop on this round's final tree left the six-file catalog selection and `tests/test_remedy_smoke_script.py` at 574 passed, exit 0. This round's third table takes the five words and the two other stale words out of the loop and out of the line the section prints, so the script's own defect is repaired here. WHY MEDIUM: the operator's smoke script, which `docs/` names as the end-to-end check, exits 1 in its first section on a tree whose suite is green. WHY F273's: the repair that outlives this round is a guard that reads the loop's list against the catalog, which is a test this feature does not own; the stale words themselves are already gone. FIX: pin section 0's group list against `apps/cli/command_catalog.py` — a test that reads the loop's words out of the script and asserts each is a catalog group — so that deleting a group reds a test rather than a smoke run. Owner: F273.
+END RECORD18
 
-## DECISION F261 D16 (2026-09-16, F261 round 17) — the deletion paragraph of the `readiness`, `contract` and `policy` groups
+── SLICE DEC17 ── target `.agent/decisions.md` ── APPEND ──
+BEGIN DEC17 sha256=20f95a5b66ecacb1aa4597ec6a56fd01123690ab74ffe41a8761fd4c24e486e3
 
-CONTEXT. DECISION amend0905-vocab D4 deletes `readiness`, `policy` and the `contract` group that wears the run-permission word, and `.agent/f261_t003_inventory.md` puts them in its round D, in the `related=` order readiness, contract, policy. Measured at `bf88d647` by the reviewer's research helper, which ran each of the eight commands in process against a scratch data root, and re-read by the reviewer on the dry-run trees. As in DECISION F261 D13, package code goes with a command when that command was its only production caller.
+## DECISION F261 D17 (2026-09-16, F261 round 18) — the deletion paragraph of the `context`, `token`, `context-pack` and `review` groups
 
-CHOSEN, FIRST: `readiness`. Deleted: the group, `readiness.job` and `readiness.project`, `apps/cli/commands/readiness.py` and its tests; the guidance card whose import of `assess_readiness` named nothing in `packages/orchestration/autonomy_readiness.py`, so the card could never be built; the humanized sentence of `readiness_assessed`, whose only emitter was the deleted handler and which no code reads; and the smoke section that ran the command. `packages/orchestration/autonomy_readiness.py` stays whole: `assess_job_readiness` and `export_readiness_json` are read by `mission readiness`, the cockpit's readiness route, the autonomy loop, the brain graph and the teacher. THE HEIR: `remedy mission readiness <job_id>`, the cockpit's readiness payload under `remedy ui start`, and the `autonomy_readiness` node of `remedy brain graph`; the project-scope report of `readiness project` has no heir.
+CONTEXT. DECISION amend0905-vocab D4 deletes `context`, `context-pack`, `token` and `review`, and `.agent/f261_t003_inventory.md` puts them in its round E. Measured at `43694261` by the reviewer's research helper, which ran all ten commands in process against a scratch data root and found every one of them working, and re-read by the reviewer on the dry-run trees. As in DECISION F261 D13, package code goes with a command only when that command was its only production caller; no package module and no package symbol is deleted this round.
 
-CHOSEN, SECOND: `contract`. Deleted: the group, `contract.inspect`, `contract.check` and `contract.set`, `apps/cli/commands/contract_cmd.py` with its tests and its mypy override, the hints that named those commands, and `contract` as an internal group of `tests/cli/test_cli_ux.py`. `packages/orchestration/run_contract.py` stays: `ensure_contract` alone has eleven production callers, and `do run`, `job fulfillment`, `test run`, the repair loop and the brain graph read the contract. THE HEIR, as the vocabulary's Contract row names it: the `permissions` and `fences` sections of `remedy job show <id> --full`, which print the boundary a run holds; the write `contract set` performed has no heir, because `job budget <id> set`, the word D4 gives it, is not built — the refusal of a run-test action therefore names no next action any more, and R-0906 records that for this feature.
+CHOSEN, FIRST: `context`. Deleted: the group, `context.inspect`, `apps/cli/commands/context.py` with its tests, the hints that named the command, and the smoke section that ran it. `packages/orchestration/context_inspector.py` stays for `do run` and the token economy report. THE HEIR: `remedy job context <id> --task <t> --json`, which D4 keeps and which shares no module with the deleted group, and `remedy brain context <id>` for the coverage reading; the inspector's policy gates, readiness status and inclusion reasons have no heir.
 
-CHOSEN, THIRD: `policy`. Deleted: the group, `policy.contract`, `policy.token` and `policy.token-explain`, `apps/cli/commands/policy.py` with its tests, the requirement of `tests/test_command_catalog.py` that the group and its two read commands exist, the humanized sentences of `run_contract_inspected` and `token_policy_inspected`, the brain node's `policy token` next action, and the smoke sections that ran the commands. `packages/orchestration/token_policy.py` stays for the autonomy loop, the guidance cards and the brain graph. Both event names lose their only emitter while `packages/orchestration/autonomy_readiness.py` still reads them, so they join `KNOWN_DEAD_EVENT_COUPLINGS` in `tests/orchestration/test_event_name_coupling.py` with the ceiling raised by two, in the shape DECISION F261 D15 used for `git_status_read`, and R-0907 records the readers and the readiness level they gate. THE HEIR: the `run_contract` and `token_policy` nodes of `remedy brain graph <job> --json`, which build the DEFAULT contract and policy rather than the persisted one; the explainer text of `token-explain` has no heir.
+CHOSEN, SECOND: `token` with `context-pack`. Deleted: both groups, `token.budget-show`, `token.budget-set`, `token.estimate`, `token.economy-report` and `context-pack.recommend`, the single handler `apps/cli/commands/token_cmd.py` that served both, with its tests, both words as internal groups of `tests/cli/test_cli_ux.py`, and the command fences of the two pages that document the package code, each replaced by a dated paragraph naming the heir. `packages/orchestration/token_economy.py` stays: its estimator and its bands are read by the budget guard, the cost preview, the prompt trace, the context compiler and the cockpit. THE HEIR: the `token_economy` section of a job's cockpit payload under `remedy ui start`; the per-job budget WRITE has no heir, because `job budget <id> set`, the word D4 gives it, is not built, and R-0909 records that for this feature.
 
-CONSEQUENCE. `remedy readiness`, `remedy contract` and `remedy policy` are unknown commands and their ids join `TestDeletedCommands`; a job's autonomy readiness stops below level 4, which R-0907 records; and `remedy test run` is refused for every job whose contract nothing overrides, which R-0906 routes to a later round of this feature as the `job budget <id> set` word of D4. HOW TO REVERSE: revert the round's three table commits and delete this section.
-END DEC16
+CHOSEN, THIRD: `review`. Deleted: the group, `review.run`, `review.list`, `review.accept` and `review.reject`, `apps/cli/commands/review_cmd.py` with its tests, the `remedy review run` line of `dev status`, and the smoke sections that ran the commands, one of which checked a key the command never printed. `packages/orchestration/reviewer.py` stays whole: cutting the symbols only its handlers called would take the `reviewer_loop_ok` key out of `dev status`, which is a surviving command, so R-0908 records them with the two cockpit surfaces that read the recommendations. THE HEIR: `remedy propose list <id>`, which lists the proposed tasks the job runner and the self-use track still write; turning a reviewer recommendation into a proposed task has no heir.
+
+ALSO IN THIS ROUND, NOT A DELETION OF THIS ROUND'S GROUPS: section 0 of `scripts/remedy_smoke.sh` ran `remedy "${grp}"` over a list that still held `policy`, `readiness`, `repo`, `dashboard` and `guide`, the groups rounds 16 and 17 deleted, so the section failed on the first of them; the third table takes those five words out of the loop and out of the line the section prints, and R-0910 records the guard that could not see them.
+
+CONSEQUENCE. `remedy context`, `remedy context-pack`, `remedy token` and `remedy review` are unknown commands and their ids join `TestDeletedCommands`; the reviewer recommendations and the token budget profile are read where nothing writes them, which R-0908 and R-0909 record; and the smoke script's group help runs only groups the catalog holds. HOW TO REVERSE: revert the round's three table commits and delete this section.
+END DEC17
+
+── SLICE SLIP18 ── target `.agent/prose_slips.md` ── APPEND ──
+BEGIN SLIP18 sha256=16126aa1b3ff0583c361e4437041774e3cbd9036c5fbcf42ab71b230a982ad0d
+
+2026-09-16 · F261 R17 · THE ENVIRONMENT PARAGRAPH, SPEC S and constraint 4 of the round 17 block named `.remedy-wt/f261r16w/` as the round's scratch directory while G5 ordered its worktree under `.remedy-wt/f261r17w/`, because the reviewer adapted the previous round's block with a replacement of the hyphenated form `f261-r16` alone; the worker declared the contradiction and followed G5, and the rule that follows is that adapting a block sweeps every spelling of the round's own number, not the one form the replacement matched.
+END SLIP18
 
 ── SLICE P273-FROM ── target `docs/roadmap/features/T2_F273.md` ── REWRITE FROM ──
-BEGIN P273-FROM sha256=ff543c2a676d8fae01823a938025e0cc465c46839dfe7571328662fb196e82d2
-  name out of `KNOWN_DEAD_EVENT_COUPLINGS`.
+BEGIN P273-FROM sha256=e5e8ab2918efb82416cc6f08bf2ec3c60c2d31d9834e6e14677eb1b37c89a7b2
+  test-only exports the commit that deleted it with its tests or the surviving caller that keeps it.
 
 ## Do not touch
 END P273-FROM
 
 ── SLICE P273-TO ── target `docs/roadmap/features/T2_F273.md` ── REWRITE TO ──
-BEGIN P273-TO sha256=0dff26110f99adae60c972a54a4193527906584aeb051cd6cfd1e8c18c57cc04
-  name out of `KNOWN_DEAD_EVENT_COUPLINGS`.
-- R-0907 carries a resolution line naming, for `run_contract_inspected` and `token_policy_inspected`, the
-  commit that gave each an emitter or dropped its signal from readiness level 4, and for each of the six
+BEGIN P273-TO sha256=c62226619845139943db04fc3a3a905ad2b7410cebede60380c38f0caafcd583
   test-only exports the commit that deleted it with its tests or the surviving caller that keeps it.
+- R-0908 carries a resolution line naming the commit that deleted the two cockpit readers of the reviewer
+  recommendations with their tests, or the commit that gave the recommendations a writer, and the page that
+  says what replaced `review accept`.
+- R-0910 carries a resolution line naming the test that reads the group list of section 0 of
+  `scripts/remedy_smoke.sh` and asserts every word is a group of the catalog.
 
 ## Do not touch
 END P273-TO
@@ -265,9 +285,9 @@ BEGIN MUT-1-FROM sha256=b80c9cb6a8186d1e0e037407c5cb67f8a716ea462f41563da837cf74
 END MUT-1-FROM
 
 ── SLICE MUT-1-TO ── G5 (1) only ── never a file ──
-BEGIN MUT-1-TO sha256=a759de23af0719997d0582db31a15fd1c9a51f5f1d22da5860b26ef8641cd700
+BEGIN MUT-1-TO sha256=4335184d7a4d5497c8c97b38307ef1b1e246f8296bca35a11c85c3d920224891
     "dev.status": lambda args: _dev_status(json_output=getattr(args, "json", False)),
-    "readiness.job": lambda args: None,
+    "context.inspect": lambda args: None,
 }
 END MUT-1-TO
 
@@ -278,9 +298,9 @@ BEGIN MUT-2-FROM sha256=b80c9cb6a8186d1e0e037407c5cb67f8a716ea462f41563da837cf74
 END MUT-2-FROM
 
 ── SLICE MUT-2-TO ── G5 (2) only ── never a file ──
-BEGIN MUT-2-TO sha256=21a8c0865cc726773ed8ef951ae0e4c72ea88cd13facec55cf46f24077b141c3
+BEGIN MUT-2-TO sha256=0b07c120b247cb4d4e6b76028b0b6c771c40fbe2edcd6c356d216037c9badd64
     "dev.status": lambda args: _dev_status(json_output=getattr(args, "json", False)),
-    "contract.set": lambda args: None,
+    "token.estimate": lambda args: None,
 }
 END MUT-2-TO
 
@@ -291,9 +311,9 @@ BEGIN MUT-3-FROM sha256=b80c9cb6a8186d1e0e037407c5cb67f8a716ea462f41563da837cf74
 END MUT-3-FROM
 
 ── SLICE MUT-3-TO ── G5 (3) only ── never a file ──
-BEGIN MUT-3-TO sha256=569f133ecfb0dd57d187bf4b955bc2124ac44474f9fedd44bb0d57293461d59d
+BEGIN MUT-3-TO sha256=5e34e8b9a2bdc5e1cc73c6de04f8be0aa57c3955e75831cc72595e6194bfde4e
     "dev.status": lambda args: _dev_status(json_output=getattr(args, "json", False)),
-    "policy.token": lambda args: None,
+    "review.run": lambda args: None,
 }
 END MUT-3-TO
 
@@ -303,9 +323,9 @@ BEGIN MUT-4-FROM sha256=7048056fc379469f4167ab957a64cd68fb2c735884bc490198ed15a4
 END MUT-4-FROM
 
 ── SLICE MUT-4-TO ── G5 (4) only ── never a file ──
-BEGIN MUT-4-TO sha256=b68acc17a822d8f38dbebcbb7b6cd4422aa97d43844624d9e9b0baeaf26399eb
+BEGIN MUT-4-TO sha256=271b9040ae823dd81eb67d321ae7751c2b51a46fc40bf1f99619c52a8b3a60e2
     "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False),
-    "policy": GroupDef("policy", "Policy", "Run contract and token policy.", user_facing=False),
+    "token": GroupDef("token", "Token", "Token budgets and estimates.", user_facing=False),
 END MUT-4-TO
 
 ── SLICE MUT-5-FROM ── G5 (5) only ── never a file ──
@@ -314,39 +334,37 @@ BEGIN MUT-5-FROM sha256=2cd882e3544109f710e0a8b3c592d8630ddfb5d26298b828241e8202
 END MUT-5-FROM
 
 ── SLICE MUT-5-TO ── G5 (5) only ── never a file ──
-BEGIN MUT-5-TO sha256=6373c375adbcd698f2576601afe036dc2b0d9f8c8a66124714954f4f678fd389
-        related=("brain.view", "policy.contract"),
+BEGIN MUT-5-TO sha256=cf3f2c793a726ba7bbf7ab5e136d48819b5e9747eee598033023865973550879
+        related=("brain.view", "review.list"),
 END MUT-5-TO
 
 ── SLICE MUT-6-FROM ── G5 (6) only ── never a file ──
-BEGIN MUT-6-FROM sha256=08b70cd5f9850d2ddaa98c9b823cdd43155a3b6b26f4054aec669c0973fe317e
-            f"Inspect with `remedy mission readiness {job_id_str[:8]}`.",
+BEGIN MUT-6-FROM sha256=bbd5cc27e0ac14ae875d85101e097ac1e7bc378afc27111ab559f1f6b36cb647
+            "command": f"remedy job show {job_id} --full --json",
 END MUT-6-FROM
 
 ── SLICE MUT-6-TO ── G5 (6) only ── never a file ──
-BEGIN MUT-6-TO sha256=0dca695c0a11df218f1a08fcf255ef56aeebb4e990898e66ffba0bc315270afa
-            f"Inspect with `remedy readiness job {job_id_str[:8]}`.",
+BEGIN MUT-6-TO sha256=4b03523f4cfdb3d65571df6379615770078fd51ee162bceb81630eb50d713e61
+            "command": f"remedy review list {job_id}",
 END MUT-6-TO
 
 ── SLICE MUT-7-FROM ── G5 (7) only ── never a file ──
-BEGIN MUT-7-FROM sha256=bf60e76e0f88deb419dd4979f222fd19669fd4bf5058ca67d8e8b57f60f6af72
-    "run_contract_inspected",
-    "token_policy_inspected",
-)
+BEGIN MUT-7-FROM sha256=f4b00c8750409a5ba0c85fa53973a145925596c4122b93268e445838f188b5e2
+    "snapshot", "integrity",
 END MUT-7-FROM
 
 ── SLICE MUT-7-TO ── G5 (7) only ── never a file ──
-BEGIN MUT-7-TO sha256=9d53b8bda8ab3519321b0683d83deb9c29ef60f8e86149ae556e1c893dd114a6
-    "run_contract_inspected",
-)
+BEGIN MUT-7-TO sha256=90fcb9be42c523cd871e311e882098655e7d2c46d1cbc52d39482cba57a73789
+    "token", "context-pack",
+    "snapshot", "integrity",
 END MUT-7-TO
 
 ── SLICE MUT-8-FROM ── G5 (8) only ── never a file ──
-BEGIN MUT-8-FROM sha256=f4b00c8750409a5ba0c85fa53973a145925596c4122b93268e445838f188b5e2
-    "snapshot", "integrity",
+BEGIN MUT-8-FROM sha256=558d44041a0673d7e093d529e52678b3f573cf6fcd2f3b88fd3c9762de0e81bc
+    for grp in job project patch test brain worker memory dev file change event blocker decision ui do; do
 END MUT-8-FROM
 
 ── SLICE MUT-8-TO ── G5 (8) only ── never a file ──
-BEGIN MUT-8-TO sha256=ef9a7c1d08d77fe11f7d8a59e41d317b7650c9279db513fa16016bae888dc5f8
-    "snapshot", "contract", "integrity",
+BEGIN MUT-8-TO sha256=3a845b9649e2deaaf1c6307b9bff04489cbe9e623cb4b1d3889e6425052b9d7c
+    for grp in job project patch test brain policy worker memory dev file change event blocker decision ui do; do
 END MUT-8-TO
