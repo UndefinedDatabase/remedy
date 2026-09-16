@@ -1,83 +1,103 @@
-# Handoff — F261 round 24
+# Handoff — F261 round 25
 
 ## Session
 
-SESSION 6 of feature F261 · round 24 · rounds so far 24
+SESSION 6 of feature F261 · round 25 · rounds so far 25
 
-Context self-assessment: the round was one record commit and two measured tables of 29 and 30 rows,
+Context self-assessment: the round was one record commit and two measured tables of 15 and 11 rows,
 every gate passed on its first run, and the worker's context stayed comfortable, with the full suite
 the only long wait.
 
+## Scope report — F261 at its soft limit
+
+SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
+
+F261 reached the standing soft limit of 25 delegated rounds with round 25, in the feature's
+sixth session. Operator amendments amend0905-throughput and amend0906-split-placement make
+split-and-close the default the session executes, and this round executed it under DECISION
+F261 D25, which the operator may reverse through operator question Q3.
+
+FINISHED. T001: `do job-evidence`, `do job-promote` and `do job-run` became `job evidence`,
+`job apply` and `job run`, and `do job-flow`, `do job-plan` and `do plan` were deleted
+(DECISIONs F261 D1 to D3). T002: `do promote` and the run-level apply library were deleted,
+`job_promote.py` became `job_apply.py` with its words, `job show` gained `--json`, `--full`
+and the findings of blocked tasks, and the eight read views became its sections (D4 to
+D11). T003, reached part: the hidden `roadmap` group (D12); fifteen groups deleted, from
+`orchestrator` to `repair` (D13 to D17, D21); `do report` became the `run` group and five
+further `do` words left (D18 to D20); the queue words of `job`, `worker run`, `mission
+ledger` and `job rerun` were deleted (D22, D23); `teach` became `teacher` (D23); and the
+`settings` alias now reaches `config` (D24).
+
+MISSING, and now F280's: the `propose` group and `job fulfill`, each deferred because
+deleting it breaks a surviving command (D21 to D23); `job budget <id> set`; `job create`,
+`job attach-repo` and `job permit` with their fixtures; the `--builder` and `--reviewer`
+flags with the `job run` provider wiring and the ping-pong path of `do run`; the
+`flight_plan` rename; and all of T004 — descriptions, role labels, help wrapping, the
+catalog ownership test, the dead-command doctor check, the enforced F259 test, the visible
+group order and the README quickstart. Findings R-0767, R-0805, R-0809, R-0894, R-0895,
+R-0906 and R-0909 move with them.
+
+PROPOSAL EXECUTED. F280 is registered directly after F261 with that scope, and F261 closes
+at the scope it reached through the normal closure sequence, which is the next session's
+work.
+
 ## Range
 
-Review of `fc13ba87`..`HEAD`.
+Review of `d5e0a7b5`..`HEAD`.
 
 ## Commits
 
-### 021b3c33 F261 R24 C0a: save the round 24 step block under the authored directory
+### 9c5f654e F261 R25 C0a: save the round 25 step block under the authored directory
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f261-r24.md` | +265 / -0 | the block file the delegating message names, copied with `shutil.copyfile`, sha256 `7ef435c5…e6de9a5` verified before and after the copy |
+| `.agent/authored/f261-r25.md` | +302 / -0 | the block file the delegating message names, copied with `shutil.copyfile`, sha256 `cc0b0ba7…a357cf3` verified after the copy |
 
-Insertions read by `git show --numstat --format= 021b3c33`: 265, deletions 0.
+Insertions read by `git show --numstat --format= 9c5f654e`: 302, deletions 0.
 
-### 1fb1d5e1 F261 R24 C0b: mirror the round 24 step block into the last block state file
+### 1c838a73 F261 R25 C0b: mirror the round 25 step block into the last block state file
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +150 / -153 | the same bytes, byte-identical to the C0a copy |
+| `.agent/last_block.md` | +176 / -139 | the same bytes, byte-identical to the C0a copy |
 
-Insertions: 150, deletions 153.
+Insertions: 176, deletions 139.
 
-### a9ed91b4 F261 R24 C1: book round 23's PASS, register R-0931 for F273 and record DECISION F261 D23
+### 73fd6e08 F261 R25 C1: book round 24's PASS, record DECISIONs F261 D24 and D25 and open operator question Q3
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +12 / -12 | full replacement by slice PLAN24 |
-| `.agent/live_review.md` | +4 / -0 | slice RECORD24 appended — the `Gate: F261 R23` PASS paragraph and registration R-0931 |
-| `.agent/decisions.md` | +12 / -0 | slice DEC23 appended — DECISION F261 D23 |
-| `docs/roadmap/features/T2_F273.md` | +2 / -0 | pair P273D applied: the acceptance line for R-0931 |
+| `.agent/plan.md` | +15 / -19 | full replacement by slice PLAN25 |
+| `.agent/live_review.md` | +2 / -0 | slice RECORD25 appended — the `Gate: F261 R24` PASS paragraph |
+| `.agent/decisions.md` | +22 / -0 | slices DEC24 and then DEC25 appended — DECISIONs F261 D24 and D25 |
+| `.agent/operator_questions.md` | +9 / -1 | pair QOP applied: the EMPTY line replaced by operator question Q3 |
 
-Insertions: 30, deletions 12. This is the FIRST SUBSTANTIVE COMMIT of the round.
+Insertions: 48, deletions 20. This is the FIRST SUBSTANTIVE COMMIT of the round.
 
-### 27dcd9e4 F261 R24 C2: delete job rerun with its handler, catalog entry, dispatch wiring and CLI-driven tests, by the rerun table
+### 76ee0149 F261 R25 C2: land the settings alias over config through an aliases field of GroupDef and one group resolver, by the alias table
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f261-r24-rerun.jsonl` | +29 / -0 | the edit table's own carrier, copied with `shutil.copyfile`, sha256 `a3ece98b…4f5c678bdbc7` verified |
-| `README.md` | +0 / -1 | the `job rerun --check-manifest` quickstart line deleted |
-| `apps/cli/command_catalog.py` | +0 / -16 | the `job.rerun` entry deleted |
-| `apps/cli/commands/__init__.py` | +1 / -2 | `job_rerun_cmd` dropped from the import list and the handler loop |
-| `apps/cli/commands/job_rerun_cmd.py` | +0 / -170 | the handler module of the deleted command |
-| `packages/orchestration/run_manifest.py` | +2 / -2 | docstrings no longer name the deleted word |
-| `packages/orchestration/worktrees.py` | +2 / -2 | docstrings no longer name the deleted word |
-| `tests/cli/test_job_rerun_integrity_errors.py` | +1 / -33 | the CLI-driven class and its helper deleted; loader tests stay |
-| `tests/cli/test_job_rerun_manifest.py` | +7 / -237 | the CLI-driven classes and helpers deleted; package-driven tests stay |
-| `tests/orchestration/import_reachability_allowlist.txt` | +0 / -1 | the `job_rerun_cmd` line deleted |
-| `tests/orchestration/test_run_manifest_input_coverage.py` | +1 / -2 | docstring re-worded |
-| `tests/orchestration/test_run_manifest_integrity.py` | +1 / -11 | the CLI exit test deleted, section header re-worded |
-| `tests/orchestration/test_run_manifest_reference_coverage.py` | +1 / -1 | comment re-worded |
-| `tests/orchestration/test_run_manifest_strict_boundaries.py` | +0 / -2 | the deleted module's two path entries deleted |
-| `tests/test_command_catalog.py` | +1 / -0 | `job.rerun` joins `TestDeletedCommands` |
+| `.agent/authored/f261-r25-alias.jsonl` | +15 / -0 | the edit table's own carrier, copied with `shutil.copyfile`, sha256 `58f810e31bffb2fb8c2fbce5251b776a2df29fb641cd1a400984719052f3423f` verified |
+| `apps/cli/command_catalog.py` | +20 / -4 | `GroupDef.aliases`, `config` carries `aliases=("settings",)`, `resolve_group`, `get_group` and `get_commands_for_group` resolve through it |
+| `apps/cli/grouped.py` | +18 / -9 | argparse registers the aliases; group help, the help pre-scan, the unknown-group error and default-subcommand injection resolve through `resolve_group` |
+| `apps/cli/help_renderer.py` | +6 / -1 | `render_group_help` takes `also` and prints `Also reachable as:` |
+| `tests/cli/test_cli_ux.py` | +77 / -1 | `TestSettingsAlias`, eleven tests |
 
-Insertions: 46, deletions 480 — under the 500-insertion cap of constraint 5.
+Insertions: 136, deletions 15 — under the 500-insertion cap of constraint 5.
 
-### 6f506cea F261 R24 C3: rename the group teach to teacher with its handler module, test file, handler functions and test classes, by the teacher table
+### 7994c69e F261 R25 C3: register F280 directly after F261 with its feature file, STATUS line, counters and Depends-on lines, by the split table
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f261-r24-teacher.jsonl` | +30 / -0 | the edit table's own carrier, copied with `shutil.copyfile`, sha256 `f9d47405…517242a2b` verified |
-| `README.md` | +1 / -1 | the F255 line reads `remedy teacher narrate` and `remedy teacher ask` |
-| `apps/cli/command_catalog.py` | +7 / -7 | group `teacher`, ids `teacher.narrate` and `teacher.ask`, `related=` and the test-file comment |
-| `apps/cli/commands/__init__.py` | +2 / -2 | `teacher_cmd` in the import list and the handler loop |
-| `apps/cli/commands/teach_cmd.py` → `teacher_cmd.py` | +8 / -8 | moved; `_cmd_teacher_*`, dispatch keys and docstrings |
-| `packages/orchestration/teacher_model.py` | +1 / -1 | docstring names `remedy teacher ask` |
-| `packages/orchestration/teacher_qa.py` | +1 / -1 | the refusal hint names `remedy teacher narrate` |
-| `tests/cli/test_cli_ux.py` | +1 / -1 | the visible-group list reads `teacher` |
-| `tests/cli/test_teach_cmd.py` → `test_teacher_cmd.py` | +44 / -44 | moved; imports, `TestTeacher*` classes, ids and the operator quotation re-spelled with its date kept |
-| `tests/orchestration/import_reachability_allowlist.txt` | +1 / -1 | `apps.cli.commands.teacher_cmd` |
-| `tests/orchestration/test_import_reachability.py` | +1 / -1 | the entry-point list names `teacher_cmd` |
-| `tests/orchestration/test_teacher_model.py` | +1 / -1 | the hint assertion reads the new word |
-| `tests/orchestration/test_teacher_qa.py` | +1 / -1 | the hint assertion reads the new word |
-| `tests/test_command_catalog.py` | +2 / -0 | the two ids join `TestRenamedCommands` |
+| `.agent/authored/f261-r25-split.jsonl` | +11 / -0 | the edit table's own carrier, copied with `shutil.copyfile`, sha256 `0bb2f13086a36429f4d9e3ab62f4d4f8e688f339da1f3fdb6abd2ba2a9e81243` verified |
+| `README.md` | +2 / -2 | `77 of 280` and Tier 2 total 33 |
+| `docs/roadmap/STATUS.md` | +1 / -0 | the `[ ] F280` line directly after F261's, inside the same Tier 2 heading |
+| `docs/roadmap/features/T2_F261.md` | +54 / -0 | the Built State section: what is complete, what moved to F280 and why the close is self-consistent |
+| `docs/roadmap/features/T2_F268.md` | +1 / -1 | F280 added to Depends on |
+| `docs/roadmap/features/T2_F270.md` | +1 / -1 | F280 added to Depends on |
+| `docs/roadmap/features/T2_F271.md` | +1 / -1 | F280 added to Depends on |
+| `docs/roadmap/features/T2_F277.md` | +1 / -1 | F280 added to Depends on |
+| `docs/roadmap/features/T2_F279.md` | +1 / -1 | F280 added to Depends on |
+| `docs/roadmap/features/T2_F280.md` | +147 / -0 | the new feature file, created by the table |
+| `tests/docs/test_docs_consistency.py` | +6 / -2 | `TOTAL_FEATURES = 280` with its comment |
 
-Insertions: 101, deletions 69 (git's default rename detection) — under the 500-insertion cap.
+Insertions: 226, deletions 9 — under the 500-insertion cap.
 
 ### Item status — the block's ordered bundle
 
@@ -86,17 +106,17 @@ Insertions: 101, deletions 69 (git's default rename detection) — under the 500
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
-| C2 | done | all 29 table rows applied, every count exactly as stated |
-| C3 | done | all 30 table rows applied, every count exactly as stated |
+| C2 | done | all 15 table rows applied, every count exactly as stated |
+| C3 | done | all 11 table rows applied, every count exactly as stated, the one `create` target absent before |
 | C4 | done | this commit, then the push |
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git worktree add --detach .remedy-wt/f261r24w/wt 6f506cea` | created, detached at C3 — for G5 only |
-| `git worktree remove --force .remedy-wt/f261r24w/wt` | removed; `git worktree list` back to one row |
-| `git push origin feature/f261-cli-vocabulary-v2` | see the completion message; run after this commit |
+| `git worktree add --detach .remedy-wt/f261r25w/wt 7994c69e` | created, detached at C3 — for G5 only |
+| `git worktree remove --force .remedy-wt/f261r25w/wt` | removed; `git worktree list` back to one row |
+| `git push origin feature/f261-cli-vocabulary-v2` | run after this commit; its outcome is in the completion message |
 
 No pull request created, edited or merged. No `gh` command run. No `remedy` CLI invocation. No
 runner and no `run_job` call: `git branch --list 'remedy/job-*'` reads 16 lines, unchanged.
@@ -109,138 +129,113 @@ time.
 ### G1 TRANSPORT — exit 0
 
     PASS authored block sha256 at C0a == delegating digest
-         7ef435c5d02c99cd680106e5fc576e1a14b3383aead836eded3dc3bf8e6de9a5
+         cc0b0ba700b7fb977ab1e3287c330ca3668e5316ba506c493e9c836cba357cf3
     PASS last_block.md at C0b byte-identical to it
-    PASS slice PLAN24      FOUND  bbe2ac62…c83a7
-    PASS slice RECORD24    FOUND  6885ec14…da9649
-    PASS slice DEC23       FOUND  1e08ad58…6dc6
-    PASS slice P273D-FROM  FOUND  ac8aa4ad…8290
-    PASS slice P273D-TO    FOUND  2c179aea…b87c
-    PASS committed carrier .agent/authored/f261-r24-rerun.jsonl
-         a3ece98b795f51e1e7703c0f5cc07af38c5787296d31d38606064f5c678bdbc7
-    PASS committed carrier .agent/authored/f261-r24-teacher.jsonl
-         f9d47405806677c0bb788285a86135ce0f3af981bd860581d76caed517242a2b
+    PASS slice PLAN25     FOUND  d874f5c0…
+    PASS slice RECORD25   FOUND  20902ad0…
+    PASS slice DEC24      FOUND  06cbaa23…
+    PASS slice DEC25      FOUND  95dec9ab…
+    PASS slice QOP-FROM   FOUND  522daeae…
+    PASS slice QOP-TO     FOUND  7a5ca72e…
+    PASS slice SCOPE25    FOUND  22fd48d0…
+    PASS committed carrier .agent/authored/f261-r25-alias.jsonl
+         58f810e31bffb2fb8c2fbce5251b776a2df29fb641cd1a400984719052f3423f
+    PASS committed carrier .agent/authored/f261-r25-split.jsonl
+         0bb2f13086a36429f4d9e3ab62f4d4f8e688f339da1f3fdb6abd2ba2a9e81243
 
 ### G2 THE RECORD at C1 — exit 0
 
-    PASS plan.md byte-identical to PLAN24, 37 lines, ^## Goal$ once, ^## Next Steps$ once
-    PASS live_review.md == fc13ba87 blob + RECORD24
-    PASS decisions.md   == fc13ba87 blob + DEC23
-    PASS T2_F273.md == fc13ba87 blob with P273D applied; FROM base=1 C1=0; TO C1=1
-    PASS ^Gate: F\d+ R\d+ —          base=132  C1=133
-    PASS Gate: F261 R23 —            base=0    C1=1
-    PASS distinct ^- R-\d+ — ids     base=133  C1=134, delta exactly R-0931
+    PASS plan.md byte-identical to PLAN25, 33 lines, ^## Goal$ once, ^## Next Steps$ once
+    PASS live_review.md == d5e0a7b5 blob + RECORD25
+    PASS decisions.md   == d5e0a7b5 blob + DEC24 + DEC25
+    PASS operator_questions.md == d5e0a7b5 blob with QOP applied; FROM base=1 C1=0; TO C1=1
+    PASS ^Gate: F\d+ R\d+ —          base=133  C1=134
+    PASS Gate: F261 R24 —            base=0    C1=1
+    PASS distinct ^- R-\d+ — ids     base=134  C1=134
     PASS distinct ^Done: R-\d+ — ids base=9    C1=9
-    PASS open set by distinct id     base=124  C1=125
+    PASS open set by distinct id     base=125  C1=125
 
     python3 -m pytest tests/docs/ -q   → exit 0, "310 passed in 1.05s"
 
 ### G3 THE TABLES — exit 0
 
-HALF C2: `git diff --no-renames --name-only 27dcd9e4^ 27dcd9e4` prints exactly 15 paths: the carrier
-plus the 14 the block names. `git rev-parse 27dcd9e4:<object>`, all nine equal to the reviewer's dry
+HALF C2: `git diff --no-renames --name-only 76ee0149^ 76ee0149` prints exactly 5 paths: the carrier
+plus the 4 the block names. `git rev-parse 76ee0149:<object>`, all ten equal to the reviewer's dry
 run:
 
-    apps            ff95a593890b1f47e479052ccdd11a71afbfce68   PASS
-    packages        7af6331963c75cb02b15b159837e7f0186daf37c   PASS
-    scripts         3e3c450e0dffcdd11abbc52b0a7b085359df38e4   PASS
-    tests           9a67f6e8bfa5b11c9814506df1562e1e9bd6e109   PASS
-    docs/guides     52e345b71419d519c98eba49cea68cc424c249ce   PASS
-    docs/system     cc42698197076bc70d79a91b05ca633d7ebd2df8   PASS
-    docs/README.md  c282d425ef909cf9257605294f23aba7d9457fac   PASS
-    README.md       142c3f25897ec869c73753beb4e37b21c772f642   PASS
-    .claude         e3cd5e0ac262f3f993506e95825e270e39c03ec0   PASS
-
-    python3 -B -m pytest -q tests/cli/test_golden_path.py  (primary checkout, at C2)
-      → exit 0, "42 passed in 19.81s"
-
-HALF C3: `git diff --no-renames --name-only 6f506cea^ 6f506cea` prints exactly 16 paths: the carrier
-plus the 15 the block names. `git rev-parse 6f506cea:<object>`, all nine equal:
-
-    apps            57cdc70d5ddc3b059e3cb6023b538057fa9df9e2   PASS
+    apps            4b3561d9c973b739fdd9c19bf18c4ed2c1fea95e   PASS
     packages        ec2c3efd7541c8cc7d30b2b226b109e1b285da45   PASS
     scripts         3e3c450e0dffcdd11abbc52b0a7b085359df38e4   PASS
-    tests           c4a66e215510d3e625f77e4e591a99996ff37e5e   PASS
+    tests           69cc72df6f8a81d55c5d8d94de401c7b0c88153f   PASS
     docs/guides     52e345b71419d519c98eba49cea68cc424c249ce   PASS
     docs/system     cc42698197076bc70d79a91b05ca633d7ebd2df8   PASS
+    docs/roadmap    76bf53fdf467ecbf6bd80b35905b6609f7ede105   PASS
     docs/README.md  c282d425ef909cf9257605294f23aba7d9457fac   PASS
     README.md       9cef3616d99c9689b6b100ea7792e9d8c2b7e57d   PASS
     .claude         e3cd5e0ac262f3f993506e95825e270e39c03ec0   PASS
 
-Insertions per constraint 5: C2 46, C3 101.
+    python3 -B -m pytest -q tests/cli/test_golden_path.py tests/cli/test_cli_ux.py  (primary checkout, at C2)
+      → exit 0, "114 passed in 21.01s"
 
-### G4 THE SWEEP — exit 0
+HALF C3: `git diff --no-renames --name-only 7994c69e^ 7994c69e` prints exactly 11 paths: the carrier
+plus the 10 the block names. `git rev-parse 7994c69e:<object>`, all ten equal:
 
-    git ls-tree 6f506cea -- apps/cli/commands/job_rerun_cmd.py   → prints nothing
-    git ls-tree 6f506cea -- apps/cli/commands/teach_cmd.py       → prints nothing
-    git ls-tree 6f506cea -- tests/cli/test_teach_cmd.py          → prints nothing
-    git ls-tree 6f506cea -- apps/cli/commands/teacher_cmd.py
-      → 100644 blob a2e2bab2e63d3f5178ad00eefab8b586d0acdeab
-    git ls-tree 6f506cea -- packages/orchestration/run_manifest.py
-      → 100644 blob dc333d48d70dc0fc5150bab9028693c0302be091
+    apps            4b3561d9c973b739fdd9c19bf18c4ed2c1fea95e   PASS
+    packages        ec2c3efd7541c8cc7d30b2b226b109e1b285da45   PASS
+    scripts         3e3c450e0dffcdd11abbc52b0a7b085359df38e4   PASS
+    tests           29f5fccda172e532390a092be69d42357bfedf09   PASS
+    docs/guides     52e345b71419d519c98eba49cea68cc424c249ce   PASS
+    docs/system     cc42698197076bc70d79a91b05ca633d7ebd2df8   PASS
+    docs/roadmap    dd955d0ca9a2ede0eb9c6282b527bb738a0770b7   PASS
+    docs/README.md  c282d425ef909cf9257605294f23aba7d9457fac   PASS
+    README.md       60ded8dcaca796e8d61856b67d51f75a59f9440e   PASS
+    .claude         e3cd5e0ac262f3f993506e95825e270e39c03ec0   PASS
 
-Patterns read in Python from `.remedy-wt/f261-block/f261-r24-gates.json` (sha256 verified), each
-passed as one argv element to `git grep -n -I -E`, every run exit 0:
+Insertions per constraint 5: C2 136, C3 226.
 
-    deleted  at fc13ba87  31 lines in 12 files   PASS
-    deleted  at C2         2 lines in  2 files   PASS
-    deleted  at C3         2 lines in  2 files   PASS
-    control  at fc13ba87  67 lines in 11 files   PASS
-    control  at C2        67 lines in 11 files   PASS
-    control  at C3        67 lines in 11 files   PASS
-    fulfill  at fc13ba87  21 lines in  7 files   PASS
-    fulfill  at C2        21 lines in  7 files   PASS
-    fulfill  at C3        21 lines in  7 files   PASS
-    teach    at fc13ba87  77 lines in 17 files   PASS
-    teach    at C2        77 lines in 17 files   PASS
-    teach    at C3        10 lines in  6 files   PASS
+### G4 THE BEHAVIOUR at C3 — exit 0
 
-The `deleted` lines at C3:
+From the primary checkout's root:
 
-    tests/docs/test_docs_consistency.py:332:  "job rerun <job_id> --check-manifest", "exit 4",   (F012 history pin)
-    tests/test_command_catalog.py:339:        "job.rerun",                                      (TestDeletedCommands)
-
-The `teach` lines at C3:
-
-    apps/cli/commands/worker_facade_cmd.py:91:        cloned repo and teach operators to ignore the one word this command
-    docs/system/model-defaults-and-dead-model-check-v0.md:52:  teach operators to ignore the word. That was the live state until
-    docs/system/vocabulary.md:146:stats, teach, memory, ui, config (with the `settings` alias of amend0831 D-D), doctor,
-    docs/system/vocabulary.md:191:(1) The group written `teach` above is named `teacher` — a noun like `worker` and
-    docs/system/vocabulary.md:192:`doctor`; `teach` was the only verb among the visible groups. Its commands are
-    docs/system/vocabulary.md:195:feature file that says `teach` as the group name reads `teacher`. (2) The visible
-    packages/orchestration/dead_model_list.py:164:    extends the documented console-error base list: an operator can teach
-    packages/orchestration/product_smoke.py:229:    Config extends; it never replaces. A project can teach the smoke about its
-    tests/test_command_catalog.py:278:        ("teach.ask", "teacher.ask"),
-    tests/test_command_catalog.py:279:        ("teach.narrate", "teacher.narrate"),
-
-`python3 -m ruff check` over the 19 `.py` paths C2 or C3 edits that still exist at C3 → exit 0,
-`All checks passed!`.
+    python3 -B -m apps.cli.grouped settings --help  → exit 0
+      " Also reachable as: remedy config"
+    python3 -B -m apps.cli.grouped config --help    → exit 0
+      " Also reachable as: remedy settings"
+    python3 -B -m apps.cli.grouped roadmap status   → exit 0
+      "Next unchecked: F280 — CLI vocabulary v2, part two — the gated prunes, the flight-plan rename and the help surface"
+    python3 -B -m pytest -q tests/docs/             → exit 0, "310 passed in 1.22s"
+    python3 -m ruff check  (5 paths: apps/cli/command_catalog.py, apps/cli/grouped.py,
+      apps/cli/help_renderer.py, tests/cli/test_cli_ux.py, tests/docs/test_docs_consistency.py)
+                                                    → exit 0, "All checks passed!"
+    git status --porcelain                          → ''
 
 ### G5 THE RED-PROOF — exit 0 (every row as ordered)
 
-In `git worktree add --detach .remedy-wt/f261r24w/wt 6f506cea`, each run through a runner that
+In `git worktree add --detach .remedy-wt/f261r25w/wt 7994c69e`, each run through a runner that
 changes into the worktree, puts it first on `sys.path` and in `PYTHONPATH`, disables bytecode
 writing, and asserts `apps.cli.grouped` loaded from
-`.remedy-wt/f261r24w/wt/apps/cli/grouped.py`. Mutation carrier sha256
-`c611f931d1a411ac3412d6879191823d96e3a6506954c7ebe3994a0996adfa2b`, verified; READ in place, never
+`.remedy-wt/f261r25w/wt/apps/cli/grouped.py`, with
+`-q -p no:randomly -p no:cacheprovider -rf --tb=no` over `tests/cli/test_cli_ux.py`,
+`tests/test_command_catalog.py`, `tests/test_help_renderer.py`,
+`tests/cli/test_advertised_commands.py` and `tests/docs/`. Mutation carrier sha256
+`8275e65a0ef5cdc752122c144d44b41e596ff6ab6cc418c4cf17170c70a8b491`, verified; READ in place, never
 committed and never copied into `.agent/`.
 
 | Run | FROM count | exit | summary | failed nodes | row's node among them |
 |---|---|---|---|---|---|
-| CONTROL | — | 0 | `480 passed in 3.55s` | 0 | — |
-| catalog_entry_job_rerun | 1 | 1 | `1 failed, 479 passed in 3.55s` | 1 | yes |
-| dispatch_entry_job_rerun | 1 | 1 | `1 failed, 479 passed in 3.59s` | 1 | yes |
-| doc_invocation_job_rerun | 1 | 1 | `1 failed, 479 passed in 3.51s` | 1 | yes |
-| allowlist_line_job_rerun_cmd | 1 | 1 | `1 failed, 479 passed in 3.52s` | 1 | yes |
-| R1-dispatch-key | 1 | 1 | `3 failed, 477 passed in 3.52s` | 3 | yes |
-| R2-catalog-id | 1 | 1 | `6 failed, 474 passed in 3.50s` | 6 | yes |
-| R3-group-word | 1 | 1 | `4 failed, 476 passed in 3.52s` | 4 | yes |
-| R4-hint | 1 | 1 | `5 failed, 475 passed in 3.54s` | 5 | yes |
+| CONTROL | — | 0 | `446 passed in 2.64s` | 0 | — |
+| A1-alias-unregistered | 1 | 1 | `9 failed, 437 passed in 2.65s` | 9 | yes |
+| A2-parser-drops-aliases | 1 | 1 | `4 failed, 442 passed in 2.53s` | 4 | yes |
+| A3-help-prescan-ignores-resolver | 1 | 1 | `1 failed, 445 passed in 2.64s` | 1 | yes |
+| A4-help-omits-other-word | 1 | 1 | `3 failed, 443 passed in 2.74s` | 3 | yes |
+| A5-resolver-ignores-aliases | 1 | 1 | `5 failed, 441 passed in 2.66s` | 5 | yes |
+| S1-status-line-dropped | 1 | 1 | `2 failed, 444 passed in 2.66s` | 2 | yes |
+| S2-total-pin-reverted | 1 | 1 | `3 failed, 443 passed in 2.68s` | 3 | yes |
 
-The further nodes of the four rename rows pin the same ids or the same hint (catalog integrity,
-`TestRenamedCommands`, `TestTeacherCatalogDeclaration`, the advertised-commands guard and the
-refusal-hint tests), expected per G5. Each file was restored with
-`git -C .remedy-wt/f261r24w/wt checkout -- <path>` after its run (exit 0) and the worktree read
+The further nodes pin the same property: for A1 to A5 they are other `TestSettingsAlias` tests;
+for S1 `test_there_are_250_unique_status_entries`; for S2 that test and
+`test_the_readme_accepted_count_equals_the_status_count`. Each file was restored with
+`git -C .remedy-wt/f261r25w/wt checkout -- <path>` after its run (exit 0) and the worktree read
 `git status --porcelain` empty each time. After `git worktree remove --force` (exit 0):
 `git worktree list` one row, `git branch --list 'remedy/job-*'` 16 lines.
 
@@ -248,37 +243,39 @@ refusal-hint tests), expected per G5. Each file was restored with
 
     python3 -B -m pytest -q -p no:randomly -p no:cacheprovider --tb=short -rfEs
     (primary checkout root; PYTHONPATH, REMEDY_PROJECT and REMEDY_DATA_DIR removed in-process;
-     PYTHONDONTWRITEBYTECODE=1; transcript under .remedy-wt/f261r24w/)
+     PYTHONDONTWRITEBYTECODE=1; transcript under .remedy-wt/f261r25w/)
 
     RETURN CODE: 0
-    LAST OUTPUT LINE: 17642 passed, 23 skipped, 1 warning in 1268.90s (0:21:08)
+    LAST OUTPUT LINE: 17653 passed, 23 skipped, 1 warning in 1274.38s (0:21:14)
     DISTINCT BAD NODES: 0
 
 No line-initial `FAILED ` or `ERROR ` in the transcript, so no node needed a lone re-run.
 
 ## Authored-text proofs
 
-PLAN24, RECORD24, DEC23, P273D-FROM and P273D-TO were extracted as the bytes strictly between their
-`BEGIN` and `END` lines and matched their BEGIN-marker sha256 before use; none was edited. The
-applied results were re-read from the git objects at C1 and compared to base blob plus slice (G2).
-The edit tables `.agent/authored/f261-r24-rerun.jsonl` and `.agent/authored/f261-r24-teacher.jsonl`
-are byte-identical to their `.remedy-wt/f261-block/` originals; their 29 and 30 rows applied in file
-order, each count read exactly as stated.
+PLAN25, RECORD25, DEC24, DEC25, QOP-FROM, QOP-TO and SCOPE25 were extracted as the bytes strictly
+between their `BEGIN` and `END` lines and matched their BEGIN-marker sha256 before use; none was
+edited. The applied results were re-read from the git objects at C1 and compared to base blob plus
+slice (G2). SCOPE25 sits in this file byte for byte directly after the Session section, assembled
+from the extracted slice bytes. The edit tables `.agent/authored/f261-r25-alias.jsonl` and
+`.agent/authored/f261-r25-split.jsonl` are byte-identical to their `.remedy-wt/f261-block/`
+originals; their 15 and 11 rows applied in file order, each count read exactly as stated.
 
 ## Deviations & assumptions
 
 None to the ordered commit sequence: C0a, C0b, C1, C2, C3 and C4 landed in that order, each
-single-parent, on `fc13ba87`; no gate was skipped, weakened or re-valued. Declared: the G5 runs
-passed `-q -p no:cacheprovider -p no:randomly` beside the ordered `-rf --tb=no`, for a parseable
-summary line and no cache directory in the worktree, and the G5 runner also removed
-`REMEDY_PROJECT` and `REMEDY_DATA_DIR`, as SPEC S does.
+single-parent, on `d5e0a7b5`; no gate was skipped, weakened or re-valued. Declared: (1) one
+directory listing at the start of the round read the top level of `.remedy-wt/` while locating the
+block directory, beyond the two directories constraint 4 names; nothing there was opened or
+written. (2) The G5 runner also removed `REMEDY_PROJECT` and `REMEDY_DATA_DIR`, as SPEC S does.
+(3) G4's ruff path list was read as the `.py` paths added or modified between C1 and C3.
 
 ## Next
 
 1. Phase 1 rule 1 — re-read `.agent/STOP` from disk before anything else.
-2. The reviewer's verdict on round 24.
-3. The `settings` alias surface over `config`.
+2. The reviewer's verdict on round 25.
+3. The closure sequence of F261 under `docs/roadmap/STATUS_closure_protocol.md`.
 
 Open findings: 125 by distinct id, with the High ids R-0803, R-0804 and R-0807.
 
-Operator questions open: 0
+Operator questions open: 1
