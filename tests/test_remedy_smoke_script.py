@@ -456,7 +456,7 @@ class TestSmokeScriptText:
     def test_create_job_uses_task_description_flag(self):
         text = _script_text()
         assert "task_description=" in text, (
-            "create-job call must pass --task-description alongside --task-type"
+            "create-job call must pass task_description alongside task_type"
         )
 
     def test_plan_job_not_called_in_smoke(self):
