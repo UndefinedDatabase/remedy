@@ -70,8 +70,12 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: lint) — were registered on 2026-09-08 by operator order
 #: amend0908-brainstorm-intake, which landed the verified proposals of that
 #: day's four `remedy brain` runs; see T2_F276.md, T2_F277.md, T2_F278.md and
-#: T2_F279.md.
-TOTAL_FEATURES = 279
+#: T2_F279.md. One more, F280 (CLI vocabulary v2, part two: the gated prunes,
+#: the flight-plan rename and the help surface), was registered on
+#: 2026-09-16 by DECISION F261 D25, which split it off F261 at the standing soft
+#: limit of 25 rounds and placed it directly after its parent
+#: per amend0906-split-placement; see T2_F280.md.
+TOTAL_FEATURES = 280
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

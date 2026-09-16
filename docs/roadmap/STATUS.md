@@ -28,6 +28,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [x] F274 — One world completion, part two — the atomic record flip and the cluster deletion (the generated cluster-deletion map, the import-reachability ratchet and the cockpit and command-layer edge cuts complete; T001-T003 moved to F275; accepted 2026-09-08 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job a19161d4ff0df836 · package remedy-review-20260908-083448-READY_FOR_REVIEW.zip · SHA-256 a96911ffe68f7ab371bd23a5ebcb8f3844f9934c6ec1a3f87c7f0dfe1ded8103 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5d329d2009108073dd91546ab9da0dc30cef73c7)
 - [x] F275 — One world completion, part three — the cluster deletion, the atomic record flip and the classic runner (T001-T003 complete: the prototype-cluster deletion performed, the classic-to-unified record flip landed as one commit, and the classic store and classic runner deleted; accepted 2026-09-14 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f3fff86c9b2c58a9 · package remedy-review-20260914-230931-READY_FOR_REVIEW.zip · SHA-256 e18ab493640adf6e5e82b72dea9c59ee9469b730d75085c533645e29a1cd1da0 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD d285f47a8a28f1868da9078ed60834752eeec3a8)
 - [~] F261 — CLI vocabulary v2 (rename & prune)
+- [ ] F280 — CLI vocabulary v2, part two — the gated prunes, the flight-plan rename and the help surface
 
 ## Tier 4 — Repo Comprehension (operator order amend0831)
 
