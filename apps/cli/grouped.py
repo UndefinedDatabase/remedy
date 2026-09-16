@@ -315,6 +315,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="remedy",
         description="Remedy — Human-in-the-loop Project Brain",
         add_help=False,
+        allow_abbrev=False,
     )
     root.add_argument("-h", "--help", action="store_true", dest="_help", default=False)
     root.set_defaults(func=None, _group=None, _subcmd=None)
@@ -328,6 +329,7 @@ def build_parser() -> argparse.ArgumentParser:
             aliases=list(group_def.aliases),
             help=group_def.description,
             add_help=False,
+            allow_abbrev=False,
         )
         group_parser.add_argument("-h", "--help", action="store_true", dest="_help", default=False)
         sub = group_parser.add_subparsers(dest="_subcmd", parser_class=_SilentParser)
@@ -338,6 +340,7 @@ def build_parser() -> argparse.ArgumentParser:
                 help=cmd.description,
                 add_help=False,
                 description=cmd.description,
+                allow_abbrev=False,
             )
             cmd_parser.add_argument("-h", "--help", action="store_true", dest="_help", default=False)
             _add_command_args(cmd_parser, cmd)

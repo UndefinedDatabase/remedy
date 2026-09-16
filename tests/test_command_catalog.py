@@ -424,3 +424,28 @@ class TestDeletedFlags:
     def test_no_deleted_flag_is_declared_by_its_command(self) -> None:
         declared = {(cmd.command_id, arg.name) for cmd in CATALOG for arg in cmd.args}
         assert [pair for pair in self.DELETED if pair in declared] == []
+
+    #: The positional each command needs before its flags parse.
+    POSITIONALS = {"do.run": ["g"], "job.run": ["J"]}
+
+    @pytest.mark.parametrize("pair", DELETED, ids=lambda pair: f"{pair[0]}:{pair[1]}")
+    def test_parser_refuses_a_deleted_flag_as_an_abbreviation(self, pair) -> None:
+        """Argparse prefix matching would read `--builder` as `--builder-provider`: exit 2 instead."""
+        from apps.cli.grouped import build_parser
+
+        command_id, flag = pair
+        group, subcommand = command_id.split(".", 1)
+        argv = [group, subcommand, *self.POSITIONALS[command_id], flag, "ollama"]
+        with pytest.raises(SystemExit) as exc:
+            build_parser().parse_args(argv)
+        assert exc.value.code == 2
+
+    def test_the_surviving_full_flags_still_parse(self) -> None:
+        from apps.cli.grouped import build_parser
+
+        args = build_parser().parse_args(["do", "run", "g", "--builder-provider", "ollama"])
+        assert (args._command_id, args.builder_provider) == ("do.run", "ollama")
+        args = build_parser().parse_args(
+            ["job", "run", "J", "--builder-provider", "fake", "--reviewer-provider", "claude-cli"])
+        assert (args._command_id, args.builder_provider, args.reviewer_provider) == (
+            "job.run", "fake", "claude-cli")
