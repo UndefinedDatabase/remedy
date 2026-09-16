@@ -1,0 +1,45 @@
+G-BRANCH
+  python3 -m pytest -n auto -q -rfE in the primary checkout at 1b03919a21243bcb3537faa25ef9e358d71092a2: exit 1, '1 failed, 17652 passed, 23 skipped, 1 warning in 252.27s (0:04:12)', wall 252.83s, failed nodes 1
+G-BASE
+  worktree on tmp/f261-r26-base at 7cdde89b5d0dc8ef1fb96980105870e956699873; UI copies and stamp per dist_mtime_window.txt
+  python3 -m pytest -n auto -q -rfE with REMEDY_UI_NO_AUTO_BUILD=1: exit 0, '18443 passed, 23 skipped, 1 warning in 156.15s (0:02:36)', wall 156.72s, failed nodes 0, 'React UI not built' 0
+  dist files with mtime inside the base run window: 0
+  worktree removed without --force, pruned, tmp branch deleted
+G-COMPARE
+  BRANCH-ONLY 1: tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift::test_a_mutated_workspace_shows_blocking_drift
+  BASE-ONLY 0: none
+  BRANCH-ONLY classed flaky by three solo passes (attribution.txt); BRANCH-ONLY less flaky: empty
+  passed: branch 17652, base 18443, difference 791 (the branch's one failed node accounts for 1 of it)
+  git diff --name-status 7cdde89b 1b03919a -- tests/ deletes 22 test files:
+    D tests/cli/test_context_inspect_cli.py
+    D tests/cli/test_context_inspect_runtime.py
+    D tests/cli/test_contract_runtime.py
+    D tests/cli/test_do_continue_cli.py
+    D tests/cli/test_loop_cmd.py
+    D tests/cli/test_orchestrator_brain_cli.py
+    D tests/cli/test_queue_cmd.py
+    D tests/cli/test_repair_request_cli.py
+    D tests/cli/test_repair_runtime.py
+    D tests/cli/test_repair_v1_cli.py
+    D tests/cli/test_review_cmd.py
+    D tests/cli/test_token_cli.py
+    D tests/cli/test_worker_cli_runtime.py
+    D tests/orchestration/test_do_continue.py
+    D tests/orchestration/test_job_queue.py
+    D tests/orchestration/test_loop_run.py
+    D tests/orchestration/test_loop_spec.py
+    D tests/orchestration/test_pingpong_promote.py
+    D tests/orchestration/test_queue_concurrency.py
+    D tests/orchestration/test_queue_executor_binding.py
+    D tests/orchestration/test_repair_apply_cycle.py
+    D tests/test_do_job_flow.py
+  and adds 4:
+    A tests/cli/test_job_show.py
+    A tests/docs/test_retired_promote_word.py
+    A tests/orchestration/test_review_package_status.py
+    A tests/test_role_override_flags.py
+  and renames 4 (neither deleted nor added):
+    R tests/cli/test_do_job_flow_review_base.py -> tests/cli/test_job_evidence_review_base.py
+    R tests/cli/test_teach_cmd.py -> tests/cli/test_teacher_cmd.py
+    R tests/orchestration/test_job_promote.py -> tests/orchestration/test_job_apply.py
+    R tests/orchestration/test_job_promote_consistency.py -> tests/orchestration/test_job_apply_consistency.py

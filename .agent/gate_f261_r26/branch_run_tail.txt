@@ -1,0 +1,7 @@
+command: python3 -m pytest -n auto -q -rfE
+cwd: primary checkout (PYTHONPATH, REMEDY_PROJECT, REMEDY_DATA_DIR removed)
+commit: 1b03919a21243bcb3537faa25ef9e358d71092a2
+exit code: 1
+final summary line: 1 failed, 17652 passed, 23 skipped, 1 warning in 252.27s (0:04:12)
+wall time: 252.83s
+failed-node count: 1
