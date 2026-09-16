@@ -7,31 +7,27 @@ Branch: feature/f261-cli-vocabulary-v2, cut from `main` at
 
 The catalog `apps/cli/command_catalog.py` equals DECISION amend0905-vocab D4: one name per
 command, and every retired word deleted rather than aliased, per
-`docs/roadmap/features/T2_F261.md`.
+`docs/roadmap/features/T2_F261.md` — as far as this feature reaches it; DECISION F261 D25
+moves the rest to F280.
 
 ## Current Step
 
-ROUND 24 continues T003. It books round 23's PASS, registers R-0931 for F273 and records
-DECISION F261 D23, then deletes `job rerun` by one table and renames the group `teach` to
-`teacher` by a second. `job fulfill` is deferred by D23, as `propose` is by D22.
+ROUND 25, the feature's soft limit. It books round 24's PASS and records DECISIONs F261 D24
+and D25 with operator question Q3, then lands the `settings` alias over `config` by one table
+and registers F280 by a second, and hands back the scope report D25 executes.
 
 ## Next Steps
 
-1. The `settings` alias surface over `config`, DECISION D-D of the feature file.
-2. `job budget <id> set` over the run-contract budget fields and the token budget profile, with
-   R-0906 and R-0909, and then `job fulfill`, which D23 defers until that write exists.
-3. The `propose` group, with the DECISION its deletion needs about the two surviving gates D22
-   names, and the F011 `--status` discriminator `tests/cli/test_job_stop.py` loses with it.
-4. The rest of T003 in the inventory's order, with R-0767 and R-0894.
-5. T004, which owes the visible group order of D4 and the README quickstart of R-0895.
+1. The closure sequence of F261 under `docs/roadmap/STATUS_closure_protocol.md`: the
+   integration gate, the ledger rotation, the one consolidation pass of the §3 checklist, the
+   evidence package, the STATUS flip and the pull request.
+2. F280, which Rule A5 proposes once F261 is merged.
 
 ## Risks
 
-- 124 findings are open by distinct id before this round's record and 125 after it; three are
-  High, R-0803, R-0804 and R-0807.
-- The feature's soft limit of 25 rounds leaves one after this one, and the steps above are more
-  than one round; the session that reaches the limit owes the scope report and executes the
-  split-and-close default of operator amendment amend0905-throughput, placing the follow-up
-  feature directly after F261 per amend0906.
-- A deletion that would break a SURVIVING command is deferred to a round that can rule on it,
-  never shipped with a finding: that is why `propose` and `job fulfill` are not in this round.
+- 125 findings are open by distinct id; three are High, R-0803, R-0804 and R-0807. Seven that
+  F261 owned move to F280 by DECISION F261 D25.
+- F261 closes with the Goal & Done sentence not met, and says so in its Built State; the
+  operator may reverse the split through operator question Q3.
+- `propose` and `job fulfill` stay in the catalog because deleting either breaks a surviving
+  command; F280 owes the rulings.
