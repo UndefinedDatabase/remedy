@@ -1,0 +1,3 @@
+["edit", "tests/test_remedy_smoke_script.py", "        assert \"--task-type\" in text, (\n", "        assert \"task_type=\" in text, (\n", 1]
+["edit", "tests/test_remedy_smoke_script.py", "        assert \"--task-type write_readme\" in text, (\n", "        assert \"task_type='write_readme'\" in text, (\n", 1]
+["edit", "tests/test_remedy_smoke_script.py", "        assert \"--task-description\" in text, (\n", "        assert \"task_description=\" in text, (\n", 1]

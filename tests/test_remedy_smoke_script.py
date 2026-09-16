@@ -443,19 +443,19 @@ class TestSmokeScriptText:
 
     def test_create_job_uses_task_type_flag(self):
         text = _script_text()
-        assert "--task-type" in text, (
+        assert "task_type=" in text, (
             "create-job call must use --task-type to bypass planner"
         )
 
     def test_create_job_uses_write_readme_task_type(self):
         text = _script_text()
-        assert "--task-type write_readme" in text, (
+        assert "task_type='write_readme'" in text, (
             "create-job must set --task-type write_readme for smoke determinism"
         )
 
     def test_create_job_uses_task_description_flag(self):
         text = _script_text()
-        assert "--task-description" in text, (
+        assert "task_description=" in text, (
             "create-job call must pass --task-description alongside --task-type"
         )
 
