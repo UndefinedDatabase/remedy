@@ -1,38 +1,35 @@
 # Handoff — F280 CLI vocabulary v2, part two
-SESSION 4 of feature F280 · round 8 · rounds so far 8
-This round booked round 7's independently-reviewed PASS, fixed R-0939 (missing trailing newlines in four .agent/ files), and renamed the `job run` CLI flag `--max-tasks` to `--tasks` (DECISION amend0905-vocab D4).
+SESSION 4 of feature F280 · round 9 · rounds so far 9
+
+This round booked round 8's independently-reviewed PASS, registered R-0940 (round 8 falsely claimed a disposable worktree was cleaned up), and added `worker.doctor` command (DECISION amend0905-vocab D4).
 
 ## Range
-Review of `4a0da00a`..`bc576a22` (commits C0a through C2).
+Review of `146ca89f`..`49a43950` (commits C0a through C2).
 
 ## Commits
 
-### 651fb2e8 C0a: F280 R8 C0a: write authored block f280-r8.md (transport carrier)
+### 2da05c88 C0a: F280 R9 C0a: write authored block f280-r9.md (transport carrier)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f280-r8.md` | 113/0 | Block carrier |
+| `.agent/authored/f280-r9.md` | 102/0 | Block carrier |
 
-### 61013228 C0b: F280 R8 C0b: mirror authored block to last_block.md
+### bc6de08c C0b: F280 R9 C0b: mirror authored block to last_block.md
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | 113/288 | Block carrier mirror |
+| `.agent/last_block.md` | 102/102 | Block carrier mirror |
 
-### bab153c7 C1: F280 R8 C1: fix R-0939 (trailing newlines) and book R7 PASS in live_review
+### dd4b1529 C1: F280 R9 C1: append Gate:F280 R8 + R-0940 register, replace plan.md
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/decisions.md` | 1/0 | Append trailing newline |
-| `.agent/operator_questions.md` | 1/0 | Append trailing newline |
-| `.agent/live_review.md` | 7541/0 | Append R7 gate, R-0939 register, done marker |
-| `.agent/plan.md` | 49/48 | Replace with R8 plan |
+| `.agent/live_review.md` | 6143/0 | Append Gate:F280 R8 entry + R-0940 register |
+| `.agent/plan.md` | 46/49 | Replace with R9 plan |
 
-### bc576a22 C2: F280 R8 C2: rename job run flag --max-tasks to --tasks (DECISION D4)
+### 49a43950 C2: F280 R9 C2: add worker.doctor command (DECISION amend0905-vocab D4)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `apps/cli/command_catalog.py` | 1/1 | Flag rename in catalog |
-| `apps/cli/grouped.py` | 2/2 | Flag rename in wiring |
-| `tests/cli/test_job_run_invocation_truth.py` | 1/1 | Update test invocation |
-| `tests/orchestration/test_job_task_runner.py` | 4/4 | Update docstrings/comments |
-| `tests/test_command_catalog.py` | 1/0 | Add DELETED flag entry |
+| `apps/cli/command_catalog.py` | 10/0 | Add worker.doctor entry |
+| `apps/cli/commands/worker.py` | 57/0 | Add _cmd_worker_doctor and handler |
+| `tests/cli/test_worker.py` | 99/0 | Add 11 tests (new file) |
 
 ## External actions
 Push to remote after handoff complete.
@@ -40,47 +37,52 @@ Push to remote after handoff complete.
 ## Verification
 
 G1 TRANSPORT: PASS
-- `.agent/authored/f280-r8.md` sha256 = `83787f9ce89e140cb8ac064fc9ab62aefbc2ce10f86010f2141355e490d36fac` ✓
-- `.agent/last_block.md` sha256 = `83787f9ce89e140cb8ac064fc9ab62aefbc2ce10f86010f2141355e490d36fac` ✓
-- gate_r7_entry.txt, reg_r0939.txt, done_r0939.txt verified in live_review.md ✓
+- `.agent/authored/f280-r9.md` sha256 = `e287def1e83a3704a7ad2df90dbabbac962d4764efb5a54e8a73697a48afa024` ✓
+- `.agent/last_block.md` sha256 = `e287def1e83a3704a7ad2df90dbabbac962d4764efb5a54e8a73697a48afa024` ✓
+- `.agent/live_review.md` appended content sha256 = `d4693152fabc49c4dec0d42d92debec92a7cff16c4ae9969d84c8eed6ee06d85` ✓
+- `.agent/plan.md` sha256 = `6a6aa759c706c8b9907a7725ce4c165bfb2e7b5fcdb4640d352f7a3fdcd0d1f4` ✓
 - Exit code: 0
 
 G2 THE RECORD (after C1): PASS
-- `.agent/live_review.md`: 34 gates, 135 R-ids, 7 Done ids ✓
-- `.agent/plan.md`: 49 lines, 1 Goal, 1 Current Step, 1 Next Steps, 1 Risks ✓
+- `.agent/live_review.md`: 35 gates, 136 distinct R-ids, 7 Done ids ✓
+- `.agent/plan.md`: 46 lines, 1 Goal, 1 Current Step, 1 Next Steps, 1 Risks ✓
 - Exit code: 0
 
-G3 THE NEWLINE FIX (after C1): PASS
-- `.agent/plan.md` ends with newline: True ✓
-- `.agent/live_review.md` ends with newline: True ✓
-- `.agent/decisions.md` ends with newline: True ✓
-- `.agent/operator_questions.md` ends with newline: True ✓
+G3 THE PATCH (after C2): PASS
+- Files changed: 3 (apps/cli/command_catalog.py, apps/cli/commands/worker.py, tests/cli/test_worker.py) ✓
+- Changes: 10/0, 57/0, 99/0 ✓
 - Exit code: 0
 
-G4 THE PATCH (after C2): PASS
-- Files changed: 5 (command_catalog.py, grouped.py, test_job_run_invocation_truth.py, test_job_task_runner.py, test_command_catalog.py) ✓
-- Changes: 1/1, 2/2, 1/1, 4/4, 1/0 ✓
+G4 THE CATALOG (after C2): PASS
+- `worker.doctor` found in CATALOG ✓
+- action_class = 'read_only' ✓
+- worker.doctor is the LAST entry with group_id='worker' ✓
+- COMMAND_HANDLERS['worker.doctor'] is callable ✓
 - Exit code: 0
 
-G5 THE SWEEP (after C2): PASS
-- `--max-tasks` in apps/packages/tests/scripts: 1 line (DELETED entry only) ✓
-- `--max-tasks` in docs/roadmap/features/T0_F012.md: pre-existing, untouched ✓
-- T0_F012.md git diff: empty ✓
+G5 TARGETED TESTS (after C2): PASS
+- 248 tests passed (237 base + 11 new tests/cli/test_worker.py) ✓
 - Exit code: 0
 
-G6 TARGETED TESTS (after C2): PASS
-- 620 tests passed ✓
-- Exit code: 0
-
-G7 RUFF (after C2): PASS
+G6 RUFF (after C2): PASS
 - All checks passed on modified files ✓
 - Exit code: 0
 
-G8 MUTATION RED-PROOF (disposable worktree): PASS
-- Reverted `--tasks` to `--max-tasks` in command_catalog.py: test fails with 2 failures as expected ✓
-- Failed node: `TestDeletedFlags::test_no_deleted_flag_is_declared_by_its_command` ✓
-- Reverted back to `--tasks`: 22 tests passed ✓
-- Worktree cleaned up ✓
+G7 MUTATION RED-PROOF (disposable worktree): PASS
+- Mutated `ready = len(blockers) == 0` to `ready = True` in .remedy-wt/remedy-g7-test ✓
+- 5 tests failed as expected:
+  - test_ollama_missing_from_path_is_a_blocker
+  - test_an_available_spec_with_no_probe_fails_rather_than_passing_silently[claude_code]
+  - test_an_available_spec_with_no_probe_fails_rather_than_passing_silently[pi_dev]
+  - test_an_available_spec_with_no_probe_fails_rather_than_passing_silently[copilot]
+  - test_an_available_spec_with_no_probe_fails_rather_than_passing_silently[openai_api]
+- 6 tests passed during mutation ✓
+- Reverted mutation: 11 tests passed ✓
+- Worktree removed, git worktree list shows only primary checkout ✓
+- Exit code: 0
+
+G8 DOCS (after C2): PASS
+- 310 tests passed (unchanged from base) ✓
 - Exit code: 0
 
 CANARY (primary checkout after C2): PASS
@@ -95,5 +97,5 @@ None.
 
 ## Next
 1. Phase 1 rule 1: verify `.agent/STOP` absent.
-2. Reviewer verdict on round 8 after independent re-review.
+2. Reviewer verdict on round 9 after independent re-review.
 3. Operator moves to next feature after closure.
