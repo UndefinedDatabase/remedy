@@ -352,11 +352,17 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.budget",
         group_id="job",
         subcommand="budget",
-        description="Show budget limits and current counters for a job (F018).",
-        action_class="read_only",
+        description="Show a job's budget limits and counters (F018), or with set <field> <value> "
+                    "write one integer field of its execution limits or its token budget profile.",
+        # write_metadata, NOT read_only (DECISION F280 D3): the set form writes the job record's
+        # run contract or the job's token budget profile. The show form still writes nothing.
+        action_class="write_metadata",
         supports_json=True,
         args=(
             ArgDef("job_id", "Job ID to inspect"),
+            ArgDef("action", "Omit to show the budget; set writes one field", required=False),
+            ArgDef("field", "The field set writes; a wrong name lists the settable ones", required=False),
+            ArgDef("value", "The integer value set writes", required=False),
             _JSON_OPT,
         ),
         may_mutate_repo=False,

@@ -96,7 +96,7 @@ never disagree about it.
 
 ## What `remedy job budget` shows
 
-Read-only. For a job with a money limit it prints the configured limits, the
+Without `set`, read-only. For a job with a money limit it prints the configured limits, the
 spend, what remains, the next task's expected cost with its `estimate_basis` and
 one-line arithmetic, and — if a predictive stop already happened — the recorded
 arithmetic that justified it. `--json` adds `prediction` (the live estimate, or
@@ -105,6 +105,10 @@ arithmetic that justified it. `--json` adds `prediction` (the live estimate, or
 the command writes nothing, persists nothing and mutates no job, and any failure
 in the estimate degrades to a single `unavailable (...)` line rather than
 failing the inspection.
+
+`remedy job budget <job_id> set <field> <value>` is the command's one write
+(DECISION F280 D3): one field of the job's run contract or token budget profile. It never
+writes the F018 limits above, which `remedy job run <job_id>` takes as budget flags.
 
 ## Deliberately not built
 

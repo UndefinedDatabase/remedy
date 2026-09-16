@@ -654,6 +654,8 @@ def execute_test_run(
         result.stop_reason = f"contract_{decision.status}"
         result.safe_summary = decision.reason
         result.next_safe_action = decision.next_safe_action
+        if decision.status == "exhausted" and "max_test_runs" in decision.reason:
+            result.contract_guidance = f"remedy job budget {job.job_id} set max_test_runs <n>"
         _emit(data_dir, job_id_parsed, "test_run_blocked", {
             "test_run_id": test_run_id,
             "contract_id": contract.contract_id,

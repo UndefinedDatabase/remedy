@@ -21,10 +21,11 @@ A token budget profile sets soft caps for a job: how much context, how much gene
 total you're comfortable with — plus the point where Remedy should prefer a local route, and the
 point where it should ask you before anything expensive.
 
-Since F261 round 18 deleted the `token` group there is no command that reads or writes this
-profile: every job uses the built-in defaults (32000 context, 8000 generation, 40000 total,
-prefer-local under 8000, approval over 120000). The word D4 gives the setting, `job budget <id>
-set`, is not built yet, so a per-job budget cannot be changed today.
+A job nobody set uses the built-in defaults (32000 context, 8000 generation, 40000 total,
+prefer-local under 8000, approval over 120000). Change one field at a time with
+`remedy job budget <job_id> set <field> <value>`, for example
+`remedy job budget <job_id> set max_context_tokens 16000`; every field takes an integer of at
+least 1.
 
 ## Why cheap tasks should use local / Ollama routes later
 

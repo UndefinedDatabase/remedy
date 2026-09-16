@@ -9,8 +9,9 @@ Test execution in Remedy v1 is contract-gated, resource-safe, and evidence-linke
 A real test command may only run when **both** conditions are true:
 
 1. **Permission granted**: `remedy job permit <job_id> repo_test_run allow`
-2. **Contract budget set**: the contract's `max_test_runs` above 0. No command sets it since
-   F261 round 17 deleted the `contract` group; the default contract has `max_test_runs=0`
+2. **Contract budget set**: the contract's `max_test_runs` above 0, which
+   `remedy job budget <job_id> set max_test_runs <n>` writes (DECISION F280 D3); unless it is
+   set, the default contract has `max_test_runs=0`
    and only the fixture contract of `job fulfill` carries a non-zero budget.
 
 Either gate alone is insufficient. The default contract has `max_test_runs=0`.

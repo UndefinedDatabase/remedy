@@ -2127,7 +2127,7 @@ def _cmd_job_budget(
     # field — the F103 ledger is the only place a real provider cost lives — so
     # a money-limited job reads it here, exactly as run_job's safe point does.
     # READ-ONLY: `query_cost` never creates a ledger and never writes one, which
-    # is what keeps `remedy job budget` action_class="read_only". Any failure
+    # is what keeps the show form of `remedy job budget` writing nothing. Any failure
     # leaves the cost UNMEASURED (None, never 0.0 — P6) and every other limit
     # still reports; an inspection command must not fail because a mirror is
     # unreadable.
@@ -2288,6 +2288,108 @@ def _cmd_job_budget(
                 print(f"  diagnostic:            {_counter_diagnostic}")
 
 
+# DECISION F280 D3: the fields `remedy job budget <id> set` writes, per store, in the stores'
+# own names. The run contract takes integers >= 0 (`validate_run_contract`); the token budget
+# profile takes integers >= 1 (the floor `save_token_budget_profile` would otherwise impose
+# silently). F018's JobBudgets belong to `job run`'s flags and the stopped-job Decision guard.
+_BUDGET_SET_FORM = "remedy job budget <job_id> set <field> <value>"
+_RUN_CONTRACT_BUDGET_FIELDS = (
+    "max_loops", "max_test_runs", "max_runtime_seconds", "max_tokens", "max_cost_cents")
+_TOKEN_PROFILE_BUDGET_FIELDS = (
+    "max_context_tokens", "max_generation_tokens", "max_total_estimated_tokens",
+    "prefer_local_under_tokens", "require_human_approval_over_tokens")
+_JOB_BUDGETS_FIELDS = (
+    "max_total_tokens", "max_provider_calls", "max_wall_clock_minutes", "max_cost_usd", "deadline")
+
+
+def _refuse_budget_set(message: str) -> None:
+    print(f"Error: {message}", file=sys.stderr)
+    sys.exit(2)
+
+
+def _cmd_job_budget_route(args: argparse.Namespace) -> None:
+    """`job budget <id>` shows; `job budget <id> set <field> <value>` writes one field."""
+    json_output = getattr(args, "json", False)
+    action = getattr(args, "action", None)
+    if action is None:
+        _cmd_job_budget(args.job_id, json_output=json_output)
+        return
+    field_name = getattr(args, "field", None)
+    value = getattr(args, "value", None)
+    if action != "set" or field_name is None or value is None:
+        _refuse_budget_set(f"use `{_BUDGET_SET_FORM}`, or `remedy job budget <job_id>` to show.")
+    _cmd_job_budget_set(args.job_id, field_name, value, json_output=json_output)
+
+
+def _cmd_job_budget_set(
+    job_id: str,
+    field_name: str,
+    raw_value: str,
+    *,
+    json_output: bool = False,
+) -> None:
+    """Write ONE budget field of a job's run contract or token budget profile (DECISION F280 D3)."""
+    import json as _json
+    from dataclasses import replace as _replace
+
+    settable = ", ".join(_RUN_CONTRACT_BUDGET_FIELDS + _TOKEN_PROFILE_BUDGET_FIELDS)
+    if field_name in _JOB_BUDGETS_FIELDS:
+        flag = "--" + field_name.replace("_", "-")
+        _refuse_budget_set(
+            f"{field_name} is a job run limit: set it with `remedy job run <job_id> {flag} <value>`; "
+            "a stopped job's limits change through its Decision.")
+    in_contract = field_name in _RUN_CONTRACT_BUDGET_FIELDS
+    if not in_contract and field_name not in _TOKEN_PROFILE_BUDGET_FIELDS:
+        _refuse_budget_set(f"unknown budget field {field_name!r}. Settable: {settable}.")
+    try:
+        new_value = int(raw_value)
+    except ValueError:
+        _refuse_budget_set(f"{field_name} takes an integer, got {raw_value!r}. Settable: {settable}.")
+    floor = 0 if in_contract else 1
+    if new_value < floor:
+        _refuse_budget_set(f"{field_name} must be >= {floor}, got {new_value}.")
+
+    # The show form's lookup and its not-found error.
+    try:
+        job = require_job_plan(job_id)
+    except JobNotFoundError:
+        print(f"Error: job {job_id!r} not found.", file=sys.stderr)
+        sys.exit(1)
+
+    if in_contract:
+        from packages.orchestration.run_contract import (
+            build_default_run_contract,
+            load_contract,
+            save_contract,
+        )
+        contract = load_contract(job)
+        if contract is None:
+            contract = build_default_run_contract(job)
+        old_value = getattr(contract, field_name)
+        save_contract(job, _replace(contract, **{field_name: new_value}))
+        save_job_plan(job)
+        store = "run_contract"
+    else:
+        from packages.orchestration.token_economy import (
+            load_token_budget_profile,
+            save_token_budget_profile,
+        )
+        profile = load_token_budget_profile(str(job.job_id))
+        old_value = getattr(profile, field_name)
+        setattr(profile, field_name, new_value)
+        if not save_token_budget_profile(profile):
+            print(f"Error: the token budget profile of job {job.job_id} could not be written.",
+                  file=sys.stderr)
+            sys.exit(1)
+        store = "token_budget_profile"
+
+    if json_output:
+        print(_json.dumps({"job_id": str(job.job_id), "field": field_name, "old": old_value,
+                           "new": new_value, "store": store}, indent=2))
+    else:
+        print(f"Job {job.job_id}: {field_name} {old_value} -> {new_value} ({store}).")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.create": lambda args: _cmd_create_job(
         args.prompt,
@@ -2313,10 +2415,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.show": lambda args: _cmd_show_job(args.job_id, full=getattr(args, "full", False)),
     "job.attach-repo": lambda args: _cmd_attach_repo(args.job_id, args.repo_path),
     "job.permit": lambda args: _cmd_set_permission(args.job_id, args.action, args.permission),
-    "job.budget": lambda args: _cmd_job_budget(
-        args.job_id,
-        json_output=getattr(args, "json", False),
-    ),
+    "job.budget": _cmd_job_budget_route,
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
     "job.checkpoints": lambda args: _cmd_checkpoints(
         args.job_id,
