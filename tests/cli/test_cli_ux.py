@@ -622,7 +622,7 @@ class TestGroupDefIntegrity:
         does not name, so the promise holds for its named groups only. `run` joins when F261 creates it.
         """
         kept = {
-            "do", "mission", "job", "decision", "status", "stats", "teach", "memory", "ui", "config",
+            "do", "mission", "job", "decision", "status", "stats", "teacher", "memory", "ui", "config",
             "doctor", "project", "init", "worker", "runtime",
             "brain", "event", "patch", "test", "blocker", "change", "file", "snapshot", "self", "ci",
             "integrity", "dev",

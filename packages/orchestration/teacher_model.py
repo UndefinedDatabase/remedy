@@ -29,7 +29,7 @@ recording one would be the fabrication ``token_ledger`` refuses.
 
 Remedy deliberately opens NO file here and writes none of its own: the only
 write on this path is the one ledger row ``record_teacher_question`` makes, and
-that is why ``remedy teach ask`` declares ``write_metadata`` rather than
+that is why ``remedy teacher ask`` declares ``write_metadata`` rather than
 ``read_only`` (DECISION F255 D10).
 
 Public API:: ``TEACHER_TRANSPORTS``, ``TeacherTransportUnavailable``,

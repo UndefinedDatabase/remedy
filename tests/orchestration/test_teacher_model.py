@@ -199,7 +199,7 @@ class TestARefusalIsNeverBilled:
         assert "claude-cli" in answer.text and "opus" in answer.text
         # The refusal names Stage 1, because Stage 1 is offline by construction
         # and still works — the operator should be told what they still have.
-        assert "remedy teach narrate" in answer.text
+        assert "remedy teacher narrate" in answer.text
         assert not ledger.exists()
 
     def test_a_refusal_never_reaches_the_transport(self, tmp_path, monkeypatch):

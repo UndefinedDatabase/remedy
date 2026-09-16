@@ -275,6 +275,8 @@ class TestRenamedCommands:
         ("do.report", "run.show"),
         ("plan.next", "roadmap.next"),
         ("plan.status", "roadmap.status"),
+        ("teach.ask", "teacher.ask"),
+        ("teach.narrate", "teacher.narrate"),
     )
 
     def test_no_old_id_is_left_in_the_catalog(self) -> None:

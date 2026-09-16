@@ -1,4 +1,4 @@
-"""Tests for `remedy teach narrate` and `remedy teach ask` (F255 T002-T004).
+"""Tests for `remedy teacher narrate` and `remedy teacher ask` (F255 T002-T004).
 
 The load-bearing property is T003's, now carried by both commands: what they
 write is proven BEHAVIOURALLY rather than asserted — every file under the data
@@ -32,11 +32,11 @@ from pathlib import Path
 import pytest
 
 from apps.cli.command_catalog import get_command, get_commands_for_group
-from apps.cli.commands.teach_cmd import (
+from apps.cli.commands.teacher_cmd import (
     _UNBILLED_NOTE,
     COMMAND_HANDLERS,
-    _cmd_teach_ask,
-    _cmd_teach_narrate,
+    _cmd_teacher_ask,
+    _cmd_teacher_narrate,
 )
 from packages.orchestration import teacher_model
 from packages.orchestration.role_config import RoleConfig
@@ -64,7 +64,7 @@ def _write_run_log(root: Path, job_id: str, events: list[dict]) -> Path:
     return log
 
 
-#: The ONE file `remedy teach ask` is allowed to write, plus the sqlite sidecars
+#: The ONE file `remedy teacher ask` is allowed to write, plus the sqlite sidecars
 #: (`-wal`, `-shm`) that come with it. Spelled out here so the read-only proof
 #: excludes it BY NAME and can assert what it excluded — an exclusion nobody
 #: states is an exclusion that hides every other write.
@@ -154,7 +154,7 @@ def teacher_ledger(data_root, monkeypatch):
     return data_root / "projects" / str(project.id) / _LEDGER_NAME_PREFIX
 
 
-class TestTeachNarrateIsReadOnly:
+class TestTeacherNarrateIsReadOnly:
     """T003: the run's files are byte-identical before and after the command."""
 
     def test_narrating_changes_no_byte_under_the_data_root(self, data_root, capsys):
@@ -162,7 +162,7 @@ class TestTeachNarrateIsReadOnly:
         before = _hash_tree(data_root)
         assert before, "the fixture must put at least one file on disk"
 
-        _cmd_teach_narrate(_JOB_ID)
+        _cmd_teacher_narrate(_JOB_ID)
         capsys.readouterr()
 
         assert _hash_tree(data_root) == before
@@ -170,28 +170,28 @@ class TestTeachNarrateIsReadOnly:
     def test_narrating_creates_and_removes_no_file(self, data_root, capsys):
         _write_run_log(data_root, _JOB_ID, _EVENTS)
         before = sorted(p.relative_to(data_root) for p in data_root.rglob("*"))
-        _cmd_teach_narrate(_JOB_ID)
+        _cmd_teacher_narrate(_JOB_ID)
         capsys.readouterr()
         assert sorted(p.relative_to(data_root) for p in data_root.rglob("*")) == before
 
     def test_narrating_appends_no_run_log_event(self, data_root, capsys):
         log = _write_run_log(data_root, _JOB_ID, _EVENTS)
         before = log.read_bytes()
-        _cmd_teach_narrate(_JOB_ID)
+        _cmd_teacher_narrate(_JOB_ID)
         capsys.readouterr()
         assert log.read_bytes() == before
 
     def test_a_job_with_no_run_log_writes_nothing_and_says_so(self, data_root, capsys):
-        _cmd_teach_narrate(_JOB_ID)
+        _cmd_teacher_narrate(_JOB_ID)
         out = capsys.readouterr().out
         assert "no events yet" in out and "(0 events)" in out
         assert _hash_tree(data_root) == {}
 
 
-class TestTeachReachesTaskJobs:
+class TestTeacherReachesTaskJobs:
     """The teacher can explain a `remedy job run` job.
 
-    Operator dogfooding on 2026-08-25: `remedy teach narrate edbbc42bba4c4b00`
+    Operator dogfooding on 2026-08-25: `remedy teacher narrate edbbc42bba4c4b00`
     answered "no job matches prefix" while that job's run log sat on disk. A job
     is a DIRECTORY under `jobs/` named by sixteen hex characters and holding a
     `job.json`, and `resolve_job_id` resolves exactly that shape.
@@ -212,7 +212,7 @@ class TestTeachReachesTaskJobs:
         self._write_task_job(data_root, self.TASK_JOB_ID)
         _write_run_log(data_root, self.TASK_JOB_ID, _EVENTS)
 
-        assert _exit_code(lambda: _cmd_teach_narrate(self.TASK_JOB_ID)) == 0
+        assert _exit_code(lambda: _cmd_teacher_narrate(self.TASK_JOB_ID)) == 0
         out = capsys.readouterr().out
 
         assert "no job matches prefix" not in out
@@ -223,7 +223,7 @@ class TestTeachReachesTaskJobs:
         self._write_task_job(data_root, self.TASK_JOB_ID)
         _write_run_log(data_root, self.TASK_JOB_ID, _EVENTS)
 
-        assert _exit_code(lambda: _cmd_teach_narrate(self.TASK_JOB_ID[:8])) == 0
+        assert _exit_code(lambda: _cmd_teacher_narrate(self.TASK_JOB_ID[:8])) == 0
         assert f"({len(_EVENTS)} events)" in capsys.readouterr().out
 
     def test_narrating_a_task_job_still_writes_nothing(self, data_root, capsys):
@@ -233,7 +233,7 @@ class TestTeachReachesTaskJobs:
         before = _hash_tree(data_root)
         assert before
 
-        _cmd_teach_narrate(self.TASK_JOB_ID)
+        _cmd_teacher_narrate(self.TASK_JOB_ID)
         capsys.readouterr()
 
         assert _hash_tree(data_root) == before
@@ -242,11 +242,11 @@ class TestTeachReachesTaskJobs:
         """A full UUID resolves without touching the store, so its run log narrates."""
         _write_run_log(data_root, _JOB_ID, _EVENTS)
 
-        assert _exit_code(lambda: _cmd_teach_narrate(_JOB_ID)) == 0
+        assert _exit_code(lambda: _cmd_teacher_narrate(_JOB_ID)) == 0
         assert f"({len(_EVENTS)} events)" in capsys.readouterr().out
 
     def test_an_unknown_id_still_exits_one(self, data_root, capsys):
-        assert _exit_code(lambda: _cmd_teach_narrate("dddddddddddddddd")) == 1
+        assert _exit_code(lambda: _cmd_teacher_narrate("dddddddddddddddd")) == 1
         assert "no job matches prefix" in capsys.readouterr().err
 
     def test_a_directory_without_a_job_file_is_not_a_job(self, data_root, capsys):
@@ -255,13 +255,13 @@ class TestTeachReachesTaskJobs:
 
         job_dir(self.TASK_JOB_ID, data_root).mkdir(parents=True)
 
-        assert _exit_code(lambda: _cmd_teach_narrate(self.TASK_JOB_ID)) == 1
+        assert _exit_code(lambda: _cmd_teacher_narrate(self.TASK_JOB_ID)) == 1
         assert "no job matches prefix" in capsys.readouterr().err
 
 
-class TestTeachCatalogDeclaration:
+class TestTeacherCatalogDeclaration:
     def test_the_command_is_declared_read_only(self):
-        cmd = get_command("teach.narrate")
+        cmd = get_command("teacher.narrate")
         # T003 declares the action class as well as proving the behaviour: the
         # catalog is what a permission layer reads, and the tests above are what
         # make the declaration true rather than merely stated.
@@ -271,7 +271,7 @@ class TestTeachCatalogDeclaration:
         assert cmd.requires_permission is False
 
     def test_ask_is_declared_write_metadata_because_it_writes_a_ledger_row(self):
-        cmd = get_command("teach.ask")
+        cmd = get_command("teacher.ask")
         # DECISION F255 D10: `ask` writes exactly one token-ledger row, so a
         # read_only declaration here would be false — and a false declaration
         # misleads the permission layer that reads this catalog.
@@ -279,17 +279,17 @@ class TestTeachCatalogDeclaration:
         assert cmd.may_mutate_repo is False
         assert cmd.may_execute_commands is False
         assert cmd.supports_json is True
-        assert cmd.related == ("teach.narrate",)
+        assert cmd.related == ("teacher.narrate",)
 
-    def test_the_handler_table_covers_every_declared_teach_command(self):
+    def test_the_handler_table_covers_every_declared_teacher_command(self):
         # EQUALITY of the two sets, never a subset: a declared command with no
         # handler and a handler with no declaration are both defects, and only
         # equality catches the second one.
-        declared = {c.command_id for c in get_commands_for_group("teach")}
-        assert declared == {"teach.narrate", "teach.ask"} == set(COMMAND_HANDLERS)
+        declared = {c.command_id for c in get_commands_for_group("teacher")}
+        assert declared == {"teacher.narrate", "teacher.ask"} == set(COMMAND_HANDLERS)
 
 
-class TestTeachAskWritesOnlyTheLedger:
+class TestTeacherAskWritesOnlyTheLedger:
     """T004: everything under the data root is byte-identical EXCEPT the ledger."""
 
     def test_asking_changes_no_byte_under_the_data_root_except_the_ledger(
@@ -299,7 +299,7 @@ class TestTeachAskWritesOnlyTheLedger:
         before = _hash_tree(data_root, excluding=_LEDGER_NAME_PREFIX)
         assert before, "the fixture must put at least one file on disk"
 
-        _cmd_teach_ask("what happened?", job_id=_JOB_ID, call=_answering())
+        _cmd_teacher_ask("what happened?", job_id=_JOB_ID, call=_answering())
         capsys.readouterr()
 
         assert _hash_tree(data_root, excluding=_LEDGER_NAME_PREFIX) == before
@@ -309,7 +309,7 @@ class TestTeachAskWritesOnlyTheLedger:
     ):
         _write_run_log(data_root, _JOB_ID, _EVENTS)
 
-        _cmd_teach_ask("what happened?", job_id=_JOB_ID, call=_answering())
+        _cmd_teacher_ask("what happened?", job_id=_JOB_ID, call=_answering())
         capsys.readouterr()
 
         every = _hash_tree(data_root)
@@ -325,9 +325,9 @@ class TestTeachAskWritesOnlyTheLedger:
         assert teacher_ledger.is_file()
 
 
-class TestTeachAskWritesExactlyOneRow:
+class TestTeacherAskWritesExactlyOneRow:
     def test_one_ask_writes_exactly_one_teacher_row(self, teacher_ledger, capsys):
-        _cmd_teach_ask("what is a task?", call=_answering())
+        _cmd_teacher_ask("what is a task?", call=_answering())
         capsys.readouterr()
 
         rows = _ledger_rows(teacher_ledger)
@@ -347,7 +347,7 @@ class TestTeachAskWritesExactlyOneRow:
             record_call,
         )
 
-        _cmd_teach_ask("what is a task?", call=_answering())
+        _cmd_teacher_ask("what is a task?", call=_answering())
         capsys.readouterr()
         record_call(
             CallRecord(
@@ -369,7 +369,7 @@ class TestTeachAskWritesExactlyOneRow:
         assert buckets[TEACHER_ROLE].tokens_in == 9
 
 
-class TestTeachAskRefusesWithoutBilling:
+class TestTeacherAskRefusesWithoutBilling:
     """A REFUSAL IS NEVER BILLED: no call happened, so no row may claim one."""
 
     def test_a_provider_with_no_teacher_transport_refuses_and_writes_no_row(
@@ -381,35 +381,35 @@ class TestTeachAskRefusesWithoutBilling:
             lambda role, **kw: RoleConfig(role=role, provider="claude-cli", model="opus"),
         )
 
-        code = _exit_code(lambda: _cmd_teach_ask("what is a task?", call=_answering()))
+        code = _exit_code(lambda: _cmd_teacher_ask("what is a task?", call=_answering()))
 
         out = capsys.readouterr().out
         # Exit 0: a teacher that could fail a run would not be the passive role.
         assert code == 0
         assert "claude-cli" in out and "opus" in out
         # It names Stage 1, which keeps working because Stage 1 is offline.
-        assert "remedy teach narrate" in out
+        assert "remedy teacher narrate" in out
         assert _UNBILLED_NOTE in out
         assert not teacher_ledger.exists()
 
     def test_a_failing_transport_refuses_and_writes_no_row(self, teacher_ledger, capsys):
-        code = _exit_code(lambda: _cmd_teach_ask("what is a task?", call=_failing()))
+        code = _exit_code(lambda: _cmd_teacher_ask("what is a task?", call=_failing()))
 
         out = capsys.readouterr().out
         assert code == 0
         assert "connection refused" in out
-        assert "remedy teach narrate" in out
+        assert "remedy teacher narrate" in out
         assert _UNBILLED_NOTE in out
         assert not teacher_ledger.exists()
 
 
-class TestTeachAskOutput:
+class TestTeacherAskOutput:
     def test_the_answer_names_its_model_and_its_grounding_sources(
         self, data_root, teacher_ledger, capsys
     ):
         _write_run_log(data_root, _JOB_ID, _EVENTS)
 
-        _cmd_teach_ask("what happened?", job_id=_JOB_ID, call=_answering())
+        _cmd_teacher_ask("what happened?", job_id=_JOB_ID, call=_answering())
 
         out = capsys.readouterr().out
         assert "here is what happened" in out
@@ -417,7 +417,7 @@ class TestTeachAskOutput:
         assert _UNBILLED_NOTE not in out
 
     def test_json_output_carries_the_row_id_and_the_billed_flag(self, teacher_ledger, capsys):
-        _cmd_teach_ask("what is a task?", call=_answering(), json_output=True)
+        _cmd_teacher_ask("what is a task?", call=_answering(), json_output=True)
 
         payload = json.loads(capsys.readouterr().out)
         assert payload["refused"] is False
@@ -431,7 +431,7 @@ class TestTeachAskOutput:
 _CODE_TEXT = "def add_two_numbers(a, b):\n    return a + b\n"
 
 
-class TestTeachAskGroundsInAWorkspaceFile:
+class TestTeacherAskGroundsInAWorkspaceFile:
     """T004 / R-0610: `--file` gives grounding source (2) a production caller.
 
     Before this option existed, `code` and `code_path` were accepted by
@@ -446,7 +446,7 @@ class TestTeachAskGroundsInAWorkspaceFile:
         source.write_text(_CODE_TEXT, encoding="utf-8")
         call, prompts = _capturing()
 
-        _cmd_teach_ask(
+        _cmd_teacher_ask(
             "what does this do?", file=str(source), call=call, json_output=True
         )
 
@@ -463,7 +463,7 @@ class TestTeachAskGroundsInAWorkspaceFile:
     ):
         call, prompts = _capturing()
 
-        _cmd_teach_ask("what is a task?", call=call, json_output=True)
+        _cmd_teacher_ask("what is a task?", call=call, json_output=True)
 
         payload = json.loads(capsys.readouterr().out)
         # Unchanged behaviour is part of the fix: the option adds a source, it
@@ -479,7 +479,7 @@ class TestTeachAskGroundsInAWorkspaceFile:
         call, prompts = _capturing()
 
         exit_code = _exit_code(
-            lambda: _cmd_teach_ask("what does this do?", file=str(missing), call=call)
+            lambda: _cmd_teacher_ask("what does this do?", file=str(missing), call=call)
         )
 
         out = capsys.readouterr().out
@@ -502,7 +502,7 @@ class TestTeachAskGroundsInAWorkspaceFile:
         before = _hash_tree(data_root, excluding=_LEDGER_NAME_PREFIX)
         assert before, "the fixture must put at least one file on disk"
 
-        _cmd_teach_ask("what does this do?", file=str(source), call=_answering())
+        _cmd_teacher_ask("what does this do?", file=str(source), call=_answering())
         capsys.readouterr()
 
         # The ledger row stays the only write (DECISION F255 D10), and the file

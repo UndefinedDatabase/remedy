@@ -115,7 +115,7 @@ GROUPS: dict[str, GroupDef] = {
     "config": GroupDef("config", "Config", "View or change settings."),
     "worker": GroupDef("worker", "Worker", "Manage worker connections."),
     "memory": GroupDef("memory", "Memory", "Project memory."),
-    "teach": GroupDef("teach", "Teach", "Explain a run. Read-only, never steers it."),
+    "teacher": GroupDef("teacher", "Teacher", "Explain a run. Read-only, never steers it."),
     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project dev server."),
     "stats": GroupDef("stats", "Stats", "Honest counts from the evidence on disk."),
     # -- Advanced / internal commands (callable but hidden from default help) --
@@ -269,8 +269,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.list", "brain.graph"),
     ),
     CommandEntry(
-        command_id="teach.narrate",
-        group_id="teach",
+        command_id="teacher.narrate",
+        group_id="teacher",
         subcommand="narrate",
         description="Narrate a job's run log in plain sentences (read-only).",
         action_class="read_only",
@@ -282,9 +282,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         # write_metadata, NOT read_only (DECISION F255 D10): answering costs a
         # model call, and that call is recorded as exactly one token-ledger row.
         # The invariant this role really carries — never influencing the RUN —
-        # is proven behaviourally in tests/cli/test_teach_cmd.py.
-        command_id="teach.ask",
-        group_id="teach",
+        # is proven behaviourally in tests/cli/test_teacher_cmd.py.
+        command_id="teacher.ask",
+        group_id="teacher",
         subcommand="ask",
         description="Ask the teacher about a run or your code. Records one spend row; never steers the run.",
         action_class="write_metadata",
@@ -300,7 +300,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("teach.narrate",),
+        related=("teacher.narrate",),
     ),
     CommandEntry(
         command_id="job.attach-repo",

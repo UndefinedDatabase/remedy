@@ -176,7 +176,7 @@ bands for `job.resume` are not calibrated yet, so its own estimate reads
 `ESTIMATE_UNAVAILABLE` today — still confirmed, never silently skipped).
 
 Accepted in Tier 5 so far:
-F255 teacher role (`remedy teach narrate`, `remedy teach ask`, teacher spend
+F255 teacher role (`remedy teacher narrate`, `remedy teacher ask`, teacher spend
 reported as its own role in the token ledger).
 F008 sse event stream (per-job SSE endpoint with heartbeat and Last-Event-ID
 resume, a cockpit client with reconnect backoff and a polling fallback that

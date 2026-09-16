@@ -35,7 +35,7 @@ apps.cli.commands.self_cmd
 apps.cli.commands.snapshot_cmds
 apps.cli.commands.stats_ledger_cmd
 apps.cli.commands.status_cmd
-apps.cli.commands.teach_cmd
+apps.cli.commands.teacher_cmd
 apps.cli.commands.test_cmds
 apps.cli.commands.ui
 apps.cli.commands.worker

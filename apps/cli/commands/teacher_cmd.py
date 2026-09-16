@@ -1,4 +1,4 @@
-"""`remedy teach narrate` and `remedy teach ask` — the teacher role's CLI (F255 T002-T004).
+"""`remedy teacher narrate` and `remedy teacher ask` — the teacher role's CLI (F255 T002-T004).
 
 `narrate` is Stage 1: the FIRST caller of
 ``packages.orchestration.teacher_narration`` outside its own tests. It reads ONE
@@ -22,12 +22,12 @@ truth rather than an oversight (DECISION F255 D10). `narrate` is `read_only`:
 it opens the run log for reading only, holds no lock, and writes nothing — no
 run-log entry, no job record, no cache, no export. `ask` is `write_metadata`,
 because it writes EXACTLY one token-ledger row for the model call it made. Both
-claims are proven behaviourally in ``tests/cli/test_teach_cmd.py`` by hashing
+claims are proven behaviourally in ``tests/cli/test_teacher_cmd.py`` by hashing
 every file under the data root before and after the call — for `ask`, with the
 ledger file and its sqlite sidecars excluded BY NAME, so any other write still
 fails the test.
 
-Remedy deliberately does NOT emit a run-log event for a teach command. A teacher
+Remedy deliberately does NOT emit a run-log event for a teacher command. A teacher
 that logged its own observation would change what the next observer sees, which
 is exactly the influence this role is forbidden
 (docs/agents/teacher_conventions.md, "Stance").
@@ -47,7 +47,7 @@ Exit codes:
 from __future__ import annotations
 
 
-def _cmd_teach_narrate(job_id_str: str, *, json_output: bool = False) -> None:
+def _cmd_teacher_narrate(job_id_str: str, *, json_output: bool = False) -> None:
     """Narrate one job's run log. READ-ONLY: nothing on this path writes."""
     import json as _json
 
@@ -91,7 +91,7 @@ def _read_grounding_file(path: str) -> str | None:
     """The text of ONE workspace file, or None after saying why out loud.
 
     READ-ONLY toward the workspace: opening a file for reading writes nothing,
-    so `teach.ask` keeps its `write_metadata` class and the ledger row stays its
+    so `teacher.ask` keeps its `write_metadata` class and the ledger row stays its
     only write (DECISION F255 D10). An unreadable path NEVER fails the command —
     a teacher that could fail a run would not be the passive role — so this
     returns None and the answer is given from the sources that did resolve.
@@ -119,7 +119,7 @@ def _grounding_sources(context) -> tuple[str, ...]:
     return tuple(s for s in GROUNDING_SOURCES if s in present or s == SOURCE_CONCEPT)
 
 
-def _cmd_teach_ask(
+def _cmd_teacher_ask(
     question: str,
     *,
     job_id: str | None = None,
@@ -208,11 +208,11 @@ def _cmd_teach_ask(
 
 
 COMMAND_HANDLERS = {
-    "teach.narrate": lambda args: _cmd_teach_narrate(
+    "teacher.narrate": lambda args: _cmd_teacher_narrate(
         getattr(args, "job_id", "") or "",
         json_output=bool(getattr(args, "json", False)),
     ),
-    "teach.ask": lambda args: _cmd_teach_ask(
+    "teacher.ask": lambda args: _cmd_teacher_ask(
         getattr(args, "question", "") or "",
         job_id=getattr(args, "job_id", None),
         file=getattr(args, "file", None),
