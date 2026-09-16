@@ -464,8 +464,8 @@ class TestJobPlanResumeAfterCrash:
         assert len(W.list_worktrees(repo)) == 1
 
 
-class TestJobPlanResumeCli:
-    def test_the_cli_resumes_a_16_char_jobplan_id(self, repo, monkeypatch, capsys):
+class TestJobPlanResume:
+    def test_resume_resumes_a_16_char_jobplan_id(self, repo, monkeypatch, capsys):
         from apps.cli.commands import do_cmd
 
         job = parse_job_file(ONE_TASK, str(repo))
@@ -479,18 +479,15 @@ class TestJobPlanResumeCli:
                             invocation=RunInvocation(max_tasks=1))
         capsys.readouterr()
 
-        do_cmd._cmd_do_job_resume(job.job_id, builder="fake", reviewer="fake",
-                                  max_rounds=1, json_output=True)
-        out = json.loads(capsys.readouterr().out)
+        out = export_job_report(resume_job_plan(
+            job.job_id, builder_name="fake", reviewer_name="fake", max_rounds=1))
         assert out["job_id"] == job.job_id
         assert out["isolation_mode"] == "worktree"
         assert out["worktree"]["branch"] == f"remedy/{job_worktree_id(job.job_id)}"
 
-    def test_the_cli_refuses_an_unknown_jobplan_id(self, capsys):
-        from apps.cli.commands import do_cmd
-        with pytest.raises(SystemExit):
-            do_cmd._cmd_do_job_resume("deadbeefdeadbeef", json_output=True)
-        assert "job_not_found" in capsys.readouterr().err
+    def test_resume_refuses_an_unknown_jobplan_id(self):
+        with pytest.raises(ValueError, match="job_not_found"):
+            resume_job_plan("deadbeefdeadbeef")
 
 
 # ---------------------------------------------------------------------------

@@ -1327,62 +1327,6 @@ def _cmd_job_evidence(
         print(f"Tasks: {manifest.get('task_count', 0)}")
 
 
-def _cmd_do_job_resume(
-    job_id: str,
-    *,
-    builder: str | None = None,
-    reviewer: str | None = None,
-    max_rounds: int | None = None,
-    repair_rounds: int | None = None,
-    test_command: str | None = None,
-    invocation: RunInvocation | None = None,
-    json_output: bool = False,
-) -> None:
-    """Resume an interrupted JobPlan in its own job-owned worktree.
-
-    JobPlan IDs are 16-character hex values (``ee71656400f646e0``).
-
-    F1: the material invocation controls come through the shared ``RunInvocation`` with
-    omission preserved as ``None``, so resume never clears a persisted cap by passing 0.
-    """
-    import json as _json
-
-    from apps.cli.commands.run_invocation import RunInvocation
-    from packages.orchestration.pingpong_job import export_job_report, resume_job_plan
-
-    if invocation is None:
-        invocation = RunInvocation()
-
-    def _as_int(v, default=None):
-        return default if v in (None, "") else int(v)
-
-    try:
-        job = resume_job_plan(
-            job_id,
-            builder_name=builder,
-            reviewer_name=reviewer,
-            max_rounds=_as_int(max_rounds),
-            repair_rounds=_as_int(repair_rounds),
-            test_command=test_command,
-            **invocation.as_run_job_kwargs(),
-        )
-    except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    report = export_job_report(job)
-    if json_output:
-        print(_json.dumps(report, indent=2))
-        return
-    print(f"Job {job.job_id}: {job.state}")
-    print(f"  Isolation:  {job.isolation_mode}")
-    if job.isolation_mode == "worktree":
-        print(f"  Branch:     {job.worktree_branch}")
-        print(f"  Worktree:   {job.worktree_path} ({job.worktree_cleanup_status})")
-    for t in job.tasks:
-        print(f"  {t.task_id}: {t.status}")
-
-
 def _cmd_job_apply(
     job_id: str,
     *,
@@ -1643,16 +1587,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
         max_cost_usd=getattr(args, "max_cost_usd", None),
         deadline=getattr(args, "deadline", None),
-    ),
-    "do.job-resume": lambda args: _cmd_do_job_resume(
-        args.job_id,
-        builder=getattr(args, "builder", None),
-        reviewer=getattr(args, "reviewer", None),
-        max_rounds=getattr(args, "max_rounds", None),
-        repair_rounds=getattr(args, "repair_rounds", None),
-        test_command=getattr(args, "test_command", None),
-        invocation=_invocation_from_args(args),
-        json_output=getattr(args, "json", False),
     ),
     "job.apply": lambda args: _cmd_job_apply(
         args.job_id,

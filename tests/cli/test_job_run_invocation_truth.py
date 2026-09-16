@@ -1,7 +1,7 @@
 """F1/F2 — the PUBLIC CLI preserves the omission sentinel end to end.
 
-These drive the ACTUAL grouped parser and the ``job run`` / ``do job-resume`` command
-handlers (not ``run_job()`` directly), and prove that an omitted invocation flag stays ``None``
+These drive the ACTUAL grouped parser and the ``job run`` command handler (not
+``run_job()`` directly), and prove that an omitted invocation flag stays ``None``
 so a persisted value survives, while an explicit flag — even one equal to the product default —
 overrides it. ``run_pingpong`` is spied to capture exactly what the runtime received.
 """
@@ -137,15 +137,3 @@ def test_explicit_normal_profile_overrides_persisted_patient(data_root, repo, sp
     ec = load_job_plan(job.job_id).execution_config
     assert ec.timeout_profile == "normal" and ec.timeout_profile_source == "invocation"
 
-
-# --------------------------------------------------------------------------- F1 resume
-
-
-def test_job_resume_preserves_omission(data_root, repo, spy):
-    # A stopped/resumable job: resume with NO flags must keep the persisted max_tasks cap.
-    job = _plan(repo, max_tasks=1, max_tasks_source="persisted")
-    _run(["job", "run", job.job_id])                 # runs task 1, second stays pending
-    spy.clear()
-    _run(["do", "job-resume", job.job_id])           # no flags
-    ec = load_job_plan(job.job_id).execution_config
-    assert ec.max_tasks == 1 and ec.max_tasks_source == "persisted"

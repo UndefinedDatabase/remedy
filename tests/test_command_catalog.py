@@ -318,6 +318,7 @@ class TestDeletedCommands:
         "do.job-flow",
         "do.job-plan",
         "do.job-report",
+        "do.job-resume",
         "do.plan",
         "do.promote",
         "do.repair-attest",

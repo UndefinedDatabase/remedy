@@ -1,7 +1,7 @@
 """F1/F2 — the ONE shared CLI-to-run invocation structure for the F012 material controls.
 
-Every public lifecycle command that ultimately calls ``run_job`` (``job run``, ``do
-job-resume``) resolves its invocation controls through this single structure.
+Every public lifecycle command that ultimately calls ``run_job`` (``job run``) resolves
+its invocation controls through this single structure.
 Its whole purpose is to PRESERVE the omission sentinel: a control the operator did not supply
 stays ``None`` all the way into ``run_job``, so ``run_job``'s explicit(non-None) > persisted >
 product-default precedence is honoured end to end. No command may reintroduce ``or 0`` /
