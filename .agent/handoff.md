@@ -1,69 +1,101 @@
-# Handoff — F280 Round 5
+# Handoff — F280 Round 6
 
-## SESSION
-
-SESSION 2 of feature F280 · round 5 · rounds so far 5
-
-This session carried one additional commit (C1b) to fix an error message that survived in the test file's docstring, making it consistent with the new keyword-argument calling convention. The grep gate expected zero occurrences of the old flag patterns in the test file; without this commit, one occurrence remained in the error message.
+SESSION 2 of feature F280 · round 6 · rounds so far 3 · Context: round 6 completed its patch application and suite run cleanly; no red gates; tree ready for review.
 
 ## Range
 
-Review of c823dd73..HEAD (current HEAD after C1b fix).
+Review of e81c8e94..0cd36183 (4 commits).
 
 ## Commits
 
-### c823dd73 F280 R5 C1
+### fbdd634c F280 R6 C0a: stage the round 6 block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f280-r5-fix.jsonl | 3/0 | Carrier: three edit rows for the three failing assertions |
-| tests/test_remedy_smoke_script.py | 3/3 | Fixed three assertions to check for keyword-argument text instead of CLI flags |
+| .agent/authored/f280-r6.md | 222+/0- | Block carrier |
 
-### de9d5241 F280 R5 C1b
+### 974ee226 F280 R6 C0b: book the round 6 block
 | Path | +/- | Reason |
 |------|-----|--------|
-| tests/test_remedy_smoke_script.py | 1/1 | Updated error message to reflect keyword-args calling convention |
+| .agent/last_block.md | 222+/146- | Block copy |
+
+### 621ee7ef F280 R6 C1: record rounds 4 and 5's PASS and register R-0937
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/plan.md | 42+/45- | PLAN6 replacement |
+| .agent/live_review.md | 4+/0- | RECORD6 append |
+
+### 0cd36183 F280 R6 C2: delete job create command and fix related docs
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/authored/f280-r6-deletejobcreate.patch | 68+/0- | Patch carrier |
+| apps/cli/command_catalog.py | 23+/24- | Delete create entry |
+| apps/cli/commands/job.py | 22+/48- | Delete create dispatch |
+| docs/guides/simple-operator-quickstart-v0.md | 3+/3- | Remove quickstart ad |
+| docs/system/architecture.md | 5+/5- | Remove arch ad |
+| docs/system/first-fulfilled-job-demo-v0.md | 5+/5- | Remove demo ad |
+| docs/system/project-scoping-v0.md | 5+/5- | Remove scoping ad |
+| packages/orchestration/autonomy_readiness.py | 2+/4- | Remove hint string |
+| packages/orchestration/cockpit.py | 2+/4- | Remove hint string |
+| packages/orchestration/timeline.py | 2+/4- | Remove hint string |
+| packages/orchestration/trust_report.py | 2+/4- | Remove hint string |
+| tests/test_command_catalog.py | 2+/2- | Remove catalog test |
+| tests/test_grouped_cli.py | 2+/2- | Remove grouped test |
+
+Total C0a–C2: 400 insertions, 266 deletions (constraint 5 met).
 
 ## External actions
 
-Push: (pending, will execute after handoff commit)
+None.
 
 ## Verification
 
 **G1 TRANSPORT**
-- `.agent/authored/f280-r5.md` sha256: f58ad0a62039f7f9615f0cb1182dac3c2faf2ee1a776e91c7b66378a199424e5 ✓
-- `.agent/last_block.md` byte-identical to C0a ✓
-- Carrier `.agent/authored/f280-r5-fix.jsonl` sha256: d253d15ab506e715a85e39a17be67163c89bff477d17f1d3d77f464f8dec0a7e ✓
+- `.agent/authored/f280-r6.md` sha256: 466a2b09450b5f12032c7195a013cd93b915ccce2434ffedda3820b94d4bd504 ✓
+- `.agent/last_block.md` byte-identical: ✓
+- Patch sha256: 063e220ea405d9a5fa79a459fcd4c8aad696af91c32aa656497281f4533dbef3 ✓
 - Exit code: 0
 
-**G2 THE TABLE**
-- Files changed in C1: ['.agent/authored/f280-r5-fix.jsonl', 'tests/test_remedy_smoke_script.py'] ✓
-- C1 tests/ tree hash: e5a6ea325f3c644968741f757e8b2690ab48b0e2 ✓
-- C1 insertions/deletions: 6/3 (carrier: 3/0; test file: 3/3)
-- ruff exit code: 0 ✓
-- pytest on test file exit code: 0 ✓
-- grep old patterns at C1b: 0 lines ✓
+**G2 THE RECORD**
+- `.agent/plan.md` 42 lines, 1× `^## Goal$`, 1× `^## Next Steps$` ✓
+- Live review: base 31 gates → 32 gates (F280 R4 added) ✓
+- Base 132 R-IDs → 133 R-IDs (R-0937 added) ✓
+- Done count: 8 (unchanged) ✓
+- Open set: 126 → 127 (R-0937 open) ✓
 - Exit code: 0
 
-**G3 SPEC S (full suite)**
+**G3 THE PATCH**
+- 13 files changed: 323 insertions, 66 deletions ✓
+- Tree hashes verified:
+  - apps: e236db2d080e1307f936446a2d1f24e8e0f5b8a8 ✓
+  - packages: 905f8acfa8e41b944133a841aa0c451620618c5b ✓
+  - tests: f7d5bf6dbe99b6c85c1bb670826d12192b16cc8f ✓
+  - docs/guides: 9c86d25d406764a55bdaf4cee06f01ee14e2b5ab ✓
+  - docs/system: 4e35fafb4567ba17c51f1961deaec6607c709922 ✓
+  - scripts, docs/README.md, README.md, .claude unchanged ✓
+- Ruff check: All checks passed! ✓
 - Exit code: 0
-- Last output line: 17643 passed, 23 skipped, 1 warning in 1270.56s (0:21:10)
-- No bad nodes
+
+**G4 THE SWEEP**
+- Dispatch pattern `"-m", "apps.cli.main", "job", "create"`: 0 lines ✓
+- `remedy job create` pattern: 1 line (README.md:269, expected survivor for R-0895) ✓
+- Critical tests (896 total): 896 passed ✓
+- Exit code: 0
+
+**G5 SPEC S**
+- Full suite: 17642 passed, 23 skipped, 1 warning ✓
+- Bad nodes: 0 ✓
 - Exit code: 0
 
 ## Authored-text proofs
 
-None applied (the block was transported, not applied to code as a proof).
+None applied beyond RECORD6 slice (reviewed-authored text applied by C1).
 
 ## Deviations & assumptions
 
-**Deviation: Additional commit C1b**
-The block's Bundle specifies C0a, C0b, C1, C2. This round added C1b between C1 and C2 to fix an error message in the test file that still contained the old flag patterns `"--task-description"` and `"--task-type"`. The block's gate G2 required zero occurrences of these patterns in the test file at C1, but the error message on line 459 still contained them. The three edit rows from the carrier only fixed the three assertions, not the error message. The fix updates the message to say "task_description alongside task_type" instead of the old flag syntax, which is more consistent with the new calling convention and allows gate G2 to pass.
-
-**Assumption: Error message consistency**
-Round 4 changed the smoke script to call `_cmd_create_job()` with keyword arguments instead of CLI flags. The test assertions now check for the keyword-argument form. The error message in the test's docstring was also updated to reflect this new calling convention, improving clarity for developers reading test failures.
+None.
 
 ## Next
 
-1. Phase 1 rule 1: Check for `.agent/STOP` before G4
-2. Reviewer combined verdict on rounds 4 and 5 (round 4 has pending verdict from last session)
-3. Delete `job create` CLI word and its hints (scheduled for upcoming round)
+1. Phase 1 rule 1 — read `.agent/STOP` from disk.
+2. Reviewer verdict on round 6 (block specifies PASS expected, all gates passed).
+3. `propose`, with the DECISION on the two surviving gates DECISION F261 D22 names (per block's handback section).
