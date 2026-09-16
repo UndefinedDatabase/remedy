@@ -75,10 +75,14 @@ Centralized check: `can_finalize(job_id)` in `proposed_tasks.py`.
 
 Reviewer recommendations MUST go through proposed task evaluation:
 
-1. `review.accept` creates a ProposedTask (not a direct Task)
+1. A recommendation becomes a ProposedTask (never a direct Task)
 2. ProposedTask must be evaluated (`propose.evaluate`)
 3. Only `approved_for_build` tasks can be materialized into build Tasks
-4. `review.accept` does NOT directly append to `job.tasks`
+4. Accepting a recommendation does NOT directly append to `job.tasks`
+
+F261 round 18 deleted the `review` group, so no command performs step 1 today:
+`propose_from_recommendation` in `proposed_tasks.py` keeps only the caller in
+`reviewer.py`, which nothing in production calls any more.
 
 This prevents review feedback from bypassing evaluation.
 

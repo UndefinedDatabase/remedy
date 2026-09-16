@@ -128,7 +128,6 @@ GROUPS: dict[str, GroupDef] = {
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons.", user_facing=False),
     "repair": GroupDef("repair", "Repair", "Test failure repair.", user_facing=False),
     "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
-    "review": GroupDef("review", "Review", "Reviewer recommendations.", user_facing=False),
     "propose": GroupDef("propose", "Propose", "Proposed task evaluation.", user_facing=False),
     "dev": GroupDef("dev", "Dev", "Developer utilities.", user_facing=False),
     "ci": GroupDef("ci", "CI", "Remedy's own CI stages, run locally.", user_facing=False),
@@ -2292,60 +2291,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
         related=("self.inspect", "self.plan"),
-    ),
-
-    # ── review ───────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="review.run",
-        group_id="review",
-        subcommand="run",
-        description="Run reviewer to suggest follow-up tasks (human approval required).",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--after-task", "Task ID to review after", required=False, is_option=True),
-            ArgDef("--fixture-reviewer", "Use deterministic fixture reviewer", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="review.list",
-        group_id="review",
-        subcommand="list",
-        description="List reviewer recommendations for a job.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="review.accept",
-        group_id="review",
-        subcommand="accept",
-        description="Accept a reviewer recommendation (append as pending task).",
-        action_class="approval_gate",
-        args=(
-            _JOB_ID,
-            ArgDef("recommendation_id", "Recommendation ID to accept", required=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="review.reject",
-        group_id="review",
-        subcommand="reject",
-        description="Reject a reviewer recommendation.",
-        action_class="approval_gate",
-        args=(
-            _JOB_ID,
-            ArgDef("recommendation_id", "Recommendation ID to reject", required=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
     ),
 
     # ── propose ─────────────────────────────────────────────────────────

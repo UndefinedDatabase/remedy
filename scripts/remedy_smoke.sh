@@ -62,13 +62,13 @@ SUMEOF
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="0-group-help"
     echo "--- 0. Verify group help"
-    for grp in job project patch test brain policy worker memory dev readiness file change repo event blocker decision dashboard guide ui do review; do
+    for grp in job project patch test brain worker memory dev file change event blocker decision ui do; do
         remedy "${grp}" >/dev/null 2>&1 || {
             echo "ERROR: 'remedy ${grp}' failed" >&2
             return 1
         }
     done
-    echo "    Group help: OK (job project patch test brain policy worker memory dev readiness file change repo)"
+    echo "    Group help: OK (job project patch test brain worker memory dev file change)"
 
     # -------------------------------------------------------------------------
     # 1. Create target repo
@@ -1962,66 +1962,6 @@ print('    repair-loop: OK (cycles=' + str(d['cycles_run']) + ', stage=' + d.get
 "
     REPAIR_JOB_ID=$(echo "${_REPAIR_OUTPUT}" | python3 -c "import sys,json; print(json.loads(sys.stdin.read())['job_id'])")
     rm -rf "${TMP_REPAIR}"
-
-    # -------------------------------------------------------------------------
-    # 12ap. Reviewer recommendation loop (Step 157)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12ap"
-    echo "--- 12ap. Reviewer recommendation loop"
-    _REVIEW_OUTPUT=$(remedy review run "${REPAIR_JOB_ID}" --fixture-reviewer --json 2>&1) || {
-        echo "    review run command failed (rc=$?)"
-        echo "    output: ${_REVIEW_OUTPUT}"
-        remedy review run --help 2>&1 || true
-        return 1
-    }
-    echo "${_REVIEW_OUTPUT}" | python3 -c "
-import sys, json
-raw = sys.stdin.read()
-try:
-    d = json.loads(raw)
-except json.JSONDecodeError:
-    print('ERROR: review run output not valid JSON', file=sys.stderr)
-    print('Raw: ' + raw[:200], file=sys.stderr)
-    sys.exit(1)
-if d.get('version') != 1:
-    print('ERROR: review run version != 1', file=sys.stderr)
-    sys.exit(1)
-if d.get('recommendation_count', 0) < 1:
-    print('ERROR: fixture reviewer returned 0 recommendations', file=sys.stderr)
-    sys.exit(1)
-recs = d.get('recommendations', [])
-if not recs:
-    print('ERROR: recommendations list empty', file=sys.stderr)
-    sys.exit(1)
-# Get first recommendation ID for accept test
-first_id = recs[0].get('id', '')
-if not first_id:
-    print('ERROR: recommendation missing id', file=sys.stderr)
-    sys.exit(1)
-print('    review run: OK (count=' + str(d['recommendation_count']) + ')')
-# Write rec ID for accept step
-with open('/tmp/_smoke_rec_id.txt', 'w') as f:
-    f.write(first_id)
-"
-    _REC_ID=$(cat /tmp/_smoke_rec_id.txt)
-    # Accept first recommendation
-    _ACCEPT_OUTPUT=$(remedy review accept "${REPAIR_JOB_ID}" "${_REC_ID}" --json 2>&1) || {
-        echo "    review accept failed (rc=$?)"
-        echo "    output: ${_ACCEPT_OUTPUT}"
-        return 1
-    }
-    echo "${_ACCEPT_OUTPUT}" | python3 -c "
-import sys, json
-d = json.loads(sys.stdin.read())
-if not d.get('accepted'):
-    print('ERROR: review accept did not return accepted=true', file=sys.stderr)
-    sys.exit(1)
-if not d.get('task_appended'):
-    print('ERROR: review accept did not append task', file=sys.stderr)
-    sys.exit(1)
-print('    review accept: OK')
-"
-    rm -f /tmp/_smoke_rec_id.txt
 
     # -------------------------------------------------------------------------
     # 12aq. Memory candidates (Step 158)

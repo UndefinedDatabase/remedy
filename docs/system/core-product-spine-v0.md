@@ -30,7 +30,7 @@ operator approval.
 1. Create a job                         →  remedy do run "<goal>" --repo <path>
 2. Check job state and read the report  →  remedy job show <job_id> --full --json
 3. Open the UI                          →  remedy ui <job_id>
-4. Review results                       →  remedy review run <job_id> --json
+4. Review proposed follow-ups           →  remedy propose list <job_id> --json
 5. Approve if needed                    →  remedy patch approve <job_id> <patch_intent_id>
 ```
 
@@ -82,7 +82,7 @@ references a specific command template that constrains what the worker can do.
 | `job show <id> --full --json` | Show job state and read its progress report | No | No |
 | `job run <id> --json` | Run pending tasks through Builder/Reviewer/Repair | Yes | Yes |
 | `ui <id>` | Open interactive UI | No | No |
-| `review run <id> --json` | Reviewer recommendations | No | No |
+| `propose list <id> --json` | Proposed follow-up tasks | No | No |
 | `config list/show/get` | View config | No | No |
 | `review bundle <id>` | Review evidence bundle | No | No |
 | `job fulfill <id> --fixture-demo` | Run fixture fulfillment demo | Metadata+repo | No* |

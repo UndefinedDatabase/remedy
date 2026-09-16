@@ -189,31 +189,6 @@ class TestRemedyDo:
 
 
 
-class TestReviewCLI:
-    def test_review_group_in_catalog(self):
-        from apps.cli.command_catalog import CATALOG, GROUPS
-        assert "review" in GROUPS
-        cmd_ids = [c.command_id for c in CATALOG]
-        assert "review.run" in cmd_ids
-        assert "review.list" in cmd_ids
-        assert "review.accept" in cmd_ids
-        assert "review.reject" in cmd_ids
-
-    def test_review_handlers_registered(self):
-        from apps.cli.commands import collect_all_handlers
-        handlers = collect_all_handlers()
-        assert "review.run" in handlers
-        assert "review.list" in handlers
-        assert "review.accept" in handlers
-        assert "review.reject" in handlers
-
-    def test_after_task_arg_in_catalog(self):
-        from apps.cli.command_catalog import CATALOG
-        run_cmd = next(c for c in CATALOG if c.command_id == "review.run")
-        arg_names = [a.name for a in run_cmd.args]
-        assert "--after-task" in arg_names
-
-
 # ---------------------------------------------------------------------------
 # Step 109 — Source Context Finalization
 # ---------------------------------------------------------------------------

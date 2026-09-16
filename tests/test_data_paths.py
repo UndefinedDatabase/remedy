@@ -349,10 +349,6 @@ class TestRoutedHandler:
     @pytest.mark.parametrize(
         ("module_name", "handler_name", "extra_args"),
         [
-            pytest.param("review_cmd", "_cmd_review_run", None, id="review-run"),
-            pytest.param("review_cmd", "_cmd_review_list", None, id="review-list"),
-            pytest.param("review_cmd", "_cmd_review_accept", None, id="review-accept"),
-            pytest.param("review_cmd", "_cmd_review_reject", None, id="review-reject"),
             pytest.param("memory", "_cmd_memory_candidates", (), id="memory-candidates"),
             pytest.param("memory", "_cmd_memory_approve_candidate", ("cand-1",), id="memory-approve"),
             pytest.param("memory", "_cmd_memory_reject_candidate", ("cand-1",), id="memory-reject"),

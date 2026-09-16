@@ -681,7 +681,7 @@ def build_next_action(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
     elif has_reviewer_suggestion:
         primary = {
             "label": "Review suggested tasks",
-            "command": f"remedy review list {job_id} --json",
+            "command": f"remedy job show {job_id} --full --json",
             "risk": "low",
             "requires_human": True,
         }

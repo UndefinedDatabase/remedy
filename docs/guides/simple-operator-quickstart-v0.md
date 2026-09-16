@@ -14,8 +14,8 @@ remedy job show <job_id> --full --json
 # 3. Open the UI
 remedy ui <job_id>
 
-# 4. Review results
-remedy review run <job_id> --json
+# 4. Review proposed follow-ups
+remedy propose list <job_id> --json
 ```
 
 ## What these commands do
