@@ -8,30 +8,30 @@ Branch: feature/f261-cli-vocabulary-v2, cut from `main` at
 The catalog `apps/cli/command_catalog.py` equals DECISION amend0905-vocab D4: one name per
 command, and every retired word deleted rather than aliased, per
 `docs/roadmap/features/T2_F261.md` — as far as this feature reaches it; DECISION F261 D25
-moves the rest to F280, and the feature file's Built State says what was reached.
+moves the rest to F280. The Built State is current, the integration gate passed and the
+self-use precondition is met.
 
 ## Current Step
 
-ROUND 26 OPENS THE CLOSURE SEQUENCE. It books round 25's PASS and records DECISION F261 D26,
-runs the integration gate of `docs/agents/integration_gate.md` on the branch and at the fork
-point with its evidence under `.agent/gate_f261_r26/`, and generates the self-use item and runs
-it to the approval gate without applying it, with its evidence under `.agent/selfuse_f261/`.
+CLOSURE ROUND A. It books round 26's verdict with the recurrences of R-0645, R-0784 and R-0838
+that round measured, then rotates the ledger by `scripts/rotate_live_review.py` as its own
+commit, and from a clean tree at that commit runs the closure evidence job, the integrity check
+and a fresh review package. The rotation commit is the accepted head; only the handback follows
+it in this round.
 
 ## Next Steps
 
-1. CLOSURE ROUND A: book round 26's verdict and whatever the self-use run returned, rotate the
-   ledger as its own commit, and from a clean tree at that commit run the evidence job, the
-   integrity check and a fresh review package.
-2. CLOSURE ROUND B: the STATUS `[x]` line, the README sync and the self-use item's
-   `consumed_by` in one commit, then the pull request, which is not merged in that session.
-3. F280, which Rule A5 proposes once F261 is merged.
+1. CLOSURE ROUND B: book round A's verdict, then the closure commit — the STATUS `[x]` line
+   authored from round A's measured values, the README sync and `SU-015`'s `consumed_by` set to
+   `F261`, in one commit — then the pull request, which is not merged in that session.
+2. F280, which Rule A5 proposes once F261 is merged.
 
 ## Risks
 
-- 125 findings are open by distinct id; three are High, R-0803, R-0804 and R-0807, none of them
-  F261's. Seven that F261 owned belong to F280 by DECISION F261 D25.
-- F261 closes with the Goal & Done sentence not met, and says so in its Built State; the
-  operator may reverse the split through operator question Q3.
-- THE SELF-USE RUN NEEDS THE LOCAL MODEL SERVER and creates one `remedy/job-*` branch.
-- THE CLOSURE NEEDS COMMANDS THIS ENVIRONMENT DENIES: the `remedy` command line is refused
-  here, so every closure step runs through the scripts and modules it calls.
+- The package's `base_commit` is the FORK POINT `7cdde89b`, which is also the merge base
+  because this branch has merged nothing in.
+- The authority set is read from the WORKING TREE, so an untracked file or a leftover worktree
+  changes what is packaged: the tree is clean and the worktrees pruned before the evidence job.
+- The open High findings are R-0803, R-0804 and R-0807, none of them F261's; the integrity
+  gate's `high_blockers_open` check does not see them, which is R-0648.
+- The open set is 125 by distinct id; seven that F261 owned belong to F280 by DECISION F261 D25.
