@@ -1,17 +1,17 @@
-# Live Review — F261 CLI vocabulary v2 (rename & prune)
+# Live Review — F280 CLI vocabulary v2, part two
 
-> Round-by-round review record, re-headed at the F261 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F275, which is
-> accepted: its STATUS line went `[x]` at `76283e6936f5f622e80e5fdacaa5a113ec0f0608` and its
-> pull request 250 merged at `7cdde89b5d0dc8ef1fb96980105870e956699873`, at this session's
+> Round-by-round review record, re-headed at the F280 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F261, which is
+> accepted: its STATUS line went `[x]` at `ea5b08f78be401efc227072f1b3a31fe764abda7` and its
+> pull request 251 merged at `9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`, at this session's
 > Open PR Gate. Only the heading, this paragraph and the `## Steps` section below are
 > rewritten. Everything from the `## Findings` line to the end of the file is carried forward
 > BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
-> Measured by the reviewer at `7cdde89b5d0dc8ef1fb96980105870e956699873`: 92 DISTINCT ids
-> matching `^- R-\d{4} — ` against 2 DISTINCT ids matching `^Done: R-\d{4} — `, so 90 findings
-> are open BY DISTINCT ID; the record carries four `Done:` lines for those two ids.
-> F275's last round, round 110, has an entry here: its verdict was written into pull request
-> 250, and under docs/agents/self_drive_protocol.md the reviewer books a branch-terminating
+> Measured by the reviewer at `9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`: 127 DISTINCT ids
+> matching `^- R-\d{4} — ` against 2 DISTINCT ids matching `^Done: R-\d{4} — `, so 125 findings
+> are open BY DISTINCT ID.
+> F261's last round, round 28, has an entry here: its verdict was written into pull request
+> 251, and under docs/agents/self_drive_protocol.md the reviewer books a branch-terminating
 > verdict into the next feature's first round. Records of features already `[x]` in
 > docs/roadmap/STATUS.md move to `.agent/live_review_archive.md` through
 > `scripts/rotate_live_review.py` in each closure sequence, under operator amendment
@@ -19,13 +19,14 @@
 
 ## Steps
 
-THE ORDER BELOW IS T2_F261.md's Orchestrator brief, with T001 as DECISION F261 D1 re-scopes it.
-R1 claim F261, re-head this record, book F275 round 110, resolve R-0889, register R-0890, rule
-DECISION F261 D1 and rename `do job-evidence` to `job evidence` → the renames `do job-promote`
-to `job apply` and `do job-run` to `job run` → the deletion of `do job-flow` → the deletions of
-`do job-plan` and `do plan` → T002, `apply` for `promote` and `job show --full` → T003, the
-prune to D4 → T004, descriptions, role labels, help wrapping and the catalog tests → the
-integration gate → the closure sequence.
+THE ORDER BELOW IS T2_F280.md's Orchestrator brief, with T001 in the order of the inventory
+`.agent/f261_t003_inventory.md`, rounds J to P.
+R1 claim F280, re-head this record, book F261 round 28, rule DECISION F280 D1 and hand `job run`'s
+provider flags to the runner → the ping-pong path of `do run` with its flags and the scope plan,
+R-0894 → `job budget <id> set`, R-0906 and R-0909, then `job fulfill` → the fixtures off
+`job create`, then `job create`, `job attach-repo` and `job permit` → `propose`, with the ruling
+on its two surviving gates → the `flight_plan` rename → `worker doctor` and `job run --tasks` →
+T002 → the integration gate → the closure sequence.
 
 ## Findings
 
@@ -721,3 +722,5 @@ THE ROTATION. `30343f92` changes exactly `.agent/live_review.md` and `.agent/liv
 THE EVIDENCE AND THE PACKAGE. The accepted head is `30343f927800784c464eaf56706d5b82ece39c81`, and only the handback follows it. The evidence job `234c8e6f18905013` was produced by `create_manual_completion_bundle` against the fork point `7cdde89b5d0dc8ef1fb96980105870e956699873`, whose ancestry-path and plain chain counts to the accepted head are equal at 183, with one verification record of `tests/docs/` at 310 passed and 310 node ids, and its verdict is `PASS_WITH_RISKS`, which the reviewer's dry run on a throwaway head had predicted. The package `remedy-review-20260916-151540-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips` hashes, recomputed by the reviewer from the file, to `8bc443e91657986bcbb83ad3b6d81cb55afd4b111ff7d4e6930983606f545275`; its manifest `.review_zip_manifest.json`, read out of the archive, records `package_status` `READY_FOR_REVIEW`, the evidence job `234c8e6f18905013`, and a `committed_review_subject` from the fork point to the accepted head over 183 commits. `run_integrity_checks()` returned `passed` True with no failure, in the worker's run at `30343f92` and in the reviewer's at `f2872a33`, and its `high_blockers_open` check read `no open blocker/high findings`, which is false while R-0803, R-0804 and R-0807 are open, the gap R-0648 records.
 
 THE SUITE, closure precondition 2. The reviewer's run of `python3 -m pytest -n auto -q -rfE` in the primary checkout at `7a97e74d`, which differs from the accepted head only in `.agent/handoff.md`, read exit 0 with 17653 passed and 23 skipped and no failed node, re-confirming the integration gate booked above.
+
+Gate: F261 R28 — the F261 round 28 entry, CLOSURE ROUND B. VERDICT PASS. Written by the planner and reviewer of session 42 into pull request 251 as a comment, because the closure commit `ea5b08f7` is the last commit on its branch by Rule A4, and booked here by F280's round 1 under operator amendment amend0827-process-diet rule 1. That reviewer read the committed range `7a97e74d`..`ea5b08f7` and re-derived each reading it states: `.agent/authored/f261-r28.md` at `462bb6e3` and `.agent/last_block.md` at `b4342378` equal its scratch original, and the committed table `.agent/authored/f261-r28-closure.jsonl` at `a6046a6d` equals its carrier, sha256 `6c9a60eb…8fcb6417`; at `a6046a6d`, `.agent/plan.md` equals PLAN28 and `.agent/live_review.md` equals its `7a97e74d` blob followed by RECORD28, and `ea5b08f7` leaves the ledger unchanged; `ea5b08f7` has one parent and changes exactly `docs/roadmap/STATUS.md`, `README.md`, `scripts/self_use_queue.json` and `.agent/handoff.md`, and re-applying the committed table to the `a6046a6d` blobs reproduces the three non-handoff files byte for byte; STATUS carries 78 `[x]` lines, README says `78 of 280`, the Tier 2 row reads 21 of 33, no `[~]` line remains and the first unchecked line is F280; through the queue loaders `SU-015`'s `consumed_by` is `F261`. Its runs in the primary checkout at `ea5b08f7` of `tests/docs/`, `tests/cli/test_golden_path.py` and the three self-use test files read 406 passed. The closure values on the STATUS line are evidence job `234c8e6f18905013`, package `remedy-review-20260916-151540-READY_FOR_REVIEW.zip`, SHA-256 `8bc443e91657986bcbb83ad3b6d81cb55afd4b111ff7d4e6930983606f545275` and accepted commit `30343f927800784c464eaf56706d5b82ece39c81`; the close is PASS_WITH_RISKS for the open High findings R-0803, R-0804 and R-0807, none of them F261's. Re-read by the planner and reviewer of session 43, F280's first: hosted run `35102202968` on `ea5b08f7` concluded `success`, that session merged pull request 251 at the Open PR Gate as `9f1b6d25`, and at `9f1b6d25` STATUS reads 78 `[x]` lines and no `[~]` line and the open set reads 125 by distinct id.

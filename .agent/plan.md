@@ -1,36 +1,39 @@
-# Plan — F261 CLI vocabulary v2 (rename & prune)
+# Plan — F280 CLI vocabulary v2, part two
 
-Branch: feature/f261-cli-vocabulary-v2, cut from `main` at
-`7cdde89b5d0dc8ef1fb96980105870e956699873`, the merge commit of pull request 250.
+Branch: feature/f280-cli-vocabulary-v2-part-two, cut from `main` at
+`9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`, the merge commit of pull request 251.
 
 ## Goal
 
-The catalog `apps/cli/command_catalog.py` equals DECISION amend0905-vocab D4: one name per
-command, and every retired word deleted rather than aliased, per
-`docs/roadmap/features/T2_F261.md` — as far as this feature reaches it; DECISION F261 D25
-moves the rest to F280. Everything the closure protocol asks for is on disk: the Built State,
-the integration gate, the self-use run, the rotated ledger and a READY_FOR_REVIEW package.
+Finish what F261 could not reach: the catalog `apps/cli/command_catalog.py` equals DECISION
+amend0905-vocab D4 apart from the words D4 gives F268, F269 and F273, and the help surface of
+T002 holds, per `docs/roadmap/features/T2_F280.md`.
 
 ## Current Step
 
-CLOSURE ROUND B, the last round of this branch. Its bookkeeping commit books round 27's verdict.
-Its closure commit then applies the STATUS `[x]` line authored from round 27's measured values,
-the README sync and `SU-015`'s `consumed_by` set to `F261`, with the final handoff, in ONE
-commit, per the closure protocol's Rule A4 ordering; then the pull request is opened and NOT
-merged.
+ROUND 1 claims F280, cuts the branch, re-points this file and `.agent/context.md`, re-heads
+`.agent/live_review.md`, books F261's round 28 verdict and its prose slip, and records DECISION
+F280 D1. Its table commit hands `job run`'s `--builder-provider` and `--reviewer-provider` to the
+runner, deletes `--builder` and `--reviewer` from `job run`, and refuses `fixture` there.
 
 ## Next Steps
 
-1. THE NEXT SESSION: Phase 1 rule 1 first, `.agent/STOP`; then the Open PR Gate merges this
-   branch's pull request; then Rule A5 claims F280.
+1. The ping-pong path of `do run` with the flags only it reads, `--scope-file`, `--approve-scope`
+   and the scope plan module (R-0894), with `_VALID_PINGPONG_PROVIDERS`, the `--builder` and
+   `--reviewer` special-casing of `apps/cli/grouped.py`, the root help's quick start and the two
+   provider messages that name the deleted flags; then R-0767's resolution.
+2. `job budget <id> set` over the run-contract budget fields and the token budget profile
+   (R-0906, R-0909), then `job fulfill`.
+3. The fixtures and smoke sections moved off `job create`, then `job create`, `job attach-repo`
+   and `job permit`.
+4. `propose`, with the DECISION on the two surviving gates DECISION F261 D22 names.
+5. The `flight_plan` rename; `worker doctor` and `job run --tasks`; then T002.
 
 ## Risks
 
-- The open findings stand at 125 by distinct id. Three are High — R-0803, R-0804 and R-0807 —
-  none of them F261's, and the integrity gate's `high_blockers_open` check does not see them,
-  which is R-0648; so the close is PASS_WITH_RISKS.
-- F261 closes with the Goal & Done sentence not met, and says so in its Built State; the
-  operator may reverse the split through operator question Q3.
-- The closure commit is the last commit on the branch, so the docs gate its own STATUS and
-  README edits must satisfy runs after it; the reviewer ran that gate against the same edits in
-  a disposable worktree before authoring.
+- 125 findings are open by distinct id; three are High, R-0803, R-0804 and R-0807, none of them
+  this feature's.
+- Two provider error messages in `packages/orchestration/pingpong_provider.py` name `--builder`
+  and `--reviewer`, which `job run` no longer has, until the next step re-points them.
+- Argparse prefix matching refuses `--builder` on `job run` only as an ambiguous prefix of the
+  three `--builder-*` flags; `TestJobRunProviderWiring` pins the refusal.
