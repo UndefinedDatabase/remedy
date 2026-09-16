@@ -307,6 +307,9 @@ class TestDeletedCommands:
     """
 
     DELETED = (
+        "contract.check",
+        "contract.inspect",
+        "contract.set",
         "dashboard.job",
         "dashboard.project",
         "do.job-flow",

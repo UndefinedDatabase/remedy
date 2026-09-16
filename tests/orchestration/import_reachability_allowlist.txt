@@ -12,7 +12,6 @@ apps.cli.commands.change
 apps.cli.commands.ci_cmd
 apps.cli.commands.config_cmd
 apps.cli.commands.context
-apps.cli.commands.contract_cmd
 apps.cli.commands.decision
 apps.cli.commands.dev
 apps.cli.commands.do_cmd

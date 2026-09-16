@@ -482,7 +482,7 @@ def evaluate_self_execution_eligibility(
     if not evaluate_run_action(contract, ContractAction.SELF_EXECUTE_PREPARE).allowed:
         elig.blockers.append("contract_blocked")
         elig.stop_reason = StopReason.CONTRACT_BLOCKED
-        elig.next_safe_action = f"remedy contract inspect {jid} --json"
+        elig.next_safe_action = f"remedy job show {jid} --full --json"
         elig.safe_summary = "Contract denies self execution preparation."
         return elig
 

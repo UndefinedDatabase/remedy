@@ -483,7 +483,7 @@ def propose_self_improvement(
         result.stop_reason = "contract_blocked"
         result.safe_summary = "Contract denies self-propose."
         result.next_safe_action = SelfImprovementAction(
-            "Inspect contract", f"remedy contract inspect {job_id} --json", "")
+            "Inspect contract", f"remedy job show {job_id} --full --json", "")
         return result
 
     insp = build_self_dogfood_inspection(job_id, ddir, agent_dir)

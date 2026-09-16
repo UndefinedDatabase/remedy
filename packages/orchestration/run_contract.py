@@ -753,7 +753,7 @@ def evaluate_run_action(
             allowed=False,
             status="blocked",
             reason=f"Action '{action}' is in denied_actions",
-            next_safe_action="remedy contract inspect <job_id> --json",
+            next_safe_action="remedy job show <job_id> --full --json",
         )
 
     # 2. Not in allowed actions
@@ -762,7 +762,7 @@ def evaluate_run_action(
             allowed=False,
             status="blocked",
             reason=f"Action '{action}' not in allowed_actions",
-            next_safe_action="remedy contract inspect <job_id> --json",
+            next_safe_action="remedy job show <job_id> --full --json",
         )
 
     # 3. Test run zero-budget block — run_test requires explicit max_test_runs > 0
@@ -771,7 +771,6 @@ def evaluate_run_action(
             allowed=False,
             status="exhausted",
             reason="max_test_runs is 0 — set it above 0 to enable test execution",
-            next_safe_action="remedy contract set <job_id> max_test_runs <n>",
         )
 
     # 4. stop_before_apply blocks apply-type actions
@@ -789,7 +788,7 @@ def evaluate_run_action(
             allowed=False,
             status="blocked",
             reason="no_cloud blocks cloud/provider actions",
-            next_safe_action="remedy contract inspect <job_id> --json",
+            next_safe_action="remedy job show <job_id> --full --json",
         )
 
     # 6. Loop budget (from explicit param or usage)
@@ -837,14 +836,14 @@ def evaluate_run_action(
                 allowed=False,
                 status="blocked",
                 reason="stop_on_unknown_risk blocks unknown-risk actions",
-                next_safe_action="remedy contract inspect <job_id> --json",
+                next_safe_action="remedy job show <job_id> --full --json",
             )
         if risk_lower in ("medium", "high") and contract.stop_on_medium_risk:
             return RunActionDecision(
                 allowed=False,
                 status="blocked",
                 reason=f"stop_on_medium_risk blocks {risk_lower}-risk actions",
-                next_safe_action="remedy contract inspect <job_id> --json",
+                next_safe_action="remedy job show <job_id> --full --json",
             )
 
     return RunActionDecision(
@@ -874,7 +873,7 @@ def _check_path_policy(contract: RunContract, path: str) -> RunActionDecision | 
             allowed=False,
             status="blocked",
             reason=f"Absolute path '{normalized}' blocked by policy",
-            next_safe_action="remedy contract inspect <job_id> --json",
+            next_safe_action="remedy job show <job_id> --full --json",
         )
 
     # Block traversal
@@ -883,7 +882,7 @@ def _check_path_policy(contract: RunContract, path: str) -> RunActionDecision | 
             allowed=False,
             status="blocked",
             reason=f"Path traversal in '{normalized}' blocked by policy",
-            next_safe_action="remedy contract inspect <job_id> --json",
+            next_safe_action="remedy job show <job_id> --full --json",
         )
 
     # Denied paths win over allowed paths (segment-aware)
@@ -893,7 +892,7 @@ def _check_path_policy(contract: RunContract, path: str) -> RunActionDecision | 
                 allowed=False,
                 status="blocked",
                 reason=f"Path '{normalized}' matches denied path '{denied}'",
-                next_safe_action="remedy contract inspect <job_id> --json",
+                next_safe_action="remedy job show <job_id> --full --json",
             )
 
     # If allowed_paths specified, path must match (segment-aware)
@@ -908,7 +907,7 @@ def _check_path_policy(contract: RunContract, path: str) -> RunActionDecision | 
                 allowed=False,
                 status="blocked",
                 reason=f"Path '{normalized}' not in allowed_paths",
-                next_safe_action="remedy contract inspect <job_id> --json",
+                next_safe_action="remedy job show <job_id> --full --json",
             )
 
     return None

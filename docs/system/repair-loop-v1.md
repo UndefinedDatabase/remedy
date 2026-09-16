@@ -70,7 +70,7 @@ until a provider-backed builder is enabled.
 Repair metadata actions are canonical and allowed by default for safe jobs:
 `create_fix_task`, `create_repair_artifact`, `create_repair_patch_intent`. Apply
 actions remain denied. If a contract denies repair actions, `repair propose`
-blocks with a catalog-backed next action (`remedy contract inspect …`).
+blocks with a catalog-backed next action (`remedy job show <job_id> --full --json`).
 
 ## `repair start` (v0) vs `repair propose` (v1)
 

@@ -71,7 +71,7 @@ Baseline: **76.3%** (branch coverage enabled).
 
 | Coverage | Missing lines | File |
 |----------|--------------|------|
-| 5.2% | 107 | apps/cli/commands/contract_cmd.py |
+| 5.2% | 107 | contract_cmd.py (deleted by F261) |
 | 5.9% | 127 | apps/cli/commands/test_cmds.py |
 | 6.7% | 147 | dogfood_cmd.py (deleted by F275) |
 | 6.8% | 80 | apps/cli/commands/snapshot_cmds.py |

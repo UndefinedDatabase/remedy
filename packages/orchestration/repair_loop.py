@@ -849,7 +849,7 @@ def evaluate_repair_eligibility(
     decision = evaluate_run_action(contract, ContractAction.CREATE_FIX_TASK)
     if not decision.allowed:
         elig.blockers.append("contract_repair_denied")
-        elig.next_safe_action = _na("Review contract", f"remedy contract inspect {job_id} --json",
+        elig.next_safe_action = _na("Review contract", f"remedy job show {job_id} --full --json",
                                     "RunContract denies repair metadata actions.")
         elig.safe_summary = "Contract denies repair."
         return elig
@@ -1168,7 +1168,7 @@ def run_repair_attempt(
             phases.append({"phase": "patch_intent", "status": "blocked",
                            "safe_summary": "Contract denies patch intent creation"})
             return _result_from_attempt(attempt, resumed=False, phases=phases,
-                                        na=_na("Review contract", f"remedy contract inspect {job_id} --json",
+                                        na=_na("Review contract", f"remedy job show {job_id} --full --json",
                                                "RunContract denies repair patch intent."),
                                         summary="Blocked: contract denies repair patch intent.")
 

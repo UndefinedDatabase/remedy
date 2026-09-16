@@ -427,13 +427,12 @@ def evaluate_continue_eligibility(
     contract = ensure_contract(job)
     if contract.stop_before_apply:
         elig.blockers.append("stop_before_apply_true")
-        elig.next_safe_action = f"remedy contract set {job_id} stop_before_apply false"
         elig.safe_summary = "Contract has stop_before_apply=true."
         return elig
     decision = evaluate_run_action(contract, ContractAction.PATCH_APPLY)
     if not decision.allowed:
         elig.blockers.append("contract_apply_denied")
-        elig.next_safe_action = "remedy contract inspect " + job_id + " --json"
+        elig.next_safe_action = f"remedy job show {job_id} --full --json"
         elig.safe_summary = f"Contract blocks apply: {decision.reason[:80]}"
         return elig
 
@@ -460,7 +459,6 @@ def evaluate_continue_eligibility(
         return elig
     if contract.max_test_runs <= 0:
         elig.blockers.append("test_budget_unconfigured")
-        elig.next_safe_action = f"remedy contract set {job_id} max_test_runs 1"
         elig.safe_summary = "Test budget (max_test_runs) is 0."
         return elig
 

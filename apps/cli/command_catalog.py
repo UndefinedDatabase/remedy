@@ -137,7 +137,6 @@ GROUPS: dict[str, GroupDef] = {
     "dev": GroupDef("dev", "Dev", "Developer utilities.", user_facing=False),
     "ci": GroupDef("ci", "CI", "Remedy's own CI stages, run locally.", user_facing=False),
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
-    "contract": GroupDef("contract", "Contract", "Run contract inspection.", user_facing=False),
     "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False),
     # -- Hidden: in no help at all, callable (DECISION amend0905-vocab D4) --
     "roadmap": GroupDef("roadmap", "Roadmap", "Read-only roadmap mirror — what is active, what is next. Proposes, never starts.", user_facing=False, hidden=True),
@@ -2657,52 +2656,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--collect-only", "Also run pytest collect-only", required=False, is_option=True, default="false"),
         ),
         supports_json=True,
-    ),
-
-    # ── contract ───────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="contract.inspect",
-        group_id="contract",
-        subcommand="inspect",
-        description="Show the run contract for a job.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("contract.check", "policy.contract"),
-    ),
-    CommandEntry(
-        command_id="contract.check",
-        group_id="contract",
-        subcommand="check",
-        description="Check whether an action is allowed by the run contract.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("action", "Action to check (e.g. apply, plan, build_artifact)"),
-            ArgDef("--path", "File path to check against path policy", required=False, is_option=True),
-            ArgDef("--risk", "Risk level to check (unknown, medium, high)", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("contract.inspect",),
-    ),
-    CommandEntry(
-        command_id="contract.set",
-        group_id="contract",
-        subcommand="set",
-        description="Set a contract field on a job.",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("field", "Field to set (e.g. max_loops, stop_before_apply)"),
-            ArgDef("value", "New value"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("contract.inspect",),
     ),
 
     # ── snapshot ─────────────────────────────────────────────────────────
