@@ -708,24 +708,6 @@ class TestSecureArtifactWriter:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Repair findings — ContinueStopReason.FENCE_VIOLATION
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-class TestContinueStopReasonFenceViolation:
-    """Finding #10: do_continue must use FENCE_VIOLATION, not APPLY_FAILED."""
-
-    def test_fence_violation_stop_reason_exists(self):
-        from packages.orchestration.do_continue import ContinueStopReason
-        assert hasattr(ContinueStopReason, "FENCE_VIOLATION")
-        assert ContinueStopReason.FENCE_VIOLATION == "fence_violation"
-
-    def test_apply_failed_still_exists(self):
-        from packages.orchestration.do_continue import ContinueStopReason
-        assert hasattr(ContinueStopReason, "APPLY_FAILED")
-
-
-# ═══════════════════════════════════════════════════════════════════════════
 # Repair findings — repo_applicator propagates job_fences
 # ═══════════════════════════════════════════════════════════════════════════
 

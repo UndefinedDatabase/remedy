@@ -1,6 +1,6 @@
-"""F017 real production E2E — job_fulfillment, do_continue, CLI fences.
+"""F017 real production E2E — job_fulfillment and CLI fences.
 
-Calls the actual run_job_fulfill() and run_do_continue() entry points and the
+Calls the actual run_job_fulfill() entry point and the
 fences section of `job show --full` with persisted jobs and fixtures. No mocks
 of fence enforcement.
 """
@@ -11,8 +11,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Artifact, ArtifactKind, JobFences, RunState
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+from packages.core.models import JobFences
+from packages.orchestration.pingpong_job import JobPlan, save_job_plan
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Shared fixtures
@@ -97,93 +97,6 @@ class TestJobFulfillmentFenceEnforcement:
         job = _make_job(data_dir, repo)
         record = self._run(job.job_id, repo, data_dir)
         assert record.stop_reason != "fence_violation"
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# do_continue fence enforcement
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-class TestDoContinueFenceEnforcement:
-    """run_do_continue(): fence violation → FENCE_VIOLATION stop, no apply."""
-
-    def _make_continue_job(self, data_dir, repo, *, deny=None, target_path="docs/CHANGES.md"):
-        import dataclasses
-
-        from packages.orchestration.approval_queue import make_intent_id, set_approval_state
-        from packages.orchestration.permissions import Capability, set_permission
-        from packages.orchestration.run_contract import ContractAction, build_default_run_contract, save_contract
-
-        fences = JobFences(deny=deny) if deny else None
-        task = TaskEntry(title="Continue task")
-        content = "Summary:\n  - safe doc\nProposed Changes:\n  - add a line\nNotes:\n  - none\n"
-        explanations = [
-            {"file": target_path, "action": "create", "risk": "low",
-             "reason": "", "summary": "safe doc"}
-        ]
-        art = Artifact(
-            name="build", content=content, kind=ArtifactKind.BUILDER_PROPOSAL,
-            task_id=str(task.task_id),
-            metadata={"patch_intent_explanations": explanations, "patch_intent_approvals": {}},
-        )
-        job = JobPlan(
-            job_title="cont-job", user_prompt="continue", state=RunState.RUNNING,
-            tasks=[task], artifacts=[art], fences=fences,
-            metadata={"target_repo": str(repo.resolve())},
-        )
-        intent_id = make_intent_id(art.id, 0)
-        set_permission(job, Capability.repo_generated_write, allow=True)
-        set_permission(job, Capability.repo_test_run, allow=True)
-        set_approval_state(job, intent_id, "approved", decided_by="human")
-
-        contract = build_default_run_contract(job)
-        allowed = list(contract.allowed_actions)
-        denied_a = [a for a in contract.denied_actions if a != ContractAction.PATCH_APPLY]
-        if ContractAction.PATCH_APPLY not in allowed:
-            allowed.append(ContractAction.PATCH_APPLY)
-        contract = dataclasses.replace(
-            contract,
-            allowed_actions=tuple(allowed),
-            denied_actions=tuple(denied_a),
-            stop_before_apply=False,
-            max_test_runs=1,
-        )
-        save_contract(job, contract)
-        save_job_plan(job, root=data_dir)
-        return job, intent_id
-
-    def test_denied_intent_produces_fence_violation(self, env):
-        data_dir, repo = env
-        from packages.orchestration.do_continue import ContinueRequest, ContinueStopReason, run_do_continue
-        job, iid = self._make_continue_job(data_dir, repo, deny=["docs/**"])
-        result = run_do_continue(ContinueRequest(job_id=str(job.job_id), intent_id=iid), data_dir=data_dir)
-        assert result.stop_reason == ContinueStopReason.FENCE_VIOLATION
-        target = repo / "docs" / "CHANGES.md"
-        assert not target.exists()
-
-    def test_fence_violation_not_apply_failed(self, env):
-        data_dir, repo = env
-        from packages.orchestration.do_continue import ContinueRequest, ContinueStopReason, run_do_continue
-        job, iid = self._make_continue_job(data_dir, repo, deny=["docs/**"])
-        result = run_do_continue(ContinueRequest(job_id=str(job.job_id), intent_id=iid), data_dir=data_dir)
-        assert result.stop_reason == ContinueStopReason.FENCE_VIOLATION
-        assert result.stop_reason != ContinueStopReason.APPLY_FAILED
-
-    def test_fence_artifact_written_on_violation(self, env):
-        data_dir, repo = env
-        from packages.orchestration.do_continue import ContinueRequest, run_do_continue
-        job, iid = self._make_continue_job(data_dir, repo, deny=["docs/**"])
-        run_do_continue(ContinueRequest(job_id=str(job.job_id), intent_id=iid), data_dir=data_dir)
-        artifacts = list(data_dir.rglob("fence_violations_*.json"))
-        assert len(artifacts) >= 1
-
-    def test_env_deny_blocks_continue(self, env, monkeypatch):
-        data_dir, repo = env
-        monkeypatch.setenv("REMEDY_SCOPE_DENY", "docs/**")
-        from packages.orchestration.do_continue import ContinueRequest, ContinueStopReason, run_do_continue
-        job, iid = self._make_continue_job(data_dir, repo)
-        result = run_do_continue(ContinueRequest(job_id=str(job.job_id), intent_id=iid), data_dir=data_dir)
-        assert result.stop_reason == ContinueStopReason.FENCE_VIOLATION
 
 
 # ═══════════════════════════════════════════════════════════════════════════

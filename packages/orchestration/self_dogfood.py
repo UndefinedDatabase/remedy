@@ -313,8 +313,8 @@ def _detect_roadmap(items: list) -> None:
         (has("ui_server.py"),
          "Operator Cockpit Mutations v0", "ui_server.py",
          "Read-only cockpit truth exists; consider gated cockpit mutations."),
-        (has("provider_patch_material.py") and has("do_continue.py"),
-         "Git Commit Gate v0", "do_continue.py",
+        (has("provider_patch_material.py") and has("patch_apply.py"),
+         "Git Commit Gate v0", "patch_apply.py",
          "Proof/test/snapshot/apply stable; a human-gated commit gate could follow."),
     ]
     for ok, title, ev, detail in rules:
@@ -626,5 +626,5 @@ def render_report_markdown(data: dict[str, Any]) -> str:
     lines.append("## Not safe to automate yet")
     lines.append("- Self-apply, self-merge, and self-approval are NOT performed. "
                  "Self-proposed tasks require human evaluation/approval and the normal "
-                 "materialize → do continue flow.")
+                 "materialize → patch apply flow.")
     return "\n".join(lines)

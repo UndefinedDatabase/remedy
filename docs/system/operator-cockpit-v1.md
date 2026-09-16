@@ -35,7 +35,7 @@ derives the cockpit truth sections from authoritative sources:
 | `metrics.tests` | `test_run_completed` events | runs/passed/failed/latest_state; missing `exit_code` is uncounted, never a fake fail |
 | `metrics.proof` | `build_proof_chain` (authoritative) | total_changes vs verified; state verified/partial/none |
 | `snapshot` | `build_snapshot_truth` over `list_durable_apply_ids` | apply_records/verified/reverted/drift_detected; `source = durable_apply_records` |
-| `continuation` | `do_continue_stopped` events + approved intents | available (approved-intent light check) + last_result/last_stop_reason (safe enums) |
+| `continuation` | approved intents, and `do_continue_stopped` events nothing writes since F261 round 21 | available (approved-intent light check) + last_result/last_stop_reason, which now read `none` on every job |
 | `repair` | `repair_attempts_v1` job metadata | attempt_count + pending_approval_count + a copyable `remedy patch approve` next action — never an Approve button |
 | `overnight` | `build_overnight_readiness` (read-only) | readiness_level + ready/can_run_unattended + blocker_count + next-action label + checklist counts; `unknown` when data root unavailable; never a button |
 
@@ -64,8 +64,8 @@ faked to stand in for unknown data.
 
 ## See also
 
-- [do-continue-v1.md](../guides/do-continue-v1.md) — the continuation cycle whose outcome
-  feeds the cockpit `continuation` section.
+- [do-continue-v1.md](../guides/do-continue-v1.md) — the deleted continuation cycle whose
+  outcome used to feed the cockpit `continuation` section.
 - [snapshot-rollback-v1.md](snapshot-rollback-v1.md) — the durable snapshot/apply
   truth behind the `snapshot` section.
 - [repair-loop-v1.md](repair-loop-v1.md) — the repair attempts surfaced (read-only)

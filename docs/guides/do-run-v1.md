@@ -129,4 +129,4 @@ command to run next:
 
 ## See also
 
-- [do-continue-v1](do-continue-v1.md) — `remedy do continue` runs one apply+test+proof cycle after approval.
+- [do-continue-v1](do-continue-v1.md) — the one apply+test+proof cycle F261 round 21 deleted.

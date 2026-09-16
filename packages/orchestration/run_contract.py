@@ -134,7 +134,7 @@ class ContractAction:
     SELF_PLAN = "self_plan"
     SELF_PROPOSE_TASK = "self_propose_task"
     # Self-Dogfood Execution v0 (Step 1447) — metadata/tracking only; apply stays
-    # controlled by do continue.
+    # controlled by patch apply.
     SELF_EXECUTE_PREPARE = "self_execute_prepare"
     SELF_RECONCILE = "self_reconcile"
     SELF_EXECUTION_STATUS = "self_execution_status"

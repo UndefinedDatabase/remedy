@@ -314,7 +314,7 @@ def _build_capabilities(inp: _Inputs, job_id: str) -> list[OvernightCapability]:
                or ("No approved intent." if not inp.approved_intents else ""),
         required_permission="repo_generated_write",
         required_contract_action=ContractAction.PATCH_APPLY,
-        next_safe_action=(f"remedy do continue {job_id} --json" if apply_ok and inp.approved_intents else "")))
+        next_safe_action=(f"remedy patch apply {job_id} <intent_id>" if apply_ok and inp.approved_intents else "")))
 
     test_ok = perm(Capability.repo_test_run) and c.max_test_runs > 0
     caps.append(OvernightCapability(
@@ -341,7 +341,7 @@ def _build_capabilities(inp: _Inputs, job_id: str) -> list[OvernightCapability]:
         name="can_apply_approved_repair",
         status=_CAP_AVAILABLE if (apply_ok and inp.pending_repair_intents == [] and any(
             a.status == "approval_required" for a in inp.repair_attempts) is False and inp.approved_intents) else _CAP_BLOCKED,
-        reason="Approved repair intent flows through do continue once approved.",
+        reason="Approved repair intent flows through patch apply once approved.",
         required_contract_action=ContractAction.PATCH_APPLY))
 
     revert_ok = perm(Capability.repo_revert) and action_allowed(ContractAction.REVERT)
@@ -356,7 +356,7 @@ def _build_capabilities(inp: _Inputs, job_id: str) -> list[OvernightCapability]:
         name="can_continue_one_cycle",
         status=_CAP_AVAILABLE if cont_ok else _CAP_BLOCKED,
         reason="" if cont_ok else "Needs an approved intent + apply + test gates.",
-        next_safe_action=(f"remedy do continue {job_id} --json" if cont_ok else "")))
+        next_safe_action=""))
 
     caps.append(OvernightCapability(
         name="can_commit", status=_CAP_NOT_SUPPORTED,
@@ -508,10 +508,11 @@ def select_overnight_next_action(inp: _Inputs | None, job_id: str) -> OvernightN
         iid = inp.pending_intents[0]["intent_id"]
         return OvernightNextAction("Approve patch", f"remedy patch approve {job_id} {iid}",
                                    "A patch intent is pending approval.", requires_human=True)
-    # Approved intent + plausible apply gates → continue one cycle.
+    # Approved intent + plausible apply gates → apply it, then test it.
     if inp.approved_intents and not inp.contract.stop_before_apply:
-        return OvernightNextAction("Continue one cycle", f"remedy do continue {job_id} --json",
-                                   "An approved intent is ready for one continuation cycle.",
+        return OvernightNextAction("Apply the approved intent", "",
+                                   "An approved intent is ready to apply; F261 round 21 deleted "
+                                   "the one word that applied, tested and proved it in one cycle.",
                                    requires_human=True)
     # Unresolved failure with no repair attempt yet → propose repair.
     if inp.failure_artifacts and inp.unresolved_failures > 0 and not any(

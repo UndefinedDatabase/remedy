@@ -652,40 +652,6 @@ def _cmd_do(
         print(summarize_do_run(result))
 
 
-def _cmd_do_continue(
-    job_id: str,
-    *,
-    intent_id: str | None = None,
-    json_output: bool = False,
-) -> None:
-    """Run one controlled continuation cycle (Step 1166).
-
-    Canonical public form: ``remedy do continue <job_id> [--intent-id <id>] [--json]``.
-    No prompt is required. When multiple approved intents exist, --intent-id is
-    mandatory (the eligibility gate blocks implicit selection).
-    """
-    from packages.orchestration.do_continue import (
-        ContinueRequest,
-        export_continue_result_json,
-        run_do_continue,
-        summarize_continue_result,
-    )
-
-    try:
-        result = run_do_continue(
-            ContinueRequest(job_id=job_id, intent_id=intent_id or "", source="cli_v1")
-        )
-    except Exception as exc:
-        # Never leak a traceback to the public surface.
-        print(f"Error: continuation failed ({type(exc).__name__})", file=sys.stderr)
-        sys.exit(1)
-
-    if json_output:
-        print(json.dumps(export_continue_result_json(result), indent=2, sort_keys=True))
-    else:
-        print(summarize_continue_result(result))
-
-
 #: What the bare `remedy do run` path prints for a role whose provider is
 #: handed no model and has no built-in default of its own to name. The `claude`
 #: CLI then picks whatever the OPERATOR configured it to pick, and Remedy cannot
@@ -1447,11 +1413,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         since=getattr(args, "since", None),
         until=getattr(args, "until", None),
         limit=getattr(args, "limit", None),
-    ),
-    "do.continue": lambda args: _cmd_do_continue(
-        args.job_id,
-        intent_id=getattr(args, "intent_id", None),
-        json_output=getattr(args, "json", False),
     ),
     "job.run": lambda args: _cmd_job_run(
         args.job_id,

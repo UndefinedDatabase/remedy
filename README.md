@@ -276,7 +276,7 @@ remedy runtime serve                       # start dev-server supervisor (F007)
 | Agent rules | [`AGENTS.md`](AGENTS.md) |
 | Operator quickstart | [`docs/guides/simple-operator-quickstart-v0.md`](docs/guides/simple-operator-quickstart-v0.md) |
 | `do run` guide | [`docs/guides/do-run-v1.md`](docs/guides/do-run-v1.md) |
-| `do continue` guide | [`docs/guides/do-continue-v1.md`](docs/guides/do-continue-v1.md) |
+| Continuation cycle (deleted) | [`docs/guides/do-continue-v1.md`](docs/guides/do-continue-v1.md) |
 | Runtime harness (F007) | [`docs/system/runtime-harness-v1.md`](docs/system/runtime-harness-v1.md) |
 | remedy.toml config | [`docs/guides/remedy-toml-user-guide.md`](docs/guides/remedy-toml-user-guide.md) |
 | Step history (archive) | [`docs/archive/remedy-step-history-v0.md`](docs/archive/remedy-step-history-v0.md) |

@@ -155,8 +155,8 @@ class DurableApplyRecord:
 class SnapshotTruth:
     """Authoritative, read-only snapshot/apply truth (Step 1156).
 
-    Single shared source for Proof Chain, File Provenance, Readiness,
-    Review Bundle, and `do --continue`. Loaded from durable RepositorySnapshot
+    Single shared source for Proof Chain, File Provenance, Readiness and the
+    Review Bundle. Loaded from durable RepositorySnapshot
     + DurableApplyRecord and verified against current manifest/blobs.
 
     Never trusts events or artifact metadata as authority. Unknown is explicit:
@@ -1204,8 +1204,8 @@ def build_snapshot_truth(
     manifest and recovery blobs (read-only), and returns a single safe truth
     object. Never relies on events or artifact metadata as authority.
 
-    Shared source for Proof Chain, File Provenance, Readiness, Review Bundle,
-    and `do --continue`. No raw paths or blob refs are exposed.
+    Shared source for Proof Chain, File Provenance, Readiness and the Review
+    Bundle. No raw paths or blob refs are exposed.
     """
     data_dir = Path(data_dir) if data_dir is not None else resolve_data_root()
 

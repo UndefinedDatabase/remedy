@@ -58,7 +58,7 @@ constraint wording to the request; they are templates, not execution.
 Provider Trust Gate and its intake command, and DECISION F260 D3 maps the external
 builder to "none, deliberately". A reader will look for the re-entry step exactly
 here, which is why the absence is written down; R-0868 records that this builder now
-has no importer. `remedy patch approve` and `remedy do continue` still apply a patch
+has no importer. `remedy patch approve` and `remedy patch apply` still apply a patch
 intent that already exists, and accepted ≠ approved ≠ applied is unchanged for those.
 
 ## Candidate generator adapter boundary (interface only)
@@ -77,6 +77,6 @@ package; pass `--new` to force a fresh one.
 ## See also
 
 - [provider-patch-materialization-v0.md](provider-patch-materialization-v0.md) — accepted candidate → applyable intent.
-- [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply path.
+- [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply cycle F261 round 21 deleted.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
 - [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — self-improvement attempts route candidate output through the same request/intake flow.

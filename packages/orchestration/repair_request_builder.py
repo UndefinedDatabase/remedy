@@ -424,7 +424,7 @@ def _import_next_steps(job_id: str, failure_artifact_id: str, label: str) -> lis
         "route was deleted by F275 T001 (R-0868). The steps below apply only to a patch "
         "intent that already exists.",
         f"4. If a patch intent exists, approve it: remedy patch approve {job_id} <intent_id>",
-        f"5. Apply it through the normal path: remedy do continue {job_id} --intent-id <intent_id> --json",
+        f"5. Apply it through the normal path: remedy patch apply {job_id} <intent_id> --json",
     ]
 
 

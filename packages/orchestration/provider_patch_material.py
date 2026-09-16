@@ -4,7 +4,7 @@ Trusted Provider Patch Materialization v0 (Steps 1335-1364).
 Turns an ACCEPTED ProviderTrustReport candidate into a REAL, applyable pending
 Repair Patch Intent — one that flows through the existing approval-gated path:
 
-    approval → remedy do continue <job> --intent-id <id> → snapshot → apply → test → proof
+    approval → remedy patch apply <job> <id> → snapshot → apply
 
 while the raw provider diff/source stays in **private** workspace storage only.
 

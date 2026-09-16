@@ -171,4 +171,4 @@ Text output (non-JSON) is written to stderr for blocked/failed runs, stdout for 
 
 ## See also
 
-- [do-continue-v1](../guides/do-continue-v1.md) — drives one budget-gated test run as part of a single continuation cycle.
+- [do-continue-v1](../guides/do-continue-v1.md) — drove one budget-gated test run as part of a single continuation cycle, until F261 round 21 deleted it.

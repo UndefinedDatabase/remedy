@@ -8,7 +8,7 @@ existing approval-gated path — while the raw provider diff stays private.
       → private patch material (.data/workspaces/<job>/provider_patch_material/<id>/)
       → applyable pending Repair Patch Intent (safe metadata only)
       → remedy patch approve <job> <intent_id>
-      → remedy do continue <job> --intent-id <intent_id>   # snapshot → apply → test → proof
+      → remedy patch apply <job> <intent_id>               # snapshot → apply
 
 Remedy deliberately has NO command that creates or inspects material any more: the
 intake and material-show commands were deleted with the Provider Trust Gate by
@@ -19,7 +19,7 @@ and R-0867 records which feature should reap the rest.
 
 - **accepted** — passed the trust gate.
 - **materialized** — converted into an applyable pending intent (still needs approval).
-- **applied** — only after `remedy patch approve` + `remedy do continue`. No auto-apply.
+- **applied** — only after `remedy patch approve` + `remedy patch apply`. No auto-apply.
 - Materialization never marks anything verified.
 
 ## v0 supported shapes (conservative)
@@ -71,6 +71,6 @@ intent — no duplicate Fix Task / Repair Artifact / Patch Intent.
 
 ## See also
 
-- [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply path materialized intents use.
+- [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply cycle materialized intents used before F261 round 21 deleted it.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
 - [repair-request-builder-v0.md](repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor.

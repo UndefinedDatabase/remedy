@@ -38,7 +38,7 @@ whose `patch_intent_id` is already on disk:
 
     (existing patch intent) → remedy self reconcile <attempt_id>
       → remedy patch approve <job> <intent_id>
-      → remedy do continue <job> --intent-id <intent_id>   (snapshot → apply → test → proof)
+      → remedy patch apply <job> <intent_id>               (snapshot → apply)
       → remedy self reconcile <attempt_id>   (state completed when proof verified)
 
 No NEW attempt can acquire such an intent, so this is degraded reachability rather than
@@ -47,7 +47,7 @@ dead code.
 ## Hard boundaries
 
 - **Approved self tasks only** — unapproved/non-self-dogfood tasks are refused.
-- **No auto apply** — apply happens only through the existing `do continue`.
+- **No auto apply** — apply happens only through the existing `patch apply`.
 - **No self PR/merge, no main mutation** — mutation-capable execution is refused on
   `main`/`master`/unknown branch (branch read from `.git/HEAD`, no subprocess).
 - **No approval** — the intent stays pending until a human approves it.
@@ -82,4 +82,4 @@ outputs through the same apply/test/proof gates.
 
 - [self-dogfood-v0.md](self-dogfood-v0.md) — the planner.
 - [repair-request-builder-v0.md](repair-request-builder-v0.md)
-- [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply path.
+- [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply cycle F261 round 21 deleted.

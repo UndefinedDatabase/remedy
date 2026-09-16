@@ -28,7 +28,7 @@
 | cost preview | [cost-preview-user-guide-v0.md](guides/cost-preview-user-guide-v0.md) | guide |
 | cost report | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | guide |
 | diff-only repair | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | system |
-| do continue | [do-continue-v1.md](guides/do-continue-v1.md) | guide |
+| continuation cycle (deleted) | [do-continue-v1.md](guides/do-continue-v1.md) | guide |
 | do run | [do-run-v1.md](guides/do-run-v1.md) | guide |
 | exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
@@ -121,7 +121,7 @@ User-facing guides, quickstarts, and usage documentation.
 | [autocoder-usage.md](guides/autocoder-usage.md) | How to use the autocoder |
 | [cost-preview-user-guide-v0.md](guides/cost-preview-user-guide-v0.md) | Cost preview before an expensive command runs (`remedy job resume`) |
 | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | Reading `remedy stats report` |
-| [do-continue-v1.md](guides/do-continue-v1.md) | `remedy do --continue` one-cycle apply flow |
+| [do-continue-v1.md](guides/do-continue-v1.md) | The one-cycle apply flow F261 round 21 deleted |
 | [do-run-v1.md](guides/do-run-v1.md) | `remedy do` cohesive flow |
 | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
 | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |

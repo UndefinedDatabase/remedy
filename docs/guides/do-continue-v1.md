@@ -1,14 +1,19 @@
-# remedy do --continue v1
+# Continuation cycle v1 (deleted 2026-09-16)
+
+> **Status (2026-09-16):** the `do continue` command and
+> the orchestration module behind it were deleted by F261 round 21
+> (DECISION amend0905-vocab D4 leaves the `do` group its order form and its
+> flags). No surviving command runs this cycle as one word. The three phases
+> survive as separate commands — `remedy patch apply <job> <intent>`, then
+> `remedy test run <job>`, then `remedy change proof <job> --json` — and a
+> failed test still reaches `remedy repair start <job> <failure_artifact_id>`.
+> What has no heir is the composition: the continuation lease, the durable
+> phase checkpoints that made a retry resume rather than repeat, and the
+> apply-to-test linkage. The page is kept as the record of what was built.
 
 One controlled, evidence-backed continuation cycle for an already-approved patch
-intent. The user approves a patch, runs one command, and Remedy performs exactly
-one development cycle and stops.
-
-Canonical command:
-
-    remedy do continue <job_id> [--intent-id <id>] [--json]
-
-(`do continue` is the subcommand form used by the catalog-driven CLI parser.)
+intent. The user approved a patch, ran one command, and Remedy performed exactly
+one development cycle and stopped.
 
 ## What it does
 
@@ -37,7 +42,7 @@ A single cycle, in order:
 
 ## Eligibility
 
-`remedy do continue` proceeds only when **all** of these hold; otherwise it stops
+The cycle proceeded only when **all** of these held; otherwise it stopped
 with `blocked_ineligible` and a real next-safe action:
 
 - the job exists;
@@ -109,16 +114,18 @@ continuations for the same job, repository, or intent.
   records, revert.
 - [real-test-execution-v1](../system/real-test-execution-v1.md) — the Test Execution Service.
 - [run-contract-v1](../system/run-contract-v1.md) — apply/test gates and budgets.
-- [do-run-v1](do-run-v1.md) — the pre-apply `remedy do run` flow this continues.
+- [do-run-v1](do-run-v1.md) — the pre-apply `remedy do run` flow this continued.
 - [repair-loop-v0](../system/repair-loop-v0.md) — the legacy repair path.
 - [bounded-overnight-prep-v0](../archive/bounded-overnight-prep-v0.md) — read-only readiness/
   report layer; a future executor reuses this one-cycle path under a bounded policy.
 - [repair-loop-v1](../system/repair-loop-v1.md) — the bounded, approval-gated repair
-  proposal offered when a continuation test fails. An **approved repair intent**
-  is applied through THIS same path: `remedy do continue <job_id> --intent-id
-  <repair_intent_id>`. No repair apply bypass; after the cycle the repair attempt
-  is reconciled (tested_passed/tested_failed) and the original failure is resolved
-  only with a verified snapshot + linked passing test + proof (source_fix only).
+  proposal offered when a continuation test failed. An **approved repair intent**
+  was applied through THIS same path, and after the cycle the repair attempt was
+  reconciled (tested_passed/tested_failed) with the original failure resolved only
+  on a verified snapshot + linked passing test + proof (source_fix only). Round 21
+  deleted that reconciliation with the command; an approved repair intent is now
+  applied by `remedy patch apply <job_id> <repair_intent_id>` and no repair truth
+  is recorded afterwards.
 - [provider-patch-materialization-v0](../system/provider-patch-materialization-v0.md) — a
-  materialized provider repair intent (single `.md`) is applied through THIS path
-  after `remedy patch approve`; no special provider apply path exists.
+  materialized provider repair intent (single `.md`) was applied through THIS path
+  after `remedy patch approve`; it is now applied by `remedy patch apply`.
