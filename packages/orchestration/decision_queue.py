@@ -334,8 +334,8 @@ def list_decisions(
             # `evidence_triple_problems` satisfiable for the thin event
             # `_fixture_repo_dirty` in `tests/orchestration/test_decision_inbox.py`
             # writes, whose `metadata` carries `dirty` and nothing else.  The
-            # status fingerprint is OPTIONAL for exactly that reason: only
-            # `apps/cli/commands/repo.py` writes `status_hash`, so an
+            # status fingerprint is OPTIONAL for exactly that reason: only the
+            # `repo status` command F261 deleted wrote `status_hash`, so an
             # unguarded ref on it would point at nothing on that fixture and
             # rule (c) would refuse the whole card.  NOTHING IS EMITTED for
             # `branch`, `head_sha` or `changed_file_count`: no kind in

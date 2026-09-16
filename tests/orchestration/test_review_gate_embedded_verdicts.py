@@ -1,6 +1,6 @@
 """F2 (round 24) — the final_verifier's EMBEDDED gate verdicts must equal the separately packaged
 gate verdicts, all its blocking fields must be clear, and its own commit-readiness view must never
-claim an auto-promotable state for a pre-acceptance package.
+claim an automatically applicable state for a pre-acceptance package.
 
 Reproduction that previously survived: final_verifier_report.json carries
 ``artifact_contract_gate: "BLOCKED"`` while the packaged artifact_contract_gate.json is PASS — two
@@ -82,12 +82,12 @@ class TestBlockingFieldsClear:
 
 
 class TestFvCommitReadinessView:
-    def test_auto_promotable_commit_view_blocks(self):
+    def test_auto_applicable_commit_view_blocks(self):
         # The FV's OWN commit-readiness view is a distinct field from the packaged commit gate's
-        # verdict; a pre-acceptance package must never claim it is auto-promotable.
-        for promotable in ("PASS", "COMMIT_READY", "READY"):
+        # verdict; a pre-acceptance package must never claim it may be applied automatically.
+        for applicable in ("PASS", "COMMIT_READY", "READY"):
             assert _ok(_gates("final_verifier_report.json",
-                              commit_execution_gate=promotable)) is False, promotable
+                              commit_execution_gate=applicable)) is False, applicable
 
     def test_not_ready_commit_view_passes(self):
         for not_ready in ("BLOCKED", "NEEDS_HUMAN_APPROVAL", "NEEDS_REPAIR"):

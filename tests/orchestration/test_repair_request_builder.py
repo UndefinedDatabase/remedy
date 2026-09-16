@@ -5,7 +5,7 @@ No real provider/model/network/subprocess.
 
 Remedy deliberately has no end-to-end flow test here any more: F275 T001 deleted the
 Provider Trust Gate and its `provider intake-repair` command, so the request → intake
-→ materialize → approve → do continue round trip the old test drove no longer exists
+→ materialize → approve → apply round trip the old test drove no longer exists
 (R-0868).
 """
 from __future__ import annotations
@@ -218,7 +218,7 @@ class TestArchitectureGuards:
         steps = "\n".join(r.next_steps)
         assert "provider intake-repair" not in steps
         assert "provider trust-show" not in steps
-        named = [c for c in ("remedy patch approve", "remedy do continue")
+        named = [c for c in ("remedy patch approve", "remedy patch apply")
                  if c in steps]
         assert named, "the surviving steps must still name at least one live command"
         for cmd in named:

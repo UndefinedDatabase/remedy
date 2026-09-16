@@ -253,92 +253,6 @@ class TestStaleEvidenceFlag:
         assert "not implemented" in proc.stderr.lower()
 
 
-class TestStarterDryRun:
-    """R-4323: Worker/Remedy starter --dry-run."""
-
-    STARTER = REPO_ROOT / "scripts" / "remedy_self_job_flow.sh"
-
-    @pytest.mark.skipif(
-        shutil.which("git") is None or shutil.which("bash") is None,
-        reason="git and bash required",
-    )
-    def test_dry_run_prints_commands(self, tmp_path: Path):
-        if not self.STARTER.exists():
-            pytest.skip("remedy_self_job_flow.sh not found")
-
-        goal = tmp_path / "goal.md"
-        goal.write_text("# Job: Test\n\n## Task 1\nDo something.\n\nAcceptance:\n- done\n")
-
-        proc = subprocess.run(
-            ["bash", str(self.STARTER),
-             "--goal-file", str(goal),
-             "--out", str(tmp_path / "evidence"),
-             "--allow-dirty", "--dry-run"],
-            cwd=str(REPO_ROOT),
-            capture_output=True, text=True, timeout=10,
-        )
-        assert proc.returncode == 0
-        assert "[dry-run]" in proc.stdout
-        assert "do job-flow" in proc.stdout
-        assert "make_review_zip" in proc.stdout
-
-    @pytest.mark.skipif(
-        shutil.which("git") is None or shutil.which("bash") is None,
-        reason="git and bash required",
-    )
-    def test_dry_run_with_timeout_sec(self, tmp_path: Path):
-        if not self.STARTER.exists():
-            pytest.skip("remedy_self_job_flow.sh not found")
-
-        goal = tmp_path / "goal.md"
-        goal.write_text("# Job: Test\n\n## Task 1\nDo something.\n\nAcceptance:\n- done\n")
-
-        proc = subprocess.run(
-            ["bash", str(self.STARTER),
-             "--goal-file", str(goal),
-             "--out", str(tmp_path / "evidence"),
-             "--timeout-sec", "900",
-             "--allow-dirty", "--dry-run"],
-            cwd=str(REPO_ROOT),
-            capture_output=True, text=True, timeout=10,
-        )
-        assert proc.returncode == 0
-        assert "--timeout-sec 900" in proc.stdout
-
-    @pytest.mark.skipif(
-        shutil.which("git") is None or shutil.which("bash") is None,
-        reason="git and bash required",
-    )
-    def test_missing_goal_file_fails(self, tmp_path: Path):
-        if not self.STARTER.exists():
-            pytest.skip("remedy_self_job_flow.sh not found")
-
-        proc = subprocess.run(
-            ["bash", str(self.STARTER),
-             "--goal-file", str(tmp_path / "nonexistent.md"),
-             "--allow-dirty"],
-            cwd=str(REPO_ROOT),
-            capture_output=True, text=True, timeout=10,
-        )
-        assert proc.returncode != 0
-
-    @pytest.mark.skipif(
-        shutil.which("git") is None or shutil.which("bash") is None,
-        reason="git and bash required",
-    )
-    def test_no_goal_file_shows_usage(self, tmp_path: Path):
-        if not self.STARTER.exists():
-            pytest.skip("remedy_self_job_flow.sh not found")
-
-        proc = subprocess.run(
-            ["bash", str(self.STARTER)],
-            cwd=str(REPO_ROOT),
-            capture_output=True, text=True, timeout=10,
-        )
-        assert proc.returncode != 0
-        assert "--goal-file" in proc.stderr
-
-
 class TestZipManifestContentVerification:
     """R-4326: Post-build verification checks manifest vs zip content."""
 
@@ -681,7 +595,7 @@ class TestAutoSelectLatestEvidence:
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
         assert "2 deprecated remedy-job-evidence-* dir(s)" in proc.stderr
         assert "--evidence-dir" in proc.stderr
-        assert "do job-evidence" in proc.stderr
+        assert "To index: 'job evidence'." in proc.stderr
 
     def test_missing_command_transcript_creates_zip_with_warning(self, tmp_path: Path):
         """Missing command_transcript.json → zip created, validation records it.
@@ -867,52 +781,6 @@ class TestFilenamePattern:
             pytest.skip("Could not create 2 zips")
         assert zips_created == sorted(zips_created), \
             "Zip filenames must be sortable chronologically"
-
-
-class TestPathSanitizerHardening:
-    """R-4336: Path sanitizer must cover /mnt/, .data/job_workspaces/, etc."""
-
-    def test_mnt_path_sanitized(self):
-        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
-        data = {"ref": "/mnt/data/project/src/main.py"}
-        result = _sanitize_shareable_paths(data)
-        assert "/mnt/" not in result["ref"]
-
-    def test_data_job_workspaces_sanitized(self):
-        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
-        data = {"path": "/mnt/storage/.data/job_workspaces/abc123/workspace"}
-        result = _sanitize_shareable_paths(data)
-        assert ".data/job_workspaces" not in result["path"]
-        assert "[workspace]" in result["path"]
-
-    def test_data_root_sanitized(self):
-        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
-        data = {"path": "/home/user/.data/runs"}
-        result = _sanitize_shareable_paths(data)
-        assert ".data/" not in result["path"]
-
-    def test_evidence_dir_outside_tmp_sanitized(self):
-        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
-        data = {"path": "/mnt/data/remedy-job-evidence-abc123/job_flow.json"}
-        result = _sanitize_shareable_paths(data)
-        assert "evidence/current/job_flow.json" == result["path"]
-
-    def test_no_private_paths_in_shareable(self):
-        from apps.cli.commands.do_cmd import _sanitize_shareable_paths
-        paths = [
-            "/tmp/remedy-job-evidence-abc/manifest.json",
-            "/home/alice/project/file.py",
-            "/Users/bob/code/file.py",
-            "/private/var/folders/abc/file.py",
-            "/mnt/data/project/file.py",
-            "/mnt/storage/.data/job_workspaces/abc/workspace",
-        ]
-        for p in paths:
-            result = _sanitize_shareable_paths({"ref": p})
-            for prefix in ["/tmp/", "/home/", "/Users/", "/private/",
-                           "/mnt/"]:
-                assert prefix not in result["ref"], \
-                    f"Path {p} leaked prefix {prefix}: {result['ref']}"
 
 
 # ---------------------------------------------------------------------------

@@ -20,7 +20,7 @@ from apps.cli.commands.decision import (
     _cmd_decision_resolve,
     parse_answer_options,
 )
-from apps.cli.commands.job import _cmd_job_assumptions
+from apps.cli.grouped import main
 from packages.orchestration.flight_plan import carry_intake_clarifications
 from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.schemas.models import FlightPlan
@@ -245,8 +245,17 @@ class TestWriteBackAndImmutability:
         assert "clarifications_resolved" not in fp
 
 
+def _show_assumptions(capsys, job_id: str):
+    """`job show <id> --full`: the assumptions section's envelope, and its text on stderr."""
+    main(["job", "show", job_id, "--full"])
+    shown = capsys.readouterr()
+    text = shown.err.split("--- Assumptions ---\n", 1)[1].split("\n\n--- ", 1)[0]
+    return json.loads(shown.out)["sections"]["assumptions"], text
+
+
 class TestAssumptionsCommand:
-    """T003 — `remedy job assumptions <id>` and the evidence copy."""
+    """T003 — the assumption log and its evidence copy, since F261 the ``assumptions``
+    section of `remedy job show <id> --full`."""
 
     def test_approval_writes_the_evidence_log(self, tmp_path, monkeypatch, capsys):
         from packages.orchestration.data_paths import job_evidence_export_dir
@@ -265,7 +274,8 @@ class TestAssumptionsCommand:
         assert "| q2 | Add auth? | no, leave auth untouched | default |" in log
         assert "Sources: 1 human, 1 default, 0 planner, 0 unresolved." in log
 
-    def test_command_prints_the_log(self, tmp_path, monkeypatch, capsys):
+    def test_the_section_holds_the_log(self, tmp_path, monkeypatch, capsys):
+        from packages.orchestration.data_paths import job_evidence_export_dir
         from packages.orchestration.pingpong_job import save_job_plan
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         job = _pending_job()
@@ -273,36 +283,45 @@ class TestAssumptionsCommand:
         _cmd_decision_resolve(str(job.job_id)[:8], "fp:approval", reason="approve")
         capsys.readouterr()
 
-        _cmd_job_assumptions(str(job.job_id)[:8])
+        section, text = _show_assumptions(capsys, str(job.job_id)[:8])
 
-        out = capsys.readouterr().out
-        assert "# Assumptions" in out
-        assert "| q1 | Which database? | keep SQLite | default |" in out
-        assert "Evidence copy:" in out
+        log_path = job_evidence_export_dir(str(job.job_id)) / "assumptions.md"
+        assert section["ok"] is True
+        assert "# Assumptions" in section["data"]["markdown"]
+        assert "| q1 | Which database? | keep SQLite | default |" in section["data"]["markdown"]
+        assert section["data"]["evidence_copy"] == str(log_path)
+        assert "# Assumptions" in text
+        assert "| q1 | Which database? | keep SQLite | default |" in text
+        assert f"Evidence copy: {log_path}" in text
 
-    def test_command_on_job_without_a_plan(self, tmp_path, monkeypatch, capsys):
+    def test_the_section_on_a_job_without_a_plan(self, tmp_path, monkeypatch, capsys):
+        from packages.orchestration.data_paths import job_evidence_export_dir
         from packages.orchestration.pingpong_job import save_job_plan
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         job = JobPlan(job_title="t")
         save_job_plan(job)
 
-        _cmd_job_assumptions(str(job.job_id)[:8])
+        section, text = _show_assumptions(capsys, str(job.job_id)[:8])
 
-        assert "No clarifications" in capsys.readouterr().out
+        assert "No clarifications" in section["data"]["markdown"]
+        assert "No clarifications" in text
+        # A read view writes nothing: no evidence copy is reported, and none appears.
+        assert section["data"]["evidence_copy"] is None
+        assert "Evidence copy:" not in text
+        assert not (job_evidence_export_dir(str(job.job_id)) / "assumptions.md").exists()
 
-    def test_command_unknown_job_exits_non_zero(self, tmp_path, monkeypatch):
+    def test_an_unknown_job_exits_non_zero(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         with pytest.raises(SystemExit) as exc:
-            _cmd_job_assumptions("deadbeef")
+            main(["job", "show", "deadbeef", "--full"])
         assert exc.value.code == 1
 
-    def test_command_registered_in_catalog(self):
-        from apps.cli.command_catalog import CATALOG
+    def test_the_view_is_a_section_of_a_read_only_command(self):
+        from apps.cli.command_catalog import get_command
+        from apps.cli.commands.job import _SHOW_SECTIONS
 
-        entry = [c for c in CATALOG if c.command_id == "job.assumptions"]
-        assert len(entry) == 1
-        assert entry[0].subcommand == "assumptions"
-        assert entry[0].action_class == "read_only"
+        assert "assumptions" in [name for name, _builder in _SHOW_SECTIONS]
+        assert get_command("job.show").action_class == "read_only"
 
 
 def _git_repo(tmp_path):

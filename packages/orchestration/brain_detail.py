@@ -314,7 +314,7 @@ def _detail_job(
     if pending:
         next_actions.append(f"remedy job resume {job_id_str}")
     next_actions.append(f"remedy brain trust {job_id_str}")
-    next_actions.append(f"remedy brain {job_id_str}")
+    next_actions.append(f"remedy brain graph {job_id_str}")
 
     return BrainNodeDetail(
         job_id=job_id_str,
@@ -618,7 +618,7 @@ def _detail_blocker(
 
     next_actions = [
         f"remedy job permit {job_id_str} {capability} allow",
-        f"remedy job permissions {job_id_str}",
+        f"remedy job show {job_id_str} --full",
     ]
 
     evidence = [
@@ -917,8 +917,8 @@ def _detail_context_coverage(
         ),
         affected_files=(),
         next_actions=(
-            f"remedy context {job_id_str[:8]}",
-            f"remedy brain {job_id_str[:8]}",
+            f"remedy brain context {job_id_str[:8]}",
+            f"remedy brain graph {job_id_str[:8]}",
             f"remedy brain trust {job_id_str[:8]}",
         ),
         redaction_notes=(
@@ -1112,7 +1112,8 @@ def _detail_run_contract(
         ),
         affected_files=(),
         next_actions=(
-            "Inspect with `remedy policy contract <job_id>` for full contract details.",
+            "Read the boundary as permissions and fences with "
+            "`remedy job show <job_id> --full --json`.",
         ),
         redaction_notes=("No sensitive data in run contract.",),
     )
@@ -1153,9 +1154,7 @@ def _detail_token_policy(
             f"expensive_step_count: {expensive_count}",
         ),
         affected_files=(),
-        next_actions=(
-            "Inspect with `remedy policy token <job_id>` for full policy details.",
-        ),
+        next_actions=(),
         redaction_notes=("No sensitive data in token policy.",),
     )
 
@@ -1232,7 +1231,7 @@ def _detail_autonomy_readiness(
         ),
         affected_files=(),
         next_actions=(
-            f"Inspect with `remedy readiness job {job_id_str[:8]}`.",
+            f"Inspect with `remedy mission readiness {job_id_str[:8]}`.",
         ),
         redaction_notes=("No sensitive data in readiness assessment.",),
     )
@@ -1406,9 +1405,7 @@ def _detail_git_status(
         connected_to=tuple(connected),
         evidence=tuple(evidence),
         affected_files=(),
-        next_actions=(
-            f"remedy repo status {job_id_str} --json",
-        ),
+        next_actions=(),
         redaction_notes=("No file content or diff text is rendered.",),
     )
 

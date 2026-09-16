@@ -107,14 +107,15 @@ class TestTopLevelHelp:
         assert rc == 0
         assert "remedy" in stdout.lower()
         for gid, gdef in GROUPS.items():
-            if gdef.user_facing:
+            if gdef.user_facing and not gdef.hidden:
                 assert gid in stdout, f"Top-level help missing user-facing group: {gid}"
 
     def test_all_commands_shows_all(self) -> None:
         stdout, _, rc = _capture_grouped(["--all-commands"])
         assert rc == 0
-        for gid in GROUPS:
-            assert gid in stdout, f"--all-commands missing group: {gid}"
+        for gid, gdef in GROUPS.items():
+            if not gdef.hidden:
+                assert gid in stdout, f"--all-commands missing group: {gid}"
 
     def test_no_old_flat_commands_in_help(self) -> None:
         stdout, _, _ = _capture_grouped([])
@@ -173,23 +174,6 @@ class TestGroupedExecution:
     def test_project_list(self) -> None:
         stdout, stderr, rc = _capture_grouped(["project", "list"])
         assert rc == 0, f"project list failed: {stderr}"
-
-    def test_policy_contract_json(self, tmp_path) -> None:
-        job = _make_job()
-        save_job_plan(job)
-        stdout, stderr, rc = _capture_grouped(["policy", "contract", str(job.job_id), "--json"])
-        assert rc == 0, f"policy contract --json failed: {stderr}"
-        data = json.loads(stdout)
-        assert data["scope"] == "job"
-        assert isinstance(data["autonomy_level"], int)
-
-    def test_policy_token_json(self, tmp_path) -> None:
-        job = _make_job()
-        save_job_plan(job)
-        stdout, stderr, rc = _capture_grouped(["policy", "token", str(job.job_id), "--json"])
-        assert rc == 0, f"policy token --json failed: {stderr}"
-        data = json.loads(stdout)
-        assert data["scope"] == "job"
 
     def test_brain_graph_json(self, tmp_path) -> None:
         job = _make_job()
@@ -262,14 +246,6 @@ class TestMainEntrypointDelegatesGroupDispatch:
         assert rc == 0, f"worker list --json via main failed: {stderr}"
         data = json.loads(stdout)
         assert data["version"] == 1
-
-    def test_policy_contract_json_via_main(self) -> None:
-        job = _make_job()
-        save_job_plan(job)
-        stdout, stderr, rc = _capture_main(["policy", "contract", str(job.job_id), "--json"])
-        assert rc == 0, f"policy contract --json via main failed: {stderr}"
-        data = json.loads(stdout)
-        assert data["scope"] == "job"
 
 
 # ---------------------------------------------------------------------------

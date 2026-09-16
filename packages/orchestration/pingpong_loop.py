@@ -175,8 +175,7 @@ class PingPongResult:
     reviewer_prompt_chars: int = 0
     repair_prompt_chars: int = 0
     context_chars: int = 0
-    # Run metadata for next_commands
-    original_repo_arg: str = ""
+    # Run metadata
     test_command: str = ""
     claude_cli_write_mode: str = "none"
     # Task input metadata
@@ -404,7 +403,7 @@ class FinalAdjudication:
     reason: str = ""
     tests_passed: bool | None = None
     open_findings: list[str] = field(default_factory=list)
-    promotion_allowed: bool = False
+    apply_allowed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -413,7 +412,7 @@ class FinalAdjudication:
             "reason": self.reason,
             "tests_passed": self.tests_passed,
             "open_findings": self.open_findings,
-            "promotion_allowed": self.promotion_allowed,
+            "apply_allowed": self.apply_allowed,
         }
 
 
@@ -436,7 +435,7 @@ def run_final_adjudication(
         adj.status = "blocked"
         adj.severity = "blocker"
         adj.reason = "target_mutation_detected"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
         return adj
 
     # review_inconsistent must never adjudicate as ready
@@ -444,21 +443,21 @@ def run_final_adjudication(
         adj.status = "needs_human_review"
         adj.severity = "high"
         adj.reason = "review_inconsistent"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
         return adj
 
     if tests_passed is False:
         adj.status = "not_ready"
         adj.severity = "high"
         adj.reason = "tests_failed"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
         return adj
 
     if not open_findings:
         adj.status = "ready"
         adj.severity = "none"
         adj.reason = "no_open_findings"
-        adj.promotion_allowed = True
+        adj.apply_allowed = True
         return adj
 
     # Has open findings — classify by severity
@@ -467,17 +466,17 @@ def run_final_adjudication(
         adj.status = "blocked"
         adj.severity = "blocker"
         adj.reason = "blocker_findings_remain"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
     elif "high" in severities or "critical" in severities:
         adj.status = "not_ready"
         adj.severity = "high"
         adj.reason = "repair_exhausted_with_open_findings"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
     else:
         adj.status = "needs_human_review"
         adj.severity = "medium"
         adj.reason = "repair_exhausted_with_minor_findings"
-        adj.promotion_allowed = False
+        adj.apply_allowed = False
 
     return adj
 
@@ -1087,7 +1086,7 @@ def compose_builder_prompt(
             "## REPAIR TASK — Fix Reviewer Findings\n",
             "This is a repair round. Fix ONLY the reviewer findings below.\n"
             "Do not make unrelated changes. Work only in staging.\n"
-            "Do not touch the target repo. Do not promote, commit, or push.\n",
+            "Do not touch the target repo. Do not apply changes to the target repository, commit, or push.\n",
         ]
         for f in findings:
             repair_parts.append(f"- [{f.severity}] {f.id}: {f.summary}")
@@ -2941,7 +2940,6 @@ def run_pingpong(
         reviewer_model=reviewer_model,
         max_rounds=max_rounds,
         started_at=datetime.now(timezone.utc).isoformat(),
-        original_repo_arg=repo_path,
         test_command=test_command,
         claude_cli_write_mode=claude_cli_write_mode,
         repair_rounds_allowed=repair_rounds,
@@ -4055,25 +4053,6 @@ def run_pingpong(
             result.safe_diff_files = diff_files
             result.safe_diff_truncated = diff_trunc
 
-        # --- Persist artifacts for promotion (before discard) ---
-        # Only persist when reviewer passed AND adjudication allows (or no adjudication needed)
-        # Defense-in-depth: also check final test_passed is not False
-        last_test = result.rounds[-1].test_passed if result.rounds else None
-        promotion_eligible = (
-            result.final_status == "staged_review_passed"
-            and not result.target_mutated
-            and last_test is not False
-            and (result.final_adjudication is None
-                 or result.final_adjudication.get("promotion_allowed", False))
-        )
-        if (result.staged_files
-                and staging.exists()
-                and promotion_eligible):
-            from packages.orchestration.pingpong_promote import persist_artifacts
-            run_dir = data_paths.run_dir(result.run_id)
-            run_dir.mkdir(parents=True, exist_ok=True)
-            persist_artifacts(run_dir, staging, original, result.staged_files)
-
         # F006 hand-off: persist the run's deterministic result.diff, then release
         # the physical worktree while KEEPING the result branch. Never a merge.
         # Same path for success, block, and any exception that reaches here.
@@ -4292,26 +4271,10 @@ def list_runs() -> list[dict[str, str]]:
 def _build_next_commands(result: PingPongResult) -> dict[str, Any]:
     """Build copy-paste next commands with actual run_id."""
     rid = result.run_id
-    repo = result.original_repo_arg or "."
     cmds: dict[str, Any] = {
-        "report": f"remedy do report {rid}",
-        "report_json": f"remedy do report {rid} --json",
-        "promote_dry_run": f"remedy do promote {rid} --repo {shlex.quote(repo)} --dry-run",
-        "promote_dry_run_json": f"remedy do promote {rid} --repo {shlex.quote(repo)} --dry-run --json",
-        "promote_approve": f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve",
-        "promote_approve_json": f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve --json",
+        "report": f"remedy run show {rid}",
+        "report_json": f"remedy run show {rid} --json",
     }
-    # Include promote with test command if one was used
-    if result.test_command:
-        tc = shlex.quote(result.test_command)
-        cmds["promote_approve_with_test"] = (
-            f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve"
-            f" --test-command {tc}"
-        )
-        cmds["promote_approve_with_test_json"] = (
-            f"remedy do promote {rid} --repo {shlex.quote(repo)} --approve"
-            f" --test-command {tc} --json"
-        )
 
     # Shell flow: complete copy-paste block with automatic RUN_ID
     flow_lines = [
@@ -4319,18 +4282,10 @@ def _build_next_commands(result: PingPongResult) -> dict[str, Any]:
         f'RUN_ID="{rid}"',
         "",
         "# 1. Review the run report",
-        "remedy do report $RUN_ID --json",
+        "remedy run show $RUN_ID --json",
         "",
-        "# 2. Dry-run promotion (no mutation)",
-        f"remedy do promote $RUN_ID --repo {shlex.quote(repo)} --dry-run --json",
-        "",
-        "# 3. Review dry-run output first. Then run the approve line:",
-        f"remedy do promote $RUN_ID --repo {shlex.quote(repo)} --approve"
-        + (f" --test-command {shlex.quote(result.test_command)}" if result.test_command else "")
-        + " --json",
-        "",
-        "# 4. Final report",
-        "remedy do report $RUN_ID",
+        "# 2. Final report",
+        "remedy run show $RUN_ID",
     ]
     cmds["shell_flow"] = "\n".join(flow_lines)
 
@@ -5060,8 +5015,8 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "staging_path": result.staging_path,
         "isolation_mode": result.isolation_mode,
         "worktree": _build_worktree_json(result),
-        "report_command": f"remedy do report {result.run_id}",
-        "report_json_command": f"remedy do report {result.run_id} --json",
+        "report_command": f"remedy run show {result.run_id}",
+        "report_json_command": f"remedy run show {result.run_id} --json",
         "report_path": report_path,
         "next_commands": _build_next_commands(result),
         "provider_evidence": _build_provider_evidence(result),
@@ -5190,13 +5145,13 @@ def summarize_pingpong(result: PingPongResult) -> str:
         if result.final_adjudication:
             adj = result.final_adjudication
             lines.append(f"Final adjudication: {adj['status']} — {adj['reason']}")
-            lines.append(f"Promotion: {'allowed' if adj['promotion_allowed'] else 'blocked'}")
+            lines.append(f"Apply: {'allowed' if adj['apply_allowed'] else 'blocked'}")
     elif repair_status == "stopped_on_test_failure":
         lines.append("Repair loop: stopped — tests failed, repair disabled")
         if result.final_adjudication:
             adj = result.final_adjudication
             lines.append(f"Final adjudication: {adj['status']} — {adj['reason']}")
-            lines.append(f"Promotion: {'allowed' if adj['promotion_allowed'] else 'blocked'}")
+            lines.append(f"Apply: {'allowed' if adj['apply_allowed'] else 'blocked'}")
     elif repair_status == "blocked_inconsistent_review":
         lines.append("Repair loop: blocked by inconsistent review")
     elif repair_status == "disabled":
@@ -5257,5 +5212,5 @@ def summarize_pingpong(result: PingPongResult) -> str:
     else:
         lines.append(f"\nResult: {result.final_status}")
 
-    lines.append(f"\nReport: remedy do report {result.run_id}")
+    lines.append(f"\nReport: remedy run show {result.run_id}")
     return "\n".join(lines)

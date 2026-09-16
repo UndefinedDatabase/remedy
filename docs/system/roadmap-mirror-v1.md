@@ -1,4 +1,4 @@
-# Roadmap Mirror & the `plan` CLI Group
+# Roadmap Mirror & the `roadmap` CLI Group
 
 > How Remedy READS its own roadmap. Built for F080 (T001–T003).
 > The roadmap itself — the target plan — lives in
@@ -62,23 +62,28 @@ and never fatal — a STATUS entry whose feature file is missing
 (`status_without_file`), a feature file absent from STATUS
 (`file_without_status`, i.e. not scheduled), and a dependency reference
 to an unknown id (`unknown_dependency`). They ride in the index and show
-up in `remedy plan status`.
+up in `remedy roadmap status`.
 
-## `remedy plan status` / `remedy plan next`
+## `remedy roadmap status` / `remedy roadmap next`
 
 Both verbs are read-only. They **propose and never start**: no job, no
 run, no markdown write — the only thing they write is the generated
 index under the data root.
 
+`roadmap` is a hidden group (DECISION amend0905-vocab D4): the roadmap is
+Remedy's own build plan, never a user concept, so neither `remedy --help`
+nor `remedy --all-commands` lists it. It stays callable, and
+`remedy roadmap --help` lists both verbs.
+
 ```bash
-remedy plan status [--repo <path>] [--json]
-remedy plan next   [--repo <path>] [--json]
+remedy roadmap status [--repo <path>] [--json]
+remedy roadmap next   [--repo <path>] [--json]
 ```
 
 Both follow STATUS **Rule A5**: an in-progress `[~]` line is the active
 feature and is reported as such; otherwise the first `[ ]` line is next.
 
-`plan status` — the active feature, its blockers with their states, the
+`roadmap status` — the active feature, its blockers with their states, the
 milestone it serves, the roadmap size, the consistency report, and where
 the mirror was written:
 
@@ -94,7 +99,7 @@ Consistency: no findings
 Mirror: <data_root>/roadmap/index.json (generated, never committed)
 ```
 
-`plan next` — the proposal alone, with the file to read and the STATUS
+`roadmap next` — the proposal alone, with the file to read and the STATUS
 line it came from:
 
 ```
@@ -136,7 +141,7 @@ parser trusts.
 |---|---|
 | `packages/orchestration/roadmap_index.py` | parser, grammar validation, consistency checks, index writer |
 | `packages/orchestration/feature_mission_adapter.py` | feature file → prepared mission draft |
-| `apps/cli/commands/plan_cmd.py` | the two CLI verbs |
+| `apps/cli/commands/roadmap_cmd.py` | the two CLI verbs |
 | `tests/orchestration/test_roadmap_index.py` | this repo as fixture + one fixture per violation class |
 | `tests/orchestration/test_feature_mission_adapter.py` | mapping, real-file end to end, no side effects |
 | `tests/cli/test_plan_cli.py` | CLI surface + the no-side-effects assertions |

@@ -11,6 +11,7 @@ Public API:
     run_job(job_id, ...) -> JobPlan
     export_job_report(job) -> dict
     format_job_report_text(job) -> str
+    collect_blocked_task_findings(job, full=False) -> list[dict]
     load_job_plan(job_id) -> JobPlan | None
 """
 
@@ -107,14 +108,14 @@ _UNSAFE_DIRS = frozenset({
 
 @dataclass
 class AppliedFileProof:
-    """Per-file baseline and final hash proof for promotion safety."""
+    """Per-file baseline and final hash proof for apply safety."""
     path: str = ""
     existed_before_job: bool = False
     baseline_sha256: str = ""
     final_workspace_sha256: str = ""
     task_id: str = ""
     run_id: str = ""
-    # F006: the reviewed git file mode. Promotion must reproduce the whole
+    # F006: the reviewed git file mode. An apply must reproduce the whole
     # reviewed change, executable bit included — never just the bytes.
     baseline_mode: str = ""      # "" when the file did not exist before the job
     final_mode: str = ""         # "100644" | "100755"
@@ -1608,7 +1609,7 @@ def _verify_in_place_apply(
 
         manifest.applied_files.append(rel_path)
         existed_before, baseline_hash = job_baselines[rel_path]
-        # The reviewed change includes the git file mode. A promotion that copies
+        # The reviewed change includes the git file mode. An apply that copies
         # only the bytes would silently drop a chmod, so the mode is proven here.
         baseline_mode = (
             W.mode_at(handle, initial_tree, rel_path) if initial_tree else ""
@@ -3163,6 +3164,56 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
     }
 
 
+#: How many of one blocked task's last-round findings `job show` prints; `--full`
+#: prints every one (R-0806).
+BLOCKED_TASK_FINDINGS_CAP = 10
+
+
+def collect_blocked_task_findings(job: JobPlan, *, full: bool = False) -> list[dict[str, Any]]:
+    """The reviewer findings of the LAST round of every blocked task (R-0806).
+
+    One entry per task whose status is ``blocked``, in task order. Each finding is
+    copied verbatim from the task's run record (``id``, ``severity``, ``file``,
+    ``summary``), at most ``BLOCKED_TASK_FINDINGS_CAP`` of them unless ``full``.
+    This feeds a read view, so it never raises: a task with no run id, or whose run
+    record is missing or unreadable, reports no findings.
+    """
+    from packages.orchestration.pingpong_loop import load_run
+
+    entries: list[dict[str, Any]] = []
+    for task in job.tasks:
+        if task.status != TASK_BLOCKED:
+            continue
+        round_number = None
+        findings: list[dict[str, Any]] = []
+        try:
+            run = load_run(task.run_id) if task.run_id else None
+        except (OSError, ValueError):
+            run = None
+        rounds = run.get("rounds") if isinstance(run, dict) else None
+        if isinstance(rounds, list) and rounds and isinstance(rounds[-1], dict):
+            last = rounds[-1]
+            round_number = last.get("round")
+            reviewer = last.get("reviewer")
+            recorded = reviewer.get("findings") if isinstance(reviewer, dict) else None
+            if isinstance(recorded, list):
+                findings = [
+                    {key: finding.get(key, "") for key in ("id", "severity", "file", "summary")}
+                    for finding in recorded
+                    if isinstance(finding, dict)
+                ]
+        shown = findings if full else findings[:BLOCKED_TASK_FINDINGS_CAP]
+        entries.append({
+            "task_id": task.task_id,
+            "run_id": task.run_id,
+            "round": round_number,
+            "findings": shown,
+            "findings_total": len(findings),
+            "findings_omitted": len(findings) - len(shown),
+        })
+    return entries
+
+
 def format_job_report_text(job: JobPlan) -> str:
     """Format a human-readable job report."""
     lines = [
@@ -3254,16 +3305,16 @@ def _suggest_next_command(job: JobPlan) -> str:
     be used.
     """
     if job.state == JOB_PLANNED:
-        return f"remedy do job-run {job.job_id}"
+        return f"remedy job run {job.job_id}"
     if job.state == JOB_PAUSED:
-        return f"remedy do job-run {job.job_id}"
+        return f"remedy job run {job.job_id}"
     if job.state == JOB_COMPLETED:
-        return f"remedy do job-promote {job.job_id} --repo . --dry-run"
+        return f"remedy job apply {job.job_id} --repo . --dry-run"
     if job.state == JOB_BLOCKED:
-        return f"remedy do job-report {job.job_id}"
+        return f"remedy job show {job.job_id} --full"
     pending = [t for t in job.tasks if t.status == TASK_PENDING]
     if pending:
-        return f"remedy do job-run {job.job_id}"
+        return f"remedy job run {job.job_id}"
     return ""
 
 
@@ -3784,7 +3835,7 @@ def _write_run_manifest_record(job: JobPlan, *, status: str, episode_id: str,
 def _task_stream_dir(job_id: str, task_id: str):
     """Return the per-task F004 raw stream evidence directory (hidden data dir).
 
-    Streams land beside the job's persisted evidence so `job-evidence` picks them
+    Streams land beside the job's persisted evidence so `job evidence` picks them
     up as ``task_runs/<task>/`` artifacts without polluting the repository.
 
     ``data_paths`` owns the evidence root (DECISION F260 D1); only the

@@ -1,6 +1,6 @@
 """Runtime CLI tests for Real Test Execution + Snapshot/Rollback Proof v1 (Step 1887/1895).
 
-Subprocess tests. Read result/list/integrity + record snapshot/rollback proofs. No execution of the
+Subprocess tests. Read result/list/integrity + record snapshot proofs. No execution of the
 real suite here. Safe JSON, safe errors, no tracebacks, honest restore flags.
 """
 from __future__ import annotations
@@ -39,18 +39,6 @@ def test_snapshot_create_show(env):
     assert d["restore_available"] is False and "Traceback" not in r.stdout
     r2 = run_grouped_cli(["snapshot", "show", d["snapshot_id"], "--json"], env)
     assert json.loads(r2.stdout)["snapshot_id"] == d["snapshot_id"]
-
-
-def test_rollback_proof_honest(env):
-    jid = _job(env)
-    sid = json.loads(run_grouped_cli(["snapshot", "create", jid, "--json"], env).stdout)["snapshot_id"]
-    r = run_grouped_cli(["rollback", "proof", jid, "--snapshot-id", sid, "--json"], env)
-    assert r.returncode == 0, r.stderr
-    d = json.loads(r.stdout)
-    assert d["restore_available"] is False and d["restore_tested"] is False
-    assert d["limitations"]
-    r2 = run_grouped_cli(["rollback", "show", d["rollback_proof_id"], "--json"], env)
-    assert json.loads(r2.stdout)["rollback_proof_id"] == d["rollback_proof_id"]
 
 
 def test_test_list_empty(env):
@@ -100,8 +88,6 @@ def test_invalid_ids(env):
     assert r1.returncode == 1 and "Traceback" not in r1.stderr
     r2 = run_grouped_cli(["snapshot", "show", "nope", "--json"], env)
     assert r2.returncode == 1
-    r3 = run_grouped_cli(["rollback", "show", "nope", "--json"], env)
-    assert r3.returncode == 1
 
 
 def test_json_purity(env):

@@ -176,14 +176,6 @@ class TestCliHelpIncludesHappyPath:
             assert "worker" in output
             assert "doctor" in output
 
-    def test_repo_group_includes_commit_readiness(self):
-        from apps.cli.grouped import main as grouped_main
-        with patch("builtins.print") as mock_print:
-            grouped_main(["repo", "--help"])
-            output = str(mock_print.call_args[0][0])
-            assert "commit-readiness" in output
-            assert "read-only" in output.lower() or "does not commit" in output.lower()
-
     def test_no_flat_commands_in_help(self):
         from apps.cli.grouped import main as grouped_main
         with patch("builtins.print") as mock_print:
@@ -203,12 +195,6 @@ class TestCliHelpIncludesHappyPath:
     def test_main_py_under_120_lines(self):
         content = Path("apps/cli/main.py").read_text()
         assert len(content.splitlines()) <= 120
-
-    def test_commit_readiness_read_only_documented(self):
-        """Repo group description mentions read-only / does not commit."""
-        from apps.cli.command_catalog import GROUPS
-        desc = GROUPS["repo"].description.lower()
-        assert "read-only" in desc or "does not commit" in desc
 
 
 

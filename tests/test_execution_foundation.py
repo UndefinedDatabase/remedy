@@ -7,7 +7,7 @@ Coverage:
   - Protocol interfaces exist and are runtime-checkable
   - R-0001 fix: execution safety guard uses raise, not assert
   - Run-log event metadata schemas
-  - CLI command output (run-contract, token-policy, workers)
+  - CLI command output (workers)
   - Brain node metadata alignment with run-log schemas
   - Docs drift detection
 """
@@ -17,8 +17,6 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-
-import pytest
 
 from packages.orchestration.brain_detail import (
     build_brain_node_detail,
@@ -233,83 +231,6 @@ class TestBrainNodeMetadataAlignment:
 # ---------------------------------------------------------------------------
 # CLI command output tests (monkeypatch)
 # ---------------------------------------------------------------------------
-
-
-class TestCLIRunContract:
-    def test_json_output_is_pure_json(self, tmp_path, monkeypatch, capsys) -> None:
-        job = _make_job()
-        save_job_plan(job)
-        monkeypatch.setattr(sys, "argv", [
-            "remedy", "policy", "contract", str(job.job_id), "--json",
-        ])
-        from apps.cli.main import main
-        with pytest.raises(SystemExit, match="0|None") if False else _no_exit(monkeypatch):
-            main()
-        out = capsys.readouterr().out.strip()
-        data = json.loads(out)
-        assert isinstance(data, dict)
-        for key in ("autonomy_level", "scope", "version", "job_id", "allowed_actions", "denied_actions"):
-            assert key in data, f"missing key: {key}"
-        assert isinstance(data["autonomy_level"], int)
-        assert data["scope"] == "job"
-
-    def test_json_has_no_secret_leaks(self, tmp_path, monkeypatch, capsys) -> None:
-        job = _make_job()
-        save_job_plan(job)
-        monkeypatch.setattr(sys, "argv", [
-            "remedy", "policy", "contract", str(job.job_id), "--json",
-        ])
-        from apps.cli.main import main
-        with _no_exit(monkeypatch):
-            main()
-        raw = capsys.readouterr().out.lower()
-        for bad in ("sk-", "ghp_", "password=", "begin private key"):
-            assert bad not in raw, f"run-contract JSON leaks: {bad}"
-
-
-class TestCLITokenPolicy:
-    def test_json_output_is_pure_json(self, tmp_path, monkeypatch, capsys) -> None:
-        job = _make_job()
-        save_job_plan(job)
-        monkeypatch.setattr(sys, "argv", [
-            "remedy", "policy", "token", str(job.job_id), "--json",
-        ])
-        from apps.cli.main import main
-        with _no_exit(monkeypatch):
-            main()
-        out = capsys.readouterr().out.strip()
-        data = json.loads(out)
-        for key in ("scope", "version", "zero_token_steps", "forbidden_context", "budget"):
-            assert key in data, f"missing key: {key}"
-        assert data["scope"] == "job"
-
-    def test_json_has_no_secret_leaks(self, tmp_path, monkeypatch, capsys) -> None:
-        job = _make_job()
-        save_job_plan(job)
-        monkeypatch.setattr(sys, "argv", [
-            "remedy", "policy", "token", str(job.job_id), "--json",
-        ])
-        from apps.cli.main import main
-        with _no_exit(monkeypatch):
-            main()
-        raw = capsys.readouterr().out.lower()
-        for bad in ("sk-", "ghp_", "password=", "begin private key"):
-            assert bad not in raw, f"token-policy JSON leaks: {bad}"
-
-    def test_category_names_allowed_in_output(self, tmp_path, monkeypatch, capsys) -> None:
-        """Category names like 'api_keys' are expected in forbidden_context — not leaks."""
-        job = _make_job()
-        save_job_plan(job)
-        monkeypatch.setattr(sys, "argv", [
-            "remedy", "policy", "token", str(job.job_id), "--json",
-        ])
-        from apps.cli.main import main
-        with _no_exit(monkeypatch):
-            main()
-        data = json.loads(capsys.readouterr().out)
-        fc = data["forbidden_context"]
-        assert "api_keys" in fc
-        assert "environment_secrets" in fc
 
 
 class TestCLIWorkers:

@@ -788,9 +788,7 @@ function buildCmdSuggestions(d){
   if(d.node_type==='stop_reason'||d.node_type==='permission_blocker')
     cmds.push({label:'Blockers',cmd:'remedy blocker list '+jid});
   if(d.node_type==='autonomy_readiness')
-    cmds.push({label:'Readiness',cmd:'remedy readiness job '+jid});
-  cmds.push({label:'Dashboard',cmd:'remedy dashboard job '+jid});
-  cmds.push({label:'Guide',cmd:'remedy guide job '+jid});
+    cmds.push({label:'Readiness',cmd:'remedy mission readiness '+jid});
   return cmds;
 }
 window.pick=function(nodeId){

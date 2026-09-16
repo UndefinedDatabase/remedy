@@ -640,7 +640,7 @@ def execute_test_run(
         result.status = "blocked"
         result.stop_reason = "contract_invalid"
         result.safe_summary = "Run contract failed validation."
-        result.next_safe_action = f"remedy contract inspect {job.job_id} --json"
+        result.next_safe_action = f"remedy job show {job.job_id} --full --json"
         return result
 
     # ── Gate 5: Load usage ───────────────────────────────────────────────────
@@ -654,10 +654,6 @@ def execute_test_run(
         result.stop_reason = f"contract_{decision.status}"
         result.safe_summary = decision.reason
         result.next_safe_action = decision.next_safe_action
-        if decision.status == "exhausted" and "max_test_runs" in decision.reason:
-            result.contract_guidance = (
-                f"remedy contract set {job.job_id} max_test_runs <n>"
-            )
         _emit(data_dir, job_id_parsed, "test_run_blocked", {
             "test_run_id": test_run_id,
             "contract_id": contract.contract_id,
@@ -785,7 +781,6 @@ def execute_test_run(
             result.status = "blocked"
             result.stop_reason = "no_runtime_remaining"
             result.safe_summary = "No runtime budget remaining in contract."
-            result.next_safe_action = f"remedy contract set {job.job_id} max_runtime_seconds <n>"
             return result
 
         # ── Gate 9: Execute ──────────────────────────────────────────────────
@@ -853,8 +848,10 @@ def execute_test_run(
 
         # ── Guidance ─────────────────────────────────────────────────────────
         if status in ("failed", "timeout"):
+            # F261 round 22 deleted the `repair` group: the failure artifact is still
+            # written, and `job show --full` is what reads it back.
             result.next_safe_action = (
-                f"remedy repair start {job.job_id} {result.failure_artifact_id} --json"
+                f"remedy job show {job.job_id} --full --json"
                 if result.failure_artifact_id
                 else f"remedy job show {job.job_id} --json"
             )

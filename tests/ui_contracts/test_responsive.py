@@ -338,42 +338,14 @@ class TestGuidanceRail:
             assert c.severity in ("high", "medium", "low", "info")
             assert c.command
 
-    def test_export_guidance_json(self):
-        from packages.orchestration.guidance import build_guidance_cards, export_guidance_json
-        job = _make_job_s74()
-        cards = build_guidance_cards(job, [])
-        j = export_guidance_json(job, cards)
-        assert j["version"] == 1
-        assert j["scope"] == "job"
-        assert "cards" in j
-        assert "summary" in j
-        assert "recommended_next_action" in j
-        assert "job_id" in j
-
-    def test_guidance_json_card_schema(self):
-        from packages.orchestration.guidance import build_guidance_cards, export_guidance_json
-        job = _make_job_s74()
-        cards = build_guidance_cards(job, [])
-        j = export_guidance_json(job, cards)
-        for card in j["cards"]:
-            for key in ("id", "title", "severity", "why_it_matters",
-                        "safe_next_action", "command", "related_node_type"):
-                assert key in card, f"missing key: {key}"
-
-    def test_summarize_guidance(self):
-        from packages.orchestration.guidance import build_guidance_cards, summarize_guidance
-        job = _make_job_s74()
-        cards = build_guidance_cards(job, [])
-        text = summarize_guidance(job, cards)
-        assert "Guidance" in text
-
     def test_guidance_no_raw_leaks(self):
-        from packages.orchestration.guidance import build_guidance_cards, export_guidance_json
+        from dataclasses import asdict
+
+        from packages.orchestration.guidance import build_guidance_cards
         from packages.orchestration.redaction_patterns import find_forbidden_surface_tokens
         job = _make_job_s74()
         cards = build_guidance_cards(job, [])
-        j = export_guidance_json(job, cards)
-        text = json.dumps(j)
+        text = json.dumps([asdict(c) for c in cards])
         findings = find_forbidden_surface_tokens(text)
         assert findings == []
 
@@ -510,12 +482,10 @@ class TestViewerPreview:
         assert get_command("brain.open") is not None
         assert get_command("brain.viewer-path") is not None
         assert get_command("brain.export-viewer") is not None
-        assert get_command("guide.job") is not None
 
-    def test_guide_handler_registered(self):
+    def test_viewer_handlers_registered(self):
         from apps.cli.commands import collect_all_handlers
         handlers = collect_all_handlers()
-        assert "guide.job" in handlers
         assert "brain.open" in handlers
         assert "brain.viewer-path" in handlers
         assert "brain.export-viewer" in handlers

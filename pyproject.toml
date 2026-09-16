@@ -119,7 +119,6 @@ module = [
     "packages.providers.ollama_planner.provider",
     "apps.cli.command_catalog",
     "apps.cli.grouped",
-    "apps.cli.commands.contract_cmd",
     "apps.cli.commands.job",
     "apps.cli.commands.repair_cmd",
     "apps.cli.commands.snapshot_cmds",

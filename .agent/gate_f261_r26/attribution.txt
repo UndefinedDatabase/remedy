@@ -1,0 +1,7 @@
+BRANCH-ONLY tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift::test_a_mutated_workspace_shows_blocking_drift
+  reading in the branch run: AssertionError at tests/cli/test_job_rerun_workspace_identity.py:96, diff_manifests(ref, clean)['blocking'] held one item, category remedy_code, field remedy_worktree_digest.
+  evidence: re-run ALONE, serially, three times in the primary checkout at 1b03919a with `python3 -m pytest -q -rfE tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift::test_a_mutated_workspace_shows_blocking_drift` (PYTHONPATH, REMEDY_PROJECT, REMEDY_DATA_DIR removed):
+    run 1: exit 0, 1 passed in 1.73s
+    run 2: exit 0, 1 passed in 1.41s
+    run 3: exit 0, 1 passed in 1.71s
+  class: FLAKY (all three solo runs pass); not a blocker.

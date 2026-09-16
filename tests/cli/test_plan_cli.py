@@ -1,4 +1,4 @@
-"""CLI tests: `remedy plan status` and `remedy plan next` (F080 T001).
+"""CLI tests: `remedy roadmap status` and `remedy roadmap next` (F080 T001), the hidden group.
 
 The surface, not the parser: the parser's own behaviour is proven in
 tests/orchestration/test_roadmap_index.py. What matters here is what an
@@ -96,30 +96,30 @@ def _snapshot(root: Path) -> dict[str, tuple[int, float]]:
 
 
 # ---------------------------------------------------------------------------
-# plan next — the proposal
+# roadmap next — the proposal
 # ---------------------------------------------------------------------------
 
 
-class TestPlanNext:
+class TestRoadmapNext:
     def test_names_first_unchecked_feature(self, fixture_repo):
         repo, data_root = fixture_repo
-        out = _run(["plan", "next", "--repo", str(repo)], data_root).stdout
+        out = _run(["roadmap", "next", "--repo", str(repo)], data_root).stdout
         assert "F002 — Second feature" in out
         assert "docs/roadmap/features/T0_F002.md" in out
 
     def test_says_it_started_nothing(self, fixture_repo):
         repo, data_root = fixture_repo
-        out = _run(["plan", "next", "--repo", str(repo)], data_root).stdout
+        out = _run(["roadmap", "next", "--repo", str(repo)], data_root).stdout
         assert "Proposal only — nothing was started." in out
 
     def test_reports_the_status_line(self, fixture_repo):
         repo, data_root = fixture_repo
-        out = _run(["plan", "next", "--repo", str(repo)], data_root).stdout
+        out = _run(["roadmap", "next", "--repo", str(repo)], data_root).stdout
         assert "docs/roadmap/STATUS.md:8" in out
 
     def test_json_shape(self, fixture_repo):
         repo, data_root = fixture_repo
-        payload = json.loads(_run(["plan", "next", "--repo", str(repo), "--json"], data_root).stdout)
+        payload = json.loads(_run(["roadmap", "next", "--repo", str(repo), "--json"], data_root).stdout)
         assert payload["reason"] == "next_unchecked"
         assert payload["feature"]["id"] == "F002"
         assert payload["file"] == "docs/roadmap/features/T0_F002.md"
@@ -131,7 +131,7 @@ class TestPlanNext:
         status = repo / "docs/roadmap/STATUS.md"
         status.write_text(status.read_text(encoding="utf-8").replace(
             "- [ ] F003", "- [~] F003"), encoding="utf-8")
-        payload = json.loads(_run(["plan", "next", "--repo", str(repo), "--json"], data_root).stdout)
+        payload = json.loads(_run(["roadmap", "next", "--repo", str(repo), "--json"], data_root).stdout)
         assert payload["reason"] == "in_progress"
         assert payload["feature"]["id"] == "F003"
 
@@ -140,19 +140,19 @@ class TestPlanNext:
         status = repo / "docs/roadmap/STATUS.md"
         status.write_text(status.read_text(encoding="utf-8").replace("- [ ] ", "- [x] "),
                           encoding="utf-8")
-        out = _run(["plan", "next", "--repo", str(repo)], data_root).stdout
+        out = _run(["roadmap", "next", "--repo", str(repo)], data_root).stdout
         assert "No open feature" in out
 
 
 # ---------------------------------------------------------------------------
-# plan status — the active feature, its blockers, its milestone
+# roadmap status — the active feature, its blockers, its milestone
 # ---------------------------------------------------------------------------
 
 
-class TestPlanStatus:
+class TestRoadmapStatus:
     def test_shows_feature_blockers_and_milestone(self, fixture_repo):
         repo, data_root = fixture_repo
-        out = _run(["plan", "status", "--repo", str(repo)], data_root).stdout
+        out = _run(["roadmap", "status", "--repo", str(repo)], data_root).stdout
         assert "F002 — Second feature" in out
         assert "F001 — First feature" in out
         assert "[done]" in out
@@ -160,7 +160,7 @@ class TestPlanStatus:
 
     def test_reports_roadmap_size(self, fixture_repo):
         repo, data_root = fixture_repo
-        out = _run(["plan", "status", "--repo", str(repo)], data_root).stdout
+        out = _run(["roadmap", "status", "--repo", str(repo)], data_root).stdout
         assert "Roadmap: 3 features · 3 scheduled in STATUS" in out
 
     def test_active_feature_also_shows_what_is_next(self, fixture_repo):
@@ -168,13 +168,13 @@ class TestPlanStatus:
         status = repo / "docs/roadmap/STATUS.md"
         status.write_text(status.read_text(encoding="utf-8").replace(
             "- [ ] F002", "- [~] F002"), encoding="utf-8")
-        out = _run(["plan", "status", "--repo", str(repo)], data_root).stdout
+        out = _run(["roadmap", "status", "--repo", str(repo)], data_root).stdout
         assert "Active: F002 — Second feature" in out
         assert "Next unchecked: F003 — Third feature" in out
 
     def test_json_shape(self, fixture_repo):
         repo, data_root = fixture_repo
-        payload = json.loads(_run(["plan", "status", "--repo", str(repo), "--json"], data_root).stdout)
+        payload = json.loads(_run(["roadmap", "status", "--repo", str(repo), "--json"], data_root).stdout)
         assert payload["feature"]["id"] == "F002"
         assert [b["id"] for b in payload["blockers"]] == ["F001"]
         assert payload["next_unchecked"]["id"] == "F002"
@@ -192,7 +192,7 @@ class TestGrammarErrors:
     def test_broken_feature_file_exits_2_with_file_and_line(self, fixture_repo):
         repo, data_root = fixture_repo
         (repo / "docs/roadmap/features/T0_F003.md").write_text("Third feature\n", encoding="utf-8")
-        proc = _run(["plan", "next", "--repo", str(repo)], data_root, expect_ok=False)
+        proc = _run(["roadmap", "next", "--repo", str(repo)], data_root, expect_ok=False)
         assert proc.returncode == 2
         assert "docs/roadmap/features/T0_F003.md:1: missing title line" in proc.stderr
 
@@ -201,7 +201,7 @@ class TestGrammarErrors:
         status = repo / "docs/roadmap/STATUS.md"
         status.write_text(status.read_text(encoding="utf-8").replace("- [ ] F003", "- [?] F003"),
                           encoding="utf-8")
-        proc = _run(["plan", "status", "--repo", str(repo)], data_root, expect_ok=False)
+        proc = _run(["roadmap", "status", "--repo", str(repo)], data_root, expect_ok=False)
         assert proc.returncode == 2
         assert "docs/roadmap/STATUS.md:9: unknown status glyph '?'" in proc.stderr
 
@@ -216,36 +216,36 @@ class TestNoSideEffects:
         """One-way mirror: the roadmap markdown is left byte-identical."""
         repo, data_root = fixture_repo
         before = _snapshot(repo)
-        _run(["plan", "status", "--repo", str(repo)], data_root)
-        _run(["plan", "next", "--repo", str(repo)], data_root)
+        _run(["roadmap", "status", "--repo", str(repo)], data_root)
+        _run(["roadmap", "next", "--repo", str(repo)], data_root)
         assert _snapshot(repo) == before
 
     def test_only_the_index_is_written_under_the_data_root(self, fixture_repo):
         repo, data_root = fixture_repo
-        _run(["plan", "status", "--repo", str(repo)], data_root)
+        _run(["roadmap", "status", "--repo", str(repo)], data_root)
         written = sorted(str(p.relative_to(data_root)) for p in data_root.rglob("*") if p.is_file())
         assert written == ["roadmap/index.json"]
 
     def test_no_job_is_created(self, fixture_repo):
         repo, data_root = fixture_repo
-        _run(["plan", "next", "--repo", str(repo)], data_root)
-        _run(["plan", "status", "--repo", str(repo)], data_root)
+        _run(["roadmap", "next", "--repo", str(repo)], data_root)
+        _run(["roadmap", "status", "--repo", str(repo)], data_root)
         assert not (data_root / "jobs").exists()
         assert not (data_root / "runs").exists()
 
     def test_index_is_rebuilt_on_every_read(self, fixture_repo):
         """No staleness state: an edited STATUS shows up without any refresh verb."""
         repo, data_root = fixture_repo
-        _run(["plan", "next", "--repo", str(repo)], data_root)
+        _run(["roadmap", "next", "--repo", str(repo)], data_root)
         status = repo / "docs/roadmap/STATUS.md"
         status.write_text(status.read_text(encoding="utf-8").replace("- [ ] F002", "- [x] F002"),
                           encoding="utf-8")
-        payload = json.loads(_run(["plan", "next", "--repo", str(repo), "--json"], data_root).stdout)
+        payload = json.loads(_run(["roadmap", "next", "--repo", str(repo), "--json"], data_root).stdout)
         assert payload["feature"]["id"] == "F003"
 
     def test_index_file_is_outside_the_repo(self, fixture_repo):
         repo, data_root = fixture_repo
-        payload = json.loads(_run(["plan", "next", "--repo", str(repo), "--json"], data_root).stdout)
+        payload = json.loads(_run(["roadmap", "next", "--repo", str(repo), "--json"], data_root).stdout)
         assert payload["index_file"].startswith(str(data_root))
 
 
@@ -257,12 +257,18 @@ class TestNoSideEffects:
 class TestCatalogRegistration:
     def test_group_and_commands_registered(self):
         from apps.cli.command_catalog import GROUPS, get_commands_for_group
-        assert "plan" in GROUPS
-        assert {c.subcommand for c in get_commands_for_group("plan")} == {"status", "next"}
+        assert "roadmap" in GROUPS
+        assert {c.subcommand for c in get_commands_for_group("roadmap")} == {"status", "next"}
+
+    def test_the_group_is_hidden(self):
+        """DECISION amend0905-vocab D4: in no help at all, and callable."""
+        from apps.cli.command_catalog import GROUPS
+        assert GROUPS["roadmap"].hidden is True
+        assert GROUPS["roadmap"].user_facing is False
 
     def test_commands_are_read_only(self):
         from apps.cli.command_catalog import get_commands_for_group
-        for command in get_commands_for_group("plan"):
+        for command in get_commands_for_group("roadmap"):
             assert command.action_class == "read_only"
             assert command.may_mutate_repo is False
             assert command.may_execute_commands is False
@@ -270,10 +276,22 @@ class TestCatalogRegistration:
     def test_handlers_exist(self):
         from apps.cli.commands import collect_all_handlers
         handlers = collect_all_handlers()
-        assert "plan.status" in handlers
-        assert "plan.next" in handlers
+        assert "roadmap.status" in handlers
+        assert "roadmap.next" in handlers
 
     def test_group_help_lists_both_verbs(self, tmp_path):
-        proc = _run(["plan", "--help"], tmp_path)
+        proc = _run(["roadmap", "--help"], tmp_path)
         assert "status" in proc.stdout
         assert "next" in proc.stdout
+
+    def test_neither_root_help_lists_the_group(self, tmp_path):
+        for argv in (["--help"], ["--all-commands"]):
+            out = _run(argv, tmp_path).stdout
+            assert "Commands" in out
+            assert "roadmap" not in out, argv
+
+    def test_the_old_group_word_is_an_unknown_command(self, tmp_path):
+        """No alias (DECISION D-B of T2_F261.md)."""
+        proc = _run(["plan", "status"], tmp_path, expect_ok=False)
+        assert proc.returncode == 2
+        assert "Unknown command 'plan'" in proc.stderr

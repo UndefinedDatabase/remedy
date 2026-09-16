@@ -1,8 +1,16 @@
-# Worker Guide
+# Worker Guide (queue and run commands deleted 2026-09-16)
 
-## What The Worker Does
+> **Status (2026-09-16):** F261 round 23 deleted the queue words of the `job` group — `enqueue`,
+> `pause`, `cancel` and `resume-queue` — and the `run` word of the `worker` group (DECISION
+> amend0905-vocab D4 keeps `worker` as `list`, `show`, `resources`, `unload`, `status` and
+> `doctor`). Nothing adds a job to the local queue or processes one from it any more. A job is run
+> with `remedy job run <job_id>` and stopped at its next safe point with `remedy job stop <job_id>`;
+> neither reads the queue below. `remedy worker status` still prints the last status a worker
+> wrote, and nothing writes one now. The page is kept as the record of what was built.
 
-The local worker picks jobs from a queue and processes them one at a time. It does not run in the background permanently — you start it, it processes jobs, and it stops.
+## What The Worker Did
+
+The local worker picked jobs from a queue and processed them one at a time. It did not run in the background permanently — it was started, it processed jobs, and it stopped.
 
 ## Job States
 
@@ -20,27 +28,13 @@ The local worker picks jobs from a queue and processes them one at a time. It do
 | failed | Something went wrong |
 | stale | Worker disappeared — job can be reclaimed |
 
-## Running The Worker
+## Running The Worker (deleted 2026-09-16)
 
-### One job
-
-```sh
-remedy worker run --once
-```
-
-### One job with a specific provider
-
-```sh
-remedy worker run --once --provider fixture
-```
-
-### Bounded loop
-
-```sh
-remedy worker run --max-jobs 3 --max-seconds 120
-```
-
-The worker stops when it reaches the job limit, time limit, or has nothing to do.
+The worker was started with a `run` word under `worker`. It took `--once` to process one job,
+`--provider` (`none`, `fixture` or `ollama`) and `--job` to name one job, or `--max-jobs` and
+`--max-seconds` for a bounded loop, and it stopped when it reached the job limit, the time limit,
+or had nothing to do. It skipped a queued job whose proposed tasks were unresolved or approved but
+not materialized. No command starts it now.
 
 ### Check worker status
 
@@ -49,46 +43,40 @@ remedy worker status
 remedy worker status --json
 ```
 
-## Queue Commands
+## Queue Commands (deleted 2026-09-16)
 
-```sh
-# Add a job to the queue
-remedy job enqueue <job_id>
-
-# Pause a job (worker will skip it)
-remedy job pause <job_id>
-
-# Cancel a job
-remedy job cancel <job_id>
-```
+A job was added to the queue with an `enqueue` word under `job`, set aside with a `pause` word so
+the worker skipped it, put back with a `resume-queue` word, and cancelled with a `cancel` word,
+each taking the job id. Stopping a job that is running is `remedy job stop <job_id>`; the queue
+itself has no heir.
 
 ## Approval
 
-When the worker reaches a point that needs human approval (like applying a patch), it stops and tells you what to do next:
+When the worker reached a point that needed human approval (like applying a patch), it stopped and told you what to do next:
 
 ```
 Why stopped: approval_required
 Next: remedy patch approve <job_id> <intent_id>
 ```
 
-The worker does not apply patches without approval. It does not spin waiting.
+The worker did not apply patches without approval. It did not spin waiting.
 
 ## CPU Safety
 
-- The worker processes one job at a time.
-- It does not run multiple test suites in parallel.
-- It respects test timeouts.
-- It does not run pytest in the background.
-- Two workers cannot process the same job (lease-based locking).
+- The worker processed one job at a time.
+- It did not run multiple test suites in parallel.
+- It respected test timeouts.
+- It did not run pytest in the background.
+- Two workers could not process the same job (lease-based locking).
 
 ## Stale Worker Recovery
 
-If a worker crashes or disappears:
+If a worker crashed or disappeared:
 
-- The job lease expires after 5 minutes.
-- The job becomes "stale."
-- Another worker can reclaim it.
-- If the job was mid-apply, it requires proof/checkpoint check before resume.
+- The job lease expired after 5 minutes.
+- The job became "stale."
+- Another worker could reclaim it.
+- If the job was mid-apply, it required a proof/checkpoint check before resume.
 
 ## Dashboard
 
@@ -98,7 +86,9 @@ The dashboard shows worker status in the right panel:
 - Current job
 - Queue count
 - Why it stopped
-- Copyable next command
+
+It reads the last status a worker wrote and the queue files already on disk, and since F261 round
+23 nothing writes either, so it shows no active worker. It no longer offers a next command.
 
 The dashboard is read-only — no start/pause/cancel buttons.
 

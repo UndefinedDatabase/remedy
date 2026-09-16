@@ -295,7 +295,7 @@ def run_do(
         )
         result.next_safe_action = DoRunNextAction(
             label="Inspect context",
-            command=f"remedy context inspect {result.job_id} {result.task_id} --json",
+            command=f"remedy job context {result.job_id} --task {result.task_id} --json",
             reason="Context unavailable. Inspect to diagnose.",
         )
         result.phases.append(DoRunPhase(

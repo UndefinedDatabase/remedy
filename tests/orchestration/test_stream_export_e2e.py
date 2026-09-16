@@ -1,6 +1,6 @@
 """F004 Finding 7 — raw stream artifacts survive the whole evidence pipeline.
 
-Internal job storage -> ``do job-evidence`` export -> final review ZIP.
+Internal job storage -> ``job evidence`` export -> final review ZIP.
 
 The stream files are copied verbatim (they were redacted at capture time and must
 never be redacted twice), every copy is listed with its hash and size, the

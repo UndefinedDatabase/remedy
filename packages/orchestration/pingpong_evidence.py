@@ -1,6 +1,6 @@
 """Evidence bundle builder — exports a self-contained, safe proof bundle for a Remedy run.
 
-Read-only: never calls providers, never mutates target repo, never auto-promotes.
+Read-only: never calls providers, never mutates target repo, never applies changes by itself.
 Redaction: no raw task body by default, no env/API keys, no absolute staging paths,
 no hidden provider prompts, no .env files, no raw repo file contents beyond safe diff.
 """
@@ -97,7 +97,6 @@ def _validate_output_path(out_dir: str, filename: str) -> Path:
 
 def build_evidence_bundle(
     run_data: dict[str, Any],
-    promotion_data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic evidence bundle from a persisted run.
 
@@ -107,13 +106,12 @@ def build_evidence_bundle(
     bundle: dict[str, Any] = {}
 
     # Core identity
-    bundle["manifest"] = _build_manifest(run_data, promotion_data)
-    bundle["summary_md"] = _build_summary_md(run_data, promotion_data)
+    bundle["manifest"] = _build_manifest(run_data)
+    bundle["summary_md"] = _build_summary_md(run_data)
     bundle["safe_diff"] = run_data.get("safe_diff_summary", "")
     bundle["tests"] = _build_tests_txt(run_data)
     bundle["review"] = _build_review_json(run_data)
     bundle["repair_loop"] = _build_repair_loop_json(run_data)
-    bundle["promotion"] = _build_promotion_json(promotion_data)
     bundle["token_accounting"] = _build_token_accounting_json(run_data)
     bundle["provider_evidence"] = _build_provider_evidence_json(run_data)
 
@@ -122,7 +120,6 @@ def build_evidence_bundle(
 
 def _build_manifest(
     run_data: dict[str, Any],
-    promotion_data: dict[str, Any] | None,
 ) -> dict[str, Any]:
     """Build manifest.json content."""
     # Determine availability of each section
@@ -136,7 +133,6 @@ def _build_manifest(
         for rd in run_data.get("rounds", [])
     )
     has_repair = run_data.get("repair_loop", {}).get("enabled", False)
-    has_promotion = promotion_data is not None
 
     # Task input metadata (safe — no raw body)
     task_input = run_data.get("task_input")
@@ -182,20 +178,18 @@ def _build_manifest(
             "tests.txt": "present" if has_tests else "unavailable: no tests run",
             "review.json": "present" if has_review else "unavailable: no review performed",
             "repair_loop.json": "present" if has_repair else "unavailable: repair disabled",
-            "promotion.json": "present" if has_promotion else "unavailable: no promotion performed",
             "token_accounting.json": "present",
             "provider_evidence.json": "present",
         },
-        "promotion_readiness": _assess_promotion_readiness(run_data, promotion_data),
+        "apply_readiness": _assess_apply_readiness(run_data),
     }
     return manifest
 
 
-def _assess_promotion_readiness(
+def _assess_apply_readiness(
     run_data: dict[str, Any],
-    promotion_data: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Assess whether this run is promotion-ready."""
+    """Assess whether this run is ready to apply."""
     final_status = run_data.get("final_status", "")
     is_passed = final_status == "staged_review_passed"
 
@@ -205,31 +199,20 @@ def _assess_promotion_readiness(
     if rounds:
         last_test_passed = rounds[-1].get("test_passed")
 
-    # Check promotion
-    promoted = False
-    promotion_status = ""
-    if promotion_data:
-        promoted = promotion_data.get("status") == "promoted"
-        promotion_status = promotion_data.get("status", "")
-
     return {
         "review_passed": is_passed,
         "last_test_passed": last_test_passed,
-        "promotion_performed": promotion_data is not None,
-        "promotion_status": promotion_status,
-        "promoted": promoted,
         "ready": is_passed and last_test_passed is not False,
         "proof_summary": (
-            "promotion-ready: review passed, tests passed"
+            "ready to apply: review passed, tests passed"
             if is_passed and last_test_passed is not False
-            else f"not promotion-ready: final_status={final_status}"
+            else f"not ready to apply: final_status={final_status}"
         ),
     }
 
 
 def _build_summary_md(
     run_data: dict[str, Any],
-    promotion_data: dict[str, Any] | None,
 ) -> str:
     """Build human-readable summary.md content."""
     lines: list[str] = []
@@ -299,17 +282,9 @@ def _build_summary_md(
         lines.append(f"- Status: {rl.get('status', '')}")
         lines.append("")
 
-    # Promotion
-    if promotion_data:
-        lines.append("## Promotion")
-        lines.append(f"- Status: {promotion_data.get('status', '')}")
-        lines.append(f"- Approved: {promotion_data.get('approved', False)}")
-        lines.append(f"- Dry run: {promotion_data.get('dry_run', False)}")
-        lines.append("")
-
     # Readiness
-    readiness = _assess_promotion_readiness(run_data, promotion_data)
-    lines.append("## Promotion Readiness")
+    readiness = _assess_apply_readiness(run_data)
+    lines.append("## Apply Readiness")
     lines.append(f"- {readiness['proof_summary']}")
     lines.append("")
 
@@ -390,21 +365,6 @@ def _build_repair_loop_json(run_data: dict[str, Any]) -> dict[str, Any]:
         "repair_rounds_used": 0,
         "status": "disabled",
     }
-
-
-def _build_promotion_json(
-    promotion_data: dict[str, Any] | None,
-) -> dict[str, Any] | None:
-    """Build promotion.json from promotion data."""
-    if promotion_data is None:
-        return None
-    # Return safe copy — redacted and path-sanitized
-    safe = _redact_json_value(dict(promotion_data))
-    # Sanitize any absolute paths
-    for key in ("staging_path", "target_repo", "run_repo", "requested_target_repo"):
-        if key in safe and isinstance(safe[key], str):
-            safe[key] = _sanitize_path(safe[key])
-    return safe
 
 
 def _build_token_accounting_json(run_data: dict[str, Any]) -> dict[str, Any]:
@@ -499,11 +459,6 @@ def write_evidence_bundle(
     repair = bundle.get("repair_loop")
     if repair:
         _write_json("repair_loop.json", repair)
-
-    # promotion.json
-    promotion = bundle.get("promotion")
-    if promotion is not None:
-        _write_json("promotion.json", promotion)
 
     # token_accounting.json
     ta = bundle.get("token_accounting")
@@ -614,15 +569,12 @@ def export_evidence(
     Does not call providers. Does not mutate target repo.
     """
     from packages.orchestration.pingpong_loop import load_run
-    from packages.orchestration.pingpong_promote import load_promotion
 
     run_data = load_run(run_id)
     if run_data is None:
         return {"error": f"Run {run_id!r} not found", "run_id": run_id}
 
-    promotion_data = load_promotion(run_id)
-
-    bundle = build_evidence_bundle(run_data, promotion_data)
+    bundle = build_evidence_bundle(run_data)
 
     # Load persisted prompt traces if available
     from packages.orchestration.data_paths import run_dir

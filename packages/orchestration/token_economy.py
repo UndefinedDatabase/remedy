@@ -444,8 +444,8 @@ def recommend_context_pack(
         rec.risk_notes.append("no_context_inspection_available")
         rec.compression_recommendation = "Unavailable — no context inspection; defer to human."
         rec.estimated_token_savings = estimate_token_savings(-1, -1)
-        rec.next_safe_action = f"remedy context inspect {job_id} --json" if job_id else \
-            "remedy context inspect <job_id> --json"
+        rec.next_safe_action = f"remedy job show {job_id} --full --json" if job_id else \
+            "remedy job show <job_id> --full --json"
         return rec
 
     included = [e for e in getattr(inspection, "included_paths", ())]
@@ -501,8 +501,8 @@ def recommend_context_pack(
 
     if getattr(inspection, "missing_context", None):
         rec.risk_notes.append("missing_context_present")
-    rec.next_safe_action = (f"remedy context-pack recommend {job_id} --json" if job_id
-                            else "remedy context-pack recommend <job_id> --json")
+    rec.next_safe_action = (f"remedy job show {job_id} --full --json" if job_id
+                            else "remedy job show <job_id> --full --json")
     return rec
 
 
@@ -607,13 +607,13 @@ def compute_token_economy_decision(
         # Honest unknown state — never imply a cheap route is ready.
         d.reason = ("Context/budget is unknown (no inspection or unknown estimate) — cannot claim a "
                     "cheap/local route fits; run a context inspection or review before routing.")
-        d.next_safe_action = (f"remedy context inspect {job_id} --json" if job_id
-                              else "remedy context inspect <job_id> --json")
+        d.next_safe_action = (f"remedy job show {job_id} --full --json" if job_id
+                              else "remedy job show <job_id> --full --json")
     else:
         d.reason = ("No route spec is available — the Worker Registry was deleted, so Remedy "
                     "recommends no worker and approval is unconditional (estimate; nothing runs).")
-        d.next_safe_action = (f"remedy token economy-report {job_id} --json" if job_id
-                              else "remedy token budget-show <job_id> --json")
+        d.next_safe_action = (f"remedy job show {job_id} --full --json" if job_id
+                              else "remedy job show <job_id> --full --json")
     d.context_pack_kind = recommend_context_pack(
         job_id, task_id=task_id, route_id=route_id, data_dir=ddir).recommended_pack_kind
     return d
@@ -642,9 +642,7 @@ def token_economy_report(job_id: str, *, task_id: str = "", route_id: str = "",
         "decision": decision.to_dict(),
         "estimated": True, "verified": False,
         "next_safe_actions": [
-            f"remedy token budget-show {job_id} --json",
-            f"remedy token estimate {job_id} --json",
-            f"remedy context-pack recommend {job_id} --json",
+            f"remedy job show {job_id} --full --json",
         ],
     }
 

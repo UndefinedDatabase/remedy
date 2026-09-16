@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-77 of 279 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+78 of 280 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 20 | 32 |
+| 2 | Minimal Self-Build Runtime | 21 | 33 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -118,7 +118,17 @@ PERFORMED, one module group per commit, each lost behaviour registered as a
 finding; the classic-to-unified record flip landed as ONE commit and the
 red bridge it opened closed in two rounds; and the classic job store, the
 classic `Job` and `Task` models, `resolve_any_job_id` and every which-store
-branch deleted, leaving one job record, one store and one id resolver).
+branch deleted, leaving one job record, one store and one id resolver),
+F261 CLI vocabulary v2, rename and prune (the `do job-*` family and the plan
+triplet dissolved into `job run`, `job evidence` and `job apply`; the retired
+job-result word replaced by `apply`, and the read views folded into
+`job show --full`; the
+command groups and queue words no surviving command needs deleted, each with
+its deletion paragraph; `plan` hidden as `roadmap`, `teach` renamed
+`teacher`, and `settings` an alias over `config`; the gated prunes, the
+flight-plan rename and the help surface were split off at the soft limit
+and belong to the follow-up feature the STATUS ledger registers directly
+after it).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
@@ -166,17 +176,17 @@ hook them to yet. Caps are config defaults labeled with an honest
 default basis until a calibration feature replaces them with measured
 ones).
 
-F114 cost preview per command (`remedy job run` — the one command wired to
+F114 cost preview per command (`remedy job resume` — the one command wired to
 it so far — prints an upfront cost-band estimate with its basis before an
 expensive run starts and requires confirmation above a configured
 threshold in attended mode; `--yes` and `--unattended` both skip the
 prompt with an audited line, and a non-tty pipe with neither flag exits
 with the estimate and the `--yes` hint rather than hanging. Real cost
-bands for `job.run` are not calibrated yet, so its own estimate reads
+bands for `job.resume` are not calibrated yet, so its own estimate reads
 `ESTIMATE_UNAVAILABLE` today — still confirmed, never silently skipped).
 
 Accepted in Tier 5 so far:
-F255 teacher role (`remedy teach narrate`, `remedy teach ask`, teacher spend
+F255 teacher role (`remedy teacher narrate`, `remedy teacher ask`, teacher spend
 reported as its own role in the token ledger).
 F008 sse event stream (per-job SSE endpoint with heartbeat and Last-Event-ID
 resume, a cockpit client with reconnect backoff and a polling fallback that
@@ -224,7 +234,7 @@ not a gate).
 F040 completion/return digest (a hero card condensing state, cost with its
 basis, open decisions and one recommended action into a single glance, shown
 at job end or on the first UI open after an absence; the same envelope is
-served to `remedy job digest <id>` so the CLI and the route can never
+served to `remedy job show <id> --full` so the CLI and the route can never
 disagree; a dismissal persists per job and new activity re-arms it).
 
 F258 self-use track v2 (the queue now replenishes itself: a generator appends
@@ -257,11 +267,9 @@ pip install -e ".[dev]"          # add ,ollama for the local planner provider
 remedy doctor                              # check local health
 remedy config show                         # view current settings
 remedy job create --plan plan.yaml         # create a job from a plan
-remedy do plan <job-id>                    # generate a job plan (F261 renames the command)
 remedy do run <job-id>                     # run the job
-remedy do report <job-id>                  # generate the report
+remedy run show <job-id>                   # generate the report
 remedy job stop <job-id>                   # stop at next safe point (F011)
-remedy job rerun <id> --check-manifest     # verify recorded inputs (F012)
 remedy runtime serve                       # start dev-server supervisor (F007)
 ```
 
@@ -277,7 +285,7 @@ remedy runtime serve                       # start dev-server supervisor (F007)
 | Agent rules | [`AGENTS.md`](AGENTS.md) |
 | Operator quickstart | [`docs/guides/simple-operator-quickstart-v0.md`](docs/guides/simple-operator-quickstart-v0.md) |
 | `do run` guide | [`docs/guides/do-run-v1.md`](docs/guides/do-run-v1.md) |
-| `do continue` guide | [`docs/guides/do-continue-v1.md`](docs/guides/do-continue-v1.md) |
+| Continuation cycle (deleted) | [`docs/guides/do-continue-v1.md`](docs/guides/do-continue-v1.md) |
 | Runtime harness (F007) | [`docs/system/runtime-harness-v1.md`](docs/system/runtime-harness-v1.md) |
 | remedy.toml config | [`docs/guides/remedy-toml-user-guide.md`](docs/guides/remedy-toml-user-guide.md) |
 | Step history (archive) | [`docs/archive/remedy-step-history-v0.md`](docs/archive/remedy-step-history-v0.md) |

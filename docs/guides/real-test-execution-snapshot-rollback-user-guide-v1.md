@@ -38,13 +38,6 @@ This is important: a recorded snapshot is **not** a rollback. v1 cannot restore 
 metadata snapshot. So:
 
 - `snapshot create` → records a snapshot point (`restore_available: false`).
-- `rollback proof` → reports honestly whether a real restore path exists. In v1 it is almost always
-  `restore_available: false` and `restore_tested: false`, with the limitations listed. It only reports
-  `true` when a verified apply-scoped recovery already exists.
-
-```
-remedy rollback proof <job_id> --snapshot-id <id> --json
-```
 
 ## How test failures become repair tasks
 

@@ -171,8 +171,8 @@ class TestDecision:
         assert "unknown_context_or_budget" in d.warnings
         assert "fits the estimated budget" not in d.reason.lower()
         assert "unknown" in d.reason.lower()
-        # next action points to a safe inspection, not a cheap-route-ready implication.
-        assert "context inspect" in d.next_safe_action
+        # next action points to a safe read, not a cheap-route-ready implication.
+        assert "job show" in d.next_safe_action and " run" not in d.next_safe_action
 
     def test_unknown_context_hint_not_local_first(self, env):
         h = te.routing_token_hint("no-such-job")

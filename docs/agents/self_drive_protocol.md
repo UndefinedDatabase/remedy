@@ -40,8 +40,8 @@ git status --porcelain          # must be empty
 git branch --show-current
 git log --oneline -n 8
 gh pr list --state open --json number,headRefName,baseRefName,isDraft
-remedy plan status              # F080 roadmap mirror
-remedy plan next                # Rule A5 — proposes, never starts
+remedy roadmap status           # F080 roadmap mirror
+remedy roadmap next             # Rule A5 — proposes, never starts
 ```
 
 Then read from disk, never from session memory: `.agent/handoff.md`,

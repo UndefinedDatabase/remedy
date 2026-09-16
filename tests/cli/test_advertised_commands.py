@@ -15,6 +15,20 @@ F272 round 21 widened the sweep beyond ``.py`` to the shell scripts under
 ``scripts/`` and the operator-facing pages under ``docs/system/`` and
 ``docs/guides/``, because an operator reads a command line from a doc exactly as
 they read one from a terminal.
+
+F261 round 8 (finding R-0896) added the FLAGS: nineteen next-step hints told the
+operator to run ``remedy job show <id> --json`` while ``job show`` declared no
+``--json``, so the command a failure recommended exited 2 too. The pair resolved,
+so the sweep above passed. Every ``--flag`` that follows a resolving
+``remedy <group> <sub>`` hint must now be an argument that command declares.
+
+F261 round 21 (finding R-0900) added the GROUP-ONLY form. ``_resolves`` accepted
+every one-token invocation whose group exists, and existing is not running:
+``remedy brain <job_id>`` exits 2, because every ``brain`` command takes a
+subcommand, and ``remedy do --continue <id>`` exits 0 having printed group help
+and run nothing at all. A one-token advertisement now resolves only when
+``apps.cli.grouped`` would really inject a default subcommand for it, or when it
+is the bare group-help invocation that module's own docstring documents.
 """
 from __future__ import annotations
 
@@ -24,6 +38,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from apps.cli.command_catalog import CATALOG, GROUPS
+from apps.cli.grouped import _ALWAYS_INJECT, _DEFAULT_COMMAND
 
 #: Repository root, derived from this file rather than the working directory so
 #: the sweep is the same under any invocation path.
@@ -96,6 +111,48 @@ def _resolves(invocation: tuple[str, ...]) -> bool:
     if len(invocation) == 2:
         return invocation in {(entry.group_id, entry.subcommand) for entry in CATALOG}
     return invocation[0] in GROUPS
+
+
+#: Flags every command accepts whatever its catalog entry declares, because
+#: ``apps.cli.grouped.main`` answers them in its pre-scans before argparse runs.
+_ALWAYS_ACCEPTED_FLAGS = frozenset({"--help", "--all-commands", "--version"})
+
+#: A ``--flag`` token as an operator types it.
+_FLAG_RE = re.compile(r"(?<![\w-])(--[a-z][a-z0-9-]*)")
+
+#: Where an advertised command line ENDS inside a source line: the quote or
+#: backtick closing the string or code span, a closing parenthesis, a pipe, a
+#: semicolon, a backslash, ``&&``, or the next ``remedy`` invocation. A flag past
+#: that point belongs to something else and is not the hint's.
+_COMMAND_LINE_END_RE = re.compile(r"[\"'`)|;\\]|&&|remedy\s")
+
+
+def scan_advertised_command_flags(text: str) -> list[tuple[tuple[str, str], list[str]]]:
+    """Return each ``remedy <group> <sub>`` invocation in `text` with the flags it passes.
+
+    Only the two-token form is returned: a ``remedy <group>`` match names no
+    command, so there is no declared argument list to hold its flags against.
+    """
+    found: list[tuple[tuple[str, str], list[str]]] = []
+    for match in _ADVERTISED_COMMAND_RE.finditer(text):
+        if not _tail_reads_as_a_command_line(text, match.end()):
+            continue
+        tail = text[match.end():]
+        end = _COMMAND_LINE_END_RE.search(tail)
+        if end is not None:
+            tail = tail[:end.start()]
+        found.append(((match.group(1), match.group(2)), _FLAG_RE.findall(tail)))
+    return found
+
+
+def _declared_flags() -> dict[tuple[str, str], frozenset[str]]:
+    """Every catalog pair with the option names its entry declares."""
+    return {
+        (entry.group_id, entry.subcommand): frozenset(
+            arg.name for arg in entry.args if arg.name.startswith("--")
+        )
+        for entry in CATALOG
+    }
 
 
 def _tracked_production_python_files() -> list[str]:
@@ -171,6 +228,49 @@ def _sweep(relative_paths: list[str]) -> tuple[int, list[UnresolvedAdvertisement
     return seen, unresolved
 
 
+class UndeclaredFlag(NamedTuple):
+    """One site passing a flag to a command whose catalog entry does not declare it."""
+
+    path: str
+    invocation: tuple[str, str]
+    flag: str
+    line_number: int
+
+    def __str__(self) -> str:
+        return f"{self.path}:{self.line_number}: remedy {' '.join(self.invocation)} ... {self.flag}"
+
+
+def _sweep_flags(relative_paths: list[str]) -> tuple[int, list[UndeclaredFlag]]:
+    """Return (flags checked, undeclared flags) over `relative_paths`.
+
+    A pair the catalog does not carry is skipped here: `_sweep` already reports it.
+    """
+    declared = _declared_flags()
+    checked = 0
+    undeclared: list[UndeclaredFlag] = []
+    for relative_path in relative_paths:
+        source = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for line_number, line in enumerate(source.splitlines(), 1):
+            for invocation, flags in scan_advertised_command_flags(line):
+                accepted = declared.get(invocation)
+                if accepted is None:
+                    continue
+                for flag in flags:
+                    checked += 1
+                    if flag not in accepted and flag not in _ALWAYS_ACCEPTED_FLAGS:
+                        undeclared.append(
+                            UndeclaredFlag(relative_path, invocation, flag, line_number)
+                        )
+    return checked, undeclared
+
+
+def _operator_facing_paths() -> list[str]:
+    paths: list[str] = []
+    for directory, suffix in _OPERATOR_FACING_ROOTS:
+        paths.extend(_tracked_files_under(directory, suffix))
+    return paths
+
+
 def collect_command_advertisements() -> tuple[int, list[UnresolvedAdvertisement]]:
     """Sweep production code; return (advertisements seen, unresolved sites)."""
     return _sweep(_tracked_production_python_files())
@@ -178,10 +278,7 @@ def collect_command_advertisements() -> tuple[int, list[UnresolvedAdvertisement]
 
 def collect_operator_facing_advertisements() -> tuple[int, list[UnresolvedAdvertisement]]:
     """Sweep the shell scripts and the operator-facing docs the same way."""
-    paths: list[str] = []
-    for directory, suffix in _OPERATOR_FACING_ROOTS:
-        paths.extend(_tracked_files_under(directory, suffix))
-    return _sweep(paths)
+    return _sweep(_operator_facing_paths())
 
 
 def test_every_advertised_command_exists_in_the_catalog() -> None:
@@ -214,6 +311,50 @@ def test_every_operator_facing_advertised_command_exists_in_the_catalog() -> Non
     )
 
 
+def test_every_advertised_flag_is_declared_by_its_command() -> None:
+    checked, undeclared = _sweep_flags(_tracked_production_python_files())
+
+    # Anti-blindness: a floor far below the number of flags this sweep checks, so
+    # it catches a scanner that went blind without pinning today's count.
+    assert checked > 50, f"the flag scan went blind: only {checked} flags were checked"
+
+    assert not undeclared, (
+        "production code passes flags the named command does not declare — the "
+        "command would exit 2 on them:\n" + "\n".join(str(site) for site in undeclared)
+    )
+
+
+def test_every_operator_facing_advertised_flag_is_declared_by_its_command() -> None:
+    checked, undeclared = _sweep_flags(_operator_facing_paths())
+
+    # Anti-blindness, as above: a floor far below the number of flags checked in
+    # the scripts and the two doc trees, without pinning today's count.
+    assert checked > 50, f"the flag scan went blind: only {checked} flags were checked"
+
+    assert not undeclared, (
+        "an operator-facing script or page passes flags the named command does not "
+        "declare — the command would exit 2 on them:\n"
+        + "\n".join(str(site) for site in undeclared)
+    )
+
+
+def test_flag_scanner_reports_a_flag_the_command_does_not_declare() -> None:
+    found = scan_advertised_command_flags('command=f"remedy patch approve {job_id} {iid} --json",')
+
+    assert found == [(("patch", "approve"), ["--json"])]
+    assert "--json" not in _declared_flags()[("patch", "approve")]
+
+
+def test_flag_scanner_stops_where_the_command_line_ends() -> None:
+    found = scan_advertised_command_flags("run `remedy job show <id>` and pipe it to jq --raw")
+
+    assert found == [(("job", "show"), [])]
+
+
+def test_flag_scanner_skips_a_group_only_invocation() -> None:
+    assert scan_advertised_command_flags("remedy brain <job_id> --json") == []
+
+
 def test_scanner_reports_a_command_the_catalog_does_not_carry() -> None:
     found = scan_advertised_commands("next_action = 'remedy job no-such-subcommand <job_id>'")
 
@@ -227,7 +368,114 @@ def test_scanner_ignores_prose_that_merely_starts_with_a_group_name() -> None:
 
 def test_scanner_finds_a_real_next_action_f_string() -> None:
     found = scan_advertised_commands(
-        'record.next_safe_action = f"remedy job report {record.job_id} --json"'
+        'record.next_safe_action = f"remedy job show {record.job_id} --full --json"'
     )
 
-    assert ("job", "report") in found
+    assert ("job", "show") in found
+
+
+#: The GROUP-ONLY form and what makes one RUNNABLE. What decides is not that the
+#: group exists — ``_resolves`` already asks that, and finding R-0900 records
+#: what it let through — but whether ``apps.cli.grouped.main`` would inject a
+#: default subcommand before argparse sees the line. That map is imported from
+#: the dispatch rather than restated here, so a group that gains or loses a
+#: default cannot leave this guard behind: ``_DEFAULT_COMMAND`` names the groups
+#: carrying one, ``_ALWAYS_INJECT`` the ones that inject it even ahead of a flag.
+#: A BARE ``remedy <group>`` stays legitimate — it prints that group's help, the
+#: invocation ``apps/cli/grouped.py``'s docstring and README.md both document.
+
+
+def scan_group_only_invocations(text: str) -> list[tuple[str, str]]:
+    """Return ``(group, tail)`` for every ``remedy <group>`` advertisement in `text`.
+
+    The tail is cut where the command line ends, by the rule the flag scanner
+    already uses, so an option belonging to the surrounding prose is never read
+    as the invocation's own.
+    """
+    found: list[tuple[str, str]] = []
+    for match in _ADVERTISED_GROUP_RE.finditer(text):
+        if not _tail_reads_as_a_command_line(text, match.end()):
+            continue
+        tail = text[match.end():]
+        end = _COMMAND_LINE_END_RE.search(tail)
+        found.append((match.group(1), tail if end is None else tail[:end.start()]))
+    return found
+
+
+def _group_only_resolves(group: str, tail: str) -> bool:
+    """Does ``remedy <group><tail>`` reach a command, or only group help?"""
+    tail = tail.strip()
+    if not tail:
+        return True
+    first = tail.split()[0]
+    if first in _ALWAYS_ACCEPTED_FLAGS:
+        return True
+    if group in _ALWAYS_INJECT:
+        return True
+    return group in _DEFAULT_COMMAND and not first.startswith("-")
+
+
+class GroupOnlyAdvertisement(NamedTuple):
+    """One site naming a group that would run no command as typed."""
+
+    path: str
+    group: str
+    tail: str
+    line_number: int
+
+    def __str__(self) -> str:
+        return f"{self.path}:{self.line_number}: remedy {self.group}{self.tail}"
+
+
+def _sweep_group_only(relative_paths: list[str]) -> tuple[int, list[GroupOnlyAdvertisement]]:
+    """Return (group-only advertisements seen, the ones that reach no command).
+
+    A first token that is no group at all is skipped here: `_sweep` reports it.
+    """
+    seen = 0
+    unrunnable: list[GroupOnlyAdvertisement] = []
+    for relative_path in relative_paths:
+        source = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for line_number, line in enumerate(source.splitlines(), 1):
+            for group, tail in scan_group_only_invocations(line):
+                if group not in GROUPS:
+                    continue
+                seen += 1
+                if not _group_only_resolves(group, tail):
+                    unrunnable.append(
+                        GroupOnlyAdvertisement(relative_path, group, tail, line_number)
+                    )
+    return seen, unrunnable
+
+
+def test_every_group_only_advertisement_reaches_a_command() -> None:
+    seen, unrunnable = _sweep_group_only(
+        _tracked_production_python_files() + _operator_facing_paths()
+    )
+
+    # Anti-blindness, as the sweeps above: the real figure was 60 over both
+    # corpora when this guard was written, so 30 is a floor with room rather
+    # than a pin on today's count.
+    assert seen > 30, f"the group-only scan went blind: only {seen} advertisements matched"
+
+    assert not unrunnable, (
+        "a site tells an operator to run a group that reaches no command — the "
+        "line prints group help or exits 2, and never runs what it promises:\n"
+        + "\n".join(str(site) for site in unrunnable)
+    )
+
+
+def test_group_only_scanner_rejects_a_group_that_carries_no_default_command() -> None:
+    found = scan_group_only_invocations('next_actions.append(f"remedy brain {job_id_str}")')
+
+    assert found == [("brain", " {job_id_str}")]
+    assert "brain" not in _DEFAULT_COMMAND
+    assert not _group_only_resolves("brain", " {job_id_str}")
+    assert not _group_only_resolves("do", " --continue {job_id} --json")
+
+
+def test_group_only_scanner_accepts_the_forms_the_cli_really_runs() -> None:
+    assert _group_only_resolves("brain", "")          # bare: group help, exit 0
+    assert _group_only_resolves("brain", " --help")   # answered by main's pre-scan
+    assert _group_only_resolves("status", " --json")  # _ALWAYS_INJECT -> status run
+    assert _group_only_resolves("ui", " <job_id>")    # _DEFAULT_COMMAND -> ui start

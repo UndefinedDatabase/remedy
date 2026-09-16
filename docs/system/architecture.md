@@ -381,8 +381,9 @@ unconditional after the guard passes (the check cannot be reached again).
 Permissions are stored in `job.metadata["permissions"]` as `{"capability": "allow"|"deny"}`.
 Missing keys fall back to `_DEFAULTS`. Explicit `"deny"` overrides a default allow.
 
-**`show-permissions` CLI command (Steps 9.5/9.6):** `remedy job permissions <job_id>`
-displays all capabilities, their effective allow/deny state, and a status label. Every
+**Permissions view (Steps 9.5/9.6):** the `permissions` section of
+`remedy job show <job_id> --full` (a command of its own until F261 T002) displays all
+capabilities, their effective allow/deny state, and a status label. Every
 capability is labeled `[active]` (enforced at runtime) or `[reserved]` (configurable but
 not yet enforced). The symmetric labeling makes capability status unambiguous at a glance.
 
@@ -1364,8 +1365,8 @@ Read-only, no side effects, no repo/job/artifact writes, no memory writes, no pa
 ### CLI
 
 ```
-remedy brain <job_id>           # text summary (default)
-remedy brain <job_id> --json    # JSON export (future frontend data source)
+remedy brain graph <job_id>           # text summary (default)
+remedy brain graph <job_id> --json    # JSON export (future frontend data source)
 ```
 
 Loads the job, run events, and Project Constitution (from `target_repo` if attached; silently `None` if absent), builds the graph, and emits a `project_brain_inspected` run-log event.  With `--json`, prints `export_project_brain_json` serialised with `sort_keys=True`; text output and run-log event are otherwise identical.
@@ -1400,7 +1401,7 @@ No frontend, AG-UI, Three.js, or MCP integration is present in Steps 23/23.1.
 
 | View | Purpose |
 |------|---------|
-| Project Brain (`remedy brain`) | Full graph map — all nodes and edges for a job |
+| Project Brain (`remedy brain graph`) | Full graph map — all nodes and edges for a job |
 | **Brain Node Detail (`remedy brain node`)** | **Drill into one node — explanation, connections, evidence, actions** |
 | Cockpit | Current decision/status overview |
 | Timeline | Chronological run-log history |
@@ -1493,7 +1494,7 @@ Step 24.1 hardens the machine-readable contract for the two brain CLI commands a
 
 | Command | `--json` contract | Future consumer |
 |---|---|---|
-| `remedy brain <job_id> --json` | `export_project_brain_json` schema (version, job_id, nodes, edges) | 2D / 3D graph visualisation |
+| `remedy brain graph <job_id> --json` | `export_project_brain_json` schema (version, job_id, nodes, edges) | 2D / 3D graph visualisation |
 | `remedy brain node <job_id> <node_id> --json` | `export_brain_node_detail_json` schema (13 keys) | Click-detail panel for a selected node |
 
 **Invariants enforced and smoke-tested:**
@@ -1505,7 +1506,7 @@ Step 24.1 hardens the machine-readable contract for the two brain CLI commands a
 
 ### Run-log event schemas (exact key sets)
 
-`project_brain_inspected` metadata (set by `remedy brain`):
+`project_brain_inspected` metadata (set by `remedy brain graph`):
 ```json
 { "node_count": N, "edge_count": N, "task_count": N, "patch_intent_count": N }
 ```
@@ -1519,7 +1520,7 @@ Both schemas hold regardless of whether `--json` is used.
 
 ### Future frontend priority (Step 24+)
 
-1. **2D graph** via `remedy brain --json` + `remedy brain node --json` — these JSON contracts are the integration surface for a React Flow / AG-UI / A2UI canvas.
+1. **2D graph** via `remedy brain graph --json` + `remedy brain node --json` — these JSON contracts are the integration surface for a React Flow / AG-UI / A2UI canvas.
 2. **3D** — Three.js / WebGL rendering of the same graph JSON contract.
 3. **MemPalace** — `memory_placeholder` nodes become live semantic memory nodes when the MemPalace layer is implemented (Step 24+).
 4. **MCP Quarantine** — `mcp_placeholder` nodes become live MCP tool nodes when the MCP integration layer is implemented (Step 24+).
@@ -1530,7 +1531,7 @@ No frontend rendering exists in Steps 23–24.1.  The `--json` contracts are the
 
 **Step 24.3** is the final pre-frontend smoke hardening pass (redaction target alignment, raw-stdout sentinel checks, docstring polish).  After Step 24.3 the JSON contract is fully locked.
 
-**Step 25** starts the read-only local Brain Viewer v0.  The viewer must consume only `remedy brain --json` (graph data) and `remedy brain node --json` (node detail data).  It must not call any other CLI output mode, shell command, or internal Python API directly.
+**Step 25** starts the read-only local Brain Viewer v0.  The viewer must consume only `remedy brain graph --json` (graph data) and `remedy brain node --json` (node detail data).  It must not call any other CLI output mode, shell command, or internal Python API directly.
 
 ## Brain Viewer v0 (Steps 25 / 25.1)
 
@@ -1696,7 +1697,7 @@ A product or project spanning multiple repos and many jobs.  A Project Brain agg
 - Enabled skills and capabilities.
 - Project-scoped policy decisions.
 
-Future `remedy brain --json` may accept a `--scope project` flag that produces a multi-repo aggregate graph.  Current Brain Viewer v0 must not pretend to be a Project Brain.
+Future `remedy brain graph --json` may accept a `--scope project` flag that produces a multi-repo aggregate graph.  Current Brain Viewer v0 must not pretend to be a Project Brain.
 
 ### Layer 4 — Remedy Global Brain
 
@@ -1754,7 +1755,7 @@ Not every node will be continuable.  These fields are **not implemented** in v0 
 ### CLI
 
 ```
-remedy context <job_id> [--json]
+remedy brain context <job_id> [--json]
 ```
 
 Text output shows a coverage bar, present signals, missing signals, a meaning section, and next-action hints.  JSON output is pure parseable JSON.
@@ -1847,7 +1848,7 @@ Incremental hardening of Context Coverage v0.
 
 With local memory v0 active, `project_memory` (weight 10) becomes present when approved memory entries exist.  Only `mcp_tool_context` (weight 5) remains always absent in v0, so the maximum achievable score is **95** (with approved memory) or **85** (without).  The score is never normalized to 100.  MemPalace is not yet implemented; local memory v0 is the active backend.
 
-### Stale repo warning in `remedy context`
+### Stale repo warning in `remedy brain context`
 
 `_cmd_context` now mirrors `_cmd_brain_view`: if `target_repo` is set but the path does not exist or is not a directory, it prints a fixed safe warning to stderr and continues without a constitution.  Any unexpected exception from `load_project_constitution` is caught and the same warning is emitted.  The raw exception text is never surfaced.
 
@@ -1902,8 +1903,7 @@ remedy project create <name> [--description <desc>]   — create and print proje
 remedy project list                                  — list all projects (newest first)
 remedy project attach-repo <project_id> <repo_path>  — attach a repo to a project
 remedy project attach-job <project_id> <job_id>      — link a job to a project
-remedy project <project_id> [--json]                 — show project summary (user-facing alias)
-remedy project show <project_id> [--json]            — show project summary (backward-compat)
+remedy project show <project_id> [--json]            — show project summary
 remedy job create "<prompt>" [--project <project_id>]
     [--task-type <type>] [--task-description "<desc>"]
                                                        — create job and optionally link;
@@ -1911,7 +1911,7 @@ remedy job create "<prompt>" [--project <project_id>]
                                                          and sets state=PLANNED (bypasses plan-job)
 ```
 
-`remedy project` is the primary user-facing alias.  `remedy project show` remains for backward compatibility; both call the same implementation.
+`remedy project show` is the project summary command.  A bare `remedy project` is not an alias for it: a group with no subcommand prints that group's help and runs nothing.
 
 When `--project` is passed to `create-job`:
 - The project is **validated and loaded first**.
@@ -2059,7 +2059,7 @@ No raw prompts, artifact content, approval reasons, event messages, diff preview
 
 ### Project JSON integration
 
-`export_project_json(project, jobs)` (via `remedy project --json`) includes a compact context summary:
+`export_project_json(project, jobs)` (via `remedy project show <project_id> --json`) includes a compact context summary:
 
 ```json
 "context_coverage": {
@@ -2790,8 +2790,9 @@ It is an execution boundary, not a capability promise.
 
 ### CLI
 
-- `remedy policy contract <job_id>` — text summary.
-- `remedy policy contract <job_id> --json` — pure JSON.
+None since F261 round 17 deleted the `policy` group. The contract is still built
+by `build_default_run_contract` and read by `do run`, the repair loop and the test
+execution service; the run-log event below has had no emitter since that round.
 
 ### Run-log event
 
@@ -2843,8 +2844,9 @@ A `TokenPolicy` classifies job steps by token cost tier:
 
 ### CLI
 
-- `remedy policy token <job_id>` — text summary.
-- `remedy policy token <job_id> --json` — pure JSON.
+None since F261 round 17 deleted the `policy` group. The policy is still built by
+`build_default_token_policy` for the brain graph and the autonomy loop; the run-log
+event below has had no emitter since that round.
 
 ### Run-log event
 
@@ -3044,7 +3046,9 @@ Root help shows only the 12 groups — no old flat commands appear.
 - Signal-based boolean checks only — no LLM, no network
 - Each level has: eligible, present_signals, missing_signals, blockers, next_actions
 - Levels 5+ always blocked (rollback/MCP/provider not yet implemented)
-- CLI: `remedy readiness job <id> --json`, `remedy readiness project <id> --json`
+- CLI: none since F261 round 17 deleted the `readiness` group; the cockpit's
+  `/api/jobs/<job_id>/readiness` payload is built from `assess_job_readiness`, and
+  `remedy mission readiness <job_id>` answers the unattended-run question
 - Brain: `autonomy_readiness` node type, `has_readiness` edge, layer=1, color=#2ea043
 - Run-log: `readiness_assessed` event with metadata: scope, highest_eligible_level, missing_count, blocker_count
 - Project readiness aggregates across jobs (ANY-eligible logic)

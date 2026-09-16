@@ -130,7 +130,7 @@ def repo_root(repo_path: str | Path) -> Path:
 def worktrees_root_for(repo: str | Path) -> Path:
     """THE canonical root every job workspace must live under.
 
-    F11 (round 11): the read-only rerun check resolves a workspace through this root and refuses
+    F11 (round 11): the read-only manifest check resolves a workspace through this root and refuses
     anything outside it, so a persisted path can never become its own trust root.
     """
     return (Path(repo).resolve() / WORKTREE_DIRNAME).resolve()
@@ -462,7 +462,7 @@ def write_tree_for_path(path: str | Path) -> str:
 
     Read-only against the worktree's real state — it stages into a PRIVATE temporary index
     (``GIT_INDEX_FILE``), so the real index is untouched, nothing is committed and no branch
-    moves. Used by the rerun check to compute a resumable job workspace's CURRENT tree instead
+    moves. Used by the manifest check to compute a resumable job workspace's CURRENT tree instead
     of trusting the historical episode-start tree. Raises ``WorktreeError`` on any git failure.
     """
     import tempfile

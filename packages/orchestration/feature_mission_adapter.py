@@ -1,6 +1,6 @@
 """F080 T003 — compile a roadmap feature file into a PREPARED mission.
 
-The adapter is the work-intake path of the self-build loop: `remedy plan
+The adapter is the work-intake path of the self-build loop: `remedy roadmap
 next` names a feature file, and this module turns that file into the
 records the normal mission machinery already understands — nothing more.
 

@@ -1,33 +1,36 @@
-# Plan — F275 One world completion, part three
+# Plan — F261 CLI vocabulary v2 (rename & prune)
 
-Branch: feature/f275-one-world-completion-part-three, cut from `main` at
-`a5bf894946ab6de053a4232109d6341a63533768`, the merge commit of pull request 246. F275 closed
-at `76283e69`, and pull request 250 carries the branch into `main`.
+Branch: feature/f261-cli-vocabulary-v2, cut from `main` at
+`7cdde89b5d0dc8ef1fb96980105870e956699873`, the merge commit of pull request 250.
 
 ## Goal
 
-Turn pull request 250's hosted CI green so that the Open PR Gate can merge it. Its only hosted
-run, `34901124355` on `76283e69`, failed two tests of the event-name coupling ratchet: the
-workflow checks out a single commit, and the ratchet reads the modules this branch deleted out
-of git history. That defect is finding R-0889.
+The catalog `apps/cli/command_catalog.py` equals DECISION amend0905-vocab D4: one name per
+command, and every retired word deleted rather than aliased, per
+`docs/roadmap/features/T2_F261.md` — as far as this feature reaches it; DECISION F261 D25
+moves the rest to F280. Everything the closure protocol asks for is on disk: the Built State,
+the integration gate, the self-use run, the rotated ledger and a READY_FOR_REVIEW package.
 
 ## Current Step
 
-REPAIR ROUND 110 on the open pull request, by operator amendment amend0820-gate-autonomy. Its
-bookkeeping commit books round 109's PASS and registers R-0889. Its fix commit makes the hosted
-workflow's checkout fetch the full history and adds a guard that pins it. The worker then runs
-the full suite once, commits the transcript, and hands back.
+CLOSURE ROUND B, the last round of this branch. Its bookkeeping commit books round 27's verdict.
+Its closure commit then applies the STATUS `[x]` line authored from round 27's measured values,
+the README sync and `SU-015`'s `consumed_by` set to `F261`, with the final handoff, in ONE
+commit, per the closure protocol's Rule A4 ordering; then the pull request is opened and NOT
+merged.
 
 ## Next Steps
 
-1. The reviewer gives round 110 its verdict and watches the hosted CI run on the pushed tip.
-2. With that run green, the Open PR Gate merges pull request 250.
-3. The first reviewed round after the merge books round 110's verdict and the resolution of
-   R-0889, and registers or resolves the closure candidate in `.agent/candidates.md`.
+1. THE NEXT SESSION: Phase 1 rule 1 first, `.agent/STOP`; then the Open PR Gate merges this
+   branch's pull request; then Rule A5 claims F280.
 
 ## Risks
 
-- The hosted job now fetches the whole history: `git count-objects -vH` in the primary
-  checkout at `76283e69` reads 74.10 MiB of packs, against a job cap of 90 minutes.
-- The closure candidate stays in `.agent/candidates.md` through this round, because the
-  Open PR Gate precedes the candidates rule in Phase 1 of the self-drive protocol.
+- The open findings stand at 125 by distinct id. Three are High — R-0803, R-0804 and R-0807 —
+  none of them F261's, and the integrity gate's `high_blockers_open` check does not see them,
+  which is R-0648; so the close is PASS_WITH_RISKS.
+- F261 closes with the Goal & Done sentence not met, and says so in its Built State; the
+  operator may reverse the split through operator question Q3.
+- The closure commit is the last commit on the branch, so the docs gate its own STATUS and
+  README edits must satisfy runs after it; the reviewer ran that gate against the same edits in
+  a disposable worktree before authoring.

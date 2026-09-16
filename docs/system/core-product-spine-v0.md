@@ -27,12 +27,11 @@ operator approval.
 ## The main operator flow
 
 ```
-1. Create a job       →  remedy do run "<goal>" --repo <path>
-2. Check job state    →  remedy job status <job_id> --json
-3. Read the report    →  remedy job report <job_id> --json
-4. Open the UI        →  remedy ui <job_id>
-5. Review results     →  remedy review run <job_id> --json
-6. Approve if needed  →  remedy patch approve <job_id> <patch_intent_id>
+1. Create a job                         →  remedy do run "<goal>" --repo <path>
+2. Check job state and read the report  →  remedy job show <job_id> --full --json
+3. Open the UI                          →  remedy ui <job_id>
+4. Review proposed follow-ups           →  remedy propose list <job_id> --json
+5. Approve if needed                    →  remedy patch approve <job_id> <patch_intent_id>
 ```
 
 Each step is explicit. No step runs automatically from the previous one.
@@ -56,9 +55,9 @@ adapter.
 
 ## What a report is
 
-A job report (`remedy job report`) is a read-only summary of the current
-job state. It shows tasks, progress, evidence, and what to do next.
-It does not execute anything.
+A job report (the `report` section of `remedy job show <id> --full`) is a
+read-only summary of the current job state. It shows tasks, progress,
+evidence, and what to do next. It does not execute anything.
 
 ## What a mission contract is
 
@@ -80,11 +79,10 @@ references a specific command template that constrains what the worker can do.
 | Command | What it does | Mutates? | Executes? |
 |---------|-------------|----------|-----------|
 | `do "<goal>" --repo <path>` | Create and start a job | Yes | No* |
-| `job status <id> --json` | Show job state | No | No |
-| `job report <id> --json` | Read job progress report | No | No |
-| `do job-run <id> --json` | Run pending tasks through Builder/Reviewer/Repair | Yes | Yes |
+| `job show <id> --full --json` | Show job state and read its progress report | No | No |
+| `job run <id> --json` | Run pending tasks through Builder/Reviewer/Repair | Yes | Yes |
 | `ui <id>` | Open interactive UI | No | No |
-| `review run <id> --json` | Reviewer recommendations | No | No |
+| `propose list <id> --json` | Proposed follow-up tasks | No | No |
 | `config list/show/get` | View config | No | No |
 | `review bundle <id>` | Review evidence bundle | No | No |
 | `job fulfill <id> --fixture-demo` | Run fixture fulfillment demo | Metadata+repo | No* |

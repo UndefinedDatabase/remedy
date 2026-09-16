@@ -504,31 +504,6 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=5,
     ),
     ConfigKeySpec(
-        key="queue.executor_binding",
-        env_var="REMEDY_QUEUE_EXECUTOR_BINDING",
-        description=(
-            "Let an idle multi-cycle run take the next entry from its project's "
-            "queue and turn it into a normal job (F048). OFF by default: with it "
-            "off the executor behaves exactly as it did before the queue existed. "
-            "A queued goal still stops at a PLANNED job and still meets the "
-            "operator's approval gate — the binding never implies --yes."
-        ),
-        value_type=bool,
-        default=False,
-    ),
-    ConfigKeySpec(
-        key="queue.reclaim_ttl_minutes",
-        env_var="REMEDY_QUEUE_RECLAIM_TTL_MINUTES",
-        description=(
-            "How old a queue claim must be before `remedy queue reclaim` will "
-            "re-offer it (F048). Age alone is never enough: the owning consumer "
-            "must ALSO be verifiably gone — same host, dead pid — because a slow "
-            "consumer is not an absent one, and there are no silent takeovers."
-        ),
-        value_type=int,
-        default=60,
-    ),
-    ConfigKeySpec(
         key="orchestrator.model",
         env_var="REMEDY_ORCHESTRATOR_MODEL",
         description=(

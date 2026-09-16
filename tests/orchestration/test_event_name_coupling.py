@@ -44,13 +44,21 @@ EMIT_FUNCS = frozenset({"log", "_emit", "emit", "log_event", "write_event",
 
 READER_SUFFIXES = (".py", ".ts", ".tsx")
 
-# The dead couplings that exist today, each with the ruling that owns it.
-# THIS LIST ONLY EVER SHRINKS. DECISION F260 D3 disposes of every entry.
+# The dead couplings that exist today, each with the ruling that owns it. THIS LIST
+# ONLY EVER SHRINKS: DECISION F260 D3 disposes of `context_budget_optimized`, and
+# `git_status_read`, declared when DECISION F261 D15 deleted `repo status`, its only
+# emitter, is disposed of by finding R-0905. F261 round 17 deleted the `policy` group,
+# the only emitter of `run_contract_inspected` and `token_policy_inspected`, which the
+# level-4 signals of `packages/orchestration/autonomy_readiness.py` still read: the
+# ceiling rises by two and the couplings stay declared rather than invisible.
 KNOWN_DEAD_EVENT_COUPLINGS: tuple[str, ...] = (
     "context_budget_optimized",
+    "git_status_read",
+    "run_contract_inspected",
+    "token_policy_inspected",
 )
 
-_COUPLING_CEILING = 1
+_COUPLING_CEILING = 4
 
 
 def _git(*args: str) -> str:

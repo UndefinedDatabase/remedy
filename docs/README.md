@@ -28,7 +28,7 @@
 | cost preview | [cost-preview-user-guide-v0.md](guides/cost-preview-user-guide-v0.md) | guide |
 | cost report | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | guide |
 | diff-only repair | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | system |
-| do continue | [do-continue-v1.md](guides/do-continue-v1.md) | guide |
+| continuation cycle (deleted) | [do-continue-v1.md](guides/do-continue-v1.md) | guide |
 | do run | [do-run-v1.md](guides/do-run-v1.md) | guide |
 | exec guard | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | system |
 | hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
@@ -95,11 +95,11 @@ Specifications and design documents for the built system.
 | [real-test-execution-v1.md](system/real-test-execution-v1.md) | Real test execution service |
 | [release-capability-v1.md](system/release-capability-v1.md) | What the wheel carries, what `remedy --version` reports, every reason the release gate refuses, and what F086 leaves unproven |
 | [remedy-toml-configuration-system-v0.md](system/remedy-toml-configuration-system-v0.md) | remedy.toml configuration system |
-| [repair-loop-v0.md](system/repair-loop-v0.md) | Repair loop v0 (legacy) |
-| [repair-loop-v1.md](system/repair-loop-v1.md) | Repair loop v1 (bounded, approval-gated) |
-| [repair-request-builder-v0.md](system/repair-request-builder-v0.md) | Provider-agnostic repair request builder |
+| [repair-loop-v0.md](system/repair-loop-v0.md) | Repair loop v0 — commands deleted by F261 round 22 |
+| [repair-loop-v1.md](system/repair-loop-v1.md) | Repair loop v1 — commands deleted by F261 round 22 |
+| [repair-request-builder-v0.md](system/repair-request-builder-v0.md) | Provider-agnostic repair request builder — commands deleted by F261 round 22 |
 | [reviewer-safety.md](system/reviewer-safety.md) | Reviewer and test safety constraints |
-| [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | One-way roadmap mirror, `remedy plan status`/`next`, feature→mission adapter |
+| [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | One-way roadmap mirror, `remedy roadmap status`/`next` (a hidden group), feature→mission adapter |
 | [run-contract-v1.md](system/run-contract-v1.md) | Run contract (apply/test gates, budgets) |
 | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | Self-dogfood execution (bounded self-improvement) |
 | [self-dogfood-v0.md](system/self-dogfood-v0.md) | Self-dogfood readiness + improvement planner |
@@ -110,7 +110,7 @@ Specifications and design documents for the built system.
 | [test-lanes-v0.md](system/test-lanes-v0.md) | Test lane isolation and routing |
 | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | Token economy + context budget optimizer |
 | [vocabulary.md](system/vocabulary.md) | The binding vocabulary: one row per word with its meaning, its code spelling today and after F260/F261, its CLI spelling and what it is NOT; the do-not-confuse table; the concept diagram; and the rulings that decided them |
-| [worker.md](system/worker.md) | Worker architecture and guide |
+| [worker.md](system/worker.md) | Worker architecture and guide — queue and run commands deleted by F261 round 23 |
 
 ## Guides (`docs/guides/`)
 
@@ -121,7 +121,7 @@ User-facing guides, quickstarts, and usage documentation.
 | [autocoder-usage.md](guides/autocoder-usage.md) | How to use the autocoder |
 | [cost-preview-user-guide-v0.md](guides/cost-preview-user-guide-v0.md) | Cost preview before an expensive command runs (`remedy job resume`) |
 | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | Reading `remedy stats report` |
-| [do-continue-v1.md](guides/do-continue-v1.md) | `remedy do --continue` one-cycle apply flow |
+| [do-continue-v1.md](guides/do-continue-v1.md) | The one-cycle apply flow F261 round 21 deleted |
 | [do-run-v1.md](guides/do-run-v1.md) | `remedy do` cohesive flow |
 | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
 | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |

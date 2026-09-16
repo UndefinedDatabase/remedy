@@ -49,11 +49,7 @@ from typing import Any
 #: (``docs/roadmap/features/T3_F066.md:24-29``) rather than a fresh one, per
 #: DECISION F032 D2: when F066 lands its resolver, the migration is a rename
 #: onto F066's constant instead of a re-typing of four strings scattered
-#: through producers.  It is a real constant and not a comment on purpose —
-#: the nearest existing type, ``orchestrator_brain.OrchestratorEvidenceRef``,
-#: states its vocabulary only in a trailing ``#`` comment, so nothing can
-#: validate against it.
-#: That is exactly the failure this constant exists to avoid.
+#: through producers.
 DECISION_EVIDENCE_REF_KINDS = frozenset({"file", "failure", "coverage", "decision"})
 
 #: The one downside literal a genuinely benign case may use, permitted by name
@@ -290,13 +286,10 @@ def export_decision_evidence(triple: Any) -> dict[str, Any]:
 
     THE WIRE SPELLING IS ``evidence_refs`` AND THAT IS DELIBERATE, which is
     exactly the question a reader arrives with, since the Python type is
-    ``DecisionEvidenceRef``.  Two reasons.  It is the name
+    ``DecisionEvidenceRef``.  It is the name
     ``docs/roadmap/features/T5_F032.md`` uses throughout, and diverging from
     the one document a later reader treats as the specification costs more than
-    it buys.  And a key INSIDE a decision card is namespaced by the card, so it
-    cannot collide with the unrelated Python attribute
-    ``orchestrator_brain.OrchestratorEvidenceRef`` the way a bare type name
-    would (DECISION F032 D4).
+    it buys.
     """
     return {
         "evidence_refs": [

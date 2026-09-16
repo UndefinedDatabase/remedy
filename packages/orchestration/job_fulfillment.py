@@ -86,9 +86,9 @@ class JobFulfillmentRecord(BaseModel):
 
     # Staging workspace fields
     staging_used: bool = False
-    staging_promoted: bool = False
+    applied_to_target: bool = False
     staged_files: list[str] = Field(default_factory=list)
-    promotion_files: list[str] = Field(default_factory=list)
+    files_applied_to_target: list[str] = Field(default_factory=list)
     changed_target_files: list[str] = Field(default_factory=list)
 
     # Definition-of-Done gate (F061 T004). Additive: a record written before
@@ -114,7 +114,7 @@ class JobFulfillmentContract(BaseModel):
     max_repair_rounds: int = 2
     allowed_mode: str = "fixture_demo"
     requires_staging: bool = True
-    requires_target_promotion: bool = True
+    requires_target_apply: bool = True
 
     def check(self, record: JobFulfillmentRecord) -> tuple[bool, list[str]]:
         """Check if fulfillment contract is satisfied. Returns (passed, blockers)."""
@@ -138,11 +138,11 @@ class JobFulfillmentContract(BaseModel):
                 blockers.append(f"proof_not_verified:{record.proof_status}")
         if self.requires_staging and not record.staging_used:
             blockers.append("staging_not_used")
-        if self.requires_target_promotion:
-            if not record.staging_promoted:
-                blockers.append("target_not_promoted")
-            if not record.promotion_files:
-                blockers.append("no_promotion_files")
+        if self.requires_target_apply:
+            if not record.applied_to_target:
+                blockers.append("target_not_applied")
+            if not record.files_applied_to_target:
+                blockers.append("no_files_applied_to_target")
         if len(record.repair_task_ids) > 0:
             # All repair tasks must be completed (tracked via task_ids)
             pass
@@ -225,9 +225,9 @@ def export_job_fulfillment_json(record: JobFulfillmentRecord) -> dict[str, Any]:
         "changed_files": record.changed_target_files,
         "permissions_granted": record.permissions_granted,
         "staging_used": record.staging_used,
-        "staging_promoted": record.staging_promoted,
+        "applied_to_target": record.applied_to_target,
         "staged_files": record.staged_files,
-        "promotion_files": record.promotion_files,
+        "files_applied_to_target": record.files_applied_to_target,
         "changed_target_files": record.changed_target_files,
         "created_at": record.created_at.isoformat(),
         "updated_at": record.updated_at.isoformat(),
@@ -247,7 +247,7 @@ def summarize_job_fulfillment(record: JobFulfillmentRecord) -> str:
         f"  Applied:    {len(record.apply_ids)}",
         f"  Tests:      {len(record.test_run_ids)} (passed={record.test_passed})",
         f"  Proof:      {record.proof_status}",
-        f"  Staged:     {record.staging_used} (promoted={record.staging_promoted})",
+        f"  Staged:     {record.staging_used} (applied_to_target={record.applied_to_target})",
         f"  Final:      {record.final_review_status}",
     ]
     if record.next_safe_action:
@@ -593,7 +593,7 @@ def _approve_and_apply_intent(
     if apply_result.state == "blocked":
         record.status = JobFulfillmentStatus.BLOCKED
         record.stop_reason = f"apply_blocked:{apply_result.blocked_reason}"
-        record.next_safe_action = f"remedy job report {record.job_id} --json"
+        record.next_safe_action = f"remedy job show {record.job_id} --full --json"
         save_fulfillment_record(record, data_dir)
         return job, False
 
@@ -777,10 +777,10 @@ def run_job_fulfill(
     # ── STAGING WORKSPACE ─────────────────────────────────────────────
     from packages.orchestration.staging_workspace import (
         StagingResult,
+        apply_staged_changes_to_target,
         create_staging_workspace,
         discard_staging,
         find_staged_changes,
-        promote_staged_changes,
     )
 
     # Staging lives under Remedy workspace, not /tmp
@@ -913,7 +913,7 @@ def run_job_fulfill(
         if not test_passed:
             record.status = JobFulfillmentStatus.BLOCKED
             record.stop_reason = f"test_not_passed:{test_res.status}:{test_res.stop_reason}"
-            record.next_safe_action = f"remedy job report {job_id} --json"
+            record.next_safe_action = f"remedy job show {job_id} --full --json"
             discard_staging(staging_ws, "test_failed")
             staging_result.discarded = True
             staging_result.discard_reason = "test_failed"
@@ -966,31 +966,31 @@ def run_job_fulfill(
         )
         record.final_review_status = "pass" if final_pass else "blocked"
 
-        # ── PROMOTION (staging -> target, only if final_pass) ─────────
+        # ── TARGET APPLY (staging -> target, only if final_pass) ──────
         if final_pass:
-            promotion = promote_staged_changes(
+            target_apply = apply_staged_changes_to_target(
                 staging_ws, staged_changes, gates_passed=True,
             )
-            staging_result.promotion = promotion
-            record.staging_promoted = promotion.promoted
-            record.promotion_files = promotion.files_promoted
-            record.changed_target_files = promotion.files_promoted if promotion.promoted else []
+            staging_result.target_apply = target_apply
+            record.applied_to_target = target_apply.applied
+            record.files_applied_to_target = target_apply.files_applied_to_target
+            record.changed_target_files = target_apply.files_applied_to_target if target_apply.applied else []
 
-            if promotion.blockers:
-                record.contract_blockers = list(promotion.blockers)
+            if target_apply.blockers:
+                record.contract_blockers = list(target_apply.blockers)
 
-            append_run_event(data_dir, job_id, event="staging_promoted", metadata={
+            append_run_event(data_dir, job_id, event="staging_applied_to_target", metadata={
                 "fulfillment_id": record.fulfillment_id,
-                "promoted": promotion.promoted,
-                "files_promoted": promotion.files_promoted,
-                "files_skipped": promotion.files_skipped,
-                "files_blocked": promotion.files_blocked,
+                "applied_to_target": target_apply.applied,
+                "files_applied_to_target": target_apply.files_applied_to_target,
+                "files_skipped": target_apply.files_skipped,
+                "files_blocked": target_apply.files_blocked,
             })
         else:
-            record.staging_promoted = False
+            record.applied_to_target = False
             record.changed_target_files = []
 
-        # ── CONTRACT CHECK (after promotion truth known) ──────────────
+        # ── CONTRACT CHECK (after target apply truth known) ───────────
         contract = JobFulfillmentContract()
         passed, blockers = contract.check(record)
         record.contract_blockers = (record.contract_blockers or []) + blockers
@@ -1021,8 +1021,8 @@ def run_job_fulfill(
                     record.contract_blockers or []) + [gate_blocker(dod_result)]
                 passed = False
 
-        if passed and record.staging_promoted:
-            discard_staging(staging_ws, "promoted")
+        if passed and record.applied_to_target:
+            discard_staging(staging_ws, "applied_to_target")
 
             record.status = JobFulfillmentStatus.COMPLETED_VERIFIED
             record.stop_reason = "completed_verified"
@@ -1040,7 +1040,7 @@ def run_job_fulfill(
                 "status": "completed_verified",
                 "contract_id": record.contract_id,
                 "suggestion_count": len(suggestion_ids),
-                "staging_promoted": True,
+                "applied_to_target": True,
             })
         else:
             discard_staging(staging_ws, f"contract_failed:{record.contract_blockers}")
@@ -1049,7 +1049,7 @@ def run_job_fulfill(
 
             record.status = JobFulfillmentStatus.BLOCKED
             record.stop_reason = f"contract_not_satisfied:{record.contract_blockers}"
-            record.next_safe_action = f"remedy job report {job_id} --json"
+            record.next_safe_action = f"remedy job show {job_id} --full --json"
     finally:
         # Scoped cleanup: always remove staging parent on any exit path
         if staging_parent.exists():

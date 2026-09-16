@@ -1632,7 +1632,7 @@ def _auto_approve_if_gated(job: Any) -> bool:
     Unattended missions run under ``--yes`` semantics (feature file): every
     open clarification takes its documented default and the approval carries an
     audit record. The semantics are NOT reimplemented here — this calls the
-    helper ``remedy do --yes`` uses.
+    helper ``remedy do run`` uses.
     """
     from packages.orchestration.data_paths import job_evidence_export_dir
     from packages.orchestration.flight_plan import (

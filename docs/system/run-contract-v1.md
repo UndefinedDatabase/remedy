@@ -45,15 +45,19 @@ One contract is persisted per job in `job.metadata["run_contract"]`. `ensure_con
 
 ## Contract mutation
 
-Use `remedy contract set <job_id> <field> <value>` to update safe fields: `max_loops`, `max_test_runs`, `max_runtime_seconds`, `stop_before_apply`, `stop_on_unknown_risk`, `stop_on_medium_risk`, `no_cloud`, `notes`. Mutation re-validates and re-persists.
+No command sets a contract field: F261 round 17 deleted the `contract` group, whose `set`
+subcommand was the only writer of `max_loops`, `max_test_runs`, `max_runtime_seconds`,
+`stop_before_apply`, `stop_on_unknown_risk`, `stop_on_medium_risk`, `no_cloud` and `notes`.
+The contracts written now are the default of `build_default_run_contract`, the caller
+override `do_run` persists for the job it creates, and the fixture contract of
+`job_fulfillment`.
 
 ## CLI
 
-```
-remedy contract inspect <job_id> --json
-remedy contract check <job_id> <action> [--path <path>] [--risk <risk>] --json
-remedy contract set <job_id> <field> <value>
-```
+None. The group's three subcommands were deleted by F261 round 17 under DECISION
+amend0905-vocab D4, which frees the word `contract` for the acceptance criteria of a
+mission. A job's execution boundary is read as its permissions and fences with
+`remedy job show <job_id> --full --json`.
 
 ## Integration
 

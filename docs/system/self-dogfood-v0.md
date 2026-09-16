@@ -17,7 +17,7 @@ not autonomous self-modification.
       → SelfImprovementItems (classified, deduped by fingerprint)
       → SelfImprovementPlan (grouped, top 3)
       → remedy self propose → ProposedTasks
-      → human evaluate / approve / materialize (EXISTING flow) → do continue
+      → human evaluate / approve / materialize (EXISTING flow) → patch apply
 
 ## Does NOT
 
@@ -27,7 +27,7 @@ not autonomous self-modification.
 
 `self inspect` / `self plan` / `self report` are **read-only**. `self propose` is
 **metadata-only** — it creates ProposedTasks (origin self-dogfood) that still require
-the normal human evaluation/approval and materialize → do continue flow.
+the normal human evaluation/approval and materialize → patch apply flow.
 
 ## What it inspects
 
@@ -65,4 +65,4 @@ execution rail — still behind approval, never self-merging.
 
 - [repair-loop-v1.md](repair-loop-v1.md), [do-continue-v1.md](../guides/do-continue-v1.md)
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md), [repair-request-builder-v0.md](repair-request-builder-v0.md)
-- [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — acts on an APPROVED self-dogfood task through the existing trust/materialize/approve/do-continue gates.
+- [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — acts on an APPROVED self-dogfood task through the existing trust/materialize/approve/apply gates.

@@ -327,15 +327,6 @@ class TestSegmentManifest:
         append_trace_jsonl([entry], path)
         assert len(path.read_text().strip().split("\n")) == 1
 
-    def test_the_replan_path_records_and_appends_its_traces(self):
-        """Wiring guard: an unwired or truncating replan fails HERE (F105 R28)."""
-        import apps.cli.commands.do_cmd as do_cmd
-
-        source = inspect.getsource(do_cmd)
-        assert "replan_traces" in source
-        assert "append_trace_jsonl" in source
-        assert source.count("on_call=make_flight_plan_call_recorder(") == 2
-
     def test_every_cli_call_site_hands_its_composition_down(self):
         """R-0256 wiring guard: a site that composes twice fails HERE."""
         import apps.cli.commands.do_cmd as do_cmd
@@ -343,7 +334,6 @@ class TestSegmentManifest:
         source = inspect.getsource(do_cmd)
         assert "composed=intake_composed," in source
         assert "composed=plan_composed," in source
-        assert "composed=replan_composed," in source
 
     def test_the_builder_composition_traces_a_real_segment_manifest(self):
         """F115 D1 behaviour: a composed builder prompt traces with real rows.
@@ -711,74 +701,3 @@ class TestMeasureDedupeSavingsFromTraces:
         assert same_role.unmeasured_segment_names == ()
         assert same_role.deduped_occurrences_counted == 1
         assert same_role.net_chars_saved == 1160
-
-
-# ---------------------------------------------------------------------------
-# Step 5088: next_approve_command unit tests
-# ---------------------------------------------------------------------------
-
-
-class TestNextApproveCommand:
-    def test_ready_promote_emits_command(self):
-        from apps.cli.commands.do_cmd import _build_next_approve_command
-        cmd = _build_next_approve_command("job123", "/repo", None, True)
-        assert "job123" in cmd
-        assert "--approve" in cmd
-        assert "--repo" in cmd
-
-    def test_blocked_promote_emits_empty(self):
-        from apps.cli.commands.do_cmd import _build_next_approve_command
-        cmd = _build_next_approve_command("job123", "/repo", None, False)
-        assert cmd == ""
-
-    def test_includes_test_command(self):
-        from apps.cli.commands.do_cmd import _build_next_approve_command
-        cmd = _build_next_approve_command("job123", "/repo", "pytest -q", True)
-        assert "--test-command" in cmd
-        assert "pytest" in cmd
-
-    def test_shell_quotes_spaces(self):
-        from apps.cli.commands.do_cmd import _build_next_approve_command
-        cmd = _build_next_approve_command("j1", "/my repo", "pytest tests/my test.py", True)
-        assert "'/my repo'" in cmd or '"/my repo"' in cmd or "my\\ repo" in cmd
-        assert "--test-command" in cmd
-
-    def test_shell_quotes_single_quotes(self):
-        from apps.cli.commands.do_cmd import _build_next_approve_command
-        cmd = _build_next_approve_command("j1", "/repo", "echo 'hello'", True)
-        assert "--test-command" in cmd
-        assert "echo" in cmd
-
-
-# ---------------------------------------------------------------------------
-# Step 5089: Timeout hint tests
-# ---------------------------------------------------------------------------
-
-
-class TestTimeoutHint:
-    def test_claude_cli_below_900_warns(self):
-        from apps.cli.commands.do_cmd import _build_timeout_hint
-        warning = _build_timeout_hint("claude-cli", "fake", 180)
-        assert warning
-        assert "900" in warning
-
-    def test_claude_cli_reviewer_below_900_warns(self):
-        from apps.cli.commands.do_cmd import _build_timeout_hint
-        warning = _build_timeout_hint("fake", "claude-cli", 120)
-        assert warning
-        assert "900" in warning
-
-    def test_fake_no_warning(self):
-        from apps.cli.commands.do_cmd import _build_timeout_hint
-        warning = _build_timeout_hint("fake", "fake", 120)
-        assert warning == ""
-
-    def test_claude_cli_at_900_no_warning(self):
-        from apps.cli.commands.do_cmd import _build_timeout_hint
-        warning = _build_timeout_hint("claude-cli", "claude-cli", 900)
-        assert warning == ""
-
-    def test_claude_cli_above_900_no_warning(self):
-        from apps.cli.commands.do_cmd import _build_timeout_hint
-        warning = _build_timeout_hint("claude-cli", "claude-cli", 1200)
-        assert warning == ""

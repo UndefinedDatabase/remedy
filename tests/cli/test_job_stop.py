@@ -263,10 +263,8 @@ class TestItIsWiredIntoTheCli:
         handlers = collect_all_handlers()
         assert "job.stop" in handlers
 
-    def test_it_is_not_the_worker_queue_pause_or_cancel(self):
-        # F011 stops a PERSISTED PING-PONG JOB. Wiring it to the queue commands would stop
-        # the wrong thing entirely.
-        assert "job.stop" not in {"job.pause", "job.cancel"}
+    def test_it_is_described_as_the_safe_point_stop(self):
+        # F011 stops a PERSISTED PING-PONG JOB at its next safe point.
         entry = next(e for e in CATALOG if e.command_id == "job.stop")
         assert "safe point" in entry.description or "F011" in entry.description
 

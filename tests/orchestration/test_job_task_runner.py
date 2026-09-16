@@ -185,19 +185,19 @@ def _run_success_job(demo_repo, **kwargs):
 
 
 class TestCliCommandTruth:
-    def test_next_command_uses_hyphen_for_planned(self, isolate_data_root):
+    def test_next_command_names_job_run_for_planned(self, isolate_data_root):
         job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
         cmd = _suggest_next_command(job)
-        assert "job-run" in cmd
-        assert "job run" not in cmd.replace("job-run", "")
+        assert cmd.startswith(f"remedy job run {job.job_id}")
+        assert "do job-run" not in cmd
 
-    def test_next_command_uses_hyphen_for_completed(self, isolate_data_root, demo_repo):
+    def test_next_command_names_job_apply_for_completed(self, isolate_data_root, demo_repo):
         result = _run_success_job(demo_repo)
         cmd = _suggest_next_command(result)
-        assert "job-promote" in cmd
-        assert "job promote" not in cmd.replace("job-promote", "")
+        assert cmd.startswith(f"remedy job apply {result.job_id} ")
+        assert "do job-promote" not in cmd
 
-    def test_next_command_uses_hyphen_for_blocked(self, isolate_data_root, demo_repo):
+    def test_next_command_names_job_show_full_for_blocked(self, isolate_data_root, demo_repo):
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         result = run_job(
             job.job_id,
@@ -206,23 +206,23 @@ class TestCliCommandTruth:
             max_rounds=1, repair_rounds=0,
         )
         cmd = _suggest_next_command(result)
-        assert "job-report" in cmd
+        assert cmd == f"remedy job show {result.job_id} --full"
 
     def test_report_json_next_command_copyable(self, isolate_data_root, demo_repo):
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         report = export_job_report(job)
-        assert "remedy do job-run" in report["next_command"]
+        assert "remedy job run" in report["next_command"]
 
     def test_no_stale_space_commands_in_report(self, isolate_data_root, demo_repo):
         result = _run_success_job(demo_repo)
         report_json = json.dumps(export_job_report(result))
         text = format_job_report_text(result)
-        for stale in ["remedy do job run", "remedy do job plan", "remedy do job report"]:
-            # Must not appear as bare space-separated (allow "job-run" etc)
-            cleaned = report_json.replace("job-run", "JR").replace("job-plan", "JP").replace("job-report", "JRE")
-            assert stale not in cleaned
-            cleaned_text = text.replace("job-run", "JR").replace("job-plan", "JP").replace("job-report", "JRE")
-            assert stale not in cleaned_text
+        for stale in ["remedy do job run", "remedy do job plan", "remedy do job report",
+                      "remedy do job-promote", "remedy do job-run", "remedy do job-plan",
+                      "remedy do job-report", "remedy job report"]:
+            # A spaced `do` form never parsed, and a renamed or deleted `do` or `job` word parses no more
+            assert stale not in report_json
+            assert stale not in text
 
 
 # ---------------------------------------------------------------------------
@@ -231,31 +231,19 @@ class TestCliCommandTruth:
 
 
 class TestCliE2E:
-    def test_catalog_has_job_plan(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = [c.command_id for c in CATALOG]
-        assert "do.job-plan" in ids
-
     def test_catalog_has_job_run(self):
         from apps.cli.command_catalog import CATALOG
         ids = [c.command_id for c in CATALOG]
-        assert "do.job-run" in ids
-
-    def test_catalog_has_job_report(self):
-        from apps.cli.command_catalog import CATALOG
-        ids = [c.command_id for c in CATALOG]
-        assert "do.job-report" in ids
+        assert "job.run" in ids
 
     def test_handlers_exist(self):
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        assert "do.job-plan" in COMMAND_HANDLERS
-        assert "do.job-run" in COMMAND_HANDLERS
-        assert "do.job-report" in COMMAND_HANDLERS
+        assert "job.run" in COMMAND_HANDLERS
 
     def test_job_plan_json_has_next_command(self, isolate_data_root, demo_repo):
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         report = export_job_report(job)
-        assert "remedy do job-run" in report["next_command"]
+        assert "remedy job run" in report["next_command"]
         assert job.job_id in report["next_command"]
 
 
@@ -336,11 +324,11 @@ class TestStrictWorkspaceApply:
 
 
 # ---------------------------------------------------------------------------
-# Step 4836 — Reuse promotion safety
+# Step 4836 — Reuse apply safety
 # ---------------------------------------------------------------------------
 
 
-class TestPromotionSafetyReuse:
+class TestApplySafetyReuse:
     def test_traversal_blocked(self):
         assert "path_traversal" in _is_unsafe_path("../escape.txt")
 
@@ -843,10 +831,6 @@ class TestExistingFlowsPreserved:
         from packages.orchestration.pingpong_evidence import export_evidence
         assert callable(export_evidence)
 
-    def test_promotion_import_still_works(self):
-        from packages.orchestration.pingpong_promote import promote_run
-        assert callable(promote_run)
-
 
 # ---------------------------------------------------------------------------
 # Persistence round-trip
@@ -1065,7 +1049,7 @@ class TestRepairRoundsCoercion:
 
 
 def _make_args(**kwargs):
-    """Build a namespace that mimics argparse output for do.job-run.
+    """Build a namespace that mimics argparse output for job.run.
 
     Continuation-critical args default to None (omitted). Pass explicit
     values to simulate CLI flags. This matches catalog default=None.
@@ -1090,7 +1074,7 @@ class TestCliHandlerRepairRounds:
         args = _make_args(job_id=job.job_id)
 
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        COMMAND_HANDLERS["do.job-run"](args)
+        COMMAND_HANDLERS["job.run"](args)
 
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -1103,7 +1087,7 @@ class TestCliHandlerRepairRounds:
         args = _make_args(job_id=job.job_id, repair_rounds=0)
 
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        COMMAND_HANDLERS["do.job-run"](args)
+        COMMAND_HANDLERS["job.run"](args)
 
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -1116,7 +1100,7 @@ class TestCliHandlerRepairRounds:
         args = _make_args(job_id=job.job_id, repair_rounds=1)
 
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        COMMAND_HANDLERS["do.job-run"](args)
+        COMMAND_HANDLERS["job.run"](args)
 
         out = capsys.readouterr().out
         data = json.loads(out)
@@ -1173,23 +1157,13 @@ class TestCliHandlerRepairRounds:
 class TestCatalogMetadata:
     def test_job_run_may_execute_commands(self):
         from apps.cli.command_catalog import CATALOG
-        entry = [c for c in CATALOG if c.command_id == "do.job-run"][0]
+        entry = [c for c in CATALOG if c.command_id == "job.run"][0]
         assert entry.may_execute_commands is True
 
     def test_job_run_no_mutate_repo(self):
         from apps.cli.command_catalog import CATALOG
-        entry = [c for c in CATALOG if c.command_id == "do.job-run"][0]
+        entry = [c for c in CATALOG if c.command_id == "job.run"][0]
         assert entry.may_mutate_repo is False
-
-    def test_job_plan_no_execute(self):
-        from apps.cli.command_catalog import CATALOG
-        entry = [c for c in CATALOG if c.command_id == "do.job-plan"][0]
-        assert entry.may_execute_commands is False
-
-    def test_job_report_no_execute(self):
-        from apps.cli.command_catalog import CATALOG
-        entry = [c for c in CATALOG if c.command_id == "do.job-report"][0]
-        assert entry.may_execute_commands is False
 
 
 # ---------------------------------------------------------------------------
@@ -1280,10 +1254,10 @@ class TestPartialRunStatus:
         assert result.state != "running"
 
     def test_paused_next_command_copyable(self, isolate_data_root, demo_repo):
-        """Paused job suggests job-run as next command."""
+        """Paused job suggests job run as next command."""
         result = _run_success_job(demo_repo, max_tasks=1)
         cmd = _suggest_next_command(result)
-        assert "job-run" in cmd
+        assert "remedy job run" in cmd
         assert result.job_id in cmd
 
     def test_paused_report_shows_pending(self, isolate_data_root, demo_repo):
@@ -1294,7 +1268,7 @@ class TestPartialRunStatus:
         assert report["status"] == "paused"
 
     def test_continuation_after_pause(self, isolate_data_root, demo_repo):
-        """Re-running job-run after max-tasks pause continues pending tasks."""
+        """Re-running job run after max-tasks pause continues pending tasks."""
         result = _run_success_job(demo_repo, max_tasks=1)
         assert result.state == JOB_PAUSED
         assert result.tasks[1].status == TASK_PENDING
@@ -1830,7 +1804,7 @@ class TestCliPauseContinueSmoke:
             repair_rounds=1,
             max_tasks="1",
         )
-        COMMAND_HANDLERS["do.job-run"](args1)
+        COMMAND_HANDLERS["job.run"](args1)
         out1 = json.loads(capsys.readouterr().out)
 
         assert out1["status"] == "paused"
@@ -1839,16 +1813,17 @@ class TestCliPauseContinueSmoke:
         assert out1["repair_rounds_source"] == "cli"
         assert out1["execution_config"]["repair_rounds_allowed"] == 1
 
-        # Step 3: Report
-        args_report = types.SimpleNamespace(job_id=job.job_id, json=True)
-        COMMAND_HANDLERS["do.job-report"](args_report)
+        # Step 3: Report, read from `job show`
+        from apps.cli.grouped import main
+
+        main(["job", "show", job.job_id])
         report1 = json.loads(capsys.readouterr().out)
         assert report1["status"] == "paused"
         assert report1["execution_config"]["repair_rounds_allowed"] == 1
 
         # Step 4: Continue without restating flags
         args2 = _make_args(job_id=job.job_id)
-        COMMAND_HANDLERS["do.job-run"](args2)
+        COMMAND_HANDLERS["job.run"](args2)
         out2 = json.loads(capsys.readouterr().out)
 
         assert out2["status"] == "completed"
@@ -1857,7 +1832,7 @@ class TestCliPauseContinueSmoke:
         assert out2["execution_config"]["repair_rounds_allowed"] == 1
 
         # Step 5: Final report
-        COMMAND_HANDLERS["do.job-report"](args_report)
+        main(["job", "show", job.job_id])
         report2 = json.loads(capsys.readouterr().out)
         assert report2["status"] == "completed"
 
@@ -1874,11 +1849,11 @@ class TestCliPauseContinueSmoke:
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(job_id=job.job_id, max_tasks="1")
-        COMMAND_HANDLERS["do.job-run"](args1)
+        COMMAND_HANDLERS["job.run"](args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id)
-        COMMAND_HANDLERS["do.job-run"](args2)
+        COMMAND_HANDLERS["job.run"](args2)
         capsys.readouterr()
 
         assert (demo_repo / "README.md").read_text() == readme_before
@@ -1956,13 +1931,13 @@ class TestMaxRoundsContinuation:
             job_id=job.job_id, builder="fake", reviewer="fake",
             max_rounds="7", max_tasks="1",
         )
-        COMMAND_HANDLERS["do.job-run"](args1)
+        COMMAND_HANDLERS["job.run"](args1)
         out1 = json.loads(capsys.readouterr().out)
         assert out1["status"] == "paused"
         assert out1["execution_config"]["max_rounds"] == 7
 
         args2 = _make_args(job_id=job.job_id)
-        COMMAND_HANDLERS["do.job-run"](args2)
+        COMMAND_HANDLERS["job.run"](args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["status"] == "completed"
         assert out2["execution_config"]["max_rounds"] == 7
@@ -2049,7 +2024,7 @@ class TestProviderOverrideToFake:
             reviewer="claude-cli",
             max_tasks="1",
         )
-        COMMAND_HANDLERS["do.job-run"](args1)
+        COMMAND_HANDLERS["job.run"](args1)
         out1 = json.loads(capsys.readouterr().out)
         assert out1["execution_config"]["builder"] == "claude-cli"
 
@@ -2058,7 +2033,7 @@ class TestProviderOverrideToFake:
             builder="fake",
             reviewer="fake",
         )
-        COMMAND_HANDLERS["do.job-run"](args2)
+        COMMAND_HANDLERS["job.run"](args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["execution_config"]["builder"] == "fake"
         assert out2["execution_config"]["builder_source"] == "cli"
@@ -2305,7 +2280,7 @@ class TestCommandPathFullConfigContinuation:
             claude_cli_write_mode="none",
             max_tasks="1",
         )
-        COMMAND_HANDLERS["do.job-run"](args1)
+        COMMAND_HANDLERS["job.run"](args1)
         out1 = json.loads(capsys.readouterr().out)
 
         assert out1["status"] == "paused"
@@ -2317,7 +2292,7 @@ class TestCommandPathFullConfigContinuation:
 
         # Continue without restating any flags
         args2 = _make_args(job_id=job.job_id)
-        COMMAND_HANDLERS["do.job-run"](args2)
+        COMMAND_HANDLERS["job.run"](args2)
         out2 = json.loads(capsys.readouterr().out)
 
         assert out2["status"] == "completed"
@@ -2343,15 +2318,16 @@ class TestCommandPathFullConfigContinuation:
             job_id=job.job_id, builder="fake", reviewer="fake",
             max_rounds="7", max_tasks="1",
         )
-        COMMAND_HANDLERS["do.job-run"](args1)
+        COMMAND_HANDLERS["job.run"](args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id)
-        COMMAND_HANDLERS["do.job-run"](args2)
+        COMMAND_HANDLERS["job.run"](args2)
         capsys.readouterr()
 
-        args_report = types.SimpleNamespace(job_id=job.job_id, json=True)
-        COMMAND_HANDLERS["do.job-report"](args_report)
+        from apps.cli.grouped import main
+
+        main(["job", "show", job.job_id])
         report = json.loads(capsys.readouterr().out)
 
         assert report["execution_config"]["max_rounds"] == 7
@@ -2378,7 +2354,7 @@ class TestCommandPathExplicitOverrides:
             reviewer="claude-cli",
             max_tasks="1",
         )
-        COMMAND_HANDLERS["do.job-run"](args1)
+        COMMAND_HANDLERS["job.run"](args1)
         out1 = json.loads(capsys.readouterr().out)
         assert out1["execution_config"]["builder"] == "claude-cli"
 
@@ -2387,7 +2363,7 @@ class TestCommandPathExplicitOverrides:
             builder="fake",
             reviewer="fake",
         )
-        COMMAND_HANDLERS["do.job-run"](args2)
+        COMMAND_HANDLERS["job.run"](args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["execution_config"]["builder"] == "fake"
         assert out2["execution_config"]["builder_source"] == "cli"
@@ -2402,11 +2378,11 @@ class TestCommandPathExplicitOverrides:
         args1 = _make_args(
             job_id=job.job_id, max_rounds="7", max_tasks="1",
         )
-        COMMAND_HANDLERS["do.job-run"](args1)
+        COMMAND_HANDLERS["job.run"](args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id, max_rounds="3")
-        COMMAND_HANDLERS["do.job-run"](args2)
+        COMMAND_HANDLERS["job.run"](args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["execution_config"]["max_rounds"] == 3
         assert out2["execution_config"]["max_rounds_source"] == "cli"
@@ -2421,11 +2397,11 @@ class TestCommandPathExplicitOverrides:
         args1 = _make_args(
             job_id=job.job_id, repair_rounds=1, max_tasks="1",
         )
-        COMMAND_HANDLERS["do.job-run"](args1)
+        COMMAND_HANDLERS["job.run"](args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id, repair_rounds=0)
-        COMMAND_HANDLERS["do.job-run"](args2)
+        COMMAND_HANDLERS["job.run"](args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["execution_config"]["repair_rounds_allowed"] == 0
         assert out2["execution_config"]["repair_rounds_source"] == "cli"
@@ -2438,11 +2414,11 @@ class TestCommandPathExplicitOverrides:
         args1 = _make_args(
             job_id=job.job_id, test_command="true", max_tasks="1",
         )
-        COMMAND_HANDLERS["do.job-run"](args1)
+        COMMAND_HANDLERS["job.run"](args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id, test_command="echo ok")
-        COMMAND_HANDLERS["do.job-run"](args2)
+        COMMAND_HANDLERS["job.run"](args2)
         out2 = json.loads(capsys.readouterr().out)
         assert out2["execution_config"]["test_command_source"] == "cli"
 
@@ -2454,15 +2430,16 @@ class TestCommandPathExplicitOverrides:
         args1 = _make_args(
             job_id=job.job_id, max_rounds="7", max_tasks="1",
         )
-        COMMAND_HANDLERS["do.job-run"](args1)
+        COMMAND_HANDLERS["job.run"](args1)
         capsys.readouterr()
 
         args2 = _make_args(job_id=job.job_id, max_rounds="3")
-        COMMAND_HANDLERS["do.job-run"](args2)
+        COMMAND_HANDLERS["job.run"](args2)
         capsys.readouterr()
 
-        args_report = types.SimpleNamespace(job_id=job.job_id, json=True)
-        COMMAND_HANDLERS["do.job-report"](args_report)
+        from apps.cli.grouped import main
+
+        main(["job", "show", job.job_id])
         report = json.loads(capsys.readouterr().out)
         assert report["execution_config"]["max_rounds"] == 3
         assert report["execution_config"]["max_rounds_source"] == "cli"
@@ -2745,7 +2722,7 @@ class TestCommandPathGateSmoke:
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args = _make_args(job_id=job.job_id, builder="fake", reviewer="fake")
-        COMMAND_HANDLERS["do.job-run"](args)
+        COMMAND_HANDLERS["job.run"](args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "completed"
         applied = [t for t in out["tasks"] if t["status"] == TASK_APPLIED]
@@ -2771,7 +2748,7 @@ class TestCommandPathGateSmoke:
         args = _make_args(
             job_id=job.job_id, max_rounds="7", repair_rounds=1,
         )
-        COMMAND_HANDLERS["do.job-run"](args)
+        COMMAND_HANDLERS["job.run"](args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "blocked"
         ec = out["execution_config"]
@@ -3161,7 +3138,7 @@ class TestCommandPathPreApplySmoke:
         monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
 
         args = _make_args(job_id=job.job_id, builder="fake", reviewer="fake")
-        COMMAND_HANDLERS["do.job-run"](args)
+        COMMAND_HANDLERS["job.run"](args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "blocked"
         assert out["tasks"][0]["status"] == TASK_BLOCKED
@@ -3173,7 +3150,7 @@ class TestCommandPathPreApplySmoke:
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args = _make_args(job_id=job.job_id, builder="fake", reviewer="fake")
-        COMMAND_HANDLERS["do.job-run"](args)
+        COMMAND_HANDLERS["job.run"](args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "completed"
         applied = [t for t in out["tasks"] if t["status"] == TASK_APPLIED]

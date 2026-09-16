@@ -45,7 +45,7 @@ def _make_job(*, tasks=None, name="test", metadata=None):
 # =========================================================================
 
 class TestDevStatusBlockerAdvisorySplit:
-    """commit_readiness_ok=false should be advisory, not blocker."""
+    """Dev status keeps hard blockers apart from advisories."""
 
     def test_dev_status_schema_has_advisories(self):
         """dev status JSON must have 'advisories' key."""
@@ -60,52 +60,6 @@ class TestDevStatusBlockerAdvisorySplit:
         assert "advisories" in data
         assert "remaining_blockers" in data
         assert isinstance(data["advisories"], list)
-
-    def test_commit_readiness_false_is_advisory(self):
-        """commit-readiness false should not be a blocker."""
-        import contextlib
-        import io
-
-        from apps.cli.commands.dev import _dev_status
-        # Mock smoke to return a job_id, and commit-readiness to return False
-        with patch("apps.cli.commands.dev._find_latest_smoke") as mock_smoke, \
-             patch("apps.cli.commands.repo._cmd_commit_readiness") as mock_cr:
-            mock_smoke.return_value = {
-                "found": True, "status": "passed",
-                "job_id": "abc123", "project_id": "", "smoke_log": "",
-            }
-            # Simulate commit-readiness returning ready=false (not crashing)
-            mock_cr.side_effect = lambda *a, **k: print(json.dumps({"ready": False}))
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                _dev_status(json_output=True)
-        data = json.loads(buf.getvalue())
-        # commit-readiness false should NOT be in blockers
-        for b in data["remaining_blockers"]:
-            assert "commit-readiness" not in b.lower()
-        # Should be in advisories
-        advisory_text = " ".join(data["advisories"]).lower()
-        assert "commit-readiness" in advisory_text or data["commit_readiness_ok"] is None
-
-    def test_commit_readiness_crash_is_blocker(self):
-        """commit-readiness crash should be a hard blocker."""
-        import contextlib
-        import io
-
-        from apps.cli.commands.dev import _dev_status
-        with patch("apps.cli.commands.dev._find_latest_smoke") as mock_smoke, \
-             patch("apps.cli.commands.repo._cmd_commit_readiness") as mock_cr:
-            mock_smoke.return_value = {
-                "found": True, "status": "passed",
-                "job_id": "abc123", "project_id": "", "smoke_log": "",
-            }
-            mock_cr.side_effect = RuntimeError("crash")
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                _dev_status(json_output=True)
-        data = json.loads(buf.getvalue())
-        blocker_text = " ".join(data["remaining_blockers"]).lower()
-        assert "crash" in blocker_text
 
     def test_worker_cleanup_unavailable_is_advisory(self):
         """ollama missing = advisory, not blocker."""

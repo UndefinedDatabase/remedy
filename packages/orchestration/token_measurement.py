@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 #: Informational note surfaced when token counts are pure character heuristics. It is advisory only —
-#: a low-confidence measurement never blocks promotion.
+#: a low-confidence measurement never blocks applying.
 LOW_CONFIDENCE_TOKEN_NOTE = (
     "Token counts are low-confidence character heuristics; no provider exposed "
     "measured usage. Informational only — does not affect the verdict."

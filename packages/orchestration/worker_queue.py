@@ -98,7 +98,7 @@ class WorkerStatus:
 
 @dataclass
 class WorkerResult:
-    """Result from worker run-once or run-loop."""
+    """Result from run_worker_once or run_worker_loop."""
 
     worker_id: str = ""
     jobs_processed: int = 0
@@ -656,7 +656,6 @@ def run_worker_once(
     if entry is None:
         result.action_taken = "idle"
         result.why_it_stopped = "no_queued_jobs"
-        result.next_command = "remedy job enqueue <job_id>"
         result.duration_ms = int((time.monotonic() - start) * 1000)
         return result
 
@@ -686,7 +685,6 @@ def run_worker_once(
         result.last_lifecycle_state = "blocked"
         result.action_taken = "no_work_performed"
         result.why_it_stopped = "no_worker_selected"
-        result.next_command = f"remedy worker run --once --provider fixture --job {entry.job_id[:8]}"
     elif provider in _TASK_EXEC_PROVIDERS:
         result = _run_via_task_execution(
             entry, provider, data_dir, worker_id, start, result,

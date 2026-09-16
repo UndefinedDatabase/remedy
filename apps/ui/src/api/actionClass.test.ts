@@ -17,7 +17,9 @@ describe("isActionKind", () => {
     expect(isActionKind("git_status_read")).toBe(false);
     expect(isActionKind("project_constitution_loaded")).toBe(false);
     expect(isActionKind("project_memory_recalled")).toBe(false);
-    expect(isActionKind("readiness_assessed")).toBe(false);
+    // The assessed-readiness kind left the catalog with the `readiness job` command,
+    // its only emitter (F261 round 17); the `_assessed` rule keeps a case of its own.
+    expect(isActionKind("a_kind_assessed")).toBe(false);
   });
 
   it("excludes the named bookkeeping kinds no suffix rule catches", () => {

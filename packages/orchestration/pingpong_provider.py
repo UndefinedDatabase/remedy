@@ -1620,7 +1620,7 @@ class OllamaPingPongProvider:
     package's chat endpoint, host from ``REMEDY_OLLAMA_HOST``, default
     ``http://localhost:11434`` — so ``role_config.DEFAULT_PROVIDER == "ollama"``
     is actually constructible through :func:`create_provider` on the ping-pong
-    job path that self-use runs and ``remedy do job-run`` both use
+    job path that self-use runs and ``remedy job run`` both use
     (finding R-0761).
 
     Every transport, HTTP or rate-limit failure this provider reports carries

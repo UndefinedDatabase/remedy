@@ -3,7 +3,7 @@
 DECISION F040 D2 moved the SINGLE HOME of DECISION F031 D6's rule — a decision
 card's urgency is `(blocked size + 1) * age` — into Python, as
 `decision_urgency` in `packages/orchestration/decision_inbox.py`, because the
-digest endpoint and `remedy job digest` both need the number and neither can
+digest endpoint and the digest section of `remedy job show <id> --full` both need the number and neither can
 call a browser function. The browser's own copy, `decisionUrgency` in
 `apps/ui/src/api/decisionOrder.ts`, still ships and still orders the live inbox,
 so TWO HOMES EXIST between that decision and F040 T002, which retires the

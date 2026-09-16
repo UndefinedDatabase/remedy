@@ -1,4 +1,12 @@
-# Repair Loop v1
+# Repair Loop v1 (commands deleted 2026-09-16)
+
+> **Status (2026-09-16):** F261 round 22 deleted the `repair` command group
+> (DECISION amend0905-vocab D4 deletes every group it does not name). The engine this
+> page describes is still there and is still read — an overnight readiness report and
+> the self-dogfood inspection both load the repair attempts — but NO command builds a
+> repair context, creates a fix task, files a repair patch intent or prints an
+> attempt's approval state. The attempt store therefore has no writer left. The page
+> is kept as the record of what was built.
 
 Turn a real test failure into a bounded, safe, approval-gated repair **proposal**.
 Repair Loop v1 never applies code, never runs tests, and never calls a provider.
@@ -12,12 +20,11 @@ Flow:
       → Fix Patch Intent           (real, resolvable, pending)
       → approval_required          (safe stop)
 
-Canonical commands:
+Canonical commands, until F261 round 22 deleted them: a `repair propose` word taking
+the job id, the failure artifact id and an optional fixture-builder switch, and a
+`repair status` word taking the job id and an optional failure-artifact filter.
 
-    remedy repair propose <job_id> <failure_artifact_id> [--fixture-builder] [--json]
-    remedy repair status  <job_id> [--failure-artifact-id <id>] [--json]
-
-## What `repair propose` does
+## What the repair proposal did
 
 - Runs `evaluate_repair_eligibility` (job, failure artifact, linkage, not-already
   -resolved, RunContract allows repair metadata actions).
@@ -37,14 +44,14 @@ Canonical commands:
   `repair_builder_unavailable` — the Fix Task is still created.
 
 **The proposal is a suggested fix, not an applied fix. You must approve it.**
-Apply + test happen separately and approval-gated, in the next block via
-`remedy do continue <job_id> --intent-id <repair_intent_id>`.
+Apply + test happen separately and approval-gated, via
+`remedy patch apply <job_id> <repair_intent_id>` and then `remedy test run <job_id>`.
 
 ## Idempotency
 
-A repeated `repair propose` for the same failure returns the **same** attempt —
+A repeated repair proposal for the same failure returned the **same** attempt —
 no duplicate Fix Task, Repair Artifact, or Patch Intent. A resolved failure
-blocks (`failure_already_resolved`). One RepairAttempt is persisted per
+blocked (`failure_already_resolved`). One RepairAttempt was persisted per
 `(failure_artifact_id, source)` in job metadata.
 
 ## What it never does
@@ -69,61 +76,57 @@ until a provider-backed builder is enabled.
 
 Repair metadata actions are canonical and allowed by default for safe jobs:
 `create_fix_task`, `create_repair_artifact`, `create_repair_patch_intent`. Apply
-actions remain denied. If a contract denies repair actions, `repair propose`
-blocks with a catalog-backed next action (`remedy contract inspect …`).
+actions remain denied. If a contract denied repair actions, the repair proposal
+blocked with a catalog-backed next action (`remedy job show <job_id> --full --json`).
 
-## `repair start` (v0) vs `repair propose` (v1)
+## The v0 word vs the v1 word
 
-`repair propose` is the canonical v1 command (idempotent attempts, durable
-`RepairAttempt`, fixture builder, approval-gated intent). `repair start` remains
-as the v0 command for backward compatibility and is unchanged. New callers should
-use `repair propose`.
+The v1 repair proposal was the canonical word (idempotent attempts, durable
+`RepairAttempt`, fixture builder, approval-gated intent); the v0 word of
+`repair-loop-v0.md` stayed beside it for backward compatibility. F261 round 22
+deleted both.
 
 ## Approved Repair Apply Cycle (v1)
 
 Once a repair patch intent is **approved** (`remedy patch approve <job> <intent>`),
-apply it through the SAME safe continuation path — there is no repair apply bypass:
+apply it through the central apply service — there is no repair apply bypass:
 
-    remedy do continue <job_id> --intent-id <repair_intent_id> --json
+    remedy patch apply <job_id> <repair_intent_id> --json
+    remedy test run <job_id> --json
+    remedy change proof <job_id> --json
 
-`do continue` runs one cycle: eligibility → verified snapshot → apply (central
-`apply_patch_intent`) → linked test (Test Execution Service) → proof → truthful
-stop. After the cycle, repair truth is reconciled:
-
-- **passed** → repair attempt `tested_passed`. The original failure is resolved
-  **only** when the repair's `expected_effect == source_fix` AND the snapshot is
-  verified AND the linked post-repair test passed AND proof is verified AND
-  evidence is complete. A `documentation_only` / `unknown` repair is **never**
-  claimed as a source fix, even if a test passes.
-- **failed/timeout** → repair attempt `tested_failed`; the original failure stays
-  open; a new failure artifact is linked to the repair attempt + prior failure.
-  No automatic second repair loop.
-- **degraded evidence** → `evidence_incomplete`; never resolved.
+> **Status (2026-09-16):** until F261 round 21 this was one word, the deleted
+> `do continue`, taking the job id and the repair intent id, which ran
+> eligibility → verified snapshot → apply → linked test → proof → truthful stop
+> and then RECONCILED repair truth: a passing `source_fix` repair with a verified
+> snapshot, complete evidence and verified proof resolved the original failure,
+> and a failing one moved the attempt to `tested_failed` and linked the new
+> failure artifact to the attempt and the prior failure. DECISION amend0905-vocab
+> D4 deleted the command, and `reconcile_repair_after_continue` in
+> `packages/orchestration/repair_loop.py` went with it because that command was
+> its only production caller. The three commands above reproduce the apply, the
+> test and the proof reading; NOTHING reconciles repair truth any more, so a
+> repair attempt now stays `approval_required` and a failure is never marked
+> `failure_resolved`.
 
 Classification (`repair_kind` / `expected_effect`) distinguishes docs-only,
-source-fixture, and (future) provider repairs. `repair status` shows the
-classification, apply state, and `resolved_failure`.
-
-### Idempotency
-Re-running `do continue` on a completed repair resumes from durable truth: no
-second apply, no second test budget, no duplicate failure, no double resolve.
+source-fixture, and (future) provider repairs. The deleted `repair status` word
+showed the classification and the apply state; nothing prints them now.
 
 ### Guarantees
 - Repair Loop never applies code or runs tests itself (no `source_apply` /
   `patch_apply` / `test_execution` / provider imports). Apply only via the
-  approved continue/apply service. Snapshot mandatory. No auto-approve, no
-  auto-revert, no auto repair loop.
-- A repair is never `verified` / `resolved` unless a linked test passes after the
-  repair apply with a verified snapshot and supporting proof.
+  approved apply service. Snapshot mandatory. No auto-approve, no auto-revert,
+  no auto repair loop.
 
 ## Product readiness (after this block)
 
 End-to-end, with human approval at the gate, Remedy can now:
 - run one controlled cycle (`do run` → propose), and on a failing test produce a
   real, bounded repair **proposal**;
-- after the user approves the repair intent, apply it through `do continue`,
-  re-test it, update proof, and resolve the original failure **only** with
-  verified evidence.
+- after the user approves the repair intent, apply it through `patch apply` and
+  re-test it through `test run`; resolving the original failure needed the
+  reconciliation F261 round 21 deleted with `do continue`.
 
 Still requires a human:
 - approving every patch/repair intent (`remedy patch approve`);
@@ -147,5 +150,5 @@ fixture builder for real source repairs.
 
 - [bounded-overnight-prep-v0.md](../archive/bounded-overnight-prep-v0.md) — read-only readiness/report layer that surfaces repair attempts in its checklist + capability matrix.
 - [provider-trust-gate-v0.md](provider-trust-gate-v0.md) — turns UNTRUSTED external model output into a pending Repair Patch Intent behind a trust gate (no provider execution); complements the deterministic fixture builder.
-- [provider-patch-materialization-v0.md](provider-patch-materialization-v0.md) — materializes an accepted provider candidate (single `.md`) into a real applyable pending repair intent for `do continue`.
+- [provider-patch-materialization-v0.md](provider-patch-materialization-v0.md) — materializes an accepted provider candidate (single `.md`) into a real applyable pending repair intent for `patch apply`.
 - [repair-request-builder-v0.md](repair-request-builder-v0.md) — provider-agnostic repair request package for any external actor (output re-enters via provider intake).

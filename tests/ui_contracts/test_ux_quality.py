@@ -9,7 +9,7 @@ import json
 import re
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -935,108 +935,6 @@ class TestUXZoomAndLabelVisibility:
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-
-
-class TestCommitReadinessSchemaCompleteness:
-    """Commit-readiness schema must be complete and safe."""
-
-    def test_full_schema(self):
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        job = JobPlan(job_title="schema")
-        save_job_plan(job)
-
-        from apps.cli.commands.repo import _cmd_commit_readiness
-        with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.job_id), json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            required = {
-                "version", "job_id", "repo_path", "ready", "reasons",
-                "changed_files", "changed_files_truncated",
-                "tests_passed", "proof_present",
-                "revert_available", "suggested_commit_message",
-                "next_action",
-            }
-            missing = required - set(data.keys())
-            assert not missing, f"Missing: {missing}"
-
-    def test_changed_files_truncated_false(self):
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        job = JobPlan(job_title="trunc-false")
-        save_job_plan(job)
-
-        from apps.cli.commands.repo import _cmd_commit_readiness
-        with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.job_id), json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            assert data["changed_files_truncated"] is False
-
-    def test_missing_tests_not_ready(self):
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        job = JobPlan(job_title="missing-tests")
-        save_job_plan(job)
-
-        from apps.cli.commands.repo import _cmd_commit_readiness
-        with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.job_id), json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            assert data["ready"] is False
-            assert any("tests" in r for r in data["reasons"])
-
-    def test_missing_proof_not_ready(self):
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        job = JobPlan(job_title="missing-proof")
-        save_job_plan(job)
-
-        from apps.cli.commands.repo import _cmd_commit_readiness
-        with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.job_id), json_output=True)
-            data = json.loads(mock_print.call_args[0][0])
-            assert data["proof_present"] is False
-            assert any("proof" in r for r in data["reasons"])
-
-    def test_no_git_mutation(self):
-        """repo.py must not contain subprocess or git write commands."""
-        content = Path("apps/cli/commands/repo.py").read_text()
-        assert "subprocess" not in content
-        for line in content.splitlines():
-            stripped = line.strip()
-            if stripped.startswith("#") or stripped.startswith(("'", '"', "print")):
-                continue
-            assert "git push" not in stripped
-
-    def test_no_shell_true(self):
-        content = Path("apps/cli/commands/repo.py").read_text()
-        for line in content.splitlines():
-            stripped = line.strip()
-            if stripped.startswith("#") or stripped.startswith('"""'):
-                continue
-            assert "shell=True" not in stripped
-
-    def test_no_raw_leaks(self):
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        job = JobPlan(job_title="leaks")
-        save_job_plan(job)
-
-        from apps.cli.commands.repo import _cmd_commit_readiness
-        with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.job_id), json_output=True)
-            output = mock_print.call_args[0][0]
-            for bad in ("raw_output", "command_output", "Traceback",
-                         "diff_preview", "approval_reason"):
-                assert bad not in output
-
-    def test_human_output_concise(self):
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-        job = JobPlan(job_title="human")
-        save_job_plan(job)
-
-        from apps.cli.commands.repo import _cmd_commit_readiness
-        with patch("builtins.print") as mock_print:
-            _cmd_commit_readiness(str(job.job_id), json_output=False)
-            calls = [str(c) for c in mock_print.call_args_list]
-            output = "\n".join(calls)
-            assert "Commit readiness:" in output
-            assert "read-only" in output.lower() or "No git" in output
 
 
 # ═══════════════════════════════════════════════════════════════════════════

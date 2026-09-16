@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
-from uuid import uuid4
 
 from packages.core.models import RunState
 from packages.orchestration.autonomy_readiness import (
@@ -150,52 +147,6 @@ class TestProjectReadiness:
         report = assess_project_readiness("proj2", [j1, j2], {})
         # Level 1 should be eligible because j1 has repo+tasks
         assert report.levels[1].eligible is True
-
-
-class TestReadinessCLI:
-    def _run(self, argv):
-        result = subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped"] + argv,
-            capture_output=True, text=True, timeout=30,
-        )
-        return result.stdout, result.stderr, result.returncode
-
-    def test_readiness_job_help(self):
-        stdout, _, rc = self._run(["readiness", "job", "--help"])
-        assert rc == 0
-        assert "job_id" in stdout.lower()
-
-    def test_readiness_project_help(self):
-        stdout, _, rc = self._run(["readiness", "project", "--help"])
-        assert rc == 0
-
-    def test_readiness_job_missing(self, tmp_path):
-        import os
-        env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
-        result = subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped", "readiness", "job", str(uuid4())],
-            capture_output=True, text=True, timeout=30, env=env,
-        )
-        assert result.returncode != 0
-
-    def test_readiness_job_completed(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import save_job_plan
-        job = JobPlan(
-            job_id=mint_job_id(), job_title="done", user_prompt="done",
-            tasks=[TaskEntry(title="t", status=RunState.COMPLETED)],
-        )
-        save_job_plan(job)
-        import os
-        env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
-        result = subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped", "readiness", "job", str(job.job_id), "--json"],
-            capture_output=True, text=True, timeout=30, env=env,
-        )
-        assert result.returncode == 0, f"stderr={result.stderr}"
-        data = json.loads(result.stdout)
-        assert data["version"] == 2
-        assert data["scope"] == "job"
 
 
 class TestReadinessBrainNode:

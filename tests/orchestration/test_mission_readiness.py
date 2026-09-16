@@ -40,6 +40,52 @@ def _job(data_dir, *, tasks=True, perms=True):
     return job
 
 
+def _apply_ready_job(data_dir, repo_root):
+    """A job with ONE approved, applyable markdown intent. Returns (job, intent_id).
+
+    F261 round 21 deleted `do continue` and `tests/orchestration/test_do_continue.py`,
+    which is where this fixture used to live. Only the apply gates matter here: the
+    readiness view reads the durable apply record `patch apply` writes.
+    """
+    import dataclasses
+
+    from packages.orchestration.approval_queue import make_intent_id, set_approval_state
+    from packages.orchestration.permissions import Capability, set_permission
+    from packages.orchestration.run_contract import (
+        ContractAction,
+        build_default_run_contract,
+        save_contract,
+    )
+
+    repo_root.mkdir(parents=True, exist_ok=True)
+    task = TaskEntry(title="Apply task")
+    art = Artifact(
+        name="build",
+        content="Summary:\n  - safe doc\nProposed Changes:\n  - add a line\nNotes:\n  - none\n",
+        kind=ArtifactKind.BUILDER_PROPOSAL, task_id=str(task.task_id),
+        metadata={"patch_intent_explanations": [
+            {"file": "docs/CHANGES.md", "action": "create", "risk": "low",
+             "reason": "", "summary": "safe doc"}], "patch_intent_approvals": {}},
+    )
+    job = JobPlan(job_id=mint_job_id(), job_title="apply-job", user_prompt="apply",
+                  tasks=[task], artifacts=[art],
+                  metadata={"target_repo": str(repo_root.resolve())})
+    intent_id = make_intent_id(art.id, 0)
+    set_permission(job, Capability.repo_generated_write, allow=True)
+    set_permission(job, Capability.repo_test_run, allow=True)
+    set_approval_state(job, intent_id, "approved", decided_by="human")
+    contract = build_default_run_contract(job)
+    allowed = list(contract.allowed_actions)
+    if ContractAction.PATCH_APPLY not in allowed:
+        allowed.append(ContractAction.PATCH_APPLY)
+    save_contract(job, dataclasses.replace(
+        contract, allowed_actions=tuple(allowed),
+        denied_actions=tuple(a for a in contract.denied_actions if a != ContractAction.PATCH_APPLY),
+        stop_before_apply=False, max_test_runs=1))
+    save_job_plan(job, root=data_dir)
+    return job, intent_id
+
+
 def _add_failure(data_dir, job, *, resolved=False, related_files=None, safe_summary="fail"):
     t = job.tasks[0]
     fa = Artifact(name="tf", content="x", kind=ArtifactKind.VERIFICATION, task_id=str(t.task_id),
@@ -94,16 +140,14 @@ class TestReadinessTruth:
         snap = next(i for i in rep.checklist if i.id == "snapshot_verified")
         assert snap.status != "done"  # no durable verified snapshot
 
-    def test_verified_durable_snapshot_counts(self, env, monkeypatch):
-        # Run a real do_continue cycle to create a verified durable apply.
-        import packages.orchestration.test_execution_service as tes
-        from packages.orchestration import do_continue as dc
-        from tests.orchestration.test_do_continue import _fake_test, make_continue_job
+    def test_verified_durable_snapshot_counts(self, env):
+        # Apply an approved intent for real to create a verified durable apply.
+        # F261 round 21 deleted `do continue`; `patch apply` is the surviving
+        # command that writes the snapshot + DurableApplyRecord this reads.
+        from packages.orchestration.patch_apply import apply_patch_intent
         repo = env.parent / "repo"; repo.mkdir(exist_ok=True)
-        job, iid = make_continue_job(env, repo)
-        fn, _ = _fake_test(env, status="passed")
-        monkeypatch.setattr(tes, "execute_test_run", fn)
-        dc.run_do_continue(dc.ContinueRequest(job_id=str(job.job_id)), env)
+        job, iid = _apply_ready_job(env, repo)
+        assert apply_patch_intent(job, iid).state == "applied"
         rep = OV.build_overnight_readiness(str(job.job_id), env)
         assert rep.evidence_summary["verified_snapshots"] >= 1
         snap = next(i for i in rep.checklist if i.id == "snapshot_verified")
@@ -135,6 +179,7 @@ class TestReadinessTruth:
         # Must not suggest approve/continue/repair when nothing exists.
         assert "approve" not in rep.next_action.command
         assert "do continue" not in rep.next_action.command
+        assert "patch apply" not in rep.next_action.command
         assert "repair propose" not in rep.next_action.command
 
     def test_provider_not_supported(self, env):

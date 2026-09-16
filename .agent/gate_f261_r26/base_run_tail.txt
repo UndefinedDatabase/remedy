@@ -1,0 +1,8 @@
+command: python3 -m pytest -n auto -q -rfE
+cwd: throwaway worktree on branch tmp/f261-r26-base (REMEDY_UI_NO_AUTO_BUILD=1; PYTHONPATH, REMEDY_PROJECT, REMEDY_DATA_DIR removed)
+commit: 7cdde89b5d0dc8ef1fb96980105870e956699873
+exit code: 0
+final summary line: 18443 passed, 23 skipped, 1 warning in 156.15s (0:02:36)
+wall time: 156.72s
+failed-node count: 0
+count of 'React UI not built': 0

@@ -106,10 +106,10 @@ class TestCatalogExpensive:
             f"F114 T003 marks exactly the one expensive command; found {marked}"
         )
 
-    def test_job_run_is_expensive(self) -> None:
+    def test_job_resume_is_expensive(self) -> None:
         assert get_command("job.resume").is_expensive is True
 
-    def test_job_run_has_a_yes_flag_to_skip_the_cost_confirmation(self) -> None:
+    def test_job_resume_has_a_yes_flag_to_skip_the_cost_confirmation(self) -> None:
         args = get_command("job.resume").args
         yes_args = [a for a in args if a.name == "--yes"]
         assert len(yes_args) == 1, "job.resume must declare exactly one --yes arg"
@@ -197,7 +197,6 @@ class TestCatalogJSONSupport:
     def test_known_json_commands(self) -> None:
         expected_json = {
             "brain.graph", "brain.node", "brain.context",
-            "policy.contract", "policy.token",
             "worker.list", "test.discover",
             "project.show", "project.context", "patch.list",
         }
@@ -237,7 +236,7 @@ class TestCatalogLookups:
 
 
 class TestRequiredGroups:
-    REQUIRED = ("job", "project", "patch", "test", "brain", "policy", "worker", "ui", "dev")
+    REQUIRED = ("job", "project", "patch", "test", "brain", "worker", "ui", "dev")
 
     def test_all_required_groups_exist(self) -> None:
         for gid in self.REQUIRED:
@@ -249,14 +248,12 @@ class TestRequiredCommands:
 
     REQUIRED = (
         "job.create", "job.list", "job.show", "job.attach-repo", "job.permit",
-        "job.permissions",
         "project.create", "project.list", "project.show", "project.attach-repo",
         "project.attach-job", "project.context",
         "patch.list", "patch.show", "patch.approve", "patch.reject", "patch.apply",
         "test.discover", "test.run",
         "brain.graph", "brain.node", "brain.view", "brain.context",
         "brain.trust", "brain.timeline",
-        "policy.contract", "policy.token",
         "worker.list",
         "ui.start", "ui.latest", "ui.status", "ui.stop", "ui.open",
     )
@@ -265,3 +262,128 @@ class TestRequiredCommands:
         catalog_ids = {cmd.command_id for cmd in CATALOG}
         for cid in self.REQUIRED:
             assert cid in catalog_ids, f"Missing required command: {cid}"
+
+
+class TestRenamedCommands:
+    """F261 renames a command by deleting its old id outright: no alias (DECISION F261 D-B)."""
+
+    RENAMED = (
+        ("do.job-evidence", "job.evidence"),
+        ("do.job-promote", "job.apply"),
+        ("do.job-run", "job.run"),
+        ("do.report", "run.list"),
+        ("do.report", "run.show"),
+        ("plan.next", "roadmap.next"),
+        ("plan.status", "roadmap.status"),
+        ("teach.ask", "teacher.ask"),
+        ("teach.narrate", "teacher.narrate"),
+    )
+
+    def test_no_old_id_is_left_in_the_catalog(self) -> None:
+        catalog_ids = {cmd.command_id for cmd in CATALOG}
+        assert [old for old, _new in self.RENAMED if old in catalog_ids] == []
+
+    def test_no_old_id_is_left_in_the_dispatch_table(self) -> None:
+        from apps.cli.grouped import _get_dispatch_table
+
+        dispatch = _get_dispatch_table()
+        assert [old for old, _new in self.RENAMED if old in dispatch] == []
+
+    def test_every_new_id_parses_from_its_words_and_has_a_handler(self) -> None:
+        from apps.cli.grouped import _get_dispatch_table, build_parser
+
+        parser = build_parser()
+        dispatch = _get_dispatch_table()
+        for _old, new in self.RENAMED:
+            group, subcommand = new.split(".", 1)
+            args, _unknown = parser.parse_known_args([group, subcommand, "an-id"])
+            assert args._command_id == new
+            assert new in dispatch
+
+
+class TestDeletedCommands:
+    """F261 deletes a command outright: no alias, no attic, no stub (DECISIONs F261 D1 and D-B).
+
+    A deleted id must be absent from the catalog AND from the dispatch table, because either half
+    alone makes the word reachable again, and nothing else in the suite reds when one comes back.
+    """
+
+    DELETED = (
+        "context-pack.recommend",
+        "contract.check",
+        "contract.inspect",
+        "context.inspect",
+        "contract.set",
+        "dashboard.job",
+        "dashboard.project",
+        "do.continue",
+        "do.evidence",
+        "do.job-flow",
+        "do.job-plan",
+        "do.job-report",
+        "do.job-resume",
+        "do.plan",
+        "do.promote",
+        "do.repair-attest",
+        "do.replan",
+        "guide.job",
+        "job.assumptions",
+        "job.cancel",
+        "job.digest",
+        "job.dod",
+        "job.enqueue",
+        "job.fences",
+        "job.pause",
+        "job.permissions",
+        "job.report",
+        "job.rerun",
+        "job.resume-queue",
+        "job.status",
+        "job.summary",
+        "loop.list",
+        "loop.run",
+        "loop.validate",
+        "mission.ledger",
+        "orchestrator.decide",
+        "orchestrator.idea",
+        "orchestrator.inspect",
+        "orchestrator.report",
+        "policy.contract",
+        "policy.token",
+        "policy.token-explain",
+        "queue.add",
+        "queue.list",
+        "queue.reclaim",
+        "queue.rm",
+        "readiness.job",
+        "readiness.project",
+        "repair.failure-show",
+        "repair.propose",
+        "repair.request",
+        "repair.request-show",
+        "repair.start",
+        "repair.status",
+        "repo.commit-readiness",
+        "repo.status",
+        "review.accept",
+        "review.list",
+        "review.reject",
+        "review.run",
+        "rollback.proof",
+        "rollback.show",
+        "token.budget-set",
+        "token.budget-show",
+        "token.economy-report",
+        "token.estimate",
+        "worker.run",
+    )
+
+    def test_no_deleted_id_is_left_in_the_catalog(self) -> None:
+        catalog_ids = {cmd.command_id for cmd in CATALOG}
+        assert [cid for cid in self.DELETED if cid in catalog_ids] == []
+
+    def test_no_deleted_id_is_left_in_the_dispatch_table(self) -> None:
+        from apps.cli.grouped import _get_dispatch_table
+
+        dispatch = _get_dispatch_table()
+        assert [cid for cid in self.DELETED if cid in dispatch] == []

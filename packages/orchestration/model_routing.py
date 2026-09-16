@@ -87,19 +87,6 @@ OUTSIDE the role-config surface, so there is no role to map and no
 ``resolve_role_config`` call to inventory. That absence is deliberate and stated
 here rather than left to be rediscovered.
 
-THE WORD "TIER" MEANS SOMETHING ELSE ONE MODULE OVER, and nothing is renamed:
-packages/orchestration/orchestrator_brain.py's ``OrchestratorModelRoutingPlan``
-carries a field ``tier`` whose vocabulary is HUMAN_REVIEW_REQUIRED /
-EXTERNAL_BUILDER_NEEDED / local_advisor_preferred — it answers WHEN a job must
-escalate to a human or an external builder, and it surfaces as
-``model_routing_plan.tier`` and ``model_routing_tier`` in the ledger, the review
-bundle, the UI server and the CLI — whereas :data:`MODEL_TIERS` here answers
-WHICH STRENGTH OF MODEL a declared task class is routed to. AGENTS.md's
-discoverability section forbids mass renames of existing code as their own
-activity, so the counter-measure is this sentence rather than a rename: a reader
-who searches for "tier" and lands in the wrong vocabulary reads here which is
-which.
-
 Public API::
 
     MODEL_TIERS: tiers CHEAPEST FIRST — the order is significant

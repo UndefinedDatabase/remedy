@@ -102,7 +102,7 @@ class TestHonestyWithoutAModel:
     def test_the_refusal_names_the_reason_and_points_at_stage_1(self):
         message = no_model_refusal("no teacher model is configured")
         assert "no teacher model is configured" in message
-        assert "remedy teach narrate" in message
+        assert "remedy teacher narrate" in message
 
     def test_building_a_context_calls_no_model_and_reads_no_file(self):
         # Zero-token by construction: the context is a pure function of its

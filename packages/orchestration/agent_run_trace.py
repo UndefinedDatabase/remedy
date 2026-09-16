@@ -29,7 +29,7 @@ TRACE_EVENT_KINDS = frozenset({
     "task_gate_evaluated",
     "task_workspace_applied",
     "job_evidence_exported",
-    "promotion_dry_run_completed",
+    "apply_dry_run_completed",
     "final_audit_completed",
 })
 

@@ -891,7 +891,7 @@ class TestInProgressRefusal:
 
 
 # ---------------------------------------------------------------------------
-# F070 T003 — `remedy mission run` (orchestrator mode) and `mission ledger`
+# F070 T003 — `remedy mission run` (orchestrator mode)
 # ---------------------------------------------------------------------------
 
 
@@ -905,12 +905,6 @@ class TestTheCatalogCarriesTheLoopCommands:
         from apps.cli.command_catalog import CATALOG
 
         assert len([c for c in CATALOG if c.command_id == "mission.run"]) == 1
-
-    def test_mission_ledger_is_registered_exactly_once(self):
-        from apps.cli.command_catalog import CATALOG
-
-        assert len([c for c in CATALOG
-                    if c.command_id == "mission.ledger"]) == 1
 
     def test_mission_run_declares_the_iterations_flag(self):
         from apps.cli.command_catalog import get_command
@@ -978,64 +972,6 @@ class TestMissionRunInOrchestratorMode:
         # The dogfood facade owns this path; what matters is that the
         # orchestrator loop did NOT claim it.
         assert "no_provider" not in proc.stdout
-
-
-class TestMissionLedger:
-    def test_an_unrun_mission_has_an_empty_ledger(self, project):
-        data_root, project_id = project
-        mission_id = _start(data_root, project_id, _LONG_GOAL)
-
-        out = _run(["mission", "ledger", mission_id, "--project", project_id],
-                   data_root).stdout
-        assert "Iterations recorded: 0" in out
-        assert "No ledger entries." in out
-
-    def test_the_ledger_renders_what_the_run_recorded(self, project):
-        data_root, project_id = project
-        mission_id = _start(data_root, project_id, _LONG_GOAL)
-        _plan_no_llm(data_root, project_id, mission_id)
-        _run(["mission", "run", mission_id, "--project", project_id,
-              "--no-llm"], data_root)
-
-        out = _run(["mission", "ledger", mission_id, "--project", project_id],
-                   data_root).stdout
-        assert "Iterations recorded: 1" in out
-        assert "no_provider" in out
-        assert "[1]" in out
-
-    def test_the_json_view_carries_the_entries(self, project):
-        data_root, project_id = project
-        mission_id = _start(data_root, project_id, _LONG_GOAL)
-        _plan_no_llm(data_root, project_id, mission_id)
-        _run(["mission", "run", mission_id, "--project", project_id,
-              "--no-llm"], data_root)
-
-        body = json.loads(_run(["mission", "ledger", mission_id, "--project",
-                                project_id, "--json"], data_root).stdout)
-        assert body["mission_id"] == mission_id
-        assert len(body["entries"]) == 1
-        assert body["entries"][0]["iteration"] == 1
-        assert body["entries"][0]["context_digest"].startswith("sha256:")
-
-    def test_the_ledger_is_read_only(self, project):
-        """Rendering the trail must not change the mission or add entries."""
-        data_root, project_id = project
-        mission_id = _start(data_root, project_id, _LONG_GOAL)
-        _plan_no_llm(data_root, project_id, mission_id)
-        _run(["mission", "run", mission_id, "--project", project_id,
-              "--no-llm"], data_root)
-        record = (data_root / "missions" / project_id / f"{mission_id}.json")
-        before = record.read_text(encoding="utf-8")
-
-        _run(["mission", "ledger", mission_id, "--project", project_id],
-             data_root)
-        _run(["mission", "ledger", mission_id, "--project", project_id],
-             data_root)
-
-        assert record.read_text(encoding="utf-8") == before
-        body = json.loads(_run(["mission", "ledger", mission_id, "--project",
-                                project_id, "--json"], data_root).stdout)
-        assert len(body["entries"]) == 1
 
 
 class TestHandoffCommand:
@@ -1156,9 +1092,9 @@ class TestMissionWatchdog:
              data_root)
 
         assert record.read_text(encoding="utf-8") == before
-        ledger = json.loads(_run(["mission", "ledger", mission_id, "--project",
-                                  project_id, "--json"], data_root).stdout)
-        assert len(ledger["entries"]) == 1
+        from packages.orchestration.orchestrator_loop import read_ledger
+
+        assert len(read_ledger(project_id, mission_id, data_root)) == 1
 
     def test_an_unknown_mission_is_an_error_not_a_crash(self, project):
         data_root, project_id = project

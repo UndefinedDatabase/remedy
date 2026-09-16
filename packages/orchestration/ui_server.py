@@ -1391,7 +1391,7 @@ def _build_worker_section() -> dict[str, Any] | None:
             "heartbeat_at": status.heartbeat_at,
             "stale": status.stale,
             "why_it_stopped": status.why_it_stopped,
-            "next_command": "remedy worker run --once" if not status.worker_id else "",
+            "next_command": "",
             "redaction": "safe_metadata_only",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -1664,15 +1664,15 @@ def _pipeline_next_command(
     if stop_reason in ("provider_output_prose_only", "provider_output_malformed"):
         return "remedy do \"<goal>\" --repo . --builder-provider fixture --json"
     if stop_reason == "test_failed_after_apply":
-        return f"remedy job summary {job_id} --json"
+        return f"remedy job show {job_id} --full --json"
     if stop_reason == "repair_budget_exhausted":
-        return f"remedy job summary {job_id} --json"
+        return f"remedy job show {job_id} --full --json"
     if approval_required and intent_id:
         return f"remedy patch show {job_id} {intent_id}"
     if source_apply_status == "applied" and tests_status == "none":
         return f"remedy test discover {job_id} --json"
     if tests_status == "pass":
-        return f"remedy job summary {job_id} --json"
+        return f"remedy job show {job_id} --full --json"
     return "remedy dev status --json"
 
 
@@ -1733,25 +1733,6 @@ def _build_readiness_json(job: Any) -> dict[str, Any]:
         return export_readiness_json(report)
     except (ImportError, OSError, ValueError) as exc:
         return {"version": 2, "error": f"readiness unavailable: {type(exc).__name__}"}
-
-
-def _build_guide_json(job: Any) -> dict[str, Any]:
-    """Build safe guidance payload."""
-    try:
-        from packages.orchestration.guidance import (
-            build_guidance_cards,
-            export_guidance_json,
-        )
-
-        events = _load_events(job)
-        cards = build_guidance_cards(job, events)
-        return export_guidance_json(job, cards)
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {
-            "version": 1, "cards": [],
-            "error": "guidance unavailable",
-            "degraded": True, "error_kind": "guidance_build_failed", "source": "server",
-        }
 
 
 def _build_brain_view_model_json(job: Any) -> dict[str, Any]:
@@ -2632,7 +2613,6 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "task-progress": _build_task_progress_json,
                 "decisions": _build_decisions_json,
                 "next-action": _build_next_action_json,
-                "guide": _build_guide_json,
                 "events": _build_events_json,
                 "readiness": _build_readiness_json,
                 "story": _build_story_json,

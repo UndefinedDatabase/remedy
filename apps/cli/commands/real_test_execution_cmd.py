@@ -1,7 +1,7 @@
 """CLI handlers for Real Test Execution + Snapshot/Rollback Proof v1 (Step 1887).
 
-`test result/list/integrity` are read-only over safe test records; `snapshot create/show` and
-`rollback proof/show` record honest proofs. Test EXECUTION itself stays on the existing `test run`
+`test result/list/integrity` are read-only over safe test records; `snapshot create/show` record
+honest proofs. Test EXECUTION itself stays on the existing `test run`
 (the contract-gated safe runner). No raw output, no shell, no arbitrary commands, no auto-revert.
 """
 
@@ -80,41 +80,10 @@ def _cmd_snapshot_show(args: Any) -> None:
     print(f"Snapshot {rec.get('snapshot_id')}: restore_available={rec.get('restore_available')}")
 
 
-def _cmd_rollback_proof(args: Any) -> None:
-    from packages.orchestration.real_test_execution import (
-        create_rollback_proof,
-        export_rollback_proof_json,
-    )
-    snap = getattr(args, "snapshot_id", None) or ""
-    proof = create_rollback_proof(str(args.job_id), snap)
-    data = export_rollback_proof_json(proof)
-    if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
-        return
-    print(f"Rollback proof {data['rollback_proof_id']}")
-    print(f"  restore_available: {data['restore_available']}  restore_tested: {data['restore_tested']}")
-    for lim in data["limitations"]:
-        print(f"  limitation: {lim}")
-
-
-def _cmd_rollback_show(args: Any) -> None:
-    from packages.orchestration.real_test_execution import get_rollback_proof
-    rec = get_rollback_proof(str(args.rollback_proof_id))
-    if rec is None:
-        print("Error: rollback proof not found", file=sys.stderr)
-        sys.exit(1)
-    if getattr(args, "json", False):
-        print(json.dumps(rec, indent=2))
-        return
-    print(f"Rollback {rec.get('rollback_proof_id')}: restore_available={rec.get('restore_available')}")
-
-
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "test.result": _cmd_test_result,
     "test.list": _cmd_test_list,
     "test.integrity": _cmd_test_integrity,
     "snapshot.create": _cmd_snapshot_create,
     "snapshot.show": _cmd_snapshot_show,
-    "rollback.proof": _cmd_rollback_proof,
-    "rollback.show": _cmd_rollback_show,
 }

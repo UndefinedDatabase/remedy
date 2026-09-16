@@ -231,7 +231,7 @@ def test_empty_files_hint_is_rendered_rather_than_treated_as_an_error(tmp_path, 
 
 
 def _make_ping_pong_job(repo, *, files_hint=("alpha.py",), attach_repo=True):
-    """Persist a real UNIFIED job record — the shape `remedy do job-run` writes.
+    """Persist a real UNIFIED job record — the shape `remedy job run` writes.
 
     Its task carries no flight-plan block at all: a `TaskEntry` spells its
     planned id and its fenced scope as its OWN fields, which is exactly what

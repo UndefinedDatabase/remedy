@@ -1,4 +1,12 @@
-# Provider-Agnostic Repair Request Builder v0
+# Provider-Agnostic Repair Request Builder v0 (commands deleted 2026-09-16)
+
+> **Status (2026-09-16):** F261 round 22 deleted the `repair` command group
+> (DECISION amend0905-vocab D4 deletes every group it does not name), and with it the
+> only two words that built and printed a request package. The builder module and the
+> cockpit's read of the package store are still there, but nothing writes that store
+> any more, so the counts it reports are frozen at whatever an earlier release left on
+> disk. There is NO heir: preparing a hand-off package for an external actor has no
+> surviving command. The page is kept as the record of what was built.
 
 Given a TestFailureArtifact, Remedy produces a **safe, structured request package**
 that can be handed to **any** external worker / model / human. Remedy stays
@@ -6,8 +14,10 @@ provider-, worker-, model-, subscription-, IDE-, and account-**agnostic**: exter
 systems are only example **untrusted candidate generators**, never required
 infrastructure.
 
-    remedy repair request <job_id> --failure-artifact-id <id> [--target <label>] [--model <hint>] [--new] [--json]
-    remedy repair request-show <job_id> <request_package_id> --json
+The package was built by a `repair request` word taking the job id, a failure
+artifact id, an optional target label, an optional model hint and a `--new` switch,
+and printed by a `repair request-show` word taking the job id and the package id.
+F261 round 22 deleted both.
 
 ## Workflow (provider-agnostic)
 
@@ -58,7 +68,7 @@ constraint wording to the request; they are templates, not execution.
 Provider Trust Gate and its intake command, and DECISION F260 D3 maps the external
 builder to "none, deliberately". A reader will look for the re-entry step exactly
 here, which is why the absence is written down; R-0868 records that this builder now
-has no importer. `remedy patch approve` and `remedy do continue` still apply a patch
+has no importer. `remedy patch approve` and `remedy patch apply` still apply a patch
 intent that already exists, and accepted ≠ approved ≠ applied is unchanged for those.
 
 ## Candidate generator adapter boundary (interface only)
@@ -77,6 +87,6 @@ package; pass `--new` to force a fresh one.
 ## See also
 
 - [provider-patch-materialization-v0.md](provider-patch-materialization-v0.md) — accepted candidate → applyable intent.
-- [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply path.
+- [do-continue-v1.md](../guides/do-continue-v1.md) — the approval-gated apply cycle F261 round 21 deleted.
 - [repair-loop-v1.md](repair-loop-v1.md) — deterministic/fixture repair proposals.
 - [self-dogfood-execution-v0.md](self-dogfood-execution-v0.md) — self-improvement attempts route candidate output through the same request/intake flow.

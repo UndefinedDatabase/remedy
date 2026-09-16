@@ -12,7 +12,14 @@ from typing import TYPE_CHECKING, Any
 from packages.core.models import RunState
 from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
 from packages.orchestration.job_runner import PlanJobResult
-from packages.orchestration.pingpong_job import JobNotFoundError, JobPlan, TaskEntry, require_job_plan, save_job_plan
+from packages.orchestration.pingpong_job import (
+    JobNotFoundError,
+    JobPlan,
+    JobStoreError,
+    TaskEntry,
+    require_job_plan,
+    save_job_plan,
+)
 
 if TYPE_CHECKING:
     import argparse
@@ -183,20 +190,512 @@ def _scope_label(job: JobPlan, scope: ProjectScope, known_ids: set[str]) -> str:
     return ""
 
 
-def _cmd_show_job(job_id_str: str) -> None:
+def _cmd_show_job(job_id_str: str, *, full: bool = False) -> None:
     import json
 
-    from packages.orchestration.pingpong_job import _export_job
+    from packages.orchestration.pingpong_job import _export_job, collect_blocked_task_findings
 
     job_id = resolve_job_id(job_id_str)
     try:
         job = require_job_plan(job_id)
-    except JobNotFoundError as exc:
+    except (JobNotFoundError, JobStoreError) as exc:
+        # R-0902: a record that exists and cannot be read is named, like a missing one, never a traceback.
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
-    print(json.dumps(_export_job(job), indent=2))
+    shown = _export_job(job)
+    # R-0806: why a task blocked is readable here, without opening evidence JSON.
+    # The key is appended, so every key the JSON carried before keeps its place.
+    shown["blocked_task_findings"] = collect_blocked_task_findings(job, full=full)
+    section_text: list[str] = []
+    if full:
+        shown["sections"], section_text = _build_show_sections(job)
+    print(json.dumps(shown, indent=2))
     if job.intake:
         _print_intake_block(job.intake)
+    _print_blocked_task_findings(str(job.job_id), shown["blocked_task_findings"])
+    for line in section_text:
+        print(line, file=sys.stderr)
+
+
+def _print_blocked_task_findings(job_id: str, entries: list[dict]) -> None:
+    """The findings block on stderr, beside the intake block; stdout stays one JSON document."""
+    if not any(entry["findings"] for entry in entries):
+        return
+    print("\n--- Blocked task findings ---", file=sys.stderr)
+    for entry in entries:
+        for finding in entry["findings"]:
+            print(f"  {entry['task_id']} [{finding['severity']}] {finding['file']}: "
+                  f"{finding['summary']} ({finding['id']})", file=sys.stderr)
+        if entry["findings_omitted"]:
+            print(f"  {entry['task_id']} \u2026 {entry['findings_omitted']} more "
+                  f"(job show {job_id} --full)", file=sys.stderr)
+
+
+#: DECISION amend0905-vocab D4: the read views of a job are sections of
+#: `job show --full`, not commands, and they appear in this order.
+_SHOW_SECTION_ORDER = (
+    "permissions", "fences", "assumptions", "digest", "summary", "status", "report", "dod",
+)
+
+
+class ShowSectionError(Exception):
+    """A section cannot describe its job; its envelope carries this code and message."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+def _permissions_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job permissions` command: every capability's effective state."""
+    from packages.orchestration.permissions import effective_permissions
+
+    rows = effective_permissions(job)
+    lines = [f"Job {job.job_id} | permissions:"]
+    lines.extend(f"  {row['capability']:<24} {row['effective']:<6}  [{row['status']}]"
+                 for row in rows)
+    return {"rows": rows}, lines
+
+
+def _fences_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job fences` command: the job's effective scope fences (F017 T003)."""
+    from pathlib import Path
+
+    from packages.orchestration.scope_fences import FenceConfigError, resolve_fence_spec_effective
+
+    short_id = str(job.job_id)[:8]
+    repo_str = job.metadata.get("target_repo", "") or ""
+    if not repo_str:
+        raise ShowSectionError("no_target_repo", f"Job {short_id} has no target_repo attached")
+    repo_root = Path(repo_str)
+    if not repo_root.is_dir():
+        raise ShowSectionError("target_repo_missing", f"Target repo does not exist: {repo_str}")
+
+    job_fences_dict = None
+    if job.fences is not None:
+        job_fences_dict = {"allow": job.fences.allow, "deny": job.fences.deny}
+
+    try:
+        eff = resolve_fence_spec_effective(repo_root, job_fences=job_fences_dict)
+    except FenceConfigError as exc:
+        raise ShowSectionError("fence_config_error", f"Fence config error: {exc}") from exc
+    except RuntimeError as exc:
+        # The builtin denies could not be resolved: the data root failed to resolve.
+        raise ShowSectionError("builtin_resolution_failed", f"Builtin resolution failed: {exc}") from exc
+    spec = eff.spec
+
+    warnings: list[str] = list(eff.warnings)
+    if not spec.allow_globs and not spec.deny_globs:
+        warnings.append("no configured allow/deny globs — defaults apply (allow all, builtin denies only)")
+
+    def _rule_dict(r):
+        return {"pattern": r.pattern, "kind": r.kind, "source": r.source, "reason": r.reason}
+
+    data = {
+        "job_id": str(job.job_id),
+        "source": eff.source,
+        "case_sensitivity": eff.case_sensitivity,
+        "allow_rules": [_rule_dict(r) for r in eff.allow_rules],
+        "deny_rules": [_rule_dict(r) for r in eff.deny_rules],
+        "builtin_rules": [_rule_dict(r) for r in eff.builtin_rules],
+        "allow_globs": list(spec.allow_globs),
+        "deny_globs": list(spec.deny_globs),
+        "warnings": warnings,
+    }
+    lines = [f"Scope fences for job {short_id}:", f"  Source: {eff.source}", f"  Case:   {eff.case_sensitivity}"]
+    if eff.allow_rules:
+        lines.append("  Allow rules:")
+        lines.extend(f"    {r.pattern:30s} [{r.source}]" for r in eff.allow_rules)
+    else:
+        lines.append("  Allow:  (all — no restrictions)")
+    if eff.deny_rules:
+        lines.append("  Deny rules:")
+        lines.extend(f"    {r.pattern:30s} [{r.source}]" for r in eff.deny_rules)
+    else:
+        lines.append("  Deny:   (none beyond builtins)")
+    lines.append("  Builtin rules:")
+    lines.extend(f"    {r.pattern:30s} [{r.source}] {r.reason}" for r in eff.builtin_rules)
+    if warnings:
+        lines.append("  Warnings:")
+        lines.extend(f"    {w}" for w in warnings)
+    return data, lines
+
+
+def _assumptions_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job assumptions` command: the assumption log (F034), and its evidence copy.
+
+    Rendered from the job's own flight plan, so it tells the truth even for a job
+    approved before the evidence file was written. The evidence copy is reported
+    only when it already exists: the view reads it, and writes nothing.
+    """
+    from packages.orchestration.data_paths import job_evidence_export_dir
+    from packages.orchestration.flight_plan import render_assumptions_md
+
+    fp = getattr(job, "flight_plan", None)
+    clarifications = fp.get("clarifications_resolved") if isinstance(fp, dict) else None
+    markdown = render_assumptions_md(clarifications)
+    lines = [markdown]
+    log_path = job_evidence_export_dir(str(job.job_id)) / "assumptions.md"
+    evidence_copy = str(log_path) if log_path.exists() else None
+    if evidence_copy is not None:
+        lines.append(f"Evidence copy: {evidence_copy}")
+    return {"markdown": markdown, "evidence_copy": evidence_copy}, lines
+
+
+def _digest_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job digest` command: the completion digest's CLI parity (F040 T003).
+
+    The HTTP route's little sibling. `job show` resolves the job with `resolve_job_id` and
+    `require_job_plan`, this view loads its run events with `load_run_events`, and it shows
+    the SAME `build_job_digest` envelope the route builds, so the CLI and the route can
+    never disagree about the same job.
+    """
+    from packages.orchestration.job_digest import build_job_digest
+    from packages.orchestration.timeline import load_run_events
+
+    events = load_run_events(resolve_data_root(), job.job_id)
+    # The ONLY call that builds the envelope — no field is recomputed, renamed or
+    # filtered before being shown, so this can never drift from what
+    # `_build_digest_json` serves for the same job.
+    digest = build_job_digest(job, events)
+    lines = [
+        f"Job digest: {job.job_id}",
+        f"  State:     {digest['state']}",
+        f"  Headline:  {digest['headline']}",
+        f"  Cost:      {digest['cost']['value']} ({digest['cost']['basis']})",
+        f"  Decisions: {digest['decisions']['open_count']} open, "
+        f"peak urgency {digest['decisions']['peak_urgency']}",
+        # No `ownership` line: the key is always empty (DECISION F040 D3) until F035
+        # ships a producer, so there is no shape to render.
+        f"  Next:      {digest['primary_action']['label']}",
+    ]
+    return digest, lines
+
+
+def _summary_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job summary` command: an honest summary of job state — truth contract."""
+    from packages.orchestration.timeline import load_run_events
+
+    events = load_run_events(resolve_data_root(), job.job_id)
+
+    state = job.state.value if hasattr(job.state, "value") else str(job.state)
+    task_count = len(job.tasks)
+    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
+    event_count = len(events)
+    has_real_events = event_count > 0
+
+    summary = {
+        "job_id": str(job.job_id),
+        "name": job.job_title,
+        "state": state,
+        "task_count": task_count,
+        "done_count": done_count,
+        "pending_count": pending_count,
+        "event_count": event_count,
+        "demo_mode": not has_real_events,
+        "data_honest": True,
+        "synthetic_fields": 0 if has_real_events else 1,
+    }
+    mode_label = "LIVE" if has_real_events else "DEMO (no events yet)"
+    lines = [
+        f"Job {job.job_id}",
+        f"  Name:    {job.job_title}",
+        f"  State:   {state}",
+        f"  Mode:    {mode_label}",
+        f"  Tasks:   {done_count}/{task_count} done, {pending_count} pending",
+        f"  Events:  {event_count}",
+    ]
+    return summary, lines
+
+
+def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job status` command: a safe read-only view of current job state.
+
+    The job's open decisions come first, in the data and in the text (F051). The next safe
+    action names the job by its full id, where the command echoed the id as typed.
+    """
+    truth = _extract_job_truth(job)
+    open_decision_view = _open_decisions_view(job)
+    jid = str(job.job_id)
+
+    state = job.state.value if hasattr(job.state, "value") else str(job.state)
+    task_count = len(job.tasks)
+    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
+
+    blockers: list[str] = []
+    # F051: an open decision comes first — it is what the run needs from a human.
+    if open_decision_view["open_decisions"]:
+        blockers.append("awaiting_decision")
+    if truth["approval_required"]:
+        blockers.append("approval_required")
+    elif pending_count > 0 and state == "pending":
+        blockers.append("job_not_started")
+    if state == "blocked":
+        blockers.append("job_blocked")
+    # Surface fulfillment blockers
+    if truth.get("fulfillment_blockers"):
+        blockers.extend(truth["fulfillment_blockers"])
+
+    if open_decision_view["next_action"]:
+        next_action = open_decision_view["next_action"]
+    elif truth["approval_required"]:
+        next_action = "remedy patch approve <job_id> <patch_intent_id>"
+    elif truth.get("fulfillment_next_action"):
+        next_action = truth["fulfillment_next_action"]
+    elif state == "completed" and truth.get("fulfillment_status") == "completed_verified":
+        next_action = f"remedy propose list {jid} --json"
+    elif pending_count > 0:
+        next_action = "remedy job resume <job_id> --json"
+    else:
+        next_action = f"remedy job show {jid} --full --json"
+
+    status = {
+        "job_id": jid,
+        "name": job.job_title,
+        "state": state,
+        "task_count": task_count,
+        "done_count": done_count,
+        "pending_count": pending_count,
+        "event_count": truth["event_count"],
+        "artifact_count": truth["artifact_count"],
+        "patch_intent_ids": truth["patch_intent_ids"],
+        "approval_required": truth["approval_required"],
+        "code_applied": truth["code_applied"],
+        "latest_stop_reason": truth["latest_stop_reason"],
+        "fulfillment_status": truth.get("fulfillment_status", ""),
+        "staging_used": truth.get("staging_used", False),
+        "applied_to_target": truth.get("applied_to_target", False),
+        "blockers": blockers,
+        "next_safe_action": next_action,
+        # F051: open decisions first, with the exact command that answers each.
+        "open_decisions": open_decision_view["open_decisions"],
+        "open_decision_count": len(open_decision_view["open_decisions"]),
+    }
+
+    lines = [
+        *open_decision_view["lines"],
+        f"Job {job.job_id}",
+        f"  Name:      {job.job_title}",
+        f"  State:     {state}",
+        f"  Tasks:     {done_count}/{task_count} done, {pending_count} pending",
+        f"  Events:    {truth['event_count']}",
+        f"  Artifacts: {truth['artifact_count']}",
+    ]
+    if truth["approval_required"]:
+        lines.append("  Approval:  REQUIRED")
+    if blockers:
+        lines.append(f"  Blockers:  {', '.join(blockers)}")
+    lines.append(f"  Next:      {next_action}")
+    return status, lines
+
+
+def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job report` command, all three of its modes: the progress view and the F053 run report.
+
+    The data is the former `--json` progress payload, then `run_report`: the run report's mode,
+    its structured sources and its markdown. The mode is `final` when the job reached a reported
+    terminal and `interim` otherwise, so a run still in progress is never shown an unbannered
+    account (R-0161): the interim markdown opens with its snapshot banner. Strictly READ-ONLY —
+    rendering a snapshot writes no report file and never mutates the job it describes.
+    """
+    import json
+    from dataclasses import asdict
+
+    from packages.orchestration.long_run_executor import REPORTED_TERMINALS
+    from packages.orchestration.run_report import (
+        MODE_FINAL,
+        MODE_INTERIM,
+        build_report_sources,
+        render_report,
+    )
+
+    truth = _extract_job_truth(job)
+    open_decision_view = _open_decisions_view(job)
+
+    state = job.state.value if hasattr(job.state, "value") else str(job.state)
+    task_count = len(job.tasks)
+    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
+
+    task_details = []
+    for t in job.tasks:
+        t_state = t.status.value if hasattr(t.status, "value") else str(t.status)
+        task_details.append({
+            "task_id": str(t.task_id),
+            "status": t_state,
+            "description": t.title[:120] if t.title else "",
+            "type": t.inputs.get("task_type", "unknown") if t.inputs else "unknown",
+        })
+
+    # Include fulfillment data if available
+    fulfillment_data: dict = {}
+    try:
+        from packages.orchestration.job_fulfillment import (
+            export_job_fulfillment_json,
+            list_fulfillment_records,
+        )
+        records = list_fulfillment_records(str(job.job_id), resolve_data_root())
+        if records:
+            fulfillment_data = export_job_fulfillment_json(records[-1])
+    except Exception:  # noqa: BLE001 — a read view never fails on the fulfillment record
+        pass
+
+    report = {
+        "job_id": str(job.job_id),
+        "name": job.job_title,
+        "state": state,
+        "task_count": task_count,
+        "done_count": done_count,
+        "pending_count": pending_count,
+        "event_count": truth["event_count"],
+        "artifact_count": truth["artifact_count"],
+        "patch_intent_ids": truth["patch_intent_ids"],
+        "approval_required": truth["approval_required"],
+        "latest_stop_reason": truth["latest_stop_reason"],
+        "code_applied": truth["code_applied"],
+        "fulfillment_status": truth.get("fulfillment_status", ""),
+        "staging_used": truth.get("staging_used", False),
+        "applied_to_target": truth.get("applied_to_target", False),
+        "fulfillment_blockers": truth.get("fulfillment_blockers", []),
+        # F051: a blocked run's next action is the command that answers its
+        # most urgent open decision — that is what unblocks it.
+        "next_safe_action": (open_decision_view["next_action"]
+                             or truth.get("fulfillment_next_action", "")),
+        "open_decisions": open_decision_view["open_decisions"],
+        "open_decision_count": len(open_decision_view["open_decisions"]),
+        "tasks": task_details,
+    }
+    if fulfillment_data:
+        report["fulfillment"] = fulfillment_data
+
+    lines = [
+        *open_decision_view["lines"],
+        f"Job Report: {job.job_id}",
+        f"  Name:      {job.job_title}",
+        f"  State:     {state}",
+        f"  Tasks:     {done_count}/{task_count} done, {pending_count} pending",
+        f"  Events:    {truth['event_count']}",
+        f"  Artifacts: {truth['artifact_count']}",
+    ]
+    if truth["approval_required"]:
+        lines.append("  Approval:  REQUIRED")
+    if truth["latest_stop_reason"]:
+        lines.append(f"  Stop:      {truth['latest_stop_reason']}")
+    lines.append(f"  Applied:   {'Yes' if truth['code_applied'] else 'No'}")
+    if task_details:
+        lines.append("  Task details:")
+        lines.extend(f"    [{td['status']:<10}] {td['type']}: {td['description']}" for td in task_details)
+    # The last line of the progress view is what to do next. For a blocked run
+    # with open decisions that is the answer command, spelled out (F051).
+    if report["next_safe_action"]:
+        lines.append(f"  Next:      {report['next_safe_action']}")
+
+    # The F053 run report, built from ONE read of its sources.
+    terminal = str((job.metadata or {}).get("cycle_terminal_status", "") or "")
+    mode = MODE_FINAL if terminal in REPORTED_TERMINALS else MODE_INTERIM
+    sources = build_report_sources(job)
+    markdown = render_report(job, mode, sources=sources)
+    report["run_report"] = {
+        "mode": mode,
+        "sources": json.loads(json.dumps(asdict(sources), sort_keys=True, default=str)),
+        "markdown": markdown,
+    }
+    lines.append("")
+    lines.extend(markdown.splitlines())
+    return report, lines
+
+
+def _dod_section(job: JobPlan) -> tuple[dict, list[str]]:
+    """The former `job dod` command: the Definition-of-Done matrix, live (F061 T004).
+
+    Strictly READ-ONLY: it shows the last recorded gate run and never runs a check
+    itself. A job with no DoD says so plainly rather than printing an empty table,
+    because an empty matrix reads like "nothing failed".
+    """
+    from packages.orchestration.dod_gate import MATRIX_HEADER, load_dod, load_gate_result, matrix_rows
+
+    jid = str(job.job_id)
+    dod = load_dod(jid)
+    recorded = load_gate_result(jid)
+    data = {
+        "job_id": jid,
+        "compiled": None if dod is None else dod.compiled,
+        "origin": None if dod is None else dod.origin,
+        "check_count": 0 if dod is None else len(dod.checks),
+        "gate": recorded,
+    }
+    if dod is None:
+        return data, [f"Job {jid}: no Definition of Done has been compiled."]
+
+    label = "compiled" if dod.compiled else "deterministic (compiled=false)"
+    lines = [f"Definition of Done for job {jid} — {label}, "
+             f"{len(dod.checks)} check(s), {len(dod.blocking_checks)} blocking", ""]
+    if recorded is None:
+        lines.append("The gate has not run yet — no check has produced evidence.")
+        lines.extend(f"  {check.id:<24} {check.kind:<14} "
+                     f"{'blocking' if check.blocking else 'reported'}  not run" for check in dod.checks)
+        return data, lines
+
+    rows = matrix_rows(recorded)
+    widths = [max(len(MATRIX_HEADER[i]), *(len(r[i]) for r in rows)) for i in range(len(MATRIX_HEADER))]
+    lines.append("  ".join(h.ljust(widths[i]) for i, h in enumerate(MATRIX_HEADER)))
+    lines.append("  ".join("-" * w for w in widths))
+    lines.extend("  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)) for row in rows)
+    lines.append("")
+    if recorded.get("released"):
+        lines.append("Gate: RELEASED — every blocking check is green.")
+    else:
+        blocking = ", ".join(recorded.get("blocking_red") or []) or "unnamed"
+        lines.append(f"Gate: HOLDING — blocking check(s) red: {blocking}")
+    reported = recorded.get("reported_red") or []
+    if reported:
+        lines.append(f"Non-blocking reds (reported, not gating): {', '.join(reported)}")
+    return data, lines
+
+
+#: The sections that exist so far, as (name, builder) pairs in `_SHOW_SECTION_ORDER`
+#: order. A builder returns the section's JSON data and its text lines. Folding a
+#: former read command into `job show --full` adds exactly one entry here.
+_SHOW_SECTIONS: tuple[tuple[str, Callable[[JobPlan], tuple[dict, list[str]]]], ...] = (
+    ("permissions", _permissions_section),
+    ("fences", _fences_section),
+    ("assumptions", _assumptions_section),
+    ("digest", _digest_section),
+    ("summary", _summary_section),
+    ("status", _status_section),
+    ("report", _report_section),
+    ("dod", _dod_section),
+)
+
+
+def _build_show_sections(job: JobPlan) -> tuple[dict[str, dict], list[str]]:
+    """Every registered section in its envelope, and the text printed for them on stderr.
+
+    A section that cannot describe its job raises `ShowSectionError` and becomes an error
+    envelope with that error's own code; a section that raises anything else becomes
+    ``section_failed``. Neither fails the command: one unreadable view never hides the
+    others, and `job show --full` still exits 0.
+    """
+    sections: dict[str, dict] = {}
+    text: list[str] = []
+    for name, builder in _SHOW_SECTIONS:
+        text.append(f"\n--- {name.capitalize()} ---")
+        try:
+            data, lines = builder(job)
+        except ShowSectionError as exc:
+            code, message = exc.code, exc.message
+        except Exception as exc:  # noqa: BLE001 — a read view never fails on one section
+            code, message = "section_failed", f"{type(exc).__name__}: {exc}"
+        else:
+            sections[name] = {"ok": True, "data": data}
+            text.extend(lines)
+            continue
+        sections[name] = {"ok": False, "error": {"code": code, "message": message}}
+        text.append(f"  Error: {code}: {message}")
+    return sections, text
 
 
 def _print_intake_block(intake: dict) -> None:
@@ -421,21 +920,6 @@ def _cmd_set_permission(job_id_str: str, action: str, capability_str: str) -> No
         )
 
 
-def _cmd_show_permissions(job_id_str: str) -> None:
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.permissions import effective_permissions
-    rows = effective_permissions(job)
-    print(f"Job {job.job_id} | permissions:")
-    for row in rows:
-        print(f"  {row['capability']:<24} {row['effective']:<6}  [{row['status']}]")
-
-
 def _cmd_run_next_task_local(job_id_str: str) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
@@ -455,8 +939,7 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: flight plan rejected. "
-            f"Run: remedy do replan {job_id_str[:8]}",
+            f"Error: flight plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)
@@ -777,8 +1260,7 @@ def _cmd_job_run_cycles(
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: flight plan rejected. "
-            f"Run: remedy do replan {job_id_str[:8]}",
+            f"Error: flight plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1055,7 +1537,7 @@ def _cmd_job_resume(
         sys.exit(3)
     if block_reason == "rejected":
         print(
-            f"Error: flight plan rejected. Run: remedy do replan {job_id_str[:8]}",
+            f"Error: flight plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1086,80 +1568,6 @@ def _cmd_job_resume(
         yes=yes,
         json_output=json_output,
     )
-
-
-def _cmd_job_assumptions(job_id_str: str) -> None:
-    """Print the job's assumption log (F034).
-
-    Rendered from the job's own flight plan, so it tells the truth even
-    for a job approved before the evidence file was written. When the
-    evidence copy exists, its path is reported alongside.
-    """
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.data_paths import job_evidence_export_dir
-    from packages.orchestration.flight_plan import render_assumptions_md
-
-    fp = getattr(job, "flight_plan", None)
-    clarifications = fp.get("clarifications_resolved") if isinstance(fp, dict) else None
-    print(render_assumptions_md(clarifications))
-
-    log_path = job_evidence_export_dir(str(job.job_id)) / "assumptions.md"
-    if log_path.exists():
-        print(f"Evidence copy: {log_path}")
-
-
-def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
-    """Print an honest summary of job state — truth contract."""
-    import json as _json
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-    events = load_run_events(data_dir, job.job_id)
-
-    state = job.state.value if hasattr(job.state, "value") else str(job.state)
-    task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
-    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
-    event_count = len(events)
-    has_real_events = event_count > 0
-
-    summary = {
-        "job_id": str(job.job_id),
-        "name": job.job_title,
-        "state": state,
-        "task_count": task_count,
-        "done_count": done_count,
-        "pending_count": pending_count,
-        "event_count": event_count,
-        "demo_mode": not has_real_events,
-        "data_honest": True,
-        "synthetic_fields": 0 if has_real_events else 1,
-    }
-
-    if json_output:
-        print(_json.dumps(summary, indent=2))
-    else:
-        mode_label = "LIVE" if has_real_events else "DEMO (no events yet)"
-        print(f"Job {job.job_id}")
-        print(f"  Name:    {job.job_title}")
-        print(f"  State:   {state}")
-        print(f"  Mode:    {mode_label}")
-        print(f"  Tasks:   {done_count}/{task_count} done, {pending_count} pending")
-        print(f"  Events:  {event_count}")
 
 
 def _cmd_checkpoints(job_id_str: str, *, json_output: bool = False) -> None:
@@ -1225,8 +1633,7 @@ def _cmd_resume(
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: flight plan rejected. "
-            f"Run: remedy do replan {job_id_str[:8]}",
+            f"Error: flight plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1486,7 +1893,7 @@ def _extract_job_truth(job: JobPlan) -> dict:
     fulfillment_status = ''
     fulfillment_id = ''
     staging_used = False
-    staging_promoted = False
+    applied_to_target = False
     fulfillment_blockers: list[str] = []
     fulfillment_next_action = ''
     try:
@@ -1497,7 +1904,7 @@ def _extract_job_truth(job: JobPlan) -> dict:
             fulfillment_status = latest.status.value
             fulfillment_id = latest.fulfillment_id
             staging_used = latest.staging_used
-            staging_promoted = latest.staging_promoted
+            applied_to_target = latest.applied_to_target
             fulfillment_blockers = latest.contract_blockers or []
             fulfillment_next_action = latest.next_safe_action or ''
             # Surface fulfillment stop_reason as latest_stop_reason
@@ -1512,9 +1919,9 @@ def _extract_job_truth(job: JobPlan) -> dict:
     except Exception:
         pass
 
-    # When staging was used, staging_promoted is authoritative for code_applied
+    # When staging was used, applied_to_target is authoritative for code_applied
     if staging_used:
-        code_applied = staging_promoted
+        code_applied = applied_to_target
 
     return {
         'artifact_count': artifact_count,
@@ -1526,7 +1933,7 @@ def _extract_job_truth(job: JobPlan) -> dict:
         'fulfillment_status': fulfillment_status,
         'fulfillment_id': fulfillment_id,
         'staging_used': staging_used,
-        'staging_promoted': staging_promoted,
+        'applied_to_target': applied_to_target,
         'fulfillment_blockers': fulfillment_blockers,
         'fulfillment_next_action': fulfillment_next_action,
     }
@@ -1560,391 +1967,6 @@ def _open_decisions_view(job: JobPlan) -> dict:
         }
     except Exception:  # noqa: BLE001 — a read-only view never fails on this
         return {'lines': [], 'open_decisions': [], 'next_action': ''}
-
-
-def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
-    """Job status -- safe read-only view of current job state."""
-    import json as _json
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError:
-        if json_output:
-            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
-        else:
-            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
-        sys.exit(1)
-
-    truth = _extract_job_truth(job)
-    open_decision_view = _open_decisions_view(job)
-
-    state = job.state.value if hasattr(job.state, 'value') else str(job.state)
-    task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'completed')
-    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'pending')
-
-    blockers: list[str] = []
-    # F051: an open decision comes first — it is what the run needs from a human.
-    if open_decision_view['open_decisions']:
-        blockers.append('awaiting_decision')
-    if truth['approval_required']:
-        blockers.append('approval_required')
-    elif pending_count > 0 and state == 'pending':
-        blockers.append('job_not_started')
-    if state == 'blocked':
-        blockers.append('job_blocked')
-    # Surface fulfillment blockers
-    if truth.get('fulfillment_blockers'):
-        blockers.extend(truth['fulfillment_blockers'])
-
-    if open_decision_view['next_action']:
-        next_action = open_decision_view['next_action']
-    elif truth['approval_required']:
-        next_action = 'remedy patch approve <job_id> <patch_intent_id>'
-    elif truth.get('fulfillment_next_action'):
-        next_action = truth['fulfillment_next_action']
-    elif state == 'completed' and truth.get('fulfillment_status') == 'completed_verified':
-        next_action = f'remedy propose list {job_id_str} --json'
-    elif pending_count > 0:
-        next_action = 'remedy job resume <job_id> --json'
-    elif state in ('completed', 'failed'):
-        next_action = f'remedy job report {job_id_str} --json'
-    else:
-        next_action = f'remedy job report {job_id_str} --json'
-
-    status = {
-        'job_id': str(job.job_id),
-        'name': job.job_title,
-        'state': state,
-        'task_count': task_count,
-        'done_count': done_count,
-        'pending_count': pending_count,
-        'event_count': truth['event_count'],
-        'artifact_count': truth['artifact_count'],
-        'patch_intent_ids': truth['patch_intent_ids'],
-        'approval_required': truth['approval_required'],
-        'code_applied': truth['code_applied'],
-        'latest_stop_reason': truth['latest_stop_reason'],
-        'fulfillment_status': truth.get('fulfillment_status', ''),
-        'staging_used': truth.get('staging_used', False),
-        'staging_promoted': truth.get('staging_promoted', False),
-        'blockers': blockers,
-        'next_safe_action': next_action,
-        # F051: open decisions first, with the exact command that answers each.
-        'open_decisions': open_decision_view['open_decisions'],
-        'open_decision_count': len(open_decision_view['open_decisions']),
-    }
-
-    if json_output:
-        print(_json.dumps(status, indent=2))
-    else:
-        for line in open_decision_view['lines']:
-            print(line)
-        print(f'Job {job.job_id}')
-        print(f'  Name:      {job.job_title}')
-        print(f'  State:     {state}')
-        print(f'  Tasks:     {done_count}/{task_count} done, {pending_count} pending')
-        print(f'  Events:    {truth["event_count"]}')
-        print(f'  Artifacts: {truth["artifact_count"]}')
-        if truth['approval_required']:
-            print('  Approval:  REQUIRED')
-        if blockers:
-            bl = ', '.join(blockers)
-            print(f'  Blockers:  {bl}')
-        print(f'  Next:      {next_action}')
-
-
-def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
-                        json_output: bool = False) -> None:
-    """The F053 run report: one human-readable account of a run.
-
-    `--final` renders the account of a terminal job; `--interim` renders the
-    same structure for a run still in progress, headed by a loud snapshot
-    label.  Both are strictly READ-ONLY — the interim path in particular never
-    writes and never mutates job state, because rendering a progress snapshot
-    must not perturb the run it is describing.
-
-    `--final` REFUSES a job that has not reached a reported terminal (R-0161).
-    Rendering one anyway would produce an unbannered report of a run that is
-    still moving — exactly the mislabeled snapshot the interim banner exists to
-    prevent, one typo away. The refusal names the state and points at
-    `--interim`; it never renders anyway and never silently switches mode,
-    because a command that quietly does something else than asked is how a
-    snapshot gets mistaken for a final account.
-    """
-    import json as _json
-    from dataclasses import asdict
-
-    from packages.orchestration.long_run_executor import REPORTED_TERMINALS
-    from packages.orchestration.run_report import (
-        MODE_FINAL,
-        MODE_INTERIM,
-        build_report_sources,
-        render_report,
-    )
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError:
-        # A clean error, never a traceback: an unknown id is a normal thing for
-        # a human to type.
-        if json_output:
-            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
-        else:
-            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
-        sys.exit(1)
-
-    terminal = str((job.metadata or {}).get('cycle_terminal_status', '') or '')
-    if not interim and terminal not in REPORTED_TERMINALS:
-        state = job.state.value if hasattr(job.state, 'value') else str(job.state)
-        if json_output:
-            print(_json.dumps({
-                'error': 'run_not_terminal',
-                'job_id': str(job.job_id),
-                'state': state,
-                'terminal_status': terminal,
-                'hint': 'use --interim for a snapshot',
-            }))
-        else:
-            print(f'Error: run still in progress (state: {state}) — '
-                  'use --interim for a snapshot', file=sys.stderr)
-        sys.exit(1)
-
-    sources = build_report_sources(job)
-    if json_output:
-        print(_json.dumps(asdict(sources), indent=2, sort_keys=True, default=str))
-        return
-    print(render_report(job, MODE_INTERIM if interim else MODE_FINAL,
-                        sources=sources))
-
-
-def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
-    """Job report -- safe read-only report of job progress and evidence."""
-    import json as _json
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError:
-        if json_output:
-            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
-        else:
-            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
-        sys.exit(1)
-
-    truth = _extract_job_truth(job)
-    open_decision_view = _open_decisions_view(job)
-
-    state = job.state.value if hasattr(job.state, 'value') else str(job.state)
-    task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'completed')
-    pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'pending')
-
-    task_details = []
-    for t in job.tasks:
-        t_state = t.status.value if hasattr(t.status, 'value') else str(t.status)
-        task_details.append({
-            'task_id': str(t.task_id),
-            'status': t_state,
-            'description': t.title[:120] if t.title else '',
-            'type': t.inputs.get('task_type', 'unknown') if t.inputs else 'unknown',
-        })
-
-    # Include fulfillment data if available
-    fulfillment_data: dict = {}
-    try:
-        from packages.orchestration.job_fulfillment import (
-            export_job_fulfillment_json,
-            list_fulfillment_records,
-        )
-        data_dir = resolve_data_root()
-        records = list_fulfillment_records(str(job.job_id), data_dir)
-        if records:
-            fulfillment_data = export_job_fulfillment_json(records[-1])
-    except Exception:
-        pass
-
-    report = {
-        'job_id': str(job.job_id),
-        'name': job.job_title,
-        'state': state,
-        'task_count': task_count,
-        'done_count': done_count,
-        'pending_count': pending_count,
-        'event_count': truth['event_count'],
-        'artifact_count': truth['artifact_count'],
-        'patch_intent_ids': truth['patch_intent_ids'],
-        'approval_required': truth['approval_required'],
-        'latest_stop_reason': truth['latest_stop_reason'],
-        'code_applied': truth['code_applied'],
-        'fulfillment_status': truth.get('fulfillment_status', ''),
-        'staging_used': truth.get('staging_used', False),
-        'staging_promoted': truth.get('staging_promoted', False),
-        'fulfillment_blockers': truth.get('fulfillment_blockers', []),
-        # F051: a blocked run's next action is the command that answers its
-        # most urgent open decision — that is what unblocks it.
-        'next_safe_action': (open_decision_view['next_action']
-                             or truth.get('fulfillment_next_action', '')),
-        'open_decisions': open_decision_view['open_decisions'],
-        'open_decision_count': len(open_decision_view['open_decisions']),
-        'tasks': task_details,
-    }
-    if fulfillment_data:
-        report['fulfillment'] = fulfillment_data
-
-    if json_output:
-        print(_json.dumps(report, indent=2))
-    else:
-        for line in open_decision_view['lines']:
-            print(line)
-        print(f'Job Report: {job.job_id}')
-        print(f'  Name:      {job.job_title}')
-        print(f'  State:     {state}')
-        print(f'  Tasks:     {done_count}/{task_count} done, {pending_count} pending')
-        print(f'  Events:    {truth["event_count"]}')
-        print(f'  Artifacts: {truth["artifact_count"]}')
-        if truth['approval_required']:
-            print('  Approval:  REQUIRED')
-        if truth['latest_stop_reason']:
-            print(f'  Stop:      {truth["latest_stop_reason"]}')
-        print(f'  Applied:   {"Yes" if truth["code_applied"] else "No"}')
-        if task_details:
-            print('  Task details:')
-            for td in task_details:
-                s = td['status']
-                ty = td['type']
-                desc = td['description']
-                print(f'    [{s:<10}] {ty}: {desc}')
-        # The last line a human reads is what to do next.  For a blocked run
-        # with open decisions that is the answer command, spelled out (F051).
-        if report['next_safe_action']:
-            print(f'  Next:      {report["next_safe_action"]}')
-
-
-def _cmd_job_digest(job_id_str: str, *, json_output: bool = False) -> None:
-    """`remedy job digest <id>` — the completion digest's CLI parity (F040
-    T003), the HTTP route's little sibling. Reuses the SAME two calls
-    `_cmd_job_summary` already makes above — `resolve_job_id`/`load_job`
-    then `load_run_events` — and prints the SAME `build_job_digest`
-    envelope the route builds, so the CLI and the route can never disagree
-    about the same job.
-    """
-    import json as _json
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError:
-        # A clean error, never a traceback: an unknown id is a normal thing
-        # for a human to type (the same shape _cmd_job_report uses above).
-        if json_output:
-            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
-        else:
-            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-    events = load_run_events(data_dir, job.job_id)
-
-    from packages.orchestration.job_digest import build_job_digest
-
-    # The ONLY call that builds the envelope — no field is recomputed,
-    # renamed or filtered before being printed, so this can never drift
-    # from what `_build_digest_json` prints for the same job.
-    digest = build_job_digest(job, events)
-
-    if json_output:
-        print(_json.dumps(digest, indent=2))
-        return
-
-    print(f'Job digest: {job.job_id}')
-    print(f'  State:     {digest["state"]}')
-    print(f'  Headline:  {digest["headline"]}')
-    print(f'  Cost:      {digest["cost"]["value"]} ({digest["cost"]["basis"]})')
-    print(f'  Decisions: {digest["decisions"]["open_count"]} open, '
-          f'peak urgency {digest["decisions"]["peak_urgency"]}')
-    # No `ownership` line this round: the key is always empty (DECISION
-    # F040 D3) until F035 ships a producer, so there is no shape to render.
-    print(f'  Next:      {digest["primary_action"]["label"]}')
-
-
-def _cmd_job_dod(job_id_str: str, *, json_output: bool = False) -> None:
-    """`remedy job dod <id>` — the Definition-of-Done matrix, live (F061 T004).
-
-    Strictly READ-ONLY: it prints the last recorded gate run and never runs a
-    check itself. A job with no DoD says so plainly rather than printing an
-    empty table, because an empty matrix reads like "nothing failed".
-    """
-    import json as _json
-
-    from packages.orchestration.dod_gate import (
-        MATRIX_HEADER,
-        load_dod,
-        load_gate_result,
-        matrix_rows,
-    )
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        require_job_plan(job_id)
-    except JobNotFoundError:
-        if json_output:
-            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
-        else:
-            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
-        sys.exit(1)
-
-    jid = str(job_id)
-    dod = load_dod(jid)
-    recorded = load_gate_result(jid)
-
-    if json_output:
-        print(_json.dumps({
-            'job_id': jid,
-            'compiled': None if dod is None else dod.compiled,
-            'origin': None if dod is None else dod.origin,
-            'check_count': 0 if dod is None else len(dod.checks),
-            'gate': recorded,
-        }, indent=2, sort_keys=True))
-        return
-
-    if dod is None:
-        print(f'Job {jid}: no Definition of Done has been compiled.')
-        return
-
-    label = 'compiled' if dod.compiled else 'deterministic (compiled=false)'
-    print(f'Definition of Done for job {jid} — {label}, '
-          f'{len(dod.checks)} check(s), {len(dod.blocking_checks)} blocking')
-    print()
-
-    if recorded is None:
-        print('The gate has not run yet — no check has produced evidence.')
-        for check in dod.checks:
-            print(f'  {check.id:<24} {check.kind:<14} '
-                  f'{"blocking" if check.blocking else "reported"}  not run')
-        return
-
-    rows = matrix_rows(recorded)
-    widths = [max(len(MATRIX_HEADER[i]), *(len(r[i]) for r in rows))
-              for i in range(len(MATRIX_HEADER))]
-    print('  '.join(h.ljust(widths[i]) for i, h in enumerate(MATRIX_HEADER)))
-    print('  '.join('-' * w for w in widths))
-    for row in rows:
-        print('  '.join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
-    print()
-
-    if recorded.get('released'):
-        print('Gate: RELEASED — every blocking check is green.')
-    else:
-        blocking = ', '.join(recorded.get('blocking_red') or []) or 'unnamed'
-        print(f'Gate: HOLDING — blocking check(s) red: {blocking}')
-    reported = recorded.get('reported_red') or []
-    if reported:
-        print(f'Non-blocking reds (reported, not gating): {", ".join(reported)}')
 
 
 def _cmd_job_fulfill(
@@ -1999,91 +2021,6 @@ def _cmd_job_fulfill(
         print(_json.dumps(export_job_fulfillment_json(record), indent=2))
     else:
         print(summarize_job_fulfillment(record))
-
-
-def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
-    """Show effective scope fences for a job (F017 T003)."""
-    import json as _json
-    from pathlib import Path
-
-    from packages.orchestration.scope_fences import (
-        FenceConfigError,
-        resolve_fence_spec_effective,
-    )
-
-    try:
-        job = require_job_plan(resolve_job_id(job_id_str))
-    except JobNotFoundError:
-        print(f"Job not found: {job_id_str}", file=sys.stderr)
-        sys.exit(1)
-
-    repo_str = job.metadata.get("target_repo", "") or ""
-    if not repo_str:
-        print(f"Job {job_id_str[:8]} has no target_repo attached", file=sys.stderr)
-        sys.exit(2)
-    repo_root = Path(repo_str)
-    if not repo_root.is_dir():
-        print(f"Target repo does not exist: {repo_str}", file=sys.stderr)
-        sys.exit(2)
-
-    job_fences_dict = None
-    if job.fences is not None:
-        job_fences_dict = {"allow": job.fences.allow, "deny": job.fences.deny}
-
-    try:
-        eff = resolve_fence_spec_effective(repo_root, job_fences=job_fences_dict)
-    except FenceConfigError as exc:
-        print(f"Fence config error: {exc}", file=sys.stderr)
-        sys.exit(3)
-    except RuntimeError as exc:
-        print(f"Builtin resolution failed: {exc}", file=sys.stderr)
-        sys.exit(4)
-    spec = eff.spec
-
-    warnings: list[str] = list(eff.warnings)
-    if not spec.allow_globs and not spec.deny_globs:
-        warnings.append("no configured allow/deny globs — defaults apply (allow all, builtin denies only)")
-
-    def _rule_dict(r):
-        return {"pattern": r.pattern, "kind": r.kind, "source": r.source, "reason": r.reason}
-
-    result = {
-        "job_id": job_id_str,
-        "source": eff.source,
-        "case_sensitivity": eff.case_sensitivity,
-        "allow_rules": [_rule_dict(r) for r in eff.allow_rules],
-        "deny_rules": [_rule_dict(r) for r in eff.deny_rules],
-        "builtin_rules": [_rule_dict(r) for r in eff.builtin_rules],
-        "allow_globs": list(spec.allow_globs),
-        "deny_globs": list(spec.deny_globs),
-        "warnings": warnings,
-    }
-
-    if json_output:
-        print(_json.dumps(result, indent=2))
-    else:
-        print(f"Scope fences for job {job_id_str[:8]}:")
-        print(f"  Source: {eff.source}")
-        print(f"  Case:   {eff.case_sensitivity}")
-        if eff.allow_rules:
-            print("  Allow rules:")
-            for r in eff.allow_rules:
-                print(f"    {r.pattern:30s} [{r.source}]")
-        else:
-            print("  Allow:  (all — no restrictions)")
-        if eff.deny_rules:
-            print("  Deny rules:")
-            for r in eff.deny_rules:
-                print(f"    {r.pattern:30s} [{r.source}]")
-        else:
-            print("  Deny:   (none beyond builtins)")
-        print("  Builtin rules:")
-        for r in eff.builtin_rules:
-            print(f"    {r.pattern:30s} [{r.source}] {r.reason}")
-        if warnings:
-            print("  Warnings:")
-            for w in warnings:
-                print(f"    {w}")
 
 
 # Renders a money figure for `remedy job budget`, or says out loud that there is
@@ -2373,20 +2310,14 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         until=getattr(args, "until", None),
         limit=getattr(args, "limit", None),
     ),
-    "job.show": lambda args: _cmd_show_job(args.job_id),
+    "job.show": lambda args: _cmd_show_job(args.job_id, full=getattr(args, "full", False)),
     "job.attach-repo": lambda args: _cmd_attach_repo(args.job_id, args.repo_path),
     "job.permit": lambda args: _cmd_set_permission(args.job_id, args.action, args.permission),
-    "job.permissions": lambda args: _cmd_show_permissions(args.job_id),
     "job.budget": lambda args: _cmd_job_budget(
         args.job_id,
         json_output=getattr(args, "json", False),
     ),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
-    "job.assumptions": lambda args: _cmd_job_assumptions(args.job_id),
-    "job.summary": lambda args: _cmd_job_summary(
-        args.job_id,
-        json_output=getattr(args, "json", False),
-    ),
     "job.checkpoints": lambda args: _cmd_checkpoints(
         args.job_id,
         json_output=getattr(args, "json", False),
@@ -2411,83 +2342,9 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
             json_output=getattr(args, "json", False),
         )
     ),
-    "job.status": lambda args: _cmd_job_status(
-        args.job_id,
-        json_output=getattr(args, "json", False),
-    ),
-    # `remedy job report` has three modes and ONE name (the F047 `job resume`
-    # pattern, see .agent/decisions.md): --final/--interim render the F053 run
-    # report; without either flag the existing progress view runs UNCHANGED, so
-    # no existing invocation changes behavior.
-    "job.report": lambda args: (
-        _cmd_job_run_report(
-            args.job_id,
-            interim=getattr(args, "interim", False),
-            json_output=getattr(args, "json", False),
-        )
-        if (getattr(args, "final", False) or getattr(args, "interim", False))
-        else _cmd_job_report(
-            args.job_id,
-            json_output=getattr(args, "json", False),
-        )
-    ),
-    "job.digest": lambda args: _cmd_job_digest(args.job_id,
-        json_output=getattr(args, "json", False)),
-    "job.fences": lambda args: _cmd_job_fences(
-        args.job_id,
-        json_output=getattr(args, "json", False),
-    ),
-    "job.dod": lambda args: _cmd_job_dod(
-        args.job_id,
-        json_output=getattr(args, "json", False),
-    ),
     "job.fulfill": lambda args: _cmd_job_fulfill(
         args.job_id,
         fixture_demo=getattr(args, "fixture_demo", False),
         json_output=getattr(args, "json", False),
     ),
-    "job.enqueue": lambda args: _cmd_enqueue(args.job_id),
-    "job.pause": lambda args: _cmd_pause(args.job_id),
-    "job.cancel": lambda args: _cmd_cancel(args.job_id),
-    "job.resume-queue": lambda args: _cmd_resume_queue(args.job_id),
 }
-
-
-def _cmd_enqueue(job_id_str: str) -> None:
-    from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.worker_queue import enqueue_job
-    entry = enqueue_job(job_id_str, resolve_data_root())
-    print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
-
-
-def _cmd_pause(job_id_str: str) -> None:
-    from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.worker_queue import pause_job
-    entry = pause_job(job_id_str, resolve_data_root())
-    if entry:
-        print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
-    else:
-        print(f"Cannot pause job {job_id_str[:8]}", file=sys.stderr)
-        sys.exit(1)
-
-
-def _cmd_cancel(job_id_str: str) -> None:
-    from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.worker_queue import cancel_job
-    entry = cancel_job(job_id_str, resolve_data_root())
-    if entry:
-        print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
-    else:
-        print(f"Cannot cancel job {job_id_str[:8]}", file=sys.stderr)
-        sys.exit(1)
-
-
-def _cmd_resume_queue(job_id_str: str) -> None:
-    from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.worker_queue import resume_queued
-    entry = resume_queued(job_id_str, resolve_data_root())
-    if entry:
-        print(f"Job {job_id_str[:8]}: {entry.lifecycle_state}")
-    else:
-        print(f"Cannot resume job {job_id_str[:8]} (not paused)", file=sys.stderr)
-        sys.exit(1)

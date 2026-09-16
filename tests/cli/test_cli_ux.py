@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
-from apps.cli.command_catalog import GROUPS
+import pytest
+
+from apps.cli.command_catalog import GROUPS, GroupDef, get_commands_for_group, get_group, resolve_group
 from apps.cli.grouped import main as grouped_main
 
 # ---------------------------------------------------------------------------
@@ -14,8 +17,7 @@ _USER_FACING_GROUPS = {"do", "job", "project", "ui", "doctor", "config", "worker
 
 # Internal groups that MUST NOT appear in default help
 _INTERNAL_GROUPS = {
-    "token", "context-pack",
-    "snapshot", "contract", "integrity",
+    "snapshot", "integrity",
 }
 
 
@@ -99,6 +101,134 @@ class TestHiddenCallable:
 
 
 # ---------------------------------------------------------------------------
+# 4b. A hidden group is in no help at all and stays callable (amend0905-vocab D4)
+# ---------------------------------------------------------------------------
+
+def _listed_groups(out: str) -> list[str]:
+    """The first column of every box row of a root help page, the options excluded."""
+    names = [line[1:].split()[0] for line in out.splitlines()
+             if line.startswith("\u2502") and line[1:-1].strip()]
+    return [name for name in names if not name.startswith("-")]
+
+
+def _hide(monkeypatch, *group_ids: str) -> None:
+    for group_id in group_ids:
+        monkeypatch.setitem(GROUPS, group_id, replace(GROUPS[group_id], hidden=True))
+
+
+class TestHiddenGroup:
+    def test_a_group_is_not_hidden_unless_it_says_so(self):
+        assert GroupDef("x", "X", "An x.").hidden is False
+        assert GroupDef("x", "X", "An x.", False, True).hidden is True
+
+    def test_a_hidden_group_is_absent_from_the_default_help(self, capsys, monkeypatch):
+        _hide(monkeypatch, "runtime")
+        grouped_main(["--help"])
+        listed = _listed_groups(capsys.readouterr().out)
+        assert "runtime" not in listed
+        assert "stats" in listed
+
+    def test_a_hidden_group_is_absent_from_all_commands(self, capsys, monkeypatch):
+        _hide(monkeypatch, "runtime", "ci")
+        grouped_main(["--all-commands"])
+        listed = _listed_groups(capsys.readouterr().out)
+        assert "runtime" not in listed and "ci" not in listed
+        assert "stats" in listed and "dev" in listed
+
+    def test_a_hidden_groups_own_help_still_lists_its_commands(self, capsys, monkeypatch):
+        _hide(monkeypatch, "runtime")
+        grouped_main(["runtime", "--help"])
+        out = capsys.readouterr().out
+        assert "Usage: remedy runtime" in out
+        assert set(_listed_groups(out)) == {c.subcommand for c in get_commands_for_group("runtime")}
+
+    def test_a_hidden_groups_command_still_dispatches(self, monkeypatch):
+        import apps.cli.grouped as grouped
+
+        _hide(monkeypatch, "ci")
+        calls = []
+        monkeypatch.setattr(grouped, "_get_dispatch_table", lambda: {"ci.run": calls.append})
+        grouped_main(["ci", "run", "--json"])
+        assert [args._command_id for args in calls] == ["ci.run"]
+
+
+# ---------------------------------------------------------------------------
+# 4c. `settings` is an alias of `config`: one GroupDef, two words (amend0831 D-D)
+# ---------------------------------------------------------------------------
+
+class TestSettingsAlias:
+    def test_one_group_def_carries_both_words(self):
+        assert "settings" not in GROUPS
+        assert GROUPS["config"].aliases == ("settings",)
+        assert GroupDef("x", "X", "An x.").aliases == ()
+
+    def test_the_resolver_maps_every_word_to_its_group(self):
+        assert [resolve_group(w) for w in ("settings", "config", "no-such-group")] == ["config", "config", None]
+        assert get_group("settings") is GROUPS["config"]
+        assert get_commands_for_group("settings") == get_commands_for_group("config")
+
+    def test_no_alias_shadows_a_group_or_another_alias(self):
+        words = [word for group_def in GROUPS.values() for word in group_def.aliases]
+        assert len(words) == len(set(words)) and set(words).isdisjoint(GROUPS)
+
+    def test_settings_help_names_config(self, capsys):
+        grouped_main(["settings", "--help"])
+        out = capsys.readouterr().out
+        assert "Usage: remedy settings" in out and " Also reachable as: remedy config\n" in out
+        assert set(_listed_groups(out)) == {c.subcommand for c in get_commands_for_group("config")}
+
+    def test_config_help_names_settings(self, capsys):
+        grouped_main(["config", "--help"])
+        out = capsys.readouterr().out
+        assert "Usage: remedy config" in out and " Also reachable as: remedy settings\n" in out
+
+    def test_bare_settings_prints_the_group_help_naming_config(self, capsys):
+        grouped_main(["settings"])
+        assert " Also reachable as: remedy config\n" in capsys.readouterr().out
+
+    def test_every_config_command_parses_to_the_same_id_under_both_words(self):
+        from apps.cli.grouped import build_parser
+
+        parser = build_parser()
+        for cmd in get_commands_for_group("config"):
+            fillers = ["x"] * sum(1 for a in cmd.args if not a.is_option and a.required)
+            for word in ("config", "settings"):
+                args, _unknown = parser.parse_known_args([word, cmd.subcommand, *fillers])
+                assert args._command_id == cmd.command_id
+
+    def test_settings_dispatches_exactly_the_config_handler(self, monkeypatch):
+        import apps.cli.grouped as grouped
+
+        calls = []
+        monkeypatch.setattr(grouped, "_get_dispatch_table", lambda: {"config.list": calls.append})
+        grouped_main(["settings", "list", "--json"])
+        grouped_main(["config", "list", "--json"])
+        assert [args._command_id for args in calls] == ["config.list", "config.list"]
+        assert not [cid for cid in grouped._get_dispatch_table() if cid.startswith("settings.")]
+
+    def test_settings_and_config_print_the_same_bytes(self, capsys):
+        grouped_main(["settings", "list", "--json"])
+        via_alias = capsys.readouterr().out
+        grouped_main(["config", "list", "--json"])
+        assert via_alias == capsys.readouterr().out and via_alias
+
+    def test_an_unknown_settings_subcommand_is_an_error(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            grouped_main(["settings", "no-such-command"])
+        assert exc.value.code == 2
+        assert "Unknown command 'no-such-command'" in capsys.readouterr().err
+
+    def test_an_alias_of_a_group_with_a_default_command_injects_it(self, monkeypatch):
+        import apps.cli.grouped as grouped
+
+        monkeypatch.setitem(GROUPS, "status", replace(GROUPS["status"], aliases=("overview",)))
+        calls = []
+        monkeypatch.setattr(grouped, "_get_dispatch_table", lambda: {"status.run": calls.append})
+        grouped_main(["overview", "--json"])
+        assert [args._command_id for args in calls] == ["status.run"]
+
+
+# ---------------------------------------------------------------------------
 # 5. Default happy path includes do commands
 # ---------------------------------------------------------------------------
 
@@ -107,10 +237,7 @@ class TestHappyPath:
         grouped_main([])
         out = capsys.readouterr().out
         assert "do run" in out
-        assert "do report" in out
-        assert "do promote" in out
-        assert "--dry-run" in out
-        assert "--approve" in out
+        assert "run show" in out
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +248,7 @@ class TestNoInternalInDefault:
     def test_no_internal_names(self, capsys):
         grouped_main([])
         out = capsys.readouterr().out
-        for name in ["execution", "snapshot", "contract", "integrity"]:
+        for name in ["execution", "snapshot", "integrity"]:
             lines = [l.strip() for l in out.split("\n") if l.strip().startswith(name)]
             assert not lines, f"{name} should not appear in default help"
 
@@ -135,39 +262,13 @@ class TestNextCommands:
         result, data = _make_run(tmp_path, monkeypatch)
         nc = data.get("next_commands", {})
         assert "report" in nc
-        assert "promote_dry_run" in nc
-        assert "promote_approve" in nc
         assert result.run_id in nc["report"]
-        assert result.run_id in nc["promote_approve"]
 
     def test_no_git_in_next_commands(self, tmp_path, monkeypatch):
         _, data = _make_run(tmp_path, monkeypatch)
         nc_str = json.dumps(data.get("next_commands", {}))
         assert "git commit" not in nc_str
         assert "git push" not in nc_str
-
-    def test_next_commands_preserve_repo(self, tmp_path, monkeypatch):
-        """next_commands preserve original repo argument."""
-        demo = tmp_path / "repo"
-        demo.mkdir(exist_ok=True)
-        (demo / "README.md").write_text("# Test\n")
-        result, data = _make_run(tmp_path, monkeypatch, repo_arg=str(demo))
-        nc = data["next_commands"]
-        assert str(demo) in nc["promote_approve"] or "." in nc["promote_approve"]
-
-    def test_next_commands_with_test_command(self, tmp_path, monkeypatch):
-        """When test command used, next_commands include promote with test."""
-        _, data = _make_run(tmp_path, monkeypatch, test_command="python3 -m pytest tests/ -q")
-        nc = data["next_commands"]
-        assert "promote_approve_with_test_json" in nc
-        assert "pytest" in nc["promote_approve_with_test_json"]
-
-    def test_next_commands_shell_quote_test(self, tmp_path, monkeypatch):
-        """Test command is shell-quoted in next_commands."""
-        _, data = _make_run(tmp_path, monkeypatch, test_command="echo 'hello world'")
-        nc = data["next_commands"]
-        # Should be quoted safely (no raw unquoted spaces)
-        assert "promote_approve_with_test" in nc
 
 
 # ---------------------------------------------------------------------------
@@ -419,16 +520,6 @@ class TestShellFlow:
         assert "git commit" not in flow
         assert "git push" not in flow
 
-    def test_shell_flow_has_dry_run(self, tmp_path, monkeypatch):
-        _, data = _make_run(tmp_path, monkeypatch)
-        flow = data["next_commands"]["shell_flow"]
-        assert "--dry-run" in flow
-
-    def test_shell_flow_has_approve(self, tmp_path, monkeypatch):
-        _, data = _make_run(tmp_path, monkeypatch)
-        flow = data["next_commands"]["shell_flow"]
-        assert "--approve" in flow
-
 
 # ---------------------------------------------------------------------------
 # Quick start tests
@@ -464,8 +555,8 @@ class TestTextReportTokenProof:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
+        from apps.cli.commands.do_cmd import _cmd_run_show
+        _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Worker:" in out
         assert "Reviewer:" in out
@@ -480,8 +571,8 @@ class TestTextReportTokenProof:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
+        from apps.cli.commands.do_cmd import _cmd_run_show
+        _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Token accounting:" in out
         assert "Context sent:" in out
@@ -498,8 +589,8 @@ class TestTextReportTokenProof:
         for i in range(20):
             (demo / f"mod_{i}.py").write_text(f"# Module {i}\n" + "x = 1\n" * 50)
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
+        from apps.cli.commands.do_cmd import _cmd_run_show
+        _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Full repo estimate:" in out
         assert "Estimated saved:" in out
@@ -513,8 +604,8 @@ class TestTextReportTokenProof:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
+        from apps.cli.commands.do_cmd import _cmd_run_show
+        _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "You are a Builder" not in out
         assert "You are a code Reviewer" not in out
@@ -536,45 +627,13 @@ class TestConciseTextReport:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix README", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
+        from apps.cli.commands.do_cmd import _cmd_run_show
+        _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Remedy Run" in out
         assert "Worker:" in out
         assert "Reviewer:" in out
         assert "Status:" in out
-
-    def test_text_report_shows_promotion(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_promote import promote_run
-        from packages.orchestration.pingpong_provider import FakeProvider
-        p = FakeProvider()
-        demo = tmp_path / "repo"
-        demo.mkdir()
-        (demo / "README.md").write_text("# Test\n")
-        result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p, repair_rounds=2)
-        promote_run(result.run_id, target_repo=str(demo), approve=True)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
-        out = capsys.readouterr().out
-        assert "Promotion: promoted" in out
-
-    def test_text_report_shows_next_steps(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_provider import FakeProvider
-        p = FakeProvider()
-        demo = tmp_path / "repo"
-        demo.mkdir()
-        (demo / "README.md").write_text("# Test\n")
-        result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p, repair_rounds=2)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
-        out = capsys.readouterr().out
-        assert "Next steps:" in out
-        assert "--dry-run" in out
-        assert "--approve" in out
 
 
 # ---------------------------------------------------------------------------
@@ -592,21 +651,6 @@ class TestExistingFlowsSmoke:
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p, repair_rounds=2)
         assert result.final_status == "staged_review_passed"
-
-    def test_promote_safety_still_works(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_loop import run_pingpong
-        from packages.orchestration.pingpong_promote import promote_run
-        from packages.orchestration.pingpong_provider import FakeProvider
-        p = FakeProvider()
-        demo = tmp_path / "repo"
-        demo.mkdir()
-        (demo / "README.md").write_text("# Test\n")
-        result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p, repair_rounds=2)
-        dr = promote_run(result.run_id, target_repo=str(demo), dry_run=True)
-        assert dr.status == "dry_run"
-        ap = promote_run(result.run_id, target_repo=str(demo), approve=True)
-        assert ap.status == "promoted"
 
     def test_json_still_parseable(self, tmp_path, monkeypatch):
         _, data = _make_run(tmp_path, monkeypatch)
@@ -633,5 +677,93 @@ class TestGroupDefIntegrity:
             assert gid in GROUPS
             assert GROUPS[gid].user_facing is False
 
+    def test_run_group_holds_exactly_show_and_list(self):
+        """DECISION amend0905-vocab D4: `run show <id> | list`, and nothing else under `run`."""
+        assert sorted(c.subcommand for c in get_commands_for_group("run")) == ["list", "show"]
+        assert GROUPS["run"].user_facing is True
+        assert GROUPS["run"].hidden is False
+
+    def test_run_commands_have_handlers(self):
+        """Nothing else in the suite checks that a catalog id reaches a handler."""
+        from apps.cli.commands import collect_all_handlers
+
+        handlers = collect_all_handlers()
+        assert "run.show" in handlers
+        assert "run.list" in handlers
+
     def test_all_groups_still_in_catalog(self):
-        assert len(GROUPS) >= 40
+        """Every group DECISION amend0905-vocab D4 keeps is still in the catalog.
+
+        The floor this replaces promised that no group is deleted, only hidden; D4 deletes every group it
+        does not name, so the promise holds for its named groups only. `run` joins when F261 creates it.
+        """
+        kept = {
+            "do", "mission", "job", "decision", "status", "stats", "teacher", "memory", "ui", "config",
+            "doctor", "project", "init", "worker", "runtime",
+            "brain", "event", "patch", "test", "blocker", "change", "file", "snapshot", "self", "ci",
+            "integrity", "dev",
+            "run",
+            "roadmap",
+        }
+        assert sorted(kept - set(GROUPS)) == []
+
+
+# ---------------------------------------------------------------------------
+# The `run` group's two commands (F261, DECISION amend0905-vocab D4)
+# ---------------------------------------------------------------------------
+
+class TestRunList:
+    def _one_run(self, tmp_path, monkeypatch, goal):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        from packages.orchestration.pingpong_loop import run_pingpong
+        from packages.orchestration.pingpong_provider import FakeProvider
+        demo = tmp_path / "repo"
+        demo.mkdir(exist_ok=True)
+        (demo / "README.md").write_text("# Test\n")
+        p = FakeProvider()
+        return run_pingpong(goal, str(demo), builder_provider=p, reviewer_provider=p)
+
+    def test_no_flag_prints_list_runs_verbatim(self, tmp_path, monkeypatch, capsys):
+        """`run list --json` prints the bytes `do report list --json` printed."""
+        self._one_run(tmp_path, monkeypatch, "Fix")
+        from apps.cli.commands.do_cmd import _cmd_run_list
+        from packages.orchestration.pingpong_loop import list_runs
+
+        _cmd_run_list(json_output=True)
+        assert capsys.readouterr().out == json.dumps(list_runs(), indent=2) + "\n"
+
+    def test_limit_flag_is_honoured(self, tmp_path, monkeypatch, capsys):
+        """The five flags the catalog attaches are real, not decoration."""
+        self._one_run(tmp_path, monkeypatch, "One")
+        self._one_run(tmp_path, monkeypatch, "Two")
+        from apps.cli.commands.do_cmd import _cmd_run_list
+
+        _cmd_run_list(json_output=True, limit="1")
+        assert len(json.loads(capsys.readouterr().out)) == 1
+
+    def test_unknown_sort_field_exits_without_a_traceback(self, tmp_path, monkeypatch, capsys):
+        self._one_run(tmp_path, monkeypatch, "Fix")
+        from apps.cli.commands.do_cmd import _cmd_run_list
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_run_list(json_output=True, sort="nope")
+        assert exc.value.code == 1
+        assert "unknown --sort field" in capsys.readouterr().err
+
+    def test_empty_store_prints_the_empty_message(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
+        from apps.cli.commands.do_cmd import _cmd_run_list
+
+        _cmd_run_list(json_output=True)
+        assert capsys.readouterr().out == "No ping-pong runs found.\n"
+
+
+class TestRunShow:
+    def test_missing_run_exits_one(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
+        from apps.cli.commands.do_cmd import _cmd_run_show
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_run_show("no-such-run", json_output=True)
+        assert exc.value.code == 1
+        assert capsys.readouterr().err == "Error: run 'no-such-run' not found.\n"

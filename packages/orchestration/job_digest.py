@@ -24,7 +24,7 @@ Deliberate absences (searched-for behavior that is NOT here):
     is present and EMPTY from the first version so F035 fills it without a
     version bump.
   * Remedy deliberately does not write the digest anywhere.  The endpoint and
-    the ``remedy job digest`` CLI are the next slices of F040; this module only
+    the digest section of ``remedy job show <id> --full`` are the next slices of F040; this module only
     turns sources into a dict.
 
 Public API::

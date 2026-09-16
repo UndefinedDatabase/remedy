@@ -24,7 +24,7 @@ Coverage:
     - no approval reason text
     - no diff preview text
 
-  CLI (remedy context):
+  CLI (remedy brain context):
     - text output is human readable
     - --json output parses as JSON
     - invalid UUID exits 1

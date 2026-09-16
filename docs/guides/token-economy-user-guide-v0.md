@@ -11,10 +11,9 @@ cost tokens. Remedy gives you an **estimate** up front so you can decide whether
 enough to run locally, or expensive enough that you want to look first. Estimates are approximations
 (roughly four characters per token) — they are clearly labeled `estimated`, never `verified`.
 
-```
-remedy token estimate <job_id> --json
-remedy token economy-report <job_id> --json
-```
+These estimates have no command of their own since F261 round 18 deleted the `token` group
+(DECISION amend0905-vocab D4). They are the `token_economy` section of a job's payload in the web
+cockpit, opened with `remedy ui start`.
 
 ## Setting a budget
 
@@ -22,14 +21,10 @@ A token budget profile sets soft caps for a job: how much context, how much gene
 total you're comfortable with — plus the point where Remedy should prefer a local route, and the
 point where it should ask you before anything expensive.
 
-```
-remedy token budget-show <job_id> --json
-remedy token budget-set <job_id> --max-total-estimated-tokens 40000 \
-                                 --prefer-local-under-tokens 8000 \
-                                 --require-human-approval-over-tokens 120000 --json
-```
-
-Budgets always stay positive — a zero or negative value is rejected.
+Since F261 round 18 deleted the `token` group there is no command that reads or writes this
+profile: every job uses the built-in defaults (32000 context, 8000 generation, 40000 total,
+prefer-local under 8000, approval over 120000). The word D4 gives the setting, `job budget <id>
+set`, is not built yet, so a per-job budget cannot be changed today.
 
 ## Why cheap tasks should use local / Ollama routes later
 
@@ -55,9 +50,8 @@ A context pack is the bundle of context a worker would see. Remedy recommends a 
 - **full** — everything (may exceed budget)
 - **defer for human** — Remedy can't safely decide; you choose
 
-```
-remedy context-pack recommend <job_id> --json
-```
+The recommendation is part of the job's `token_economy` payload in the web cockpit; the
+`context-pack` group that printed it alone was deleted with the `token` group.
 
 Protected files (secrets, `.env`, `.git`, …) are **always excluded** from a pack, and Remedy never
 dumps raw file contents into a recommendation.

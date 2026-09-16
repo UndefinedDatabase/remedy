@@ -60,7 +60,6 @@ def _dev_status(*, json_output: bool = False) -> None:
         "task_progress_ok": False,
         "worker_cleanup_ok": False,
         "autocoder_fake_e2e_ok": False,
-        "commit_readiness_ok": None,
         "repair_loop_ok": None,
         "reviewer_loop_ok": None,
         "memory_candidates_ok": None,
@@ -141,23 +140,6 @@ def _dev_status(*, json_output: bool = False) -> None:
     except (ImportError, Exception):
         status["live_ui_ok"] = False
 
-    # Check commit-readiness — only if we have a smoke job to test against
-    _cr_crashed = False
-    if smoke_info["found"] and smoke_info["job_id"]:
-        try:
-            import contextlib
-            import io
-
-            from apps.cli.commands.repo import _cmd_commit_readiness
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                _cmd_commit_readiness(smoke_info["job_id"], json_output=True)
-            cr_data = json.loads(buf.getvalue())
-            status["commit_readiness_ok"] = cr_data.get("ready", False)
-        except (Exception, SystemExit):
-            status["commit_readiness_ok"] = False
-            _cr_crashed = True
-
     # Remaining blockers (hard failures) vs advisories (informational)
     blockers = []
     advisories: list[str] = []
@@ -169,11 +151,6 @@ def _dev_status(*, json_output: bool = False) -> None:
         blockers.append("UI contract check failed")
     if not status["task_progress_ok"]:
         blockers.append("task-progress version mismatch")
-    # Commit-readiness: crash = blocker, normal not-ready = advisory
-    if _cr_crashed:
-        blockers.append("commit-readiness command crashed")
-    elif status["commit_readiness_ok"] is False:
-        advisories.append("commit-readiness not ready (normal for smoke/reverted jobs)")
     if not status["worker_cleanup_ok"]:
         advisories.append("ollama not found — worker unload unavailable")
     # New capability checks — null means untested, false means crashed
@@ -201,7 +178,7 @@ def _dev_status(*, json_output: bool = False) -> None:
             print(f"    job_id: {smoke_info['job_id']}")
         for key in ("cli_ok", "ui_contract_ok", "task_progress_ok",
                      "worker_cleanup_ok", "autocoder_fake_e2e_ok",
-                     "commit_readiness_ok", "repair_loop_ok",
+                     "repair_loop_ok",
                      "reviewer_loop_ok", "memory_candidates_ok",
                      "live_ui_ok"):
             val = status[key]
@@ -221,9 +198,7 @@ def _dev_status(*, json_output: bool = False) -> None:
         print("Commands:")
         print("  remedy ui <job_id>                          — open UI")
         print("  remedy worker unload --all                  — free VRAM")
-        print("  remedy repo commit-readiness <job_id>       — commit preview")
         print('  remedy do "goal" --fixture-builder repair-loop --no-ui --json  — repair E2E')
-        print("  remedy review run <job_id> --fixture-reviewer --json  — reviewer")
         print("  remedy memory candidates <job_id> --json    — memory candidates")
         print("  remedy dev status --json                    — this status")
         print("  source scripts/remedy_smoke.sh && remedy_smoke     — smoke")

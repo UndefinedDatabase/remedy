@@ -8,8 +8,6 @@ Public API::
 
     GuidanceCard (frozen dataclass)
     build_guidance_cards(job, events) -> list[GuidanceCard]
-    export_guidance_json(job, cards) -> dict[str, Any]
-    summarize_guidance(job, cards) -> str
 """
 
 from __future__ import annotations
@@ -42,26 +40,7 @@ def build_guidance_cards(
     cards: list[GuidanceCard] = []
     job_id = str(job.job_id)[:8]
 
-    # 1. Readiness
-    try:
-        from packages.orchestration.autonomy_readiness import assess_readiness
-        r = assess_readiness(job, events)
-        level = r.get("level", 0)
-        missing = r.get("missing", [])
-        if missing:
-            cards.append(GuidanceCard(
-                id="readiness",
-                title=f"Readiness level {level}",
-                severity="medium" if level < 3 else "low",
-                why_it_matters=f"{len(missing)} signal(s) missing for higher autonomy.",
-                safe_next_action="Check readiness details.",
-                command=f"remedy readiness job {job_id}",
-                related_node_type="autonomy_readiness",
-            ))
-    except (ImportError, Exception):
-        pass
-
-    # 2. Decision queue
+    # 1. Decision queue
     try:
         from packages.orchestration.decision_queue import build_decision_summary, list_decisions
         decisions = list_decisions(job, events)
@@ -80,7 +59,7 @@ def build_guidance_cards(
     except (ImportError, Exception):
         pass
 
-    # 3. Stop reasons / blockers
+    # 2. Stop reasons / blockers
     try:
         from packages.orchestration.stop_reasons import derive_stop_reasons
         reasons = derive_stop_reasons(job, events)
@@ -97,24 +76,7 @@ def build_guidance_cards(
     except (ImportError, Exception):
         pass
 
-    # 4. Token policy
-    try:
-        from packages.orchestration.token_policy import build_default_token_policy
-        tp = build_default_token_policy(job)
-        budget = tp.budget.get("expensive_tokens", 100_000)
-        cards.append(GuidanceCard(
-            id="token_policy",
-            title="Token budget active",
-            severity="info",
-            why_it_matters=f"Budget: {budget:,} tokens.",
-            safe_next_action="Review token policy.",
-            command=f"remedy policy token {job_id} --json",
-            related_node_type="token_policy",
-        ))
-    except (ImportError, Exception):
-        pass
-
-    # 5. Test status
+    # 3. Test status
     has_tests = any(t.status == RunState.COMPLETED for t in (job.tasks or []))
     failed_tasks = [t for t in (job.tasks or []) if t.status == RunState.FAILED]
     if failed_tasks:
@@ -138,35 +100,7 @@ def build_guidance_cards(
             related_node_type="task",
         ))
 
-    # 6. Git status
-    try:
-        from packages.orchestration.git_status import read_job_git_status
-        gs = read_job_git_status(job)
-        if gs and gs.get("dirty"):
-            cards.append(GuidanceCard(
-                id="git_status",
-                title="Working tree has changes",
-                severity="medium",
-                why_it_matters="Uncommitted changes may affect reproducibility.",
-                safe_next_action="Review repo status.",
-                command=f"remedy repo status {job_id}",
-                related_node_type="git_status",
-            ))
-    except (ImportError, Exception):
-        pass
-
-    # 7. Dashboard
-    cards.append(GuidanceCard(
-        id="dashboard",
-        title="View dashboard",
-        severity="info",
-        why_it_matters="Dashboard shows overall job health.",
-        safe_next_action="Open job dashboard.",
-        command=f"remedy dashboard job {job_id}",
-        related_node_type="job",
-    ))
-
-    # 8. Brain viewer
+    # 4. Brain viewer
     cards.append(GuidanceCard(
         id="viewer",
         title="Open brain viewer",
@@ -178,44 +112,3 @@ def build_guidance_cards(
     ))
 
     return cards
-
-
-def export_guidance_json(
-    job: JobPlan,
-    cards: list[GuidanceCard],
-) -> dict[str, Any]:
-    """Export guidance as JSON-serialisable dict."""
-    high = [c for c in cards if c.severity == "high"]
-    return {
-        "version": 1,
-        "scope": "job",
-        "job_id": str(job.job_id),
-        "cards": [
-            {
-                "id": c.id,
-                "title": c.title,
-                "severity": c.severity,
-                "why_it_matters": c.why_it_matters,
-                "safe_next_action": c.safe_next_action,
-                "command": c.command,
-                "related_node_type": c.related_node_type,
-            }
-            for c in cards
-        ],
-        "summary": f"{len(cards)} guidance card(s), {len(high)} high severity.",
-        "recommended_next_action": cards[0].command if cards else "",
-    }
-
-
-def summarize_guidance(job: JobPlan, cards: list[GuidanceCard]) -> str:
-    """Return human-readable guidance summary."""
-    lines = [f"Guidance for job {str(job.job_id)[:8]}:", ""]
-    for c in cards:
-        marker = {"high": "!!", "medium": " !", "low": " -", "info": "  "}.get(c.severity, "  ")
-        lines.append(f"  {marker} {c.title}")
-        lines.append(f"     {c.why_it_matters}")
-        lines.append(f"     > {c.command}")
-        lines.append("")
-    if not cards:
-        lines.append("  No guidance cards.")
-    return "\n".join(lines)

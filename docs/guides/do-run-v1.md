@@ -46,7 +46,7 @@ init → plan → context → build → patch_intent → approval_required → s
 
 If the context inspector raises an unexpected error, the flow stops with
 `context_error`. No build phase, no patch intent. The `next_safe_action`
-points to `remedy context inspect` for diagnosis.
+points to `remedy job context <job_id> --task <task_id> --json` for diagnosis.
 
 ## Run Contract
 
@@ -105,7 +105,7 @@ v1 always stops before apply. The `next_safe_action` tells the user what
 command to run next:
 
 - Normal stop: `remedy patch approve <job_id> <intent_id>`
-- Context blocked/error: `remedy context inspect <job_id> <task_id> --json`
+- Context blocked/error: `remedy job context <job_id> --task <task_id> --json`
 - No patch intent: `remedy job show <job_id> --json`
 
 ## Safety Guarantees
@@ -129,4 +129,4 @@ command to run next:
 
 ## See also
 
-- [do-continue-v1](do-continue-v1.md) — `remedy do continue` runs one apply+test+proof cycle after approval.
+- [do-continue-v1](do-continue-v1.md) — the one apply+test+proof cycle F261 round 21 deleted.

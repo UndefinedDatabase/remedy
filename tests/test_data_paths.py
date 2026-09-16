@@ -311,13 +311,13 @@ class TestRoutedHandler:
         self, monkeypatch, tmp_path, capsys
     ):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.commands.guide import _cmd_guide_job
+        from apps.cli.commands.brain import _cmd_brain
         from packages.orchestration.pingpong_job import JobPlan, save_job_plan
         job_id = str(uuid4())
         save_job_plan(JobPlan(job_id=job_id, job_title="routed-handler"))
         exit_code = None
         try:
-            _cmd_guide_job(job_id[:8], json_output=True)
+            _cmd_brain(job_id[:8], json_output=True)
         except SystemExit as exc:
             exit_code = exc.code
         captured = capsys.readouterr()
@@ -349,14 +349,9 @@ class TestRoutedHandler:
     @pytest.mark.parametrize(
         ("module_name", "handler_name", "extra_args"),
         [
-            pytest.param("review_cmd", "_cmd_review_run", None, id="review-run"),
-            pytest.param("review_cmd", "_cmd_review_list", None, id="review-list"),
-            pytest.param("review_cmd", "_cmd_review_accept", None, id="review-accept"),
-            pytest.param("review_cmd", "_cmd_review_reject", None, id="review-reject"),
             pytest.param("memory", "_cmd_memory_candidates", (), id="memory-candidates"),
             pytest.param("memory", "_cmd_memory_approve_candidate", ("cand-1",), id="memory-approve"),
             pytest.param("memory", "_cmd_memory_reject_candidate", ("cand-1",), id="memory-reject"),
-            pytest.param("repo", "_cmd_commit_readiness", (), id="commit-readiness"),
         ],
     )
     def test_a_loading_handler_hands_load_job_the_id_a_short_prefix_resolves_to(
@@ -380,24 +375,6 @@ class TestRoutedHandler:
             else:
                 handler("abcd1234", *extra_args)
         assert seen == [full_id]
-
-    def test_project_readiness_hands_a_stored_pingpong_id_to_load_job(
-        self, monkeypatch, tmp_path, capsys
-    ):
-        """A ping-pong id a project stores reaches ``load_job`` instead of dying in a ``UUID(...)`` parse."""
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.commands.readiness import _cmd_readiness_project
-        from packages.orchestration.data_paths import jobs_dir, mint_job_id
-        from packages.orchestration.project_registry import RemyProject, save_project
-        job_id = mint_job_id()
-        record_dir = jobs_dir() / job_id
-        record_dir.mkdir(parents=True)
-        (record_dir / "job.json").write_text(json.dumps({"id": job_id}))
-        project = RemyProject(name="pingpong-readiness", job_ids=[job_id])
-        save_project(project)
-        seen = self._spy_on_load_job(monkeypatch)
-        _cmd_readiness_project(str(project.id), json_output=True)
-        assert seen == [job_id]
 
     def test_attaching_by_short_prefix_stores_the_full_job_id(
         self, monkeypatch, tmp_path, capsys

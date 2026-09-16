@@ -62,7 +62,6 @@ injected ``clock``, so a deadline is provable in a unit test.
 
 from __future__ import annotations
 
-import contextlib
 import inspect
 import json
 from collections.abc import Callable, Collection
@@ -128,8 +127,6 @@ TERMINAL_RUN_STATE: dict[str, RunState | None] = {
 #: Ledger event names emitted through the injected run-log writer.
 LEDGER_EVENT_CYCLE_COMPLETED = "cycle_completed"
 LEDGER_EVENT_LOOP_TERMINAL = "cycle_loop_terminal"
-#: F048: the idle loop took (or failed to take) a queued entry.
-LEDGER_EVENT_QUEUE_PULL = "queue_pull"
 #: F051: a task raised a question, and what happened to it.
 LEDGER_EVENT_TASK_NEEDS_DECISION = "task_needs_decision"
 LEDGER_EVENT_DECISION_ANSWERED = "task_decision_answered"
@@ -376,136 +373,6 @@ class CycleRecord:
         }
 
 
-#: F048 executor binding. OFF by default: without it, this module behaves exactly as it
-#: did before the queue existed, and no queued entry is ever consumed behind an operator's
-#: back.
-QUEUE_BINDING_CONFIG_KEY = "queue.executor_binding"
-
-#: The loop is IDLE at these terminals — it ran out of work rather than being stopped,
-#: budget-capped or cut short mid-flight. Only then may it take the next queued entry.
-_IDLE_TERMINALS = frozenset({TERMINAL_ALL_GREEN, TERMINAL_BLOCKED})
-
-QUEUE_PULL_PLANNED = "planned"
-QUEUE_PULL_FAILED = "failed"
-
-
-@dataclass(frozen=True)
-class QueuePull:
-    """One queue entry turned into a job (or honestly not).
-
-    ``status`` is ``planned`` when the entry became a normal PLANNED job, ``failed`` when
-    reading the goal or planning refused it — in which case the ENTRY is marked failed
-    with the same reason, never left claimed by a consumer that has moved on.
-    """
-
-    entry_id: str
-    status: str
-    job_id: str = ""
-    reason: str = ""
-
-    def to_json(self) -> dict[str, Any]:
-        return {
-            "entry_id": self.entry_id,
-            "status": self.status,
-            "job_id": self.job_id,
-            "reason": self.reason,
-        }
-
-
-def queue_binding_enabled(config: Any = None) -> bool:
-    """Is the executor allowed to consume the queue? Opt-in, and closed on any doubt."""
-    if config is None:
-        try:
-            from packages.orchestration.config import get_config
-
-            config = get_config()
-        except Exception:  # noqa: BLE001 — a config problem must not switch this ON
-            return False
-    try:
-        return bool(config.get(QUEUE_BINDING_CONFIG_KEY))
-    except Exception:  # noqa: BLE001
-        return False
-
-
-def _goal_text_for(entry: Any) -> str:
-    """The prompt this entry stands for. A goal-file reference is read HERE, so an
-    unreadable file fails the entry instead of creating a job with an empty prompt."""
-    if entry.goal:
-        return entry.goal
-    try:
-        text = Path(entry.goal_path).read_text(encoding="utf-8", errors="replace").strip()
-    except OSError as exc:
-        raise ValueError(
-            f"goal file {entry.goal_path!r} could not be read: "
-            f"{type(exc).__name__}: {exc}") from exc
-    if not text:
-        raise ValueError(f"goal file {entry.goal_path!r} is empty")
-    return text
-
-
-def queued_entry_to_job(entry: Any, *, save: Callable[[JobPlan], None] | None = None) -> JobPlan:
-    """Turn a claimed queue entry into a NORMAL job, planned and persisted.
-
-    Deliberately the same shape ``remedy job create`` + ``remedy job plan`` produce, and
-    deliberately no further: the job stops at PLANNED. Nothing here executes a task,
-    approves a plan or implies ``--yes`` — a queued goal reaches the operator's approval
-    gate exactly like a typed one (A9).
-    """
-    from packages.orchestration.job_runner import plan_job
-
-    prompt = _goal_text_for(entry)
-    job = JobPlan(
-        job_title=prompt[:50],
-        user_prompt=prompt,
-        state=RunState.PENDING,
-        metadata={"project_id": entry.project_id, "queue_entry_id": entry.id},
-        project_id=entry.project_id,
-    )
-    plan_job(job)
-    (save or _save_job)(job)
-    return job
-
-
-def _pull_queue_when_idle(job: JobPlan, terminal: str, *, log: Any = None) -> QueuePull | None:
-    """The binding: an idle loop takes the next entry for THIS job's project.
-
-    Every guard here is a reason to do nothing — not enabled, not idle, no project, no
-    queued entry. The default path therefore does exactly what it always did.
-    """
-    if terminal not in _IDLE_TERMINALS or not job.project_id:
-        return None
-    if not queue_binding_enabled():
-        return None
-
-    from packages.orchestration import job_queue as _queue
-
-    try:
-        entry = _queue.claim_next(str(job.project_id))
-    except _queue.QueueError as exc:
-        _emit(log, LEDGER_EVENT_QUEUE_PULL, outcome="error",
-              reason=f"{type(exc).__name__}: {exc}")
-        return None
-    if entry is None:
-        return None
-
-    try:
-        queued_job = queued_entry_to_job(entry)
-    except Exception as exc:  # noqa: BLE001 — the entry must not stay claimed by nobody
-        reason = f"{type(exc).__name__}: {exc}"
-        with contextlib.suppress(_queue.QueueError):
-            _queue.fail(entry, reason)
-        _emit(log, LEDGER_EVENT_QUEUE_PULL, outcome="failed",
-              entry_id=entry.id, reason=reason)
-        return QueuePull(entry_id=entry.id, status=QUEUE_PULL_FAILED, reason=reason)
-
-    with contextlib.suppress(_queue.QueueError):
-        _queue.complete(entry, str(queued_job.job_id))
-    _emit(log, LEDGER_EVENT_QUEUE_PULL, outcome="planned",
-          entry_id=entry.id, job_id=str(queued_job.job_id))
-    return QueuePull(entry_id=entry.id, status=QUEUE_PULL_PLANNED,
-                     job_id=str(queued_job.job_id))
-
-
 @dataclass(frozen=True)
 class CycleLoopResult:
     """What the whole loop did."""
@@ -515,9 +382,6 @@ class CycleLoopResult:
     job_status: str
     stop_reason: str = ""
     cycles: tuple[CycleRecord, ...] = ()
-    #: F048: what the idle loop pulled from the queue, if the binding is enabled.
-    #: ``None`` whenever it is not — which is the default.
-    queue_pull: QueuePull | None = None
     #: F051: decisions still open when the loop ended.  A non-empty tuple with
     #: terminal ``blocked`` is the "the run needs you" case.
     open_decision_ids: tuple[str, ...] = ()
@@ -541,10 +405,6 @@ class CycleLoopResult:
             "open_decision_ids": list(self.open_decision_ids),
             "awaiting_checks": self.awaiting_checks,
         }
-        # Only present when something was actually pulled: the default shape of this
-        # payload is what every existing reader already parses.
-        if self.queue_pull is not None:
-            payload["queue_pull"] = self.queue_pull.to_json()
         return payload
 
 
@@ -1590,7 +1450,6 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
         job_status=job_status,
         stop_reason=stop_reason,
         cycles=tuple(cycles),
-        queue_pull=_pull_queue_when_idle(job, terminal, log=log),
         open_decision_ids=open_decisions,
         awaiting_checks=awaiting_checks,
     )

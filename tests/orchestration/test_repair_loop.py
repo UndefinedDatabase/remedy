@@ -371,7 +371,7 @@ class TestFinalAdjudication:
             target_mutated=False, staged_files=["a.py"],
         )
         assert adj.status == "ready"
-        assert adj.promotion_allowed is True
+        assert adj.apply_allowed is True
 
     def test_high_findings_not_ready(self):
         adj = run_final_adjudication(
@@ -380,7 +380,7 @@ class TestFinalAdjudication:
             tests_passed=True, target_mutated=False, staged_files=["a.py"],
         )
         assert adj.status == "not_ready"
-        assert adj.promotion_allowed is False
+        assert adj.apply_allowed is False
 
     def test_blocker_findings_blocked(self):
         adj = run_final_adjudication(
@@ -389,7 +389,7 @@ class TestFinalAdjudication:
             tests_passed=True, target_mutated=False, staged_files=["a.py"],
         )
         assert adj.status == "blocked"
-        assert adj.promotion_allowed is False
+        assert adj.apply_allowed is False
 
     def test_medium_findings_human_review(self):
         adj = run_final_adjudication(
@@ -398,7 +398,7 @@ class TestFinalAdjudication:
             tests_passed=True, target_mutated=False, staged_files=["a.py"],
         )
         assert adj.status == "needs_human_review"
-        assert adj.promotion_allowed is False
+        assert adj.apply_allowed is False
 
     def test_tests_failed_not_ready(self):
         adj = run_final_adjudication(
@@ -407,7 +407,7 @@ class TestFinalAdjudication:
             target_mutated=False, staged_files=["a.py"],
         )
         assert adj.status == "not_ready"
-        assert adj.promotion_allowed is False
+        assert adj.apply_allowed is False
 
     def test_target_mutated_blocked(self):
         adj = run_final_adjudication(
@@ -416,7 +416,7 @@ class TestFinalAdjudication:
             target_mutated=True, staged_files=["a.py"],
         )
         assert adj.status == "blocked"
-        assert adj.promotion_allowed is False
+        assert adj.apply_allowed is False
 
 
 class TestAdjudicationE2E:
@@ -431,7 +431,7 @@ class TestAdjudicationE2E:
         )
         assert result.final_status == "repair_exhausted"
         assert result.final_adjudication is not None
-        assert result.final_adjudication["promotion_allowed"] is False
+        assert result.final_adjudication["apply_allowed"] is False
 
     def test_clean_pass_no_adjudication(self, demo_repo: Path):
         provider = FakeProvider(fail_on_round=99, pass_on_round=1)
@@ -441,27 +441,6 @@ class TestAdjudicationE2E:
             max_rounds=3, repair_rounds=2,
         )
         assert result.final_adjudication is None
-
-
-# ---------------------------------------------------------------------------
-# Step 4763: Promotion readiness blocked
-# ---------------------------------------------------------------------------
-
-class TestPromotionBlocked:
-    """Promotion not ready after exhausted/inconsistent."""
-
-    def test_exhausted_blocks_promotion_artifacts(self, demo_repo: Path):
-        provider = FakeProvider(fail_on_round=1, pass_on_round=99)
-        result = run_pingpong(
-            "Fix README", str(demo_repo),
-            builder_provider=provider, reviewer_provider=provider,
-            max_rounds=5, repair_rounds=1,
-        )
-        # Promotion artifacts should NOT be persisted
-        from packages.orchestration import data_paths
-        run_dir = data_paths.run_dir(result.run_id)
-        artifacts = run_dir / "artifacts"
-        assert not artifacts.exists()
 
 
 # ---------------------------------------------------------------------------
@@ -566,7 +545,7 @@ class TestRepairTextReport:
         assert "Repair loop: exhausted" in text
         assert "Open findings:" in text
         assert "Final adjudication:" in text
-        assert "Promotion:" in text
+        assert "Apply:" in text
 
     def test_repair_round_label(self, demo_repo: Path):
         result = run_pingpong(
@@ -842,15 +821,15 @@ class TestSmartStopContinueE2E:
         assert result.final_status == "repair_exhausted"
         assert result.final_adjudication is not None
 
-    def test_exhausted_blocks_promotion(self, demo_repo: Path):
-        """9. Exhausted repair blocks promotion readiness."""
+    def test_exhausted_blocks_apply(self, demo_repo: Path):
+        """9. Exhausted repair blocks apply readiness."""
         provider = FakeProvider(fail_on_round=1, pass_on_round=99)
         result = run_pingpong(
             "Fix README", str(demo_repo),
             builder_provider=provider, reviewer_provider=provider,
             max_rounds=5, repair_rounds=1,
         )
-        assert result.final_adjudication["promotion_allowed"] is False
+        assert result.final_adjudication["apply_allowed"] is False
 
     def test_high_findings_not_ready(self, demo_repo: Path):
         """10. Open high findings classify adjudication as not_ready."""
@@ -1116,7 +1095,7 @@ class TestRepairRoundsZeroTrulyDisables:
             repair_rounds=0,
         )
         assert result.final_adjudication is not None
-        assert result.final_adjudication["promotion_allowed"] is False
+        assert result.final_adjudication["apply_allowed"] is False
 
 
 class TestCliDefaultAndExplicitZero:
@@ -1171,7 +1150,7 @@ class TestInconsistentReviewAdjudication:
             staged_files=["a.py"],
         )
         assert adj.status == "needs_human_review"
-        assert adj.promotion_allowed is False
+        assert adj.apply_allowed is False
 
     def test_inconsistent_with_findings_still_blocked(self):
         findings = [ReviewFinding(id="R-01", severity="high", summary="Bug")]
@@ -1184,7 +1163,7 @@ class TestInconsistentReviewAdjudication:
             staged_files=["a.py"],
         )
         assert adj.status == "needs_human_review"
-        assert adj.promotion_allowed is False
+        assert adj.apply_allowed is False
 
     def test_inconsistent_with_passing_tests_still_blocked(self):
         adj = run_final_adjudication(
@@ -1196,7 +1175,7 @@ class TestInconsistentReviewAdjudication:
             staged_files=["a.py"],
         )
         assert adj.status == "needs_human_review"
-        assert adj.promotion_allowed is False
+        assert adj.apply_allowed is False
 
     def test_inconsistent_e2e(self, demo_repo: Path):
         """E2E: incoherent reviewer => review_inconsistent => blocked adjudication."""
@@ -1221,7 +1200,7 @@ class TestInconsistentReviewAdjudication:
         assert result.final_status == "review_inconsistent"
         assert result.final_adjudication is not None
         assert result.final_adjudication["status"] == "needs_human_review"
-        assert result.final_adjudication["promotion_allowed"] is False
+        assert result.final_adjudication["apply_allowed"] is False
 
 
 class TestTestFailureCoherence:
@@ -1371,7 +1350,7 @@ class TestTestFailureDominanceE2E:
     """E2E tests proving test-failure dominance (Step 4796)."""
 
     def test_tests_failed_reviewer_pass_repair_disabled(self, demo_repo: Path, tmp_path: Path):
-        """1-3. Tests failed + Reviewer pass + repair_rounds=0 => not pass, no repair, no promotion."""
+        """1-3. Tests failed + Reviewer pass + repair_rounds=0 => not pass, no repair, no apply."""
         test_script = tmp_path / "fail.sh"
         test_script.write_text("#!/bin/sh\nexit 1\n")
         test_script.chmod(0o755)
@@ -1388,10 +1367,10 @@ class TestTestFailureDominanceE2E:
         # 2. no repair call (only 1 round)
         assert len(result.rounds) == 1
         assert result.repair_rounds_used == 0
-        # 3. promotion blocked
+        # 3. apply blocked
         data = export_pingpong_json(result)
         if result.final_adjudication:
-            assert result.final_adjudication["promotion_allowed"] is False
+            assert result.final_adjudication["apply_allowed"] is False
 
     def test_tests_failed_reviewer_pass_repair_enabled(self, demo_repo: Path, tmp_path: Path):
         """4. Tests failed + Reviewer pass + repair_rounds=2 => repair starts."""
@@ -1532,11 +1511,11 @@ class TestTestFailureTextReport:
         assert "test_failed" in summary or "stopped" in summary
 
 
-class TestPromotionBlockedAfterFailedTests:
-    """Step 4793: No promotion artifacts when tests failed."""
+class TestApplyBlockedAfterFailedTests:
+    """Step 4793: No apply artifacts when tests failed."""
 
-    def test_no_promotion_with_reviewer_pass_tests_failed(self, demo_repo: Path, tmp_path: Path):
-        """Promotion must be blocked when tests fail even if Reviewer passes."""
+    def test_no_apply_with_reviewer_pass_tests_failed(self, demo_repo: Path, tmp_path: Path):
+        """Applying must be blocked when tests fail even if Reviewer passes."""
         test_script = tmp_path / "fail.sh"
         test_script.write_text("#!/bin/sh\nexit 1\n")
         test_script.chmod(0o755)
@@ -1548,9 +1527,9 @@ class TestPromotionBlockedAfterFailedTests:
         )
         # Not pass
         assert result.final_status != "staged_review_passed"
-        # Adjudication blocks promotion
+        # Adjudication blocks applying
         assert result.final_adjudication is not None
-        assert result.final_adjudication["promotion_allowed"] is False
+        assert result.final_adjudication["apply_allowed"] is False
         assert result.final_adjudication["status"] == "not_ready"
 
 

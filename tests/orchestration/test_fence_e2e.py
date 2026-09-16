@@ -539,18 +539,21 @@ class TestConfigScopeKeys:
 
 
 class TestJobFencesCLI:
-    def test_command_registered(self):
+    """The fences view is the ``fences`` section of `job show --full` since F261, not a command."""
+
+    def test_the_view_is_reachable_from_a_read_only_json_command(self):
         from apps.cli.command_catalog import get_command
-        cmd = get_command("job.fences")
+        cmd = get_command("job.show")
         assert cmd is not None
         assert cmd.group_id == "job"
-        assert cmd.subcommand == "fences"
+        assert "--full" in [arg.name for arg in cmd.args]
         assert cmd.action_class == "read_only"
         assert cmd.supports_json
 
-    def test_handler_registered(self):
-        from apps.cli.commands.job import COMMAND_HANDLERS
-        assert "job.fences" in COMMAND_HANDLERS
+    def test_the_section_is_registered_behind_a_handler(self):
+        from apps.cli.commands.job import _SHOW_SECTIONS, COMMAND_HANDLERS
+        assert "job.show" in COMMAND_HANDLERS
+        assert "fences" in [name for name, _builder in _SHOW_SECTIONS]
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -702,24 +705,6 @@ class TestSecureArtifactWriter:
         exc = FenceViolationError(result)
         assert "/etc/" not in str(exc)
         assert "<abs-redacted>" in str(exc)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Repair findings — ContinueStopReason.FENCE_VIOLATION
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-class TestContinueStopReasonFenceViolation:
-    """Finding #10: do_continue must use FENCE_VIOLATION, not APPLY_FAILED."""
-
-    def test_fence_violation_stop_reason_exists(self):
-        from packages.orchestration.do_continue import ContinueStopReason
-        assert hasattr(ContinueStopReason, "FENCE_VIOLATION")
-        assert ContinueStopReason.FENCE_VIOLATION == "fence_violation"
-
-    def test_apply_failed_still_exists(self):
-        from packages.orchestration.do_continue import ContinueStopReason
-        assert hasattr(ContinueStopReason, "APPLY_FAILED")
 
 
 # ═══════════════════════════════════════════════════════════════════════════

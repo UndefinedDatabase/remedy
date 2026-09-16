@@ -84,8 +84,8 @@ text that runs.
 | Module | Role |
 |--------|------|
 | `packages/orchestration/self_use_queue.py` | the READ side — loads, validates, answers the next pending item. Owns no writer. |
-| `packages/orchestration/self_use_job.py` | renders one item to `<dest_dir>/<id>.md` and plans it via `plan_job_from_file`. Plans only; never runs, never promotes. |
-| `packages/orchestration/self_use_runner.py` | runs the planned item via `run_job` under a small budget, in the isolated worktree the target repo gives it. Stops at the approval gate; never promotes, never marks consumed (F258 T002). |
+| `packages/orchestration/self_use_job.py` | renders one item to `<dest_dir>/<id>.md` and plans it via `plan_job_from_file`. Plans only; never runs, never applies. |
+| `packages/orchestration/self_use_runner.py` | runs the planned item via `run_job` under a small budget, in the isolated worktree the target repo gives it. Stops at the approval gate; never applies, never marks consumed (F258 T002). |
 | `packages/orchestration/self_use_findings.py` | reads the run's own `JobPlan` and answers each defect verbatim (job- and task-level `error` fields). Registers nothing itself — the closing session mints the finding (F258 T003). |
 
 ## Consumption — exactly one per feature close

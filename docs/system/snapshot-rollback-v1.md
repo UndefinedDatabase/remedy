@@ -201,4 +201,4 @@ remedy snapshot list-applies <job_id> [--json]
 
 ## See also
 
-- [do-continue-v1](../guides/do-continue-v1.md) — the continuation cycle that consumes this snapshot truth for apply/test/proof.
+- [do-continue-v1](../guides/do-continue-v1.md) — the continuation cycle that consumed this snapshot truth for apply/test/proof, until F261 round 21 deleted it.

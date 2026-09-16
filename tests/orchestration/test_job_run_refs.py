@@ -21,6 +21,7 @@ from packages.orchestration.pingpong_job import (
     _export_job,
     _import_job,
     load_job_plan,
+    plan_job_from_file,
 )
 
 RUN_ID_RE = re.compile(r"^[0-9a-f]{16}$")
@@ -99,18 +100,15 @@ class TestJobRunRefsEndToEnd:
     def test_run_refs_names_every_task_run_in_order(
         self, capsys, isolate_data, demo_repo, job_file, tmp_path
     ):
+        job_id = plan_job_from_file(str(job_file), str(demo_repo)).job_id
+        assert job_id
         grouped_main([
-            "do", "job-flow",
-            "--job-file", str(job_file),
-            "--repo", str(demo_repo),
+            "job", "run", job_id,
             "--builder", "fake",
             "--reviewer", "fake",
-            "--out", str(tmp_path / "evidence"),
             "--json",
         ])
-        data = json.loads(capsys.readouterr().out)
-        job_id = data["job_id"]
-        assert job_id
+        assert json.loads(capsys.readouterr().out)["job_id"] == job_id
 
         job = load_job_plan(job_id)
         assert job is not None

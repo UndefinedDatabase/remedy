@@ -3,7 +3,7 @@
 Two fixture kinds, per the feature's acceptance:
 
 * THIS repository — the index must round-trip the real roadmap: every
-  feature file present, STATUS order preserved, `plan next` target
+  feature file present, STATUS order preserved, `roadmap next` target
   correct against Rule A5.
 * One broken-grammar fixture per violation class — each must fail with
   the exact ``<file>:<line>: <what>`` so a fix is mechanical.

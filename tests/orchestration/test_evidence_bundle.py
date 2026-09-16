@@ -205,13 +205,6 @@ def _persist_fake_run(data_dir: Path, run_data: dict) -> str:
     return run_id
 
 
-def _persist_fake_promotion(data_dir: Path, run_id: str, promo_data: dict) -> None:
-    """Persist a fake promotion for CLI testing."""
-    run_dir = data_paths.run_dir(run_id, data_dir)
-    run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "promotion.json").write_text(json.dumps(promo_data, indent=2))
-
-
 # ---------------------------------------------------------------------------
 # Step 4807: Evidence bundle builder
 # ---------------------------------------------------------------------------
@@ -225,7 +218,7 @@ class TestEvidenceBundleBuilder:
         bundle = build_evidence_bundle(data)
         assert bundle["manifest"]["run_id"] == "test_run_001"
         assert bundle["manifest"]["final_status"] == "staged_review_passed"
-        assert bundle["manifest"]["promotion_readiness"]["ready"] is True
+        assert bundle["manifest"]["apply_readiness"]["ready"] is True
 
     def test_passed_after_repair_run(self):
         """Bundle for a passed-after-repair run."""
@@ -237,29 +230,14 @@ class TestEvidenceBundleBuilder:
         bundle = build_evidence_bundle(data)
         assert bundle["manifest"]["final_status"] == "staged_review_passed"
         assert bundle["repair_loop"]["repair_rounds_used"] == 1
-        assert bundle["manifest"]["promotion_readiness"]["ready"] is True
+        assert bundle["manifest"]["apply_readiness"]["ready"] is True
 
     def test_repair_exhausted_run(self):
         """Bundle for a repair-exhausted run."""
         data = _make_run_data(final_status="repair_exhausted", repair_used=2)
         bundle = build_evidence_bundle(data)
         assert bundle["manifest"]["final_status"] == "repair_exhausted"
-        assert bundle["manifest"]["promotion_readiness"]["ready"] is False
-
-    def test_with_promotion(self):
-        """Bundle includes promotion data when provided."""
-        data = _make_run_data()
-        promo = {
-            "run_id": "test_run_001",
-            "promotion_id": "promo_001",
-            "status": "dry_run_ready",
-            "approved": False,
-            "dry_run": True,
-            "target_repo": "/home/user/project",
-        }
-        bundle = build_evidence_bundle(data, promo)
-        assert bundle["promotion"] is not None
-        assert bundle["promotion"]["status"] == "dry_run_ready"
+        assert bundle["manifest"]["apply_readiness"]["ready"] is False
 
     def test_manifest_has_final_status(self):
         """manifest.json includes final_status."""
@@ -316,12 +294,6 @@ class TestEvidenceBundleBuilder:
         bundle = build_evidence_bundle(data)
         assert bundle["provider_evidence"]["builder_provider"] == "fake"
         assert bundle["provider_evidence"]["reviewer_provider"] == "fake"
-
-    def test_promotion_absent_when_not_promoted(self):
-        """promotion.json is None when not promoted."""
-        data = _make_run_data()
-        bundle = build_evidence_bundle(data, None)
-        assert bundle["promotion"] is None
 
     def test_missing_diff_produces_unavailable_note(self):
         """Missing diff produces unavailable note in manifest, not crash."""
@@ -396,27 +368,7 @@ class TestEvidenceCli:
         assert "error" not in result
         manifest = json.loads((out_dir / "manifest.json").read_text())
         assert manifest["final_status"] == "repair_exhausted"
-        assert manifest["promotion_readiness"]["ready"] is False
-
-    def test_export_with_promotion(self, isolate_data_root, tmp_path):
-        """Export includes promotion when present."""
-        data = _make_run_data(run_id="promo_run")
-        _persist_fake_run(isolate_data_root, data)
-        promo = {
-            "run_id": "promo_run",
-            "promotion_id": "promo_001",
-            "status": "dry_run_ready",
-            "approved": False,
-            "dry_run": True,
-            "target_repo": "/home/user/project",
-        }
-        _persist_fake_promotion(isolate_data_root, "promo_run", promo)
-        out_dir = tmp_path / "bundle"
-        result = export_evidence("promo_run", str(out_dir))
-        assert "error" not in result
-        assert (out_dir / "promotion.json").exists()
-        pdata = json.loads((out_dir / "promotion.json").read_text())
-        assert pdata["status"] == "dry_run_ready"
+        assert manifest["apply_readiness"]["ready"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -544,33 +496,6 @@ class TestSafety:
             c1 = (out1 / fname).read_text()
             c2 = (out2 / fname).read_text()
             assert c1 == c2, f"{fname} differs between runs"
-
-
-# ---------------------------------------------------------------------------
-# Step 4810: CLI dispatch test
-# ---------------------------------------------------------------------------
-
-class TestCliDispatch:
-    """COMMAND_HANDLERS['do.evidence'] dispatches correctly."""
-
-    def test_cli_handler_exists(self):
-        """do.evidence handler exists in COMMAND_HANDLERS."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        assert "do.evidence" in COMMAND_HANDLERS
-
-    def test_cli_catalog_entry_exists(self):
-        """do.evidence has a catalog entry."""
-        from apps.cli.command_catalog import CATALOG
-        ids = [c.command_id for c in CATALOG]
-        assert "do.evidence" in ids
-
-    def test_catalog_read_only(self):
-        """do.evidence is read_only action class."""
-        from apps.cli.command_catalog import CATALOG
-        entry = next(c for c in CATALOG if c.command_id == "do.evidence")
-        assert entry.action_class == "read_only"
-        assert entry.may_mutate_repo is False
-        assert entry.may_execute_commands is False
 
 
 # ---------------------------------------------------------------------------
@@ -755,21 +680,6 @@ class TestJsonLeakRegression:
         content = (out_dir / "repair_loop.json").read_text()
         assert "sk-abcdefghijklmnopqrstuvwxyz" not in content
 
-    def test_promotion_redacted(self, isolate_data_root, tmp_path):
-        """promotion.json does not leak secrets."""
-        data = _make_run_data(run_id="promo_leak")
-        _persist_fake_run(isolate_data_root, data)
-        promo = {
-            "run_id": "promo_leak",
-            "status": "dry_run_ready",
-            "note": "Used API_KEY=supersecretvalue123 for auth",
-        }
-        _persist_fake_promotion(isolate_data_root, "promo_leak", promo)
-        out_dir = tmp_path / "bundle"
-        export_evidence("promo_leak", str(out_dir))
-        content = (out_dir / "promotion.json").read_text()
-        assert "supersecretvalue123" not in content
-
 
 # ---------------------------------------------------------------------------
 # Step 4816: Full-output scanner test
@@ -782,13 +692,6 @@ class TestFullOutputScanner:
         """No output file may contain unredacted known secret strings."""
         data = _make_poisoned_run_data()
         _persist_fake_run(isolate_data_root, data)
-        # Also add promotion with secret
-        promo = {
-            "run_id": "test_run_001",
-            "status": "dry_run_ready",
-            "note": "Used Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abcdefghijk for auth",
-        }
-        _persist_fake_promotion(isolate_data_root, "test_run_001", promo)
         out_dir = tmp_path / "bundle"
         export_evidence("test_run_001", str(out_dir))
 
@@ -832,23 +735,6 @@ class TestUsefulnessPreservation:
         assert review["reviews"][0]["verdict"] == "pass"
         assert review["reviews"][0]["finding_count"] == 1
 
-    def test_promotion_preserves_status(self, isolate_data_root, tmp_path):
-        """promotion.json still has status."""
-        data = _make_run_data(run_id="useful_promo")
-        _persist_fake_run(isolate_data_root, data)
-        promo = {
-            "run_id": "useful_promo",
-            "status": "dry_run_ready",
-            "approved": False,
-            "note": "API_KEY=leaked here",
-        }
-        _persist_fake_promotion(isolate_data_root, "useful_promo", promo)
-        out_dir = tmp_path / "bundle"
-        export_evidence("useful_promo", str(out_dir))
-        pdata = json.loads((out_dir / "promotion.json").read_text())
-        assert pdata["status"] == "dry_run_ready"
-        assert pdata["approved"] is False
-
     def test_token_accounting_preserves_kind(self, isolate_data_root, tmp_path):
         """token_accounting.json still has kind and estimates."""
         data = _make_poisoned_run_data()
@@ -883,21 +769,21 @@ class TestUsefulnessPreservation:
 
 
 # ---------------------------------------------------------------------------
-# Step 4822: CLI stdout JSON leak regression test
+# Step 4822: exported-bundle JSON leak regression test
 # ---------------------------------------------------------------------------
 
-class TestCliStdoutRedaction:
-    """CLI --json output must not leak secrets."""
+class TestExportedJsonRedaction:
+    """A serialized `export_evidence` return must not leak secrets."""
 
-    def test_cli_json_stdout_redacted(self, isolate_data_root, tmp_path):
-        """do evidence --json stdout does not leak secrets."""
+    def test_exported_json_redacted(self, isolate_data_root, tmp_path):
+        """json.dumps(export_evidence(...)) does not leak secrets."""
         data = _make_run_data(has_task=True)
         data["goal"] = "Fix API_KEY=supersecretvalue123 leak"
         data["task_input"]["excerpt"] = "Use sk-ant-abcdef1234567890abcdef1234567890"
         _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
         result = export_evidence("test_run_001", str(out_dir))
-        # Simulate what CLI does: json.dumps(result)
+        # What a caller serializing the return value would print
         stdout = json.dumps(result, indent=2)
         assert "supersecretvalue123" not in stdout
         assert "sk-ant-abcdef" not in stdout
@@ -958,12 +844,6 @@ class TestFullOutputScannerExtended:
         """Neither output files nor API return contain secrets."""
         data = _make_poisoned_run_data()
         _persist_fake_run(isolate_data_root, data)
-        promo = {
-            "run_id": "test_run_001",
-            "status": "dry_run_ready",
-            "note": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abcdefghijk",
-        }
-        _persist_fake_promotion(isolate_data_root, "test_run_001", promo)
         out_dir = tmp_path / "bundle"
         result = export_evidence("test_run_001", str(out_dir))
 

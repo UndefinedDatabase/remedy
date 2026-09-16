@@ -1,6 +1,6 @@
 """Real Test Execution + Snapshot/Rollback Proof v1 tests (Steps 1895).
 
-Unit (models, allowed-command resolution, policy blocking, honest snapshot/rollback proof, integrity,
+Unit (models, allowed-command resolution, policy blocking, honest snapshot proof, integrity,
 audit, redaction) + architecture guards. The facade delegates execution to the existing safe runner;
 these tests never execute the real test suite (they exercise policy-block + proof + integrity paths).
 """
@@ -157,7 +157,7 @@ class TestCommandIdForwarding:
 
 
 # ---------------------------------------------------------------------------
-# Snapshot / rollback proof — honesty
+# Snapshot proof — honesty
 # ---------------------------------------------------------------------------
 
 
@@ -174,14 +174,6 @@ class TestProofs:
         sp = rte.create_snapshot_proof(jid, data_dir=env)
         assert sp.restore_available is False
 
-    def test_rollback_proof_honest(self, env):
-        jid = _job(env)
-        sp = rte.create_snapshot_proof(jid, data_dir=env)
-        rb = rte.create_rollback_proof(jid, sp.snapshot_id, data_dir=env)
-        assert rb.restore_available is False  # metadata snapshot → no restore
-        assert rb.restore_tested is False
-        assert rb.limitations
-
     def test_snapshot_show_list_roundtrip(self, env):
         jid = _job(env)
         sp = rte.create_snapshot_proof(jid, data_dir=env)
@@ -197,8 +189,7 @@ class TestProofs:
 class TestIntegrity:
     def test_clean_passes(self, env):
         jid = _job(env)
-        sp = rte.create_snapshot_proof(jid, data_dir=env)
-        rte.create_rollback_proof(jid, sp.snapshot_id, data_dir=env)
+        rte.create_snapshot_proof(jid, data_dir=env)
         ig = rte.test_execution_integrity(data_dir=env)
         assert ig["passed"] is True
 

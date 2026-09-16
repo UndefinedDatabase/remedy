@@ -7,8 +7,6 @@ READ-ONLY only — no commit, no push, no PR, no checkout.
 Public API::
 
     read_git_status(repo_path) -> GitRepoStatus
-    export_git_status_json(status) -> dict
-    summarize_git_status(status) -> str
 """
 
 from __future__ import annotations
@@ -16,7 +14,6 @@ from __future__ import annotations
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 
 @dataclass(frozen=True)
@@ -137,43 +134,3 @@ def read_git_status(repo_path: str) -> GitRepoStatus:
         behind_count=behind,
         error="",
     )
-
-
-def export_git_status_json(status: GitRepoStatus) -> dict[str, Any]:
-    """Export as safe JSON dict."""
-    return {
-        "version": 1,
-        "repo_path": status.repo_path,
-        "is_git_repo": status.is_git_repo,
-        "current_branch": status.current_branch,
-        "head_sha": status.head_sha,
-        "is_clean": status.is_clean,
-        "modified_files": list(status.modified_files),
-        "untracked_files": list(status.untracked_files),
-        "staged_files": list(status.staged_files),
-        "has_upstream": status.has_upstream,
-        "upstream_branch": status.upstream_branch,
-        "ahead_count": status.ahead_count,
-        "behind_count": status.behind_count,
-        "error": status.error,
-    }
-
-
-def summarize_git_status(status: GitRepoStatus) -> str:
-    """Human-readable summary."""
-    if not status.is_git_repo:
-        return f"Not a git repo: {status.repo_path} ({status.error})"
-    lines = [
-        f"Git Status: {status.repo_path}",
-        f"  Branch: {status.current_branch} ({status.head_sha})",
-        f"  Clean: {status.is_clean}",
-    ]
-    if status.modified_files:
-        lines.append(f"  Modified: {len(status.modified_files)} files")
-    if status.untracked_files:
-        lines.append(f"  Untracked: {len(status.untracked_files)} files")
-    if status.staged_files:
-        lines.append(f"  Staged: {len(status.staged_files)} files")
-    if status.has_upstream:
-        lines.append(f"  Upstream: {status.upstream_branch} (ahead={status.ahead_count}, behind={status.behind_count})")
-    return "\n".join(lines)

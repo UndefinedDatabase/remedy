@@ -90,7 +90,7 @@ MAX_MISSION_GOAL_CHARS = 8_000
 MISSING_JOB_LABEL = "(missing job)"
 UNREADABLE_JOB_LABEL = "(unreadable job)"
 
-#: Anything that becomes a path component: the shape ``job_queue`` established.
+#: Anything that becomes a path component.
 _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 

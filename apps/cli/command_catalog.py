@@ -16,6 +16,7 @@ Public API::
     GROUPS: dict[str, GroupDef]
     UI_EXPOSED_COMMANDS: frozenset[str]
     get_group(group_id) -> GroupDef
+    resolve_group(word) -> str | None
     get_command(command_id) -> CommandEntry
     get_commands_for_group(group_id) -> list[CommandEntry]
 """
@@ -49,6 +50,14 @@ class GroupDef:
     label: str
     description: str
     user_facing: bool = True
+    #: A hidden group appears in no help at all, neither `remedy --help` nor
+    #: `remedy --all-commands`, and stays callable: its own help and its commands
+    #: still work (DECISION amend0905-vocab D4).
+    hidden: bool = False
+    #: Further words that reach this same group (DECISION amend0831 D-D): one
+    #: `GroupDef` and one set of commands, never a duplicated definition.
+    #: `resolve_group` maps each of them to `id` for every group lookup.
+    aliases: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -98,52 +107,39 @@ class CommandEntry:
 
 GROUPS: dict[str, GroupDef] = {
     # -- Golden path (pinned first in help) --
-    "do": GroupDef("do", "Do", "Run, report, and promote Remedy tasks."),
+    "do": GroupDef("do", "Do", "Run, report, and apply Remedy tasks."),
     "status": GroupDef("status", "Status", "Project status overview."),
     "decision": GroupDef("decision", "Decision", "Human decision queue."),
     # -- User-facing primary commands --
     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
-    "queue": GroupDef("queue", "Queue", "Queue goals for unattended execution."),
-    "loop": GroupDef("loop", "Loop", "Declarative recurring work defined in remedy.toml."),
+    "run": GroupDef("run", "Run", "Show and list persisted ping-pong runs."),
     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
     "ui": GroupDef("ui", "UI", "Open the local UI."),
     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
-    "config": GroupDef("config", "Config", "View or change settings."),
+    "config": GroupDef("config", "Config", "View or change settings.", aliases=("settings",)),
     "worker": GroupDef("worker", "Worker", "Manage worker connections."),
     "memory": GroupDef("memory", "Memory", "Project memory."),
-    "teach": GroupDef("teach", "Teach", "Explain a run. Read-only, never steers it."),
+    "teacher": GroupDef("teacher", "Teacher", "Explain a run. Read-only, never steers it."),
     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project dev server."),
     "stats": GroupDef("stats", "Stats", "Honest counts from the evidence on disk."),
-    "plan": GroupDef("plan", "Plan", "Read-only roadmap mirror — what is active, what is next. Proposes, never starts."),
     # -- Advanced / internal commands (callable but hidden from default help) --
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False),
     "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
     "brain": GroupDef("brain", "Brain", "Inspect the project brain graph.", user_facing=False),
-    "policy": GroupDef("policy", "Policy", "Inspect execution policies.", user_facing=False),
     "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded run-loop facade (internal).", user_facing=False),
-    "readiness": GroupDef("readiness", "Readiness", "Inspect autonomy readiness.", user_facing=False),
-    "context": GroupDef("context", "Context", "Context pack and coverage.", user_facing=False),
     "change": GroupDef("change", "Change", "Review change sets (proof chain view).", user_facing=False),
     "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False),
-    "repo": GroupDef("repo", "Repo", "Read-only repository inspection.", user_facing=False),
     "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False),
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons.", user_facing=False),
-    "dashboard": GroupDef("dashboard", "Dashboard", "Project and job dashboards.", user_facing=False),
-    "guide": GroupDef("guide", "Guide", "Human guidance rail — next safe actions.", user_facing=False),
-    "repair": GroupDef("repair", "Repair", "Test failure repair.", user_facing=False),
     "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
-    "orchestrator": GroupDef("orchestrator", "Orchestrator", "Orchestrator brain — evidence-backed decisions.", user_facing=False),
-    "token": GroupDef("token", "Token", "Token economy and cost budgets.", user_facing=False),
-    "context-pack": GroupDef("context-pack", "Context Pack", "Context budget optimizer.", user_facing=False),
-    "rollback": GroupDef("rollback", "Rollback", "Rollback proof.", user_facing=False),
-    "review": GroupDef("review", "Review", "Reviewer recommendations.", user_facing=False),
     "propose": GroupDef("propose", "Propose", "Proposed task evaluation.", user_facing=False),
     "dev": GroupDef("dev", "Dev", "Developer utilities.", user_facing=False),
     "ci": GroupDef("ci", "CI", "Remedy's own CI stages, run locally.", user_facing=False),
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
-    "contract": GroupDef("contract", "Contract", "Run contract inspection.", user_facing=False),
     "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False),
+    # -- Hidden: in no help at all, callable (DECISION amend0905-vocab D4) --
+    "roadmap": GroupDef("roadmap", "Roadmap", "Read-only roadmap mirror — what is active, what is next. Proposes, never starts.", user_facing=False, hidden=True),
 }
 
 
@@ -264,15 +260,22 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.show",
         group_id="job",
         subcommand="show",
-        description="Show job details (always JSON).",
+        description="Show job details; the output is always JSON, so --json is accepted and changes nothing.",
         action_class="read_only",
-        args=(_JOB_ID,),
-        supports_json=False,
+        args=(
+            _JOB_ID,
+            ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
+                   "and the job's sections (its permissions, fences, assumptions, "
+                   "completion digest, summary, status, report and Definition of Done)",
+                   required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
         related=("job.list", "brain.graph"),
     ),
     CommandEntry(
-        command_id="teach.narrate",
-        group_id="teach",
+        command_id="teacher.narrate",
+        group_id="teacher",
         subcommand="narrate",
         description="Narrate a job's run log in plain sentences (read-only).",
         action_class="read_only",
@@ -284,9 +287,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         # write_metadata, NOT read_only (DECISION F255 D10): answering costs a
         # model call, and that call is recorded as exactly one token-ledger row.
         # The invariant this role really carries — never influencing the RUN —
-        # is proven behaviourally in tests/cli/test_teach_cmd.py.
-        command_id="teach.ask",
-        group_id="teach",
+        # is proven behaviourally in tests/cli/test_teacher_cmd.py.
+        command_id="teacher.ask",
+        group_id="teacher",
         subcommand="ask",
         description="Ask the teacher about a run or your code. Records one spend row; never steers the run.",
         action_class="write_metadata",
@@ -302,7 +305,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("teach.narrate",),
+        related=("teacher.narrate",),
     ),
     CommandEntry(
         command_id="job.attach-repo",
@@ -325,32 +328,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("action", "allow or deny"),
         ),
         requires_permission=True,
-        related=("job.permissions",),
-    ),
-    CommandEntry(
-        command_id="job.permissions",
-        group_id="job",
-        subcommand="permissions",
-        description="Show current permissions for a job.",
-        action_class="read_only",
-        args=(_JOB_ID,),
-        related=("job.permit",),
-    ),
-    CommandEntry(
-        command_id="job.rerun",
-        group_id="job",
-        subcommand="rerun",
-        description="Check a job's recorded run-input manifest against the current would-be inputs (F012 deterministic runs). Does not re-execute the job.",
-        action_class="read_only",
-        supports_json=True,
-        args=(
-            ArgDef("job_id", "Job ID (from do job-plan) to check"),
-            ArgDef("--check-manifest", "Compare the stored run-input manifest against the current would-be inputs and report drift", required=False, is_option=True, is_flag=True),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("job.show", "do.job-report"),
+        related=("job.show",),
     ),
     CommandEntry(
         command_id="job.stop",
@@ -360,7 +338,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         supports_json=True,
         args=(
-            ArgDef("job_id", "Job ID (from do job-plan) to stop"),
+            ArgDef("job_id", "Job ID to stop"),
             ArgDef("--reason", "Why the job is being stopped (recorded in the evidence)", required=False, is_option=True, default=""),
             ArgDef("--source", "Who requested the stop (default: cli)", required=False, is_option=True, default="cli"),
             ArgDef("--status", "Show pending and consumed stop requests instead of requesting one", required=False, is_option=True, is_flag=True),
@@ -368,7 +346,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=False,
-        related=("do.job-run", "do.job-report"),
+        related=("job.run", "job.show"),
     ),
     CommandEntry(
         command_id="job.budget",
@@ -397,85 +375,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
-        command_id="job.assumptions",
-        group_id="job",
-        subcommand="assumptions",
-        description="Print the job's assumption log (clarification answers and their sources).",
-        action_class="read_only",
-        args=(_JOB_ID,),
-        related=("decision.resolve",),
-    ),
-
-    CommandEntry(
-        command_id="job.summary",
-        group_id="job",
-        subcommand="summary",
-        description="Print an honest summary of job state (truth contract).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("job.show",),
-    ),
-
-    CommandEntry(
-        command_id="job.status",
-        group_id="job",
-        subcommand="status",
-        description="Show job status — state, tasks, blockers, next safe action.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("job.summary", "job.show"),
-    ),
-    # ONE command, three modes on the same name (the F047 `job resume`
-    # pattern): bare and --json keep the existing progress view exactly as it
-    # was; --final renders the F053 run report of a terminal job; --interim
-    # renders the labeled snapshot of a run still in progress.
-    CommandEntry(
-        command_id="job.report",
-        group_id="job",
-        subcommand="report",
-        description=("Read-only report of job progress, tasks, and evidence "
-                     "(--final / --interim render the F053 run report)."),
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--final", "Render the F053 final run report (markdown)",
-                   required=False, is_option=True, is_flag=True),
-            ArgDef("--interim", "Render a labeled snapshot of a running job",
-                   required=False, is_option=True, is_flag=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("job.status", "job.summary"),
-    ),
-
-    # F040 T003: the CLI's little sibling of the completion digest HTTP route
-    # — same two calls (`resolve_job_id`/`load_job` then `load_run_events`),
-    # same `build_job_digest` envelope, so the two surfaces can never disagree.
-    CommandEntry(
-        command_id="job.digest",
-        group_id="job",
-        subcommand="digest",
-        description="Print the job's completion digest (state, cost, decisions, primary action).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("job.report", "job.summary"),
-    ),
-
-    CommandEntry(
-        command_id="job.fences",
-        group_id="job",
-        subcommand="fences",
-        description="Show effective scope fences for a job (F017).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("job.status", "job.show"),
-    ),
-
-    CommandEntry(
         command_id="job.context",
         group_id="job",
         subcommand="context",
@@ -484,18 +383,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JOB_ID, _TASK_OPT, _JSON_OPT),
         supports_json=True,
-        related=("job.fences", "job.show"),
-    ),
-
-    CommandEntry(
-        command_id="job.dod",
-        group_id="job",
-        subcommand="dod",
-        description="Show the Definition-of-Done check matrix for a job (F061).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("job.report", "job.status"),
+        related=("job.show",),
     ),
 
     CommandEntry(
@@ -510,94 +398,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("job.status", "job.report"),
-    ),
-
-    # ── queue (F048) ─────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="queue.add",
-        group_id="queue",
-        subcommand="add",
-        description="Enqueue a goal for this project (text, or a path to a goal file).",
-        action_class="write_metadata",
-        args=(
-            ArgDef("goal", "Goal text, or a path to a goal file"),
-            ArgDef("--prio", "Priority; higher is claimed first (default 0)", required=False, is_option=True, default=None),
-            ArgDef("--path", "Treat the argument as a goal-file path, not as goal text", required=False, is_option=True, is_flag=True),
-            _PROJECT_SCOPE_OPT,
-        ),
-        related=("queue.list", "queue.rm"),
-    ),
-    CommandEntry(
-        command_id="queue.list",
-        group_id="queue",
-        subcommand="list",
-        description="List queue entries (scoped to the current project by default).",
-        action_class="read_only",
-        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG, _JSON_OPT),
-        supports_json=True,
-        related=("queue.add",),
-    ),
-    CommandEntry(
-        command_id="queue.rm",
-        group_id="queue",
-        subcommand="rm",
-        description="Remove a queue entry. A claimed entry is refused, naming its owner.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("entry_id", "Queue entry id (or a unique prefix)"),
-            _PROJECT_SCOPE_OPT,
-        ),
-        related=("queue.list",),
-    ),
-    CommandEntry(
-        command_id="queue.reclaim",
-        group_id="queue",
-        subcommand="reclaim",
-        description="Re-offer a stale claim — only if it is past the TTL and its owner is verifiably gone.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("entry_id", "Queue entry id (or a unique prefix)"),
-            _PROJECT_SCOPE_OPT,
-        ),
-        related=("queue.list",),
-    ),
-
-    # ── loop (F045) ──────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="loop.list",
-        group_id="loop",
-        subcommand="list",
-        description="List the loops in remedy.toml: name, trigger, action and last run.",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True,
-        related=("loop.validate", "loop.run"),
-    ),
-    CommandEntry(
-        command_id="loop.validate",
-        group_id="loop",
-        subcommand="validate",
-        description="Check every loop spec. Reports EVERY error and exits non-zero on any.",
-        action_class="read_only",
-        related=("loop.list", "loop.run"),
-    ),
-    CommandEntry(
-        command_id="loop.run",
-        group_id="loop",
-        subcommand="run",
-        # write_metadata, not an execution class: it persists a PLANNED job and
-        # stops there (DECISION F045 D7), so may_execute_commands stays False.
-        description="Materialize a loop as a planned job or mission and stop. Nothing runs.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("name", "Name of the loop to materialize"),
-            ArgDef("--yes", "Skip the confirmation prompt. It approves the "
-                            "materialization only, never execution.",
-                   required=False, is_option=True, is_flag=True),
-            _PROJECT_SCOPE_OPT,
-        ),
-        related=("loop.list", "loop.validate"),
+        related=("job.show",),
     ),
 
     # ── project ──────────────────────────────────────────────────────────
@@ -842,7 +643,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("test.run", "test.discover"),
     ),
-    # ── real test execution v1 (result/list/integrity; snapshot/rollback proof) ──
+    # ── real test execution v1 (result/list/integrity; snapshot proof) ──
     CommandEntry(
         command_id="test.result",
         group_id="test",
@@ -881,7 +682,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
-        related=("snapshot.show", "rollback.proof"),
+        related=("snapshot.show",),
     ),
     CommandEntry(
         command_id="snapshot.show",
@@ -892,30 +693,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(ArgDef("snapshot_id", "Snapshot proof ID"), _JSON_OPT),
         supports_json=True,
         related=("snapshot.create",),
-    ),
-    CommandEntry(
-        command_id="rollback.proof",
-        group_id="rollback",
-        subcommand="proof",
-        description="Record an honest rollback proof for a snapshot (write_metadata; restore_available only if a real verified restore exists; never auto-reverts).",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("--snapshot-id", "Snapshot proof ID to base the rollback proof on", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("rollback.show", "snapshot.create"),
-    ),
-    CommandEntry(
-        command_id="rollback.show",
-        group_id="rollback",
-        subcommand="show",
-        description="Show a rollback proof by rollback_proof_id (read-only).",
-        action_class="read_only",
-        args=(ArgDef("rollback_proof_id", "Rollback proof ID"), _JSON_OPT),
-        supports_json=True,
-        related=("rollback.proof",),
     ),
 
     # ── repair (Token-Aware Repair Loop v1/v2) ───────────────────────────
@@ -1046,38 +823,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("brain.open", "brain.viewer-path"),
     ),
 
-    # ── policy ───────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="policy.contract",
-        group_id="policy",
-        subcommand="contract",
-        description="Show the run contract for a job.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("policy.token",),
-    ),
-    CommandEntry(
-        command_id="policy.token",
-        group_id="policy",
-        subcommand="token",
-        description="Show the token routing policy for a job.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("policy.contract", "policy.token-explain"),
-    ),
-    CommandEntry(
-        command_id="policy.token-explain",
-        group_id="policy",
-        subcommand="token-explain",
-        description="Explain the token economy policy (text only).",
-        action_class="read_only",
-        args=(),
-        supports_json=False,
-        related=("policy.token",),
-    ),
-
     # ── worker ───────────────────────────────────────────────────────────
     CommandEntry(
         command_id="worker.list",
@@ -1125,27 +870,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("worker.resources",),
     ),
-
-    CommandEntry(
-        command_id="worker.run",
-        group_id="worker",
-        subcommand="run",
-        description="Run local worker (one job or bounded loop).",
-        action_class="local_state_change",
-        args=(
-            ArgDef("--once", "Process one job and stop", required=False, is_option=True),
-            ArgDef("--max-jobs", "Max jobs to process", required=False, is_option=True, default="1"),
-            ArgDef("--max-seconds", "Max seconds to run", required=False, is_option=True, default="60"),
-            ArgDef("--max-steps", "Max task execution steps (0=no budget)", required=False, is_option=True, default="1"),
-            ArgDef("--max-tokens", "Max token budget (0=unlimited)", required=False, is_option=True, default="0"),
-            ArgDef("--max-runtime-seconds", "Max runtime seconds for execution", required=False, is_option=True, default="60"),
-            ArgDef("--provider", "Builder provider (none|fixture|ollama)", required=False, is_option=True, default="none"),
-            ArgDef("--job", "Specific job ID", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("worker.status", "job.enqueue"),
-    ),
     CommandEntry(
         command_id="worker.status",
         group_id="worker",
@@ -1154,7 +878,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
-        related=("worker.run",),
+        related=("worker.list",),
     ),
 
     # ── mission (the F070 orchestrator loop, keyed on a mission id) ──────
@@ -1172,21 +896,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("mission.report", "mission.ledger"),
-    ),
-    CommandEntry(
-        command_id="mission.ledger",
-        group_id="mission",
-        subcommand="ledger",
-        description="Render a mission's decision ledger — every orchestrator iteration, across every run (read-only).",
-        action_class="read_only",
-        args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix)"),
-            _PROJECT_SCOPE_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.run", "mission.show"),
+        related=("mission.report", "mission.watchdog"),
     ),
     CommandEntry(
         command_id="mission.watchdog",
@@ -1200,7 +910,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("mission.ledger", "mission.resume"),
+        related=("mission.show", "mission.resume"),
     ),
     CommandEntry(
         command_id="mission.handoff",
@@ -1213,7 +923,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("mission.show", "mission.ledger"),
+        related=("mission.show", "mission.watchdog"),
     ),
     CommandEntry(
         command_id="mission.report",
@@ -1383,119 +1093,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JSON_OPT,),
         supports_json=True,
         related=("mission.report",),
-    ),
-
-    # ── token (Token Economy + Context Budget Optimizer) ───────────────────
-    CommandEntry(
-        command_id="token.budget-show",
-        group_id="token",
-        subcommand="budget-show",
-        description="Show the token budget profile for a job (estimates/metadata only; never executes).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("token.budget-set", "token.estimate", "token.economy-report"),
-    ),
-    CommandEntry(
-        command_id="token.budget-set",
-        group_id="token",
-        subcommand="budget-set",
-        description="Set token budget profile for a job (context/generation/total token caps, local-preference + approval thresholds). Metadata-only; safety floors enforced; never executes.",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("--max-context-tokens", "Max estimated context tokens", required=False, is_option=True),
-            ArgDef("--max-generation-tokens", "Max estimated generation tokens", required=False, is_option=True),
-            ArgDef("--max-total-estimated-tokens", "Max estimated total tokens", required=False, is_option=True),
-            ArgDef("--prefer-local-under-tokens", "Prefer local route under this estimated token count", required=False, is_option=True),
-            ArgDef("--require-human-approval-over-tokens", "Require human approval over this estimated token count", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("token.budget-show", "token.estimate"),
-    ),
-    CommandEntry(
-        command_id="token.estimate",
-        group_id="token",
-        subcommand="estimate",
-        description="Estimate the context/token budget for a job/task (estimate only; not verified; never executes).",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--task-id", "Task ID to focus the estimate", required=False, is_option=True),
-            ArgDef("--route-id", "Route ID for the estimate", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("token.budget-show", "context-pack.recommend"),
-    ),
-    CommandEntry(
-        command_id="token.economy-report",
-        group_id="token",
-        subcommand="economy-report",
-        description="Safe aggregate token-economy report for a job (budget + estimate + pack recommendation + decision; estimates only; never executes).",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--task-id", "Task ID to focus the report", required=False, is_option=True),
-            ArgDef("--route-id", "Route ID for the report", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("token.estimate", "context-pack.recommend"),
-    ),
-    # ── context-pack (Context Budget Optimizer) ────────────────────────────
-    CommandEntry(
-        command_id="context-pack.recommend",
-        group_id="context-pack",
-        subcommand="recommend",
-        description="Recommend a safe, bounded context pack kind for a job/task with estimated token savings (metadata only; excludes protected paths; never dumps raw content; never executes).",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--task-id", "Task ID to focus the recommendation", required=False, is_option=True),
-            ArgDef("--route-id", "Route ID for the recommendation", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("token.estimate", "token.economy-report"),
-    ),
-    CommandEntry(
-        command_id="job.enqueue",
-        group_id="job",
-        subcommand="enqueue",
-        description="Add a job to the local work queue.",
-        action_class="local_state_change",
-        args=(_JOB_ID,),
-        related=("worker.run", "job.pause"),
-    ),
-    CommandEntry(
-        command_id="job.pause",
-        group_id="job",
-        subcommand="pause",
-        description="Pause a queued or running job.",
-        action_class="local_state_change",
-        args=(_JOB_ID,),
-        related=("job.enqueue", "job.cancel"),
-    ),
-    CommandEntry(
-        command_id="job.cancel",
-        group_id="job",
-        subcommand="cancel",
-        description="Cancel a queued or running job.",
-        action_class="local_state_change",
-        args=(_JOB_ID,),
-        related=("job.pause", "job.enqueue"),
-    ),
-
-    CommandEntry(
-        command_id="job.resume-queue",
-        group_id="job",
-        subcommand="resume-queue",
-        description="Resume a paused job back into the queue.",
-        action_class="local_state_change",
-        args=(_JOB_ID,),
-        related=("job.pause", "job.enqueue"),
     ),
 
     # ── memory ───────────────────────────────────────────────────────────
@@ -1672,42 +1269,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
     ),
 
-    # ── readiness ────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="readiness.job",
-        group_id="readiness",
-        subcommand="job",
-        description="Assess autonomy readiness for a job.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("brain.graph", "policy.contract"),
-    ),
-    CommandEntry(
-        command_id="readiness.project",
-        group_id="readiness",
-        subcommand="project",
-        description="Assess autonomy readiness for a project.",
-        action_class="read_only",
-        args=(_PROJECT_ID, _JSON_OPT),
-        supports_json=True,
-    ),
-
-    # ── context ──────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="context.inspect",
-        group_id="context",
-        subcommand="inspect",
-        description="Inspect what a worker will see — paths, budget, policy gates.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("task_id", "Task UUID (optional, narrows inspection)", required=False, default=None),
-            ArgDef("--budget", "Token budget (default: 4000)", required=False, is_option=True, default="4000"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
     # ── change ───────────────────────────────────────────────────────────
     CommandEntry(
         command_id="change.list",
@@ -1758,35 +1319,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("brain.graph", "patch.show"),
-    ),
-
-    # ── repo ────────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="repo.status",
-        group_id="repo",
-        subcommand="status",
-        description="Show read-only git status of job's target repository.",
-        action_class="read_only",
-        args=(
-            ArgDef("job_id", "Job UUID (reads target_repo from job)", required=False, default=None),
-            ArgDef("--path", "Explicit path (dev override, default: job target_repo or cwd)", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("readiness.job",),
-    ),
-
-    CommandEntry(
-        command_id="repo.commit-readiness",
-        group_id="repo",
-        subcommand="commit-readiness",
-        description="Preview commit readiness — read-only, no git writes.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            _JSON_OPT,
-        ),
-        supports_json=True,
     ),
 
     # ── event ────────────────────────────────────────────────────────────
@@ -1969,38 +1501,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID,),
     ),
 
-    # ── dashboard ──────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="dashboard.job",
-        group_id="dashboard",
-        subcommand="job",
-        description="Show the job dashboard overview.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="dashboard.project",
-        group_id="dashboard",
-        subcommand="project",
-        description="Show the project dashboard overview.",
-        action_class="read_only",
-        args=(_PROJECT_ID, _JSON_OPT),
-        supports_json=True,
-    ),
-
-    # ── guide ─────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="guide.job",
-        group_id="guide",
-        subcommand="job",
-        description="Show human guidance rail for a job — next safe actions.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("readiness.job", "decision.list", "dashboard.job"),
-    ),
-
     # ── ui ───────────────────────────────────────────────────────────────
     CommandEntry(
         command_id="ui.start",
@@ -2015,7 +1515,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--no-open", "Do not open browser automatically", required=False, is_option=True, default="false"),
             ArgDef("--info-file", "Write server info JSON to this path", required=False, is_option=True),
         ),
-        related=("brain.view", "dashboard.job"),
+        related=("brain.view",),
     ),
     CommandEntry(
         command_id="ui.latest",
@@ -2058,7 +1558,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Start a controlled autorun for a goal.",
         action_class="write_metadata",
         supports_json=True,
-        related=("job.show", "context.inspect", "change.proof"),
+        related=("job.show", "change.proof"),
         args=(
             ArgDef("goal", "Goal to accomplish (title when large prompt file used)", required=False),
             ArgDef("--task-file", "Path to large prompt file", required=False, is_option=True, default=""),
@@ -2098,88 +1598,15 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=False,
     ),
     CommandEntry(
-        command_id="do.plan",
-        group_id="do",
-        subcommand="plan",
-        description="Create a deterministic scope plan from a task file (no provider calls).",
-        action_class="read_only",
-        supports_json=True,
-        related=("do.run",),
-        args=(
-            ArgDef("--task-file", "Path to task file", required=False, is_option=True, default=""),
-            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
-            ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-    ),
-    CommandEntry(
-        command_id="do.continue",
-        group_id="do",
-        subcommand="continue",
-        description="Run one controlled continuation cycle for an approved intent.",
-        action_class="apply_write",
-        supports_json=True,
-        related=("change.proof", "repair.start", "snapshot.inspect"),
-        args=(
-            _JOB_ID,
-            ArgDef("--intent-id", "Approved intent ID (required when several are approved)",
-                   required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=True,
-        may_execute_commands=True,
-    ),
-
-    CommandEntry(
-        command_id="do.replan",
-        group_id="do",
-        subcommand="replan",
-        description="Regenerate the flight plan for an existing job.",
-        action_class="write_metadata",
-        supports_json=True,
-        related=("do.run",),
-        args=(
-            _JOB_ID,
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-    ),
-    CommandEntry(
-        command_id="do.repair-attest",
-        group_id="do",
-        subcommand="repair-attest",
-        description="Attest a manual operator repair as a valid evidence path for one task.",
-        action_class="write_metadata",
-        supports_json=True,
-        related=("do.job-report", "do.job-run"),
-        args=(
-            ArgDef("job_id", "Job ID owning the task"),
-            ArgDef("task_id", "Task ID (e.g. T001) being attested"),
-            ArgDef("--note", "Operator note describing the manual repair", required=False, is_option=True, default=""),
-            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
-            ArgDef("--yes", "Confirm attestation without interactive prompt", required=False, is_option=True),
-            ArgDef("--task-scoped", "Use the freshly collected diff as the authoritative task scope (ignore stale provider-run safe_diff_files); fail on an empty diff", required=False, is_option=True),
-            ArgDef("--allowed-files", "Comma-separated EXACT expected task file set (with --task-scoped): the attested diff must equal it exactly — unexpected, missing, duplicate, or out-of-repo paths are rejected", required=False, is_option=True, default=""),
-            ArgDef("--expected-files", "Alias for --allowed-files (exact expected task file set)", required=False, is_option=True, default=""),
-            ArgDef("--linked-prior-job-id", "Generic linked/superseded prior Job ID recorded in this task's manual provenance (any feature/repo). Empty means none", required=False, is_option=True, default=""),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-    ),
-
-    CommandEntry(
-        command_id="do.report",
-        group_id="do",
-        subcommand="report",
+        command_id="run.show",
+        group_id="run",
+        subcommand="show",
         description="Show a persisted ping-pong run report.",
         action_class="read_only",
         supports_json=True,
         related=("do.run",),
         args=(
-            ArgDef("run_id", "Run ID or 'list' to list all runs"),
+            ArgDef("run_id", "Run ID"),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
             _JSON_OPT,
         ),
@@ -2188,74 +1615,32 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
-        command_id="do.evidence",
-        group_id="do",
-        subcommand="evidence",
-        description="Export a self-contained evidence bundle for a persisted run.",
+        command_id="run.list",
+        group_id="run",
+        subcommand="list",
+        description="List persisted ping-pong runs.",
         action_class="read_only",
         supports_json=True,
-        related=("do.run", "do.report"),
+        related=("do.run",),
         args=(
-            ArgDef("run_id", "Run ID of the persisted run"),
-            ArgDef("--out", "Output directory for bundle files", required=False, is_option=True, default=""),
+            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
             _JSON_OPT,
         ),
         may_mutate_repo=False,
         may_execute_commands=False,
-    ),
-
-    CommandEntry(
-        command_id="do.promote",
-        group_id="do",
-        subcommand="promote",
-        description="Promote reviewed staged artifacts into target repo (requires --approve).",
-        action_class="apply_write",
-        supports_json=True,
-        related=("do.run", "do.report"),
-        args=(
-            ArgDef("run_id", "Run ID of the reviewed staged run to promote"),
-            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
-            ArgDef("--approve", "Approve promotion (required to apply changes)", required=False, is_option=True, default="false"),
-            ArgDef("--dry-run", "Preview promotion without applying", required=False, is_option=True, default="false"),
-            ArgDef("--test-command", "Post-promotion test command to run in target", required=False, is_option=True, default=""),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=True,
-        may_execute_commands=True,
     ),
 
     # ── do.job-* ──────────────────────────────────────────────────────
     CommandEntry(
-        command_id="do.job-plan",
-        group_id="do",
-        subcommand="job-plan",
-        description="Parse a job file into ordered tasks (no provider calls).",
-        action_class="read_only",
-        supports_json=True,
-        related=("do.job-run", "do.job-report"),
-        args=(
-            ArgDef("--job-file", "Path to Markdown job file", required=True, is_option=True),
-            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
-            ArgDef("--max-total-tokens", "Maximum total tokens (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-provider-calls", "Maximum provider calls (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-wall-clock-minutes", "Maximum wall-clock minutes (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-cost-usd", "Maximum cost in USD (F104 budget)", required=False, is_option=True, default=None),
-            ArgDef("--deadline", "UTC deadline as ISO 8601 string (F018 budget)", required=False, is_option=True, default=None),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-    ),
-    CommandEntry(
-        command_id="do.job-run",
-        group_id="do",
-        subcommand="job-run",
+        command_id="job.run",
+        group_id="job",
+        subcommand="run",
         description="Run pending job tasks sequentially through Builder/Reviewer/Repair.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-plan", "do.job-report"),
+        related=("job.show",),
         args=(
-            ArgDef("job_id", "Job ID from do job-plan"),
+            ArgDef("job_id", "Job ID"),
             ArgDef("--builder", "Builder provider: fake, claude, claude-cli (default: fake, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--reviewer", "Reviewer provider: fake, claude, claude-cli (default: fake, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--max-rounds", "Max ping-pong rounds per task (default: 3, persisted on continuation)", required=False, is_option=True, default=None),
@@ -2492,56 +1877,15 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=True,
     ),
-    CommandEntry(
-        command_id="do.job-resume",
-        group_id="do",
-        subcommand="job-resume",
-        description="Resume an interrupted job (16-char JobPlan ID) in its job-owned worktree.",
-        action_class="write_metadata",
-        supports_json=True,
-        related=("do.job-run", "do.job-report"),
-        args=(
-            ArgDef("job_id", "JobPlan ID (16-character hex)"),
-            ArgDef("--builder", "Builder provider name", required=False, is_option=True),
-            ArgDef("--reviewer", "Reviewer provider name", required=False, is_option=True),
-            ArgDef("--max-rounds", "Max ping-pong rounds per task", required=False, is_option=True),
-            ArgDef("--repair-rounds", "Max repair rounds per task", required=False, is_option=True),
-            ArgDef("--test-command", "Test command per task", required=False, is_option=True),
-            ArgDef("--max-tasks", "Stop after N tasks (omitted keeps persisted; 0=all)", required=False, is_option=True, default=None),
-            ArgDef("--timeout-sec", "Raw per-call timeout in seconds (omitted keeps persisted/default)", required=False, is_option=True, default=None),
-            ArgDef("--timeout-profile", "Timeout profile: fast, normal, patient (omitted keeps persisted/default)", required=False, is_option=True, default=None),
-            ArgDef("--max-output-chars", "Max provider output chars (omitted keeps persisted/default)", required=False, is_option=True, default=None),
-            ArgDef("--stream-evidence", "Opt-in F004 raw stream evidence (omitted keeps persisted/default)", required=False, is_option=True),
-            ArgDef("--no-stream-evidence", "Explicitly disable raw stream evidence (omitted keeps persisted/default)", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=True,
-    ),
-    CommandEntry(
-        command_id="do.job-report",
-        group_id="do",
-        subcommand="job-report",
-        description="Show a job report with task statuses and run IDs.",
-        action_class="read_only",
-        supports_json=True,
-        related=("do.job-plan", "do.job-run"),
-        args=(
-            ArgDef("job_id", "Job ID"),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-    ),
 
     CommandEntry(
-        command_id="do.job-evidence",
-        group_id="do",
-        subcommand="job-evidence",
+        command_id="job.evidence",
+        group_id="job",
+        subcommand="evidence",
         description="Export a self-contained evidence bundle for an entire job.",
         action_class="test_execution",
         supports_json=True,
-        related=("do.job-plan", "do.job-run", "do.job-report"),
+        related=("job.run", "job.show"),
         args=(
             ArgDef("job_id", "Job ID"),
             ArgDef("--out", "Output directory for bundle files", required=False, is_option=True, default=""),
@@ -2552,164 +1896,24 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=True,
     ),
     CommandEntry(
-        command_id="do.job-promote",
-        group_id="do",
-        subcommand="job-promote",
+        command_id="job.apply",
+        group_id="job",
+        subcommand="apply",
         description="Review and apply job workspace changes to target repo. Dry-run by default; --approve applies.",
         action_class="write_metadata",
         supports_json=True,
-        related=("do.job-plan", "do.job-run", "do.job-evidence"),
+        related=("job.run", "job.evidence"),
         args=(
             ArgDef("job_id", "Job ID"),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
             ArgDef("--approve", "Apply changes (without this flag, dry-run only)", required=False, is_option=True, default="false"),
             ArgDef("--dry-run", "Preview only, no target mutation", required=False, is_option=True, default="false"),
             ArgDef("--test-command", "Post-apply test command", required=False, is_option=True, default=""),
-            ArgDef("--skip-blocked", "Promote the non-blocked files and deliberately leave the protected ones unpromoted (they are named, never written)", required=False, is_option=True, is_flag=True),
+            ArgDef("--skip-blocked", "Apply the non-blocked files and deliberately leave the protected ones not applied (they are named, never written)", required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
         may_mutate_repo=True,
         may_execute_commands=True,
-    ),
-    CommandEntry(
-        command_id="do.job-flow",
-        group_id="do",
-        subcommand="job-flow",
-        description="Run the full safe job workflow (plan, run, report, evidence, promote dry-run). Stops at the dry-run, exports evidence, and never changes the target repo; an explicit `job-promote --approve` is required to apply.",
-        action_class="write_metadata",
-        supports_json=True,
-        related=("do.job-plan", "do.job-run", "do.job-report", "do.job-evidence", "do.job-promote"),
-        args=(
-            ArgDef("--job-file", "Path to Markdown job file", required=True, is_option=True),
-            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
-            ArgDef("--builder", "Builder provider: fake, claude, claude-cli (default: fake)", required=False, is_option=True, default=None),
-            ArgDef("--reviewer", "Reviewer provider: fake, claude, claude-cli (default: fake)", required=False, is_option=True, default=None),
-            ArgDef("--max-rounds", "Max ping-pong rounds per task (default: 3)", required=False, is_option=True, default=None),
-            ArgDef("--repair-rounds", "Max repair attempts per task (default: 2, 0=disabled)", required=False, is_option=True, default=None),
-            ArgDef("--test-command", "Test command to run in staging", required=False, is_option=True, default=None),
-            ArgDef("--claude-cli-write-mode", "Claude CLI write mode: none, allowed-tools, dangerous-skip (default: none)", required=False, is_option=True, default=None),
-            ArgDef("--timeout-sec", "Raw per-call timeout in seconds (omitted keeps persisted/default)", required=False, is_option=True, default=None),
-            ArgDef("--timeout-profile", "Timeout profile: fast, normal, patient (omitted keeps persisted/default)", required=False, is_option=True, default=None),
-            ArgDef("--max-output-chars", "Max provider output chars (omitted keeps persisted/default)", required=False, is_option=True, default=None),
-            ArgDef("--max-tasks", "Max tasks to execute (omitted keeps persisted; 0=all)", required=False, is_option=True, default=None),
-            ArgDef("--stream-evidence", "Opt-in F004 raw stream evidence (omitted keeps persisted/default)", required=False, is_option=True),
-            ArgDef("--no-stream-evidence", "Explicitly disable raw stream evidence (omitted keeps persisted/default)", required=False, is_option=True),
-            ArgDef("--out", "Output directory for the evidence bundle", required=False, is_option=True, default=""),
-            ArgDef("--builder-provider", "Provider for builder role", required=False, is_option=True, default=None),
-            ArgDef("--builder-model", "Model for builder role", required=False, is_option=True, default=None),
-            ArgDef("--builder-effort", "Effort level for builder role", required=False, is_option=True, default=None),
-            ArgDef("--reviewer-provider", "Provider for reviewer role", required=False, is_option=True, default=None),
-            ArgDef("--reviewer-model", "Model for reviewer role", required=False, is_option=True, default=None),
-            ArgDef("--reviewer-effort", "Effort level for reviewer role", required=False, is_option=True, default=None),
-            ArgDef("--repair-provider", "Provider for repair role", required=False, is_option=True, default=None),
-            ArgDef("--repair-model", "Model for repair role", required=False, is_option=True, default=None),
-            ArgDef("--repair-effort", "Effort level for repair role", required=False, is_option=True, default=None),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=True,
-    ),
-
-    # ── repair ──────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="repair.start",
-        group_id="repair",
-        subcommand="start",
-        description="Start repair loop v0 for a test failure.",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("failure_artifact_id", "Failure artifact ID"),
-            ArgDef("--fixture-patch-intent", "Create fixture patch intent", required=False, is_option=True, default="false"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("repair.failure-show", "job.show"),
-    ),
-    CommandEntry(
-        command_id="repair.failure-show",
-        group_id="repair",
-        subcommand="failure-show",
-        description="Show a test failure artifact.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("failure_artifact_id", "Failure artifact ID"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("repair.start",),
-    ),
-    CommandEntry(
-        command_id="repair.propose",
-        group_id="repair",
-        subcommand="propose",
-        description="Propose a bounded, approval-gated repair for a test failure (v1).",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("failure_artifact_id", "Failure artifact ID"),
-            ArgDef("--fixture-builder", "Use the deterministic fixture repair builder",
-                   required=False, is_option=True, default="false"),
-            ArgDef("--fixture-source-builder", "Opt-in deterministic SOURCE fixture repair (needs a safe target)",
-                   required=False, is_option=True, default="false"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("repair.status", "repair.failure-show", "patch.approve"),
-    ),
-    CommandEntry(
-        command_id="repair.status",
-        group_id="repair",
-        subcommand="status",
-        description="Show repair attempts and their approval state (read-only).",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--failure-artifact-id", "Filter to one failure artifact",
-                   required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("repair.propose", "repair.failure-show"),
-    ),
-    CommandEntry(
-        command_id="repair.request",
-        group_id="repair",
-        subcommand="request",
-        description="Build a safe, provider-agnostic repair request package for an external actor (no execution).",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("--failure-artifact-id", "Failure artifact to build a request for",
-                   required=False, is_option=True),
-            ArgDef("--target", "Target template label (external|docs_only|test_failure|markdown_only)",
-                   required=False, is_option=True, default="external"),
-            ArgDef("--model", "Optional non-binding model/worker hint", required=False, is_option=True),
-            ArgDef("--new", "Force a fresh request package (else idempotent)",
-                   required=False, is_option=True, default="false"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("repair.request-show",),
-    ),
-    CommandEntry(
-        command_id="repair.request-show",
-        group_id="repair",
-        subcommand="request-show",
-        description="Read-only: show a repair request package (safe metadata; no raw content).",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("request_package_id", "Repair request package id"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("repair.request",),
     ),
 
     # ── self (self-dogfood planner — read/metadata-only) ──────────────────
@@ -2817,109 +2021,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
         related=("self.inspect", "self.plan"),
-    ),
-
-    # ── orchestrator (main brain — read/metadata-only) ────────────────────
-    CommandEntry(
-        command_id="orchestrator.inspect",
-        group_id="orchestrator",
-        subcommand="inspect",
-        description="Read-only: build the orchestrator situation (options/risks/loop guard/routing).",
-        action_class="read_only",
-        args=(ArgDef("--job-id", "Optional job to include", required=False, is_option=True), _JSON_OPT),
-        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
-        related=("orchestrator.decide", "orchestrator.report"),
-    ),
-    CommandEntry(
-        command_id="orchestrator.decide",
-        group_id="orchestrator",
-        subcommand="decide",
-        description="Decide the single safest next action (read/metadata-only decision trace).",
-        action_class="write_metadata",
-        args=(
-            ArgDef("--job-id", "Optional job to include", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
-        related=("orchestrator.inspect", "orchestrator.report"),
-    ),
-    CommandEntry(
-        command_id="orchestrator.report",
-        group_id="orchestrator",
-        subcommand="report",
-        description="Read-only: orchestrator report (situation, best next action, why-not, routing).",
-        action_class="read_only",
-        args=(
-            ArgDef("--job-id", "Optional job to include", required=False, is_option=True),
-            ArgDef("--markdown", "Render as markdown", required=False, is_option=True, default="false"),
-            _JSON_OPT,
-        ),
-        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
-        related=("orchestrator.inspect", "orchestrator.decide"),
-    ),
-    CommandEntry(
-        command_id="orchestrator.idea",
-        group_id="orchestrator",
-        subcommand="idea",
-        description="Metadata-only: capture a user idea as a safe, classified roadmap hint.",
-        action_class="write_metadata",
-        args=(ArgDef("text", "Idea text"), _JSON_OPT),
-        supports_json=True, may_mutate_repo=False, may_execute_commands=False,
-        related=("orchestrator.inspect",),
-    ),
-
-    # ── review ───────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="review.run",
-        group_id="review",
-        subcommand="run",
-        description="Run reviewer to suggest follow-up tasks (human approval required).",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--after-task", "Task ID to review after", required=False, is_option=True),
-            ArgDef("--fixture-reviewer", "Use deterministic fixture reviewer", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="review.list",
-        group_id="review",
-        subcommand="list",
-        description="List reviewer recommendations for a job.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="review.accept",
-        group_id="review",
-        subcommand="accept",
-        description="Accept a reviewer recommendation (append as pending task).",
-        action_class="approval_gate",
-        args=(
-            _JOB_ID,
-            ArgDef("recommendation_id", "Recommendation ID to accept", required=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="review.reject",
-        group_id="review",
-        subcommand="reject",
-        description="Reject a reviewer recommendation.",
-        action_class="approval_gate",
-        args=(
-            _JOB_ID,
-            ArgDef("recommendation_id", "Recommendation ID to reject", required=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
     ),
 
     # ── propose ─────────────────────────────────────────────────────────
@@ -3049,10 +2150,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
 
     # ── progress ────────────────────────────────────────────────────────
 
-    # ── plan (F080: the roadmap mirror; proposes, never starts) ─────────
+    # ── roadmap (F080: the roadmap mirror; hidden; proposes, never starts) ─
     CommandEntry(
-        command_id="plan.status",
-        group_id="plan",
+        command_id="roadmap.status",
+        group_id="roadmap",
         subcommand="status",
         description="Show the active roadmap feature, its blockers and its milestone.",
         action_class="read_only",
@@ -3061,11 +2162,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--json", "Output as JSON", required=False, is_option=True),
         ),
         supports_json=True,
-        related=("plan.next",),
+        related=("roadmap.next",),
     ),
     CommandEntry(
-        command_id="plan.next",
-        group_id="plan",
+        command_id="roadmap.next",
+        group_id="roadmap",
         subcommand="next",
         description="Propose the next roadmap feature and its file path. Starts nothing.",
         action_class="read_only",
@@ -3074,7 +2175,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--json", "Output as JSON", required=False, is_option=True),
         ),
         supports_json=True,
-        related=("plan.status",),
+        related=("roadmap.status",),
     ),
 
     # ── ci ─────────────────────────────────────────────────────────────
@@ -3104,52 +2205,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--collect-only", "Also run pytest collect-only", required=False, is_option=True, default="false"),
         ),
         supports_json=True,
-    ),
-
-    # ── contract ───────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="contract.inspect",
-        group_id="contract",
-        subcommand="inspect",
-        description="Show the run contract for a job.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("contract.check", "policy.contract"),
-    ),
-    CommandEntry(
-        command_id="contract.check",
-        group_id="contract",
-        subcommand="check",
-        description="Check whether an action is allowed by the run contract.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("action", "Action to check (e.g. apply, plan, build_artifact)"),
-            ArgDef("--path", "File path to check against path policy", required=False, is_option=True),
-            ArgDef("--risk", "Risk level to check (unknown, medium, high)", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("contract.inspect",),
-    ),
-    CommandEntry(
-        command_id="contract.set",
-        group_id="contract",
-        subcommand="set",
-        description="Set a contract field on a job.",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("field", "Field to set (e.g. max_loops, stop_before_apply)"),
-            ArgDef("value", "New value"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("contract.inspect",),
     ),
 
     # ── snapshot ─────────────────────────────────────────────────────────
@@ -3336,9 +2391,19 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
 # ---------------------------------------------------------------------------
 
 
+def resolve_group(word: str) -> str | None:
+    """Return the id of the group a typed word names, by its id or an alias, or None."""
+    if word in GROUPS:
+        return word
+    return next((g.id for g in GROUPS.values() if word in g.aliases), None)
+
+
 def get_group(group_id: str) -> GroupDef:
-    """Return group definition or raise KeyError."""
-    return GROUPS[group_id]
+    """Return group definition by id or alias, or raise KeyError."""
+    resolved = resolve_group(group_id)
+    if resolved is None:
+        raise KeyError(group_id)
+    return GROUPS[resolved]
 
 
 def get_command(command_id: str) -> CommandEntry:
@@ -3350,5 +2415,6 @@ def get_command(command_id: str) -> CommandEntry:
 
 
 def get_commands_for_group(group_id: str) -> list[CommandEntry]:
-    """Return all commands belonging to a group."""
+    """Return all commands belonging to a group, named by its id or an alias."""
+    group_id = resolve_group(group_id) or group_id
     return [cmd for cmd in CATALOG if cmd.group_id == group_id]

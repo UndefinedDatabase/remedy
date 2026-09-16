@@ -17,7 +17,7 @@ Coverage:
   - redaction sentinels absent from text, JSON, and run logs
   - CLI: invalid UUID exits 1, missing project exits 1, traceback absent
   - CLI: text output works, --json output works
-  - existing `remedy context <job_id>` behavior is unchanged
+  - existing `remedy brain context <job_id>` behavior is unchanged
   - export_project_json compact context_coverage key (not full signals)
 """
 
@@ -825,7 +825,7 @@ class TestProjectContextCLI:
             assert sentinel not in out
 
     def test_existing_job_context_command_unchanged(self, tmp_path, monkeypatch, capsys):
-        """Confirm `remedy context <job_id>` still works and uses job scope."""
+        """Confirm `remedy brain context <job_id>` still works and uses job scope."""
         self._env(tmp_path, monkeypatch)
         from apps.cli.commands.brain import _cmd_context
         from packages.orchestration.pingpong_job import save_job_plan

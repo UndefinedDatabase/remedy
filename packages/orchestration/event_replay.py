@@ -296,7 +296,7 @@ def find_checkpoints(replay: JobReplayState) -> list[JobCheckpoint]:
             blocked_reason="resume_mode_not_implemented",
             required_data=["repair_context"],
             missing_data=["repair_context"],
-            next_command=f"remedy job summary {jid} --json",
+            next_command=f"remedy job show {jid} --full --json",
         ))
 
     # tests_passed — complete, nothing to resume
@@ -307,7 +307,7 @@ def find_checkpoints(replay: JobReplayState) -> list[JobCheckpoint]:
             status="complete",
             safe_to_resume=False, resume_mode="complete",
             reason="Job completed successfully",
-            next_command=f"remedy job summary {jid} --json",
+            next_command=f"remedy job show {jid} --full --json",
         ))
 
     # stopped — not resumable

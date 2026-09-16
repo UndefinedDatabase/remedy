@@ -147,5 +147,5 @@ def no_model_refusal(reason: str) -> str:
     """
     return (
         f"I cannot answer that: {reason}. "
-        "Stage 1 narration still works offline: run `remedy teach narrate <job_id>`."
+        "Stage 1 narration still works offline: run `remedy teacher narrate <job_id>`."
     )

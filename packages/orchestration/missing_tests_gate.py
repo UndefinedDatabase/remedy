@@ -39,10 +39,10 @@ _BLOCKED_MARKERS = ("blocked", "sandbox")
 #: diffs. It is a floor, not a map of everything — every suite whose path follows the usual
 #: convention is already reached by the changed-set rule.
 _RELEVANT_SUITES_FOR_SOURCE: dict[str, tuple[str, ...]] = {
-    # `do job-flow`'s end-to-end regressions do NOT live under tests/cli/, so a change to the do
-    # command was invisible to the authoritative CLI matrix. That is exactly how round 15 shipped
+    # do_cmd's role-override regressions do NOT live under tests/cli/, so a change to the do
+    # command is invisible to the authoritative CLI matrix. That is how round 15 shipped
     # `NameError: timeout_sec is not defined` in a public command with every gate green.
-    "apps/cli/commands/do_cmd.py": ("tests/test_do_job_flow.py",),
+    "apps/cli/commands/do_cmd.py": ("tests/test_role_override_flags.py",),
 }
 
 

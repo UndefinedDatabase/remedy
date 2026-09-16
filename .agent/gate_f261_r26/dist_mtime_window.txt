@@ -1,0 +1,8 @@
+base run window (epoch ns): start 1789563035380836096 end 1789563192103697152
+copy apps/ui/node_modules: primary 43005 files, 27 symlinks; copy 43005 files, 27 symlinks
+copy apps/ui/dist: primary 4 files, 0 symlinks; copy 4 files, 0 symlinks
+newest mtime under worktree apps/ui/src (epoch ns): 1789563006389409235
+stamp of step b applied to every apps/ui/dist entry and the directory (epoch ns): 1789563006390409235
+dist files recorded before 4, after 4, every mtime unchanged: True
+dist files whose mtime falls inside the window:
+NONE

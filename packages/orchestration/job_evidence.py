@@ -1,6 +1,6 @@
 """Job evidence bundle — exports a self-contained, redacted proof bundle for an entire job.
 
-Read-only: never calls providers, never mutates target repo, never auto-promotes,
+Read-only: never calls providers, never mutates target repo, never applies changes by itself,
 never reruns tasks, never mutates persisted job state.
 
 Reuses single-run evidence redaction from pingpong_evidence. Does not duplicate
@@ -117,20 +117,20 @@ def _resolve_job_ledger_project_id(job: Any) -> str | None:
 def mirror_job_run_into_ledger(job_id: str) -> dict[str, Any]:
     """Export a finished job's evidence so its cost reaches the F103 token ledger.
 
-    THIS IS THE JOB RUNNER'S COST-TRUTH SEAM. `remedy do job-run` used to complete
+    THIS IS THE JOB RUNNER'S COST-TRUTH SEAM. `remedy job run` used to complete
     a job, write ``jobs/<id>/job.json`` and its run log, and touch no ledger
     at all, so `remedy stats cost` reported "No ledger on disk for this scope"
     after a run that had spent real money. The mirror is armed in exactly one
     place — ``_resolve_job_ledger_project_id``, reached only from
     ``export_job_evidence`` — and only two commands used to reach it,
-    `do job-evidence` and `do job-flow`. A run that is never exported has no cost
+    `job evidence` and `do job-flow`. A run that is never exported has no cost
     row, and `remedy stats backfill-ledger` cannot help either, because it mirrors
     an evidence DIRECTORY that was never written.
 
     Rather than record from the loop, which would move DECISION D16's
     per-finalized-task-run granularity, this reuses the seam that already exists:
     the job's evidence is exported to its own default location, which arms the
-    live mirror exactly as `do job-evidence` does. One call, no second capture
+    live mirror exactly as `job evidence` does. One call, no second capture
     path, and no new ledger writer to keep in step with the old one.
 
     NEVER FATAL. A job that ran is a job that ran; a failure to mirror its cost
@@ -2584,10 +2584,7 @@ def _write_task_run_evidence(
                           f"Run data not found for {task.run_id}")
         return
 
-    from packages.orchestration.pingpong_promote import load_promotion
-    promotion_data = load_promotion(task.run_id)
-
-    bundle = build_evidence_bundle(run_data, promotion_data)
+    bundle = build_evidence_bundle(run_data)
 
     # Include prompt traces from persisted run dir
     from packages.orchestration.data_paths import run_dir

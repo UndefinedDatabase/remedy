@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Standalone runtime CLI smoke test — runs outside pytest.
 
-Executes propose and/or worker flows via subprocess, verifies results,
+Executes the propose flow via subprocess, verifies results,
 exits 0 on success, nonzero on failure.
 
 Usage:
     python scripts/remedy_runtime_cli_smoke.py --mode propose
-    python scripts/remedy_runtime_cli_smoke.py --mode worker
     python scripts/remedy_runtime_cli_smoke.py --mode all
 
 Process isolation:
@@ -221,43 +220,9 @@ def smoke_propose(base: Path) -> None:
     print(f"  propose: PASS (job={jid[:8]})")
 
 
-def smoke_worker(base: Path) -> None:
-    root, jid = create_env(base)
-    tid = create_task(root, jid, title="E2E worker")
-
-    # propose flow
-    run_json(["propose", "evaluate", jid, "--json"], root)
-    run_json(["propose", "approve", jid, tid, "--json"], root)
-    run_json(["propose", "materialize", jid, "--task-id", tid, "--json"], root)
-
-    # enqueue + worker
-    run_cli(["job", "enqueue", jid], root)
-    data = run_json(["worker", "run", "--once", "--provider", "fixture", "--job", jid, "--json"], root)
-    assert data["action_taken"] == "task_completed"
-    assert data["work_performed"] is True
-
-    # verify job
-    job = json.loads((root / "jobs" / jid / "job.json").read_text())
-    assert len(job["tasks"]) == 1
-    assert job["tasks"][0]["status"] == "completed"
-
-    # verify events
-    events = read_events(root, jid)
-    assert "proposed_task_evaluated" in events
-    assert "proposed_task_approved" in events
-    assert "proposed_task_materialized" in events
-    assert "task_execution_started" in events
-    assert "task_execution_completed" in events
-
-    # verify no locks
-    check_no_locks(root)
-
-    print(f"  worker: PASS (job={jid[:8]})")
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Standalone runtime CLI smoke test")
-    parser.add_argument("--mode", choices=["propose", "worker", "all"], default="all")
+    parser.add_argument("--mode", choices=["propose", "all"], default="all")
     args = parser.parse_args()
 
     base = Path(tempfile.mkdtemp(prefix="remedy-smoke-"))
@@ -270,13 +235,6 @@ def main() -> int:
             except Exception as e:
                 errors.append(f"propose: {e}")
                 print(f"  propose: FAIL — {e}")
-
-        if args.mode in ("worker", "all"):
-            try:
-                smoke_worker(base / "worker")
-            except Exception as e:
-                errors.append(f"worker: {e}")
-                print(f"  worker: FAIL — {e}")
     finally:
         # Cleanup temp dir best-effort
         import shutil

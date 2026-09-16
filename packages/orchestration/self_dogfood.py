@@ -285,8 +285,10 @@ def _detect_evidence_gaps(job: Any, items: list) -> None:
                     source_type="repair_loop",
                     evidence=[SelfImprovementEvidence("failure_artifact", str(fa.id))],
                     next_action=SelfImprovementAction(
-                        "Propose a repair", f"remedy repair propose {job_id} {fa.id} --json",
-                        "Unresolved failure with no repair attempt.")))
+                        "Read the failure evidence",
+                        f"remedy job show {job_id} --full --json",
+                        "Unresolved failure with no repair attempt; F261 round 22 "
+                        "deleted the command that proposed one.")))
         for a in attempts:
             if a.status == "approval_required" and not a.repair_intent_id:
                 items.append(_mk_item(
@@ -313,8 +315,8 @@ def _detect_roadmap(items: list) -> None:
         (has("ui_server.py"),
          "Operator Cockpit Mutations v0", "ui_server.py",
          "Read-only cockpit truth exists; consider gated cockpit mutations."),
-        (has("provider_patch_material.py") and has("do_continue.py"),
-         "Git Commit Gate v0", "do_continue.py",
+        (has("provider_patch_material.py") and has("patch_apply.py"),
+         "Git Commit Gate v0", "patch_apply.py",
          "Proof/test/snapshot/apply stable; a human-gated commit gate could follow."),
     ]
     for ok, title, ev, detail in rules:
@@ -483,7 +485,7 @@ def propose_self_improvement(
         result.stop_reason = "contract_blocked"
         result.safe_summary = "Contract denies self-propose."
         result.next_safe_action = SelfImprovementAction(
-            "Inspect contract", f"remedy contract inspect {job_id} --json", "")
+            "Inspect contract", f"remedy job show {job_id} --full --json", "")
         return result
 
     insp = build_self_dogfood_inspection(job_id, ddir, agent_dir)
@@ -626,5 +628,5 @@ def render_report_markdown(data: dict[str, Any]) -> str:
     lines.append("## Not safe to automate yet")
     lines.append("- Self-apply, self-merge, and self-approval are NOT performed. "
                  "Self-proposed tasks require human evaluation/approval and the normal "
-                 "materialize → do continue flow.")
+                 "materialize → patch apply flow.")
     return "\n".join(lines)

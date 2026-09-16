@@ -44,7 +44,7 @@ ENTRY_POINTS = (
     "apps.cli.commands.job",             # the job path
     "apps.cli.commands.mission_cmd",     # the mission path
     "packages.orchestration.self_use_runner",  # the self-use runner
-    "apps.cli.commands.teach_cmd",       # the teacher
+    "apps.cli.commands.teacher_cmd",     # the teacher
     "packages.orchestration.ui_server",  # the cockpit read endpoints
 )
 

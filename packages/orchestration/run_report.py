@@ -17,7 +17,8 @@ Deliberate absences (searched-for behavior that is NOT here):
     cycle records own those, and a second arithmetic path would be a second
     truth.
   * Remedy deliberately does not write the report from here.  The terminal
-    -state writer and the ``remedy job report`` CLI are F053 T002; this
+    -state writer is F053 T002, and the ``report`` section of
+    ``remedy job show <id> --full`` renders from the same sources; this
     module only turns sources into text.
   * Remedy deliberately does not read ``docs/roadmap/STATUS.md`` here.  The
     milestone distance and the capability lines come from a STATUS mirror
@@ -300,11 +301,6 @@ class ReportSources:
     job_name: str = ""
     project_id: str = ""
     mission: str = ""
-    #: F045: the loop this run came from (loop_run.LOOP_REF_METADATA_KEY), so
-    #: a report inside the evidence area names its own provenance.  Empty for
-    #: every non-loop job, and an empty value prints NO line at all — see
-    #: ``_header_lines`` — which is what keeps the existing goldens intact.
-    loop_ref: str = ""
     state: str = ""
     terminal_status: str = ""
     stop_reason: str = ""
@@ -431,10 +427,6 @@ def _header_lines(sources: ReportSources, mode: str, rendered_at: str) -> list[s
     # Quoted as-is: the mission may be in any language; the report is English
     # around it, and translating an operator's own words would be a rewrite.
     lines.append(f"- Mission: {_text(sources.mission)}")
-    # F045: conditional on purpose — a job that came from no loop prints no
-    # Loop line, which is why every pre-F045 golden stays byte-identical.
-    if sources.loop_ref:
-        lines.append(f"- Loop: {sources.loop_ref}")
     lines.append(f"- State: {_text(sources.state)}")
     lines.append(f"- Terminal status: {_text(sources.terminal_status)}")
     if sources.stop_reason:
@@ -540,7 +532,7 @@ def _decision_lines(sources: ReportSources) -> list[str]:
         lines += ["No open decisions.", ""]
         return lines
     # Rendered verbatim from decision_queue.render_open_decisions_lines so the
-    # report and `remedy job status` cannot drift apart.
+    # report and the status section of `remedy job show <id> --full` cannot drift apart.
     lines += list(sources.open_decision_lines) or [
         f"Open decisions: {sources.open_decision_count} (detail {NOT_RECORDED})"]
     lines.append("")
@@ -772,7 +764,6 @@ def collect_report_sources(job: Any) -> ReportSources:
     "not recorded".  The remaining evidence-area sources (cycle records,
     postmortems, manifest) are attached by the terminal-state writer.
     """
-    from packages.orchestration.loop_run import LOOP_REF_METADATA_KEY
     from packages.orchestration.status_mirror import read_status_mirror
 
     tasks = tuple(
@@ -790,7 +781,6 @@ def collect_report_sources(job: Any) -> ReportSources:
         job_name=str(getattr(job, "job_title", "") or ""),
         project_id=str(getattr(job, "project_id", "") or ""),
         mission=str(getattr(job, "mission", "") or ""),
-        loop_ref=str(metadata.get(LOOP_REF_METADATA_KEY, "") or ""),
         state=getattr(getattr(job, "state", None), "value",
                       str(getattr(job, "state", "") or "")),
         terminal_status=str(metadata.get("cycle_terminal_status", "") or ""),

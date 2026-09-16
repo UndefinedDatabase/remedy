@@ -1,9 +1,8 @@
 """F114 T002 — tests for the shared cost-preview confirmation helper.
 
 Covers `render_estimate_line` / `confirm_cost_preview` in
-`apps.cli.cost_preview_confirm`, reusing the tty-mocking shape
-`tests/cli/test_loop_cmd.py` already established for
-`loop_cmd._stdin_is_a_tty` / `builtins.input`.
+`apps.cli.cost_preview_confirm`, mocking `_stdin_is_a_tty` and
+`builtins.input`.
 """
 from __future__ import annotations
 

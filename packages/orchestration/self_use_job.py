@@ -24,11 +24,11 @@ Public API::
 Deliberate absences:
   * REMEDY DELIBERATELY DOES NOT RUN A JOB HERE.  Planning is the read-only
     half — it parses text into a :class:`JobPlan` and touches no target repo —
-    and running is ``do job-run``, which carries its own approval gate.  Keeping
+    and running is ``job run``, which carries its own approval gate.  Keeping
     the two apart is what lets this module be called freely.
-  * Remedy deliberately does not PROMOTE a job here.  Promotion stays behind the
-    ``--approve`` barrier in :mod:`packages.orchestration.job_promote`, which
-    never auto-promotes; a self-use job earns no shortcut through it for being
+  * Remedy deliberately does not APPLY a job here.  Applying stays behind the
+    ``--approve`` barrier in :mod:`packages.orchestration.job_apply`, which
+    never applies by itself; a self-use job earns no shortcut through it for being
     Remedy's own maintenance.
   * REMEDY DELIBERATELY DOES NOT MARK A QUEUE ITEM CONSUMED.  This module owns
     no queue writer, exactly as the loader owns none.  Consumption is an edit
@@ -140,7 +140,7 @@ def plan_self_use_item(
 ) -> tuple[Path, object]:
     """Render one queue item and plan it. Answers ``(job_file_path, JobPlan)``.
 
-    Plans only.  Running the job is ``do job-run`` behind the normal approval
+    Plans only.  Running the job is ``job run`` behind the normal approval
     gate, and this function deliberately stops short of it.
     """
     path = write_self_use_job_file(entry, dest_dir)

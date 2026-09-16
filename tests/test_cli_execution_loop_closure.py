@@ -174,105 +174,8 @@ class TestRepairLoopFullE2EClosure:
 # Step 157 — Reviewer CLI Closure
 # =========================================================================
 
-class TestReviewerCliJsonOutput:
-    """Review commands support --fixture-reviewer and --json."""
-
-    def test_review_run_fixture_json(self):
-        """review run --fixture-reviewer --json returns structured output."""
-        job = _make_job(tasks=[{"type": "test", "status": "completed"}])
-        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
-             patch("apps.cli.commands.review_cmd.lookup_job_id", side_effect=lambda raw: raw), \
-             patch("packages.orchestration.pingpong_job.save_job_plan"):
-            import contextlib
-            import io
-            args = MagicMock()
-            args.job_id = str(job.job_id)
-            args.after_task = None
-            args.fixture_reviewer = True
-            args.json = True
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                from apps.cli.commands.review_cmd import _cmd_review_run
-                _cmd_review_run(args)
-        data = json.loads(buf.getvalue())
-        assert data["version"] == 1
-        assert data["recommendation_count"] >= 1
-        assert len(data["recommendations"]) >= 1
-        assert "id" in data["recommendations"][0]
-
-    def test_review_accept_json(self, tmp_path, monkeypatch):
-        """review accept --json returns structured output (creates proposed task, not direct task)."""
-        from packages.orchestration.reviewer import (
-            _fixture_reviewer,
-            run_reviewer,
-            store_recommendations,
-        )
-        monkeypatch.setattr(
-            "packages.orchestration.proposed_tasks._STORE_DIR",
-            tmp_path / "proposed_tasks",
-        )
-        job = _make_job()
-        job.metadata = {}
-        recs = run_reviewer(job, reviewer_fn=_fixture_reviewer)
-        store_recommendations(job, recs)
-
-        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
-             patch("apps.cli.commands.review_cmd.lookup_job_id", side_effect=lambda raw: raw), \
-             patch("packages.orchestration.pingpong_job.save_job_plan"):
-            import contextlib
-            import io
-            args = MagicMock()
-            args.job_id = str(job.job_id)
-            args.recommendation_id = recs[0].id
-            args.json = True
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                from apps.cli.commands.review_cmd import _cmd_review_accept
-                _cmd_review_accept(args)
-        data = json.loads(buf.getvalue())
-        assert data["accepted"] is True
-        assert data["proposed_task_created"] is True
-
-    def test_review_reject_json(self):
-        from packages.orchestration.reviewer import (
-            _fixture_reviewer,
-            run_reviewer,
-            store_recommendations,
-        )
-        job = _make_job()
-        job.metadata = {}
-        recs = run_reviewer(job, reviewer_fn=_fixture_reviewer)
-        store_recommendations(job, recs)
-
-        with patch("packages.orchestration.pingpong_job.load_job_plan", return_value=job), \
-             patch("apps.cli.commands.review_cmd.lookup_job_id", side_effect=lambda raw: raw), \
-             patch("packages.orchestration.pingpong_job.save_job_plan"):
-            import contextlib
-            import io
-            args = MagicMock()
-            args.job_id = str(job.job_id)
-            args.recommendation_id = recs[0].id
-            args.json = True
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                from apps.cli.commands.review_cmd import _cmd_review_reject
-                _cmd_review_reject(args)
-        data = json.loads(buf.getvalue())
-        assert data["rejected"] is True
-        assert data["task_appended"] is False
-
-    def test_fixture_reviewer_in_catalog(self):
-        from apps.cli.command_catalog import get_command
-        cmd = get_command("review.run")
-        arg_names = [a.name for a in cmd.args]
-        assert "--fixture-reviewer" in arg_names
-        assert "--json" in arg_names
-
-    def test_review_accept_json_in_catalog(self):
-        from apps.cli.command_catalog import get_command
-        cmd = get_command("review.accept")
-        arg_names = [a.name for a in cmd.args]
-        assert "--json" in arg_names
+class TestReviewerPackageLoop:
+    """`run_reviewer` survives the deletion of the `review` group: `dev status` probes it."""
 
     def test_reviewer_no_auto_append(self):
         """run_reviewer must NOT modify job.tasks."""
@@ -440,19 +343,10 @@ class TestSmokeScriptNewCliSections:
         assert "repair-loop" in script
         assert "12ao" in script
 
-    def test_smoke_has_reviewer_section(self):
-        script = (_ROOT / "scripts" / "remedy_smoke.sh").read_text()
-        assert "fixture-reviewer" in script
-        assert "12ap" in script
-
     def test_smoke_has_memory_candidates_section(self):
         script = (_ROOT / "scripts" / "remedy_smoke.sh").read_text()
         assert "memory candidates" in script
         assert "12aq" in script
-
-    def test_smoke_has_review_group_help(self):
-        script = (_ROOT / "scripts" / "remedy_smoke.sh").read_text()
-        assert "review" in script
 
     def test_smoke_has_do_group_help(self):
         script = (_ROOT / "scripts" / "remedy_smoke.sh").read_text()
@@ -518,18 +412,6 @@ class TestDevStatusExpandedCapabilities:
 class TestDocsHelpReviewMemoryCommands:
     """Help pages include new commands."""
 
-    def test_review_group_in_catalog(self):
-        from apps.cli.command_catalog import GROUPS
-        assert "review" in GROUPS
-
-    def test_review_commands_in_catalog(self):
-        from apps.cli.command_catalog import get_commands_for_group
-        cmds = {c.subcommand for c in get_commands_for_group("review")}
-        assert "run" in cmds
-        assert "list" in cmds
-        assert "accept" in cmds
-        assert "reject" in cmds
-
     def test_memory_candidate_commands_in_catalog(self):
         from apps.cli.command_catalog import get_commands_for_group
         cmds = {c.subcommand for c in get_commands_for_group("memory")}
@@ -540,8 +422,7 @@ class TestDocsHelpReviewMemoryCommands:
     def test_quick_start_updated(self):
         from apps.cli.grouped import _QUICK_START
         assert "do run" in _QUICK_START
-        assert "do report" in _QUICK_START
-        assert "do promote" in _QUICK_START
+        assert "run show" in _QUICK_START
 
     def test_no_auto_commit_in_docs(self):
         """No docs suggesting automatic git commit."""
@@ -552,5 +433,5 @@ class TestDocsHelpReviewMemoryCommands:
     def test_no_auto_memory_approval_in_docs(self):
         """Catalog descriptions say human approval required."""
         from apps.cli.command_catalog import get_command
-        desc = get_command("review.run").description
+        desc = get_command("memory.candidates").description
         assert "human" in desc.lower() or "approval" in desc.lower()
