@@ -271,9 +271,9 @@ class TestJobFirstHappyPath:
         first_cmd_line = [l for l in lines if l.strip().startswith("1.")][0]
         assert "remedy do" in first_cmd_line
 
-    def test_happy_path_has_run_show(self):
+    def test_happy_path_has_job_show(self):
         from apps.cli.grouped import _QUICK_START
-        assert "run show" in _QUICK_START
+        assert "job show" in _QUICK_START
 
     def test_happy_path_no_mission_as_primary(self):
         from apps.cli.grouped import _QUICK_START

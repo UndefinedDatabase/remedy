@@ -544,44 +544,6 @@ class TestScopeReport:
         assert "Remedy verification:" in output
         assert "Reviewer verdict:" in output
 
-    def test_text_report_scope_summary(self):
-        """Step 4717: Text report shows concise scope summary."""
-        from apps.cli.commands.do_cmd import _print_text_report
-
-        data = {
-            "goal": "Test goal",
-            "final_status": "staged_review_passed",
-            "rounds": [{"round": 1, "started_at": "", "finished_at": "",
-                        "test_passed": True, "test_summary": "ok",
-                        "builder": {"summary": "did stuff", "files_changed": []},
-                        "reviewer": {"verdict": "pass", "findings": []}}],
-            "total_rounds": 1, "max_rounds": 3,
-            "builder_provider": "fake", "reviewer_provider": "fake",
-            "target_mutated": False, "staged_files": [],
-            "provider_evidence": {"builder_provider_kind": "synthetic_test",
-                                  "reviewer_provider_kind": "synthetic_test",
-                                  "builder_write_mode": "none",
-                                  "reviewer_write_mode": "none"},
-            "token_accounting": {"kind": "estimated"},
-            "scope_plan": {
-                "plan_id": "p123",
-                "approved_features": [{"id": "F001", "title": "A"}],
-                "denied_features": [{"id": "F002", "title": "B"}],
-                "deferred_features": [],
-                "backlog_features": [],
-                "pending_features": [],
-            },
-        }
-
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            _print_text_report("test456", data)
-
-        output = buf.getvalue()
-        assert "Scope:" in output
-        assert "F001" in output
-        assert "F002" in output
-
     def test_existing_provider_evidence(self, tmp_path, monkeypatch):
         """Existing provider evidence still renders in report."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))

@@ -207,6 +207,13 @@ class TestProviderUnavailable:
         with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
             provider._get_client()
 
+    def test_claude_without_api_key_names_the_job_run_provider_flags(self, monkeypatch):
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        provider = ClaudeProvider()
+        with pytest.raises(RuntimeError) as exc:
+            provider._get_client()
+        assert "--builder-provider claude or --reviewer-provider claude." in str(exc.value)
+
 
 # ---------------------------------------------------------------------------
 # 11. Malformed reviewer JSON blocks honestly

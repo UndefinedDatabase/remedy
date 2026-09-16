@@ -237,7 +237,7 @@ class TestHappyPath:
         grouped_main([])
         out = capsys.readouterr().out
         assert "do run" in out
-        assert "run show" in out
+        assert "job show" in out
 
 
 # ---------------------------------------------------------------------------
@@ -526,19 +526,46 @@ class TestShellFlow:
 # ---------------------------------------------------------------------------
 
 class TestQuickStart:
-    def test_quick_start_has_auto_run_id(self, capsys):
+    def test_quick_start_has_auto_job_id(self, capsys):
         grouped_main([])
         out = capsys.readouterr().out
-        assert "RUN_ID" in out
+        assert "JOB_ID" in out
 
     def test_quick_start_has_tee(self, capsys):
         grouped_main([])
         out = capsys.readouterr().out
         assert "tee" in out
 
-    def test_quick_start_no_manual_run_id(self):
+    def test_quick_start_no_manual_job_id(self):
+        import re
+
         from apps.cli.grouped import _QUICK_START
-        assert "<run_id>" not in _QUICK_START
+        assert "<job_id>" not in _QUICK_START
+        assert re.findall(r"<[a-z_-]+>", _QUICK_START) == ["<goal>"]
+
+    def test_quick_start_flags_are_declared_by_their_commands(self):
+        """Every flag of a quick-start step is one its command declares.
+
+        The advertised-command flag sweep stops at the quote closing `"<goal>"`, so it never
+        reads the flags after the goal; this test reads each step to the pipe.
+        """
+        import re
+
+        from apps.cli.command_catalog import CATALOG
+        from apps.cli.grouped import _QUICK_START
+
+        declared = {(c.group_id, c.subcommand): {a.name for a in c.args} for c in CATALOG}
+        steps = 0
+        for line in _QUICK_START.splitlines():
+            m = re.search(r"remedy ([a-z][a-z0-9-]*) ([a-z][a-z0-9-]*)(.*)", line)
+            if not m:
+                continue
+            pair = (m.group(1), m.group(2))
+            assert pair in declared, line
+            flags = re.findall(r"(?<![\w-])--[a-z][a-z0-9-]*", m.group(3).split("|", 1)[0])
+            assert [f for f in flags if f not in declared[pair]] == [], line
+            steps += 1
+        assert steps == 2
 
 
 # ---------------------------------------------------------------------------

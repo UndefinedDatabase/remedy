@@ -232,20 +232,10 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--top", default=None, dest="top", help=arg.help)
             elif arg.name == "--attempt-id":
                 parser.add_argument("--attempt-id", default=None, dest="attempt_id", help=arg.help)
-            elif arg.name == "--keep-staging":
-                parser.add_argument("--keep-staging", action="store_true", dest="keep_staging", help=arg.help)
-            elif arg.name == "--builder":
-                parser.add_argument("--builder", default=arg.default, help=arg.help)
-            elif arg.name == "--reviewer":
-                parser.add_argument("--reviewer", default=arg.default, help=arg.help)
             elif arg.name == "--max-rounds":
                 parser.add_argument("--max-rounds", default=arg.default, dest="max_rounds", help=arg.help)
-            elif arg.name == "--mode":
-                parser.add_argument("--mode", default=arg.default, help=arg.help)
             elif arg.name == "--test-command":
                 parser.add_argument("--test-command", default=arg.default, dest="test_command", help=arg.help)
-            elif arg.name == "--provider-timeout-sec":
-                parser.add_argument("--provider-timeout-sec", default=arg.default, dest="provider_timeout_sec", help=arg.help)
             elif arg.name == "--timeout-sec":
                 # F1: omission stays None so run_job resolves explicit>persisted>default.
                 parser.add_argument("--timeout-sec", default=None, dest="timeout_sec", help=arg.help)
@@ -270,14 +260,6 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 _stream_group(parser).add_argument(
                     "--no-stream-evidence", action="store_const", const=False,
                     dest="stream_evidence", help=arg.help)
-            elif arg.name == "--task-file":
-                parser.add_argument("--task-file", default="", dest="task_file", help=arg.help)
-            elif arg.name == "--task-stdin":
-                parser.add_argument("--task-stdin", action="store_true", dest="task_stdin", help=arg.help)
-            elif arg.name == "--scope-file":
-                parser.add_argument("--scope-file", default="", dest="scope_file", help=arg.help)
-            elif arg.name == "--approve-scope":
-                parser.add_argument("--approve-scope", action="store_true", dest="approve_scope", help=arg.help)
             elif arg.name == "--repair-rounds":
                 parser.add_argument("--repair-rounds", type=int, default=None, dest="repair_rounds", help=arg.help)
             elif arg.name == "--user-requested":
@@ -369,10 +351,10 @@ def build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 
 _QUICK_START = """\
- Quick start:
-   1. remedy do run "<goal>" --repo . --builder claude-cli --reviewer claude-cli --json | tee /tmp/remedy-run.json
-   2. RUN_ID=$(python3 -c "import json; print(json.load(open('/tmp/remedy-run.json'))['run_id'])")
-   3. remedy run show $RUN_ID --json
+ Quick start (run `remedy init` in the repository first):
+   1. remedy do run "<goal>" --repo . --json | tee /tmp/remedy-run.json
+   2. JOB_ID=$(python3 -c "import json; print(json.load(open('/tmp/remedy-run.json'))['job_id'])")
+   3. remedy job show $JOB_ID --full
 
  Show all commands:  remedy --all-commands"""
 

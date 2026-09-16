@@ -283,7 +283,7 @@ certified fact. F263 ships the command named `absorb`; T2_F263.md carries the fi
 Reverse by deleting this paragraph.
 
 ### DECISION F259 D2 (2026-09-05, operator order amend0905-vocab-rebuild) — `task-file` and `job-file` collapse into `order`
-Today `remedy do run --task-file` (`packages/orchestration/pingpong_loop.load_task_file`)
+On that date the task file `remedy do run` read (`packages/orchestration/pingpong_loop.load_task_file`)
 and the "job file" `packages/orchestration/pingpong_job.parse_job_file` parses are
 two spellings of the same thing: a Markdown file a human hands Remedy. Under D1 that
 thing is an Order. Both words are deleted; the file is "an order file" and the

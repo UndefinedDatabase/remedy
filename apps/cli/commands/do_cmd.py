@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from apps.cli.commands.run_invocation import (
     RunInvocation,
@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 
 
 _VALID_PROVIDERS = frozenset({"none", "fixture", "ollama"})
-_VALID_PINGPONG_PROVIDERS = frozenset({"none", "fake", "claude", "claude-cli"})
 
 
 def _parse_builder_provider(val: object) -> str:
@@ -36,32 +35,6 @@ def _parse_builder_provider(val: object) -> str:
 
 _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
 
-_DEFAULT_RAW_TIMEOUT = 120
-
-
-def _resolve_timeout_precedence(
-    raw_timeout: int | None,
-    timeout_profile: str | None,
-) -> tuple[int, str]:
-    """Resolve timeout precedence for F001.
-
-    Precedence:
-    1. Explicit raw timeout (--timeout-sec / --provider-timeout-sec) wins.
-    2. Explicit --timeout-profile wins.
-    3. Default: adaptive profile "normal".
-
-    Returns (timeout_sec, timeout_profile).
-    When raw timeout wins, timeout_profile is "" (empty) so run_pingpong
-    uses timeout_sec directly.
-    """
-    if raw_timeout is not None:
-        # User explicitly passed raw timeout — override adaptive profile
-        return raw_timeout, ""
-    if timeout_profile is not None:
-        # User explicitly passed --timeout-profile
-        return _DEFAULT_RAW_TIMEOUT, timeout_profile
-    # Neither passed — default to adaptive normal
-    return _DEFAULT_RAW_TIMEOUT, "normal"
 
 # --- Per-role model override flags (T002) ---------------------------------
 # CLI accepts --<role>-provider / --<role>-model / --<role>-effort for the
@@ -446,22 +419,6 @@ def _cmd_do(
     json_output: bool = False,
     fixture_builder: bool | str = False,
     builder_provider: str = "none",
-    builder: str = "none",
-    reviewer: str = "none",
-    max_rounds: int = 3,
-    mode: str = "staged",
-    test_command: str = "",
-    provider_timeout_sec: int = 120,
-    timeout_profile: str = "",
-    max_output_chars_val: int = 50000,
-    keep_staging: bool = False,
-    claude_cli_write_mode: str = "none",
-    task_file: str = "",
-    task_stdin: bool = False,
-    scope_file: str = "",
-    approve_scope: bool = False,
-    repair_rounds: int | None = None,
-    stream_evidence: bool = False,
     max_total_tokens: str | None = None,
     max_provider_calls: str | None = None,
     max_wall_clock_minutes: str | None = None,
@@ -497,94 +454,10 @@ def _cmd_do(
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(2)
 
-    # --- Task input loading ---
-    task_input = None
-    if task_file and task_stdin:
-        print("Error: cannot use both --task-file and --task-stdin.", file=sys.stderr)
+    # Require a goal
+    if not goal:
+        print("Error: provide a goal.", file=sys.stderr)
         sys.exit(2)
-    if task_file:
-        from packages.orchestration.pingpong_loop import load_task_file
-        try:
-            task_input = load_task_file(task_file)
-        except ValueError as exc:
-            if json_output:
-                print(json.dumps({"error": str(exc)}, indent=2))
-            else:
-                print(f"Error: {exc}", file=sys.stderr)
-            sys.exit(2)
-    elif task_stdin:
-        from packages.orchestration.pingpong_loop import load_task_stdin
-        stdin_text = sys.stdin.read()
-        try:
-            task_input = load_task_stdin(stdin_text)
-        except ValueError as exc:
-            if json_output:
-                print(json.dumps({"error": str(exc)}, indent=2))
-            else:
-                print(f"Error: {exc}", file=sys.stderr)
-            sys.exit(2)
-
-    # Require at least goal or task input
-    if not goal and not task_input:
-        print("Error: provide a goal or --task-file/--task-stdin.", file=sys.stderr)
-        sys.exit(2)
-
-    # --- Scope file validation ---
-    scope_validation = None
-    scope_data = None
-    if scope_file and not approve_scope:
-        print("Error: --scope-file requires --approve-scope to confirm decisions.", file=sys.stderr)
-        sys.exit(2)
-    if scope_file and approve_scope:
-        from packages.orchestration.scope_plan import load_scope_plan, validate_scope_plan
-        try:
-            scope_data = load_scope_plan(scope_file)
-        except ValueError as exc:
-            if json_output:
-                print(json.dumps({"error": str(exc)}, indent=2))
-            else:
-                print(f"Error: {exc}", file=sys.stderr)
-            sys.exit(2)
-        scope_validation = validate_scope_plan(
-            scope_data,
-            task_sha256=task_input.sha256 if task_input else "",
-            repo_path=repo,
-        )
-        if not scope_validation.valid:
-            msg = "Scope validation failed:\n" + "\n".join(f"  - {e}" for e in scope_validation.errors)
-            if json_output:
-                print(json.dumps({"error": msg, "scope_errors": scope_validation.errors}, indent=2))
-            else:
-                print(f"Error: {msg}", file=sys.stderr)
-            sys.exit(2)
-
-    # Resolve and validate repair_rounds
-    from packages.orchestration.pingpong_loop import resolve_repair_rounds
-    try:
-        repair_rounds_val, repair_rounds_source = resolve_repair_rounds(repair_rounds)
-    except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(2)
-    repair_rounds = repair_rounds_val
-
-    # Ping-pong mode: --builder and/or --reviewer set to a real provider
-    if builder != "none" or reviewer != "none":
-        _cmd_do_pingpong(
-            goal, repo=repo, builder=builder, reviewer=reviewer,
-            max_rounds=max_rounds, mode=mode, json_output=json_output,
-            test_command=test_command, provider_timeout_sec=provider_timeout_sec,
-            timeout_profile=timeout_profile,
-            max_output_chars=max_output_chars_val, keep_staging=keep_staging,
-            claude_cli_write_mode=claude_cli_write_mode,
-            task_input=task_input,
-            scope_data=scope_data,
-            scope_validation=scope_validation,
-            repair_rounds=repair_rounds,
-            repair_rounds_source=repair_rounds_source,
-            stream_evidence=stream_evidence,
-            budgets=budgets,
-        )
-        return
 
     if dry_run:
         from packages.orchestration.autorun import dry_run_autorun
@@ -649,242 +522,6 @@ def _cmd_do(
         print(json.dumps(export_do_run_json(result, contract=result._contract), indent=2))
     else:
         print(summarize_do_run(result))
-
-
-#: What the bare `remedy do run` path prints for a role whose provider is
-#: handed no model and has no built-in default of its own to name. The `claude`
-#: CLI then picks whatever the OPERATOR configured it to pick, and Remedy cannot
-#: name that id without running the binary — so it says exactly that instead of
-#: printing a guess.
-_INHERITED_CLI_MODEL_LABEL = "CLI default (no --model passed)"
-
-
-def pingpong_effective_model(provider_name: str) -> str:
-    """The model one role of a bare `remedy do run` actually uses.
-
-    THIS PATH TAKES NO MODEL OPTION. `_cmd_do_pingpong` passes none to
-    ``run_pingpong``, whose ``builder_model``/``reviewer_model`` therefore stay
-    empty, so the id is decided entirely by the provider that was named. Two
-    real claude-cli runs during operator dogfooding on 2026-08-25 were never
-    told which model answered them; printing this at startup is what makes that
-    visible.
-
-    Remedy deliberately does NOT add a model option to this path. `remedy job
-    run` is the path that carries `--builder-model` and `--reviewer-model`;
-    this function only reports, and adding an option here is recorded as an
-    operator finding rather than built.
-
-    ``tests/cli/test_do_cmd_pingpong_budget.py`` pins each answer against what
-    the provider really does, so this cannot drift into a comfortable fiction.
-    """
-    if provider_name == "claude-cli":
-        # ClaudeCliProvider passes --model only when it HAS one
-        # (`pingpong_provider.build_claude_cli_args`), so an empty model means
-        # the argument is never on the command line at all.
-        return _INHERITED_CLI_MODEL_LABEL
-    if provider_name == "claude":
-        # The direct-API provider names its own built-in default, which comes
-        # from the one F254 alias table.
-        from packages.orchestration.model_aliases import resolve_model_alias
-        return f"{resolve_model_alias('claude-workhorse')} (Remedy built-in default)"
-    if provider_name == "fake":
-        return "none (fake provider makes no model call)"
-    return "unknown"
-
-
-def _cmd_do_pingpong(
-    goal: str,
-    *,
-    repo: str = ".",
-    builder: str = "fake",
-    reviewer: str = "fake",
-    max_rounds: int = 3,
-    mode: str = "staged",
-    json_output: bool = False,
-    test_command: str = "",
-    provider_timeout_sec: int = 120,
-    timeout_profile: str = "",
-    max_output_chars: int = 50000,
-    keep_staging: bool = False,
-    claude_cli_write_mode: str = "none",
-    task_input: Any = None,
-    scope_data: dict[str, Any] | None = None,
-    scope_validation: Any = None,
-    repair_rounds: int = 0,
-    repair_rounds_source: str = "",
-    stream_evidence: bool = False,
-    budgets: Any = None,
-) -> None:
-    """Run Builder ↔ Reviewer ping-pong loop."""
-    if builder not in _VALID_PINGPONG_PROVIDERS:
-        print(f"Error: invalid --builder: {builder!r}. Allowed: {', '.join(sorted(_VALID_PINGPONG_PROVIDERS))}.", file=sys.stderr)
-        sys.exit(2)
-    if reviewer not in _VALID_PINGPONG_PROVIDERS:
-        print(f"Error: invalid --reviewer: {reviewer!r}. Allowed: {', '.join(sorted(_VALID_PINGPONG_PROVIDERS))}.", file=sys.stderr)
-        sys.exit(2)
-    if mode != "staged":
-        print("Error: only --mode staged is supported.", file=sys.stderr)
-        sys.exit(2)
-    if claude_cli_write_mode not in _VALID_CLI_WRITE_MODES:
-        print(
-            f"Error: invalid --claude-cli-write-mode: {claude_cli_write_mode!r}. "
-            f"Allowed: {', '.join(sorted(_VALID_CLI_WRITE_MODES))}.",
-            file=sys.stderr,
-        )
-        sys.exit(2)
-
-    # Default: if only one side set, use fake for the other
-    effective_builder = builder if builder != "none" else "fake"
-    effective_reviewer = reviewer if reviewer != "none" else "fake"
-
-    from packages.orchestration.pingpong_loop import (
-        export_pingpong_json,
-        run_pingpong,
-        summarize_pingpong,
-    )
-
-    if not json_output:
-        print("Job: ping-pong run")
-        print(f"Mode: {mode}")
-        print(f"Builder: {effective_builder}")
-        print(f"Builder model: {pingpong_effective_model(effective_builder)}")
-        print(f"Reviewer: {effective_reviewer}")
-        print(f"Reviewer model: {pingpong_effective_model(effective_reviewer)}")
-        print(f"Max rounds: {max_rounds}")
-        if test_command:
-            print(f"Test command: {test_command}")
-        if repair_rounds > 0:
-            print(f"Repair rounds: {repair_rounds}")
-        if budgets is not None:
-            print(f"Budgets: {budgets}")
-        print()
-
-    # F018: build a budget-aware stop_check for the bare ping-pong path.
-    _stop_check = None
-    _on_provider_call = None
-    if budgets is not None:
-        from datetime import datetime as _dt
-        from datetime import timezone as _tz
-
-        from packages.orchestration.budget_guard import BudgetCounters as _BC
-        from packages.orchestration.budget_guard import evaluate_budget as _evaluate
-        from packages.orchestration.safe_points import ShouldStopResult as _StopResult
-
-        _pp_started = _dt.now(_tz.utc)
-        _pp_calls = 0
-        _pp_tokens = 0
-        _pp_measured = 0
-        _pp_unmeasured = 0
-
-        def _on_provider_call(attempt):
-            nonlocal _pp_calls, _pp_tokens, _pp_measured, _pp_unmeasured
-            if getattr(attempt, "provider", "fake") == "fake":
-                return
-            _pp_calls += 1
-            ua = getattr(attempt, "usage_actuals", None)
-            if ua is not None:
-                _pp_measured += 1
-                _pp_tokens += (
-                    getattr(ua, "input_tokens", 0) +
-                    getattr(ua, "output_tokens", 0)
-                )
-            else:
-                _pp_unmeasured += 1
-
-        def _stop_check():
-            """The safe-point probe for a run that HAS NO JOB ID.
-
-            Remedy deliberately does not call ``safe_points.should_stop`` here.
-            That function's first act is the OPERATOR stop check, and an
-            operator stop is addressed BY JOB ID: `remedy job stop <id>` writes
-            a request under ``<data_root>/control/<job-id>/``. The bare
-            `remedy do run` ping-pong path mints no job, persists no job
-            record and prints no id, so an operator has no target to name and
-            this run has nothing to look up. The reviewed build asked anyway,
-            with a hardcoded empty id, and ``validate_job_id`` correctly
-            refused it — every budgeted `do run` died with StopControlError
-            "invalid job id ''" before the first provider call (operator
-            dogfooding, 2026-08-25). The fix is to ask the question this path
-            can actually answer, not to weaken the id rule.
-
-            So the BUDGET GUARD is consulted directly, and it is the only
-            safe-point authority a job-less run has. `remedy job run`,
-            which does mint a job id, keeps the full unified check.
-
-            No budget tick is emitted for the same reason: a tick is written to
-            ``<data_root>/runs/<job-id>/`` and there is no job id to file it
-            under. Returning the same ``ShouldStopResult`` shape the unified
-            check returned keeps ``run_pingpong``'s stop handling unchanged.
-            """
-            counters = _BC(
-                provider_calls=_pp_calls,
-                measured_token_total=_pp_tokens,
-                measured_call_count=_pp_measured,
-                unmeasured_call_count=_pp_unmeasured,
-                started_at=_pp_started,
-            )
-            evaluation = _evaluate(budgets, counters)
-            if not evaluation.exhausted:
-                return None
-            limit = evaluation.first_exhausted_limit or "unknown"
-            return _StopResult(
-                should_stop=True,
-                reason=f"budget_exhausted:{limit}",
-                source="budget",
-                budget_evaluation=evaluation,
-            )
-
-    result = run_pingpong(
-        goal,
-        repo,
-        builder_name=effective_builder,
-        reviewer_name=effective_reviewer,
-        max_rounds=max_rounds,
-        timeout_sec=provider_timeout_sec,
-        timeout_profile=timeout_profile,
-        max_output_chars=max_output_chars,
-        test_command=test_command,
-        keep_staging=keep_staging,
-        claude_cli_write_mode=claude_cli_write_mode,
-        task_input=task_input,
-        scope_data=scope_data,
-        scope_validation=scope_validation,
-        repair_rounds=repair_rounds,
-        repair_rounds_source=repair_rounds_source,
-        stream_evidence=stream_evidence,
-        stop_check=_stop_check,
-        on_provider_call=_on_provider_call,
-    )
-
-    data = export_pingpong_json(result)
-
-    # Inject scope plan data into report
-    if scope_data and scope_validation:
-        from packages.orchestration.scope_plan import (
-            build_scope_report_data,
-            check_scope_hints,
-        )
-        hints = check_scope_hints(
-            result.staged_files,
-            result.safe_diff_summary,
-            approved_features=scope_validation.approved_features,
-            denied_features=scope_validation.denied_features,
-            deferred_features=scope_validation.deferred_features,
-            backlog_features=scope_validation.backlog_features,
-        )
-        data["scope_plan"] = build_scope_report_data(
-            scope_data, scope_validation, scope_hints=hints,
-        )
-    else:
-        data["scope_plan"] = None
-
-    if json_output:
-        print(json.dumps(data, indent=2))
-    else:
-        print(summarize_pingpong(result))
-        # Scope summary in text report
-        if scope_validation:
-            _print_scope_summary(scope_validation)
 
 
 def _cmd_run_show(
@@ -1006,21 +643,6 @@ def _print_text_report(run_id: str, data: dict) -> None:
         if rv:
             print(f"Reviewer verdict: {rv.get('verdict', 'none')}")
 
-    # Scope summary (Step 4717)
-    sp = data.get("scope_plan")
-    if sp:
-        approved = [f["id"] for f in sp.get("approved_features", [])]
-        denied = [f["id"] for f in sp.get("denied_features", [])]
-        deferred = [f["id"] for f in sp.get("deferred_features", [])]
-        backlog = [f["id"] for f in sp.get("backlog_features", [])]
-        pending = [f["id"] for f in sp.get("pending_features", [])]
-        print("\nScope:")
-        print(f"  Approved: {', '.join(approved) if approved else 'none'}")
-        print(f"  Denied: {', '.join(denied) if denied else 'none'}")
-        print(f"  Deferred: {', '.join(deferred) if deferred else 'none'}")
-        print(f"  Backlog: {', '.join(backlog) if backlog else 'none'}")
-        print(f"  Pending: {', '.join(pending) if pending else 'none'}")
-
     # Target mutation
     mutated = data.get("target_mutated", False)
     print(f"Target touched during run: {'yes' if mutated else 'no'}")
@@ -1077,21 +699,6 @@ def _parse_fixture_builder(val: object) -> bool | str:
         file=sys.stderr,
     )
     sys.exit(2)
-
-
-def _print_scope_summary(validation: Any) -> None:
-    """Print concise scope summary for text report."""
-    print("\nScope:")
-    approved = [f.id for f in validation.approved_features]
-    denied = [f.id for f in validation.denied_features]
-    deferred = [f.id for f in validation.deferred_features]
-    backlog = [f.id for f in validation.backlog_features]
-    pending = [f.id for f in validation.pending_features]
-    print(f"  Approved: {', '.join(approved) if approved else 'none'}")
-    print(f"  Denied: {', '.join(denied) if denied else 'none'}")
-    print(f"  Deferred: {', '.join(deferred) if deferred else 'none'}")
-    print(f"  Backlog: {', '.join(backlog) if backlog else 'none'}")
-    print(f"  Pending: {', '.join(pending) if pending else 'none'}")
 
 
 def _cmd_job_run(
@@ -1369,22 +976,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False),
         fixture_builder=_parse_fixture_builder(getattr(args, "fixture_builder", "false")),
         builder_provider=_parse_builder_provider(getattr(args, "builder_provider", "none")),
-        builder=getattr(args, "builder", None) or "none",
-        reviewer=getattr(args, "reviewer", None) or "none",
-        max_rounds=int(getattr(args, "max_rounds", None) or 3),
-        mode=getattr(args, "mode", None) or "staged",
-        test_command=getattr(args, "test_command", None) or "",
-        provider_timeout_sec=_resolve_timeout_precedence(int(getattr(args, "provider_timeout_sec")) if getattr(args, "provider_timeout_sec", None) is not None else None, getattr(args, "timeout_profile", None))[0],
-        timeout_profile=_resolve_timeout_precedence(int(getattr(args, "provider_timeout_sec")) if getattr(args, "provider_timeout_sec", None) is not None else None, getattr(args, "timeout_profile", None))[1],
-        max_output_chars_val=int(getattr(args, "max_output_chars", None) or 50000),
-        keep_staging=getattr(args, "keep_staging", False),
-        claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None) or "none",
-        task_file=getattr(args, "task_file", None) or "",
-        task_stdin=getattr(args, "task_stdin", False),
-        scope_file=getattr(args, "scope_file", None) or "",
-        approve_scope=getattr(args, "approve_scope", False),
-        repair_rounds=getattr(args, "repair_rounds", None),
-        stream_evidence=getattr(args, "stream_evidence", False),
         max_total_tokens=getattr(args, "max_total_tokens", None),
         max_provider_calls=getattr(args, "max_provider_calls", None),
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),

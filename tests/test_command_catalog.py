@@ -387,3 +387,40 @@ class TestDeletedCommands:
 
         dispatch = _get_dispatch_table()
         assert [cid for cid in self.DELETED if cid in dispatch] == []
+
+
+class TestDeletedFlags:
+    """F280 deletes a flag outright too: no alias and no hidden spelling (DECISIONs F280 D1 and D2).
+
+    Each pair names the command that lost the flag. That command survives, so the guard first
+    requires it to exist: a renamed or deleted entry would otherwise let every absence pass.
+    """
+
+    DELETED = (
+        ("do.run", "--approve-scope"),
+        ("do.run", "--builder"),
+        ("do.run", "--claude-cli-write-mode"),
+        ("do.run", "--keep-staging"),
+        ("do.run", "--max-output-chars"),
+        ("do.run", "--max-rounds"),
+        ("do.run", "--mode"),
+        ("do.run", "--provider-timeout-sec"),
+        ("do.run", "--repair-rounds"),
+        ("do.run", "--reviewer"),
+        ("do.run", "--scope-file"),
+        ("do.run", "--stream-evidence"),
+        ("do.run", "--task-file"),
+        ("do.run", "--task-stdin"),
+        ("do.run", "--test-command"),
+        ("do.run", "--timeout-profile"),
+        ("job.run", "--builder"),
+        ("job.run", "--reviewer"),
+    )
+
+    def test_every_named_command_is_still_in_the_catalog(self) -> None:
+        catalog_ids = {cmd.command_id for cmd in CATALOG}
+        assert sorted({cid for cid, _flag in self.DELETED} - catalog_ids) == []
+
+    def test_no_deleted_flag_is_declared_by_its_command(self) -> None:
+        declared = {(cmd.command_id, arg.name) for cmd in CATALOG for arg in cmd.args}
+        assert [pair for pair in self.DELETED if pair in declared] == []

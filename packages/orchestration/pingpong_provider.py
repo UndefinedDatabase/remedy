@@ -450,7 +450,7 @@ class ClaudeProvider:
         if not api_key:
             raise RuntimeError(
                 "ANTHROPIC_API_KEY not set. "
-                "Set it to use --builder claude or --reviewer claude."
+                "Set it to use --builder-provider claude or --reviewer-provider claude."
             )
         try:
             import anthropic
@@ -1099,7 +1099,7 @@ class ClaudeCliProvider:
         if not path:
             raise RuntimeError(
                 "claude CLI not found on PATH. "
-                "Install Claude Code CLI to use --builder claude-cli or --reviewer claude-cli."
+                "Install Claude Code CLI to use --builder-provider claude-cli or --reviewer-provider claude-cli."
             )
         self._claude_path = path
         return path
