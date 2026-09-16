@@ -121,7 +121,6 @@ GROUPS: dict[str, GroupDef] = {
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False),
     "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
     "brain": GroupDef("brain", "Brain", "Inspect the project brain graph.", user_facing=False),
-    "policy": GroupDef("policy", "Policy", "Inspect execution policies.", user_facing=False),
     "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded run-loop facade (internal).", user_facing=False),
     "context": GroupDef("context", "Context", "Context pack and coverage.", user_facing=False),
     "change": GroupDef("change", "Change", "Review change sets (proof chain view).", user_facing=False),
@@ -837,38 +836,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--out", "Output directory path", required=True, is_option=True),
         ),
         related=("brain.open", "brain.viewer-path"),
-    ),
-
-    # ── policy ───────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="policy.contract",
-        group_id="policy",
-        subcommand="contract",
-        description="Show the run contract for a job.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("policy.token",),
-    ),
-    CommandEntry(
-        command_id="policy.token",
-        group_id="policy",
-        subcommand="token",
-        description="Show the token routing policy for a job.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("policy.contract", "policy.token-explain"),
-    ),
-    CommandEntry(
-        command_id="policy.token-explain",
-        group_id="policy",
-        subcommand="token-explain",
-        description="Explain the token economy policy (text only).",
-        action_class="read_only",
-        args=(),
-        supports_json=False,
-        related=("policy.token",),
     ),
 
     # ── worker ───────────────────────────────────────────────────────────

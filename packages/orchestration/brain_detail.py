@@ -1112,7 +1112,8 @@ def _detail_run_contract(
         ),
         affected_files=(),
         next_actions=(
-            "Inspect with `remedy policy contract <job_id>` for full contract details.",
+            "Read the boundary as permissions and fences with "
+            "`remedy job show <job_id> --full --json`.",
         ),
         redaction_notes=("No sensitive data in run contract.",),
     )
@@ -1153,9 +1154,7 @@ def _detail_token_policy(
             f"expensive_step_count: {expensive_count}",
         ),
         affected_files=(),
-        next_actions=(
-            "Inspect with `remedy policy token <job_id>` for full policy details.",
-        ),
+        next_actions=(),
         redaction_notes=("No sensitive data in token policy.",),
     )
 

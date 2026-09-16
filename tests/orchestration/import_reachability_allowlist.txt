@@ -27,7 +27,6 @@ apps.cli.commands.job_stop_cmd
 apps.cli.commands.memory
 apps.cli.commands.mission_cmd
 apps.cli.commands.patch
-apps.cli.commands.policy
 apps.cli.commands.project
 apps.cli.commands.propose_cmd
 apps.cli.commands.real_test_execution_cmd

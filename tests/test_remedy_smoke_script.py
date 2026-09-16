@@ -1084,91 +1084,10 @@ class TestSmokeScriptText:
             "smoke 12p must verify repo nodes have repo_basename (no full path)"
         )
 
-    # --- Step 35: Run Contract (step 12a) -----------------------------------
-
-    def test_smoke_has_run_contract_check(self):
-        text = _script_text()
-        assert "policy contract" in text, (
-            "smoke must call remedy policy contract as part of Step 35"
-        )
-
-    def test_smoke_run_contract_checks_json_keys(self):
-        text = _script_text()
-        assert "autonomy_level" in text, (
-            "smoke step 12a must validate autonomy_level in run-contract JSON"
-        )
-
-    def test_smoke_run_contract_checks_allowed_actions(self):
-        text = _script_text()
-        assert "allowed_actions" in text, (
-            "smoke step 12a must validate allowed_actions in run-contract JSON"
-        )
-
-    def test_smoke_run_contract_checks_scope_job(self):
-        text = _script_text()
-        assert "scope" in text and "'job'" in text, (
-            "smoke step 12a must validate scope == 'job' in run-contract JSON"
-        )
-
-    def test_smoke_run_contract_checks_autonomy_int(self):
-        text = _script_text()
-        assert "autonomy_level" in text and "int" in text, (
-            "smoke step 12a must validate autonomy_level is int"
-        )
-
-    def test_smoke_run_contract_checks_forbidden_strings(self):
-        text = _script_text()
-        assert "approval_reason" in text and "diff_preview" in text, (
-            "smoke step 12a must check forbidden strings in run-contract JSON"
-        )
-
-    # --- Step 36: Token Policy (step 12b) -----------------------------------
-
-    def test_smoke_has_token_policy_check(self):
-        text = _script_text()
-        assert "policy token" in text, (
-            "smoke must call remedy policy token as part of Step 36"
-        )
-
-    def test_smoke_token_policy_checks_zero_token(self):
-        text = _script_text()
-        assert "zero_token_steps" in text, (
-            "smoke step 12b must validate zero_token_steps in token-policy JSON"
-        )
-
-    def test_smoke_token_policy_checks_command_discovery_zero_token(self):
-        text = _script_text()
-        assert "command_discovery" in text, (
-            "smoke step 12b must verify command_discovery is a zero-token step"
-        )
-
-    def test_smoke_token_policy_checks_scope_job(self):
-        text = _script_text()
-        assert "scope" in text, (
-            "smoke step 12b must validate scope in token-policy JSON"
-        )
-
-    def test_smoke_token_policy_checks_forbidden_context(self):
-        text = _script_text()
-        assert "forbidden_context" in text, (
-            "smoke step 12b must validate forbidden_context in token-policy JSON"
-        )
-
-    def test_smoke_token_policy_uses_precise_blocklist(self):
-        """Smoke 12b must use precise secret patterns, not dumb substring bans."""
-        text = _script_text()
-        # Must contain precise patterns
-        for pattern in ("sk-", "ghp_", "password="):
-            assert pattern in text, (
-                f"smoke step 12b must use precise pattern '{pattern}' for leak detection"
-            )
-        # The old false-positive pattern must not appear in the 12b section
-        idx_12b = text.index("12b")
-        section = text[idx_12b:idx_12b + 2000]
-        assert "'api_key'" not in section, (
-            "smoke 12b must not use bare 'api_key' as forbidden — "
-            "false-positives on category name 'api_keys'"
-        )
+    # Smoke sections 12a and 12b — the run-contract and token-policy JSON checks —
+    # and the token-policy half of section 12s were DELETED at F261 round 17 with the
+    # three commands they called (`policy contract`, `policy token` and
+    # `policy token-explain`). Their twelve text-presence guards went with them.
 
     # --- Step 37: Worker Adapters (step 12c) --------------------------------
 
@@ -1196,30 +1115,9 @@ class TestSmokeScriptText:
             "smoke step 12c must check for 'providers' key in workers JSON envelope"
         )
 
-    # --- Step 35-37: Run-log schema (step 12e) ----------------------------
-
-    def test_smoke_has_run_log_schema_step_12e(self):
-        text = _script_text()
-        assert "run_contract_inspected" in text, (
-            "smoke step 12e must verify run_contract_inspected run-log schema"
-        )
-        assert "token_policy_inspected" in text, (
-            "smoke step 12e must verify token_policy_inspected run-log schema"
-        )
-
-    def test_smoke_run_log_checks_exact_rc_keys(self):
-        text = _script_text()
-        for key in ("allowed_action_count", "denied_action_count", "max_loops"):
-            assert key in text, (
-                f"smoke step 12e must verify run_contract_inspected key '{key}'"
-            )
-
-    def test_smoke_run_log_checks_exact_tp_keys(self):
-        text = _script_text()
-        for key in ("zero_token_step_count", "local_first_step_count", "expensive_step_count"):
-            assert key in text, (
-                f"smoke step 12e must verify token_policy_inspected key '{key}'"
-            )
+    # Smoke section 12e — the run-log schema of `run_contract_inspected` and
+    # `token_policy_inspected` — was DELETED at F261 round 17 with the only command
+    # that emitted either event. Its three guards went with it.
 
     # --- Step 35-37: Brain node integration (step 12d) ----------------------
 

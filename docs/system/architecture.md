@@ -2791,8 +2791,9 @@ It is an execution boundary, not a capability promise.
 
 ### CLI
 
-- `remedy policy contract <job_id>` — text summary.
-- `remedy policy contract <job_id> --json` — pure JSON.
+None since F261 round 17 deleted the `policy` group. The contract is still built
+by `build_default_run_contract` and read by `do run`, the repair loop and the test
+execution service; the run-log event below has had no emitter since that round.
 
 ### Run-log event
 
@@ -2844,8 +2845,9 @@ A `TokenPolicy` classifies job steps by token cost tier:
 
 ### CLI
 
-- `remedy policy token <job_id>` — text summary.
-- `remedy policy token <job_id> --json` — pure JSON.
+None since F261 round 17 deleted the `policy` group. The policy is still built by
+`build_default_token_policy` for the brain graph and the autonomy loop; the run-log
+event below has had no emitter since that round.
 
 ### Run-log event
 

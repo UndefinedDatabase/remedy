@@ -889,91 +889,7 @@ print('    index.html: OK')
 " "${VIEW_DIR}"
 
     # -------------------------------------------------------------------------
-    # 12a. Assert: remedy policy contract --json (Step 35)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12a"
-    echo "--- 12a. remedy policy contract --json"
-    python3 -c "
-import subprocess, json, sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: policy contract: ' + msg, file=sys.stderr)
-        sys.exit(1)
-result = subprocess.run(
-    ['python3', '-m', 'apps.cli.grouped', 'policy', 'contract', '${JOB_ID}', '--json'],
-    capture_output=True, text=True
-)
-if result.returncode != 0:
-    print('ERROR: policy contract exited ' + str(result.returncode), file=sys.stderr)
-    print(result.stderr, file=sys.stderr)
-    sys.exit(1)
-data = json.loads(result.stdout)
-chk('version' in data, 'missing version')
-chk('job_id' in data, 'missing job_id')
-chk('autonomy_level' in data, 'missing autonomy_level')
-chk('scope' in data, 'missing scope')
-chk('allowed_actions' in data, 'missing allowed_actions')
-chk('denied_actions' in data, 'missing denied_actions')
-chk(data['version'] == 1, 'version != 1')
-chk(isinstance(data['autonomy_level'], int), 'autonomy_level not int')
-chk(data['autonomy_level'] == 1, 'autonomy_level != 1')
-chk(data['scope'] == 'job', 'scope != job')
-chk(isinstance(data['allowed_actions'], list), 'allowed_actions not list')
-chk(isinstance(data['denied_actions'], list), 'denied_actions not list')
-# Forbidden strings in run-contract JSON
-rc_str = json.dumps(data).lower()
-for bad in ('approval_reason', 'diff_preview', 'command_output', 'traceback', 'raw_stdout', 'raw_stderr'):
-    chk(bad not in rc_str, 'run-contract JSON contains forbidden: ' + bad)
-print('    policy contract JSON: OK')
-"
-
-    # -------------------------------------------------------------------------
-    # 12b. Assert: remedy policy token --json (Step 36)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12b"
-    echo "--- 12b. remedy policy token --json"
-    python3 -c "
-import subprocess, json, sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: policy token: ' + msg, file=sys.stderr)
-        sys.exit(1)
-result = subprocess.run(
-    ['python3', '-m', 'apps.cli.grouped', 'policy', 'token', '${JOB_ID}', '--json'],
-    capture_output=True, text=True
-)
-if result.returncode != 0:
-    print('ERROR: policy token exited ' + str(result.returncode), file=sys.stderr)
-    print(result.stderr, file=sys.stderr)
-    sys.exit(1)
-data = json.loads(result.stdout)
-chk('version' in data, 'missing version')
-chk('scope' in data, 'missing scope')
-chk('zero_token_steps' in data, 'missing zero_token_steps')
-chk('local_first_steps' in data, 'missing local_first_steps')
-chk('expensive_model_steps' in data, 'missing expensive_model_steps')
-chk('forbidden_context' in data, 'missing forbidden_context')
-chk('budget' in data, 'missing budget')
-chk(data['scope'] == 'job', 'scope != job')
-chk(isinstance(data['zero_token_steps'], list), 'zero_token_steps not list')
-chk('command_discovery' in data['zero_token_steps'], 'command_discovery not zero-token')
-# forbidden_context must contain redaction-related strings
-fc_lower = [s.lower() for s in data['forbidden_context']]
-fc_joined = ' '.join(fc_lower)
-chk('command output' in fc_joined or 'command_output' in fc_joined, 'forbidden_context missing command output')
-chk('raw stdout' in fc_joined or 'raw_stdout' in fc_joined, 'forbidden_context missing raw stdout')
-chk('raw stderr' in fc_joined or 'raw_stderr' in fc_joined, 'forbidden_context missing raw stderr')
-chk('artifact' in fc_joined, 'forbidden_context missing artifact')
-# token-policy JSON must NOT contain leaking tokens/secrets.
-# Category names like 'api_keys', 'environment_secrets' are ALLOWED —
-# only actual secret patterns are forbidden.
-tp_str = json.dumps(data).lower()
-for bad in ('sk-', 'ghp_', 'xoxb-', 'begin private key', 'password=', 'api_key=', 'secret=', 'traceback (most recent'):
-    chk(bad not in tp_str, 'token-policy JSON contains forbidden: ' + bad)
-print('    policy token JSON: OK')
-"
-
-    # -------------------------------------------------------------------------
+    # 12c. Assert: remedy worker list --json (Step 37)
     # 12c. Assert: remedy worker list --json (Step 37)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12c"
@@ -1038,46 +954,7 @@ print('    brain nodes: run_contract, token_policy, worker_adapter: OK')
 "
 
     # -------------------------------------------------------------------------
-    # 12e. Assert: run-log schema for run_contract_inspected and token_policy_inspected
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12e"
-    echo "--- 12e. run-log schema: run_contract_inspected + token_policy_inspected"
-    python3 -c "
-import json, sys
-from pathlib import Path
-job_id   = sys.argv[1]
-runs_dir = Path(sys.argv[2]) / job_id
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: run-log schema: ' + msg, file=sys.stderr)
-        sys.exit(1)
-rc_events = []
-tp_events = []
-if runs_dir.exists():
-    for f in sorted(runs_dir.glob('*.jsonl')):
-        for line in f.read_text().splitlines():
-            if line.strip():
-                ev = json.loads(line)
-                if ev.get('event') == 'run_contract_inspected':
-                    rc_events.append(ev)
-                elif ev.get('event') == 'token_policy_inspected':
-                    tp_events.append(ev)
-chk(len(rc_events) >= 1, 'no run_contract_inspected events')
-chk(len(tp_events) >= 1, 'no token_policy_inspected events')
-# run_contract_inspected: exact metadata keys
-rc_required = frozenset({'autonomy_level', 'allowed_action_count', 'denied_action_count', 'max_loops', 'scope'})
-for ev in rc_events:
-    got = frozenset(ev.get('metadata', {}).keys())
-    chk(got == rc_required, 'run_contract_inspected keys: got=' + str(sorted(got)) + ' want=' + str(sorted(rc_required)))
-# token_policy_inspected: exact metadata keys
-tp_required = frozenset({'scope', 'zero_token_step_count', 'local_first_step_count', 'expensive_step_count'})
-for ev in tp_events:
-    got = frozenset(ev.get('metadata', {}).keys())
-    chk(got == tp_required, 'token_policy_inspected keys: got=' + str(sorted(got)) + ' want=' + str(sorted(tp_required)))
-print('    run-log schema: OK  rc_events=' + str(len(rc_events)) + '  tp_events=' + str(len(tp_events)))
-" "${JOB_ID}" "${RUNS_ROOT}"
-
-    # -------------------------------------------------------------------------
+    # 12f. Memory CLI contract (Step 46.1 Part B)
     # 12f. Memory CLI contract (Step 46.1 Part B)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12f"
@@ -1476,39 +1353,7 @@ print('    change list: OK (count=' + str(len(data['changes'])) + ')')
     # 12s. Token policy (Step 56)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12s"
-    echo "--- 12s. Token policy"
-    # Token policy required fields
-    TP_JSON="$(remedy policy token "${JOB_ID}" --json)"
-    python3 -c "
-import json, sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: token policy: ' + msg, file=sys.stderr)
-        sys.exit(1)
-data = json.loads(sys.argv[1])
-for key in ['version', 'default_mode', 'max_context_tokens', 'local_first',
-            'remote_model_requires_approval', 'prefer_zero_token_tools', 'prohibited_payloads']:
-    chk(key in data, 'missing ' + key)
-chk(data['version'] == 1, 'version must be 1')
-chk(data['local_first'] is True, 'local_first must be true')
-chk(data['remote_model_requires_approval'] is True, 'remote must require approval')
-chk(isinstance(data['prohibited_payloads'], list), 'prohibited_payloads must be list')
-print('    token policy: OK (mode=' + data['default_mode'] + ', max=' + str(data['max_context_tokens']) + ')')
-" "${TP_JSON}"
-
-    # Token policy explain
-    remedy policy token-explain | python3 -c "
-import sys
-text = sys.stdin.read()
-if 'Zero-token' not in text:
-    print('ERROR: token explain must mention zero-token', file=sys.stderr)
-    sys.exit(1)
-if 'Local-first' not in text:
-    print('ERROR: token explain must mention local-first', file=sys.stderr)
-    sys.exit(1)
-print('    token explain: OK')
-"
-
+    echo "--- 12s. Token policy applied"
     # token_policy_applied run-log event
     python3 -c "
 import json, sys

@@ -76,24 +76,7 @@ def build_guidance_cards(
     except (ImportError, Exception):
         pass
 
-    # 3. Token policy
-    try:
-        from packages.orchestration.token_policy import build_default_token_policy
-        tp = build_default_token_policy(job)
-        budget = tp.budget.get("expensive_tokens", 100_000)
-        cards.append(GuidanceCard(
-            id="token_policy",
-            title="Token budget active",
-            severity="info",
-            why_it_matters=f"Budget: {budget:,} tokens.",
-            safe_next_action="Review token policy.",
-            command=f"remedy policy token {job_id} --json",
-            related_node_type="token_policy",
-        ))
-    except (ImportError, Exception):
-        pass
-
-    # 4. Test status
+    # 3. Test status
     has_tests = any(t.status == RunState.COMPLETED for t in (job.tasks or []))
     failed_tasks = [t for t in (job.tasks or []) if t.status == RunState.FAILED]
     if failed_tasks:
@@ -117,7 +100,7 @@ def build_guidance_cards(
             related_node_type="task",
         ))
 
-    # 5. Brain viewer
+    # 4. Brain viewer
     cards.append(GuidanceCard(
         id="viewer",
         title="Open brain viewer",

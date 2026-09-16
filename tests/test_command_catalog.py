@@ -197,7 +197,6 @@ class TestCatalogJSONSupport:
     def test_known_json_commands(self) -> None:
         expected_json = {
             "brain.graph", "brain.node", "brain.context",
-            "policy.contract", "policy.token",
             "worker.list", "test.discover",
             "project.show", "project.context", "patch.list",
         }
@@ -237,7 +236,7 @@ class TestCatalogLookups:
 
 
 class TestRequiredGroups:
-    REQUIRED = ("job", "project", "patch", "test", "brain", "policy", "worker", "ui", "dev")
+    REQUIRED = ("job", "project", "patch", "test", "brain", "worker", "ui", "dev")
 
     def test_all_required_groups_exist(self) -> None:
         for gid in self.REQUIRED:
@@ -255,7 +254,6 @@ class TestRequiredCommands:
         "test.discover", "test.run",
         "brain.graph", "brain.node", "brain.view", "brain.context",
         "brain.trust", "brain.timeline",
-        "policy.contract", "policy.token",
         "worker.list",
         "ui.start", "ui.latest", "ui.status", "ui.stop", "ui.open",
     )
@@ -333,6 +331,9 @@ class TestDeletedCommands:
         "orchestrator.idea",
         "orchestrator.inspect",
         "orchestrator.report",
+        "policy.contract",
+        "policy.token",
+        "policy.token-explain",
         "queue.add",
         "queue.list",
         "queue.reclaim",
