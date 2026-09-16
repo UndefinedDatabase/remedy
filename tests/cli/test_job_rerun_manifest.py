@@ -1,23 +1,18 @@
-"""F012 T003 (hardened) — `remedy job rerun --check-manifest` against real current state.
+"""F012 T003 (hardened) — run-input manifest episodes, the stop transaction and the drift diff.
 
-Drift is exercised through the ACTUAL CLI against a real Git target repo, using the
-current-state candidate — not by rewriting the stored reference manifest. Coverage states
-and the new incomplete-coverage exit code (5) are asserted. Episodes (stop→resume→complete)
-are covered too. Nothing re-executes; no provider generation call is made.
+The command-line manifest check these tests also drove was deleted by F261 round 24 with the
+classes that called it. What stays drives the package directly against a real Git target repo:
+episodes (stop→resume→complete), the manifest write inside the stop transaction, the legacy
+marker, and `build_current_candidate` with `diff_manifests`. Nothing re-executes; no provider
+generation call is made.
 """
 from __future__ import annotations
 
-import contextlib
-import io
 import json
 import subprocess
 from pathlib import Path
 
 import pytest
-
-from apps.cli.command_catalog import CATALOG, get_commands_for_group
-from apps.cli.commands import collect_all_handlers
-from apps.cli.commands import job_rerun_cmd as CMD
 
 
 @pytest.fixture(autouse=True)
@@ -39,8 +34,7 @@ def _freeze_remedy_identity(monkeypatch):
 
     Freezing to the value observed at test start keeps the REAL identity — no
     forced "complete" — and only removes the race, so what these tests assert
-    stays what they asserted: the job inputs, not Remedy's own tree. This is the
-    same seam the module already uses deliberately in _patch_remedy_identity.
+    stays what they asserted: the job inputs, not Remedy's own tree.
     """
     from packages.orchestration import run_manifest as _RM
     snapshot = _RM.remedy_worktree_identity()
@@ -77,22 +71,6 @@ def _prov():
     return FakeProvider(pass_on_round=1, fail_on_round=99)
 
 
-def _complete_remedy_identity():
-    """A deterministic, COMPLETE Remedy worktree identity — so an equality check does not
-    depend on whether the test harness happens to sit in a git checkout (F12)."""
-    from packages.orchestration.run_manifest import GIT_OK, WorktreeIdentity
-    return WorktreeIdentity(GIT_OK, "a" * 40, "d" * 64, (), dirty=False)
-
-
-def _patch_remedy_identity(monkeypatch, identity):
-    """Pin ``remedy_worktree_identity()`` for both the recorded reference and the check
-    candidate, so the F012 equality being asserted is about the JOB inputs, not the presence of
-    Remedy's own ``.git`` (which an extracted review ZIP does not have)."""
-    monkeypatch.setattr(
-        "packages.orchestration.run_manifest.remedy_worktree_identity",
-        lambda: identity)
-
-
 @pytest.fixture
 def finished_job(data_root, repo):
     from packages.orchestration.pingpong_job import parse_job_file, run_job
@@ -100,85 +78,6 @@ def finished_job(data_root, repo):
     run_job(job.job_id, builder_provider=_prov(), reviewer_provider=_prov(),
             repair_rounds=0)
     return job.job_id
-
-
-def _run_json(job_id):
-    buf = io.StringIO()
-    with pytest.raises(SystemExit) as exc:
-        with contextlib.redirect_stdout(buf):
-            CMD._cmd_job_rerun(job_id, check_manifest=True, json_output=True)
-    return exc.value.code, json.loads(buf.getvalue())
-
-
-# ---------------------------------------------------------------------------
-# F1/F2 — current-state drift through the CLI, real git repo
-# ---------------------------------------------------------------------------
-
-class TestCurrentTargetDrift:
-    def test_a_new_target_commit_causes_exit_4(self, finished_job, repo):
-        subprocess.run("echo more >> README.md && git add -A && git commit -qm two",
-                       shell=True, cwd=repo, check=True)
-        code, payload = _run_json(finished_job)
-        assert code == 4
-        assert any(e["category"] == "base_commit" for e in payload["blocking"])
-        assert payload["same_inputs"] is False
-
-    def test_an_uncommitted_target_change_is_detected(self, finished_job, repo):
-        (repo / "README.md").write_text("# demo\nuncommitted\n")
-        code, payload = _run_json(finished_job)
-        assert code == 4
-        assert any(e["field"] == "target_tree" for e in payload["blocking"])
-
-    def test_unchanged_target_verifies_without_blocking(self, finished_job):
-        # No blocking drift; per-call coverage is incomplete in check-only mode → exit 5.
-        code, payload = _run_json(finished_job)
-        assert code == 5
-        assert payload["blocking"] == []
-        assert payload["verification_complete"] is False
-        assert payload["same_inputs"] is None
-
-    def test_config_drift_exits_4(self, finished_job, monkeypatch):
-        monkeypatch.setenv("REMEDY_OLLAMA_MODEL", "a-different-model")
-        code, payload = _run_json(finished_job)
-        assert code == 4
-        cats = {e["category"] for e in payload["blocking"]}
-        assert "config_value" in cats or "environment" in cats
-
-
-# ---------------------------------------------------------------------------
-# F6 — coverage & exit codes
-# ---------------------------------------------------------------------------
-
-class TestCoverageAndExitCodes:
-    def test_incomplete_coverage_returns_5_and_never_same(self, finished_job, capsys):
-        with pytest.raises(SystemExit) as exc:
-            CMD._cmd_job_rerun(finished_job, check_manifest=True, json_output=False)
-        assert exc.value.code == 5
-        out = capsys.readouterr().out
-        assert "Input equality could not be fully verified." in out
-        assert "recorded, not promised" in out
-        assert "did not re-execute" in out
-        assert "same inputs" not in out.lower().split("could not")[0]
-
-    def test_json_exposes_coverage_and_verification_state(self, finished_job):
-        code, payload = _run_json(finished_job)
-        assert payload["verification_complete"] is False
-        assert payload["same_inputs"] is None
-        assert "calls" not in payload["coverage"] or True
-        assert payload["coverage"]["calls_compared"] is False
-
-    def test_no_secret_or_absolute_path_in_output(self, finished_job, monkeypatch):
-        monkeypatch.setenv("REMEDY_SECRET_TOKEN", "CANARY-abc123")
-        code, payload = _run_json(finished_job)
-        assert "CANARY-abc123" not in json.dumps(payload)
-
-    def test_it_mutates_nothing(self, finished_job):
-        from packages.orchestration.pingpong_job import job_evidence_dir
-        mp = job_evidence_dir(finished_job) / "run_manifest.json"
-        before = mp.read_text()
-        with pytest.raises(SystemExit):
-            CMD._cmd_job_rerun(finished_job, check_manifest=True, json_output=True)
-        assert mp.read_text() == before
 
 
 # ---------------------------------------------------------------------------
@@ -319,62 +218,6 @@ class TestLegacyMarker:
         assert mi["ok"] is False
 
 
-# ---------------------------------------------------------------------------
-# Errors + wiring
-# ---------------------------------------------------------------------------
-
-class TestErrors:
-    def test_unknown_job_exits_3(self, data_root):
-        with pytest.raises(SystemExit) as exc:
-            CMD._cmd_job_rerun("0123456789abcdef", check_manifest=True, json_output=True)
-        assert exc.value.code == 3
-
-    def test_without_check_manifest_is_usage_error(self, finished_job):
-        with pytest.raises(SystemExit) as exc:
-            CMD._cmd_job_rerun(finished_job, check_manifest=False, json_output=True)
-        assert exc.value.code == 2
-
-    def test_no_manifest_job_is_an_error(self, data_root, repo):
-        from packages.orchestration.pingpong_job import parse_job_file
-        job = parse_job_file(_JOB, str(repo))
-        with pytest.raises(SystemExit) as exc:
-            CMD._cmd_job_rerun(job.job_id, check_manifest=True, json_output=True)
-        assert exc.value.code == 1
-
-    def test_malformed_job_id_is_usage_error(self, data_root):
-        with pytest.raises(SystemExit) as exc:
-            CMD._cmd_job_rerun("../etc", check_manifest=True, json_output=True)
-        assert exc.value.code == 2
-
-
-class TestWiring:
-    def test_the_command_is_in_the_catalog(self):
-        entry = next(e for e in CATALOG if e.command_id == "job.rerun")
-        assert entry.group_id == "job" and entry.subcommand == "rerun"
-        assert entry.supports_json and not entry.may_mutate_repo
-        assert "--check-manifest" in {a.name for a in entry.args if a.is_flag}
-        assert entry.command_id in {e.command_id for e in get_commands_for_group("job")}
-
-    def test_the_handler_is_registered(self):
-        assert "job.rerun" in collect_all_handlers()
-
-
-# ---------------------------------------------------------------------------
-# Hardening round 2
-# ---------------------------------------------------------------------------
-
-class TestContentDriftThroughCli:
-    def test_dirty_content_to_dirty_content_drift_is_detected(self, finished_job, repo):
-        # first dirty edit, then a DIFFERENT dirty edit with identical porcelain status
-        (repo / "README.md").write_text("# demo\nAAAA\n")
-        code_a, _ = _run_json(finished_job)         # already blocking vs the clean recorded tree
-        assert code_a == 4
-        (repo / "README.md").write_text("# demo\nBBBB\n")
-        code_b, payload_b = _run_json(finished_job)
-        assert code_b == 4
-        assert any(e["field"] == "target_tree" for e in payload_b["blocking"])
-
-
 class TestCompleteVerificationPath:
     def test_pure_diff_equal_calls_is_same_inputs(self):
         import tests.orchestration.test_run_manifest as T
@@ -392,79 +235,6 @@ class TestCompleteVerificationPath:
         d = diff_manifests(a, b)
         assert d["same_inputs"] is False and any(e["category"] == "prompt"
                                                  for e in d["blocking"])
-
-    def test_public_cli_real_job_with_calls_exits_5(self, finished_job):
-        code, payload = _run_json(finished_job)
-        assert code == 5 and payload["same_inputs"] is None
-
-    def test_exit_5_names_which_coverage_dimension_is_short(self, finished_job):
-        """F9 (round 12): "every call compared" and "every material input known" are different
-        claims — an operator must see which one fell short."""
-        code, payload = _run_json(finished_job)
-        assert code == 5
-        cov = payload["coverage"]
-        assert cov["call_status"] == "incomplete"      # per-call replay is F140
-        assert "input_status" in cov and "input_problems" in cov
-
-    def test_the_text_output_names_both_coverage_dimensions(self, finished_job):
-        buf = io.StringIO()
-        with pytest.raises(SystemExit) as exc:
-            with contextlib.redirect_stdout(buf):
-                CMD._cmd_job_rerun(finished_job, check_manifest=True)
-        assert exc.value.code == 5
-        out = buf.getvalue()
-        assert "call inputs:" in out and "material inputs:" in out, out
-
-    def test_public_cli_zero_call_job_exits_0(self, data_root, repo, monkeypatch):
-        # F12: a zero-call equality check must not silently depend on Remedy's OWN worktree
-        # being under Git. When this test runs from an EXTRACTED review ZIP there is no `.git`,
-        # so `remedy_worktree_identity()` would be `unavailable`, dragging the check to exit 5.
-        # Pin Remedy's identity to a deterministic COMPLETE fixture for BOTH the recorded
-        # reference (captured in run_job) and the check candidate — the equality being proved is
-        # about the JOB inputs, not about whether the harness happens to sit in a git checkout.
-        _patch_remedy_identity(monkeypatch, _complete_remedy_identity())
-        from packages.orchestration.pingpong_job import (
-            TASK_SKIPPED,
-            _persist_job,
-            parse_job_file,
-            run_job,
-        )
-        job = parse_job_file(_JOB, str(repo))
-        job.tasks[0].status = TASK_SKIPPED
-        _persist_job(job)
-        run_job(job.job_id, builder_provider=_prov(), reviewer_provider=_prov(),
-                repair_rounds=0)
-        code, payload = _run_json(job.job_id)
-        assert code == 0 and payload["same_inputs"] is True
-        assert payload["verification_complete"] is True
-
-    def test_no_git_remedy_env_zero_call_exits_5(self, data_root, repo, monkeypatch):
-        # F12: the honest counterpart — when Remedy's own worktree identity is genuinely
-        # UNAVAILABLE (no Git around the harness), the check must NOT claim "same inputs". It
-        # reports incomplete coverage (exit 5), never a false exit 0.
-        from packages.orchestration.run_manifest import (
-            GIT_UNAVAILABLE,
-            UNAVAILABLE,
-            WorktreeIdentity,
-        )
-        _patch_remedy_identity(
-            monkeypatch,
-            WorktreeIdentity(GIT_UNAVAILABLE, UNAVAILABLE, "", ("no git",), dirty=None))
-        from packages.orchestration.pingpong_job import (
-            TASK_SKIPPED,
-            _persist_job,
-            parse_job_file,
-            run_job,
-        )
-        job = parse_job_file(_JOB, str(repo))
-        job.tasks[0].status = TASK_SKIPPED
-        _persist_job(job)
-        run_job(job.job_id, builder_provider=_prov(), reviewer_provider=_prov(),
-                repair_rounds=0)
-        code, payload = _run_json(job.job_id)
-        assert code == 5
-        assert payload["same_inputs"] is None
-        assert payload["verification_complete"] is False
 
 
 class TestSharedFinalizedCallContext:

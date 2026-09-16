@@ -19,7 +19,6 @@ _F012_PRODUCTION = [
     "packages/orchestration/call_identity.py",
     "packages/orchestration/job_evidence.py",
     "packages/orchestration/pingpong_job.py",
-    "apps/cli/commands/job_rerun_cmd.py",
 ]
 
 #: The permissive constructors that must never touch disk-loaded data (F14). They are renamed to
@@ -95,7 +94,6 @@ class TestCanonicalHelpersExist:
 _MANIFEST_ONLY_MODULES = [
     "packages/orchestration/manifest_schema.py",
     "packages/orchestration/call_identity.py",
-    "apps/cli/commands/job_rerun_cmd.py",
 ]
 
 #: Substrings naming manifest/index/artifact data. A `json.loads` on a line mentioning one of

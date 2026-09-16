@@ -7,7 +7,7 @@ that combination is corruption, and it is refused by the CANONICAL LOADER itself
 second Evidence-only rule layered on top.
 
 A CURRENT CANDIDATE is the opposite: it is reconstructed from live state and may legitimately be
-incomplete, which `remedy job rerun --check-manifest` reports as exit 5.
+incomplete, which `diff_manifests` reports as incomplete coverage.
 """
 from __future__ import annotations
 

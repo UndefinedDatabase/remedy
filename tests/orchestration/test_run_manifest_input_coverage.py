@@ -97,8 +97,7 @@ class TestTheTwoDimensionsAreReportedSeparately:
 
 
 class TestTheCoveragePayloadNamesTheShortDimension:
-    """The operator has to be able to see WHICH claim is short. (The CLI text/JSON rendering and
-    the exit codes are proven end-to-end in `tests/cli/test_job_rerun_manifest.py`.)"""
+    """The coverage payload has to say WHICH claim is short."""
 
     def test_the_payload_exposes_both_dimensions(self):
         snap = dataclasses.replace(T._snap(), target_tree=UNAVAILABLE)

@@ -302,7 +302,7 @@ class TestImmutableArtifact:
 
 
 # ---------------------------------------------------------------------------
-# F11 — canonical loader + CLI integrity exit
+# F11 — canonical loader
 # ---------------------------------------------------------------------------
 
 class TestCanonicalLoader:
@@ -318,16 +318,6 @@ class TestCanonicalLoader:
         (ev / MANIFEST_INDEX_FILENAME).write_text(json.dumps(idx))
         with pytest.raises(ManifestError):
             load_latest_manifest_verified(ev, job_id=job_id)
-
-    def test_cli_refuses_inconsistent_tree_with_exit_1(self, data_root, repo):
-        from apps.cli.commands import job_rerun_cmd as CMD
-        job_id, ev = _finished(repo)
-        (ev / MANIFEST_FILENAME).write_text(json.dumps(
-            {**json.loads((ev / MANIFEST_FILENAME).read_text()),
-             "job_input_sha256": "0" * 64}))
-        with pytest.raises(SystemExit) as exc:
-            CMD._cmd_job_rerun(job_id, check_manifest=True, json_output=True)
-        assert exc.value.code == 1
 
 
 # ---------------------------------------------------------------------------

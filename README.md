@@ -260,7 +260,6 @@ remedy job create --plan plan.yaml         # create a job from a plan
 remedy do run <job-id>                     # run the job
 remedy run show <job-id>                   # generate the report
 remedy job stop <job-id>                   # stop at next safe point (F011)
-remedy job rerun <id> --check-manifest     # verify recorded inputs (F012)
 remedy runtime serve                       # start dev-server supervisor (F007)
 ```
 

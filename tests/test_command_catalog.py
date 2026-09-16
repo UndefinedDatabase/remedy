@@ -334,6 +334,7 @@ class TestDeletedCommands:
         "job.pause",
         "job.permissions",
         "job.report",
+        "job.rerun",
         "job.resume-queue",
         "job.status",
         "job.summary",

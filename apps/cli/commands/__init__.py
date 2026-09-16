@@ -42,7 +42,6 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
         integrity_cmd,
         job,
         job_context_cmd,
-        job_rerun_cmd,
         job_stop_cmd,
         memory,
         mission_cmd,
@@ -64,6 +63,6 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
     )
 
     table: dict[str, Callable[[argparse.Namespace], None]] = {}
-    for mod in (init_cmd, job, project, patch, test_cmds, brain, worker, memory, file, change, event, blocker, decision, ui, do_cmd, self_cmd, real_test_execution_cmd, propose_cmd, dev, roadmap_cmd, integrity_cmd, snapshot_cmds, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, stats_ledger_cmd, job_stop_cmd, job_rerun_cmd, job_context_cmd, status_cmd, mission_cmd, bench_cmd, ci_cmd, teach_cmd):
+    for mod in (init_cmd, job, project, patch, test_cmds, brain, worker, memory, file, change, event, blocker, decision, ui, do_cmd, self_cmd, real_test_execution_cmd, propose_cmd, dev, roadmap_cmd, integrity_cmd, snapshot_cmds, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, stats_ledger_cmd, job_stop_cmd, job_context_cmd, status_cmd, mission_cmd, bench_cmd, ci_cmd, teach_cmd):
         table.update(mod.COMMAND_HANDLERS)
     return table

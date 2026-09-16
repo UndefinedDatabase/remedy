@@ -1,15 +1,12 @@
-"""F1/F2/F16 — corrupt disk state becomes a typed CLI integrity Exit 1, never a traceback."""
+"""F1/F2/F16 — corrupt disk state becomes a typed integrity result of the canonical loader, never a traceback."""
 from __future__ import annotations
 
-import contextlib
-import io
 import json
 import os
 import subprocess
 
 import pytest
 
-from apps.cli.commands import job_rerun_cmd as CMD
 from packages.orchestration.pingpong_job import (
     job_evidence_dir,
     parse_job_file,
@@ -49,14 +46,6 @@ def finished(data_root, repo):
     return job.job_id
 
 
-def _run_cli(job_id, json_output=True):
-    buf = io.StringIO()
-    with pytest.raises(SystemExit) as exc:
-        with contextlib.redirect_stdout(buf):
-            CMD._cmd_job_rerun(job_id, check_manifest=True, json_output=json_output)
-    return exc.value.code, buf.getvalue()
-
-
 class TestTypedLoaderNeverThrows:
     def test_malformed_index_is_a_typed_integrity_error(self, finished):
         (job_evidence_dir(finished) / MANIFEST_INDEX_FILENAME).write_text("{bad")
@@ -88,24 +77,3 @@ class TestTypedLoaderNeverThrows:
         job = parse_job_file("# Job: n\n\n## Task 1\nx\n\nAcceptance:\n- y\n", str(repo))
         res = load_latest_manifest_for_cli(job_evidence_dir(job.job_id), job_id=job.job_id)
         assert res.kind == "no_manifest"
-
-
-class TestPublicCliExitsOne:
-    def test_malformed_index_exits_1_json_without_traceback(self, finished):
-        (job_evidence_dir(finished) / MANIFEST_INDEX_FILENAME).write_text("{bad")
-        code, out = _run_cli(finished, json_output=True)
-        assert code == 1
-        assert "Traceback" not in out
-        assert json.loads(out)["error"] == "manifest_integrity"
-
-    def test_malformed_index_exits_1_human_without_traceback(self, finished, capsys):
-        (job_evidence_dir(finished) / MANIFEST_INDEX_FILENAME).write_text("{bad")
-        code, out = _run_cli(finished, json_output=False)
-        assert code == 1 and "Traceback" not in out
-
-    def test_partial_chain_is_integrity_not_no_manifest(self, finished):
-        # mirror present, index removed → partial chain → integrity error, NOT no_manifest
-        (job_evidence_dir(finished) / MANIFEST_INDEX_FILENAME).unlink()
-        code, out = _run_cli(finished, json_output=True)
-        assert code == 1
-        assert json.loads(out)["error"] == "manifest_integrity"

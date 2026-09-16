@@ -326,22 +326,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.show",),
     ),
     CommandEntry(
-        command_id="job.rerun",
-        group_id="job",
-        subcommand="rerun",
-        description="Check a job's recorded run-input manifest against the current would-be inputs (F012 deterministic runs). Does not re-execute the job.",
-        action_class="read_only",
-        supports_json=True,
-        args=(
-            ArgDef("job_id", "Job ID to check"),
-            ArgDef("--check-manifest", "Compare the stored run-input manifest against the current would-be inputs and report drift", required=False, is_option=True, is_flag=True),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("job.show",),
-    ),
-    CommandEntry(
         command_id="job.stop",
         group_id="job",
         subcommand="stop",

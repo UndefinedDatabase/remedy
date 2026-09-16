@@ -7,14 +7,14 @@ target/base identity, models and provider versions actually used), plus the per-
 fingerprints recorded as the episode ran. A job can have several episodes (a stopped attempt,
 then a resumed completed run); a small index names them all and the latest.
 
-The honesty rule is load-bearing and pinned by a docs test and the CLI:
+The honesty rule is load-bearing and pinned by a docs test:
 
     Inputs are reproducible and verified; LLM outputs are recorded, not promised.
 
 What "verified" means precisely:
 
 * the manifest records INPUTS, never a promise about LLM output;
-* `remedy job rerun --check-manifest` freshly reconstructs the CURRENT would-be inputs
+* `build_current_candidate` freshly reconstructs the CURRENT would-be inputs
   (current target HEAD/tree, current config/env/models, current Remedy identity) — it does
   NOT reuse the recorded historical values;
 * per-call assembled-prompt reconstruction that would require a worktree replay (F140) is a
