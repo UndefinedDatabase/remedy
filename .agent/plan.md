@@ -11,15 +11,17 @@ T002 holds, per `docs/roadmap/features/T2_F280.md`.
 
 ## Current Step
 
-ROUND 3 books round 2's PASS with the resolutions of R-0767 and R-0894, registers R-0935 and
-R-0936, and records DECISIONs F280 D3 and D4. Its first table builds `job budget <id> set` over
-the run contract's budget fields and the token budget profile (R-0906, R-0909); its second deletes
-`job fulfill`. D4 defers `job attach-repo` and `job permit`. The worker runs the suite once.
+ROUND 4 books round 3's PASS with the resolutions of R-0906 and R-0909, then moves the four test
+fixtures and the smoke script's job-creation step off the `job create` CLI word by one table: each
+now calls `_cmd_create_job` directly, in-process inside its own subprocess, rather than through
+`apps.cli.main`'s dispatch, so deleting `job create` in a later round breaks none of them. No
+catalog entry, no dispatch table row and no surviving command's behaviour changes; only test and
+tooling wiring moves, so this round needs no DECISION.
 
 ## Next Steps
 
-1. The fixtures and smoke sections moved off `job create`, then `job create` with its hints; the
-   next record books round 3's verdict with the resolutions of R-0906 and R-0909.
+1. `job create` is the next word to delete, with its hints, now that only its own tests and the
+   catalog dispatch table still name it.
 2. `propose`, with the DECISION on the two surviving gates DECISION F261 D22 names.
 3. The `flight_plan` rename; `worker doctor` and `job run --tasks`.
 4. `job attach-repo` and `job permit`, only once a DECISION gives the repository attach and the
@@ -29,8 +31,12 @@ the run contract's budget fields and the token budget profile (R-0906, R-0909); 
 
 ## Risks
 
-- 128 findings are open by distinct id after this round's record; three are High, R-0803,
+- 126 findings are open by distinct id after this round's record; three are High, R-0803,
   R-0804 and R-0807, none of them this feature's.
+- R-0899 (open, owned F273): section 3 of `scripts/remedy_smoke.sh` reads a `state` key `job show`
+  does not print, so its planned-state check fails wherever the script is actually run. This
+  round's table changes the same section's job-creation line only, for the `job create` word; it
+  does not touch the broken key and does not repair R-0899.
 - `job attach-repo` and `job permit` are the only command-line writers of a job's repository
   and of its test and revert grants, so the Acceptance line naming them cannot hold until a
   later DECISION supplies a writer.
