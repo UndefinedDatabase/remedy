@@ -314,7 +314,7 @@ def _detail_job(
     if pending:
         next_actions.append(f"remedy job resume {job_id_str}")
     next_actions.append(f"remedy brain trust {job_id_str}")
-    next_actions.append(f"remedy brain {job_id_str}")
+    next_actions.append(f"remedy brain graph {job_id_str}")
 
     return BrainNodeDetail(
         job_id=job_id_str,
@@ -918,7 +918,7 @@ def _detail_context_coverage(
         affected_files=(),
         next_actions=(
             f"remedy brain context {job_id_str[:8]}",
-            f"remedy brain {job_id_str[:8]}",
+            f"remedy brain graph {job_id_str[:8]}",
             f"remedy brain trust {job_id_str[:8]}",
         ),
         redaction_notes=(

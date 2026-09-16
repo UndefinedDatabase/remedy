@@ -1365,8 +1365,8 @@ Read-only, no side effects, no repo/job/artifact writes, no memory writes, no pa
 ### CLI
 
 ```
-remedy brain <job_id>           # text summary (default)
-remedy brain <job_id> --json    # JSON export (future frontend data source)
+remedy brain graph <job_id>           # text summary (default)
+remedy brain graph <job_id> --json    # JSON export (future frontend data source)
 ```
 
 Loads the job, run events, and Project Constitution (from `target_repo` if attached; silently `None` if absent), builds the graph, and emits a `project_brain_inspected` run-log event.  With `--json`, prints `export_project_brain_json` serialised with `sort_keys=True`; text output and run-log event are otherwise identical.
@@ -1401,7 +1401,7 @@ No frontend, AG-UI, Three.js, or MCP integration is present in Steps 23/23.1.
 
 | View | Purpose |
 |------|---------|
-| Project Brain (`remedy brain`) | Full graph map — all nodes and edges for a job |
+| Project Brain (`remedy brain graph`) | Full graph map — all nodes and edges for a job |
 | **Brain Node Detail (`remedy brain node`)** | **Drill into one node — explanation, connections, evidence, actions** |
 | Cockpit | Current decision/status overview |
 | Timeline | Chronological run-log history |
@@ -1494,7 +1494,7 @@ Step 24.1 hardens the machine-readable contract for the two brain CLI commands a
 
 | Command | `--json` contract | Future consumer |
 |---|---|---|
-| `remedy brain <job_id> --json` | `export_project_brain_json` schema (version, job_id, nodes, edges) | 2D / 3D graph visualisation |
+| `remedy brain graph <job_id> --json` | `export_project_brain_json` schema (version, job_id, nodes, edges) | 2D / 3D graph visualisation |
 | `remedy brain node <job_id> <node_id> --json` | `export_brain_node_detail_json` schema (13 keys) | Click-detail panel for a selected node |
 
 **Invariants enforced and smoke-tested:**
@@ -1506,7 +1506,7 @@ Step 24.1 hardens the machine-readable contract for the two brain CLI commands a
 
 ### Run-log event schemas (exact key sets)
 
-`project_brain_inspected` metadata (set by `remedy brain`):
+`project_brain_inspected` metadata (set by `remedy brain graph`):
 ```json
 { "node_count": N, "edge_count": N, "task_count": N, "patch_intent_count": N }
 ```
@@ -1520,7 +1520,7 @@ Both schemas hold regardless of whether `--json` is used.
 
 ### Future frontend priority (Step 24+)
 
-1. **2D graph** via `remedy brain --json` + `remedy brain node --json` — these JSON contracts are the integration surface for a React Flow / AG-UI / A2UI canvas.
+1. **2D graph** via `remedy brain graph --json` + `remedy brain node --json` — these JSON contracts are the integration surface for a React Flow / AG-UI / A2UI canvas.
 2. **3D** — Three.js / WebGL rendering of the same graph JSON contract.
 3. **MemPalace** — `memory_placeholder` nodes become live semantic memory nodes when the MemPalace layer is implemented (Step 24+).
 4. **MCP Quarantine** — `mcp_placeholder` nodes become live MCP tool nodes when the MCP integration layer is implemented (Step 24+).
@@ -1531,7 +1531,7 @@ No frontend rendering exists in Steps 23–24.1.  The `--json` contracts are the
 
 **Step 24.3** is the final pre-frontend smoke hardening pass (redaction target alignment, raw-stdout sentinel checks, docstring polish).  After Step 24.3 the JSON contract is fully locked.
 
-**Step 25** starts the read-only local Brain Viewer v0.  The viewer must consume only `remedy brain --json` (graph data) and `remedy brain node --json` (node detail data).  It must not call any other CLI output mode, shell command, or internal Python API directly.
+**Step 25** starts the read-only local Brain Viewer v0.  The viewer must consume only `remedy brain graph --json` (graph data) and `remedy brain node --json` (node detail data).  It must not call any other CLI output mode, shell command, or internal Python API directly.
 
 ## Brain Viewer v0 (Steps 25 / 25.1)
 
@@ -1697,7 +1697,7 @@ A product or project spanning multiple repos and many jobs.  A Project Brain agg
 - Enabled skills and capabilities.
 - Project-scoped policy decisions.
 
-Future `remedy brain --json` may accept a `--scope project` flag that produces a multi-repo aggregate graph.  Current Brain Viewer v0 must not pretend to be a Project Brain.
+Future `remedy brain graph --json` may accept a `--scope project` flag that produces a multi-repo aggregate graph.  Current Brain Viewer v0 must not pretend to be a Project Brain.
 
 ### Layer 4 — Remedy Global Brain
 
@@ -1903,8 +1903,7 @@ remedy project create <name> [--description <desc>]   — create and print proje
 remedy project list                                  — list all projects (newest first)
 remedy project attach-repo <project_id> <repo_path>  — attach a repo to a project
 remedy project attach-job <project_id> <job_id>      — link a job to a project
-remedy project <project_id> [--json]                 — show project summary (user-facing alias)
-remedy project show <project_id> [--json]            — show project summary (backward-compat)
+remedy project show <project_id> [--json]            — show project summary
 remedy job create "<prompt>" [--project <project_id>]
     [--task-type <type>] [--task-description "<desc>"]
                                                        — create job and optionally link;
@@ -1912,7 +1911,7 @@ remedy job create "<prompt>" [--project <project_id>]
                                                          and sets state=PLANNED (bypasses plan-job)
 ```
 
-`remedy project` is the primary user-facing alias.  `remedy project show` remains for backward compatibility; both call the same implementation.
+`remedy project show` is the project summary command.  A bare `remedy project` is not an alias for it: a group with no subcommand prints that group's help and runs nothing.
 
 When `--project` is passed to `create-job`:
 - The project is **validated and loaded first**.
@@ -2060,7 +2059,7 @@ No raw prompts, artifact content, approval reasons, event messages, diff preview
 
 ### Project JSON integration
 
-`export_project_json(project, jobs)` (via `remedy project --json`) includes a compact context summary:
+`export_project_json(project, jobs)` (via `remedy project show <project_id> --json`) includes a compact context summary:
 
 ```json
 "context_coverage": {

@@ -740,7 +740,7 @@ def auto_approve_flight_plan(
     see every question that was answered without a human.
 
     Returns a NEW body; the caller persists it. Writing the job is deliberately
-    NOT done here, because the two callers (``remedy do --yes`` and the
+    NOT done here, because the two callers (``remedy do run`` and the
     orchestrator loop) own their own persistence and their own ledger entries.
     """
     body = dict(flight_plan_body)
