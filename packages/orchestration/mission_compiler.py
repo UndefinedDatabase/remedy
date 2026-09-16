@@ -60,7 +60,7 @@ from packages.orchestration.prompt_segments import (
     compose_prompt_segments,
 )
 from packages.orchestration.prompt_trace import build_trace_entry
-from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, FlightPlan
+from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, TaskPlan
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 
 #: The id the deterministic fallback's single milestone carries.
@@ -475,11 +475,11 @@ def milestone_dod_filename(milestone_id: str) -> str:
     return f"dod_{milestone_id}.json"
 
 
-def milestone_flight_plan(milestone: Milestone) -> FlightPlan:
+def milestone_flight_plan(milestone: Milestone) -> TaskPlan:
     """A per-milestone flight plan — the VIEW the F061 DoD compiler consumes.
 
     Rule A6 says the DoD compiler is the only DoD mechanism, and that compiler
-    takes ``(intake, FlightPlan)``. A milestone is not a flight plan, so one is
+    takes ``(intake, TaskPlan)``. A milestone is not a flight plan, so one is
     projected from it: one task per draft job outline, plus a final task whose
     acceptance line IS the milestone's own outcome and which depends on all of
     them.
@@ -508,7 +508,7 @@ def milestone_flight_plan(milestone: Milestone) -> FlightPlan:
         "est_tokens_band": _OUTCOME_TASK_BAND,
         "files_hint": [],
     })
-    return FlightPlan.model_validate({
+    return TaskPlan.model_validate({
         "schema_v": FLIGHT_PLAN_SCHEMA_V,
         "tasks": tasks,
     })

@@ -1,0 +1,421 @@
+diff --git a/packages/orchestration/flight_plan.py b/packages/orchestration/flight_plan.py
+index 2715db46..1a57c3bc 100644
+--- a/packages/orchestration/flight_plan.py
++++ b/packages/orchestration/flight_plan.py
+@@ -1,6 +1,6 @@
+ """F014 — LLM-generated Flight Plan.
+ 
+-Turns a job's intake into a validated, DAG-structured FlightPlan via an
++Turns a job's intake into a validated, DAG-structured TaskPlan via an
+ LLM call (with one parse retry), then maps it onto core Task objects.
+ Deterministic planner remains the --no-llm/provider-down fallback.
+ """
+@@ -24,8 +24,8 @@ from packages.orchestration.prompt_segments import (
+ from packages.orchestration.prompt_trace import build_trace_entry
+ from packages.orchestration.schemas.models import (
+     _LARGE_PLAN_THRESHOLD,
+-    FlightPlan,
+-    FlightPlanClarification,
++    TaskPlan,
++    TaskPlanClarification,
+ )
+ from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
+ from packages.orchestration.task_granularity import GranularityConfig, normalize_plan
+@@ -35,7 +35,7 @@ from packages.orchestration.task_granularity import GranularityConfig, normalize
+ class FlightPlanResult:
+     """Result of plan_job_llm."""
+ 
+-    plan: FlightPlan | None
++    plan: TaskPlan | None
+     source: str
+     error_hint: str = ""
+     calls: int = 0
+@@ -214,9 +214,9 @@ def _as_record(clarification: Any) -> dict[str, Any] | None:
+ 
+ 
+ def carry_intake_clarifications(
+-    plan: FlightPlan,
++    plan: TaskPlan,
+     intake: dict[str, Any] | None,
+-) -> FlightPlan:
++) -> TaskPlan:
+     """Carry the intake's open questions into ``clarifications_resolved``.
+ 
+     Every intake clarification becomes an UNANSWERED entry (empty
+@@ -229,7 +229,7 @@ def carry_intake_clarifications(
+     A plan whose intake has no clarifications and whose planner declared
+     none is returned unchanged.
+     """
+-    carried: list[FlightPlanClarification] = []
++    carried: list[TaskPlanClarification] = []
+     intake_clarifications = list((intake or {}).get("clarifications") or [])
+     from_intake: set[str] = set()
+ 
+@@ -237,7 +237,7 @@ def carry_intake_clarifications(
+         if not isinstance(raw, dict):
+             continue
+         question = str(raw.get("question", ""))
+-        carried.append(FlightPlanClarification(
++        carried.append(TaskPlanClarification(
+             id=f"q{len(carried) + 1}",
+             question=question,
+             default_answer=str(raw.get("default_answer", "")),
+@@ -442,7 +442,7 @@ def plan_job_llm(
+     granularity: GranularityConfig | None = None,
+     composed: ComposedPrompt | None = None,
+ ) -> FlightPlanResult:
+-    """Generate a FlightPlan from a job's intake via LLM.
++    """Generate a TaskPlan from a job's intake via LLM.
+ 
+     Uses run_structured_call for schema validation + one parse retry.
+     Returns a FlightPlanResult; on failure, plan is None and error_hint
+@@ -463,7 +463,7 @@ def plan_job_llm(
+     prompt = composed.text if composed is not None else _build_plan_prompt(intake)
+     try:
+         outcome: StructuredOutcome = run_structured_call(
+-            FlightPlan,
++            TaskPlan,
+             prompt,
+             call_fn,
+             on_call=on_call,
+@@ -482,7 +482,7 @@ def plan_job_llm(
+             call_log=outcome.call_log,
+         )
+ 
+-    assert isinstance(outcome.value, FlightPlan)
++    assert isinstance(outcome.value, TaskPlan)
+     plan = outcome.value
+     transformations: list[dict[str, Any]] = []
+     try:
+@@ -511,8 +511,8 @@ def plan_job_llm(
+     )
+ 
+ 
+-def map_flight_plan_to_tasks(plan: FlightPlan) -> list[TaskEntry]:
+-    """Convert FlightPlan tasks to core Task objects, preserving order.
++def map_flight_plan_to_tasks(plan: TaskPlan) -> list[TaskEntry]:
++    """Convert TaskPlan tasks to core Task objects, preserving order.
+ 
+     Flight plan metadata is stored in task.inputs["flight"] so the
+     runner and evidence pipeline can trace provenance without modifying
+@@ -585,10 +585,10 @@ def apply_plan_fences(
+ # ---------------------------------------------------------------------------
+ 
+ def render_plan_md(
+-    plan: FlightPlan,
++    plan: TaskPlan,
+     transformations: list[dict[str, Any]] | None = None,
+ ) -> str:
+-    """Render a FlightPlan to deterministic, stably ordered markdown.
++    """Render a TaskPlan to deterministic, stably ordered markdown.
+ 
+     *transformations* is the F016 granularity record. The section is always
+     rendered so the approving human sees either what was changed or an
+@@ -679,7 +679,7 @@ def render_plan_md(
+ 
+ 
+ def write_plan_md(
+-    plan: FlightPlan,
++    plan: TaskPlan,
+     evidence_dir: Path,
+     version: int = 1,
+     transformations: list[dict[str, Any]] | None = None,
+@@ -759,7 +759,7 @@ class ReplanRejectedError(Exception):
+ 
+ def replan(
+     job_flight_plan: dict[str, Any],
+-    new_plan: FlightPlan,
++    new_plan: TaskPlan,
+     evidence_dir: Path,
+     *,
+     any_task_completed: bool = False,
+diff --git a/tests/cli/test_plan_approval.py b/tests/cli/test_plan_approval.py
+index 99e04bfb..c2d38bd8 100644
+--- a/tests/cli/test_plan_approval.py
++++ b/tests/cli/test_plan_approval.py
+@@ -124,7 +124,7 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
+         return _FAKE_PLAN_JSON
+ 
+     # Returns a callable for every model_cls it is asked for, so the caller takes
+-    # the provider branch. The payload is a valid FlightPlan rather than a stub:
++    # the provider branch. The payload is a valid TaskPlan rather than a stub:
+     # `plan_job_llm` is replaced below and never invokes it, but a later test that
+     # stops replacing it then still drives a mock instead of a live server.
+     monkeypatch.setattr(
+@@ -133,10 +133,10 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
+     )
+ 
+     from packages.orchestration.flight_plan import FlightPlanResult
+-    from packages.orchestration.schemas.models import FlightPlan
++    from packages.orchestration.schemas.models import TaskPlan
+ 
+     if plan_succeeds:
+-        _fp = FlightPlan(
++        _fp = TaskPlan(
+             schema_v="flight_plan_v1",
+             tasks=[{
+                 "id": "T001", "title": "Do thing", "goal": "A goal",
+@@ -495,8 +495,8 @@ class TestConfigBudgetPrecedence:
+ 
+         # Mock plan suggests max_total_tokens = 99999
+         from packages.orchestration.flight_plan import FlightPlanResult
+-        from packages.orchestration.schemas.models import FlightPlan
+-        _fp = FlightPlan(
++        from packages.orchestration.schemas.models import TaskPlan
++        _fp = TaskPlan(
+             schema_v="flight_plan_v1",
+             tasks=[{
+                 "id": "T001", "title": "Do thing", "goal": "A goal",
+@@ -554,8 +554,8 @@ class TestConfigBudgetPrecedence:
+         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+ 
+         from packages.orchestration.flight_plan import FlightPlanResult
+-        from packages.orchestration.schemas.models import FlightPlan
+-        _fp = FlightPlan(
++        from packages.orchestration.schemas.models import TaskPlan
++        _fp = TaskPlan(
+             schema_v="flight_plan_v1",
+             tasks=[{
+                 "id": "T001", "title": "Do thing", "goal": "A goal",
+@@ -598,7 +598,7 @@ class TestReplanApprovalRearm:
+ 
+     def test_replan_rearms_approval(self, tmp_path):
+         from packages.orchestration.flight_plan import replan
+-        from packages.orchestration.schemas.models import FlightPlan
++        from packages.orchestration.schemas.models import TaskPlan
+ 
+         old_plan = {
+             "schema_v": "flight_plan_v1",
+@@ -608,7 +608,7 @@ class TestReplanApprovalRearm:
+             "risks": [],
+             "_approval": "rejected",
+         }
+-        new_plan = FlightPlan(
++        new_plan = TaskPlan(
+             schema_v="flight_plan_v1",
+             tasks=[{"id": "T001", "title": "Y", "goal": "G2",
+                     "acceptance": ["B"], "depends_on": [],
+@@ -625,7 +625,7 @@ class TestReplanApprovalRearm:
+         import pytest
+ 
+         from packages.orchestration.flight_plan import ReplanRejectedError, replan
+-        from packages.orchestration.schemas.models import FlightPlan
++        from packages.orchestration.schemas.models import TaskPlan
+ 
+         old_plan = {
+             "schema_v": "flight_plan_v1",
+@@ -635,7 +635,7 @@ class TestReplanApprovalRearm:
+             "risks": [],
+             "_approval": "approved",
+         }
+-        new_plan = FlightPlan(
++        new_plan = TaskPlan(
+             schema_v="flight_plan_v1",
+             tasks=[{"id": "T001", "title": "Y", "goal": "G2",
+                     "acceptance": ["B"], "depends_on": [],
+diff --git a/packages/orchestration/schemas/models.py b/packages/orchestration/schemas/models.py
+index dd243e25..6b7c9a52 100644
+--- a/packages/orchestration/schemas/models.py
++++ b/packages/orchestration/schemas/models.py
+@@ -71,7 +71,7 @@ class ProposedTask(_Strict):
+     description: str
+ 
+ 
+-# Deprecated by F014: superseded by FlightPlan. Retained for --no-llm/fallback.
++# Deprecated by F014: superseded by TaskPlan. Retained for --no-llm/fallback.
+ class PlannerPlan(_Structured):
+     """Structured planner output (schema ``pp1``)."""
+ 
+@@ -134,7 +134,7 @@ _LARGE_PLAN_THRESHOLD = 12
+ 
+ 
+ class PlannedTask(_Strict):
+-    """One task in a FlightPlan DAG."""
++    """One task in a TaskPlan DAG."""
+ 
+     id: str
+     title: str
+@@ -158,7 +158,7 @@ class PlannedTask(_Strict):
+ AnsweredBy = Literal["human", "default", ""]
+ 
+ 
+-class FlightPlanClarification(_Strict):
++class TaskPlanClarification(_Strict):
+     """A resolved clarification carried in the flight plan.
+ 
+     ``id`` and ``answered_by`` are additive (F034): plans written before
+@@ -175,7 +175,7 @@ class FlightPlanClarification(_Strict):
+     answered_by: AnsweredBy = ""
+ 
+ 
+-class FlightPlan(_Structured):
++class TaskPlan(_Structured):
+     """LLM-generated flight plan (schema ``fp1``).
+ 
+     A DAG of PlannedTasks with goals, acceptance criteria, dependency
+@@ -187,7 +187,7 @@ class FlightPlan(_Structured):
+     schema_v: Literal["flight_plan_v1"]  # required: no default
+     tasks: list[PlannedTask] = Field(min_length=1)
+     risks: list[str] = Field(default_factory=list)
+-    clarifications_resolved: list[FlightPlanClarification] = Field(
++    clarifications_resolved: list[TaskPlanClarification] = Field(
+         default_factory=list)
+     budgets: dict[str, int | str | None] | None = None
+     fences: dict[str, list[str]] | None = None
+@@ -195,10 +195,10 @@ class FlightPlan(_Structured):
+     large_plan: bool = False
+ 
+     @model_validator(mode="after")
+-    def _validate_dag(self) -> FlightPlan:
++    def _validate_dag(self) -> TaskPlan:
+         if len(self.tasks) > _MAX_FLIGHT_PLAN_TASKS:
+             raise ValueError(
+-                f"FlightPlan exceeds {_MAX_FLIGHT_PLAN_TASKS}-task cap "
++                f"TaskPlan exceeds {_MAX_FLIGHT_PLAN_TASKS}-task cap "
+                 f"(got {len(self.tasks)})")
+ 
+         ids: set[str] = set()
+@@ -244,7 +244,7 @@ SCHEMA_REGISTRY: dict[str, type[_Structured]] = {
+     PLANNER_PLAN_SCHEMA_V: PlannerPlan,
+     DESIGN_SPEC_SCHEMA_V: DesignSpec,
+     JOB_INTAKE_SCHEMA_V: JobIntake,
+-    FLIGHT_PLAN_SCHEMA_V: FlightPlan,
++    FLIGHT_PLAN_SCHEMA_V: TaskPlan,
+     # F061: the compiled Definition of Done. Registered because a dod_v1
+     # payload is PERSISTED (a job's evidence area) and therefore has to be
+     # resolvable from its tag alone. Its provider-facing draft contract
+diff --git a/packages/orchestration/feature_mission_adapter.py b/packages/orchestration/feature_mission_adapter.py
+index 8c060df5..06bac7ed 100644
+--- a/packages/orchestration/feature_mission_adapter.py
++++ b/packages/orchestration/feature_mission_adapter.py
+@@ -5,7 +5,7 @@ next` names a feature file, and this module turns that file into the
+ records the normal mission machinery already understands — nothing more.
+ 
+     "How it fits" / "Context"  -> mission context input (JobIntake)
+-    "Task slicing"             -> plan structure seed (FlightPlan tasks
++    "Task slicing"             -> plan structure seed (TaskPlan tasks
+                                   and the milestone draft)
+     "Acceptance"               -> DoD compiler input (acceptance lines)
+     "Do not touch"             -> fences
+@@ -36,7 +36,7 @@ Public API::
+     prepare_feature_mission(feature, repo_root=None) -> PreparedMission
+     write_prepared_mission(prepared, data_root=None) -> Path
+     prepared_mission_path(feature_id, data_root=None) -> Path
+-    dod_compiler_input(prepared) -> tuple[dict, FlightPlan]
++    dod_compiler_input(prepared) -> tuple[dict, TaskPlan]
+     read_feature_sections(text) -> list[FeatureSection]
+ """
+ 
+@@ -63,9 +63,9 @@ from packages.orchestration.roadmap_index import (
+ from packages.orchestration.schemas.models import (
+     FLIGHT_PLAN_SCHEMA_V,
+     JOB_INTAKE_SCHEMA_V,
+-    FlightPlan,
+     JobIntake,
+     PlannedTask,
++    TaskPlan,
+ )
+ 
+ #: Which heading feeds which part of the draft. Matched case-insensitively
+@@ -144,7 +144,7 @@ class PreparedMission:
+     feature_file: str
+     goal: str
+     intake: JobIntake
+-    plan: FlightPlan
++    plan: TaskPlan
+     mission_plan: MissionPlan
+     fence_notes: tuple[str, ...]
+     fence_globs: tuple[str, ...]
+@@ -375,7 +375,7 @@ def prepare_feature_mission(feature: str, repo_root: Path | str | None = None) -
+         )
+         for slice_ in slices
+     ]
+-    plan = FlightPlan(
++    plan = TaskPlan(
+         schema_v=FLIGHT_PLAN_SCHEMA_V,
+         tasks=tasks,
+         risks=[],
+@@ -451,7 +451,7 @@ def write_prepared_mission(prepared: PreparedMission, data_root: Path | None = N
+     return path
+ 
+ 
+-def dod_compiler_input(prepared: PreparedMission) -> tuple[dict[str, Any], FlightPlan]:
++def dod_compiler_input(prepared: PreparedMission) -> tuple[dict[str, Any], TaskPlan]:
+     """The pair the F061 DoD compiler consumes: intake payload + flight plan.
+ 
+     Handing this to ``compile_dod``/``deterministic_dod`` is the caller's
+diff --git a/packages/orchestration/mission_compiler.py b/packages/orchestration/mission_compiler.py
+index aaa76a79..d0110cbc 100644
+--- a/packages/orchestration/mission_compiler.py
++++ b/packages/orchestration/mission_compiler.py
+@@ -60,7 +60,7 @@ from packages.orchestration.prompt_segments import (
+     compose_prompt_segments,
+ )
+ from packages.orchestration.prompt_trace import build_trace_entry
+-from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, FlightPlan
++from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, TaskPlan
+ from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
+ 
+ #: The id the deterministic fallback's single milestone carries.
+@@ -475,11 +475,11 @@ def milestone_dod_filename(milestone_id: str) -> str:
+     return f"dod_{milestone_id}.json"
+ 
+ 
+-def milestone_flight_plan(milestone: Milestone) -> FlightPlan:
++def milestone_flight_plan(milestone: Milestone) -> TaskPlan:
+     """A per-milestone flight plan — the VIEW the F061 DoD compiler consumes.
+ 
+     Rule A6 says the DoD compiler is the only DoD mechanism, and that compiler
+-    takes ``(intake, FlightPlan)``. A milestone is not a flight plan, so one is
++    takes ``(intake, TaskPlan)``. A milestone is not a flight plan, so one is
+     projected from it: one task per draft job outline, plus a final task whose
+     acceptance line IS the milestone's own outcome and which depends on all of
+     them.
+@@ -508,7 +508,7 @@ def milestone_flight_plan(milestone: Milestone) -> FlightPlan:
+         "est_tokens_band": _OUTCOME_TASK_BAND,
+         "files_hint": [],
+     })
+-    return FlightPlan.model_validate({
++    return TaskPlan.model_validate({
+         "schema_v": FLIGHT_PLAN_SCHEMA_V,
+         "tasks": tasks,
+     })
+diff --git a/packages/orchestration/dag_schedule.py b/packages/orchestration/dag_schedule.py
+index b828d0a8..60bffb30 100644
+--- a/packages/orchestration/dag_schedule.py
++++ b/packages/orchestration/dag_schedule.py
+@@ -10,7 +10,7 @@ A task carries its Flight Plan metadata in ``task.inputs["flight"]``:
+ ``planned_id`` is its own plan-level id and ``depends_on`` lists the planned
+ ids it waits for (producer: ``map_flight_plan_to_tasks``, flight_plan.py).
+ Planned ids are resolved to task ids through the plan itself, so this module
+-never needs the FlightPlan object.
++never needs the TaskPlan object.
+ 
+ ONE rule covers plans that have no such metadata (legacy plans, heuristic
+ fallback plans): **a task without ``inputs["flight"]`` implicitly depends on
+diff --git a/packages/orchestration/planner_models.py b/packages/orchestration/planner_models.py
+index 9e2aba2f..abdd33ae 100644
+--- a/packages/orchestration/planner_models.py
++++ b/packages/orchestration/planner_models.py
+@@ -19,7 +19,7 @@ class ProposedTask(BaseModel):
+     description: str
+ 
+ 
+-# Deprecated by F014: superseded by FlightPlan. Retained for --no-llm/fallback.
++# Deprecated by F014: superseded by TaskPlan. Retained for --no-llm/fallback.
+ class PlannerOutput(BaseModel):
+     """Structured planning result returned by a planner provider."""
+ 
+diff --git a/tests/orchestration/test_mission_compiler.py b/tests/orchestration/test_mission_compiler.py
+index ce141cb9..e2d93452 100644
+--- a/tests/orchestration/test_mission_compiler.py
++++ b/tests/orchestration/test_mission_compiler.py
+@@ -201,7 +201,7 @@ class TestSchema:
+ 
+ 
+ # ---------------------------------------------------------------------------
+-# The milestone DAG — same discipline as FlightPlan._validate_dag
++# The milestone DAG — same discipline as TaskPlan._validate_dag
+ # ---------------------------------------------------------------------------
+ 
+ class TestMilestoneDag:

@@ -19,7 +19,7 @@ class ProposedTask(BaseModel):
     description: str
 
 
-# Deprecated by F014: superseded by FlightPlan. Retained for --no-llm/fallback.
+# Deprecated by F014: superseded by TaskPlan. Retained for --no-llm/fallback.
 class PlannerOutput(BaseModel):
     """Structured planning result returned by a planner provider."""
 

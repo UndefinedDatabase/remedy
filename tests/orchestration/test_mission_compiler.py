@@ -201,7 +201,7 @@ class TestSchema:
 
 
 # ---------------------------------------------------------------------------
-# The milestone DAG — same discipline as FlightPlan._validate_dag
+# The milestone DAG — same discipline as TaskPlan._validate_dag
 # ---------------------------------------------------------------------------
 
 class TestMilestoneDag:

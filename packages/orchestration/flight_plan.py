@@ -1,6 +1,6 @@
 """F014 — LLM-generated Flight Plan.
 
-Turns a job's intake into a validated, DAG-structured FlightPlan via an
+Turns a job's intake into a validated, DAG-structured TaskPlan via an
 LLM call (with one parse retry), then maps it onto core Task objects.
 Deterministic planner remains the --no-llm/provider-down fallback.
 """
@@ -24,8 +24,8 @@ from packages.orchestration.prompt_segments import (
 from packages.orchestration.prompt_trace import build_trace_entry
 from packages.orchestration.schemas.models import (
     _LARGE_PLAN_THRESHOLD,
-    FlightPlan,
-    FlightPlanClarification,
+    TaskPlan,
+    TaskPlanClarification,
 )
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 from packages.orchestration.task_granularity import GranularityConfig, normalize_plan
@@ -35,7 +35,7 @@ from packages.orchestration.task_granularity import GranularityConfig, normalize
 class FlightPlanResult:
     """Result of plan_job_llm."""
 
-    plan: FlightPlan | None
+    plan: TaskPlan | None
     source: str
     error_hint: str = ""
     calls: int = 0
@@ -214,9 +214,9 @@ def _as_record(clarification: Any) -> dict[str, Any] | None:
 
 
 def carry_intake_clarifications(
-    plan: FlightPlan,
+    plan: TaskPlan,
     intake: dict[str, Any] | None,
-) -> FlightPlan:
+) -> TaskPlan:
     """Carry the intake's open questions into ``clarifications_resolved``.
 
     Every intake clarification becomes an UNANSWERED entry (empty
@@ -229,7 +229,7 @@ def carry_intake_clarifications(
     A plan whose intake has no clarifications and whose planner declared
     none is returned unchanged.
     """
-    carried: list[FlightPlanClarification] = []
+    carried: list[TaskPlanClarification] = []
     intake_clarifications = list((intake or {}).get("clarifications") or [])
     from_intake: set[str] = set()
 
@@ -237,7 +237,7 @@ def carry_intake_clarifications(
         if not isinstance(raw, dict):
             continue
         question = str(raw.get("question", ""))
-        carried.append(FlightPlanClarification(
+        carried.append(TaskPlanClarification(
             id=f"q{len(carried) + 1}",
             question=question,
             default_answer=str(raw.get("default_answer", "")),
@@ -442,7 +442,7 @@ def plan_job_llm(
     granularity: GranularityConfig | None = None,
     composed: ComposedPrompt | None = None,
 ) -> FlightPlanResult:
-    """Generate a FlightPlan from a job's intake via LLM.
+    """Generate a TaskPlan from a job's intake via LLM.
 
     Uses run_structured_call for schema validation + one parse retry.
     Returns a FlightPlanResult; on failure, plan is None and error_hint
@@ -463,7 +463,7 @@ def plan_job_llm(
     prompt = composed.text if composed is not None else _build_plan_prompt(intake)
     try:
         outcome: StructuredOutcome = run_structured_call(
-            FlightPlan,
+            TaskPlan,
             prompt,
             call_fn,
             on_call=on_call,
@@ -482,7 +482,7 @@ def plan_job_llm(
             call_log=outcome.call_log,
         )
 
-    assert isinstance(outcome.value, FlightPlan)
+    assert isinstance(outcome.value, TaskPlan)
     plan = outcome.value
     transformations: list[dict[str, Any]] = []
     try:
@@ -511,8 +511,8 @@ def plan_job_llm(
     )
 
 
-def map_flight_plan_to_tasks(plan: FlightPlan) -> list[TaskEntry]:
-    """Convert FlightPlan tasks to core Task objects, preserving order.
+def map_flight_plan_to_tasks(plan: TaskPlan) -> list[TaskEntry]:
+    """Convert TaskPlan tasks to core Task objects, preserving order.
 
     Flight plan metadata is stored in task.inputs["flight"] so the
     runner and evidence pipeline can trace provenance without modifying
@@ -585,10 +585,10 @@ def apply_plan_fences(
 # ---------------------------------------------------------------------------
 
 def render_plan_md(
-    plan: FlightPlan,
+    plan: TaskPlan,
     transformations: list[dict[str, Any]] | None = None,
 ) -> str:
-    """Render a FlightPlan to deterministic, stably ordered markdown.
+    """Render a TaskPlan to deterministic, stably ordered markdown.
 
     *transformations* is the F016 granularity record. The section is always
     rendered so the approving human sees either what was changed or an
@@ -679,7 +679,7 @@ def render_plan_md(
 
 
 def write_plan_md(
-    plan: FlightPlan,
+    plan: TaskPlan,
     evidence_dir: Path,
     version: int = 1,
     transformations: list[dict[str, Any]] | None = None,
@@ -759,7 +759,7 @@ class ReplanRejectedError(Exception):
 
 def replan(
     job_flight_plan: dict[str, Any],
-    new_plan: FlightPlan,
+    new_plan: TaskPlan,
     evidence_dir: Path,
     *,
     any_task_completed: bool = False,

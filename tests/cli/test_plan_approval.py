@@ -124,7 +124,7 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
         return _FAKE_PLAN_JSON
 
     # Returns a callable for every model_cls it is asked for, so the caller takes
-    # the provider branch. The payload is a valid FlightPlan rather than a stub:
+    # the provider branch. The payload is a valid TaskPlan rather than a stub:
     # `plan_job_llm` is replaced below and never invokes it, but a later test that
     # stops replacing it then still drives a mock instead of a live server.
     monkeypatch.setattr(
@@ -133,10 +133,10 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
     )
 
     from packages.orchestration.flight_plan import FlightPlanResult
-    from packages.orchestration.schemas.models import FlightPlan
+    from packages.orchestration.schemas.models import TaskPlan
 
     if plan_succeeds:
-        _fp = FlightPlan(
+        _fp = TaskPlan(
             schema_v="flight_plan_v1",
             tasks=[{
                 "id": "T001", "title": "Do thing", "goal": "A goal",
@@ -495,8 +495,8 @@ class TestConfigBudgetPrecedence:
 
         # Mock plan suggests max_total_tokens = 99999
         from packages.orchestration.flight_plan import FlightPlanResult
-        from packages.orchestration.schemas.models import FlightPlan
-        _fp = FlightPlan(
+        from packages.orchestration.schemas.models import TaskPlan
+        _fp = TaskPlan(
             schema_v="flight_plan_v1",
             tasks=[{
                 "id": "T001", "title": "Do thing", "goal": "A goal",
@@ -554,8 +554,8 @@ class TestConfigBudgetPrecedence:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
 
         from packages.orchestration.flight_plan import FlightPlanResult
-        from packages.orchestration.schemas.models import FlightPlan
-        _fp = FlightPlan(
+        from packages.orchestration.schemas.models import TaskPlan
+        _fp = TaskPlan(
             schema_v="flight_plan_v1",
             tasks=[{
                 "id": "T001", "title": "Do thing", "goal": "A goal",
@@ -598,7 +598,7 @@ class TestReplanApprovalRearm:
 
     def test_replan_rearms_approval(self, tmp_path):
         from packages.orchestration.flight_plan import replan
-        from packages.orchestration.schemas.models import FlightPlan
+        from packages.orchestration.schemas.models import TaskPlan
 
         old_plan = {
             "schema_v": "flight_plan_v1",
@@ -608,7 +608,7 @@ class TestReplanApprovalRearm:
             "risks": [],
             "_approval": "rejected",
         }
-        new_plan = FlightPlan(
+        new_plan = TaskPlan(
             schema_v="flight_plan_v1",
             tasks=[{"id": "T001", "title": "Y", "goal": "G2",
                     "acceptance": ["B"], "depends_on": [],
@@ -625,7 +625,7 @@ class TestReplanApprovalRearm:
         import pytest
 
         from packages.orchestration.flight_plan import ReplanRejectedError, replan
-        from packages.orchestration.schemas.models import FlightPlan
+        from packages.orchestration.schemas.models import TaskPlan
 
         old_plan = {
             "schema_v": "flight_plan_v1",
@@ -635,7 +635,7 @@ class TestReplanApprovalRearm:
             "risks": [],
             "_approval": "approved",
         }
-        new_plan = FlightPlan(
+        new_plan = TaskPlan(
             schema_v="flight_plan_v1",
             tasks=[{"id": "T001", "title": "Y", "goal": "G2",
                     "acceptance": ["B"], "depends_on": [],

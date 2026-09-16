@@ -5,7 +5,7 @@ next` names a feature file, and this module turns that file into the
 records the normal mission machinery already understands — nothing more.
 
     "How it fits" / "Context"  -> mission context input (JobIntake)
-    "Task slicing"             -> plan structure seed (FlightPlan tasks
+    "Task slicing"             -> plan structure seed (TaskPlan tasks
                                   and the milestone draft)
     "Acceptance"               -> DoD compiler input (acceptance lines)
     "Do not touch"             -> fences
@@ -36,7 +36,7 @@ Public API::
     prepare_feature_mission(feature, repo_root=None) -> PreparedMission
     write_prepared_mission(prepared, data_root=None) -> Path
     prepared_mission_path(feature_id, data_root=None) -> Path
-    dod_compiler_input(prepared) -> tuple[dict, FlightPlan]
+    dod_compiler_input(prepared) -> tuple[dict, TaskPlan]
     read_feature_sections(text) -> list[FeatureSection]
 """
 
@@ -63,9 +63,9 @@ from packages.orchestration.roadmap_index import (
 from packages.orchestration.schemas.models import (
     FLIGHT_PLAN_SCHEMA_V,
     JOB_INTAKE_SCHEMA_V,
-    FlightPlan,
     JobIntake,
     PlannedTask,
+    TaskPlan,
 )
 
 #: Which heading feeds which part of the draft. Matched case-insensitively
@@ -144,7 +144,7 @@ class PreparedMission:
     feature_file: str
     goal: str
     intake: JobIntake
-    plan: FlightPlan
+    plan: TaskPlan
     mission_plan: MissionPlan
     fence_notes: tuple[str, ...]
     fence_globs: tuple[str, ...]
@@ -375,7 +375,7 @@ def prepare_feature_mission(feature: str, repo_root: Path | str | None = None) -
         )
         for slice_ in slices
     ]
-    plan = FlightPlan(
+    plan = TaskPlan(
         schema_v=FLIGHT_PLAN_SCHEMA_V,
         tasks=tasks,
         risks=[],
@@ -451,7 +451,7 @@ def write_prepared_mission(prepared: PreparedMission, data_root: Path | None = N
     return path
 
 
-def dod_compiler_input(prepared: PreparedMission) -> tuple[dict[str, Any], FlightPlan]:
+def dod_compiler_input(prepared: PreparedMission) -> tuple[dict[str, Any], TaskPlan]:
     """The pair the F061 DoD compiler consumes: intake payload + flight plan.
 
     Handing this to ``compile_dod``/``deterministic_dod`` is the caller's

@@ -71,7 +71,7 @@ class ProposedTask(_Strict):
     description: str
 
 
-# Deprecated by F014: superseded by FlightPlan. Retained for --no-llm/fallback.
+# Deprecated by F014: superseded by TaskPlan. Retained for --no-llm/fallback.
 class PlannerPlan(_Structured):
     """Structured planner output (schema ``pp1``)."""
 
@@ -134,7 +134,7 @@ _LARGE_PLAN_THRESHOLD = 12
 
 
 class PlannedTask(_Strict):
-    """One task in a FlightPlan DAG."""
+    """One task in a TaskPlan DAG."""
 
     id: str
     title: str
@@ -158,7 +158,7 @@ class PlannedTask(_Strict):
 AnsweredBy = Literal["human", "default", ""]
 
 
-class FlightPlanClarification(_Strict):
+class TaskPlanClarification(_Strict):
     """A resolved clarification carried in the flight plan.
 
     ``id`` and ``answered_by`` are additive (F034): plans written before
@@ -175,7 +175,7 @@ class FlightPlanClarification(_Strict):
     answered_by: AnsweredBy = ""
 
 
-class FlightPlan(_Structured):
+class TaskPlan(_Structured):
     """LLM-generated flight plan (schema ``fp1``).
 
     A DAG of PlannedTasks with goals, acceptance criteria, dependency
@@ -187,7 +187,7 @@ class FlightPlan(_Structured):
     schema_v: Literal["flight_plan_v1"]  # required: no default
     tasks: list[PlannedTask] = Field(min_length=1)
     risks: list[str] = Field(default_factory=list)
-    clarifications_resolved: list[FlightPlanClarification] = Field(
+    clarifications_resolved: list[TaskPlanClarification] = Field(
         default_factory=list)
     budgets: dict[str, int | str | None] | None = None
     fences: dict[str, list[str]] | None = None
@@ -195,10 +195,10 @@ class FlightPlan(_Structured):
     large_plan: bool = False
 
     @model_validator(mode="after")
-    def _validate_dag(self) -> FlightPlan:
+    def _validate_dag(self) -> TaskPlan:
         if len(self.tasks) > _MAX_FLIGHT_PLAN_TASKS:
             raise ValueError(
-                f"FlightPlan exceeds {_MAX_FLIGHT_PLAN_TASKS}-task cap "
+                f"TaskPlan exceeds {_MAX_FLIGHT_PLAN_TASKS}-task cap "
                 f"(got {len(self.tasks)})")
 
         ids: set[str] = set()
@@ -244,7 +244,7 @@ SCHEMA_REGISTRY: dict[str, type[_Structured]] = {
     PLANNER_PLAN_SCHEMA_V: PlannerPlan,
     DESIGN_SPEC_SCHEMA_V: DesignSpec,
     JOB_INTAKE_SCHEMA_V: JobIntake,
-    FLIGHT_PLAN_SCHEMA_V: FlightPlan,
+    FLIGHT_PLAN_SCHEMA_V: TaskPlan,
     # F061: the compiled Definition of Done. Registered because a dod_v1
     # payload is PERSISTED (a job's evidence area) and therefore has to be
     # resolvable from its tag alone. Its provider-facing draft contract
