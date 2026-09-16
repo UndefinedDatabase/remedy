@@ -11,7 +11,7 @@ from packages.orchestration.flight_plan import (
     map_flight_plan_to_tasks,
     plan_job_llm,
 )
-from packages.orchestration.schemas.models import FlightPlan
+from packages.orchestration.schemas.models import TaskPlan
 
 
 def _fake_intake() -> dict:
@@ -102,7 +102,7 @@ class TestPlanJobLlm:
 class TestMapFlightPlanToTasks:
 
     def test_three_tasks_in_order(self):
-        fp = FlightPlan(**json.loads(_valid_plan_json(3)))
+        fp = TaskPlan(**json.loads(_valid_plan_json(3)))
         tasks = map_flight_plan_to_tasks(fp)
         assert len(tasks) == 3
         for i, task in enumerate(tasks):
@@ -113,13 +113,13 @@ class TestMapFlightPlanToTasks:
             assert task.acceptance.splitlines() == [f"Thing {i + 1} done"]
 
     def test_description_combines_title_and_goal(self):
-        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
+        fp = TaskPlan(**json.loads(_valid_plan_json(1)))
         tasks = map_flight_plan_to_tasks(fp)
         assert "Task 1" in tasks[0].title
         assert "Do thing 1" in tasks[0].title
 
     def test_depends_on_preserved(self):
-        fp = FlightPlan(**json.loads(_valid_plan_json(3)))
+        fp = TaskPlan(**json.loads(_valid_plan_json(3)))
         tasks = map_flight_plan_to_tasks(fp)
         assert tasks[0].inputs["flight"]["depends_on"] == []
         assert tasks[1].inputs["flight"]["depends_on"] == ["T001"]
@@ -170,7 +170,7 @@ class TestRenderPlanMd:
     def test_deterministic_output(self):
         from packages.orchestration.flight_plan import render_plan_md
 
-        fp = FlightPlan(**json.loads(_valid_plan_json(3)))
+        fp = TaskPlan(**json.loads(_valid_plan_json(3)))
         r1 = render_plan_md(fp)
         r2 = render_plan_md(fp)
         assert r1 == r2
@@ -182,7 +182,7 @@ class TestRenderPlanMd:
     def test_contains_acceptance_and_bands(self):
         from packages.orchestration.flight_plan import render_plan_md
 
-        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
+        fp = TaskPlan(**json.loads(_valid_plan_json(2)))
         md = render_plan_md(fp)
         assert "Thing 1 done" in md
         assert "**Band:** M" in md
@@ -199,21 +199,21 @@ class TestRenderPlanMd:
                 "acceptance": ["ok"], "depends_on": [],
                 "est_tokens_band": "S", "files_hint": [],
             })
-        fp = FlightPlan(schema_v="flight_plan_v1", tasks=tasks, risks=[])
+        fp = TaskPlan(schema_v="flight_plan_v1", tasks=tasks, risks=[])
         md = render_plan_md(fp)
         assert "Consider splitting" in md
 
     def test_risks_rendered(self):
         from packages.orchestration.flight_plan import render_plan_md
 
-        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
+        fp = TaskPlan(**json.loads(_valid_plan_json(1)))
         md = render_plan_md(fp)
         assert "timeline risk" in md
 
     def test_write_plan_md(self, tmp_path):
         from packages.orchestration.flight_plan import write_plan_md
 
-        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
+        fp = TaskPlan(**json.loads(_valid_plan_json(2)))
         path = write_plan_md(fp, tmp_path)
         assert path.name == "plan.md"
         assert path.exists()
@@ -222,7 +222,7 @@ class TestRenderPlanMd:
     def test_write_plan_md_versioned(self, tmp_path):
         from packages.orchestration.flight_plan import write_plan_md
 
-        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
+        fp = TaskPlan(**json.loads(_valid_plan_json(1)))
         p1 = write_plan_md(fp, tmp_path, version=1)
         p2 = write_plan_md(fp, tmp_path, version=2)
         assert p1.name == "plan.md"
@@ -237,7 +237,7 @@ class TestNormalizationSection:
     def test_empty_record_says_no_transformations(self):
         from packages.orchestration.flight_plan import render_plan_md
 
-        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
+        fp = TaskPlan(**json.loads(_valid_plan_json(2)))
         md = render_plan_md(fp)
         assert "## Normalization" in md
         assert "No transformations" in md
@@ -245,7 +245,7 @@ class TestNormalizationSection:
     def test_record_entries_are_rendered(self):
         from packages.orchestration.flight_plan import render_plan_md
 
-        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
+        fp = TaskPlan(**json.loads(_valid_plan_json(2)))
         md = render_plan_md(fp, [{
             "kind": "split",
             "source_ids": ["T001"],
@@ -258,7 +258,7 @@ class TestNormalizationSection:
     def test_write_plan_md_threads_the_record(self, tmp_path):
         from packages.orchestration.flight_plan import write_plan_md
 
-        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
+        fp = TaskPlan(**json.loads(_valid_plan_json(1)))
         path = write_plan_md(fp, tmp_path, transformations=[{
             "kind": "merge",
             "source_ids": ["T001", "T002"],
@@ -329,9 +329,9 @@ class TestReplan:
     def test_replan_appends_version(self, tmp_path):
         from packages.orchestration.flight_plan import replan
 
-        fp1 = FlightPlan(**json.loads(_valid_plan_json(2)))
+        fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
         fp1_dict = fp1.model_dump()
-        fp2 = FlightPlan(**json.loads(_valid_plan_json(3)))
+        fp2 = TaskPlan(**json.loads(_valid_plan_json(3)))
 
         updated, version = replan(fp1_dict, fp2, tmp_path)
         assert version == 2
@@ -342,11 +342,11 @@ class TestReplan:
     def test_replan_keeps_old_file(self, tmp_path):
         from packages.orchestration.flight_plan import replan, write_plan_md
 
-        fp1 = FlightPlan(**json.loads(_valid_plan_json(2)))
+        fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
         write_plan_md(fp1, tmp_path, version=1)
         fp1_dict = fp1.model_dump()
 
-        fp2 = FlightPlan(**json.loads(_valid_plan_json(3)))
+        fp2 = TaskPlan(**json.loads(_valid_plan_json(3)))
         replan(fp1_dict, fp2, tmp_path)
 
         assert (tmp_path / "plan.md").exists()
@@ -357,8 +357,8 @@ class TestReplan:
 
         from packages.orchestration.flight_plan import ReplanRejectedError, replan
 
-        fp1 = FlightPlan(**json.loads(_valid_plan_json(2)))
-        fp2 = FlightPlan(**json.loads(_valid_plan_json(1)))
+        fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
+        fp2 = TaskPlan(**json.loads(_valid_plan_json(1)))
 
         with pytest.raises(ReplanRejectedError, match="Cannot replan"):
             replan(fp1.model_dump(), fp2, tmp_path, any_task_completed=True)

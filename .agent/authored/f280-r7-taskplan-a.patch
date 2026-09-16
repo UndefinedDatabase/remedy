@@ -1,0 +1,429 @@
+diff --git a/tests/schemas/test_flight_plan_schema.py b/tests/schemas/test_flight_plan_schema.py
+index d9eb50a0..321c46a0 100644
+--- a/tests/schemas/test_flight_plan_schema.py
++++ b/tests/schemas/test_flight_plan_schema.py
+@@ -1,4 +1,4 @@
+-"""Tests for FlightPlan schema + DAG validation (F014 T001)."""
++"""Tests for TaskPlan schema + DAG validation (F014 T001)."""
+ 
+ from __future__ import annotations
+ 
+@@ -8,9 +8,9 @@ from pydantic import ValidationError
+ from packages.orchestration.schemas.models import (
+     _LARGE_PLAN_THRESHOLD,
+     FLIGHT_PLAN_SCHEMA_V,
+-    FlightPlan,
+-    FlightPlanClarification,
+     PlannedTask,
++    TaskPlan,
++    TaskPlanClarification,
+ )
+ 
+ 
+@@ -41,17 +41,17 @@ def _plan(**overrides) -> dict:
+ class TestFlightPlanRoundTrip:
+ 
+     def test_minimal_plan_roundtrips(self):
+-        fp = FlightPlan(**_plan())
++        fp = TaskPlan(**_plan())
+         assert fp.schema_v == "flight_plan_v1"
+         assert fp.SCHEMA_V == FLIGHT_PLAN_SCHEMA_V
+         assert len(fp.tasks) == 1
+         assert fp.tasks[0].id == "T1"
+         d = fp.model_dump()
+-        fp2 = FlightPlan(**d)
++        fp2 = TaskPlan(**d)
+         assert fp2.tasks[0].goal == fp.tasks[0].goal
+ 
+     def test_full_plan_with_all_fields(self):
+-        fp = FlightPlan(**_plan(
++        fp = TaskPlan(**_plan(
+             tasks=[
+                 _task("T1"),
+                 _task("T2", depends_on=["T1"]),
+@@ -77,37 +77,37 @@ class TestDAGValidation:
+ 
+     def test_duplicate_task_id_rejected(self):
+         with pytest.raises(ValidationError, match="duplicate task id"):
+-            FlightPlan(**_plan(tasks=[_task("T1"), _task("T1")]))
++            TaskPlan(**_plan(tasks=[_task("T1"), _task("T1")]))
+ 
+     def test_unknown_dependency_rejected(self):
+         with pytest.raises(ValidationError, match="unknown id"):
+-            FlightPlan(**_plan(tasks=[
++            TaskPlan(**_plan(tasks=[
+                 _task("T1", depends_on=["T99"]),
+             ]))
+ 
+     def test_cycle_rejected(self):
+         with pytest.raises(ValidationError, match="cycle"):
+-            FlightPlan(**_plan(tasks=[
++            TaskPlan(**_plan(tasks=[
+                 _task("T1", depends_on=["T2"]),
+                 _task("T2", depends_on=["T1"]),
+             ]))
+ 
+     def test_self_cycle_rejected(self):
+         with pytest.raises(ValidationError, match="cycle"):
+-            FlightPlan(**_plan(tasks=[
++            TaskPlan(**_plan(tasks=[
+                 _task("T1", depends_on=["T1"]),
+             ]))
+ 
+     def test_three_node_cycle_rejected(self):
+         with pytest.raises(ValidationError, match="cycle"):
+-            FlightPlan(**_plan(tasks=[
++            TaskPlan(**_plan(tasks=[
+                 _task("T1", depends_on=["T3"]),
+                 _task("T2", depends_on=["T1"]),
+                 _task("T3", depends_on=["T2"]),
+             ]))
+ 
+     def test_diamond_dag_accepted(self):
+-        fp = FlightPlan(**_plan(tasks=[
++        fp = TaskPlan(**_plan(tasks=[
+             _task("T1"),
+             _task("T2", depends_on=["T1"]),
+             _task("T3", depends_on=["T1"]),
+@@ -121,22 +121,22 @@ class TestTaskCap:
+     def test_26_tasks_rejected(self):
+         tasks = [_task(f"T{i:02d}") for i in range(26)]
+         with pytest.raises(ValidationError, match="cap"):
+-            FlightPlan(**_plan(tasks=tasks))
++            TaskPlan(**_plan(tasks=tasks))
+ 
+     def test_25_tasks_accepted(self):
+         tasks = [_task(f"T{i:02d}") for i in range(25)]
+-        fp = FlightPlan(**_plan(tasks=tasks))
++        fp = TaskPlan(**_plan(tasks=tasks))
+         assert len(fp.tasks) == 25
+ 
+     def test_13_tasks_sets_large_plan_flag(self):
+         n = _LARGE_PLAN_THRESHOLD + 1
+         tasks = [_task(f"T{i:02d}") for i in range(n)]
+-        fp = FlightPlan(**_plan(tasks=tasks))
++        fp = TaskPlan(**_plan(tasks=tasks))
+         assert fp.large_plan is True
+ 
+     def test_12_tasks_no_large_plan_flag(self):
+         tasks = [_task(f"T{i:02d}") for i in range(_LARGE_PLAN_THRESHOLD)]
+-        fp = FlightPlan(**_plan(tasks=tasks))
++        fp = TaskPlan(**_plan(tasks=tasks))
+         assert fp.large_plan is False
+ 
+ 
+@@ -144,36 +144,36 @@ class TestFieldValidation:
+ 
+     def test_empty_acceptance_rejected(self):
+         with pytest.raises(ValidationError):
+-            FlightPlan(**_plan(tasks=[_task("T1", acceptance=[])]))
++            TaskPlan(**_plan(tasks=[_task("T1", acceptance=[])]))
+ 
+     def test_whitespace_only_acceptance_rejected(self):
+         with pytest.raises(ValidationError, match="must not be empty"):
+-            FlightPlan(**_plan(tasks=[_task("T1", acceptance=["  "])]))
++            TaskPlan(**_plan(tasks=[_task("T1", acceptance=["  "])]))
+ 
+     def test_invalid_band_rejected(self):
+         with pytest.raises(ValidationError):
+-            FlightPlan(**_plan(tasks=[
++            TaskPlan(**_plan(tasks=[
+                 _task("T1", est_tokens_band="XXL"),
+             ]))
+ 
+     def test_valid_bands_accepted(self):
+         for band in ("S", "M", "L", "XL"):
+-            fp = FlightPlan(**_plan(tasks=[
++            fp = TaskPlan(**_plan(tasks=[
+                 _task("T1", est_tokens_band=band),
+             ]))
+             assert fp.tasks[0].est_tokens_band == band
+ 
+     def test_wrong_schema_v_rejected(self):
+         with pytest.raises(ValidationError):
+-            FlightPlan(**_plan(schema_v="pp1"))
++            TaskPlan(**_plan(schema_v="pp1"))
+ 
+     def test_empty_tasks_rejected(self):
+         with pytest.raises(ValidationError):
+-            FlightPlan(**_plan(tasks=[]))
++            TaskPlan(**_plan(tasks=[]))
+ 
+     def test_extra_field_rejected(self):
+         with pytest.raises(ValidationError):
+-            FlightPlan(**_plan(secret="hack"))
++            TaskPlan(**_plan(secret="hack"))
+ 
+ 
+ class TestPlannedTaskModel:
+@@ -191,12 +191,12 @@ class TestPlannedTaskModel:
+ class TestClarificationModel:
+ 
+     def test_roundtrip(self):
+-        c = FlightPlanClarification(
++        c = TaskPlanClarification(
+             question="Q?", default_answer="A", impact="I", answer="A")
+         assert c.question == "Q?"
+         assert c.answer == "A"
+ 
+     def test_missing_answer_rejected(self):
+         with pytest.raises(ValidationError):
+-            FlightPlanClarification(
++            TaskPlanClarification(
+                 question="Q?", default_answer="A", impact="I")
+diff --git a/tests/orchestration/test_flight_plan.py b/tests/orchestration/test_flight_plan.py
+index efb92784..f4361397 100644
+--- a/tests/orchestration/test_flight_plan.py
++++ b/tests/orchestration/test_flight_plan.py
+@@ -11,7 +11,7 @@ from packages.orchestration.flight_plan import (
+     map_flight_plan_to_tasks,
+     plan_job_llm,
+ )
+-from packages.orchestration.schemas.models import FlightPlan
++from packages.orchestration.schemas.models import TaskPlan
+ 
+ 
+ def _fake_intake() -> dict:
+@@ -102,7 +102,7 @@ class TestPlanJobLlm:
+ class TestMapFlightPlanToTasks:
+ 
+     def test_three_tasks_in_order(self):
+-        fp = FlightPlan(**json.loads(_valid_plan_json(3)))
++        fp = TaskPlan(**json.loads(_valid_plan_json(3)))
+         tasks = map_flight_plan_to_tasks(fp)
+         assert len(tasks) == 3
+         for i, task in enumerate(tasks):
+@@ -113,13 +113,13 @@ class TestMapFlightPlanToTasks:
+             assert task.acceptance.splitlines() == [f"Thing {i + 1} done"]
+ 
+     def test_description_combines_title_and_goal(self):
+-        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
++        fp = TaskPlan(**json.loads(_valid_plan_json(1)))
+         tasks = map_flight_plan_to_tasks(fp)
+         assert "Task 1" in tasks[0].title
+         assert "Do thing 1" in tasks[0].title
+ 
+     def test_depends_on_preserved(self):
+-        fp = FlightPlan(**json.loads(_valid_plan_json(3)))
++        fp = TaskPlan(**json.loads(_valid_plan_json(3)))
+         tasks = map_flight_plan_to_tasks(fp)
+         assert tasks[0].inputs["flight"]["depends_on"] == []
+         assert tasks[1].inputs["flight"]["depends_on"] == ["T001"]
+@@ -170,7 +170,7 @@ class TestRenderPlanMd:
+     def test_deterministic_output(self):
+         from packages.orchestration.flight_plan import render_plan_md
+ 
+-        fp = FlightPlan(**json.loads(_valid_plan_json(3)))
++        fp = TaskPlan(**json.loads(_valid_plan_json(3)))
+         r1 = render_plan_md(fp)
+         r2 = render_plan_md(fp)
+         assert r1 == r2
+@@ -182,7 +182,7 @@ class TestRenderPlanMd:
+     def test_contains_acceptance_and_bands(self):
+         from packages.orchestration.flight_plan import render_plan_md
+ 
+-        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
++        fp = TaskPlan(**json.loads(_valid_plan_json(2)))
+         md = render_plan_md(fp)
+         assert "Thing 1 done" in md
+         assert "**Band:** M" in md
+@@ -199,21 +199,21 @@ class TestRenderPlanMd:
+                 "acceptance": ["ok"], "depends_on": [],
+                 "est_tokens_band": "S", "files_hint": [],
+             })
+-        fp = FlightPlan(schema_v="flight_plan_v1", tasks=tasks, risks=[])
++        fp = TaskPlan(schema_v="flight_plan_v1", tasks=tasks, risks=[])
+         md = render_plan_md(fp)
+         assert "Consider splitting" in md
+ 
+     def test_risks_rendered(self):
+         from packages.orchestration.flight_plan import render_plan_md
+ 
+-        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
++        fp = TaskPlan(**json.loads(_valid_plan_json(1)))
+         md = render_plan_md(fp)
+         assert "timeline risk" in md
+ 
+     def test_write_plan_md(self, tmp_path):
+         from packages.orchestration.flight_plan import write_plan_md
+ 
+-        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
++        fp = TaskPlan(**json.loads(_valid_plan_json(2)))
+         path = write_plan_md(fp, tmp_path)
+         assert path.name == "plan.md"
+         assert path.exists()
+@@ -222,7 +222,7 @@ class TestRenderPlanMd:
+     def test_write_plan_md_versioned(self, tmp_path):
+         from packages.orchestration.flight_plan import write_plan_md
+ 
+-        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
++        fp = TaskPlan(**json.loads(_valid_plan_json(1)))
+         p1 = write_plan_md(fp, tmp_path, version=1)
+         p2 = write_plan_md(fp, tmp_path, version=2)
+         assert p1.name == "plan.md"
+@@ -237,7 +237,7 @@ class TestNormalizationSection:
+     def test_empty_record_says_no_transformations(self):
+         from packages.orchestration.flight_plan import render_plan_md
+ 
+-        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
++        fp = TaskPlan(**json.loads(_valid_plan_json(2)))
+         md = render_plan_md(fp)
+         assert "## Normalization" in md
+         assert "No transformations" in md
+@@ -245,7 +245,7 @@ class TestNormalizationSection:
+     def test_record_entries_are_rendered(self):
+         from packages.orchestration.flight_plan import render_plan_md
+ 
+-        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
++        fp = TaskPlan(**json.loads(_valid_plan_json(2)))
+         md = render_plan_md(fp, [{
+             "kind": "split",
+             "source_ids": ["T001"],
+@@ -258,7 +258,7 @@ class TestNormalizationSection:
+     def test_write_plan_md_threads_the_record(self, tmp_path):
+         from packages.orchestration.flight_plan import write_plan_md
+ 
+-        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
++        fp = TaskPlan(**json.loads(_valid_plan_json(1)))
+         path = write_plan_md(fp, tmp_path, transformations=[{
+             "kind": "merge",
+             "source_ids": ["T001", "T002"],
+@@ -329,9 +329,9 @@ class TestReplan:
+     def test_replan_appends_version(self, tmp_path):
+         from packages.orchestration.flight_plan import replan
+ 
+-        fp1 = FlightPlan(**json.loads(_valid_plan_json(2)))
++        fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
+         fp1_dict = fp1.model_dump()
+-        fp2 = FlightPlan(**json.loads(_valid_plan_json(3)))
++        fp2 = TaskPlan(**json.loads(_valid_plan_json(3)))
+ 
+         updated, version = replan(fp1_dict, fp2, tmp_path)
+         assert version == 2
+@@ -342,11 +342,11 @@ class TestReplan:
+     def test_replan_keeps_old_file(self, tmp_path):
+         from packages.orchestration.flight_plan import replan, write_plan_md
+ 
+-        fp1 = FlightPlan(**json.loads(_valid_plan_json(2)))
++        fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
+         write_plan_md(fp1, tmp_path, version=1)
+         fp1_dict = fp1.model_dump()
+ 
+-        fp2 = FlightPlan(**json.loads(_valid_plan_json(3)))
++        fp2 = TaskPlan(**json.loads(_valid_plan_json(3)))
+         replan(fp1_dict, fp2, tmp_path)
+ 
+         assert (tmp_path / "plan.md").exists()
+@@ -357,8 +357,8 @@ class TestReplan:
+ 
+         from packages.orchestration.flight_plan import ReplanRejectedError, replan
+ 
+-        fp1 = FlightPlan(**json.loads(_valid_plan_json(2)))
+-        fp2 = FlightPlan(**json.loads(_valid_plan_json(1)))
++        fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
++        fp2 = TaskPlan(**json.loads(_valid_plan_json(1)))
+ 
+         with pytest.raises(ReplanRejectedError, match="Cannot replan"):
+             replan(fp1.model_dump(), fp2, tmp_path, any_task_completed=True)
+diff --git a/packages/orchestration/dod_compiler.py b/packages/orchestration/dod_compiler.py
+index 11a7b831..d5b6cc91 100644
+--- a/packages/orchestration/dod_compiler.py
++++ b/packages/orchestration/dod_compiler.py
+@@ -41,7 +41,7 @@ from packages.orchestration.dod_schema import (
+     DoDDraft,
+     DraftCheck,
+ )
+-from packages.orchestration.schemas.models import FlightPlan
++from packages.orchestration.schemas.models import TaskPlan
+ from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
+ 
+ #: Fallback pytest selector when an acceptance line names no test path of its own.
+@@ -84,7 +84,7 @@ def acceptance_line_key(task_id: str, index: int) -> str:
+     return f"{task_id}:{index}"
+ 
+ 
+-def plan_acceptance_lines(plan: FlightPlan) -> list[AcceptanceLine]:
++def plan_acceptance_lines(plan: TaskPlan) -> list[AcceptanceLine]:
+     """Every acceptance line in the plan, in plan order."""
+     lines: list[AcceptanceLine] = []
+     for task in plan.tasks:
+@@ -119,7 +119,7 @@ class DoDTraceabilityError(Exception):
+     """A DoD leaves at least one plan acceptance line without a check."""
+ 
+ 
+-def trace_acceptance(dod: DoD, plan: FlightPlan) -> TraceabilityReport:
++def trace_acceptance(dod: DoD, plan: TaskPlan) -> TraceabilityReport:
+     """Map every plan acceptance line to the check ids that cover it."""
+     lines = plan_acceptance_lines(plan)
+     known = {line.key for line in lines}
+@@ -140,7 +140,7 @@ def trace_acceptance(dod: DoD, plan: FlightPlan) -> TraceabilityReport:
+     )
+ 
+ 
+-def assert_acceptance_traceable(dod: DoD, plan: FlightPlan) -> TraceabilityReport:
++def assert_acceptance_traceable(dod: DoD, plan: TaskPlan) -> TraceabilityReport:
+     """Enforce the rule: *every plan acceptance line traceable to a check id*.
+ 
+     Returns the report when it holds; raises :class:`DoDTraceabilityError`
+@@ -163,7 +163,7 @@ class StandardCheckContext:
+     """What a standard-check provider gets to look at."""
+ 
+     intake: dict[str, Any]
+-    plan: FlightPlan
++    plan: TaskPlan
+     #: The project the DoD is being compiled for, when the caller knows it.
+     #: Additive (F062): a provider that needs to inspect the project — e.g. to
+     #: ask whether it has a runnable app at all — reads this; empty means the
+@@ -274,7 +274,7 @@ def acceptance_checks(
+ 
+ 
+ def deterministic_dod(
+-    plan: FlightPlan,
++    plan: TaskPlan,
+     *,
+     intake: dict[str, Any] | None = None,
+     default_selector: str = DEFAULT_TEST_SELECTOR,
+@@ -374,7 +374,7 @@ class DoDCompileResult:
+ 
+ def compile_dod(
+     intake: dict[str, Any],
+-    plan: FlightPlan,
++    plan: TaskPlan,
+     call_fn: Callable[[str, int], str] | None = None,
+     *,
+     on_call: Callable[[int, str, bool, str], None] | None = None,
+@@ -449,7 +449,7 @@ def compile_dod(
+ 
+ 
+ def _fallback(
+-    plan: FlightPlan,
++    plan: TaskPlan,
+     intake: dict[str, Any] | None,
+     default_selector: str,
+     *,
+diff --git a/docs/system/roadmap-mirror-v1.md b/docs/system/roadmap-mirror-v1.md
+index 851b86fd..adc35e76 100644
+--- a/docs/system/roadmap-mirror-v1.md
++++ b/docs/system/roadmap-mirror-v1.md
+@@ -120,7 +120,7 @@ into a mission draft the existing machinery understands:
+ | Feature-file section | Becomes |
+ |---|---|
+ | "How it fits" / "Context" / "Goal & Done" | mission context input (`JobIntake`) |
+-| "Task slicing" | plan seed (`FlightPlan` tasks + milestone draft) |
++| "Task slicing" | plan seed (`TaskPlan` tasks + milestone draft) |
+ | "Acceptance" | DoD compiler input (acceptance lines) |
+ | "Do not touch" | fences (deny globs + prose notes) |
+ 
+diff --git a/docs/system/vocabulary.md b/docs/system/vocabulary.md
+index 03d5f3a9..ac0ed733 100644
+--- a/docs/system/vocabulary.md
++++ b/docs/system/vocabulary.md
+@@ -31,7 +31,7 @@ thing, or one word for two things.
+ | **Mission** | What every Order becomes: one persistent record holding the Order, the Contract, the mission Plan and an ordered list of 1..n Jobs. | `Mission`, `MissionJobLink`, the `MISSION_STATUS_` and `MISSION_ROLE_` constants and the `Mission*Error` family, all in `packages/orchestration/mission_state.py` | unchanged as a type; a mission is created for EVERY order, which reverses F056's "a mission is never created automatically" (DECISION amend0905-vocab D2) | the `mission` group: `list`, `show`, `plan`, `contract`, `run`, `continue`, `pause`, `resume`, `achieve`, `abandon`, `start` | a schedule; a job |
+ | **Contract** | The acceptance criteria of a Mission, compiled to machine-checkable checks — its Definition of Done. One per mission; a job's contract is the derived slice for that job. | nothing in the seven sources spells this concept; its two halves are `PlannedTask.acceptance` in `packages/orchestration/schemas/models.py` and `packages/orchestration/dod_compiler.py`. The catalog's `contract` group today is a DIFFERENT concept wearing the word: the run-permission object, as `contract.inspect`, `contract.check` and `contract.set` | `contract` names the acceptance criteria and nothing else; the run-permission group is deleted and its idea folded into permissions and fences (DECISION amend0905-vocab D4) | `mission contract <id>` and `job contract <id>` after F261 | the run-permission object once called the "run contract" |
+ | **Job** | The administrative unit under a mission: identity, budget, fences, permissions, decisions, the job Plan with its Tasks, and references to its Runs. | the record, which is also the plan, is `JobPlan` in `packages/orchestration/pingpong_job.py`, beside the state constants `JOB_PLANNED`, `JOB_RUNNING`, `JOB_BLOCKED`, `JOB_COMPLETED`, `JOB_PAUSED` and `JOB_STOPPED`; its parts `JobBudgets` and `JobFences` are in `packages/core/models.py`. Every job lives in one store, one `job.json` per job directory, whose path `job_record_path` in `packages/orchestration/data_paths.py` builds | one store and one id shape (F260) | the `job` group | the Run |
+-| **Plan** | The ordered "what will be done" of a level: the mission plan lists the milestones, each of which becomes a job; the job plan lists the tasks. | two dialects side by side. `packages/orchestration/schemas/models.py` defines `FlightPlan`, `FlightPlanClarification`, `PlannerPlan`, `PlannedTask` and `FLIGHT_PLAN_SCHEMA_V`; `packages/orchestration/flight_plan.py` defines `FlightPlanResult` and `map_flight_plan_to_tasks`; and `packages/orchestration/pingpong_job.py` carries `JobPlan` beside them | `flight_plan.py` becomes `job_plan.py` and the noun "flight plan" is deleted from code, catalog, docs and feature files (DECISION amend0905-vocab D6) | `job plan` and `mission plan` are the only two plan commands; today's `plan status` and `plan next` become the hidden group `roadmap` | the Roadmap |
++| **Plan** | The ordered "what will be done" of a level: the mission plan lists the milestones, each of which becomes a job; the job plan lists the tasks. | two dialects side by side. `packages/orchestration/schemas/models.py` defines `TaskPlan`, `TaskPlanClarification`, `PlannerPlan`, `PlannedTask` and `FLIGHT_PLAN_SCHEMA_V`; `packages/orchestration/flight_plan.py` defines `FlightPlanResult` and `map_flight_plan_to_tasks`; and `packages/orchestration/pingpong_job.py` carries `JobPlan` beside them | `flight_plan.py` becomes `job_plan.py` and the noun "flight plan" is deleted from code, catalog, docs and feature files (DECISION amend0905-vocab D6) | `job plan` and `mission plan` are the only two plan commands; today's `plan status` and `plan next` become the hidden group `roadmap` | the Roadmap |
+ | **Task** | One step in a job plan; the planner chooses how many, bounded by configured maxima that are ceilings, not targets. | three spellings for one idea: `TaskEntry` in `packages/orchestration/pingpong_job.py`, alongside the `TASK_PENDING` to `TASK_SPLIT` state constants, `max_tasks` and the converters `task_entry_to_planned_task` and `planned_task_to_task_entry`; and `PlannedTask` and `ProposedTask` in `packages/orchestration/schemas/models.py` | one task type (F260) | no group of its own; it appears as `job run <id> --tasks n` and `job context <id> --task <t>` | a Round |
+ | **Run** | One execution of the ping-pong loop for exactly one Task, owning exactly one evidence folder. | `RunState` in `packages/core/models.py`; `run_id`, `run_job` and the `run_manifest_path`, `run_manifest_created_at` and `run_manifest_episodes` fields in `packages/orchestration/pingpong_job.py`; `runs_dir` in `packages/orchestration/data_paths.py`. The word also names a provider call in one place and a whole execution in another | `run` means the per-task execution and nothing else | `run show <id>` and `run list` after F261; today the verb is scattered across `job run`, `do run`, `mission run` and more | the verb; a dogfood run; the run manifest |
+ | **Round** | One pass inside a run: build, then tests, then review. Round 2 and later are repairs. | `max_rounds`, `max_rounds_source`, `repair_rounds_allowed`, `repair_rounds_used` and `repair_rounds_source` in `packages/orchestration/pingpong_job.py` | unchanged | none | a Task — a task can take several rounds |

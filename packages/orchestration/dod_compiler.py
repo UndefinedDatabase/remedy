@@ -41,7 +41,7 @@ from packages.orchestration.dod_schema import (
     DoDDraft,
     DraftCheck,
 )
-from packages.orchestration.schemas.models import FlightPlan
+from packages.orchestration.schemas.models import TaskPlan
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 
 #: Fallback pytest selector when an acceptance line names no test path of its own.
@@ -84,7 +84,7 @@ def acceptance_line_key(task_id: str, index: int) -> str:
     return f"{task_id}:{index}"
 
 
-def plan_acceptance_lines(plan: FlightPlan) -> list[AcceptanceLine]:
+def plan_acceptance_lines(plan: TaskPlan) -> list[AcceptanceLine]:
     """Every acceptance line in the plan, in plan order."""
     lines: list[AcceptanceLine] = []
     for task in plan.tasks:
@@ -119,7 +119,7 @@ class DoDTraceabilityError(Exception):
     """A DoD leaves at least one plan acceptance line without a check."""
 
 
-def trace_acceptance(dod: DoD, plan: FlightPlan) -> TraceabilityReport:
+def trace_acceptance(dod: DoD, plan: TaskPlan) -> TraceabilityReport:
     """Map every plan acceptance line to the check ids that cover it."""
     lines = plan_acceptance_lines(plan)
     known = {line.key for line in lines}
@@ -140,7 +140,7 @@ def trace_acceptance(dod: DoD, plan: FlightPlan) -> TraceabilityReport:
     )
 
 
-def assert_acceptance_traceable(dod: DoD, plan: FlightPlan) -> TraceabilityReport:
+def assert_acceptance_traceable(dod: DoD, plan: TaskPlan) -> TraceabilityReport:
     """Enforce the rule: *every plan acceptance line traceable to a check id*.
 
     Returns the report when it holds; raises :class:`DoDTraceabilityError`
@@ -163,7 +163,7 @@ class StandardCheckContext:
     """What a standard-check provider gets to look at."""
 
     intake: dict[str, Any]
-    plan: FlightPlan
+    plan: TaskPlan
     #: The project the DoD is being compiled for, when the caller knows it.
     #: Additive (F062): a provider that needs to inspect the project — e.g. to
     #: ask whether it has a runnable app at all — reads this; empty means the
@@ -274,7 +274,7 @@ def acceptance_checks(
 
 
 def deterministic_dod(
-    plan: FlightPlan,
+    plan: TaskPlan,
     *,
     intake: dict[str, Any] | None = None,
     default_selector: str = DEFAULT_TEST_SELECTOR,
@@ -374,7 +374,7 @@ class DoDCompileResult:
 
 def compile_dod(
     intake: dict[str, Any],
-    plan: FlightPlan,
+    plan: TaskPlan,
     call_fn: Callable[[str, int], str] | None = None,
     *,
     on_call: Callable[[int, str, bool, str], None] | None = None,
@@ -449,7 +449,7 @@ def compile_dod(
 
 
 def _fallback(
-    plan: FlightPlan,
+    plan: TaskPlan,
     intake: dict[str, Any] | None,
     default_selector: str,
     *,

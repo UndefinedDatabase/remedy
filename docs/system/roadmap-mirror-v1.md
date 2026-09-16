@@ -120,7 +120,7 @@ into a mission draft the existing machinery understands:
 | Feature-file section | Becomes |
 |---|---|
 | "How it fits" / "Context" / "Goal & Done" | mission context input (`JobIntake`) |
-| "Task slicing" | plan seed (`FlightPlan` tasks + milestone draft) |
+| "Task slicing" | plan seed (`TaskPlan` tasks + milestone draft) |
 | "Acceptance" | DoD compiler input (acceptance lines) |
 | "Do not touch" | fences (deny globs + prose notes) |
 
