@@ -1,42 +1,37 @@
-# Handoff — F261 round 26
+# Handoff — F261 round 27
 
 ## Session
 
-SESSION 7 of feature F261 · round 26 · rounds so far 26
+SESSION 7 of feature F261 · round 27 · rounds so far 27
 
-Context self-assessment: the round was one record commit, two long waits on the suite and one on the
-self-use run, and the worker's context stayed comfortable throughout.
+Context self-assessment: the round was three record commits, one script-run rotation, one evidence
+job and one package build, and the worker's context stayed comfortable throughout.
 
 ## Range
 
-Review of `ed3c82d1`..`HEAD`.
+Review of `f2872a33`..`HEAD`.
 
 ## Commits
 
-### 8767a465 F261 R26 C0a: save the round 26 step block under the authored directory
+### 417ba82e F261 R27 C0a: save the round 27 step block under the authored directory
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f261-r26.md` | +259 / -0 | the block file the delegating message names, copied with `shutil.copyfile`, sha256 `c3da4744…c9ba3e8` verified after the copy |
+| `.agent/authored/f261-r27.md` | +235 / -0 | the block file the delegating message names, copied with `shutil.copyfile`, sha256 `5a5c97f3…f1ee888` verified after the copy |
 
-### 0c07789c F261 R26 C0b: mirror the round 26 step block into the last block state file
+### f8f8be60 F261 R27 C0b: mirror the round 27 step block into the last block state file
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +202 / -245 | the same bytes, byte-identical to the C0a copy |
+| `.agent/last_block.md` | +177 / -201 | the same bytes, byte-identical to the C0a copy |
 
-### 1b03919a F261 R26 C1: book round 25's PASS, set the closure plan and record DECISION F261 D26
+### fb510ca7 F261 R27 C1: book round 26's PASS with the recurrences of R-0645, R-0784 and R-0838, and set the closure round A plan
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md`, `.agent/live_review.md`, `.agent/decisions.md` (3 paths) | +32 / -12 | plan.md full replacement by PLAN26 (+16 / -12); RECORD26 appended to live_review.md (+2 / -0), the `Gate: F261 R25` PASS paragraph; DEC26 appended to decisions.md (+14 / -0), DECISION F261 D26. The FIRST SUBSTANTIVE COMMIT of the round |
+| `.agent/plan.md`, `.agent/live_review.md` (2 paths) | +32 / -18 | plan.md full replacement by PLAN27 (+18 / -18); RECORD27 appended to live_review.md (+14 / -0), the `Gate: F261 R26` PASS entry and three recurrence paragraphs. The FIRST SUBSTANTIVE COMMIT of the round |
 
-### e8e85c40 F261 R26 C2: the integration gate evidence on the branch at C1 and at the fork point, with one branch-only node classed flaky by three solo passes
+### 30343f92 F261 R27 C2: rotate the ledger into the archive by the rotation script, 110 gate records and 7 finding pairs moved
 | Path | +/- | Reason |
 |---|---|---|
-| 9 files under `.agent/gate_f261_r26/` | +77 / -0 | SPEC G's nine `.txt` files, each written after both runs had exited: `branch_run_tail`, `branch_failed`, `base_run_tail`, `base_failed` (empty), `branch_only`, `base_only` (empty), `attribution`, `dist_mtime_window`, `gate_summary` |
-
-### 8e44bd6c F261 R26 C3: append the generated self-use item SU-015 and its run evidence, run to the approval gate under the configured real provider and not applied
-| Path | +/- | Reason |
-|---|---|---|
-| `scripts/self_use_queue.json` and 6 files under `.agent/selfuse_f261/` (7 paths) | +40 / -0 | the queue's `SU-015` entry written by `generate_and_append_if_empty` (+8 / -0), never hand-edited; SPEC U3's six `.txt` files (+32 / -0) |
+| `.agent/live_review.md`, `.agent/live_review_archive.md` (2 paths) | +762 / -762 | written by `python3 -B scripts/rotate_live_review.py` alone (live_review.md +0 / -762, archive +762 / -0). THE ACCEPTED HEAD |
 
 ### Item status — the block's ordered bundle
 
@@ -45,198 +40,191 @@ Review of `ed3c82d1`..`HEAD`.
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
-| C2 | done | the one BRANCH-ONLY id is classed flaky, so no blocker ended the round |
-| C3 | done | the run BLOCKED at repair exhaustion; recorded verbatim as a result, per constraint 3 |
-| C4 | done | this commit, then the push |
+| C2 | done | the accepted head |
+| SPEC E | done | committed nothing; evidence dir untracked under `.remedy-wt/f261r27w/` |
+| SPEC Z | done | READY_FOR_REVIEW; committed nothing |
+| C3 | done | this commit, then the push |
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git push origin feature/f261-cli-vocabulary-v2` after C1 | `ed3c82d1..1b03919a` |
-| `git worktree add -b tmp/f261-r26-base .remedy-wt/f261r26w/base-wt 7cdde89b5d0dc8ef1fb96980105870e956699873` | created |
-| `git worktree remove .remedy-wt/f261r26w/base-wt`, `git worktree prune`, `git branch -d tmp/f261-r26-base` | removed without `--force`; branch deleted (was 7cdde89b) |
-| `git push origin feature/f261-cli-vocabulary-v2` after C2 | `1b03919a..e8e85c40` |
-| `git worktree add -b tmp/f261-r26-selfuse .remedy-wt/f261r26w/selfuse-wt e8e85c408bc751fc3a4b60c20393942f4cced93d` | created |
-| `run_next_self_use_item(...)`, the one runner call of SPEC U | returned after 115.82s; job `90395ff070d8486c` created branch `remedy/job-90395ff070d8486c` and a retained nested worktree |
-| `git worktree remove .remedy-wt/f261r26w/selfuse-wt/.remedy-wt/job-90395ff070d8486c` | removed without `--force` (its status was empty); the job branch stays |
-| `git worktree remove .remedy-wt/f261r26w/selfuse-wt`, `git worktree prune`, `git branch -d tmp/f261-r26-selfuse` | removed without `--force`; branch deleted (was e8e85c40) |
-| `git push origin feature/f261-cli-vocabulary-v2` after C3 | `e8e85c40..8e44bd6c` |
-| `git fetch -q origin feature/f261-cli-vocabulary-v2` before G6 | exit 0, to read the remote ref fresh |
-| `git push origin feature/f261-cli-vocabulary-v2` after C4 | run after this commit; its outcome is in the completion message |
+| `git push origin feature/f261-cli-vocabulary-v2` after C1 | `f2872a33..fb510ca7` |
+| `git push origin feature/f261-cli-vocabulary-v2` after C2 | `fb510ca7..30343f92` |
+| `git fetch -q origin feature/f261-cli-vocabulary-v2` before SPEC Z | exit 0, to read the remote ref fresh; HEAD == origin == `30343f92` |
+| `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f261r27w/evidence-234c8e6f18905013` | exit 0, package READY_FOR_REVIEW in the script's default directory, not moved |
+| `git push origin feature/f261-cli-vocabulary-v2` after C3 | run after this commit; its outcome is in the completion message |
 
-No pull request created, edited or merged. No `gh` command. No `remedy` CLI invocation. No other
-runner or `run_job` call.
+No pull request created, edited or merged. No `gh` command. No `remedy` CLI invocation. No runner
+or `run_job` call. No worktree created.
 
 ## Verification
 
-STOP reads, before C0a, G-BRANCH, U2 and C4: `ls .agent/STOP` → exit 2, `No such file or directory`
-each time.
+STOP reads, before C0a, C2 and C3: `ls .agent/STOP` → exit 2, `No such file or directory` each
+time.
 
 ### G1 TRANSPORT — exit 0
 
-    PASS authored block sha256 at C0a (8767a465) == delegating digest
-         c3da474496aea65d0829308808f57073d7b7ff16eda7e26f7cd93fef4c9ba3e8
-    PASS last_block.md at C0b (0c07789c) byte-identical to it
-    PASS slice PLAN26    FOUND  12e8956b…  1987 bytes, 37 lines
-    PASS slice RECORD26  FOUND  c5dd8e48…  4178 bytes, 2 lines
-    PASS slice DEC26     FOUND  af5b54a7…  3519 bytes, 14 lines
-    block: 259 lines TOTAL, 53 slice-content lines, 206 PROSE; no single-repeated-character line
+    PASS authored block sha256 at C0a (417ba82e) == delegating digest
+         5a5c97f39becefa09a49027b515411e150ee30aae86b990a54be8614cf1ee888
+    PASS last_block.md at C0b (f8f8be60) byte-identical to it
+    PASS slice PLAN27   FOUND e8fa0859261f87762db06e8865634fdd0041c8e1138a14017fc6b5a15c07c6e5, 1927 bytes, 37 lines
+    PASS slice RECORD27 FOUND c951086e67d5bce35ea6eb28b6212820fe4e0387bae2b3e7707dc0d9ff05cc60, 5782 bytes, 14 lines
+    block: 235 lines TOTAL, 51 slice-content lines, 184 PROSE; no single-repeated-character line
 
 ### G2 THE RECORD at C1 — exit 0
 
-    PASS plan.md byte-identical to PLAN26, 37 lines, ^## Goal$ once, ^## Next Steps$ once
-    PASS live_review.md == ed3c82d1 blob + RECORD26: 1130125 bytes,
-         sha256 b829829915ee66753e120e6881fe95f98289b894d3300acdf6a0d48af6d6f986
-    PASS decisions.md   == ed3c82d1 blob + DEC26: 1432544 bytes,
-         sha256 83d92e5630adcf3966a7255dcf27accf87886c9f542873eda583f7dc2c654da9
-    PASS ^Gate: F\d+ R\d+ —          ed3c82d1=134  C1=135
-    PASS Gate: F261 R25 —            ed3c82d1=0    C1=1
-    PASS distinct ^- R-\d+ — ids     ed3c82d1=134  C1=134
-    PASS distinct ^Done: R-\d+ — ids ed3c82d1=9    C1=9
-    PASS open set by distinct id     ed3c82d1=125  C1=125, identical membership
-    PASS C1 appends: deletion column 0 for live_review.md and decisions.md
+    PASS plan.md byte-identical to PLAN27, 37 lines, ^## Goal$ once, ^## Next Steps$ once
+    PASS live_review.md == f2872a33 blob + RECORD27: 1135907 bytes,
+         sha256 84301e032a64e0eb77caeb82c4940d21e6cb750fc94a27b05812a93feb480298
+    PASS ^Gate: F\d+ R\d+ —          f2872a33=135  C1=136
+    PASS Gate: F261 R26 —            f2872a33=0    C1=1
+         distinct ^- R-\d+ — ids     f2872a33=134  C1=134
+         distinct ^Done: R-\d+ — ids f2872a33=9    C1=9
+    PASS open set by distinct id     f2872a33=125  C1=125, identical membership
 
-    python3 -B -m pytest tests/docs/ -q   → exit 0, "310 passed in 1.23s"
+    python3 -B -m pytest tests/docs/ -q   → exit 0, "310 passed in 1.06s"
 
-### G3 THE GATE, SPEC G — exit 0 as a gate (BRANCH-ONLY less flaky is empty)
+### G3 THE ROTATION at C2 — exit 0
 
-    G-BRANCH  python3 -m pytest -n auto -q -rfE   (primary checkout at 1b03919a; PYTHONPATH,
-              REMEDY_PROJECT, REMEDY_DATA_DIR removed; output piped to .remedy-wt/f261r26w/)
-              → exit 1, "1 failed, 17652 passed, 23 skipped, 1 warning in 252.27s (0:04:12)",
-                wall 252.83s, failed nodes 1
-    G-BASE    same command in the worktree on tmp/f261-r26-base at 7cdde89b, REMEDY_UI_NO_AUTO_BUILD=1
-              → exit 0, "18443 passed, 23 skipped, 1 warning in 156.15s (0:02:36)",
-                wall 156.72s, failed nodes 0, "React UI not built" 0
-    copies    apps/ui/node_modules: primary 43005 files / 27 symlinks, copy 43005 / 27
-              apps/ui/dist:         primary 4 files / 0 symlinks,      copy 4 / 0
-    stamp     newest apps/ui/src mtime 1789563006389409235 ns; dist entries and directory set to
-              1789563006390409235 ns
-    window    1789563035380836096..1789563192103697152 ns; dist files inside it: 0 (NONE); all 4
-              mtimes unchanged across the run
-    BRANCH-ONLY tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift::test_a_mutated_workspace_shows_blocking_drift
-              reading: line 96, `diff_manifests(ref, clean)["blocking"]` held one item, category
-              `remedy_code`, field `remedy_worktree_digest`
-              re-run ALONE, serially, 3x in the primary checkout,
-              `python3 -m pytest -q -rfE <id>` → exit 0 "1 passed in 1.73s", exit 0 "1 passed in
-              1.41s", exit 0 "1 passed in 1.71s" → FLAKY
-    BASE-ONLY none; attribution needed for no id
-    BRANCH-ONLY less flaky: EMPTY
+    python3 -B scripts/rotate_live_review.py   → exit 0, full stdout:
+      gate records moved: 110
+      finding pairs moved: 7 (14 records)
+      old ledger size: 1135907 bytes
+      new ledger size: 620380 bytes
+      old archive size: 2948965 bytes
+      new archive size: 3464492 bytes
+      open findings before: 123
+      open findings after: 123
+      written: <repo>/.agent/live_review.md and <repo>/.agent/live_review_archive.md
+    (the last line printed the two absolute paths under the primary checkout's root)
+    PASS live_review.md at C2 620380 bytes, sha256 dfc4747d104149ad7a22e73c61df983bec9c7bc0ff06bf2cec697422a25d576c
+    PASS archive at C2 3464492 bytes, sha256 271ee9e7a91d16dac8da56eeaa807b5d3dd010c64d934d667500843c5ff20552
+    PASS distinct-id open set C1 125 == C2 125, identical membership
+    PASS archive at C1 (2948965 bytes) is an exact prefix of the archive at C2
+    git show --numstat --format= 30343f92 → 0 762 .agent/live_review.md; 762 0 .agent/live_review_archive.md
+                                            (insertions 762, deletions 762, exactly the two paths)
 
-Passed counts: base 18443, branch 17652, difference 791. One of the 791 is the branch's flaky
-failure; the other 790 are tests the branch no longer has. `git diff --name-status 7cdde89b
-1b03919a -- tests/` deletes 22 test files: `tests/cli/test_context_inspect_cli.py`,
-`test_context_inspect_runtime.py`, `test_contract_runtime.py`, `test_do_continue_cli.py`,
-`test_loop_cmd.py`, `test_orchestrator_brain_cli.py`, `test_queue_cmd.py`,
-`test_repair_request_cli.py`, `test_repair_runtime.py`, `test_repair_v1_cli.py`,
-`test_review_cmd.py`, `test_token_cli.py`, `test_worker_cli_runtime.py` (all under `tests/cli/`);
-`tests/orchestration/test_do_continue.py`, `test_job_queue.py`, `test_loop_run.py`,
-`test_loop_spec.py`, `test_pingpong_promote.py`, `test_queue_concurrency.py`,
-`test_queue_executor_binding.py`, `test_repair_apply_cycle.py` (all under `tests/orchestration/`);
-and `tests/test_do_job_flow.py`. It adds 4: `tests/cli/test_job_show.py`,
-`tests/docs/test_retired_promote_word.py`, `tests/orchestration/test_review_package_status.py`,
-`tests/test_role_override_flags.py`. It also lists 4 renames, which are neither: `test_teach_cmd.py`
-to `test_teacher_cmd.py`, `test_do_job_flow_review_base.py` to `test_job_evidence_review_base.py`,
-`test_job_promote.py` to `test_job_apply.py`, and `test_job_promote_consistency.py` to
-`test_job_apply_consistency.py`. The branch also edited many other test files, so the 790 is not
-split by file here.
+### G4 THE EVIDENCE JOB, SPEC E — exit 0
 
-### G4 THE GENERATION — exit 0
+    E1 head 30343f927800784c464eaf56706d5b82ece39c81
+       rev-list --ancestry-path 7cdde89b..C2 = 183; rev-list 7cdde89b..C2 = 183; equal
+       git merge-base --is-ancestor 7cdde89b5d0dc8ef1fb96980105870e956699873 origin/main → exit 0
+       git status --porcelain → ''
+    E2 python3 -B -m pytest tests/docs/ -q -p no:randomly (PYTHONPATH, REMEDY_PROJECT, REMEDY_DATA_DIR
+       removed) → exit 0, "310 passed in 1.05s"; --collect-only → exit 0
+       entry: exit_code 0 · passed 310 · failed 0 · skipped 0 · deselected 0 · selected 310 ·
+       len(node_ids) 310 · len(test_files) 4 · output_hash 6705653ba41d2d9a54133c676b6b62ae25c254f34b8ac04563a9e0bf8a960da9 ·
+       duration_seconds 1.269
+       test_files: tests/docs/test_docs_consistency.py, tests/docs/test_named_source_paths.py,
+                   tests/docs/test_retired_promote_word.py, tests/docs/test_vocabulary.py
+       pre-scan (_unsafe_text, loaded by file path) flags: 0
+    E3 evidence_dir .remedy-wt/f261r27w/evidence-234c8e6f18905013 · timestamp = generated_at =
+       2026-09-16T13:15:12+00:00
+       summary, in full:
+       {"authority_count": 223, "commit_count": 183,
+        "head_commit": "30343f927800784c464eaf56706d5b82ece39c81", "job_id": "234c8e6f18905013",
+        "manual_completion": true, "operator_attested_tasks": ["T001", "T002", "T003"],
+        "partition": {"T001": 75, "T002": 75, "T003": 73}, "total_passed": 310,
+        "verdict": "PASS_WITH_RISKS"}
 
-    (a) pending_self_use_items(Path("scripts/self_use_queue.json")) → ()
-        next_self_use_item(...)                                     → None
-    call generate_and_append_if_empty(queue_path=Path("scripts/self_use_queue.json"),
-                                      ledger_path=Path(".agent/live_review.md"))
-    (b) id SU-015 · title "Address ledger finding R-0445" ·
-        provenance "generated (self-use-generator tier 1, ledger scan, R-0445)" · consumed_by ''
-    (c) queue 48791 → 53810 bytes; 14 → 15 items (read through load_self_use_queue)
-    (d) pending after: ['SU-015']
+The reviewer's dry run read 181 and 181 on a head without the two block-save commits; 183 is that
+plus C0a and C0b.
 
-### G5 THE RUN — exit 0 (the branch and status readings); the rest reported, matching nothing
+### G5 THE PACKAGE AND THE PRECONDITIONS, SPEC Z — exit 0
 
-    (a) run_next_self_use_item(dest_dir=Path('/home/decodeux/Repos/remedy/.remedy-wt/f261r26w/selfuse-dest'),
-        repo_path='/home/decodeux/Repos/remedy/.remedy-wt/f261r26w/selfuse-wt',
-        queue_path=Path('scripts/self_use_queue.json'))
-        — the function's default budgets, cwd the primary checkout's root
-    (b) job_id 90395ff070d8486c · state blocked · task T001 status blocked
-        (read from the persisted JobPlan; see deviation 2)
-    (c) execution_config: ExecutionConfig(builder='ollama', builder_source='cli', reviewer='ollama',
-        reviewer_source='cli', …, max_tasks=1, max_tasks_source='invocation') — verbatim in
-        .agent/selfuse_f261/execution_config.txt
-        FAKE_APPEARS_IN_EXECUTION_CONFIG: False
-    (d) wall clock 115.82s; budgets {'max_total_tokens': None, 'max_provider_calls': 6,
-        'max_wall_clock_minutes': None, 'max_cost_usd': 0.5, 'deadline': None}
-    (e) describe_self_use_run_defects → length 2:
-        job 90395ff070d8486c (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
-        T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
-    (f) git status --porcelain before C3 → ' M scripts/self_use_queue.json', '?? .agent/selfuse_f261/'
-        — nothing applied; `consumed_by` of SU-015 is ''
-    (g) remedy/job-* lines not among the 16 at ed3c82d1: remedy/job-90395ff070d8486c (17 now, none
-        gone); git branch --list 'tmp/*' → ''
+    bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f261r27w/evidence-234c8e6f18905013 → exit 0
+      REVIEW_PACKAGE_CREATED=true
+      PACKAGE_STATUS=READY_FOR_REVIEW
+      PACKAGING_CWD=/home/decodeux/Repos/remedy
+      EVIDENCE_DIR=.remedy-wt/f261r27w/evidence-234c8e6f18905013
+      REVIEW_SUBJECT_ALIGNMENT=PASS
+      EVIDENCE_AUTHORITATIVE=true
+      REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips
+      ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20260916-151540-READY_FOR_REVIEW.zip
+      JSON line: final_sha256 8bc443e91657986bcbb83ad3b6d81cb55afd4b111ff7d4e6930983606f545275,
+                 member_count 4377, authoritative_count 223, package_status READY_FOR_REVIEW
+    PASS sha256 recomputed from the file == printed, 8bc443e91657986bcbb83ad3b6d81cb55afd4b111ff7d4e6930983606f545275
+    from the package's .review_zip_manifest.json:
+      package_status READY_FOR_REVIEW
+      committed_review_subject.base_commit  7cdde89b5d0dc8ef1fb96980105870e956699873  (fork point)
+      committed_review_subject.head_commit  30343f927800784c464eaf56706d5b82ece39c81  (C2)
+      committed_review_subject.commit_count 183                                       (E1's count)
 
-### G6 TREE, PATH SET, OPEN SET, CAP, CANARY after C3 and its push — exit 0
+    python3 -B -m pytest tests/docs/ -q                   → exit 0, "310 passed in 1.04s"
+    python3 -B -m pytest tests/cli/test_golden_path.py -q → exit 0, "42 passed in 17.89s"
+
+    run_integrity_checks(): .passed True · .fail_count 0
+      high_blockers_open: name 'high_blockers_open' · status IntegrityStatus.PASS ('pass') ·
+                          message 'no open blocker/high findings'
+    open High findings read from the ledger at C2 (open `- R-xxxx — High` registrations):
+      R-0803, R-0804, R-0807 — the check does not see them, which is R-0648
+
+### G6 TREE, PATH SET, CAP after C2 and its push — exit 0
 
     git status --porcelain → ''
     git worktree list      → 1 row
-    git rev-parse HEAD == git rev-parse origin/feature/f261-cli-vocabulary-v2 == 8e44bd6c37f4b4f1ad5a0a8dec82f60664a1da68
-    changed paths ed3c82d1..C3: 21 against 21 expected; MISSING none; EXTRA none
-    open set C1 125, C3 125, identical
+    git branch --list 'remedy/job-*' → 17 lines
+    git rev-parse HEAD == git rev-parse origin/feature/f261-cli-vocabulary-v2 == 30343f927800784c464eaf56706d5b82ece39c81
+    changed paths f2872a33..C2: 5 against the Bundle's 5 (less handoff.md); MISSING none; EXTRA none
 
     | Commit | insertions | deletions | staged paths |
     |---|---|---|---|
-    | 8767a465 C0a | 259 | 0 | 1 |
-    | 0c07789c C0b | 202 | 245 | 1 |
-    | 1b03919a C1 | 32 | 12 | 3 |
-    | e8e85c40 C2 | 77 | 0 | 9 |
-    | 8e44bd6c C3 | 40 | 0 | 7 |
-    commits reaching 500 insertions: none
+    | 417ba82e C0a | 235 | 0 | 1 |
+    | f8f8be60 C0b | 177 | 201 | 1 |
+    | fb510ca7 C1 | 32 | 18 | 2 |
+    | 30343f92 C2 | 762 | 762 | 2 |
+    commits reaching 500 insertions: 30343f92 (C2), declared below
 
-    python3 -B -m pytest tests/cli/test_golden_path.py -q → exit 0, "42 passed in 17.83s"
+## Closure values for round B's STATUS line
+
+    Evidence job   234c8e6f18905013
+    package        remedy-review-20260916-151540-READY_FOR_REVIEW.zip
+    SHA-256        8bc443e91657986bcbb83ad3b6d81cb55afd4b111ff7d4e6930983606f545275
+    package path   /home/decodeux/Repos/remedy-history/zips
+    accepted HEAD  30343f927800784c464eaf56706d5b82ece39c81
+
+Live review verdict carried by the evidence producer: `PASS_WITH_RISKS`.
+
+## Declared oversize commit (constraint 6)
+
+C2 `30343f92` carries 762 insertions, over the 500-line cap. It is declared under AGENTS.md's
+declared-oversize exception with DECISION F272 D18's reason: the rotation cannot be split without
+leaving records in neither file or in both, and the script verifies every moved record by sha256.
+It is this feature's only such commit.
 
 ## Authored-text proofs
 
-PLAN26, RECORD26 and DEC26 were extracted as the bytes strictly between their `BEGIN` and `END`
-lines and matched their BEGIN-marker sha256 before use; none was edited. The applied results were
-re-read from the git objects at C1 and compared to the `ed3c82d1` blob plus the slice; both appended
-files match the reviewer's byte counts and sha256 exactly (G2). `.agent/authored/f261-r26.md` and
-`.agent/last_block.md` are byte-identical to the delegated block file (G1).
+PLAN27 and RECORD27 were extracted as the bytes strictly between their `BEGIN` and `END` lines and
+matched their BEGIN-marker sha256 before use; neither was edited. The applied results were re-read
+from the git objects at C1: plan.md equals PLAN27 byte for byte, and live_review.md equals the
+`f2872a33` blob plus RECORD27 at the reviewer's 1135907 bytes and sha256 (G2).
+`.agent/authored/f261-r27.md` and `.agent/last_block.md` are byte-identical to the delegated block
+file (G1). The rotated files at C2 match the reviewer's two digests (G3).
 
 ## Deviations & assumptions
 
-None to the ordered commit sequence: C0a, C0b, C1, C2, C3 and C4 landed in that order, each
-single-parent, on `ed3c82d1`. Declared:
+None to the ordered commit sequence: C0a, C0b, C1, C2 and C3 landed in that order, each
+single-parent, on `f2872a33`. Declared:
 
-1. G2's `tests/docs/` run was first made with the exact command piped into `tail`, which hid its
-   exit code ("310 passed in 1.22s"). It was re-run without the pipe but with
-   `-p no:cacheprovider` added, exit 0, "310 passed in 1.23s".
-2. U2's capture script raised after `run_next_self_use_item` had returned: it called
-   `model_dump` on the `JobPlan`, which is a dataclass. The runner was NOT called again. `(b)`,
-   `(c)`, `(d)` budgets and `(e)` were read from the JobPlan `run_job` persisted for job
-   `90395ff070d8486c` (`.data/jobs/90395ff070d8486c/job.json`, ignored), reloaded with
-   `packages.orchestration.pingpong_job.load_job_plan`. The defect tuple was computed on that
-   reloaded object. The recorded wall clock of 115.82s includes the negligible failed
-   serialization. `full_transcript.txt` says the runner wrote nothing to stdout or stderr, then
-   gives the capture script's lines and traceback verbatim.
-3. The run left a retained nested worktree `.remedy-wt/job-90395ff070d8486c` inside the self-use
-   worktree, on `remedy/job-90395ff070d8486c`. Its status was empty, and the job branch has no
-   commit beyond C2. I removed it without `--force` before removing the self-use worktree, so that
-   `git worktree list` returns to one row. The job branch was kept.
-4. G-BASE step (b): the dist stamp was set 1 ms above the newest `apps/ui/src` mtime at nanosecond
-   precision, not a round later second. That keeps the stamp strictly greater than the sources and
-   still before the run window, so the window reading stays meaningful.
-5. Both suite transcripts went under `.remedy-wt/f261r26w/`, as SPEC G orders. That directory is
-   inside the repository directory, though git-ignored. The flaky node's drift field is
-   `remedy_worktree_digest`, which is the field an in-repository log growing during the run is
-   known to disturb (R-0176). This is a lead, NOT a measured attribution; the classification rests
-   only on the three solo passes.
-6. One compound `grep` over the branch transcript was refused by the command guard by form and
-   re-issued as a single `grep`; nothing ran from the refused form.
+1. G2's `tests/docs/` run was first made with `-p no:cacheprovider` added (exit 0, "310 passed in
+   1.04s"), then re-run with the exact command, which is the reading reported above.
+2. SPEC E's single ISO-8601 UTC value is written in the `+00:00` form
+   (`2026-09-16T13:15:12+00:00`), the form earlier closure evidence scripts used, and not with a `Z`.
+3. G5's integrity script also printed a "non-pass check" list whose filter was wrong: it compared
+   the status enum's string form, so it listed five checks that are all `IntegrityStatus.PASS`.
+   `.passed True` and `.fail_count 0` are the readings; nothing was re-run.
+4. Two compound shell commands were refused by the command guard by form (one using `$?`); they
+   were re-issued as single commands, and nothing ran from the refused forms. The first package
+   build attempt was one of them, so the script ran exactly once.
+5. `git fetch -q origin feature/f261-cli-vocabulary-v2` was run before SPEC Z to read the remote
+   ref fresh; it changed nothing.
 
 ## Next
 
 1. Phase 1 rule 1: re-read `.agent/STOP` from disk before anything else.
-2. The reviewer's verdict on round 26.
-3. Closure round A.
+2. The reviewer's verdict on round 27.
+3. Closure round B.
 
 Open findings: 125 by distinct id, with the High ids R-0803, R-0804 and R-0807.
 
