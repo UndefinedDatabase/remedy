@@ -96,8 +96,12 @@ For `status in (failed, timeout, environment_failure)`, a `TestFailureArtifact` 
 Next safe action points to:
 
 ```
-remedy repair start <job_id> <failure_artifact_id> --json
+remedy job show <job_id> --full --json
 ```
+
+> **Status (2026-09-16):** it pointed at a `repair start` word until F261 round 22
+> deleted the `repair` group; the failure artifact is still written, and `job show
+> --full` is what reads it back.
 
 ## Linkage
 
@@ -165,7 +169,8 @@ Text output (non-JSON) is written to stderr for blocked/failed runs, stdout for 
 ## Limitations in v1
 
 - No OS-level network sandbox (no_cloud is a contract policy, not a kernel firewall)
-- No automatic repair triggered by test failures (requires `remedy repair start ...`)
+- No repair triggered by test failures at all: F261 round 22 deleted the `repair`
+  group, so nothing turns a failure artifact into a fix task
 - No snapshot/rollback implementation
 - No overnight/unattended mode
 

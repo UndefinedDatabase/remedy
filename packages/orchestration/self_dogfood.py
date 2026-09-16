@@ -285,8 +285,10 @@ def _detect_evidence_gaps(job: Any, items: list) -> None:
                     source_type="repair_loop",
                     evidence=[SelfImprovementEvidence("failure_artifact", str(fa.id))],
                     next_action=SelfImprovementAction(
-                        "Propose a repair", f"remedy repair propose {job_id} {fa.id} --json",
-                        "Unresolved failure with no repair attempt.")))
+                        "Read the failure evidence",
+                        f"remedy job show {job_id} --full --json",
+                        "Unresolved failure with no repair attempt; F261 round 22 "
+                        "deleted the command that proposed one.")))
         for a in attempts:
             if a.status == "approval_required" and not a.repair_intent_id:
                 items.append(_mk_item(

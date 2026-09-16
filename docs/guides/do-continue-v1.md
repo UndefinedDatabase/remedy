@@ -5,8 +5,10 @@
 > (DECISION amend0905-vocab D4 leaves the `do` group its order form and its
 > flags). No surviving command runs this cycle as one word. The three phases
 > survive as separate commands — `remedy patch apply <job> <intent>`, then
-> `remedy test run <job>`, then `remedy change proof <job> --json` — and a
-> failed test still reaches `remedy repair start <job> <failure_artifact_id>`.
+> `remedy test run <job>`, then `remedy change proof <job> --json`. A failed test
+> reached a `repair start` word until F261 round 22 deleted the `repair` group;
+> `remedy job show <job> --full --json` now reads the failure evidence, and nothing
+> acts on it.
 > What has no heir is the composition: the continuation lease, the durable
 > phase checkpoints that made a retry resume rather than repeat, and the
 > apply-to-test linkage. The page is kept as the record of what was built.
@@ -66,7 +68,7 @@ not only in the CLI.
 | stop_reason | meaning | next safe action |
 |---|---|---|
 | `completed_verified` | applied, tested passed, proof verified | none |
-| `test_failed_repair_available` | test failed/timed out | `remedy repair start <job> <failure_artifact_id> --json` |
+| `test_failed_repair_available` | test failed/timed out | `remedy job show <job> --full --json` (the `repair start` word this row named was deleted by F261 round 22) |
 | `evidence_incomplete` | apply may have succeeded but durable record / event / test evidence degraded | `remedy change proof <job> --json` |
 | `test_blocked` | test could not run (no command / blocked) | `remedy test discover <job> --json` |
 | `snapshot_failed` | snapshot could not be created/verified | `remedy snapshot inspect <job> --json` |

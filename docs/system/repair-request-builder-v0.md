@@ -1,4 +1,12 @@
-# Provider-Agnostic Repair Request Builder v0
+# Provider-Agnostic Repair Request Builder v0 (commands deleted 2026-09-16)
+
+> **Status (2026-09-16):** F261 round 22 deleted the `repair` command group
+> (DECISION amend0905-vocab D4 deletes every group it does not name), and with it the
+> only two words that built and printed a request package. The builder module and the
+> cockpit's read of the package store are still there, but nothing writes that store
+> any more, so the counts it reports are frozen at whatever an earlier release left on
+> disk. There is NO heir: preparing a hand-off package for an external actor has no
+> surviving command. The page is kept as the record of what was built.
 
 Given a TestFailureArtifact, Remedy produces a **safe, structured request package**
 that can be handed to **any** external worker / model / human. Remedy stays
@@ -6,8 +14,10 @@ provider-, worker-, model-, subscription-, IDE-, and account-**agnostic**: exter
 systems are only example **untrusted candidate generators**, never required
 infrastructure.
 
-    remedy repair request <job_id> --failure-artifact-id <id> [--target <label>] [--model <hint>] [--new] [--json]
-    remedy repair request-show <job_id> <request_package_id> --json
+The package was built by a `repair request` word taking the job id, a failure
+artifact id, an optional target label, an optional model hint and a `--new` switch,
+and printed by a `repair request-show` word taking the job id and the package id.
+F261 round 22 deleted both.
 
 ## Workflow (provider-agnostic)
 

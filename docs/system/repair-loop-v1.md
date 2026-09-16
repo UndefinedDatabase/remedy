@@ -1,4 +1,12 @@
-# Repair Loop v1
+# Repair Loop v1 (commands deleted 2026-09-16)
+
+> **Status (2026-09-16):** F261 round 22 deleted the `repair` command group
+> (DECISION amend0905-vocab D4 deletes every group it does not name). The engine this
+> page describes is still there and is still read — an overnight readiness report and
+> the self-dogfood inspection both load the repair attempts — but NO command builds a
+> repair context, creates a fix task, files a repair patch intent or prints an
+> attempt's approval state. The attempt store therefore has no writer left. The page
+> is kept as the record of what was built.
 
 Turn a real test failure into a bounded, safe, approval-gated repair **proposal**.
 Repair Loop v1 never applies code, never runs tests, and never calls a provider.
@@ -12,12 +20,11 @@ Flow:
       → Fix Patch Intent           (real, resolvable, pending)
       → approval_required          (safe stop)
 
-Canonical commands:
+Canonical commands, until F261 round 22 deleted them: a `repair propose` word taking
+the job id, the failure artifact id and an optional fixture-builder switch, and a
+`repair status` word taking the job id and an optional failure-artifact filter.
 
-    remedy repair propose <job_id> <failure_artifact_id> [--fixture-builder] [--json]
-    remedy repair status  <job_id> [--failure-artifact-id <id>] [--json]
-
-## What `repair propose` does
+## What the repair proposal did
 
 - Runs `evaluate_repair_eligibility` (job, failure artifact, linkage, not-already
   -resolved, RunContract allows repair metadata actions).
@@ -42,9 +49,9 @@ Apply + test happen separately and approval-gated, via
 
 ## Idempotency
 
-A repeated `repair propose` for the same failure returns the **same** attempt —
+A repeated repair proposal for the same failure returned the **same** attempt —
 no duplicate Fix Task, Repair Artifact, or Patch Intent. A resolved failure
-blocks (`failure_already_resolved`). One RepairAttempt is persisted per
+blocked (`failure_already_resolved`). One RepairAttempt was persisted per
 `(failure_artifact_id, source)` in job metadata.
 
 ## What it never does
@@ -69,15 +76,15 @@ until a provider-backed builder is enabled.
 
 Repair metadata actions are canonical and allowed by default for safe jobs:
 `create_fix_task`, `create_repair_artifact`, `create_repair_patch_intent`. Apply
-actions remain denied. If a contract denies repair actions, `repair propose`
-blocks with a catalog-backed next action (`remedy job show <job_id> --full --json`).
+actions remain denied. If a contract denied repair actions, the repair proposal
+blocked with a catalog-backed next action (`remedy job show <job_id> --full --json`).
 
-## `repair start` (v0) vs `repair propose` (v1)
+## The v0 word vs the v1 word
 
-`repair propose` is the canonical v1 command (idempotent attempts, durable
-`RepairAttempt`, fixture builder, approval-gated intent). `repair start` remains
-as the v0 command for backward compatibility and is unchanged. New callers should
-use `repair propose`.
+The v1 repair proposal was the canonical word (idempotent attempts, durable
+`RepairAttempt`, fixture builder, approval-gated intent); the v0 word of
+`repair-loop-v0.md` stayed beside it for backward compatibility. F261 round 22
+deleted both.
 
 ## Approved Repair Apply Cycle (v1)
 
@@ -103,8 +110,8 @@ apply it through the central apply service — there is no repair apply bypass:
 > `failure_resolved`.
 
 Classification (`repair_kind` / `expected_effect`) distinguishes docs-only,
-source-fixture, and (future) provider repairs. `repair status` shows the
-classification and the apply state.
+source-fixture, and (future) provider repairs. The deleted `repair status` word
+showed the classification and the apply state; nothing prints them now.
 
 ### Guarantees
 - Repair Loop never applies code or runs tests itself (no `source_apply` /

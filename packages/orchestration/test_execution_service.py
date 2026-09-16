@@ -848,8 +848,10 @@ def execute_test_run(
 
         # ── Guidance ─────────────────────────────────────────────────────────
         if status in ("failed", "timeout"):
+            # F261 round 22 deleted the `repair` group: the failure artifact is still
+            # written, and `job show --full` is what reads it back.
             result.next_safe_action = (
-                f"remedy repair start {job.job_id} {result.failure_artifact_id} --json"
+                f"remedy job show {job.job_id} --full --json"
                 if result.failure_artifact_id
                 else f"remedy job show {job.job_id} --json"
             )

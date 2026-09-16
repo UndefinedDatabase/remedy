@@ -1,4 +1,12 @@
-# Repair Loop v0
+# Repair Loop v0 (commands deleted 2026-09-16)
+
+> **Status (2026-09-16):** F261 round 22 deleted the `repair` command group
+> (DECISION amend0905-vocab D4 deletes every group it does not name). The failure
+> evidence below is still written by a real test run, and `remedy job show <job_id>
+> --full --json` reads it back: every field this page's `failure-show` form printed
+> is a key of that artifact's metadata. What has NO heir is starting the loop —
+> nothing creates a fix task from a persisted failure artifact any more. The page is
+> kept as the record of what was built.
 
 When a test fails after apply/test, Remedy creates structured failure evidence and a fix task.
 First "Remedy keeps working" moment — no raw output in UI, CLI, or events.
@@ -9,17 +17,19 @@ First "Remedy keeps working" moment — no raw output in UI, CLI, or events.
 Test failure → TestFailureArtifact → Fix Task → [optional Fixture Patch Intent] → Stop
 ```
 
-## Commands
+## Commands (deleted 2026-09-16)
 
 ### Start repair loop
-```bash
-remedy repair start <job_id> <failure_artifact_id> [--fixture-patch-intent] [--json]
-```
+
+The loop was started with a `repair start` word taking the job id, the failure
+artifact id, an optional fixture-patch-intent switch and `--json`. No command starts
+it now.
 
 ### Show failure artifact
-```bash
-remedy repair failure-show <job_id> <failure_artifact_id> [--json]
-```
+
+The artifact was printed by a `repair failure-show` word taking the job id and the
+artifact id. Read it now with `remedy job show <job_id> --full --json` and take the
+entry of `artifacts` whose metadata carries `test_failure`.
 
 ## What gets created
 

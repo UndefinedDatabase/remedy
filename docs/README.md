@@ -95,9 +95,9 @@ Specifications and design documents for the built system.
 | [real-test-execution-v1.md](system/real-test-execution-v1.md) | Real test execution service |
 | [release-capability-v1.md](system/release-capability-v1.md) | What the wheel carries, what `remedy --version` reports, every reason the release gate refuses, and what F086 leaves unproven |
 | [remedy-toml-configuration-system-v0.md](system/remedy-toml-configuration-system-v0.md) | remedy.toml configuration system |
-| [repair-loop-v0.md](system/repair-loop-v0.md) | Repair loop v0 (legacy) |
-| [repair-loop-v1.md](system/repair-loop-v1.md) | Repair loop v1 (bounded, approval-gated) |
-| [repair-request-builder-v0.md](system/repair-request-builder-v0.md) | Provider-agnostic repair request builder |
+| [repair-loop-v0.md](system/repair-loop-v0.md) | Repair loop v0 — commands deleted by F261 round 22 |
+| [repair-loop-v1.md](system/repair-loop-v1.md) | Repair loop v1 — commands deleted by F261 round 22 |
+| [repair-request-builder-v0.md](system/repair-request-builder-v0.md) | Provider-agnostic repair request builder — commands deleted by F261 round 22 |
 | [reviewer-safety.md](system/reviewer-safety.md) | Reviewer and test safety constraints |
 | [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | One-way roadmap mirror, `remedy roadmap status`/`next` (a hidden group), feature→mission adapter |
 | [run-contract-v1.md](system/run-contract-v1.md) | Run contract (apply/test gates, budgets) |
