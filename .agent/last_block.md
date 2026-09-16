@@ -1,200 +1,182 @@
-── STEP CLOSURE — F261 — ROUND 26 ──
-Goal: Open F261's closure sequence. Book round 25's PASS and record DECISION F261 D26; run the
-integration gate of `docs/agents/integration_gate.md` on the branch and at the fork point and
-commit its evidence; generate the self-use item and run it to the approval gate under the
-configured real provider, never applying it, and commit that evidence. Nothing is repaired.
+── STEP CLOSURE — F261 — ROUND 27 ──
+Goal: CLOSURE ROUND A. Book round 26's verdict and its recurrences; rotate the ledger as its own
+commit; from a clean tree at that commit run the evidence job, build a fresh review package that
+reaches READY_FOR_REVIEW and run the integrity check; hand back the five values the STATUS line
+is authored from.
 
-Base commit: `ed3c82d1`, on `feature/f261-cli-vocabulary-v2`. SESSION 7 of F261. Round type:
+Base commit: `f2872a33`, on `feature/f261-cli-vocabulary-v2`. SESSION 7 of F261. Round type:
 CLOSURE SEQUENCE, the one exception to the ban on bookkeeping rounds. Read AGENTS.md,
-`docs/agents/self_drive_protocol.md`, `docs/agents/integration_gate.md` and precondition 6 of
-`docs/roadmap/STATUS_closure_protocol.md` first.
+`docs/agents/self_drive_protocol.md` and `docs/roadmap/STATUS_closure_protocol.md` first.
 
 THE FRAME RULE, per item 37 of §3, measured over the final bytes: NO LINE of this block that is
 two or more characters long is a run of a single repeated character, and every box-drawing rule
 inside the STEP and SLICE header lines is exactly two characters long.
 
 ENVIRONMENT: `VAR=x cmd`, `env` and `export` are denied, so set environment in-process; `cp` is
-denied, so copy with `shutil.copyfile` or `shutil.copytree`; bare `ruff` is denied. Shell loops,
-`$(...)` and `$?` in a compound command are refused by form, so write such checks as Python
-scripts under `.remedy-wt/f261r26w/`, and never name a script after a standard-library module; a
-pipe into `tail` hides pytest's exit code. Never call `run_job` or any runner yourself except the
-one call SPEC U orders. `git branch --list 'remedy/job-*'` reads 16 lines at `ed3c82d1`.
+denied, so copy with `shutil.copyfile`. Shell loops, `$(...)` and `$?` in a compound command are
+refused by form, so write such checks as Python scripts under `.remedy-wt/f261r27w/`, and never
+name a script after a standard-library module. Never call `run_job` or any runner.
+`git branch --list 'remedy/job-*'` reads 17 lines at `f2872a33`; keep it so.
 
 ## Bundle — the ordered commit sequence
 
-C0a `.agent/authored/f261-r26.md`, the block file the delegating message names, by
+C0a `.agent/authored/f261-r27.md`, the block file the delegating message names, by
     `shutil.copyfile`
 C0b `.agent/last_block.md`, the same bytes
-C1  THE RECORD, one commit: `.agent/plan.md` becomes slice PLAN26; slice RECORD26 is appended to
-    `.agent/live_review.md`; slice DEC26 is appended to `.agent/decisions.md`
-C2  THE GATE: the evidence files of SPEC G under `.agent/gate_f261_r26/`
-C3  THE SELF-USE ITEM, per SPEC U: `scripts/self_use_queue.json` and `.agent/selfuse_f261/`
-C4  `.agent/handoff.md`, the handback; then `git push origin feature/f261-cli-vocabulary-v2`
+C1  THE RECORD, one commit: `.agent/plan.md` becomes slice PLAN27; slice RECORD27 is appended to
+    `.agent/live_review.md`
+C2  THE ROTATION: `python3 -B scripts/rotate_live_review.py` from the primary checkout's root,
+    with no arguments; its own commit, of `.agent/live_review.md` and
+    `.agent/live_review_archive.md` only. C2 IS THE ACCEPTED HEAD.
+    Then, committing nothing: SPEC E, the evidence job; SPEC Z, the review package; the checks
+    of G5.
+C3  `.agent/handoff.md`, the handback; then `git push origin feature/f261-cli-vocabulary-v2`
 
-C1 is the FIRST SUBSTANTIVE COMMIT, per item 23 of §3. Push after C1, C2, C3 and C4. No pull
-request is created.
+C1 is the FIRST SUBSTANTIVE COMMIT, per item 23 of §3. Push after C1, C2 and C3. No pull request
+is created.
 
 ## Change — exactly these paths and no others
 
-The Bundle's paths, with `.agent/gate_f261_r26/` holding only the files SPEC G names and
-`.agent/selfuse_f261/` only the files SPEC U names.
+The Bundle's paths. The evidence directory and the package are untracked artifacts, never
+committed. `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` are NOT
+touched: they belong to closure round B's one closure commit.
 
-## The appends
+## The append
 
-RECORD26 and DEC26 each begin with an empty line, and both targets end in a newline at
-`ed3c82d1`: an append is the file's bytes followed by the slice's bytes, and nothing else.
+RECORD27 begins with an empty line, and `.agent/live_review.md` ends in a newline at `f2872a33`:
+the append is the file's bytes followed by the slice's bytes, and nothing else.
 
-## SPEC G — the integration gate, after C1 and its push, before C2
+## SPEC E — the evidence job, at C2, in the primary checkout
 
-G-BRANCH. In the PRIMARY checkout at C1, with `git status --porcelain` empty and `git worktree
-list` one row, `PYTHONPATH`, `REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed:
-`python3 -m pytest -n auto -q -rfE`. Capture its output through the subprocess pipe to a file
-under `.remedy-wt/f261r26w/`, and write nothing tracked while it runs (R-0176). Do not rebuild
-`apps/ui/dist` first.
-G-BASE. Only after G-BRANCH has exited: a throwaway worktree ON A THROWAWAY BRANCH, `git worktree
-add -b tmp/f261-r26-base <path> 7cdde89b5d0dc8ef1fb96980105870e956699873`, the fork point, which
-is also the merge base because the branch has merged nothing in, with `<path>` under
-`.remedy-wt/f261r26w/`. In this order: (a) copy the primary checkout's `apps/ui/node_modules` and
-`apps/ui/dist` into it with `shutil.copytree(src, dst, symlinks=True)`, reporting each copy's file
-count and preserved-symlink count beside the primary's; (b) find the newest mtime under the
-worktree's `apps/ui/src` and set every entry under its `apps/ui/dist`, and the directory itself,
-to an mtime strictly greater, reporting both values; (c) record every `apps/ui/dist` file's mtime;
-(d) run `python3 -m pytest -n auto -q -rfE` from inside the worktree with
-`REMEDY_UI_NO_AUTO_BUILD=1` set and the three variables above removed, output under
-`.remedy-wt/f261r26w/`; (e) record every `apps/ui/dist` file's mtime again. Then remove the
-worktree without `--force`, prune, and delete the temporary branch.
-G-COMPARE. A failed node is the text after a line-initial `FAILED ` or `ERROR ` up to the first
-` - ` or the line's end. From the two sorted sets: BRANCH-ONLY is in the branch set and not the
-base set; BASE-ONLY the reverse. Every BRANCH-ONLY id is re-run ALONE, serially, three times in the
-primary checkout: all three passing classes it flaky, and otherwise it is a BLOCKER that ends the
-round after C2 with the handback. Every BASE-ONLY id is attributed by DIRECT EVIDENCE, re-running
-it alone as the evidence requires. These environment classes are already measured on this
-repository — a missing artifact of the base worktree; a command-line subprocess importing the
-primary checkout through the editable install, which passes alone with `PYTHONPATH` pinned to the
-base worktree; and contention for a port or a machine-wide process match, which passes alone —
-and an id that fits none of them, by evidence, is reported as a genuine base failure.
-THE FILES of `.agent/gate_f261_r26/`, each written only after both runs have exited, all `.txt`:
-`branch_run_tail.txt` (command, commit, exit code, final summary line, wall time),
-`branch_failed.txt`, `base_run_tail.txt` (the same, plus the count of the string
-`React UI not built` in its output), `base_failed.txt`, `branch_only.txt`, `base_only.txt`,
-`attribution.txt` (every id of the two difference sets with its reading, or the line `NONE`),
-`dist_mtime_window.txt` (the run window, the two copies' counts, the stamp of step b, and every
-dist file whose mtime falls inside the window, or the line `NONE`), and `gate_summary.txt` (the
-three steps with their real readings). A failure set with no id is an empty file.
+E1 THE BASE. With base `7cdde89b5d0dc8ef1fb96980105870e956699873`, the fork point: the counts of
+`git rev-list --ancestry-path <base>..<C2>` and `git rev-list <base>..<C2>` are EQUAL, `git
+merge-base --is-ancestor <base> origin/main` exits 0, and `git status --porcelain` is empty;
+otherwise STOP.
+E2 THE VERIFICATION RECORD, from a real run at C2 of
+`python3 -B -m pytest tests/docs/ -q -p no:randomly` and a real `--collect-only` of the same
+selection, with `PYTHONPATH`, `REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed. Node ids are the
+collect-only lines containing `::`. One entry, these fields and no others: `run_id` `vr-0001`;
+`command`; `exit_code`; `passed`; `failed`; `skipped`; `deselected`; `selected`, equal to passed
+plus failed plus skipped; `node_ids`, whose length equals `selected`; `test_files`, the node ids'
+file paths, sorted; `stdout_summary`, the run's stdout, its last 4000 characters; `output_hash`,
+the sha256 hex of exactly that string; `head_sha`; `duration_seconds`. Pre-scan every node id and
+test file with `_unsafe_text` from `scripts/build_review_manifest.py`, loaded by file path; any
+flag is a STOP.
+E3 THE PRODUCER. Call `packages.orchestration.job_evidence.create_manual_completion_bundle` with
+`evidence_dir` a fresh directory under `.remedy-wt/f261r27w/`; `repo_root` the primary checkout;
+`base_commit` the fork point; `head_commit` the full sha of C2; `job_id` from
+`secrets.token_hex(8)`; `job_title` `F261 CLI vocabulary v2 closure evidence`; `step_range`
+`T001-T003`; `prior_job_ids` the empty list; `verification_runs` the one entry;
+`review_feature_id` `f261`; `timestamp` and `generated_at` one ISO-8601 UTC value.
 
-## SPEC U — the self-use item, after C2 and its push, before C3
+## SPEC Z — the review package, after SPEC E
 
-U1 GENERATE. Call `packages.orchestration.self_use_generator.generate_and_append_if_empty` with
-`queue_path=Path("scripts/self_use_queue.json")` and `ledger_path=Path(".agent/live_review.md")`,
-both `pathlib.Path` objects, from the primary checkout's root. Never hand-edit the queue file.
-U2 RUN. Create a disposable worktree ON A THROWAWAY BRANCH, `git worktree add -b
-tmp/f261-r26-selfuse <path> <C2's full sha>`, with `<path>` under `.remedy-wt/f261r26w/`. Call
-`packages.orchestration.self_use_runner.run_next_self_use_item` with `dest_dir` a directory under
-`.remedy-wt/f261r26w/`, `repo_path` that worktree, `queue_path` the tracked queue file as a
-`Path`, and the function's default budgets. The job goes to the approval gate and stops; its
-change is NOT applied, and `consumed_by` is NOT set. The run creates one `remedy/job-<job id>`
-branch, which stays: never delete it. Then remove the worktree without `--force`, prune, and
-delete the temporary branch.
-U3 THE EVIDENCE, written after the run exited, all `.txt`: `entry_and_job_file.txt` (the appended
-entry's id, title, provenance and `consumed_by`, and the job file path); `result_state.txt` (the
-`JobPlan`'s `job_id` and `state`, and each task's `task_id` and `status`);
-`execution_config.txt` (the `JobPlan`'s `execution_config` verbatim, then the line
-`FAKE_APPEARS_IN_EXECUTION_CONFIG: <True|False>`); `timing.txt` (the wall clock and the `JobPlan`'s
-`budgets`); `run_defects.txt` (the length of
-`packages.orchestration.self_use_findings.describe_self_use_run_defects(<the JobPlan>)`, then each
-string on its own line, verbatim, or the words `the tuple is empty`); `full_transcript.txt` (the
-run's own stdout and stderr).
+With `git status --porcelain` empty and the branch pushed through C2:
+`bash scripts/make_review_zip.sh --evidence-dir <SPEC E's directory>` from the primary checkout's
+root, with no `REMEDY_REVIEW_DIR` set, so the script's own default directory holds the package. Do
+not move, rename or delete the package it prints.
 
 ## Constraints
 
 1. NO SLICE IS EDITED. Extract each slice as the bytes strictly between its `BEGIN <NAME>` and
    `END <NAME>` lines and verify its sha256 before use; a discrepancy is DECLARED, never repaired.
-2. READ `.agent/STOP` before C0a, before G-BRANCH, before U2 and before C4, with real exit codes.
-   If it exists: finish a half-written commit, write the handoff, push, stop.
-3. THIS ROUND REPAIRS NOTHING and APPLIES NOTHING the self-use job proposes. A red branch-only
-   node is recorded, attributed and handed back; no test is deleted, no assertion weakened. A
-   self-use run that errors or blocks is a result recorded verbatim, not a STOP.
-4. Scratch, scripts and worktrees live under `.remedy-wt/f261r26w/`, uncommitted; no `.py` file
-   under `.agent/`. Under `.remedy-wt/` open only `.remedy-wt/f261-block/` and your own directory.
-   Create no symlink outside the copies step (a) makes.
-5. Every commit stays under 500 insertions, read as the first column of `git show --numstat
-   --format= <commit>`. The appends of C1 have a zero deletion column.
-6. NEVER merge, open a pull request, force-push, rewrite history, or delete any branch but the two
-   temporary ones named above. No `remedy`, no `gh`. Write no `Done:` paragraph.
-7. THE BLOCK'S OWN SIZE, measured on its final bytes: 259 lines TOTAL and 206 lines of PROSE,
+2. READ `.agent/STOP` before C0a, before C2 and before C3, with real exit codes. If it exists:
+   finish a half-written commit, write the handoff, push, stop.
+3. The rotation is run by the SCRIPT, never by hand. If it refuses, STOP and hand back its stderr.
+4. A red gate, a refusal, or a package other than READY_FOR_REVIEW is a STOP: commit what is
+   honestly finished and hand back with the raw output. A failing package is a CLOSURE BLOCKER.
+5. Scratch and scripts live under `.remedy-wt/f261r27w/`, uncommitted; no `.py` file under
+   `.agent/`. Under `.remedy-wt/` open only `.remedy-wt/f261-block/` and your own directory. No
+   worktree is created in this round.
+6. Every commit other than C2 stays under 500 insertions, read as the first column of
+   `git show --numstat --format= <commit>`. C2 is over it by construction, and the handback
+   DECLARES it under AGENTS.md's declared-oversize exception with DECISION F272 D18's reason: the
+   rotation cannot be split without leaving records in neither file or in both, and the script
+   verifies every moved record by sha256; it is this feature's only such commit.
+7. NEVER merge, open a pull request, force-push, rewrite history, create or delete a branch. No
+   `remedy`, no `gh`. Do NOT flip the STATUS line, touch `README.md`, set any `consumed_by` or
+   write a `Done:` line.
+8. THE BLOCK'S OWN SIZE, measured on its final bytes: 235 lines TOTAL and 184 lines of PROSE,
    against the caps of 490 and 400, where PROSE is every line that is not a line of slice
    CONTENT — the `BEGIN` and `END` marker lines count as prose.
-8. GATE ORDER. G1 and G2 after C1; G3 after SPEC G and before C2; G4 and G5 after U3 and before
-   C3; G6 after C3 and its push. No gate runs after C4; C4's own numbers are the reviewer's.
-9. Every commit message ends with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`, and no
-   subject carries a leading-slash token or an absolute path.
+9. GATE ORDER. G1 and G2 after C1; G3 after C2; G4 after SPEC E; G5 after SPEC Z; G6 after G5 and
+   before C3. No gate runs after C3; C3's own numbers are the reviewer's.
+10. Every commit message ends with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`, and
+    no subject carries a leading-slash token or an absolute path.
 
 ## Done when — every gate run for real, its exit code recorded
 
-G1 TRANSPORT. The sha256 of `.agent/authored/f261-r26.md` at C0a equals the digest the delegating
+G1 TRANSPORT. The sha256 of `.agent/authored/f261-r27.md` at C0a equals the digest the delegating
 message gives, and `.agent/last_block.md` at C0b is byte-identical to it; the slices FOUND, each
 matching its BEGIN-marker sha256.
 
-G2 THE RECORD, at C1. `.agent/plan.md` is byte-identical to PLAN26, at most 50 lines, with
-`^## Goal$` once and `^## Next Steps$` once. `.agent/live_review.md` equals its `ed3c82d1` blob
-followed by RECORD26, which the reviewer's own application reads as 1130125 bytes with sha256
-`b829829915ee66753e120e6881fe95f98289b894d3300acdf6a0d48af6d6f986`. `.agent/decisions.md` equals its
-`ed3c82d1` blob followed by DEC26, read by the reviewer as 1432544 bytes with sha256
-`83d92e5630adcf3966a7255dcf27accf87886c9f542873eda583f7dc2c654da9`. Over `.agent/live_review.md`:
-`^Gate: F\d+ R\d+ — ` reads 134 at `ed3c82d1` and 135 at C1, with `Gate: F261 R25 — ` 0 times
-and once; distinct `^- R-\d+ — ` ids 134 and 134; distinct `^Done: R-\d+ — ` ids 9 and 9; the open
-set by distinct id 125 and 125 with identical membership. `python3 -B -m pytest tests/docs/ -q`
-exits 0 at C1.
+G2 THE RECORD, at C1. `.agent/plan.md` is byte-identical to PLAN27, at most 50 lines, with
+`^## Goal$` once and `^## Next Steps$` once. `.agent/live_review.md` equals its `f2872a33` blob
+followed by RECORD27, which the reviewer's own application reads as 1135907 bytes with sha256
+`84301e032a64e0eb77caeb82c4940d21e6cb750fc94a27b05812a93feb480298`. `^Gate: F\d+ R\d+ — ` reads 135 at `f2872a33` and 136 at C1, with
+`Gate: F261 R26 — ` 0 times and once; the open set by distinct id, the ids of `^- R-\d+ — ` lines
+minus the ids of `^Done: R-\d+ — ` lines, reads 125 at both with identical membership.
+`python3 -B -m pytest tests/docs/ -q` exits 0 at C1.
 
-G3 THE GATE, per SPEC G. Report each run's exact command, real exit code, final summary line,
-wall time and failed-node count; the two copies' file and symlink counts beside the primary's; the
-dist stamp; the count of dist files whose mtime fell inside the base run's window, expected 0; the
-`React UI not built` count; BRANCH-ONLY and BASE-ONLY by node id with every attribution and its
-evidence; and the two runs' passed counts with their difference, explained by naming the test
-files `git diff --name-status 7cdde89b <C1> -- tests/` lists as deleted or added. BRANCH-ONLY
-less flaky: MUST be empty.
+G3 THE ROTATION, at C2. Report the script's FULL stdout and exit code. The reviewer's dry run of
+the same script on the same appended ledger moved 110 gate records and 7 finding pairs, took the
+ledger from 1135907 to 620380 bytes and the archive from 2948965 to 3464492, printed its own
+open-findings count as 123 before and after, and left `.agent/live_review.md` with sha256
+`dfc4747d104149ad7a22e73c61df983bec9c7bc0ff06bf2cec697422a25d576c` and
+`.agent/live_review_archive.md` with sha256
+`271ee9e7a91d16dac8da56eeaa807b5d3dd010c64d934d667500843c5ff20552`; the two files at C2 MUST have those digests.
+The distinct-id open set at C2 equals C1's; the archive's bytes at C1 are an exact prefix of its
+bytes at C2; `git show --numstat --format=` of C2 names exactly the two paths — report its
+insertions and deletions.
 
-G4 THE GENERATION, through `packages.orchestration.self_use_queue`'s loaders, never the JSON by
-hand. (a) `pending_self_use_items(Path("scripts/self_use_queue.json"))` and
-`next_self_use_item(...)` before U1: the reviewer read an empty tuple and `None`. (b) The returned
-entry's `id`, `title`, `provenance` and `consumed_by`: the reviewer, against a copy, read `SU-015`,
-`Address ledger finding R-0445`, `generated (self-use-generator tier 1, ledger scan, R-0445)` and
-the empty string. (c) The queue file's byte count and item count before and after: the reviewer
-read 48791 to 53810 bytes and 14 to 15 items. (d) Pending items after: `SU-015` alone. REPORT
-every reading.
+G4 THE EVIDENCE JOB, per SPEC E. Report E1's two counts, which must be equal, and the exit code
+of the ancestry check; the entry's `exit_code`, `passed`, `selected`, the lengths of `node_ids`
+and `test_files`; the pre-scan's flag count; and the producer's returned summary IN FULL with its
+`job_id` and `verdict`. The reviewer's dry run, on a head without the two block-save commits, read
+181 and 181, exit 0, 310 passed and selected, four test files, 0 flags, and `PASS_WITH_RISKS`.
 
-G5 THE RUN. REPORT, and match nothing: (a) the exact call; (b) the `JobPlan`'s `job_id`, `state`,
-and each task's `task_id` and `status`; (c) the `execution_config` and whether the string `fake`
-appears in it — it MUST NOT, and if it does the gate FAILS and the round hands back without
-re-running; (d) the wall clock and `budgets`; (e) the defect tuple's length and every string
-verbatim; (f) that nothing was applied: `git status --porcelain` in the primary checkout names only
-`scripts/self_use_queue.json` and `.agent/selfuse_f261/` before C3; (g) the lines of `git branch
---list 'remedy/job-*'` that were not among the 16 at `ed3c82d1`, by name — the reviewer expects
-exactly `remedy/job-<the job_id of (b)>` — and `git branch --list 'tmp/*'` prints nothing.
+G5 THE PACKAGE AND THE PRECONDITIONS, per SPEC Z. Report the script's exit code and every line of
+its stdout of the form `NAME=value`; `PACKAGE_STATUS` MUST be `READY_FOR_REVIEW`,
+`REVIEW_SUBJECT_ALIGNMENT` `PASS` and `EVIDENCE_AUTHORITATIVE` `true`. Report the package
+filename; its SHA-256 as printed and as recomputed from the file, which must agree; its absolute
+directory; and, read OUT of the package's `.review_zip_manifest.json`, `package_status` and
+`committed_review_subject`'s `base_commit`, `head_commit` and `commit_count`, which must be the
+fork point, C2 and E1's count. Then, from the primary checkout's root,
+`python3 -B -m pytest tests/docs/ -q` and `python3 -B -m pytest tests/cli/test_golden_path.py -q`,
+both exit 0; and in Python `packages.orchestration.integrity_gate.run_integrity_checks()`: its
+`.passed`, `.fail_count`, and the `name`, `status` and `message` of the check named
+`high_blockers_open`, verbatim, beside the open High findings you read from the ledger yourself.
 
-G6 TREE, PATH SET, OPEN SET, CAP, CANARY, after C3 and its push. `git status --porcelain` prints
-`''`, `git worktree list` one row, `git rev-parse HEAD` equals
-`git rev-parse origin/feature/f261-cli-vocabulary-v2`. The changed-path set of `ed3c82d1`..C3
-against the Bundle's paths other than `.agent/handoff.md`: MISSING and EXTRA by name. The open set
-at C3 equals C1's. One row per commit of `ed3c82d1`..C3 with insertions, deletions and staged path
-count, and the commits reaching 500 insertions, named. From the primary checkout's root,
-`python3 -B -m pytest tests/cli/test_golden_path.py -q` exits 0.
+G6 TREE, PATH SET, CAP. `git status --porcelain` prints `''`, `git worktree list` one row,
+`git branch --list 'remedy/job-*'` 17 lines, and `git rev-parse HEAD` equals
+`git rev-parse origin/feature/f261-cli-vocabulary-v2`. The changed-path set of `f2872a33`..C2
+against the Bundle's paths other than `.agent/handoff.md`: MISSING and EXTRA by name. One row per
+commit of `f2872a33`..C2 with insertions, deletions and staged path count, and the commits reaching
+500 insertions, named.
 
-## The handback, C4
+## The handback, C3
 
 `.agent/handoff.md` per `docs/agents/handback_template.md`, Session line
-`SESSION 7 of feature F261 · round 26 · rounds so far 26`, with one sentence of context
-self-assessment. `## Commits` lists C0a to C3, each row's `+/-` cell equal to G6's reading of that
-commit; C4's own numbers appear nowhere, per item 31 of §3. `## Verification` gives G1 to G6 with
-real exit codes. It carries External actions, Authored-text proofs, Item-status and Deviations. It
-states the open findings at 125 by distinct id, with the High ids R-0803, R-0804 and R-0807, and
-`Operator questions open: 1`. It carries NO new scope report and no session-limit banner: round 25
-wrote the report and DECISION F261 D25 executed its split, and this round is that decision's
-closure sequence. Its `## Next` names, in order: Phase 1 rule 1; the reviewer's verdict on round 26;
-closure round A.
+`SESSION 7 of feature F261 · round 27 · rounds so far 27`, with one sentence of context
+self-assessment. `## Commits` lists C0a to C2, each row's `+/-` cell equal to G6's reading of that
+commit; C3's own numbers appear nowhere, per item 31 of §3. `## Verification` gives G1 to G6 with
+real exit codes. It carries External actions, Authored-text proofs, Item-status, Deviations, and
+constraint 6's declaration of C2. It carries, in ONE clearly headed block, the five values closure
+round B's STATUS line is authored from, spelled exactly as the tools printed them:
 
-── SLICE PLAN26 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
-BEGIN PLAN26 sha256=12e8956b36abf6ff4dbcdb0d95e95d1cb8e13ddc350a5bb42471043d825cb4aa
+    Evidence job   <job_id>
+    package        <package filename>
+    SHA-256        <hash>
+    package path   <absolute directory>
+    accepted HEAD  <full 40-character sha of C2>
+
+It states the open findings at 125 by distinct id, with the High ids R-0803, R-0804 and R-0807,
+and `Operator questions open: 1`. It carries NO new scope report and no session-limit banner, for
+the reason round 26's handback gave. Its `## Next` names, in order: Phase 1 rule 1; the
+reviewer's verdict on round 27; closure round B.
+
+── SLICE PLAN27 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
+BEGIN PLAN27 sha256=e8fa0859261f87762db06e8865634fdd0041c8e1138a14017fc6b5a15c07c6e5
 # Plan — F261 CLI vocabulary v2 (rename & prune)
 
 Branch: feature/f261-cli-vocabulary-v2, cut from `main` at
@@ -205,55 +187,49 @@ Branch: feature/f261-cli-vocabulary-v2, cut from `main` at
 The catalog `apps/cli/command_catalog.py` equals DECISION amend0905-vocab D4: one name per
 command, and every retired word deleted rather than aliased, per
 `docs/roadmap/features/T2_F261.md` — as far as this feature reaches it; DECISION F261 D25
-moves the rest to F280, and the feature file's Built State says what was reached.
+moves the rest to F280. The Built State is current, the integration gate passed and the
+self-use precondition is met.
 
 ## Current Step
 
-ROUND 26 OPENS THE CLOSURE SEQUENCE. It books round 25's PASS and records DECISION F261 D26,
-runs the integration gate of `docs/agents/integration_gate.md` on the branch and at the fork
-point with its evidence under `.agent/gate_f261_r26/`, and generates the self-use item and runs
-it to the approval gate without applying it, with its evidence under `.agent/selfuse_f261/`.
+CLOSURE ROUND A. It books round 26's verdict with the recurrences of R-0645, R-0784 and R-0838
+that round measured, then rotates the ledger by `scripts/rotate_live_review.py` as its own
+commit, and from a clean tree at that commit runs the closure evidence job, the integrity check
+and a fresh review package. The rotation commit is the accepted head; only the handback follows
+it in this round.
 
 ## Next Steps
 
-1. CLOSURE ROUND A: book round 26's verdict and whatever the self-use run returned, rotate the
-   ledger as its own commit, and from a clean tree at that commit run the evidence job, the
-   integrity check and a fresh review package.
-2. CLOSURE ROUND B: the STATUS `[x]` line, the README sync and the self-use item's
-   `consumed_by` in one commit, then the pull request, which is not merged in that session.
-3. F280, which Rule A5 proposes once F261 is merged.
+1. CLOSURE ROUND B: book round A's verdict, then the closure commit — the STATUS `[x]` line
+   authored from round A's measured values, the README sync and `SU-015`'s `consumed_by` set to
+   `F261`, in one commit — then the pull request, which is not merged in that session.
+2. F280, which Rule A5 proposes once F261 is merged.
 
 ## Risks
 
-- 125 findings are open by distinct id; three are High, R-0803, R-0804 and R-0807, none of them
-  F261's. Seven that F261 owned belong to F280 by DECISION F261 D25.
-- F261 closes with the Goal & Done sentence not met, and says so in its Built State; the
-  operator may reverse the split through operator question Q3.
-- THE SELF-USE RUN NEEDS THE LOCAL MODEL SERVER and creates one `remedy/job-*` branch.
-- THE CLOSURE NEEDS COMMANDS THIS ENVIRONMENT DENIES: the `remedy` command line is refused
-  here, so every closure step runs through the scripts and modules it calls.
-END PLAN26
+- The package's `base_commit` is the FORK POINT `7cdde89b`, which is also the merge base
+  because this branch has merged nothing in.
+- The authority set is read from the WORKING TREE, so an untracked file or a leftover worktree
+  changes what is packaged: the tree is clean and the worktrees pruned before the evidence job.
+- The open High findings are R-0803, R-0804 and R-0807, none of them F261's; the integrity
+  gate's `high_blockers_open` check does not see them, which is R-0648.
+- The open set is 125 by distinct id; seven that F261 owned belong to F280 by DECISION F261 D25.
+END PLAN27
 
-── SLICE RECORD26 ── target `.agent/live_review.md` ── APPEND ──
-BEGIN RECORD26 sha256=c5dd8e4818bf19c6c4947838e3a6704588a76b2c90d1d7a87c1b0775aa7b59b7
+── SLICE RECORD27 ── target `.agent/live_review.md` ── APPEND ──
+BEGIN RECORD27 sha256=c951086e67d5bce35ea6eb28b6212820fe4e0387bae2b3e7707dc0d9ff05cc60
 
-Gate: F261 R25 — the F261 round 25 entry. VERDICT PASS. Written by the planner and reviewer of session 41 after reading the committed range `d5e0a7b5`..`1752331c` and re-deriving every reading below; the worker's report was evidence for none of them. It is booked here by the first commit of F261's closure sequence that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f261-r25.md` at `9c5f654e` and `.agent/last_block.md` at `1c838a73` are byte-identical to the reviewer's scratch original, sha256 `cc0b0ba700b7fb977ab1e3287c330ca3668e5316ba506c493e9c836cba357cf3`, and the tables committed at `76ee0149` and `7994c69e` are byte-identical to the reviewer's carriers, sha256 `58f810e31bffb2fb8c2fbce5251b776a2df29fb641cd1a400984719052f3423f` and `0bb2f13086a36429f4d9e3ab62f4d4f8e688f339da1f3fdb6abd2ba2a9e81243`; the first is a research helper's generator output, regenerated by the reviewer on `d5e0a7b5` and byte-identical to the helper's, and the second is another helper's registration generator after the reviewer's own two corrections — the soft-limit wording and a Built State paragraph that matches F261's Acceptance section left as registered — run on the reviewer's alias dry-run commit. THE STATE: at `73fd6e08` and again at `1752331c`, `.agent/plan.md` equals PLAN25, `.agent/live_review.md` equals its `d5e0a7b5` blob followed by RECORD25, `.agent/decisions.md` its blob followed by DEC24 and DEC25, and `.agent/operator_questions.md` its blob with the pair QOP applied, which opens operator question Q3; the `Gate:` count reads 133 then 134, the distinct registered ids 134 then 134, the distinct `Done:` ids 9 then 9, and the open set 125 then 125. THE TABLE COMMITS: at `76ee0149` and at `7994c69e` the `apps`, `packages`, `scripts`, `tests`, `docs/guides`, `docs/system`, `docs/roadmap`, `docs/README.md`, `README.md` and `.claude` objects equal the reviewer's two stacked dry-run commits object for object, all twenty, and each `--no-renames` name list equals its dry run's; `git show --numstat` reads 136 insertions against 15 deletions and 226 against 9. THE HANDBACK at `1752331c` carries slice SCOPE25 exactly once, the Session line of round 25 and `Operator questions open: 1`. THE BEHAVIOUR, read by the reviewer in the primary checkout at `1752331c`: `python3 -B -m apps.cli.grouped settings --help` prints ` Also reachable as: remedy config` over the seven `config` commands, and `roadmap next` still proposes F261 as the active line, which is right until its closure flips it; on the reviewer's dry-run tree `roadmap status` printed `Next unchecked: F280 — `. THE RED-PROOFS ran twice in the reviewer's own worktree on the tree whose objects `7994c69e` reproduces, over the exact selection the block ordered: a control of 446 passed at exit 0, and each of the seven rows of the mutation carrier `8275e65a0ef5cdc752122c144d44b41e596ff6ab6cc418c4cf17170c70a8b491` exiting 1 with its named node among the failures, with nine, four, one, three, five, two and three failed nodes — unregistering the alias, dropping the parser's aliases, a help pre-scan that ignores the resolver, a help page that omits the other word, a resolver that ignores aliases, the F280 STATUS line dropped and the `TOTAL_FEATURES` pin reverted; every FROM is whole lines occurring exactly once. THE REVIEWER'S RUN in the primary checkout at `1752331c` of the whole of `tests/cli/` and `tests/docs/`, `tests/test_command_catalog.py`, `tests/test_help_renderer.py`, `tests/test_cli_main.py`, both command-discovery test files and `tests/orchestration/test_import_reachability.py` read 1708 passed, and `python3 -m ruff check` over the five edited `.py` files printed `All checks passed!`. The worker ran the full suite once in the primary checkout, as the block orders: exit 0, `17653 passed, 23 skipped, 1 warning in 1274.38s`, with no line-initial `FAILED ` or `ERROR ` in its transcript, which the reviewer read. The worker declared one listing of the top of `.remedy-wt/` beyond the two directories constraint 4 opens, which read no file and wrote nothing. The open set reads 125 by distinct id at `1752331c`.
-END RECORD26
+Gate: F261 R26 — the F261 round 26 entry. VERDICT PASS, AND THE INTEGRATION GATE OF `docs/agents/integration_gate.md` PASSES. Written by the planner and reviewer of session 42 after reading the committed range `ed3c82d1`..`f2872a33` and re-deriving every reading that bears on the verdict; the worker's report and its transcripts were evidence for no line below. It is booked here by the first commit of round 27 that writes the record, per operator amendment amend0827-process-diet rule 1. Only this entry may carry the full-suite claim, and it carries it.
 
-── SLICE DEC26 ── target `.agent/decisions.md` ── APPEND ──
-BEGIN DEC26 sha256=af5b54a700b24ee56adad8df5af5acc8719ebfb46b50f4193d0c04282f78cbd0
+WHAT THE TRANSPORT PROOF COVERS, per item 37 of §3. The committed `.agent/authored/f261-r26.md` at `8767a465` and `.agent/last_block.md` at `0c07789c` equal the reviewer's scratch original at 24460 bytes; `.agent/plan.md` at `1b03919a` equals PLAN26; `.agent/live_review.md` there equals its blob at `ed3c82d1` followed by RECORD26, 1130125 bytes, and `.agent/decisions.md` its blob followed by DEC26, 1432544 bytes. The `Gate:` count went from 134 to 135, and the open set stayed 125 by distinct id with identical membership. The range changes no path outside `.agent/` and `scripts/self_use_queue.json`.
 
-## DECISION F261 D26 (2026-09-16, F261 round 26) — the closure's open findings stay with F280 as DECISION F261 D25 assigned them, the checklist consolidation pass merges nothing, and the self-use precondition is met by the generated tier-1 item
+THE GATE. The branch run, `python3 -m pytest -n auto -q -rfE` in the primary checkout at `1b03919a`, read exit 1 with 1 failed, 17652 passed and 23 skipped, and the reviewer's own run of the same command at `f2872a33` read the same summary with the same single failed id, `tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift::test_a_mutated_workspace_shows_blocking_drift`. The worker re-ran that id alone three times, each exit 0, which classes it flaky under step 4 of the gate procedure, and the reviewer's second run of the whole suite at `f2872a33`, with `-p no:randomly` added, read exit 0 with 17653 passed and 23 skipped. BRANCH-ONLY less flaky is therefore empty. The base run, in a throwaway worktree at the fork point `7cdde89b` with `apps/ui/node_modules` and `apps/ui/dist` copied at equal file and symlink counts and the build stamped newer than every source, read exit 0 with 18443 passed and 23 skipped; no dist file's mtime fell inside its window and `React UI not built` appears 0 times, so BASE-ONLY is empty. The passed counts differ by 791, of which the flaky id is 1, and `git diff --name-status 7cdde89b 1b03919a -- tests/` lists 22 test files deleted, 4 added and 4 renamed.
 
-CONTEXT. The closure protocol, `docs/roadmap/STATUS_closure_protocol.md`, requires before the STATUS flip that every open finding this feature owned and did not resolve be re-assigned, that the self-use precondition be met, and — per operator amendment amend0827-process-diet rule 4 — that the §3 pre-emission checklist of `docs/agents/planner_reviewer_prompt.md` be consolidated once inside the closure sequence, coming out the same length or shorter. The reviewer measured at `ed3c82d1`: 125 findings are open by distinct id, 37 of them registered on this branch; of those 37, four carry `Owner: F261.` on their registration line — R-0894, R-0895, R-0906 and R-0909 — and the other 33 name F268, F271 or F273. R-0767, R-0805 and R-0809 carry no owner token and are F261's by the triage tag and by its Acceptance lines. `docs/agents/planner_reviewer_prompt.md` is byte-identical at `7cdde89b` and at `ed3c82d1`, and its checklist holds 35 items.
+THE SELF-USE PRECONDITION. At `8e44bd6c` `scripts/self_use_queue.json` holds its 14 earlier items unchanged and one more, `SU-015`, "Address ledger finding R-0445", with the provenance of the generator's tier 1 and an empty `consumed_by`, which the reviewer's own run of the generator against a copy had predicted, 53810 bytes. `.agent/selfuse_f261/` records the run of `run_next_self_use_item` on that item: job `90395ff070d8486c`, blocked, its one task `T001` blocked, an `execution_config` naming `ollama` for builder and reviewer in which `fake` does not appear, 115.82 seconds, and a defect tuple of length 2. The worker's capture script raised after the call returned, and the worker read the state from the job record the run persisted rather than calling the runner again, and declared it; the reviewer loaded that record with `load_job_plan` and read the same state, tasks, providers and tuple. The run left one new branch, `remedy/job-90395ff070d8486c`, and nothing it proposed was applied.
 
-CHOSEN, FIRST: THE RE-ASSIGNMENT STEP IS ALREADY PERFORMED. DECISION F261 D25 re-assigned exactly those seven findings to F280, whose feature file names all seven under "Findings this feature owns" and carries an Acceptance line for each, and it ruled that their registrations stay as written because `.agent/live_review.md` is append-only. This closure applies that ruling and edits no registration line. ALTERNATIVE: rewriting the four `Owner: F261.` endings to F280 and appending one to the other three, as F275's closure appended its owner endings, rejected because it would make the sentence of `docs/roadmap/features/T2_F280.md` stating that the entries keep the old owner false, and would reverse a ruling of this feature without a new reason.
+RECURRENCE of R-0645 at F261 round 26, measured by the reviewer at `f2872a33` and booked here by round 27's ledger commit. NO NEW ID IS SPENT, per §3 item 30: R-0645 is OPEN and names this exact id as one of its instances. THE CAUSE, which R-0645 did not yet record: sampling `git status --porcelain --untracked-files=all` every 50 milliseconds during a full `-n auto` run of the primary checkout at `f2872a33` saw seven untracked files appear under `tests/regression/`, named with the prefixes `test_slow_`, `test_wrapper_slow_`, `test_wrapper_pass_`, `test_runtime_chain_` and `test_chain_pass_` that `tests/regression/test_resource_safety.py` gives the temporary test files it writes into the checkout. `worktree_identity` in `packages/orchestration/run_manifest.py` digests untracked files that are not ignored, so a test that reads the Remedy checkout's identity twice while such a file exists for one of the two readings sees `remedy_worktree_digest` drift, which is exactly the failure this id shows. Neither test file differs between `7cdde89b` and `f2872a33`, so the race is older than this branch. R-0645's severity of Low is unchanged.
 
-CHOSEN, SECOND: THE CONSOLIDATION PASS MERGES NO ITEM, and the list stays at 35. F261 added no item while it was open, as rule 4 requires, and its lessons went to `.agent/prose_slips.md`. A merge must choose which number to retire by counting the references each number has landed in the record, its archive and the slips, as F260's pass measured before merging item 19 into item 31; this closure does not take that measurement, so it merges nothing rather than re-pointing references it has not counted, as DECISION F275 D79 ruled for the closure before it.
+RECURRENCE of R-0784 at F261 round 26, measured by the reviewer at `f2872a33` and booked here by round 27's ledger commit. NO NEW ID IS SPENT, per §3 item 30: R-0784 is OPEN and holds this exact class. THE INSTANCE. `SU-015`'s run is job `90395ff070d8486c`, and the tuple `.agent/selfuse_f261/run_defects.txt` records verbatim has length 2: `job 90395ff070d8486c (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail` and `T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail`. They match R-0784's own two strings apart from the job id, and they are the job-level and the task-level view of one gate failure, so they take one id and not two. R-0784's severity of Low is unchanged.
 
-CHOSEN, THIRD: THE SELF-USE ITEM IS THE GENERATOR'S. The queue holds no pending item at `ed3c82d1`, so `generate_and_append_if_empty` runs first; against a copy of the queue the reviewer read it append `SU-015`, "Address ledger finding R-0445", from the generator's tier 1. That item is planned and run through `run_next_self_use_item` to the approval gate under the configured real provider and never applied, its `consumed_by` stays empty until the closure commit, and every defect string the run's own `JobPlan` yields is booked by the next round, which writes the record before the close.
-
-CONSEQUENCE. No open finding names F261 as its owner in any sense that survives this closure: the seven are F280's by D25 and every other finding registered here names another feature. The next consolidation measures against 35.
-
-HOW TO REVERSE. Delete this paragraph block and revert round 26's queue commit; the self-use precondition is then unmet, and the re-assignment rests on DECISION F261 D25 alone.
-END DEC26
+RECURRENCE of R-0838 at F261 round 26, measured by the reviewer at `f2872a33` and booked here by round 27's ledger commit. NO NEW ID IS SPENT, per §3 item 30. The self-use generator selected `R-0445` a FOURTH time: `SU-012`, consumed by F272, `SU-013`, consumed by F274, `SU-014`, consumed by F275, and `SU-015`, generated for this close, all carry the title `Address ledger finding R-0445`. R-0838's severity of Low is unchanged, and its resolution condition stands as registered.
+END RECORD27
