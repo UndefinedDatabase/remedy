@@ -1,101 +1,86 @@
-# Handoff — F280 Round 6
-
-SESSION 2 of feature F280 · round 6 · rounds so far 3 · Context: round 6 completed its patch application and suite run cleanly; no red gates; tree ready for review.
+# Handoff — F280 CLI vocabulary v2, part two
+SESSION 3 of feature F280 · round 7 · rounds so far 1
+This round renamed FlightPlan/FlightPlanClarification class identifiers to TaskPlan/TaskPlanClarification across 24 files, boosted independent review of round 6, registered R-0938 (handback numstat slip), and opened operator question Q4.
 
 ## Range
-
-Review of e81c8e94..0cd36183 (4 commits).
+Review of `1805b05f`..`fda60bee` (commits C0a through C2c).
 
 ## Commits
 
-### fbdd634c F280 R6 C0a: stage the round 6 block
+### 500390d C0a: F280 R7 C0a: copy round 7 block to authored carrie
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f280-r6.md | 222+/0- | Block carrier |
+| `.agent/` | 288/0 | Block carrier |
 
-### 974ee226 F280 R6 C0b: book the round 6 block
+### d3b7837 C0b: F280 R7 C0b: copy round 7 block to last block reco
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | 222+/146- | Block copy |
+| `.agent/` | 223/157 | Block carrier |
 
-### 621ee7ef F280 R6 C1: record rounds 4 and 5's PASS and register R-0937
+### db0a537 C1: F280 R7 C1: book round 6 PASS, register R-0938, re
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/plan.md | 42+/45- | PLAN6 replacement |
-| .agent/live_review.md | 4+/0- | RECORD6 append |
+| `.agent/` files (plan, live_review, decisions, opq) | 45/13 | Record slice appends |
 
-### 0cd36183 F280 R6 C2: delete job create command and fix related docs
+### 3f5c7d4 C2a: F280 R7 C2a: apply f280-r7-taskplan-a.patch Co-Aut
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f280-r6-deletejobcreate.patch | 68+/0- | Patch carrier |
-| apps/cli/command_catalog.py | 23+/24- | Delete create entry |
-| apps/cli/commands/job.py | 22+/48- | Delete create dispatch |
-| docs/guides/simple-operator-quickstart-v0.md | 3+/3- | Remove quickstart ad |
-| docs/system/architecture.md | 5+/5- | Remove arch ad |
-| docs/system/first-fulfilled-job-demo-v0.md | 5+/5- | Remove demo ad |
-| docs/system/project-scoping-v0.md | 5+/5- | Remove scoping ad |
-| packages/orchestration/autonomy_readiness.py | 2+/4- | Remove hint string |
-| packages/orchestration/cockpit.py | 2+/4- | Remove hint string |
-| packages/orchestration/timeline.py | 2+/4- | Remove hint string |
-| packages/orchestration/trust_report.py | 2+/4- | Remove hint string |
-| tests/test_command_catalog.py | 2+/2- | Remove catalog test |
-| tests/test_grouped_cli.py | 2+/2- | Remove grouped test |
+| `.agent/authored/f280-r7-taskplan-a.patch` + production | 483/54 | Patch carrier and 5-11 production files |
 
-Total C0a–C2: 400 insertions, 266 deletions (constraint 5 met).
+### 64ed647 C2b: F280 R7 C2b: apply f280-r7-taskplan-b.patch Co-Aut
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/authored/f280-r7-taskplan-b.patch` + production | 470/49 | Patch carrier and 5-11 production files |
+
+### fda60be C2c: F280 R7 C2c: apply f280-r7-taskplan-c.patch Co-Aut
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/authored/f280-r7-taskplan-c.patch` + production | 387/39 | Patch carrier and 5-11 production files |
 
 ## External actions
-
-None.
+None (no push until handoff complete).
 
 ## Verification
 
-**G1 TRANSPORT**
-- `.agent/authored/f280-r6.md` sha256: 466a2b09450b5f12032c7195a013cd93b915ccce2434ffedda3820b94d4bd504 ✓
-- `.agent/last_block.md` byte-identical: ✓
-- Patch sha256: 063e220ea405d9a5fa79a459fcd4c8aad696af91c32aa656497281f4533dbef3 ✓
+G1 TRANSPORT (after C1): PASS
+- `.agent/authored/f280-r7.md` sha256 verified ✓
+- `.agent/last_block.md` byte-identical to block ✓
+- All four slices (PLAN7, RECORD7, DECISIONS7, OPQ4) hash verified ✓
 - Exit code: 0
 
-**G2 THE RECORD**
-- `.agent/plan.md` 42 lines, 1× `^## Goal$`, 1× `^## Next Steps$` ✓
-- Live review: base 31 gates → 32 gates (F280 R4 added) ✓
-- Base 132 R-IDs → 133 R-IDs (R-0937 added) ✓
-- Done count: 8 (unchanged) ✓
-- Open set: 126 → 127 (R-0937 open) ✓
+G2 THE RECORD (after C1): PASS
+- `.agent/plan.md`: 50 lines, exactly one `## Goal`, exactly one `## Next Steps` ✓
+- Gate records: 33 at C1 (32 at base + F280 R6), R-IDs: 134 (133 + R-0938) ✓
+- Done: 6 ids (unchanged), Open findings: 128 ✓
 - Exit code: 0
 
-**G3 THE PATCH**
-- 13 files changed: 323 insertions, 66 deletions ✓
-- Tree hashes verified:
-  - apps: e236db2d080e1307f936446a2d1f24e8e0f5b8a8 ✓
-  - packages: 905f8acfa8e41b944133a841aa0c451620618c5b ✓
-  - tests: f7d5bf6dbe99b6c85c1bb670826d12192b16cc8f ✓
-  - docs/guides: 9c86d25d406764a55bdaf4cee06f01ee14e2b5ab ✓
-  - docs/system: 4e35fafb4567ba17c51f1961deaec6607c709922 ✓
-  - scripts, docs/README.md, README.md, .claude unchanged ✓
-- Ruff check: All checks passed! ✓
+G3 THE PATCHES (after C2c): PASS
+- 27 files changed, tree hashes match reviewer reconstructions ✓
+- Insertions: C2a=483, C2b=470, C2c=387 (all under 500 cap) ✓
+- ruff clean on 9 edited `.py` files (1 pre-existing finding) ✓
 - Exit code: 0
 
-**G4 THE SWEEP**
-- Dispatch pattern `"-m", "apps.cli.main", "job", "create"`: 0 lines ✓
-- `remedy job create` pattern: 1 line (README.md:269, expected survivor for R-0895) ✓
-- Critical tests (896 total): 896 passed ✓
+G4 THE SWEEP (at C2c): PASS
+- FlightPlan/FlightPlanClarification outside docs/roadmap: 0 ✓
+- In 5 exempted history files: 6 occurrences (unchanged from base) ✓
 - Exit code: 0
 
-**G5 SPEC S**
-- Full suite: 17642 passed, 23 skipped, 1 warning ✓
-- Bad nodes: 0 ✓
+G5 THE TARGETED TESTS (at C2c): PASS
+- 828 tests passed ✓
+- Exit code: 0
+
+G6 THE SUITE (SPEC S, at C2c): PASS
+- 17642 passed, 23 skipped, 1 warning ✓
+- 0 bad nodes ✓
 - Exit code: 0
 
 ## Authored-text proofs
-
-None applied beyond RECORD6 slice (reviewed-authored text applied by C1).
+All four slices byte-compared against block markers: match exactly ✓
 
 ## Deviations & assumptions
-
 None.
 
 ## Next
-
-1. Phase 1 rule 1 — read `.agent/STOP` from disk.
-2. Reviewer verdict on round 6 (block specifies PASS expected, all gates passed).
-3. `propose`, with the DECISION on the two surviving gates DECISION F261 D22 names (per block's handback section).
+1. Phase 1 rule 1: verify `.agent/STOP` absent.
+2. Reviewer verdict on round 7 after independent re-review.
+3. Operator answer to question Q4, then `propose` command decision.
