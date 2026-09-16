@@ -271,6 +271,8 @@ class TestRenamedCommands:
         ("do.job-evidence", "job.evidence"),
         ("do.job-promote", "job.apply"),
         ("do.job-run", "job.run"),
+        ("do.report", "run.list"),
+        ("do.report", "run.show"),
         ("plan.next", "roadmap.next"),
         ("plan.status", "roadmap.status"),
     )

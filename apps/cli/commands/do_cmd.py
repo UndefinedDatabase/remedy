@@ -977,28 +977,13 @@ def _cmd_do_repair_attest(
             print(f"  {filename}")
 
 
-def _cmd_do_report(
+def _cmd_run_show(
     run_id: str,
     *,
     json_output: bool = False,
 ) -> None:
     """Show a persisted ping-pong run report."""
-    from packages.orchestration.pingpong_loop import (
-        list_runs,
-        load_run,
-    )
-
-    if run_id == "list":
-        runs = list_runs()
-        if not runs:
-            print("No ping-pong runs found.")
-            return
-        if json_output:
-            print(json.dumps(runs, indent=2))
-        else:
-            for r in runs:
-                print(f"  {r['run_id']}  {r['status']:<24s}  {r['goal']}")
-        return
+    from packages.orchestration.pingpong_loop import load_run
 
     data = load_run(run_id)
     if data is None:
@@ -1009,6 +994,49 @@ def _cmd_do_report(
         print(json.dumps(data, indent=2))
     else:
         _print_text_report(run_id, data)
+
+
+def _cmd_run_list(
+    *,
+    json_output: bool = False,
+    sort: str | None = None,
+    desc: bool = False,
+    since: str | None = None,
+    until: str | None = None,
+    limit: str | None = None,
+) -> None:
+    """List persisted ping-pong runs.
+
+    `list_runs()` already orders by run directory, so `default_sort_field` is None and a call
+    with no list flag returns its rows untouched: the payload `do report list` printed.
+    """
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
+    from packages.orchestration.pingpong_loop import list_runs
+
+    try:
+        runs = apply_list_options(
+            list_runs(),
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "run_id": lambda r: r.get("run_id", ""),
+                "goal": lambda r: r.get("goal", ""),
+                "status": lambda r: r.get("status", ""),
+                "finished_at": lambda r: r.get("finished_at", ""),
+            },
+            date_getter=lambda r: r.get("finished_at") or None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if not runs:
+        print("No ping-pong runs found.")
+        return
+    if json_output:
+        print(json.dumps(runs, indent=2))
+    else:
+        for r in runs:
+            print(f"  {r['run_id']}  {r['status']:<24s}  {r['goal']}")
 
 
 def _cmd_do_evidence(
@@ -1671,9 +1699,17 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         linked_prior_job_id=getattr(args, "linked_prior_job_id", None) or "",
         json_output=getattr(args, "json", False),
     ),
-    "do.report": lambda args: _cmd_do_report(
+    "run.show": lambda args: _cmd_run_show(
         args.run_id,
         json_output=getattr(args, "json", False),
+    ),
+    "run.list": lambda args: _cmd_run_list(
+        json_output=getattr(args, "json", False),
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
     ),
     "do.evidence": lambda args: _cmd_do_evidence(
         args.run_id,

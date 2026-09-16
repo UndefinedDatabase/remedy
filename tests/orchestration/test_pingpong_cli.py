@@ -295,7 +295,7 @@ class TestNoTargetDataDir:
 
 
 # ---------------------------------------------------------------------------
-# 10. do report <run_id> --json loads from Remedy data root
+# 10. run show <run_id> --json loads from Remedy data root
 # ---------------------------------------------------------------------------
 
 class TestReportLoadsFromDataRoot:
@@ -307,7 +307,7 @@ class TestReportLoadsFromDataRoot:
 
 
 # ---------------------------------------------------------------------------
-# 11. do report list --json loads from Remedy data root
+# 11. run list --json loads from Remedy data root
 # ---------------------------------------------------------------------------
 
 class TestReportListFromDataRoot:
@@ -400,7 +400,7 @@ class TestJsonOutput:
 
 
 # ---------------------------------------------------------------------------
-# 16. do report --json is parseable
+# 16. run show --json is parseable
 # ---------------------------------------------------------------------------
 
 class TestReportJsonParseable:
@@ -511,10 +511,10 @@ class TestFakeProviderE2E:
         assert result.changed_target_files == []
         assert len(result.staged_files) > 0
 
-    def test_summary_references_do_report(self, demo_repo):
+    def test_summary_references_run_show(self, demo_repo):
         result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
         summary = summarize_pingpong(result)
-        assert "remedy do report" in summary
+        assert "remedy run show" in summary
         assert result.run_id in summary
         assert "remedy job report" not in summary
 
@@ -1547,7 +1547,7 @@ class TestJsonIncludesNoiseFields:
 
 
 # ---------------------------------------------------------------------------
-# 67. do report --json includes noise fields
+# 67. run show --json includes noise fields
 # ---------------------------------------------------------------------------
 
 class TestReportJsonIncludesNoiseFields:

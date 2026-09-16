@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 from dataclasses import replace
 
+import pytest
+
 from apps.cli.command_catalog import GROUPS, GroupDef, get_commands_for_group
 from apps.cli.grouped import main as grouped_main
 
@@ -159,7 +161,7 @@ class TestHappyPath:
         grouped_main([])
         out = capsys.readouterr().out
         assert "do run" in out
-        assert "do report" in out
+        assert "run show" in out
 
 
 # ---------------------------------------------------------------------------
@@ -477,8 +479,8 @@ class TestTextReportTokenProof:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
+        from apps.cli.commands.do_cmd import _cmd_run_show
+        _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Worker:" in out
         assert "Reviewer:" in out
@@ -493,8 +495,8 @@ class TestTextReportTokenProof:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
+        from apps.cli.commands.do_cmd import _cmd_run_show
+        _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Token accounting:" in out
         assert "Context sent:" in out
@@ -511,8 +513,8 @@ class TestTextReportTokenProof:
         for i in range(20):
             (demo / f"mod_{i}.py").write_text(f"# Module {i}\n" + "x = 1\n" * 50)
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
+        from apps.cli.commands.do_cmd import _cmd_run_show
+        _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Full repo estimate:" in out
         assert "Estimated saved:" in out
@@ -526,8 +528,8 @@ class TestTextReportTokenProof:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
+        from apps.cli.commands.do_cmd import _cmd_run_show
+        _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "You are a Builder" not in out
         assert "You are a code Reviewer" not in out
@@ -549,8 +551,8 @@ class TestConciseTextReport:
         demo.mkdir()
         (demo / "README.md").write_text("# Test\n")
         result = run_pingpong("Fix README", str(demo), builder_provider=p, reviewer_provider=p)
-        from apps.cli.commands.do_cmd import _cmd_do_report
-        _cmd_do_report(result.run_id, json_output=False)
+        from apps.cli.commands.do_cmd import _cmd_run_show
+        _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Remedy Run" in out
         assert "Worker:" in out
@@ -599,6 +601,20 @@ class TestGroupDefIntegrity:
             assert gid in GROUPS
             assert GROUPS[gid].user_facing is False
 
+    def test_run_group_holds_exactly_show_and_list(self):
+        """DECISION amend0905-vocab D4: `run show <id> | list`, and nothing else under `run`."""
+        assert sorted(c.subcommand for c in get_commands_for_group("run")) == ["list", "show"]
+        assert GROUPS["run"].user_facing is True
+        assert GROUPS["run"].hidden is False
+
+    def test_run_commands_have_handlers(self):
+        """Nothing else in the suite checks that a catalog id reaches a handler."""
+        from apps.cli.commands import collect_all_handlers
+
+        handlers = collect_all_handlers()
+        assert "run.show" in handlers
+        assert "run.list" in handlers
+
     def test_all_groups_still_in_catalog(self):
         """Every group DECISION amend0905-vocab D4 keeps is still in the catalog.
 
@@ -610,6 +626,68 @@ class TestGroupDefIntegrity:
             "doctor", "project", "init", "worker", "runtime",
             "brain", "event", "patch", "test", "blocker", "change", "file", "snapshot", "self", "ci",
             "integrity", "dev",
+            "run",
             "roadmap",
         }
         assert sorted(kept - set(GROUPS)) == []
+
+
+# ---------------------------------------------------------------------------
+# The `run` group's two commands (F261, DECISION amend0905-vocab D4)
+# ---------------------------------------------------------------------------
+
+class TestRunList:
+    def _one_run(self, tmp_path, monkeypatch, goal):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        from packages.orchestration.pingpong_loop import run_pingpong
+        from packages.orchestration.pingpong_provider import FakeProvider
+        demo = tmp_path / "repo"
+        demo.mkdir(exist_ok=True)
+        (demo / "README.md").write_text("# Test\n")
+        p = FakeProvider()
+        return run_pingpong(goal, str(demo), builder_provider=p, reviewer_provider=p)
+
+    def test_no_flag_prints_list_runs_verbatim(self, tmp_path, monkeypatch, capsys):
+        """`run list --json` prints the bytes `do report list --json` printed."""
+        self._one_run(tmp_path, monkeypatch, "Fix")
+        from apps.cli.commands.do_cmd import _cmd_run_list
+        from packages.orchestration.pingpong_loop import list_runs
+
+        _cmd_run_list(json_output=True)
+        assert capsys.readouterr().out == json.dumps(list_runs(), indent=2) + "\n"
+
+    def test_limit_flag_is_honoured(self, tmp_path, monkeypatch, capsys):
+        """The five flags the catalog attaches are real, not decoration."""
+        self._one_run(tmp_path, monkeypatch, "One")
+        self._one_run(tmp_path, monkeypatch, "Two")
+        from apps.cli.commands.do_cmd import _cmd_run_list
+
+        _cmd_run_list(json_output=True, limit="1")
+        assert len(json.loads(capsys.readouterr().out)) == 1
+
+    def test_unknown_sort_field_exits_without_a_traceback(self, tmp_path, monkeypatch, capsys):
+        self._one_run(tmp_path, monkeypatch, "Fix")
+        from apps.cli.commands.do_cmd import _cmd_run_list
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_run_list(json_output=True, sort="nope")
+        assert exc.value.code == 1
+        assert "unknown --sort field" in capsys.readouterr().err
+
+    def test_empty_store_prints_the_empty_message(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
+        from apps.cli.commands.do_cmd import _cmd_run_list
+
+        _cmd_run_list(json_output=True)
+        assert capsys.readouterr().out == "No ping-pong runs found.\n"
+
+
+class TestRunShow:
+    def test_missing_run_exits_one(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "empty"))
+        from apps.cli.commands.do_cmd import _cmd_run_show
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_run_show("no-such-run", json_output=True)
+        assert exc.value.code == 1
+        assert capsys.readouterr().err == "Error: run 'no-such-run' not found.\n"

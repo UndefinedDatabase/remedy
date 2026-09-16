@@ -4272,8 +4272,8 @@ def _build_next_commands(result: PingPongResult) -> dict[str, Any]:
     """Build copy-paste next commands with actual run_id."""
     rid = result.run_id
     cmds: dict[str, Any] = {
-        "report": f"remedy do report {rid}",
-        "report_json": f"remedy do report {rid} --json",
+        "report": f"remedy run show {rid}",
+        "report_json": f"remedy run show {rid} --json",
     }
 
     # Shell flow: complete copy-paste block with automatic RUN_ID
@@ -4282,10 +4282,10 @@ def _build_next_commands(result: PingPongResult) -> dict[str, Any]:
         f'RUN_ID="{rid}"',
         "",
         "# 1. Review the run report",
-        "remedy do report $RUN_ID --json",
+        "remedy run show $RUN_ID --json",
         "",
         "# 2. Final report",
-        "remedy do report $RUN_ID",
+        "remedy run show $RUN_ID",
     ]
     cmds["shell_flow"] = "\n".join(flow_lines)
 
@@ -5015,8 +5015,8 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "staging_path": result.staging_path,
         "isolation_mode": result.isolation_mode,
         "worktree": _build_worktree_json(result),
-        "report_command": f"remedy do report {result.run_id}",
-        "report_json_command": f"remedy do report {result.run_id} --json",
+        "report_command": f"remedy run show {result.run_id}",
+        "report_json_command": f"remedy run show {result.run_id} --json",
         "report_path": report_path,
         "next_commands": _build_next_commands(result),
         "provider_evidence": _build_provider_evidence(result),
@@ -5212,5 +5212,5 @@ def summarize_pingpong(result: PingPongResult) -> str:
     else:
         lines.append(f"\nResult: {result.final_status}")
 
-    lines.append(f"\nReport: remedy do report {result.run_id}")
+    lines.append(f"\nReport: remedy run show {result.run_id}")
     return "\n".join(lines)

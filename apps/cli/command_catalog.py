@@ -108,6 +108,7 @@ GROUPS: dict[str, GroupDef] = {
     # -- User-facing primary commands --
     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
+    "run": GroupDef("run", "Run", "Show and list persisted ping-pong runs."),
     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
     "ui": GroupDef("ui", "UI", "Open the local UI."),
     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
@@ -1739,15 +1740,31 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
-        command_id="do.report",
-        group_id="do",
-        subcommand="report",
+        command_id="run.show",
+        group_id="run",
+        subcommand="show",
         description="Show a persisted ping-pong run report.",
         action_class="read_only",
         supports_json=True,
         related=("do.run",),
         args=(
-            ArgDef("run_id", "Run ID or 'list' to list all runs"),
+            ArgDef("run_id", "Run ID"),
+            ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+
+    CommandEntry(
+        command_id="run.list",
+        group_id="run",
+        subcommand="list",
+        description="List persisted ping-pong runs.",
+        action_class="read_only",
+        supports_json=True,
+        related=("do.run",),
+        args=(
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
             _JSON_OPT,
         ),
@@ -1762,7 +1779,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Export a self-contained evidence bundle for a persisted run.",
         action_class="read_only",
         supports_json=True,
-        related=("do.run", "do.report"),
+        related=("do.run", "run.show"),
         args=(
             ArgDef("run_id", "Run ID of the persisted run"),
             ArgDef("--out", "Output directory for bundle files", required=False, is_option=True, default=""),
