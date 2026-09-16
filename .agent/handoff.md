@@ -1,86 +1,99 @@
 # Handoff — F280 CLI vocabulary v2, part two
-SESSION 3 of feature F280 · round 7 · rounds so far 1
-This round renamed FlightPlan/FlightPlanClarification class identifiers to TaskPlan/TaskPlanClarification across 24 files, boosted independent review of round 6, registered R-0938 (handback numstat slip), and opened operator question Q4.
+SESSION 4 of feature F280 · round 8 · rounds so far 8
+This round booked round 7's independently-reviewed PASS, fixed R-0939 (missing trailing newlines in four .agent/ files), and renamed the `job run` CLI flag `--max-tasks` to `--tasks` (DECISION amend0905-vocab D4).
 
 ## Range
-Review of `1805b05f`..`fda60bee` (commits C0a through C2c).
+Review of `4a0da00a`..`bc576a22` (commits C0a through C2).
 
 ## Commits
 
-### 500390d C0a: F280 R7 C0a: copy round 7 block to authored carrie
+### 651fb2e8 C0a: F280 R8 C0a: write authored block f280-r8.md (transport carrier)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/` | 288/0 | Block carrier |
+| `.agent/authored/f280-r8.md` | 113/0 | Block carrier |
 
-### d3b7837 C0b: F280 R7 C0b: copy round 7 block to last block reco
+### 61013228 C0b: F280 R8 C0b: mirror authored block to last_block.md
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/` | 223/157 | Block carrier |
+| `.agent/last_block.md` | 113/288 | Block carrier mirror |
 
-### db0a537 C1: F280 R7 C1: book round 6 PASS, register R-0938, re
+### bab153c7 C1: F280 R8 C1: fix R-0939 (trailing newlines) and book R7 PASS in live_review
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/` files (plan, live_review, decisions, opq) | 45/13 | Record slice appends |
+| `.agent/decisions.md` | 1/0 | Append trailing newline |
+| `.agent/operator_questions.md` | 1/0 | Append trailing newline |
+| `.agent/live_review.md` | 7541/0 | Append R7 gate, R-0939 register, done marker |
+| `.agent/plan.md` | 49/48 | Replace with R8 plan |
 
-### 3f5c7d4 C2a: F280 R7 C2a: apply f280-r7-taskplan-a.patch Co-Aut
+### bc576a22 C2: F280 R8 C2: rename job run flag --max-tasks to --tasks (DECISION D4)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f280-r7-taskplan-a.patch` + production | 483/54 | Patch carrier and 5-11 production files |
-
-### 64ed647 C2b: F280 R7 C2b: apply f280-r7-taskplan-b.patch Co-Aut
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/authored/f280-r7-taskplan-b.patch` + production | 470/49 | Patch carrier and 5-11 production files |
-
-### fda60be C2c: F280 R7 C2c: apply f280-r7-taskplan-c.patch Co-Aut
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/authored/f280-r7-taskplan-c.patch` + production | 387/39 | Patch carrier and 5-11 production files |
+| `apps/cli/command_catalog.py` | 1/1 | Flag rename in catalog |
+| `apps/cli/grouped.py` | 2/2 | Flag rename in wiring |
+| `tests/cli/test_job_run_invocation_truth.py` | 1/1 | Update test invocation |
+| `tests/orchestration/test_job_task_runner.py` | 4/4 | Update docstrings/comments |
+| `tests/test_command_catalog.py` | 1/0 | Add DELETED flag entry |
 
 ## External actions
-None (no push until handoff complete).
+Push to remote after handoff complete.
 
 ## Verification
 
-G1 TRANSPORT (after C1): PASS
-- `.agent/authored/f280-r7.md` sha256 verified ✓
-- `.agent/last_block.md` byte-identical to block ✓
-- All four slices (PLAN7, RECORD7, DECISIONS7, OPQ4) hash verified ✓
+G1 TRANSPORT: PASS
+- `.agent/authored/f280-r8.md` sha256 = `83787f9ce89e140cb8ac064fc9ab62aefbc2ce10f86010f2141355e490d36fac` ✓
+- `.agent/last_block.md` sha256 = `83787f9ce89e140cb8ac064fc9ab62aefbc2ce10f86010f2141355e490d36fac` ✓
+- gate_r7_entry.txt, reg_r0939.txt, done_r0939.txt verified in live_review.md ✓
 - Exit code: 0
 
 G2 THE RECORD (after C1): PASS
-- `.agent/plan.md`: 50 lines, exactly one `## Goal`, exactly one `## Next Steps` ✓
-- Gate records: 33 at C1 (32 at base + F280 R6), R-IDs: 134 (133 + R-0938) ✓
-- Done: 6 ids (unchanged), Open findings: 128 ✓
+- `.agent/live_review.md`: 34 gates, 135 R-ids, 7 Done ids ✓
+- `.agent/plan.md`: 49 lines, 1 Goal, 1 Current Step, 1 Next Steps, 1 Risks ✓
 - Exit code: 0
 
-G3 THE PATCHES (after C2c): PASS
-- 27 files changed, tree hashes match reviewer reconstructions ✓
-- Insertions: C2a=483, C2b=470, C2c=387 (all under 500 cap) ✓
-- ruff clean on 9 edited `.py` files (1 pre-existing finding) ✓
+G3 THE NEWLINE FIX (after C1): PASS
+- `.agent/plan.md` ends with newline: True ✓
+- `.agent/live_review.md` ends with newline: True ✓
+- `.agent/decisions.md` ends with newline: True ✓
+- `.agent/operator_questions.md` ends with newline: True ✓
 - Exit code: 0
 
-G4 THE SWEEP (at C2c): PASS
-- FlightPlan/FlightPlanClarification outside docs/roadmap: 0 ✓
-- In 5 exempted history files: 6 occurrences (unchanged from base) ✓
+G4 THE PATCH (after C2): PASS
+- Files changed: 5 (command_catalog.py, grouped.py, test_job_run_invocation_truth.py, test_job_task_runner.py, test_command_catalog.py) ✓
+- Changes: 1/1, 2/2, 1/1, 4/4, 1/0 ✓
 - Exit code: 0
 
-G5 THE TARGETED TESTS (at C2c): PASS
-- 828 tests passed ✓
+G5 THE SWEEP (after C2): PASS
+- `--max-tasks` in apps/packages/tests/scripts: 1 line (DELETED entry only) ✓
+- `--max-tasks` in docs/roadmap/features/T0_F012.md: pre-existing, untouched ✓
+- T0_F012.md git diff: empty ✓
 - Exit code: 0
 
-G6 THE SUITE (SPEC S, at C2c): PASS
-- 17642 passed, 23 skipped, 1 warning ✓
-- 0 bad nodes ✓
+G6 TARGETED TESTS (after C2): PASS
+- 620 tests passed ✓
+- Exit code: 0
+
+G7 RUFF (after C2): PASS
+- All checks passed on modified files ✓
+- Exit code: 0
+
+G8 MUTATION RED-PROOF (disposable worktree): PASS
+- Reverted `--tasks` to `--max-tasks` in command_catalog.py: test fails with 2 failures as expected ✓
+- Failed node: `TestDeletedFlags::test_no_deleted_flag_is_declared_by_its_command` ✓
+- Reverted back to `--tasks`: 22 tests passed ✓
+- Worktree cleaned up ✓
+- Exit code: 0
+
+CANARY (primary checkout after C2): PASS
+- `pytest tests/cli/test_golden_path.py -q`: 42 passed ✓
 - Exit code: 0
 
 ## Authored-text proofs
-All four slices byte-compared against block markers: match exactly ✓
+Block and source files byte-compared against committed targets: all match ✓
 
 ## Deviations & assumptions
 None.
 
 ## Next
 1. Phase 1 rule 1: verify `.agent/STOP` absent.
-2. Reviewer verdict on round 7 after independent re-review.
-3. Operator answer to question Q4, then `propose` command decision.
+2. Reviewer verdict on round 8 after independent re-review.
+3. Operator moves to next feature after closure.
