@@ -499,33 +499,6 @@ class TestSafety:
 
 
 # ---------------------------------------------------------------------------
-# Step 4810: CLI dispatch test
-# ---------------------------------------------------------------------------
-
-class TestCliDispatch:
-    """COMMAND_HANDLERS['do.evidence'] dispatches correctly."""
-
-    def test_cli_handler_exists(self):
-        """do.evidence handler exists in COMMAND_HANDLERS."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-        assert "do.evidence" in COMMAND_HANDLERS
-
-    def test_cli_catalog_entry_exists(self):
-        """do.evidence has a catalog entry."""
-        from apps.cli.command_catalog import CATALOG
-        ids = [c.command_id for c in CATALOG]
-        assert "do.evidence" in ids
-
-    def test_catalog_read_only(self):
-        """do.evidence is read_only action class."""
-        from apps.cli.command_catalog import CATALOG
-        entry = next(c for c in CATALOG if c.command_id == "do.evidence")
-        assert entry.action_class == "read_only"
-        assert entry.may_mutate_repo is False
-        assert entry.may_execute_commands is False
-
-
-# ---------------------------------------------------------------------------
 # Test secret strings used across Steps 4815-4816
 # ---------------------------------------------------------------------------
 
@@ -796,21 +769,21 @@ class TestUsefulnessPreservation:
 
 
 # ---------------------------------------------------------------------------
-# Step 4822: CLI stdout JSON leak regression test
+# Step 4822: exported-bundle JSON leak regression test
 # ---------------------------------------------------------------------------
 
-class TestCliStdoutRedaction:
-    """CLI --json output must not leak secrets."""
+class TestExportedJsonRedaction:
+    """A serialized `export_evidence` return must not leak secrets."""
 
-    def test_cli_json_stdout_redacted(self, isolate_data_root, tmp_path):
-        """do evidence --json stdout does not leak secrets."""
+    def test_exported_json_redacted(self, isolate_data_root, tmp_path):
+        """json.dumps(export_evidence(...)) does not leak secrets."""
         data = _make_run_data(has_task=True)
         data["goal"] = "Fix API_KEY=supersecretvalue123 leak"
         data["task_input"]["excerpt"] = "Use sk-ant-abcdef1234567890abcdef1234567890"
         _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
         result = export_evidence("test_run_001", str(out_dir))
-        # Simulate what CLI does: json.dumps(result)
+        # What a caller serializing the return value would print
         stdout = json.dumps(result, indent=2)
         assert "supersecretvalue123" not in stdout
         assert "sk-ant-abcdef" not in stdout

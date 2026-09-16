@@ -314,6 +314,7 @@ class TestDeletedCommands:
         "contract.set",
         "dashboard.job",
         "dashboard.project",
+        "do.evidence",
         "do.job-flow",
         "do.job-plan",
         "do.job-report",

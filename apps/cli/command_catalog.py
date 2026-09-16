@@ -1772,23 +1772,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=False,
     ),
 
-    CommandEntry(
-        command_id="do.evidence",
-        group_id="do",
-        subcommand="evidence",
-        description="Export a self-contained evidence bundle for a persisted run.",
-        action_class="read_only",
-        supports_json=True,
-        related=("do.run", "run.show"),
-        args=(
-            ArgDef("run_id", "Run ID of the persisted run"),
-            ArgDef("--out", "Output directory for bundle files", required=False, is_option=True, default=""),
-            _JSON_OPT,
-        ),
-        may_mutate_repo=False,
-        may_execute_commands=False,
-    ),
-
     # ── do.job-* ──────────────────────────────────────────────────────
     CommandEntry(
         command_id="job.run",
