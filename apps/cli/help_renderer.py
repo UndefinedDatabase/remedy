@@ -62,11 +62,16 @@ def render_group_help(
     group_name: str,
     description: str,
     commands: list[tuple[str, str]],
+    *,
+    also: tuple[str, ...] = (),
 ) -> str:
-    """Render group-level help: usage, description, options box, commands box."""
+    """Render group-level help: usage, description, the group's other words, options box,
+    commands box."""
     parts: list[str] = []
     parts.append(f" Usage: {prog} {group_name} [OPTIONS] COMMAND [ARGS]...\n")
     parts.append(f" {description}\n")
+    if also:
+        parts.append(" Also reachable as: " + ", ".join(f"{prog} {word}" for word in also) + "\n")
     parts.append(_box("Options", [("--help", "Show this message and exit.")]))
     parts.append("")
     parts.append(_box("Commands", commands))

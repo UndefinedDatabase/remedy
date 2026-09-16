@@ -25,6 +25,7 @@ from apps.cli.command_catalog import (
     GROUPS,
     CommandEntry,
     get_commands_for_group,
+    resolve_group,
 )
 from apps.cli.help_renderer import (
     render_command_help,
@@ -342,6 +343,7 @@ def build_parser() -> argparse.ArgumentParser:
     for group_id, group_def in GROUPS.items():
         group_parser = group_parsers.add_parser(
             group_id,
+            aliases=list(group_def.aliases),
             help=group_def.description,
             add_help=False,
         )
@@ -397,12 +399,18 @@ def _print_root_help(*, show_all: bool = False) -> None:
     ))
 
 
-def _print_group_help(group_id: str) -> None:
-    """Print Bootcamp-style group help and exit 0."""
+def _print_group_help(group_word: str) -> None:
+    """Print Bootcamp-style group help and exit 0.
+
+    `group_word` is the word typed, the id or an alias; the page names every other
+    word of the same group (DECISION amend0831 D-D).
+    """
+    group_id = resolve_group(group_word)
     group_def = GROUPS[group_id]
     cmds = get_commands_for_group(group_id)
     commands = [(c.subcommand, c.description) for c in cmds]
-    print(render_group_help("remedy", group_id, group_def.description, commands))
+    also = tuple(w for w in (group_id, *group_def.aliases) if w != group_word)
+    print(render_group_help("remedy", group_word, group_def.description, commands, also=also))
 
 
 def _print_command_help(group_id: str, cmd: CommandEntry) -> None:
@@ -443,7 +451,7 @@ def _pre_scan_help(argv: list[str] | None) -> bool:
         return True
 
     group_id = tokens[0]
-    if group_id not in GROUPS:
+    if resolve_group(group_id) is None:
         _print_root_help()
         return True
 
@@ -483,14 +491,15 @@ def main(argv: list[str] | None = None) -> None:
 
     raw = argv if argv is not None else sys.argv[1:]
     _did_inject = False
-    if raw and raw[0] in _DEFAULT_COMMAND:
-        subcmds = {c.subcommand for c in get_commands_for_group(raw[0])}
+    group = resolve_group(raw[0]) if raw else None
+    if group in _DEFAULT_COMMAND:
+        subcmds = {c.subcommand for c in get_commands_for_group(group)}
         has_subcmd = len(raw) >= 2 and raw[1] in subcmds
         if not has_subcmd and (
-            raw[0] in _ALWAYS_INJECT
+            group in _ALWAYS_INJECT
             or (len(raw) >= 2 and not raw[1].startswith("-"))
         ):
-            default_sub = _DEFAULT_COMMAND[raw[0]]
+            default_sub = _DEFAULT_COMMAND[group]
             raw = [raw[0], default_sub] + raw[1:]
             argv = raw
             _did_inject = True
@@ -515,7 +524,7 @@ def main(argv: list[str] | None = None) -> None:
         if not raw:
             _print_root_help()
             return
-        if raw[0] not in GROUPS:
+        if resolve_group(raw[0]) is None:
             print(render_error("remedy", f"Unknown command '{raw[0]}'."), file=sys.stderr)
             sys.exit(2)
         if len(raw) >= 2:

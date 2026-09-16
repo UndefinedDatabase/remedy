@@ -16,6 +16,7 @@ Public API::
     GROUPS: dict[str, GroupDef]
     UI_EXPOSED_COMMANDS: frozenset[str]
     get_group(group_id) -> GroupDef
+    resolve_group(word) -> str | None
     get_command(command_id) -> CommandEntry
     get_commands_for_group(group_id) -> list[CommandEntry]
 """
@@ -53,6 +54,10 @@ class GroupDef:
     #: `remedy --all-commands`, and stays callable: its own help and its commands
     #: still work (DECISION amend0905-vocab D4).
     hidden: bool = False
+    #: Further words that reach this same group (DECISION amend0831 D-D): one
+    #: `GroupDef` and one set of commands, never a duplicated definition.
+    #: `resolve_group` maps each of them to `id` for every group lookup.
+    aliases: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -112,7 +117,7 @@ GROUPS: dict[str, GroupDef] = {
     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
     "ui": GroupDef("ui", "UI", "Open the local UI."),
     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
-    "config": GroupDef("config", "Config", "View or change settings."),
+    "config": GroupDef("config", "Config", "View or change settings.", aliases=("settings",)),
     "worker": GroupDef("worker", "Worker", "Manage worker connections."),
     "memory": GroupDef("memory", "Memory", "Project memory."),
     "teacher": GroupDef("teacher", "Teacher", "Explain a run. Read-only, never steers it."),
@@ -2386,9 +2391,19 @@ UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
 # ---------------------------------------------------------------------------
 
 
+def resolve_group(word: str) -> str | None:
+    """Return the id of the group a typed word names, by its id or an alias, or None."""
+    if word in GROUPS:
+        return word
+    return next((g.id for g in GROUPS.values() if word in g.aliases), None)
+
+
 def get_group(group_id: str) -> GroupDef:
-    """Return group definition or raise KeyError."""
-    return GROUPS[group_id]
+    """Return group definition by id or alias, or raise KeyError."""
+    resolved = resolve_group(group_id)
+    if resolved is None:
+        raise KeyError(group_id)
+    return GROUPS[resolved]
 
 
 def get_command(command_id: str) -> CommandEntry:
@@ -2400,5 +2415,6 @@ def get_command(command_id: str) -> CommandEntry:
 
 
 def get_commands_for_group(group_id: str) -> list[CommandEntry]:
-    """Return all commands belonging to a group."""
+    """Return all commands belonging to a group, named by its id or an alias."""
+    group_id = resolve_group(group_id) or group_id
     return [cmd for cmd in CATALOG if cmd.group_id == group_id]

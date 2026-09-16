@@ -6,7 +6,7 @@ from dataclasses import replace
 
 import pytest
 
-from apps.cli.command_catalog import GROUPS, GroupDef, get_commands_for_group
+from apps.cli.command_catalog import GROUPS, GroupDef, get_commands_for_group, get_group, resolve_group
 from apps.cli.grouped import main as grouped_main
 
 # ---------------------------------------------------------------------------
@@ -150,6 +150,82 @@ class TestHiddenGroup:
         monkeypatch.setattr(grouped, "_get_dispatch_table", lambda: {"ci.run": calls.append})
         grouped_main(["ci", "run", "--json"])
         assert [args._command_id for args in calls] == ["ci.run"]
+
+
+# ---------------------------------------------------------------------------
+# 4c. `settings` is an alias of `config`: one GroupDef, two words (amend0831 D-D)
+# ---------------------------------------------------------------------------
+
+class TestSettingsAlias:
+    def test_one_group_def_carries_both_words(self):
+        assert "settings" not in GROUPS
+        assert GROUPS["config"].aliases == ("settings",)
+        assert GroupDef("x", "X", "An x.").aliases == ()
+
+    def test_the_resolver_maps_every_word_to_its_group(self):
+        assert [resolve_group(w) for w in ("settings", "config", "no-such-group")] == ["config", "config", None]
+        assert get_group("settings") is GROUPS["config"]
+        assert get_commands_for_group("settings") == get_commands_for_group("config")
+
+    def test_no_alias_shadows_a_group_or_another_alias(self):
+        words = [word for group_def in GROUPS.values() for word in group_def.aliases]
+        assert len(words) == len(set(words)) and set(words).isdisjoint(GROUPS)
+
+    def test_settings_help_names_config(self, capsys):
+        grouped_main(["settings", "--help"])
+        out = capsys.readouterr().out
+        assert "Usage: remedy settings" in out and " Also reachable as: remedy config\n" in out
+        assert set(_listed_groups(out)) == {c.subcommand for c in get_commands_for_group("config")}
+
+    def test_config_help_names_settings(self, capsys):
+        grouped_main(["config", "--help"])
+        out = capsys.readouterr().out
+        assert "Usage: remedy config" in out and " Also reachable as: remedy settings\n" in out
+
+    def test_bare_settings_prints_the_group_help_naming_config(self, capsys):
+        grouped_main(["settings"])
+        assert " Also reachable as: remedy config\n" in capsys.readouterr().out
+
+    def test_every_config_command_parses_to_the_same_id_under_both_words(self):
+        from apps.cli.grouped import build_parser
+
+        parser = build_parser()
+        for cmd in get_commands_for_group("config"):
+            fillers = ["x"] * sum(1 for a in cmd.args if not a.is_option and a.required)
+            for word in ("config", "settings"):
+                args, _unknown = parser.parse_known_args([word, cmd.subcommand, *fillers])
+                assert args._command_id == cmd.command_id
+
+    def test_settings_dispatches_exactly_the_config_handler(self, monkeypatch):
+        import apps.cli.grouped as grouped
+
+        calls = []
+        monkeypatch.setattr(grouped, "_get_dispatch_table", lambda: {"config.list": calls.append})
+        grouped_main(["settings", "list", "--json"])
+        grouped_main(["config", "list", "--json"])
+        assert [args._command_id for args in calls] == ["config.list", "config.list"]
+        assert not [cid for cid in grouped._get_dispatch_table() if cid.startswith("settings.")]
+
+    def test_settings_and_config_print_the_same_bytes(self, capsys):
+        grouped_main(["settings", "list", "--json"])
+        via_alias = capsys.readouterr().out
+        grouped_main(["config", "list", "--json"])
+        assert via_alias == capsys.readouterr().out and via_alias
+
+    def test_an_unknown_settings_subcommand_is_an_error(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            grouped_main(["settings", "no-such-command"])
+        assert exc.value.code == 2
+        assert "Unknown command 'no-such-command'" in capsys.readouterr().err
+
+    def test_an_alias_of_a_group_with_a_default_command_injects_it(self, monkeypatch):
+        import apps.cli.grouped as grouped
+
+        monkeypatch.setitem(GROUPS, "status", replace(GROUPS["status"], aliases=("overview",)))
+        calls = []
+        monkeypatch.setattr(grouped, "_get_dispatch_table", lambda: {"status.run": calls.append})
+        grouped_main(["overview", "--json"])
+        assert [args._command_id for args in calls] == ["status.run"]
 
 
 # ---------------------------------------------------------------------------
