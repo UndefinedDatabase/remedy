@@ -137,7 +137,7 @@ class DraftJob(_Strict):
     @model_validator(mode="after")
     def _validate_draft_job(self) -> DraftJob:
         # R-0168: an outline whose goal is blank becomes an empty acceptance
-        # line in the milestone flight-plan view, which the FlightPlan
+        # line in the milestone flight-plan view, which the TaskPlan
         # validators reject far downstream. Refused here, at parse time.
         for field, value in (("title", self.title), ("goal", self.goal)):
             if not value.strip():
@@ -212,7 +212,7 @@ class MissionPlan(_Structured):
 
     A DAG of milestones with goals, rationales, dependency edges, DoD
     references and draft job outlines.  Validated on construction with the same
-    discipline as ``FlightPlan._validate_dag``: no duplicate ids, no unknown
+    discipline as ``TaskPlan._validate_dag``: no duplicate ids, no unknown
     dependencies, no cycles, hard milestone cap.
     """
 
@@ -243,7 +243,7 @@ class MissionPlan(_Structured):
 def validate_milestone_dag(milestones: list[MilestoneDraft]) -> None:
     """Refuse a milestone list that is not a well-formed DAG.
 
-    The same four rules ``FlightPlan._validate_dag`` enforces for task DAGs,
+    The same four rules ``TaskPlan._validate_dag`` enforces for task DAGs,
     applied to milestones: hard cap first (an over-cap plan is hallucinated
     scope and there is no point validating its edges), then duplicate ids,
     unknown dependencies, and cycles by depth-first search.

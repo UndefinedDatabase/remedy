@@ -208,14 +208,14 @@ def _cmd_do_mission(
     plan_call_fn = None
     if call_fn is not None and not no_llm:
         from packages.orchestration.intake import make_structured_call_fn
-        from packages.orchestration.schemas.models import FlightPlan
-        # Planning needs a call_fn bound to FlightPlan: the intake one binds
+        from packages.orchestration.schemas.models import TaskPlan
+        # Planning needs a call_fn bound to TaskPlan: the intake one binds
         # the provider's native schema to JobIntake, so the provider would
         # answer in intake shape and every plan attempt would fail validation.
-        # There is deliberately NO fallback to it — without a FlightPlan-bound
+        # There is deliberately NO fallback to it — without a TaskPlan-bound
         # provider we skip LLM planning and take the deterministic skeleton
         # below, exactly as the no-provider path does.
-        plan_call_fn = make_structured_call_fn(FlightPlan)
+        plan_call_fn = make_structured_call_fn(TaskPlan)
 
     if plan_call_fn is not None:
         from packages.orchestration.flight_plan import (

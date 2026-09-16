@@ -76,7 +76,7 @@ from packages.orchestration.orchestrator_move_schema import (
     ORCHESTRATOR_MOVE_SCHEMA_V,
 )
 from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
-from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, FlightPlan
+from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, TaskPlan
 
 PROJECT = "p-f070-e2e"
 GOAL = "Ship the demo end to end"
@@ -157,7 +157,7 @@ def _finish_job_with_dod_met(job_id: str) -> None:
         task.status = RunState.COMPLETED
     save_job_plan(job)
 
-    plan = FlightPlan.model_validate({
+    plan = TaskPlan.model_validate({
         "schema_v": FLIGHT_PLAN_SCHEMA_V,
         "tasks": [{"id": "T1", "title": "the work", "goal": "do the work",
                    "acceptance": ["the work is done"], "depends_on": [],

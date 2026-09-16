@@ -23,7 +23,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from packages.orchestration.schemas.models import FlightPlan, PlannedTask
+from packages.orchestration.schemas.models import PlannedTask, TaskPlan
 
 #: Token bands in ascending size order (mirrors schemas.models.TokenBand).
 _BAND_ORDER: tuple[str, ...] = ("S", "M", "L", "XL")
@@ -77,7 +77,7 @@ class Transformation:
 class NormalizationResult:
     """A (possibly) normalized plan plus the record of what changed."""
 
-    plan: FlightPlan
+    plan: TaskPlan
     transformations: list[Transformation]
 
     def as_dicts(self) -> list[dict[str, Any]]:
@@ -495,7 +495,7 @@ def _apply_merges(
 # ---------------------------------------------------------------------------
 
 def normalize_plan(
-    plan: FlightPlan, cfg: GranularityConfig,
+    plan: TaskPlan, cfg: GranularityConfig,
 ) -> NormalizationResult:
     """Right-size a plan's tasks. Returns the plan to use plus the record.
 
@@ -517,9 +517,9 @@ def normalize_plan(
     data = plan.model_dump()
     data["tasks"] = [t.model_dump() for t in tasks]
     try:
-        # Constructing the model IS the revalidation: FlightPlan's own
+        # Constructing the model IS the revalidation: TaskPlan's own
         # _validate_dag runs here. No validation logic is copied.
-        new_plan = FlightPlan(**data)
+        new_plan = TaskPlan(**data)
     except Exception as exc:
         # Fail open to the plan the human is about to approve, never to a
         # broken one — and say so in the record.

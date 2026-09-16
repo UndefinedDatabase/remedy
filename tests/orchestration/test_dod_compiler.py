@@ -48,7 +48,7 @@ from packages.orchestration.dod_schema import (
     DoDSpecError,
     DraftCheck,
 )
-from packages.orchestration.schemas.models import FlightPlan
+from packages.orchestration.schemas.models import TaskPlan
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "dod"
 FIXTURE_NAMES = ("docs_site", "api_service", "cli_tool")
@@ -62,8 +62,8 @@ def load_fixture(name: str) -> dict:
     return json.loads((FIXTURE_DIR / f"{name}.json").read_text(encoding="utf-8"))
 
 
-def plan_of(fixture: dict) -> FlightPlan:
-    return FlightPlan.model_validate(fixture["plan"])
+def plan_of(fixture: dict) -> TaskPlan:
+    return TaskPlan.model_validate(fixture["plan"])
 
 
 def replaying(payload: dict):
@@ -76,8 +76,8 @@ def replaying(payload: dict):
     return _call
 
 
-def simple_plan(*acceptance: str) -> FlightPlan:
-    return FlightPlan.model_validate({
+def simple_plan(*acceptance: str) -> TaskPlan:
+    return TaskPlan.model_validate({
         "schema_v": "flight_plan_v1",
         "tasks": [{
             "id": "T001",
@@ -467,7 +467,7 @@ class TestGoldenFixtures:
 # ---------------------------------------------------------------------------
 
 class TestFallbackLabeling:
-    def _plan(self) -> FlightPlan:
+    def _plan(self) -> TaskPlan:
         return simple_plan("tests/x/test_a.py passes", "the CLI prints a table")
 
     def test_no_provider_is_labeled_deterministic(self):

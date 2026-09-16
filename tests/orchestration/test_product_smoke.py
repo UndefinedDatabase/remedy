@@ -75,7 +75,7 @@ from packages.orchestration.product_smoke import (
     smoke_config,
     unregister,
 )
-from packages.orchestration.schemas.models import FlightPlan
+from packages.orchestration.schemas.models import TaskPlan
 
 FIXTURES = Path(__file__).parent / "fixtures" / "smoke"
 GOOD_APP = FIXTURES / "good_app.py"
@@ -123,8 +123,8 @@ def smoke_check(*, blocking: bool = True, retry: bool = False) -> DoDCheck:
                     blocking=blocking, source="standard")
 
 
-def simple_plan(*acceptance: str) -> FlightPlan:
-    return FlightPlan.model_validate({
+def simple_plan(*acceptance: str) -> TaskPlan:
+    return TaskPlan.model_validate({
         "schema_v": "flight_plan_v1",
         "tasks": [{"id": "T001", "title": "t", "goal": "g",
                    "acceptance": list(acceptance) or ["tests/x.py passes"],
@@ -561,7 +561,7 @@ class TestCorePathsVocabulary:
 
 class TestPathExtraction:
     def _ctx(self, *, goal: str = "", hints=(), acceptance=("done",)):
-        plan = FlightPlan.model_validate({
+        plan = TaskPlan.model_validate({
             "schema_v": "flight_plan_v1",
             "tasks": [{"id": "T001", "title": "t", "goal": "g",
                        "acceptance": list(acceptance), "est_tokens_band": "S"}],

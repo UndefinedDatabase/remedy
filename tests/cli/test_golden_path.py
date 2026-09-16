@@ -300,8 +300,8 @@ class TestLLMIntakeWiring:
         )
 
         from packages.orchestration.flight_plan import FlightPlanResult
-        from packages.orchestration.schemas.models import FlightPlan
-        _fp = FlightPlan(
+        from packages.orchestration.schemas.models import TaskPlan
+        _fp = TaskPlan(
             schema_v="flight_plan_v1",
             tasks=[{"id": "T001", "title": "Do thing", "goal": "A goal",
                     "acceptance": ["Done"], "depends_on": [],
@@ -419,8 +419,8 @@ class TestLLMIntakeWiring:
         )
 
         from packages.orchestration.flight_plan import FlightPlanResult
-        from packages.orchestration.schemas.models import FlightPlan
-        _fp = FlightPlan(
+        from packages.orchestration.schemas.models import TaskPlan
+        _fp = TaskPlan(
             schema_v="flight_plan_v1",
             tasks=[{"id": "T001", "title": "Do thing", "goal": "A goal",
                     "acceptance": ["Done"], "depends_on": [],

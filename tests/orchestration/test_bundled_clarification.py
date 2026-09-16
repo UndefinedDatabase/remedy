@@ -21,7 +21,7 @@ from packages.orchestration.flight_plan import (
     write_assumptions_md,
 )
 from packages.orchestration.pingpong_job import JobPlan
-from packages.orchestration.schemas.models import FlightPlan
+from packages.orchestration.schemas.models import TaskPlan
 
 
 def _task(tid: str, **kw):
@@ -36,10 +36,10 @@ def _task(tid: str, **kw):
     return d
 
 
-def _plan(**kw) -> FlightPlan:
+def _plan(**kw) -> TaskPlan:
     d = {"schema_v": "flight_plan_v1", "tasks": [_task("T1")]}
     d.update(kw)
-    return FlightPlan(**d)
+    return TaskPlan(**d)
 
 
 def _intake(*clarifications) -> dict:
@@ -389,7 +389,7 @@ class TestApprovalDecisionPayload:
 
     def test_legacy_plan_without_ids_still_loads(self):
         """Pre-F034 fp1 data has no id/answered_by fields."""
-        legacy = FlightPlan(**{
+        legacy = TaskPlan(**{
             "schema_v": "flight_plan_v1",
             "tasks": [_task("T1")],
             "clarifications_resolved": [{

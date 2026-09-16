@@ -23,7 +23,7 @@ from apps.cli.commands.decision import (
 from apps.cli.grouped import main
 from packages.orchestration.flight_plan import carry_intake_clarifications
 from packages.orchestration.pingpong_job import JobPlan
-from packages.orchestration.schemas.models import FlightPlan
+from packages.orchestration.schemas.models import TaskPlan
 
 _QUESTIONS = [
     {"id": "q1", "question": "Which database?",
@@ -35,7 +35,7 @@ _QUESTIONS = [
 
 def _pending_job() -> JobPlan:
     plan = carry_intake_clarifications(
-        FlightPlan(**{
+        TaskPlan(**{
             "schema_v": "flight_plan_v1",
             "tasks": [{
                 "id": "T1", "title": "T", "goal": "g",
@@ -383,7 +383,7 @@ class TestUnattendedEndToEnd:
             lambda model_cls, **kw: (lambda prompt, attempt: "{}"),
         )
 
-        base_plan = FlightPlan(**{
+        base_plan = TaskPlan(**{
             "schema_v": "flight_plan_v1",
             "tasks": [{
                 "id": "T001", "title": "Do thing", "goal": "A goal",
