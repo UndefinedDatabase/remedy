@@ -416,6 +416,7 @@ class TestDeletedFlags:
         ("do.run", "--test-command"),
         ("do.run", "--timeout-profile"),
         ("job.run", "--builder"),
+        ("job.run", "--max-tasks"),
         ("job.run", "--reviewer"),
     )
 

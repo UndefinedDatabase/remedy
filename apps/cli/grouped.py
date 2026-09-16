@@ -242,9 +242,9 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--timeout-profile", default=None, dest="timeout_profile", help=arg.help)
             elif arg.name == "--max-output-chars":
                 parser.add_argument("--max-output-chars", default=None, dest="max_output_chars", help=arg.help)
-            elif arg.name == "--max-tasks":
+            elif arg.name == "--tasks":
                 # F1: omission stays None (not "0"), so a persisted cap is not silently cleared.
-                parser.add_argument("--max-tasks", default=None, dest="max_tasks", help=arg.help)
+                parser.add_argument("--tasks", default=None, dest="max_tasks", help=arg.help)
             elif arg.name == "--claude-cli-write-mode":
                 parser.add_argument("--claude-cli-write-mode", default=arg.default, dest="claude_cli_write_mode", help=arg.help)
             elif arg.name == "--stream-evidence":

@@ -1242,7 +1242,7 @@ class TestTargetMutationNegative:
 
 class TestPartialRunStatus:
     def test_max_tasks_gives_paused(self, isolate_data_root, demo_repo):
-        """--max-tasks 1 on 2-task job sets status to paused."""
+        """--tasks 1 on 2-task job sets status to paused."""
         result = _run_success_job(demo_repo, max_tasks=1)
         assert result.state == JOB_PAUSED
         assert result.tasks[0].status == TASK_APPLIED
@@ -1285,7 +1285,7 @@ class TestPartialRunStatus:
         assert result2.tasks[1].status == TASK_APPLIED
 
     def test_full_run_gives_completed(self, isolate_data_root, demo_repo):
-        """Full run (no --max-tasks) still gives completed."""
+        """Full run (no --tasks) still gives completed."""
         result = _run_success_job(demo_repo)
         assert result.state == JOB_COMPLETED
 
@@ -1796,7 +1796,7 @@ class TestCliPauseContinueSmoke:
         # Step 1: Plan
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
 
-        # Step 2: Run with --max-tasks 1, --repair-rounds 1
+        # Step 2: Run with --tasks 1, --repair-rounds 1
         args1 = _make_args(
             job_id=job.job_id,
             builder_provider="fake",
@@ -1867,7 +1867,7 @@ class TestCliPauseContinueSmoke:
 
 class TestMaxRoundsContinuation:
     def test_max_rounds_persisted_on_pause(self, isolate_data_root, demo_repo):
-        """max_rounds=7 persists when job is paused with --max-tasks 1."""
+        """max_rounds=7 persists when job is paused with --tasks 1."""
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         result = run_job(
             job.job_id,

@@ -96,7 +96,7 @@ def test_no_flag_job_run_preserves_persisted_controls(data_root, repo, spy):
 
 def test_explicit_max_tasks_zero_overrides_persisted(data_root, repo, spy):
     job = _plan(repo, max_tasks=1, max_tasks_source="persisted")
-    _run(["job", "run", job.job_id, "--max-tasks", "0"])
+    _run(["job", "run", job.job_id, "--tasks", "0"])
     assert len(spy) == 2                              # both tasks ran
     ec = load_job_plan(job.job_id).execution_config
     assert ec.max_tasks == 0 and ec.max_tasks_source == "invocation"
