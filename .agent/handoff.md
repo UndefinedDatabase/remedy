@@ -280,3 +280,88 @@ nothing; I did it so the red-proof and the suite ran under the same environment.
 Open findings: 120 by distinct id, with the High ids R-0803, R-0804 and R-0807.
 
 Operator questions open: 0
+
+## Session close — session 40, written after the reviewer's verdict on round 22
+
+The planner and reviewer of session 40 reviewed rounds 21 and 22 of F261, both PASS, and ends the
+session after those two delegated rounds — below the operator's target of six to eight and below
+the floor of four. THE REASON, stated in one sentence as operator amendment amend0905-throughput
+requires: the reviewer's context is demonstrably spent, because each of these two rounds was a
+wide deletion whose independent reproduction cost a research helper's full report, a re-applied
+dry run in the reviewer's own worktree, a full targeted suite, six and four mutation red-proofs,
+and a complete pre-emission checklist over a 365-line and a 274-line block, and the round that
+comes next needs a DECISION about a surviving command's behaviour that a spent context would
+author badly. No run of authoring slips accumulated: one slip is booked, round 21's truncated
+MUT-5-FROM slice, and it is in `.agent/prose_slips.md` already. Nothing is half-written; the
+branch is pushed at `97ba6a5b`; one worktree; `git status --porcelain` empty.
+
+### The verdict to book
+
+Round 23's first commit that writes the record appends the paragraph below to
+`.agent/live_review.md` byte for byte, preceded by one empty line, per operator amendment
+amend0827-process-diet rule 1.
+
+Gate: F261 R22 — the F261 round 22 entry. VERDICT PASS. Written by the planner and reviewer of session 40 after reading the committed range `13128d25`..`97ba6a5b` and re-deriving every reading below; the worker's report was evidence for none of them. It is booked here by the first commit of round 23 that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f261-r22.md` at `4f68adbc` and `.agent/last_block.md` at `41ea00ea` are byte-identical to the reviewer's scratch original, sha256 `cf597cb1597c147f1746d5be14b157075fb0f29976f6b2695f125d7cc4020546`, and the table committed at `b2d4822f` is byte-identical to the reviewer's carrier, which is the research helper's with the reviewer's one amendment applied. THE STATE: at `8d417c8c` and again at `97ba6a5b`, `.agent/plan.md` equals PLAN22, `.agent/live_review.md`, `.agent/decisions.md` and `.agent/prose_slips.md` equal their `13128d25` blobs followed by RECORD22, DEC21 and SLIP21, and `docs/roadmap/features/T2_F273.md` equals its `13128d25` blob with the pair P273B applied; the `Gate:` count reads 130 then 131 with `Gate: F261 R21 — ` 0 then 1, the distinct registered ids 125 then 129 with the delta exactly R-0923 to R-0926, the distinct `Done:` ids 8 then 9 with the one added exactly R-0900, and the open set 117 then 120. THE TABLE COMMIT: at `b2d4822f` the `apps`, `packages`, `scripts`, `tests`, `docs/guides`, `docs/system`, `docs/README.md`, `README.md` and `.claude` objects equal the reviewer's dry-run commit object for object, all nine, so the worker reproduced exactly the tree the reviewer tested; the path set is the dry run's nineteen plus the carrier, and `git show --numstat` reads 125 insertions against 1030 deletions, under the 500 cap. THE SWEEP: the deleted-word pattern reads 78 lines in 15 files at `13128d25` and exits 1 with no output at `97ba6a5b`, `apps/cli/commands/repair_cmd.py` is absent from the tree while `packages/orchestration/repair_loop.py` is present at blob `05433190`, and THE CONTROL that proves this round did not reach the group DECISION F261 D21 defers reads 60 lines in 12 files at both revisions. THE RED-PROOFS ran in the reviewer's own worktree on the tree whose objects the table commit reproduces: a control of 357 passed at exit 0, and each of the four rows of the mutation carrier `04d1f2c3440c8442d1a4d979aeacd2086749e970517bcb215d625d1abcded96a` exiting 1 with its named node among the failures — re-inserting a `repair` catalog entry, restoring the allowlist line of the deleted handler, restoring the `remedy repair propose` hint in `packages/orchestration/mission_readiness.py`, and restoring the present-tense `repair start` invocation in `docs/system/repair-loop-v0.md`; every FROM occurred exactly once in the file its row names. THE REVIEWER'S RUN in the primary checkout at `97ba6a5b` of the round's own test files, the files nearest every production module it touched, `tests/cli/test_golden_path.py`, the whole of `tests/docs/`, `tests/cli/test_propose_cli.py` as a control on the deferred group, `tests/ui_server/test_dashboard_cockpit_truth.py` and `tests/orchestration/test_evidence_index.py` read 1193 passed, and `python3 -m ruff check` over the eight edited files that survive printed `All checks passed!`. The worker ran the full suite once in the primary checkout, as the block orders: exit 0, `17681 passed, 23 skipped, 1 warning in 1280.58s`, with no line-initial `FAILED ` or `ERROR ` in the transcript. The open set reads 120 by distinct id at `97ba6a5b`.
+
+### What this session did
+
+Two deletion rounds of T003, each one a research helper's measured tables re-applied by the
+reviewer on the real tip and gated on tree ids. Round 21 deleted `do continue` with
+`packages/orchestration/do_continue.py` and the repair-reconcile block of
+`packages/orchestration/repair_loop.py` that module was the only caller of, kept
+`docs/guides/do-continue-v1.md` under a dated banner, and RESOLVED R-0900 by naming a command at
+every group-only advertisement and adding the guard that resolves a one-token advertisement
+against the default-subcommand map imported from `apps/cli/grouped.py` (DECISION F261 D20;
+R-0916 to R-0922 registered). Round 22 deleted the `repair` group with its handler and DEFERRED
+the `propose` group the inventory pairs with it (DECISION F261 D21; R-0923 to R-0926). The
+catalog is 30 groups and 161 commands at `97ba6a5b`; DECISION amend0905-vocab D4 leaves 29.
+
+### What the next session needs to know
+
+- ROUND 23 IS THE `propose` GROUP, and it cannot be authored as an ordinary deletion. `get_next_job`
+  in `packages/orchestration/worker_queue.py` skips every queued entry for which
+  `_has_unresolved_proposals` is true, and that helper is true for any proposed task still
+  unresolved or approved-but-unmaterialized. `job_fulfillment` writes such a task on every verified
+  fulfillment, and the `propose` group holds the only production resolver. Deleting it therefore
+  makes `worker run` skip such a job for ever — a SURVIVING command breaking, not a capability
+  leaving, which is why DECISION F261 D21 deferred it. The round that takes `propose` owes a
+  DECISION on that gate, and because repairing it changes what a surviving command does, which the
+  Do-not-touch section of `docs/roadmap/features/T2_F261.md` forbids this feature, that round also
+  owes the feature-file amendment §4 item 7 of the reviewer prompt requires — authored into the
+  block, recorded as an operator-visible DECISION, and proceeded under.
+- THE SAME ROUND INHERITS THE F011 DISCRIMINATOR. `--status` is the only option name in the catalog
+  that is a flag on one command and valued on another, and `propose.list` is the valued half, so
+  `tests/cli/test_job_stop.py::TestTheParserDoesNotBreakOtherCommands` loses its only witness for
+  the valued meaning when the group goes. Measured at `13128d25`.
+- A MEASUREMENT MAY OVERRULE THE INVENTORY, and did. `.agent/f261_t003_inventory.md` says its order
+  is a proposal the rounds follow unless a measurement contradicts it; round 22 is the first round
+  of this feature to take that clause, splitting the inventory's round I in two.
+- THE METHOD held for two more rounds and is worth keeping, with one addition the reviewer's own
+  run bought: a helper's targeted test set is not enough, because round 21's helper ran 32 files
+  and still missed `tests/docs/test_named_source_paths.py`, which forbids an operator-facing page
+  to name a source file that does not exist — the reviewer's run over the WHOLE of `tests/docs/`
+  found it, and the carrier was amended before the block was authored. Every brief since orders the
+  whole directory.
+- A MUTATION'S FROM IS A WHOLE LINE. Round 21's gate G5 (5) was unmeetable because a slice held a
+  truncated line; round 22 therefore shipped its mutations as a digest-verified JSON-lines carrier
+  taken from the script that had already run them, never retyped, and all four ran green-control
+  and red-mutation on the first attempt.
+- THE SOFT LIMIT is three rounds away: F261 reaches 25 rounds at round 25. The session that reaches
+  it owes the scope report and executes the split-and-close default of operator amendment
+  amend0905-throughput, placing the follow-up feature directly after F261 per amend0906. The
+  inventory's remaining rounds — `propose`, the `job run` provider wiring with the ping-pong path
+  of `do run`, the queue commands with `worker run` and `mission ledger`, `job rerun` and
+  `job fulfill`, the fixtures and `job create`, `teach` to `teacher`, and the two `flight_plan`
+  rename rounds — are far more than three, so the split is the expected outcome rather than a
+  surprise.
+
+### Next
+
+1. Phase 1 rule 1: the next session reads `.agent/STOP` first; then the Open PR Gate, which finds
+   no open pull request for this branch.
+2. Round 23's first record commit books `Gate: F261 R22` from this section.
+3. Round 23's work: the `propose` group, with the DECISION its deletion needs about the
+   unresolved-proposal gate of `packages/orchestration/worker_queue.py`, the feature-file amendment
+   that DECISION requires, and the F011 `--status` discriminator.
+
+Operator questions open: 0
