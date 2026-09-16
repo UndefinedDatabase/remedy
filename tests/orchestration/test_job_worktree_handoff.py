@@ -474,7 +474,7 @@ class TestJobPlanResume:
         # max-tasks is an F012 material control and travels in RunInvocation,
         # not as a bare kwarg (do_cmd._cmd_job_run docstring).
         from apps.cli.commands.run_invocation import RunInvocation
-        do_cmd._cmd_job_run(job.job_id, builder="fake", reviewer="fake",
+        do_cmd._cmd_job_run(job.job_id, builder_provider="fake", reviewer_provider="fake",
                             max_rounds=1, json_output=True,
                             invocation=RunInvocation(max_tasks=1))
         capsys.readouterr()

@@ -135,9 +135,9 @@ class TestCliRoleFlags:
     def test_job_run_reviewer_provider(self) -> None:
         ns = self._parse([
             "job", "run", "job-id-123",
-            "--reviewer-provider", "fixture",
+            "--reviewer-provider", "fake",
         ])
-        assert ns.reviewer_provider == "fixture"
+        assert ns.reviewer_provider == "fake"
 
     def test_job_run_reviewer_model(self) -> None:
         ns = self._parse([
@@ -229,3 +229,82 @@ class TestCliRoleFlags:
             "--repair-provider", "--repair-model", "--repair-effort",
         ):
             assert flag in arg_names, f"job.run missing {flag}"
+
+
+# ---------------------------------------------------------------------------
+# F280 D1: `job run` selects its builder and reviewer with the provider flags
+#
+# --builder-provider/--reviewer-provider are handed to run_job as builder_name and
+# reviewer_name. The old --builder/--reviewer flags are deleted from `job run` with no
+# alias, and a provider run_job cannot build is refused at the CLI with exit 2.
+# ---------------------------------------------------------------------------
+
+
+class TestJobRunProviderWiring:
+    """Drive `job run` through the grouped CLI (build_parser + the dispatch table)."""
+
+    def _main(self, argv: list[str], monkeypatch) -> list[dict]:
+        import packages.orchestration.job_evidence as job_evidence
+        import packages.orchestration.pingpong_job as pingpong_job
+        from apps.cli.grouped import main
+
+        calls: list[dict] = []
+
+        def fake_run_job(job_id, **kwargs):
+            calls.append({"job_id": job_id, **kwargs})
+            return pingpong_job.JobPlan(job_id=job_id)
+
+        monkeypatch.setattr(pingpong_job, "run_job", fake_run_job)
+        monkeypatch.setattr(pingpong_job, "export_job_report", lambda job: {"job_id": job.job_id})
+        monkeypatch.setattr(
+            job_evidence, "mirror_job_run_into_ledger",
+            lambda job_id: {"ledger_mirrored": True, "error": None},
+        )
+        main(argv)
+        return calls
+
+    def test_provider_flags_reach_run_job_as_the_role_names(self, monkeypatch, capsys) -> None:
+        calls = self._main([
+            "job", "run", "job-id-123",
+            "--builder-provider", "ollama",
+            "--reviewer-provider", "ollama",
+            "--json",
+        ], monkeypatch)
+        capsys.readouterr()
+        assert len(calls) == 1
+        assert calls[0]["builder_name"] == "ollama"
+        assert calls[0]["reviewer_name"] == "ollama"
+
+    def test_each_provider_flag_reaches_its_own_role(self, monkeypatch, capsys) -> None:
+        calls = self._main([
+            "job", "run", "job-id-123",
+            "--builder-provider", "fake",
+            "--reviewer-provider", "claude-cli",
+            "--json",
+        ], monkeypatch)
+        capsys.readouterr()
+        assert (calls[0]["builder_name"], calls[0]["reviewer_name"]) == ("fake", "claude-cli")
+
+    def test_omitted_provider_flags_reach_run_job_as_none(self, monkeypatch, capsys) -> None:
+        # None keeps run_job's own resolution: explicit > persisted > default.
+        calls = self._main(["job", "run", "job-id-123", "--json"], monkeypatch)
+        capsys.readouterr()
+        assert len(calls) == 1
+        assert calls[0]["builder_name"] is None
+        assert calls[0]["reviewer_name"] is None
+
+    @pytest.mark.parametrize("flag", ["--builder", "--reviewer"])
+    def test_deleted_role_flag_is_refused(self, flag, monkeypatch, capsys) -> None:
+        # No alias: the parser refuses the old flag, so run_job is never reached.
+        with pytest.raises(SystemExit) as exc:
+            self._main(["job", "run", "job-id-123", flag, "fake", "--json"], monkeypatch)
+        capsys.readouterr()
+        assert exc.value.code == 2
+
+    @pytest.mark.parametrize("flag", ["--builder-provider", "--reviewer-provider", "--repair-provider"])
+    def test_fixture_provider_is_refused_with_exit_2(self, flag, monkeypatch, capsys) -> None:
+        # create_provider cannot build `fixture`, so the CLI refuses it before run_job.
+        with pytest.raises(SystemExit) as exc:
+            self._main(["job", "run", "job-id-123", flag, "fixture", "--json"], monkeypatch)
+        assert exc.value.code == 2
+        assert "invalid" in capsys.readouterr().err

@@ -1056,8 +1056,8 @@ def _make_args(**kwargs):
     """
     ns = types.SimpleNamespace()
     ns.job_id = kwargs.get("job_id", "test_job")
-    ns.builder = kwargs.get("builder", None)
-    ns.reviewer = kwargs.get("reviewer", None)
+    ns.builder_provider = kwargs.get("builder_provider", None)
+    ns.reviewer_provider = kwargs.get("reviewer_provider", None)
     ns.max_rounds = kwargs.get("max_rounds", None)
     ns.repair_rounds = kwargs.get("repair_rounds", None)
     ns.test_command = kwargs.get("test_command", None)
@@ -1799,8 +1799,8 @@ class TestCliPauseContinueSmoke:
         # Step 2: Run with --max-tasks 1, --repair-rounds 1
         args1 = _make_args(
             job_id=job.job_id,
-            builder="fake",
-            reviewer="fake",
+            builder_provider="fake",
+            reviewer_provider="fake",
             repair_rounds=1,
             max_tasks="1",
         )
@@ -1928,7 +1928,7 @@ class TestMaxRoundsContinuation:
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(
-            job_id=job.job_id, builder="fake", reviewer="fake",
+            job_id=job.job_id, builder_provider="fake", reviewer_provider="fake",
             max_rounds="7", max_tasks="1",
         )
         COMMAND_HANDLERS["job.run"](args1)
@@ -1966,7 +1966,7 @@ class TestProviderOverrideToFake:
         assert result.execution_config.reviewer == "claude-cli"
 
     def test_provider_restored_on_continuation(self, isolate_data_root, demo_repo):
-        """Omitted --builder/--reviewer restores persisted claude-cli."""
+        """Omitted --builder-provider/--reviewer-provider restores persisted claude-cli."""
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         run_job(
             job.job_id,
@@ -1989,7 +1989,7 @@ class TestProviderOverrideToFake:
     def test_explicit_fake_overrides_persisted_provider(
         self, isolate_data_root, demo_repo
     ):
-        """Explicit --builder fake overrides persisted claude-cli."""
+        """Explicit --builder-provider fake overrides persisted claude-cli."""
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         run_job(
             job.job_id,
@@ -2014,14 +2014,14 @@ class TestProviderOverrideToFake:
     def test_cli_handler_provider_override(
         self, isolate_data_root, demo_repo, capsys
     ):
-        """Handler-level: explicit --builder fake overrides persisted."""
+        """Handler-level: explicit --builder-provider fake overrides persisted."""
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(
             job_id=job.job_id,
-            builder="claude-cli",
-            reviewer="claude-cli",
+            builder_provider="claude-cli",
+            reviewer_provider="claude-cli",
             max_tasks="1",
         )
         COMMAND_HANDLERS["job.run"](args1)
@@ -2030,8 +2030,8 @@ class TestProviderOverrideToFake:
 
         args2 = _make_args(
             job_id=job.job_id,
-            builder="fake",
-            reviewer="fake",
+            builder_provider="fake",
+            reviewer_provider="fake",
         )
         COMMAND_HANDLERS["job.run"](args2)
         out2 = json.loads(capsys.readouterr().out)
@@ -2272,8 +2272,8 @@ class TestCommandPathFullConfigContinuation:
 
         args1 = _make_args(
             job_id=job.job_id,
-            builder="fake",
-            reviewer="fake",
+            builder_provider="fake",
+            reviewer_provider="fake",
             max_rounds="7",
             repair_rounds=1,
             test_command="true",
@@ -2315,7 +2315,7 @@ class TestCommandPathFullConfigContinuation:
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
 
         args1 = _make_args(
-            job_id=job.job_id, builder="fake", reviewer="fake",
+            job_id=job.job_id, builder_provider="fake", reviewer_provider="fake",
             max_rounds="7", max_tasks="1",
         )
         COMMAND_HANDLERS["job.run"](args1)
@@ -2344,14 +2344,14 @@ class TestCommandPathExplicitOverrides:
     def test_provider_override_to_fake(
         self, isolate_data_root, demo_repo, capsys
     ):
-        """Persisted claude-cli overridden by explicit --builder fake."""
+        """Persisted claude-cli overridden by explicit --builder-provider fake."""
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(
             job_id=job.job_id,
-            builder="claude-cli",
-            reviewer="claude-cli",
+            builder_provider="claude-cli",
+            reviewer_provider="claude-cli",
             max_tasks="1",
         )
         COMMAND_HANDLERS["job.run"](args1)
@@ -2360,8 +2360,8 @@ class TestCommandPathExplicitOverrides:
 
         args2 = _make_args(
             job_id=job.job_id,
-            builder="fake",
-            reviewer="fake",
+            builder_provider="fake",
+            reviewer_provider="fake",
         )
         COMMAND_HANDLERS["job.run"](args2)
         out2 = json.loads(capsys.readouterr().out)
@@ -2721,7 +2721,7 @@ class TestCommandPathGateSmoke:
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
-        args = _make_args(job_id=job.job_id, builder="fake", reviewer="fake")
+        args = _make_args(job_id=job.job_id, builder_provider="fake", reviewer_provider="fake")
         COMMAND_HANDLERS["job.run"](args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "completed"
@@ -3137,7 +3137,7 @@ class TestCommandPathPreApplySmoke:
 
         monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
 
-        args = _make_args(job_id=job.job_id, builder="fake", reviewer="fake")
+        args = _make_args(job_id=job.job_id, builder_provider="fake", reviewer_provider="fake")
         COMMAND_HANDLERS["job.run"](args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "blocked"
@@ -3149,7 +3149,7 @@ class TestCommandPathPreApplySmoke:
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
-        args = _make_args(job_id=job.job_id, builder="fake", reviewer="fake")
+        args = _make_args(job_id=job.job_id, builder_provider="fake", reviewer_provider="fake")
         COMMAND_HANDLERS["job.run"](args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "completed"

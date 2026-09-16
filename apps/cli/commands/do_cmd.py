@@ -67,9 +67,8 @@ def _resolve_timeout_precedence(
 # CLI accepts --<role>-provider / --<role>-model / --<role>-effort for the
 # builder, reviewer, and repair roles. Values are validated at the CLI layer
 # before being passed through to role_config.resolve_role_config.
-_VALID_ROLE_PROVIDERS = frozenset(
-    {"ollama", "claude", "claude-cli", "fake", "fixture"}
-)
+# Exactly the names create_provider (packages/orchestration/pingpong_provider.py) builds.
+_VALID_ROLE_PROVIDERS = frozenset({"ollama", "claude", "claude-cli", "fake"})
 _VALID_ROLE_EFFORTS = frozenset({"low", "medium", "high", "max"})
 _ROLE_OVERRIDE_ROLES = ("builder", "reviewer", "repair")
 
@@ -1098,8 +1097,6 @@ def _print_scope_summary(validation: Any) -> None:
 def _cmd_job_run(
     job_id: str,
     *,
-    builder: str | None = None,
-    reviewer: str | None = None,
     max_rounds: int | None = None,
     repair_rounds: int | None = None,
     test_command: str | None = None,
@@ -1144,12 +1141,6 @@ def _cmd_job_run(
         repair_model=repair_model,
         repair_effort=repair_effort,
     )
-    if builder is not None and builder not in _VALID_PINGPONG_PROVIDERS:
-        print(f"Error: invalid --builder: {builder!r}. Allowed: {', '.join(sorted(_VALID_PINGPONG_PROVIDERS))}.", file=sys.stderr)
-        sys.exit(2)
-    if reviewer is not None and reviewer not in _VALID_PINGPONG_PROVIDERS:
-        print(f"Error: invalid --reviewer: {reviewer!r}. Allowed: {', '.join(sorted(_VALID_PINGPONG_PROVIDERS))}.", file=sys.stderr)
-        sys.exit(2)
     if claude_cli_write_mode is not None and claude_cli_write_mode not in _VALID_CLI_WRITE_MODES:
         print(
             f"Error: invalid --claude-cli-write-mode: {claude_cli_write_mode!r}. "
@@ -1208,8 +1199,8 @@ def _cmd_job_run(
 
     job = run_job(
         job_id,
-        builder_name=builder,
-        reviewer_name=reviewer,
+        builder_name=builder_provider,
+        reviewer_name=reviewer_provider,
         builder_model=builder_model,
         builder_effort=builder_effort,
         reviewer_model=reviewer_model,
@@ -1416,8 +1407,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "job.run": lambda args: _cmd_job_run(
         args.job_id,
-        builder=getattr(args, "builder", None),
-        reviewer=getattr(args, "reviewer", None),
         max_rounds=int(getattr(args, "max_rounds")) if getattr(args, "max_rounds", None) is not None else None,
         repair_rounds=int(getattr(args, "repair_rounds")) if getattr(args, "repair_rounds", None) is not None else None,
         test_command=getattr(args, "test_command", None),
