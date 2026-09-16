@@ -1,28 +1,28 @@
-# Context — F261 CLI vocabulary v2 (rename & prune)
+# Context — F280 CLI vocabulary v2, part two
 
 ## Active Branch
-feature/f261-cli-vocabulary-v2, cut from `main` at
-`7cdde89b5d0dc8ef1fb96980105870e956699873`, the merge commit of pull request 250.
+feature/f280-cli-vocabulary-v2-part-two, cut from `main` at
+`9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`, the merge commit of pull request 251.
 
 ## Scope
-F261 (Tier 2; depends on F259, F260, F272, F274 and F275; blocks F266, F268, F269, F270,
-F271 and F263): the catalog equals DECISION amend0905-vocab D4. Task slicing per
-`docs/roadmap/features/T2_F261.md`: T001 dissolves the plan triplet and the `job-*` family,
-T002 makes `apply` replace `promote` and builds `job show --full`, T003 prunes to D4, and T004
-lands descriptions, role labels, help wrapping and the catalog tests. DECISION F261 D1
-re-scopes T001 against the catalog measured at `7cdde89b`.
+F280 (Tier 2; depends on F259 and F261; blocks F266, F268, F269, F270, F271 and F263): what
+F261 could not reach inside its soft limit, per DECISION F261 D25. Task slicing per
+`docs/roadmap/features/T2_F280.md`: T001 finishes the prune to DECISION amend0905-vocab D4 in the
+order of `.agent/f261_t003_inventory.md` rounds J to P, and T002 lands descriptions, role labels,
+help wrapping, the visible group order and the catalog tests.
 
 ## Do not touch
 The concept model (F259 owns the words), the job model (F260 owns what a job is), STATUS
-semantics, and the behaviour behind a surviving name: this feature renames and prunes.
-Accepted `[x]` evidence under `docs/roadmap/` stays byte-identical.
+semantics, and the behaviour behind a surviving name: this feature renames and prunes, and the
+three places T001 must change a surviving command are each taken by a dated DECISION. Accepted
+`[x]` evidence under `docs/roadmap/` stays byte-identical.
 
 ## Assumptions
-- Cleanliness before compatibility (DECISION D-A): no alias and no migration shim. A renamed
-  command's old id is deleted in the same commit (DECISION D-B), and every test or script that
-  depends on it is converted in that commit.
-- One rename per commit, and `TestRenamedCommands` in `tests/test_command_catalog.py` gains
-  that rename's pair in the same commit.
+- Cleanliness before compatibility (DECISION D-A of `docs/roadmap/features/T2_F261.md`): no
+  alias and no migration shim; a deleted word's id joins `TestDeletedCommands` in
+  `tests/test_command_catalog.py` in the same commit.
+- A deletion that would break a surviving command is deferred to a round that can rule on it,
+  never shipped with a finding.
 
 ## Constraints
 The bullets below are STANDING project constraints, carried forward from the context this
@@ -47,6 +47,8 @@ file replaces.
   inside a worktree puts the worktree first on `sys.path` and proves where the modules loaded
   from before its result is read.
 - A fresh worktree has neither `apps/ui/node_modules` nor a built `apps/ui/dist`.
+- Never call `run_job` or any runner from inside a checkout: a job run creates a
+  `remedy/job-*` branch there.
 
 This feature is NOT UI work — no design-reference binding applies.
 
