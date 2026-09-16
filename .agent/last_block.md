@@ -1,12 +1,11 @@
-── STEP T001/1 — F280 — ROUND 1 ──
-Goal: Claim F280, cut its branch, re-point the state files, re-head the review record, book F261's
-round 28 verdict and its prose slip, record DECISION F280 D1, and wire `job run`'s provider flags
-into the runner by one table.
+── STEP T001/2 — F280 — ROUND 2 ──
+Goal: Book round 1's PASS, register R-0932 to R-0934 and record DECISION F280 D2, then delete the
+ping-pong path of `do run` with the flags only it reads, the scope plan module and prefix matching
+of flags, by three tables; run the suite once.
 
-Base: `main` at `9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`, the merge commit of pull request 251.
-This is SESSION 1 of F280. Read first, and trust nothing below that you can read yourself:
-AGENTS.md, docs/agents/self_drive_protocol.md, docs/roadmap/features/T2_F280.md, and DECISION
-F280 D1 once C1 has landed it.
+Base commit: `4e93c22cda4634020b4b52abe6c6654c4d2b6c15`, on
+`feature/f280-cli-vocabulary-v2-part-two`. SESSION 1 of F280. Read AGENTS.md,
+docs/agents/self_drive_protocol.md, and DECISION F280 D2 once C1 has landed it.
 
 THE FRAME RULE, per item 37 of §3, measured over the final bytes: NO LINE of this block that is two
 or more characters long is a run of a single repeated character, and every box-drawing rule inside
@@ -15,170 +14,192 @@ the STEP and SLICE header lines is exactly two characters long.
 ENVIRONMENT: `VAR=x cmd`, `env` and `export` are denied, so set environment in-process; `cp` is
 denied, so copy with `shutil.copyfile`; bare `ruff` is denied, so use `python3 -m ruff check`.
 Shell loops, `$(...)` and `$?` in a compound command are refused by form, so write such checks
-as Python scripts under `.remedy-wt/f280r1w/`, and never name a script after a standard-library
+as Python scripts under `.remedy-wt/f280r2w/`, and never name a script after a standard-library
 module; a pipe into `tail` hides pytest's exit code. The editable install resolves `apps` and
 `packages` to the PRIMARY checkout, so a pytest run inside a worktree goes through a runner
 script that changes into the worktree, puts it first on `sys.path` and in `PYTHONPATH`, and
 asserts `apps.cli.commands.do_cmd` loaded from inside it. Never call `run_job` or any runner
 yourself: a job run started from inside a checkout creates a `remedy/job-*` branch in it.
-`git branch --list 'remedy/job-*'` reads 17 lines now; keep it so.
+`git branch --list 'remedy/job-*'` reads 17 lines now; keep it so. While a deletion is staged but
+not committed, `test_every_enumerated_path_exists_in_this_repo` fails; run no suite then.
 
 ## Bundle — the ordered commit sequence
 
-C0a Cut `feature/f280-cli-vocabulary-v2-part-two` from `main` at the base, then save
-    `.remedy-wt/f280-block/f280-r1.md`, the block file the delegating message names, as
-    `.agent/authored/f280-r1.md` by `shutil.copyfile`
+C0a `.agent/authored/f280-r2.md`, the block file the delegating message names, by
+    `shutil.copyfile`
 C0b `.agent/last_block.md`, the same bytes
-C1  THE RECORD, one commit: `.agent/plan.md` becomes slice PLAN1; in `.agent/live_review.md`
-    everything before the `## Findings` line becomes slice HEAD1 and slice RECORD1 is appended at
-    the end; slice DEC1 is appended to `.agent/decisions.md` and slice SLIP1 to
-    `.agent/prose_slips.md`; pair PF is applied to `docs/roadmap/features/T2_F280.md`
-C2  THE CLAIM: pair PS is applied to `docs/roadmap/STATUS.md`, and `.agent/context.md` becomes
-    slice CTX1
-C3  THE TABLE: copy `.remedy-wt/f280-block/f280-r1-jobrun.jsonl` to
-    `.agent/authored/f280-r1-jobrun.jsonl` and apply it per THE TABLE, in one commit
-C4  `.agent/handoff.md`, the handback; then
-    `git push -u origin feature/f280-cli-vocabulary-v2-part-two`
+C1  THE RECORD, one commit: `.agent/plan.md` becomes slice PLAN2; slice RECORD2 is appended to
+    `.agent/live_review.md` and slice DEC2 to `.agent/decisions.md`; pairs P268, P273 and P280
+    are applied
+C2  THE PATH: copy `.remedy-wt/f280-block/f280-r2-path.jsonl` to
+    `.agent/authored/f280-r2-path.jsonl` and apply it per THE TABLES, in one commit
+C3  THE SCOPE PLAN: the same for `f280-r2-scope.jsonl`
+C4  NO PREFIX MATCHING: the same for `f280-r2-abbrev.jsonl`
+C5  `.agent/handoff.md`, the handback; then `git push origin feature/f280-cli-vocabulary-v2-part-two`
 
 C1 is the FIRST SUBSTANTIVE COMMIT, per item 23 of §3. No pull request is created.
 
 ## Change — exactly these paths and no others
 
-C0a to C2: `.agent/authored/f280-r1.md`, `.agent/last_block.md`, `.agent/plan.md`,
-`.agent/live_review.md`, `.agent/decisions.md`, `.agent/prose_slips.md`,
-`docs/roadmap/features/T2_F280.md`, `docs/roadmap/STATUS.md` and `.agent/context.md`. C3: the
-table's own carrier and the paths G4 names. C4: `.agent/handoff.md`. The mutation carrier G5
-names is READ from `.remedy-wt/f280-block/` and is never committed.
+C0a to C1: `.agent/authored/f280-r2.md`, `.agent/last_block.md`, `.agent/plan.md`,
+`.agent/live_review.md`, `.agent/decisions.md`, `docs/roadmap/features/T2_F268.md`,
+`docs/roadmap/features/T2_F273.md` and `docs/roadmap/features/T2_F280.md`. C2 to C4: each table's
+own carrier and the paths G3 names for that commit. C5: `.agent/handoff.md`. The gate carrier G4
+names and the mutation carrier G5 names are READ from `.remedy-wt/f280-block/` and are never
+committed.
 
-## The record's edges and the pairs
+## The appends and the pairs
 
-The text `## Findings` also occurs inside prose of the record, so the head swap splits on the
-line-anchored expression `^## Findings$` in multi-line mode, which matches exactly once at the
-base; the bytes from that line to the end of the file are carried forward unchanged. HEAD1 ends
-with its own blank line. RECORD1, DEC1 and SLIP1 each begin with an empty line, and all three
-targets end in a newline at the base: an append is the file's bytes followed by the slice's bytes,
-and nothing else. Each FROM slice occurs exactly once in its target at the base.
-PF `docs/roadmap/features/T2_F280.md`: FROM slice PF-FROM, TO slice AMEND1. The containment test
-   printed `TO contains FROM: true`, so APPEND-shaped: proved by whole-file equality with FROM's
-   one occurrence replaced by TO, and never by a FROM-zero count.
-PS `docs/roadmap/STATUS.md`: FROM slice PS-FROM, TO slice STATUS1. The containment test printed
-   `TO contains FROM: false`, so a REWRITE: after it FROM occurs 0 times and TO once.
+RECORD2 and DEC2 each begin with an empty line, and both targets end in a newline at the base: an
+append is the file's bytes followed by the slice's bytes, and nothing else. Each FROM slice occurs
+exactly once in its target at the base, and each containment test printed
+`TO contains FROM: false`, so each pair is a REWRITE: at C1 its FROM occurs 0 times and its TO once.
+P268 `docs/roadmap/features/T2_F268.md`: FROM slice P268-FROM, TO slice P268-TO.
+P273 `docs/roadmap/features/T2_F273.md`: FROM slice P273-FROM, TO slice P273-TO.
+P280 `docs/roadmap/features/T2_F280.md`: FROM slice P280-FROM, TO slice P280-TO.
 
-## THE TABLE
+## THE TABLES
 
-The carrier holds one JSON array per line; its sha256, to verify before copying, is
-`91c80c258f7edf0d1b334f87e6b631f043f446afab3d387ed85ba4a579e4b92f`. Apply its rows strictly in
-the order they appear, each against the tree as the previous rows left it, from the repository
-root: `["edit", path, old, new, count]` opens the path with `encoding="utf-8", newline=""`,
-requires the number of occurrences of `old` to equal `count` exactly, and replaces every
-occurrence with `new`. A count that differs is a STOP: touch nothing further, commit nothing of
-the table, and hand back with the row and the reading. Stage the commit with `git add -A` after
-the table and its carrier. The table is the research helper's build of DECISION F280 D1 on the
+Each carrier holds one JSON array per line. Their sha256, to verify before copying:
+`f280-r2-path.jsonl` `df98e2a6577c99a3162e6f6d96c370d192f50936da32ce0f852ca50ecdd1cd16`,
+`f280-r2-scope.jsonl` `1c99303db9b5b2d85b45c108fbee662cf8672e1ccb66faf4f5a36dfb561a8756` and
+`f280-r2-abbrev.jsonl` `5f4f42bbfcde8d23e2eb54e70abc487357a4706ff4ed891256cb93c4a09a3560`.
+Apply a table's rows strictly in the order they appear in its file, each against the tree as the
+previous rows left it, from the repository root: `["edit", path, old, new, count]` opens the path
+with `encoding="utf-8", newline=""`, requires the number of occurrences of `old` to equal `count`
+exactly, and replaces every occurrence with `new`; `["delete", path]` removes the file;
+`["move", src, dst]` renames the file, whose target must not exist; `["create", path, content]`
+writes `content` to a path that must not exist, with the same encoding and newline setting. A
+count that differs or a target that exists is a STOP: touch nothing further, commit nothing of
+that table, and hand back with the row and the reading. Stage each commit with `git add -A` after
+its table and its carrier. The tables are the research helper's build of DECISION F280 D2 on the
 base, which the reviewer re-applied there with its own applier and tested.
+
+## SPEC S — the suite, once, after G5 and before C5
+
+From the primary checkout's root, serially:
+`python3 -B -m pytest -q -p no:randomly -p no:cacheprovider --tb=short -rfEs`, with `PYTHONPATH`,
+`REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed and `PYTHONDONTWRITEBYTECODE=1`, output under
+`.remedy-wt/f280r2w/`. Report pytest's return code, the run's last output line, and every
+distinct bad node, the text after a line-initial `FAILED ` or `ERROR ` up to the first ` - `.
+Re-run each bad node alone, once, the same way, and report that return code beside it.
 
 ## Constraints
 
 1. NO SLICE AND NO CARRIER IS EDITED. Extract each slice as the bytes strictly between its
-   `BEGIN <NAME>` line and its `END <NAME>` line, verify them against that BEGIN line's sha256
-   before use, and let no marker line reach a file.
-2. READ `.agent/STOP` before C0a, before C3 and before C4, with real exit codes. If it exists:
+   `BEGIN <NAME>` and `END <NAME>` lines and verify its sha256 before use.
+2. READ `.agent/STOP` before C0a, before C2 and before C5, with real exit codes. If it exists:
    finish a half-written commit, write the handoff, push, stop.
-3. A red gate is a STOP: commit what is honestly finished and hand back with the raw output.
-4. Scratch, runner scripts and your worktree live under `.remedy-wt/f280r1w/`, uncommitted; no
-   `.py` file goes under `.agent/`. Under `.remedy-wt/` open only `.remedy-wt/f280-block/` and
-   your own directory. `git worktree list` reads one row now; leave it so. Create no symlink.
+3. A red gate is a STOP: commit what is honestly finished, hand back with the raw output.
+4. Scratch, runner scripts and your worktree live under `.remedy-wt/f280r2w/`, uncommitted; no
+   `.py` file under `.agent/`. Under `.remedy-wt/` open only `.remedy-wt/f280-block/` and your
+   own directory. `git worktree list` reads one row now; leave it so. Create no symlink.
 5. Every commit stays under 500 insertions, read as the first column of `git show --numstat
-   --format= <commit>`.
+   --format= <commit>` with git's default rename detection.
 6. NEVER merge, open a pull request, force-push, rewrite history or delete a branch. No `remedy`.
-   Write no `Done:` paragraph: this round resolves no finding.
-7. THE BLOCK'S OWN SIZE, measured on its final bytes: 372 lines TOTAL and 218 lines of PROSE,
+   Write no `Done:` paragraph: this round's resolutions are the reviewer's, at the next gate.
+7. THE BLOCK'S OWN SIZE, measured on its final bytes: 319 lines TOTAL and 235 lines of PROSE,
    against the caps of 490 and 400, where PROSE is every line that is not a line of slice
    CONTENT — the `BEGIN` and `END` marker lines count as prose.
-8. GATE ORDER. G1 and G2 after C1; G3 after C2; G4, G5 and G6 after C3 and before C4; G7 after
-   C4 and the push, reported in the completion message only.
+8. GATE ORDER. G1 and G2 after C1; G3's half for each table commit after that commit; G4 and G5
+   after C4; then SPEC S, whose result is G6; G7 after C5 and the push, reported in the
+   completion message only.
 9. Every commit message ends with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`, and
    no subject carries a leading-slash token or an absolute path.
 
 ## Done when — every gate run for real, its exit code recorded
 
-G1 TRANSPORT. The sha256 of `.agent/authored/f280-r1.md` at C0a equals the digest the delegating
+G1 TRANSPORT. The sha256 of `.agent/authored/f280-r2.md` at C0a equals the digest the delegating
 message gives, and `.agent/last_block.md` at C0b is byte-identical to it; the slices FOUND, each
-matching its BEGIN-marker sha256.
+matching its BEGIN-marker sha256; each committed carrier's sha256 equals its digest above.
 
-G2 THE RECORD, at C1, against the base blobs read with `git show`. (a) `.agent/plan.md` is
-byte-identical to PLAN1, at most 50 lines, with `^## Goal$` once and `^## Next Steps$` once.
-(b) `.agent/live_review.md` equals HEAD1, then the base bytes from the `^## Findings$` line to the
-end, then RECORD1; the sha256 of that carried region is the same in the base blob and at C1.
-(c) `.agent/decisions.md` equals its base blob followed by DEC1, and `.agent/prose_slips.md` its
-base blob followed by SLIP1. (d) `docs/roadmap/features/T2_F280.md` equals its base blob with
-PF-FROM's one occurrence replaced by AMEND1. (e) Over `.agent/live_review.md`: lines matching
-`^Gate: F\d+ R\d+ — ` read 27 at the base and 28 at C1, and `Gate: F261 R28 — ` 0 and 1;
-distinct `^- R-\d+ — ` ids 127 and 127; distinct `^Done: R-\d+ — ` ids 2 and 2; the open set by
-distinct id 125 and 125, with identical membership.
+G2 THE RECORD, at C1. `.agent/plan.md` is byte-identical to PLAN2, at most 50 lines, with
+`^## Goal$` once and `^## Next Steps$` once. `.agent/live_review.md` equals its base blob followed
+by RECORD2, and `.agent/decisions.md` its base blob followed by DEC2. Each of the three feature
+files equals its base blob with its pair applied, with the counts The appends and the pairs give.
+Over `.agent/live_review.md`: `^Gate: F\d+ R\d+ — ` reads 28 at the base and 29 at C1, with
+`Gate: F280 R1 — ` 0 times at the base and once at C1; distinct `^- R-\d+ — ` ids 127 and 130, C1
+minus base exactly `R-0932`, `R-0933` and `R-0934`; distinct `^Done: R-\d+ — ` ids 2 and 2; the
+open set by distinct id 125 and 128. `python3 -B -m pytest -q tests/docs/` exits 0 at C1.
 
-G3 THE CLAIM, at C2. In `docs/roadmap/STATUS.md` PS-FROM reads 0 and STATUS1 1; `^- \[~\] `
-matches exactly once; `^- \[x\] F\d{3} — ` reads 78 at the base and at C2. `.agent/context.md` is
-byte-identical to CTX1. From the primary checkout at C2, `python3 -B -m pytest -q
-tests/docs/` and `python3 -B -m pytest -q tests/orchestration/test_roadmap_index.py`, each its
-own run, exit 0; report both summary lines.
+G3 THE TABLES. For each table commit, `git diff --no-renames --name-only` from its parent prints
+exactly its carrier and these paths. C2: `apps/cli/command_catalog.py`,
+`apps/cli/commands/do_cmd.py`, `apps/cli/grouped.py`, `docs/system/vocabulary.md`,
+`packages/orchestration/pingpong_provider.py`, `tests/cli/test_cli_ux.py`,
+`tests/cli/test_do_cmd_pingpong_budget.py`, `tests/cli/test_product_spine.py`,
+`tests/cli/test_scope_plan.py`, `tests/orchestration/test_pingpong.py`,
+`tests/orchestration/test_pingpong_cli.py`, `tests/orchestration/test_provider_retry.py`,
+`tests/orchestration/test_repair_loop.py`, `tests/orchestration/test_stream_evidence_integration.py`,
+`tests/test_cli_execution_loop_closure.py`, `tests/test_command_catalog.py`. C3:
+`packages/orchestration/pingpong_loop.py`, `packages/orchestration/scope_plan.py`,
+`tests/cli/test_scope_plan.py`, `tests/cli/test_task_input.py`,
+`tests/orchestration/import_reachability_allowlist.txt`. C4: `apps/cli/grouped.py`,
+`tests/test_command_catalog.py`. `git rev-parse <commit>:<object>` equals the reviewer's dry run,
+which applied the tables on the base, the record touching none of these objects. At C2: `apps`
+`733555aa61f117495b867bb9c6c8b87ac962d5ef`, `packages` `6f7b4b38bcbfaf9f2e73dc5b568e61310cfea8d7`,
+`tests` `7bcf67a94161d6e65fbd974209d9d3b2f5524aec`. At C3: `apps`
+`733555aa61f117495b867bb9c6c8b87ac962d5ef`, `packages` `ed64c3a499eb6ad4352a06de527bc8c04dc267e1`,
+`tests` `9b4de341549b93d7d056c12fe51b8898af67eeed`. At C4, for `apps`, `packages`, `scripts`,
+`tests`, `docs/guides`, `docs/system`, `docs/README.md`, `README.md` and `.claude` in that order:
+`725c9980aeb4a9b4bedfca043d31ca6ab1130136`, `ed64c3a499eb6ad4352a06de527bc8c04dc267e1`,
+`4bea3f9f084c3987c399f39746b5b2c57be6ffca`, `9ff3aca064ebd7f537cdb61f275307737bbede1e`,
+`52e345b71419d519c98eba49cea68cc424c249ce`, `e730766a135cae17d4a1c9db43b61b147d349303`,
+`c282d425ef909cf9257605294f23aba7d9457fac`, `3c6b8d40ec4f4d76e05dc352a4b0ce8ef8970be5`,
+`e3cd5e0ac262f3f993506e95825e270e39c03ec0`. Report the insertions of C2, C3 and C4 per
+constraint 5. From the primary checkout at C2, `python3 -B -m pytest -q
+tests/cli/test_golden_path.py` exits 0.
 
-G4 THE TABLE, at C3. `git diff --no-renames --name-only` from C3's parent prints exactly
-`.agent/authored/f280-r1-jobrun.jsonl`, `apps/cli/command_catalog.py`,
-`apps/cli/commands/do_cmd.py`, `tests/orchestration/test_job_run_refs.py`,
-`tests/orchestration/test_job_task_runner.py`, `tests/orchestration/test_job_worktree_handoff.py`
-and `tests/test_role_override_flags.py`. `git rev-parse C3:<object>` for `apps`, `packages`,
-`scripts`, `tests`, `docs/guides`, `docs/system`, `README.md` and `.claude`, in that order, equals
-the reviewer's dry run, which applied the table on the base, the record and the claim touching
-none of these objects: `f3c2c62a068a994b598463703e5c2de241537e34`,
-`ec2c3efd7541c8cc7d30b2b226b109e1b285da45`, `4bea3f9f084c3987c399f39746b5b2c57be6ffca`,
-`3d7381b44fa1038901c5c01be2fb0ba1d098fb23`, `52e345b71419d519c98eba49cea68cc424c249ce`,
-`cc42698197076bc70d79a91b05ca633d7ebd2df8`, `3c6b8d40ec4f4d76e05dc352a4b0ce8ef8970be5`,
-`e3cd5e0ac262f3f993506e95825e270e39c03ec0`. Report C3's insertions and deletions per constraint
-5. `python3 -m ruff check` over the six `.py` paths above exits 0.
+G4 THE SWEEP, at C4. `git ls-tree` at C4 prints nothing for
+`packages/orchestration/scope_plan.py`, `tests/cli/test_scope_plan.py` and
+`tests/cli/test_do_cmd_pingpong_budget.py`, and prints a blob for
+`packages/orchestration/pingpong_loop.py`. The four patterns are the `deleted`, `deleted_flags`,
+`quick_start_old` and `control` values of `.remedy-wt/f280-block/f280-r2-gates.json`, sha256
+`e3ade0340ac37143d0f2621c0212c9a08f74edad393c635ddce1be7ab3c30ba2`; read them from that file in
+Python and pass each as one argv element to
+`git grep -n -I -E <pattern> <rev> -- apps packages scripts tests docs README.md AGENTS.md .claude ':!docs/roadmap' ':!docs/archive'`,
+never retyping them in a shell, at the base, at C2, at C3 and at C4. The expected readings, lines
+and files: `deleted` 181 and 8, 111 and 5, 8 and 2, 8 and 2; `deleted_flags` 48 and 8, 22 and 5,
+22 and 5, 23 and 5; `quick_start_old` 5 and 2, 2 and 1, 2 and 1, 2 and 1; `control` 89 and 14 at
+all four. Print every line `deleted` and `quick_start_old` match at C4. `python3 -m ruff check`
+over every `.py` path C2, C3 or C4 edits that still exists at C4 exits 0; report how many paths
+that was.
 
-G5 THE RED-PROOF, in `git worktree add --detach .remedy-wt/f280r1w/wt <C3's sha>`, each run
-through the runner over `tests/test_role_override_flags.py`,
-`tests/orchestration/test_job_run_refs.py` and `tests/orchestration/test_job_task_runner.py`
-with `-p no:randomly -p no:cacheprovider -rf --tb=no`, under `python3 -B`. The mutations are the
-rows of `.remedy-wt/f280-block/f280-r1-mutations.jsonl`, whose sha256 must equal
-`56d2b30989440182c1a51a17790c6df2ca03c296d9be578a001bc1169dc864c6`; each row is
-`[label, path, from, to, node]`, the `from` bytes must occur EXACTLY ONCE in that path inside the
-worktree, and the file is restored with `git -C .remedy-wt/f280r1w/wt checkout -- <path>` after
-each run. Read that carrier; never retype its bytes. (a) CONTROL, unmutated, first: must exit 0.
-(b) Each row must exit 1 with its row's node AMONG the failed nodes; further failed nodes are
-expected, not a STOP. Report each exit code, summary line, each FROM's occurrence count and every
-failed node id; then `git worktree remove --force .remedy-wt/f280r1w/wt` and read
+G5 THE RED-PROOF, in `git worktree add --detach .remedy-wt/f280r2w/wt <C4's sha>`, each run
+through the runner over `tests/test_command_catalog.py`, `tests/cli/test_advertised_commands.py`,
+`tests/cli/test_cli_ux.py`, `tests/orchestration/test_pingpong.py` and
+`tests/orchestration/test_pingpong_cli.py` with `-p no:randomly -p no:cacheprovider -rf --tb=no`,
+under `python3 -B`. The mutations are the rows of `.remedy-wt/f280-block/f280-r2-mutations.jsonl`,
+whose sha256 must equal `77d447624774c1b3086b97cbced3b1971d24f21cc6e3ecd3c6c0a831c9c0a4ab`; each
+row is `[label, path, from, to, node]`, the `from` bytes must occur EXACTLY ONCE in that path
+inside the worktree, and the file is restored with
+`git -C .remedy-wt/f280r2w/wt checkout -- <path>` after each run. Read that carrier; never retype
+its bytes. CONTROL first, unmutated: must exit 0. Each row must exit 1 with its row's node AMONG
+the failed nodes. Report each exit code, summary line, each FROM's occurrence count and every
+failed node id; then `git worktree remove --force .remedy-wt/f280r2w/wt` and read
 `git branch --list 'remedy/job-*'`.
 
-G6 THE SUITES, in the primary checkout at C3, serially, each path its own
-`python3 -B -m pytest -q -p no:randomly <path>` run: `tests/test_role_override_flags.py`,
-`tests/orchestration/test_job_run_refs.py`, `tests/orchestration/test_job_task_runner.py`,
-`tests/orchestration/test_job_worktree_handoff.py`, `tests/test_command_catalog.py`,
-`tests/cli/test_advertised_commands.py`, `tests/cli/test_cli_ux.py`,
-`tests/orchestration/test_live_review_rotation.py`; then the four state readers as four runs,
-`tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
-`tests/regression/test_resource_safety.py` and `tests/orchestration/test_integrity_gate.py`; and
-last the canary `tests/cli/test_golden_path.py`. Each must exit 0; report each summary line.
+G6 THE SUITE, SPEC S at C4: must exit 0 with no bad node; report the last output line. A bad node
+whose lone re-run exits 0 is reported as such with both readings and is not a STOP; a bad node
+whose lone re-run fails is.
 
-G7 THE TREE, after C4 and the push. `git status --porcelain` prints `''`; the branch is
-`feature/f280-cli-vocabulary-v2-part-two`; C0a to C4 are single-parent commits in that order on
-the base; `git rev-parse HEAD` equals
+G7 THE TREE, after C5 and the push. `git status --porcelain` prints `''`; C0a to C5 are
+single-parent commits in that order on the base; `git rev-parse HEAD` equals
 `git rev-parse origin/feature/f280-cli-vocabulary-v2-part-two`; `git worktree list` prints one
-row; `git branch --list 'remedy/job-*'` prints 17 lines.
+row, and `git branch --list 'remedy/job-*'` prints 17 lines.
 
-## The handback, C4
+## The handback, C5
 
 `.agent/handoff.md` per `docs/agents/handback_template.md`, Session line
-`SESSION 1 of feature F280 · round 1 · rounds so far 1`, with one sentence of context
-self-assessment. `## Commits` lists C0a to C3, each row's `+/-` cell equal to constraint 5's
-reading of that commit and its deletions column; C4's own numbers appear nowhere, per item 31 of
-§3. `## Verification` gives G1 to G6 with real exit codes. It states the open findings at 125 by
+`SESSION 1 of feature F280 · round 2 · rounds so far 2`, with one sentence of context
+self-assessment. `## Commits` lists C0a to C4, each row's `+/-` cell equal to constraint 5's
+reading of that commit and its deletions column; C5's own numbers appear nowhere, per item 31 of
+§3. `## Verification` gives G1 to G6 with real exit codes. It states the open findings at 128 by
 distinct id, with the High ids R-0803, R-0804 and R-0807, and `Operator questions open: 1`. Its
-`## Next` names, in order: Phase 1 rule 1; the reviewer's verdict on round 1; and the deletion of
-the ping-pong path of `do run` with its flags and the scope plan, R-0894.
+`## Next` names, in order: Phase 1 rule 1; the reviewer's verdict on round 2 with the resolutions
+of R-0767 and R-0894; and `job budget <id> set`, R-0906 and R-0909.
 
-── SLICE PLAN1 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
-BEGIN PLAN1 sha256=97c4d9ed9e3347ae6f6e06f47b87eaadc9206115886cc1b8b57e65ac8f3b62cf
+── SLICE PLAN2 ── target `.agent/plan.md` ── FULL REPLACEMENT ──
+BEGIN PLAN2 sha256=5ecf5aab9a7a5a38105937cc8312219f31c21ba242f8d02d3428c15418422385
 # Plan — F280 CLI vocabulary v2, part two
 
 Branch: feature/f280-cli-vocabulary-v2-part-two, cut from `main` at
@@ -192,181 +213,107 @@ T002 holds, per `docs/roadmap/features/T2_F280.md`.
 
 ## Current Step
 
-ROUND 1 claims F280, cuts the branch, re-points this file and `.agent/context.md`, re-heads
-`.agent/live_review.md`, books F261's round 28 verdict and its prose slip, and records DECISION
-F280 D1. Its table commit hands `job run`'s `--builder-provider` and `--reviewer-provider` to the
-runner, deletes `--builder` and `--reviewer` from `job run`, and refuses `fixture` there.
+ROUND 2 books round 1's PASS, registers R-0932 to R-0934 and records DECISION F280 D2. Its three
+table commits delete the ping-pong path of `do run` with the flags only it reads, delete the
+scope plan module with `run_pingpong`'s scope branches, and turn argparse prefix matching off, so
+no deleted flag survives as an abbreviation of a kept one. The worker runs the suite once.
 
 ## Next Steps
 
-1. The ping-pong path of `do run` with the flags only it reads, `--scope-file`, `--approve-scope`
-   and the scope plan module (R-0894), with `_VALID_PINGPONG_PROVIDERS`, the `--builder` and
-   `--reviewer` special-casing of `apps/cli/grouped.py`, the root help's quick start and the two
-   provider messages that name the deleted flags; then R-0767's resolution.
-2. `job budget <id> set` over the run-contract budget fields and the token budget profile
-   (R-0906, R-0909), then `job fulfill`.
-3. The fixtures and smoke sections moved off `job create`, then `job create`, `job attach-repo`
+1. `job budget <id> set` over the run-contract budget fields and the token budget profile
+   (R-0906, R-0909), then `job fulfill`; the next record books round 2's verdict with the
+   resolutions of R-0767 and R-0894.
+2. The fixtures and smoke sections moved off `job create`, then `job create`, `job attach-repo`
    and `job permit`.
-4. `propose`, with the DECISION on the two surviving gates DECISION F261 D22 names.
-5. The `flight_plan` rename; `worker doctor` and `job run --tasks`; then T002.
+3. `propose`, with the DECISION on the two surviving gates DECISION F261 D22 names.
+4. The `flight_plan` rename; `worker doctor` and `job run --tasks`.
+5. T002, which also re-derives the root help's quick start with the README quickstart (R-0895)
+   and closes the flag scanner's blind spot (R-0934).
 
 ## Risks
 
-- 125 findings are open by distinct id; three are High, R-0803, R-0804 and R-0807, none of them
-  this feature's.
-- Two provider error messages in `packages/orchestration/pingpong_provider.py` name `--builder`
-  and `--reviewer`, which `job run` no longer has, until the next step re-points them.
-- Argparse prefix matching refuses `--builder` on `job run` only as an ambiguous prefix of the
-  three `--builder-*` flags; `TestJobRunProviderWiring` pins the refusal.
-END PLAN1
+- 128 findings are open by distinct id after this round's record; three are High, R-0803,
+  R-0804 and R-0807, none of them this feature's.
+- The quick start this round writes needs `remedy init` first and stops at the default autonomy
+  level before any build, as DECISION F280 D2 records.
+- Prefix matching is off for every command, so an operator's abbreviated flag now exits 2; the
+  reviewer's scan found no abbreviated Remedy flag in the repository.
+END PLAN2
 
-── SLICE HEAD1 ── target `.agent/live_review.md` ── HEAD SWAP ──
-BEGIN HEAD1 sha256=664246e1135f616b2213b4988ece26c47c282f2653e653905eb32cc3232c72ef
-# Live Review — F280 CLI vocabulary v2, part two
+── SLICE RECORD2 ── target `.agent/live_review.md` ── APPEND ──
+BEGIN RECORD2 sha256=49e29786693fcdbd54194e861ea05f069f0afc47e71a7012b3c5dda153944e6d
 
-> Round-by-round review record, re-headed at the F280 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F261, which is
-> accepted: its STATUS line went `[x]` at `ea5b08f78be401efc227072f1b3a31fe764abda7` and its
-> pull request 251 merged at `9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`, at this session's
-> Open PR Gate. Only the heading, this paragraph and the `## Steps` section below are
-> rewritten. Everything from the `## Findings` line to the end of the file is carried forward
-> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
-> Measured by the reviewer at `9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`: 127 DISTINCT ids
-> matching `^- R-\d{4} — ` against 2 DISTINCT ids matching `^Done: R-\d{4} — `, so 125 findings
-> are open BY DISTINCT ID.
-> F261's last round, round 28, has an entry here: its verdict was written into pull request
-> 251, and under docs/agents/self_drive_protocol.md the reviewer books a branch-terminating
-> verdict into the next feature's first round. Records of features already `[x]` in
-> docs/roadmap/STATUS.md move to `.agent/live_review_archive.md` through
-> `scripts/rotate_live_review.py` in each closure sequence, under operator amendment
-> amend0905-throughput.
+Gate: F280 R1 — the F280 round 1 entry. VERDICT PASS. Written by the planner and reviewer of session 43 after reading the committed range `9f1b6d25`..`4e93c22c` and re-deriving every reading below; the worker's report was evidence for none of them except where named. It is booked here by the first commit of round 2 that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f280-r1.md` at `11454c29` and `.agent/last_block.md` at `be2271d3` are byte-identical to the reviewer's scratch original, sha256 `e0160539e502a0c73d2de3eb4f32190b065d94fe8e7915ecc41d3afe0043c9da`, and the table committed at `290bd0ed` is byte-identical to the reviewer's carrier, sha256 `91c80c258f7edf0d1b334f87e6b631f043f446afab3d387ed85ba4a579e4b92f`, which is the research helper's table unamended. THE STATE: at `cadd1e81`, `.agent/plan.md`, `.agent/live_review.md`, `.agent/decisions.md`, `.agent/prose_slips.md` and `docs/roadmap/features/T2_F280.md` are byte-identical to the blobs of the reviewer's own dry-run commit, which applied the block's slices to `9f1b6d25`, and at `5716d3a7` so are `docs/roadmap/STATUS.md` and `.agent/context.md`; the `Gate:` count reads 27 then 28, the distinct registered ids 127 then 127, the distinct `Done:` ids 2 then 2, the open set 125 then 125, STATUS 78 `[x]` lines and one `[~]` line. THE TABLE COMMIT: at `290bd0ed` the `apps`, `packages`, `scripts`, `tests`, `docs`, `README.md` and `.claude` objects equal both the research helper's dry-run commit and the reviewer's own re-application of the table on `9f1b6d25`; `git show --numstat` reads 134 insertions against 47 deletions, the six edited files plus the 21-row carrier. THE RED-PROOFS ran in the reviewer's own worktree on the identical tree: a control of 243 passed at exit 0, and each of the four rows of the mutation carrier `56d2b30989440182c1a51a17790c6df2ca03c296d9be578a001bc1169dc864c6` exiting 1 with its named node among the failures — handing `run_job` no builder name and no reviewer name each reddened 12 nodes, re-adding the `--builder` flag to `job run` reddened the refusal test alone, and re-admitting `fixture` reddened its three parametrized cases; every FROM is whole lines occurring exactly once. THE REVIEWER'S RUNS: in its worktree the round's four test files with `tests/cli/test_golden_path.py`, `tests/test_command_catalog.py`, `tests/cli/test_advertised_commands.py` and `tests/cli/test_cli_ux.py` read 427 passed; on its dry-run tree `tests/docs/`, `tests/orchestration/test_roadmap_index.py`, three state readers, `tests/orchestration/test_live_review_rotation.py` and `tests/ui_server/test_dashboard_contract.py` read 502 passed with one failure, `test_vitest_passes`, which needs `apps/ui/node_modules` and passed alone in the primary checkout at `9f1b6d25`; in the primary checkout at `4e93c22c` `tests/test_role_override_flags.py`, the canary, `tests/docs/`, the roadmap index and the catalog tests read 443 passed, and `python3 -m ruff check` over the six edited files printed `All checks passed!`. The worker's G6 transcript reports thirteen serial runs in the primary checkout at `290bd0ed`, each exit 0. The open set reads 125 by distinct id at `4e93c22c`.
 
-## Steps
+- R-0932 — Low, DELETING THE PING-PONG PATH OF `do run` LEAVES THREE PACKAGE FUNCTIONS WITH TEST CALLERS ONLY, TWO PROMPT PARAMETERS THAT PRODUCTION ONLY EVER FILLS WITH NOTHING, AND AN EVIDENCE FIELD NO WRITER FEEDS. Raised by the planner and reviewer of session 43 while preparing F280 round 2, from readings its research helper took and the reviewer re-took on its own dry-run tree of that round's three tables, whose `apps` object is `725c9980` and `packages` object `ed64c3a4`, after searching the open set for each symbol under §3 item 30: no open finding names any of them. THE DEFECT, read on that tree: `summarize_pingpong`, `load_task_file` and `load_task_stdin` in `packages/orchestration/pingpong_loop.py` have no caller under `apps/`, `packages/` or `scripts/` other than their own definitions, because their only production caller was `_cmd_do_pingpong` and the `do run` prelude; the `scope_contract` parameters of `compose_builder_prompt` and `compose_reviewer_prompt` in the same module now receive only their empty default in production, because `run_pingpong` stopped passing scope text when the scope plan module was deleted, while golden tests still feed them real text; `_build_manifest` in `packages/orchestration/pingpong_evidence.py` reads a `scope_plan` key from the run record that no production code writes, so the manifest's `scope_plan` field is always None; and the docstrings of `tests/cli/test_task_input.py` still describe a CLI handler that refuses `--task-file` with `--task-stdin`. They stay under DECISION F261 D17's rule, because each module keeps other production importers. WHY LOW: dead weight and a field that can never be filled, and nothing prints anything false. WHY F273's: none of it is a command word, so it is paydown work. FIX: delete the three functions and their tests, or give `do <order>` a caller for the task loaders if F268 wants them; drop the `scope_contract` parameters with the golden tests re-cut; drop the manifest's `scope_plan` field or record why its schema keeps it; correct the stale docstrings. Owner: F273.
 
-THE ORDER BELOW IS T2_F280.md's Orchestrator brief, with T001 in the order of the inventory
-`.agent/f261_t003_inventory.md`, rounds J to P.
-R1 claim F280, re-head this record, book F261 round 28, rule DECISION F280 D1 and hand `job run`'s
-provider flags to the runner → the ping-pong path of `do run` with its flags and the scope plan,
-R-0894 → `job budget <id> set`, R-0906 and R-0909, then `job fulfill` → the fixtures off
-`job create`, then `job create`, `job attach-repo` and `job permit` → `propose`, with the ruling
-on its two surviving gates → the `flight_plan` rename → `worker doctor` and `job run --tasks` →
-T002 → the integration gate → the closure sequence.
+- R-0933 — Low, `do run` VALIDATES `--builder-provider` AND `--fixture-builder` AND THEN READS NEITHER, SO BOTH FLAGS ARE ADVERTISED, REFUSE BAD VALUES AND DO NOTHING WITH GOOD ONES. Raised by the planner and reviewer of session 43 while preparing F280 round 2, from readings its research helper took at `9f1b6d25` and the reviewer re-took on its dry-run tree whose `apps` object is `725c9980`, after searching the open set for both flags under §3 item 30: no open finding names them. THE DEFECT: the `do.run` dispatch entry in `apps/cli/commands/do_cmd.py` passes `_parse_builder_provider(...)` and `_parse_fixture_builder(...)` to `_cmd_do`, whose body names neither parameter after its signature, and `run_do` takes no provider argument; the catalog entry advertises `--builder-provider` as "none, fixture, ollama" and `--fixture-builder` as a builder mode. Before F280 round 2 prefix matching also let `do run --builder ollama` parse as `--builder-provider ollama`, which the same round turns off. WHY LOW: an invalid value still exits 2, and a valid one silently changes nothing; no wrong state is written. WHY F268's: DECISION amend0905-vocab D4 gives `do <order>` the `--*-provider` triplet with meanings of its own, and ruling 3 of the F261 inventory leaves the other `do run` flags to that feature. FIX: `do <order>` either wires `--builder-provider` into the run it starts, with a test that the named provider is the one recorded, or the two flags leave the catalog with a deletion paragraph. Owner: F268.
 
-END HEAD1
+- R-0934 — Low, THE ADVERTISED-FLAG SCANNER STOPS READING A COMMAND LINE AT ITS FIRST QUOTE CHARACTER, SO NO FLAG AFTER A QUOTED ARGUMENT IS EVER CHECKED AGAINST THE CATALOG. Raised by the planner and reviewer of session 43 while preparing F280 round 2, after its research helper's mutation of the root help's quick start went unseen, and after searching the open set for the scanner under §3 item 30: R-0847, which removed the scanner's group pre-filter, is resolved and named a different blind spot. THE DEFECT, read at `4e93c22c`: `scan_advertised_command_flags` in `tests/cli/test_advertised_commands.py` cuts each match's tail at `_COMMAND_LINE_END_RE`, which ends at any of `"`, `'` or a backtick, so the reviewer's call on the line `remedy do run "<goal>" --bogus-flag x` returned the pair with an empty flag list; the old quick start step `remedy do run "<goal>" --repo . --builder claude-cli --reviewer claude-cli --json` therefore passed the guard with both deleted flags in it. WHY LOW: the round that exposed it added `test_quick_start_flags_are_declared_by_their_commands` for the one string it knew of, and nothing false is on disk now. WHY F280's: T002 already extends that guard to `README.md` under R-0895. FIX: skip a quoted argument rather than ending the line at its opening quote, while still ending at the quote that closes the enclosing Python string, with a test whose advertisement puts an undeclared flag after a quoted goal. Owner: F280.
+END RECORD2
 
-── SLICE RECORD1 ── target `.agent/live_review.md` ── APPEND ──
-BEGIN RECORD1 sha256=fda0f6dea575c6bab85fd5bc3db9e46eddc9a8d5b815bb9d4dadf1ee9c96aa75
+── SLICE DEC2 ── target `.agent/decisions.md` ── APPEND ──
+BEGIN DEC2 sha256=75a063abf3bc580316d56db71d4546594d242df3707c79da6048095edcd1f779
 
-Gate: F261 R28 — the F261 round 28 entry, CLOSURE ROUND B. VERDICT PASS. Written by the planner and reviewer of session 42 into pull request 251 as a comment, because the closure commit `ea5b08f7` is the last commit on its branch by Rule A4, and booked here by F280's round 1 under operator amendment amend0827-process-diet rule 1. That reviewer read the committed range `7a97e74d`..`ea5b08f7` and re-derived each reading it states: `.agent/authored/f261-r28.md` at `462bb6e3` and `.agent/last_block.md` at `b4342378` equal its scratch original, and the committed table `.agent/authored/f261-r28-closure.jsonl` at `a6046a6d` equals its carrier, sha256 `6c9a60eb…8fcb6417`; at `a6046a6d`, `.agent/plan.md` equals PLAN28 and `.agent/live_review.md` equals its `7a97e74d` blob followed by RECORD28, and `ea5b08f7` leaves the ledger unchanged; `ea5b08f7` has one parent and changes exactly `docs/roadmap/STATUS.md`, `README.md`, `scripts/self_use_queue.json` and `.agent/handoff.md`, and re-applying the committed table to the `a6046a6d` blobs reproduces the three non-handoff files byte for byte; STATUS carries 78 `[x]` lines, README says `78 of 280`, the Tier 2 row reads 21 of 33, no `[~]` line remains and the first unchecked line is F280; through the queue loaders `SU-015`'s `consumed_by` is `F261`. Its runs in the primary checkout at `ea5b08f7` of `tests/docs/`, `tests/cli/test_golden_path.py` and the three self-use test files read 406 passed. The closure values on the STATUS line are evidence job `234c8e6f18905013`, package `remedy-review-20260916-151540-READY_FOR_REVIEW.zip`, SHA-256 `8bc443e91657986bcbb83ad3b6d81cb55afd4b111ff7d4e6930983606f545275` and accepted commit `30343f927800784c464eaf56706d5b82ece39c81`; the close is PASS_WITH_RISKS for the open High findings R-0803, R-0804 and R-0807, none of them F261's. Re-read by the planner and reviewer of session 43, F280's first: hosted run `35102202968` on `ea5b08f7` concluded `success`, that session merged pull request 251 at the Open PR Gate as `9f1b6d25`, and at `9f1b6d25` STATUS reads 78 `[x]` lines and no `[~]` line and the open set reads 125 by distinct id.
-END RECORD1
+## DECISION F280 D2 (2026-09-16, F280 round 2) — the deletion paragraph of the ping-pong path of `do run`, its flags and the scope plan, and argparse prefix matching is turned off
 
-── SLICE DEC1 ── target `.agent/decisions.md` ── APPEND ──
-BEGIN DEC1 sha256=aca454cf2ae41fca3c36e64012368385dfb054433ebfeeba31ff2ef17fc82c82
+CONTEXT. Ruling 3 of `.agent/f261_t003_inventory.md` gives `do run` to F268 except `--builder`, `--reviewer`, the flags only its ping-pong path reads and the scope flags, and R-0894 orders the scope flags deleted with the scope plan writer and loader and the contracts they feed, with a deletion paragraph. Measured at `9f1b6d25` by the reviewer's first research helper, read-only, and rebuilt at `4e93c22c` by a second, whose three tables the reviewer re-applied there with its own applier: the ping-pong branch of `_cmd_do` in `apps/cli/commands/do_cmd.py` runs `_cmd_do_pingpong` when `--builder` or `--reviewer` names a provider, and every other invocation runs `run_do`; sixteen flags of `do.run` are read only on the ping-pong path or only to validate it; `packages/orchestration/scope_plan.py` has no production importer but `_cmd_do` and `run_pingpong`'s scope branches, which only that path fed; `run show` and `run list` keep a writer, because `run_pingpong` persists each run and `run_job` calls it for every task; and once `--builder` leaves `do run`, argparse's prefix matching reads `do run "<goal>" --builder ollama` as `--builder-provider ollama` and exits 0.
 
-## DECISION F280 D1 (2026-09-16, F280 round 1) — `job run` hands `--builder-provider` and `--reviewer-provider` to the runner, `--builder` and `--reviewer` leave `job run`, and `fixture` is refused there
+CHOSEN, FIRST: `do run` loses `--builder`, `--reviewer`, `--scope-file`, `--approve-scope`, `--task-file`, `--task-stdin`, `--max-rounds`, `--mode`, `--test-command`, `--provider-timeout-sec`, `--timeout-profile`, `--max-output-chars`, `--keep-staging`, `--claude-cli-write-mode`, `--stream-evidence` and `--repair-rounds`, with the branch and the prelude that read them, `_cmd_do_pingpong`, `pingpong_effective_model`, `_print_scope_summary`, `_resolve_timeout_precedence`, `_VALID_PINGPONG_PROVIDERS`, the dead special-cases of those names in `apps/cli/grouped.py`, the scope block of the `run show` text report, and the tests that drove only that path. THE HEIRS: `job run` runs the builder and reviewer loop over a job's tasks with the provider flags DECISION F280 D1 wired; a goal or an order file started without a job is `do <order>`, which F268 builds and which DECISION F259 D2 names as the heir of the task file.
 
-CONTEXT. The Do-not-touch section of `docs/roadmap/features/T2_F280.md` makes the `job run` provider wiring one of the three places this feature may change what a surviving command does, and only by a dated DECISION with a feature-file amendment. Ruling 4 of `.agent/f261_t003_inventory.md` proposes the wiring, and R-0767 records that `--builder` and `--reviewer` refuse `ollama`, a provider the factory builds. Measured at `9f1b6d25` by the reviewer's research helper in its own detached worktree, and re-applied by the reviewer on its own dry-run tree, whose eight tree objects equal the helper's: `_cmd_job_run` in `apps/cli/commands/do_cmd.py` validates `--builder` and `--reviewer` against `_VALID_PINGPONG_PROVIDERS` (`none`, `fake`, `claude`, `claude-cli`) and hands them to `run_job` as `builder_name` and `reviewer_name`, while `--builder-provider` and `--reviewer-provider` pass `_resolve_cli_role_configs` and are then dropped, so `job run --builder-provider claude` runs whatever provider is persisted or defaulted; `_VALID_ROLE_PROVIDERS` accepts `fixture`, which `create_provider` in `packages/orchestration/pingpong_provider.py` does not build, so a run given it persists the name in the job's execution config and ends `provider_unavailable` on that run and every continuation; `_cmd_job_run` is reached in production only through the `job.run` dispatch entry, and `_VALID_ROLE_PROVIDERS` is read only by `_validate_role_override`, which only `_cmd_job_run` reaches.
+CHOSEN, SECOND: `packages/orchestration/scope_plan.py` is deleted whole with its tests and its import-reachability line, and `run_pingpong` loses its `scope_data` and `scope_validation` parameters and both scope-contract branches. THE HEIR: none. Approving a feature list before a run needed a writer DECISION F261 D3 already deleted, and no D4 word takes the idea back; R-0894 is resolved by this deletion. Package functions left with test callers only stay under DECISION F261 D17's rule and are named in R-0932.
 
-CHOSEN, FIRST: `job run` hands `--builder-provider` and `--reviewer-provider` to `run_job` as `builder_name` and `reviewer_name`. An omitted flag passes None, so `run_job`'s own order — explicit, then persisted, then the role config's default — is unchanged, and the value is persisted on continuation as before. `--repair-provider` already reached `run_job` and is untouched.
+CHOSEN, THIRD: the root help's quick start is rewritten onto surviving commands — `do run "<goal>" --repo . --json` teed to a file, the `job_id` read back, and `job show $JOB_ID --full` — under a heading that says `remedy init` comes first, because without a project the run exits 3; the default run stops at the default autonomy level before building, and T002 re-derives the quick start with the README quickstart of R-0895. `test_quick_start_flags_are_declared_by_their_commands` pins that every flag it names is declared, because the advertised-flag scanner cannot see flags after a quoted goal, which is R-0934. The two provider messages of `packages/orchestration/pingpong_provider.py` name `--builder-provider` and `--reviewer-provider`.
 
-CHOSEN, SECOND: `--builder` and `--reviewer` leave `job run` — its catalog entry, handler signature and dispatch entry — with no alias, per DECISION D-B of `docs/roadmap/features/T2_F261.md`, and the tests that drove `job run` with them move to the provider flags. `do run` keeps both flags for now: its ping-pong path, `_VALID_PINGPONG_PROVIDERS` and the special-casing of both names in `apps/cli/grouped.py` go together with R-0894.
+CHOSEN, FOURTH: `build_parser` in `apps/cli/grouped.py` creates its root, group and command parsers with `allow_abbrev=False`, so no deleted flag lives on as an abbreviation of a kept one, which DECISION D-B of `docs/roadmap/features/T2_F261.md` forbids as an alias under another name. `TestDeletedFlags` in `tests/test_command_catalog.py` pins every deleted flag of `do run` and `job run` as undeclared and refused by the parser. This supersedes the sentence of DECISION F280 D1 saying `job run` refuses `--builder` as an ambiguous prefix: it is now an unrecognized argument, still exit 2. ALTERNATIVE: keep prefix matching and pin only `do run --builder`, rejected because every later deletion of a flag sharing a prefix would reopen the same alias.
 
-CHOSEN, THIRD: `_VALID_ROLE_PROVIDERS` becomes exactly the names `create_provider` builds — `claude`, `claude-cli`, `fake` and `ollama` — so `fixture` is refused with exit 2 on all three role flags of `job run` instead of being persisted and failing at run time, and `none`, which the deleted `--builder` accepted, is refused the same way. `fixture` stays a value of `do run`'s own `--builder-provider`, a different flag.
+CONSEQUENCE. `remedy do run "<goal>" --builder claude-cli` exits 2 and `remedy do run "<goal>"` runs as before; an abbreviated flag anywhere exits 2, and the reviewer's research helper found no abbreviated Remedy flag in the repository's code, scripts, docs or tests. R-0767 is resolved, because no catalog entry declares `--builder` or `--reviewer`. HOW TO REVERSE: revert the round's three table commits and delete this section.
+END DEC2
 
-ALTERNATIVES. Adding `ollama` to `_VALID_PINGPONG_PROVIDERS`, the repair R-0767 first proposed, rejected because DECISION amend0905-vocab D4 gives `job run` the provider flags and neither `--builder` nor `--reviewer`. Keeping `fixture` accepted, rejected because no role can run it.
-
-CONSEQUENCE. `remedy job run <id> --builder-provider ollama --reviewer-provider ollama` reaches the runner with both names, and `remedy job run <id> --builder fake` exits 2. Argparse prefix matching is on, so `--builder` is refused as an ambiguous prefix of `--builder-provider`, `--builder-model` and `--builder-effort`; `TestJobRunProviderWiring` in `tests/test_role_override_flags.py` pins the refusal, so a later round that removes two of those flags meets a red test rather than a silent abbreviation. At `9f1b6d25` two provider error messages in `packages/orchestration/pingpong_provider.py` name `--builder` and `--reviewer`, and they are re-pointed together with R-0894. R-0767 is resolved once no catalog entry declares either flag. HOW TO REVERSE: revert the round's table commit, and delete this section and the dated paragraph it adds to T001 of `docs/roadmap/features/T2_F280.md`.
-END DEC1
-
-── SLICE SLIP1 ── target `.agent/prose_slips.md` ── APPEND ──
-BEGIN SLIP1 sha256=50fc88b67c6c77f8dbe17f78bfb4315c05f7c4e59beea974d290e71573a24e4d
-
-2026-09-16, F261 round 28 — the round 28 block said the handback carries no scope report "for the reason round 26's handback gave", while that reason is stated in round 26's block, `.agent/authored/f261-r26.md`; the worker followed the order and declared the misattribution. Carried in pull request 251's verdict comment and booked by F280 round 1.
-END SLIP1
-
-── SLICE PF-FROM ── target `docs/roadmap/features/T2_F280.md` ── FROM OF PF ──
-BEGIN PF-FROM sha256=2b187749b6089feea315f5cc0f46fe92749ea17b3d565f42a68d3c756a643524
-## T002 — Descriptions, role labels, help wrapping, tests (carried over from F261's T004, whole)
-END PF-FROM
-
-── SLICE AMEND1 ── target `docs/roadmap/features/T2_F280.md` ── TO OF PF ──
-BEGIN AMEND1 sha256=64901382a05881924ea12201591ae63e63998a288fbf8c384f288119a8563caf
-Amended 2026-09-16 by DECISION F280 D1, measured at `9f1b6d25`: `job run` hands
-`--builder-provider` and `--reviewer-provider` to the runner, `--builder` and `--reviewer` leave
-`job run` with no alias, and the three role flags of `job run` refuse `fixture`, which no provider
-factory builds; `do run` keeps both flags until its ping-pong path goes with R-0894.
-
-## T002 — Descriptions, role labels, help wrapping, tests (carried over from F261's T004, whole)
-END AMEND1
-
-── SLICE PS-FROM ── target `docs/roadmap/STATUS.md` ── FROM OF PS ──
-BEGIN PS-FROM sha256=6e0a65c356abab9e8b471eb4977916fd6a3f6381ab7c7924a0a74c2ee806a548
-- [ ] F280 — CLI vocabulary v2, part two — the gated prunes, the flight-plan rename and the help surface
-END PS-FROM
-
-── SLICE STATUS1 ── target `docs/roadmap/STATUS.md` ── TO OF PS ──
-BEGIN STATUS1 sha256=62e20d8b726b5f23aae01a14f79b62e69b9abb7d0a624f145403d829453126d6
-- [~] F280 — CLI vocabulary v2, part two — the gated prunes, the flight-plan rename and the help surface
-END STATUS1
-
-── SLICE CTX1 ── target `.agent/context.md` ── FULL REPLACEMENT ──
-BEGIN CTX1 sha256=9c1da1e218a981cc6d358afeec4856c6536eba8c7d46696e56f4435493e3a4d1
-# Context — F280 CLI vocabulary v2, part two
-
-## Active Branch
-feature/f280-cli-vocabulary-v2-part-two, cut from `main` at
-`9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`, the merge commit of pull request 251.
-
-## Scope
-F280 (Tier 2; depends on F259 and F261; blocks F266, F268, F269, F270, F271 and F263): what
-F261 could not reach inside its soft limit, per DECISION F261 D25. Task slicing per
-`docs/roadmap/features/T2_F280.md`: T001 finishes the prune to DECISION amend0905-vocab D4 in the
-order of `.agent/f261_t003_inventory.md` rounds J to P, and T002 lands descriptions, role labels,
-help wrapping, the visible group order and the catalog tests.
+── SLICE P268-FROM ── target `docs/roadmap/features/T2_F268.md` ── REWRITE FROM ──
+BEGIN P268-FROM sha256=87061091b30bf4e3f306bbca293d66610a74a03ff46570dbec4ef4fcb53f17bb
+  that `job apply` accepts, and a test applies a fake-provider run started from `remedy do`.
 
 ## Do not touch
-The concept model (F259 owns the words), the job model (F260 owns what a job is), STATUS
-semantics, and the behaviour behind a surviving name: this feature renames and prunes, and the
-three places T001 must change a surviving command are each taken by a dated DECISION. Accepted
-`[x]` evidence under `docs/roadmap/` stays byte-identical.
+END P268-FROM
 
-## Assumptions
-- Cleanliness before compatibility (DECISION D-A of `docs/roadmap/features/T2_F261.md`): no
-  alias and no migration shim; a deleted word's id joins `TestDeletedCommands` in
-  `tests/test_command_catalog.py` in the same commit.
-- A deletion that would break a surviving command is deferred to a round that can rule on it,
-  never shipped with a finding.
+── SLICE P268-TO ── target `docs/roadmap/features/T2_F268.md` ── REWRITE TO ──
+BEGIN P268-TO sha256=92335b8ab4fcf43d4553604e5541c434910153aed12a8cde7a5c7029cc9a9bba
+  that `job apply` accepts, and a test applies a fake-provider run started from `remedy do`.
+- R-0933 carries a resolution line: `--builder-provider` reaches the run `remedy do` starts, with the
+  test that reads the recorded provider, or the flag leaves the catalog with its deletion paragraph.
 
-## Constraints
-The bullets below are STANDING project constraints, carried forward from the context this
-file replaces.
+## Do not touch
+END P268-TO
 
-- A round touching `docs/roadmap/**` also gates
-  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
-- A round rewriting `.agent/` state gates the four state readers, run as four:
-  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
-  `tests/regression/test_resource_safety.py` and
-  `tests/orchestration/test_integrity_gate.py`.
-- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
-- Destructive verification runs only inside a disposable git worktree, never in the primary
-  checkout, which satisfies `git status --porcelain` empty at every verdict.
-- Bare `ruff` is DENIED to this session's shell; `python3 -m ruff check <path>` is the spelling
-  every gate of this feature orders.
-- `remedy` (the built CLI) is DENIED to this session's reviewer, subagents included; a round
-  needing it delegates the run to the worker and reports the exact output.
-- The shell guard refuses shell loops, `$(...)` substitution and `$?` inside a compound
-  command, so such checks are written in Python; a pipe into `tail` masks the real exit code.
-- The editable install resolves `apps` and `packages` to the PRIMARY checkout, so a test run
-  inside a worktree puts the worktree first on `sys.path` and proves where the modules loaded
-  from before its result is read.
-- A fresh worktree has neither `apps/ui/node_modules` nor a built `apps/ui/dist`.
-- Never call `run_job` or any runner from inside a checkout: a job run creates a
-  `remedy/job-*` branch there.
+── SLICE P273-FROM ── target `docs/roadmap/features/T2_F273.md` ── REWRITE FROM ──
+BEGIN P273-FROM sha256=4c7eefa041da48486d89966ac7019b074e5d4286c6243e64273da2504d3b177e
+  that edits the target, or the DECISION and the commit that deleted the manifest diff functions.
 
-This feature is NOT UI work — no design-reference binding applies.
+## Do not touch
+END P273-FROM
 
-## Steps
-The item-status table for each round lives in that round's handback, `.agent/handoff.md`,
-which AGENTS.md's "Completion Report — Item-Status Table" section requires of every completion
-report. This file deliberately does not restate it.
-END CTX1
+── SLICE P273-TO ── target `docs/roadmap/features/T2_F273.md` ── REWRITE TO ──
+BEGIN P273-TO sha256=4bba5961f081ea97918ba311048604ac211066b5afec73e0b443430d726ca72e
+  that edits the target, or the DECISION and the commit that deleted the manifest diff functions.
+- R-0932 carries a resolution line naming the commit that deleted or re-used each test-only remnant
+  of the `do run` ping-pong path it lists, with the tests that changed.
+
+## Do not touch
+END P273-TO
+
+── SLICE P280-FROM ── target `docs/roadmap/features/T2_F280.md` ── REWRITE FROM ──
+BEGIN P280-FROM sha256=f800f1d552a8403299f18b6df33da20879aecb4130edcea4bf88fbc8720dffd1
+  the catalog's groups and commands equal DECISION amend0905-vocab D4.
+
+## Findings this feature owns
+END P280-FROM
+
+── SLICE P280-TO ── target `docs/roadmap/features/T2_F280.md` ── REWRITE TO ──
+BEGIN P280-TO sha256=0c5de9f576452ebf77383b02ce2dd8a8419941c2d1c346bfa59b406a55cfa3cc
+  the catalog's groups and commands equal DECISION amend0905-vocab D4.
+- R-0934 carries a resolution line naming the test in which an undeclared flag after a quoted
+  argument fails the advertised-flag scanner.
+
+## Findings this feature owns
+END P280-TO
