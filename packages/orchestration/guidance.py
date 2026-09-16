@@ -40,26 +40,7 @@ def build_guidance_cards(
     cards: list[GuidanceCard] = []
     job_id = str(job.job_id)[:8]
 
-    # 1. Readiness
-    try:
-        from packages.orchestration.autonomy_readiness import assess_readiness
-        r = assess_readiness(job, events)
-        level = r.get("level", 0)
-        missing = r.get("missing", [])
-        if missing:
-            cards.append(GuidanceCard(
-                id="readiness",
-                title=f"Readiness level {level}",
-                severity="medium" if level < 3 else "low",
-                why_it_matters=f"{len(missing)} signal(s) missing for higher autonomy.",
-                safe_next_action="Check readiness details.",
-                command=f"remedy readiness job {job_id}",
-                related_node_type="autonomy_readiness",
-            ))
-    except (ImportError, Exception):
-        pass
-
-    # 2. Decision queue
+    # 1. Decision queue
     try:
         from packages.orchestration.decision_queue import build_decision_summary, list_decisions
         decisions = list_decisions(job, events)
@@ -78,7 +59,7 @@ def build_guidance_cards(
     except (ImportError, Exception):
         pass
 
-    # 3. Stop reasons / blockers
+    # 2. Stop reasons / blockers
     try:
         from packages.orchestration.stop_reasons import derive_stop_reasons
         reasons = derive_stop_reasons(job, events)
@@ -95,7 +76,7 @@ def build_guidance_cards(
     except (ImportError, Exception):
         pass
 
-    # 4. Token policy
+    # 3. Token policy
     try:
         from packages.orchestration.token_policy import build_default_token_policy
         tp = build_default_token_policy(job)
@@ -112,7 +93,7 @@ def build_guidance_cards(
     except (ImportError, Exception):
         pass
 
-    # 5. Test status
+    # 4. Test status
     has_tests = any(t.status == RunState.COMPLETED for t in (job.tasks or []))
     failed_tasks = [t for t in (job.tasks or []) if t.status == RunState.FAILED]
     if failed_tasks:
@@ -136,7 +117,7 @@ def build_guidance_cards(
             related_node_type="task",
         ))
 
-    # 6. Brain viewer
+    # 5. Brain viewer
     cards.append(GuidanceCard(
         id="viewer",
         title="Open brain viewer",

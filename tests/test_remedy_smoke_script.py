@@ -942,40 +942,10 @@ class TestSmokeScriptText:
     # into a section that no longer exists is the stale advertisement this
     # feature is removing, not a test of anything.
 
-    # --- Step 48: Readiness job JSON (step 12i) ----------------------------
-
-    def test_smoke_has_readiness_job_json_step(self):
-        text = _script_text()
-        assert "readiness job" in text and "--json" in text, (
-            "smoke must call remedy readiness job --json (Step 48)"
-        )
-
-    def test_smoke_readiness_checks_version_scope_levels(self):
-        text = _script_text()
-        assert "highest_eligible_level" in text, (
-            "smoke 12i must check highest_eligible_level in readiness JSON"
-        )
-
-    def test_smoke_readiness_checks_8_levels(self):
-        text = _script_text()
-        assert "8" in text and "levels" in text, (
-            "smoke 12i must verify 8 levels in readiness JSON"
-        )
-
-    def test_smoke_readiness_checks_level_5_6_blocked(self):
-        text = _script_text()
-        assert "rollback" in text or "level 5" in text, (
-            "smoke 12i must check level 5 is not eligible"
-        )
-        assert "MCP" in text or "level 6" in text, (
-            "smoke 12i must check level 6 is not eligible"
-        )
-
-    def test_smoke_brain_autonomy_readiness_node(self):
-        text = _script_text()
-        assert "autonomy_readiness" in text, (
-            "smoke 12i must verify autonomy_readiness node in brain graph"
-        )
+    # Smoke section 12i — the readiness JSON check — and the readiness half of
+    # section 12l were DELETED at F261 round 17 with the `readiness job` command
+    # they called. Their seven text-presence guards went with them, as the guards
+    # of sections 12h and 12ae did at F272 round 21.
 
     # --- Step 50: Memory learn JSON (step 12k) ----------------------------
 
@@ -999,24 +969,11 @@ class TestSmokeScriptText:
 
     # --- Steps 48-50: Run-log schema (step 12l) --------------------------
 
-    def test_smoke_has_readiness_assessed_event(self):
-        text = _script_text()
-        assert "readiness_assessed" in text, (
-            "smoke 12l must verify readiness_assessed run-log event"
-        )
-
     def test_smoke_has_memory_learned_event(self):
         text = _script_text()
         assert "memory_learned" in text, (
             "smoke 12l must verify memory_learned run-log event"
         )
-
-    def test_smoke_readiness_assessed_metadata_keys(self):
-        text = _script_text()
-        for key in ("scope", "highest_eligible_level", "missing_count", "blocker_count"):
-            assert key in text, (
-                f"smoke 12l must verify readiness_assessed metadata key '{key}'"
-            )
 
     def test_smoke_memory_learned_metadata_keys(self):
         text = _script_text()

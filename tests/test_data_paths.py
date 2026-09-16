@@ -380,24 +380,6 @@ class TestRoutedHandler:
                 handler("abcd1234", *extra_args)
         assert seen == [full_id]
 
-    def test_project_readiness_hands_a_stored_pingpong_id_to_load_job(
-        self, monkeypatch, tmp_path, capsys
-    ):
-        """A ping-pong id a project stores reaches ``load_job`` instead of dying in a ``UUID(...)`` parse."""
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.commands.readiness import _cmd_readiness_project
-        from packages.orchestration.data_paths import jobs_dir, mint_job_id
-        from packages.orchestration.project_registry import RemyProject, save_project
-        job_id = mint_job_id()
-        record_dir = jobs_dir() / job_id
-        record_dir.mkdir(parents=True)
-        (record_dir / "job.json").write_text(json.dumps({"id": job_id}))
-        project = RemyProject(name="pingpong-readiness", job_ids=[job_id])
-        save_project(project)
-        seen = self._spy_on_load_job(monkeypatch)
-        _cmd_readiness_project(str(project.id), json_output=True)
-        assert seen == [job_id]
-
     def test_attaching_by_short_prefix_stores_the_full_job_id(
         self, monkeypatch, tmp_path, capsys
     ):

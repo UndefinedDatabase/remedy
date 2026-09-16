@@ -1232,7 +1232,7 @@ def _detail_autonomy_readiness(
         ),
         affected_files=(),
         next_actions=(
-            f"Inspect with `remedy readiness job {job_id_str[:8]}`.",
+            f"Inspect with `remedy mission readiness {job_id_str[:8]}`.",
         ),
         redaction_notes=("No sensitive data in readiness assessment.",),
     )

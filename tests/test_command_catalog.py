@@ -334,6 +334,8 @@ class TestDeletedCommands:
         "queue.list",
         "queue.reclaim",
         "queue.rm",
+        "readiness.job",
+        "readiness.project",
         "repo.commit-readiness",
         "repo.status",
         "rollback.proof",

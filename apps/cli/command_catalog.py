@@ -123,7 +123,6 @@ GROUPS: dict[str, GroupDef] = {
     "brain": GroupDef("brain", "Brain", "Inspect the project brain graph.", user_facing=False),
     "policy": GroupDef("policy", "Policy", "Inspect execution policies.", user_facing=False),
     "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded run-loop facade (internal).", user_facing=False),
-    "readiness": GroupDef("readiness", "Readiness", "Inspect autonomy readiness.", user_facing=False),
     "context": GroupDef("context", "Context", "Context pack and coverage.", user_facing=False),
     "change": GroupDef("change", "Change", "Review change sets (proof chain view).", user_facing=False),
     "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False),
@@ -1464,27 +1463,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("candidate_id", "Candidate ID to reject", required=True),
             _JSON_OPT,
         ),
-        supports_json=True,
-    ),
-
-    # ── readiness ────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="readiness.job",
-        group_id="readiness",
-        subcommand="job",
-        description="Assess autonomy readiness for a job.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("brain.graph", "policy.contract"),
-    ),
-    CommandEntry(
-        command_id="readiness.project",
-        group_id="readiness",
-        subcommand="project",
-        description="Assess autonomy readiness for a project.",
-        action_class="read_only",
-        args=(_PROJECT_ID, _JSON_OPT),
         supports_json=True,
     ),
 

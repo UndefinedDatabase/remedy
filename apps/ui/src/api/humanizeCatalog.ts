@@ -45,7 +45,6 @@ export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
   "project_memory_recalled": "Project memory was recalled for this run.",
   "provider_error": "The provider reported an error.",
   "provider_result": "The provider returned its final result.",
-  "readiness_assessed": "The project's readiness was assessed.",
   "repair_loop_stopped": "The repair loop stopped.",
   "repair_output_received": "The repair agent's output came back from the provider.",
   "repair_prompt_created": "The repair prompt was assembled.",

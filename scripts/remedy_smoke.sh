@@ -1168,51 +1168,7 @@ print('    context project_memory: OK (present=true)')
 " "${CTX_JSON}"
 
     # -------------------------------------------------------------------------
-    # 12i. Readiness job JSON (Step 48)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12i"
-    echo "--- 12i. Readiness job JSON"
-    READINESS_JSON="$(remedy readiness job "${JOB_ID}" --json)"
-    python3 -c "
-import json, sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: readiness: ' + msg, file=sys.stderr)
-        sys.exit(1)
-data = json.loads(sys.argv[1])
-chk(data.get('version') == 2, 'version must be 2')
-chk(data.get('scope') == 'job', 'scope must be job')
-chk('highest_eligible_level' in data, 'missing highest_eligible_level')
-chk('levels' in data, 'missing levels')
-chk(len(data['levels']) == 8, 'expected 8 levels, got ' + str(len(data['levels'])))
-chk('next_actions' in data, 'missing next_actions')
-chk('eligible_levels' in data, 'missing eligible_levels')
-chk('blocked_levels' in data, 'missing blocked_levels')
-chk('signals' in data, 'missing signals')
-for lv in data['levels']:
-    for k in ('level', 'name', 'eligible', 'present_signals', 'missing_signals', 'blockers', 'next_actions'):
-        chk(k in lv, 'level missing key: ' + k)
-# Level 5 (revert_capable) + Level 6 (external_tools) must not be eligible
-chk(not data['levels'][5]['eligible'], 'level 5 should not be eligible (revert_capable)')
-chk(not data['levels'][6]['eligible'], 'level 6 should not be eligible (MCP not connected)')
-full = json.dumps(data)
-for bad in ('stdout', 'stderr', 'raw_output', 'Traceback', 'diff_preview', 'approval_reason'):
-    chk(bad not in full, 'forbidden string in readiness: ' + bad)
-print('    readiness JSON: OK (highest=' + str(data['highest_eligible_level']) + ', levels=' + str(len(data['levels'])) + ')')
-" "${READINESS_JSON}"
-
-    # Assert brain has autonomy_readiness node
-    remedy brain graph "${JOB_ID}" --json | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-types = {n['type'] for n in data.get('nodes', [])}
-if 'autonomy_readiness' not in types:
-    print('ERROR: brain missing autonomy_readiness node', file=sys.stderr)
-    sys.exit(1)
-print('    brain autonomy_readiness: OK')
-"
-
-    # -------------------------------------------------------------------------
+    # 12k. Memory learn JSON (Step 50)
     # 12k. Memory learn JSON (Step 50)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12k"
@@ -1248,10 +1204,10 @@ print('    memory learn idempotent: OK (learned=0, skipped=' + str(data['skipped
 " "${LEARN2_JSON}"
 
     # -------------------------------------------------------------------------
-    # 12l. Run-log schema: readiness_assessed + memory_learned
+    # 12l. Run-log schema: memory_learned
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12l"
-    echo "--- 12l. Run-log schema: readiness + memory_learned"
+    echo "--- 12l. Run-log schema: memory_learned"
     python3 -c "
 import json, sys
 from pathlib import Path
@@ -1268,21 +1224,14 @@ if runs_dir.exists():
             if line.strip():
                 events.append(json.loads(line))
 event_names = [e['event'] for e in events]
-chk('readiness_assessed' in event_names, 'no readiness_assessed event')
 chk('memory_learned' in event_names, 'no memory_learned event')
-# Check readiness_assessed metadata
-ra = [e for e in events if e['event'] == 'readiness_assessed']
-ra_required = frozenset({'scope', 'highest_eligible_level', 'missing_count', 'blocker_count'})
-for ev in ra:
-    got = frozenset(ev.get('metadata', {}).keys())
-    chk(got == ra_required, 'readiness_assessed keys: got=' + str(sorted(got)) + ' want=' + str(sorted(ra_required)))
 # Check memory_learned metadata
 ml = [e for e in events if e['event'] == 'memory_learned']
 ml_required = frozenset({'learned_count', 'skipped_count', 'approved', 'source_count'})
 for ev in ml:
     got = frozenset(ev.get('metadata', {}).keys())
     chk(got == ml_required, 'memory_learned keys: got=' + str(sorted(got)) + ' want=' + str(sorted(ml_required)))
-print('    run-log schema: OK (readiness=' + str(len(ra)) + ', learn=' + str(len(ml)) + ')')
+print('    run-log schema: OK (learn=' + str(len(ml)) + ')')
 " "${JOB_ID}" "${RUNS_ROOT}"
 
     # -------------------------------------------------------------------------
