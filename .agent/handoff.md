@@ -1,85 +1,107 @@
-# Handback — F261 CLI vocabulary v2, round 20
+# Handback — F261 CLI vocabulary v2, round 21
 
 ## Session
 
-SESSION 4 of feature F261 · round 20 · rounds so far 20
+SESSION 5 of feature F261 · round 21 · rounds so far 21
 
 Context self-assessment: comfortable — the round read the block, AGENTS.md, the protocol, the
-T003 inventory and the handback template once each, applied three tables and ran seven gates
-including a full serial suite without re-reading anything, and a further round of the same shape
-would fit with room to spare.
+handback template and the two carriers once each, applied two tables, ran six gates including a
+full serial suite, and never needed to re-read a file; a further round of this shape would fit
+with room to spare.
 
 ## Range
 
-Review of `71cba20e`..`HEAD`, where `HEAD` is C5 — the commit that writes this file, which it
+Review of `ab748c47`..`HEAD`, where `HEAD` is C4 — the commit that writes this file, which it
 cannot name from inside itself (R-0149 self-reference pattern).
+
+## Result — ONE GATE IS RED
+
+**G5 (5) is UNRUNNABLE AS ORDERED and is therefore reported RED.** Slice `MUT-5-FROM` reads
+**0 occurrences** in `docs/system/architecture.md` at C3, where the block's G5 requires the count
+to read 1. The slice was not edited and no expected value was changed. The production tree is
+NOT in doubt: G3 proved every one of the nine subtree ids at C2 and at C3 equals the reviewer's
+own dry run, `docs/system` included. Details and the supplementary probe are under G5 below.
+Everything else this round ordered — C0a to C3, G1, G2, G3, G4, G5 (a), (1), (2), (3), (4), (6)
+and G6 — ran and is green.
 
 ## Commits
 
-### 6e3405ba F261 R20 C0a: save the round 20 step block as the authored original
+### 55c8a3ff F261 R21 C0a: save the round 21 step block under the authored directory
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f261-r20.md` | +322/-0 | the block file the delegating message names, copied by `shutil.copyfile` |
-| **Commit total** | **+322/-0** | constraint 5 reading: 322 insertions |
+| `.agent/authored/f261-r21.md` | +365/-0 | the block file the delegating message names, copied by `shutil.copyfile` |
+| **Commit total** | **+365/-0** | constraint 5 reading: 365 insertions |
 
-### 00bef4fc F261 R20 C0b: mirror the round 20 step block into the last block state file
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | +143/-217 | the same bytes, byte-identical to C0a's file |
-| **Commit total** | **+143/-217** | constraint 5 reading: 143 insertions |
-
-### 893a9a95 F261 R20 C1: re-point the plan at round 20, book round 19's PASS, register R-0913, R-0914 and R-0915 for F273 and record DECISION F261 D19
+### 3e419b6d F261 R21 C0b: mirror the round 21 step block into the last block state file
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +11/-11 | full replacement by slice PLAN20 |
-| `.agent/live_review.md` | +8/-0 | slice RECORD20 appended: the round 19 PASS, R-0913, R-0914, R-0915 |
-| `.agent/decisions.md` | +12/-0 | slice DEC19 appended: DECISION F261 D19 |
-| `docs/roadmap/features/T2_F273.md` | +9/-0 | pair P273 applied: acceptance lines for R-0913, R-0914 and R-0915 |
-| **Commit total** | **+40/-11** | constraint 5 reading: 40 insertions |
+| `.agent/last_block.md` | +197/-154 | the same bytes, byte-identical to C0a's file |
+| **Commit total** | **+197/-154** | constraint 5 reading: 197 insertions |
 
-### c26c3a1a F261 R20 C2: delete the do repair-attest command, its handler and collect_diff_stat with that function's tests, by the repair-attest table
+### e9e6bc93 F261 R21 C1: book round 20's PASS, register R-0916 to R-0922 for F273 and record DECISION F261 D20
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f261-r20-repair-attest.jsonl` | +6/-0 | the table carrier |
-| `apps/cli/command_catalog.py` | +0/-23 | the `do.repair-attest` catalog entry |
-| `apps/cli/commands/do_cmd.py` | +0/-67 | `_cmd_do_repair_attest` and its dispatch row |
-| `packages/orchestration/repair_attest.py` | +0/-29 | `collect_diff_stat`, whose only production caller was that handler |
-| `tests/orchestration/test_repair_attest.py` | +0/-75 | the CLI dispatch tests and `collect_diff_stat`'s own tests |
-| `tests/test_command_catalog.py` | +1/-0 | `do.repair-attest` joins `TestDeletedCommands` |
-| **Commit total** | **+7/-194** | constraint 5 reading: 7 insertions |
+| `.agent/plan.md` | +13/-12 | full replacement by slice PLAN21 |
+| `.agent/live_review.md` | +16/-0 | slice RECORD21 appended: the round 20 PASS and R-0916 to R-0922 |
+| `.agent/decisions.md` | +16/-0 | slice DEC20 appended: DECISION F261 D20 |
+| `docs/roadmap/features/T2_F273.md` | +19/-0 | pair P273 applied: acceptance lines for R-0916 to R-0922 |
+| **Commit total** | **+64/-12** | constraint 5 reading: 64 insertions |
 
-### f6c723b8 F261 R20 C3: delete the do job-resume command and its handler, re-pointing the invocation prose and the test sites that drove the CLI, by the job-resume table
+### 58be13e3 F261 R21 C2: delete the do continue command with its module and the repair-reconcile block it was the only caller of, re-pointing the hints and pages at patch apply, by the continue table
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f261-r20-job-resume.jsonl` | +9/-0 | the table carrier |
-| `apps/cli/command_catalog.py` | +0/-26 | the `do.job-resume` catalog entry |
-| `apps/cli/commands/do_cmd.py` | +0/-66 | `_cmd_do_job_resume` and its dispatch row |
-| `apps/cli/commands/run_invocation.py` | +2/-2 | the module docstring now names `job run` alone as the lifecycle caller |
-| `tests/cli/test_job_run_invocation_truth.py` | +2/-14 | the deleted command's invocation cases |
-| `tests/cli/test_stream_evidence_tristate.py` | +0/-1 | the deleted command's tristate case |
-| `tests/orchestration/test_job_worktree_handoff.py` | +7/-10 | the handoff cases re-pointed off the CLI word |
-| `tests/test_command_catalog.py` | +1/-0 | `do.job-resume` joins `TestDeletedCommands` |
-| **Commit total** | **+21/-119** | constraint 5 reading: 21 insertions |
+| `.agent/authored/f261-r21-continue.jsonl` | +62/-0 | the table carrier |
+| `README.md` | +1/-1 | the guide's row relabelled, the page kept |
+| `apps/cli/command_catalog.py` | +0/-19 | the `do.continue` catalog entry |
+| `apps/cli/commands/do_cmd.py` | +0/-39 | `_cmd_do_continue` and its dispatch row |
+| `docs/README.md` | +2/-2 | the guide's two index rows relabelled |
+| `docs/guides/do-continue-v1.md` | +25/-18 | KEPT under a dated status banner naming the three surviving commands; forms rewritten to the past tense |
+| `docs/guides/do-run-v1.md` | +1/-1 | the next-step line re-pointed at `patch apply` |
+| `docs/system/operator-cockpit-v1.md` | +3/-3 | the cockpit prose re-pointed |
+| `docs/system/provider-patch-materialization-v0.md` | +3/-3 | the materialization flow re-pointed |
+| `docs/system/real-test-execution-v1.md` | +1/-1 | the caller sentence re-pointed |
+| `docs/system/repair-loop-v0.md` | +1/-1 | the legacy apply sentence re-pointed |
+| `docs/system/repair-loop-v1.md` | +28/-32 | the reconciliation section rewritten to say what is gone |
+| `docs/system/repair-request-builder-v0.md` | +2/-2 | the next-steps prose re-pointed |
+| `docs/system/self-dogfood-execution-v0.md` | +3/-3 | the attempt-state hint re-pointed |
+| `docs/system/self-dogfood-v0.md` | +3/-3 | the roadmap-rule prose re-pointed |
+| `docs/system/snapshot-rollback-v1.md` | +1/-1 | the snapshot-truth consumer list re-pointed |
+| `packages/orchestration/do_continue.py` | +0/-952 | the module, deleted with its only production caller |
+| `packages/orchestration/mission_readiness.py` | +7/-6 | the four next-safe actions that named the deleted word |
+| `packages/orchestration/provider_patch_material.py` | +1/-1 | the flow docstring |
+| `packages/orchestration/repair_loop.py` | +1/-182 | the repair-reconcile block, whose only caller was `do_continue.py` |
+| `packages/orchestration/repair_request_builder.py` | +1/-1 | the next-step string |
+| `packages/orchestration/repository_snapshot.py` | +4/-4 | the two shared-source docstrings |
+| `packages/orchestration/run_contract.py` | +1/-1 | the contract-action comment |
+| `packages/orchestration/self_dogfood.py` | +3/-3 | the roadmap rule and the report footer |
+| `packages/orchestration/self_dogfood_execution.py` | +1/-1 | the `INTENT_APPROVED` next action |
+| `tests/cli/test_do_continue_cli.py` | +0/-83 | the deleted command's CLI tests |
+| `tests/orchestration/import_reachability_allowlist.txt` | +0/-1 | the deleted module's allowlist row |
+| `tests/orchestration/test_do_continue.py` | +0/-419 | the deleted module's own tests |
+| `tests/orchestration/test_fence_e2e.py` | +0/-18 | the `ContinueStopReason` fence class |
+| `tests/orchestration/test_fence_production_e2e.py` | +4/-91 | the `run_do_continue` fence E2E class |
+| `tests/orchestration/test_mission_readiness.py` | +54/-9 | the durable-snapshot case re-driven through `apply_patch_intent`, with its fixture moved here |
+| `tests/orchestration/test_repair_apply_cycle.py` | +0/-194 | reached the deleted block only through `run_do_continue` |
+| `tests/orchestration/test_repair_request_builder.py` | +2/-2 | the surviving-command assertion re-pointed |
+| `tests/test_command_catalog.py` | +1/-0 | `do.continue` joins `TestDeletedCommands` |
+| **Commit total** | **+216/-2097** | constraint 5 reading: 216 insertions |
 
-### bab42400 F261 R20 C4: delete the do replan command and its handler, rewriting the six rejections that named it to name no command, by the replan table
+### 28520ab8 F261 R21 C3: resolve R-0900 by naming a command at every group-only advertisement and guarding the one-token form against the default-subcommand map, by the R-0900 table
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f261-r20-replan.jsonl` | +12/-0 | the table carrier |
-| `apps/cli/command_catalog.py` | +0/-15 | the `do.replan` catalog entry |
-| `apps/cli/commands/decision.py` | +1/-3 | two of the six rejections rewritten to name no command |
-| `apps/cli/commands/do_cmd.py` | +0/-110 | `_cmd_do_replan` and its dispatch row |
-| `apps/cli/commands/job.py` | +4/-7 | the other four rejections rewritten to name no command |
-| `tests/cli/test_plan_approval.py` | +1/-1 | the rejection text the approval path pins |
-| `tests/orchestration/test_prompt_trace.py` | +0/-10 | the replan prompt-trace case |
-| `tests/orchestration/test_stream_evidence_integration.py` | +1/-1 | the rejection text the integration path pins |
-| `tests/test_command_catalog.py` | +1/-0 | `do.replan` joins `TestDeletedCommands` |
-| **Commit total** | **+20/-147** | constraint 5 reading: 20 insertions |
+| `.agent/authored/f261-r21-r0900.jsonl` | +14/-0 | the table carrier |
+| `docs/system/architecture.md` | +11/-12 | six group-only sites named `brain graph`; the `remedy project <id>` alias line deleted and the sentence beside it corrected |
+| `docs/system/vocabulary.md` | +1/-1 | `remedy do --task-file` becomes `remedy do run --task-file` |
+| `packages/orchestration/brain_detail.py` | +2/-2 | two next actions named the `brain` group alone |
+| `packages/orchestration/flight_plan.py` | +1/-1 | the caller docstring named `remedy do --yes` |
+| `packages/orchestration/orchestrator_loop.py` | +1/-1 | the same helper reference |
+| `tests/cli/test_advertised_commands.py` | +116/-0 | the new group-only guard, resolving one-token advertisements against `_DEFAULT_COMMAND`/`_ALWAYS_INJECT` imported from `apps/cli/grouped.py`, with two scanner tests |
+| **Commit total** | **+146/-17** | constraint 5 reading: 146 insertions |
 
 ### Item status — the block's ordered bundle
 
@@ -90,119 +112,170 @@ cannot name from inside itself (R-0149 self-reference pattern).
 | C1 | done | |
 | C2 | done | |
 | C3 | done | |
-| C4 | done | |
-| C5 | done | this commit; its own numbers appear nowhere, per item 31 of §3 |
+| C4 | done | this commit; its own numbers appear nowhere, per item 31 of §3 |
+| G1 | done | green |
+| G2 | done | green |
+| G3 | done | green |
+| G4 | done | green |
+| G5 | deviated | (a), (1), (2), (3), (4) and (6) ran and are green; (5) is UNRUNNABLE as ordered — `MUT-5-FROM` reads count 0, not 1 — and is reported RED, unrepaired |
+| G6 | done | green, exit 0, no bad node |
+| G7 | done | runs after this commit and the push; reported in the round's completion message only |
 
 ## External actions
 
 - `git push origin feature/f261-cli-vocabulary-v2` — run after this commit; its result is in the
   round's completion message with G7.
-- `git worktree add --detach .remedy-wt/f261r20w/wt bab42400` — created for G5, then
-  `git worktree remove --force .remedy-wt/f261r20w/wt` — removed, `git worktree list` one row.
+- `git worktree add --detach .remedy-wt/f261r21w/wt 28520ab8` — created for G5, then
+  `git worktree remove --force .remedy-wt/f261r21w/wt` — removed; `git worktree list` one row.
 - No `gh` command, no pull request created or edited, no merge, no force-push, no branch deleted.
 - No `remedy` command run, and no runner or `run_job` invoked: `git branch --list 'remedy/job-*'`
-  reads 16 lines at the end of the round, as it did at `71cba20e`.
+  reads 16 lines at the end of the round, as it did at `ab748c47`.
 
 ## Verification
 
-**G1 TRANSPORT — exit 0.** `.agent/authored/f261-r20.md` at C0a has sha256
-`713761a2d0a064666e021dd54249fec39e325d8b352760977530016ee5bb9085`, equal to the digest the
+**G1 TRANSPORT — exit 0.** `.agent/authored/f261-r21.md` at C0a has sha256
+`8d967dc0902c9dffd6f08013e69214e69701176ac41deddb9daae0bcc9584654`, equal to the digest the
 delegating message gives; `.agent/last_block.md` at C0b is byte-identical to it (same sha256,
-33873 bytes). 15 slices FOUND, each matching its BEGIN-marker sha256. Each committed carrier's
-sha256 equals its block digest: repair-attest `6595ebb1…fe73`, job-resume `1de11fee…4eb4`,
-replan `8982ac33…9d33`.
+same bytes compared in memory). **17 slices FOUND**, each matching its BEGIN-marker sha256:
+PLAN21, RECORD21, DEC20, P273-FROM, P273-TO and MUT-1 to MUT-6 FROM/TO. Each committed carrier's
+sha256 equals its block digest: continue
+`92eb43232502a82646611512ea577442b55e291123feddc54a6bcdb416722f73`, R-0900
+`09421a05caeca521dfe981a589ac6f7075dd1542c0c0863244b1fa1c0207073a`.
 
 **G2 THE RECORD at C1 — exit 0**, every reading as the block states it.
 
-| Reading | Base `71cba20e` | C1 `893a9a95` |
+| Reading | Base `ab748c47` | C1 `e9e6bc93` |
 |---|---|---|
-| `.agent/plan.md` byte-identical to PLAN20 | — | yes, 36 lines (cap 50) |
+| `.agent/plan.md` byte-identical to PLAN21 | — | yes, 37 lines (cap 50) |
 | `^## Goal$` / `^## Next Steps$` in plan.md | — | 1 / 1 |
-| `.agent/live_review.md` == base blob + RECORD20 | 1062069 B | equal |
-| `.agent/decisions.md` == base blob + DEC19 | 1404174 B | equal |
+| `.agent/live_review.md` == base blob + RECORD21 | 1072965 B | equal, 1091527 B, delta 18562 |
+| `.agent/decisions.md` == base blob + DEC20 | 1407747 B | equal, 1412169 B, delta 4422 |
 | `T2_F273.md` == base blob with pair P273 applied | — | equal |
 | P273-FROM occurrences | 1 | 0 |
 | P273-TO occurrences | 0 | 1 |
-| `^Gate: F\d+ R\d+ — ` | 128 | 129 |
-| `Gate: F261 R19 — ` | — | 1 |
-| distinct `^- R-\d+ — ` ids | 115 | 118 |
-| C1 minus base | — | exactly `R-0913`, `R-0914`, `R-0915` |
+| `^Gate: F\d+ R\d+ — ` | 129 | 130 |
+| `Gate: F261 R20 — ` | 0 | 1 |
+| distinct `^- R-\d+ — ` ids | 118 | 125 |
+| C1 minus base | — | exactly `R-0916`, `R-0917`, `R-0918`, `R-0919`, `R-0920`, `R-0921`, `R-0922` |
 | distinct `^Done: R-\d+ — ` ids | 8 | 8 |
-| open set by distinct id | 107 | 110 |
+| open set by distinct id | 110 | 117 |
 
-`python3 -m pytest tests/docs/ -q` at C1: **exit 0**, `310 passed in 1.03s`.
+`python3 -m pytest tests/docs/ -q` at C1: **exit 0**, `310 passed in 1.05s`.
 
-**G3 THE TABLES at C2, C3 and C4 — exit 0.** `git diff --no-renames --name-only` from each
-parent printed exactly that commit's carrier plus the paths the block names — C2 6 paths, C3 8,
-C4 9 — each set equal to the block's list with no path over and none missing. Every
-`git rev-parse <commit>:<object>` equalled the reviewer's dry run:
+**G3 THE TABLES at C2 and C3 — exit 0.** `git diff --no-renames --name-only` from each parent
+printed exactly that commit's carrier plus the paths the block names — C2 **34 paths** (33 + the
+carrier), C3 **7 paths** (6 + the carrier) — each set equal to the block's list with no path over
+and none missing. Every `git rev-parse <commit>:<object>` equalled the reviewer's dry run, for all
+nine objects at both commits:
 
-| Object | C2 `c26c3a1a` | C3 `f6c723b8` | C4 `bab42400` |
-|---|---|---|---|
-| `apps` | `7524164c…` | `00706e15…` | `6616756a…` |
-| `tests` | `799e2d94…` | `bad1d8e1…` | `49127a5c…` |
-| `docs` | `0122c102…` | `0122c102…` | `0122c102…` |
-| `scripts` | `208d836b…` | `208d836b…` | `208d836b…` |
-| `packages` | `c6d3df57…` | `c6d3df57…` | `c6d3df57…` |
-| `README.md` | `666769d2…` | `666769d2…` | `666769d2…` |
+| Object | C2 `58be13e3` | C3 `28520ab8` |
+|---|---|---|
+| `apps` | `10f52eca…` | `10f52eca…` |
+| `packages` | `47723c13…` | `973237d2…` |
+| `scripts` | `208d836b…` | `208d836b…` |
+| `tests` | `2628d401…` | `185416da…` |
+| `docs/guides` | `f45f164a…` | `f45f164a…` |
+| `docs/system` | `7feec242…` | `ea4ece63…` |
+| `docs/README.md` | `5fb479b1…` | `5fb479b1…` |
+| `README.md` | `60ca9975…` | `60ca9975…` |
+| `.claude` | `e3cd5e0a…` | `e3cd5e0a…` |
 
-All 18 subtree ids reproduced the dry run exactly. Insertions per constraint 5: C2 7, C3 21,
-C4 20 — every commit of the round under 500.
+All 18 subtree ids reproduced the dry run exactly. Insertions per constraint 5: **C2 216, C3 146**
+— with C0a 365, C0b 197 and C1 64, every commit of the round is under 500.
 
-Table application: the repair-attest table's 6 rows, the job-resume table's 9 and the replan
-table's 12 each applied strictly in file order, and **every `edit` row's occurrence count read
-exactly the count the row states** — 1 in 26 rows and 3 in one row, all 27 exact. No STOP was
-reached.
+Table application: the continue table's **62 rows** and the R-0900 table's **14 rows** each
+applied strictly in file order, and **every `edit` row's occurrence count read exactly the count
+the row states** — 1 in 69 rows, 2 in one row and 3 in two rows, all 72 exact, beside the four
+`delete` rows whose targets all existed. No STOP was reached, and each table was simulated whole
+over an in-memory overlay before a byte was written, so a mismatching row would have touched
+nothing.
 
-**G4 THE SWEEP at C4 — exit 0 overall.**
+**G4 THE SWEEP at C3 — exit 0.**
 
-- `git grep -n -I -E '(^|[^.])repair-attest|(^|[^.])job-resume|do replan|_cmd_do_repair_attest|_cmd_do_job_resume|_cmd_do_replan|collect_diff_stat' bab42400 -- apps packages scripts tests docs README.md AGENTS.md .claude ':!docs/roadmap'` → **exit 1, printed nothing** (stdout `''`). Control at `71cba20e`: the same command **exit 0, 30 matching lines in 11 files** — `apps/cli/command_catalog.py`, `apps/cli/commands/decision.py`, `apps/cli/commands/do_cmd.py`, `apps/cli/commands/job.py`, `apps/cli/commands/run_invocation.py`, `packages/orchestration/repair_attest.py`, `tests/cli/test_job_run_invocation_truth.py`, `tests/cli/test_plan_approval.py`, `tests/cli/test_stream_evidence_tristate.py`, `tests/orchestration/test_job_worktree_handoff.py`, `tests/orchestration/test_repair_attest.py` — so the pattern had real reach before this round, and the block's expected file count of 11 reproduced exactly.
-- `python3 -m ruff check` over every `.py` path of C2 to C4 still existing at C4, except
-  `tests/orchestration/test_prompt_trace.py` — 13 files, none deleted this round → **exit 0,
-  `All checks passed!`**.
-- The exception, reported with both readings rather than repaired: `python3 -m ruff check
-  tests/orchestration/test_prompt_trace.py` → **exit 1, `Found 2 errors.`**, two `I001` "Import
-  block is un-sorted or un-formatted" at the two in-function import blocks. The SAME file at
-  `71cba20e`, checked out into the G5 worktree and linted there, reads **exit 1, `Found 2
-  errors.`**, the same two `I001` at the same two import blocks — at lines 360 and 445 rather than
-  350 and 435, the shift being exactly the 10 lines this round's table deleted above them. The
-  findings are pre-existing and this round neither introduced nor moved them.
+- `git ls-tree 28520ab8 -- packages/orchestration/do_continue.py` → **exit 0, stdout `''`**.
+- The block's sweep at C3 → **exit 0, exactly 3 lines in 3 files**, one each, verbatim:
 
-**G5 THE RED-PROOF — exit 0.** In `git worktree add --detach .remedy-wt/f261r20w/wt bab42400`,
-each run through the runner, which purges every `__pycache__`, changes into the worktree, puts it
-first on `sys.path` and in `PYTHONPATH` and asserts the provenance: every run printed
-`apps.cli.grouped loaded from /home/decodeux/Repos/remedy/.remedy-wt/f261r20w/wt/apps/cli/grouped.py`
+<!-- -->
+
+      28520ab8:docs/system/repair-loop-v1.md:98:> D4 deleted the command, and `reconcile_repair_after_continue` in
+      28520ab8:tests/cli/test_advertised_commands.py:28:subcommand, and ``remedy do --continue <id>`` exits 0 having printed group help
+      28520ab8:tests/orchestration/test_self_dogfood_execution.py:200:        assert "run_do_continue" not in self.SRC
+
+- The same command at `ab748c47` → **exit 0, 117 lines in 21 files**, so the pattern had real
+  reach before this round and the block's expected counts reproduced exactly.
+- `python3 -m ruff check` over every `.py` path of C2 and C3 still existing at C3 — 23 `.py`
+  paths touched, **19 surviving**, four deleted — → **exit 0, `All checks passed!`**.
+
+**G5 THE RED-PROOF — RED: five of six mutations green, mutation (5) unrunnable as ordered.**
+
+In `git worktree add --detach .remedy-wt/f261r21w/wt 28520ab8`, each run through the runner, which
+purges every `__pycache__`, changes into the worktree, puts it first on `sys.path` and in
+`PYTHONPATH` and asserts the provenance: every run printed
+`grouped loaded from: /home/decodeux/Repos/remedy/.remedy-wt/f261r21w/wt/apps/cli/grouped.py`
 before a single test ran, so the editable install's resolution to the primary checkout was ruled
-out each time. Each mutation's FROM slice read **count 1** in its file before replacement and was
-restored with `git -C … checkout -- <file>`; `git status --porcelain` in the worktree read empty
-after every restore.
+out each time. Each runnable mutation's FROM slice read **count 1** in its file before replacement
+and was restored with `git -C … checkout -- <file>`; `git status --porcelain` in the worktree read
+empty after every restore.
 
 | # | File and mutation | Exit | Summary | Bad nodes | Named node among them |
 |---|---|---|---|---|---|
-| (a) CONTROL | — | **0** | `395 passed in 23.13s` | 0 | — |
-| (1) | `apps/cli/commands/do_cmd.py`, a `do.repair-attest` handler row | **1** | `1 failed, 394 passed in 23.21s` | 1 | yes — `TestDeletedCommands::test_no_deleted_id_is_left_in_the_dispatch_table` |
-| (2) | the same file, a `do.job-resume` handler row | **1** | `1 failed, 394 passed in 23.14s` | 1 | yes — `TestDeletedCommands::test_no_deleted_id_is_left_in_the_dispatch_table` |
-| (3) | the same file, a `do.replan` handler row | **1** | `1 failed, 394 passed in 23.17s` | 1 | yes — `TestDeletedCommands::test_no_deleted_id_is_left_in_the_dispatch_table` |
-| (4) | `apps/cli/command_catalog.py`, a `related=` naming `do.job-resume` | **1** | `1 failed, 394 passed in 23.15s` | 1 | yes — `TestCatalogIntegrity::test_every_related_reference_resolves_to_a_live_command` |
-| (5) | `apps/cli/commands/decision.py`, the `do replan` line restored after the rejection | **1** | `1 failed, 394 passed in 23.09s` | 1 | yes — `test_every_advertised_command_exists_in_the_catalog` |
+| (a) CONTROL | — | **0** | `401 passed in 23.22s` | 0 | — |
+| (1) | `apps/cli/commands/do_cmd.py`, a `do.continue` dispatch row | **1** | `1 failed, 400 passed in 23.24s` | 1 | yes — `TestDeletedCommands::test_no_deleted_id_is_left_in_the_dispatch_table` |
+| (2) | `apps/cli/command_catalog.py`, a `do.continue` catalog entry | **1** | `1 failed, 400 passed in 23.32s` | 1 | yes — `TestDeletedCommands::test_no_deleted_id_is_left_in_the_catalog` |
+| (3) | `packages/orchestration/self_dogfood_execution.py`, the `remedy do continue` hint restored | **1** | `1 failed, 400 passed in 23.18s` | 1 | yes — `test_every_advertised_command_exists_in_the_catalog` |
+| (4) | `packages/orchestration/brain_detail.py`, the group-only `remedy brain` form restored | **1** | `1 failed, 400 passed in 23.29s` | 1 | yes — `test_every_group_only_advertisement_reaches_a_command` |
+| (5) | `docs/system/architecture.md`, the group-only `remedy brain` form restored | **— NOT RUN —** | — | — | **UNRUNNABLE: `MUT-5-FROM` count reads 0, not 1** |
+| (6) | `docs/guides/do-continue-v1.md`, the deleted module's path restored into the status banner | **1** | `1 failed, 400 passed in 23.24s` | 1 | yes — `test_every_source_path_an_operator_facing_page_names_exists` |
 
-Every one of (1) to (5) exited 1 with the named node among the failed nodes, and the CONTROL
-exited 0, so each of the three guards is reachable and discriminating. (1) to (3) show the
-dispatch-table guard discriminates per deleted id rather than firing on any one of them; (4)
-shows a `related=` chain pointing at a deleted word is caught; (5) shows an advertised hint
-naming a deleted word is caught — the three failure modes these three deletions could leave.
+RAW OUTPUT OF THE RED READING, from the mutation driver:
 
-After G5: `git worktree remove --force .remedy-wt/f261r20w/wt` (the worktree was clean before
-removal — every mutation restored), `git worktree list` one row, `git branch --list 'remedy/job-*'`
-**16 lines**.
+    MUTATION 5 in docs/system/architecture.md: FROM count = 0
+    Traceback (most recent call last):
+      File "/home/decodeux/Repos/remedy/.remedy-wt/f261r21w/mutate.py", line 32, in <module>
+        assert count == 1, "count is not 1"
+    AssertionError: count is not 1
 
-**G6 THE SUITE, SPEC S at C4 — exit 0.** From the primary checkout's root, serially,
+WHY. `MUT-5-FROM` is the 52 bytes
+`remedy brain graph <job_id> --json    # JSON export` with its terminating newline. The line that really
+stands at `docs/system/architecture.md:1369` at C3 is
+`remedy brain graph <job_id> --json    # JSON export (future frontend data source)` — the slice
+drops the trailing ` (future frontend data source)`. The same holds for `MUT-5-TO` against the
+base: at `ab748c47` line 1369 reads
+`remedy brain <job_id> --json    # JSON export (future frontend data source)`, so the slice's
+replacement text does not occur there either. The slice is short of the file, in both directions.
+The slice was NOT edited, and no expected value was changed to make anything green.
+
+THE PRODUCTION TREE IS NOT IN DOUBT. G3 above shows `docs/system` at C3 is
+`ea4ece6386208842c2860c698ea8f99dc31fe586`, byte-for-byte the reviewer's own dry-run tree, so the
+edit the R-0900 table made to this page is exactly the edit the reviewer measured.
+
+SUPPLEMENTARY PROBE, clearly labelled as NOT gate (5) and NOT a substitute for it. To tell a
+truncated slice apart from a guard that cannot see this corpus, the same group-only form was
+restored using the file's REAL line — the slice's text plus the suffix it drops — inside the same
+disposable worktree, and restored afterwards:
+
+    REAL-LINE FROM count: 1
+    RETURNCODE: 1
+        FAILED tests/cli/test_advertised_commands.py::test_every_group_only_advertisement_reaches_a_command
+        1 failed, 400 passed in 23.23s
+    restore exit: 0
+    worktree porcelain after restore: ''
+
+So the new guard does reach `docs/system/architecture.md` and does go red when the group-only
+`remedy brain` form returns there — which is the property gate (5) exists to establish. The gate
+is still reported RED, because the round may not rewrite a slice to make a gate runnable.
+
+After G5: `git worktree remove --force .remedy-wt/f261r21w/wt` (the worktree was clean before
+removal — every mutation and the probe restored), `git worktree list` one row,
+`git branch --list 'remedy/job-*'` **16 lines**.
+
+**G6 THE SUITE, SPEC S at C3 — exit 0.** From the primary checkout's root, serially,
 `python3 -B -m pytest -q -p no:randomly -p no:cacheprovider --tb=short -rfEs` with `PYTHONPATH`,
 `REMEDY_PROJECT` and `REMEDY_DATA_DIR` removed and `PYTHONDONTWRITEBYTECODE=1`, transcript at
-`.remedy-wt/f261r20w/suite_out.txt`.
+`.remedy-wt/f261r21w/suite.txt`.
 
 - return code **0**
-- last output line: `17772 passed, 23 skipped, 1 warning in 1300.41s (0:21:40)`
+- last output line: `17728 passed, 23 skipped, 1 warning in 1298.35s (0:21:38)`
 - distinct bad nodes: **0** — no line-initial `FAILED ` or `ERROR ` in the output, so no lone
   re-run was owed.
 
@@ -213,58 +286,70 @@ message only, per the block.
 
 | Authored file | Proof |
 |---|---|
-| `.agent/authored/f261-r20.md` | sha256 at C0a equals the delegating message's digest, `713761a2d0a064666e021dd54249fec39e325d8b352760977530016ee5bb9085` |
-| `.agent/last_block.md` | byte-identical to the committed C0a file (same sha256) |
-| `.agent/authored/f261-r20-repair-attest.jsonl` | committed sha256 `6595ebb1ffade5df75f5872466dfda79c786965e933459ef91f6284f0d81fe73`, equal to the block's digest |
-| `.agent/authored/f261-r20-job-resume.jsonl` | committed sha256 `1de11feedd5dde3b2b4978df2e1da56ffb88205fa6efb0ceb4e05381a7de4eb4`, equal to the block's digest |
-| `.agent/authored/f261-r20-replan.jsonl` | committed sha256 `8982ac33ac039403f315d213258d8e0b0e37a2d296f98e8e7504b574a41b9d33`, equal to the block's digest |
-| Slices PLAN20, RECORD20, DEC19, P273-FROM/TO, MUT-1…5-FROM/TO | all 15 extracted strictly between their BEGIN and END lines; each sha256 matched its BEGIN marker; none was edited |
+| `.agent/authored/f261-r21.md` | sha256 at C0a equals the delegating message's digest, `8d967dc0902c9dffd6f08013e69214e69701176ac41deddb9daae0bcc9584654` |
+| `.agent/last_block.md` | byte-identical to the committed C0a file (same sha256, compared byte for byte in memory) |
+| `.agent/authored/f261-r21-continue.jsonl` | committed sha256 `92eb43232502a82646611512ea577442b55e291123feddc54a6bcdb416722f73`, equal to the block's digest; verified BEFORE the copy and again after |
+| `.agent/authored/f261-r21-r0900.jsonl` | committed sha256 `09421a05caeca521dfe981a589ac6f7075dd1542c0c0863244b1fa1c0207073a`, equal to the block's digest; verified BEFORE the copy and again after |
+| Slices PLAN21, RECORD21, DEC20, P273-FROM/TO, MUT-1…6-FROM/TO | all 17 extracted strictly between their BEGIN and END lines; each sha256 matched its BEGIN marker; none was edited, including `MUT-5-FROM`, which does not occur in its target |
 
 ## Deviations & assumptions
 
-1. **No departure from the block's ordered commit sequence.** C0a, C0b, C1, C2, C3, C4, C5 landed
-   in that order, one commit each, single-parent, on `71cba20e`. No extra commit, none dropped, no
+1. **No departure from the block's ordered commit sequence.** C0a, C0b, C1, C2, C3, C4 landed in
+   that order, one commit each, single-parent, on `ab748c47`. No extra commit, none dropped, no
    reordering.
-2. **The G5 runner removes `REMEDY_PROJECT` and `REMEDY_DATA_DIR` from the environment.** The
+2. **G5 (5) IS RED AND WAS NOT REPAIRED.** `MUT-5-FROM` reads 0 occurrences in
+   `docs/system/architecture.md` at C3 against the block's required 1. The slice was not edited,
+   the target was not edited, and the gate's expected value was not changed. The evidence says the
+   slice text is truncated by the 30 characters ` (future frontend data source)`, not that the
+   product is wrong: G3 shows the `docs/system` tree at C3 equals the reviewer's dry-run tree
+   exactly. This is a reading for the reviewer to take, not one this round may take for it.
+3. **Two measurements were taken AFTER the red gate rather than stopping at it**: mutation (6),
+   which is part of the same gate and cost one run, and SPEC S / G6, which the block orders before
+   C4. Both are pure measurements over already-committed code; neither changed a file, a gate or
+   an expected value, and both are reported above with their real readings. The block's STOP
+   instruction — commit what is honestly finished, write the handoff with the raw output, push,
+   hand back — is what this handback does. Declared here because continuing past a red gate at all
+   is a departure.
+4. **One probe was run that the block did not order**, the supplementary probe under G5. It ran
+   only inside the disposable worktree, restored its file, and is reported as supplementary
+   evidence rather than as any gate's reading. Its purpose was to distinguish a truncated slice
+   from a blind guard, which is the question the reviewer will have to answer.
+5. **The G5 runner removes `REMEDY_PROJECT` and `REMEDY_DATA_DIR` from the environment.** The
    block specifies that hygiene for SPEC S and not for G5; neither variable was set in this
    session, so the removal was a no-op in fact and is declared only because the runner does it
    unconditionally. It also sets `PYTHONDONTWRITEBYTECODE=1` and runs `python3 -B`. For the same
    reason SPEC S's own three removals were no-ops: `PYTHONPATH`, `REMEDY_PROJECT` and
    `REMEDY_DATA_DIR` all read unset in this session before the suite was launched.
-3. **SPEC S ran detached and was polled, not piped.** The suite was started with
-   `subprocess.Popen(start_new_session=True)` writing to `.remedy-wt/f261r20w/suite_out.txt`, and
-   its return code was written to a file by the wrapper and read from there. The block's
-   ENVIRONMENT paragraph warns that a pipe into `tail` hides pytest's exit code; no exit code in
-   this handback comes from a piped invocation. The command, its flags, its working directory and
-   its environment are exactly as SPEC S states them.
-4. **The block's own size reproduces exactly, and so does its frame rule.** Measured on the
-   committed final bytes of `.agent/authored/f261-r20.md`: **322 lines TOTAL** against the cap of
-   490 and **233 lines of PROSE** against the cap of 400, where PROSE is every line that is not a
-   line of slice content and the 30 `BEGIN`/`END` marker lines count as prose — both exactly the
+6. **No exit code in this handback comes from a piped invocation.** SPEC S ran through a Python
+   wrapper that redirects pytest's combined output to `.remedy-wt/f261r21w/suite.txt` and reads
+   the return code from `subprocess.run`; the block's ENVIRONMENT warning about `tail` is
+   respected everywhere.
+7. **The block's own size reproduces exactly, and so does its frame rule.** Measured on the
+   committed final bytes of `.agent/authored/f261-r21.md`: **365 lines TOTAL** against the cap of
+   490 and **248 lines of PROSE** against the cap of 400, where PROSE is every line that is not a
+   line of slice content and the 34 `BEGIN`/`END` marker lines count as prose — both exactly the
    numerals constraint 7 declares. The frame rule of item 37 also holds on those same bytes:
    **0** lines of two or more characters are a run of a single repeated character, and across the
-   16 header lines carrying box-drawing rules there are **0** rules that are not exactly two
+   18 header lines carrying box-drawing rules there are **0** rules that are not exactly two
    characters long.
-5. **Scratch discipline.** All scratch, the runner and the G5 worktree lived under
-   `.remedy-wt/f261r20w/`, uncommitted; no `.py` file was written under `.agent/`; no script was
+8. **Scratch discipline.** All scratch, the runners and the G5 worktree lived under
+   `.remedy-wt/f261r21w/`, uncommitted; no `.py` file was written under `.agent/`; no script was
    named after a standard-library module; no symlink was created; only
-   `.remedy-wt/f261-block/` and `.remedy-wt/f261r20w/` were opened under `.remedy-wt/`.
-6. **No STOP was encountered.** `.agent/STOP` was read before C0a, before C2 and before C5; all
-   three reads exited 1, "No such file or directory".
-7. **No table reached a STOP**: all 27 rows across the three carriers applied, and every `edit`
-   row's occurrence count matched the count it states.
-8. **Three capabilities leave with no heir at all.** This is DECISION F261 D19 as written, not a
-   scope decision taken here: the operator attestation, the resume refusals and the flight-plan
-   replan have no surviving word, and R-0914, R-0913 and R-0915 carry each loss to F273 rather
-   than a stub being left behind.
-9. **`tests/orchestration/test_prompt_trace.py` is left lint-dirty on purpose.** Its two `I001`
-   findings pre-date this round and reproduce identically at `71cba20e`; G4 orders them reported
-   with both readings rather than repaired, and repairing them would be an unrelated edit under
-   AGENTS.md scope control.
+   `.remedy-wt/f261-block/` and `.remedy-wt/f261r21w/` were opened under `.remedy-wt/`.
+9. **No STOP was encountered.** `.agent/STOP` was read before C0a, before C2 and before C4; all
+   three reads exited 2, "No such file or directory".
+10. **No table reached a STOP**: all 76 rows across the two carriers applied, and every `edit`
+    row's occurrence count matched the count it states.
+11. **Four capabilities leave with no heir at all.** This is DECISION F261 D20 as written, not a
+    scope decision taken here: the continuation lease, the durable phase checkpoints, the
+    apply-to-test linkage and the repair reconciliation have no surviving word, and R-0916 to
+    R-0919 carry each loss to F273 rather than a stub being left behind.
+12. **No suite was run while a deletion was staged but uncommitted**, per the block's ENVIRONMENT
+    paragraph: the four deletions of C2 were staged and committed before any pytest invocation.
 
 ## Next
 
-Open findings: **110 by distinct id**, of which three are High — **R-0803**, **R-0804** and
+Open findings: **117 by distinct id**, of which three are High — **R-0803**, **R-0804** and
 **R-0807**. `Operator questions open: 0` (`.agent/operator_questions.md` reads
 `EMPTY — nothing is waiting on the operator.`).
 
@@ -272,79 +357,8 @@ The single expected next action, in order:
 
 1. **Phase 1 rule 1** of `docs/agents/self_drive_protocol.md` — read `.agent/STOP` from disk; if
    it exists, write the handoff and end the session before anything else.
-2. **The reviewer's verdict on round 20**, over the committed range `71cba20e`..C5, booked into
-   `.agent/live_review.md` by the first commit of round 21.
-3. **Round 21's work**: the `do continue` hints, then the command and
-   `packages/orchestration/do_continue.py`, with **R-0900**, as `.agent/f261_t003_inventory.md`
-   proposes in its round H.
-
-## Session close — session 39, written after the reviewer's verdict on round 20
-
-The planner and reviewer of session 39 reviewed rounds 15 to 20 of F261 and ends the session
-after those six delegated rounds, all PASS, which is the operator's per-session target. Context
-self-assessment: the reviewer's context is still comfortable and no run of authoring slips
-accumulated — two slips were declared by workers across six rounds, both about the block's own
-frame rather than its orders, and both are booked; the session ends at the target rather than at
-a limit. Nothing is half-written; the branch is pushed at `7c0de436`.
-
-### The verdict to book
-
-Round 21's first commit that writes the record appends the paragraph below to
-`.agent/live_review.md` byte for byte, preceded by one empty line, per operator amendment
-amend0827-process-diet rule 1.
-
-Gate: F261 R20 — the F261 round 20 entry. VERDICT PASS. Written by the planner and reviewer of session 39 after reading the committed range `71cba20e`..`7c0de436` and re-deriving the readings below; the worker's report was evidence for none of them. It is carried by `.agent/handoff.md` in the session-close commit that follows `7c0de436` and booked by the first commit of round 21 that writes the record, per operator amendment amend0827-process-diet rule 1. THE TRANSPORT: `.agent/authored/f261-r20.md` at `6e3405ba` and `.agent/last_block.md` at `00bef4fc` are byte-identical to the reviewer's scratch original, sha256 `713761a2d0a064666e021dd54249fec39e325d8b352760977530016ee5bb9085`, and the three tables committed at `c26c3a1a`, `f6c723b8` and `bab42400` are byte-identical to the reviewer's, which are the research helper's. THE STATE: at `893a9a95` and again at `7c0de436`, `.agent/plan.md` equals PLAN20, `.agent/live_review.md` and `.agent/decisions.md` equal their `71cba20e` blobs followed by RECORD20 and DEC19, and `docs/roadmap/features/T2_F273.md` equals its `71cba20e` blob with the pair P273 applied. THE TABLE COMMITS: at `c26c3a1a`, `f6c723b8` and `bab42400` the `apps`, `tests`, `docs`, `scripts`, `packages`, `README.md` and `.claude` objects equal the reviewer's dry-run commits, which applied the record before the tables and reproduced the helper's trees exactly; each commit's `--no-renames` path set is the dry run's plus its carrier, and `git show --numstat` reads 7, 21 and 20 insertions. In the dry run's production diff each command leaves with its catalog entry and its handler, `collect_diff_stat` leaves with the handler that was its only caller, `attest_operator_repair`, `resume_job_plan`, `replan` and `ReplanRejectedError` stay behind the test files that drive them, and the six rejections that named `do replan` name no command rather than a deleted one. The sweep pattern of the round 20 block matches 30 lines in 11 files at `71cba20e`, and at `7c0de436` the same `git grep` over `apps`, `packages`, `scripts`, `tests`, `docs` without `docs/roadmap`, `README.md`, `AGENTS.md` and `.claude` exits 1 with no output. In the reviewer's dry run a full suite under `-n auto` without `tests/ui_server` read 1 failed, `test_vitest_passes`, 17268 passed and 29 skipped. Over `tests/test_command_catalog.py`, `tests/cli/test_cli_ux.py`, `tests/test_grouped_cli.py`, `tests/orchestration/test_import_reachability.py` and `tests/cli/test_advertised_commands.py`, which passed 395 unmutated, a `do.repair-attest`, a `do.job-resume` and a `do.replan` handler row each failed 1 test, a `related=` naming `do.job-resume` failed 1, and the `do replan` line restored after the rejection failed 1. THE LINT EXCEPTION the block named reads as the block states it: `python3 -m ruff check` over `tests/orchestration/test_prompt_trace.py` exits 1 with two `I001` findings at `7c0de436`, and the same command over that file's `71cba20e` blob through `--stdin-filename` exits 1 with the same two findings ten lines lower, so the round neither caused nor repaired them. THE REVIEWER'S RUN in the primary checkout at `7c0de436` of those five files, every other test file the round edited, the worktree-integrity, flight-plan, decision-command, manual-completion-bundle and job-evidence tests, `tests/cli/test_golden_path.py`, `tests/docs/`, `tests/test_remedy_smoke_script.py` and `tests/orchestration/test_command_discovery.py` read 1319 passed, `python3 -m ruff check` over thirteen edited files that survive printed `All checks passed!`, and `git branch --list 'remedy/job-*'` read 16 lines. The open set reads 110 by distinct id at `7c0de436`.
-
-### What this session did
-
-Six deletion and rename rounds of T003, each one a research helper's measured tables re-applied
-by the reviewer on the real tip, gated on tree ids: round 15 the loop modules, the `queue` group
-and the F048 job queue (DECISION F261 D14) · round 16 `guide`, `dashboard` and `repo` with the
-group-count guard replaced by a D4 kept-set check (D15) · round 17 `readiness`, `contract` and
-`policy`, declaring two dead event couplings (D16) · round 18 `context`, `token` with
-`context-pack` and `review`, and the repair of the smoke script's group-help loop, which rounds
-16 and 17 had left naming five deleted groups (D17) · round 19 `do report` renamed into the new
-`run` group as `run show` and `run list`, with `do evidence` deleted (D18) · round 20
-`do repair-attest`, `do job-resume` and `do replan` (D19). The catalog is 30 groups at
-`7c0de436`; DECISION amend0905-vocab D4 leaves 29.
-
-### What the next session needs to know
-
-- TWELVE FINDINGS were registered in these six rounds, R-0904 to R-0915. Two are this feature's
-  own and are the largest carried debt: R-0906, that nothing can write a run-contract budget
-  field since `contract set` went, so `test run` is refused for every job whose contract nothing
-  overrides, and R-0909, the same for the token budget profile. Both are repaired by building
-  `job budget <id> set`, the word D4 names and nothing has built; `.agent/plan.md` carries it as
-  a next step. The other ten are F273's and each has its Acceptance line in
-  `docs/roadmap/features/T2_F273.md`.
-- THE METHOD held for six rounds and is worth keeping: a research helper builds JSON-lines edit
-  tables in its own detached worktree and measures every heir by running the command and its
-  proposed heir against one scratch data root; the reviewer re-applies the tables on the real
-  tip AFTER the record commit, compares every subtree id with the helper's, reads the production
-  diff, runs its own mutations and a full suite under `-n auto` without `tests/ui_server`,
-  removes its worktree, and gates the worker on those tree ids. A deletion whose heir the helper
-  cannot find becomes a finding, never a stub.
-- A HELPER'S PROBE OF A COMMAND MAY COST A PROVIDER CALL: round 20's helper ran `do replan` on a
-  fixture and reached a local provider, which produced ten tasks. No `remedy/job-*` branch was
-  created; the count read 16 at every gate of the session.
-- THE INVENTORY `.agent/f261_t003_inventory.md` is at round H of its proposal, the `do continue`
-  hints with the command and `do_continue.py` and R-0900. Its rounds I to P remain after that,
-  which is more than the five rounds F261's soft limit of 25 leaves: THE SESSION THAT REACHES
-  ROUND 25 OWES THE SCOPE REPORT AND EXECUTES THE SPLIT-AND-CLOSE DEFAULT of operator amendment
-  amend0905-throughput, placing the follow-up feature directly after F261 per amend0906.
-- RULINGS THIS SESSION a later round may need: a guard that cannot fail in the adding direction
-  is pinned by a test of its own (round 19's `run` group); an event that loses its only emitter
-  is DECLARED in `KNOWN_DEAD_EVENT_COUPLINGS` with its ceiling raised and a finding, never left
-  invisible (rounds 17 and 18); a capability with no heir is registered, never stubbed; and a
-  defect a previous round of this feature introduced is repaired in the round that finds it,
-  with a finding for the guard that could not see it (round 18, R-0910).
-
-### Next
-
-1. Phase 1 rule 1: the next session reads `.agent/STOP` first; then the Open PR Gate, which
-   finds no open pull request for this branch.
-2. Round 21's first record commit books `Gate: F261 R20` from this section.
-3. Round H of `.agent/f261_t003_inventory.md`: the `do continue` hints, then the command and
-   `packages/orchestration/do_continue.py`, with R-0900.
-
-Operator questions open: 0
+2. **The reviewer's verdict on round 21**, over the committed range `ab748c47`..C4, which must
+   first take a reading on the red G5 (5) above. The `Done:` paragraph **R-0900** is owed once
+   that verdict is taken, since this round's C3 is the repair its fix clause asks for.
+3. **Round I of `.agent/f261_t003_inventory.md`**: the `propose` and `repair` groups, each
+   re-measured before it is authored.
