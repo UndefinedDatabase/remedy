@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-77 of 280 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+78 of 280 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 20 | 33 |
+| 2 | Minimal Self-Build Runtime | 21 | 33 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -118,7 +118,17 @@ PERFORMED, one module group per commit, each lost behaviour registered as a
 finding; the classic-to-unified record flip landed as ONE commit and the
 red bridge it opened closed in two rounds; and the classic job store, the
 classic `Job` and `Task` models, `resolve_any_job_id` and every which-store
-branch deleted, leaving one job record, one store and one id resolver).
+branch deleted, leaving one job record, one store and one id resolver),
+F261 CLI vocabulary v2, rename and prune (the `do job-*` family and the plan
+triplet dissolved into `job run`, `job evidence` and `job apply`; the retired
+job-result word replaced by `apply`, and the read views folded into
+`job show --full`; the
+command groups and queue words no surviving command needs deleted, each with
+its deletion paragraph; `plan` hidden as `roadmap`, `teach` renamed
+`teacher`, and `settings` an alias over `config`; the gated prunes, the
+flight-plan rename and the help surface were split off at the soft limit
+and belong to the follow-up feature the STATUS ledger registers directly
+after it).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
