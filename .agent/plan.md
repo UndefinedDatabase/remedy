@@ -11,31 +11,28 @@ T002 holds, per `docs/roadmap/features/T2_F280.md`.
 
 ## Current Step
 
-ROUND 8 books round 7's independently-reviewed PASS (Gate: F280 R7), fixes R-0939 (the missing
-trailing newline round 7's C1 left in four `.agent/` files), and renames the `job run` flag
-`--max-tasks` to `--tasks` (DECISION amend0905-vocab D4's `job run <id> [--tasks n]`), keeping the
-internal `max_tasks` field name unchanged since D4 governs only the CLI surface.
+ROUND 9 books round 8's independently-reviewed PASS (Gate: F280 R8), registers R-0940 (round
+8's handback falsely claimed its disposable G8 worktree was cleaned up), and adds `worker
+doctor` (DECISION amend0905-vocab D4's `worker list | show | resources | unload | status |
+doctor`): a read-only per-provider health check beside `doctor core`, reusing
+`list_worker_specs()` and the `shutil.which("ollama")` probe `worker resources` already uses.
 
 ## Next Steps
 
-1. `worker doctor`, the other D4 word no feature owns yet (`worker list | show | resources |
-   unload | status | doctor`): a read-only per-provider health check beside `doctor core`,
-   reusing `list_worker_specs()` and the ollama/GPU probes `worker resources` already has.
-2. `propose`, once operator question Q4 is answered.
-3. The rest of the `flight_plan` rename DECISION F280 D5 deferred: the module
+1. `propose`, once operator question Q4 is answered.
+2. The rest of the `flight_plan` rename DECISION F280 D5 deferred: the module
    `flight_plan.py` to `job_plan.py` (with `FlightPlanResult` and its lowercase function names),
    then the persisted job key, schema tag and decision-type literals, then the surviving
    English prose.
-4. `job attach-repo` and `job permit`, only once a DECISION gives the repository attach and the
+3. `job attach-repo` and `job permit`, only once a DECISION gives the repository attach and the
    capability grants another writer, as DECISION F280 D4 requires.
-5. T002, which also re-derives the root help's quick start with the README quickstart (R-0895)
+4. T002, which also re-derives the root help's quick start with the README quickstart (R-0895)
    and closes the flag scanner's blind spot (R-0934).
 
 ## Risks
 
-- 128 findings are open by distinct id after this round's record (R-0939 is registered and
-  resolved in the same commit, so the count is unchanged from round 7's); three are High,
-  R-0803, R-0804 and R-0807, none of them this feature's.
+- 129 findings are open by distinct id after this round's record (R-0940 adds one open finding
+  to round 8's 128); three are High, R-0803, R-0804 and R-0807, none of them this feature's.
 - R-0899 (open, owned F273): section 3 of `scripts/remedy_smoke.sh` reads a `state` key `job show`
   does not print, so its planned-state check fails wherever the script is actually run.
 - R-0937 (open, owned F273): five comment/message lines in `tests/test_remedy_smoke_script.py`
