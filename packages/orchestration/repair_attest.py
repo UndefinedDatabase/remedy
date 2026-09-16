@@ -282,35 +282,6 @@ def _collect_workspace_diff(repo_path: str) -> _WorkspaceDiff:
     )
 
 
-def collect_diff_stat(repo_path: str) -> str:
-    """Return a concise diff stat for CLI confirmation display."""
-    repo = Path(repo_path)
-    if not repo.exists():
-        return "no repo"
-    try:
-        stat = subprocess.run(
-            ["git", "diff", "--stat", "HEAD"],
-            cwd=str(repo), capture_output=True, text=True, timeout=15,
-        )
-        untracked = subprocess.run(
-            ["git", "ls-files", "--others", "--exclude-standard"],
-            cwd=str(repo), capture_output=True, text=True, timeout=15,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return "diff stat unavailable"
-    parts: list[str] = []
-    if stat.returncode == 0 and stat.stdout.strip():
-        parts.append(stat.stdout.strip())
-    ut_lines = [l.strip() for l in (untracked.stdout or "").splitlines() if l.strip()]
-    if ut_lines:
-        parts.append(f"untracked: {len(ut_lines)} file(s)")
-        for f in ut_lines[:10]:
-            parts.append(f"  ?? {f}")
-        if len(ut_lines) > 10:
-            parts.append(f"  ... and {len(ut_lines) - 10} more")
-    return "\n".join(parts) if parts else "no changes detected"
-
-
 def _resolve_original_task_info(task: Any) -> dict[str, Any]:
     """Extract the original task status and failure information."""
     status = getattr(task, "status", "unknown")

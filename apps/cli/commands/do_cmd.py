@@ -922,61 +922,6 @@ def _cmd_do_pingpong(
             _print_scope_summary(scope_validation)
 
 
-def _cmd_do_repair_attest(
-    job_id: str,
-    task_id: str,
-    *,
-    note: str = "",
-    repo: str = ".",
-    yes: bool = False,
-    task_scoped: bool = False,
-    allowed_files: str = "",
-    linked_prior_job_id: str = "",
-    json_output: bool = False,
-) -> None:
-    """Attest a manual operator repair as a valid evidence path for one task."""
-    from packages.orchestration.repair_attest import (
-        attest_operator_repair,
-        collect_diff_stat,
-    )
-
-    diff_stat = collect_diff_stat(repo)
-
-    if not yes:
-        print("Diff stat for attestation:", file=sys.stderr)
-        print(diff_stat, file=sys.stderr)
-        print(
-            "\nError: --yes required to confirm attestation. "
-            "Review the diff stat above and re-run with --yes.",
-            file=sys.stderr,
-        )
-        sys.exit(2)
-
-    _allowed = [f.strip() for f in (allowed_files or "").split(",") if f.strip()] or None
-    result = attest_operator_repair(
-        job_id, task_id, note, repo,
-        task_scoped=task_scoped, allowed_files=_allowed,
-        linked_prior_job_id=linked_prior_job_id,
-    )
-
-    if result.get("error"):
-        print(f"Error: {result['error']}", file=sys.stderr)
-        sys.exit(1)
-
-    if json_output:
-        print(json.dumps(result, indent=2))
-    else:
-        print(f"Diff stat:\n{diff_stat}\n")
-        print(
-            f"Operator repair attested [OPERATOR ATTESTED] | "
-            f"job={result['job_id']} task={result['task_id']} "
-            f"files={len(result.get('changed_files', []))} "
-            f"diff_sha256={result['diff_sha256'][:12]}"
-        )
-        for filename in result.get("files", {}):
-            print(f"  {filename}")
-
-
 def _cmd_run_show(
     run_id: str,
     *,
@@ -1655,18 +1600,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "do.replan": lambda args: _cmd_do_replan(
         args.job_id,
-        json_output=getattr(args, "json", False),
-    ),
-    "do.repair-attest": lambda args: _cmd_do_repair_attest(
-        args.job_id,
-        args.task_id,
-        note=getattr(args, "note", None) or "",
-        repo=getattr(args, "repo", None) or ".",
-        yes=getattr(args, "yes", False),
-        task_scoped=getattr(args, "task_scoped", False),
-        allowed_files=getattr(args, "allowed_files", None)
-        or getattr(args, "expected_files", None) or "",
-        linked_prior_job_id=getattr(args, "linked_prior_job_id", None) or "",
         json_output=getattr(args, "json", False),
     ),
     "run.show": lambda args: _cmd_run_show(

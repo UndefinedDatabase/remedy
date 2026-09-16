@@ -320,6 +320,7 @@ class TestDeletedCommands:
         "do.job-report",
         "do.plan",
         "do.promote",
+        "do.repair-attest",
         "guide.job",
         "job.assumptions",
         "job.digest",
