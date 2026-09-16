@@ -1,0 +1,6 @@
+call: run_next_self_use_item(dest_dir=Path('/home/decodeux/Repos/remedy/.remedy-wt/f261r26w/selfuse-dest'), repo_path='/home/decodeux/Repos/remedy/.remedy-wt/f261r26w/selfuse-wt', queue_path=Path('scripts/self_use_queue.json'))
+job_id: 90395ff070d8486c
+state: blocked
+tasks: 1
+task_id: T001 status: blocked
+source: the JobPlan persisted by run_job for this job id, reloaded with packages.orchestration.pingpong_job.load_job_plan after the call returned, because the round's capture script raised serializing the returned object (declared deviation)

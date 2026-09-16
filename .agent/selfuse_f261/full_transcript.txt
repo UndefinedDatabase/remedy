@@ -1,0 +1,10 @@
+NOTE: run_next_self_use_item wrote nothing to stdout or stderr; the lines below are the round's capture
+script, whose own serialization raised after the call had returned.
+STDOUT:
+CALL: run_next_self_use_item(dest_dir=Path('/home/decodeux/Repos/remedy/.remedy-wt/f261r26w/selfuse-dest'), repo_path='/home/decodeux/Repos/remedy/.remedy-wt/f261r26w/selfuse-wt', queue_path=Path('scripts/self_use_queue.json'))
+OUTCOME: raised wall 115.82
+STDERR:
+Traceback (most recent call last):
+  File "/home/decodeux/Repos/remedy/.remedy-wt/f261r26w/u2_call.py", line 24, in <module>
+    res["plan"] = plan.model_dump(mode="json")
+AttributeError: 'JobPlan' object has no attribute 'model_dump'
