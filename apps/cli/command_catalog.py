@@ -851,6 +851,16 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("worker.list",),
     ),
+    CommandEntry(
+        command_id="worker.doctor",
+        group_id="worker",
+        subcommand="doctor",
+        description="Read-only: is each available worker provider's own tooling actually reachable?",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("worker.list", "worker.resources"),
+    ),
 
     # ── mission (the F070 orchestrator loop, keyed on a mission id) ──────
     CommandEntry(
