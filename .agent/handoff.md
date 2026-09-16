@@ -1,81 +1,93 @@
-# Handoff — F280 round 2
+# Handoff — F280 round 3
 
 ## Session
 
-SESSION 1 of feature F280 · round 2 · rounds so far 2
+SESSION 1 of feature F280 · round 3 · rounds so far 3
 
-Context self-assessment: the round was three record commits and three table-applied code commits
-driven by scripts, plus one full serial suite run, and the worker's context stayed comfortable.
+Context self-assessment: the round was three record commits and two table-applied commits driven
+by scripts, plus one worktree red-proof and one full serial suite run, and the worker's context
+stayed comfortable.
+
+`.agent/STOP` APPEARED DURING THIS ROUND: absent at the reads before C0a and before C2, present
+at the read before C4 (an empty untracked file, created 2026-09-16 18:54:13 +0200, while the
+SPEC S suite was running). Per constraint 2 the worker wrote this handoff, pushes, and stops.
+No committed code searches for or writes that path except one text assertion in
+`tests/test_agent_tooling.py`, so it is read as the operator's sentinel; it was left untouched
+and is not committed.
 
 ## Range
 
-Review of `4e93c22c`..`HEAD`.
+Review of `4806b03c`..`HEAD`.
 
 ## Commits
 
-### 7af33af1 F280 R2 C0a: save the round 2 step block under the authored directory
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f280-r2.md` | +319 / -0 | the block file the delegating message names, copied with `shutil.copyfile`, sha256 `fa7f1ba7…9900c5a4` verified before and after the copy |
+Commit totals, each the first and second column of `git show --numstat --format= <commit>`
+summed over its paths:
 
-### b3906ab4 F280 R2 C0b: mirror the round 2 step block into the last block state file
-| Path | +/- | Reason |
+| Commit | +/- | Block item |
 |---|---|---|
-| `.agent/last_block.md` | +248 / -301 | the same bytes, byte-identical to the C0a copy |
+| `cb4aa3fe` | +315 / -0 | C0a |
+| `933ff1bd` | +177 / -181 | C0b |
+| `27576f94` | +59 / -15 | C1 |
+| `0e34d3ab` | +345 / -23 | C2 |
+| `759b3484` | +47 / -177 | C3 |
 
-### f53f109e F280 R2 C1: book round 1's PASS, register R-0932 to R-0934, re-point the plan and record DECISION F280 D2
-The FIRST SUBSTANTIVE COMMIT of the round. Commit total +46 / -19.
-| Path | +/- | Reason |
+### cb4aa3fe F280 R3 C0a: save the round 3 step block under the authored directory
+| Path | file +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +18 / -19 | full replacement by PLAN2 |
-| `.agent/live_review.md` | +8 / -0 | RECORD2 appended: `Gate: F280 R1` PASS, R-0932, R-0933, R-0934 |
-| `.agent/decisions.md` | +14 / -0 | DEC2 appended, DECISION F280 D2 |
-| `docs/roadmap/features/T2_F268.md` | +2 / -0 | pair P268, REWRITE: R-0933 resolution line |
-| `docs/roadmap/features/T2_F273.md` | +2 / -0 | pair P273, REWRITE: R-0932 resolution line |
-| `docs/roadmap/features/T2_F280.md` | +2 / -0 | pair P280, REWRITE: R-0934 resolution line |
+| `.agent/authored/f280-r3.md` | +315 / -0 | the block file the delegating message names, copied with `shutil.copyfile`; sha256 `b2f2cf96…0d8431` before and after |
 
-### 787f3b74 F280 R2 C2: delete the ping-pong path of do run with the flags only it reads, per DECISION F280 D2
-Commit total +158 / -813, applied from the committed carrier by its 53 rows in file order.
-| Path | +/- | Reason |
+### 933ff1bd F280 R3 C0b: mirror the round 3 step block into the last block state file
+| Path | file +/- | Reason |
 |---|---|---|
-| `.agent/authored/f280-r2-path.jsonl` | +53 / -0 | the table carrier, sha256 `df98e2a6…61cd16` verified before and after the copy |
-| `apps/cli/command_catalog.py` | +1 / -17 | rows 1-17: the sixteen ping-pong-only flags leave `do.run`; goal help no longer names a prompt file |
-| `apps/cli/commands/do_cmd.py` | +4 / -413 | rows 18-26: `_cmd_do_pingpong`, `pingpong_effective_model`, `_print_scope_summary`, `_resolve_timeout_precedence`, `_VALID_PINGPONG_PROVIDERS`, the prelude, the ping-pong branch and the `run show` scope block go |
-| `apps/cli/grouped.py` | +4 / -22 | rows 27-36: dead special-cases of the deleted flags; quick start rewritten onto `do run --repo . --json` and `job show $JOB_ID --full` |
-| `docs/system/vocabulary.md` | +1 / -1 | row 46: DECISION F259 D2 names the task file in the past tense |
-| `packages/orchestration/pingpong_provider.py` | +2 / -2 | rows 41-42: both provider messages name `--builder-provider` and `--reviewer-provider` |
-| `tests/cli/test_cli_ux.py` | +32 / -5 | rows 37-38: quick-start tests move to `JOB_ID`/`job show`; new `test_quick_start_flags_are_declared_by_their_commands` |
-| `tests/cli/test_do_cmd_pingpong_budget.py` | +0 / -128 | row 47: deleted, it drove only `_cmd_do_pingpong` |
-| `tests/cli/test_product_spine.py` | +2 / -2 | row 39: `job show` in the quick start |
-| `tests/cli/test_scope_plan.py` | +0 / -38 | row 52: the text-report scope summary test goes |
-| `tests/orchestration/test_pingpong.py` | +7 / -0 | row 43: API-key message names the provider flags |
-| `tests/orchestration/test_pingpong_cli.py` | +8 / -1 | rows 44-45: claude-cli message names the provider flags; write-mode catalog test reads `job.run` |
-| `tests/orchestration/test_provider_retry.py` | +2 / -26 | row 48: `_resolve_timeout_precedence` tests go |
-| `tests/orchestration/test_repair_loop.py` | +2 / -122 | rows 49-50: `do.run` repair-rounds dispatch tests go |
-| `tests/orchestration/test_stream_evidence_integration.py` | +2 / -35 | row 51: `do.run` stream-evidence dispatch test goes |
-| `tests/test_cli_execution_loop_closure.py` | +1 / -1 | row 40 |
-| `tests/test_command_catalog.py` | +37 / -0 | row 53: `TestDeletedFlags` pins every deleted flag of `do run` and `job run` as undeclared |
+| `.agent/last_block.md` | +177 / -181 | the same bytes, byte-identical to the C0a copy |
 
-### 8bd055d9 F280 R2 C3: delete the scope plan module and run_pingpong's scope branches, per DECISION F280 D2
-Commit total +200 / -1285, applied from the committed carrier by its 11 rows in file order.
-| Path | +/- | Reason |
+### 27576f94 F280 R3 C1: book round 2's PASS, register R-0935 and R-0936, re-point the plan and record DECISIONs F280 D3 and D4
+The FIRST SUBSTANTIVE COMMIT of the round.
+| Path | file +/- | Reason |
 |---|---|---|
-| `.agent/authored/f280-r2-scope.jsonl` | +11 / -0 | the table carrier, sha256 `1c99303d…1a8756` verified before and after the copy |
-| `packages/orchestration/pingpong_loop.py` | +1 / -24 | rows 2-7: `scope_data`/`scope_validation` parameters and both scope-contract branches go |
-| `packages/orchestration/scope_plan.py` | +0 / -609 | row 1: deleted whole |
-| `tests/cli/test_scope_plan.py` | +0 / -651 | row 11: deleted |
-| `tests/cli/test_task_input.py` | +188 / -0 | rows 9-10: the scope-free report and flow tests move here |
-| `tests/orchestration/import_reachability_allowlist.txt` | +0 / -1 | row 8: `packages.orchestration.scope_plan` line goes |
+| `.agent/plan.md` | +15 / -15 | full replacement by PLAN3 |
+| `.agent/live_review.md` | +10 / -0 | RECORD3 appended: `Gate: F280 R2` PASS, `Done:` R-0767 and R-0894, R-0935, R-0936 |
+| `.agent/decisions.md` | +24 / -0 | DEC3 appended, DECISIONs F280 D3 and D4 |
+| `docs/roadmap/features/T2_F273.md` | +4 / -0 | pair P273, REWRITE: R-0935 and R-0936 Acceptance lines |
+| `docs/roadmap/features/T2_F280.md` | +6 / -0 | pair P280, REWRITE: the D3/D4 amendment paragraph |
 
-### 298cd353 F280 R2 C4: turn argparse prefix matching off for every parser, per DECISION F280 D2
-Commit total +32 / -0, applied from the committed carrier by its 4 rows in file order.
-| Path | +/- | Reason |
+### 0e34d3ab F280 R3 C2: build job budget set over the run contract's budget fields and the token budget profile, per DECISION F280 D3
+Applied from the committed carrier by its 16 rows in file order; every edit row read its count.
+| Path | file +/- | Reason |
 |---|---|---|
-| `.agent/authored/f280-r2-abbrev.jsonl` | +4 / -0 | the table carrier, sha256 `5f4f42bb…a3560` verified before and after the copy |
-| `apps/cli/grouped.py` | +3 / -0 | rows 1-3: `allow_abbrev=False` on root, group and command parsers |
-| `tests/test_command_catalog.py` | +25 / -0 | row 4: every deleted flag refused by the parser with exit 2; surviving full flags still parse |
+| `.agent/authored/f280-r3-budget.jsonl` | +16 / -0 | the table carrier, sha256 `9ec801c5…952494` before and after the copy |
+| `apps/cli/command_catalog.py` | +8 / -2 | row 1: `job.budget` gains `action`, `field`, `value`; `write_metadata` |
+| `apps/cli/commands/job.py` | +104 / -5 | rows 2-4: `_cmd_job_budget_route`, `_cmd_job_budget_set`, field tuples, dispatch |
+| `packages/orchestration/run_contract.py` | +2 / -1 | rows 5-6: zero and exhausted test budgets name `job budget <job_id> set max_test_runs <n>` |
+| `packages/orchestration/test_execution_service.py` | +2 / -0 | row 7: `contract_guidance` names the write with the job's id |
+| `tests/orchestration/test_job_budgets.py` | +1 / -1 | row 8: comment no longer cites `read_only` |
+| `tests/cli/test_job_budget_set.py` | +187 / -0 | row 9: created, 16 tests |
+| `docs/system/token-economy-context-budget-optimizer-v0.md` | +4 / -3 | row 10 |
+| `docs/guides/token-economy-user-guide-v0.md` | +5 / -4 | row 11 |
+| `docs/system/real-test-execution-v1.md` | +3 / -2 | row 12 |
+| `docs/system/run-contract-v1.md` | +8 / -4 | rows 13-14 |
+| `docs/system/job-budget-enforcement-v0.md` | +5 / -1 | rows 15-16 |
 
-### The handback commit, C5 (this commit)
+### 759b3484 F280 R3 C3: delete job fulfill with its fixture-demo switch and tests, per DECISION F280 D4
+Applied from the committed carrier by its 23 rows in file order; every edit row read its count.
+| Path | file +/- | Reason |
+|---|---|---|
+| `.agent/authored/f280-r3-fulfill.jsonl` | +23 / -0 | the table carrier, sha256 `c3675d0d…69326c` before and after the copy |
+| `apps/cli/command_catalog.py` | +0 / -15 | row 1: `job.fulfill` entry goes |
+| `apps/cli/commands/job.py` | +0 / -59 | rows 2-3: `_cmd_job_fulfill` and its dispatch entry go |
+| `apps/cli/grouped.py` | +0 / -2 | row 4: `--fixture-demo` special case goes |
+| `tests/test_command_catalog.py` | +1 / -0 | row 5: `job.fulfill` into `TestDeletedCommands` |
+| `tests/orchestration/test_job_fulfillment.py` | +0 / -88 | rows 6-11: CLI, catalog and doc-mention tests of the command go |
+| `docs/system/first-fulfilled-job-demo-v0.md` | +13 / -4 | rows 12-14: dated banner, past tense |
+| `docs/guides/simple-operator-quickstart-v0.md` | +5 / -4 | rows 15-18 |
+| `docs/system/core-product-spine-v0.md` | +0 / -1 | row 19 |
+| `docs/system/real-test-execution-v1.md` | +1 / -1 | row 20 |
+| `docs/system/run-contract-v1.md` | +1 / -1 | row 21 |
+| `docs/system/first-perfect-job-demo-v0.md` | +2 / -1 | row 22 |
+| `docs/README.md` | +1 / -1 | row 23 |
+
+### The handback commit, C4 (this commit)
 | Path | Reason |
 |---|---|
 | `.agent/handoff.md` | this rewrite |
@@ -87,128 +99,149 @@ Commit total +32 / -0, applied from the committed carrier by its 4 rows in file 
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
-| C2 | done | all 53 rows read their expected counts |
-| C3 | done | all 11 rows read their expected counts |
-| C4 | done | all 4 rows read their expected counts |
-| C5 | done | this commit; the push follows it |
+| C2 | done | all 16 rows applied, every count as stated |
+| C3 | done | all 23 rows applied, every count as stated |
+| C4 | done | this commit; the push follows it; `.agent/STOP` present, so the worker stops after the push |
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git worktree add --detach .remedy-wt/f280r2w/wt 298cd353…` (G5) | created |
-| `git worktree remove --force .remedy-wt/f280r2w/wt` (G5) | removed; `git worktree list` one row |
+| `git worktree add --detach .remedy-wt/f280r3w/wt <guessed sha>` | exit 128, `invalid reference`, nothing created (see Deviations 2) |
+| `git worktree add --detach .remedy-wt/f280r3w/wt 759b3484dd2a00ede51fee98c9d161726410f98a` (G5) | created |
+| `git worktree remove --force .remedy-wt/f280r3w/wt` (G5) | removed; `git worktree list` one row |
 | `git push origin feature/f280-cli-vocabulary-v2-part-two` | run after this commit; outcome in the completion message |
 
 No pull request. No `remedy` CLI invocation. No runner or `run_job` call by the worker.
 
 ## Verification
 
-STOP reads before C0a, C2 and C5: `ls .agent/STOP` → exit 2, `No such file or directory`, each time.
-`git branch --list 'remedy/job-*'` read 17 lines at the start, after G5 and after G6.
+STOP reads, by `os.path.exists` in a one-line Python probe that exits 0 when present:
+before C0a exit 1 (`exists False`), before C2 exit 1 (`exists False`), before C4 exit 0
+(`exists True`). `git branch --list 'remedy/job-*'` read 17 lines at the start, after G5 and
+after G6. The block measured on its final bytes: TOTAL 315, CONTENT 94, PROSE 221; no line of a
+single repeated character; all 8 header rules two characters.
 
 ### G1 TRANSPORT — exit 0 (`gate_g1g2.py`)
 
-    PASS G1 authored sha256 == delegated digest  fa7f1ba70e4b7c4987b54f359d7ed350ac5cfe0ab8f9f3a5989e26049900c5a4
+    PASS G1 authored sha256 == delegated digest b2f2cf96675597fee363122dc153a0e107dd0ba599994fb7be8634082c6d8431
     PASS G1 last_block at C0b byte-identical
-    PASS G1 slices FOUND 9, each matches its BEGIN digest
-    block measured: TOTAL 319, CONTENT 84, PROSE 235; no single-character-run line; every header rule 2 characters
-    carriers: path df98e2a6…, scope 1c99303d…, abbrev 5f4f42bb… — each committed copy equals its digest
+    PASS G1 slice PLAN3 / RECORD3 / DEC3 / P280-FROM / P280-TO / P273-FROM / P273-TO digest
+    PASS G1 slices FOUND 7
+    carriers: budget 9ec801c5…, fulfill c3675d0d… — each committed copy equals its digest (apply_table.py)
 
 ### G2 THE RECORD at C1 — exit 0 (same script)
 
-    PASS G2 plan == PLAN2, 38 lines, Goal 1, Next Steps 1
-    PASS G2 live_review == base + RECORD2
-    PASS G2 decisions == base + DEC2
-    PASS G2 P268 / P273 / P280: base FROM 1; C1 FROM 0 TO 1; C1 == base with pair
-    PASS G2 Gate lines base=28 c1=29; Gate: F280 R1 base=0 c1=1
-    PASS G2 distinct ids base=127 c1=130; C1 minus base = R-0932, R-0933, R-0934
-    PASS G2 distinct Done ids base=2 c1=2; open set base=125 c1=128
+    PASS G2 plan == PLAN3, 38 lines, Goal 1, Next Steps 1
+    PASS G2 live_review == base + RECORD3
+    PASS G2 decisions == base + DEC3
+    PASS G2 P280 / P273: base FROM 1; C1 FROM 0 TO 1; C1 == base with pair
+    PASS G2 Gate lines base=29 c1=30; Gate: F280 R2 base=0 c1=1
+    PASS G2 distinct ids base=130 c1=132 delta=['R-0935', 'R-0936']
+    PASS G2 distinct Done ids base=2 c1=4 delta=['R-0767', 'R-0894']
+    PASS G2 open set base=128 c1=128
     python3 -B -m pytest -q tests/docs/ → exit 0, 310 passed in 1.24s
 
 ### G3 THE TABLES — exit 0 for each commit (`gate_g3.py`)
 
-    C2 787f3b74: name-only 17 paths == carrier + the 16 named; single parent
-         apps 733555aa…, packages 6f7b4b38…, tests 7bcf67a9… — all equal; insertions 158 (deletions 813)
-    C3 8bd055d9: name-only 6 paths == carrier + the 5 named; single parent
-         apps 733555aa…, packages ed64c3a4…, tests 9b4de341… — all equal; insertions 200 (deletions 1285)
-    C4 298cd353: name-only 3 paths == carrier + the 2 named; single parent
-         apps 725c9980…, packages ed64c3a4…, scripts 4bea3f9f…, tests 9ff3aca0…, docs/guides 52e345b7…,
-         docs/system e730766a…, docs/README.md c282d425…, README.md 3c6b8d40…, .claude e3cd5e0a… — all nine equal;
-         insertions 32 (deletions 0)
-    python3 -B -m pytest -q tests/cli/test_golden_path.py (primary checkout at C2) → exit 0, 42 passed in 17.68s
+    C2 0e34d3ab: single parent 27576f94; name-only 12 paths == carrier + the 11 named
+         apps 3bda6ea6, packages e5d99f30, scripts 4bea3f9f, tests d49f307a, docs/guides b1a68d32,
+         docs/system d5b2ad11, docs/README.md c282d425, README.md 3c6b8d40, .claude e3cd5e0a — all nine equal
+         insertions 345 (deletions 23)
+    C3 759b3484: single parent 0e34d3ab; name-only 13 paths == carrier + the 12 named
+         apps 068608a3, packages e5d99f30, scripts 4bea3f9f, tests 1c14c8b8, docs/guides 969f52e3,
+         docs/system 3d77ab79, docs/README.md 0f1933b9, README.md 3c6b8d40, .claude e3cd5e0a — all nine equal
+         insertions 47 (deletions 177)
+    python3 -B -m pytest -q tests/cli/test_golden_path.py (primary checkout at C2) → exit 0, 42 passed in 17.97s
 
-### G4 THE SWEEP at C4 — exit 0 (`gate_g4.py`, gates carrier sha256 e3ade034… match)
+### G4 THE SWEEP at C3 — exit 0 (`gate_g4.py`, gates carrier sha256 0315f9e2… match)
 
-    ls-tree C4: scope_plan.py '', test_scope_plan.py '', test_do_cmd_pingpong_budget.py '', pingpong_loop.py blob
-    deleted          base 181/8   C2 111/5   C3 8/2    C4 8/2
-    deleted_flags    base 48/8    C2 22/5    C3 22/5   C4 23/5
-    quick_start_old  base 5/2     C2 2/1     C3 2/1    C4 2/1
-    control          base 89/14   C2 89/14   C3 89/14  C4 89/14        (lines/files, all as expected)
-    deleted at C4:
-      packages/orchestration/pingpong_evidence.py:153,155,157,158,159,160,173  (the `scope_plan` manifest field, R-0932)
-      tests/cli/test_task_input.py:414  "# Reports and flows with no scope plan (moved from tests/cli/test_scope_plan.py)"
-    quick_start_old at C4:
-      packages/orchestration/pingpong_loop.py:4262  "remedy run show $RUN_ID --json",
-      packages/orchestration/pingpong_loop.py:4265  "remedy run show $RUN_ID",
-    python3 -m ruff check over 15 paths → exit 0, All checks passed!
+    newword          base 0/0      C2 11/8     C3 12/9
+    fulfill          base 33/11    C2 33/11    C3 11/8
+    control_create   base 107/41   C2 107/41   C3 106/41
+    control_propose  base 59/12    C2 59/12    C3 59/12        (lines/files, all as expected)
+    fulfill at C3:
+      docs/system/first-fulfilled-job-demo-v0.md:4, :34, :51   (the dated banner and past-tense lines)
+      docs/system/first-perfect-job-demo-v0.md:84
+      docs/system/real-test-execution-v1.md:15
+      docs/system/run-contract-v1.md:56
+      packages/orchestration/job_fulfillment.py:6, :617        (module docstrings, kept under D17)
+      packages/orchestration/orchestrator_loop.py:1494         (comment)
+      tests/orchestration/test_orchestrator_loop.py:1619       (comment)
+      tests/test_command_catalog.py:336                        ("job.fulfill" in TestDeletedCommands)
+    python3 -m ruff check over 9 paths → exit 0, All checks passed!
 
-### G5 THE RED-PROOF — driver exit 0 (carrier sha256 77d44762…c0a4ab match)
+### G5 THE RED-PROOF — driver exit 0 (`redproof_driver.py`)
 
-do_cmd loaded from `.remedy-wt/f280r2w/wt/apps/cli/commands/do_cmd.py` on every run; every FROM
-occurred exactly once; worktree status after the restores `''`.
+`apps.cli.commands.job` loaded from `.remedy-wt/f280r3w/wt/apps/cli/commands/job.py` on every run;
+every FROM occurred exactly once; worktree status after the restores `''`.
 
-    CONTROL                                   exit 0  349 passed in 5.10s
-    M1-do-run-builder-argdef                  exit 1  2 failed, 347 passed — node among failed
-    M2-old-quick-start-step-1                 exit 1  1 failed, 348 passed — node failed
-    M3-old-api-key-hint                       exit 1  1 failed, 348 passed — node failed
-    M4-job-run-builder-argdef                 exit 1  2 failed, 347 passed — node among failed
-    M5-old-claude-cli-hint                    exit 1  1 failed, 348 passed — node failed
-    M6-command-parsers-allow-abbrev-reverted  exit 1  1 failed, 348 passed — node failed
+    budget carrier 783cebe3… match, over tests/cli/test_job_budget_set.py
+    CONTROL                                     exit 0  16 passed in 0.65s
+    m1-contract-write-skipped                   exit 1  2 failed, 14 passed — node among failed
+    m2-token-write-skipped                      exit 1  1 failed, 15 passed — node failed
+    m3-floor-refusal-removed                    exit 1  2 failed, 14 passed — node among failed
+    m4a-zero-budget-next-action-reverted        exit 1  2 failed, 14 passed — node among failed
+    m4b-exhausted-budget-next-action-reverted   exit 1  1 failed, 15 passed — node failed
+    m4c-test-run-guidance-reverted              exit 1  1 failed, 15 passed — node failed
+    m5-job-budgets-refusal-removed              exit 1  1 failed, 15 passed — node failed
+    m6-action-not-set-accepted                  exit 1  1 failed, 15 passed — node failed
+    fulfill carrier 0884ccae… match, over tests/test_command_catalog.py and tests/cli/test_advertised_commands.py
+    CONTROL                                     exit 0  65 passed in 1.08s
+    M1-catalog-entry                            exit 1  1 failed, 64 passed — node failed
+    M2-doc-advertisement                        exit 1  1 failed, 64 passed — node failed
 
-M1 also failed `test_parser_refuses_a_deleted_flag_as_an_abbreviation[do.run:--builder]`, and M4
-`test_parser_refuses_a_deleted_flag_as_an_abbreviation[job.run:--builder]`. After the removal
-`git worktree list` read one row and `git branch --list 'remedy/job-*'` 17 lines.
+Extra failed nodes: m1 also `TestR0906TheTestRunBudget::test_a_persisted_contract_keeps_every_other_field`;
+m3 also `TestRefusals::test_each_exits_2_names_the_way_out_and_writes_no_store[contract-below-floor]`;
+m4a also `TestTheRefusalNamesTheWrite::test_test_run_names_the_write_with_the_jobs_id`. After the
+removal `git worktree list` read one row and `git branch --list 'remedy/job-*'` 17 lines.
 
-### G6 THE SUITE, SPEC S at C4 — exit 0 (`spec_suite.py`)
+### G6 THE SUITE, SPEC S at C3 — exit 0 (`spec_suite.py`)
 
     python3 -B -m pytest -q -p no:randomly -p no:cacheprovider --tb=short -rfEs  (PYTHONPATH, REMEDY_PROJECT,
       REMEDY_DATA_DIR removed; PYTHONDONTWRITEBYTECODE=1; primary checkout)
-    rc 0 — 17634 passed, 23 skipped, 1 warning in 1238.56s (0:20:38)
+    rc 0 — 17643 passed, 23 skipped, 1 warning in 1184.21s (0:19:44)
     distinct bad nodes: 0
 
-G7 runs after this commit and the push; it is reported in the completion message only.
+G7 runs after this commit and the push; it is reported in the completion message only. Its
+`git status --porcelain` reading will show `?? .agent/STOP`, the sentinel the worker leaves alone.
 
 ## Authored-text proofs
 
-The nine slices were extracted as the bytes strictly between their `BEGIN` and `END` lines and
+The seven slices were extracted as the bytes strictly between their `BEGIN` and `END` lines and
 each matched its BEGIN-marker sha256 before use; none was edited and no marker line reached a file.
-The applied results were re-read from the git objects at C1 (G2). The three tables were applied
+The applied results were re-read from the git objects at C1 (G2). The two tables were applied
 from the committed-path copies of their carriers, byte-identical to the block's digests, and the
 resulting trees equal the reviewer's dry run (G3).
 
 ## Deviations & assumptions
 
-None to the ordered commit sequence: C0a, C0b, C1, C2, C3, C4 and C5 in that order, each
-single-parent, on `4e93c22c`. Declared:
+None to the ordered commit sequence: C0a, C0b, C1, C2, C3 and C4 in that order, each
+single-parent, on `4806b03c`. Declared:
 
-1. The first STOP read was issued inside a compound shell command, which the guard refused by
-   form before running anything; it was re-issued alone as `ls .agent/STOP` (exit 2).
-2. A later compound read of `pyproject.toml` and the mutation carrier also listed `.remedy-wt/`
-   itself, one level, which constraint 4 does not name; no other directory under it was opened.
-3. The first `tests/docs/` run at C1 was piped through `tail`, which hides the exit code; the G2
-   reading is from the standalone re-run, whose exit 0 the shell tool surfaces by not erroring.
-   An attempt to print `$?` was refused by form.
-4. The first `git worktree add` named a mistyped short sha and exited 128 without creating
-   anything; it was re-run with the full C4 sha.
-5. Beyond the gates, `python3 -m ruff check` ran over each table's `.py` paths before its commit,
+1. `.agent/STOP` appeared between the read before C2 and the read before C4. Nothing was
+   half-written; the worker writes this handoff, pushes and stops, and neither deletes nor
+   commits the file. `.agent/plan.md` is not amended with it, because the block binds the plan
+   to PLAN3 and C4's change set to `.agent/handoff.md`; this section carries it instead.
+2. The first `git worktree add` named a guessed full sha for C3 and exited 128 without creating
+   anything; it was re-run with the sha `git rev-parse 759b3484` printed.
+3. The first STOP read used `test -e` in the shell tool, which returned no output and no error
+   report; since that is not an unambiguous exit code, it was re-issued at once as the Python probe
+   above, which read `exists False`, exit 1. A first compound state probe was refused by the shell
+   guard by form before running anything.
+4. `tests/docs/` at C1 was first run with an added `-p no:cacheprovider`; the G2 reading is the
+   re-run of the exact command the gate names.
+5. `## Commits` carries one commit-total row per commit whose `+/-` cell is constraint 5's reading,
+   and keeps the template's per-commit changed-files tables with the column named `file +/-`.
+6. Beyond the gates, `python3 -m ruff check` ran over each table's `.py` paths before its commit,
    as part of the self-review loop; each printed `All checks passed!`.
 
 ## Next
 
-1. Phase 1 rule 1: re-read `.agent/STOP` from disk before anything else.
-2. The reviewer's verdict on round 2, with the resolutions of R-0767 and R-0894.
-3. `job budget <id> set`, R-0906 and R-0909.
+1. Phase 1 rule 1: `.agent/STOP` exists — write the handoff, end the session, do nothing else,
+   until the operator removes it.
+2. The reviewer's verdict on round 3.
+3. Moving the fixtures and smoke sections off `job create`, then deleting `job create`.
 
 Open findings: 128 by distinct id, with the High ids R-0803, R-0804 and R-0807.
 
