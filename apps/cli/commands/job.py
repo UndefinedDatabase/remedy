@@ -1969,60 +1969,6 @@ def _open_decisions_view(job: JobPlan) -> dict:
         return {'lines': [], 'open_decisions': [], 'next_action': ''}
 
 
-def _cmd_job_fulfill(
-    job_id_str: str,
-    *,
-    fixture_demo: bool = False,
-    json_output: bool = False,
-) -> None:
-    """Run job fulfillment spine — fixture-demo mode only in v0."""
-    import json as _json
-
-    job_id = resolve_job_id(job_id_str)
-
-    if not fixture_demo:
-        if json_output:
-            print(_json.dumps({'error': 'fixture_demo_required',
-                               'message': 'v0 fulfillment requires --fixture-demo flag'}))
-        else:
-            print('Error: v0 fulfillment requires --fixture-demo flag', file=sys.stderr)
-        sys.exit(1)
-
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError:
-        if json_output:
-            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
-        else:
-            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
-        sys.exit(1)
-
-    repo_str = job.metadata.get('target_repo', '')
-    if not repo_str:
-        if json_output:
-            print(_json.dumps({'error': 'no_repo_attached',
-                               'message': 'Attach a repo first: remedy job attach-repo <id> <path>'}))
-        else:
-            print('Error: no repo attached to job', file=sys.stderr)
-        sys.exit(1)
-
-    from pathlib import Path as _Path
-    repo_root = _Path(repo_str)
-
-    from packages.orchestration.job_fulfillment import (
-        export_job_fulfillment_json,
-        run_job_fulfill,
-        summarize_job_fulfillment,
-    )
-
-    record = run_job_fulfill(str(job_id), repo_root, data_dir=resolve_data_root())
-
-    if json_output:
-        print(_json.dumps(export_job_fulfillment_json(record), indent=2))
-    else:
-        print(summarize_job_fulfillment(record))
-
-
 # Renders a money figure for `remedy job budget`, or says out loud that there is
 # none. An unmeasured figure is NEVER rendered as a measured zero (P6) — the
 # text mirror of the null that `BudgetPrediction.to_json` keeps in JSON.
@@ -2440,10 +2386,5 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
             yes=getattr(args, "yes", False),
             json_output=getattr(args, "json", False),
         )
-    ),
-    "job.fulfill": lambda args: _cmd_job_fulfill(
-        args.job_id,
-        fixture_demo=getattr(args, "fixture_demo", False),
-        json_output=getattr(args, "json", False),
     ),
 }

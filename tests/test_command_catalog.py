@@ -333,6 +333,7 @@ class TestDeletedCommands:
         "job.dod",
         "job.enqueue",
         "job.fences",
+        "job.fulfill",
         "job.pause",
         "job.permissions",
         "job.report",

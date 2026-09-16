@@ -85,7 +85,6 @@ references a specific command template that constrains what the worker can do.
 | `propose list <id> --json` | Proposed follow-up tasks | No | No |
 | `config list/show/get` | View config | No | No |
 | `review bundle <id>` | Review evidence bundle | No | No |
-| `job fulfill <id> --fixture-demo` | Run fixture fulfillment demo | Metadata+repo | No* |
 
 *These commands orchestrate steps but do not execute external processes
 without prior explicit approval.

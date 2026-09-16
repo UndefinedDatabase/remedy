@@ -53,7 +53,7 @@ F261 round 17 deleted the `contract` group, whose `set` subcommand also wrote
 `stop_before_apply`, `stop_on_unknown_risk`, `stop_on_medium_risk`, `no_cloud` and `notes`.
 The other contracts written are the default of `build_default_run_contract`, the caller
 override `do_run` persists for the job it creates, and the fixture contract of
-`job_fulfillment`.
+`job_fulfillment`, which no command reaches since F280 round 3 deleted `job fulfill`.
 
 ## CLI
 

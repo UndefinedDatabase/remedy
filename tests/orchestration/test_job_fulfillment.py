@@ -2,7 +2,6 @@
 
 Unit tests for model, fixture components, and contract.
 Integration tests for full fulfillment lifecycle.
-CLI tests for job fulfill command.
 Failure path tests.
 Strengthened truth assertions.
 """
@@ -12,7 +11,6 @@ import contextlib
 import io
 import json
 from pathlib import Path
-from uuid import uuid4
 
 import pytest
 
@@ -658,61 +656,6 @@ class TestProposedTaskLifecycle:
 
 
 # ---------------------------------------------------------------------------
-# CLI tests (Steps 3323-3325)
-# ---------------------------------------------------------------------------
-
-
-class TestJobFulfillCLI:
-
-    def test_invalid_job_id(self):
-        """A bad id is reported on stderr and nothing is printed to stdout."""
-        from apps.cli.commands.job import _cmd_job_fulfill
-
-        out, err = io.StringIO(), io.StringIO()
-        code = None
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            try:
-                _cmd_job_fulfill("not-a-uuid", fixture_demo=True, json_output=True)
-            except SystemExit as exc:
-                code = exc.code
-        assert code not in (None, 0)
-        assert "invalid job ID" in err.getvalue()
-        assert out.getvalue().strip() == ""
-
-    def test_missing_job(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.commands.job import _cmd_job_fulfill
-
-        fake_id = str(uuid4())
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            try:
-                _cmd_job_fulfill(fake_id, fixture_demo=True, json_output=True)
-            except SystemExit:
-                pass
-        output = buf.getvalue()
-        assert "job_not_found" in output
-
-    def test_missing_fixture_flag(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-        job = JobPlan(job_title="No flag test")
-        save_job_plan(job, root=tmp_path)
-
-        from apps.cli.commands.job import _cmd_job_fulfill
-
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            try:
-                _cmd_job_fulfill(str(job.job_id), fixture_demo=False, json_output=True)
-            except SystemExit:
-                pass
-        output = buf.getvalue()
-        assert "fixture_demo_required" in output
-
-
-# ---------------------------------------------------------------------------
 # Docs tests (Step 3327, 3378, 3381, 3396-3398)
 # ---------------------------------------------------------------------------
 
@@ -722,12 +665,6 @@ class TestFulfilledDemoGuide:
     def test_guide_exists(self):
         path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
         assert path.exists()
-
-    def test_guide_mentions_fulfill(self):
-        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
-        text = path.read_text()
-        assert "job fulfill" in text
-        assert "fixture-demo" in text
 
     def test_guide_mentions_status_report(self):
         path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
@@ -756,26 +693,6 @@ class TestFulfilledDemoGuide:
         path = _ROOT / "docs" / "guides" / "simple-operator-quickstart-v0.md"
         text = path.read_text()
         assert "propose list --job-id" not in text
-
-
-# ---------------------------------------------------------------------------
-# Command catalog tests (Step 3329, 3382)
-# ---------------------------------------------------------------------------
-
-
-class TestFulfillCatalog:
-
-    def test_job_fulfill_in_catalog(self):
-        from apps.cli.command_catalog import get_command
-        cmd = get_command("job.fulfill")
-        assert cmd is not None
-        assert cmd.action_class == "apply_write"
-        assert cmd.supports_json
-
-    def test_job_fulfill_has_handler(self):
-        from apps.cli.commands import collect_all_handlers
-        handlers = collect_all_handlers()
-        assert "job.fulfill" in handlers
 
 
 # ---------------------------------------------------------------------------
@@ -1570,11 +1487,6 @@ class TestDemoDocsCommands:
         create_lines = [l for l in docs.splitlines() if "job create" in l and "remedy" in l]
         for line in create_lines:
             assert "--json" not in line, f"job create should not use --json: {line}"
-
-    def test_fulfill_command_exists(self):
-        """job fulfill --fixture-demo must be a valid CLI subcommand."""
-        from apps.cli.commands.job import COMMAND_HANDLERS
-        assert "job.fulfill" in COMMAND_HANDLERS, "job.fulfill not in CLI COMMAND_HANDLERS"
 
     def test_demo_docs_command_shapes(self):
         """All remedy commands in demo docs must be valid shapes."""

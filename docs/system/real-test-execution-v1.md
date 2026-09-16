@@ -12,7 +12,7 @@ A real test command may only run when **both** conditions are true:
 2. **Contract budget set**: the contract's `max_test_runs` above 0, which
    `remedy job budget <job_id> set max_test_runs <n>` writes (DECISION F280 D3); unless it is
    set, the default contract has `max_test_runs=0`
-   and only the fixture contract of `job fulfill` carries a non-zero budget.
+   and until F280 round 3 deleted `job fulfill` only its fixture contract carried a non-zero budget.
 
 Either gate alone is insufficient. The default contract has `max_test_runs=0`.
 
