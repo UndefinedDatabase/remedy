@@ -13,37 +13,37 @@ Acceptance list hold.
 
 ## Current Step
 
-ROUND 7. C1 books round 6's PASS and re-points `.agent/plan.md`. C2 clears the
-full "Run" bucket (30 of 30): the group descriptions for `ci`, `teacher` and
-`test`; the command descriptions and ArgDef help text of `ci.run`,
-`integrity.check`, `teacher.ask`, `teacher.narrate`, `test.status`,
-`test.result`, `test.list`, `test.run` (`--apply-id`, `--intent-id`),
-`mission.run` (description, `--iterations`, `--no-llm`), `mission.readiness`,
-`run.show` (description and `run_id`), `job.resume` (`--cycles`), `job.run`
-(`--test-command`), `job.apply` (description and `--approve`), `job.evidence`
-(`--verification-command`), `do.run` (`--ui`), and `stats.bench` (description
-and `--series`). Two of the thirty edits (`test.list`, `test.status`) also
-land a bonus, truthful fix on the separate `Job`-word bucket, as a documented
-side effect — not a new violation.
+ROUND 8. C1 books round 7's PASS and re-points `.agent/plan.md`. C2 clears 33
+of the 65 Project-bucket violations via FOUR shared-literal edits: the
+`_PROJECT_SCOPE_OPT` constant (21 call sites — `job.list`, `teacher.ask`, all
+11 `mission.*` commands, and all 7 `stats.*` commands that take a `--project`
+option), the "Project slug or UUID" literal (3 sites: `project.current`,
+`project.attach`, `project.adopt`), the "Project UUID scope" literal (3
+sites: `memory.store`, `memory.recall`, `memory.list`), and the "Project ID
+scope" literal (6 sites: the six `memory.card-*` commands).
 
-After this round: Order remains 1 (`stats.bench`, still the word-sense
-collision round 4 named — untouched by this round), Mission, Task, Evidence,
-Decision and Run all read 0. Only Project (65) and Job (118, down from 120)
-remain — the two largest buckets.
+After this round: Order remains 1 (`stats.bench`, unchanged), Mission, Task,
+Evidence, Decision and Run all read 0. Project drops from 65 to 32 — the
+remaining text is unique per command: `do.run`'s own `--project` ArgDef,
+`init.run`'s `--project-name`, most of the `project.*` group's own
+descriptions and `project_id` ArgDefs, `runtime.*`'s `--repo` ArgDefs,
+`brain.*`'s descriptions, `status.run`'s description, `job.list`'s own
+description, `stats.backfill-ledger`'s own description, and the `brain`,
+`memory`, `runtime`, `status` and `test` group descriptions. Job stays at 118
+— untouched this round, still the largest remaining bucket.
 
 ## Next Steps
 
-1. Re-run `_meaning_violations()` grouped by word at the start of round 8;
-   expected: Project and Job are the only two buckets left, at approximately
-   183-184 total (re-measure rather than trust). Job (~118) is by far the
-   largest; Project (~65) is next. Given their size, a future round should
-   look for shared constants (as the many `job_id`/`--project` ArgDefs)
-   before writing many per-command edits — grep for the most-repeated exact
-   help strings among the violations first.
-2. This session (session 1 of F281) has now run 7 delegated rounds, inside
-   the operator's 6-to-8 target (amend0905-throughput: 6-8 default, 4 the
-   floor). The session's own honest assessment governs whether it continues
-   or ends with a handoff; either is a legitimate outcome per the protocol.
+1. Re-run `_meaning_violations()` grouped by word at the start of round 9;
+   expected: Project (~32) and Job (~118) are the only two buckets left
+   (plus Order's 1 unfixed `stats.bench` collision), at approximately 150-151
+   total (re-measure rather than trust). Job is now by far the largest;
+   continue looking for shared constants there first (the many `job_id`
+   ArgDefs are the obvious candidate) before writing per-command edits.
+2. This session (session 1 of F281) has now run 8 delegated rounds, at the
+   TOP of the operator's 6-to-8 target (amend0905-throughput). The session's
+   own honest assessment governs whether it continues (context comfortably
+   sufficing) or ends with a handoff; either is legitimate.
 3. Help wrap, `doctor core` dead-commands (D11d), the D11a catalog
    group-reach test, the visible-order data-pinned test, the F259 enforced
    flip (bounded by DECISION F281 D2's two-item floor, possibly `stats.bench`
@@ -52,11 +52,12 @@ remain — the two largest buckets.
 
 ## Risks
 
-- Same as rounds 2-6: every catalog description edit is verified by
+- Same as rounds 2-7: every catalog description edit is verified by
   re-running the real `_meaning_violations()`/`_synonym_offenders()`
   functions against the modified catalog before authoring, diffed fixed vs.
   introduced.
-- The Job bucket (~118) likely contains many shared constants and many
-  genuinely distinct descriptions; it will need several rounds and careful
-  checking for the "fragment is itself a binding word" and "same word,
-  different sense" traps this feature has already found twice.
+- The Job bucket (~118) likely contains many shared constants (the repeated
+  `job_id`/`Job ID` ArgDefs across dozens of commands) and many genuinely
+  distinct descriptions; it will need several rounds and careful checking
+  for the "fragment is itself a binding word" and "same word, different
+  sense" traps this feature has already found twice.
