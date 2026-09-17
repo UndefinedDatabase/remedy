@@ -681,7 +681,11 @@ class TestStatus:
 
 
 class TestHelpPinning:
-    def test_do_status_decision_pinned_first(self, tmp_path):
+    def test_visible_groups_in_d4_order(self, tmp_path):
+        """DECISION amend0905-vocab D4 (binding, complete): the sixteen visible
+        groups appear in `remedy --help` in this fixed order, `do` pinned first."""
+        from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
+
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
 
@@ -691,12 +695,16 @@ class TestHelpPinning:
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
         assert result.returncode == 0
-        out = result.stdout
-        do_pos = out.index("do ")
-        status_pos = out.index("status ")
-        decision_pos = out.index("decision ")
-        init_pos = out.index("init ")
-        assert do_pos < status_pos < decision_pos < init_pos
+        row_gids: list[str] = []
+        for line in result.stdout.splitlines():
+            if not line.startswith("│  "):
+                continue
+            rest = line[len("│  "):]
+            for gid in VISIBLE_GROUP_ORDER:
+                if rest.startswith(gid) and (len(rest) == len(gid) or not rest[len(gid)].isalnum()):
+                    row_gids.append(gid)
+                    break
+        assert row_gids == list(VISIBLE_GROUP_ORDER)
 
 
 class TestGoldenPathSmoke:

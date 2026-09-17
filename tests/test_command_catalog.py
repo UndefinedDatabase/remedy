@@ -235,6 +235,24 @@ class TestCatalogLookups:
 # ---------------------------------------------------------------------------
 
 
+class TestVisibleGroupOrder:
+    """DECISION amend0905-vocab D4, clarified by amend0911-feedback D1: the
+    default `remedy --help` order is these sixteen groups in this fixed order."""
+
+    def test_visible_group_order_matches_d4(self) -> None:
+        from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
+        assert VISIBLE_GROUP_ORDER == (
+            "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
+            "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
+        )
+
+    def test_visible_group_order_is_exactly_the_visible_groups(self) -> None:
+        from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
+        visible = {gid for gid, gdef in GROUPS.items() if gdef.user_facing and not gdef.hidden}
+        assert set(VISIBLE_GROUP_ORDER) == visible
+        assert len(VISIBLE_GROUP_ORDER) == len(set(VISIBLE_GROUP_ORDER))
+
+
 class TestRequiredGroups:
     REQUIRED = ("job", "project", "patch", "test", "brain", "worker", "ui", "dev")
 

@@ -23,6 +23,7 @@ import sys
 
 from apps.cli.command_catalog import (
     GROUPS,
+    VISIBLE_GROUP_ORDER,
     CommandEntry,
     get_commands_for_group,
     resolve_group,
@@ -369,11 +370,7 @@ def _print_root_help(*, show_all: bool = False) -> None:
         groups = [(gid, gdef.description) for gid, gdef in GROUPS.items() if not gdef.hidden]
         title = "All Commands"
     else:
-        groups = [
-            (gid, gdef.description)
-            for gid, gdef in GROUPS.items()
-            if gdef.user_facing and not gdef.hidden
-        ]
+        groups = [(gid, GROUPS[gid].description) for gid in VISIBLE_GROUP_ORDER]
         title = "Commands"
     print(render_root_help(
         "remedy", "Remedy \u2014 Human-in-the-loop Project Brain", groups,

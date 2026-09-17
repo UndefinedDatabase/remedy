@@ -295,6 +295,26 @@ class TestBootcampStyleRootHelp:
         assert "Commands" in stdout
 
 
+class TestRootHelpVisibleOrder:
+    """DECISION amend0905-vocab D4: `remedy --help` lists the visible groups in
+    the fixed D4 order, never `GROUPS`' own dict insertion order."""
+
+    def test_root_help_lists_groups_in_d4_order(self) -> None:
+        from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
+        stdout, _, rc = _capture_grouped([])
+        assert rc == 0
+        row_gids: list[str] = []
+        for line in stdout.splitlines():
+            if not line.startswith("│  "):
+                continue
+            rest = line[len("│  "):]
+            for gid in VISIBLE_GROUP_ORDER:
+                if rest.startswith(gid) and (len(rest) == len(gid) or not rest[len(gid)].isalnum()):
+                    row_gids.append(gid)
+                    break
+        assert row_gids == list(VISIBLE_GROUP_ORDER)
+
+
 class TestBootcampStyleGroupHelp:
     """Group help must have Usage, Options, Commands sections."""
 

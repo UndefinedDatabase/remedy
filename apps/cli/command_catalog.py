@@ -141,6 +141,19 @@ GROUPS: dict[str, GroupDef] = {
     "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True),
 }
 
+#: The default `remedy --help` order (DECISION amend0905-vocab D4, clarified by
+#: amend0911-feedback D1): the sixteen visible groups in this fixed order, then
+#: `absorb` (F263) and `chat` (F264) once each ships — two reserved slots, not
+#: registered as empty groups (D1). `_print_root_help` iterates this tuple, never
+#: `GROUPS`' own dict order, so a new visible group added elsewhere in `GROUPS`
+#: cannot silently reorder the help output; `TestVisibleGroupOrder` in
+#: `tests/test_command_catalog.py` pins both the tuple's own content and its
+#: completeness against `GROUPS`.
+VISIBLE_GROUP_ORDER: tuple[str, ...] = (
+    "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
+    "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
+)
+
 
 # ---------------------------------------------------------------------------
 # Argument shorthands
