@@ -1,7 +1,7 @@
 {
   "gauntlet_order_set_version": 4,
   "template_digest": "1c4f41bf991a5b3626a72d5de60eba76948e82ec3181cff1f2dc4d5dd4ef0454",
-  "set_hash": "e50916bfb6340a85e094da258ce9d8025e5fa35467f6a6bf3b1b5256f6f30efc",
+  "set_hash": "6b8c3498ebab201c666cbb79223b56fe7cf3c9b5546ba341293fac8971d7a5b0",
   "orders": [
     {
       "id": "g01-pure-code-change",
@@ -26,7 +26,7 @@
     {
       "id": "g05-two-milestone-mission",
       "file": "g05-two-milestone-mission.json",
-      "sha256": "81c566cdd5009d540724253685eb71881affe25bd9c593a090aabe455f0b0272"
+      "sha256": "9093b3fb2b191d9413e18b23141b334e5063dea44a5450d93a77a5038df60907"
     },
     {
       "id": "g06-provider-api-error-mid-move",
