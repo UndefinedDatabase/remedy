@@ -118,7 +118,7 @@ GROUPS: dict[str, GroupDef] = {
     "ui": GroupDef("ui", "UI", "Open the local UI."),
     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
     "config": GroupDef("config", "Config", "View or change settings.", aliases=("settings",)),
-    "worker": GroupDef("worker", "Worker", "Manage worker connections."),
+    "worker": GroupDef("worker", "Worker", "Manage the workers that support a role: builder, reviewer, planner or teacher."),
     "memory": GroupDef("memory", "Memory", "Project memory."),
     "teacher": GroupDef("teacher", "Teacher", "Explain a run. Read-only, never steers it."),
     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project dev server."),
@@ -127,7 +127,7 @@ GROUPS: dict[str, GroupDef] = {
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False),
     "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
     "brain": GroupDef("brain", "Brain", "Inspect the project brain graph.", user_facing=False),
-    "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded run-loop facade (internal)."),
+    "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded orchestrator facade (internal)."),
     "change": GroupDef("change", "Change", "Review change sets (proof chain view).", user_facing=False),
     "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False),
     "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False),
@@ -138,7 +138,7 @@ GROUPS: dict[str, GroupDef] = {
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
     "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False),
     # -- Hidden: in no help at all, callable (DECISION amend0905-vocab D4) --
-    "roadmap": GroupDef("roadmap", "Roadmap", "Read-only roadmap mirror — what is active, what is next. Proposes, never starts.", user_facing=False, hidden=True),
+    "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True),
 }
 
 
@@ -583,7 +583,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="test.run",
         group_id="test",
         subcommand="run",
-        description="Run discovered tests for a job (contract-gated, resource-safe).",
+        description="Run the discovered tests for a job's tasks, gated by its contract (the job's acceptance criteria) and resource-safe.",
         action_class="test_execution",
         args=(
             _JOB_ID,
@@ -798,7 +798,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="worker.list",
         group_id="worker",
         subcommand="list",
-        description="List known worker provider specs.",
+        description="List the worker provider specs available for each role: builder, reviewer, planner or teacher.",
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
@@ -808,7 +808,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="worker.show",
         group_id="worker",
         subcommand="show",
-        description="Show details of a single worker adapter.",
+        description="Show the details of a single worker adapter: the model and the roles (builder, reviewer, planner, teacher) it supports.",
         action_class="read_only",
         args=(ArgDef("provider_id", "Provider ID (e.g. ollama)"), _JSON_OPT),
         supports_json=True,
@@ -844,7 +844,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="worker.status",
         group_id="worker",
         subcommand="status",
-        description="Show current worker status.",
+        description="Show the current status of each worker: which role (builder, reviewer, planner or teacher) it is running, if any.",
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
@@ -854,22 +854,22 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="worker.doctor",
         group_id="worker",
         subcommand="doctor",
-        description="Read-only: is each available worker provider's own tooling actually reachable?",
+        description="Read-only: is each available worker provider's own tooling actually reachable for the roles (builder, reviewer, planner, teacher) it supports?",
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
         related=("worker.list", "worker.resources"),
     ),
 
-    # ── mission (the F070 orchestrator loop, keyed on a mission id) ──────
+    # ── mission (the F070 orchestrator, keyed on a mission id) ──────────
     CommandEntry(
         command_id="mission.run",
         group_id="mission",
         subcommand="run",
-        description="Run the F070 orchestrator loop for one mission. Stops on a terminal move, the iteration limit, a stop request or an escalation.",
+        description="Run the F070 orchestrator for one mission. Stops on a terminal move, the iteration limit, a stop request or an escalation.",
         action_class="write_metadata",
         args=(
-            ArgDef("run_id", "Mission id (F070 loop)"),
+            ArgDef("run_id", "Mission id (F070 orchestrator)"),
             ArgDef("--iterations", "Max orchestrator iterations this run", required=False, is_option=True),
             ArgDef("--no-llm", "Run without a provider — reports the honest no_provider terminal", required=False, is_option=True, is_flag=True),
             _PROJECT_SCOPE_OPT,
@@ -1369,8 +1369,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description=(
             "Resume a job. Without --checkpoint: continue from the newest valid "
             "cycle checkpoint (F047) — a pending stop request is consumed first, "
-            "worktree drift refuses, the plan-approval gate still applies. With "
-            "--checkpoint <id>: resume from that safe event-replay checkpoint."
+            "worktree drift refuses, the plan-approval gate (approving the job's "
+            "tasks) still applies. With --checkpoint <id>: resume from that safe "
+            "event-replay checkpoint."
         ),
         action_class="apply_write",
         args=(
@@ -1546,7 +1547,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--autonomy-level", "Autonomy level 0-7 (default: 2)", required=False, is_option=True, default="2"),
             ArgDef("--max-cycles", "Maximum cycles (default: 3)", required=False, is_option=True, default="3"),
             ArgDef("--ui", "Start UI alongside run", required=False, is_option=True, default="false"),
-            ArgDef("--dry-run", "Show plan without executing", required=False, is_option=True, default="false"),
+            ArgDef("--dry-run", "Show the plan's tasks without executing", required=False, is_option=True, default="false"),
             ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),
             ArgDef("--fixture-builder", "Fixture builder mode: true (default) or repair-loop", required=False, is_option=True, default="false"),
             ArgDef("--builder-provider", "Builder provider: none, fixture, ollama (default: none)", required=False, is_option=True, default="none"),
@@ -1896,10 +1897,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="self.plan",
         group_id="self",
         subcommand="plan",
-        description="Read-only: build a self-improvement plan (grouped items, top recommendations).",
+        description="Read-only: build a self-improvement plan of grouped tasks and top recommendations.",
         action_class="read_only",
         args=(
-            ArgDef("--job-id", "Optional job to include in the plan", required=False, is_option=True),
+            ArgDef("--job-id", "Optional job whose tasks are included in the plan", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
@@ -1990,7 +1991,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="dev.agent-loop",
         group_id="dev",
         subcommand="agent-loop",
-        description="Run the agent loop for a job (dev/testing).",
+        description="Inspect the agent's cycle state for a job (dev/testing).",
         action_class="dev_helper",
         args=(_JOB_ID,),
         may_execute_commands=True,
@@ -2020,7 +2021,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="roadmap.status",
         group_id="roadmap",
         subcommand="status",
-        description="Show the active roadmap feature, its blockers and its milestone.",
+        description="Show the active feature in Remedy's own roadmap, its blockers and its milestone.",
         action_class="read_only",
         args=(
             ArgDef("--repo", "Repository to mirror (default: this Remedy checkout)", required=False, is_option=True),
@@ -2033,7 +2034,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="roadmap.next",
         group_id="roadmap",
         subcommand="next",
-        description="Propose the next roadmap feature and its file path. Starts nothing.",
+        description="Propose the next feature in Remedy's own roadmap and its file path; starts nothing.",
         action_class="read_only",
         args=(
             ArgDef("--repo", "Repository to mirror (default: this Remedy checkout)", required=False, is_option=True),
