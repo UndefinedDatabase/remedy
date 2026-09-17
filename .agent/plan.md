@@ -13,51 +13,50 @@ Acceptance list hold.
 
 ## Current Step
 
-ROUND 5. C1 books round 4's PASS and re-points `.agent/plan.md`. C2 clears the
-full "Evidence" bucket (12 of 12: `group:stats:description`,
-`group:self:description`, `arg:job.stop:--reason:description`,
-`command:mission.report:description`, `command:mission.abandon:description`,
-`arg:job.run:--no-stream-evidence:description`,
-`arg:stats.failures:--job:description`,
-`arg:stats.backfill-ledger:evidence_dir:description`,
-`command:stats.verify-ledger:description`,
-`arg:stats.verify-ledger:evidence_dir:description`,
-`command:self.inspect:description`, `command:self.report:description`) plus
-one side-effect fix (`mission.report`'s Job violation, since its rewrite
-already needed the word "mission" nearby, which is one of Job's own three
-fragments) — 13 total, zero introduced.
+ROUND 6. C1 books round 5's PASS and re-points `.agent/plan.md`. C2 clears the
+full "Mission" bucket (16 of 16): 8 identical `mission_id` ArgDefs (abandon,
+achieve, continue, pause, plan, resume, show, watchdog — one global
+find-and-replace of the shared literal string), `mission.handoff`'s own
+distinct `mission_id` ArgDef, `mission.run`'s `run_id` ArgDef,
+`mission.start`'s `goal` ArgDef, and 5 command descriptions (`mission.handoff`,
+`mission.pause`, `mission.resume`, `mission.run`, `mission.watchdog`).
 
-After this round the ONLY remaining Order violation is `stats.bench`'s
-(unfixed, per round 4's note — mathematical "order", not the vocabulary
-concept), and Task and Evidence both read zero.
+After this round: Order reads 1 (`stats.bench`, unfixed per round 4's note),
+Mission and Task and Evidence and Decision all read 0. Only Run, Project and
+Job remain — the three largest buckets, ~29, 65 and 120 respectively before
+this round's own measurement (which touches none of them directly, though
+`mission.run` and `mission.watchdog`'s Run-fragment satisfaction was already
+in place from round 3, so no cascade is expected here — confirm at round 7's
+start).
 
 ## Next Steps
 
-1. Re-run `_meaning_violations()` grouped by word at the start of round 6;
-   expected counts after this round: Mission 16 (unchanged — none of this
-   round's fixes touched a standalone Mission violation), Order 1
-   (`stats.bench`, unfixed), Run ~29-30, Project 65, Job ~120 — 232 total
-   (measured directly this round; re-measure rather than trust). Take the
-   next-smallest bucket (Mission, 16, unless a fresh measurement disagrees).
-2. Continue watching for the "fragment is itself a binding word" trap
-   (Mission's own fragments are order/job/contract — all three ARE binding
-   words) and the "same word, different sense" trap (`stats.bench`'s
-   mathematical order): every rewrite is checked against the FULL before/after
-   diff of the real `_meaning_violations()`/`_synonym_offenders()` functions,
-   never assumed safe from reading the text alone.
+1. Re-run `_meaning_violations()` grouped by word at the start of round 7;
+   expected: Run, Project, Job are the only three buckets left, at
+   approximately 216 total (232 minus this round's 16 — re-measure rather
+   than trust). Job (~120) is by far the largest; Project (~65) and Run
+   (~29-30) are next. Given their size, a future round should look for
+   shared constants (as `_LIST_DESC_ARG`/`_TASK_OPT`/the `mission_id` literal
+   already proved out) before writing many per-command edits — grep for the
+   most-repeated exact help strings among the violations first.
+2. This session (session 1 of F281) has now run 6 delegated rounds, inside
+   the operator's 6-to-8 target. The session's own honest assessment governs
+   whether it continues or ends with a handoff; either is a legitimate
+   outcome per the protocol, not a fixed count.
 3. Help wrap, `doctor core` dead-commands (D11d), the D11a catalog
    group-reach test, the visible-order data-pinned test, the F259 enforced
    flip (bounded by DECISION F281 D2's two-item floor, possibly `stats.bench`
    as a third), and the README quickstart's R-0895 line remain entirely
-   undone. This session (session 1 of F281) has now run 5 delegated rounds,
-   at the operator's 4-to-5 default and approaching the 6-to-8 target; the
-   next round may be this session's last if a natural stopping point is
-   reached, per a session's own honest self-assessment rather than a fixed
-   count.
+   undone — none of T001's non-description work has started yet.
 
 ## Risks
 
-- Same as rounds 2-4: every catalog description edit is verified by
+- Same as rounds 2-5: every catalog description edit is verified by
   re-running the real `_meaning_violations()`/`_synonym_offenders()`
   functions against the modified catalog before authoring, diffed fixed vs.
   introduced.
+- The Job bucket (~120, by far the largest) likely contains many shared
+  constants and many genuinely distinct descriptions; it will need several
+  rounds and careful checking for the "fragment is itself a binding word"
+  and "same word, different sense" traps this feature has already found
+  twice.
