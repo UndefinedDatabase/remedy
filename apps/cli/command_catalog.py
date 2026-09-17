@@ -109,7 +109,7 @@ GROUPS: dict[str, GroupDef] = {
     # -- Golden path (pinned first in help) --
     "do": GroupDef("do", "Do", "Run, report, and apply Remedy tasks."),
     "status": GroupDef("status", "Status", "Project status overview."),
-    "decision": GroupDef("decision", "Decision", "Human decision queue."),
+    "decision": GroupDef("decision", "Decision", "The queue of decisions Remedy cannot answer for itself."),
     # -- User-facing primary commands --
     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
@@ -556,7 +556,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="patch.approve-hunks",
         group_id="patch",
         subcommand="approve-hunks",
-        description="Record a hunk-level approve and reject decision over a job's diff.",
+        description="Record a hunk-level approve-or-reject answer over one of a job's tasks.",
         action_class="approval_gate",
         args=(_JOB_ID, _TASK_RUN_OPT, _APPROVE_HUNK_OPT, _REJECT_HUNK_OPT, _JSON_OPT),
         supports_json=True,
@@ -882,7 +882,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.watchdog",
         group_id="mission",
         subcommand="watchdog",
-        description="Evaluate a mission's autonomy tripwires and report what fired, with the evidence behind it (read-only: it pauses nothing and raises no decision).",
+        description="Evaluate a mission's autonomy tripwires and report what fired, with the run's evidence behind it — read-only: it pauses nothing and answers no decision.",
         action_class="read_only",
         args=(
             ArgDef("mission_id", "Mission id (or a unique prefix)"),
@@ -1450,11 +1450,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="decision.show",
         group_id="decision",
         subcommand="show",
-        description="Show a single decision by ID.",
+        description="Show a single decision — its question and answer, if any.",
         action_class="read_only",
         args=(
             _JOB_ID,
-            ArgDef("decision_id", "Decision ID"),
+            ArgDef("decision_id", "ID of the decision to answer or resolve"),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -1467,7 +1467,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             _JOB_ID,
-            ArgDef("decision_id", "Decision ID"),
+            ArgDef("decision_id", "ID of the decision to answer or resolve"),
             _REASON_OPT,
             _ANSWER_OPT,
             _AS_MISSION_FLAG,
