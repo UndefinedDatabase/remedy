@@ -1,43 +1,39 @@
-# F281 Round 7 — step block
+# F281 Round 8 — step block
 
 ## Goal
 
-Book round 6's PASS, and clear the full "Run" bucket (30 of 30) — the last of
-the small/medium buckets before Project (65) and Job (~120), the two large
-remaining buckets. Zero introduced beyond a documented, truthful side effect:
-two of the thirty edits (`test.list`, `test.status`) add "job's tasks" to
-satisfy the Run word's own `task`/`evidence` fragment, and that same text
-happens to also satisfy the separate `Job`-word fragment (`task`) on those
-same two surfaces — a bonus fix, not a new violation. Net: 32 fixed, 0
-introduced, pre-verified in a disposable worktree against the real
-`tests/docs/test_vocabulary.py` functions before authoring.
+Book round 7's PASS, and clear the highest-leverage 33 of the 65 Project-
+bucket violations via FOUR shared-literal edits (one constant, three
+duplicated literal ArgDef strings) rather than 33 separate located edits —
+the same leverage round 4 found with `_LIST_DESC_ARG` and round 6 found with
+the 8 identical `mission_id` ArgDefs. Zero introduced, pre-verified in a
+disposable worktree against the real `tests/docs/test_vocabulary.py`
+functions before authoring.
 
 ## Bundle
 
-C0a: save this block verbatim to `.agent/authored/f281-r7.md`.
+C0a: save this block verbatim to `.agent/authored/f281-r8.md`.
 C0b: mirror this block verbatim to `.agent/last_block.md`.
-C1: RECORD6 + PLAN7 — one commit.
-C2: CODE — 30 catalog text edits in `apps/cli/command_catalog.py`, all
-clearing a `Run`-word meaning violation (the description contains "run" but
-no `task`/`evidence` fragment). Each edit uses one of two honest strategies:
-(a) the "run" usage genuinely names the Run entity (a job/mission's
-execution) — add a true `task` or `evidence` mention already implied by the
-command's real behaviour; or (b) the "run" usage is an ordinary English verb
-unrelated to the Run entity (e.g. "run pytest", "run CI stages") — reword to
-a synonym ("execute") that removes the word entirely. Every edit was applied
-and measured in a scratch worktree first; none is guessed.
+C1: RECORD7 + PLAN8 — one commit.
+C2: CODE — 4 FROM/TO edits in `apps/cli/command_catalog.py`, each a global
+find-and-replace of one exact literal string (edit 1 replaces the shared
+`_PROJECT_SCOPE_OPT` constant definition, which is referenced by 21
+CommandEntries; edits 2-4 each replace a duplicated literal `ArgDef(...)`
+call that appears verbatim at multiple sites — not a Python constant, just
+identical text repeated by the original authors). 33 violations clear as a
+result, all in the `Project` word bucket.
 C3: HANDBACK.
 
-## C1 — RECORD6 + PLAN7
+## C1 — RECORD7 + PLAN8
 
-### RECORD6 — append to `.agent/live_review.md`, after its current last line,
+### RECORD7 — append to `.agent/live_review.md`, after its current last line,
 separated by exactly one blank line, verbatim:
 
 ```
-Gate: F281 R6 — the F281 round 6 entry. VERDICT PASS. Written by the planner and reviewer of F281's first session after reading the committed range `78d32152`..`cc1cd3b0` (commits `94259710`, `0945520f`, `8ba2c5ed`, `60c81988`, `cc1cd3b0`) and independently re-deriving every reading below; the worker's report was evidence for none of them except where named. THE TRANSPORT: `.agent/authored/f281-r6.md` and `.agent/last_block.md` are byte-identical to the reviewer's own authored block, sha256 `060104df78a179c32b9c9b2a0b5e7e6ce7f5b900fb248ffed09a7dcedeffa11c`, 12066 bytes, reproduced directly. THE CODE, reproduced by `git show 60c81988`: all 9 FROM/TO edits landed exactly as ordered (8 identical `mission_id` ArgDefs replaced by one global find-and-replace, plus `mission.handoff`'s distinct `mission_id` ArgDef, `mission.run`'s `run_id` ArgDef, `mission.start`'s `goal` ArgDef, and 5 command descriptions). THE MEASUREMENT, reproduced directly at HEAD against the real, committed catalog: `_meaning_violations()` reads 216, `_synonym_offenders()` reads 2 — both exactly matching the block's own prediction (232→216, 16 fixed, 0 introduced). THE GATES, reproduced directly: `python3 -m pytest tests/docs/test_vocabulary.py tests/test_command_catalog.py tests/cli/test_advertised_commands.py -q` reads `74 passed`; `python3 -m pytest tests/cli/test_golden_path.py -q` reads `42 passed`; `python3 -m ruff check apps/cli/command_catalog.py` reads `All checks passed!`. THE TREE: `git status --porcelain` empty, `git worktree list` one row, HEAD `cc1cd3b0` matches `origin/feature/f281-cli-help-surface`. WHY PASS: every byte independently reproduces and the vocabulary-function measurement matches exactly.
+Gate: F281 R7 — the F281 round 7 entry. VERDICT PASS. Written by the planner and reviewer of F281's first session after reading the committed range `cc1cd3b0`..`d21b585b` (commits `79e4d8e2`, `147fcde9`, `fcf5d0b9`, `9f799af2`, `d21b585b`) and independently re-deriving every reading below; the worker's report was evidence for none of them except where named. THE TRANSPORT: `.agent/authored/f281-r7.md` and `.agent/last_block.md` are byte-identical to the reviewer's own authored block, sha256 `6ae5a011fc997fcf0c880c149590d10e72b204bd806a3c345bd9b33776809ca7`, 19683 bytes, reproduced directly. THE CODE, reproduced by `git show 9f799af2`: all 30 FROM/TO edits landed exactly as ordered, clearing the full Run bucket across the `ci`, `teacher` and `test` groups and the `ci.run`, `integrity.check`, `teacher.ask`, `teacher.narrate`, `test.status`, `test.result`, `test.list`, `test.run`, `mission.run`, `mission.readiness`, `run.show`, `job.resume`, `job.run`, `job.apply`, `job.evidence`, `do.run` and `stats.bench` commands. THE MEASUREMENT, reproduced directly at HEAD against the real, committed catalog: `_meaning_violations()` reads 184, `_synonym_offenders()` reads 2 — both exactly matching the block's own prediction (216→184, 32 fixed: 30 Run bucket plus 2 Job-bucket bonus fixes on `test.list` and `test.status`, 0 introduced). THE GATES, reproduced directly: `python3 -m pytest tests/docs/test_vocabulary.py tests/test_command_catalog.py tests/cli/test_advertised_commands.py -q` reads `74 passed`; `python3 -m pytest tests/cli/test_golden_path.py -q` reads `42 passed`; `python3 -m ruff check apps/cli/command_catalog.py` reads `All checks passed!`; `grep -c '(same task as --task-id)' apps/cli/command_catalog.py` reads `2`; `grep -c 'Dry-run by default' apps/cli/command_catalog.py` reads `0`. THE TREE: `git status --porcelain` empty, `git worktree list` one row, HEAD `d21b585b` matches `origin/feature/f281-cli-help-surface`. WHY PASS: every byte independently reproduces and the vocabulary-function measurement matches exactly.
 ```
 
-### PLAN7 — replace the entire content of `.agent/plan.md` with exactly:
+### PLAN8 — replace the entire content of `.agent/plan.md` with exactly:
 
 ```
 # Plan — F281 CLI help surface
@@ -55,37 +51,37 @@ Acceptance list hold.
 
 ## Current Step
 
-ROUND 7. C1 books round 6's PASS and re-points `.agent/plan.md`. C2 clears the
-full "Run" bucket (30 of 30): the group descriptions for `ci`, `teacher` and
-`test`; the command descriptions and ArgDef help text of `ci.run`,
-`integrity.check`, `teacher.ask`, `teacher.narrate`, `test.status`,
-`test.result`, `test.list`, `test.run` (`--apply-id`, `--intent-id`),
-`mission.run` (description, `--iterations`, `--no-llm`), `mission.readiness`,
-`run.show` (description and `run_id`), `job.resume` (`--cycles`), `job.run`
-(`--test-command`), `job.apply` (description and `--approve`), `job.evidence`
-(`--verification-command`), `do.run` (`--ui`), and `stats.bench` (description
-and `--series`). Two of the thirty edits (`test.list`, `test.status`) also
-land a bonus, truthful fix on the separate `Job`-word bucket, as a documented
-side effect — not a new violation.
+ROUND 8. C1 books round 7's PASS and re-points `.agent/plan.md`. C2 clears 33
+of the 65 Project-bucket violations via FOUR shared-literal edits: the
+`_PROJECT_SCOPE_OPT` constant (21 call sites — `job.list`, `teacher.ask`, all
+11 `mission.*` commands, and all 7 `stats.*` commands that take a `--project`
+option), the "Project slug or UUID" literal (3 sites: `project.current`,
+`project.attach`, `project.adopt`), the "Project UUID scope" literal (3
+sites: `memory.store`, `memory.recall`, `memory.list`), and the "Project ID
+scope" literal (6 sites: the six `memory.card-*` commands).
 
-After this round: Order remains 1 (`stats.bench`, still the word-sense
-collision round 4 named — untouched by this round), Mission, Task, Evidence,
-Decision and Run all read 0. Only Project (65) and Job (118, down from 120)
-remain — the two largest buckets.
+After this round: Order remains 1 (`stats.bench`, unchanged), Mission, Task,
+Evidence, Decision and Run all read 0. Project drops from 65 to 32 — the
+remaining text is unique per command: `do.run`'s own `--project` ArgDef,
+`init.run`'s `--project-name`, most of the `project.*` group's own
+descriptions and `project_id` ArgDefs, `runtime.*`'s `--repo` ArgDefs,
+`brain.*`'s descriptions, `status.run`'s description, `job.list`'s own
+description, `stats.backfill-ledger`'s own description, and the `brain`,
+`memory`, `runtime`, `status` and `test` group descriptions. Job stays at 118
+— untouched this round, still the largest remaining bucket.
 
 ## Next Steps
 
-1. Re-run `_meaning_violations()` grouped by word at the start of round 8;
-   expected: Project and Job are the only two buckets left, at approximately
-   183-184 total (re-measure rather than trust). Job (~118) is by far the
-   largest; Project (~65) is next. Given their size, a future round should
-   look for shared constants (as the many `job_id`/`--project` ArgDefs)
-   before writing many per-command edits — grep for the most-repeated exact
-   help strings among the violations first.
-2. This session (session 1 of F281) has now run 7 delegated rounds, inside
-   the operator's 6-to-8 target (amend0905-throughput: 6-8 default, 4 the
-   floor). The session's own honest assessment governs whether it continues
-   or ends with a handoff; either is a legitimate outcome per the protocol.
+1. Re-run `_meaning_violations()` grouped by word at the start of round 9;
+   expected: Project (~32) and Job (~118) are the only two buckets left
+   (plus Order's 1 unfixed `stats.bench` collision), at approximately 150-151
+   total (re-measure rather than trust). Job is now by far the largest;
+   continue looking for shared constants there first (the many `job_id`
+   ArgDefs are the obvious candidate) before writing per-command edits.
+2. This session (session 1 of F281) has now run 8 delegated rounds, at the
+   TOP of the operator's 6-to-8 target (amend0905-throughput). The session's
+   own honest assessment governs whether it continues (context comfortably
+   sufficing) or ends with a handoff; either is legitimate.
 3. Help wrap, `doctor core` dead-commands (D11d), the D11a catalog
    group-reach test, the visible-order data-pinned test, the F259 enforced
    flip (bounded by DECISION F281 D2's two-item floor, possibly `stats.bench`
@@ -94,335 +90,97 @@ remain — the two largest buckets.
 
 ## Risks
 
-- Same as rounds 2-6: every catalog description edit is verified by
+- Same as rounds 2-7: every catalog description edit is verified by
   re-running the real `_meaning_violations()`/`_synonym_offenders()`
   functions against the modified catalog before authoring, diffed fixed vs.
   introduced.
-- The Job bucket (~118) likely contains many shared constants and many
-  genuinely distinct descriptions; it will need several rounds and careful
-  checking for the "fragment is itself a binding word" and "same word,
-  different sense" traps this feature has already found twice.
+- The Job bucket (~118) likely contains many shared constants (the repeated
+  `job_id`/`Job ID` ArgDefs across dozens of commands) and many genuinely
+  distinct descriptions; it will need several rounds and careful checking
+  for the "fragment is itself a binding word" and "same word, different
+  sense" traps this feature has already found twice.
 ```
 
-## C2 — CODE (30 catalog text edits, all in `apps/cli/command_catalog.py`)
+## C2 — CODE (4 FROM/TO edits, all in `apps/cli/command_catalog.py`)
 
 Apply each FROM → TO pair below EXACTLY, in order. Every FROM string must
-appear verbatim exactly once at the cited location; if it does not match,
-STOP and report the exact mismatch rather than guessing or forcing a match.
+appear verbatim at the cited occurrence count; if it does not match, STOP and
+report the exact mismatch rather than guessing or forcing it.
 
-1. `ci` group description (near line 137). FROM:
+1. The shared constant definition `_PROJECT_SCOPE_OPT` (near line 191).
+Appears EXACTLY ONCE as a definition (it is then referenced by name — not by
+this literal text — at 21 further call sites, all of which inherit the fix
+automatically). FROM:
 ```
-    "ci": GroupDef("ci", "CI", "Remedy's own CI stages, run locally.", user_facing=False),
+_PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to project (slug or UUID)", required=False, is_option=True)
 ```
 TO:
 ```
-    "ci": GroupDef("ci", "CI", "Remedy's own CI stages, executed locally.", user_facing=False),
+_PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to a project's repo (slug or UUID)", required=False, is_option=True)
 ```
 
-2. `ci.run` CommandEntry description (near line 2052). FROM:
+2. The literal `ArgDef("--project", "Project slug or UUID", required=False,
+is_option=True)` — appears EXACTLY 3 TIMES (inside `project.current`,
+`project.attach` and `project.adopt`). Replace ALL 3 occurrences with the
+same new text — a global find-and-replace, not 3 separate located edits.
+FROM (all 3 occurrences):
 ```
-        description="Run Remedy's own CI stages locally and print the summary.",
+            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
 ```
-TO:
+TO (all 3 occurrences):
 ```
-        description="Execute Remedy's own CI stages locally and print the summary.",
-```
-
-3. `ci.run`'s `--stage` ArgDef (near line 2055). FROM:
-```
-            ArgDef("--stage", "Run one stage by name instead of all of them", required=False, is_option=True),
-```
-TO:
-```
-            ArgDef("--stage", "Execute one stage by name instead of all of them", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, slug or UUID", required=False, is_option=True),
 ```
 
-4. `integrity.check` CommandEntry description (near line 2067). FROM:
+3. The literal `ArgDef("--project", "Project UUID scope", required=False,
+is_option=True)` — appears EXACTLY 3 TIMES (inside `memory.store`,
+`memory.recall` and `memory.list`). Replace ALL 3 occurrences. FROM (all 3
+occurrences):
 ```
-        description="Run pre-handoff integrity checks.",
+            ArgDef("--project", "Project UUID scope", required=False, is_option=True),
 ```
-TO:
+TO (all 3 occurrences):
 ```
-        description="Execute pre-handoff integrity checks.",
-```
-
-5. `integrity.check`'s `--collect-only` ArgDef (near line 2071). FROM:
-```
-            ArgDef("--collect-only", "Also run pytest collect-only", required=False, is_option=True, default="false"),
-```
-TO:
-```
-            ArgDef("--collect-only", "Also execute pytest collect-only", required=False, is_option=True, default="false"),
+            ArgDef("--project", "Project's repo, UUID scope", required=False, is_option=True),
 ```
 
-6. `teacher` group description (near line 123). FROM:
+4. The literal `ArgDef("--project", "Project ID scope", required=False,
+is_option=True)` — appears EXACTLY 6 TIMES (inside `memory.card-show`,
+`memory.card-approve`, `memory.card-reject`, `memory.card-stale`,
+`memory.card-supersede` and `memory.card-contradict`). Replace ALL 6
+occurrences. FROM (all 6 occurrences):
 ```
-    "teacher": GroupDef("teacher", "Teacher", "Explain a run. Read-only, never steers it."),
+            ArgDef("--project", "Project ID scope", required=False, is_option=True),
 ```
-TO:
+TO (all 6 occurrences):
 ```
-    "teacher": GroupDef("teacher", "Teacher", "Explain a run from its evidence. Read-only, never steers it."),
-```
-
-7. `teacher.ask` CommandEntry description (near line 274). FROM:
-```
-        description="Ask the teacher about a run or your code. Records one spend row; never steers the run.",
-```
-TO:
-```
-        description="Ask the teacher about a run's evidence or your code. Records one spend row; never steers the run.",
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
 ```
 
-8. `teacher.ask`'s `--job-id` ArgDef (near line 278). FROM:
-```
-            ArgDef("--job-id", "Job whose run log grounds the answer", required=False, is_option=True),
-```
-TO:
-```
-            ArgDef("--job-id", "Job whose run log (its evidence) grounds the answer", required=False, is_option=True),
-```
-
-9. `teacher.narrate` CommandEntry description (near line 260). FROM:
-```
-        description="Narrate a job's run log in plain sentences (read-only).",
-```
-TO:
-```
-        description="Narrate a job's run evidence in plain sentences (read-only).",
-```
-
-10. `test` group description (near line 128). FROM:
-```
-    "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
-```
-TO:
-```
-    "test": GroupDef("test", "Test", "Discover and execute project tests.", user_facing=False),
-```
-
-11. `test.status` CommandEntry description (near line 610). FROM:
-```
-        description="Show current test run status for a job (lease state, latest run, usage).",
-```
-TO:
-```
-        description="Show current test run status for a job's tasks (lease state, latest run, usage).",
-```
-
-12. `test.result` CommandEntry description (near line 621). FROM:
-```
-        description="Show a safe test run result by test_run_id (read-only; no raw output).",
-```
-TO:
-```
-        description="Show a safe test run result for a task, by test_run_id (read-only; no raw output).",
-```
-
-13. `test.result`'s `test_run_id` ArgDef (near line 623). FROM:
-```
-        args=(ArgDef("test_run_id", "Test run ID"), _JSON_OPT),
-```
-TO:
-```
-        args=(ArgDef("test_run_id", "Test run ID (identifies one task's test execution)"), _JSON_OPT),
-```
-
-14. `test.list` CommandEntry description (near line 631). FROM:
-```
-        description="List safe test run records for a job (read-only; no raw output).",
-```
-TO:
-```
-        description="List safe test run records for a job's tasks (read-only; no raw output).",
-```
-
-15. `test.run`'s `--intent-id` ArgDef (near line 592). FROM:
-```
-            ArgDef("--intent-id", "Link run to a patch intent ID", required=False,
-                   is_option=True, default=""),
-```
-TO:
-```
-            ArgDef("--intent-id", "Link run to a patch intent ID (same task as --task-id)", required=False,
-                   is_option=True, default=""),
-```
-
-16. `test.run`'s `--apply-id` ArgDef (near line 594). FROM:
-```
-            ArgDef("--apply-id", "Link run to an apply record ID", required=False,
-                   is_option=True, default=""),
-```
-TO:
-```
-            ArgDef("--apply-id", "Link run to an apply record ID (same task as --task-id)", required=False,
-                   is_option=True, default=""),
-```
-
-17. `mission.run` CommandEntry description (near line 869). FROM:
-```
-        description="Run the F070 orchestrator for one mission's jobs. Stops on a terminal move, the iteration limit, a stop request or an escalation.",
-```
-TO:
-```
-        description="Execute the F070 orchestrator for one mission's jobs. Stops on a terminal move, the iteration limit, a stop request or an escalation.",
-```
-
-18. `mission.run`'s `--iterations` ArgDef (near line 873). FROM:
-```
-            ArgDef("--iterations", "Max orchestrator iterations this run", required=False, is_option=True),
-```
-TO:
-```
-            ArgDef("--iterations", "Max iterations before the orchestrator stops", required=False, is_option=True),
-```
-
-19. `mission.run`'s `--no-llm` ArgDef (near line 874). FROM:
-```
-            ArgDef("--no-llm", "Run without a provider — reports the honest no_provider terminal", required=False, is_option=True, is_flag=True),
-```
-TO:
-```
-            ArgDef("--no-llm", "Execute without a provider — reports the honest no_provider terminal", required=False, is_option=True, is_flag=True),
-```
-
-20. `mission.readiness` CommandEntry description (near line 1057). FROM:
-```
-        description="Read-only: is this job safe to run unattended?",
-```
-TO:
-```
-        description="Read-only: is this job safe to execute unattended?",
-```
-
-21. `run.show` CommandEntry description (near line 1569). FROM:
-```
-        description="Show a persisted ping-pong run report.",
-```
-TO:
-```
-        description="Show a persisted ping-pong run report, task and evidence included.",
-```
-
-22. `run.show`'s `run_id` ArgDef (near line 1574). FROM:
-```
-            ArgDef("run_id", "Run ID"),
-```
-TO:
-```
-            ArgDef("run_id", "Run ID (its task and evidence folder)"),
-```
-
-23. `job.resume`'s `--cycles` ArgDef (near line 1382). FROM:
-```
-            ArgDef("--cycles", "Maximum cycles for the resumed run (capped by the rollout default)",
-                   required=False, is_option=True),
-```
-TO:
-```
-            ArgDef("--cycles", "Maximum cycles for the resumed run's tasks (capped by the rollout default)",
-                   required=False, is_option=True),
-```
-
-24. `job.run`'s `--test-command` ArgDef (near line 1611). FROM:
-```
-            ArgDef("--test-command", "Test command to run in staging (persisted on continuation)", required=False, is_option=True, default=None),
-```
-TO:
-```
-            ArgDef("--test-command", "Test command to execute in staging (persisted on continuation)", required=False, is_option=True, default=None),
-```
-
-25. `job.apply` CommandEntry description (near line 1865). FROM:
-```
-        description="Review and apply job workspace changes to target repo. Dry-run by default; --approve applies.",
-```
-TO:
-```
-        description="Review and apply job workspace changes to target repo. Preview by default; --approve applies.",
-```
-
-26. `job.apply`'s `--approve` ArgDef (near line 1872). FROM:
-```
-            ArgDef("--approve", "Apply changes (without this flag, dry-run only)", required=False, is_option=True, default="false"),
-```
-TO:
-```
-            ArgDef("--approve", "Apply changes (without this flag, preview only)", required=False, is_option=True, default="false"),
-```
-
-27. `job.evidence`'s `--verification-command` ArgDef (near line 1855). FROM:
-```
-            ArgDef("--verification-command", "Explicit verification command to execute and record (repeatable). Each is run and stored as a verification run covering the test files it names", required=False, is_option=True),
-```
-TO:
-```
-            ArgDef("--verification-command", "Explicit verification command to execute and record (repeatable) into the evidence bundle. Each execution is stored as a verification run covering the test files it names", required=False, is_option=True),
-```
-
-28. `do.run`'s `--ui` ArgDef (near line 1549). FROM:
-```
-            ArgDef("--ui", "Start UI alongside run", required=False, is_option=True, default="false"),
-```
-TO:
-```
-            ArgDef("--ui", "Start UI alongside execution", required=False, is_option=True, default="false"),
-```
-
-29. `stats.bench` CommandEntry description (near line 1661). FROM:
-```
-        description=(
-            "Capability trend from the append-only bench history: the last run, "
-            "the series before it, and a regression warning naming the order and "
-            "both numbers. Never runs the bench (read-only)."
-        ),
-```
-TO:
-```
-        description=(
-            "Capability trend from the append-only bench history: the latest entry, "
-            "the series before it, and a regression warning naming the order and "
-            "both numbers. Never executes the bench (read-only)."
-        ),
-```
-
-30. `stats.bench`'s `--series` ArgDef (near line 1670). FROM:
-```
-            ArgDef("--series", "Which bench series to read (default: the series of the latest run)", required=False, is_option=True),
-```
-TO:
-```
-            ArgDef("--series", "Which bench series to read (default: the series of the latest entry)", required=False, is_option=True),
-```
+(4 distinct FROM/TO pairs, touching 1 + 3 + 3 + 6 = 13 lines in total.)
 
 ## Constraints
 
-- `command:stats.bench:description` still carries a separate, UNCHANGED
-  `Order`-word violation (the word "order" appears in "naming the order and
-  both numbers") — that is round 4's already-decided word-sense collision,
-  not part of this round's scope; edit 29 touches only the `Run`-word text
-  (the two "run" occurrences) and must not touch "the order and both
-  numbers".
+- `command:stats.bench:description` still carries the separate, UNCHANGED
+  `Order`-word violation named in round 4 — not part of this round's scope.
+  This round's edits touch none of `stats.bench`'s description text (only
+  its `--project` ArgDef, via edit 1's constant, is affected).
 - The C2 commit's path set is exactly one file:
   `apps/cli/command_catalog.py`.
 - Bare `ruff` is denied to this session's shell; use `python3 -m ruff check
   <path>`.
-- Do not touch any handler docstring or runtime-printed string (e.g.
-  `apps/cli/commands/integrity_cmd.py`, `apps/cli/commands/mission_cmd.py`,
-  `apps/cli/commands/do_cmd.py`, `apps/cli/commands/bench_cmd.py`,
-  `packages/orchestration/job_apply.py`) even where they happen to echo the
-  OLD catalog text word-for-word — this round's scope is the catalog surface
-  only (T2_F281.md T001), and editing those files would be scope creep
-  outside this block's change set.
+- `do.run`'s own `--project` ArgDef ("Project ID to use or create") is a
+  DIFFERENT literal text from all four edits above — do not touch it, it
+  stays open for a future round.
 
 ## Gates (at most six; run and record real exit codes)
 
 - G1 VIOLATION DIFF: import `tests.docs.test_vocabulary` and report
   `_meaning_violations()` and `_synonym_offenders()` against the real,
-  committed (post-edit) catalog. Expect meaning violations to read 184
-  (216 minus 32: the 30 Run-bucket fixes plus the 2 bonus Job-bucket fixes
-  from edits 11 and 14), synonym offenders unchanged at 2. If it doesn't read
-  exactly 184, STOP and report before committing (you may `git stash` your
-  C2 edit to confirm the before-count reads 216, then restore).
+  committed (post-edit) catalog. Expect meaning violations to read 151
+  (184 minus 33), synonym offenders unchanged at 2. If it doesn't read
+  exactly 151, STOP and report before committing (you may `git stash` your
+  C2 edit to confirm the before-count reads 184, then restore).
 - G2 TARGETED: `python3 -m pytest tests/docs/test_vocabulary.py
   tests/test_command_catalog.py tests/cli/test_advertised_commands.py -q` —
   expect 74 passed, unchanged.
@@ -430,23 +188,26 @@ TO:
   passed, unchanged.
 - G4 RUFF: `python3 -m ruff check apps/cli/command_catalog.py` reads `All
   checks passed!`.
-- G5 SWEEP: `grep -c '(same task as --task-id)' apps/cli/command_catalog.py`
-  reads 2 (edits 15 and 16); `grep -c 'Dry-run by default'
-  apps/cli/command_catalog.py` reads 0 (edit 25 landed; the old phrase is
-  gone).
+- G5 SWEEP: `grep -c "Scope to a project's repo (slug or UUID)"
+  apps/cli/command_catalog.py` reads 1; `grep -c "Project's repo, slug or
+  UUID" apps/cli/command_catalog.py` reads 3; `grep -c "Project's repo, UUID
+  scope" apps/cli/command_catalog.py` reads 3; `grep -c "Project's repo, ID
+  scope" apps/cli/command_catalog.py` reads 6; and `grep -c "Project slug or
+  UUID\|Project UUID scope\|Project ID scope" apps/cli/command_catalog.py`
+  (the three OLD literals, unanchored) reads 0.
 - G6 TREE: `git status --porcelain` empty, `git worktree list` shows only the
   primary checkout, HEAD matches `origin/feature/f281-cli-help-surface` after
   push.
 
-No mutation red-proof is ordered this round, for the same reason rounds 2-6
+No mutation red-proof is ordered this round, for the same reason rounds 2-7
 named: G1's own before/after diff against the real vocabulary-check functions
 is the red/green proof for a prose-only catalog edit.
 
 ## Done-when
 
 C1 and C2 are committed with the exact path sets named above; G1-G6 all pass
-with real recorded output, G1's delta matching exactly (216→184, 32 fixed, 0
+with real recorded output, G1's delta matching exactly (184→151, 33 fixed, 0
 introduced); the branch is pushed; `.agent/handoff.md` is rewritten as C3
 naming this round, its commits, its verification results, and the next
-expected action (round 8 addresses the two remaining buckets: Job at ~118,
-Project at 65).
+expected action (round 9 addresses the two remaining buckets: Job at ~118,
+Project at ~32).
