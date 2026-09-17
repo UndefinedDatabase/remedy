@@ -12,24 +12,24 @@ DONE when T001 and the Acceptance list hold.
 
 ## Current Step
 
-ROUND 20. C1 books round 19's PASS. C2 lands R-0809's job-id slice:
-`resolve_job_id`'s shared except block in `packages/orchestration/data_paths.py`
-plus the 18 duplicated call sites across `brain.py` (11), `file.py` (1),
-`event.py` (1), `memory.py` (1), `snapshot_cmds.py` (2) and `test_cmds.py` (2)
-now all print `Error: No job matches '<id>'. Try: remedy job list.`; five test
-files updated to match. R-0809 stays OPEN — it names four former wordings
-("job not found:", "run '...' not found.", "invalid job ID:", "no job matches
-prefix"), and this slice retires only the last two.
+ROUND 21. C1 books round 20's PASS and registers/resolves R-0958 (a LOW
+pre-existing defect found while researching R-0809's remaining scope:
+`remedy job stop` on an unknown id printed TWO contradictory error lines for
+one failure). C2 fixes it in `apps/cli/commands/job_stop_cmd.py`. R-0809
+stays OPEN and its scope is UNCHANGED by this fix — it removes a duplicate
+print of an already-superseded wording, not the "job not found:"/"run '...'
+not found." wordings R-0809 still names.
 
 ## Next Steps
 
-1. R-0809's remaining wordings — "job not found:" (used by `job_stop_cmd.py`,
-   `project.py` and others for a well-formed id whose record is missing) and
-   "run '...' not found." (a distinct id kind with no resolver measured yet) —
-   need their own measurement pass before either is touched; do not assume
-   this round's shape or call-site count generalizes.
-2. R-0805 (`ui status` dead-session pruning) still needs a design pass on the
-   session-state model before implementation.
+1. R-0809's remaining wordings ("job not found:" in `job_stop_cmd.py` and
+   `project.py`; "run '...' not found." in `do_cmd.py`) still need their own
+   measurement pass: is there a shared run-id resolver anywhere, and does
+   unifying "job not found" risk the `EXIT_UNKNOWN_JOB`/`JobNotFoundError`
+   exit-code contracts several call sites rely on — measure before assuming
+   this round's job-id shape generalizes.
+2. R-0805 (`ui status` dead-session pruning) still needs a design pass on
+   the session-state model before implementation.
 3. R-0895 (README quickstart) runs last (orchestrator brief: it quotes the
    finished catalog).
 4. Session 4 continues; continuing is allowed while context comfortably
@@ -37,12 +37,10 @@ prefix"), and this slice retires only the last two.
 
 ## Risks
 
+- R-0958's fix only removes a REDUNDANT print; `_unknown_job`'s own "job not
+  found:" wording is untouched and still printed at its two other call sites
+  (`job_stop_cmd.py:37,105`) plus `project.py`'s two sites — R-0809 is not
+  narrowed by this round.
 - `packages/orchestration/data_paths.py`'s `JobIdInvalid`/`JobIdNotFound`
-  internal exception messages (the `raise` sites, not the `resolve_job_id`
-  print) still say "invalid job ID"/"no job matches prefix" — deliberately
-  untouched, because nothing prints `str(exc)` for them any more after this
-  round. A future edit that starts printing `str(exc)` for either must update
-  those raise-site messages too.
-- R-0809's true remaining scope (the "job not found:" and "run" wordings) is
-  unmeasured; grep fresh before assuming either has (or needs) a shared
-  resolver like `resolve_job_id`/`lookup_job_id`.
+  internal exception messages are still pre-unification text (round 20's
+  risk note) — unaffected by this round too.
