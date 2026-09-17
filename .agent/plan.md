@@ -12,34 +12,34 @@ DECISION amend0917-throughput D4).
 
 ## Current Step
 
-ROUND 17 books round 16's independently-reviewed PASS (Gate: F280 R16, no new finding) and
-resolves R-0942/R-0943, then fixes the one gap the reviewer's own full catalog-vs-D4
-measurement found: the `mission` group is advanced-only when DECISION amend0905-vocab D4
-names it visible (R-0944), and widens `TestGroupDefIntegrity` to the full D4 partition so no
-group's bucket can drift unnoticed again.
+ROUND 18 books round 17's independently-reviewed PASS (Gate: F280 R17, no new finding — the
+reviewer's own catalog-vs-D4 measurement now holds exactly) and runs the closure sequence's
+integration-gate round per operator amendment amend0917-throughput rule 1: the full suite,
+exactly once, by the worker, in the primary checkout, its transcript committed as
+`.agent/authored/f280-closure-suite.txt`.
 
 ## Next Steps
 
-1. `job attach-repo`/`job permit` wait for F269's contract writer (DECISION amend0917-throughput
-   D2) — not this feature's to close; `mission contract`/`job contract` likewise F269's.
-2. The reviewer's own measurement (round 17) confirms every other part of the catalog — the
-   29-group set, the advanced and hidden buckets apart from `mission`, and every command under
-   `do`, `job`, `run` and `worker` D4 spells out — already equals D4 exactly.
-3. Once round 17 is independently reviewed PASS with no new finding, T001 and the Acceptance
-   list both hold; the next round begins F280's closure sequence per
-   `docs/roadmap/STATUS_closure_protocol.md` — the integration-gate round (full suite once),
-   the self-use precondition, the evidence job and review zip, in that order, each its own
-   round rather than compressed into one.
-4. Remaining Acceptance lines (`job budget <id> set`, `worker doctor`, `job run --tasks n`)
-   are already landed per prior rounds' Built State.
+1. If the closure suite is green: write T2_F280.md's Built State section (precondition 4),
+   run the self-use precondition (F257/F258 — one pending queue item planned and run through
+   the normal approval gate, its findings registered, `consumed_by` set to F280) and confirm
+   `remedy integrity check --json` PASS (preconditions 3 and 6), each its own round.
+2. If the closure suite is red: repair rounds follow the shrinking rule (amend0917-throughput
+   rule 2) — each must strictly shrink the bad node set, at most three rounds, before an
+   `xfail` mark and a follow-up feature registration.
+3. Once every precondition holds: the evidence job, the review zip (STATUS_closure_protocol.md
+   algorithm steps 1-2) and the STATUS line (step 4), each its own round — closure is not
+   compressed into one.
+4. `job attach-repo`/`job permit`/`mission contract`/`job contract` wait for F269
+   (DECISION amend0917-throughput D2) — not this feature's to close.
 
 ## Risks
 
-- 140 findings registered by distinct id after this round (139 plus R-0944); 9 resolved
-  (7 plus R-0942, R-0943); 131 open. High: R-0803, R-0804, R-0807, none this feature's.
+- 140 findings registered by distinct id, 9 resolved, 131 open. High: R-0803, R-0804,
+  R-0807, none this feature's.
 - R-0899 (owned F273), R-0937 (owned F273), R-0938 (owned F280, nothing to fix), R-0941
   (owned F273) — unchanged.
-- Before closure: the feature file's Built State section (currently absent) must be written,
-  the self-use precondition (F257/F258) run, and `remedy integrity check --json` confirmed
-  PASS — none of this round's own doing, all named here so the closure round does not
-  discover them cold.
+- The closure suite has not run yet this feature; any bad node it surfaces that pre-dates
+  this branch (present on `main`'s merge base) is not this feature's to repair, per
+  amend0917-throughput rule 2 — the repair round checks the merge-base's own hosted CI
+  record before assuming ownership.
