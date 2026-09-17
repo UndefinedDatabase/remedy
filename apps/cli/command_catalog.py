@@ -146,7 +146,7 @@ GROUPS: dict[str, GroupDef] = {
 # Argument shorthands
 # ---------------------------------------------------------------------------
 
-_JOB_ID = ArgDef("job_id", "UUID of the job")
+_JOB_ID = ArgDef("job_id", "UUID of the job (under its mission)")
 _PROJECT_ID = ArgDef("project_id", "UUID or name of the project")
 _INTENT_ID = ArgDef("intent_id", "Intent ID (integer)")
 _JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false")
@@ -317,7 +317,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         supports_json=True,
         args=(
-            ArgDef("job_id", "Job ID to stop"),
+            ArgDef("job_id", "Job ID to stop (under its mission)"),
             ArgDef("--reason", "Why the job is being stopped (recorded in the run's evidence)", required=False, is_option=True, default=""),
             ArgDef("--source", "Who requested the stop (default: cli)", required=False, is_option=True, default="cli"),
             ArgDef("--status", "Show pending and consumed stop requests instead of requesting one", required=False, is_option=True, is_flag=True),
@@ -338,7 +338,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         supports_json=True,
         args=(
-            ArgDef("job_id", "Job ID to inspect"),
+            ArgDef("job_id", "Job ID to inspect (under its mission)"),
             ArgDef("action", "Omit to show the budget; set writes one field", required=False),
             ArgDef("field", "The field set writes; a wrong name lists the settable ones", required=False),
             ArgDef("value", "The integer value set writes", required=False),
@@ -1086,7 +1086,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("key", "Memory key"),
             ArgDef("value", "Memory value"),
             ArgDef("--project", "Project's repo, UUID scope", required=False, is_option=True),
-            ArgDef("--job", "Job UUID scope", required=False, is_option=True),
+            ArgDef("--job", "Job UUID scope (under its mission)", required=False, is_option=True),
             ArgDef("--tags", "Comma-separated tags", required=False, is_option=True),
             ArgDef("--approved", "Mark as approved", required=False, is_option=True),
         ),
@@ -1099,7 +1099,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(
             ArgDef("--project", "Project's repo, UUID scope", required=False, is_option=True),
-            ArgDef("--job", "Job UUID scope", required=False, is_option=True),
+            ArgDef("--job", "Job UUID scope (under its mission)", required=False, is_option=True),
             ArgDef("--keyword", "Search keyword", required=False, is_option=True),
             ArgDef("--limit", "Max entries to return (default: 5)", required=False, is_option=True, default="5"),
             _JSON_OPT,
@@ -1114,7 +1114,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(
             ArgDef("--project", "Project's repo, UUID scope", required=False, is_option=True),
-            ArgDef("--job", "Job UUID scope", required=False, is_option=True),
+            ArgDef("--job", "Job UUID scope (under its mission)", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -1143,7 +1143,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -1157,7 +1157,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
     CommandEntry(
@@ -1169,7 +1169,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
     CommandEntry(
@@ -1181,7 +1181,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
     CommandEntry(
@@ -1194,7 +1194,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("old_id", "Memory ID to supersede", required=True),
             ArgDef("new_id", "Memory ID that supersedes", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
     CommandEntry(
@@ -1207,7 +1207,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("memory_id", "Memory ID to contradict", required=True),
             ArgDef("by_id", "Memory ID that contradicts", required=True),
             ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
     CommandEntry(
@@ -1605,7 +1605,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("job.show",),
         args=(
-            ArgDef("job_id", "Job ID"),
+            ArgDef("job_id", "Job ID (under its mission)"),
             ArgDef("--max-rounds", "Max ping-pong rounds per task's run (default: 3, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--repair-rounds", "Max repair attempts per task's run (default: 2, 0=disabled, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--test-command", "Test command to execute in staging (persisted on continuation)", required=False, is_option=True, default=None),
@@ -1690,7 +1690,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("stats.backfill-ledger", "stats.verify-ledger"),
         args=(
             ArgDef("--since", "Only calls at or after this ISO-8601 timestamp", required=False, is_option=True),
-            ArgDef("--job", "Only this job's calls", required=False, is_option=True),
+            ArgDef("--job", "Only this job's calls (under its mission)", required=False, is_option=True),
             ArgDef("--by", "Group the figures by role, model or day (default: grand total only)", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
@@ -1713,7 +1713,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("stats.cost", "stats.backfill-ledger"),
         args=(
             ArgDef("--since", "Only calls at or after this ISO-8601 timestamp", required=False, is_option=True),
-            ArgDef("--job", "Only this job's calls", required=False, is_option=True),
+            ArgDef("--job", "Only this job's calls (under its mission)", required=False, is_option=True),
             ArgDef("--by", "Group the shares by role, model or day (default: grand total only)", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
@@ -1850,7 +1850,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("job.run", "job.show"),
         args=(
-            ArgDef("job_id", "Job ID"),
+            ArgDef("job_id", "Job ID (under its mission)"),
             ArgDef("--out", "Output directory for bundle files", required=False, is_option=True, default=""),
             ArgDef("--verification-command", "Explicit verification command to execute and record (repeatable) into the evidence bundle. Each execution is stored as a verification run covering the test files it names", required=False, is_option=True),
             _JSON_OPT,
@@ -1867,7 +1867,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("job.run", "job.evidence"),
         args=(
-            ArgDef("job_id", "Job ID"),
+            ArgDef("job_id", "Job ID (under its mission)"),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
             ArgDef("--approve", "Apply changes (without this flag, preview only)", required=False, is_option=True, default="false"),
             ArgDef("--dry-run", "Preview only, no target mutation", required=False, is_option=True, default="false"),
