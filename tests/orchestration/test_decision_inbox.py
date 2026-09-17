@@ -171,9 +171,14 @@ def _fixture_proposal() -> tuple[JobPlan, list[dict]]:
         add_proposed_task,
     )
 
+    from packages.orchestration.pingpong_job import save_job_plan
+
     job = _make_job()
     job_id = str(job.job_id)
     data_root = Path(resolve_data_root())
+
+    # Save the job so it can be found by the system
+    save_job_plan(job, root=data_root)
 
     # Add an unresolved proposed task
     t = ProposedTask(
