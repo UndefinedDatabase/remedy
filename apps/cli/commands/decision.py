@@ -395,18 +395,28 @@ def _cmd_decision_resolve(
 
         if reason == "approve":
             # Approve and materialize the task
+            from packages.orchestration.proposed_tasks import ProposedTaskStatus
+
             if task.is_unresolved():
                 # First approve the unresolved task
                 task = approve_proposed_task(job_id, task_id)
                 if task is None:
                     print(f"Error: failed to approve proposed task {task_id}", file=sys.stderr)
                     sys.exit(1)
-            # Then materialize it
-            task = do_materialize(job_id, task_id)
-            if task is None:
-                print(f"Error: failed to materialize proposed task {task_id}", file=sys.stderr)
+
+            # Materialize only if approved and not already materialized
+            if task.status == ProposedTaskStatus.APPROVED_FOR_BUILD and not task.is_materialized:
+                task = do_materialize(job_id, task_id)
+                if task is None:
+                    print(f"Error: failed to materialize proposed task {task_id}", file=sys.stderr)
+                    sys.exit(1)
+                print(f"Proposed task {task_id} approved and materialized for job {job_id_str}.")
+            else:
+                # Task is rejected, deferred, or already materialized
+                print(
+                    f"Error: cannot approve a {task.status.value} proposed task: {task_id}",
+                    file=sys.stderr)
                 sys.exit(1)
-            print(f"Proposed task {task_id} approved and materialized for job {job_id_str}.")
         elif reason == "reject":
             if task.is_terminal():
                 print(
