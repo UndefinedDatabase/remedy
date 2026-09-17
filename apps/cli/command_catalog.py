@@ -108,7 +108,7 @@ class CommandEntry:
 GROUPS: dict[str, GroupDef] = {
     # -- Golden path (pinned first in help) --
     "do": GroupDef("do", "Do", "Run, report, and apply Remedy tasks."),
-    "status": GroupDef("status", "Status", "Project status overview."),
+    "status": GroupDef("status", "Status", "Project status overview, across its repos and missions."),
     "decision": GroupDef("decision", "Decision", "The queue of decisions Remedy cannot answer for itself."),
     # -- User-facing primary commands --
     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
@@ -119,14 +119,14 @@ GROUPS: dict[str, GroupDef] = {
     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
     "config": GroupDef("config", "Config", "View or change settings.", aliases=("settings",)),
     "worker": GroupDef("worker", "Worker", "Manage the workers that support a role: builder, reviewer, planner or teacher."),
-    "memory": GroupDef("memory", "Memory", "Project memory."),
+    "memory": GroupDef("memory", "Memory", "Memory scoped to the project's repos and missions."),
     "teacher": GroupDef("teacher", "Teacher", "Explain a run from its evidence. Read-only, never steers it."),
-    "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project dev server."),
+    "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project's repo dev server."),
     "stats": GroupDef("stats", "Stats", "Honest counts from the run evidence on disk."),
     # -- Advanced / internal commands (callable but hidden from default help) --
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False),
-    "test": GroupDef("test", "Test", "Discover and execute project tests.", user_facing=False),
-    "brain": GroupDef("brain", "Brain", "Inspect the project brain graph.", user_facing=False),
+    "test": GroupDef("test", "Test", "Discover and execute tests in the project's repo.", user_facing=False),
+    "brain": GroupDef("brain", "Brain", "Inspect the project's repo brain graph.", user_facing=False),
     "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded orchestrator facade (internal)."),
     "change": GroupDef("change", "Change", "Review change sets (proof chain view).", user_facing=False),
     "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False),
@@ -147,7 +147,7 @@ GROUPS: dict[str, GroupDef] = {
 # ---------------------------------------------------------------------------
 
 _JOB_ID = ArgDef("job_id", "UUID of the job (under its mission)")
-_PROJECT_ID = ArgDef("project_id", "UUID or name of the project")
+_PROJECT_ID = ArgDef("project_id", "UUID or name of the project (its repo)")
 _INTENT_ID = ArgDef("intent_id", "Intent ID (integer)")
 _JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false")
 #: F107: names ONE task of a job — its planned id (`T001`) or a prefix of its
@@ -1804,7 +1804,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("runtime.probe", "runtime.stop"),
         args=(
-            ArgDef("--repo", "Path to the project (defaults to the current directory)", required=False, is_option=True, default="."),
+            ArgDef("--repo", "Path to the project's repo (defaults to the current directory)", required=False, is_option=True, default="."),
             _JSON_OPT,
         ),
         may_mutate_repo=False,
@@ -1819,7 +1819,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("runtime.serve", "runtime.stop"),
         args=(
-            ArgDef("--repo", "Path to the project (defaults to the current directory)", required=False, is_option=True, default="."),
+            ArgDef("--repo", "Path to the project's repo (defaults to the current directory)", required=False, is_option=True, default="."),
             _JSON_OPT,
         ),
         may_mutate_repo=False,
@@ -1834,7 +1834,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("runtime.serve", "runtime.probe"),
         args=(
-            ArgDef("--repo", "Path to the project (defaults to the current directory)", required=False, is_option=True, default="."),
+            ArgDef("--repo", "Path to the project's repo (defaults to the current directory)", required=False, is_option=True, default="."),
             _JSON_OPT,
         ),
         may_mutate_repo=False,
