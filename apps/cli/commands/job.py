@@ -2057,7 +2057,7 @@ def _cmd_job_budget(
         try:
             require_job_plan(job_id)
         except JobNotFoundError:
-            print(f"Error: job {job_id!r} not found.", file=sys.stderr)
+            print(f"Error: No job matches {job_id!r}. Try: remedy job list.", file=sys.stderr)
             sys.exit(1)
 
     if _budgets is None and _budgets_dict is None:
@@ -2299,7 +2299,7 @@ def _cmd_job_budget_set(
     try:
         job = require_job_plan(job_id)
     except JobNotFoundError:
-        print(f"Error: job {job_id!r} not found.", file=sys.stderr)
+        print(f"Error: No job matches {job_id!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
 
     if in_contract:

@@ -146,7 +146,7 @@ class TestRefusals:
 
         assert _cli("job", "budget", missing, "set", "max_test_runs", "2") == 1
 
-        assert capsys.readouterr().err == shown == f"Error: job {missing!r} not found.\n"
+        assert capsys.readouterr().err == shown == f"Error: No job matches {missing!r}. Try: remedy job list.\n"
         assert not job_record_path(missing).exists()
         assert _profiles(data_root) == []
 

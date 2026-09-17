@@ -331,7 +331,7 @@ class TestDegradations:
         with pytest.raises(SystemExit) as exc:
             job_cmd._cmd_job_resume("99999999-9999-4999-8999-999999999999")
         assert exc.value.code == 1
-        assert "Job not found" in capsys.readouterr().err
+        assert "No job matches" in capsys.readouterr().err
 
 
 # ---------------------------------------------------------------------------

@@ -272,7 +272,7 @@ def _cmd_job_context(
         resolved = resolve_job_id(job_id_str)
         job = require_job_plan(resolved)
     except JobNotFoundError:
-        print(f"Job not found: {job_id_str}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
 
     repo_str = _job_target_repo(job)

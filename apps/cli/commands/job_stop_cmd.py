@@ -66,7 +66,7 @@ def _unknown_job(job_id: str, *, json_output: bool) -> None:
         print(_json.dumps({"ok": False, "error": "job_not_found", "job_id": job_id},
                           indent=2))
     else:
-        print(f"Error: job not found: {job_id}", file=sys.stderr)
+        print(f"Error: No job matches {job_id!r}. Try: remedy job list.", file=sys.stderr)
     raise SystemExit(EXIT_UNKNOWN_JOB)
 
 

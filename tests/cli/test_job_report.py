@@ -243,7 +243,7 @@ class TestUnknownJob:
             main(["job", "show", "ffffffff-ffff-4fff-8fff-ffffffffffff", "--full"])
         assert exc.value.code == 1
         captured = capsys.readouterr()
-        assert "Error: Job not found: ffffffff-ffff-4fff-8fff-ffffffffffff" in captured.err
+        assert "Error: No job matches 'ffffffff-ffff-4fff-8fff-ffffffffffff'. Try: remedy job list." in captured.err
         assert "Traceback" not in captured.err
         assert captured.out == ""
 

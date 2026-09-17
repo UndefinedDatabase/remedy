@@ -157,7 +157,7 @@ def _cmd_attach_project_job(project_id_str: str, job_id_str: str) -> None:
         job_id = lookup_job_id(job_id_str)
         job = require_job_plan(job_id)
     except (ValueError, JobNotFoundError):
-        print(f"ERROR: job not found: {job_id_str}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     added = attach_job(project, job_id)
     save_project(project)
@@ -453,7 +453,7 @@ def _cmd_project_adopt(
     try:
         job = require_job_plan(resolved_id)
     except JobNotFoundError:
-        print(f"Error: job not found: {resolved_id[:8]}", file=sys.stderr)
+        print(f"Error: No job matches {resolved_id[:8]!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(3)
 
     if job.project_id:
