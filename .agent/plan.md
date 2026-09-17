@@ -5,41 +5,35 @@ Branch: feature/f280-cli-vocabulary-v2-part-two, cut from `main` at
 
 ## Goal
 
-Finish what F261 could not reach: the catalog `apps/cli/command_catalog.py` equals DECISION
-amend0905-vocab D4 apart from the words D4 gives F268, F269 and F273, and T001's remaining
-Acceptance lines hold, per `docs/roadmap/features/T2_F280.md` (T002 moved whole to F281 by
-DECISION amend0917-throughput D4).
+The catalog `apps/cli/command_catalog.py` equals DECISION amend0905-vocab D4 apart from the words
+D4 gives F268, F269 and F273, and T001's remaining Acceptance lines hold, per
+`docs/roadmap/features/T2_F280.md` (T002 moved whole to F281 by DECISION amend0917-throughput D4).
+The Built State is current, the closure suite ran once with its repair confirmed, and the
+self-use precondition is met.
 
 ## Current Step
 
-ROUND 23 books round 22's independently-reviewed PASS (Gate: F280 R22, one prose slip declared
-— the reviewer's own stale byte count, nothing on disk affected) and marks `Done: R-0951`. Every
-closure precondition now holds: 2 (R18), 3 (R22), 4 (R20), 6 (R21), and 1 (every step PASS,
-R-0951 resolved, the standing Highs named). This OPENS the closure sequence
-(STATUS_closure_protocol.md): the evidence job is round 24's own work.
+CLOSURE ROUND A. Books round 23's verdict, rotates the ledger by `scripts/rotate_live_review.py`
+as its own commit, and from a clean tree at that commit runs the closure evidence job, the
+integrity check and a fresh review package. The rotation commit is the accepted head; only the
+handback follows it in this round.
 
 ## Next Steps
 
-1. Round 24: the evidence job (`packages.orchestration.job_evidence.
-   create_manual_completion_bundle`, `review_feature_id="f280"`, `base_commit` the fork point
-   `9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`) — its own round, given the algorithm's five named
-   packaging pitfalls (STATUS_closure_protocol.md step 1).
-2. Round 25: the review zip (`scripts/make_review_zip.sh`), fresh, from a clean tree at the
-   evidence job's head.
-3. Round 26: the STATUS `[x]` line, README sync, `scripts/self_use_queue.json`'s SU-016
-   `consumed_by=F280` in one commit, the ledger rotation
-   (`scripts/rotate_live_review.py`), then the PR — not merged this session.
-4. `job attach-repo`/`job permit`/`mission contract`/`job contract` wait for F269
-   (DECISION amend0917-throughput D2) — not this feature's to close.
+1. CLOSURE ROUND B: book round A's verdict, then the closure commit — the STATUS `[x]` line
+   authored from round A's measured values, the README sync and `SU-016`'s `consumed_by` set to
+   `F280`, in one commit — then the pull request, which is not merged in that session.
+2. The next feature Rule A5 proposes once F280 is merged.
 
 ## Risks
 
-- 147 findings registered by distinct id, 15 resolved (14 plus R-0951), 132 open. High:
-  R-0803, R-0804, R-0807, none this feature's — named in the closure paragraph, not resolved.
-- R-0899 (owned F273), R-0937 (owned F273), R-0938 (owned F280, nothing to fix), R-0941 and
-  R-0950 (owned F273) — unchanged; re-assigned to F273 in the closure commit per
-  amend0911-feedback rule A.
-- The evidence job's `base_commit` MUST be the fork point, never a post-merge `merge-base`
-  (STATUS_closure_protocol.md step 1(e), the F260 R22 BLOCKED_EVIDENCE lesson) — this branch has
-  merged nothing in, so `rev-list --ancestry-path` and plain `rev-list` should already coincide,
-  checked directly before authoring round 24's block.
+- The package's `base_commit` is the FORK POINT `9f1b6d25`, which is also the merge base because
+  this branch has merged nothing in.
+- The authority set is read from the WORKING TREE, so an untracked file or a leftover worktree
+  changes what is packaged: the tree is clean and the worktrees pruned before the evidence job.
+- The open High findings are R-0803, R-0804 and R-0807, none of them F280's; the integrity gate's
+  `high_blockers_open` check does not see them, which is the already-open R-0648 gap.
+- The open set is 132 by distinct id before this round's booking; R-0899, R-0937, R-0938, R-0941
+  and R-0950 are re-assigned to F273 in the closure commit per amend0911-feedback rule A.
+- `git branch --list 'remedy/job-*'` reads 19 lines at this round's base; no runner is called this
+  round, so it must still read 19 at the round's own head.
