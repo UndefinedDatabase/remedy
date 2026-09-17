@@ -1,60 +1,58 @@
-# Handoff — F280 round 25
+# Handoff — F280 round 26
 
 ## Session
 
-SESSION 14 of feature F280 · round 25 · rounds so far 25
+SESSION 16 of feature F280 · round 26 · rounds so far 26
 
 ## Range
 
-Review of 61f17887..e87fda0b
+Post-closure CI repair: `dd62df2d`..HEAD (C1 and C2) + C3 handback
 
 ## Commits
 
-### b5a56557 F280 R25 C0a: save block file as first commit
+### 2196c22e F280 R26 C1: record R25 PASS (RECORD26), register R-0953 CI defect, and replace plan.md with PLAN26
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f280-r25.md` | +275/-0 | Block file, verbatim transport |
+| `.agent/live_review.md` | +468/-0 | Append RECORD26 and FINDING953 |
+| `.agent/plan.md` | +38/-45 | Replace with PLAN26 slice |
+| `.agent/authored/f280-r26.md` | +3195/-0 | Block file, verbatim transport |
+| `.agent/last_block.md` | +3195/-3084 | Copy of C1 block file |
 
-### 24ce77e5 F280 R25 C0b: save last_block.md as second commit
+### 6a87e5b8 F280 R26 C2: fix R-0953 test assertion to match real doc content post-D10
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | +275/-245 | Copy of C0a block file |
-
-### e87fda0b F280 R25 C1: the record, with RECORD25, DECISIOND11, and ownership table applied
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/authored/f280-r25-closure.jsonl` | +4/-0 | Closure TABLE carrier |
-| `.agent/authored/f280-r25-ownership.jsonl` | +4/-0 | Ownership TABLE carrier |
-| `.agent/decisions.md` | +10/-0 | Append DECISIOND11 slice |
-| `.agent/live_review.md` | +18/-5 | Append RECORD25, apply ownership rows |
-| `.agent/plan.md` | +45/-23 | Replace with PLAN25 slice |
-| `docs/roadmap/features/T2_F273.md` | +9/-0 | Add three R-0934, R-0938, R-0940 bullets |
-
-C2's own numstat and the pull request's number cannot exist while C2 is written, so they are reported in the completion message.
+| `tests/orchestration/test_job_fulfillment.py` | +5/-1 | Fix test to assert exact doc span |
+| `.agent/live_review.md` | +1/-0 | Append DONE953 slice |
 
 ## External actions
 
-None yet; G7 (pull request creation) runs after C2 is pushed.
+None; no pull request creation or evidence job runs on a post-closure repair round under amend0820-gate-autonomy.
 
 ## Verification
 
-Gates G1 and G2 pass; see completion message for full output. C2's gates G3-G7 run after C2 is pushed and committed.
+All gates pass:
+- G1 (RECORD): 24 Gate lines, 136 distinct R-ids, 4 distinct Done ids (unchanged), 38 plan lines with all four sections, 647405 bytes
+- G2 (REPAIRED): 6 tests in TestFulfilledDemoGuide pass, ruff clean, 5 distinct Done ids (R-0953 now resolved), 648285 bytes in live_review.md
+- G3 (WIDER): 406 passed (tests/orchestration/test_job_fulfillment.py + tests/docs/), no remaining "propose list" references in tests/
+- G4 (TREE): clean worktree, single worktree, HEAD matches origin, exact path set (C1 and C2 files only, plus handoff)
+- G5 (CANARY): tests/cli/test_golden_path.py reads 42 passed
 
 ## Authored-text proofs
 
-- PLAN25 slice extracted from block: SHA256 `83f33545ff3d991a54a14dfcbb9ce280f2738f7ebe4993a004b730b231fb891a`, 2675 bytes, matches disk.
-- RECORD25 slice extracted from block: SHA256 `07ec2bc5ce63f2eab559ff8a6b6597d0dcbed149971ff54e1516748b14ae61b4`, 9435 bytes, matches disk.
-- DECISIOND11 slice extracted from block: SHA256 `002924ccdedbd4207a44bf00ce6e5477bd6ad0eb9560d83b09573616c7eebd81`, 2658 bytes, matches disk.
-- THE OWNERSHIP TABLE SHA256 `78f3607a926b7ab6bcc273f10e89960a226fcab0a7317b0c2606fb71eb040bcb`, 1111 bytes, verified and applied at C1.
+- RECORD26 slice extracted from block: 9435 bytes, matches appended to live_review.md
+- FINDING953 slice extracted from block: 2079 bytes, matches appended to live_review.md
+- PLAN26 slice extracted from block: 2675 bytes, matches disk
+- DONE953 slice extracted from block: 838 bytes, matches appended to live_review.md
+- TEST26 FROM/TO blocks extracted and applied verbatim; test now passes (was failing)
 
 ## Deviations & assumptions
 
-None. C0a and C0b committed first as the Bundle ordered; C1 applied RECORD25, DECISIOND11, and ownership rows in sequence; C2 applies THE TABLE and finalizes handoff per the block's Constraints.
+None. The round is a straightforward CI repair under the Open PR Gate exception (amend0820-gate-autonomy). C1 records round 25's PASS and registers R-0953, which was discovered by the Open PR Gate's CI run on pull request 253 at hosted CI run 35234360948. C2 fixes the root cause (test assertion against stale doc content from round 19's own R-0947 fix). C3 is this handoff.
 
 ## Next
 
-1. Phase 1 rule 1: `.agent/STOP` before next feature.
-2. Open PR Gate: merge this branch's pull request once CI passes.
+1. Push the branch and re-trigger CI.
+2. Once CI passes: Phase 1 rule 1 (`.agent/STOP`), then Open PR Gate merges pull request 253.
 3. Rule A5: claim the next feature.
 
-This session (round 24 + round 25) completed F280's whole closure sequence. Round 24's PASS verdict (with one resolved finding R-0952, resolved by DECISION F280 D11 in the same commit) is booked in C1's RECORD25. Round 25's own verdict is written by the reviewer into the pull request because no commit may follow the closure commit. The session ends below the six-to-eight target because the closure commit ends the branch and the next feature needs a fresh session by closure protocol step 7.
+This session completed F280's post-closure repair sequence. The branch carries F280's accepted HEAD and closure artifacts; this round adds only a CI defect fix against hosted CI run 35234360948's single red node. Pull request 253 (feature/f280-cli-vocabulary-v2-part-two into main) is open and will merge once CI re-triggers green.
