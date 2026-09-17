@@ -12,22 +12,24 @@ DONE when T001 and the Acceptance list hold.
 
 ## Current Step
 
-ROUND 21. C1 books round 20's PASS and registers/resolves R-0958 (a LOW
-pre-existing defect found while researching R-0809's remaining scope:
-`remedy job stop` on an unknown id printed TWO contradictory error lines for
-one failure). C2 fixes it in `apps/cli/commands/job_stop_cmd.py`. R-0809
-stays OPEN and its scope is UNCHANGED by this fix — it removes a duplicate
-print of an already-superseded wording, not the "job not found:"/"run '...'
-not found." wordings R-0809 still names.
+ROUND 22. C1 books round 21's PASS. C2 lands R-0809's run-id wording:
+`apps/cli/commands/do_cmd.py`'s `_cmd_run_show` now prints `Error: No run
+matches '<id>'. Try: remedy run list.` instead of `Error: run '<id>' not
+found.`; one test file updated to match. R-0809 stays OPEN — of its four
+former wordings, "invalid job ID" and "no job matches prefix" (round 20) and
+now "run '...' not found" are gone; only "job not found:" (job_stop_cmd.py's
+own text at line 69, and project.py's two sites) remains.
 
 ## Next Steps
 
-1. R-0809's remaining wordings ("job not found:" in `job_stop_cmd.py` and
-   `project.py`; "run '...' not found." in `do_cmd.py`) still need their own
-   measurement pass: is there a shared run-id resolver anywhere, and does
-   unifying "job not found" risk the `EXIT_UNKNOWN_JOB`/`JobNotFoundError`
-   exit-code contracts several call sites rely on — measure before assuming
-   this round's job-id shape generalizes.
+1. R-0809's last remaining wording, "job not found:" — used by
+   `job_stop_cmd.py:69` (inside `_unknown_job`, still correct as the ONLY
+   print for that failure path) and `project.py`'s two sites (line 160 and
+   456) — needs a measurement pass: confirm no test pins the literal
+   "job not found:" substring in a way that would need updating in lockstep,
+   and confirm unifying it does not collide with `JobNotFoundError`'s own
+   exit-code contract, before authoring the fix. Once this lands, R-0809 is
+   fully resolved and gets a `Done:` paragraph.
 2. R-0805 (`ui status` dead-session pruning) still needs a design pass on
    the session-state model before implementation.
 3. R-0895 (README quickstart) runs last (orchestrator brief: it quotes the
@@ -37,10 +39,8 @@ not found." wordings R-0809 still names.
 
 ## Risks
 
-- R-0958's fix only removes a REDUNDANT print; `_unknown_job`'s own "job not
-  found:" wording is untouched and still printed at its two other call sites
-  (`job_stop_cmd.py:37,105`) plus `project.py`'s two sites — R-0809 is not
-  narrowed by this round.
 - `packages/orchestration/data_paths.py`'s `JobIdInvalid`/`JobIdNotFound`
   internal exception messages are still pre-unification text (round 20's
-  risk note) — unaffected by this round too.
+  risk note) — unaffected by any round so far.
+- Do not write `Done: R-0809` until ALL four former wordings are confirmed
+  gone by a fresh repo-wide grep; a partial fix is progress, not resolution.
