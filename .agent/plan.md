@@ -13,57 +13,58 @@ Acceptance list hold.
 
 ## Current Step
 
-ROUND 11. C1 books round 10's PASS (with a process-defect note) and
-re-points `.agent/plan.md`. C2 clears the Project bucket's remaining 18
-violations via 18 single-occurrence FROM/TO edits: 14 command descriptions
-(`status.run`, `job.list`, `project.create`, `project.show`,
-`project.attach-job`, `project.brain`, `project.context`,
-`project.summary`, `project.current`, `project.adopt`, `brain.graph`,
-`brain.constitution`, `stats.backfill-ledger`, `runtime.serve`) and 4 ArgDef
-help strings (`do.run`'s `--project`, `init.run`'s `--project-name`,
-`project.create`'s `--description` and `name`).
+ROUND 12. C1 books round 11's PASS and re-points `.agent/plan.md`. C2
+clears all 31 remaining Job-bucket command descriptions via 31 single-
+occurrence FROM/TO edits (`job.show`, `teacher.narrate`, `job.attach-repo`,
+`job.stop`, `project.attach-job`, `project.adopt`, `patch.list`,
+`snapshot.create`, `brain.context`, `brain.trust`, `brain.timeline`,
+`brain.cockpit`, `brain.continue`, `brain.constitution`,
+`mission.readiness`, `memory.learn`, `memory.candidates`, `change.list`,
+`event.list`, `event.timeline`, `event.replay`, `job.checkpoints`,
+`blocker.list`, `decision.list`, `decision.explain`, `ui.start`, `ui.open`,
+`job.evidence`, `job.apply`, `dev.agent-loop`, `snapshot.list-applies`),
+each appending ", under its mission" or "(under its mission)" naturally
+into the existing sentence.
 
-After this round: Order remains 1 (`stats.bench`, unchanged), Project reads
-0 — FULLY CLEARED. Job remains 41 — untouched this round, now the ONLY
-bucket besides `stats.bench`'s lone Order collision.
+After this round: Order remains 1 (`stats.bench`, unchanged), Project
+remains 0 (fully cleared, round 11). Job drops from 41 to 10 — the
+remaining text is the 10 still-unique `--job`/`--job-id`/`evidence_dir`
+ArgDefs first named in round 9's plan: `teacher.ask`, `job.stop`'s own
+`--reason`, `brain.continue`'s `--prompt`, `mission.continue`'s
+`next_step`, `stats.failures`'s and `stats.report`'s own `--job` texts,
+`stats.backfill-ledger`'s and `stats.verify-ledger`'s `evidence_dir`
+ArgDefs, and `self.inspect`'s and `self.report`'s `--job-id` texts.
 
 ## Next Steps
 
-1. Re-run `_meaning_violations()` grouped by word at the start of round 12;
-   expected: Job (~41) is the only substantial bucket left (plus Order's 1
-   unfixed `stats.bench` collision), at approximately 42 total (re-measure
-   rather than trust). The remaining Job items are the 10 still-unique
-   `--job`/`--job-id`/`evidence_dir` ArgDefs and 31 command descriptions
-   named in round 9's plan entry — entirely located, per-command prose.
-2. Session 2 of F281 is now 3 delegated rounds in (rounds 9-11), still below
-   the 6-to-8 target (amend0905-throughput); continue.
+1. Re-run `_meaning_violations()` grouped by word at the start of round 13;
+   expected: Job (10) and Order (1, `stats.bench`) are the ONLY two
+   remaining violations in the entire catalog, at 11 total (re-measure
+   rather than trust). Round 13 can plausibly clear all 11 in one round —
+   10 distinct ArgDef edits plus one `stats.bench` fix — bringing
+   `_meaning_violations()` to 0 and `VOCABULARY_MODE` closer to flippable
+   (still gated on `_synonym_offenders()` reaching 0 too, which needs the
+   2 remaining synonym sites from `dev.agent-loop`'s command_id and
+   `do.run --fixture-builder`'s description, tracked since round 2 —
+   DECISION F281 D2's two-item floor).
+2. Session 2 of F281 is now 4 delegated rounds in (rounds 9-12), at the
+   floor of the 6-to-8 target (amend0905-throughput); continue toward 6-8
+   if context allows.
 3. Help wrap, `doctor core` dead-commands (D11d), the D11a catalog
    group-reach test, the visible-order data-pinned test, the F259 enforced
    flip (bounded by DECISION F281 D2's two-item floor, possibly `stats.bench`
    as a third), and the README quickstart's R-0895 line remain entirely
-   undone — none of T001's non-description work has started yet.
-4. Two lessons carried from rounds 9-10 (see `.agent/prose_slips.md`): a G5
-   sweep counts the LITERAL text actually written, never the violation
-   count credited to a shared-constant edit; and a worker never reports a
-   gate as PASS from stale memory — G6 in particular is re-run and re-read
-   literally as the LAST action before the handback is written.
-5. A per-site prose edit for a binding word can introduce a NEW violation in
-   a DIFFERENT word's bucket if the new text happens to contain another
-   binding word (e.g. "mission") without that word's OWN meaning fragment
-   (round 11's own dry-run caught exactly this on a first draft of the
-   `project.show` edit, before it was ever authored into a block — the
-   corrected edit avoids the word "mission" entirely). Every future
-   per-site edit is re-measured with the FULL `_meaning_violations()` sweep,
-   not just a check that the target violation cleared.
+   undone — none of T001's non-description work has started yet. Once the
+   description sweep reaches 0, these become the dominant remaining scope.
 
 ## Risks
 
-- Same as rounds 2-10: every catalog description edit is verified by
+- Same as rounds 2-11: every catalog description edit is verified by
   re-running the real `_meaning_violations()`/`_synonym_offenders()`
   functions against the modified catalog before authoring, diffed fixed vs.
-  introduced — this now explicitly includes checking for NEWLY INTRODUCED
-  violations in a bucket other than the one being edited (see Next Steps 5).
-- The remaining Job bucket (~41) is entirely located, per-command prose;
-  expect several more rounds of smaller, careful edits, with continued
-  vigilance for the "fragment is itself a binding word" and "same word,
-  different sense" traps this feature has already found multiple times.
+  introduced, including a check for newly introduced violations in any
+  OTHER bucket (round 11's lesson).
+- The remaining 10 Job-bucket ArgDefs are all distinct per-site text with
+  no shared literal; the `stats.bench` Order collision needs its own
+  reading (round 4's plan already named it but never fixed it — its exact
+  current text needs re-reading before round 13 drafts a fix).
