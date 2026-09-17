@@ -26,7 +26,6 @@ apps.cli.commands.memory
 apps.cli.commands.mission_cmd
 apps.cli.commands.patch
 apps.cli.commands.project
-apps.cli.commands.propose_cmd
 apps.cli.commands.real_test_execution_cmd
 apps.cli.commands.roadmap_cmd
 apps.cli.commands.run_invocation

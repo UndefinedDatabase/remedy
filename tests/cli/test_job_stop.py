@@ -273,7 +273,8 @@ class TestTheParserDoesNotBreakOtherCommands:
     """F011 first added `--status` as a store_true by OPTION NAME, in the shared grouped
     parser. That silently turned `remedy propose list <job> --status pending` into an error:
     the same option name means different things to different commands, so the CATALOG
-    decides, per argument, not the parser by spelling."""
+    decides, per argument, not the parser by spelling. (`propose list` was F280 round 15's
+    deletion — a historical example, not a live command.)"""
 
     def _parse(self, argv: list[str]):
         from apps.cli.grouped import build_parser
@@ -288,13 +289,8 @@ class TestTheParserDoesNotBreakOtherCommands:
         with pytest.raises(SystemExit):
             self._parse(["job", "stop", "abc123", "--status", "pending"])
 
-    def test_propose_list_status_still_takes_a_value(self):
-        args = self._parse(["propose", "list", "abc123", "--status", "pending"])
-        assert args.status == "pending"
-
     def test_only_declared_flags_are_flags(self):
         from apps.cli.command_catalog import CATALOG
 
         flags = {(e.command_id, a.name) for e in CATALOG for a in e.args if a.is_flag}
         assert ("job.stop", "--status") in flags
-        assert ("propose.list", "--status") not in flags
