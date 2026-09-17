@@ -173,7 +173,7 @@ class TestItRefusesToLie:
         with pytest.raises(SystemExit) as exc:
             CMD._cmd_job_stop("0123456789abcdef")
         assert exc.value.code == 3
-        assert "job not found" in capsys.readouterr().err
+        assert capsys.readouterr().err == "Error: No job matches '0123456789abcdef'. Try: remedy job list.\n"
 
     def test_an_unknown_job_exits_3_in_json_mode_too(self, data_root, capsys):
         with pytest.raises(SystemExit) as exc:

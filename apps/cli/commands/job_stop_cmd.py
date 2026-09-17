@@ -94,7 +94,11 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
         except SystemExit as exc:
             if exc.code == 2:
                 raise
-            _unknown_job(job_id, json_output=json_output)
+            if json_output:
+                print(_json.dumps(
+                    {"ok": False, "error": "job_not_found", "job_id": job_id}, indent=2
+                ))
+            raise SystemExit(EXIT_UNKNOWN_JOB) from None
 
     if status:
         _print_status(job_id, json_output=json_output)
