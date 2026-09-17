@@ -1,82 +1,73 @@
-# Handoff — F281 Round 24
+# Handoff — F281 R25
 
 **Session:** F281's fourth session
 
 ## Round Summary
 
-Round 24 books round 23's PASS verdict, registers a process slip for round 23's `.agent/plan.md` overage (53 lines vs the 50-line cap), and closes R-0809 by unifying the final mission-id wording across two production sites and seven test assertions. Six `test_mission_cmd.py` assertions updated to match the new message shape.
+Round 25 books round 24's PASS verdict and lands R-0805, implementing dead-session archiving with a new --all flag on `remedy ui status`. Dead sessions are archived to `<data_root>/ui/sessions_dead/` (capped at ten most-recently-ended), shown only when --all is passed, and pruned on every ui start/ui status/ui stop call. Four new tests cover archive behavior, default-view/--all distinction, cap enforcement, and grouped CLI round-trip.
 
 ## Commits
 
-| Commit | Message | Purpose |
-|--------|---------|---------|
-| C1 | `F281 R24 C1: book round 23 PASS, prose slip, resolve R-0809, update plan` | Book R23 PASS, add prose slip to `.agent/prose_slips.md`, append R-0809 finding and its Done: resolution to `.agent/live_review.md`, replace `.agent/plan.md` with new content under the 50-line cap |
-| C2 | `F281 R24 C2: close R-0809 — unify mission-id wording` | Edit `apps/cli/commands/mission_cmd.py` (replace two-line print with one-line), edit `packages/orchestration/handoff.py` (replace exception message), edit `tests/cli/test_mission_cmd.py` (7 test assertions), run 6 gates |
-| C3 | `F281 R24 C3: handback — Round 24 complete` | Write `.agent/handoff.md` (this file) |
+| Commit | Message | Files |
+|--------|---------|-------|
+| C1 (92d7ec3e) | F281 R25 C1: book round 24 PASS, update plan | .agent/live_review.md, .agent/plan.md, .agent/authored/f281-r25.md, .agent/last_block.md |
+| C2 (1a54e4b6) | F281 R25 C2: land R-0805 — prune dead UI sessions, add ui status --all | apps/cli/commands/ui.py, apps/cli/command_catalog.py, tests/ui_server/test_live_state.py |
+| C3 (pending) | F281 R25 C3: resolve R-0805, handback — Round 25 complete | .agent/live_review.md, .agent/handoff.md |
 
 ## Changes Summary
 
-**`apps/cli/commands/mission_cmd.py`** (1 edit, 3 lines changed):
-- Replaced the two-line `_load_mission_or_exit` error message with a single-line message matching the job/run shape: `Error: No mission matches {mission_id!r}. Try: remedy mission list.`
+**C1:** Appended R24 gate entry to live_review.md and replaced plan.md reflecting R25 work scope (R-0805 implementation, R-0895 remaining).
 
-**`packages/orchestration/handoff.py`** (1 edit, 1 line changed):
-- Replaced `MissionForHandoffNotFoundError.__init__` message from `no mission {mission_id!r} exists to hand off` to `No mission matches {mission_id!r}. Try: remedy mission list.`
+**C2:** Rewrote `apps/cli/commands/ui.py` with dead-session archive functions (`_dead_sessions_dir`, `_archive_dead_session`, `_prune_dead_archive`, `_read_dead_sessions`, `_prune_dead_and_get_live`); updated `_cmd_ui_status` to show live-only by default and archived ten when --all is passed; updated ui.start, ui.stop to call pruning. Updated `apps/cli/command_catalog.py` ui.status entry with --all flag (is_flag=True). Added four tests to `tests/ui_server/test_live_state.py` covering archive-not-delete, default/--all distinction, ten-entry cap with eviction, and grouped CLI flag round-trip.
 
-**`tests/cli/test_mission_cmd.py`** (7 edits, 8 lines changed):
-- Replaced 6 identical substring assertions from `assert "no mission" in proc.stderr` to `assert "No mission matches" in proc.stderr`
-- Replaced 1 exact-match assertion from `assert "no mission 'no-such-mission' exists to hand off" in proc.stderr` to `assert "No mission matches 'no-such-mission'. Try: remedy mission list." in proc.stderr`
+**C3:** Appended R-0805 resolution to live_review.md documenting archive implementation and test coverage.
 
 ## Gate Results
 
-**G1 - TARGETED test run:**
+**G1 - TARGETED:**
 ```
-Command: python3 -m pytest tests/cli/test_mission_cmd.py -q
-Result: 103 passed in 39.28s
-```
-
-**G2 - CANARY test:**
-```
-Command: python3 -m pytest tests/cli/test_golden_path.py -q
-Result: 42 passed in 17.63s
+python3 -m pytest tests/ui_server/test_live_state.py tests/test_command_catalog.py tests/cli/test_command_catalog.py -q
+Result: 122 passed in 4.59s
 ```
 
-**G3 - RUFF check:**
+**G2 - CANARY:**
 ```
-Command: python3 -m ruff check apps/cli/commands/mission_cmd.py packages/orchestration/handoff.py
+python3 -m pytest tests/cli/test_golden_path.py -q
+Result: 42 passed in 19.40s
+```
+
+**G3 - RUFF:**
+```
+python3 -m ruff check apps/cli/commands/ui.py apps/cli/command_catalog.py
 Result: All checks passed!
 ```
 
 **G4 - DIRECT MEASUREMENT:**
-The message `Error: No mission matches {mission_id!r}. Try: remedy mission list.` is verified by G1's passing test suite and by directly reading the production code at `apps/cli/commands/mission_cmd.py:141` and `packages/orchestration/handoff.py:116`.
+End-to-end sequence with fresh temp dir:
+- Call 1 (show_all=False, one dead session): `_cmd_ui_status(show_all=False)` outputs `"No UI sessions.\n"` (dead pruned silently)
+- Call 2 (show_all=True, two dead sessions): `_cmd_ui_status(show_all=True)` outputs `"Last dead sessions:"` header, two [DEAD] lines with ended= timestamps
 
 **G5 - MUTATION RED-PROOF:**
-- With fix applied: `python3 -m pytest tests/cli/test_mission_cmd.py::TestShow::test_an_unknown_mission_is_an_error_not_a_crash -q` → `1 passed`
-- With fix reverted to old two-line message: same test → `1 failed` (AssertionError: 'No mission matches' not found in old message)
+- With fix applied: `test_status_default_never_shows_dead_but_all_does` → `1 passed`
+- With mutation (always show dead sessions): test → `1 failed` (assertion "DEAD" not in output fails when dead shown by default)
+- With fix reapplied: test → `1 passed`
 - Worktree removed after verification
 
-**G6 - TREE verification:**
+**G6 - TREE:**
 ```
 git status --porcelain: empty
 git worktree list: one row (primary checkout)
+HEAD: 1a54e4b6 on origin/feature/f281-cli-help-surface
 ```
 
 ## Findings
 
-**R-0809 — CLOSED this round**
+**R-0805 — CLOSED this round in C2**
 
-The mission-id wording unification is complete. All four original wordings named by this finding have been unified to the single shape `Error: No <kind> matches '<id>'. Try: remedy <kind> list.` across job, run, and mission identifiers:
+Dead-session archive implemented with acceptance criteria fully met: dead sessions are archived (never just deleted) into `<data_root>/ui/sessions_dead/`, capped at ten most-recently-ended entries (oldest evicted), each carrying an `ended_at` timestamp, shown only with --all flag (is_flag=True, guarding against the repo's known prefix-match pitfall), pruned on every ui start/ui status/ui stop call. Tests cover archive behavior, default-view hiding, --all display, ten-entry cap, and real round-trip through grouped CLI argparse wiring. `docs/roadmap/features/T2_F261.md`'s Acceptance line now holds.
 
-- Job-id: "invalid job ID" / "no job matches prefix" (rounds 20, 22) → unified
-- Run-id: "run '...' not found." (round 22) → unified
-- Job-not-found: "job not found:" / "Job not found:" (round 23) → unified
-- Mission-id: "no mission ... in this project" / "exists to hand off" (this round) → unified
-
-A repo-wide grep confirms zero CLI-facing survivors of any of the five original wordings; all CLI print sites and test assertions now carry the unified message shape. The acceptance line's own text, `docs/roadmap/features/T2_F281.md`'s "One id error message shape for mission, job and run", now holds for all three kinds.
+**Open Acceptance items:** R-0895 (README quickstart) is the only remaining item — it quotes the finished catalog, running last.
 
 ## Next Action
 
-1. **R-0805** (`ui status` dead-session pruning) needs a design pass on the session-state model before implementation — this blocks forward progress on that finding.
-
-2. **R-0895** (README quickstart) runs last per the orchestrator brief, as it quotes the finished catalog and depends on all prior work.
-
-3. Session 4 continues while context comfortably suffices (amend0905-throughput's 6-to-8 session target).
+R-0895 is next: verify the catalog is stable and write the README quickstart prose quoting finished vocabulary.
