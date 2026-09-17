@@ -7,6 +7,8 @@ Deterministic — no terminal probing, fixed width (78 inner).
 
 from __future__ import annotations
 
+import textwrap
+
 BOX_WIDTH = 78  # inner width (between vertical bars)
 
 
@@ -19,14 +21,15 @@ def _box(title: str, rows: list[tuple[str, str]]) -> str:
         lines.append("\u2502" + " " * BOX_WIDTH + "\u2502")
     else:
         max_left = max(len(r[0]) for r in rows)
+        prefix_width = 2 + max_left + 2
+        wrap_width = max(BOX_WIDTH - prefix_width, 1)
         for left, right in rows:
             pad = " " * (max_left - len(left))
-            content = f"  {left}{pad}  {right}"
-            # Truncate if too long, pad if too short
-            if len(content) > BOX_WIDTH:
-                content = content[: BOX_WIDTH - 1] + "\u2026"
-            content = content.ljust(BOX_WIDTH)
-            lines.append(f"\u2502{content}\u2502")
+            prefix = f"  {left}{pad}  "
+            wrapped = textwrap.wrap(right, width=wrap_width) or [""]
+            lines.append(f"\u2502{(prefix + wrapped[0]).ljust(BOX_WIDTH)}\u2502")
+            for cont in wrapped[1:]:
+                lines.append(f"\u2502{(' ' * prefix_width + cont).ljust(BOX_WIDTH)}\u2502")
 
     lines.append("\u2570" + "\u2500" * BOX_WIDTH + "\u256f")
     return "\n".join(lines)

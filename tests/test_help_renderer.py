@@ -48,8 +48,9 @@ class TestBoxAlignment:
         lengths = self._line_lengths(text)
         assert all(l == BOX_WIDTH + 2 for l in lengths), lengths
 
-    def test_long_content_truncated(self) -> None:
+    def test_long_content_wraps_without_ellipsis(self) -> None:
         text = _box("Test", [("x" * 40, "y" * 50)])
+        assert "…" not in text
         for line in text.splitlines():
             assert len(line) == BOX_WIDTH + 2, f"Line too long: {len(line)}"
 
@@ -125,6 +126,34 @@ class TestRenderCommandHelp:
         result = render_command_help("remedy", "brain", "graph", "Graph.", [("job_id", "UUID")], [("--json", "JSON")])
         assert "--json" in result
         assert "--help" in result
+
+
+class TestNoEllipsisAcrossCatalog:
+    """Acceptance (T2_F281.md): a 200-character option help renders without an
+    ellipsis — long text wraps instead of being truncated."""
+
+    def test_root_help_has_no_ellipsis(self) -> None:
+        from apps.cli.command_catalog import GROUPS
+        groups = [(g.id, g.description) for g in GROUPS.values()]
+        text = render_root_help("remedy", "Remedy.", groups)
+        assert "…" not in text
+
+    def test_every_group_help_has_no_ellipsis(self) -> None:
+        from apps.cli.command_catalog import GROUPS, get_commands_for_group
+        for group_id, group_def in GROUPS.items():
+            commands = [(c.subcommand, c.description) for c in get_commands_for_group(group_id)]
+            text = render_group_help("remedy", group_id, group_def.description, commands)
+            assert "…" not in text, f"group {group_id} help was truncated"
+
+    def test_every_command_help_has_no_ellipsis(self) -> None:
+        from apps.cli.command_catalog import CATALOG
+        for cmd in CATALOG:
+            positionals = [(a.name, a.help) for a in cmd.args if not a.is_option]
+            options = [(a.name, a.help) for a in cmd.args if a.is_option]
+            text = render_command_help(
+                "remedy", cmd.group_id, cmd.subcommand, cmd.description, positionals, options
+            )
+            assert "…" not in text, f"{cmd.command_id} help was truncated"
 
 
 class TestRenderError:
