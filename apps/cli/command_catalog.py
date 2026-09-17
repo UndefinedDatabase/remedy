@@ -188,7 +188,7 @@ _AS_MISSION_FLAG = ArgDef(
     "--as-mission",
     "When approving: also create a mission for this goal and link this job as its initial job",
     required=False, is_option=True, is_flag=True)
-_PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to project (slug or UUID)", required=False, is_option=True)
+_PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to a project's repo (slug or UUID)", required=False, is_option=True)
 _ALL_PROJECTS_FLAG = ArgDef("--all-projects", "Show jobs from all projects", required=False, is_option=True, is_flag=True)
 
 
@@ -457,7 +457,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Show the project resolved from the current directory.",
         action_class="read_only",
         args=(
-            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, slug or UUID", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -470,7 +470,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Attach a repository path to the current project.",
         action_class="write_metadata",
         args=(
-            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, slug or UUID", required=False, is_option=True),
             ArgDef("--repo", "Path to the repository", required=True, is_option=True),
         ),
         related=("project.current",),
@@ -483,7 +483,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             _JOB_ID,
-            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, slug or UUID", required=False, is_option=True),
         ),
         related=("project.attach-job", "job.list"),
     ),
@@ -1085,7 +1085,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("key", "Memory key"),
             ArgDef("value", "Memory value"),
-            ArgDef("--project", "Project UUID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, UUID scope", required=False, is_option=True),
             ArgDef("--job", "Job UUID scope", required=False, is_option=True),
             ArgDef("--tags", "Comma-separated tags", required=False, is_option=True),
             ArgDef("--approved", "Mark as approved", required=False, is_option=True),
@@ -1098,7 +1098,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Recall memory entries by keyword.",
         action_class="read_only",
         args=(
-            ArgDef("--project", "Project UUID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, UUID scope", required=False, is_option=True),
             ArgDef("--job", "Job UUID scope", required=False, is_option=True),
             ArgDef("--keyword", "Search keyword", required=False, is_option=True),
             ArgDef("--limit", "Max entries to return (default: 5)", required=False, is_option=True, default="5"),
@@ -1113,7 +1113,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="List all memory entries for a scope.",
         action_class="read_only",
         args=(
-            ArgDef("--project", "Project UUID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, UUID scope", required=False, is_option=True),
             ArgDef("--job", "Job UUID scope", required=False, is_option=True),
             _JSON_OPT,
         ),
@@ -1142,7 +1142,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope", required=False, is_option=True),
             _JSON_OPT,
         ),
@@ -1156,7 +1156,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope", required=False, is_option=True),
         ),
     ),
@@ -1168,7 +1168,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope", required=False, is_option=True),
         ),
     ),
@@ -1180,7 +1180,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope", required=False, is_option=True),
         ),
     ),
@@ -1193,7 +1193,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("old_id", "Memory ID to supersede", required=True),
             ArgDef("new_id", "Memory ID that supersedes", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope", required=False, is_option=True),
         ),
     ),
@@ -1206,7 +1206,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("memory_id", "Memory ID to contradict", required=True),
             ArgDef("by_id", "Memory ID that contradicts", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
             ArgDef("--job", "Job ID scope", required=False, is_option=True),
         ),
     ),
