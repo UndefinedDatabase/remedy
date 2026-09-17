@@ -74,8 +74,12 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: the flight-plan rename and the help surface), was registered on
 #: 2026-09-16 by DECISION F261 D25, which split it off F261 at the standing soft
 #: limit of 25 rounds and placed it directly after its parent
-#: per amend0906-split-placement; see T2_F280.md.
-TOTAL_FEATURES = 280
+#: per amend0906-split-placement; see T2_F280.md. One more, F281 (CLI help
+#: surface: descriptions, role labels, help wrapping, group order, README
+#: quickstart), was registered on 2026-09-17 by operator order
+#: amend0917-throughput, DECISION D4, which moved F280's T002 there whole and
+#: placed it directly after F280; see T2_F281.md.
+TOTAL_FEATURES = 281
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

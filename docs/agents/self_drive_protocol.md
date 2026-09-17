@@ -318,7 +318,9 @@ answer: the operator's next amendment records the answer as a dated DECISION and
 deletes the entry in the same commit. The empty file reads exactly
 `EMPTY — nothing is waiting on the operator.` under its header. The §3 checklist
 of `docs/agents/planner_reviewer_prompt.md` is untouched by this rule (amend0827
-rule 4). Reverse by deleting this paragraph and the file.
+rule 4). Amended 2026-09-17 by amend0917-throughput rule 5: an entry never
+stalls the session; the recommendation is executed as a reversible DECISION in
+the same round. Reverse by deleting this paragraph and the file.
 
 Operator amendment amend0911-f275-to-scope (2026-09-11, folded into
 amend0911-feedback) — F275's soft limit of 20 sessions and 60 rounds
@@ -392,6 +394,55 @@ amend0908-f275-finish rules 2 to 5, and amend0911-f275-to-scope. Reason: two of
 three F275 slices have been finished for days; the remaining work is mechanical
 and its cost was ritual, not substance. Reverse by deleting this paragraph and
 the amend0914 paragraph in `docs/roadmap/features/T2_F275.md`.
+
+Operator amendment amend0917-throughput (2026-09-17) — ONE FULL SUITE PER
+FEATURE, FAT ROUNDS, NO STALLS. Measured on F280 rounds 9 to 13: a two-line
+rename cost two full-suite runs, a 47-file mechanical rename cost four, one round
+contained no product code at all, and one operator question has held a deletion
+since round 7. These rules apply to EVERY feature from this date, F280 included,
+and override any conflicting habit in a step block or handoff. (1) THE FULL SUITE
+RUNS EXACTLY ONCE PER FEATURE, in the closure sequence's integration-gate round,
+by the worker, in the primary checkout, `python3 -m pytest -n auto -q`; the
+worker commits the summary line and the full list of bad node ids as
+`.agent/authored/f<id>-closure-suite.txt`. No round block may order the full
+suite, no reviewer runs it, no CONTROL or base run exists, and a reviewer dry run
+before authoring is proved with targeted tests only. A round's verification is:
+pytest on every test file the round touched and the test files nearest every
+production module it touched, `tests/cli/test_golden_path.py`, `tests/docs/`
+when docs/roadmap/** changed, and `python3 -m ruff check` on the touched files.
+Mutation red-proofs for production code stay mandatory on the targeted files.
+Hosted CI being red on a feature branch before closure is not a finding. (2)
+CLOSURE REPAIR. Every bad node the closure suite lists is this feature's to fix,
+unless the hosted CI record of the merge base on main shows the same node red
+there. Repair rounds follow the shrinking rule: each must strictly shrink the bad
+set with no node newly bad; at most THREE repair rounds. What is still red after
+the third, and what is attributed to main, is marked
+`@pytest.mark.xfail(strict=True, reason="F<follow-up>: <one sentence>")` in one
+commit — never a weakened assertion, never a skip — and the closure sequence, in
+the same commit as the STATUS flip, registers a follow-up feature "Suite repair
+after F<id>" (feature file listing every marked node, STATUS line directly behind
+the closing feature per amend0906-split-placement, `TOTAL_FEATURES` pin, README
+counters — ledger atomicity) and closes PASS_WITH_RISKS naming the marks. A
+closure suite that is green skips all of this; a repair that lands lifts its
+mark in the same commit. (3) NO NAMING-ONLY ROUNDS, NO DEFERRAL CHAINS. A
+DECISION that names spellings, targets or an order lands in the SAME round as
+the patch that applies it; amend0827 rule 1 applies to DECISIONs. An item a
+round defers is taken by the very next round, and a round never defers more
+items than it lands. The measurement an item needs is made in the round that
+lands it, in the reviewer's targeted dry run. (4) ROUND BUDGET, all features:
+the plan slice, the verdict booking, the prose-slip lines and any DECISION of a
+round land in ONE commit, verified once as "post equals pre plus slice"; the
+transport proof is one digest; a round orders at most SIX gates; the handback is
+its own commit. (5) OPERATOR QUESTIONS NEVER STALL. Writing an entry in
+`.agent/operator_questions.md` never blocks a round or a feature: the session
+executes its own "My recommendation" as a dated, reversible DECISION in the same
+round and the entry stays for the operator to overturn; "What happens if you say
+nothing" therefore always reads "the recommendation is already executed and
+stands until you say otherwise". (6) UNCHANGED: guardrails G1 to G8, the
+closure protocol otherwise, Rule A5, the split-and-close default. Reason: the
+verification tiers of 2026-07-26 already excluded the full suite from round
+verification; F275's overlay habit re-imported it and it never left. Reverse by
+deleting this paragraph and restoring the four sibling edits amend0917 names.
 
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN

@@ -8,12 +8,13 @@
 1. Every step has a PASS round; every R-XXXX finding is Resolved or listed
    as a documented Medium/Low risk. Latest live_review verdict is PASS or
    PASS WITH RISKS — never PENDING/FAIL.
-2. Full relevant suite green — verified by the reviewer running it where it
-   has execution; otherwise via raw transcripts (command, exit code, real
-   output) plus one reviewer-chosen spot-check. Never a summary.
-   A dedicated integration-gate round (full suite, `pytest -n auto`, raw
-   output) must have PASSed before closure; this precondition re-confirms it
-   (planner_reviewer_prompt.md §3 verification tiers).
+2. Full suite run once — the integration-gate round has run the full suite
+   once (`python3 -m pytest -n auto -q`, worker, primary checkout) and
+   committed `.agent/authored/f<id>-closure-suite.txt`; closure re-confirms
+   by reading that transcript. A red transcript is handled by the repair and
+   follow-up rules of operator amendment amend0917-throughput (2026-09-17,
+   docs/agents/self_drive_protocol.md) before this precondition holds. The
+   reviewer never re-runs the suite here.
 3. `remedy integrity check --json` → PASS; no relevant untracked files.
 4. Feature file's Built State section is current.
 5. Working tree clean, branch pushed, worker idle.

@@ -14035,3 +14035,53 @@ CHOSEN, THIRD: THE SELF-USE ITEM IS THE GENERATOR'S. The queue holds no pending 
 CONSEQUENCE. No open finding names F261 as its owner in any sense that survives this closure: the seven are F280's by D25 and every other finding registered here names another feature. The next consolidation measures against 35.
 
 HOW TO REVERSE. Delete this paragraph block and revert round 26's queue commit; the self-use precondition is then unmet, and the re-assignment rests on DECISION F261 D25 alone.
+
+## DECISION amend0917-throughput D1 (2026-09-17) — PROPOSALS ARE DECISIONS (answers operator question Q4)
+
+CONTEXT. Operator question Q4 (F280 round 7) asked whether the `propose` group may stay a real command, because deleting it as DECISION amend0905-vocab D4 orders would strand the approved-for-build refusal of `self execute` and the `can_finalize` hold of `packages/orchestration/proposed_tasks.py` with no operator-facing heir. Every verified fulfillment writes a follow-up suggestion, so the hold is reached on ordinary jobs.
+
+CHOSEN. The follow-up suggestion `packages/orchestration/job_fulfillment.py` writes after a verified fulfillment is enqueued as a Decision of type `proposal` in `packages/orchestration/decision_queue.py`, with the answers approve / reject / defer, and `remedy decision list/show/answer` is its ONLY operator surface. The deterministic evaluation `propose evaluate` performed runs at creation, before the enqueue; `approve` performs what `propose materialize` did. The two surviving gates — `self execute`'s approved-for-build refusal and `can_finalize` in `packages/orchestration/proposed_tasks.py` — read the decision's answer; a proposal with no answer holds Finalize exactly as today, so no job gets stuck and no gate is weakened. The `propose` group (list, show, evaluate, approve, reject, defer, materialize) is deleted with its deletion paragraph and its ids in `TestDeletedCommands`, per DECISION D-A: no alias, no shim.
+
+CONSEQUENCE. F280 T001 executes this in its next one or two rounds; the round measures the exact seams. Q4 leaves `.agent/operator_questions.md` (D5).
+
+HOW TO REVERSE. Revert the executing round's commits and delete this paragraph.
+
+## DECISION amend0917-throughput D2 (2026-09-17) — `job attach-repo` AND `job permit` MOVE TO F269
+
+CONTEXT. DECISIONs F280 D3 and D4 measured that five surviving commands gate on the repository attach and the capability grants these two commands write, so their deletion waits for another writer. F269's contract is the natural writer of a job's repository binding and of its grants.
+
+CHOSEN. The contract (F269) is the writer of a job's repository binding and of its grants; until it exists, `job attach-repo` and `job permit` stay as they are. `CommandEntry` in `apps/cli/command_catalog.py` has no `user_facing` field (only `GroupDef` has one), so the two commands stay unchanged rather than hidden. `docs/roadmap/features/T2_F269.md` gains a dated paragraph "Also owed here (amend0917-throughput D2)" after its Orchestrator brief, and the `propose` / `job fulfill` / `job create` / `job attach-repo` / `job permit` Acceptance bullet of `T2_F280.md` gains a dated clarification that the last two are F269's and not required for F280's closure.
+
+CONSEQUENCE. F280 closes without deleting the two commands; F269 deletes them when its contract writer lands.
+
+HOW TO REVERSE. Delete this paragraph, the F269 paragraph and the F280 clarification sentence.
+
+## DECISION amend0917-throughput D3 (2026-09-17) — THE REST OF THE flight_plan RENAME LANDS IN ONE ROUND
+
+CONTEXT. DECISIONs F280 D5 to D8 landed the rename in pieces across rounds 9 to 13 and left owed the DAG-scheduling key `inputs["flight"]`, the `fp:` decision-id prefix and the English prose noun, each deferred to its own naming DECISION — a deferral chain amend0917-throughput rule 3 forbids.
+
+CHOSEN. The DAG-scheduling key `inputs["flight"]` becomes `inputs["plan"]` (the task's slice of the task plan; D-A, no shim); the decision-id prefix `fp:` becomes `plan:` everywhere it is constructed or parsed, `apps/ui/src` included; the English prose noun "flight plan"/"flight-plan" in code comments, docstrings, catalog descriptions and CLI prints under `apps/`, `packages/`, `tests/`, `scripts/`, `docs/system/`, `docs/guides/` and `apps/ui/src` becomes "task plan", and stale citations of the former module name `flight_plan.py` become `job_plan.py`. Accepted `[x]` feature files stay byte-identical. One round, one DECISION F280 D<next> recording the measured counts, targeted tests, no further owed list. `T2_F280.md` carries a dated amendment paragraph at the end of its T001 section stating this.
+
+CONSEQUENCE. The rename is finished by F280's next rename round; no owed rename item survives it.
+
+HOW TO REVERSE. Revert that round's commits, delete this paragraph and the T001 amendment paragraph.
+
+## DECISION amend0917-throughput D4 (2026-09-17) — T002 BECOMES F281, AND F280 FINISHES T001
+
+CONTEXT. F280's T002 (descriptions, role labels, help wrapping, group order, README quickstart) is untouched after thirteen rounds and depends on T001's renames having landed; carrying it inside F280 keeps F280 open for work T001 does not need.
+
+CHOSEN. F281 "CLI help surface — descriptions, role labels, help wrapping, group order, README quickstart" is registered in one commit: `docs/roadmap/features/T2_F281.md` with F280's whole T002 text verbatim as its T001 and the T002 Acceptance bullets moved from F280 (the `Worker:` renderer pin, the 200-character help wrap, the `doctor core` dead-commands section, the F259 enforced mode, R-0805, R-0809, R-0895, the R-0934 resolution line and the visible-order data-pinned test); its STATUS line directly under F280's inside Tier 2; `TOTAL_FEATURES` 280 → 281; README 78 of 281 and the Tier 2 total 34. F280's `## T002` body becomes one sentence pointing here, and its last line states that the split-and-close default does not apply to F280, which closes when T001 and the remaining Acceptance hold, expected within four rounds under amend0917 rule 1.
+
+CONSEQUENCE. F280 closes on T001 alone; F281 is the next Tier 2 feature after it. F281 is not added to the Depends-on lines of the features it blocks; the Blocks line of F281 records the relation.
+
+HOW TO REVERSE. Revert the registration commit's F281 parts (the feature file, the STATUS line, the counters) and restore F280's T002 body, its moved Acceptance bullets and its last line from the parent commit; delete this paragraph.
+
+## DECISION amend0917-throughput D5 (2026-09-17) — Q3 AND Q4 ARE ANSWERED
+
+CONTEXT. `.agent/operator_questions.md` held Q3 (the F261 split, on main) and Q4 (whether `propose` may stay, on the F280 branch).
+
+CHOSEN. Q3 — keep the split — is confirmed as executed. Q4 is answered by D1. `.agent/operator_questions.md` is rewritten to its header plus the exact line `EMPTY — nothing is waiting on the operator.`
+
+CONSEQUENCE. Nothing is waiting on the operator; under amend0917-throughput rule 5 any later entry is executed as a reversible DECISION in the round that writes it.
+
+HOW TO REVERSE. Restore the two entries from git history and delete this paragraph.
