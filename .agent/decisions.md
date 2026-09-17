@@ -14461,3 +14461,62 @@ across as many lines as it needs; `remedy --help`, every `remedy <group>
 --help` and every `remedy <group> <command> --help` carry zero `"…"`
 characters, measured directly rather than assumed. HOW TO REVERSE: revert
 this round's C2 commit; delete this paragraph.
+
+## DECISION F281 D5 (2026-09-17, F281 round 16) — the default `remedy --help` order is pinned as data (`VISIBLE_GROUP_ORDER`), read by `_print_root_help` instead of `GROUPS`' own dict order
+
+CONTEXT. `docs/roadmap/features/T2_F281.md`'s Acceptance list requires: "`remedy
+--help` shows the D4 visible groups in the D4 order; the visible order is the
+eighteen-slot order with `absorb` and `chat` absent until F263/F264 ship, and a
+test pins the order as data so F263/F264 add a group without reordering."
+DECISION amend0905-vocab D4 names the sixteen currently-shipped visible groups
+in a fixed order; DECISION amend0911-feedback D1 reserves two further slots for
+`absorb` (F263) and `chat` (F264), unregistered until each ships.
+`apps/cli/grouped.py`'s `_print_root_help` built its "Commands" box by
+iterating `GROUPS.items()`, Python's dict INSERTION order, filtered to
+`user_facing and not hidden` — never D4's own order.
+
+MEASURED. `GROUPS`' dict insertion order at round 15's HEAD reads `do, status,
+decision, init, job, run, project, ui, doctor, config, worker, memory,
+teacher, runtime, stats, ..., mission` (mission defined near the bottom of the
+dict, among the advanced/internal entries though it is itself `user_facing`);
+D4's order reads `do, mission, job, run, decision, status, stats, teacher,
+memory, ui, config, doctor, project, init, worker, runtime`. The two SETS are
+identical (sixteen ids, confirmed by direct set comparison), so no group was
+missing or extra — only the printed SEQUENCE was wrong. `remedy --help`'s real
+output before this round's fix showed `do, status, decision, init, job, run,
+project, ui, doctor, config, worker, memory, teacher, runtime, stats,
+mission`, differing from D4 on every position after the first. The existing
+canary test `tests/cli/test_golden_path.py::TestHelpPinning::test_do_status_decision_pinned_first`
+asserted only a four-way relative order (`do < status < decision < init`) that
+happened to hold under the wrong dict order, so it never caught the
+discrepancy (registered as R-0955, resolved in this same round).
+
+CHOSEN. `apps/cli/command_catalog.py` gains `VISIBLE_GROUP_ORDER: tuple[str,
+...]`, a plain module-level tuple naming the sixteen ids in D4's exact order,
+with a comment naming D4, D1, the two reserved future slots, and the
+completeness test that binds it to `GROUPS`. `_print_root_help`'s default
+(non-`--all-commands`) branch iterates `VISIBLE_GROUP_ORDER` and looks up each
+id's description in `GROUPS`, instead of iterating `GROUPS.items()`. The
+`--all-commands` branch is UNCHANGED: the Acceptance line names only the
+default `remedy --help` view, and D4's own "Advanced" list is a separate,
+smaller ordering question this round does not touch.
+
+ALTERNATIVES CONSIDERED. Reordering `GROUPS`' own dict literal to match D4 —
+rejected: the dict's insertion order would then be doing double duty as both
+"the order commands are defined in the source" and "the order help prints
+them," so a future contributor adding a new visible group in an editorially
+sensible place in the dict (next to a related group) would silently reorder
+help output; a named, separately-tested tuple makes the coupling explicit and
+gives F263/F264 a single line to extend rather than a dict position to find.
+Sorting `GROUPS` by some computed key (usage frequency, alphabetical) —
+rejected: D4 is an explicit, operator-chosen order with no derivable rule
+behind it (it groups by workflow role, not alphabetically), so nothing but a
+literal, pinned list can reproduce it.
+
+CONSEQUENCE. `remedy --help` now prints the sixteen visible groups in exactly
+DECISION amend0905-vocab D4's order, measured directly rather than assumed;
+`TestVisibleGroupOrder` in `tests/test_command_catalog.py` fails if
+`VISIBLE_GROUP_ORDER`'s content drifts from D4's sixteen ids OR from `GROUPS`'
+own visible set, and `TestRootHelpVisibleOrder` / `TestHelpPinning` fail if
+`_print_root_help` stops reading it. HOW TO REVERSE: revert this round's C2
+commit; delete this paragraph.
