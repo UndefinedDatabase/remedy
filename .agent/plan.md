@@ -11,20 +11,21 @@ T002 holds, per `docs/roadmap/features/T2_F280.md`.
 
 ## Current Step
 
-ROUND 12 books round 11's independently-reviewed PASS (Gate: F280 R11, one prose slip, no new
-R-id), authors DECISION F280 D7 (corrects D6's "14" to 15, widens D6's item 1 to every bare
-`flight_plan` token including the prompt-trace `role="flight_plan"` value, and names two further
-persisted spellings — hyphenated `"flight-plan"`/`"flight-plan-retry"` trace-kind values and the
-DAG-scheduling `inputs["flight"]` key — as owed to a future round), and lands the rename as ONE
-mechanical patch, dry-run and full-suite tested twice in disposable worktrees before authoring.
+ROUND 13 books round 12's independently-reviewed PASS (Gate: F280 R12, one prose slip, no new
+R-id), authors DECISION F280 D8, and lands the first of DECISION F280 D7's two deferred items:
+the prompt-trace `kind` values `"flight-plan"`/`"flight-plan-retry"` become
+`"task-plan"`/`"task-plan-retry"` at their two exact-quoted sites (`job_plan.py:181`,
+`test_prompt_trace.py:294`) — measured to have no wider pattern match and no collision with the
+new spellings, per a dry run in a disposable worktree before authoring.
 
 ## Next Steps
 
-1. DECISION F280 D7's two deferred items: the hyphenated trace-kind rename, then the
-   `inputs["flight"]` DAG key — each needs its own naming DECISION before a round touches it.
-2. D5's third owed item: the surviving English-prose noun "flight plan" (catalog descriptions,
-   CLI print statements, comments describing the concept, including the stale `flight_plan.py`
-   filename citations this round's sweep deliberately left untouched).
+1. DECISION F280 D7's remaining deferred item: the DAG-scheduling `inputs["flight"]` key —
+   needs its own naming DECISION (no existing convention; `task_plan` already retired for the
+   whole-job field, so it cannot simply reuse that name).
+2. D5's third owed item: the surviving English-prose noun "flight plan"/"flight-plan" (catalog
+   descriptions, CLI print statements, comments describing the concept, including the stale
+   `flight_plan.py` filename citations rounds 12 and earlier deliberately left untouched).
 3. The `"fp:"` decision-id prefix (5 sites) — explicitly out of scope for D6 (CHOSEN, SECOND);
    needs its own DECISION and measurement before any round touches it.
 4. `propose`, once operator question Q4 is answered.
