@@ -13,11 +13,15 @@ from apps.cli.grouped import main as grouped_main
 # User-facing groups that MUST appear in default help
 # ---------------------------------------------------------------------------
 
-_USER_FACING_GROUPS = {"do", "job", "project", "ui", "doctor", "config", "worker", "memory"}
+_USER_FACING_GROUPS = {
+    "do", "mission", "job", "run", "decision", "status", "stats",
+    "teacher", "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime"
+}
 
 # Internal groups that MUST NOT appear in default help
 _INTERNAL_GROUPS = {
-    "snapshot", "integrity",
+    "brain", "event", "patch", "test", "blocker", "change", "file",
+    "snapshot", "self", "ci", "integrity", "dev"
 }
 
 
@@ -733,6 +737,21 @@ class TestGroupDefIntegrity:
             "roadmap",
         }
         assert sorted(kept - set(GROUPS)) == []
+
+    def test_catalog_partition_matches_d4(self):
+        """The catalog carries exactly 29 groups partitioned as DECISION amend0905-vocab D4 names them."""
+        assert len(GROUPS) == 29
+
+        # Only roadmap should be hidden
+        hidden_groups = {gid for gid, g in GROUPS.items() if g.hidden}
+        assert hidden_groups == {"roadmap"}
+
+        # All other groups should match the visible/advanced partition exactly
+        visible_groups = {gid for gid, g in GROUPS.items() if g.user_facing and not g.hidden}
+        advanced_groups = {gid for gid, g in GROUPS.items() if not g.user_facing and not g.hidden}
+
+        assert visible_groups == _USER_FACING_GROUPS
+        assert advanced_groups == _INTERNAL_GROUPS
 
 
 # ---------------------------------------------------------------------------
