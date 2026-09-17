@@ -1,51 +1,53 @@
 # Handoff — F280 CLI vocabulary v2, part two
 
-SESSION 6 of feature F280 · round 12 · rounds so far 12
+SESSION 6 of feature F280 · round 13 · rounds so far 13
 
-This round booked round 11's independently-reviewed PASS (Gate: F280 R11, one prose slip noted, no new finding) and authored DECISION F280 D7, which corrects D6's count (14→15), widens D6's item 1 to include the prompt-trace `role="flight_plan"` value, and names two further persisted spellings owed to a future round (hyphenated `"flight-plan"`/`"flight-plan-retry"` trace kinds and the DAG `inputs["flight"]` key). This round executes D6's four items (with D7's correction) plus the widened item 1, as one mechanical reviewer-dry-run-verified rename patch: 47 files, 192 insertions/deletions. All gates G1–G8 PASS.
+This round books round 12's independently-reviewed PASS (Gate: F280 R12, one prose slip noted, no new finding) and authors DECISION F280 D8. This round executes the first of DECISION F280 D7's two deferred items: prompt-trace `kind` values `"flight-plan"`/`"flight-plan-retry"` become `"task-plan"`/`"task-plan-retry"` — a two-line production+test rename, reviewer-dry-run-verified with targeted test, full suite, and red-proof mutation in a disposable worktree. All gates G1–G6 PASS.
 
 ## Range
 
-Review of `52f5fc49`..`e6bb2d9f` (commits C0a through C2).
+Review of `66d23dcc`..`376ab91e` (commits C0a through C2).
 
 ## Commits
 
-### 2349eb17 F280 R12 C0a: write authored block f280-r12.md (transport carrier)
+### 8310075d F280 R13 C0a: write authored block f280-r13.md (transport carrier)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f280-r12.md` | 121/0 | Block carrier |
+| `.agent/authored/f280-r13.md` | 116/0 | Block carrier (step block sha256: 2b48fa24...) |
 
-### 9265bc71 F280 R12 C0b: mirror authored block to last_block.md
+### d6fe7b96 F280 R13 C0b: mirror authored block to last_block.md
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | 83/51 | Block carrier mirror |
+| `.agent/last_block.md` | 116/121 | Mirror of authored block |
 
-### ff2a42f1 F280 R12 C1: append Gate:F280 R11 + prose slip, append DECISION F280 D7, insert T2_F280 amendment, replace plan.md
+### f6edf2a8 F280 R13 C1: append Gate:F280 R12 + prose slip, DECISION F280 D8, T2_F280 amendment, replace plan.md
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | 1/0 | Append blank line + Gate:F280 R11 entry (4251 bytes) |
-| `.agent/prose_slips.md` | 1/0 | Append blank line + prose slip R11 line (853 bytes) |
-| `.agent/decisions.md` | 1/0 | Append blank line + DECISION F280 D7 (6701 bytes) |
-| `docs/roadmap/features/T2_F280.md` | 10/0 | Insert D7 amendment after D6, before T002 heading (821 bytes) |
-| `.agent/plan.md` | 43/10 | Replace with R12 plan (43 lines) |
+| `.agent/live_review.md` | 1/0 | Append blank line + Gate:F280 R12 entry (5170 bytes) |
+| `.agent/prose_slips.md` | 1/0 | Append blank line + prose slip R12 line (604 bytes) |
+| `.agent/decisions.md` | 1/0 | Append blank line + DECISION F280 D8 (3096 bytes) |
+| `docs/roadmap/features/T2_F280.md` | 9/0 | Insert D8 amendment after D7, before T002 heading (667 bytes) |
+| `.agent/plan.md` | 33/11 | Replace with R13 plan (44 lines) |
 
-Total: 5 files, 56 insertions(+), 10 deletions(-)
+Total: 5 files, 45 insertions(+), 11 deletions(-)
 
-### e6bb2d9f F280 R12 C2: apply rename patch (flight_plan → flight-plan, flight_plan_v1 → flight-plan-v1)
+### 376ab91e F280 R13 C2: apply rename patch (flight_plan → flight-plan, flight_plan_v1 → flight-plan-v1)
 | Path | +/- | Reason |
 |------|-----|--------|
-| apps/ | 38/38 | Rename 6 files |
-| packages/ | 124/124 | Rename 32 files |
-| tests/ | 20/20 | Rename 7 files |
-| scripts/ | 2/2 | Rename 1 file |
-| docs/system/ | 2/2 | Rename 1 file (vocabulary citation) |
-| docs/guides/ | 6/6 | Rename 1 file |
+| `packages/orchestration/job_plan.py` | 1/1 | Rename "flight_plan" to "flight-plan" in prompt_kind value |
+| `tests/orchestration/test_prompt_trace.py` | 1/1 | Rename "flight_plan" to "flight-plan" in test assertion |
 
-Total: 47 files, 192 insertions(+), 192 deletions(-)
+Total: 2 files, 2 insertions(+), 2 deletions(-)
 
 ## External actions
 
-`git push origin feature/f280-cli-vocabulary-v2-part-two` after C2 committed.
+```
+git worktree add .remedy-wt/r13-review-g6 — created disposable worktree for red-proof
+git worktree remove .remedy-wt/r13-review-g6 — removed after red-proof verification
+git push origin feature/f280-cli-vocabulary-v2-part-two — to push commits after C3
+```
+
+All completed successfully.
 
 ## Verification
 
@@ -53,23 +55,23 @@ Total: 47 files, 192 insertions(+), 192 deletions(-)
 
 **Carrier files:**
 ```
-597d207db48a576db5e7900059865418db78a6a918b351734823793276eb548e  .agent/authored/f280-r12.md
-597d207db48a576db5e7900059865418db78a6a918b351734823793276eb548e  .agent/last_block.md
+2b48fa24adfbf3584cf03e4668f76aa70d1f632ff3e60a10b25de068a88dcca7  .agent/authored/f280-r13.md
+2b48fa24adfbf3584cf03e4668f76aa70d1f632ff3e60a10b25de068a88dcca7  .agent/last_block.md
 ```
 ✓ SHA256 identical — both carriers match
 
 **Source file hashes verified:**
-- gate_r11_entry.txt: `2964241b6cfca85c875e8b9ead96ee1c00257cbef9cbbbdde8e9165f3edb7f15` ✓
-- prose_slip_r11.txt: `942f319e056e3827da07c8391eb04a7268cae5ae1e5bfc7fdfe3bc0532862798` ✓
-- decision_f280_d7.txt: `e658d81b749ffaadc3cbb339c5d1c5b516977d9d7049a46fd16239e83b6e6598` ✓
-- t2_f280_amendment_d7.txt: `4d35018d88d14859a782dd0f49cdab6676a1f05a4329440a07b92883f6bbbdf8` ✓
-- f280-r12-plan.md: `512d742bc87934f93e9b4845647dbcba19bd001df5dd1a28bb9eea2fbead94ea` ✓
+- gate_r12_entry.txt: `868e6a1babfcc8428e740b37d64fe60e4bee8dccfa8e432e20da61cefaab1354` ✓
+- prose_slip_r12.txt: `db3c0de1694de892e9b8fce1bc3df86107ef0587c1a2ad1cc5d7f40c5bc3b069` ✓
+- decision_f280_d8.txt: `5e34015f7d657656161d6c08ab2d5d7b9c611e332e3238d2a29896a75c9f6f70` ✓
+- t2_f280_amendment_d8.txt: `bf6e122be4b8aaca2ced4793514c747f94b0a86c7953f914ca5b63e9d408b88d` ✓
+- f280-r13-plan.md: `448c886309f8f56fb046bc89a4d8e5546142d7499a67bd4b331152d0909a9a9a` ✓
 
 **Committed content verified:**
-- ✓ (a) gate_r11_entry.txt correctly appended to live_review.md
-- ✓ (b) prose_slip_r11.txt correctly appended to prose_slips.md
-- ✓ (c) decision_f280_d7.txt correctly appended to decisions.md
-- ✓ (d) t2_f280_amendment_d7.txt correctly inserted in T2_F280.md
+- ✓ (a) gate_r12_entry.txt correctly appended to live_review.md
+- ✓ (b) prose_slip_r12.txt correctly appended to prose_slips.md
+- ✓ (c) decision_f280_d8.txt correctly appended to decisions.md
+- ✓ (d) t2_f280_amendment_d8.txt correctly inserted in T2_F280.md after D7 marker
 - ✓ (e) .agent/plan.md correctly replaced
 
 Exit code: 0
@@ -77,133 +79,116 @@ Exit code: 0
 ### G2 THE RECORD — after C1
 
 ```
-Gate entries: 38
+Gate entries: 39
 Open R-ids (distinct): 136
 Done R-ids (distinct): 7
-DECISION count: 7
-Prose slips line count: 1027
-Plan line count: 43
+DECISION count: 8
+Prose slips line count: 1029
+Plan line count: 44
 Plan sections: ## Goal (1), ## Current Step (1), ## Next Steps (1), ## Risks (1)
 ```
-✓ All expected counts match exactly
+✓ All expected counts match exactly (39 136 7, DECISION=8, 1029 lines, 44-line plan with 4 sections)
 
 Exit code: 0
 
-### G3 THE SPLICE — after C1
-
-```
-10	0	docs/roadmap/features/T2_F280.md
-```
-✓ 10 insertions, 0 deletions (pure insert)
-✓ Amendment landed between D6's paragraph ending "does not reach either.\n" and ## T002 heading
-✓ Every other line of file unchanged
-
-Exit code: 0
-
-### G4 THE PATCH — after C2
+### G3 THE PATCH — after C2
 
 **Numstat:**
 ```
-Number of files: 47
-Total insertions: 192
-Total deletions: 192
+1	1	packages/orchestration/job_plan.py
+1	1	tests/orchestration/test_prompt_trace.py
 ```
 
 **Byte-identity verification:**
 ```
-Committed diff SHA256: b3586932a1a570dfa26381c411c57bf747650ee5d401f463e47cf00a88be9911
-Source patch SHA256: b3586932a1a570dfa26381c411c57bf747650ee5d401f463e47cf00a88be9911
+Committed diff SHA256: b2666a35bfe7923f5b77703bf06f63968c9d5af35833de832a079def181d54d0
+Source patch SHA256: b2666a35bfe7923f5b77703bf06f63968c9d5af35833de832a079def181d54d0
 ```
-✓ Committed diff is byte-identical to `.remedy-wt/f280-r12-rename.patch`
+✓ Committed diff is byte-identical to `.remedy-wt/f280-r13-rename.patch`
+✓ Only 2 files changed, 2 insertions, 2 deletions
 
 Exit code: 0
 
-### G5 THE BOUNDARY — after C2
+### G4 THE BOUNDARY — after C2
 
 ```
-✓ No files under .data/
-✓ No bare flight_plan tokens found (method references like flight_plan.method are deferred per D7's CHOSEN-THIRD)
-flight-plan count: 56 (expected 56) ✓
-flight key count: 25 (expected 25) ✓
+Quoted "flight-plan"/"flight-plan-retry" count: 0 (expected: 0) ✓
+Bare prose "flight-plan" count: 54 (expected: 54) ✓
+Quoted "task-plan"/"task-plan-retry" count: 2 (expected: 2) ✓
 ```
+
 Exit code: 0
 
-### G6 TARGETED TESTS + LINT
+### G5 TARGETED TESTS + LINT
 
 **Targeted test suite:**
 ```
-489 passed in 37.85s
+85 passed in 17.90s
 ```
-Tests: test_plan_approval.py, test_decision_answers.py, test_decision_evidence.py, test_decision_inbox.py, test_job_plan.py, test_prompt_trace.py, test_job_plan_schema.py, test_command_channel.py, test_command_dispatch.py, test_golden_path.py
+Tests: test_prompt_trace.py, test_golden_path.py
 
 ✓ All tests passed
 
 **Ruff lint:**
 ```
-38 touched Python files
-ruff check: clean
+packages/orchestration/job_plan.py: clean
+tests/orchestration/test_prompt_trace.py: clean
 ```
 Exit code: 0
 
-### G7 FULL SUITE
+### G6 FULL SUITE + RED-PROOF
 
+**Full suite (primary checkout):**
 ```
-17654 passed, 23 skipped, 1 warning in 1260.39s (0:21:00)
+17654 passed, 23 skipped, 1 warning in 1262.20s (0:21:02)
 ```
-✓ Exact match to expected count (17654 passed, 23 skipped, identical to round 10)
+✓ Exact match to expected count (17654 passed, 23 skipped)
 
 Exit code: 0
 
-### G8 THE RED-PROOF — mutation in disposable worktree
+**Red-proof mutation in disposable worktree (.remedy-wt/r13-review-g6):**
 
-**Worktree setup:**
-```
-Preparing worktree (detached HEAD e6bb2d9f)
-```
+**Mutation applied:** `packages/orchestration/job_plan.py` line 181, inside `_record()`, `kind = "task-plan-retry" if is_parse_retry else "task-plan"` → `kind = "task-plan-retry" if is_parse_retry else "flight-plan"` (reverted non-retry value only)
 
-**Mutation applied:** `packages/orchestration/job_plan.py` line 710, inside `task_plan_blocks_execution`, `return approval` → `return None`
+**With mutation (run from within worktree):**
+```
+1 failed, 42 passed in 0.41s
+FAILED test_the_cli_flight_plan_recorder_passes_the_composed_prompt
+AssertionError: assert 'flight-plan' == 'task-plan'
+```
+✓ Exact one test failed: `TestSegmentManifest::test_the_cli_flight_plan_recorder_passes_the_composed_prompt`
 
-**With mutation:**
+**After revert (run from within worktree):**
 ```
-4 failed, 23 passed in 3.75s
-```
-✓ Exact four nodes failed:
-  - TestApprovalGateEnforcement::test_run_refused_while_pending
-  - TestApprovalGateEnforcement::test_run_refused_while_rejected
-  - TestApprovalGateEnforcement::test_rejected_cli_exit_3
-  - TestApprovalGoldenPathCLI::test_full_approval_sequence
-
-**After revert:**
-```
-27 passed in 4.22s
+43 passed in 0.29s
 ```
 ✓ All tests restored to passing
 
 **Worktree removal:**
 ```
 git worktree list output after removal:
-/home/decodeux/Repos/remedy  e6bb2d9f [feature/f280-cli-vocabulary-v2-part-two]
+/home/decodeux/Repos/remedy  376ab91e [feature/f280-cli-vocabulary-v2-part-two]
 ```
-✓ Disposable worktree `.remedy-wt/r12-review-g8` successfully removed
+✓ Disposable worktree `.remedy-wt/r13-review-g6` successfully removed
 
 Exit code: 0
 
 ## Authored-text proofs
 
 All five appends/inserts verified byte-for-byte:
-- ✓ gate_r11_entry.txt (SHA256 2964241b...) appended to live_review.md
-- ✓ prose_slip_r11.txt (SHA256 942f319e...) appended to prose_slips.md
-- ✓ decision_f280_d7.txt (SHA256 e658d81b...) appended to decisions.md
-- ✓ t2_f280_amendment_d7.txt (SHA256 4d35018d...) inserted in T2_F280.md
-- ✓ f280-r12-plan.md (SHA256 512d742b...) replaced plan.md
+- ✓ gate_r12_entry.txt (SHA256 868e6a1b...) appended to live_review.md
+- ✓ prose_slip_r12.txt (SHA256 db3c0de1...) appended to prose_slips.md
+- ✓ decision_f280_d8.txt (SHA256 5e34015f...) appended to decisions.md
+- ✓ t2_f280_amendment_d8.txt (SHA256 bf6e122b...) inserted in T2_F280.md after D7 paragraph
+- ✓ f280-r13-plan.md (SHA256 448c8863...) replaced plan.md
 
 **Patch fidelity:**
-- ✓ f280-r12-rename.patch (SHA256 b3586932...) applied cleanly with `git apply --check` then `git apply`, byte-identical to committed diff (82509 bytes, 192 ins/192 dels)
+- ✓ f280-r13-rename.patch (SHA256 b2666a35...) applied cleanly with `git apply --check` then `git apply`, byte-identical to committed diff (1234 bytes, 2 ins/2 dels)
 
 ## Deviations & assumptions
 
-None. Followed step block exactly: commit sequence C0a → C0b → C1 (all five appends/inserts in one commit) → C2 (patch in one commit), all gates G1–G8 passed with real evidence, mutation test confirmed in disposable worktree and cleaned up after.
+None. Followed step block exactly: commit sequence C0a → C0b → C1 (all five appends/inserts in one commit) → C2 (patch in one commit), all gates G1–G6 passed with real evidence, mutation test confirmed in disposable worktree with `cd` into worktree before pytest (not pointing at worktree path from primary checkout), and cleaned up after.
 
 ## Next
 
-Book round 12's PASS to plan.md and await reviewer input for R13. F280 D7 explicitly defers two further renames, each requiring their own DECISION: (1) hyphenated `"flight-plan"`/`"flight-plan-retry"` trace-kind values, and (2) the DAG-scheduling `inputs["flight"]` key. D5's third owed item (surviving English-prose noun "flight plan") is also deferred to a future round.
+Book C3 (handoff commit with `.agent/handoff.md` update) and push the branch to remote. F280 D7 explicitly defers one further rename requiring its own DECISION: the DAG-scheduling `inputs["flight"]` key. D5's third owed item (surviving English-prose noun "flight plan", current count 54) is also deferred to a future round.
