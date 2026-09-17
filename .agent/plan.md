@@ -12,30 +12,38 @@ DONE when T001 and the Acceptance list hold.
 
 ## Current Step
 
-ROUND 17. C1 books round 16's independently-reviewed PASS and adds DECISION
-F281 D6. C2 lands `packages/orchestration/dead_command_check.py`
-(`dead_command_ids`, a four-signal reference check: an AST-detected argv-list
-pair, the spaced form, the dotted `command_id`, and the handler's own
-referenced names) and wires it into `remedy doctor core` as an always-shown
-`dead commands:` section plus a `dead_command_scan` hard check; two new
-tests pin the section's presence in both render modes and the algorithm
-itself is pinned in its own new test file, which also asserts the real
-catalog reads empty. One line added to the import-reachability allowlist.
-After this round: `remedy doctor core` lists dead commands as a section and
-the section reads empty on the shipped catalog, clearing that Acceptance
-line; F271 (later) owns the closure-precondition wiring and the
-fixture-based red-proof.
+ROUND 18. C1 books round 17's PASS (one LOW finding, R-0956: a dropped
+trailing newline in `.agent/decisions.md`, fixed in this same commit) and
+resolves R-0934. C2 replaces
+`tests/cli/test_advertised_commands.py`'s regex-only command-line-end
+detection with `_command_line_end`, which skips over a quoted argument
+(`"<goal>"`) instead of stopping the scan at its opening quote, so a flag
+advertised after a quoted goal is now caught; one new regression test.
+After this round: R-0805, R-0809 and R-0895 remain open on the Acceptance
+list.
 
 ## Next Steps
 
-1. Remaining Acceptance items: R-0805 (`ui status` dead-session pruning),
-   R-0809 (one id-error-message shape for mission/job/run), R-0895 (README
-   quickstart) and R-0934 (advertised-flag scanner skips a quoted argument)
-   are all OPEN. R-0895 runs last (orchestrator brief: it quotes the
-   finished catalog). Session 3 begins at this round; continuing is allowed
-   while context comfortably suffices (amend0905-throughput's 6-to-8 target).
+1. R-0809 (one id-error-message shape for mission/job/run) is LARGE:
+   research this session found FOUR current wordings across 20+ call sites
+   (`brain.py` alone has 11), a job-id resolver already shared
+   (`resolve_job_id`/`lookup_job_id` in `packages/orchestration/data_paths.py`)
+   but a run-id and mission-id resolver that are NOT, and 9+ tests asserting
+   the current wordings that will need updating. This does not fit one
+   round; the round that claims it starts by measuring the exact call-site
+   and test count fresh, then scopes a shared-helper design (probably one
+   round per id kind: job, run, mission) before touching any call site.
+2. R-0805 (`ui status` dead-session pruning, `ui status --all` showing the
+   last ten with end time) needs a design pass on the session-state model
+   before implementation — do not rush a heuristic.
+3. R-0895 (README quickstart) runs last (orchestrator brief: it quotes the
+   finished catalog).
+4. Session 3 continues (round 18); continuing is allowed while context
+   comfortably suffices (amend0905-throughput's 6-to-8 target).
 
 ## Risks
 
-- None carried from round 16: DECISION F281 D6 resolves the design question
-  PLAN16 flagged, measured non-vacuous by this round's mutation red-proof.
+- R-0809's true scope was undermeasured before this session's research; do
+  not let a future round default to a single mechanical sweep across all
+  call sites without first scoping run-id and mission-id resolution, which
+  currently have no shared helper the way job-id does.
