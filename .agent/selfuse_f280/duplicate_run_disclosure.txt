@@ -1,0 +1,14 @@
+DUPLICATE RUN DISCLOSURE - R-0951
+
+Job IDs:
+  Primary (the job of record): remedy/job-c87bd5b5eb894a96
+  Duplicate (undisclosed second run): remedy/job-667ea616cabd41fe
+
+Creation timestamps:
+  remedy/job-667ea616cabd41fe: 2026-09-17T12:53:36.950052+00:00
+  remedy/job-c87bd5b5eb894a96: 2026-09-17T12:58:10.061225+00:00
+
+Root cause:
+During round 21, the worker invoked run_next_self_use_item() twice against the same self-use item (SU-016) and identical worktree path (.remedy-wt/f280r21w/su_worktree). The first invocation (creating job-667ea616cabd41fe) completed successfully and created the job record and remedy/job-* branch, but the worker's Python script to handle the result had an error in tuple unpacking (AttributeError when accessing JobPlan.job_id without unpacking the (entry, job_file_path, job_plan) tuple). This error occurred after the run had already completed and the job had been created. The worker then debugged the script error, created a corrected version, and re-ran run_next_self_use_item() without first examining or reporting the artifact from the first attempt. This created job-c87bd5b5eb894a96, which was then successfully processed. Both jobs represent the same curated item (SU-016, "Address ledger finding R-0445") run against the same parameters under the real ollama provider.
+
+The self-use precondition for F280 relies on remedy/job-c87bd5b5eb894a96; remedy/job-667ea616cabd41fe is an undisclosed duplicate run of the same item and is NOT the job of record.
