@@ -14283,3 +14283,64 @@ CONSEQUENCE. `tests/cli/test_cli_ux.py`'s two assertions read `"Builder:" in
 out`; the pingpong text report and its `summary.md` evidence file both print
 `Builder:`/`Builder write mode:`; no other module's "Worker" reference changes.
 HOW TO REVERSE: revert this round's C3 commit; delete this paragraph.
+
+## DECISION F281 D2 (2026-09-17, F281 round 2) — two of the six retired-synonym offenders are structurally unreachable by this feature, and the F259 enforced flip is bounded by them
+
+CONTEXT. T001 orders the F259 `VOCABULARY_MODE` flip to `enforced`
+(`tests/docs/test_vocabulary.py`), gated by two mode-dependent checks:
+`_synonym_offenders()` (6 hits measured at F281's claim) and
+`_meaning_violations()` (294 hits). `_synonym_offenders()` scans, per DECISION
+F259 D3's own scope, "every group's `id`, `label` and `description`, and every
+command's `command_id`, `description`" — not prose alone. Two of the six hits
+are not prose this feature may reword: `command:dev.agent-loop:command_id` is
+the command's own id, and `docs/roadmap/features/T2_F281.md`'s Do-not-touch
+clause states "the catalog's set of groups and commands is F280's; this
+feature changes no command id." `arg:do.run:--fixture-builder:description`
+names a real, load-bearing CLI value: `_VALID_FIXTURE_MODES` in
+`apps/cli/commands/do_cmd.py:680` is the frozenset `{"true", "false",
+"repair-loop"}`, and `"repair-loop"` by that exact spelling is asserted as a
+literal parsed value in `tests/test_cli_execution_loop_closure.py`,
+`tests/test_repair_context_reviewer_memory.py` and
+`tests/cli/test_do_cmd_summary.py`, and named as a whole feature pair
+(`docs/system/repair-loop-v0.md`, `repair-loop-v1.md`) that `docs/README.md`
+indexes. Rewording the ArgDef's help text to avoid the word "loop" while still
+naming the real accepted value truthfully is not possible; renaming the value
+itself is a behaviour change to what the command accepts, which
+`docs/roadmap/features/T2_F281.md`'s own scope statement forbids ("this
+feature rewrites what help says, not what a command does").
+
+CHOSEN. This round fixes the four synonym offenders that ARE pure prose —
+`command:mission.run:description`, `group:mission:description`,
+`arg:mission.run:run_id:description` (all three: "F070 orchestrator loop" →
+"F070 orchestrator", no persisted or tested literal involved — confirmed by
+grep, zero hits for the exact phrases before this round's edit) and
+`command:dev.agent-loop:description` (its command_id is untouched; only the
+description's own wording changes, since `_cmd_agent_loop` is in fact a
+read-only inspector — it derives and prints a state summary, per
+`apps/cli/commands/brain.py:489-513` — not an executor of a loop, so the
+reword is also a correctness improvement, not only a synonym dodge). The
+remaining two — `dev.agent-loop`'s command_id and `--fixture-builder`'s
+`repair-loop` value — are LEFT NAMED AND UNFIXED, and this decision is the
+record of why: the `enforced` flip's Acceptance line is met against a floor of
+these two, not against zero, until a later DECISION either narrows
+`_synonym_offenders()`'s own scanned fields (an amendment to DECISION F259
+D3) or an operator ruling exempts these two named surfaces by id.
+
+ALTERNATIVES CONSIDERED. Renaming `dev.agent-loop`'s command_id anyway (e.g.
+to `dev.agent-status`) — rejected: it is a command-catalog rename, squarely
+inside F280's remit and this feature's own Do-not-touch, and `dev` group
+commands are debugging surfaces with no F281 mandate to touch. Renaming the
+`repair-loop` VALUE to something synonym-clean (e.g. `repair-cycle`) —
+rejected: it is a behaviour change (the CLI would stop accepting a value
+operators and three test files already depend on), squarely the "not what a
+command does" boundary this feature's own scope statement draws; if ever
+wanted, it is a DECISION for whichever feature owns `do run`'s flag surface,
+with a measured blast radius across the test and docs files named above.
+Leaving all six offenders untouched this round — rejected: four of them cost
+nothing but a reword and no test or doc depends on their current spelling.
+
+CONSEQUENCE. After this round, `_synonym_offenders()` reads 2
+(`arg:do.run:--fixture-builder:description`, `command:dev.agent-loop:command_id`),
+down from 6; `VOCABULARY_MODE` stays `"planned"` — flipping it now would
+correctly assert `offenders == []` and fail on these two. HOW TO REVERSE:
+revert round 2's C2 commit; delete this paragraph.
