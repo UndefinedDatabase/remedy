@@ -11,23 +11,23 @@ DONE when T001 and the Acceptance list hold.
 
 ## Current Step
 
-ROUND 24. C1 books round 23's PASS, adds a prose-slip line for round 23's
-plan.md overage (53 lines vs the 50-line cap), and lands R-0809's LAST piece:
-`mission_cmd.py`'s `_load_mission_or_exit` (6 callers) and `handoff.py`'s
-`MissionForHandoffNotFoundError` both unify to `Error: No mission matches
-'<id>'. Try: remedy mission list.`. Six `test_mission_cmd.py` assertions
-updated to match. This closes R-0809 — `Done:` written this round.
+ROUND 25. C1 books round 24's PASS. C2 lands R-0805: `remedy ui status`
+shows live sessions only by default; dead sessions are archived (never just
+deleted) into `<data_root>/ui/sessions_dead/`, capped at the ten most
+recently ended, each carrying an `ended_at` timestamp; `ui start`, `ui
+status` and `ui stop` all prune on every call; a new `--all` flag on `ui
+status` lists the archived ten with their end time. New tests cover the
+archive, the cap, and the `--all` flag through the grouped CLI. This closes
+R-0805 — `Done:` written this round.
 
 ## Next Steps
 
-1. R-0805 (`ui status` dead-session pruning) needs a design pass on the
-   session-state model before implementation.
-2. R-0895 (README quickstart) runs last — it quotes the finished catalog.
-3. Session 4 continues while context comfortably suffices.
+1. R-0895 (README quickstart) is the only Acceptance item left — it quotes
+   the finished catalog, so it runs last.
+2. Session 4 continues while context comfortably suffices.
 
 ## Risks
 
 - `data_paths.py`'s `JobIdInvalid`/`JobIdNotFound` messages are still
-  pre-unification text — a separate, unrelated exception family.
-- Count every future plan.md replacement against the 50-line cap before
-  emission (round 23's own slip).
+  pre-unification text — a separate, unrelated exception family, not part
+  of any open Acceptance item.
