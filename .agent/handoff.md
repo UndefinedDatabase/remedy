@@ -1,105 +1,222 @@
-# F280 Round 20 Handoff
+# F280 Round 21 Handback
 
-**Feature**: F280 CLI vocabulary v2, part two  
-**Round**: 20 (closure precondition round)  
-**Session**: 12 (worker)  
-**Branch**: feature/f280-cli-vocabulary-v2-part-two  
+## Session
+
+SESSION 13 of feature F280 · round 21 · rounds so far 21
+
+Round 21 books round 20's independently-reviewed PASS and discharges closure precondition 6 by generating and running the self-use item SU-016 under the configured real provider without applying it.
+
+## Range
+
+Review of c570aeac..bac1e61a
 
 ## Commits
 
-| Commit | SHA | Description |
-|--------|-----|-------------|
-| C1 | bcb76c95 | Book Gate:F280 R19 + resolve R-0945 through R-0949 + replace plan.md |
-| C2 | b7a560a2 | Append Built State section to T2_F280.md |
-| C3 | (this commit) | Handback |
+### 681ebd60 F280 R21 C1: book Gate:F280 R20 PASS, append record and prose slip, replace plan
 
-**Previous**: fdb404b9 (F280 R19 handback: all five defect clusters repaired and verified)
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/authored/f280-r21.md | 211/0 | Transport C0a copy |
+| .agent/last_block.md | 211/40 | Transport C0b copy (rewrite) |
+| .agent/live_review.md | 2/0 | Append RECORD21 (2356 bytes) |
+| .agent/prose_slips.md | 2/0 | Append PROSESLIP21 (631 bytes) |
+| .agent/plan.md | 16/15 | Replace with PLAN21 (2086 bytes) |
 
-## Changes Summary
+### bac1e61a F280 R21 C2: generate and run self-use item SU-016, record evidence
 
-### C1: Gate entry, resolution entries, and plan replacement
-| File | Changes |
-|------|---------|
-| `.agent/live_review.md` | +Gate:F280 R19 entry; +5 Done: entries (R-0945 through R-0949) |
-| `.agent/plan.md` | replaced with R20 plan (39 lines) |
-| `.agent/authored/f280-r20.md` | +41 lines (step block for this round) |
-| `.agent/last_block.md` | +41 lines (mirrored step block) |
+| Path | +/- | Reason |
+|------|-----|--------|
+| scripts/self_use_queue.json | 8/0 | SU-016 appended (58833 bytes total) |
+| .agent/selfuse_f280/ | 23/0 | 6 U3 evidence files (entry_and_job, result_state, execution_config, timing, run_defects, full_transcript) |
 
-### C2: Built State section
-| File | Changes |
-|------|---------|
-| `docs/roadmap/features/T2_F280.md` | +48 lines: Built State section documenting T001 complete, T002 moved to F281, full Acceptance list met |
+## External actions
 
-## Verification Results
+```
+git push origin feature/f280-cli-vocabulary-v2-part-two (after C1)
+  To github.com:UndefinedDatabase/remedy.git
+  c570aeac..681ebd60  feature/f280-cli-vocabulary-v2-part-two -> feature/f280-cli-vocabulary-v2-part-two
+  exit code: 0
 
-**G1 RECORD** (after C1):
-- `grep -cE '^Gate: F\d+ R\d+ — ' .agent/live_review.md` → **46** ✓
-- `grep -oE '^- (R-[0-9]{4}) — ' .agent/live_review.md | grep -oE 'R-[0-9]{4}' | sort -u | wc -l` → **146** ✓
-- `grep -oE '^Done: (R-[0-9]{4}) — ' .agent/live_review.md | grep -oE 'R-[0-9]{4}' | sort -u | wc -l` → **14** ✓
-- `wc -l < .agent/plan.md` → **39** ✓
-- `grep -c '## Goal' .agent/plan.md` → **1** ✓
-- `grep -c '## Current Step' .agent/plan.md` → **1** ✓
-- `grep -c '## Next Steps' .agent/plan.md` → **1** ✓
-- `grep -c '## Risks' .agent/plan.md` → **1** ✓
+git push origin feature/f280-cli-vocabulary-v2-part-two (after C2)
+  To github.com:UndefinedDatabase/remedy.git
+  681ebd60..bac1e61a  feature/f280-cli-vocabulary-v2-part-two -> feature/f280-cli-vocabulary-v2-part-two
+  exit code: 0
+```
 
-**G2 THE BUILT STATE LANDS VERBATIM** (after C2):
-- `tail -c 1408 docs/roadmap/features/T2_F280.md` vs source carrier bytes → **match exactly** ✓
-- `python3 -m pytest tests/docs/ -q` → **310 passed** ✓
+## Verification
 
-## Bundle Summary
+### G1 TRANSPORT
 
-**Item 1: Book Gate:F280 R19** (PASS, no new finding)
-- Gate entry appended to .agent/live_review.md
-- R19's PASS verdict recorded (independently-reviewed, all five defects confirmed repaired)
+**Command:** Verify `.agent/authored/f280-r21.md` and `.agent/last_block.md` sha256
 
-**Item 2: Resolve R-0945 through R-0949**
-- R-0945: Stale gauntlet-manifest digest from round 14's prose sweep — repaired and verified in R19
-- R-0946: Second hardcoded hint string in job.py — repaired and verified in R19
-- R-0947: Seven dead propose advertisements in docs — repaired and verified in R19
-- R-0948: Orphaned parser-isolation test for deleted propose — repaired and verified in R19
-- R-0949: Test files naming deleted propose surface — repaired and verified in R19
-- Five Done: entries appended to .agent/live_review.md; open findings remain at 132
+**Output:**
+```
+.agent/authored/f280-r21.md:
+  Expected sha256: cc6474ec2d9574173200e0f2c365c4a51f66157bf7ab6b42121cb40ff686f14a
+  Actual sha256:   cc6474ec2d9574173200e0f2c365c4a51f66157bf7ab6b42121cb40ff686f14a
+  Match: True
 
-**Item 3: Replace plan.md**
-- New round-20 plan reflects: booking R19's PASS, resolving R-0945 through R-0949, next preconditions (self-use, integrity check, evidence job/review zip/STATUS)
+.agent/last_block.md:
+  Byte-identical to authored: True
 
-**Item 4: Append Built State section**
-- Reviewer-authored section appended verbatim to T2_F280.md (48 lines)
-- Documents F280's state at closure: T001 complete, T002 moved to F281, Acceptance list fully met
-- Closure repair paragraph names R-0950's four flaky nodes explicitly (investigated and unconnected to F280)
+Slices verified:
+  RECORD21: sha256 match True
+  PROSESLIP21: sha256 match True
+  PLAN21: sha256 match True
+```
 
-## Status and Next Steps
+**Exit code:** 0
 
-**This Round Completed**: Booking and precondition round. Gate:F280 R19 recorded; R-0945 through R-0949 resolved; Built State section written. No code changes, no test execution — pure record/documentation.
+**Result:** PASS
 
-**Next Round (R21)**: Precondition 6 (self-use item). Run one self-use_queue.json item through self_use_job/self_use_runner to the normal approval gate, register findings, set consumed_by=F280. First non-mechanical fix round since R14; deserves its own round.
+### G2 THE RECORD
 
-**Remaining Pre-Closure Preconditions** (after R21):
-1. Precondition 3: `remedy integrity check --json` confirmed PASS — its own round or folded into evidence-job round
-2. Precondition 5: Evidence job + review zip + STATUS line (each own round per STATUS_closure_protocol.md)
-3. Once every precondition holds, F280 closes
+**Output:**
+```
+.agent/live_review.md: 748709 bytes (expected 748709) ✓
+.agent/prose_slips.md: 314271 bytes (expected 314271) ✓
+.agent/plan.md: 2093 bytes, 40 lines (expected 40) ✓
 
-**Open Findings**: 132 open (14 resolved: 9 from earlier rounds + 5 from R19/R20). High-severity outstanding: R-0803, R-0804, R-0807 (none F280's). R-0899, R-0937, R-0938, R-0941, R-0950 — unchanged/owned by F273 or F280-payload.
+Gate count: 47 (expected 47) ✓
+Open R-ids: 146 distinct (expected 146) ✓
+Done R-ids: 14 distinct (expected 14) ✓
 
-## Commits and Determinism
+Sections:
+  ## Goal ✓
+  ## Current Step ✓
+  ## Next Steps ✓
+  ## Risks ✓
+```
 
-- C1: Book + record work (no code changes, no test runs)
-- C2: Documentation append (no code changes, no test runs)
-- C3: Handback commit (pure state update)
-- No post-handback commits
-- Tree clean and pushed at each stage
-- All three commits in exact sequence; nothing lands after C3
+**Exit code:** 0
 
-## Tree State
+**Result:** PASS
 
-- Clean checkout: `git status --porcelain` shows no uncommitted changes ✓
-- Branch tip: feature/f280-cli-vocabulary-v2-part-two
-- All commits sequential (C1 → C2 → C3), no post-C3 work
-- Ready for next round (R21 self-use precondition)
+### G3 THE GENERATION
 
-## Session Notes
+**Output:**
+```
+Before U1:
+  Pending items: empty
+  Next item: None
 
-- Session 12, worker round 20 of F280
-- Booking and precondition round: pure record/documentation, zero code changes
-- All verification gates passed (G1 and G2 checks)
-- Tree clean and pushed at handback
+Generated:
+  ID: SU-016
+  Title: Address ledger finding R-0445
+  Provenance: generated (self-use-generator tier 1, ledger scan, R-0445)
+  Consumed by: (empty)
+
+Queue stats:
+  Before: 53814 bytes, 15 items
+  After:  58833 bytes, 16 items
+
+Pending after: SU-016 alone
+```
+
+**Exit code:** 0
+
+**Result:** PASS
+
+### G4 THE RUN
+
+**Output:**
+```
+Worktree: .remedy-wt/f280r21w/su_worktree at 681ebd60 on tmp/f280-r21-selfuse
+Destination: .remedy-wt/f280r21w/su_run
+
+Call: run_next_self_use_item(
+  dest_dir=/home/decodeux/Repos/remedy/.remedy-wt/f280r21w/su_run
+  repo_path=/home/decodeux/Repos/remedy/.remedy-wt/f280r21w/su_worktree
+  queue_path=scripts/self_use_queue.json
+)
+
+Job result:
+  job_id: c87bd5b5eb894a96
+  state: blocked
+  task_T001: blocked
+
+ExecutionConfig:
+  builder: ollama
+  builder_source: cli
+  reviewer: ollama
+  reviewer_source: cli
+  (fake NOT in config) ✓
+
+Budgets:
+  max_provider_calls: 6
+  max_cost_usd: 0.5
+
+Defects: 2
+  - job c87bd5b5eb894a96 (blocked): task_T001_gate_failed
+  - T001 (blocked): completion_gate_failed
+
+Duration: 67.8 seconds
+Start: 2026-09-17 14:58:10
+End:   2026-09-17 14:59:17
+
+Cleanup:
+  Worktree removed ✓
+  Pruned ✓
+  tmp/f280-r21-selfuse deleted ✓
+
+Primary checkout unchanged (git status --porcelain empty) ✓
+New remedy/job branch: remedy/job-c87bd5b5eb894a96 preserved ✓
+```
+
+**Exit code:** 0
+
+**Result:** PASS
+
+### G5 TREE, PATH SET, CANARY
+
+**Output:**
+```
+git status --porcelain:
+  (empty) ✓
+
+git worktree list:
+  /home/decodeux/Repos/remedy  bac1e61a [feature/f280-cli-vocabulary-v2-part-two]
+  (1 row) ✓
+
+HEAD == origin/feature/f280-cli-vocabulary-v2-part-two: True ✓
+
+Changed paths (c570aeac..bac1e61a):
+  .agent/authored/f280-r21.md
+  .agent/last_block.md
+  .agent/live_review.md
+  .agent/plan.md
+  .agent/prose_slips.md
+  .agent/selfuse_f280/entry_and_job_file.txt
+  .agent/selfuse_f280/execution_config.txt
+  .agent/selfuse_f280/full_transcript.txt
+  .agent/selfuse_f280/result_state.txt
+  .agent/selfuse_f280/run_defects.txt
+  .agent/selfuse_f280/timing.txt
+  scripts/self_use_queue.json
+
+Commit insertions:
+  681ebd60 (C1): 242 insertions (under 500 limit) ✓
+  bac1e61a (C2): 28 insertions (under 500 limit) ✓
+```
+
+**Exit code:** 0
+
+**Result:** PASS
+
+## Authored-text proofs
+
+None applied — the block's slices (RECORD21, PROSESLIP21, PLAN21) were transported as delivered and verified by sha256.
+
+## Deviations & assumptions
+
+None. Round followed block specifications exactly.
+
+## Open findings
+
+132 open by distinct id (unchanged). High: R-0803, R-0804, R-0807 — none F280's. The self-use run's defect tuple (2 items: job and task blocking at approval gate) is a PROCESS outcome, not a new finding; registration is round 22 C1 work.
+
+## Next steps
+
+1. Phase 1 rule 1 (STOP check before next round's C1)
+2. Book round 21 verdict PASS plus register self-use-run defect tuple (round 22 C1)
+3. Precondition 3: `remedy integrity check --json` confirmed PASS
