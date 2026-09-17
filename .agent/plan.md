@@ -12,33 +12,34 @@ DECISION amend0917-throughput D4).
 
 ## Current Step
 
-ROUND 16 books round 15's independently-reviewed FAIL (Gate: F280 R15, two new findings:
-R-0942 HIGH — a broken smoke script the deletion left unparseable — and R-0943 MEDIUM — an
-uncaught crash in `decision.py`'s new `proposal:` approve branch) and repairs both in the
-same round: delete the now-purposeless `scripts/remedy_runtime_cli_smoke.py`, remove its
-Phase 1 from `scripts/remedy_backend_basis_smoke.py`, add a parse-guard test over every
-`scripts/*.py` file, guard the `approve` action against a non-materializable task, and
-restore the CLI round-trip test coverage round 15's own repair commit deleted.
+ROUND 17 books round 16's independently-reviewed PASS (Gate: F280 R16, no new finding) and
+resolves R-0942/R-0943, then fixes the one gap the reviewer's own full catalog-vs-D4
+measurement found: the `mission` group is advanced-only when DECISION amend0905-vocab D4
+names it visible (R-0944), and widens `TestGroupDefIntegrity` to the full D4 partition so no
+group's bucket can drift unnoticed again.
 
 ## Next Steps
 
 1. `job attach-repo`/`job permit` wait for F269's contract writer (DECISION amend0917-throughput
-   D2) — not this feature's to close.
-2. Once round 16 is independently reviewed PASS, book its verdict and R-0942/R-0943's
-   resolution in round 17's C1.
-3. Remaining Acceptance lines: `job budget <id> set`, `worker doctor`, `job run --tasks n` are
-   already landed per prior rounds' Built State; confirm the catalog-vs-D4 diff at closure.
-4. If T001 and the Acceptance list both hold after round 16's repair is confirmed, the next
-   round is F280's closure sequence (integration gate, full suite, STATUS flip).
+   D2) — not this feature's to close; `mission contract`/`job contract` likewise F269's.
+2. The reviewer's own measurement (round 17) confirms every other part of the catalog — the
+   29-group set, the advanced and hidden buckets apart from `mission`, and every command under
+   `do`, `job`, `run` and `worker` D4 spells out — already equals D4 exactly.
+3. Once round 17 is independently reviewed PASS with no new finding, T001 and the Acceptance
+   list both hold; the next round begins F280's closure sequence per
+   `docs/roadmap/STATUS_closure_protocol.md` — the integration-gate round (full suite once),
+   the self-use precondition, the evidence job and review zip, in that order, each its own
+   round rather than compressed into one.
+4. Remaining Acceptance lines (`job budget <id> set`, `worker doctor`, `job run --tasks n`)
+   are already landed per prior rounds' Built State.
 
 ## Risks
 
-- 139 findings open by distinct id after this round (137 plus R-0942, R-0943, both owned
-  F280 and repaired this same round — resolution booked next round once re-reviewed); High:
-  R-0803, R-0804, R-0807, R-0942, none but R-0942 this feature's own to close going forward.
+- 140 findings registered by distinct id after this round (139 plus R-0944); 9 resolved
+  (7 plus R-0942, R-0943); 131 open. High: R-0803, R-0804, R-0807, none this feature's.
 - R-0899 (owned F273), R-0937 (owned F273), R-0938 (owned F280, nothing to fix), R-0941
   (owned F273) — unchanged.
-- The two round-15 defects both trace to a gate whose own wording checked the SHAPE of a
-  change (a grep for a string, a passing pytest count) rather than its TRUTH (does the file
-  parse, does the branch handle every reachable state) — the parse-guard test this round adds
-  is aimed at the first of those two classes; the second stays a standing reviewer discipline.
+- Before closure: the feature file's Built State section (currently absent) must be written,
+  the self-use precondition (F257/F258) run, and `remedy integrity check --json` confirmed
+  PASS — none of this round's own doing, all named here so the closure round does not
+  discover them cold.
