@@ -11,21 +11,20 @@ T002 holds, per `docs/roadmap/features/T2_F280.md`.
 
 ## Current Step
 
-ROUND 11 books round 10's independently-reviewed PASS (Gate: F280 R10, one prose slip appended
-to `prose_slips.md`, no new R-id) and is DECISION-ONLY: DECISION F280 D6 names the persisted-
-literal spellings the second half of D5's rename needs — `flight_plan` (job-record key/
-attribute) becomes `task_plan`, `FLIGHT_PLAN_SCHEMA_V`/`"flight_plan_v1"` become
-`TASK_PLAN_SCHEMA_V`/`"task_plan_v1"`, `_MAX_FLIGHT_PLAN_TASKS` becomes `_MAX_TASK_PLAN_TASKS`,
-`"flight_plan_approval"` becomes `"task_plan_approval"` — with NO migration shim, per DECISION
-D-A (`T2_F261.md`). No code changes this round.
+ROUND 12 books round 11's independently-reviewed PASS (Gate: F280 R11, one prose slip, no new
+R-id), authors DECISION F280 D7 (corrects D6's "14" to 15, widens D6's item 1 to every bare
+`flight_plan` token including the prompt-trace `role="flight_plan"` value, and names two further
+persisted spellings — hyphenated `"flight-plan"`/`"flight-plan-retry"` trace-kind values and the
+DAG-scheduling `inputs["flight"]` key — as owed to a future round), and lands the rename as ONE
+mechanical patch, dry-run and full-suite tested twice in disposable worktrees before authoring.
 
 ## Next Steps
 
-1. Execute DECISION F280 D6: the mechanical persisted-literal rename, same boundary method as
-   round 10 (zero-count sweep for every old spelling; `.data/evidence_exports/`'s twelve
-   closure-evidence bundles and every accepted-history file stay untouched).
+1. DECISION F280 D7's two deferred items: the hyphenated trace-kind rename, then the
+   `inputs["flight"]` DAG key — each needs its own naming DECISION before a round touches it.
 2. D5's third owed item: the surviving English-prose noun "flight plan" (catalog descriptions,
-   CLI print statements, comments describing the concept) — its own round, after step 1 lands.
+   CLI print statements, comments describing the concept, including the stale `flight_plan.py`
+   filename citations this round's sweep deliberately left untouched).
 3. The `"fp:"` decision-id prefix (5 sites) — explicitly out of scope for D6 (CHOSEN, SECOND);
    needs its own DECISION and measurement before any round touches it.
 4. `propose`, once operator question Q4 is answered.
