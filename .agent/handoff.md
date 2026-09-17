@@ -1,42 +1,42 @@
-# Handback — F281 Round 6
+# Handback — F281 Round 7
 
 ## Session
 
-SESSION 1 of feature F281 · round 6 · rounds so far 6. This is the 6th delegated round of session 1, inside the operator's 6-to-8 target. The session's next action is an honest assessment of whether to continue or end.
+SESSION 1 of feature F281 · round 7 · rounds so far 7. This is the 7th delegated round of session 1, inside the operator's 6-to-8 target. The session's next action is an honest assessment of whether to continue or end.
 
 ## Range
 
-Review of `78d32152`..`60c81988`.
+Review of `cc1cd3b0`..`9f799af2`.
 
 ## Commits
 
-### 94259710 F281 R6 C0a: save the round 6 step block under the authored directory
+### 79e4d8e2 F281 R7 C0a: save the round 7 step block under the authored directory
 | Path | +/- | Reason |
 | --- | --- | --- |
-| .agent/authored/f281-r6.md | +243 | Block copy, byte-for-byte verified |
+| .agent/authored/f281-r7.md | +452 | Block copy, byte-for-byte verified |
 
-### 0945520f F281 R6 C0b: mirror the round 6 step block into the last block state file
+### 147fcde9 F281 R7 C0b: mirror the round 7 step block into the last block state file
 | Path | +/- | Reason |
 | --- | --- | --- |
-| .agent/last_block.md | +243/-259 | Block mirror, byte-for-byte verified |
+| .agent/last_block.md | +452/-243 | Block mirror, byte-for-byte verified |
 
-### 8ba2c5ed F281 R6 C1: book round 5 PASS and re-point plan.md
+### fcf5d0b9 F281 R7 C1: book round 6 PASS and re-point plan.md
 | Path | +/- | Reason |
 | --- | --- | --- |
-| .agent/live_review.md | +1 | RECORD5 append, round 5 verdict booking |
-| .agent/plan.md | +63/-63 | PLAN6 rewrite, round 6 updated plan |
+| .agent/live_review.md | +1 | RECORD6 append, round 6 verdict booking |
+| .agent/plan.md | +63/-63 | PLAN7 rewrite, round 7 updated plan |
 
-### 60c81988 F281 R6 C2: clear the full Mission bucket (16 violations)
+### 9f799af2 F281 R7 C2: clear the full Run bucket (30 violations)
 | Path | +/- | Reason |
 | --- | --- | --- |
-| apps/cli/command_catalog.py | +16/-16 | 9 FROM/TO edits: 8 identical `mission_id` ArgDefs (abandon, achieve, continue, pause, plan, resume, show, watchdog — global find-and-replace), `mission.handoff`'s distinct `mission_id` ArgDef, `mission.run`'s `run_id` ArgDef, `mission.start`'s `goal` ArgDef, and 5 command descriptions (mission.handoff, mission.pause, mission.resume, mission.run, mission.watchdog) |
+| apps/cli/command_catalog.py | +31/-31 | 30 FROM/TO edits: ci group description, ci.run command and --stage, integrity.check command and --collect-only, teacher group description, teacher.ask command and --job-id, teacher.narrate description, test group description, test.status and test.result and test.list commands, test_run_id and --intent-id and --apply-id, mission.run command and --iterations and --no-llm, mission.readiness, run.show command and run_id, job.resume --cycles, job.run --test-command, job.apply command and --approve, job.evidence --verification-command, do.run --ui, stats.bench command and --series |
 
 ## External actions
 
 ```
 git push origin feature/f281-cli-help-surface
 To github.com:UndefinedDatabase/remedy.git
-   78d32152..60c81988  feature/f281-cli-help-surface -> feature/f281-cli-help-surface
+   cc1cd3b0..9f799af2  feature/f281-cli-help-surface -> feature/f281-cli-help-surface
 ```
 
 Exit code: 0.
@@ -54,11 +54,11 @@ print(f'_meaning_violations() = {len(violations)}')
 print(f'_synonym_offenders() = {len(offenders)}')
 "
 
-_meaning_violations() = 216
+_meaning_violations() = 184
 _synonym_offenders() = 2
 ```
 
-Exit code: 0. Expected: 216 violations (232 → 216, 16 fixed), 2 offenders (unchanged). Delta: 232 → 216, exactly matching the block's prediction.
+Exit code: 0. Expected: 184 violations (216 → 184, 32 fixed), 2 offenders (unchanged). Delta: 216 → 184, exactly matching the block's prediction (30 Run bucket + 2 Job bucket bonus fixes).
 
 ### G2: Targeted pytest tests
 
@@ -67,7 +67,7 @@ $ python3 -m pytest tests/docs/test_vocabulary.py tests/test_command_catalog.py 
 
 ........................................................................ [ 97%]
 ..                                                                       [100%]
-74 passed in 1.10s
+74 passed in 1.15s
 ```
 
 Exit code: 0. Expected: 74 passed (unchanged).
@@ -78,7 +78,7 @@ Exit code: 0. Expected: 74 passed (unchanged).
 $ python3 -m pytest tests/cli/test_golden_path.py -q
 
 ..........................................                               [100%]
-42 passed in 17.65s
+42 passed in 18.39s
 ```
 
 Exit code: 0. Expected: 42 passed (unchanged).
@@ -96,20 +96,20 @@ Exit code: 0. Expected: All checks passed!
 ### G5: Sweep for old text gone, new text present
 
 ```
-$ grep -c 'Mission id (or a unique prefix)"' apps/cli/command_catalog.py
+$ grep -c '(same task as --task-id)' apps/cli/command_catalog.py
+
+2
+```
+
+Exit code: 0. Count of new phrase (edits 15 and 16): 2.
+
+```
+$ grep -c 'Dry-run by default' apps/cli/command_catalog.py
 
 0
 ```
 
-Exit code: 0. Old string gone.
-
-```
-$ grep -c 'that owns the jobs' apps/cli/command_catalog.py
-
-10
-```
-
-Exit code: 0. Count of new phrase: 10 (8 from edit 1 + 1 from edit 2 + 1 from edit 3).
+Exit code: 0. Old string gone (edit 25 replaced).
 
 ### G6: Tree state and worktree verification
 
@@ -117,45 +117,45 @@ Exit code: 0. Count of new phrase: 10 (8 from edit 1 + 1 from edit 2 + 1 from ed
 $ git status --porcelain
 (empty)
 
-$ git log --oneline -n 4
-60c81988 F281 R6 C2: clear the full Mission bucket (16 violations)
-8ba2c5ed F281 R6 C1: book round 5 PASS and re-point plan.md
-0945520f F281 R6 C0b: mirror the round 6 step block into the last block state file
-94259710 F281 R6 C0a: save the round 6 step block under the authored directory
+$ git worktree list
+/home/decodeux/Repos/remedy  9f799af2 [feature/f281-cli-help-surface]
+
+$ git log --oneline -1
+9f799af2 F281 R7 C2: clear the full Run bucket (30 violations)
 ```
 
-Exit code: 0. Tree clean, branch pushed to origin.
+Exit code: 0. Tree clean, one worktree, branch pushed to origin.
 
 ## Authored-text proofs
 
 ### C0a block copy
 
 ```
-$ cmp .remedy-wt/f281-r6-block.md .agent/authored/f281-r6.md
+$ cmp .remedy-wt/f281-r7-block.md .agent/authored/f281-r7.md
 (exit 0)
 
-$ sha256sum .agent/authored/f281-r6.md
-060104df78a179c32b9c9b2a0b5e7e6ce7f5b900fb248ffed09a7dcedeffa11c  .agent/authored/f281-r6.md
+$ sha256sum .agent/authored/f281-r7.md
+6ae5a011fc997fcf0c880c149590d10e72b204bd806a3c345bd9b33776809ca7  .agent/authored/f281-r7.md
 ```
 
-Exit code: 0. Block copy verified byte-for-byte identical at sha256 `060104df78a179c32b9c9b2a0b5e7e6ce7f5b900fb248ffed09a7dcedeffa11c`.
+Exit code: 0. Block copy verified byte-for-byte identical at sha256 `6ae5a011fc997fcf0c880c149590d10e72b204bd806a3c345bd9b33776809ca7`.
 
 ### C0b block mirror
 
 ```
-$ cmp .remedy-wt/f281-r6-block.md .agent/last_block.md
+$ cmp .remedy-wt/f281-r7-block.md .agent/last_block.md
 (exit 0)
 
 $ sha256sum .agent/last_block.md
-060104df78a179c32b9c9b2a0b5e7e6ce7f5b900fb248ffed09a7dcedeffa11c  .agent/last_block.md
+6ae5a011fc997fcf0c880c149590d10e72b204bd806a3c345bd9b33776809ca7  .agent/last_block.md
 ```
 
-Exit code: 0. Block mirror verified byte-for-byte identical at sha256 `060104df78a179c32b9c9b2a0b5e7e6ce7f5b900fb248ffed09a7dcedeffa11c`.
+Exit code: 0. Block mirror verified byte-for-byte identical at sha256 `6ae5a011fc997fcf0c880c149590d10e72b204bd806a3c345bd9b33776809ca7`.
 
 ## Deviations & assumptions
 
-None. All 9 code edits (8 from edit 1, 1 each from edits 2-9) matched the FROM text verbatim at the cited locations; all gates passed with the exact outputs predicted (G1: 216 violations and 2 offenders; G2: 74 passed; G3: 42 passed; G4: All checks passed; G5: 0 old + 10 new; G6: clean tree); the vocabulary function measurements match exactly (232 → 216 meaning violations, 2 synonym offenders unchanged).
+None. All 30 code edits matched the FROM text verbatim at the cited locations; all gates passed with the exact outputs predicted (G1: 184 violations and 2 offenders; G2: 74 passed; G3: 42 passed; G4: All checks passed; G5: 2 new + 0 old; G6: clean tree); the vocabulary function measurements match exactly (216 → 184 meaning violations, 2 synonym offenders unchanged, 32 total fixed: 30 Run bucket + 2 Job bucket bonus fixes as documented in the block).
 
 ## Next
 
-Round 7: Re-run `_meaning_violations()` grouped by word at the start of round 7; expected: Run, Project, Job are the only three buckets left, at approximately 216 total (232 minus this round's 16 — re-measure rather than trust). Job (~120) is by far the largest; Project (~65) and Run (~29-30) are next. Proceed with the largest remaining bucket or the next natural grouping per measurement.
+Round 8: Re-run `_meaning_violations()` grouped by word at the start of round 8; expected: Project and Job are the only two buckets left, at approximately 183-184 total (re-measure rather than trust). Job (~118) is by far the largest; Project (~65) is next. Proceed with the largest remaining bucket or the next natural grouping per measurement.
