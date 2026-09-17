@@ -452,7 +452,7 @@ def write_prepared_mission(prepared: PreparedMission, data_root: Path | None = N
 
 
 def dod_compiler_input(prepared: PreparedMission) -> tuple[dict[str, Any], TaskPlan]:
-    """The pair the F061 DoD compiler consumes: intake payload + flight plan.
+    """The pair the F061 DoD compiler consumes: intake payload + task plan.
 
     Handing this to ``compile_dod``/``deterministic_dod`` is the caller's
     explicit act; the adapter does not compile a DoD on its own, because that

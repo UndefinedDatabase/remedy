@@ -58,7 +58,7 @@ class HumanDecision:
     resolved_at: str | None
     #: Structured extras for decisions that carry more than a summary line.
     #: Additive (F034): every existing producer omits it and gets ``{}``.
-    #: The flight-plan approval uses it to bundle the plan's open
+    #: The task-plan approval uses it to bundle the plan's open
     #: clarifications, so one decision covers the whole plan.
     payload: dict[str, Any] = field(default_factory=dict)
     #: The receipts behind this decision: refs, expected outcomes, downsides.
@@ -603,19 +603,19 @@ def list_decisions(
     except (ImportError, ValueError, OSError):
         pass
 
-    # 7. Flight plan approval
-    _flight_plan = getattr(job, "task_plan", None)
-    if isinstance(_flight_plan, dict):
-        _fp_approval = _flight_plan.get("_approval")
-        if _fp_approval == "pending":
+    # 7. Task plan approval
+    _task_plan = getattr(job, "task_plan", None)
+    if isinstance(_task_plan, dict):
+        _plan_approval = _task_plan.get("_approval")
+        if _plan_approval == "pending":
             # F034: the plan's open questions ride THIS decision. One plan,
             # one human touchpoint — never one decision per question.
             from packages.orchestration.job_plan import open_clarification_questions
             _questions = open_clarification_questions(
-                _flight_plan.get("clarifications_resolved"))
+                _task_plan.get("clarifications_resolved"))
             _actions = [
-                f"remedy decision resolve {job_id[:8]} fp:approval --reason approve",
-                f"remedy decision resolve {job_id[:8]} fp:approval --reason reject",
+                f"remedy decision resolve {job_id[:8]} plan:approval --reason approve",
+                f"remedy decision resolve {job_id[:8]} plan:approval --reason reject",
             ]
             # F056: intake may hint that this goal outlives one job.  The offer
             # rides THIS decision — no second human touchpoint — and it defaults
@@ -629,16 +629,16 @@ def list_decisions(
                     "goal": str(_intake.get("goal", "") or ""),
                 }
                 _actions.append(
-                    f"remedy decision resolve {job_id[:8]} fp:approval "
+                    f"remedy decision resolve {job_id[:8]} plan:approval "
                     f"--reason approve --as-mission")
-            _summary = "Flight plan awaiting approval."
+            _summary = "Task plan awaiting approval."
             if _questions:
                 _summary = (
-                    f"Flight plan awaiting approval "
+                    f"Task plan awaiting approval "
                     f"({len(_questions)} open question"
                     f"{'s' if len(_questions) != 1 else ''}).")
                 _actions.insert(1, (
-                    f"remedy decision resolve {job_id[:8]} fp:approval "
+                    f"remedy decision resolve {job_id[:8]} plan:approval "
                     f"--reason approve --answer {_questions[0]['id']}=\"...\""))
             _payload: dict[str, Any] = {}
             # `options` is NOT a new vocabulary here: branch 8 already exports an
@@ -670,8 +670,8 @@ def list_decisions(
             # inventing vocabulary to carry it.
             _fp_refs = [DecisionEvidenceRef(
                 kind="decision",
-                target="fp:approval",
-                label="the flight-plan approval this job is waiting on",
+                target="plan:approval",
+                label="the task-plan approval this job is waiting on",
             )]
             for _question in _questions:
                 _question_id = str(_question.get("id", "") or "")
@@ -682,7 +682,7 @@ def list_decisions(
                         label="the open question that ships with this plan",
                     ))
             decisions.append(HumanDecision(
-                id="fp:approval",
+                id="plan:approval",
                 type="task_plan_approval",
                 status="open",
                 severity="blocker",
@@ -732,8 +732,8 @@ def list_decisions(
                     ),
                 ),
             ))
-        elif _fp_approval == "approved" and _flight_plan.get("_approval_audit"):
-            audit = _flight_plan["_approval_audit"]
+        elif _plan_approval == "approved" and _task_plan.get("_approval_audit"):
+            audit = _task_plan["_approval_audit"]
             reason = audit.get("reason", "auto-approved")
             # F032 T002f, the RESOLVED arm.  DECISION F032 D7 is why it owes a
             # triple at all: `enforce_decision_evidence` selects by TYPE ALONE
@@ -749,8 +749,8 @@ def list_decisions(
             # (c) would refuse the card.
             _fp_resolved_refs = [DecisionEvidenceRef(
                 kind="decision",
-                target="fp:approval",
-                label="the flight-plan approval this record answers",
+                target="plan:approval",
+                label="the task-plan approval this record answers",
             )]
             if reason:
                 _fp_resolved_refs.append(DecisionEvidenceRef(
@@ -766,7 +766,7 @@ def list_decisions(
                     label="how the approval was given",
                 ))
             decisions.append(HumanDecision(
-                id="fp:approval",
+                id="plan:approval",
                 type="task_plan_approval",
                 status="resolved",
                 severity="info",
@@ -774,7 +774,7 @@ def list_decisions(
                 related_node_id="",
                 related_intent_id="",
                 related_file="",
-                safe_summary=f"Flight plan {reason}.",
+                safe_summary=f"Task plan {reason}.",
                 next_actions=(),
                 created_at="",
                 resolved_at="",

@@ -2,7 +2,7 @@
 
 Covers the contract half: stable question ids assigned by intake order,
 carry-through into the plan with empty answer/answered_by, embedding into
-the fp:approval decision payload, and the zero-clarification regression
+the plan:approval decision payload, and the zero-clarification regression
 (the approval flow must be identical to the plain plan).
 """
 

@@ -93,7 +93,7 @@ FIGURES = ("before_prefix", "after_prefix", "before_total", "after_total")
 # ---------------------------------------------------------------------------
 
 #: intake — the mission text (rank TASK).
-_OTHER_MISSION = "Fix the flaky import in packages/orchestration/flight_plan.py"
+_OTHER_MISSION = "Fix the flaky import in packages/orchestration/job_plan.py"
 
 #: mission — the compiled goal (rank TASK). The cap is left at its default so
 #: the cap-scoped rules segment (DECISION F105 D4) is held fixed.

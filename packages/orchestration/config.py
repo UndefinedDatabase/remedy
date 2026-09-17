@@ -420,7 +420,7 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         key="planning.granularity.enabled",
         env_var="REMEDY_PLANNING_GRANULARITY_ENABLED",
         description=(
-            "Normalize Flight-Plan task granularity — split oversized tasks, "
+            "Normalize Task-Plan task granularity — split oversized tasks, "
             "merge trivial neighbors (F016). Disable for byte-identical "
             "pass-through of the planner's task list."
         ),

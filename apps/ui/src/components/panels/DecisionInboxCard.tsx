@@ -377,7 +377,7 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
                     operator reads what the plan is waiting on before pressing
                     the control that resolves it. A card carrying none renders
                     nothing here at all, which is every card but a pending
-                    flight-plan approval. */}
+                    task-plan approval. */}
                 {decision.clarifications.length > 0 ? (
                   <div className={styles.decisionClarifications}>
                     {decision.clarifications.map((clarification, clarificationIndex) => {
@@ -392,7 +392,7 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
                         // THE KEY PAIRS THE QUESTION'S POSITION WITH ITS FIELD
                         // KEY, because the endpoint does not guarantee distinct
                         // question ids: neither `open_clarification_questions`
-                        // in packages/orchestration/flight_plan.py nor
+                        // in packages/orchestration/job_plan.py nor
                         // `cardClarifications` in decisionCard.ts deduplicates
                         // them, so a key built from the id alone would let React
                         // reuse ONE node for TWO questions and the operator's

@@ -65,7 +65,7 @@ The table above is not exhaustive — later features added their own keys
 `_CONFIG_KEY_SPECS` in `packages/orchestration/config.py` is the source of
 truth; `remedy config list` prints the resolved set.
 
-The `planning.granularity.*` keys drive Flight-Plan task-granularity
+The `planning.granularity.*` keys drive Task-Plan task-granularity
 normalization (F016): oversized planned tasks are split, runs of trivial
 neighbors are merged, and every transformation is listed in a
 **Normalization** section of the generated `plan.md` before a human

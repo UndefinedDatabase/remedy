@@ -54,7 +54,7 @@ MilestoneTokenBand = Literal["S", "M", "L", "XL"]
 
 #: More milestones than a mission plausibly has.  Over the cap is not a big
 #: plan — it is hallucinated scope, and it is refused as a parse-class failure
-#: exactly as the flight plan refuses more than 25 tasks.
+#: exactly as the task plan refuses more than 25 tasks.
 MAX_MISSION_MILESTONES = 12
 
 #: A milestone id becomes part of a rendered filename and of every dependency
@@ -64,8 +64,8 @@ MAX_MILESTONE_ID_CHARS = 64
 #: How many draft outlines one milestone may sketch (R-0168).  A milestone
 #: needing more than eight is not a milestone, it is a project — the same
 #: hallucinated-scope reading :data:`MAX_MISSION_MILESTONES` applies one level
-#: up.  The cap also keeps the ephemeral ``milestone_flight_plan`` view inside
-#: the flight plan's own 25-task limit (one task per outline, plus the outcome
+#: up.  The cap also keeps the ephemeral ``milestone_task_plan`` view inside
+#: the task plan's own 25-task limit (one task per outline, plus the outcome
 #: task), so an over-eager draft is refused HERE — at parse time, where the
 #: single retry and the deterministic fallback still apply — instead of raising
 #: out of the DoD hand-off later.
@@ -137,7 +137,7 @@ class DraftJob(_Strict):
     @model_validator(mode="after")
     def _validate_draft_job(self) -> DraftJob:
         # R-0168: an outline whose goal is blank becomes an empty acceptance
-        # line in the milestone flight-plan view, which the TaskPlan
+        # line in the milestone task-plan view, which the TaskPlan
         # validators reject far downstream. Refused here, at parse time.
         for field, value in (("title", self.title), ("goal", self.goal)):
             if not value.strip():

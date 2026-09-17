@@ -1,4 +1,4 @@
-"""F016 — table-driven tests for Flight-Plan task-granularity normalization."""
+"""F016 — table-driven tests for Task-Plan task-granularity normalization."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -1,4 +1,4 @@
-"""Tests for flight plan approval gate (F014 T004)."""
+"""Tests for task plan approval gate (F014 T004)."""
 
 from __future__ import annotations
 
@@ -13,13 +13,13 @@ from packages.orchestration.pingpong_job import JobPlan
 _CLI = [sys.executable, "-m", "apps.cli.grouped"]
 
 
-class TestFlightPlanApprovalDecisionType:
+class TestTaskPlanApprovalDecisionType:
 
     def test_type_registered(self):
         assert "task_plan_approval" in DECISION_TYPES
 
 
-class TestFlightPlanApprovalDecision:
+class TestTaskPlanApprovalDecision:
 
     def test_pending_creates_blocker(self):
         job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
@@ -27,7 +27,7 @@ class TestFlightPlanApprovalDecision:
         assert len(fp) == 1
         assert fp[0].severity == "blocker"
         assert fp[0].status == "open"
-        assert fp[0].id == "fp:approval"
+        assert fp[0].id == "plan:approval"
 
     def test_approved_no_decision(self):
         job = JobPlan(job_title="t", task_plan={"_approval": "approved"})
@@ -39,7 +39,7 @@ class TestFlightPlanApprovalDecision:
         fp = [d for d in list_decisions(job, []) if d.type == "task_plan_approval"]
         assert len(fp) == 0
 
-    def test_no_flight_plan_no_decision(self):
+    def test_no_task_plan_no_decision(self):
         job = JobPlan(job_title="t")
         fp = [d for d in list_decisions(job, []) if d.type == "task_plan_approval"]
         assert len(fp) == 0
@@ -102,10 +102,10 @@ _FAKE_PLAN_JSON = json.dumps({
 
 
 def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
-    """Configure monkeypatches for LLM intake + flight plan path.
+    """Configure monkeypatches for LLM intake + task plan path.
 
     Both call_fn FACTORIES are mocked, not only the functions behind them.
-    `do_cmd` reaches the flight-plan branch solely when
+    `do_cmd` reaches the task-plan branch solely when
     `intake.make_structured_call_fn` hands back a callable, and the real factory
     decides that by probing a live Ollama server. Leaving it unmocked made these
     tests read the developer machine instead of their own fixtures: green with a
@@ -159,7 +159,7 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
         )
 
 
-class TestFlightPlanLabel:
+class TestTaskPlanLabel:
 
     def test_deterministic_fallback_label(self, tmp_path):
         repo = _git_repo(tmp_path)
@@ -177,8 +177,8 @@ class TestFlightPlanLabel:
         data = json.loads(result.stdout)
         assert data["plan_label"] == "deterministic skeleton"
 
-    def test_llm_flight_plan_label(self, tmp_path, monkeypatch):
-        """Successful LLM flight plan -> label contains 'flight plan' + 'awaiting approval'."""
+    def test_llm_task_plan_label(self, tmp_path, monkeypatch):
+        """Successful LLM task plan -> label contains 'task plan' + 'awaiting approval'."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         subprocess.run(
@@ -197,12 +197,12 @@ class TestFlightPlanLabel:
         _cmd_do_mission("test mission", repo=str(repo), json_output=True)
 
         data = json.loads(captured.getvalue())
-        assert "flight plan" in data["plan_label"].lower()
+        assert "task plan" in data["plan_label"].lower()
         assert "awaiting approval" in data["plan_label"].lower()
         assert data["state"] == "planned"
 
     def test_llm_plan_stores_pending_approval(self, tmp_path, monkeypatch):
-        """Successful LLM flight plan -> job.task_plan._approval == 'pending'."""
+        """Successful LLM task plan -> job.task_plan._approval == 'pending'."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         subprocess.run(
@@ -274,8 +274,8 @@ class TestFlightPlanLabel:
         assert "## Normalization" in text
         assert "oversized task sliced" in text
 
-    def test_flight_plan_parse_failure_not_planned(self, tmp_path, monkeypatch):
-        """LLM flight plan parse failure -> non-zero exit, no tasks, postmortem."""
+    def test_task_plan_parse_failure_not_planned(self, tmp_path, monkeypatch):
+        """LLM task plan parse failure -> non-zero exit, no tasks, postmortem."""
 
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
@@ -358,7 +358,7 @@ class TestApprovalGateEnforcement:
             cwd=str(repo), env=env_with_data, stdin=subprocess.DEVNULL,
         )
         assert run.returncode == 3
-        assert "flight plan rejected" in run.stderr
+        assert "task plan rejected" in run.stderr
         assert "replan" not in run.stderr
 
 
@@ -373,7 +373,7 @@ class TestDecisionResolve:
         short_id = str(job.job_id)[:8]
 
         from apps.cli.commands.decision import _cmd_decision_resolve
-        _cmd_decision_resolve(short_id, "fp:approval", reason="approve")
+        _cmd_decision_resolve(short_id, "plan:approval", reason="approve")
 
         from packages.orchestration.pingpong_job import load_job_plan
         updated = load_job_plan(job.job_id)
@@ -387,7 +387,7 @@ class TestDecisionResolve:
         short_id = str(job.job_id)[:8]
 
         from apps.cli.commands.decision import _cmd_decision_resolve
-        _cmd_decision_resolve(short_id, "fp:approval", reason="reject")
+        _cmd_decision_resolve(short_id, "plan:approval", reason="reject")
 
         from packages.orchestration.pingpong_job import load_job_plan
         updated = load_job_plan(job.job_id)
@@ -404,7 +404,7 @@ class TestDecisionResolve:
 
         from apps.cli.commands.decision import _cmd_decision_resolve
         with pytest.raises(SystemExit) as exc_info:
-            _cmd_decision_resolve(short_id, "fp:approval", reason="maybe")
+            _cmd_decision_resolve(short_id, "plan:approval", reason="maybe")
         assert exc_info.value.code == 1
 
 
@@ -651,7 +651,7 @@ class TestReplanApprovalRearm:
 class TestApprovalGoldenPathCLI:
     """R-0127: full CLI sequence — init → do(seed) → run(blocked) → approve → status.
 
-    Assumption: inline save_job_plan seeds the job with a pending flight plan as the
+    Assumption: inline save_job_plan seeds the job with a pending task plan as the
     provider stand-in, per spec allowance.
     """
 
@@ -666,7 +666,7 @@ class TestApprovalGoldenPathCLI:
         )
         assert init.returncode == 0, init.stderr
 
-        # 2. seed job with pending flight plan via save_job_plan
+        # 2. seed job with pending task plan via save_job_plan
         from packages.core.models import RunState
         from packages.orchestration.pingpong_job import TaskEntry, save_job_plan
         job = JobPlan(
@@ -697,7 +697,7 @@ class TestApprovalGoldenPathCLI:
 
         # 4. approve via CLI
         approve = subprocess.run(
-            [*_CLI, "decision", "resolve", short_id, "fp:approval",
+            [*_CLI, "decision", "resolve", short_id, "plan:approval",
              "--reason", "approve"],
             capture_output=True, text=True, timeout=30,
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,

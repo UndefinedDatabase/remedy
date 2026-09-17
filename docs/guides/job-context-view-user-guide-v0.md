@@ -14,8 +14,8 @@ commands accept one.
 
 ## What is compiled, and what is deliberately not
 
-The fenced scope is exactly the task's own `inputs["flight"]["files_hint"]` — the write
-scope the flight plan gave that task. Remedy deliberately does NOT consult the job's
+The fenced scope is exactly the task's own `inputs["plan"]["files_hint"]` — the write
+scope the task plan gave that task. Remedy deliberately does NOT consult the job's
 scope-fence globs (the `fences` section of `remedy job show <id> --full`, F017) here:
 merging fence allow-globs into the
 compiled scope is out of scope for this version, so a view that showed them would be

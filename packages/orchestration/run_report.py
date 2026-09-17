@@ -32,7 +32,7 @@ Sources (all pre-existing; see ``collect_report_sources``):
   postmortems         failure_postmortem.read_postmortem
   open decisions      decision_queue.list_decisions / open_decisions
   token actuals       budget_guard.BudgetCounters (persisted job actuals)
-  assumption log      flight_plan.render_assumptions_md and
+  assumption log      job_plan.render_assumptions_md and
                       escalation.render_escalation_assumptions_md
   run manifest        run_manifest.read_run_manifest
 """

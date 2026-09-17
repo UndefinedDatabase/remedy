@@ -273,8 +273,8 @@ class TestSegmentManifest:
 
         assert "make_intake_call_recorder" in inspect.getsource(do_cmd)
 
-    def test_the_cli_flight_plan_recorder_passes_the_composed_prompt(self):
-        """Wiring guard: an unwired flight-plan manifest fails HERE (F105 R27)."""
+    def test_the_cli_task_plan_recorder_passes_the_composed_prompt(self):
+        """Wiring guard: an unwired task-plan manifest fails HERE (F105 R27)."""
         import apps.cli.commands.do_cmd as do_cmd
         from packages.orchestration.job_plan import (
             compose_task_plan_prompt,

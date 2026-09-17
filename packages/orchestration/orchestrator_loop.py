@@ -569,7 +569,7 @@ def measure_call_cost(outcome: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 #: Key the persisted plan body carries for milestones the loop marked done.
-#: Underscore-prefixed like the flight-plan precedent's ``_version`` /
+#: Underscore-prefixed like the task-plan precedent's ``_version`` /
 #: ``_versions``, which ``mission_compiler.mission_plan_of`` already strips —
 #: so this is ADDITIVE, needs no MissionPlan schema change and no
 #: MISSION_SCHEMA_VERSION bump.

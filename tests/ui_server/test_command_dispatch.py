@@ -152,8 +152,8 @@ class TestJobStopDispatchEffects:
         assert self._audit_outcomes() == ["rejected_effect"]
 
 
-class TestFlightPlanApprovalDispatchEffects:
-    """What an accepted `fp:` decision DID, read off disk (DECISION F031 D24).
+class TestTaskPlanApprovalDispatchEffects:
+    """What an accepted `plan:` decision DID, read off disk (DECISION F031 D24).
 
     Its sibling `test_command_channel.py` pins what the door ANSWERS for the
     same requests. This class exists because a 200 proves only that the door
@@ -172,7 +172,7 @@ class TestFlightPlanApprovalDispatchEffects:
         self.tmp_path = tmp_path
 
     def _approve(self, port, token, nonce, answers=None):
-        args = {"decision_id": "fp:approval", "answer": "approve"}
+        args = {"decision_id": "plan:approval", "answer": "approve"}
         if answers is not None:
             args["answers"] = answers
         payload = {"command": "decision.resolve", "client_nonce": nonce,
@@ -189,7 +189,7 @@ class TestFlightPlanApprovalDispatchEffects:
         finally:
             conn.close()
 
-    def test_an_accepted_fp_approval_really_resolved_the_plan(self):
+    def test_an_accepted_plan_approval_really_resolved_the_plan(self):
         """The effect ran: the plan is `approved` in a job RELOADED from storage."""
         from packages.orchestration.pingpong_job import load_job_plan
 
@@ -222,7 +222,7 @@ class TestFlightPlanApprovalDispatchEffects:
         assert resolved[0]["answer"] == "use PostgreSQL", resolved
         assert resolved[0]["answered_by"] == "human", resolved
 
-    def test_the_accepted_fp_approval_saves_the_job_exactly_once(self, monkeypatch):
+    def test_the_accepted_plan_approval_saves_the_job_exactly_once(self, monkeypatch):
         """The only guard on the door's DELIBERATE omission of its own `save_job`.
 
         `resolve_task_plan_approval` saves on both of its arms, so the door

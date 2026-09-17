@@ -479,7 +479,7 @@ class TestARefusedAnswerIsTextRatherThanAButton:
 
 
 class TestTheClarificationFormIsFilledFromTheCard:
-    """DECISION F031 D24. A pending flight-plan approval carries still-open
+    """DECISION F031 D24. A pending task-plan approval carries still-open
     questions, and until now no caller ever filled the `answers` map that
     `answerDecisionCard` has accepted since the write channel learned it. The
     card now renders one field per question and hands the collected map on.

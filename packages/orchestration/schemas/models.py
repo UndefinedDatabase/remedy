@@ -159,7 +159,7 @@ AnsweredBy = Literal["human", "default", ""]
 
 
 class TaskPlanClarification(_Strict):
-    """A resolved clarification carried in the flight plan.
+    """A resolved clarification carried in the task plan.
 
     ``id`` and ``answered_by`` are additive (F034): plans written before
     bundled clarification existed load unchanged and carry the empty
@@ -176,7 +176,7 @@ class TaskPlanClarification(_Strict):
 
 
 class TaskPlan(_Structured):
-    """LLM-generated flight plan (schema ``fp1``).
+    """LLM-generated task plan (schema ``fp1``).
 
     A DAG of PlannedTasks with goals, acceptance criteria, dependency
     edges, and token-band estimates. Validated on construction: no

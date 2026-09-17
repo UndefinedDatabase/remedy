@@ -228,7 +228,7 @@ def _cmd_mission_plan(mission_id: str, *, project: str | None = None,
 
     try:
         # `make_structured_call_fn` is Ollama-backed, so the provider is named
-        # here exactly as the flight-plan site names it in `do_cmd.py`. Under
+        # here exactly as the task-plan site names it in `do_cmd.py`. Under
         # `--no-llm` there is no call and therefore no trace to carry a label.
         outcome = plan_mission(project_id, mission.id, call_fn,
                                provider="ollama", provider_kind="ollama")

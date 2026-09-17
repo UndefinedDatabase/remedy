@@ -5,12 +5,12 @@ the feature file's ``compile(mission)`` — turns that prose into the structured
 route the orchestrator loop follows: ordered milestones wired into a DAG, each
 an OUTCOME rather than a step, each carrying draft job outlines.
 
-The shape mirrors intake, the flight planner and the DoD compiler, because it
+The shape mirrors intake, the task planner and the DoD compiler, because it
 is the same problem one level up: one provider call through
 ``run_structured_call`` (schema-enforced, at most one parse retry), and an
 honest deterministic fallback when there is no provider or the provider fails.
 The prompt's repo facts come from the SHARED ``prompt_facts.repo_facts_block``
-that the flight planner uses — not a second copy of it.
+that the task planner uses — not a second copy of it.
 
 Two guarantees this module holds to, both pinned by tests:
 
@@ -197,7 +197,7 @@ def build_mission_prompt(goal: str, *, project_facts: str = "",
     """The provider prompt for one mission goal.
 
     ``project_facts`` defaults to the SHARED repo-facts block — the same one
-    the flight planner puts in front of its provider. A caller that already
+    the task planner puts in front of its provider. A caller that already
     knows the project's shape passes it instead of paying for a second listing.
 
     ``max_milestones`` (R-0197) lowers the milestone ceiling the prompt states.
@@ -383,7 +383,7 @@ def compile_mission_plan(
     # Composed ONCE. The same ComposedPrompt supplies the bytes that go to the
     # provider and the manifest the trace records, so an audit row can never
     # describe a twin composition the provider never saw. That failure mode is
-    # real and open elsewhere — R-0256, the flight-plan and intake sites, where
+    # real and open elsewhere — R-0256, the task-plan and intake sites, where
     # the caller composes a second time because it has to build the recorder
     # before the builder runs. It is not reproduced here.
     try:
@@ -460,12 +460,12 @@ def _fallback(goal: str, *, hint: str) -> MissionCompileResult:
 # ---------------------------------------------------------------------------
 
 #: The id the synthetic "milestone reached" task carries inside the per-
-#: milestone flight-plan VIEW. It never becomes a real task; see
-#: :func:`milestone_flight_plan`.
+#: milestone task-plan VIEW. It never becomes a real task; see
+#: :func:`milestone_task_plan`.
 MILESTONE_OUTCOME_TASK_SUFFIX = "-DONE"
 
 #: Band for that synthetic task. A milestone outcome is never small, and the
-#: band is required by the flight-plan schema — it is not an estimate anyone
+#: band is required by the task-plan schema — it is not an estimate anyone
 #: acts on, because nothing runs this view.
 _OUTCOME_TASK_BAND = "L"
 
@@ -475,11 +475,11 @@ def milestone_dod_filename(milestone_id: str) -> str:
     return f"dod_{milestone_id}.json"
 
 
-def milestone_flight_plan(milestone: Milestone) -> TaskPlan:
-    """A per-milestone flight plan — the VIEW the F061 DoD compiler consumes.
+def milestone_task_plan(milestone: Milestone) -> TaskPlan:
+    """A per-milestone task plan — the VIEW the F061 DoD compiler consumes.
 
     Rule A6 says the DoD compiler is the only DoD mechanism, and that compiler
-    takes ``(intake, TaskPlan)``. A milestone is not a flight plan, so one is
+    takes ``(intake, TaskPlan)``. A milestone is not a task plan, so one is
     projected from it: one task per draft job outline, plus a final task whose
     acceptance line IS the milestone's own outcome and which depends on all of
     them.
@@ -524,7 +524,7 @@ def compile_milestone_dod(
     """Compile ONE milestone's Definition of Done through the F061 compiler.
 
     There is no second DoD mechanism here (Rule A6): this builds the intake and
-    the flight-plan view and hands both to ``compile_dod``, which owns the
+    the task-plan view and hands both to ``compile_dod``, which owns the
     provider call, the fallback and the traceability rule.
     """
     intake = {
@@ -534,7 +534,7 @@ def compile_milestone_dod(
         "constraints": [],
         "acceptance_hints": [d.goal for d in milestone.jobs_draft],
     }
-    return compile_dod(intake, milestone_flight_plan(milestone), call_fn,
+    return compile_dod(intake, milestone_task_plan(milestone), call_fn,
                        on_call=on_call)
 
 
@@ -575,7 +575,7 @@ MISSION_PLAN_FILENAME = "mission_plan.md"
 def render_mission_plan_md(plan: MissionPlan, goal: str = "") -> str:
     """Render a MissionPlan to deterministic, stably ordered markdown.
 
-    Same shape as ``flight_plan.render_plan_md``: no clock, no randomness, no
+    Same shape as ``job_plan.render_plan_md``: no clock, no randomness, no
     disk — the same plan renders to the same bytes every time.
     """
     lines: list[str] = ["# Mission Plan", ""]
@@ -634,7 +634,7 @@ def write_mission_plan_md(plan: MissionPlan, evidence_dir: Path,
                           goal: str = "", version: int = 1) -> Path:
     """Write the rendered plan into the mission's evidence area.
 
-    Prior versions are KEPT, exactly as ``flight_plan.write_plan_md`` keeps
+    Prior versions are KEPT, exactly as ``job_plan.write_plan_md`` keeps
     ``plan.md`` / ``plan_v2.md``: a recompile must never destroy the plan a
     human already read and acted on.
     """
@@ -651,7 +651,7 @@ def write_mission_plan_md(plan: MissionPlan, evidence_dir: Path,
 # ---------------------------------------------------------------------------
 
 #: Keys the PERSISTED plan body carries beyond the model's own fields. The
-#: flight-plan replan precedent (``flight_plan.replan``) established this
+#: task-plan replan precedent (``job_plan.replan``) established this
 #: spelling, and reusing it means one versioning convention in the codebase
 #: rather than two.
 PLAN_VERSIONS_KEY = "_versions"
@@ -723,7 +723,7 @@ def plan_mission(
 
     A recompile KEEPS every prior version — the old body moves into
     ``_versions`` and the previous ``mission_plan.md`` stays on disk beside the
-    new ``mission_plan_v<n>.md``, exactly as a flight-plan replan keeps
+    new ``mission_plan_v<n>.md``, exactly as a task-plan replan keeps
     ``plan.md``.  A plan a human already read and acted on is never destroyed.
 
     Recompiling is REFUSED once any milestone is in progress

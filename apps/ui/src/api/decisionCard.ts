@@ -70,9 +70,9 @@ export interface DecisionAnswer {
   downside: string;
 }
 
-/** One still-open question the flight plan is waiting on, in the model's own
+/** One still-open question the task plan is waiting on, in the model's own
  *  camel case. The endpoint sends `id`, `question`, `default_answer` and
- *  `impact` — `packages/orchestration/flight_plan.py::open_clarification_questions`
+ *  `impact` — `packages/orchestration/job_plan.py::open_clarification_questions`
  *  builds every record with exactly those four keys and `str()`-coerces each —
  *  so the two spellings differ ONLY in case convention, exactly as the model's
  *  `taskId` below already differs from the payload's own `task_id`. */
@@ -127,7 +127,7 @@ export interface DecisionCardModel {
   answers: DecisionAnswer[];
   /** The plan's still-open questions, projected from `payload.clarifications`.
    *  EMPTY for every card that carries none — which is every card but a pending
-   *  flight-plan approval — so a renderer needs no branch of its own and the
+   *  task-plan approval — so a renderer needs no branch of its own and the
    *  model stays as total as every other field here. */
   clarifications: DecisionClarification[];
   /** The receipts behind this decision, projected from the endpoint's own

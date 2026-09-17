@@ -105,7 +105,7 @@ class TestResolveWithAnswers:
         save_job_plan(job)
 
         _cmd_decision_resolve(
-            str(job.job_id)[:8], "fp:approval", reason="approve",
+            str(job.job_id)[:8], "plan:approval", reason="approve",
             answer=['q1=use PostgreSQL'])
 
         updated = load_job_plan(job.job_id)
@@ -122,7 +122,7 @@ class TestResolveWithAnswers:
 
         with pytest.raises(SystemExit) as exc:
             _cmd_decision_resolve(
-                str(job.job_id)[:8], "fp:approval", reason="approve",
+                str(job.job_id)[:8], "plan:approval", reason="approve",
                 answer=["q9=nope"])
         assert exc.value.code == 1
         # The plan must be untouched by a rejected answer set.
@@ -136,7 +136,7 @@ class TestResolveWithAnswers:
 
         with pytest.raises(SystemExit) as exc:
             _cmd_decision_resolve(
-                str(job.job_id)[:8], "fp:approval", reason="reject",
+                str(job.job_id)[:8], "plan:approval", reason="reject",
                 answer=["q1=postgres"])
         assert exc.value.code == 1
         assert load_job_plan(job.job_id).task_plan["_approval"] == "pending"
@@ -159,7 +159,7 @@ class TestWriteBackAndImmutability:
         save_job_plan(job)
 
         _cmd_decision_resolve(
-            str(job.job_id)[:8], "fp:approval", reason="approve",
+            str(job.job_id)[:8], "plan:approval", reason="approve",
             answer=["q1=use PostgreSQL"])
 
         recs = load_job_plan(job.job_id).task_plan["clarifications_resolved"]
@@ -177,7 +177,7 @@ class TestWriteBackAndImmutability:
         job = _pending_job()
         save_job_plan(job)
 
-        _cmd_decision_resolve(str(job.job_id)[:8], "fp:approval", reason="approve")
+        _cmd_decision_resolve(str(job.job_id)[:8], "plan:approval", reason="approve")
 
         recs = load_job_plan(job.job_id).task_plan["clarifications_resolved"]
         assert [r["answered_by"] for r in recs] == ["default", "default"]
@@ -191,13 +191,13 @@ class TestWriteBackAndImmutability:
         job = _pending_job()
         save_job_plan(job)
         _cmd_decision_resolve(
-            str(job.job_id)[:8], "fp:approval", reason="approve",
+            str(job.job_id)[:8], "plan:approval", reason="approve",
             answer=["q1=use PostgreSQL"])
         capsys.readouterr()
 
         with pytest.raises(SystemExit) as exc:
             _cmd_decision_resolve(
-                str(job.job_id)[:8], "fp:approval", reason="approve",
+                str(job.job_id)[:8], "plan:approval", reason="approve",
                 answer=["q1=actually MySQL"])
         assert exc.value.code == 1
         assert "already resolved" in capsys.readouterr().err
@@ -212,7 +212,7 @@ class TestWriteBackAndImmutability:
         job = _pending_job()
         save_job_plan(job)
 
-        _cmd_decision_resolve(str(job.job_id)[:8], "fp:approval", reason="approve")
+        _cmd_decision_resolve(str(job.job_id)[:8], "plan:approval", reason="approve")
 
         updated = load_job_plan(job.job_id)
         open_fp = [d for d in list_decisions(updated, [])
@@ -226,7 +226,7 @@ class TestWriteBackAndImmutability:
         before = [dict(r) for r in job.task_plan["clarifications_resolved"]]
         save_job_plan(job)
 
-        _cmd_decision_resolve(str(job.job_id)[:8], "fp:approval", reason="reject")
+        _cmd_decision_resolve(str(job.job_id)[:8], "plan:approval", reason="reject")
 
         updated = load_job_plan(job.job_id)
         assert updated.task_plan["_approval"] == "rejected"
@@ -238,7 +238,7 @@ class TestWriteBackAndImmutability:
         job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
         save_job_plan(job)
 
-        _cmd_decision_resolve(str(job.job_id)[:8], "fp:approval", reason="approve")
+        _cmd_decision_resolve(str(job.job_id)[:8], "plan:approval", reason="approve")
 
         fp = load_job_plan(job.job_id).task_plan
         assert fp["_approval"] == "approved"
@@ -265,7 +265,7 @@ class TestAssumptionsCommand:
         save_job_plan(job)
 
         _cmd_decision_resolve(
-            str(job.job_id)[:8], "fp:approval", reason="approve",
+            str(job.job_id)[:8], "plan:approval", reason="approve",
             answer=["q1=use PostgreSQL"])
         assert "Assumption log:" in capsys.readouterr().out
 
@@ -280,7 +280,7 @@ class TestAssumptionsCommand:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         job = _pending_job()
         save_job_plan(job)
-        _cmd_decision_resolve(str(job.job_id)[:8], "fp:approval", reason="approve")
+        _cmd_decision_resolve(str(job.job_id)[:8], "plan:approval", reason="approve")
         capsys.readouterr()
 
         section, text = _show_assumptions(capsys, str(job.job_id)[:8])
@@ -374,7 +374,7 @@ class TestUnattendedEndToEnd:
             "packages.orchestration.intake.make_provider_call_fn",
             lambda: (lambda prompt, attempt: _INTAKE_WITH_ONE_CLARIFICATION),
         )
-        # The flight-plan factory too, not only `plan_job_llm` behind it: the real
+        # The task-plan factory too, not only `plan_job_llm` behind it: the real
         # one probes a live Ollama server, so without this the branch under test
         # is selected by whether a server happens to run on the machine, and a
         # runner without one lands on the deterministic skeleton instead.
@@ -447,7 +447,7 @@ class TestAnswerOptionIsRepeatable:
 
         parser = build_parser()
         args = parser.parse_args([
-            "decision", "resolve", "abc123", "fp:approval",
+            "decision", "resolve", "abc123", "plan:approval",
             "--reason", "approve", "--answer", "q1=a", "--answer", "q2=b",
         ])
         assert args.answer == ["q1=a", "q2=b"]

@@ -2340,7 +2340,7 @@ CATALOG: tuple[CommandEntry, ...] = tuple(_with_list_options(c) for c in _BASE_C
 
 # The whole surface of the UI write door: no other `command_id` above is
 # reachable from a browser, and plan approval arrives here as `decision.resolve`
-# carrying an `fp:`-prefixed decision id rather than as a command of its own
+# carrying a `plan:`-prefixed decision id rather than as a command of its own
 # (DECISION F009 D4).
 UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.stop",

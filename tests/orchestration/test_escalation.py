@@ -331,7 +331,7 @@ class TestEscalationAssumptionLog:
         assert path.name == "escalation_assumptions.md"
         assert "Which database?" in path.read_text(encoding="utf-8")
 
-    def test_it_is_not_the_flight_plan_assumption_log(self, tmp_path: Path):
+    def test_it_is_not_the_task_plan_assumption_log(self, tmp_path: Path):
         # The plan-time log states nothing in it was asked mid-run; mid-run
         # escalations therefore get their own file rather than making it lie.
         from packages.orchestration.job_plan import write_assumptions_md
@@ -530,7 +530,7 @@ def make_fanout_job(name: str = "fanout-job") -> JobPlan:
         return TaskEntry(
             title=f"task {planned_id}",
             inputs={"task_type": "documentation",
-                    "flight": {"planned_id": planned_id, "title": planned_id,
+                    "plan": {"planned_id": planned_id, "title": planned_id,
                                "depends_on": list(depends_on)}},
         )
 
@@ -546,13 +546,13 @@ def make_fanout_job(name: str = "fanout-job") -> JobPlan:
 def planned_id_of(job: JobPlan, task_id) -> str:
     for task in job.tasks:
         if str(task.task_id) == str(task_id):
-            return task.inputs["flight"]["planned_id"]
+            return task.inputs["plan"]["planned_id"]
     raise AssertionError(f"no task {task_id} in this job")
 
 
 def task_by_planned_id(job: JobPlan, planned_id: str) -> TaskEntry:
     for task in job.tasks:
-        if task.inputs.get("flight", {}).get("planned_id") == planned_id:
+        if task.inputs.get("plan", {}).get("planned_id") == planned_id:
             return task
     raise AssertionError(f"no task {planned_id} in this job")
 
@@ -581,7 +581,7 @@ class EscalatingStep:
         if task is None:
             return TaskAttempt()
 
-        planned_id = task.inputs["flight"]["planned_id"]
+        planned_id = task.inputs["plan"]["planned_id"]
         if planned_id in self.escalate:
             self.escalate.discard(planned_id)     # asked once
             self.escalated.append(planned_id)
@@ -989,7 +989,7 @@ class TestUnattendedRunLoopCliFlag:
             user_prompt="build the thing",
             tasks=[TaskEntry(title=f"task {i}",
                         inputs={"task_type": "documentation",
-                                "flight": {"planned_id": f"T{i}", "title": f"T{i}",
+                                "plan": {"planned_id": f"T{i}", "title": f"T{i}",
                                            "depends_on": ([f"T{i - 1}"] if i else [])}})
                    for i in range(2)],
             state=RunState.PLANNED,

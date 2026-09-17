@@ -38,7 +38,7 @@ def _plan(**overrides) -> dict:
     return base
 
 
-class TestFlightPlanRoundTrip:
+class TestTaskPlanRoundTrip:
 
     def test_minimal_plan_roundtrips(self):
         fp = TaskPlan(**_plan())

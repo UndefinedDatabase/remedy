@@ -27,7 +27,7 @@ const CHOSEN_ANSWER = "keep first";
 /** The status `decisionSubmit.ts` fixes for "there was no response at all". */
 const NO_RESPONSE_STATUS = 0;
 
-/** The operator's answers to the flight plan's own open questions, keyed by
+/** The operator's answers to the task plan's own open questions, keyed by
  *  question id. Nothing here matches it against the card, because this module
  *  forwards the map and `decisionAnswer.ts` is the one that reads it — so the
  *  value under test is the POSITION it arrives in, not its content. */

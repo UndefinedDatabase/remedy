@@ -584,7 +584,7 @@ class TestVerifyFirstStructure:
         assert task.inputs["verify_command"] == ""
         assert "no verification command recorded" in task.title
 
-    def test_the_command_may_come_from_the_flight_plan(self):
+    def test_the_command_may_come_from_the_task_plan(self):
         previous = JobPlan(job_title="previous",
                        task_plan={"verify_command": "make smoke"})
 
@@ -595,7 +595,7 @@ class TestVerifyFirstStructure:
         tasks = inject_verify_first(previous, [build_follow_up_task("Add the CSV path")])
 
         assert is_verify_task(tasks[0])
-        assert tasks[1].inputs["flight"]["depends_on"] == [
+        assert tasks[1].inputs["plan"]["depends_on"] == [
             MISSION_VERIFY_PLANNED_ID]
 
     def test_the_scheduler_withholds_the_work_until_verify_completes(self):
@@ -630,7 +630,7 @@ class TestVerifyFirstStructure:
         with pytest.raises(MissionVerifyFirstError, match="Add the CSV path"):
             assert_verify_first([build_follow_up_task("Add the CSV path")])
         loose = build_follow_up_task("Add the JSON path")
-        loose.inputs["flight"] = {"planned_id": "M001", "depends_on": []}
+        loose.inputs["plan"] = {"planned_id": "M001", "depends_on": []}
         with pytest.raises(MissionVerifyFirstError, match="Add the JSON path"):
             assert_verify_first([build_verify_first_task(self._previous_job()), loose])
 
@@ -642,7 +642,7 @@ class TestVerifyFirstStructure:
         previous = self._previous_job()
         verify = build_verify_first_task(previous)
         loose = build_follow_up_task("Add the CSV path")
-        loose.inputs["flight"] = {"planned_id": "M001", "depends_on": []}
+        loose.inputs["plan"] = {"planned_id": "M001", "depends_on": []}
 
         with pytest.raises(MissionVerifyFirstError):
             assert_verify_first([verify, loose])

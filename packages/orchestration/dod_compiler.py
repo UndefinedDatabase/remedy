@@ -1,10 +1,10 @@
-"""F061 T001 — compile a job's intent and Flight Plan into a DoD.
+"""F061 T001 — compile a job's intent and Task Plan into a DoD.
 
 ``compile_dod`` merges three sources into one :class:`DoD`:
 
   1. **compiled** — checks the provider proposes from the user's intent,
      returned in the provider-facing :class:`DoDDraft` shape and validated
-     with the same discipline as intake and the flight plan (schema-enforced,
+     with the same discipline as intake and the task plan (schema-enforced,
      at most one parse retry, via ``run_structured_call``);
   2. **plan_acceptance** — a check for every plan acceptance line the compiled
      checks do not already cover, so the traceability rule holds by

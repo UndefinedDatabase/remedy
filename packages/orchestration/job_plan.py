@@ -1,4 +1,4 @@
-"""F014 — LLM-generated Flight Plan.
+"""F014 — LLM-generated Task Plan.
 
 Turns a job's intake into a validated, DAG-structured TaskPlan via an
 LLM call (with one parse retry), then maps it onto core Task objects.
@@ -112,7 +112,7 @@ Return ONLY a JSON object matching the task_plan_v1 schema.
 def compose_task_plan_prompt(
     intake_dict: dict[str, Any], *, project_facts: str = "",
 ) -> ComposedPrompt:
-    """Compose the flight-plan prompt from registered segments, with its manifest."""
+    """Compose the task-plan prompt from registered segments, with its manifest."""
     registry = PromptSegmentRegistry()
     registry.register(
         "plan_system", SegmentStabilityRank.SYSTEM, _PLAN_SYSTEM_SEGMENT
@@ -153,7 +153,7 @@ def _build_plan_prompt(intake_dict: dict[str, Any], *,
 
 
 # The recorder lives beside the composer, in this module, so the manifest and
-# the prompt it describes cannot drift apart: whoever changes flight-plan
+# the prompt it describes cannot drift apart: whoever changes task-plan
 # composition sees the evidence writer in the same file (F105 T003 site 5, the
 # same reason `make_intake_call_recorder` sits in `intake.py`).
 def make_task_plan_call_recorder(
@@ -266,7 +266,7 @@ def open_clarification_questions(
     """Return the still-open questions as decision-payload records.
 
     Accepts the raw ``clarifications_resolved`` list from either a plan
-    model or a stored flight-plan dict. Open means: no answer AND no
+    model or a stored task-plan dict. Open means: no answer AND no
     ``answered_by`` — a planner-declared assumption arrives with an answer
     and is therefore never asked again.
     """
@@ -514,7 +514,7 @@ def plan_job_llm(
 def map_task_plan_to_tasks(plan: TaskPlan) -> list[TaskEntry]:
     """Convert TaskPlan tasks to core Task objects, preserving order.
 
-    Flight plan metadata is stored in task.inputs["flight"] so the
+    Task plan metadata is stored in task.inputs["plan"] so the
     runner and evidence pipeline can trace provenance without modifying
     the core Task model.
     """
@@ -524,7 +524,7 @@ def map_task_plan_to_tasks(plan: TaskPlan) -> list[TaskEntry]:
             title=f"{pt.title}: {pt.goal}",
             acceptance="\n".join(pt.acceptance),
             inputs={
-                "flight": {
+                "plan": {
                     "planned_id": pt.id,
                     "title": pt.title,
                     "depends_on": list(pt.depends_on),
@@ -595,7 +595,7 @@ def render_plan_md(
     explicit statement that nothing was.
     """
     lines: list[str] = []
-    lines.append("# Flight Plan")
+    lines.append("# Task Plan")
     lines.append("")
     lines.append(f"Schema: {plan.schema_v}")
     lines.append(f"Tasks: {len(plan.tasks)}")
@@ -697,7 +697,7 @@ def write_plan_md(
 # ---------------------------------------------------------------------------
 
 def task_plan_blocks_execution(job: Any) -> str | None:
-    """Return blocking reason if flight plan prevents execution, else None.
+    """Return blocking reason if task plan prevents execution, else None.
 
     Returns "pending" when awaiting approval, "rejected" when plan was
     rejected and needs replanning.
@@ -712,7 +712,7 @@ def task_plan_blocks_execution(job: Any) -> str | None:
 
 
 def task_plan_approval_open(job: Any) -> bool:
-    """Return True if the job has a pending flight plan approval gate."""
+    """Return True if the job has a pending task plan approval gate."""
     return task_plan_blocks_execution(job) is not None
 
 
@@ -726,12 +726,12 @@ AUTO_APPROVAL_REASON = "auto-approved via --yes"
 
 
 def auto_approve_task_plan(
-    flight_plan_body: dict[str, Any],
+    task_plan_body: dict[str, Any],
     evidence_dir: Path,
     *,
     reason: str = AUTO_APPROVAL_REASON,
 ) -> dict[str, Any]:
-    """Apply the unattended approval to a flight-plan body. Audited, never silent.
+    """Apply the unattended approval to a task-plan body. Audited, never silent.
 
     THE ``--yes`` semantics, in one place (F034): every open clarification runs
     on its documented default, the approval is stamped with an audit record
@@ -743,7 +743,7 @@ def auto_approve_task_plan(
     NOT done here, because the two callers (``remedy do run`` and the
     orchestrator loop) own their own persistence and their own ledger entries.
     """
-    body = dict(flight_plan_body)
+    body = dict(task_plan_body)
     if body.get("clarifications_resolved"):
         body["clarifications_resolved"] = apply_clarification_answers(
             body.get("clarifications_resolved"), None)
@@ -758,14 +758,14 @@ class ReplanRejectedError(Exception):
 
 
 def replan(
-    job_flight_plan: dict[str, Any],
+    job_task_plan: dict[str, Any],
     new_plan: TaskPlan,
     evidence_dir: Path,
     *,
     any_task_completed: bool = False,
     transformations: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], int]:
-    """Apply a new flight plan version.
+    """Apply a new task plan version.
 
     Returns (updated task_plan dict for Job, new version number).
     Raises ReplanRejectedError if any task has already completed.
@@ -776,12 +776,12 @@ def replan(
             "Cannot replan after a task has completed. "
             "This limitation will be lifted in a future feature.")
 
-    versions = job_flight_plan.get("_versions", [])
+    versions = job_task_plan.get("_versions", [])
     current_version = len(versions) + 1
     new_version = current_version + 1
 
     new_plan_dict = new_plan.model_dump()
-    new_plan_dict["_versions"] = versions + [job_flight_plan]
+    new_plan_dict["_versions"] = versions + [job_task_plan]
     new_plan_dict["_version"] = new_version
     new_plan_dict["_approval"] = "pending"
 
@@ -798,7 +798,7 @@ def resolve_task_plan_approval(
     answers: dict[str, str],
     questions: list[dict[str, Any]],
 ) -> Path | None:
-    """Approve or reject a job's pending flight plan and persist the outcome.
+    """Approve or reject a job's pending task plan and persist the outcome.
 
     Extracted from `apps/cli/commands/decision.py` for DECISION F009 D5, so the UI
     write door can reach the SAME code the CLI has always run instead of growing a

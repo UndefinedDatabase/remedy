@@ -454,7 +454,7 @@ class TestReadyBatch:
     def test_legacy_plan_releases_one_task_at_a_time(self):
         """F050 replaced the linear batch with the DAG ready set.
 
-        ``make_job`` builds tasks without Flight Plan metadata, so the legacy
+        ``make_job`` builds tasks without Task Plan metadata, so the legacy
         rule applies: each task depends on its predecessor.  The ready set is
         therefore one task deep until that predecessor completes — where this
         used to return the first ``batch_size`` PENDING tasks.  Loop behavior
@@ -473,7 +473,7 @@ class TestReadyBatch:
         # Flight metadata declaring no dependencies: all four are ready, and
         # the cap is what limits the batch.
         for index, task in enumerate(job.tasks):
-            task.inputs["flight"] = {"planned_id": f"T{index}", "depends_on": []}
+            task.inputs["plan"] = {"planned_id": f"T{index}", "depends_on": []}
         assert ready_tasks(job, 2) == [job.tasks[0].task_id, job.tasks[1].task_id]
         assert len(ready_tasks(job, 10)) == 4
 
@@ -953,7 +953,7 @@ def make_diamond_job(name: str = "diamond-job") -> JobPlan:
             title=f"task {planned_id}",
             inputs={
                 "task_type": "documentation",
-                "flight": {"planned_id": planned_id,
+                "plan": {"planned_id": planned_id,
                            "title": planned_id,
                            "depends_on": list(depends_on)},
             },
@@ -970,13 +970,13 @@ def make_diamond_job(name: str = "diamond-job") -> JobPlan:
 def planned_id_of(job: JobPlan, task_id) -> str:
     for task in job.tasks:
         if str(task.task_id) == str(task_id):
-            return task.inputs["flight"]["planned_id"]
+            return task.inputs["plan"]["planned_id"]
     raise AssertionError(f"no task {task_id} in this job")
 
 
 def task_by_planned_id(job: JobPlan, planned_id: str) -> TaskEntry:
     for task in job.tasks:
-        if task.inputs.get("flight", {}).get("planned_id") == planned_id:
+        if task.inputs.get("plan", {}).get("planned_id") == planned_id:
             return task
     raise AssertionError(f"no task {planned_id} in this job")
 
@@ -1002,7 +1002,7 @@ class SteeredStep:
         if task is None:
             return TaskAttempt()
 
-        planned_id = task.inputs["flight"]["planned_id"]
+        planned_id = task.inputs["plan"]["planned_id"]
         provider_call(
             TaskExecutionContext(
                 job_id=str(job.job_id),

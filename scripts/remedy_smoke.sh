@@ -2107,13 +2107,13 @@ print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey i
 "
 
     # -------------------------------------------------------------------------
-    # 14a. Flight plan approval gate — real CLI sequence (F014 T004)
-    # Provider stand-in: inline save_job_plan seeds job with pending flight plan.
+    # 14a. Task plan approval gate — real CLI sequence (F014 T004)
+    # Provider stand-in: inline save_job_plan seeds job with pending task plan.
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="14a"
-    echo "--- 14a. Flight plan approval gate (CLI sequence)"
+    echo "--- 14a. Task plan approval gate (CLI sequence)"
 
-    # Seed a job with a pending flight plan (provider stand-in)
+    # Seed a job with a pending task plan (provider stand-in)
     FP_JOB_ID="$(python3 -c "
 import json
 from packages.core.models import RunState
@@ -2150,7 +2150,7 @@ print(job.job_id[:8])
     echo "    run-next blocked: exit 3 (OK)"
 
     # Approve via decision resolve
-    remedy decision resolve "${FP_JOB_ID}" fp:approval --reason approve
+    remedy decision resolve "${FP_JOB_ID}" plan:approval --reason approve
     echo "    approved: OK"
 
     # Status shows the job

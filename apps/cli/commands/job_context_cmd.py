@@ -6,8 +6,8 @@ and what was left out, without sending anything to a provider and without
 writing a byte to disk.
 
 The fenced scope compiled here is exactly the task's own declared write scope:
-its flight-plan block's ``inputs["flight"]["files_hint"]`` first, because
-``map_task_plan_to_tasks`` writes a flight-planned task's scope there and
+its task-plan block's ``inputs["plan"]["files_hint"]`` first, because
+``map_task_plan_to_tasks`` writes a task-planned task's scope there and
 ``_task_planned_id`` reads that block first too, and otherwise the task's own
 ``files_hint`` field, which a job file's task carries. Remedy deliberately does
 NOT consult the job's scope-fence globs (the ``fences`` section of
@@ -107,21 +107,21 @@ def _task_identity(task: Any) -> str:
 
 
 def _task_flight_inputs(task: Any) -> dict:
-    """The task's flight-plan block, or an empty dict when it carries none."""
+    """The task's task-plan block, or an empty dict when it carries none."""
     inputs = getattr(task, "inputs", None)
-    flight = inputs.get("flight") if isinstance(inputs, dict) else None
+    flight = inputs.get("plan") if isinstance(inputs, dict) else None
     return flight if isinstance(flight, dict) else {}
 
 
 def _task_planned_id(task: Any) -> str:
     """The planned id (`T001`) `map_task_plan_to_tasks` wrote, else the task's own id.
 
-    The flight-plan block wins because a task mapped from a flight plan mints its
+    The task-plan block wins because a task mapped from a task plan mints its
     own `task_id` beside the planned id, and `--task T001` names the plan's id.
     """
     planned = _task_flight_inputs(task).get("planned_id")
     if planned:
-        # The flight-plan block wins: the minted `task_id` beside it is not the
+        # The task-plan block wins: the minted `task_id` beside it is not the
         # id the plan and its operator use. A job file's task has no such block
         # and carries `T001` as its own id, which the fallback returns.
         return str(planned)
@@ -131,8 +131,8 @@ def _task_planned_id(task: Any) -> str:
 def _task_files_hint(task: Any) -> list[str]:
     """The task's declared write scope. An absent hint is an EMPTY scope, which
     is a real answer this command renders — not an error."""
-    # The flight-plan block's `files_hint` wins, and the task's OWN `files_hint`
-    # field is the fallback: `map_task_plan_to_tasks` writes a flight-planned
+    # The task-plan block's `files_hint` wins, and the task's OWN `files_hint`
+    # field is the fallback: `map_task_plan_to_tasks` writes a task-planned
     # task's scope into the flight block and leaves the task's own field empty,
     # and `_task_planned_id` above reads the flight block first for the same
     # reason. A job file's task has no flight block and carries its own field.

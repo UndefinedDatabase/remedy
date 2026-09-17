@@ -83,7 +83,7 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
     the REQUEST BODY, invisible to a card, and a card is answerable whenever a
     well-formed request would be accepted.
 
-    An ``fp:``-prefixed id is DECISION F031 D24's branch: the door hands it to
+    A ``plan:``-prefixed id is DECISION F031 D24's branch: the door hands it to
     ``job_plan.resolve_task_plan_approval`` and refuses unless
     ``job.task_plan`` is a dict whose ``_approval`` is ``"pending"``.  Those
     are the same two readings of the same object the door makes, taken from the
@@ -93,7 +93,7 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
     on two conditions of its own.  EXISTENCE is enforced by
     ``find_task_decision``, which iterates the job's ESCALATION RECORDS alone,
     so of the eight producing branches of ``list_decisions`` only
-    ``task_decision`` mints a non-``fp:`` id that list holds; every other such
+    ``task_decision`` mints a non-``plan:`` id that list holds; every other such
     id is refused.  BEING OPEN is enforced one line later in
     ``answer_task_decision`` itself, which returns None unless
     ``record.get("status")`` equals ``ESCALATION_STATUS_OPEN``, and the caller
@@ -108,7 +108,7 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
     and the door's predicate NO LONGER COINCIDE, because an ANSWERED task
     decision still yields a card of type ``task_decision`` — branch 8 of
     ``list_decisions`` appends every escalation record and lets ``is_open``
-    decide only the status — while the door refuses that record.  The ``fp:``
+    decide only the status — while the door refuses that record.  The ``plan:``
     test above reads the ID PREFIX rather than the type for that very reason
     and not in defiance of it: the door dispatches on the prefix, while the
     type ``task_plan_approval`` is also what the RESOLVED card carries and
@@ -117,7 +117,7 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
     fixtures, so this file no longer rests on an absence: the difference
     between the two predicates is caught by a test.
     """
-    if str(decision_id).startswith("fp:"):
+    if str(decision_id).startswith("plan:"):
         task_plan = getattr(job, "task_plan", None)
         return (isinstance(task_plan, dict)
                 and task_plan.get("_approval") == "pending")

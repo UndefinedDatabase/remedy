@@ -500,10 +500,10 @@ class TestCommandChannelDoor:
             control_root_path=self.tmp_path / "control") == {"status": 200,
                                                              "body": body}
 
-    # -- D.7: the `fp:` branch DECISION F031 D24 rules ----------------------
+    # -- D.7: the `plan:` branch DECISION F031 D24 rules ----------------------
 
-    def _save_flight_plan(self, approval: str, clarifications=None) -> None:
-        """Give the stored job a flight plan in one approval state.
+    def _save_task_plan(self, approval: str, clarifications=None) -> None:
+        """Give the stored job a task plan in one approval state.
 
         The door re-loads the job from storage on every request, so the state
         the dispatch reads is the one written here rather than the one this
@@ -517,8 +517,8 @@ class TestCommandChannelDoor:
         self.job.task_plan = task_plan
         save_job_plan(self.job)
 
-    def _resolve_flight_plan(self, port, token, nonce, answer, answers=None):
-        args = {"decision_id": "fp:approval", "answer": answer}
+    def _resolve_task_plan(self, port, token, nonce, answer, answers=None):
+        args = {"decision_id": "plan:approval", "answer": answer}
         if answers is not None:
             args["answers"] = answers
         return self._request(
@@ -527,7 +527,7 @@ class TestCommandChannelDoor:
                 command="decision.resolve", client_nonce=nonce, args=args),
             headers=self._auth_headers(token))
 
-    def test_an_fp_approval_answered_approve_is_accepted(self):
+    def test_an_plan_approval_answered_approve_is_accepted(self):
         """DECISION F031 D24's first accepted word, answered by the door itself.
 
         The body is asserted as a SET rather than key by key: the three keys the
@@ -536,18 +536,18 @@ class TestCommandChannelDoor:
         to. `decision_id` echoes the id the client sent, because the flight
         plan mints no record of its own to read one back from.
         """
-        self._save_flight_plan("pending")
+        self._save_task_plan("pending")
         port, token = self._start_server()
-        status, body = self._resolve_flight_plan(port, token, "nonce-fp-approve",
+        status, body = self._resolve_task_plan(port, token, "nonce-fp-approve",
                                                  "approve")
 
         assert status == 200, body
         assert sorted(body) == ["command", "decision_id", "outcome"], body
         assert body["command"] == "decision.resolve", body
         assert body["outcome"] == "accepted", body
-        assert body["decision_id"] == "fp:approval", body
+        assert body["decision_id"] == "plan:approval", body
 
-    def test_an_fp_approval_answered_reject_is_accepted(self):
+    def test_an_plan_approval_answered_reject_is_accepted(self):
         """The second word, and the reason strict equality is against a PAIR.
 
         A rejection is an ANSWER, not a refusal: the door accepts it 200 and
@@ -555,33 +555,33 @@ class TestCommandChannelDoor:
         pinned `approve` would let a later edit drop `reject` and leave the
         inbox offering a button the door answers 409.
         """
-        self._save_flight_plan("pending")
+        self._save_task_plan("pending")
         port, token = self._start_server()
-        status, body = self._resolve_flight_plan(port, token, "nonce-fp-reject",
+        status, body = self._resolve_task_plan(port, token, "nonce-fp-reject",
                                                  "reject")
 
         assert status == 200, body
         assert sorted(body) == ["command", "decision_id", "outcome"], body
         assert body["outcome"] == "accepted", body
-        assert body["decision_id"] == "fp:approval", body
+        assert body["decision_id"] == "plan:approval", body
 
-    def test_an_fp_approval_on_a_plan_that_is_not_pending_is_409(self):
+    def test_an_plan_approval_on_a_plan_that_is_not_pending_is_409(self):
         """The first of the door's two refusals: the plan is already decided.
 
         Answering an approved plan again would overwrite a decision an operator
         already made, so it takes the SAME 409 and `rejected_state` the
         task-decision path gives a record that is no longer open.
         """
-        self._save_flight_plan("approved")
+        self._save_task_plan("approved")
         port, token = self._start_server()
-        status, body = self._resolve_flight_plan(port, token, "nonce-fp-settled",
+        status, body = self._resolve_task_plan(port, token, "nonce-fp-settled",
                                                  "approve")
 
         assert status == 409, body
         assert body["error"] == "decision is not open", body
         assert self._audit_records()[-1]["outcome"] == "rejected_state"
 
-    def test_an_fp_approval_answering_an_unknown_question_id_is_409(self):
+    def test_an_plan_approval_answering_an_unknown_question_id_is_409(self):
         """DECISION F031 D26's third refusal, and the only one about the BODY.
 
         The plan is pending and the answer word is one the door takes, so
@@ -590,33 +590,33 @@ class TestCommandChannelDoor:
         silently, because `apply_clarification_answers` would otherwise record
         `answered_by="default"` for a question the operator really did answer.
         """
-        self._save_flight_plan("pending", clarifications=[
+        self._save_task_plan("pending", clarifications=[
             {"id": "q1", "question": "Which store?", "default_answer": "sqlite"}])
         port, token = self._start_server()
-        status, body = self._resolve_flight_plan(
+        status, body = self._resolve_task_plan(
             port, token, "nonce-fp-unknown-q", "approve", answers={"q9": "x"})
 
         assert status == 409, body
         assert body["error"] == "decision is not open", body
         assert self._audit_records()[-1]["outcome"] == "rejected_state"
 
-    def test_an_fp_approval_whose_answers_are_not_a_map_is_409(self):
+    def test_an_plan_approval_whose_answers_are_not_a_map_is_409(self):
         """The same refusal reached by SHAPE rather than by an unknown id.
 
         A list is what a client sends when it serialises the form as pairs, so
         this is the plausible malformation rather than an invented one, and the
         door must never iterate it as if it were a map.
         """
-        self._save_flight_plan("pending", clarifications=[
+        self._save_task_plan("pending", clarifications=[
             {"id": "q1", "question": "Which store?", "default_answer": "sqlite"}])
         port, token = self._start_server()
-        status, body = self._resolve_flight_plan(
+        status, body = self._resolve_task_plan(
             port, token, "nonce-fp-answers-list", "approve", answers=["q1=x"])
 
         assert status == 409, body
         assert self._audit_records()[-1]["outcome"] == "rejected_state"
 
-    def test_an_fp_approval_answered_with_a_next_action_string_is_409(self):
+    def test_an_plan_approval_answered_with_a_next_action_string_is_409(self):
         """The second refusal, pinning shut the exact bug finding R-0693 measured.
 
         Before the pending card carried `payload.options`, `decisionAnswers`
@@ -625,11 +625,11 @@ class TestCommandChannelDoor:
         and this test uses the literal string R-0693 measured rather than an
         invented one, so what it pins is the bug that really happened.
         """
-        self._save_flight_plan("pending")
+        self._save_task_plan("pending")
         port, token = self._start_server()
-        status, body = self._resolve_flight_plan(
+        status, body = self._resolve_task_plan(
             port, token, "nonce-fp-nextaction",
-            f"remedy decision resolve {self.job_id[:8]} fp:approval "
+            f"remedy decision resolve {self.job_id[:8]} plan:approval "
             f"--reason approve")
 
         assert status == 409, body

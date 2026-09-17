@@ -149,14 +149,14 @@ describe("buildDecisionResolveCommand", () => {
 });
 
 describe("buildDecisionResolveCommand clarification answers", () => {
-  /** The pending flight-plan approval this form exists for, with the two words
+  /** The pending task-plan approval this form exists for, with the two words
    *  the write door accepts and one open question riding the same card. */
   function pendingPlanEntry(): DecisionInboxEntry {
     return {
-      id: "fp:approval",
+      id: "plan:approval",
       type: "task_plan_approval",
       status: "open",
-      safe_summary: "Flight plan awaiting approval (1 open question).",
+      safe_summary: "Task plan awaiting approval (1 open question).",
       payload: {
         options: ["approve", "reject"],
         clarifications: [{ id: "q1", question: "Which store?", default_answer: "postgres" }],
@@ -183,7 +183,7 @@ describe("buildDecisionResolveCommand clarification answers", () => {
       JSON.stringify({
         command: "decision.resolve",
         client_nonce: GOOD_NONCE,
-        args: { decision_id: "fp:approval", answer: "approve" },
+        args: { decision_id: "plan:approval", answer: "approve" },
       }),
     );
   });
@@ -198,7 +198,7 @@ describe("buildDecisionResolveCommand clarification answers", () => {
     expect(body).not.toBeNull();
     expect(Object.keys(body!.args).sort()).toEqual(["answer", "answers", "decision_id"]);
     expect(body!.args.answers).toEqual({ q1: "sqlite" });
-    expect(body!.args.decision_id).toBe("fp:approval");
+    expect(body!.args.decision_id).toBe("plan:approval");
     expect(body!.args.answer).toBe("approve");
   });
 

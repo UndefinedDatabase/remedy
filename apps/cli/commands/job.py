@@ -325,7 +325,7 @@ def _fences_section(job: JobPlan) -> tuple[dict, list[str]]:
 def _assumptions_section(job: JobPlan) -> tuple[dict, list[str]]:
     """The former `job assumptions` command: the assumption log (F034), and its evidence copy.
 
-    Rendered from the job's own flight plan, so it tells the truth even for a job
+    Rendered from the job's own task plan, so it tells the truth even for a job
     approved before the evidence file was written. The evidence copy is reported
     only when it already exists: the view reads it, and writes nothing.
     """
@@ -933,13 +933,13 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
     if block_reason == "pending":
         print(
             f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} fp:approval --reason approve",
+            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve",
             file=sys.stderr,
         )
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: flight plan rejected for job {job_id_str[:8]}.",
+            f"Error: task plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1254,13 +1254,13 @@ def _cmd_job_run_cycles(
     if block_reason == "pending":
         print(
             f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} fp:approval --reason approve",
+            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve",
             file=sys.stderr,
         )
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: flight plan rejected for job {job_id_str[:8]}.",
+            f"Error: task plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1530,14 +1530,14 @@ def _cmd_job_resume(
     if block_reason == "pending":
         print(
             f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} fp:approval "
+            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval "
             f"--reason approve",
             file=sys.stderr,
         )
         sys.exit(3)
     if block_reason == "rejected":
         print(
-            f"Error: flight plan rejected for job {job_id_str[:8]}.",
+            f"Error: task plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1627,13 +1627,13 @@ def _cmd_resume(
     if block_reason == "pending":
         print(
             f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} fp:approval --reason approve",
+            f"Run: remedy decision resolve {job_id_str[:8]} plan:approval --reason approve",
             file=sys.stderr,
         )
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: flight plan rejected for job {job_id_str[:8]}.",
+            f"Error: task plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)

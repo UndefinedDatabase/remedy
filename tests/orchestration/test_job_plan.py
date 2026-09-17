@@ -1,4 +1,4 @@
-"""Tests for flight plan LLM generation + task mapping (F014 T002/T003)."""
+"""Tests for task plan LLM generation + task mapping (F014 T002/T003)."""
 
 from __future__ import annotations
 
@@ -99,7 +99,7 @@ class TestPlanJobLlm:
         assert len(calls) == 2  # initial + one retry
 
 
-class TestMapFlightPlanToTasks:
+class TestMapTaskPlanToTasks:
 
     def test_three_tasks_in_order(self):
         fp = TaskPlan(**json.loads(_valid_plan_json(3)))
@@ -107,7 +107,7 @@ class TestMapFlightPlanToTasks:
         assert len(tasks) == 3
         for i, task in enumerate(tasks):
             assert task.status == RunState.PENDING
-            flight = task.inputs["flight"]
+            flight = task.inputs["plan"]
             assert flight["planned_id"] == f"T{i + 1:03d}"
             assert flight["title"] == f"Task {i + 1}"
             assert task.acceptance.splitlines() == [f"Thing {i + 1} done"]
@@ -121,9 +121,9 @@ class TestMapFlightPlanToTasks:
     def test_depends_on_preserved(self):
         fp = TaskPlan(**json.loads(_valid_plan_json(3)))
         tasks = map_task_plan_to_tasks(fp)
-        assert tasks[0].inputs["flight"]["depends_on"] == []
-        assert tasks[1].inputs["flight"]["depends_on"] == ["T001"]
-        assert tasks[2].inputs["flight"]["depends_on"] == ["T002"]
+        assert tasks[0].inputs["plan"]["depends_on"] == []
+        assert tasks[1].inputs["plan"]["depends_on"] == ["T001"]
+        assert tasks[2].inputs["plan"]["depends_on"] == ["T002"]
 
 
 class TestBudgetPrecedence:
@@ -174,7 +174,7 @@ class TestRenderPlanMd:
         r1 = render_plan_md(fp)
         r2 = render_plan_md(fp)
         assert r1 == r2
-        assert "# Flight Plan" in r1
+        assert "# Task Plan" in r1
         assert "T001" in r1
         assert "T002" in r1
         assert "T003" in r1
@@ -217,7 +217,7 @@ class TestRenderPlanMd:
         path = write_plan_md(fp, tmp_path)
         assert path.name == "plan.md"
         assert path.exists()
-        assert "Flight Plan" in path.read_text()
+        assert "Task Plan" in path.read_text()
 
     def test_write_plan_md_versioned(self, tmp_path):
         from packages.orchestration.job_plan import write_plan_md

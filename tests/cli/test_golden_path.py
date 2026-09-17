@@ -403,7 +403,7 @@ class TestLLMIntakeWiring:
     def test_provider_error_label_distinct_from_unavailable(self, tmp_path, monkeypatch):
         """Provider reachable but returns bad output → 'provider error', not 'unavailable'.
 
-        Intake falls to heuristic; flight plan is mocked to succeed so we
+        Intake falls to heuristic; task plan is mocked to succeed so we
         isolate the intake label under test.
         """
         repo = _git_repo(tmp_path)

@@ -1,4 +1,4 @@
-"""F016 — Flight-Plan task-granularity normalization.
+"""F016 — Task-Plan task-granularity normalization.
 
 v1 is a HEURISTIC on plan-intrinsic signals only: the token band the planner
 guessed, the number of acceptance criteria, and token overlap between

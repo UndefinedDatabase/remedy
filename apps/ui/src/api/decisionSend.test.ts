@@ -151,16 +151,16 @@ describe("buildDecisionSendRequest", () => {
 });
 
 describe("buildDecisionSendRequest clarification answers", () => {
-  /** The pending flight-plan approval this form exists for, carrying one open
+  /** The pending task-plan approval this form exists for, carrying one open
    *  question on the same card. It is the entry `decisionAnswer.ts`'s own
    *  clarification tests use, so both layers pin the same seam rather than two
    *  literals that could drift apart. */
   function pendingPlanEntry(): DecisionInboxEntry {
     return {
-      id: "fp:approval",
+      id: "plan:approval",
       type: "task_plan_approval",
       status: "open",
-      safe_summary: "Flight plan awaiting approval (1 open question).",
+      safe_summary: "Task plan awaiting approval (1 open question).",
       payload: {
         options: ["approve", "reject"],
         clarifications: [{ id: "q1", question: "Which store?", default_answer: "postgres" }],

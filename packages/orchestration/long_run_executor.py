@@ -17,7 +17,7 @@ It sequences parts that already exist and reimplements none of them:
   * job status       the ``pingpong_job.JOB_*`` constants
 
 Readiness is TOPOLOGICAL (F050): the ready set is the PENDING tasks whose
-Flight Plan dependencies are all COMPLETED, in plan order — computed by the
+Task Plan dependencies are all COMPLETED, in plan order — computed by the
 pure ``dag_schedule`` module.  Plans without dependency metadata keep behaving
 exactly linearly, because the rule there is "each task depends on its
 predecessor".  A task whose attempt executed and failed blocks its own
@@ -633,7 +633,7 @@ def ready_tasks(job: JobPlan, batch_size: int, *,
                 awaiting_ids: Collection[str] = ()) -> list[str]:
     """The ready batch: the DAG ready set in plan order, capped at batch_size.
 
-    F050: a task is ready when every dependency it declares in its Flight Plan
+    F050: a task is ready when every dependency it declares in its Task Plan
     metadata is COMPLETED (``dag_schedule.ready_set``); plans without that
     metadata keep behaving linearly, because the legacy rule there is "each
     task depends on its predecessor".  A batch larger than the number of ready

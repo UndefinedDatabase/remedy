@@ -48,7 +48,7 @@ from packages.orchestration.mission_compiler import (
     compile_mission_plan,
     compose_mission_prompt,
     deterministic_mission_plan,
-    milestone_flight_plan,
+    milestone_task_plan,
     milestones_in_progress,
     mission_plan_of,
     plan_mission,
@@ -482,12 +482,12 @@ def compiled_fixture_plan(name: str = "payments_platform"):
     return fixture, result.plan
 
 
-class TestMilestoneFlightPlanView:
+class TestMilestoneTaskPlanView:
     def test_one_task_per_outline_plus_the_outcome_task(self):
         _fixture, plan = compiled_fixture_plan()
         ms = plan.milestones[0]
 
-        view = milestone_flight_plan(ms)
+        view = milestone_task_plan(ms)
 
         assert len(view.tasks) == len(ms.jobs_draft) + 1
         assert [t.id for t in view.tasks] == [
@@ -497,14 +497,14 @@ class TestMilestoneFlightPlanView:
         _fixture, plan = compiled_fixture_plan()
         ms = plan.milestones[0]
 
-        outcome = milestone_flight_plan(ms).tasks[-1]
+        outcome = milestone_task_plan(ms).tasks[-1]
 
         assert outcome.acceptance == [ms.goal]
         assert outcome.depends_on == ["M001-J001", "M001-J002"]
 
     def test_a_milestone_with_no_outlines_still_projects_a_valid_plan(self):
         ms = Milestone.model_validate(milestone("M009"))
-        view = milestone_flight_plan(ms)
+        view = milestone_task_plan(ms)
         assert [t.id for t in view.tasks] == ["M009-DONE"]
         assert view.tasks[0].depends_on == []
 
@@ -921,11 +921,11 @@ class TestDraftOutlineValidators:
             DraftJob.model_validate(outline(**{field: value}))
         assert f"draft job {field} must not be empty" in str(exc.value)
 
-    def test_the_cap_keeps_the_flight_plan_view_inside_its_own_task_limit(self):
+    def test_the_cap_keeps_the_task_plan_view_inside_its_own_task_limit(self):
         """One task per outline plus the outcome task — well under 25."""
         ms = Milestone.model_validate(milestone("M001", jobs_draft=[
             outline(i) for i in range(1, MAX_MILESTONE_DRAFT_JOBS + 1)]))
-        view = milestone_flight_plan(ms)
+        view = milestone_task_plan(ms)
         assert len(view.tasks) == MAX_MILESTONE_DRAFT_JOBS + 1
 
 

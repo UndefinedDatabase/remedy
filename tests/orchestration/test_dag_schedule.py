@@ -25,10 +25,10 @@ from packages.orchestration.pingpong_job import TaskEntry
 
 def flight_task(planned_id: str, *depends_on: str,
                 status: RunState = RunState.PENDING) -> TaskEntry:
-    """A task carrying Flight Plan metadata, shaped like the real mapper's."""
+    """A task carrying Task Plan metadata, shaped like the real mapper's."""
     return TaskEntry(
         title=f"task {planned_id}",
-        inputs={"flight": {
+        inputs={"plan": {
             "planned_id": planned_id,
             "title": planned_id,
             "depends_on": list(depends_on),
@@ -44,8 +44,8 @@ def legacy_task(name: str, *, status: RunState = RunState.PENDING) -> TaskEntry:
 
 def ids(tasks: list[TaskEntry], *planned_ids: str) -> list:
     """Task ids for the given planned ids, in the order asked for."""
-    by_planned = {t.inputs["flight"]["planned_id"]: t.task_id
-                  for t in tasks if "flight" in t.inputs}
+    by_planned = {t.inputs["plan"]["planned_id"]: t.task_id
+                  for t in tasks if "plan" in t.inputs}
     return [by_planned[p] for p in planned_ids]
 
 

@@ -172,7 +172,7 @@ def _cmd_do_mission(
     call_fn = None
     intake_result = None
     # One list, one write: it carries every prompt trace this command produces,
-    # intake and flight plan alike, because `write_trace_jsonl` opens its path
+    # intake and task plan alike, because `write_trace_jsonl` opens its path
     # with mode "w" and a second write would truncate the first.
     prompt_traces: list = []
     intake_fallback_reason = ""
@@ -201,7 +201,7 @@ def _cmd_do_mission(
             intake_result = heuristic_intake(mission)
             intake_fallback_reason = "provider_unavailable"
 
-    # --- Flight Plan (LLM) or deterministic fallback ---
+    # --- Task Plan (LLM) or deterministic fallback ---
     job = None
     plan_label = "deterministic skeleton"
 
@@ -298,11 +298,11 @@ def _cmd_do_mission(
                 job.task_plan = fp_dict
                 save_job_plan(job)
                 plan_label = (
-                    f"flight plan {fp_result.plan.schema_v} (approved via --yes)"
+                    f"task plan {fp_result.plan.schema_v} (approved via --yes)"
                 )
             else:
                 plan_label = (
-                    f"flight plan {fp_result.plan.schema_v} (awaiting approval)"
+                    f"task plan {fp_result.plan.schema_v} (awaiting approval)"
                 )
         else:
             job = JobPlan(
@@ -320,7 +320,7 @@ def _cmd_do_mission(
             )
             signals = FailureSignals(
                 error_class="parse",
-                error_text=fp_result.error_hint or "flight plan parse failure",
+                error_text=fp_result.error_hint or "task plan parse failure",
             )
             pm = build_job_rollup(job_id=str(job.job_id), signals=signals)
             ev_dir = job_evidence_export_dir(str(job.job_id))
@@ -330,7 +330,7 @@ def _cmd_do_mission(
             except Exception as exc:
                 print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
             print(
-                f"Error: flight plan generation failed: "
+                f"Error: task plan generation failed: "
                 f"{fp_result.error_hint or 'parse failure'}",
                 file=sys.stderr,
             )

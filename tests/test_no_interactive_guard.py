@@ -4,7 +4,7 @@ Every open question is asked ONCE, bundled, at plan time. That promise is
 only worth as much as its enforcement, so this scans the orchestration and
 core execution packages for interactive-input constructs and fails the
 build if one appears. The allowlist starts empty and should stay that way:
-a module that needs an answer must take it from the flight plan's resolved
+a module that needs an answer must take it from the task plan's resolved
 clarifications, not from a prompt.
 
 Detection is AST-based, not textual. A comment reading "mission needs user

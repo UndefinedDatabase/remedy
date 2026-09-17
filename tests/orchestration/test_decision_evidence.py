@@ -1498,7 +1498,7 @@ def test_a_memory_review_decision_without_a_triple_is_refused_by_the_gate():
 
 
 # ---------------------------------------------------------------------------
-# F032 T002f — the flight-plan approval, the first producing type with TWO ARMS
+# F032 T002f — the task-plan approval, the first producing type with TWO ARMS
 #
 # These drive the REAL branches through `list_decisions`, as every T002 test
 # above does.  The PENDING arm is the first producer since the budget stop whose
@@ -1512,41 +1512,41 @@ def test_a_memory_review_decision_without_a_triple_is_refused_by_the_gate():
 
 #: The card's own id, cited unguarded by BOTH arms: it is the one value each of
 #: them is guaranteed to hold.
-FLIGHT_PLAN_DECISION_ID = "fp:approval"
+TASK_PLAN_DECISION_ID = "plan:approval"
 
 #: Neither keyed outcome varies with what the plan carried, so all four halves
 #: are written once and pinned wherever the outcomes are asserted.
-FLIGHT_PLAN_APPROVE_EXPECTED_OUTCOME = (
+TASK_PLAN_APPROVE_EXPECTED_OUTCOME = (
     "The run starts and the plan's tasks execute in the order it records, so "
     "the work that follows is the work that was reviewed."
 )
-FLIGHT_PLAN_APPROVE_DOWNSIDE = (
+TASK_PLAN_APPROVE_DOWNSIDE = (
     "Work begins against whatever the plan assumed, and an assumption nobody "
     "checked is paid for in rework."
 )
-FLIGHT_PLAN_REJECT_EXPECTED_OUTCOME = (
+TASK_PLAN_REJECT_EXPECTED_OUTCOME = (
     "Nothing executes and the plan goes back for revision, so a wrong scope "
     "costs a replan rather than a run."
 )
-FLIGHT_PLAN_REJECT_DOWNSIDE = (
+TASK_PLAN_REJECT_DOWNSIDE = (
     "The job makes no progress until a new plan is approved, and the context "
     "this planning built is spent again."
 )
 
 #: The resolved arm's single unkeyed outcome, which speaks of the answer that
 #: WAS recorded rather than of one still to come (DECISION F032 D7).
-FLIGHT_PLAN_RESOLVED_EXPECTED_OUTCOME = (
+TASK_PLAN_RESOLVED_EXPECTED_OUTCOME = (
     "The run executes the plan this approval named, so the tasks it carries "
     "out are the agreed scope."
 )
-FLIGHT_PLAN_RESOLVED_DOWNSIDE = (
+TASK_PLAN_RESOLVED_DOWNSIDE = (
     "A plan approved on an assumption that has since changed keeps the run "
     "pointed at the old scope until someone revisits it."
 )
 
 
-def _flight_plan_decision(task_plan: dict) -> HumanDecision:
-    """The card the real branch builds from one stored flight plan."""
+def _task_plan_decision(task_plan: dict) -> HumanDecision:
+    """The card the real branch builds from one stored task plan."""
     job = JobPlan(job_title="t", task_plan=task_plan)
     decisions = [d for d in list_decisions(job, [])
                  if d.type == "task_plan_approval"]
@@ -1561,11 +1561,11 @@ def _minimal_pending_decision() -> HumanDecision:
     nothing here, rule (c) would refuse the whole card, and that suite would go
     red the moment this type joined the gate set.
     """
-    return _flight_plan_decision({"_approval": "pending"})
+    return _task_plan_decision({"_approval": "pending"})
 
 
 def _two_clarifications_decision() -> HumanDecision:
-    return _flight_plan_decision({
+    return _task_plan_decision({
         "_approval": "pending",
         "clarifications_resolved": [
             {"id": "q-db", "question": "Which database?",
@@ -1582,7 +1582,7 @@ def _keyless_clarification_decision() -> HumanDecision:
     ``open_clarification_questions`` defaults that field to ``""``, so a record
     that names no id still comes back as an open question.
     """
-    return _flight_plan_decision({
+    return _task_plan_decision({
         "_approval": "pending",
         "clarifications_resolved": [
             {"question": "Which database?", "default_answer": "sqlite"},
@@ -1591,7 +1591,7 @@ def _keyless_clarification_decision() -> HumanDecision:
 
 
 def _resolved_decision(audit: dict) -> HumanDecision:
-    return _flight_plan_decision(
+    return _task_plan_decision(
         {"_approval": "approved", "_approval_audit": audit})
 
 
@@ -1613,8 +1613,8 @@ def test_the_minimal_pending_plan_still_yields_a_valid_card():
     decision = _minimal_pending_decision()
 
     assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
-        ("decision", FLIGHT_PLAN_DECISION_ID,
-         "the flight-plan approval this job is waiting on"),
+        ("decision", TASK_PLAN_DECISION_ID,
+         "the task-plan approval this job is waiting on"),
     ]
     assert evidence_triple_problems(
         decision.evidence, options=decision.payload["options"]) == []
@@ -1624,8 +1624,8 @@ def test_the_pending_card_cites_every_open_question_that_has_an_id():
     decision = _two_clarifications_decision()
 
     assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
-        ("decision", FLIGHT_PLAN_DECISION_ID,
-         "the flight-plan approval this job is waiting on"),
+        ("decision", TASK_PLAN_DECISION_ID,
+         "the task-plan approval this job is waiting on"),
         ("decision", "q-db", "the open question that ships with this plan"),
         ("decision", "q-region",
          "the open question that ships with this plan"),
@@ -1646,8 +1646,8 @@ def test_the_pending_card_omits_a_question_ref_it_cannot_fill():
          "default_answer": "sqlite", "impact": ""},
     ]
     assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
-        ("decision", FLIGHT_PLAN_DECISION_ID,
-         "the flight-plan approval this job is waiting on"),
+        ("decision", TASK_PLAN_DECISION_ID,
+         "the task-plan approval this job is waiting on"),
     ]
     assert evidence_triple_problems(
         decision.evidence, options=decision.payload["options"]) == []
@@ -1678,13 +1678,13 @@ def test_the_pending_card_keys_one_outcome_to_each_option(make_decision):
             for o in decision.evidence.outcomes] == [
         (
             "approve",
-            FLIGHT_PLAN_APPROVE_EXPECTED_OUTCOME,
-            FLIGHT_PLAN_APPROVE_DOWNSIDE,
+            TASK_PLAN_APPROVE_EXPECTED_OUTCOME,
+            TASK_PLAN_APPROVE_DOWNSIDE,
         ),
         (
             "reject",
-            FLIGHT_PLAN_REJECT_EXPECTED_OUTCOME,
-            FLIGHT_PLAN_REJECT_DOWNSIDE,
+            TASK_PLAN_REJECT_EXPECTED_OUTCOME,
+            TASK_PLAN_REJECT_DOWNSIDE,
         ),
     ]
     for outcome in decision.evidence.outcomes:
@@ -1704,8 +1704,8 @@ def test_the_resolved_card_cites_the_approval_and_the_recorded_reason():
     decision = _reason_only_resolved_decision()
 
     assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
-        ("decision", FLIGHT_PLAN_DECISION_ID,
-         "the flight-plan approval this record answers"),
+        ("decision", TASK_PLAN_DECISION_ID,
+         "the task-plan approval this record answers"),
         ("decision", "approved",
          "the reason recorded when the plan was approved"),
     ]
@@ -1715,8 +1715,8 @@ def test_the_resolved_card_cites_how_the_approval_was_given_when_recorded():
     decision = _reason_and_mode_resolved_decision()
 
     assert [(r.kind, r.target, r.label) for r in decision.evidence.refs] == [
-        ("decision", FLIGHT_PLAN_DECISION_ID,
-         "the flight-plan approval this record answers"),
+        ("decision", TASK_PLAN_DECISION_ID,
+         "the task-plan approval this record answers"),
         ("decision", "approved",
          "the reason recorded when the plan was approved"),
         ("decision", "auto", "how the approval was given"),
@@ -1738,8 +1738,8 @@ def test_the_resolved_card_carries_exactly_one_unkeyed_outcome(make_decision):
             for o in decision.evidence.outcomes] == [
         (
             UNKEYED_OPTION,
-            FLIGHT_PLAN_RESOLVED_EXPECTED_OUTCOME,
-            FLIGHT_PLAN_RESOLVED_DOWNSIDE,
+            TASK_PLAN_RESOLVED_EXPECTED_OUTCOME,
+            TASK_PLAN_RESOLVED_DOWNSIDE,
         ),
     ]
     assert evidence_triple_problems(decision.evidence, options=[]) == []
@@ -1759,7 +1759,7 @@ def test_the_resolved_card_carries_exactly_one_unkeyed_outcome(make_decision):
         "reason-only", "reason-and-mode",
     ],
 )
-def test_no_flight_plan_ref_ever_points_at_nothing(make_decision):
+def test_no_task_plan_ref_ever_points_at_nothing(make_decision):
     decision = make_decision()
 
     assert decision.evidence.refs
@@ -1780,7 +1780,7 @@ def test_no_flight_plan_ref_ever_points_at_nothing(make_decision):
         "reason-only", "reason-and-mode",
     ],
 )
-def test_the_flight_plan_card_exports_the_present_status(make_decision):
+def test_the_task_plan_card_exports_the_present_status(make_decision):
     wire = export_decision_json(make_decision())
 
     assert wire["evidence_status"] == "present"
@@ -1788,10 +1788,10 @@ def test_the_flight_plan_card_exports_the_present_status(make_decision):
     assert wire["evidence_status"] != DECISION_EVIDENCE_STATUS_LEGACY
 
 
-def test_an_open_flight_plan_decision_without_a_triple_is_refused():
+def test_an_open_task_plan_decision_without_a_triple_is_refused():
     """`task_plan_approval` is ENFORCED from this round, on the OPEN arm."""
     decision = _decision(
-        decision_id="fp:approval",
+        decision_id="plan:approval",
         decision_type="task_plan_approval",
         evidence=None,
         payload={"options": ["approve", "reject"]},
@@ -1801,12 +1801,12 @@ def test_an_open_flight_plan_decision_without_a_triple_is_refused():
         enforce_decision_evidence([decision])
 
     message = str(excinfo.value)
-    assert "fp:approval" in message
+    assert "plan:approval" in message
     assert "task_plan_approval" in message
     assert "evidence_refs is empty: a decision must cite at least one ref." in message
 
 
-def test_a_resolved_flight_plan_decision_without_a_triple_is_refused():
+def test_a_resolved_task_plan_decision_without_a_triple_is_refused():
     """AND ON THE RESOLVED ARM, which is the whole point of DECISION F032 D7.
 
     The gate selects by type alone and never reads ``status``, so a resolved
@@ -1815,7 +1815,7 @@ def test_a_resolved_flight_plan_decision_without_a_triple_is_refused():
     """
     decision = replace(
         _decision(
-            decision_id="fp:approval",
+            decision_id="plan:approval",
             decision_type="task_plan_approval",
             evidence=None,
         ),
@@ -1828,7 +1828,7 @@ def test_a_resolved_flight_plan_decision_without_a_triple_is_refused():
         enforce_decision_evidence([decision])
 
     message = str(excinfo.value)
-    assert "fp:approval" in message
+    assert "plan:approval" in message
     assert "task_plan_approval" in message
     assert "evidence_refs is empty: a decision must cite at least one ref." in message
 

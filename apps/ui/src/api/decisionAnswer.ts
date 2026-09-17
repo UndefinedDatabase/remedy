@@ -60,7 +60,7 @@ const COMMAND_NONCE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 export interface DecisionResolveArgs {
   decision_id: string;
   answer: string;
-  /** The operator's answers to the flight plan's own open questions, keyed by
+  /** The operator's answers to the task plan's own open questions, keyed by
    *  the question id `payload.clarifications` carried out. OPTIONAL and OMITTED
    *  rather than sent empty: `_validated_clarification_answers` reads an ABSENT
    *  `answers` as "accept every default", which is DECISION F031 D24's original

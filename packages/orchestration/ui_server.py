@@ -2516,7 +2516,7 @@ def accept_command_under_rate_limit(
 def _validated_clarification_answers(
     args: dict[str, Any], questions: list[dict[str, str]],
 ) -> dict[str, str] | None:
-    """The `answers` a flight-plan approval may carry, or None to refuse it.
+    """The `answers` a task-plan approval may carry, or None to refuse it.
 
     DECISION F031 D26. ABSENT means "accept every default": that is DECISION
     F031 D24's original contract and the reading of every client written before
@@ -2956,8 +2956,8 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         types what is inside it. An empty id matches no record, so the refusal
         path answers it rather than an exception.
 
-        DECISION F031 D24 rules what an `fp:`-prefixed id means here: the door
-        approves or rejects the job's PENDING flight plan through
+        DECISION F031 D24 rules what a `plan:`-prefixed id means here: the door
+        approves or rejects the job's PENDING task plan through
         `job_plan.resolve_task_plan_approval`, and it accepts exactly
         `approve` and `reject` by strict equality — the CLI's own vocabulary at
         `apps/cli/commands/decision.py` — refusing every other answer, and every
@@ -2984,12 +2984,12 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         args = args if isinstance(args, dict) else {}
         decision_id = args.get("decision_id")
         answer = args.get("answer")
-        # DECISION F031 D24: an `fp:`-prefixed id names the FLIGHT PLAN's own
+        # DECISION F031 D24: a `plan:`-prefixed id names the TASK PLAN's own
         # approval, so it is dispatched HERE, before `answer_task_decision` —
         # which reads escalation records alone and refuses every id that is not
         # one. This closes the half of DECISION F009 D5 that shipped the
         # extraction without the dispatch (finding R-0693).
-        if isinstance(decision_id, str) and decision_id.startswith("fp:"):
+        if isinstance(decision_id, str) and decision_id.startswith("plan:"):
             from packages.orchestration.job_plan import (
                 open_clarification_questions,
                 resolve_task_plan_approval,
