@@ -15,7 +15,7 @@ remedy job show <job_id> --full --json
 remedy ui <job_id>
 
 # 4. Review proposed follow-ups
-remedy propose list <job_id> --json
+remedy decision list <job_id> --json
 ```
 
 ## What these commands do
@@ -81,7 +81,7 @@ remedy job attach-repo "$JOB_ID" /path/to/repo
 
 # Check result
 remedy job show "$JOB_ID" --full --json
-remedy propose list "$JOB_ID" --json
+remedy decision list "$JOB_ID" --json
 ```
 
 F280 round 3 deleted the `fulfill` word of the `job` group, which ran this demo in fixture mode

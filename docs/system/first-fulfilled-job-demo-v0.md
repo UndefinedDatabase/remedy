@@ -39,13 +39,13 @@ remedy job attach-repo "$JOB_ID" /path/to/demo/repo  # see Repo Requirements bel
 # 3. Check final status and read the full report
 remedy job show "$JOB_ID" --full --json
 
-# 4. List proposed next tasks
-remedy propose list "$JOB_ID" --json
+# 4. List proposed next tasks (command deleted F280 round 15 — DECISION F280 D10; use `remedy decision list` instead)
+remedy decision list "$JOB_ID" --json
 
-# 5. User decides on suggestions
-remedy propose approve "$JOB_ID" <task_id> --json
-remedy propose reject "$JOB_ID" <task_id> --json
-remedy propose defer "$JOB_ID" <task_id> --json
+# 5. User decides on suggestions (command deleted F280 round 15 — DECISION F280 D10; use `remedy decision resolve` instead)
+remedy decision resolve "$JOB_ID" proposal:<task_id> --reason approve
+remedy decision resolve "$JOB_ID" proposal:<task_id> --reason reject
+remedy decision resolve "$JOB_ID" proposal:<task_id> --reason defer
 ```
 
 ## Expected output fields

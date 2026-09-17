@@ -446,7 +446,7 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
     elif truth.get("fulfillment_next_action"):
         next_action = truth["fulfillment_next_action"]
     elif state == "completed" and truth.get("fulfillment_status") == "completed_verified":
-        next_action = f"remedy propose list {jid} --json"
+        next_action = f"remedy decision list {jid} --json"
     elif pending_count > 0:
         next_action = "remedy job resume <job_id> --json"
     else:
