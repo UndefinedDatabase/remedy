@@ -675,7 +675,11 @@ class TestFulfilledDemoGuide:
     def test_guide_mentions_propose(self):
         path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
         text = path.read_text()
-        assert "propose list" in text
+        assert (
+            '# 4. List proposed next tasks (command deleted F280 round 15 — '
+            'DECISION F280 D10; use `remedy decision list` instead)\n'
+            'remedy decision list "$JOB_ID" --json'
+        ) in text
 
     def test_guide_no_real_provider_claims(self):
         path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
