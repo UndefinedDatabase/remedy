@@ -12,28 +12,31 @@ DECISION amend0917-throughput D4).
 
 ## Current Step
 
-ROUND 14 books round 13's independently-reviewed PASS (Gate: F280 R13, one prose slip, no new
-R-id), authors DECISION F280 D9, and lands the rest of the `flight_plan` rename DECISION
-amend0917-throughput D3 ordered — widened past D3's four items to the DAG-key construction sites
-and the identifier residue the dry run measured — as one 61-file, 339-line mechanical patch,
-reviewer-dry-run-tested twice in a disposable worktree before authoring.
+ROUND 15 books round 14's independently-reviewed PASS (Gate: F280 R14, no prose slip, no new
+finding) and executes DECISION amend0917-throughput D1: `decision_queue.py` gains a `proposal`
+decision type mirroring `can_finalize`'s own blocking predicate, `decision resolve` gains a
+`proposal:` branch answering approve/reject/defer, and the `propose` group — seven commands,
+their catalog entries, their handler module and their dedicated tests — is deleted whole with
+no alias, per DECISION F280 D10, which also names two gates D1 did not (`worker_queue.py`,
+the dashboard-v2 section) that need no code change.
 
 ## Next Steps
 
-1. `propose`'s deletion (DECISION amend0917-throughput D1 answers operator question Q4): the
-   `Decision` type `proposal` enqueue in `decision_queue.py`, `remedy decision list/show/answer`
-   as its only surface, the two surviving gates reading the answer, then the `propose` group's
-   deletion paragraph and its ids in `TestDeletedCommands`.
-2. `job attach-repo`/`job permit` wait for F269's contract writer (DECISION amend0917-throughput
+1. `job attach-repo`/`job permit` wait for F269's contract writer (DECISION amend0917-throughput
    D2) — not this feature's to close.
-3. The DAG-scheduling key rename D9 executes is now DONE; no further `flight_plan` item is owed.
-4. Remaining Acceptance lines: `job budget <id> set`, `worker doctor`, `job run --tasks n` are
+2. `propose`'s deletion (this round) was T001's largest remaining item; after round 15 the
+   catalog owes only the two D4 words already confirmed landed below.
+3. Remaining Acceptance lines: `job budget <id> set`, `worker doctor`, `job run --tasks n` are
    already landed per prior rounds' Built State; confirm the catalog-vs-D4 diff at closure.
+4. If T001 and the Acceptance list both hold after round 15, the next round is F280's closure
+   sequence (integration gate, full suite, STATUS flip) per DECISION amend0917-throughput D4.
 
 ## Risks
 
-- 136 findings open by distinct id (unchanged this round); High: R-0803, R-0804, R-0807, none
-  this feature's.
-- R-0899 (owned F273), R-0937 (owned F273), R-0938 (owned F280, nothing to fix) — unchanged.
-- `propose`'s deletion is the largest remaining T001 item; DECISION amend0917-throughput D1 fixed
-  the design, so the executing round measures exact seams rather than re-deciding shape.
+- 137 findings open by distinct id after this round (136 plus R-0941); High: R-0803, R-0804,
+  R-0807, none this feature's.
+- R-0899 (owned F273), R-0937 (owned F273), R-0938 (owned F280, nothing to fix), R-0941 (owned
+  F273, minted this round) — unchanged/new.
+- The `proposal` decision type is new territory (no existing 3-way approve/reject/defer decision
+  to model verbatim); round 15's own targeted tests and mutation red-proofs are this round's
+  only correctness evidence until closure's integration gate runs the full suite once.
