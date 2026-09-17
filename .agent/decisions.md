@@ -14520,3 +14520,62 @@ DECISION amend0905-vocab D4's order, measured directly rather than assumed;
 own visible set, and `TestRootHelpVisibleOrder` / `TestHelpPinning` fail if
 `_print_root_help` stops reading it. HOW TO REVERSE: revert this round's C2
 commit; delete this paragraph.
+
+
+## DECISION F281 D6 (2026-09-17, F281 round 17) — `remedy doctor core`'s dead-commands section detects a dead command by FOUR independent reference signals, never by the handler function's own `__name__`
+
+CONTEXT. `docs/roadmap/features/T2_F281.md`'s Acceptance list requires:
+"`remedy doctor core` lists dead commands as a section and the section is
+empty." `docs/roadmap/features/T2_F271.md`'s Design (c) names the fuller
+mechanism — "a catalog command whose handler is referenced by no test and no
+script is reported as a section" — but F271 itself runs AFTER F281 and owns
+the closure-precondition wiring and the fixture-based red-proof (planting a
+fake dead command and seeing it listed); PLAN16's Risks scoped this round to
+the section and its detection mechanism alone.
+
+MEASURED. `collect_all_handlers()` maps 146 of 146 catalog command_ids to a
+handler; 122 are `lambda`s closing over the real implementation function
+(`"job.list": lambda args: _cmd_list_jobs(...)`), so `__name__` reads the
+literal `"<lambda>"` for most commands — a check keyed on it alone would call
+nearly every command dead. A design using only `co_names` plus the dotted and
+spaced forms, scanned as text over `tests/` + `scripts/`, measured 8 false
+"dead" commands (e.g. `roadmap.status`, `dev.smoke-help`), each genuinely
+tested only via a `subprocess` argv list holding the group and the
+subcommand as two separate string tokens (`["roadmap", "status"]`), the same
+blind spot F275 round 33's own command-deletion sweep recorded: no substring
+scan sees two list elements as one command.
+
+CHOSEN. `packages/orchestration/dead_command_check.py` (new module, no
+`apps.cli.*` import, mirroring `dead_model_list.py`'s isolation) exposes
+`dead_command_ids(catalog, handlers, root=None)`; a command counts as
+referenced when ANY of four signals holds: (1) an `ast`-detected adjacent
+string pair `("<group>", "<subcommand>")` in a list/tuple literal under
+`root`'s `tests/` or `scripts/` — the fix for the argv-list blind spot; (2)
+the spaced form as a substring; (3) the dotted `command_id` as a substring;
+(4) any of the handler's own `co_names` (plus `__name__` when not
+`"<lambda>"`) as a whole-word match. Wired into `_cmd_doctor_core` as a HARD
+check (`dead_command_scan`) plus an ALWAYS-SHOWN section, never conditional
+on non-emptiness like the F254 warnings block — the Acceptance line lists the
+section itself, so a later fixture command must appear the moment it exists.
+`--json` gets a new `dead_commands` key. Measured on the shipped catalog: `0
+dead of 146`, matching T2_F271.md's "Expected empty after F261."
+
+ALTERNATIVES CONSIDERED. `__name__` alone — rejected: 122 of 146 handlers
+share the literal name `"<lambda>"`. Text scan only (no AST pair) —
+rejected: measured 8 false positives, training an operator to ignore the
+section exactly as `_warn`'s docstring warns against. A `CommandEntry.handler`
+field instead of `collect_all_handlers()` — deferred: a catalog-shape change
+outside this round's scope and T2_F271's "Do not touch"; the plain-argument
+shape lets a later feature swap the source without touching this module.
+
+CONSEQUENCE. `remedy doctor core` always prints `dead commands:`, `(none)`
+today; `--json` always carries `"dead_commands": []` today.
+`test_dead_command_check.py` pins the algorithm (a synthetic dead command is
+found, a synthetic argv-list-only reference is not) and asserts the real
+catalog reads empty; `test_worker_facade_cmd.py` pins the section's presence
+in both render modes. The allowlist gains one line, mirroring how
+`dead_model_list` was added — the new module is stdlib-only, so no further
+entry follows. F271 layers the closure-precondition wiring and the
+fixture-based red-proof on top of `dead_command_ids` without redoing the
+mechanism. HOW TO REVERSE: revert this round's C2 commit; delete this
+paragraph.

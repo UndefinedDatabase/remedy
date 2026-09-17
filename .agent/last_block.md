@@ -1,123 +1,105 @@
-# F281 Round 16 — step block
+# F281 Round 17 — step block
 
 ## Goal
 
-Book round 15's independently-reviewed PASS, then pin the default `remedy
---help` order as data (DECISION F281 D5), clearing the Acceptance line
-"`remedy --help` shows the D4 visible groups in the D4 order... a test pins
-the order as data." Research finding: `apps/cli/grouped.py`'s
-`_print_root_help` iterates `GROUPS`' own dict insertion order, not DECISION
-amend0905-vocab D4's fixed order, so `remedy --help` has printed the wrong
-sequence since D4 was written, AND `tests/cli/test_golden_path.py`'s own
-canary pinning test asserted a weaker, coincidentally-satisfied ordering that
-never caught it (R-0955, registered and resolved in this same round).
-Pre-verified twice in disposable worktrees (`.remedy-wt/`, removed after
-use): the fix applied cleanly, all three targeted files plus the corrected
-canary read `352 passed` / `42 passed`, and a mutation red-proof reverting
-only `_print_root_help`'s edit reddened exactly the two order-checking tests
-and no other.
+Book round 16's independently-reviewed PASS, then land the `remedy doctor
+core` dead-commands SECTION (DECISION F281 D6), clearing the Acceptance line
+"`remedy doctor core` lists dead commands as a section and the section is
+empty." Scope read from `T2_F271.md`'s Design (c) before authoring, per
+PLAN16's Risks: F271 (later) owns the closure-precondition wiring and the
+fixture-based red-proof; this round lands only the detection mechanism and
+the always-shown section, expected empty, matching T2_F281.md's narrower
+Acceptance wording. Pre-verified in a disposable worktree (removed after
+use): every edit applied cleanly, every targeted test read green, the real
+CLI output showed `dead commands:\n    (none)`, and a mutation red-proof
+(removing the AST-pair signal) reddened exactly the two dependent tests —
+including the real catalog's own `dev.smoke-help`, tested only via argv.
 
 ## Bundle
 
-C0a: save this block verbatim to `.agent/authored/f281-r16.md`.
+C0a: save this block verbatim to `.agent/authored/f281-r17.md`.
 C0b: mirror this block verbatim to `.agent/last_block.md`.
-C1: RECORD15 + the R-0955 finding pair + DECISION F281 D5 + PLAN16 — one
-commit.
-C2: CODE — 2 edits in `apps/cli/command_catalog.py` and `apps/cli/grouped.py`
-(the `VISIBLE_GROUP_ORDER` tuple and its use) and 3 edits across
-`tests/test_command_catalog.py`, `tests/test_grouped_cli.py` and
-`tests/cli/test_golden_path.py` (two new pinning tests plus the stale-canary
-rewrite) — one commit.
+C1: RECORD16 + DECISION F281 D6 + PLAN17 — one commit.
+C2: CODE — 2 new files (`packages/orchestration/dead_command_check.py`,
+`tests/orchestration/test_dead_command_check.py`) and 4 edits across
+`apps/cli/commands/worker_facade_cmd.py` (2 edits),
+`tests/cli/test_worker_facade_cmd.py` (1) and
+`tests/orchestration/import_reachability_allowlist.txt` (1) — one commit.
 C3: HANDBACK.
 
-## C1 — RECORD15 + R-0955 + DECISION F281 D5 + PLAN16
+## C1 — RECORD16 + DECISION F281 D6 + PLAN17
 
-### RECORD15 — append to `.agent/live_review.md`, after its current last
+### RECORD16 — append to `.agent/live_review.md`, after its current last
 line, separated by exactly one blank line, verbatim:
 
 ```
-Gate: F281 R15 — the F281 round 15 entry. VERDICT PASS. Written by the planner and reviewer of F281's second session after reading the committed range `eabb26f5`..`2322e12c` (commits `e1444922`, `03e0ecdc`, `30291132`, `2322e12c`) and independently re-deriving every reading below; the worker's report was evidence for none of them except where named. THE TRANSPORT: `.agent/authored/f281-r15.md` and `.agent/last_block.md` are byte-identical to the reviewer's own authored block, sha256 `05c4dd31569d562d79ad88d5998a9d0a26021b84553fb8c98a575815fcdc0a56`, reproduced directly by `cmp` and `sha256sum`. THE CODE, reproduced by `git show 03e0ecdc`: both edits landed exactly as ordered — `apps/cli/help_renderer.py` gains the `textwrap` import and `_box()`'s wrap logic (`prefix_width`, `wrap_width`, `textwrap.wrap`), and `tests/test_help_renderer.py`'s `test_long_content_truncated` is renamed and rewritten, with `TestNoEllipsisAcrossCatalog`'s three sweep tests inserted before `TestRenderError` — and the commit's path set is exactly the two declared files. THE MEASUREMENT, reproduced directly at HEAD: `python3 -m pytest tests/test_help_renderer.py tests/test_grouped_cli.py -q` reads `296 passed` (293 baseline + 3 new); `python3 -m pytest tests/cli/test_golden_path.py -q` reads `42 passed`; `python3 -m ruff check apps/cli/help_renderer.py tests/test_help_renderer.py` reads `All checks passed!`. THE G4 DIRECT MEASUREMENT, reproduced directly: `python3 -m apps.cli.grouped --help`, `python3 -m apps.cli.grouped --all-commands` and `python3 -m apps.cli.grouped job show --help` each contain zero `"…"` characters. THE G5 MUTATION RED-PROOF, independently re-run by the reviewer in a disposable worktree (`git worktree add --detach`, removed after): with the round's edits applied, `tests/test_help_renderer.py` reads `23 passed`; reverting only the `_box()` edit back to its truncating FROM text reddens exactly `test_long_content_wraps_without_ellipsis`, `test_root_help_has_no_ellipsis`, `test_every_group_help_has_no_ellipsis` and `test_every_command_help_has_no_ellipsis` (`19 passed, 4 failed`), no other test changes; re-applying restores `23 passed`. THE TREE: `git status --porcelain` empty, `git worktree list` one row, HEAD `2322e12c` matches `origin/feature/f281-cli-help-surface`. A HARMLESS SELF-REFERENCE NOTE (not a defect, same convention as rounds 13 and 14): the handback's own "Final HEAD: 30291132" names the commit before its own C3; the true final HEAD, `2322e12c`, is what this entry verifies. WHY PASS: every byte independently reproduces, both code edits are correct and complete, the mutation red-proof confirms the fix is load-bearing, and `remedy --help`, `--all-commands` and `job show --help` all measure zero ellipsis directly against the real, committed catalog.
-```
-
-### R-0955 (open) — append to `.agent/live_review.md`, after RECORD15,
-separated by exactly one blank line, verbatim:
-
-```
-- R-0955 — Low, `REMEDY --HELP` DID NOT MATCH DECISION AMEND0905-VOCAB D4'S BINDING VISIBLE-GROUP ORDER, AND THE CANARY'S OWN PINNING TEST ENCODED A WEAKER ORDER THAT NEVER CAUGHT IT. Raised by the planner and reviewer of F281's second session while preparing round 16, after reading `apps/cli/grouped.py`'s `_print_root_help` and finding it iterates `GROUPS.items()` in dict insertion order rather than DECISION amend0905-vocab D4's fixed order (`do, mission, job, run, decision, status, stats, teacher, memory, ui, config, doctor, project, init, worker, runtime`). THE DEFECT, read at `2322e12c`: `GROUPS`' own dict order is `do, status, decision, init, job, run, project, ui, doctor, config, worker, memory, teacher, runtime, stats, ..., mission` — matching D4 only on the first slot — so `remedy --help` has printed the wrong sequence since D4 was written; `tests/cli/test_golden_path.py::TestHelpPinning::test_do_status_decision_pinned_first` asserted only `do_pos < status_pos < decision_pos < init_pos`, a weaker claim that happened to hold under the wrong dict order and gave false confidence that pinning was correct. WHY LOW: every visible group was still present and reachable; only their printed sequence was wrong, a readability defect with no functional consequence. FIX: land `VISIBLE_GROUP_ORDER` as data and have `_print_root_help` iterate it; replace the stale pinning test with one asserting the full D4 order. Owner: F281.
-```
-
-### Done: R-0955 — append to `.agent/live_review.md`, after the R-0955 entry,
-separated by exactly one blank line, verbatim:
-
-```
-Done: R-0955 — RESOLVED in this same round: `apps/cli/command_catalog.py` gains `VISIBLE_GROUP_ORDER`, a 16-tuple in DECISION amend0905-vocab D4's exact order; `apps/cli/grouped.py`'s `_print_root_help` iterates it instead of `GROUPS.items()` for the default (non-`--all-commands`) view. `tests/cli/test_golden_path.py::TestHelpPinning::test_visible_groups_in_d4_order` replaces the stale test and asserts the full order by scanning the real box rows; two new tests (`tests/test_command_catalog.py::TestVisibleGroupOrder`, `tests/test_grouped_cli.py::TestRootHelpVisibleOrder`) pin the tuple's own content, its completeness against `GROUPS`, and the real CLI output's order. `python3 -m apps.cli.grouped --help` now lists the sixteen groups in exactly D4's order, reproduced directly by the reviewer.
+Gate: F281 R16 — the F281 round 16 entry. VERDICT PASS. Written by the planner and reviewer of F281's third session after reading the committed range `2322e12c`..`c01a6f7d` (commits `e0d8ff22`, `d46da12f`, `65097ff2`, `c01a6f7d`) and independently re-deriving every reading below; the worker's report was evidence for none of them except where named. THE TRANSPORT: `.agent/authored/f281-r16.md` and `.agent/last_block.md` are byte-identical, reproduced directly by `cmp`, sha256 `06ee94fbf111e411ec970a713a6774cd65f51fef7328dcee8ba8474f5839ad77` for the authored copy. THE CODE, reproduced by `git show d46da12f`: `apps/cli/command_catalog.py` gains `VISIBLE_GROUP_ORDER` exactly as ordered, immediately after `GROUPS`'s closing brace; `apps/cli/grouped.py` imports it and `_print_root_help`'s default branch reads `[(gid, GROUPS[gid].description) for gid in VISIBLE_GROUP_ORDER]` in place of the old `GROUPS.items()` filter; the `--all-commands` branch is untouched; the three test files gain exactly the two new pinning classes and the stale-canary rewrite the block ordered — the commit's path set is exactly the five declared files. THE MEASUREMENT, reproduced directly at HEAD: `python3 -m pytest tests/test_command_catalog.py tests/test_grouped_cli.py tests/test_help_renderer.py -q` reads `352 passed`; `python3 -m pytest tests/cli/test_golden_path.py -q` reads `42 passed`; `python3 -m ruff check apps/cli/command_catalog.py apps/cli/grouped.py tests/test_command_catalog.py tests/test_grouped_cli.py tests/cli/test_golden_path.py` reads `All checks passed!`. THE G4 DIRECT MEASUREMENT, reproduced directly: a fresh import of `VISIBLE_GROUP_ORDER` and a row-scan of the real `python3 -m apps.cli.grouped --help` output both read `['do', 'mission', 'job', 'run', 'decision', 'status', 'stats', 'teacher', 'memory', 'ui', 'config', 'doctor', 'project', 'init', 'worker', 'runtime']`, identical. THE G5 MUTATION RED-PROOF, independently re-run by the reviewer in a disposable worktree (`git worktree add --detach` at `d46da12f`, removed after): with the round's edits applied, `python3 -m pytest tests/test_grouped_cli.py::TestRootHelpVisibleOrder tests/cli/test_golden_path.py::TestHelpPinning -q` reads `2 passed`; reverting only the `_print_root_help` edit back to its `GROUPS.items()` FROM text reddens both tests at the exact index the handback names (`'status' != 'mission'` at index 1); re-applying restores `2 passed`. THE TREE: `git status --porcelain` empty, `git worktree list` one row, HEAD `c01a6f7d` matches `origin/feature/f281-cli-help-surface`. WHY PASS: every byte independently reproduces, the code edit is correct and complete, the mutation red-proof confirms it is load-bearing, and the real CLI output matches `VISIBLE_GROUP_ORDER` exactly.
 ```
 
 ### DECISION — append to `.agent/decisions.md`, after its current last
 line, separated by exactly one blank line, verbatim:
 
 ```
-## DECISION F281 D5 (2026-09-17, F281 round 16) — the default `remedy --help` order is pinned as data (`VISIBLE_GROUP_ORDER`), read by `_print_root_help` instead of `GROUPS`' own dict order
+## DECISION F281 D6 (2026-09-17, F281 round 17) — `remedy doctor core`'s dead-commands section detects a dead command by FOUR independent reference signals, never by the handler function's own `__name__`
 
-CONTEXT. `docs/roadmap/features/T2_F281.md`'s Acceptance list requires: "`remedy
---help` shows the D4 visible groups in the D4 order; the visible order is the
-eighteen-slot order with `absorb` and `chat` absent until F263/F264 ship, and a
-test pins the order as data so F263/F264 add a group without reordering."
-DECISION amend0905-vocab D4 names the sixteen currently-shipped visible groups
-in a fixed order; DECISION amend0911-feedback D1 reserves two further slots for
-`absorb` (F263) and `chat` (F264), unregistered until each ships.
-`apps/cli/grouped.py`'s `_print_root_help` built its "Commands" box by
-iterating `GROUPS.items()`, Python's dict INSERTION order, filtered to
-`user_facing and not hidden` — never D4's own order.
+CONTEXT. `docs/roadmap/features/T2_F281.md`'s Acceptance list requires:
+"`remedy doctor core` lists dead commands as a section and the section is
+empty." `docs/roadmap/features/T2_F271.md`'s Design (c) names the fuller
+mechanism — "a catalog command whose handler is referenced by no test and no
+script is reported as a section" — but F271 itself runs AFTER F281 and owns
+the closure-precondition wiring and the fixture-based red-proof (planting a
+fake dead command and seeing it listed); PLAN16's Risks scoped this round to
+the section and its detection mechanism alone.
 
-MEASURED. `GROUPS`' dict insertion order at round 15's HEAD reads `do, status,
-decision, init, job, run, project, ui, doctor, config, worker, memory,
-teacher, runtime, stats, ..., mission` (mission defined near the bottom of the
-dict, among the advanced/internal entries though it is itself `user_facing`);
-D4's order reads `do, mission, job, run, decision, status, stats, teacher,
-memory, ui, config, doctor, project, init, worker, runtime`. The two SETS are
-identical (sixteen ids, confirmed by direct set comparison), so no group was
-missing or extra — only the printed SEQUENCE was wrong. `remedy --help`'s real
-output before this round's fix showed `do, status, decision, init, job, run,
-project, ui, doctor, config, worker, memory, teacher, runtime, stats,
-mission`, differing from D4 on every position after the first. The existing
-canary test `tests/cli/test_golden_path.py::TestHelpPinning::test_do_status_decision_pinned_first`
-asserted only a four-way relative order (`do < status < decision < init`) that
-happened to hold under the wrong dict order, so it never caught the
-discrepancy (registered as R-0955, resolved in this same round).
+MEASURED. `collect_all_handlers()` maps 146 of 146 catalog command_ids to a
+handler; 122 are `lambda`s closing over the real implementation function
+(`"job.list": lambda args: _cmd_list_jobs(...)`), so `__name__` reads the
+literal `"<lambda>"` for most commands — a check keyed on it alone would call
+nearly every command dead. A design using only `co_names` plus the dotted and
+spaced forms, scanned as text over `tests/` + `scripts/`, measured 8 false
+"dead" commands (e.g. `roadmap.status`, `dev.smoke-help`), each genuinely
+tested only via a `subprocess` argv list holding the group and the
+subcommand as two separate string tokens (`["roadmap", "status"]`), the same
+blind spot F275 round 33's own command-deletion sweep recorded: no substring
+scan sees two list elements as one command.
 
-CHOSEN. `apps/cli/command_catalog.py` gains `VISIBLE_GROUP_ORDER: tuple[str,
-...]`, a plain module-level tuple naming the sixteen ids in D4's exact order,
-with a comment naming D4, D1, the two reserved future slots, and the
-completeness test that binds it to `GROUPS`. `_print_root_help`'s default
-(non-`--all-commands`) branch iterates `VISIBLE_GROUP_ORDER` and looks up each
-id's description in `GROUPS`, instead of iterating `GROUPS.items()`. The
-`--all-commands` branch is UNCHANGED: the Acceptance line names only the
-default `remedy --help` view, and D4's own "Advanced" list is a separate,
-smaller ordering question this round does not touch.
+CHOSEN. `packages/orchestration/dead_command_check.py` (new module, no
+`apps.cli.*` import, mirroring `dead_model_list.py`'s isolation) exposes
+`dead_command_ids(catalog, handlers, root=None)`; a command counts as
+referenced when ANY of four signals holds: (1) an `ast`-detected adjacent
+string pair `("<group>", "<subcommand>")` in a list/tuple literal under
+`root`'s `tests/` or `scripts/` — the fix for the argv-list blind spot; (2)
+the spaced form as a substring; (3) the dotted `command_id` as a substring;
+(4) any of the handler's own `co_names` (plus `__name__` when not
+`"<lambda>"`) as a whole-word match. Wired into `_cmd_doctor_core` as a HARD
+check (`dead_command_scan`) plus an ALWAYS-SHOWN section, never conditional
+on non-emptiness like the F254 warnings block — the Acceptance line lists the
+section itself, so a later fixture command must appear the moment it exists.
+`--json` gets a new `dead_commands` key. Measured on the shipped catalog: `0
+dead of 146`, matching T2_F271.md's "Expected empty after F261."
 
-ALTERNATIVES CONSIDERED. Reordering `GROUPS`' own dict literal to match D4 —
-rejected: the dict's insertion order would then be doing double duty as both
-"the order commands are defined in the source" and "the order help prints
-them," so a future contributor adding a new visible group in an editorially
-sensible place in the dict (next to a related group) would silently reorder
-help output; a named, separately-tested tuple makes the coupling explicit and
-gives F263/F264 a single line to extend rather than a dict position to find.
-Sorting `GROUPS` by some computed key (usage frequency, alphabetical) —
-rejected: D4 is an explicit, operator-chosen order with no derivable rule
-behind it (it groups by workflow role, not alphabetically), so nothing but a
-literal, pinned list can reproduce it.
+ALTERNATIVES CONSIDERED. `__name__` alone — rejected: 122 of 146 handlers
+share the literal name `"<lambda>"`. Text scan only (no AST pair) —
+rejected: measured 8 false positives, training an operator to ignore the
+section exactly as `_warn`'s docstring warns against. A `CommandEntry.handler`
+field instead of `collect_all_handlers()` — deferred: a catalog-shape change
+outside this round's scope and T2_F271's "Do not touch"; the plain-argument
+shape lets a later feature swap the source without touching this module.
 
-CONSEQUENCE. `remedy --help` now prints the sixteen visible groups in exactly
-DECISION amend0905-vocab D4's order, measured directly rather than assumed;
-`TestVisibleGroupOrder` in `tests/test_command_catalog.py` fails if
-`VISIBLE_GROUP_ORDER`'s content drifts from D4's sixteen ids OR from `GROUPS`'
-own visible set, and `TestRootHelpVisibleOrder` / `TestHelpPinning` fail if
-`_print_root_help` stops reading it. HOW TO REVERSE: revert this round's C2
-commit; delete this paragraph.
+CONSEQUENCE. `remedy doctor core` always prints `dead commands:`, `(none)`
+today; `--json` always carries `"dead_commands": []` today.
+`test_dead_command_check.py` pins the algorithm (a synthetic dead command is
+found, a synthetic argv-list-only reference is not) and asserts the real
+catalog reads empty; `test_worker_facade_cmd.py` pins the section's presence
+in both render modes. The allowlist gains one line, mirroring how
+`dead_model_list` was added — the new module is stdlib-only, so no further
+entry follows. F271 layers the closure-precondition wiring and the
+fixture-based red-proof on top of `dead_command_ids` without redoing the
+mechanism. HOW TO REVERSE: revert this round's C2 commit; delete this
+paragraph.
 ```
 
-### PLAN16 — replace the entire content of `.agent/plan.md` with exactly:
+### PLAN17 — replace the entire content of `.agent/plan.md` with exactly:
 
 ```
 # Plan — F281 CLI help surface
@@ -134,289 +116,374 @@ DONE when T001 and the Acceptance list hold.
 
 ## Current Step
 
-ROUND 16. C1 books round 15's PASS, registers and resolves R-0955 (the
-default `remedy --help` order did not match D4, and the canary's own pinning
-test never caught it), and adds DECISION F281 D5. C2 lands
-`VISIBLE_GROUP_ORDER` in `apps/cli/command_catalog.py`, points
-`_print_root_help` at it, and replaces the stale canary assertion with one
-that pins the full D4 order; two new tests pin the tuple's own content and
-completeness. After this round: `remedy --help` prints the sixteen visible
-groups in exactly D4's order.
+ROUND 17. C1 books round 16's independently-reviewed PASS and adds DECISION
+F281 D6. C2 lands `packages/orchestration/dead_command_check.py`
+(`dead_command_ids`, a four-signal reference check: an AST-detected argv-list
+pair, the spaced form, the dotted `command_id`, and the handler's own
+referenced names) and wires it into `remedy doctor core` as an always-shown
+`dead commands:` section plus a `dead_command_scan` hard check; two new
+tests pin the section's presence in both render modes and the algorithm
+itself is pinned in its own new test file, which also asserts the real
+catalog reads empty. One line added to the import-reachability allowlist.
+After this round: `remedy doctor core` lists dead commands as a section and
+the section reads empty on the shipped catalog, clearing that Acceptance
+line; F271 (later) owns the closure-precondition wiring and the
+fixture-based red-proof.
 
 ## Next Steps
 
-1. Remaining Acceptance items, freshly re-measured this round: `doctor
-   core`'s dead-commands section does not exist yet — it duplicates F271's
-   own design item (c) (`T2_F271.md` T002), which also wires it into the
-   closure protocol as precondition 7 and adds a fixture-based red-proof
-   test; F271 runs AFTER F281. Read `T2_F271.md`'s full Design section before
-   the round that claims this item, and scope F281's delivery to exactly its
-   own Acceptance wording ("lists dead commands as a section... empty") so
-   F271 can layer the closure-precondition wiring and fixture test on top
-   without redoing the mechanism. R-0805, R-0809, R-0895 and R-0934 are all
-   still OPEN. The README quickstart is unchanged (orchestrator brief:
-   last, because it quotes the finished catalog).
-2. Session 2 of F281 is 8 delegated rounds in (rounds 9-16), at the top of
-   the 6-to-8 target (amend0905-throughput). Continuing is allowed while
-   context comfortably suffices; ending here is also a clean stop, not an
-   early one.
+1. Remaining Acceptance items: R-0805 (`ui status` dead-session pruning),
+   R-0809 (one id-error-message shape for mission/job/run), R-0895 (README
+   quickstart) and R-0934 (advertised-flag scanner skips a quoted argument)
+   are all OPEN. R-0895 runs last (orchestrator brief: it quotes the
+   finished catalog). Session 3 begins at this round; continuing is allowed
+   while context comfortably suffices (amend0905-throughput's 6-to-8 target).
 
 ## Risks
 
-- The `doctor core` dead-commands section needs its own design pass (what
-  "referenced by no test and no script" means, mechanically, for a
-  command_id) before a round claims it — do not rush a heuristic
-  implementation; F271's fuller design (T2_F271.md) is the reference.
+- None carried from round 16: DECISION F281 D6 resolves the design question
+  PLAN16 flagged, measured non-vacuous by this round's mutation red-proof.
 ```
 
-## C2 — CODE (5 edits: 2 in `apps/cli/command_catalog.py` /
-`apps/cli/grouped.py`, 3 across the three test files)
+## C2 — CODE (2 new files, 4 edits across 3 existing files)
 
-Apply each FROM → TO pair below EXACTLY. Every FROM string must appear
-verbatim EXACTLY ONCE (edit 1 is an APPEND pair — TO contains FROM verbatim,
-checked by containment); if a single-occurrence FROM does not match exactly
-once, STOP and report the exact mismatch rather than guessing or forcing it.
+Apply each item below EXACTLY. For the two new files, `git add` a file that
+does not yet exist. For each FROM → TO pair, the FROM string must appear
+verbatim EXACTLY ONCE; if it does not, STOP and report the exact mismatch
+rather than guessing or forcing it.
 
-1. Add `VISIBLE_GROUP_ORDER`, in `apps/cli/command_catalog.py`, immediately
-   after `GROUPS`'s closing brace (an APPEND: TO contains FROM verbatim).
-   FROM (whole 6-line block, exact blank-line spacing):
-```
-    "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True),
-}
+### Edit 1 — CREATE `packages/orchestration/dead_command_check.py` with
+exactly this content:
 
+```python
+"""T2_F271 design (c), scoped narrow by F281 (T2_F281.md Acceptance: the
+section only). A catalog command is DEAD when none of its handler's
+underlying names, its dotted command_id, its spaced ``<group> <subcommand>``
+form, or an adjacent ``("<group>", "<subcommand>")`` list/tuple literal
+appears anywhere under a search root's ``tests/`` or ``scripts/`` directory.
 
-# ---------------------------------------------------------------------------
-# Argument shorthands
-# ---------------------------------------------------------------------------
-```
-TO:
-```
-    "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True),
-}
+The fourth signal exists because a CLI test invoked as an argv list —
+``subprocess.run([*_CLI, "job", "run-next", short_id])`` — holds the group and
+the subcommand as two separate string tokens that neither the spaced nor the
+dotted text scan ever matches (the blind spot F275 round 33's command-deletion
+sweep hit). Text scans alone would misreport a subprocess-tested command as
+dead; the AST pass over list/tuple literals is what makes this check answer
+the real question rather than a shape it resembles.
 
-#: The default `remedy --help` order (DECISION amend0905-vocab D4, clarified by
-#: amend0911-feedback D1): the sixteen visible groups in this fixed order, then
-#: `absorb` (F263) and `chat` (F264) once each ships — two reserved slots, not
-#: registered as empty groups (D1). `_print_root_help` iterates this tuple, never
-#: `GROUPS`' own dict order, so a new visible group added elsewhere in `GROUPS`
-#: cannot silently reorder the help output; `TestVisibleGroupOrder` in
-#: `tests/test_command_catalog.py` pins both the tuple's own content and its
-#: completeness against `GROUPS`.
-VISIBLE_GROUP_ORDER: tuple[str, ...] = (
-    "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
-    "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
-)
+This module never imports ``apps.cli.command_catalog``: the caller passes the
+catalog's own ``(command_id, group_id, subcommand)`` triples and its handler
+table, so a CLI-layer import cycle can never form here.
 
+Public API::
 
-# ---------------------------------------------------------------------------
-# Argument shorthands
-# ---------------------------------------------------------------------------
-```
+    dead_command_ids(catalog, handlers, root=None) -> list[str]
+"""
 
-2. Import `VISIBLE_GROUP_ORDER` and use it in `_print_root_help`, in
-   `apps/cli/grouped.py`. FROM (two separate single-occurrence spans in the
-   same file — apply both):
+from __future__ import annotations
 
-2a. FROM:
-```
-from apps.cli.command_catalog import (
-    GROUPS,
-    CommandEntry,
-    get_commands_for_group,
-    resolve_group,
-)
-```
-TO:
-```
-from apps.cli.command_catalog import (
-    GROUPS,
-    VISIBLE_GROUP_ORDER,
-    CommandEntry,
-    get_commands_for_group,
-    resolve_group,
-)
-```
+import ast
+import re
+from collections.abc import Callable, Iterable
+from pathlib import Path
 
-2b. FROM (whole 6-line block):
-```
-    else:
-        groups = [
-            (gid, gdef.description)
-            for gid, gdef in GROUPS.items()
-            if gdef.user_facing and not gdef.hidden
-        ]
-        title = "Commands"
-```
-TO:
-```
-    else:
-        groups = [(gid, GROUPS[gid].description) for gid in VISIBLE_GROUP_ORDER]
-        title = "Commands"
-```
-
-3. Insert `TestVisibleGroupOrder`, in `tests/test_command_catalog.py`,
-   immediately before `class TestRequiredGroups:` (an APPEND: TO contains
-   FROM verbatim). FROM:
-```
-class TestRequiredGroups:
-```
-TO:
-```
-class TestVisibleGroupOrder:
-    """DECISION amend0905-vocab D4, clarified by amend0911-feedback D1: the
-    default `remedy --help` order is these sixteen groups in this fixed order."""
-
-    def test_visible_group_order_matches_d4(self) -> None:
-        from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
-        assert VISIBLE_GROUP_ORDER == (
-            "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
-            "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
-        )
-
-    def test_visible_group_order_is_exactly_the_visible_groups(self) -> None:
-        from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
-        visible = {gid for gid, gdef in GROUPS.items() if gdef.user_facing and not gdef.hidden}
-        assert set(VISIBLE_GROUP_ORDER) == visible
-        assert len(VISIBLE_GROUP_ORDER) == len(set(VISIBLE_GROUP_ORDER))
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SEARCH_DIRS = ("tests", "scripts")
 
 
-class TestRequiredGroups:
-```
+def _handler_names(fn: Callable[..., object]) -> frozenset[str]:
+    """Every identifier the handler's own code references, by name.
 
-4. Insert `TestRootHelpVisibleOrder`, in `tests/test_grouped_cli.py`,
-   immediately before `class TestBootcampStyleGroupHelp:` (an APPEND: TO
-   contains FROM verbatim). FROM:
-```
-class TestBootcampStyleGroupHelp:
-    """Group help must have Usage, Options, Commands sections."""
-```
-TO:
-```
-class TestRootHelpVisibleOrder:
-    """DECISION amend0905-vocab D4: `remedy --help` lists the visible groups in
-    the fixed D4 order, never `GROUPS`' own dict insertion order."""
+    Most catalog handlers are a ``lambda`` closing over the real
+    implementation function (``lambda args: _cmd_list_jobs(...)``), so the
+    lambda's own ``__name__`` is always the literal string ``"<lambda>"`` and
+    never the name a test actually imports; ``co_names`` reaches through to
+    the real callee.
+    """
+    names = set(fn.__code__.co_names)
+    if fn.__name__ != "<lambda>":
+        names.add(fn.__name__)
+    return frozenset(n for n in names if not n.startswith("__"))
 
-    def test_root_help_lists_groups_in_d4_order(self) -> None:
-        from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
-        stdout, _, rc = _capture_grouped([])
-        assert rc == 0
-        row_gids: list[str] = []
-        for line in stdout.splitlines():
-            if not line.startswith("│  "):
+
+def _iter_search_files(root: Path) -> Iterable[Path]:
+    for rel in _SEARCH_DIRS:
+        d = root / rel
+        if d.is_dir():
+            yield from (p for p in d.rglob("*") if p.is_file())
+
+
+def _adjacent_string_pairs(tree: ast.AST) -> set[tuple[str, str]]:
+    pairs: set[tuple[str, str]] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.List, ast.Tuple)):
+            elts = node.elts
+            for i in range(len(elts) - 1):
+                a, b = elts[i], elts[i + 1]
+                if (isinstance(a, ast.Constant) and isinstance(a.value, str)
+                        and isinstance(b, ast.Constant) and isinstance(b.value, str)):
+                    pairs.add((a.value, b.value))
+    return pairs
+
+
+def dead_command_ids(
+    catalog: Iterable[tuple[str, str, str]],
+    handlers: dict[str, Callable[..., object]],
+    *,
+    root: Path | None = None,
+) -> list[str]:
+    """The sorted command_ids of every catalog command referenced nowhere.
+
+    ``catalog`` is an iterable of ``(command_id, group_id, subcommand)``
+    triples, taken from the caller's own ``CATALOG`` entries.
+    """
+    root = root if root is not None else _REPO_ROOT
+    texts: list[str] = []
+    pairs: set[tuple[str, str]] = set()
+    for path in _iter_search_files(root):
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        texts.append(text)
+        if path.suffix == ".py":
+            try:
+                pairs |= _adjacent_string_pairs(ast.parse(text))
+            except SyntaxError:
                 continue
-            rest = line[len("│  "):]
-            for gid in VISIBLE_GROUP_ORDER:
-                if rest.startswith(gid) and (len(rest) == len(gid) or not rest[len(gid)].isalnum()):
-                    row_gids.append(gid)
-                    break
-        assert row_gids == list(VISIBLE_GROUP_ORDER)
 
-
-class TestBootcampStyleGroupHelp:
-    """Group help must have Usage, Options, Commands sections."""
+    dead: list[str] = []
+    for command_id, group_id, subcommand in catalog:
+        if (group_id, subcommand) in pairs:
+            continue
+        spaced = f"{group_id} {subcommand}"
+        if any(spaced in t or command_id in t for t in texts):
+            continue
+        patterns = [re.compile(r"\b" + re.escape(n) + r"\b") for n in _handler_names(handlers[command_id])]
+        if any(p.search(t) for t in texts for p in patterns):
+            continue
+        dead.append(command_id)
+    return sorted(dead)
 ```
 
-5. Replace the stale canary pinning test, in `tests/cli/test_golden_path.py`.
-   FROM (whole 16-line block):
-```
-class TestHelpPinning:
-    def test_do_status_decision_pinned_first(self, tmp_path):
-        repo = _git_repo(tmp_path)
-        env = _env(tmp_path)
+### Edit 2 — CREATE `tests/orchestration/test_dead_command_check.py` with
+exactly this content:
 
-        result = subprocess.run(
-            [*_CLI, "--help"],
-            capture_output=True, text=True, timeout=10,
-            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+```python
+"""Tests for packages.orchestration.dead_command_check.dead_command_ids.
+
+Pure in-process: every test builds its own tmp_path search root with a
+synthetic tests/ and scripts/ directory, except the one integration test that
+proves the real catalog and the real repo's tests/ + scripts/ read empty.
+"""
+from __future__ import annotations
+
+from packages.orchestration.dead_command_check import dead_command_ids
+
+
+def _fn(name):
+    ns: dict = {}
+    exec(f"def {name}(args):\n    pass\n", ns)
+    return ns[name]
+
+
+class TestDeadCommandIds:
+    def test_a_command_referenced_nowhere_is_dead(self, tmp_path):
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "scripts").mkdir()
+        (tmp_path / "tests" / "test_x.py").write_text("live_handler()\n", encoding="utf-8")
+        catalog = [("do.run", "do", "run"), ("ghost.vanish", "ghost", "vanish")]
+        handlers = {"do.run": _fn("live_handler"), "ghost.vanish": _fn("dead_handler")}
+        assert dead_command_ids(catalog, handlers, root=tmp_path) == ["ghost.vanish"]
+
+    def test_an_argv_list_pair_counts_as_a_reference(self, tmp_path):
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "scripts").mkdir()
+        (tmp_path / "tests" / "test_x.py").write_text(
+            'subprocess.run([*_CLI, "job", "run-next", short_id])\n', encoding="utf-8",
         )
-        assert result.returncode == 0
-        out = result.stdout
-        do_pos = out.index("do ")
-        status_pos = out.index("status ")
-        decision_pos = out.index("decision ")
-        init_pos = out.index("init ")
-        assert do_pos < status_pos < decision_pos < init_pos
+        catalog = [("job.run-next", "job", "run-next")]
+        handlers = {"job.run-next": _fn("unrelated_name")}
+        assert dead_command_ids(catalog, handlers, root=tmp_path) == []
+
+    def test_the_real_catalog_has_no_dead_commands(self):
+        from apps.cli.command_catalog import CATALOG
+        from apps.cli.commands import collect_all_handlers
+
+        triples = [(e.command_id, e.group_id, e.subcommand) for e in CATALOG]
+        assert dead_command_ids(triples, collect_all_handlers()) == []
+```
+
+### Edit 3 — `apps/cli/commands/worker_facade_cmd.py`, insert the scan before
+`blockers` and add the key to `result`. FROM (whole block):
+```
+            _warn("dead_model_comparison", comparison_failed, comparison_failed)
+
+    blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
+    ready = len(blockers) == 0
+
+    result: dict[str, Any] = {
+        "ready": ready,
+        "checks": checks,
+        "blockers": blockers,
+        "warnings": warnings,
+    }
 ```
 TO:
 ```
-class TestHelpPinning:
-    def test_visible_groups_in_d4_order(self, tmp_path):
-        """DECISION amend0905-vocab D4 (binding, complete): the sixteen visible
-        groups appear in `remedy --help` in this fixed order, `do` pinned first."""
-        from apps.cli.command_catalog import VISIBLE_GROUP_ORDER
+            _warn("dead_model_comparison", comparison_failed, comparison_failed)
 
-        repo = _git_repo(tmp_path)
-        env = _env(tmp_path)
-
-        result = subprocess.run(
-            [*_CLI, "--help"],
-            capture_output=True, text=True, timeout=10,
-            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+    # -----------------------------------------------------------------
+    # T2_F271 design (c), scoped narrow by F281 (T2_F281.md Acceptance): the
+    # SECTION only — always shown, empty on the shipped catalog. The
+    # closure-precondition wiring and the fixture-based red-proof (planting a
+    # fake dead command and seeing it listed) are F271's, not this round's.
+    # -----------------------------------------------------------------
+    try:
+        from packages.orchestration.dead_command_check import dead_command_ids
+        cat_mod = importlib.import_module("apps.cli.command_catalog")
+        commands_mod = importlib.import_module("apps.cli.commands")
+        dead_commands = dead_command_ids(
+            ((e.command_id, e.group_id, e.subcommand) for e in cat_mod.CATALOG),
+            commands_mod.collect_all_handlers(),
         )
-        assert result.returncode == 0
-        row_gids: list[str] = []
-        for line in result.stdout.splitlines():
-            if not line.startswith("│  "):
-                continue
-            rest = line[len("│  "):]
-            for gid in VISIBLE_GROUP_ORDER:
-                if rest.startswith(gid) and (len(rest) == len(gid) or not rest[len(gid)].isalnum()):
-                    row_gids.append(gid)
-                    break
-        assert row_gids == list(VISIBLE_GROUP_ORDER)
+        _check("dead_command_scan", True,
+               f"{len(dead_commands)} dead of {len(cat_mod.CATALOG)} commands")
+    except Exception as exc:
+        dead_commands = []
+        _check("dead_command_scan", False, _safe_err(exc))
+
+    blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
+    ready = len(blockers) == 0
+
+    result: dict[str, Any] = {
+        "ready": ready,
+        "checks": checks,
+        "blockers": blockers,
+        "warnings": warnings,
+        "dead_commands": dead_commands,
+    }
+```
+
+### Edit 4 — `apps/cli/commands/worker_facade_cmd.py`, print the section
+always. FROM (whole block):
+```
+    if warnings:
+        print("  warnings (advisory — these do not affect READY):")
+        for w in warnings:
+            # The compact rendering; `--json` carries the full `detail`.
+            print(f"  [WARN] {w['warning']}: {w['summary']}")
+        print("  (run with --json for each warning's full recorded reason)")
+```
+TO:
+```
+    if warnings:
+        print("  warnings (advisory — these do not affect READY):")
+        for w in warnings:
+            # The compact rendering; `--json` carries the full `detail`.
+            print(f"  [WARN] {w['warning']}: {w['summary']}")
+        print("  (run with --json for each warning's full recorded reason)")
+    print("  dead commands:")
+    if dead_commands:
+        for cid in dead_commands:
+            print(f"    {cid}")
+    else:
+        print("    (none)")
+```
+
+### Edit 5 — `tests/cli/test_worker_facade_cmd.py`, insert the new test class
+immediately before `class TestDoctorCoreFromAnotherDirectory:` (an APPEND: TO
+contains FROM verbatim). FROM:
+```
+class TestDoctorCoreFromAnotherDirectory:
+```
+TO:
+```
+class TestDoctorCoreDeadCommands:
+    """T2_F271 design (c), scoped narrow by F281: the section only, always
+    shown — empty on the shipped catalog."""
+
+    def test_text_mode_shows_the_section_empty(self, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=False))
+        out = capsys.readouterr().out
+        assert "dead commands:" in out
+        assert "(none)" in out
+
+    def test_json_mode_carries_the_key_empty(self, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        assert out["dead_commands"] == []
+
+
+class TestDoctorCoreFromAnotherDirectory:
+```
+
+### Edit 6 — `tests/orchestration/import_reachability_allowlist.txt`, add one
+line (an APPEND: TO contains FROM verbatim). FROM:
+```
+packages.orchestration.data_paths
+packages.orchestration.dead_model_list
+```
+TO:
+```
+packages.orchestration.data_paths
+packages.orchestration.dead_command_check
+packages.orchestration.dead_model_list
 ```
 
 ## Constraints
 
-- The C2 commit's path set is exactly five files: `apps/cli/command_catalog.py`,
-  `apps/cli/grouped.py`, `tests/test_command_catalog.py`,
-  `tests/test_grouped_cli.py`, `tests/cli/test_golden_path.py`.
+- The C2 commit's path set is exactly five files:
+  `packages/orchestration/dead_command_check.py` (new),
+  `tests/orchestration/test_dead_command_check.py` (new),
+  `apps/cli/commands/worker_facade_cmd.py`,
+  `tests/cli/test_worker_facade_cmd.py`,
+  `tests/orchestration/import_reachability_allowlist.txt`.
 - Bare `ruff` is denied to this session's shell; use `python3 -m ruff check
   <path>`.
-- Do NOT change the `--all-commands` branch of `_print_root_help` — the
-  Acceptance line names only the default `remedy --help` view.
-- No `.agent/operator_questions.md` entry this round: no policy tradeoff, a
-  direct data-pinning fix plus a pre-existing test-suite defect this round
-  fully resolves with evidence.
-- Do not touch `docs/roadmap/features/T2_F271.md` or `T2_F281.md`; the F271
-  scope note PLAN16 names is read-only research for a later round.
+- `dead_command_check.py` imports no `apps.*` module — it takes the catalog
+  triples and the handler table as plain arguments (DECISION F281 D6).
+- Do not add `packages.orchestration.dead_command_check` anywhere except the
+  one allowlist line named in Edit 6.
+- No `.agent/operator_questions.md` entry this round: the detection mechanism
+  is advisory-only (never affects `ready`) and the design is fully measured
+  in DECISION F281 D6, not a product-facing policy choice.
+- Do not touch `docs/roadmap/features/T2_F271.md` or `T2_F281.md`.
 
 ## Gates (at most six; run and record real exit codes)
 
-- G1 TARGETED: `python3 -m pytest tests/test_command_catalog.py
-  tests/test_grouped_cli.py tests/test_help_renderer.py -q` — expect `352
-  passed` (349 baseline + 3 new tests).
+- G1 TARGETED: `python3 -m pytest tests/orchestration/test_dead_command_check.py
+  tests/cli/test_worker_facade_cmd.py tests/orchestration/test_import_reachability.py -q`
+  — expect `45 passed` (3 new + 39 [37 baseline + 2 new] + 3 unchanged).
 - G2 CANARY: `python3 -m pytest tests/cli/test_golden_path.py -q` — expect
-  `42 passed` (unchanged count; the renamed test is one-for-one).
-- G3 RUFF: `python3 -m ruff check apps/cli/command_catalog.py
-  apps/cli/grouped.py tests/test_command_catalog.py tests/test_grouped_cli.py
-  tests/cli/test_golden_path.py` reads `All checks passed!`.
-- G4 DIRECT MEASUREMENT: import `apps.cli.command_catalog.VISIBLE_GROUP_ORDER`
-  fresh and scan the real, live `python3 -m apps.cli.grouped --help` output's
-  box rows (by the same row-scanning method the new tests use) — the
-  resulting sequence of group ids must equal `VISIBLE_GROUP_ORDER` exactly.
+  `42 passed` (unchanged).
+- G3 RUFF: `python3 -m ruff check packages/orchestration/dead_command_check.py
+  apps/cli/commands/worker_facade_cmd.py
+  tests/orchestration/test_dead_command_check.py
+  tests/cli/test_worker_facade_cmd.py` reads `All checks passed!`.
+- G4 DIRECT MEASUREMENT: `python3 -m apps.cli.grouped doctor core` prints a
+  `dead commands:` line followed by `    (none)`; `python3 -m apps.cli.grouped
+  doctor core --json`, parsed, has `"dead_commands": []`.
 - G5 MUTATION RED-PROOF, in a disposable git worktree (`git worktree add
-  --detach`, removed after use): with this round's edits applied, `python3
-  -m pytest tests/test_grouped_cli.py::TestRootHelpVisibleOrder
-  tests/cli/test_golden_path.py::TestHelpPinning -q` reads `2 passed`; then
-  revert ONLY edit 2b (the `_print_root_help` FROM/TO pair) back to its FROM
-  text, leaving `VISIBLE_GROUP_ORDER` and every test edit applied, and re-run
-  the same command — expect both tests to FAIL; then re-apply edit 2b and
-  confirm `2 passed` again before deleting the worktree.
-- G6 TREE: `git status --porcelain` empty, `git worktree list` shows only
-  the primary checkout, HEAD matches `origin/feature/f281-cli-help-surface`
-  after push. Re-run this LITERALLY as the LAST action before writing the
-  handback.
+  --detach`, removed after use): with this round's edits applied, `python3 -m
+  pytest tests/orchestration/test_dead_command_check.py -q` reads `3 passed`;
+  then remove ONLY the `if (group_id, subcommand) in pairs:\n    continue`
+  guard from `dead_command_check.py`'s `dead_command_ids` (leaving everything
+  else applied) and re-run the same command — expect exactly
+  `test_an_argv_list_pair_counts_as_a_reference` AND
+  `test_the_real_catalog_has_no_dead_commands` to FAIL (`2 failed, 1 passed`),
+  the second failing on the real catalog's own `dev.smoke-help`; then restore
+  the guard and confirm `3 passed` again before deleting the worktree.
+- G6 TREE: `git status --porcelain` empty, `git worktree list` shows only the
+  primary checkout, HEAD matches `origin/feature/f281-cli-help-surface` after
+  push. Re-run this LITERALLY as the LAST action before writing the handback.
 
 ## Done-when
 
 C1 and C2 are committed with the exact path sets named above; G1-G6 all pass
 with real recorded output; the branch is pushed; `.agent/handoff.md` is
-rewritten as C3 naming this round, its commits, its verification results,
-and the next expected action (round 17 reads `T2_F271.md`'s full Design
-section before scoping the `doctor core` dead-commands item, per PLAN16's
-Risks, then claims the next unverified Acceptance line — R-0805, R-0809,
-R-0895, R-0934, or the dead-commands section itself if the F271 scope
-question resolves cleanly). If the worker corrects anything in this block,
-the correction is stated explicitly under "Deviations & assumptions" — never
-left silent.
+rewritten as C3 naming this round, its commits, its verification results, and
+the next expected action (round 18 claims the next unverified Acceptance
+line — R-0805, R-0809, R-0895 or R-0934; R-0895 last). Any worker correction
+to this block is stated explicitly under "Deviations & assumptions".

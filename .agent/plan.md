@@ -12,36 +12,30 @@ DONE when T001 and the Acceptance list hold.
 
 ## Current Step
 
-ROUND 16. C1 books round 15's PASS, registers and resolves R-0955 (the
-default `remedy --help` order did not match D4, and the canary's own pinning
-test never caught it), and adds DECISION F281 D5. C2 lands
-`VISIBLE_GROUP_ORDER` in `apps/cli/command_catalog.py`, points
-`_print_root_help` at it, and replaces the stale canary assertion with one
-that pins the full D4 order; two new tests pin the tuple's own content and
-completeness. After this round: `remedy --help` prints the sixteen visible
-groups in exactly D4's order.
+ROUND 17. C1 books round 16's independently-reviewed PASS and adds DECISION
+F281 D6. C2 lands `packages/orchestration/dead_command_check.py`
+(`dead_command_ids`, a four-signal reference check: an AST-detected argv-list
+pair, the spaced form, the dotted `command_id`, and the handler's own
+referenced names) and wires it into `remedy doctor core` as an always-shown
+`dead commands:` section plus a `dead_command_scan` hard check; two new
+tests pin the section's presence in both render modes and the algorithm
+itself is pinned in its own new test file, which also asserts the real
+catalog reads empty. One line added to the import-reachability allowlist.
+After this round: `remedy doctor core` lists dead commands as a section and
+the section reads empty on the shipped catalog, clearing that Acceptance
+line; F271 (later) owns the closure-precondition wiring and the
+fixture-based red-proof.
 
 ## Next Steps
 
-1. Remaining Acceptance items, freshly re-measured this round: `doctor
-   core`'s dead-commands section does not exist yet — it duplicates F271's
-   own design item (c) (`T2_F271.md` T002), which also wires it into the
-   closure protocol as precondition 7 and adds a fixture-based red-proof
-   test; F271 runs AFTER F281. Read `T2_F271.md`'s full Design section before
-   the round that claims this item, and scope F281's delivery to exactly its
-   own Acceptance wording ("lists dead commands as a section... empty") so
-   F271 can layer the closure-precondition wiring and fixture test on top
-   without redoing the mechanism. R-0805, R-0809, R-0895 and R-0934 are all
-   still OPEN. The README quickstart is unchanged (orchestrator brief:
-   last, because it quotes the finished catalog).
-2. Session 2 of F281 is 8 delegated rounds in (rounds 9-16), at the top of
-   the 6-to-8 target (amend0905-throughput). Continuing is allowed while
-   context comfortably suffices; ending here is also a clean stop, not an
-   early one.
+1. Remaining Acceptance items: R-0805 (`ui status` dead-session pruning),
+   R-0809 (one id-error-message shape for mission/job/run), R-0895 (README
+   quickstart) and R-0934 (advertised-flag scanner skips a quoted argument)
+   are all OPEN. R-0895 runs last (orchestrator brief: it quotes the
+   finished catalog). Session 3 begins at this round; continuing is allowed
+   while context comfortably suffices (amend0905-throughput's 6-to-8 target).
 
 ## Risks
 
-- The `doctor core` dead-commands section needs its own design pass (what
-  "referenced by no test and no script" means, mechanically, for a
-  command_id) before a round claims it — do not rush a heuristic
-  implementation; F271's fuller design (T2_F271.md) is the reference.
+- None carried from round 16: DECISION F281 D6 resolves the design question
+  PLAN16 flagged, measured non-vacuous by this round's mutation red-proof.
