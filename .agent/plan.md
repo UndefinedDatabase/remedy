@@ -12,38 +12,49 @@ DONE when T001 and the Acceptance list hold.
 
 ## Current Step
 
-ROUND 18. C1 books round 17's PASS (one LOW finding, R-0956: a dropped
-trailing newline in `.agent/decisions.md`, fixed in this same commit) and
-resolves R-0934. C2 replaces
-`tests/cli/test_advertised_commands.py`'s regex-only command-line-end
-detection with `_command_line_end`, which skips over a quoted argument
-(`"<goal>"`) instead of stopping the scan at its opening quote, so a flag
-advertised after a quoted goal is now caught; one new regression test.
-After this round: R-0805, R-0809 and R-0895 remain open on the Acceptance
-list.
+ROUND 19. C1 books round 18's PASS and registers/resolves R-0957 (round
+16's `VISIBLE_GROUP_ORDER` rewrite dropped the `hidden` check on the
+default `remedy --help` view, a MEDIUM regression three rounds old). C2
+restores the check. After this round: R-0805, R-0809 and R-0895 remain
+open on the Acceptance list; the job-id-only slice of R-0809 researched
+this session (see Risks) is ready to author next.
 
 ## Next Steps
 
-1. R-0809 (one id-error-message shape for mission/job/run) is LARGE:
-   research this session found FOUR current wordings across 20+ call sites
-   (`brain.py` alone has 11), a job-id resolver already shared
-   (`resolve_job_id`/`lookup_job_id` in `packages/orchestration/data_paths.py`)
-   but a run-id and mission-id resolver that are NOT, and 9+ tests asserting
-   the current wordings that will need updating. This does not fit one
-   round; the round that claims it starts by measuring the exact call-site
-   and test count fresh, then scopes a shared-helper design (probably one
-   round per id kind: job, run, mission) before touching any call site.
-2. R-0805 (`ui status` dead-session pruning, `ui status --all` showing the
-   last ten with end time) needs a design pass on the session-state model
-   before implementation — do not rush a heuristic.
+1. R-0809's job-id slice is fully researched and ready to author: fix
+   `packages/orchestration/data_paths.py`'s `resolve_job_id` except block
+   (one shared choke point reached by `job.py` and `teacher_cmd.py`) plus
+   18 duplicated `except ValueError: print(f"Error: invalid job ID:
+   {job_id_str!r}", ...)` sites across `brain.py` (11), `snapshot_cmds.py`
+   (2), `test_cmds.py` (2), `file.py` (1), `event.py` (1), `memory.py` (1)
+   — all replaced with one unified message, `Error: No job matches
+   '<id>'. Try: remedy job list.`. This does NOT touch `job_stop_cmd.py`'s
+   or `project.py`'s "job not found" wording (a semantically DIFFERENT
+   failure — a valid id whose job record is missing, not an id that
+   doesn't resolve) — that stays a separate, later decision. Nor does it
+   touch run-id or mission-id, which have no shared resolver yet. Tests to
+   update: `tests/test_data_paths.py` (2 exact-message assertions),
+   `tests/test_brain_viewer.py`, `tests/test_context_coverage.py`,
+   `tests/cli/test_product_spine.py`, `tests/cli/test_teacher_cmd.py` (2
+   assertions) — all confirmed by this session's fresh grep. R-0809 stays
+   OPEN after this slice; it is not fully resolved until run-id and
+   mission-id are unified too.
+2. R-0805 (`ui status` dead-session pruning) still needs a design pass on
+   the session-state model before implementation.
 3. R-0895 (README quickstart) runs last (orchestrator brief: it quotes the
    finished catalog).
-4. Session 3 continues (round 18); continuing is allowed while context
-   comfortably suffices (amend0905-throughput's 6-to-8 target).
+4. Session 3 continues; continuing is allowed while context comfortably
+   suffices (amend0905-throughput's 6-to-8 target).
 
 ## Risks
 
-- R-0809's true scope was undermeasured before this session's research; do
-  not let a future round default to a single mechanical sweep across all
-  call sites without first scoping run-id and mission-id resolution, which
-  currently have no shared helper the way job-id does.
+- R-0957's root cause was a gate-list gap, not just a code bug: no round's
+  G1/G2 since round 16 ran `tests/cli/test_cli_ux.py`, the one file
+  exercising the DYNAMIC `hidden` flag path. A future round touching
+  `_print_root_help`, `GROUPS`, or `VISIBLE_GROUP_ORDER` names
+  `tests/cli/test_cli_ux.py` in its own targeted gate, not just the
+  narrower catalog-content tests.
+- R-0809's true scope (mission and run id kinds) still needs its own
+  measurement pass before either is touched; do not assume the job-id
+  slice's shape generalizes without checking whether run-id and
+  mission-id already have (or need) a shared resolver first.
