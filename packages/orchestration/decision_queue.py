@@ -76,6 +76,8 @@ DECISION_TYPES = frozenset({
     "task_plan_approval",
     # F051: a task raised a question mid-run; its branch waits, the run does not.
     "task_decision",
+    # F280: a proposed task awaiting human decision or materialization.
+    "proposal",
 })
 
 
@@ -980,6 +982,59 @@ def list_decisions(
                 ),
             ))
     except (ImportError, ValueError, OSError, AttributeError):
+        pass
+
+    # 9. Proposed tasks awaiting decision or materialization (F280).
+    #    A proposed task surfaces exactly what can_finalize blocks on:
+    #    an unresolved task, or one approved for build but not yet materialized.
+    try:
+        from packages.orchestration.proposed_tasks import (
+            load_proposed_tasks_safe,
+            ProposedTaskStatus,
+        )
+        proposed_tasks, degraded = load_proposed_tasks_safe(job_id)
+        for task in proposed_tasks:
+            is_unresolved = task.is_unresolved()
+            is_approved_not_materialized = (
+                task.status == ProposedTaskStatus.APPROVED_FOR_BUILD
+                and not task.is_materialized
+            )
+            if not (is_unresolved or is_approved_not_materialized):
+                continue
+
+            # Build next actions based on task status
+            if is_unresolved:
+                _actions = [
+                    f"remedy decision resolve {job_id[:8]} proposal:{task.id} --reason approve",
+                    f"remedy decision resolve {job_id[:8]} proposal:{task.id} --reason reject",
+                    f"remedy decision resolve {job_id[:8]} proposal:{task.id} --reason defer",
+                ]
+            else:
+                # Approved but not materialized: only offer approve (materialize)
+                _actions = [
+                    f"remedy decision resolve {job_id[:8]} proposal:{task.id} --reason approve",
+                ]
+
+            # Build summary
+            _summary = f"Proposed task: {task.title}"
+            if is_unresolved and task.evaluation_notes:
+                _summary = f"{_summary} ({task.evaluation_notes})"
+
+            decisions.append(HumanDecision(
+                id=f"proposal:{task.id}",
+                type="proposal",
+                status="open",
+                severity="blocker",
+                source="proposed_tasks",
+                related_node_id=f"task:{task.id[:8]}",
+                related_intent_id="",
+                related_file="",
+                safe_summary=_summary,
+                next_actions=tuple(_actions),
+                created_at=str(task.created_at) if task.created_at else "",
+                resolved_at=None,
+            ))
+    except (ImportError, ValueError, OSError):
         pass
 
     # THE EMIT GATE (DECISION F032 D1): this derivation point is the one seam

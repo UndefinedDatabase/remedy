@@ -39,6 +39,7 @@ PRODUCING_DECISION_TYPES = (
     "memory_review",
     "task_plan_approval",
     "task_decision",
+    "proposal",
 )
 
 #: DECISION F031 D19 — the types the write door's ``decision.resolve`` can
@@ -51,7 +52,7 @@ PRODUCING_DECISION_TYPES = (
 #: RESOLVED task plan, which carries the same type and is refused;
 #: ``test_an_approved_task_plan_card_is_not_answerable`` pins that case, for
 #: the reason its task-decision sibling gives.
-ANSWERABLE_DECISION_TYPES = ("task_plan_approval", "task_decision")
+ANSWERABLE_DECISION_TYPES = ("task_plan_approval", "task_decision", "proposal")
 
 FIXED_NOW = datetime(2026, 8, 23, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -156,6 +157,35 @@ def _fixture_task_decision() -> tuple[JobPlan, list[dict]]:
     return job, []
 
 
+def _fixture_proposal() -> tuple[JobPlan, list[dict]]:
+    """Build a fixture with an unresolved proposed task.
+
+    The _isolated_data_root fixture (autouse) has already set up
+    REMEDY_DATA_DIR, so we use that via the data_paths module.
+    """
+    from pathlib import Path
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.proposed_tasks import (
+        ProposedTask,
+        ProposedTaskStatus,
+        add_proposed_task,
+    )
+
+    job = _make_job()
+    job_id = str(job.job_id)
+    data_root = Path(resolve_data_root())
+
+    # Add an unresolved proposed task
+    t = ProposedTask(
+        title="Review findings",
+        status=ProposedTaskStatus.PROPOSED,
+        created_at=FIXED_NOW - timedelta(seconds=60),
+    )
+    add_proposed_task(job_id, t, root=data_root)
+
+    return job, []
+
+
 PRODUCING_FIXTURES = {
     "patch_approval": _fixture_patch_approval,
     "stop_reason": _fixture_stop_reason,
@@ -165,6 +195,7 @@ PRODUCING_FIXTURES = {
     "memory_review": _fixture_memory_review,
     "task_plan_approval": _fixture_task_plan_approval,
     "task_decision": _fixture_task_decision,
+    "proposal": _fixture_proposal,
 }
 
 

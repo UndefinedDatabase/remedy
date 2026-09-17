@@ -121,6 +121,23 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
         task_plan = getattr(job, "task_plan", None)
         return (isinstance(task_plan, dict)
                 and task_plan.get("_approval") == "pending")
+    if str(decision_id).startswith("proposal:"):
+        from packages.orchestration.data_paths import resolve_job_id
+        from packages.orchestration.proposed_tasks import (
+            get_proposed_task,
+            ProposedTaskStatus,
+        )
+        job_id = resolve_job_id(str(getattr(job, "job_id", "")))
+        task_id = str(decision_id)[9:]  # Remove "proposal:" prefix
+        task = get_proposed_task(job_id, task_id)
+        if task is None:
+            return False
+        is_unresolved = task.is_unresolved()
+        is_approved_not_materialized = (
+            task.status == ProposedTaskStatus.APPROVED_FOR_BUILD
+            and not task.is_materialized
+        )
+        return is_unresolved or is_approved_not_materialized
     record = find_task_decision(job, str(decision_id))
     return record is not None and record.get("status") == ESCALATION_STATUS_OPEN
 

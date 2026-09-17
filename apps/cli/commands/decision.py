@@ -365,6 +365,70 @@ def _cmd_decision_resolve(
             resolve_task_plan_approval(
                 job, reason="reject", answers=answers, questions=questions)
             print(f"Task plan rejected for job {job_id_str}.")
+    elif decision_id.startswith("proposal:"):
+        from packages.orchestration.data_paths import resolve_job_id as _rji
+        from packages.orchestration.proposed_tasks import (
+            approve_proposed_task,
+            defer_proposed_task,
+            do_materialize,
+            get_proposed_task,
+            reject_proposed_task,
+        )
+
+        job_id = _rji(job_id_str)
+        task_id = decision_id[9:]  # Remove "proposal:" prefix
+
+        task = get_proposed_task(job_id, task_id)
+        if task is None:
+            print(f"Error: proposed task not found: {task_id}", file=sys.stderr)
+            sys.exit(1)
+
+        if reason not in ("approve", "reject", "defer"):
+            print(
+                "Error: --reason must be 'approve', 'reject', or 'defer'.\n"
+                f"  remedy decision resolve {job_id_str} proposal:{task_id} --reason approve\n"
+                f"  remedy decision resolve {job_id_str} proposal:{task_id} --reason reject\n"
+                f"  remedy decision resolve {job_id_str} proposal:{task_id} --reason defer",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        if reason == "approve":
+            # Approve and materialize the task
+            if task.is_unresolved():
+                # First approve the unresolved task
+                task = approve_proposed_task(job_id, task_id)
+                if task is None:
+                    print(f"Error: failed to approve proposed task {task_id}", file=sys.stderr)
+                    sys.exit(1)
+            # Then materialize it
+            task = do_materialize(job_id, task_id)
+            if task is None:
+                print(f"Error: failed to materialize proposed task {task_id}", file=sys.stderr)
+                sys.exit(1)
+            print(f"Proposed task {task_id} approved and materialized for job {job_id_str}.")
+        elif reason == "reject":
+            if task.is_terminal():
+                print(
+                    f"Error: cannot reject a terminal proposed task ({task.status.value}): {task_id}",
+                    file=sys.stderr)
+                sys.exit(1)
+            task = reject_proposed_task(job_id, task_id)
+            if task is None:
+                print(f"Error: failed to reject proposed task {task_id}", file=sys.stderr)
+                sys.exit(1)
+            print(f"Proposed task {task_id} rejected for job {job_id_str}.")
+        elif reason == "defer":
+            if task.is_terminal():
+                print(
+                    f"Error: cannot defer a terminal proposed task ({task.status.value}): {task_id}",
+                    file=sys.stderr)
+                sys.exit(1)
+            task = defer_proposed_task(job_id, task_id)
+            if task is None:
+                print(f"Error: failed to defer proposed task {task_id}", file=sys.stderr)
+                sys.exit(1)
+            print(f"Proposed task {task_id} deferred for job {job_id_str}.")
     else:
         print(f"Decision '{decision_id}' is derived and cannot be directly resolved.", file=sys.stderr)
         print("Resolve the underlying record (patch intent, test, etc.) instead.", file=sys.stderr)

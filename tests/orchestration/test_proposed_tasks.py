@@ -350,6 +350,65 @@ class TestEvaluator:
         assert result.status == ProposedTaskStatus.EVALUATED  # unchanged
 
 
+class TestAddAndEvaluate:
+    def test_add_and_evaluate_duplicate_rejected(self, tmp_store):
+        """Test that add_and_evaluate_proposed_task rejects duplicates."""
+        from packages.orchestration.proposed_tasks import add_and_evaluate_proposed_task
+
+        # Add first task manually
+        t1 = ProposedTask(title="Fix bug", status=ProposedTaskStatus.APPROVED_FOR_BUILD)
+        add_proposed_task(JOB_ID, t1)
+
+        # Add duplicate via add_and_evaluate_proposed_task
+        t2 = ProposedTask(title="Fix bug")
+        result = add_and_evaluate_proposed_task(JOB_ID, t2)
+
+        assert result.status == ProposedTaskStatus.REJECTED
+        assert "duplicate" in result.evaluation_notes
+
+    def test_add_and_evaluate_high_risk_awaits_human(self, tmp_store):
+        """Test that high-risk tasks are evaluated, not auto-approved."""
+        from packages.orchestration.proposed_tasks import add_and_evaluate_proposed_task
+
+        t = ProposedTask(title="Risky change", risk="high")
+        result = add_and_evaluate_proposed_task(JOB_ID, t)
+
+        assert result.status == ProposedTaskStatus.EVALUATED
+        assert "high risk" in result.evaluation_notes
+
+    def test_add_and_evaluate_auto_approves_low_risk(self, tmp_store):
+        """Test that low-risk tasks with no approval required are auto-approved."""
+        from packages.orchestration.proposed_tasks import add_and_evaluate_proposed_task
+
+        t = ProposedTask(title="Minor fix", risk="low", approval_required=False)
+        result = add_and_evaluate_proposed_task(JOB_ID, t)
+
+        assert result.status == ProposedTaskStatus.APPROVED_FOR_BUILD
+        assert "auto-approved" in result.evaluation_notes
+
+    def test_add_and_evaluate_fallback_awaits_human(self, tmp_store):
+        """Test that tasks not matching any rule await human decision."""
+        from packages.orchestration.proposed_tasks import add_and_evaluate_proposed_task
+
+        t = ProposedTask(title="Normal task", risk="medium", approval_required=True)
+        result = add_and_evaluate_proposed_task(JOB_ID, t)
+
+        assert result.status == ProposedTaskStatus.EVALUATED
+        assert "awaiting human decision" in result.evaluation_notes
+
+    def test_add_and_evaluate_persists(self, tmp_store):
+        """Test that add_and_evaluate_proposed_task persists the task."""
+        from packages.orchestration.proposed_tasks import add_and_evaluate_proposed_task, get_proposed_task
+
+        t = ProposedTask(title="Test task", risk="low", approval_required=False)
+        result = add_and_evaluate_proposed_task(JOB_ID, t)
+
+        # Reload from store
+        reloaded = get_proposed_task(JOB_ID, result.id)
+        assert reloaded is not None
+        assert reloaded.status == ProposedTaskStatus.APPROVED_FOR_BUILD
+
+
 class TestApproveRejectDefer:
     def test_approve(self, tmp_store):
         t = ProposedTask(title="Fix bug", status=ProposedTaskStatus.EVALUATED)
