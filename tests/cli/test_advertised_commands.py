@@ -120,11 +120,37 @@ _ALWAYS_ACCEPTED_FLAGS = frozenset({"--help", "--all-commands", "--version"})
 #: A ``--flag`` token as an operator types it.
 _FLAG_RE = re.compile(r"(?<![\w-])(--[a-z][a-z0-9-]*)")
 
-#: Where an advertised command line ENDS inside a source line: the quote or
-#: backtick closing the string or code span, a closing parenthesis, a pipe, a
-#: semicolon, a backslash, ``&&``, or the next ``remedy`` invocation. A flag past
-#: that point belongs to something else and is not the hint's.
-_COMMAND_LINE_END_RE = re.compile(r"[\"'`)|;\\]|&&|remedy\s")
+#: The hard stops a command line ends at once no quoted argument is open: the
+#: backtick closing a code span, a closing parenthesis, a pipe, a semicolon, a
+#: backslash, ``&&``, or the next ``remedy`` invocation.
+_HARD_STOP_RE = re.compile(r"[`)|;\\]|&&|remedy\s")
+
+
+def _command_line_end(tail: str) -> int | None:
+    """Where an advertised command line ENDS inside `tail`.
+
+    A flag past this point belongs to something else and is not the hint's.
+    A ``"`` or ``'`` first tries to close a QUOTED ARGUMENT (``"<goal>"``)
+    rather than ending the scan at its OPENING quote (R-0934: the old regex
+    treated any quote as an immediate end, so a flag advertised after a quoted
+    goal — ``remedy do run "<goal>" --bogus-flag`` — was never seen); an
+    unterminated quote (no matching close ahead) still ends the scan there,
+    unchanged from before.
+    """
+    i = 0
+    n = len(tail)
+    while i < n:
+        ch = tail[i]
+        if ch in "\"'":
+            close = tail.find(ch, i + 1)
+            if close == -1:
+                return i
+            i = close + 1
+            continue
+        if _HARD_STOP_RE.match(tail, i):
+            return i
+        i += 1
+    return None
 
 
 def scan_advertised_command_flags(text: str) -> list[tuple[tuple[str, str], list[str]]]:
@@ -138,9 +164,9 @@ def scan_advertised_command_flags(text: str) -> list[tuple[tuple[str, str], list
         if not _tail_reads_as_a_command_line(text, match.end()):
             continue
         tail = text[match.end():]
-        end = _COMMAND_LINE_END_RE.search(tail)
+        end = _command_line_end(tail)
         if end is not None:
-            tail = tail[:end.start()]
+            tail = tail[:end]
         found.append(((match.group(1), match.group(2)), _FLAG_RE.findall(tail)))
     return found
 
@@ -355,6 +381,13 @@ def test_flag_scanner_skips_a_group_only_invocation() -> None:
     assert scan_advertised_command_flags("remedy brain <job_id> --json") == []
 
 
+def test_flag_scanner_skips_a_quoted_argument_and_still_catches_a_later_flag() -> None:
+    """R-0934: a quoted argument no longer ends the scan at its OPENING quote."""
+    found = scan_advertised_command_flags('`remedy do run "<goal>" --bogus-flag x`')
+    assert found == [(("do", "run"), ["--bogus-flag"])]
+    assert "--bogus-flag" not in _declared_flags()[("do", "run")]
+
+
 def test_scanner_reports_a_command_the_catalog_does_not_carry() -> None:
     found = scan_advertised_commands("next_action = 'remedy job no-such-subcommand <job_id>'")
 
@@ -397,8 +430,8 @@ def scan_group_only_invocations(text: str) -> list[tuple[str, str]]:
         if not _tail_reads_as_a_command_line(text, match.end()):
             continue
         tail = text[match.end():]
-        end = _COMMAND_LINE_END_RE.search(tail)
-        found.append((match.group(1), tail if end is None else tail[:end.start()]))
+        end = _command_line_end(tail)
+        found.append((match.group(1), tail if end is None else tail[:end]))
     return found
 
 
