@@ -205,6 +205,14 @@ _OPERATOR_FACING_ROOTS: tuple[tuple[str, str], ...] = (
     ("docs/guides", ".md"),
 )
 
+#: A single named file, added directly rather than through
+#: `_tracked_files_under` (R-0895): `README.md` lives at the repo root, and
+#: that helper's directory argument would need to sweep the WHOLE root to
+#: reach it, pulling in every other root-level `.md` file along the way.
+_OPERATOR_FACING_SINGLE_FILES: tuple[str, ...] = (
+    "README.md",
+)
+
 
 def _tracked_files_under(directory: str, suffix: str) -> list[str]:
     """Every tracked file under `directory` whose name ends in `suffix`.
@@ -291,7 +299,7 @@ def _sweep_flags(relative_paths: list[str]) -> tuple[int, list[UndeclaredFlag]]:
 
 
 def _operator_facing_paths() -> list[str]:
-    paths: list[str] = []
+    paths: list[str] = list(_OPERATOR_FACING_SINGLE_FILES)
     for directory, suffix in _OPERATOR_FACING_ROOTS:
         paths.extend(_tracked_files_under(directory, suffix))
     return paths
