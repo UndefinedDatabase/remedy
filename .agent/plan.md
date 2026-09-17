@@ -12,18 +12,16 @@ DECISION amend0917-throughput D4).
 
 ## Current Step
 
-ROUND 21 books round 20's independently-reviewed PASS (Gate: F280 R20, one prose slip declared,
-no new finding) and discharges closure precondition 6: the self-use queue held no pending item,
-so `generate_and_append_if_empty` appends the generator's tier-1 item (expected SU-016,
-"Address ledger finding R-0445"), which is then run through `run_next_self_use_item` to the
-normal approval gate under the configured real provider, in a throwaway worktree, never applied
-and its `consumed_by` left empty for the closure commit.
+ROUND 22 books round 21's independently-reviewed PASS (Gate: F280 R21, R-0951 registered — an
+undisclosed second self-use job the round's own evidence never named, substance unaffected),
+lands R-0951's fix (a disclosure file naming both jobs, marked `Landed: R-0951`), and discharges
+closure precondition 3: `run_integrity_checks()` confirmed PASS (vacuously, per the already-open
+R-0648) with no relevant untracked files.
 
 ## Next Steps
 
-1. Round 22 books round 21's verdict, registers whatever `describe_self_use_run_defects` found
-   against the open ledger (an empty tuple needs no id), and runs precondition 3
-   (`remedy integrity check --json` confirmed PASS).
+1. Round 23 books round 22's verdict and marks `Done: R-0951` (the reviewer's own text,
+   replacing the worker's `Landed:` line).
 2. Once every precondition holds: the evidence job, the review zip and the STATUS line
    (STATUS_closure_protocol.md algorithm steps 1-4), each its own round.
 3. `job attach-repo`/`job permit`/`mission contract`/`job contract` wait for F269
@@ -31,10 +29,11 @@ and its `consumed_by` left empty for the closure commit.
 
 ## Risks
 
-- 146 findings registered by distinct id, 14 resolved, 132 open. High: R-0803, R-0804, R-0807,
-  none this feature's.
+- 147 findings registered by distinct id (146 plus R-0951), 14 resolved, 133 open. High:
+  R-0803, R-0804, R-0807, none this feature's.
 - R-0899 (owned F273), R-0937 (owned F273), R-0938 (owned F280, nothing to fix), R-0941 and
   R-0950 (owned F273) — unchanged.
-- THE SELF-USE RUN NEEDS THE LOCAL MODEL SERVER and creates one `remedy/job-*` branch, per
-  precedent (F261 R26, F275 R107): item R-0445 blocked at the approval gate both prior times,
-  with a defect tuple of length 2.
+- Precondition 3's own check is known-vacuous for the `high_blockers_open` clause (R-0648, open,
+  unowned by this feature): `remedy integrity check --json` reports PASS regardless of the three
+  standing High findings, exactly as it did for every closure since the ledger took its current
+  form (F261 R25, F272, F275).
