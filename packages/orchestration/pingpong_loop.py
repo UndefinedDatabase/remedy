@@ -2872,8 +2872,6 @@ def run_pingpong(
     stream_evidence: bool = False,
     stream_evidence_dir: str | None = None,
     task_input: TaskInput | None = None,
-    scope_data: dict[str, Any] | None = None,
-    scope_validation: Any | None = None,
     repair_rounds: int = 0,
     repair_rounds_source: str = "",
     job_id: str = "",
@@ -3116,8 +3114,7 @@ def run_pingpong(
     use_compiled_context = bool(compiled_context_paths) and bool(compiled_context_candidates)
     try:
         if use_compiled_context:
-            # Imported inside the branch, the way ``build_scope_contract_for_builder`` is
-            # imported locally below, so the default path's import cost does not change.
+            # Imported inside the branch, so the default path's import cost does not change.
             from packages.orchestration.context_compiler import (
                 COMPILED_CONTEXT_SEGMENT_NAME,
                 CONTEXT_SIZE_FILENAME,
@@ -3261,11 +3258,6 @@ def run_pingpong(
             if round_num > 1 and result.staged_files and staging.exists():
                 rd_repair, _, _ = _safe_diff_of(result.staged_files)
                 repair_diff = rd_repair
-            # Build scope contract text if scope is active
-            scope_contract_text = ""
-            if scope_validation:
-                from packages.orchestration.scope_plan import build_scope_contract_for_builder
-                scope_contract_text = build_scope_contract_for_builder(scope_validation)
 
             # Get previous round test result for repair context
             prev_test_result = ""
@@ -3317,7 +3309,6 @@ def run_pingpong(
                 staged_state="" if round_num == 1 else f"Files changed: {result.staged_files}",
                 safe_diff=repair_diff,
                 task_body=task_input.body if task_input and round_num == 1 else "",
-                scope_contract=scope_contract_text,
                 test_result=prev_test_result,
                 hunk_ledger=hunk_ledger,
                 resume_hunks_text=builder_resume_hunks_text,
@@ -3577,19 +3568,6 @@ def run_pingpong(
             if result.staged_files and staging.exists():
                 rd_diff, _, _ = _safe_diff_of(result.staged_files)
                 reviewer_safe_diff = rd_diff
-            # Build reviewer scope contract if scope is active
-            reviewer_scope_text = ""
-            if scope_validation:
-                from packages.orchestration.scope_plan import build_scope_contract_for_reviewer
-                reviewer_scope_text = build_scope_contract_for_reviewer(
-                    scope_validation,
-                    staged_files=result.staged_files,
-                    safe_diff=reviewer_safe_diff,
-                    test_result=rd.test_summary,
-                    task_title=task_input.title if task_input else "",
-                    task_sha256=task_input.sha256 if task_input else "",
-                    task_excerpt=task_input.excerpt if task_input else "",
-                )
 
             # Build a runtime review-scope packet from the just-computed safe
             # diff so the reviewer prompt can be scope-focused (token-saving)
@@ -3663,7 +3641,6 @@ def run_pingpong(
                 task_excerpt=task_input.excerpt if task_input else "",
                 task_sha256=task_input.sha256 if task_input else "",
                 task_tokens_estimated=task_input.tokens_estimated if task_input else 0,
-                scope_contract=reviewer_scope_text,
                 prior_findings=findings if is_repair else None,
                 repair_round=result.repair_rounds_used if is_repair else 0,
                 scope_packet=runtime_scope_packet,

@@ -325,12 +325,6 @@ class TestBootcampStyleGroupHelp:
 class TestBootcampStyleCommandHelp:
     """Command-level help must be clean and contain expected info."""
 
-    def test_job_create_help(self) -> None:
-        stdout, _, rc = _capture_grouped(["job", "create", "--help"])
-        assert rc == 0
-        assert "prompt" in stdout.lower()
-        assert "Arguments" in stdout or "Options" in stdout
-
     def test_patch_apply_help(self) -> None:
         stdout, _, rc = _capture_grouped(["patch", "apply", "--help"])
         assert rc == 0
@@ -367,12 +361,12 @@ class TestBootcampStyleErrors:
         assert "Error" in combined
 
     def test_missing_args_shows_command_help(self) -> None:
-        stdout, stderr, rc = _capture_grouped(["job", "create"])
+        stdout, stderr, rc = _capture_grouped(["job", "attach-repo"])
         assert rc == 2
         combined = stdout + stderr
         assert "Traceback" not in combined
-        # Should show command help with prompt info
-        assert "prompt" in combined.lower()
+        # Should show command help with an argument's own name
+        assert "repo_path" in combined.lower()
 
     def test_no_old_flat_error_format(self) -> None:
         """Error must not say 'invalid choice' (old argparse)."""

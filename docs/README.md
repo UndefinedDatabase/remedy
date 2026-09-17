@@ -78,7 +78,7 @@ Specifications and design documents for the built system.
 | [development-artifact-boundary-v0.md](system/development-artifact-boundary-v0.md) | Boundaries between dev artifacts and production |
 | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | Diff-only repair: hunk selection, unified-diff response, strict apply, full-file fallback |
 | [exec-guard-limitations-v0.md](system/exec-guard-limitations-v0.md) | What the F085 stage-1 execution guard does NOT prevent |
-| [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone |
+| [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone — command deleted by F280 round 3 |
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
 | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |
 | [mission-run-loop-morning-report-v0.md](system/mission-run-loop-morning-report-v0.md) | Mission run loop + morning report *(overnight superseded)* |

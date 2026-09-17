@@ -1360,7 +1360,7 @@ class TestJobBudgetCliRendersPredictions:
 
     def test_the_command_does_not_mutate_the_persisted_job(
             self, budget_cli_repo, capsys, monkeypatch):
-        # action_class="read_only" has to be true of the bytes on disk.
+        # The show form writes nothing, and that has to be true of the bytes on disk.
         from packages.orchestration.data_paths import job_record_path
         _cli_arm_ledger(monkeypatch)
         _configure_cli_price_basis(budget_cli_repo, price_basis=0.01)

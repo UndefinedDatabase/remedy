@@ -13,8 +13,8 @@ Where the records live
 On ``job.metadata["escalations"]`` — a list of plain JSON-safe dicts.  This is
 NOT a second decision queue: ``decision_queue`` stays the one read-only
 aggregation over existing records and simply derives one ``task_decision``
-entry per record, the same way it derives the flight-plan approval from
-``job.flight_plan``.  Answering goes through the existing
+entry per record, the same way it derives the task-plan approval from
+``job.task_plan``.  Answering goes through the existing
 ``remedy decision resolve`` command.
 
 Two tasks raising the same question produce TWO records (deduplication is a
@@ -28,7 +28,7 @@ waits.  Only an unattended run (``--yes``) auto-applies the default, and then
 the record says so (``answer_source="default"``) and lands in the escalation
 assumption log.
 
-Remedy deliberately does NOT write these into the flight plan's
+Remedy deliberately does NOT write these into the task plan's
 ``assumptions.md``: that log states in its own first paragraph that every
 question in it was asked at plan time and nothing mid-run.  Mid-run escalations
 therefore get their own ``escalation_assumptions.md`` in the same evidence area,
@@ -59,12 +59,12 @@ JOB_METADATA_ESCALATIONS_KEY = "escalations"
 ESCALATION_STATUS_OPEN = "open"
 ESCALATION_STATUS_ANSWERED = "answered"
 
-#: Who supplied the answer.  Same vocabulary as the flight-plan clarifications.
+#: Who supplied the answer.  Same vocabulary as the task-plan clarifications.
 ANSWER_SOURCE_HUMAN = "human"
 ANSWER_SOURCE_DEFAULT = "default"
 
 #: Decision-id prefix for a task decision — the namespace ``decision resolve``
-#: dispatches on, next to ``sr:`` (stop reason) and ``fp:`` (flight plan).
+#: dispatches on, next to ``sr:`` (stop reason) and ``plan:`` (task plan).
 DECISION_ID_PREFIX = "td:"
 
 #: Task inputs key carrying the answers a task's decisions received, so the
@@ -330,7 +330,7 @@ def _cell(text: Any) -> str:
 def render_escalation_assumptions_md(job: JobPlan | Any) -> str:
     """The mid-run assumption log: what was asked, answered, and by whom.
 
-    Deliberately separate from the flight plan's ``assumptions.md`` — see the
+    Deliberately separate from the task plan's ``assumptions.md`` — see the
     module docstring.  Same table shape, so a reviewer reads both the same way.
     """
     records = escalation_records(job)

@@ -30,7 +30,7 @@ class TestProcessGroupCleanup:
     def test_successful_command_no_leftover_group(self, env):
         """After a successful CLI call, process group should be gone."""
         root, jid = env
-        r = run_grouped_cli(["propose", "list", jid, "--json"], root)
+        r = run_grouped_cli(["decision", "list", jid, "--json"], root)
         assert r.returncode == 0
         # No way to check pgid after the fact (process is gone),
         # but if we got here without hanging, cleanup worked.
@@ -44,7 +44,7 @@ class TestProcessGroupCleanup:
         # (missing job). The point is the helper returns, not hangs.
         with pytest.raises(AssertionError, match="timed out"):
             run_grouped_cli(
-                ["propose", "list", "nonexistent-job", "--json"],
+                ["decision", "list", "nonexistent-job", "--json"],
                 root,
                 timeout=0,  # Immediate timeout — process can't finish in 0s
             )
@@ -54,7 +54,7 @@ class TestTraceLog:
     def test_trace_writes_start_end(self, env):
         root, jid = env
         trace_path = root / ".runtime_trace.log"
-        run_grouped_cli(["propose", "list", jid, "--json"], root)
+        run_grouped_cli(["decision", "list", jid, "--json"], root)
         assert trace_path.exists(), f"Trace file not created at {trace_path}"
         content = trace_path.read_text()
         assert "START" in content
@@ -67,7 +67,7 @@ class TestTraceLog:
         trace_path = root / ".runtime_trace.log"
         with pytest.raises(AssertionError, match="timed out"):
             run_grouped_cli(
-                ["propose", "list", "fake", "--json"],
+                ["decision", "list", "fake", "--json"],
                 root,
                 timeout=0,
             )

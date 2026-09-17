@@ -73,7 +73,7 @@ def _create_job(repo, env, mission):
 
     ``--no-llm`` for the same reason the golden-path canary forces it: this
     file tests project SCOPING of listings, not planning. Without the flag
-    ``do`` runs a real flight-plan call, so the fixture's runtime becomes
+    ``do`` runs a real task-plan call, so the fixture's runtime becomes
     provider latency and the 30s subprocess timeout decides the verdict.
     """
     result = _run_cli(

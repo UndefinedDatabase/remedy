@@ -81,12 +81,12 @@ def _make_repo(tmp_path):
 
 
 def _make_job(data_dir, repo, *, files_hint=("alpha.py",), attach_repo=True):
-    """Persist a real Job whose single task carries a real flight-plan block."""
+    """Persist a real Job whose single task carries a real task-plan block."""
     from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
     task = TaskEntry(
         title="edit alpha",
-        inputs={"flight": {"planned_id": "T001", "files_hint": list(files_hint)}},
+        inputs={"plan": {"planned_id": "T001", "files_hint": list(files_hint)}},
     )
     metadata = {"target_repo": str(repo)} if attach_repo else {}
     job = JobPlan(job_id=mint_job_id(), job_title="f107-context", tasks=[task], metadata=metadata)
@@ -233,7 +233,7 @@ def test_empty_files_hint_is_rendered_rather_than_treated_as_an_error(tmp_path, 
 def _make_ping_pong_job(repo, *, files_hint=("alpha.py",), attach_repo=True):
     """Persist a real UNIFIED job record — the shape `remedy job run` writes.
 
-    Its task carries no flight-plan block at all: a `TaskEntry` spells its
+    Its task carries no task-plan block at all: a `TaskEntry` spells its
     planned id and its fenced scope as its OWN fields, which is exactly what
     this command must read to answer for a job of either store.
     """

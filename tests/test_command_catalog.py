@@ -247,7 +247,7 @@ class TestRequiredCommands:
     """Key commands from the spec must exist."""
 
     REQUIRED = (
-        "job.create", "job.list", "job.show", "job.attach-repo", "job.permit",
+        "job.list", "job.show", "job.attach-repo", "job.permit",
         "project.create", "project.list", "project.show", "project.attach-repo",
         "project.attach-job", "project.context",
         "patch.list", "patch.show", "patch.approve", "patch.reject", "patch.apply",
@@ -329,10 +329,12 @@ class TestDeletedCommands:
         "guide.job",
         "job.assumptions",
         "job.cancel",
+        "job.create",
         "job.digest",
         "job.dod",
         "job.enqueue",
         "job.fences",
+        "job.fulfill",
         "job.pause",
         "job.permissions",
         "job.report",
@@ -351,6 +353,13 @@ class TestDeletedCommands:
         "policy.contract",
         "policy.token",
         "policy.token-explain",
+        "propose.approve",
+        "propose.defer",
+        "propose.evaluate",
+        "propose.list",
+        "propose.materialize",
+        "propose.reject",
+        "propose.show",
         "queue.add",
         "queue.list",
         "queue.reclaim",
@@ -387,3 +396,66 @@ class TestDeletedCommands:
 
         dispatch = _get_dispatch_table()
         assert [cid for cid in self.DELETED if cid in dispatch] == []
+
+
+class TestDeletedFlags:
+    """F280 deletes a flag outright too: no alias and no hidden spelling (DECISIONs F280 D1 and D2).
+
+    Each pair names the command that lost the flag. That command survives, so the guard first
+    requires it to exist: a renamed or deleted entry would otherwise let every absence pass.
+    """
+
+    DELETED = (
+        ("do.run", "--approve-scope"),
+        ("do.run", "--builder"),
+        ("do.run", "--claude-cli-write-mode"),
+        ("do.run", "--keep-staging"),
+        ("do.run", "--max-output-chars"),
+        ("do.run", "--max-rounds"),
+        ("do.run", "--mode"),
+        ("do.run", "--provider-timeout-sec"),
+        ("do.run", "--repair-rounds"),
+        ("do.run", "--reviewer"),
+        ("do.run", "--scope-file"),
+        ("do.run", "--stream-evidence"),
+        ("do.run", "--task-file"),
+        ("do.run", "--task-stdin"),
+        ("do.run", "--test-command"),
+        ("do.run", "--timeout-profile"),
+        ("job.run", "--builder"),
+        ("job.run", "--max-tasks"),
+        ("job.run", "--reviewer"),
+    )
+
+    def test_every_named_command_is_still_in_the_catalog(self) -> None:
+        catalog_ids = {cmd.command_id for cmd in CATALOG}
+        assert sorted({cid for cid, _flag in self.DELETED} - catalog_ids) == []
+
+    def test_no_deleted_flag_is_declared_by_its_command(self) -> None:
+        declared = {(cmd.command_id, arg.name) for cmd in CATALOG for arg in cmd.args}
+        assert [pair for pair in self.DELETED if pair in declared] == []
+
+    #: The positional each command needs before its flags parse.
+    POSITIONALS = {"do.run": ["g"], "job.run": ["J"]}
+
+    @pytest.mark.parametrize("pair", DELETED, ids=lambda pair: f"{pair[0]}:{pair[1]}")
+    def test_parser_refuses_a_deleted_flag_as_an_abbreviation(self, pair) -> None:
+        """Argparse prefix matching would read `--builder` as `--builder-provider`: exit 2 instead."""
+        from apps.cli.grouped import build_parser
+
+        command_id, flag = pair
+        group, subcommand = command_id.split(".", 1)
+        argv = [group, subcommand, *self.POSITIONALS[command_id], flag, "ollama"]
+        with pytest.raises(SystemExit) as exc:
+            build_parser().parse_args(argv)
+        assert exc.value.code == 2
+
+    def test_the_surviving_full_flags_still_parse(self) -> None:
+        from apps.cli.grouped import build_parser
+
+        args = build_parser().parse_args(["do", "run", "g", "--builder-provider", "ollama"])
+        assert (args._command_id, args.builder_provider) == ("do.run", "ollama")
+        args = build_parser().parse_args(
+            ["job", "run", "J", "--builder-provider", "fake", "--reviewer-provider", "claude-cli"])
+        assert (args._command_id, args.builder_provider, args.reviewer_provider) == (
+            "job.run", "fake", "claude-cli")

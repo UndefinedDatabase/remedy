@@ -4,7 +4,7 @@ DECISION F260 D1 names eleven administrative fields for the ONE job record.
 Three of them already had a spelling — ``id`` is ``job_id``, ``name`` is
 ``job_title``, ``state`` collides with ``status`` — and the other eight are
 these: ``mission``, ``user_prompt``, ``project_id``, ``intake``,
-``flight_plan``, ``artifacts``, ``budget`` and ``fences``.
+``task_plan``, ``artifacts``, ``budget`` and ``fences``.
 
 ``_export_job`` and ``_import_job`` are explicit field-by-field functions with
 no ``asdict`` and no ``**data`` splat, so a field added to the dataclass and to
@@ -37,7 +37,7 @@ ADMINISTRATIVE_FIELDS = (
     "user_prompt",
     "project_id",
     "intake",
-    "flight_plan",
+    "task_plan",
     "artifacts",
     "budget",
     "fences",
@@ -51,7 +51,7 @@ def _populated_plan() -> tuple[JobPlan, dict]:
         "user_prompt": "make the job carry its own mission",
         "project_id": "proj-f272-t002",
         "intake": {"source": "cli", "answers": ["a", "b"]},
-        "flight_plan": {"steps": ["plan", "build", "review"], "version": 3},
+        "task_plan": {"steps": ["plan", "build", "review"], "version": 3},
         "artifacts": [
             Artifact(
                 name="plan.md",
@@ -79,7 +79,7 @@ class TestAdministrativeFieldDefaults:
         assert job.user_prompt == ""
         assert job.project_id == ""
         assert job.intake is None
-        assert job.flight_plan is None
+        assert job.task_plan is None
         assert job.artifacts == []
         assert job.budget is None
         assert job.fences is None
@@ -116,7 +116,7 @@ class TestAdministrativeFieldRoundTrip:
         assert back.user_prompt == values["user_prompt"]
         assert back.project_id == values["project_id"]
         assert back.intake == values["intake"]
-        assert back.flight_plan == values["flight_plan"]
+        assert back.task_plan == values["task_plan"]
         assert back.artifacts == values["artifacts"]
         assert back.budget == values["budget"]
         assert back.fences == values["fences"]
@@ -205,7 +205,7 @@ class TestAdministrativeFieldsThroughTheRealWriter:
         assert loaded.user_prompt == values["user_prompt"]
         assert loaded.project_id == values["project_id"]
         assert loaded.intake == values["intake"]
-        assert loaded.flight_plan == values["flight_plan"]
+        assert loaded.task_plan == values["task_plan"]
         assert loaded.artifacts == values["artifacts"]
         assert loaded.budget == values["budget"]
         assert loaded.fences == values["fences"]

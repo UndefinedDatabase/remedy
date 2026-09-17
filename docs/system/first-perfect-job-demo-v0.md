@@ -80,5 +80,6 @@ rm -rf "$DEMO_REPO"
 
 ## See also
 
-For the full fulfilled job demo (apply + test + proof + completed_verified):
+For the full fulfilled job demo (apply + test + proof + completed_verified), whose
+`job fulfill` word F280 round 3 deleted:
 see `docs/first-fulfilled-job-demo-v0.md`.

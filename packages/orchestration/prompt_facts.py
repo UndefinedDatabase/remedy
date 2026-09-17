@@ -1,7 +1,7 @@
 """Shared prompt facts for structured provider calls.
 
-Extracted from ``flight_plan._cheap_repo_facts`` (F069): the mission compiler
-needs the same cheap "what does this repo look like" block the flight planner
+Extracted from ``job_plan._cheap_repo_facts`` (F069): the mission compiler
+needs the same cheap "what does this repo look like" block the task planner
 puts in front of its provider, and a SECOND copy of it would be two answers to
 one question — the one thing the feature file's Orchestrator brief forbids.
 

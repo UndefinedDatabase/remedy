@@ -1,4 +1,15 @@
-# First Fulfilled Job Demo v0
+# First Fulfilled Job Demo v0 (command deleted 2026-09-16)
+
+> **Status (2026-09-16):** F280 round 3 deleted the `fulfill` word of the `job` group with its
+> `--fixture-demo` switch (DECISION amend0905-vocab D4 gives `job` no `fulfill`). Nothing runs the
+> fixture fulfillment spine below from the command line any more: `run_job_fulfill` in
+> `packages/orchestration/job_fulfillment.py` is kept and called by tests only, and
+> `remedy job show <job_id> --full --json` still reads back a fulfillment record written before.
+> The spine's fixture contract was the only write of a test-run budget above 0 until
+> `remedy job budget <job_id> set max_test_runs <n>` (DECISION F280 D3). F280 round 6 also
+> deleted the `create` word of the `job` group; `_cmd_create_job` in
+> `apps/cli/commands/job.py` is kept and called by tests and by the smoke script only. The page
+> is kept as the record of what was built.
 
 ## What this demo proves
 
@@ -18,28 +29,28 @@ No real provider. No network. No git operations. No hidden execution.
 ## Demo command sequence
 
 ```bash
-# 1. Create a job with a repo attached
-JOB_ID=$(remedy job create "Improve the project docs")
+# 1. The `create` word under `job` built the job here, until F280 round 6 deleted it;
+#    `do run "<goal>"` is the CLI's own job-creation path today.
 remedy job attach-repo "$JOB_ID" /path/to/demo/repo  # see Repo Requirements below
 
-# 2. Run fulfillment in fixture-demo mode
-remedy job fulfill "$JOB_ID" --fixture-demo --json
+# 2. A `fulfill` word under `job` ran fulfillment here in fixture-demo mode, with `--json`,
+#    until F280 round 3 deleted it
 
 # 3. Check final status and read the full report
 remedy job show "$JOB_ID" --full --json
 
-# 4. List proposed next tasks
-remedy propose list "$JOB_ID" --json
+# 4. List proposed next tasks (command deleted F280 round 15 — DECISION F280 D10; use `remedy decision list` instead)
+remedy decision list "$JOB_ID" --json
 
-# 5. User decides on suggestions
-remedy propose approve "$JOB_ID" <task_id> --json
-remedy propose reject "$JOB_ID" <task_id> --json
-remedy propose defer "$JOB_ID" <task_id> --json
+# 5. User decides on suggestions (command deleted F280 round 15 — DECISION F280 D10; use `remedy decision resolve` instead)
+remedy decision resolve "$JOB_ID" proposal:<task_id> --reason approve
+remedy decision resolve "$JOB_ID" proposal:<task_id> --reason reject
+remedy decision resolve "$JOB_ID" proposal:<task_id> --reason defer
 ```
 
 ## Expected output fields
 
-### `job fulfill --fixture-demo --json`
+### What the deleted `job fulfill --fixture-demo --json` printed
 
 | Field | Expected | Meaning |
 |-------|----------|---------|

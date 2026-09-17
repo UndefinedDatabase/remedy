@@ -1,0 +1,4 @@
+["edit", "docs/roadmap/STATUS.md", "- [~] F280 — CLI vocabulary v2, part two — the gated prunes, the flight-plan rename and the help surface", "- [x] F280 — CLI vocabulary v2, part two — the gated prunes, the flight-plan rename and the help surface (T001 complete, T002 moved whole to F281; accepted 2026-09-17 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f3307c2b837ec17a · package remedy-review-20260917-155130-READY_FOR_REVIEW.zip · SHA-256 e3b2a2f9532b9fc8deaa31aae3a0c0240e2a0384594463b5d88b39da50c3fef5 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 102950ebadc06649aff95edee98c5438303211d0)", 1]
+["edit", "README.md", "78 of 281 registered items accepted.", "79 of 281 registered items accepted.", 1]
+["edit", "README.md", "| 2 | Minimal Self-Build Runtime | 21 | 34 |", "| 2 | Minimal Self-Build Runtime | 22 | 34 |", 1]
+["edit", "scripts/self_use_queue.json", "\"consumed_by\": \"\"", "\"consumed_by\": \"F280\"", 1]

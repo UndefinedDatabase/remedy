@@ -284,6 +284,37 @@ def add_proposed_task(job_id: str, task: ProposedTask, root: Path | None = None)
         save_proposed_tasks(job_id, tasks, root)
 
 
+def add_and_evaluate_proposed_task(job_id: str, task: ProposedTask, root: Path | None = None) -> ProposedTask:
+    """Add a proposed task to the store and immediately evaluate it.
+
+    Evaluates the task inside the same file lock that add_proposed_task takes,
+    running the deterministic rules (duplicate, risk, auto-approve) before appending.
+
+    Returns the evaluated task.
+    """
+    with _file_lock(job_id, root):
+        tasks = load_proposed_tasks(job_id, root)
+
+        # Run the three deterministic rules
+        result = _evaluate_duplicate_rule(task, tasks)
+        if result is None:
+            result = _evaluate_risk_rule(task)
+        if result is None:
+            result = _evaluate_auto_approve_rule(task)
+        if result is None:
+            result = EvaluationResult(ProposedTaskStatus.EVALUATED, "awaiting human decision")
+
+        # Transition and set evaluation notes
+        transition_status(task, result.decision, by="deterministic")
+        task.evaluation_notes = result.notes
+
+        # Append and save
+        tasks.append(task)
+        save_proposed_tasks(job_id, tasks, root)
+
+    return task
+
+
 def get_proposed_task(job_id: str, task_id: str, root: Path | None = None) -> ProposedTask | None:
     for t in load_proposed_tasks(job_id, root):
         if t.id == task_id:

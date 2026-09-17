@@ -1,6 +1,6 @@
-"""F014 — LLM-generated Flight Plan.
+"""F014 — LLM-generated Task Plan.
 
-Turns a job's intake into a validated, DAG-structured FlightPlan via an
+Turns a job's intake into a validated, DAG-structured TaskPlan via an
 LLM call (with one parse retry), then maps it onto core Task objects.
 Deterministic planner remains the --no-llm/provider-down fallback.
 """
@@ -24,18 +24,18 @@ from packages.orchestration.prompt_segments import (
 from packages.orchestration.prompt_trace import build_trace_entry
 from packages.orchestration.schemas.models import (
     _LARGE_PLAN_THRESHOLD,
-    FlightPlan,
-    FlightPlanClarification,
+    TaskPlan,
+    TaskPlanClarification,
 )
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 from packages.orchestration.task_granularity import GranularityConfig, normalize_plan
 
 
 @dataclass
-class FlightPlanResult:
+class TaskPlanResult:
     """Result of plan_job_llm."""
 
-    plan: FlightPlan | None
+    plan: TaskPlan | None
     source: str
     error_hint: str = ""
     calls: int = 0
@@ -92,7 +92,7 @@ _PLAN_RULES_SEGMENT = """\
 #: pre-migration template ended with one and `compose_prompt_segments` adds
 #: none, so dropping it is a one-byte CONTENT change, not a formatting nit.
 _PLAN_SCHEMA_DIRECTIVE_SEGMENT = """\
-Return ONLY a JSON object matching the flight_plan_v1 schema.
+Return ONLY a JSON object matching the task_plan_v1 schema.
 """
 
 # The conservative-defaults rule this prompt encodes, stated verbatim as
@@ -109,10 +109,10 @@ Return ONLY a JSON object matching the flight_plan_v1 schema.
 # rules instead of stopping at the first intake character (F105 T003 site 3).
 # The segment BYTES are unchanged from the pre-migration template — only their
 # ORDER differs, which is the "modulo ordering" content-equality F105 requires.
-def compose_flight_plan_prompt(
+def compose_task_plan_prompt(
     intake_dict: dict[str, Any], *, project_facts: str = "",
 ) -> ComposedPrompt:
-    """Compose the flight-plan prompt from registered segments, with its manifest."""
+    """Compose the task-plan prompt from registered segments, with its manifest."""
     registry = PromptSegmentRegistry()
     registry.register(
         "plan_system", SegmentStabilityRank.SYSTEM, _PLAN_SYSTEM_SEGMENT
@@ -149,14 +149,14 @@ def _build_plan_prompt(intake_dict: dict[str, Any], *,
     and a test passes it to keep the rendered prompt independent of the working
     directory.
     """
-    return compose_flight_plan_prompt(intake_dict, project_facts=project_facts).text
+    return compose_task_plan_prompt(intake_dict, project_facts=project_facts).text
 
 
 # The recorder lives beside the composer, in this module, so the manifest and
-# the prompt it describes cannot drift apart: whoever changes flight-plan
+# the prompt it describes cannot drift apart: whoever changes task-plan
 # composition sees the evidence writer in the same file (F105 T003 site 5, the
 # same reason `make_intake_call_recorder` sits in `intake.py`).
-def make_flight_plan_call_recorder(
+def make_task_plan_call_recorder(
     traces: list[Any],
     composed: ComposedPrompt,
     *,
@@ -169,7 +169,7 @@ def make_flight_plan_call_recorder(
     carrying ``composed``'s segment manifest so call evidence records which
     named segments produced the prompt.
 
-    The role is ``flight_plan``, deliberately NOT ``planner``: the ``planner``
+    The role is ``task_plan``, deliberately NOT ``planner``: the ``planner``
     traces belong to the OTHER planner path
     (``packages/orchestration/structured_planner.py`` over ``PlannerPlan``), and
     one spelling per concept is what keeps a per-role cache report from summing
@@ -178,10 +178,10 @@ def make_flight_plan_call_recorder(
     def _record(
         attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
     ) -> None:
-        kind = "flight-plan-retry" if is_parse_retry else "flight-plan"
+        kind = "task-plan-retry" if is_parse_retry else "task-plan"
         traces.append(build_trace_entry(
             prompt_text=effective_prompt,
-            role="flight_plan",
+            role="task_plan",
             provider=provider,
             provider_kind=provider_kind,
             prompt_kind=kind,
@@ -214,9 +214,9 @@ def _as_record(clarification: Any) -> dict[str, Any] | None:
 
 
 def carry_intake_clarifications(
-    plan: FlightPlan,
+    plan: TaskPlan,
     intake: dict[str, Any] | None,
-) -> FlightPlan:
+) -> TaskPlan:
     """Carry the intake's open questions into ``clarifications_resolved``.
 
     Every intake clarification becomes an UNANSWERED entry (empty
@@ -229,7 +229,7 @@ def carry_intake_clarifications(
     A plan whose intake has no clarifications and whose planner declared
     none is returned unchanged.
     """
-    carried: list[FlightPlanClarification] = []
+    carried: list[TaskPlanClarification] = []
     intake_clarifications = list((intake or {}).get("clarifications") or [])
     from_intake: set[str] = set()
 
@@ -237,7 +237,7 @@ def carry_intake_clarifications(
         if not isinstance(raw, dict):
             continue
         question = str(raw.get("question", ""))
-        carried.append(FlightPlanClarification(
+        carried.append(TaskPlanClarification(
             id=f"q{len(carried) + 1}",
             question=question,
             default_answer=str(raw.get("default_answer", "")),
@@ -266,7 +266,7 @@ def open_clarification_questions(
     """Return the still-open questions as decision-payload records.
 
     Accepts the raw ``clarifications_resolved`` list from either a plan
-    model or a stored flight-plan dict. Open means: no answer AND no
+    model or a stored task-plan dict. Open means: no answer AND no
     ``answered_by`` — a planner-declared assumption arrives with an answer
     and is therefore never asked again.
     """
@@ -441,11 +441,11 @@ def plan_job_llm(
     on_call: Callable[[int, str, bool, str], None] | None = None,
     granularity: GranularityConfig | None = None,
     composed: ComposedPrompt | None = None,
-) -> FlightPlanResult:
-    """Generate a FlightPlan from a job's intake via LLM.
+) -> TaskPlanResult:
+    """Generate a TaskPlan from a job's intake via LLM.
 
     Uses run_structured_call for schema validation + one parse retry.
-    Returns a FlightPlanResult; on failure, plan is None and error_hint
+    Returns a TaskPlanResult; on failure, plan is None and error_hint
     describes the failure class.
 
     ``composed`` lets a caller that ALREADY composed this prompt — the CLI, for
@@ -463,18 +463,18 @@ def plan_job_llm(
     prompt = composed.text if composed is not None else _build_plan_prompt(intake)
     try:
         outcome: StructuredOutcome = run_structured_call(
-            FlightPlan,
+            TaskPlan,
             prompt,
             call_fn,
             on_call=on_call,
             allow_parse_retry=True,
         )
     except Exception as exc:
-        return FlightPlanResult(
+        return TaskPlanResult(
             plan=None, source="llm", error_hint=f"provider error: {exc}")
 
     if not outcome.ok:
-        return FlightPlanResult(
+        return TaskPlanResult(
             plan=None,
             source="llm",
             error_hint=outcome.hint,
@@ -482,7 +482,7 @@ def plan_job_llm(
             call_log=outcome.call_log,
         )
 
-    assert isinstance(outcome.value, FlightPlan)
+    assert isinstance(outcome.value, TaskPlan)
     plan = outcome.value
     transformations: list[dict[str, Any]] = []
     try:
@@ -502,7 +502,7 @@ def plan_job_llm(
     # F034: after normalization, so the questions ride the final plan shape.
     plan = carry_intake_clarifications(plan, intake)
 
-    return FlightPlanResult(
+    return TaskPlanResult(
         plan=plan,
         source="llm",
         calls=outcome.calls,
@@ -511,10 +511,10 @@ def plan_job_llm(
     )
 
 
-def map_flight_plan_to_tasks(plan: FlightPlan) -> list[TaskEntry]:
-    """Convert FlightPlan tasks to core Task objects, preserving order.
+def map_task_plan_to_tasks(plan: TaskPlan) -> list[TaskEntry]:
+    """Convert TaskPlan tasks to core Task objects, preserving order.
 
-    Flight plan metadata is stored in task.inputs["flight"] so the
+    Task plan metadata is stored in task.inputs["plan"] so the
     runner and evidence pipeline can trace provenance without modifying
     the core Task model.
     """
@@ -524,7 +524,7 @@ def map_flight_plan_to_tasks(plan: FlightPlan) -> list[TaskEntry]:
             title=f"{pt.title}: {pt.goal}",
             acceptance="\n".join(pt.acceptance),
             inputs={
-                "flight": {
+                "plan": {
                     "planned_id": pt.id,
                     "title": pt.title,
                     "depends_on": list(pt.depends_on),
@@ -585,17 +585,17 @@ def apply_plan_fences(
 # ---------------------------------------------------------------------------
 
 def render_plan_md(
-    plan: FlightPlan,
+    plan: TaskPlan,
     transformations: list[dict[str, Any]] | None = None,
 ) -> str:
-    """Render a FlightPlan to deterministic, stably ordered markdown.
+    """Render a TaskPlan to deterministic, stably ordered markdown.
 
     *transformations* is the F016 granularity record. The section is always
     rendered so the approving human sees either what was changed or an
     explicit statement that nothing was.
     """
     lines: list[str] = []
-    lines.append("# Flight Plan")
+    lines.append("# Task Plan")
     lines.append("")
     lines.append(f"Schema: {plan.schema_v}")
     lines.append(f"Tasks: {len(plan.tasks)}")
@@ -679,7 +679,7 @@ def render_plan_md(
 
 
 def write_plan_md(
-    plan: FlightPlan,
+    plan: TaskPlan,
     evidence_dir: Path,
     version: int = 1,
     transformations: list[dict[str, Any]] | None = None,
@@ -696,13 +696,13 @@ def write_plan_md(
 # Replan versioning (T003)
 # ---------------------------------------------------------------------------
 
-def flight_plan_blocks_execution(job: Any) -> str | None:
-    """Return blocking reason if flight plan prevents execution, else None.
+def task_plan_blocks_execution(job: Any) -> str | None:
+    """Return blocking reason if task plan prevents execution, else None.
 
     Returns "pending" when awaiting approval, "rejected" when plan was
     rejected and needs replanning.
     """
-    fp = getattr(job, "flight_plan", None)
+    fp = getattr(job, "task_plan", None)
     if not isinstance(fp, dict):
         return None
     approval = fp.get("_approval")
@@ -711,9 +711,9 @@ def flight_plan_blocks_execution(job: Any) -> str | None:
     return None
 
 
-def flight_plan_approval_open(job: Any) -> bool:
-    """Return True if the job has a pending flight plan approval gate."""
-    return flight_plan_blocks_execution(job) is not None
+def task_plan_approval_open(job: Any) -> bool:
+    """Return True if the job has a pending task plan approval gate."""
+    return task_plan_blocks_execution(job) is not None
 
 
 #: What ``_approval_audit.mode`` records for an unattended approval. One
@@ -725,13 +725,13 @@ AUTO_APPROVAL_MODE = "auto_yes"
 AUTO_APPROVAL_REASON = "auto-approved via --yes"
 
 
-def auto_approve_flight_plan(
-    flight_plan_body: dict[str, Any],
+def auto_approve_task_plan(
+    task_plan_body: dict[str, Any],
     evidence_dir: Path,
     *,
     reason: str = AUTO_APPROVAL_REASON,
 ) -> dict[str, Any]:
-    """Apply the unattended approval to a flight-plan body. Audited, never silent.
+    """Apply the unattended approval to a task-plan body. Audited, never silent.
 
     THE ``--yes`` semantics, in one place (F034): every open clarification runs
     on its documented default, the approval is stamped with an audit record
@@ -743,7 +743,7 @@ def auto_approve_flight_plan(
     NOT done here, because the two callers (``remedy do run`` and the
     orchestrator loop) own their own persistence and their own ledger entries.
     """
-    body = dict(flight_plan_body)
+    body = dict(task_plan_body)
     if body.get("clarifications_resolved"):
         body["clarifications_resolved"] = apply_clarification_answers(
             body.get("clarifications_resolved"), None)
@@ -758,16 +758,16 @@ class ReplanRejectedError(Exception):
 
 
 def replan(
-    job_flight_plan: dict[str, Any],
-    new_plan: FlightPlan,
+    job_task_plan: dict[str, Any],
+    new_plan: TaskPlan,
     evidence_dir: Path,
     *,
     any_task_completed: bool = False,
     transformations: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], int]:
-    """Apply a new flight plan version.
+    """Apply a new task plan version.
 
-    Returns (updated flight_plan dict for Job, new version number).
+    Returns (updated task_plan dict for Job, new version number).
     Raises ReplanRejectedError if any task has already completed.
     Old plan.md files are kept (plan.md, plan_v2.md, plan_v3.md, ...).
     """
@@ -776,12 +776,12 @@ def replan(
             "Cannot replan after a task has completed. "
             "This limitation will be lifted in a future feature.")
 
-    versions = job_flight_plan.get("_versions", [])
+    versions = job_task_plan.get("_versions", [])
     current_version = len(versions) + 1
     new_version = current_version + 1
 
     new_plan_dict = new_plan.model_dump()
-    new_plan_dict["_versions"] = versions + [job_flight_plan]
+    new_plan_dict["_versions"] = versions + [job_task_plan]
     new_plan_dict["_version"] = new_version
     new_plan_dict["_approval"] = "pending"
 
@@ -791,14 +791,14 @@ def replan(
     return new_plan_dict, new_version
 
 
-def resolve_flight_plan_approval(
+def resolve_task_plan_approval(
     job: Any,
     *,
     reason: str,
     answers: dict[str, str],
     questions: list[dict[str, Any]],
 ) -> Path | None:
-    """Approve or reject a job's pending flight plan and persist the outcome.
+    """Approve or reject a job's pending task plan and persist the outcome.
 
     Extracted from `apps/cli/commands/decision.py` for DECISION F009 D5, so the UI
     write door can reach the SAME code the CLI has always run instead of growing a
@@ -816,17 +816,17 @@ def resolve_flight_plan_approval(
     """
     from packages.orchestration.pingpong_job import save_job_plan
 
-    fp = job.flight_plan
+    fp = job.task_plan
     if reason != "approve":
         fp["_approval"] = "rejected"
-        job.flight_plan = fp
+        job.task_plan = fp
         save_job_plan(job)
         return None
     if questions:
         fp["clarifications_resolved"] = apply_clarification_answers(
             fp.get("clarifications_resolved"), answers)
     fp["_approval"] = "approved"
-    job.flight_plan = fp
+    job.task_plan = fp
     save_job_plan(job)
     from packages.orchestration.data_paths import job_evidence_export_dir
     return write_assumptions_md(

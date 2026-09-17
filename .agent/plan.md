@@ -1,36 +1,38 @@
-# Plan — F261 CLI vocabulary v2 (rename & prune)
+# Plan — F280 CLI vocabulary v2, part two
 
-Branch: feature/f261-cli-vocabulary-v2, cut from `main` at
-`7cdde89b5d0dc8ef1fb96980105870e956699873`, the merge commit of pull request 250.
+Branch: feature/f280-cli-vocabulary-v2-part-two, cut from `main` at
+`9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`, the merge commit of pull request 251.
 
 ## Goal
 
-The catalog `apps/cli/command_catalog.py` equals DECISION amend0905-vocab D4: one name per
-command, and every retired word deleted rather than aliased, per
-`docs/roadmap/features/T2_F261.md` — as far as this feature reaches it; DECISION F261 D25
-moves the rest to F280. Everything the closure protocol asks for is on disk: the Built State,
-the integration gate, the self-use run, the rotated ledger and a READY_FOR_REVIEW package.
+F280 closed at round 25 (STATUS `[x]`, accepted HEAD `102950eb`, DECISION F280 D11). Pull
+request 253 is open; the Open PR Gate found hosted CI red on one node, which this round repairs.
 
 ## Current Step
 
-CLOSURE ROUND B, the last round of this branch. Its bookkeeping commit books round 27's verdict.
-Its closure commit then applies the STATUS `[x]` line authored from round 27's measured values,
-the README sync and `SU-015`'s `consumed_by` set to `F261`, with the final handoff, in ONE
-commit, per the closure protocol's Rule A4 ordering; then the pull request is opened and NOT
-merged.
+ROUND 26, A POST-CLOSURE CI REPAIR ROUND under AGENTS.md's Open PR Gate exception
+(amend0820-gate-autonomy — "Ended RED ... repairing that branch IS this session's work order").
+C1 books round 25's PASS (RECORD26) and registers R-0953: round 19's own doc-prose fix for
+R-0947 left `tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::
+test_guide_mentions_propose` asserting a string that fix made false, uncaught because round 19's
+own gate never re-ran that file. C2 lands the fix and appends `Done: R-0953`. C3 is the handback.
 
 ## Next Steps
 
-1. THE NEXT SESSION: Phase 1 rule 1 first, `.agent/STOP`; then the Open PR Gate merges this
-   branch's pull request; then Rule A5 claims F280.
+1. Once this round's push re-triggers CI and it reads green: Phase 1 rule 1 first,
+   `.agent/STOP`; then the Open PR Gate merges pull request 253; then Rule A5 claims the next
+   feature.
 
 ## Risks
 
-- The open findings stand at 125 by distinct id. Three are High — R-0803, R-0804 and R-0807 —
-  none of them F261's, and the integrity gate's `high_blockers_open` check does not see them,
-  which is R-0648; so the close is PASS_WITH_RISKS.
-- F261 closes with the Goal & Done sentence not met, and says so in its Built State; the
-  operator may reverse the split through operator question Q3.
-- The closure commit is the last commit on the branch, so the docs gate its own STATUS and
-  README edits must satisfy runs after it; the reviewer ran that gate against the same edits in
-  a disposable worktree before authoring.
+- Round 25's STATUS/README/evidence-queue edits are independently verified against the
+  closure commit's own content (RECORD26 above); the review package and evidence job the
+  STATUS line names were not independently re-read this round, since
+  `/home/decodeux/Repos/remedy-history/zips/` sits outside this session's sandboxed working
+  directory — the reviewer relies on round 24's own byte-level package verification for that
+  machinery's soundness.
+- A commit after the closure commit deviates from Rule A4's normal "closure is the branch's
+  last commit" rendering; it is justified here by the more specific, later-dated Open PR Gate
+  CI-repair authority (amend0820-gate-autonomy), which explicitly allows commits on an open
+  PR's branch to repair red CI. It does not reopen or alter the accepted HEAD, the STATUS line
+  or any evidence artifact round 25 already produced.

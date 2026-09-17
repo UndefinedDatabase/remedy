@@ -15,7 +15,7 @@ remedy job show <job_id> --full --json
 remedy ui <job_id>
 
 # 4. Review proposed follow-ups
-remedy propose list <job_id> --json
+remedy decision list <job_id> --json
 ```
 
 ## What these commands do
@@ -71,17 +71,19 @@ See `docs/core-product-spine-v0.md` for the full command taxonomy.
 Note: `mission` commands are an advanced/internal facade for mission contract
 bounded loops. For normal operation, use `job` commands.
 
-## First fulfilled job demo
+## First fulfilled job demo (commands deleted 2026-09-16)
 
 ```bash
-# Create a job, attach a repo, and run fixture fulfillment
-JOB_ID=$(remedy job create "Improve docs")
+# The `create` word under `job` built the job here, until F280 round 6 deleted it; the fixture
+# fulfillment step that followed was deleted by round 3. `do run "<goal>"` is the CLI's own
+# job-creation path today.
 remedy job attach-repo "$JOB_ID" /path/to/repo
-remedy job fulfill "$JOB_ID" --fixture-demo --json
 
 # Check result
 remedy job show "$JOB_ID" --full --json
-remedy propose list "$JOB_ID" --json
+remedy decision list "$JOB_ID" --json
 ```
 
-This demo uses fixture mode (no real provider). See `docs/first-fulfilled-job-demo-v0.md`.
+F280 round 3 deleted the `fulfill` word of the `job` group, which ran this demo in fixture mode
+(no real provider), and round 6 deleted the `create` word, so the demo no longer runs. See
+`docs/first-fulfilled-job-demo-v0.md` for what it did.

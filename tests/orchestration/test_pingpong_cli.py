@@ -431,6 +431,13 @@ class TestMissingClaudeCli:
         out = provider.review("test prompt")
         assert out.error
 
+    def test_missing_claude_names_the_job_run_provider_flags(self, monkeypatch):
+        monkeypatch.setenv("PATH", "/nonexistent")
+        provider = ClaudeCliProvider()
+        with pytest.raises(RuntimeError) as exc:
+            provider._get_claude_path()
+        assert "--builder-provider claude-cli or --reviewer-provider claude-cli." in str(exc.value)
+
 
 # ---------------------------------------------------------------------------
 # 18. Non-zero claude-cli blocks honestly
@@ -966,7 +973,7 @@ class TestCliWriteModeValidation:
 class TestCatalogHasWriteMode:
     def test_catalog_has_write_mode_arg(self):
         from apps.cli.command_catalog import get_command
-        cmd = get_command("do.run")
+        cmd = get_command("job.run")
         arg_names = [a.name for a in cmd.args]
         assert "--claude-cli-write-mode" in arg_names
 

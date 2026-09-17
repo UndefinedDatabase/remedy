@@ -45,16 +45,20 @@ One contract is persisted per job in `job.metadata["run_contract"]`. `ensure_con
 
 ## Contract mutation
 
-No command sets a contract field: F261 round 17 deleted the `contract` group, whose `set`
-subcommand was the only writer of `max_loops`, `max_test_runs`, `max_runtime_seconds`,
+`remedy job budget <job_id> set <field> <value>` (DECISION F280 D3) writes one of the five
+budget fields `max_loops`, `max_test_runs`, `max_runtime_seconds`, `max_tokens` and
+`max_cost_cents`, an integer of at least 0, onto the job's persisted contract, or onto the
+default of `build_default_run_contract` when the job has none. No command sets any other field:
+F261 round 17 deleted the `contract` group, whose `set` subcommand also wrote
 `stop_before_apply`, `stop_on_unknown_risk`, `stop_on_medium_risk`, `no_cloud` and `notes`.
-The contracts written now are the default of `build_default_run_contract`, the caller
+The other contracts written are the default of `build_default_run_contract`, the caller
 override `do_run` persists for the job it creates, and the fixture contract of
-`job_fulfillment`.
+`job_fulfillment`, which no command reaches since F280 round 3 deleted `job fulfill`.
 
 ## CLI
 
-None. The group's three subcommands were deleted by F261 round 17 under DECISION
+No group of its own; its budget fields are written by `job budget set` (above). The
+`contract` group's three subcommands were deleted by F261 round 17 under DECISION
 amend0905-vocab D4, which frees the word `contract` for the acceptance criteria of a
 mission. A job's execution boundary is read as its permissions and fences with
 `remedy job show <job_id> --full --json`.

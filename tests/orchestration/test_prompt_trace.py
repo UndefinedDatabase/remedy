@@ -273,29 +273,29 @@ class TestSegmentManifest:
 
         assert "make_intake_call_recorder" in inspect.getsource(do_cmd)
 
-    def test_the_cli_flight_plan_recorder_passes_the_composed_prompt(self):
-        """Wiring guard: an unwired flight-plan manifest fails HERE (F105 R27)."""
+    def test_the_cli_task_plan_recorder_passes_the_composed_prompt(self):
+        """Wiring guard: an unwired task-plan manifest fails HERE (F105 R27)."""
         import apps.cli.commands.do_cmd as do_cmd
-        from packages.orchestration.flight_plan import (
-            compose_flight_plan_prompt,
-            make_flight_plan_call_recorder,
+        from packages.orchestration.job_plan import (
+            compose_task_plan_prompt,
+            make_task_plan_call_recorder,
         )
 
         traces: list = []
-        composed = compose_flight_plan_prompt(
+        composed = compose_task_plan_prompt(
             {"goal": "demo"}, project_facts="pinned facts"
         )
-        recorder = make_flight_plan_call_recorder(
+        recorder = make_task_plan_call_recorder(
             traces, composed, provider="ollama", provider_kind="ollama"
         )
         recorder(1, "fp1", False, composed.text)
         assert len(traces) == 1
-        assert traces[0].role == "flight_plan"
-        assert traces[0].prompt_kind == "flight-plan"
+        assert traces[0].role == "task_plan"
+        assert traces[0].prompt_kind == "task-plan"
         assert len(traces[0].segment_manifest) == 5
 
         source = inspect.getsource(do_cmd)
-        assert "make_flight_plan_call_recorder" in source
+        assert "make_task_plan_call_recorder" in source
         assert "prompt_traces" in source
 
     def test_appending_traces_keeps_the_earlier_ones(self, tmp_path):
@@ -307,21 +307,21 @@ class TestSegmentManifest:
             prompt_text=composed.text, role="intake", composed_prompt=composed,
         )
         second = build_trace_entry(
-            prompt_text=composed.text, role="flight_plan", composed_prompt=composed,
+            prompt_text=composed.text, role="task_plan", composed_prompt=composed,
         )
         path = tmp_path / "prompt_trace.jsonl"
         write_trace_jsonl([first], path)
         append_trace_jsonl([second], path)
         lines = path.read_text().strip().split("\n")
         assert len(lines) == 2
-        assert [json.loads(x)["role"] for x in lines] == ["intake", "flight_plan"]
+        assert [json.loads(x)["role"] for x in lines] == ["intake", "task_plan"]
 
     def test_appending_to_a_missing_file_creates_it(self, tmp_path):
         from packages.orchestration.prompt_trace import append_trace_jsonl
 
         composed = compose_intake_prompt("demo mission")
         entry = build_trace_entry(
-            prompt_text=composed.text, role="flight_plan", composed_prompt=composed,
+            prompt_text=composed.text, role="task_plan", composed_prompt=composed,
         )
         path = tmp_path / "nested" / "prompt_trace.jsonl"
         append_trace_jsonl([entry], path)
@@ -347,8 +347,8 @@ class TestSegmentManifest:
         segments. The gate's equality is unreachable for any multi-segment
         prompt, so the true accounting identity is pinned here instead.
         """
-        from packages.orchestration.prompt_segments import PROMPT_SEGMENT_DELIMITER
         from packages.orchestration.pingpong_loop import compose_builder_prompt
+        from packages.orchestration.prompt_segments import PROMPT_SEGMENT_DELIMITER
 
         composed = compose_builder_prompt(
             "implement feature X",
@@ -432,11 +432,11 @@ class TestSegmentManifest:
         coverage gap — recorded instead of implied. Structured mode is forced on
         here so the assertion cannot depend on the ambient environment.
         """
-        from packages.orchestration.prompt_segments import PROMPT_SEGMENT_DELIMITER
         from packages.orchestration.pingpong_loop import (
             _reviewer_effective_prompt,
             compose_reviewer_prompt,
         )
+        from packages.orchestration.prompt_segments import PROMPT_SEGMENT_DELIMITER
 
         monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
         composed = compose_reviewer_prompt(

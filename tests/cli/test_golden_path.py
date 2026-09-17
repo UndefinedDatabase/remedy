@@ -299,18 +299,18 @@ class TestLLMIntakeWiring:
             lambda: _fake_call_fn,
         )
 
-        from packages.orchestration.flight_plan import FlightPlanResult
-        from packages.orchestration.schemas.models import FlightPlan
-        _fp = FlightPlan(
-            schema_v="flight_plan_v1",
+        from packages.orchestration.job_plan import TaskPlanResult
+        from packages.orchestration.schemas.models import TaskPlan
+        _fp = TaskPlan(
+            schema_v="task_plan_v1",
             tasks=[{"id": "T001", "title": "Do thing", "goal": "A goal",
                     "acceptance": ["Done"], "depends_on": [],
                     "est_tokens_band": "M", "files_hint": []}],
             risks=[],
         )
         monkeypatch.setattr(
-            "packages.orchestration.flight_plan.plan_job_llm",
-            lambda intake, call_fn, **kw: FlightPlanResult(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(
                 plan=_fp, source="llm", calls=1),
         )
 
@@ -403,7 +403,7 @@ class TestLLMIntakeWiring:
     def test_provider_error_label_distinct_from_unavailable(self, tmp_path, monkeypatch):
         """Provider reachable but returns bad output → 'provider error', not 'unavailable'.
 
-        Intake falls to heuristic; flight plan is mocked to succeed so we
+        Intake falls to heuristic; task plan is mocked to succeed so we
         isolate the intake label under test.
         """
         repo = _git_repo(tmp_path)
@@ -418,18 +418,18 @@ class TestLLMIntakeWiring:
             lambda: _bad_call_fn,
         )
 
-        from packages.orchestration.flight_plan import FlightPlanResult
-        from packages.orchestration.schemas.models import FlightPlan
-        _fp = FlightPlan(
-            schema_v="flight_plan_v1",
+        from packages.orchestration.job_plan import TaskPlanResult
+        from packages.orchestration.schemas.models import TaskPlan
+        _fp = TaskPlan(
+            schema_v="task_plan_v1",
             tasks=[{"id": "T001", "title": "Do thing", "goal": "A goal",
                     "acceptance": ["Done"], "depends_on": [],
                     "est_tokens_band": "M", "files_hint": []}],
             risks=[],
         )
         monkeypatch.setattr(
-            "packages.orchestration.flight_plan.plan_job_llm",
-            lambda intake, call_fn, **kw: FlightPlanResult(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(
                 plan=_fp, source="llm", calls=1),
         )
 

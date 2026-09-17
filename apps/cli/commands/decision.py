@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     import argparse
 
 #: F051 task-decision namespace.  Mirrors escalation.DECISION_ID_PREFIX, kept
-#: as a literal here so this module's dispatch reads like the ``sr:``/``fp:``
+#: as a literal here so this module's dispatch reads like the ``sr:``/``plan:``
 #: branches next to it.
 _ESCALATION_PREFIX = "td:"
 
@@ -213,18 +213,18 @@ def _cmd_decision_resolve(
     answer: list[str] | None = None,
     as_mission: bool = False,
 ) -> None:
-    # ``--answer`` bundles the flight plan's clarification questions; a task
+    # ``--answer`` bundles the task plan's clarification questions; a task
     # decision carries exactly one question, answered through --reason.
-    if answer and not decision_id.startswith("fp:"):
+    if answer and not decision_id.startswith("plan:"):
         print(
-            f"Error: --answer is only valid for the flight-plan approval "
+            f"Error: --answer is only valid for the task-plan approval "
             f"decision, not {decision_id!r}.",
             file=sys.stderr)
         sys.exit(1)
     # F056: same rule for the mission opt-in — it belongs to the plan approval.
-    if as_mission and not decision_id.startswith("fp:"):
+    if as_mission and not decision_id.startswith("plan:"):
         print(
-            f"Error: --as-mission is only valid for the flight-plan approval "
+            f"Error: --as-mission is only valid for the task-plan approval "
             f"decision, not {decision_id!r}.",
             file=sys.stderr)
         sys.exit(1)
@@ -290,7 +290,7 @@ def _cmd_decision_resolve(
         for ref in answered.get("cross_references", []):
             print(f"  Same question also asked as: {ref}")
         print(f"Resume the run: remedy job resume {job_id_str} --json")
-    elif decision_id.startswith("fp:"):
+    elif decision_id.startswith("plan:"):
         from packages.orchestration.data_paths import resolve_job_id as _rji
         from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan
 
@@ -301,13 +301,13 @@ def _cmd_decision_resolve(
             print(f"Error: {exc}", file=sys.stderr)
             sys.exit(1)
 
-        from packages.orchestration.flight_plan import (
+        from packages.orchestration.job_plan import (
             clarifications_already_resolved,
             open_clarification_questions,
-            resolve_flight_plan_approval,
+            resolve_task_plan_approval,
         )
 
-        fp = getattr(job, "flight_plan", None)
+        fp = getattr(job, "task_plan", None)
         if not isinstance(fp, dict) or fp.get("_approval") != "pending":
             # Answers are asked once and written once. A late one is a
             # mistake worth naming, not a generic "nothing pending".
@@ -318,14 +318,14 @@ def _cmd_decision_resolve(
                     "answers are immutable.",
                     file=sys.stderr)
                 sys.exit(1)
-            print("Error: no pending flight plan approval for this job.", file=sys.stderr)
+            print("Error: no pending task plan approval for this job.", file=sys.stderr)
             sys.exit(1)
 
         if reason not in ("approve", "reject"):
             print(
                 "Error: --reason must be 'approve' or 'reject'.\n"
-                f"  remedy decision resolve {job_id_str} fp:approval --reason approve\n"
-                f"  remedy decision resolve {job_id_str} fp:approval --reason reject",
+                f"  remedy decision resolve {job_id_str} plan:approval --reason approve\n"
+                f"  remedy decision resolve {job_id_str} plan:approval --reason reject",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -348,9 +348,9 @@ def _cmd_decision_resolve(
             sys.exit(1)
 
         if reason == "approve":
-            log_path = resolve_flight_plan_approval(
+            log_path = resolve_task_plan_approval(
                 job, reason="approve", answers=answers, questions=questions)
-            print(f"Flight plan approved for job {job_id_str}.")
+            print(f"Task plan approved for job {job_id_str}.")
             for q in questions:
                 qid = q["id"]
                 source = "human" if qid in answers else "default"
@@ -362,9 +362,83 @@ def _cmd_decision_resolve(
             if as_mission:
                 _create_mission_for_job(job)
         else:
-            resolve_flight_plan_approval(
+            resolve_task_plan_approval(
                 job, reason="reject", answers=answers, questions=questions)
-            print(f"Flight plan rejected for job {job_id_str}.")
+            print(f"Task plan rejected for job {job_id_str}.")
+    elif decision_id.startswith("proposal:"):
+        from packages.orchestration.data_paths import resolve_job_id as _rji
+        from packages.orchestration.proposed_tasks import (
+            approve_proposed_task,
+            defer_proposed_task,
+            do_materialize,
+            get_proposed_task,
+            reject_proposed_task,
+        )
+
+        job_id = _rji(job_id_str)
+        task_id = decision_id[9:]  # Remove "proposal:" prefix
+
+        task = get_proposed_task(job_id, task_id)
+        if task is None:
+            print(f"Error: proposed task not found: {task_id}", file=sys.stderr)
+            sys.exit(1)
+
+        if reason not in ("approve", "reject", "defer"):
+            print(
+                "Error: --reason must be 'approve', 'reject', or 'defer'.\n"
+                f"  remedy decision resolve {job_id_str} proposal:{task_id} --reason approve\n"
+                f"  remedy decision resolve {job_id_str} proposal:{task_id} --reason reject\n"
+                f"  remedy decision resolve {job_id_str} proposal:{task_id} --reason defer",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        if reason == "approve":
+            # Approve and materialize the task
+            from packages.orchestration.proposed_tasks import ProposedTaskStatus
+
+            if task.is_unresolved():
+                # First approve the unresolved task
+                task = approve_proposed_task(job_id, task_id)
+                if task is None:
+                    print(f"Error: failed to approve proposed task {task_id}", file=sys.stderr)
+                    sys.exit(1)
+
+            # Materialize only if approved and not already materialized
+            if task.status == ProposedTaskStatus.APPROVED_FOR_BUILD and not task.is_materialized:
+                task = do_materialize(job_id, task_id)
+                if task is None:
+                    print(f"Error: failed to materialize proposed task {task_id}", file=sys.stderr)
+                    sys.exit(1)
+                print(f"Proposed task {task_id} approved and materialized for job {job_id_str}.")
+            else:
+                # Task is rejected, deferred, or already materialized
+                print(
+                    f"Error: cannot approve a {task.status.value} proposed task: {task_id}",
+                    file=sys.stderr)
+                sys.exit(1)
+        elif reason == "reject":
+            if task.is_terminal():
+                print(
+                    f"Error: cannot reject a terminal proposed task ({task.status.value}): {task_id}",
+                    file=sys.stderr)
+                sys.exit(1)
+            task = reject_proposed_task(job_id, task_id)
+            if task is None:
+                print(f"Error: failed to reject proposed task {task_id}", file=sys.stderr)
+                sys.exit(1)
+            print(f"Proposed task {task_id} rejected for job {job_id_str}.")
+        elif reason == "defer":
+            if task.is_terminal():
+                print(
+                    f"Error: cannot defer a terminal proposed task ({task.status.value}): {task_id}",
+                    file=sys.stderr)
+                sys.exit(1)
+            task = defer_proposed_task(job_id, task_id)
+            if task is None:
+                print(f"Error: failed to defer proposed task {task_id}", file=sys.stderr)
+                sys.exit(1)
+            print(f"Proposed task {task_id} deferred for job {job_id_str}.")
     else:
         print(f"Decision '{decision_id}' is derived and cannot be directly resolved.", file=sys.stderr)
         print("Resolve the underlying record (patch intent, test, etc.) instead.", file=sys.stderr)

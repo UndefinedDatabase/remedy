@@ -61,7 +61,7 @@ export function decisionClarificationFieldKey(
  *  decision's position and id.
  *
  *  A decision carrying no clarification collects an empty object, which is the
- *  normal case — every card but a pending flight-plan approval — and NOT a
+ *  normal case — every card but a pending task-plan approval — and NOT a
  *  failure. The empty map is what `clarificationAnswersArg` turns into an absent
  *  `answers` key, so an untouched form posts exactly what a client written
  *  before this form posts. */

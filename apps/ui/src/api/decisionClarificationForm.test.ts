@@ -58,7 +58,7 @@ describe("collectDecisionClarificationAnswers", () => {
   });
 
   it("collects an empty object for a decision that carries no clarification", () => {
-    // Every card but a pending flight-plan approval is this case, and it is the
+    // Every card but a pending task-plan approval is this case, and it is the
     // normal one: the empty map is what becomes an absent `answers` key.
     const decision = buildDecisionCardModel({ id: "d-1", status: "open" });
     expect(decision.clarifications).toEqual([]);

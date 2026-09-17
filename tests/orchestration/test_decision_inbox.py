@@ -37,21 +37,22 @@ PRODUCING_DECISION_TYPES = (
     "repo_dirty",
     "token_budget",
     "memory_review",
-    "flight_plan_approval",
+    "task_plan_approval",
     "task_decision",
+    "proposal",
 )
 
 #: DECISION F031 D19 — the types the write door's ``decision.resolve`` can
 #: actually answer, EACH IN THE STATE ITS PRODUCING FIXTURE BUILDS.  Until
 #: DECISION F031 D24 the door reached a record only through
 #: ``escalation.find_task_decision``, so ``task_decision`` was the whole set and
-#: finding R-0693 measured it; D24 added the ``fp:`` branch, which accepts a
-#: flight plan whose ``_approval`` is ``"pending"`` — exactly what
-#: ``_fixture_flight_plan_approval`` builds.  This tuple says nothing about a
-#: RESOLVED flight plan, which carries the same type and is refused;
-#: ``test_an_approved_flight_plan_card_is_not_answerable`` pins that case, for
+#: finding R-0693 measured it; D24 added the ``plan:`` branch, which accepts a
+#: task plan whose ``_approval`` is ``"pending"`` — exactly what
+#: ``_fixture_task_plan_approval`` builds.  This tuple says nothing about a
+#: RESOLVED task plan, which carries the same type and is refused;
+#: ``test_an_approved_task_plan_card_is_not_answerable`` pins that case, for
 #: the reason its task-decision sibling gives.
-ANSWERABLE_DECISION_TYPES = ("flight_plan_approval", "task_decision")
+ANSWERABLE_DECISION_TYPES = ("task_plan_approval", "task_decision", "proposal")
 
 FIXED_NOW = datetime(2026, 8, 23, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -140,8 +141,8 @@ def _fixture_memory_review() -> tuple[JobPlan, list[dict]]:
     return _make_job(), []
 
 
-def _fixture_flight_plan_approval() -> tuple[JobPlan, list[dict]]:
-    return _make_job(flight_plan={"_approval": "pending"}), []
+def _fixture_task_plan_approval() -> tuple[JobPlan, list[dict]]:
+    return _make_job(task_plan={"_approval": "pending"}), []
 
 
 def _fixture_task_decision() -> tuple[JobPlan, list[dict]]:
@@ -156,6 +157,40 @@ def _fixture_task_decision() -> tuple[JobPlan, list[dict]]:
     return job, []
 
 
+def _fixture_proposal() -> tuple[JobPlan, list[dict]]:
+    """Build a fixture with an unresolved proposed task.
+
+    The _isolated_data_root fixture (autouse) has already set up
+    REMEDY_DATA_DIR, so we use that via the data_paths module.
+    """
+    from pathlib import Path
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.proposed_tasks import (
+        ProposedTask,
+        ProposedTaskStatus,
+        add_proposed_task,
+    )
+
+    from packages.orchestration.pingpong_job import save_job_plan
+
+    job = _make_job()
+    job_id = str(job.job_id)
+    data_root = Path(resolve_data_root())
+
+    # Save the job so it can be found by the system
+    save_job_plan(job, root=data_root)
+
+    # Add an unresolved proposed task
+    t = ProposedTask(
+        title="Review findings",
+        status=ProposedTaskStatus.PROPOSED,
+        created_at=FIXED_NOW - timedelta(seconds=60),
+    )
+    add_proposed_task(job_id, t, root=data_root)
+
+    return job, []
+
+
 PRODUCING_FIXTURES = {
     "patch_approval": _fixture_patch_approval,
     "stop_reason": _fixture_stop_reason,
@@ -163,8 +198,9 @@ PRODUCING_FIXTURES = {
     "repo_dirty": _fixture_repo_dirty,
     "token_budget": _fixture_token_budget,
     "memory_review": _fixture_memory_review,
-    "flight_plan_approval": _fixture_flight_plan_approval,
+    "task_plan_approval": _fixture_task_plan_approval,
     "task_decision": _fixture_task_decision,
+    "proposal": _fixture_proposal,
 }
 
 
@@ -242,10 +278,10 @@ def test_age_seconds_is_the_exact_integer_for_a_known_stamp():
 
 
 def test_age_seconds_is_none_for_an_empty_stamp():
-    # The flight-plan branch writes created_at="" — the empty case, upstream.
-    job, events = _fixture_flight_plan_approval()
+    # The task-plan branch writes created_at="" — the empty case, upstream.
+    job, events = _fixture_task_plan_approval()
     card = _cards_by_type(
-        build_decision_inbox(job, events, now=FIXED_NOW))["flight_plan_approval"]
+        build_decision_inbox(job, events, now=FIXED_NOW))["task_plan_approval"]
     assert card["age_seconds"] is None
 
 
@@ -356,22 +392,22 @@ def test_answerable_key_goes_false_once_the_decision_has_been_answered():
     assert card["answerable_by_decision_resolve"] is False
 
 
-def test_an_approved_flight_plan_card_is_not_answerable():
+def test_an_approved_task_plan_card_is_not_answerable():
     """A settled plan is refused by the door, so the key must be False (D24).
 
     Sibling of the test above and for the identical reason its docstring
     gives: a type check cannot tell an open card from a resolved one, because
-    both read ``flight_plan_approval``.  Without this,
+    both read ``task_plan_approval``.  Without this,
     ``ANSWERABLE_DECISION_TYPES`` would be the only statement about the type
-    and it would read as "every flight-plan card is answerable", which the
+    and it would read as "every task-plan card is answerable", which the
     door's ``_approval == "pending"`` condition makes false.
     """
-    job = _make_job(flight_plan={"_approval": "approved",
+    job = _make_job(task_plan={"_approval": "approved",
                                  "_approval_audit": {"reason": "approved"}})
     card = _cards_by_type(
-        build_decision_inbox(job, [], now=FIXED_NOW))["flight_plan_approval"]
+        build_decision_inbox(job, [], now=FIXED_NOW))["task_plan_approval"]
 
-    assert card["id"] == "fp:approval"
+    assert card["id"] == "plan:approval"
     assert card["status"] == "resolved"
     assert card["answerable_by_decision_resolve"] is False
 

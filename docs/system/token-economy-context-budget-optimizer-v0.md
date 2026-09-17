@@ -83,9 +83,10 @@ F261 round 18 deleted the `token` group (`budget-show`, `budget-set`, `estimate`
 `packages/orchestration/token_economy.py` stays whole and nothing below changes: the report is
 built by `token_economy_report`, which the web cockpit reads for the `token_economy` section of a
 job's payload (`remedy ui start`), and the band, cost and text estimators are read by the budget
-guard, the cost preview, the mission dossier and the prompt segments. The budget profile now has
-no writer: `load_token_budget_profile` returns the built-in default for every job, so the caps
-below are the defaults until a later round builds the `job budget <id> set` word of D4.
+guard, the cost preview, the mission dossier and the prompt segments. The budget profile's one
+writer is `remedy job budget <job_id> set <field> <value>` (DECISION F280 D3), which loads the
+profile through `load_token_budget_profile`, replaces one field and saves it through
+`save_token_budget_profile`; a job nobody set reads the built-in defaults below.
 
 ## Anti-goals (explicit)
 

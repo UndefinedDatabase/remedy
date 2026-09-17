@@ -286,10 +286,16 @@ print('    Repository structure sanity: OK')
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="3"
     echo "--- 3. Create job"
-    JOB_ID="$(remedy job create "${PROMPT}" \
-        --project "${PROJECT_ID}" \
-        --task-type write_readme \
-        --task-description "Write/update README.md for smoke target.")"
+    JOB_ID="$(SMOKE_PROMPT="${PROMPT}" SMOKE_PROJECT_ID="${PROJECT_ID}" python3 -c "
+import os
+from apps.cli.commands.job import _cmd_create_job
+_cmd_create_job(
+    os.environ['SMOKE_PROMPT'],
+    project_id=os.environ['SMOKE_PROJECT_ID'],
+    task_type='write_readme',
+    task_description='Write/update README.md for smoke target.',
+)
+")"
     if [[ -z "${JOB_ID}" ]]; then
         echo "ERROR: job create did not print a job ID" >&2
         return 1
@@ -2101,13 +2107,13 @@ print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey i
 "
 
     # -------------------------------------------------------------------------
-    # 14a. Flight plan approval gate — real CLI sequence (F014 T004)
-    # Provider stand-in: inline save_job_plan seeds job with pending flight plan.
+    # 14a. Task plan approval gate — real CLI sequence (F014 T004)
+    # Provider stand-in: inline save_job_plan seeds job with pending task plan.
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="14a"
-    echo "--- 14a. Flight plan approval gate (CLI sequence)"
+    echo "--- 14a. Task plan approval gate (CLI sequence)"
 
-    # Seed a job with a pending flight plan (provider stand-in)
+    # Seed a job with a pending task plan (provider stand-in)
     FP_JOB_ID="$(python3 -c "
 import json
 from packages.core.models import RunState
@@ -2115,8 +2121,8 @@ from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_pla
 job = JobPlan(
     job_title='smoke-approval',
     state=RunState.PLANNED,
-    flight_plan={
-        'schema_v': 'flight_plan_v1',
+    task_plan={
+        'schema_v': 'task_plan_v1',
         'tasks': [{'id': 'T001', 'title': 'Smoke task', 'goal': 'G',
                     'acceptance': ['done'], 'depends_on': [],
                     'est_tokens_band': 'M', 'files_hint': []}],
@@ -2144,7 +2150,7 @@ print(job.job_id[:8])
     echo "    run-next blocked: exit 3 (OK)"
 
     # Approve via decision resolve
-    remedy decision resolve "${FP_JOB_ID}" fp:approval --reason approve
+    remedy decision resolve "${FP_JOB_ID}" plan:approval --reason approve
     echo "    approved: OK"
 
     # Status shows the job

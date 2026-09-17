@@ -1,0 +1,14 @@
+Git Status (I2):
+(empty)
+
+High Blocker Findings (I3):
+  R-0803 count: 5
+  R-0804 count: 4
+  R-0807 count: 4
+
+High Blockers Open Check:
+  Status: pass
+  Message: no open blocker/high findings
+
+Overall Result:
+  run_integrity_checks() passed: True

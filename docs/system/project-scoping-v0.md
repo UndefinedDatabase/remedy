@@ -40,6 +40,6 @@ Under `--all-projects`, jobs show suffixes:
 
 ## Creation guard
 
-`remedy job create` and `remedy do run` require a resolvable project
-(exit 3 with fix-it hint if none found). Library functions keep
-permissive `project_id=None` for test harnesses.
+`remedy do run` requires a resolvable project (exit 3 with fix-it hint if none found); the
+retired `job create` word required one the same way. Library functions keep permissive
+`project_id=None` for test harnesses.

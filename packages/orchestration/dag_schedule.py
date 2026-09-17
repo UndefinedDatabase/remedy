@@ -6,25 +6,25 @@ schedule reproducible across a kill and a resume.
 
 Dependency edges
 ----------------
-A task carries its Flight Plan metadata in ``task.inputs["flight"]``:
+A task carries its Task Plan metadata in ``task.inputs["plan"]``:
 ``planned_id`` is its own plan-level id and ``depends_on`` lists the planned
-ids it waits for (producer: ``map_flight_plan_to_tasks``, flight_plan.py).
+ids it waits for (producer: ``map_task_plan_to_tasks``, job_plan.py).
 Planned ids are resolved to task ids through the plan itself, so this module
-never needs the FlightPlan object.
+never needs the TaskPlan object.
 
 ONE rule covers plans that have no such metadata (legacy plans, heuristic
-fallback plans): **a task without ``inputs["flight"]`` implicitly depends on
+fallback plans): **a task without ``inputs["plan"]`` implicitly depends on
 its predecessor in plan order.**  A legacy plan therefore schedules exactly
 linearly, as it did before this module existed, and a plan mixing flight and
 legacy tasks resolves each task by its own kind.
 
 Unknown or dangling dependency ids — a ``depends_on`` entry naming no task in
 the plan — are treated as a dependency that can never complete, so the
-dependent task is never ready.  Plan-time Flight Plan validation rejects such
+dependent task is never ready.  Plan-time Task Plan validation rejects such
 plans, which makes this a legacy-only corner; it is handled rather than
 raised so one malformed legacy plan cannot crash the loop.
 
-Cycles are likewise a plan-time concern: the Flight Plan schema validates the
+Cycles are likewise a plan-time concern: the Task Plan schema validates the
 DAG before execution, so a cycle cannot reach this module.  Should one appear
 anyway, its members simply never become ready — the executor's existing
 terminal-blocked path reports it instead of this module looping forever.
@@ -69,7 +69,7 @@ class TaskNode:
 
 def _flight_meta(task: TaskEntry) -> Mapping[str, Any] | None:
     """The task's flight metadata, or None when it carries none."""
-    flight = task.inputs.get("flight")
+    flight = task.inputs.get("plan")
     return flight if isinstance(flight, Mapping) else None
 
 

@@ -174,7 +174,7 @@ Both were inventoried against the code before the view was written
    `role_limit` line in `--json`, and the matching note in the table — because
    presenting one bucket as a per-role breakdown would be the lie.
 
-   The richer role vocabulary (`intake`, `flight_plan`, `orchestrator`,
+   The richer role vocabulary (`intake`, `task_plan`, `orchestrator`,
    `mission_plan`, `planner`, …) exists on the PROMPT TRACE side, but five of
    those roles produce no ledger row at all: rows are only ever created from a
    task run's `provider_evidence.json`, and the intake, plan, mission and

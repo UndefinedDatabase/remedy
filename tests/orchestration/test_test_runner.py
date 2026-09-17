@@ -226,7 +226,8 @@ class TestPermitGuidanceArgOrder:
         assert init.returncode == 0, init.stderr.decode()
 
         r = subprocess.run(
-            [sys.executable, "-m", "apps.cli.main", "job", "create", "perm test"],
+            [sys.executable, "-c",
+             "from apps.cli.commands.job import _cmd_create_job; _cmd_create_job('perm test')"],
             capture_output=True, env=env, cwd=str(repo), timeout=10,
         )
         job_id = r.stdout.decode().strip()

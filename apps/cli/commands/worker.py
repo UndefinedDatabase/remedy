@@ -235,6 +235,62 @@ def _cmd_worker_status_live(*, json_output: bool = False) -> None:
         print(f"Processed: {status.processed_job_count}")
 
 
+def _cmd_worker_doctor(*, json_output: bool = False) -> None:
+    """Read-only: does each `available` worker spec's own tooling actually exist?
+
+    `list_worker_specs()` is data-only by design (worker_adapters.py's own
+    docstring: "no network calls, no secrets, no shell execution"), so a spec
+    marked `available` is a claim nothing in that module ever tests. This is
+    the one check that does: for the spec(s) currently `available`, confirm
+    the executable `worker resources`/`worker unload` already assume is
+    reachable really is, the same `shutil.which` probe those two use.
+    """
+    import shutil
+
+    from packages.orchestration.worker_adapters import list_worker_specs
+
+    checks: list[dict[str, str | bool]] = []
+
+    def _check(name: str, ok: bool, detail: str = "") -> None:
+        checks.append({"check": name, "ok": ok, "detail": detail})
+
+    specs = list_worker_specs()
+    _check("worker_specs", True, f"{len(specs)} provider specs loaded")
+
+    for spec in specs:
+        if spec.status != "available":
+            continue
+        if spec.provider_id == "ollama":
+            found = shutil.which("ollama") is not None
+            _check("provider_ollama", found,
+                   "ollama on PATH" if found else "ollama not found on PATH")
+        else:
+            # An `available` spec this doctor has no probe for: say so rather
+            # than silently reporting it as though it had passed one.
+            _check(f"provider_{spec.provider_id}", False,
+                   f"no doctor probe defined for {spec.provider_id}")
+
+    blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
+    ready = len(blockers) == 0
+
+    result: dict = {
+        "version": 1,
+        "ready": ready,
+        "checks": checks,
+        "blockers": blockers,
+    }
+
+    if json_output:
+        print(_json.dumps(result, sort_keys=True))
+        return
+    print(f"Worker Doctor: {'READY' if ready else 'NOT READY'}")
+    for c in checks:
+        ok = "OK" if c["ok"] else "FAIL"
+        print(f"  [{ok}] {c['check']}: {c['detail']}")
+    if blockers:
+        print(f"  blockers: {', '.join(blockers)}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "worker.list": lambda args: _cmd_workers(
         json_output=args.json,
@@ -253,4 +309,5 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=args.json,
     ),
     "worker.status": lambda args: _cmd_worker_status_live(json_output=args.json),
+    "worker.doctor": lambda args: _cmd_worker_doctor(json_output=args.json),
 }

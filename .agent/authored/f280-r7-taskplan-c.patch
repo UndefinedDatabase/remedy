@@ -1,0 +1,340 @@
+diff --git a/tests/orchestration/test_dod_compiler.py b/tests/orchestration/test_dod_compiler.py
+index 37e8e6a0..b2f2c2fb 100644
+--- a/tests/orchestration/test_dod_compiler.py
++++ b/tests/orchestration/test_dod_compiler.py
+@@ -48,7 +48,7 @@ from packages.orchestration.dod_schema import (
+     DoDSpecError,
+     DraftCheck,
+ )
+-from packages.orchestration.schemas.models import FlightPlan
++from packages.orchestration.schemas.models import TaskPlan
+ 
+ FIXTURE_DIR = Path(__file__).parent / "fixtures" / "dod"
+ FIXTURE_NAMES = ("docs_site", "api_service", "cli_tool")
+@@ -62,8 +62,8 @@ def load_fixture(name: str) -> dict:
+     return json.loads((FIXTURE_DIR / f"{name}.json").read_text(encoding="utf-8"))
+ 
+ 
+-def plan_of(fixture: dict) -> FlightPlan:
+-    return FlightPlan.model_validate(fixture["plan"])
++def plan_of(fixture: dict) -> TaskPlan:
++    return TaskPlan.model_validate(fixture["plan"])
+ 
+ 
+ def replaying(payload: dict):
+@@ -76,8 +76,8 @@ def replaying(payload: dict):
+     return _call
+ 
+ 
+-def simple_plan(*acceptance: str) -> FlightPlan:
+-    return FlightPlan.model_validate({
++def simple_plan(*acceptance: str) -> TaskPlan:
++    return TaskPlan.model_validate({
+         "schema_v": "flight_plan_v1",
+         "tasks": [{
+             "id": "T001",
+@@ -467,7 +467,7 @@ class TestGoldenFixtures:
+ # ---------------------------------------------------------------------------
+ 
+ class TestFallbackLabeling:
+-    def _plan(self) -> FlightPlan:
++    def _plan(self) -> TaskPlan:
+         return simple_plan("tests/x/test_a.py passes", "the CLI prints a table")
+ 
+     def test_no_provider_is_labeled_deterministic(self):
+diff --git a/packages/orchestration/task_granularity.py b/packages/orchestration/task_granularity.py
+index 9b6b59d5..76786694 100644
+--- a/packages/orchestration/task_granularity.py
++++ b/packages/orchestration/task_granularity.py
+@@ -23,7 +23,7 @@ import re
+ from dataclasses import dataclass, field
+ from typing import Any
+ 
+-from packages.orchestration.schemas.models import FlightPlan, PlannedTask
++from packages.orchestration.schemas.models import PlannedTask, TaskPlan
+ 
+ #: Token bands in ascending size order (mirrors schemas.models.TokenBand).
+ _BAND_ORDER: tuple[str, ...] = ("S", "M", "L", "XL")
+@@ -77,7 +77,7 @@ class Transformation:
+ class NormalizationResult:
+     """A (possibly) normalized plan plus the record of what changed."""
+ 
+-    plan: FlightPlan
++    plan: TaskPlan
+     transformations: list[Transformation]
+ 
+     def as_dicts(self) -> list[dict[str, Any]]:
+@@ -495,7 +495,7 @@ def _apply_merges(
+ # ---------------------------------------------------------------------------
+ 
+ def normalize_plan(
+-    plan: FlightPlan, cfg: GranularityConfig,
++    plan: TaskPlan, cfg: GranularityConfig,
+ ) -> NormalizationResult:
+     """Right-size a plan's tasks. Returns the plan to use plus the record.
+ 
+@@ -517,9 +517,9 @@ def normalize_plan(
+     data = plan.model_dump()
+     data["tasks"] = [t.model_dump() for t in tasks]
+     try:
+-        # Constructing the model IS the revalidation: FlightPlan's own
++        # Constructing the model IS the revalidation: TaskPlan's own
+         # _validate_dag runs here. No validation logic is copied.
+-        new_plan = FlightPlan(**data)
++        new_plan = TaskPlan(**data)
+     except Exception as exc:
+         # Fail open to the plan the human is about to approve, never to a
+         # broken one — and say so in the record.
+diff --git a/tests/orchestration/test_bundled_clarification.py b/tests/orchestration/test_bundled_clarification.py
+index aae2f491..5b4ce835 100644
+--- a/tests/orchestration/test_bundled_clarification.py
++++ b/tests/orchestration/test_bundled_clarification.py
+@@ -21,7 +21,7 @@ from packages.orchestration.flight_plan import (
+     write_assumptions_md,
+ )
+ from packages.orchestration.pingpong_job import JobPlan
+-from packages.orchestration.schemas.models import FlightPlan
++from packages.orchestration.schemas.models import TaskPlan
+ 
+ 
+ def _task(tid: str, **kw):
+@@ -36,10 +36,10 @@ def _task(tid: str, **kw):
+     return d
+ 
+ 
+-def _plan(**kw) -> FlightPlan:
++def _plan(**kw) -> TaskPlan:
+     d = {"schema_v": "flight_plan_v1", "tasks": [_task("T1")]}
+     d.update(kw)
+-    return FlightPlan(**d)
++    return TaskPlan(**d)
+ 
+ 
+ def _intake(*clarifications) -> dict:
+@@ -389,7 +389,7 @@ class TestApprovalDecisionPayload:
+ 
+     def test_legacy_plan_without_ids_still_loads(self):
+         """Pre-F034 fp1 data has no id/answered_by fields."""
+-        legacy = FlightPlan(**{
++        legacy = TaskPlan(**{
+             "schema_v": "flight_plan_v1",
+             "tasks": [_task("T1")],
+             "clarifications_resolved": [{
+diff --git a/tests/orchestration/test_product_smoke.py b/tests/orchestration/test_product_smoke.py
+index 042b7069..418abc5f 100644
+--- a/tests/orchestration/test_product_smoke.py
++++ b/tests/orchestration/test_product_smoke.py
+@@ -75,7 +75,7 @@ from packages.orchestration.product_smoke import (
+     smoke_config,
+     unregister,
+ )
+-from packages.orchestration.schemas.models import FlightPlan
++from packages.orchestration.schemas.models import TaskPlan
+ 
+ FIXTURES = Path(__file__).parent / "fixtures" / "smoke"
+ GOOD_APP = FIXTURES / "good_app.py"
+@@ -123,8 +123,8 @@ def smoke_check(*, blocking: bool = True, retry: bool = False) -> DoDCheck:
+                     blocking=blocking, source="standard")
+ 
+ 
+-def simple_plan(*acceptance: str) -> FlightPlan:
+-    return FlightPlan.model_validate({
++def simple_plan(*acceptance: str) -> TaskPlan:
++    return TaskPlan.model_validate({
+         "schema_v": "flight_plan_v1",
+         "tasks": [{"id": "T001", "title": "t", "goal": "g",
+                    "acceptance": list(acceptance) or ["tests/x.py passes"],
+@@ -561,7 +561,7 @@ class TestCorePathsVocabulary:
+ 
+ class TestPathExtraction:
+     def _ctx(self, *, goal: str = "", hints=(), acceptance=("done",)):
+-        plan = FlightPlan.model_validate({
++        plan = TaskPlan.model_validate({
+             "schema_v": "flight_plan_v1",
+             "tasks": [{"id": "T001", "title": "t", "goal": "g",
+                        "acceptance": list(acceptance), "est_tokens_band": "S"}],
+diff --git a/tests/orchestration/test_task_granularity.py b/tests/orchestration/test_task_granularity.py
+index 8022d76c..33ef4467 100644
+--- a/tests/orchestration/test_task_granularity.py
++++ b/tests/orchestration/test_task_granularity.py
+@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
+ 
+ import pytest
+ 
+-from packages.orchestration.schemas.models import FlightPlan, PlannedTask
++from packages.orchestration.schemas.models import PlannedTask, TaskPlan
+ from packages.orchestration.task_granularity import (
+     GranularityConfig,
+     normalize_plan,
+@@ -36,8 +36,8 @@ def _task(
+     )
+ 
+ 
+-def _plan(tasks: list[PlannedTask]) -> FlightPlan:
+-    return FlightPlan(schema_v="flight_plan_v1", tasks=list(tasks))
++def _plan(tasks: list[PlannedTask]) -> TaskPlan:
++    return TaskPlan(schema_v="flight_plan_v1", tasks=list(tasks))
+ 
+ 
+ @dataclass(frozen=True)
+@@ -494,7 +494,7 @@ def test_disabled_flag_is_a_byte_identical_pass_through() -> None:
+ 
+ def test_revalidation_failure_aborts_to_the_original_plan() -> None:
+     # 24 tasks + a 4-way split would be 27, over the schema's 25-task cap:
+-    # the new FlightPlan cannot be constructed, so nothing is applied.
++    # the new TaskPlan cannot be constructed, so nothing is applied.
+     tasks = [_task(f"F{i:03d}", acceptance=["a"], band="M") for i in range(23)]
+     tasks.append(_task("T1", acceptance=["one", "two", "three", "four"],
+                        band="XL"))
+diff --git a/packages/orchestration/mission_plan_schema.py b/packages/orchestration/mission_plan_schema.py
+index 9c0a3e89..72f276f7 100644
+--- a/packages/orchestration/mission_plan_schema.py
++++ b/packages/orchestration/mission_plan_schema.py
+@@ -137,7 +137,7 @@ class DraftJob(_Strict):
+     @model_validator(mode="after")
+     def _validate_draft_job(self) -> DraftJob:
+         # R-0168: an outline whose goal is blank becomes an empty acceptance
+-        # line in the milestone flight-plan view, which the FlightPlan
++        # line in the milestone flight-plan view, which the TaskPlan
+         # validators reject far downstream. Refused here, at parse time.
+         for field, value in (("title", self.title), ("goal", self.goal)):
+             if not value.strip():
+@@ -212,7 +212,7 @@ class MissionPlan(_Structured):
+ 
+     A DAG of milestones with goals, rationales, dependency edges, DoD
+     references and draft job outlines.  Validated on construction with the same
+-    discipline as ``FlightPlan._validate_dag``: no duplicate ids, no unknown
++    discipline as ``TaskPlan._validate_dag``: no duplicate ids, no unknown
+     dependencies, no cycles, hard milestone cap.
+     """
+ 
+@@ -243,7 +243,7 @@ class MissionPlan(_Structured):
+ def validate_milestone_dag(milestones: list[MilestoneDraft]) -> None:
+     """Refuse a milestone list that is not a well-formed DAG.
+ 
+-    The same four rules ``FlightPlan._validate_dag`` enforces for task DAGs,
++    The same four rules ``TaskPlan._validate_dag`` enforces for task DAGs,
+     applied to milestones: hard cap first (an over-cap plan is hallucinated
+     scope and there is no point validating its edges), then duplicate ids,
+     unknown dependencies, and cycles by depth-first search.
+diff --git a/tests/cli/test_decision_answers.py b/tests/cli/test_decision_answers.py
+index f44176ad..d56d25ac 100644
+--- a/tests/cli/test_decision_answers.py
++++ b/tests/cli/test_decision_answers.py
+@@ -23,7 +23,7 @@ from apps.cli.commands.decision import (
+ from apps.cli.grouped import main
+ from packages.orchestration.flight_plan import carry_intake_clarifications
+ from packages.orchestration.pingpong_job import JobPlan
+-from packages.orchestration.schemas.models import FlightPlan
++from packages.orchestration.schemas.models import TaskPlan
+ 
+ _QUESTIONS = [
+     {"id": "q1", "question": "Which database?",
+@@ -35,7 +35,7 @@ _QUESTIONS = [
+ 
+ def _pending_job() -> JobPlan:
+     plan = carry_intake_clarifications(
+-        FlightPlan(**{
++        TaskPlan(**{
+             "schema_v": "flight_plan_v1",
+             "tasks": [{
+                 "id": "T1", "title": "T", "goal": "g",
+@@ -383,7 +383,7 @@ class TestUnattendedEndToEnd:
+             lambda model_cls, **kw: (lambda prompt, attempt: "{}"),
+         )
+ 
+-        base_plan = FlightPlan(**{
++        base_plan = TaskPlan(**{
+             "schema_v": "flight_plan_v1",
+             "tasks": [{
+                 "id": "T001", "title": "Do thing", "goal": "A goal",
+diff --git a/tests/cli/test_golden_path.py b/tests/cli/test_golden_path.py
+index 94d7333f..2c40a384 100644
+--- a/tests/cli/test_golden_path.py
++++ b/tests/cli/test_golden_path.py
+@@ -300,8 +300,8 @@ class TestLLMIntakeWiring:
+         )
+ 
+         from packages.orchestration.flight_plan import FlightPlanResult
+-        from packages.orchestration.schemas.models import FlightPlan
+-        _fp = FlightPlan(
++        from packages.orchestration.schemas.models import TaskPlan
++        _fp = TaskPlan(
+             schema_v="flight_plan_v1",
+             tasks=[{"id": "T001", "title": "Do thing", "goal": "A goal",
+                     "acceptance": ["Done"], "depends_on": [],
+@@ -419,8 +419,8 @@ class TestLLMIntakeWiring:
+         )
+ 
+         from packages.orchestration.flight_plan import FlightPlanResult
+-        from packages.orchestration.schemas.models import FlightPlan
+-        _fp = FlightPlan(
++        from packages.orchestration.schemas.models import TaskPlan
++        _fp = TaskPlan(
+             schema_v="flight_plan_v1",
+             tasks=[{"id": "T001", "title": "Do thing", "goal": "A goal",
+                     "acceptance": ["Done"], "depends_on": [],
+diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
+index 9e1d606b..33fee2e6 100644
+--- a/apps/cli/commands/do_cmd.py
++++ b/apps/cli/commands/do_cmd.py
+@@ -208,14 +208,14 @@ def _cmd_do_mission(
+     plan_call_fn = None
+     if call_fn is not None and not no_llm:
+         from packages.orchestration.intake import make_structured_call_fn
+-        from packages.orchestration.schemas.models import FlightPlan
+-        # Planning needs a call_fn bound to FlightPlan: the intake one binds
++        from packages.orchestration.schemas.models import TaskPlan
++        # Planning needs a call_fn bound to TaskPlan: the intake one binds
+         # the provider's native schema to JobIntake, so the provider would
+         # answer in intake shape and every plan attempt would fail validation.
+-        # There is deliberately NO fallback to it — without a FlightPlan-bound
++        # There is deliberately NO fallback to it — without a TaskPlan-bound
+         # provider we skip LLM planning and take the deterministic skeleton
+         # below, exactly as the no-provider path does.
+-        plan_call_fn = make_structured_call_fn(FlightPlan)
++        plan_call_fn = make_structured_call_fn(TaskPlan)
+ 
+     if plan_call_fn is not None:
+         from packages.orchestration.flight_plan import (
+diff --git a/tests/orchestration/test_mission_e2e.py b/tests/orchestration/test_mission_e2e.py
+index 32f792d3..f8d0e187 100644
+--- a/tests/orchestration/test_mission_e2e.py
++++ b/tests/orchestration/test_mission_e2e.py
+@@ -76,7 +76,7 @@ from packages.orchestration.orchestrator_move_schema import (
+     ORCHESTRATOR_MOVE_SCHEMA_V,
+ )
+ from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+-from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, FlightPlan
++from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, TaskPlan
+ 
+ PROJECT = "p-f070-e2e"
+ GOAL = "Ship the demo end to end"
+@@ -157,7 +157,7 @@ def _finish_job_with_dod_met(job_id: str) -> None:
+         task.status = RunState.COMPLETED
+     save_job_plan(job)
+ 
+-    plan = FlightPlan.model_validate({
++    plan = TaskPlan.model_validate({
+         "schema_v": FLIGHT_PLAN_SCHEMA_V,
+         "tasks": [{"id": "T1", "title": "the work", "goal": "do the work",
+                    "acceptance": ["the work is done"], "depends_on": [],
+diff --git a/docs/roadmap/features/T2_F280.md b/docs/roadmap/features/T2_F280.md
+index 937790b0..d43fbcc6 100644
+--- a/docs/roadmap/features/T2_F280.md
++++ b/docs/roadmap/features/T2_F280.md
+@@ -78,6 +78,14 @@ profile, and F018's job budgets stay with `job run`'s flags; `job fulfill` is de
+ `job attach-repo` and `job permit` wait for a round whose DECISION first gives the repository
+ attach and the capability grants another writer, because five surviving commands gate on them.
+ 
++Amended 2026-09-16 by DECISION F280 D5, measured at `1805b05f`: the class
++`FlightPlan`/`FlightPlanClarification` becomes `TaskPlan`/`TaskPlanClarification` wherever the
++name is not a persisted value or an accepted `[x]` history file; the module rename, the
++persisted literals and the surviving prose stay owed. `propose`'s deletion is blocked on
++operator question Q4 of `.agent/operator_questions.md`, since deleting it strands `self
++execute`'s approved-for-build refusal and the cockpit's `can_finalize` hold with no
++operator-facing heir.
++
+ ## T002 — Descriptions, role labels, help wrapping, tests (carried over from F261's T004, whole)
+ The text below is F261's T004 verbatim:
+ 

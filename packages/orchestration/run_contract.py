@@ -771,6 +771,7 @@ def evaluate_run_action(
             allowed=False,
             status="exhausted",
             reason="max_test_runs is 0 — set it above 0 to enable test execution",
+            next_safe_action="remedy job budget <job_id> set max_test_runs <n>",
         )
 
     # 4. stop_before_apply blocks apply-type actions
@@ -808,7 +809,7 @@ def evaluate_run_action(
             allowed=False,
             status="exhausted",
             reason=f"Test runs {effective_tests} >= max_test_runs {contract.max_test_runs}",
-            next_safe_action="remedy job show <job_id> --json",
+            next_safe_action="remedy job budget <job_id> set max_test_runs <n>",
         )
 
     # 8. Runtime/token/cost budgets from usage

@@ -344,35 +344,11 @@ class TestEvidenceExport:
 
 
 # ---------------------------------------------------------------------------
-# CLI timeout precedence (F001)
+# Timeout precedence (F001) as run_pingpong applies it
 # ---------------------------------------------------------------------------
 
 class TestTimeoutPrecedence:
-    """Test _resolve_timeout_precedence from do_cmd."""
-
-    def test_explicit_raw_wins_over_default_profile(self):
-        from apps.cli.commands.do_cmd import _resolve_timeout_precedence
-        sec, prof = _resolve_timeout_precedence(999, None)
-        assert sec == 999
-        assert prof == ""
-
-    def test_explicit_raw_wins_over_explicit_profile(self):
-        """When both are explicitly set, raw timeout takes priority."""
-        from apps.cli.commands.do_cmd import _resolve_timeout_precedence
-        sec, prof = _resolve_timeout_precedence(999, "fast")
-        assert sec == 999
-        assert prof == ""
-
-    def test_explicit_profile_used_when_no_raw(self):
-        from apps.cli.commands.do_cmd import _resolve_timeout_precedence
-        sec, prof = _resolve_timeout_precedence(None, "fast")
-        assert prof == "fast"
-
-    def test_default_adaptive_normal_when_neither(self):
-        from apps.cli.commands.do_cmd import _resolve_timeout_precedence
-        sec, prof = _resolve_timeout_precedence(None, None)
-        assert prof == "normal"
-        assert sec == 120
+    """Raw timeout versus adaptive profile inside run_pingpong."""
 
     def test_raw_timeout_with_run_pingpong(self, tmp_path):
         """--timeout-sec 999 must result in 999s for both roles, no profile."""

@@ -572,44 +572,11 @@ class TestPerAttemptStreamLayout:
 
 
 # ---------------------------------------------------------------------------
-# `do run --stream-evidence` must reach the loop, not be accepted and dropped
+# Stream evidence always has a destination
 # ---------------------------------------------------------------------------
 
 
-class TestDoRunStreamEvidenceWiring:
-    def test_cli_flag_is_forwarded_to_run_pingpong(self, monkeypatch, tmp_path):
-        import apps.cli.commands.do_cmd as do_cmd
-        import packages.orchestration.pingpong_loop as pp
-
-        seen: dict[str, object] = {}
-
-        def _fake_run_pingpong(goal, repo, **kw):
-            seen.update(kw)
-            raise SystemExit(0)  # stop before any provider work
-
-        # _cmd_do imports run_pingpong from the loop module at call time.
-        monkeypatch.setattr(pp, "run_pingpong", _fake_run_pingpong)
-        repo = tmp_path / "repo"
-        repo.mkdir()
-        (repo / "README.md").write_text("# x\n")
-
-        with pytest.raises(SystemExit):
-            do_cmd._cmd_do(
-                "goal", repo=str(repo), builder="fake", reviewer="fake",
-                max_rounds=1, stream_evidence=True,
-            )
-        assert seen.get("stream_evidence") is True, \
-            "do run accepted --stream-evidence and dropped it"
-
-    def test_do_run_dispatch_reads_the_flag(self):
-        import inspect
-
-        import apps.cli.commands.do_cmd as do_cmd
-
-        src = inspect.getsource(do_cmd)
-        run_lambda = src.split('"do.run": lambda args:', 1)[1].split('"run.show":', 1)[0]
-        assert "stream_evidence" in run_lambda
-
+class TestStreamEvidenceDestination:
     def test_loop_defaults_stream_dir_when_caller_gives_none(self):
         import inspect
 

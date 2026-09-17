@@ -432,5 +432,5 @@ def _derive_next_action(job: JobPlan, events: list[dict[str, Any]]) -> str:
 
     return (
         f"  {_NEXT} No pending tasks. Inspect generated repo/workspace files\n"
-        f"      or create a new job: remedy job create \"<prompt>\""
+        f"      or create a new job: remedy do run \"<goal>\""
     )

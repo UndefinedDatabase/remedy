@@ -2,14 +2,14 @@
 
 Covers the contract half: stable question ids assigned by intake order,
 carry-through into the plan with empty answer/answered_by, embedding into
-the fp:approval decision payload, and the zero-clarification regression
+the plan:approval decision payload, and the zero-clarification regression
 (the approval flow must be identical to the plain plan).
 """
 
 from __future__ import annotations
 
 from packages.orchestration.decision_queue import export_decision_json, list_decisions
-from packages.orchestration.flight_plan import (
+from packages.orchestration.job_plan import (
     _build_plan_prompt,
     apply_clarification_answers,
     carry_intake_clarifications,
@@ -21,7 +21,7 @@ from packages.orchestration.flight_plan import (
     write_assumptions_md,
 )
 from packages.orchestration.pingpong_job import JobPlan
-from packages.orchestration.schemas.models import FlightPlan
+from packages.orchestration.schemas.models import TaskPlan
 
 
 def _task(tid: str, **kw):
@@ -36,10 +36,10 @@ def _task(tid: str, **kw):
     return d
 
 
-def _plan(**kw) -> FlightPlan:
-    d = {"schema_v": "flight_plan_v1", "tasks": [_task("T1")]}
+def _plan(**kw) -> TaskPlan:
+    d = {"schema_v": "task_plan_v1", "tasks": [_task("T1")]}
     d.update(kw)
-    return FlightPlan(**d)
+    return TaskPlan(**d)
 
 
 def _intake(*clarifications) -> dict:
@@ -337,11 +337,11 @@ class TestApprovalDecisionPayload:
         plan = carry_intake_clarifications(_plan(), _intake(*clarifications))
         fp = plan.model_dump()
         fp["_approval"] = "pending"
-        return JobPlan(job_title="t", flight_plan=fp)
+        return JobPlan(job_title="t", task_plan=fp)
 
     def _fp_decision(self, job: JobPlan):
         found = [d for d in list_decisions(job, [])
-                 if d.type == "flight_plan_approval"]
+                 if d.type == "task_plan_approval"]
         assert len(found) == 1, "exactly ONE decision per plan"
         return found[0]
 
@@ -374,7 +374,7 @@ class TestApprovalDecisionPayload:
 
     def test_zero_clarifications_matches_plain_plan(self):
         bundled_job = self._pending_job()
-        plain_job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
+        plain_job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
         bundled = self._fp_decision(bundled_job)
         plain = self._fp_decision(plain_job)
 
@@ -389,8 +389,8 @@ class TestApprovalDecisionPayload:
 
     def test_legacy_plan_without_ids_still_loads(self):
         """Pre-F034 fp1 data has no id/answered_by fields."""
-        legacy = FlightPlan(**{
-            "schema_v": "flight_plan_v1",
+        legacy = TaskPlan(**{
+            "schema_v": "task_plan_v1",
             "tasks": [_task("T1")],
             "clarifications_resolved": [{
                 "question": "Which DB?", "default_answer": "postgres",
@@ -402,5 +402,5 @@ class TestApprovalDecisionPayload:
         assert c.answered_by == ""
         fp = legacy.model_dump()
         fp["_approval"] = "pending"
-        d = self._fp_decision(JobPlan(job_title="t", flight_plan=fp))
+        d = self._fp_decision(JobPlan(job_title="t", task_plan=fp))
         assert d.payload == {"options": ["approve", "reject"]}

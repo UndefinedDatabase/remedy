@@ -562,7 +562,8 @@ class TestCLIDiscoverCommands:
         (repo / "tests").mkdir()
         _register_project(repo, env)
         r = subprocess.run(
-            ["python3", "-m", "apps.cli.main", "job", "create", "test job"],
+            ["python3", "-c",
+             "from apps.cli.commands.job import _cmd_create_job; _cmd_create_job('test job')"],
             capture_output=True, env=env, cwd=str(repo), timeout=15,
         )
         assert r.returncode == 0, r.stderr.decode()
@@ -963,7 +964,8 @@ class TestCLIDiscoverCommandsSchemaV1:
         (repo / "tests").mkdir()
         _register_project(repo, env)
         r = subprocess.run(
-            ["python3", "-m", "apps.cli.main", "job", "create", "test"],
+            ["python3", "-c",
+             "from apps.cli.commands.job import _cmd_create_job; _cmd_create_job('test')"],
             capture_output=True, env=env, cwd=str(repo), timeout=15,
         )
         assert r.returncode == 0, r.stderr.decode()

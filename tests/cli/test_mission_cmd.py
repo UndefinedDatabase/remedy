@@ -320,7 +320,7 @@ def _missions_on_disk(data_root: Path) -> list[Path]:
 
 def _pending_plan_job(repo: Path, data_root: Path, goal: str,
                       *, mission_candidate: bool) -> str:
-    """Persist a job with a pending flight plan and the given intake hint."""
+    """Persist a job with a pending task plan and the given intake hint."""
     script = (
         "import sys; sys.path.insert(0, '.');"
         "from packages.core.models import RunState;"
@@ -330,7 +330,7 @@ def _pending_plan_job(repo: Path, data_root: Path, goal: str,
         f"job = JobPlan(job_title='fixture', mission={goal!r}, project_id=str(project.id),"
         f"  intake={{'schema_v': 'ji1', 'goal': {goal!r},"
         f"           'mission_candidate': {mission_candidate!r}}},"
-        "   flight_plan={'schema_v': 'flight_plan_v1', '_approval': 'pending'},"
+        "   task_plan={'schema_v': 'task_plan_v1', '_approval': 'pending'},"
         "   state=RunState.PLANNED);"
         "save_job_plan(job); print(job.job_id)"
     )
@@ -361,7 +361,7 @@ class TestApprovalOptIn:
         job_id = _pending_plan_job(repo, data_root, "Keep it green",
                                    mission_candidate=True)
 
-        out = _run_in(repo, ["decision", "show", job_id, "fp:approval"],
+        out = _run_in(repo, ["decision", "show", job_id, "plan:approval"],
                       data_root).stdout
 
         assert "Run as mission" in out
@@ -374,7 +374,7 @@ class TestApprovalOptIn:
         job_id = _pending_plan_job(repo, data_root, "Keep it green",
                                    mission_candidate=True)
 
-        _run_in(repo, ["decision", "resolve", job_id, "fp:approval",
+        _run_in(repo, ["decision", "resolve", job_id, "plan:approval",
                        "--reason", "approve"], data_root)
 
         assert _missions_on_disk(data_root) == []
@@ -384,7 +384,7 @@ class TestApprovalOptIn:
         job_id = _pending_plan_job(repo, data_root, "Keep it green",
                                    mission_candidate=True)
 
-        out = _run_in(repo, ["decision", "resolve", job_id, "fp:approval",
+        out = _run_in(repo, ["decision", "resolve", job_id, "plan:approval",
                              "--reason", "approve", "--as-mission"],
                       data_root).stdout
 
@@ -403,7 +403,7 @@ class TestApprovalOptIn:
         job_id = _pending_plan_job(repo, data_root, "Fix the bug",
                                    mission_candidate=False)
 
-        _run_in(repo, ["decision", "resolve", job_id, "fp:approval",
+        _run_in(repo, ["decision", "resolve", job_id, "plan:approval",
                        "--reason", "approve", "--as-mission"], data_root)
 
         assert len(_missions_on_disk(data_root)) == 1
@@ -413,7 +413,7 @@ class TestApprovalOptIn:
         job_id = _pending_plan_job(repo, data_root, "Keep it green",
                                    mission_candidate=True)
 
-        proc = _run_in(repo, ["decision", "resolve", job_id, "fp:approval",
+        proc = _run_in(repo, ["decision", "resolve", job_id, "plan:approval",
                               "--reason", "reject", "--as-mission"],
                        data_root, expect_ok=False)
 
@@ -430,20 +430,20 @@ class TestApprovalOptIn:
                               "--reason", "approve", "--as-mission"],
                        data_root, expect_ok=False)
 
-        assert "--as-mission is only valid for the flight-plan approval" in proc.stderr
+        assert "--as-mission is only valid for the task-plan approval" in proc.stderr
 
     def test_a_job_already_in_a_mission_is_refused(self, repo_project):
         repo, data_root = repo_project
         job_id = _pending_plan_job(repo, data_root, "Keep it green",
                                    mission_candidate=True)
-        _run_in(repo, ["decision", "resolve", job_id, "fp:approval",
+        _run_in(repo, ["decision", "resolve", job_id, "plan:approval",
                        "--reason", "approve", "--as-mission"], data_root)
 
         second = _pending_plan_job(repo, data_root, "Keep it green too",
                                    mission_candidate=True)
         # Re-approving the SAME job is refused by the pending-state check, so
         # link the second job first and then try to link it again.
-        _run_in(repo, ["decision", "resolve", second, "fp:approval",
+        _run_in(repo, ["decision", "resolve", second, "plan:approval",
                        "--reason", "approve", "--as-mission"], data_root)
 
         assert len(_missions_on_disk(data_root)) == 2

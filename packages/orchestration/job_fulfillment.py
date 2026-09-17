@@ -478,7 +478,7 @@ def _generate_next_suggestions(job_id: str, data_dir: Path) -> list[str]:
     from packages.orchestration.proposed_tasks import (
         ProposedTask,
         ProposedTaskSource,
-        add_proposed_task,
+        add_and_evaluate_proposed_task,
     )
 
     suggestions = [
@@ -513,7 +513,7 @@ def _generate_next_suggestions(job_id: str, data_dir: Path) -> list[str]:
 
     ids = []
     for s in suggestions:
-        add_proposed_task(job_id, s, root=data_dir)
+        add_and_evaluate_proposed_task(job_id, s, root=data_dir)
         ids.append(s.id)
     return ids
 
@@ -1033,7 +1033,7 @@ def run_job_fulfill(
 
             suggestion_ids = _generate_next_suggestions(job_id, data_dir)
             record.next_suggestion_ids = suggestion_ids
-            record.next_safe_action = f"remedy propose list {job_id} --json"
+            record.next_safe_action = f"remedy decision list {job_id} --json"
 
             append_run_event(data_dir, job_id, event="fulfillment_completed", metadata={
                 "fulfillment_id": record.fulfillment_id,

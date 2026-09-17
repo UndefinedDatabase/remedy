@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+from contextlib import redirect_stdout
 
 import pytest
 
@@ -406,3 +408,189 @@ class TestExistingFlowsUnbroken:
         parsed = json.loads(text)
         assert "run_id" in parsed
         assert "task_input" in parsed
+
+
+# ---------------------------------------------------------------------------
+# Reports and flows with no scope plan (moved from tests/cli/test_scope_plan.py)
+# ---------------------------------------------------------------------------
+
+class TestRunReportRendering:
+    """Task input, provider evidence and token accounting in the JSON and text reports."""
+
+    def test_text_report_no_full_prompt(self, tmp_path, monkeypatch):
+        """Text report must not dump full task prompt."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        from packages.orchestration.pingpong_loop import (
+            export_pingpong_json,
+            load_task_file,
+            run_pingpong,
+        )
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Test\n")
+
+        task_path = tmp_path / "task.md"
+        secret = "SECRET_VALUE_SHOULD_NOT_APPEAR_IN_REPORT"
+        task_path.write_text(f"# Task\n{secret}\n\nFeatures:\n- Do stuff.\n", encoding="utf-8")
+        ti = load_task_file(str(task_path))
+
+        p = FakeProvider()
+        result = run_pingpong(
+            "", str(repo),
+            builder_provider=p, reviewer_provider=p,
+            task_input=ti,
+        )
+        data = export_pingpong_json(result)
+        text = json.dumps(data)
+        # Excerpt is capped, but the full secret should not be in the report
+        # unless it's in the bounded excerpt
+        assert data.get("task_input") is not None
+
+    def test_worker_self_report_separated(self):
+        """Step 4718: Worker self-report must be visually separated from Remedy proof."""
+        # This tests the text report rendering logic conceptually
+        from apps.cli.commands.do_cmd import _print_text_report
+
+        data = {
+            "goal": "Test goal",
+            "final_status": "staged_review_passed",
+            "rounds": [{
+                "round": 1,
+                "started_at": "",
+                "finished_at": "",
+                "builder": {"summary": "I changed things", "files_changed": []},
+                "test_passed": True,
+                "test_summary": "all passed",
+                "reviewer": {"verdict": "pass", "findings": []},
+            }],
+            "total_rounds": 1,
+            "max_rounds": 3,
+            "builder_provider": "fake",
+            "reviewer_provider": "fake",
+            "target_mutated": False,
+            "staged_files": ["README.md"],
+            "provider_evidence": {
+                "builder_provider_kind": "synthetic_test",
+                "reviewer_provider_kind": "synthetic_test",
+                "builder_write_mode": "none",
+                "reviewer_write_mode": "none",
+            },
+            "token_accounting": {"kind": "estimated"},
+        }
+
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            _print_text_report("test123", data)
+
+        output = buf.getvalue()
+        assert "Worker self-report:" in output
+        assert "Remedy verification:" in output
+        assert "Reviewer verdict:" in output
+
+    def test_existing_provider_evidence(self, tmp_path, monkeypatch):
+        """Existing provider evidence still renders in report."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        from packages.orchestration.pingpong_loop import (
+            export_pingpong_json,
+            run_pingpong,
+        )
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Test\n")
+        p = FakeProvider()
+        result = run_pingpong("Fix README", str(repo), builder_provider=p, reviewer_provider=p)
+        data = export_pingpong_json(result)
+        assert "provider_evidence" in data
+        assert data["provider_evidence"]["builder_provider_kind"] == "synthetic_test"
+
+    def test_existing_token_accounting(self, tmp_path, monkeypatch):
+        """Existing token accounting still renders in report."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        from packages.orchestration.pingpong_loop import (
+            export_pingpong_json,
+            run_pingpong,
+        )
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Test\n")
+        p = FakeProvider()
+        result = run_pingpong("Fix README", str(repo), builder_provider=p, reviewer_provider=p)
+        data = export_pingpong_json(result)
+        assert "token_accounting" in data
+        assert data["token_accounting"]["kind"] == "estimated"
+
+
+# ---------------------------------------------------------------------------
+# E2E: Existing flows still work
+# ---------------------------------------------------------------------------
+
+class TestExistingFlows:
+    """Verify existing flows run with no scope plan."""
+
+    def test_short_goal_still_works(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        from packages.orchestration.pingpong_loop import (
+            export_pingpong_json,
+            run_pingpong,
+        )
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Test\n")
+        p = FakeProvider()
+        result = run_pingpong("Fix README", str(repo), builder_provider=p, reviewer_provider=p, repair_rounds=2)
+        assert result.final_status == "staged_review_passed"
+        data = export_pingpong_json(result)
+        assert data["task_input"] is None
+
+    def test_task_file_without_scope_still_works(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        from packages.orchestration.pingpong_loop import (
+            export_pingpong_json,
+            load_task_file,
+            run_pingpong,
+        )
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Test\n")
+        task_path = tmp_path / "task.md"
+        task_path.write_text("# Simple task\nDo stuff.\n", encoding="utf-8")
+        ti = load_task_file(str(task_path))
+        p = FakeProvider()
+        result = run_pingpong(
+            "", str(repo),
+            builder_provider=p, reviewer_provider=p,
+            task_input=ti,
+            repair_rounds=2,
+        )
+        assert result.final_status == "staged_review_passed"
+        data = export_pingpong_json(result)
+        assert data["task_input"] is not None
+
+    def test_json_still_parseable(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        from packages.orchestration.pingpong_loop import (
+            export_pingpong_json,
+            run_pingpong,
+        )
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Test\n")
+        p = FakeProvider()
+        result = run_pingpong("Fix README", str(repo), builder_provider=p, reviewer_provider=p)
+        data = export_pingpong_json(result)
+        # Must be JSON serializable
+        text = json.dumps(data, indent=2)
+        parsed = json.loads(text)
+        assert parsed["run_id"] == result.run_id

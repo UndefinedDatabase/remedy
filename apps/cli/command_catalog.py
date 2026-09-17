@@ -127,13 +127,12 @@ GROUPS: dict[str, GroupDef] = {
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False),
     "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
     "brain": GroupDef("brain", "Brain", "Inspect the project brain graph.", user_facing=False),
-    "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded run-loop facade (internal).", user_facing=False),
+    "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded run-loop facade (internal)."),
     "change": GroupDef("change", "Change", "Review change sets (proof chain view).", user_facing=False),
     "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False),
     "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False),
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons.", user_facing=False),
     "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
-    "propose": GroupDef("propose", "Propose", "Proposed task evaluation.", user_facing=False),
     "dev": GroupDef("dev", "Dev", "Developer utilities.", user_facing=False),
     "ci": GroupDef("ci", "CI", "Remedy's own CI stages, run locally.", user_facing=False),
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
@@ -229,25 +228,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
 
     # ── job ──────────────────────────────────────────────────────────────
     CommandEntry(
-        command_id="job.create",
-        group_id="job",
-        subcommand="create",
-        description="Create a new job from a prompt.",
-        action_class="write_metadata",
-        args=(
-            ArgDef("prompt", "What the job should accomplish"),
-            ArgDef("--project", "Project UUID to link", required=False, is_option=True),
-            ArgDef("--task-type", "Task type override", required=False, is_option=True),
-            ArgDef("--task-description", "Task description override", required=False, is_option=True),
-            ArgDef("--max-total-tokens", "Maximum total tokens for this job (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-provider-calls", "Maximum provider calls for this job (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-wall-clock-minutes", "Maximum wall-clock minutes for this job (F018 budget)", required=False, is_option=True, default=None),
-            ArgDef("--max-cost-usd", "Maximum cost in USD for this job (F104 budget)", required=False, is_option=True, default=None),
-            ArgDef("--deadline", "UTC deadline for this job as ISO 8601 string (F018 budget)", required=False, is_option=True, default=None),
-        ),
-        related=("job.show", "job.attach-repo"),
-    ),
-    CommandEntry(
         command_id="job.list",
         group_id="job",
         subcommand="list",
@@ -314,7 +294,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Attach a repository path to a job.",
         action_class="write_metadata",
         args=(_JOB_ID, ArgDef("repo_path", "Path to the repository")),
-        related=("job.create",),
     ),
     CommandEntry(
         command_id="job.permit",
@@ -352,11 +331,17 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.budget",
         group_id="job",
         subcommand="budget",
-        description="Show budget limits and current counters for a job (F018).",
-        action_class="read_only",
+        description="Show a job's budget limits and counters (F018), or with set <field> <value> "
+                    "write one integer field of its execution limits or its token budget profile.",
+        # write_metadata, NOT read_only (DECISION F280 D3): the set form writes the job record's
+        # run contract or the job's token budget profile. The show form still writes nothing.
+        action_class="write_metadata",
         supports_json=True,
         args=(
             ArgDef("job_id", "Job ID to inspect"),
+            ArgDef("action", "Omit to show the budget; set writes one field", required=False),
+            ArgDef("field", "The field set writes; a wrong name lists the settable ones", required=False),
+            ArgDef("value", "The integer value set writes", required=False),
             _JSON_OPT,
         ),
         may_mutate_repo=False,
@@ -371,7 +356,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Plan tasks for a job using local LLM.",
         action_class="write_metadata",
         args=(_JOB_ID,),
-        related=("job.create", "job.resume"),
+        related=("job.resume",),
     ),
 
     CommandEntry(
@@ -382,21 +367,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
                      "receives and what was omitted (F107)."),
         action_class="read_only",
         args=(_JOB_ID, _TASK_OPT, _JSON_OPT),
-        supports_json=True,
-        related=("job.show",),
-    ),
-
-    CommandEntry(
-        command_id="job.fulfill",
-        group_id="job",
-        subcommand="fulfill",
-        description="Run job fulfillment spine (fixture-demo mode in v0).",
-        action_class="apply_write",
-        args=(
-            _JOB_ID,
-            ArgDef("--fixture-demo", "Require fixture-demo mode (v0 only)", required=False, is_option=True),
-            _JSON_OPT,
-        ),
         supports_json=True,
         related=("job.show",),
     ),
@@ -879,6 +849,16 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JSON_OPT,),
         supports_json=True,
         related=("worker.list",),
+    ),
+    CommandEntry(
+        command_id="worker.doctor",
+        group_id="worker",
+        subcommand="doctor",
+        description="Read-only: is each available worker provider's own tooling actually reachable?",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
+        related=("worker.list", "worker.resources"),
     ),
 
     # ── mission (the F070 orchestrator loop, keyed on a mission id) ──────
@@ -1560,9 +1540,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("job.show", "change.proof"),
         args=(
-            ArgDef("goal", "Goal to accomplish (title when large prompt file used)", required=False),
-            ArgDef("--task-file", "Path to large prompt file", required=False, is_option=True, default=""),
-            ArgDef("--task-stdin", "Read large prompt from stdin", required=False, is_option=True, default="false"),
+            ArgDef("goal", "Goal to accomplish", required=False),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
             ArgDef("--project", "Project ID to use or create", required=False, is_option=True),
             ArgDef("--autonomy-level", "Autonomy level 0-7 (default: 2)", required=False, is_option=True, default="2"),
@@ -1573,20 +1551,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--fixture-builder", "Fixture builder mode: true (default) or repair-loop", required=False, is_option=True, default="false"),
             ArgDef("--builder-provider", "Builder provider: none, fixture, ollama (default: none)", required=False, is_option=True, default="none"),
             ArgDef("--no-ui", "Suppress UI server even if --ui is set", required=False, is_option=True, default="false"),
-            ArgDef("--builder", "Builder provider for ping-pong: fake, claude, claude-cli (default: none)", required=False, is_option=True, default="none"),
-            ArgDef("--reviewer", "Reviewer provider for ping-pong: fake, claude, claude-cli (default: none)", required=False, is_option=True, default="none"),
-            ArgDef("--max-rounds", "Max ping-pong rounds (default: 3)", required=False, is_option=True, default="3"),
-            ArgDef("--mode", "Execution mode: staged (default)", required=False, is_option=True, default="staged"),
-            ArgDef("--test-command", "Test command to run in staging (e.g. 'pytest tests/')", required=False, is_option=True, default=""),
-            ArgDef("--provider-timeout-sec", "[deprecated: use --timeout-profile] Provider call timeout in seconds; if set, overrides default adaptive profile", required=False, is_option=True, default=None),
-            ArgDef("--timeout-profile", "Timeout profile: fast, normal, patient (default: normal unless --provider-timeout-sec is explicitly set)", required=False, is_option=True, default=None),
-            ArgDef("--max-output-chars", "Max provider output chars (default: 50000)", required=False, is_option=True, default="50000"),
-            ArgDef("--keep-staging", "Keep staging workspace after run", required=False, is_option=True, default="false"),
-            ArgDef("--claude-cli-write-mode", "Claude CLI write mode: none, allowed-tools, dangerous-skip (default: none)", required=False, is_option=True, default="none"),
-            ArgDef("--stream-evidence", "Opt-in F004 raw stream evidence: use Claude CLI stream-json and write redacted raw_stream.jsonl + run_events.jsonl. Default remains JSON mode", required=False, is_option=True),
-            ArgDef("--scope-file", "Path to approved scope plan JSON file", required=False, is_option=True, default=""),
-            ArgDef("--approve-scope", "Confirm scope file decisions before execution", required=False, is_option=True, default="false"),
-            ArgDef("--repair-rounds", "Max repair attempts after reviewer findings (default: 2, cap: 10; 0 disables repair)", required=False, is_option=True, default=""),
             ArgDef("--max-total-tokens", "Maximum total tokens for this job (F018 budget)", required=False, is_option=True, default=None),
             ArgDef("--max-provider-calls", "Maximum provider calls for this job (F018 budget)", required=False, is_option=True, default=None),
             ArgDef("--max-wall-clock-minutes", "Maximum wall-clock minutes for this job (F018 budget)", required=False, is_option=True, default=None),
@@ -1641,21 +1605,19 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.show",),
         args=(
             ArgDef("job_id", "Job ID"),
-            ArgDef("--builder", "Builder provider: fake, claude, claude-cli (default: fake, persisted on continuation)", required=False, is_option=True, default=None),
-            ArgDef("--reviewer", "Reviewer provider: fake, claude, claude-cli (default: fake, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--max-rounds", "Max ping-pong rounds per task (default: 3, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--repair-rounds", "Max repair attempts per task (default: 2, 0=disabled, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--test-command", "Test command to run in staging (persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--claude-cli-write-mode", "Claude CLI write mode: none, allowed-tools, dangerous-skip (default: none, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--stream-evidence", "Opt-in F004 raw stream evidence: use Claude CLI stream-json and write redacted raw_stream.jsonl + run_events.jsonl. Omitted keeps the persisted/default mode", required=False, is_option=True),
             ArgDef("--no-stream-evidence", "Explicitly disable raw stream evidence (overrides a persisted true). Omitted keeps the persisted/default mode", required=False, is_option=True),
-            ArgDef("--max-tasks", "Max tasks to execute (omitted keeps persisted; 0=all)", required=False, is_option=True, default=None),
+            ArgDef("--tasks", "Max tasks to execute (omitted keeps persisted; 0=all)", required=False, is_option=True, default=None),
             ArgDef("--timeout-sec", "Raw per-call timeout in seconds (omitted keeps persisted/default)", required=False, is_option=True, default=None),
             ArgDef("--max-output-chars", "Max provider output chars (omitted keeps persisted/default)", required=False, is_option=True, default=None),
-            ArgDef("--builder-provider", "Provider for builder role", required=False, is_option=True, default=None),
+            ArgDef("--builder-provider", "Builder provider: claude, claude-cli, fake or ollama (persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--builder-model", "Model for builder role", required=False, is_option=True, default=None),
             ArgDef("--builder-effort", "Effort level for builder role", required=False, is_option=True, default=None),
-            ArgDef("--reviewer-provider", "Provider for reviewer role", required=False, is_option=True, default=None),
+            ArgDef("--reviewer-provider", "Reviewer provider: claude, claude-cli, fake or ollama (persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--reviewer-model", "Model for reviewer role", required=False, is_option=True, default=None),
             ArgDef("--reviewer-effort", "Effort level for reviewer role", required=False, is_option=True, default=None),
             ArgDef("--repair-provider", "Provider for repair role", required=False, is_option=True, default=None),
@@ -2023,103 +1985,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("self.inspect", "self.plan"),
     ),
 
-    # ── propose ─────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="propose.list",
-        group_id="propose",
-        subcommand="list",
-        description="List proposed tasks for a job.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--status", "Filter by status", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="propose.show",
-        group_id="propose",
-        subcommand="show",
-        description="Show a single proposed task.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("task_id", "Proposed task ID"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="propose.evaluate",
-        group_id="propose",
-        subcommand="evaluate",
-        description="Run deterministic evaluation on proposed tasks.",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("--task-id", "Evaluate a specific task (default: all)", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="propose.approve",
-        group_id="propose",
-        subcommand="approve",
-        description="Approve a proposed task for build.",
-        action_class="approval_gate",
-        args=(
-            _JOB_ID,
-            ArgDef("task_id", "Proposed task ID to approve"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="propose.reject",
-        group_id="propose",
-        subcommand="reject",
-        description="Reject a proposed task.",
-        action_class="approval_gate",
-        args=(
-            _JOB_ID,
-            ArgDef("task_id", "Proposed task ID to reject"),
-            _REASON_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="propose.defer",
-        group_id="propose",
-        subcommand="defer",
-        description="Defer a proposed task.",
-        action_class="approval_gate",
-        args=(
-            _JOB_ID,
-            ArgDef("task_id", "Proposed task ID to defer"),
-            _REASON_OPT,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-
-    CommandEntry(
-        command_id="propose.materialize",
-        group_id="propose",
-        subcommand="materialize",
-        description="Materialize approved proposed tasks into real build tasks.",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("--task-id", "Specific proposed task ID to materialize", required=False, is_option=True),
-            ArgDef("--all", "Materialize all approved un-materialized tasks", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-
     # ── dev ──────────────────────────────────────────────────────────────
     CommandEntry(
         command_id="dev.agent-loop",
@@ -2377,7 +2242,7 @@ CATALOG: tuple[CommandEntry, ...] = tuple(_with_list_options(c) for c in _BASE_C
 
 # The whole surface of the UI write door: no other `command_id` above is
 # reachable from a browser, and plan approval arrives here as `decision.resolve`
-# carrying an `fp:`-prefixed decision id rather than as a command of its own
+# carrying a `plan:`-prefixed decision id rather than as a command of its own
 # (DECISION F009 D4).
 UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.stop",

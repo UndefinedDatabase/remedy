@@ -104,8 +104,8 @@ class TestJobRunRefsEndToEnd:
         assert job_id
         grouped_main([
             "job", "run", job_id,
-            "--builder", "fake",
-            "--reviewer", "fake",
+            "--builder-provider", "fake",
+            "--reviewer-provider", "fake",
             "--json",
         ])
         assert json.loads(capsys.readouterr().out)["job_id"] == job_id

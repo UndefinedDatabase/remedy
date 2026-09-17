@@ -194,14 +194,14 @@ describe("decisionAnswers", () => {
     expect(decisionAnswers(novel)).toHaveLength(2);
   });
 
-  it("offers approve and reject as POSTABLE answers for a pending flight plan", () => {
-    // The endpoint's own shape for a PENDING `fp:approval` card once DECISION
+  it("offers approve and reject as POSTABLE answers for a pending task plan", () => {
+    // The endpoint's own shape for a PENDING `plan:approval` card once DECISION
     // F031 D24 landed: `payload.options` carries the two words the write door
     // accepts by strict equality, and the server has already decided the door
     // would take them. No DOM harness reaches the inbox component, so this is
     // the only evidence available that the browser half of the approval works.
     const card: DecisionInboxEntry = {
-      type: "flight_plan_approval",
+      type: "task_plan_approval",
       payload: { options: ["approve", "reject"] },
       answerable_by_decision_resolve: true,
     };
@@ -311,17 +311,17 @@ describe("buildDecisionCardModel", () => {
 });
 
 describe("buildDecisionCardModel clarifications", () => {
-  /** The endpoint's OWN shape for a pending `fp:approval` card carrying open
+  /** The endpoint's OWN shape for a pending `plan:approval` card carrying open
    *  questions: `decision_queue.py` writes `open_clarification_questions`'
    *  records straight into `payload.clarifications`, and every one of them has
    *  exactly the four snake-case keys asserted here. */
   function pendingPlanEntry(): DecisionInboxEntry {
     return {
-      id: "fp:approval",
-      type: "flight_plan_approval",
+      id: "plan:approval",
+      type: "task_plan_approval",
       status: "open",
       severity: "blocker",
-      safe_summary: "Flight plan awaiting approval (2 open questions).",
+      safe_summary: "Task plan awaiting approval (2 open questions).",
       payload: {
         options: ["approve", "reject"],
         clarifications: [

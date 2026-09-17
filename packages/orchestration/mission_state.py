@@ -212,7 +212,7 @@ class Mission:
     F069 stays byte-identical and every reader that predates F069 keeps working
     — which is why :data:`MISSION_SCHEMA_VERSION` does NOT move for it.  The
     body is the plan's ``model_dump()`` plus the ``_versions``/``_version``
-    keys the flight-plan replan precedent established; ``None`` and an absent
+    keys the task-plan replan precedent established; ``None`` and an absent
     key both mean "not compiled yet".
 
     ``order`` and ``contract`` (F272) are the last two fields DECISION F260 D1
@@ -726,7 +726,7 @@ def resolve_verify_command(job: Any) -> str:
     """The command that re-checks a finished job's Definition of Done.
 
     Looked up in the order a job records it: an explicit
-    ``metadata["verify_command"]`` first, then the flight plan's own
+    ``metadata["verify_command"]`` first, then the task plan's own
     ``verify_command``.  Returns "" when the job recorded none — which is
     reported as :data:`VERIFY_RESULT_UNVERIFIABLE`, never as a pass.
     """
@@ -735,7 +735,7 @@ def resolve_verify_command(job: Any) -> str:
         command = str(metadata.get("verify_command", "") or "").strip()
         if command:
             return command
-    plan = getattr(job, "flight_plan", None)
+    plan = getattr(job, "task_plan", None)
     if isinstance(plan, dict):
         command = str(plan.get("verify_command", "") or "").strip()
         if command:
@@ -767,7 +767,7 @@ def build_verify_first_task(previous_job: Any) -> Any:
             "task_type": MISSION_VERIFY_TASK_TYPE,
             "verify_command": command,
             "previous_job_id": previous_id,
-            "flight": {
+            "plan": {
                 "planned_id": MISSION_VERIFY_PLANNED_ID,
                 "title": "Verify previous state",
                 "depends_on": [],
@@ -797,7 +797,7 @@ def inject_verify_first(previous_job: Any, follow_up_tasks: list[Any]) -> list[A
     verify = build_verify_first_task(previous_job)
     planned: list[Any] = [verify]
     for index, task in enumerate(follow_up_tasks, start=1):
-        flight = dict(task.inputs.get("flight") or {})
+        flight = dict(task.inputs.get("plan") or {})
         declared = [str(dep) for dep in (flight.get("depends_on") or [])]
         if MISSION_VERIFY_PLANNED_ID not in declared:
             declared.insert(0, MISSION_VERIFY_PLANNED_ID)
@@ -807,7 +807,7 @@ def inject_verify_first(previous_job: Any, follow_up_tasks: list[Any]) -> list[A
         flight.setdefault("est_tokens_band", "M")
         flight.setdefault("files_hint", [])
         inputs = dict(task.inputs)
-        inputs["flight"] = flight
+        inputs["plan"] = flight
         planned.append(replace(task, inputs=inputs))
     return planned
 
@@ -829,7 +829,7 @@ def assert_verify_first(tasks: list[Any]) -> None:
             f"(task_type {MISSION_VERIFY_TASK_TYPE!r}); the plan starts with: "
             f"{getattr(tasks[0], 'title', '?')!r}")
     for task in tasks[1:]:
-        flight = task.inputs.get("flight") if isinstance(task.inputs, dict) else None
+        flight = task.inputs.get("plan") if isinstance(task.inputs, dict) else None
         declared = list((flight or {}).get("depends_on") or [])
         if MISSION_VERIFY_PLANNED_ID not in [str(d) for d in declared]:
             raise MissionVerifyFirstError(

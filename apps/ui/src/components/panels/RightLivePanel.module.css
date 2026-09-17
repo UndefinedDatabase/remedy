@@ -323,7 +323,7 @@ button.decisionEvidenceChip:focus-visible {
 .decisionEvidenceNote:empty { position: absolute; }
 
 /* THE CLARIFICATION FORM'S FIELDS (T5_F031 T003, DECISION F031 D24). One group
-   per still-open question the flight plan is waiting on, sitting ABOVE the
+   per still-open question the task plan is waiting on, sitting ABOVE the
    .decisionAnswers strip because the operator reads the questions before the
    control that answers them. The field takes .chatInput above as its model —
    that is this panel's own existing text input — at the .decisionChip scale the

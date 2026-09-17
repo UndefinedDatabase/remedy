@@ -512,53 +512,53 @@ class TestMissionOfferInThePlanApproval:
     """The offer rides the existing approval decision and defaults to NO."""
 
     def test_a_flagged_intake_adds_the_offer_to_the_payload(self):
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"},
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"},
                   intake={"schema_v": "ji1", "goal": "Keep it green",
                           "mission_candidate": True})
 
         decision = [d for d in list_decisions(job, [])
-                    if d.type == "flight_plan_approval"][0]
+                    if d.type == "task_plan_approval"][0]
 
         assert decision.payload["mission_offer"]["default"] == "no"
         assert decision.payload["mission_offer"]["goal"] == "Keep it green"
 
     def test_the_offer_names_the_opt_in_flag(self):
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"},
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"},
                   intake={"schema_v": "ji1", "goal": "Keep it green",
                           "mission_candidate": True})
 
         decision = [d for d in list_decisions(job, [])
-                    if d.type == "flight_plan_approval"][0]
+                    if d.type == "task_plan_approval"][0]
 
         assert any("--as-mission" in action for action in decision.next_actions)
 
     def test_an_unflagged_intake_gets_no_offer(self):
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"},
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"},
                   intake={"schema_v": "ji1", "goal": "Fix the bug",
                           "mission_candidate": False})
 
         decision = [d for d in list_decisions(job, [])
-                    if d.type == "flight_plan_approval"][0]
+                    if d.type == "task_plan_approval"][0]
 
         assert "mission_offer" not in decision.payload
         assert not any("--as-mission" in a for a in decision.next_actions)
 
     def test_a_job_without_intake_gets_no_offer(self):
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
 
         decision = [d for d in list_decisions(job, [])
-                    if d.type == "flight_plan_approval"][0]
+                    if d.type == "task_plan_approval"][0]
 
         assert "mission_offer" not in decision.payload
 
     def test_the_offer_is_one_touchpoint_not_a_second_decision(self):
         """No new human touchpoint: the offer rides the approval that exists."""
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"},
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"},
                   intake={"schema_v": "ji1", "goal": "Keep it green",
                           "mission_candidate": True})
 
         approvals = [d for d in list_decisions(job, [])
-                     if d.type == "flight_plan_approval"]
+                     if d.type == "task_plan_approval"]
 
         assert len(approvals) == 1
 
@@ -584,9 +584,9 @@ class TestVerifyFirstStructure:
         assert task.inputs["verify_command"] == ""
         assert "no verification command recorded" in task.title
 
-    def test_the_command_may_come_from_the_flight_plan(self):
+    def test_the_command_may_come_from_the_task_plan(self):
         previous = JobPlan(job_title="previous",
-                       flight_plan={"verify_command": "make smoke"})
+                       task_plan={"verify_command": "make smoke"})
 
         assert resolve_verify_command(previous) == "make smoke"
 
@@ -595,7 +595,7 @@ class TestVerifyFirstStructure:
         tasks = inject_verify_first(previous, [build_follow_up_task("Add the CSV path")])
 
         assert is_verify_task(tasks[0])
-        assert tasks[1].inputs["flight"]["depends_on"] == [
+        assert tasks[1].inputs["plan"]["depends_on"] == [
             MISSION_VERIFY_PLANNED_ID]
 
     def test_the_scheduler_withholds_the_work_until_verify_completes(self):
@@ -630,7 +630,7 @@ class TestVerifyFirstStructure:
         with pytest.raises(MissionVerifyFirstError, match="Add the CSV path"):
             assert_verify_first([build_follow_up_task("Add the CSV path")])
         loose = build_follow_up_task("Add the JSON path")
-        loose.inputs["flight"] = {"planned_id": "M001", "depends_on": []}
+        loose.inputs["plan"] = {"planned_id": "M001", "depends_on": []}
         with pytest.raises(MissionVerifyFirstError, match="Add the JSON path"):
             assert_verify_first([build_verify_first_task(self._previous_job()), loose])
 
@@ -642,7 +642,7 @@ class TestVerifyFirstStructure:
         previous = self._previous_job()
         verify = build_verify_first_task(previous)
         loose = build_follow_up_task("Add the CSV path")
-        loose.inputs["flight"] = {"planned_id": "M001", "depends_on": []}
+        loose.inputs["plan"] = {"planned_id": "M001", "depends_on": []}
 
         with pytest.raises(MissionVerifyFirstError):
             assert_verify_first([verify, loose])

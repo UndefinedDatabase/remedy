@@ -58,7 +58,7 @@ class HumanDecision:
     resolved_at: str | None
     #: Structured extras for decisions that carry more than a summary line.
     #: Additive (F034): every existing producer omits it and gets ``{}``.
-    #: The flight-plan approval uses it to bundle the plan's open
+    #: The task-plan approval uses it to bundle the plan's open
     #: clarifications, so one decision covers the whole plan.
     payload: dict[str, Any] = field(default_factory=dict)
     #: The receipts behind this decision: refs, expected outcomes, downsides.
@@ -73,9 +73,11 @@ class HumanDecision:
 DECISION_TYPES = frozenset({
     "patch_approval", "stop_reason", "test_failure", "repo_dirty",
     "token_budget", "worker_approval", "memory_review", "revert_missing",
-    "flight_plan_approval",
+    "task_plan_approval",
     # F051: a task raised a question mid-run; its branch waits, the run does not.
     "task_decision",
+    # F280: a proposed task awaiting human decision or materialization.
+    "proposal",
 })
 
 
@@ -603,19 +605,19 @@ def list_decisions(
     except (ImportError, ValueError, OSError):
         pass
 
-    # 7. Flight plan approval
-    _flight_plan = getattr(job, "flight_plan", None)
-    if isinstance(_flight_plan, dict):
-        _fp_approval = _flight_plan.get("_approval")
-        if _fp_approval == "pending":
+    # 7. Task plan approval
+    _task_plan = getattr(job, "task_plan", None)
+    if isinstance(_task_plan, dict):
+        _plan_approval = _task_plan.get("_approval")
+        if _plan_approval == "pending":
             # F034: the plan's open questions ride THIS decision. One plan,
             # one human touchpoint — never one decision per question.
-            from packages.orchestration.flight_plan import open_clarification_questions
+            from packages.orchestration.job_plan import open_clarification_questions
             _questions = open_clarification_questions(
-                _flight_plan.get("clarifications_resolved"))
+                _task_plan.get("clarifications_resolved"))
             _actions = [
-                f"remedy decision resolve {job_id[:8]} fp:approval --reason approve",
-                f"remedy decision resolve {job_id[:8]} fp:approval --reason reject",
+                f"remedy decision resolve {job_id[:8]} plan:approval --reason approve",
+                f"remedy decision resolve {job_id[:8]} plan:approval --reason reject",
             ]
             # F056: intake may hint that this goal outlives one job.  The offer
             # rides THIS decision — no second human touchpoint — and it defaults
@@ -629,16 +631,16 @@ def list_decisions(
                     "goal": str(_intake.get("goal", "") or ""),
                 }
                 _actions.append(
-                    f"remedy decision resolve {job_id[:8]} fp:approval "
+                    f"remedy decision resolve {job_id[:8]} plan:approval "
                     f"--reason approve --as-mission")
-            _summary = "Flight plan awaiting approval."
+            _summary = "Task plan awaiting approval."
             if _questions:
                 _summary = (
-                    f"Flight plan awaiting approval "
+                    f"Task plan awaiting approval "
                     f"({len(_questions)} open question"
                     f"{'s' if len(_questions) != 1 else ''}).")
                 _actions.insert(1, (
-                    f"remedy decision resolve {job_id[:8]} fp:approval "
+                    f"remedy decision resolve {job_id[:8]} plan:approval "
                     f"--reason approve --answer {_questions[0]['id']}=\"...\""))
             _payload: dict[str, Any] = {}
             # `options` is NOT a new vocabulary here: branch 8 already exports an
@@ -659,7 +661,7 @@ def list_decisions(
             # plan asked for approval — so it is emitted UNGUARDED, and that is
             # what keeps rule (a) of `evidence_triple_problems` satisfied for
             # the minimal job `tests/orchestration/test_mission_state.py` builds,
-            # `Job(name="t", flight_plan={"_approval": "pending"})`, which
+            # `Job(name="t", task_plan={"_approval": "pending"})`, which
             # supplies no clarifications and no intake at all.  Each open
             # question is cited only when it HAS an id: `open_clarification_
             # questions` defaults that field to the empty string, and rule (c)
@@ -670,8 +672,8 @@ def list_decisions(
             # inventing vocabulary to carry it.
             _fp_refs = [DecisionEvidenceRef(
                 kind="decision",
-                target="fp:approval",
-                label="the flight-plan approval this job is waiting on",
+                target="plan:approval",
+                label="the task-plan approval this job is waiting on",
             )]
             for _question in _questions:
                 _question_id = str(_question.get("id", "") or "")
@@ -682,11 +684,11 @@ def list_decisions(
                         label="the open question that ships with this plan",
                     ))
             decisions.append(HumanDecision(
-                id="fp:approval",
-                type="flight_plan_approval",
+                id="plan:approval",
+                type="task_plan_approval",
                 status="open",
                 severity="blocker",
-                source="flight_plan",
+                source="task_plan",
                 related_node_id="",
                 related_intent_id="",
                 related_file="",
@@ -732,13 +734,13 @@ def list_decisions(
                     ),
                 ),
             ))
-        elif _fp_approval == "approved" and _flight_plan.get("_approval_audit"):
-            audit = _flight_plan["_approval_audit"]
+        elif _plan_approval == "approved" and _task_plan.get("_approval_audit"):
+            audit = _task_plan["_approval_audit"]
             reason = audit.get("reason", "auto-approved")
             # F032 T002f, the RESOLVED arm.  DECISION F032 D7 is why it owes a
             # triple at all: `enforce_decision_evidence` selects by TYPE ALONE
             # and never reads `status`, so both arms are enforced the moment
-            # `flight_plan_approval` joins `TRIPLE_REQUIRED_TYPES`, and this card
+            # `task_plan_approval` joins `TRIPLE_REQUIRED_TYPES`, and this card
             # is still RENDERED by `build_decision_inbox`.  Its refs are the
             # audit trail the answer actually left.  The card's own id is again
             # unguarded; `reason` reuses the variable computed above rather than
@@ -749,8 +751,8 @@ def list_decisions(
             # (c) would refuse the card.
             _fp_resolved_refs = [DecisionEvidenceRef(
                 kind="decision",
-                target="fp:approval",
-                label="the flight-plan approval this record answers",
+                target="plan:approval",
+                label="the task-plan approval this record answers",
             )]
             if reason:
                 _fp_resolved_refs.append(DecisionEvidenceRef(
@@ -766,15 +768,15 @@ def list_decisions(
                     label="how the approval was given",
                 ))
             decisions.append(HumanDecision(
-                id="fp:approval",
-                type="flight_plan_approval",
+                id="plan:approval",
+                type="task_plan_approval",
                 status="resolved",
                 severity="info",
-                source="flight_plan",
+                source="task_plan",
                 related_node_id="",
                 related_intent_id="",
                 related_file="",
-                safe_summary=f"Flight plan {reason}.",
+                safe_summary=f"Task plan {reason}.",
                 next_actions=(),
                 created_at="",
                 resolved_at="",
@@ -980,6 +982,59 @@ def list_decisions(
                 ),
             ))
     except (ImportError, ValueError, OSError, AttributeError):
+        pass
+
+    # 9. Proposed tasks awaiting decision or materialization (F280).
+    #    A proposed task surfaces exactly what can_finalize blocks on:
+    #    an unresolved task, or one approved for build but not yet materialized.
+    try:
+        from packages.orchestration.proposed_tasks import (
+            load_proposed_tasks_safe,
+            ProposedTaskStatus,
+        )
+        proposed_tasks, degraded = load_proposed_tasks_safe(job_id)
+        for task in proposed_tasks:
+            is_unresolved = task.is_unresolved()
+            is_approved_not_materialized = (
+                task.status == ProposedTaskStatus.APPROVED_FOR_BUILD
+                and not task.is_materialized
+            )
+            if not (is_unresolved or is_approved_not_materialized):
+                continue
+
+            # Build next actions based on task status
+            if is_unresolved:
+                _actions = [
+                    f"remedy decision resolve {job_id[:8]} proposal:{task.id} --reason approve",
+                    f"remedy decision resolve {job_id[:8]} proposal:{task.id} --reason reject",
+                    f"remedy decision resolve {job_id[:8]} proposal:{task.id} --reason defer",
+                ]
+            else:
+                # Approved but not materialized: only offer approve (materialize)
+                _actions = [
+                    f"remedy decision resolve {job_id[:8]} proposal:{task.id} --reason approve",
+                ]
+
+            # Build summary
+            _summary = f"Proposed task: {task.title}"
+            if is_unresolved and task.evaluation_notes:
+                _summary = f"{_summary} ({task.evaluation_notes})"
+
+            decisions.append(HumanDecision(
+                id=f"proposal:{task.id}",
+                type="proposal",
+                status="open",
+                severity="blocker",
+                source="proposed_tasks",
+                related_node_id=f"task:{task.id[:8]}",
+                related_intent_id="",
+                related_file="",
+                safe_summary=_summary,
+                next_actions=tuple(_actions),
+                created_at=str(task.created_at) if task.created_at else "",
+                resolved_at=None,
+            ))
+    except (ImportError, ValueError, OSError):
         pass
 
     # THE EMIT GATE (DECISION F032 D1): this derivation point is the one seam

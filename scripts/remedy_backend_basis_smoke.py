@@ -25,7 +25,6 @@ from smoke_runner import run_phase  # noqa: E402
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 PYTEST_SH = str(SCRIPTS_DIR / "remedy_pytest.sh")
-RUNTIME_SMOKE = str(SCRIPTS_DIR / "remedy_runtime_cli_smoke.py")
 
 
 def main() -> int:
@@ -33,16 +32,7 @@ def main() -> int:
 
     print(f"=== Backend Basis Smoke (timeout={timeout}s) ===", flush=True)
 
-    # Phase 1: Standalone runtime CLI smoke (no pytest)
-    rc = run_phase(
-        "Runtime CLI smoke (standalone)",
-        [sys.executable, RUNTIME_SMOKE, "--mode", "all"],
-        timeout=timeout,
-    )
-    if rc != 0:
-        return rc
-
-    # Phase 2: Orchestration and storage tests
+    # Phase 1: Orchestration and storage tests
     rc = run_phase(
         "Orchestration + storage",
         [

@@ -1,11 +1,11 @@
-"""F016 — table-driven tests for Flight-Plan task-granularity normalization."""
+"""F016 — table-driven tests for Task-Plan task-granularity normalization."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
 import pytest
 
-from packages.orchestration.schemas.models import FlightPlan, PlannedTask
+from packages.orchestration.schemas.models import PlannedTask, TaskPlan
 from packages.orchestration.task_granularity import (
     GranularityConfig,
     normalize_plan,
@@ -36,8 +36,8 @@ def _task(
     )
 
 
-def _plan(tasks: list[PlannedTask]) -> FlightPlan:
-    return FlightPlan(schema_v="flight_plan_v1", tasks=list(tasks))
+def _plan(tasks: list[PlannedTask]) -> TaskPlan:
+    return TaskPlan(schema_v="task_plan_v1", tasks=list(tasks))
 
 
 @dataclass(frozen=True)
@@ -494,7 +494,7 @@ def test_disabled_flag_is_a_byte_identical_pass_through() -> None:
 
 def test_revalidation_failure_aborts_to_the_original_plan() -> None:
     # 24 tasks + a 4-way split would be 27, over the schema's 25-task cap:
-    # the new FlightPlan cannot be constructed, so nothing is applied.
+    # the new TaskPlan cannot be constructed, so nothing is applied.
     tasks = [_task(f"F{i:03d}", acceptance=["a"], band="M") for i in range(23)]
     tasks.append(_task("T1", acceptance=["one", "two", "three", "four"],
                        band="XL"))
