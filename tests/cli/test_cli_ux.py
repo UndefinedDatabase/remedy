@@ -812,4 +812,4 @@ class TestRunShow:
         with pytest.raises(SystemExit) as exc:
             _cmd_run_show("no-such-run", json_output=True)
         assert exc.value.code == 1
-        assert capsys.readouterr().err == "Error: run 'no-such-run' not found.\n"
+        assert capsys.readouterr().err == "Error: No run matches 'no-such-run'. Try: remedy run list.\n"

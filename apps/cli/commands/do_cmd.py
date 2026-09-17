@@ -534,7 +534,7 @@ def _cmd_run_show(
 
     data = load_run(run_id)
     if data is None:
-        print(f"Error: run {run_id!r} not found.", file=sys.stderr)
+        print(f"Error: No run matches {run_id!r}. Try: remedy run list.", file=sys.stderr)
         sys.exit(1)
 
     if json_output:
