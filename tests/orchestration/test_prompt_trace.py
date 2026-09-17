@@ -291,7 +291,7 @@ class TestSegmentManifest:
         recorder(1, "fp1", False, composed.text)
         assert len(traces) == 1
         assert traces[0].role == "task_plan"
-        assert traces[0].prompt_kind == "flight-plan"
+        assert traces[0].prompt_kind == "task-plan"
         assert len(traces[0].segment_manifest) == 5
 
         source = inspect.getsource(do_cmd)

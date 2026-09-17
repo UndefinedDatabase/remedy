@@ -178,7 +178,7 @@ def make_task_plan_call_recorder(
     def _record(
         attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
     ) -> None:
-        kind = "flight-plan-retry" if is_parse_retry else "flight-plan"
+        kind = "task-plan-retry" if is_parse_retry else "task-plan"
         traces.append(build_trace_entry(
             prompt_text=effective_prompt,
             role="task_plan",
