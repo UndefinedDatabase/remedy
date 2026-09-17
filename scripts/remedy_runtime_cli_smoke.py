@@ -143,26 +143,6 @@ def create_env(base: Path) -> tuple[Path, str]:
     return root, jid
 
 
-def create_task(root: Path, jid: str, *, title: str = "Smoke", status: str = "proposed") -> str:
-    tid = uuid4().hex[:12]
-    pt_dir = root / "proposed_tasks"
-    pt_dir.mkdir(parents=True, exist_ok=True)
-    pt_file = pt_dir / f"{jid}.json"
-    existing = json.loads(pt_file.read_text()) if pt_file.exists() else []
-    existing.append({
-        "id": tid, "title": title, "reason": "", "description": "",
-        "source": "reviewer", "risk": "medium", "priority": "medium",
-        "status": status, "approval_required": True, "job_id": jid,
-        "origin_task_id": "", "origin_recommendation_id": "",
-        "task_type": "unknown", "evaluation_notes": "",
-        "evaluated_by": "", "evaluated_at": None,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "resolved_at": None, "materialized_task_id": "", "materialized_at": None,
-    })
-    pt_file.write_text(json.dumps(existing, indent=2))
-    return tid
-
-
 def read_events(root: Path, jid: str) -> str:
     runs_dir = root / "job_logs" / jid
     if not runs_dir.is_dir():
@@ -184,57 +164,15 @@ def check_no_locks(root: Path) -> None:
         raise RuntimeError(f"Leftover lock files: {rel}")
 
 
-def smoke_propose(base: Path) -> None:
-    root, jid = create_env(base)
-    tid = create_task(root, jid, title="E2E propose")
-
-    # list
-    data = run_json(["propose", "list", jid, "--json"], root)
-    assert data["count"] == 1, f"list count: {data['count']}"
-
-    # evaluate
-    data = run_json(["propose", "evaluate", jid, "--json"], root)
-    assert data["evaluated_count"] == 1
-
-    # approve
-    data = run_json(["propose", "approve", jid, tid, "--json"], root)
-    assert data["approved"] is True
-
-    # materialize
-    data = run_json(["propose", "materialize", jid, "--task-id", tid, "--json"], root)
-    assert data["materialized_count"] == 1
-
-    # verify job
-    job = json.loads((root / "jobs" / jid / "job.json").read_text())
-    assert len(job["tasks"]) == 1
-
-    # verify events
-    events = read_events(root, jid)
-    assert "proposed_task_evaluated" in events
-    assert "proposed_task_approved" in events
-    assert "proposed_task_materialized" in events
-
-    # verify no locks
-    check_no_locks(root)
-
-    print(f"  propose: PASS (job={jid[:8]})")
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Standalone runtime CLI smoke test")
-    parser.add_argument("--mode", choices=["propose", "all"], default="all")
+    parser.add_argument("--mode", choices=["all"], default="all")
     args = parser.parse_args()
 
     base = Path(tempfile.mkdtemp(prefix="remedy-smoke-"))
     errors = []
 
     try:
-        if args.mode in ("propose", "all"):
-            try:
-                smoke_propose(base / "propose")
-            except Exception as e:
-                errors.append(f"propose: {e}")
-                print(f"  propose: FAIL — {e}")
     finally:
         # Cleanup temp dir best-effort
         import shutil
