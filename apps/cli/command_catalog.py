@@ -122,7 +122,7 @@ GROUPS: dict[str, GroupDef] = {
     "memory": GroupDef("memory", "Memory", "Project memory."),
     "teacher": GroupDef("teacher", "Teacher", "Explain a run. Read-only, never steers it."),
     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project dev server."),
-    "stats": GroupDef("stats", "Stats", "Honest counts from the evidence on disk."),
+    "stats": GroupDef("stats", "Stats", "Honest counts from the run evidence on disk."),
     # -- Advanced / internal commands (callable but hidden from default help) --
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False),
     "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
@@ -132,7 +132,7 @@ GROUPS: dict[str, GroupDef] = {
     "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False),
     "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False),
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons.", user_facing=False),
-    "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
+    "self": GroupDef("self", "Self", "Self-dogfood — inspect Remedy's own run evidence.", user_facing=False),
     "dev": GroupDef("dev", "Dev", "Developer utilities.", user_facing=False),
     "ci": GroupDef("ci", "CI", "Remedy's own CI stages, run locally.", user_facing=False),
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
@@ -318,7 +318,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         args=(
             ArgDef("job_id", "Job ID to stop"),
-            ArgDef("--reason", "Why the job is being stopped (recorded in the evidence)", required=False, is_option=True, default=""),
+            ArgDef("--reason", "Why the job is being stopped (recorded in the run's evidence)", required=False, is_option=True, default=""),
             ArgDef("--source", "Who requested the stop (default: cli)", required=False, is_option=True, default="cli"),
             ArgDef("--status", "Show pending and consumed stop requests instead of requesting one", required=False, is_option=True, is_flag=True),
             _JSON_OPT,
@@ -909,7 +909,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.report",
         group_id="mission",
         subcommand="report",
-        description="Read-only morning-style report built from the job's current evidence.",
+        description="Read-only morning-style report for a mission, built from its job's current run evidence.",
         action_class="read_only",
         args=(
             _JOB_ID,
@@ -1012,7 +1012,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.abandon",
         group_id="mission",
         subcommand="abandon",
-        description="Mark a mission abandoned — the goal is dropped; its jobs and their evidence stay.",
+        description="Mark a mission abandoned — the goal is dropped; its jobs and their run evidence stay.",
         action_class="write_metadata",
         args=(
             ArgDef("mission_id", "Mission id (or a unique prefix)"),
@@ -1611,7 +1611,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--test-command", "Test command to run in staging (persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--claude-cli-write-mode", "Claude CLI write mode: none, allowed-tools, dangerous-skip (default: none, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--stream-evidence", "Opt-in F004 raw stream evidence: use Claude CLI stream-json and write redacted raw_stream.jsonl + run_events.jsonl. Omitted keeps the persisted/default mode", required=False, is_option=True),
-            ArgDef("--no-stream-evidence", "Explicitly disable raw stream evidence (overrides a persisted true). Omitted keeps the persisted/default mode", required=False, is_option=True),
+            ArgDef("--no-stream-evidence", "Explicitly disable this run's raw stream evidence (overrides a persisted true). Omitted keeps the persisted/default mode", required=False, is_option=True),
             ArgDef("--tasks", "Max tasks to execute (omitted keeps persisted; 0=all)", required=False, is_option=True, default=None),
             ArgDef("--timeout-sec", "Raw per-call timeout in seconds (omitted keeps persisted/default)", required=False, is_option=True, default=None),
             ArgDef("--max-output-chars", "Max provider output chars (omitted keeps persisted/default)", required=False, is_option=True, default=None),
@@ -1644,7 +1644,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         supports_json=True,
         args=(
-            ArgDef("--job", "Only this job's evidence export", required=False, is_option=True),
+            ArgDef("--job", "Only this job's evidence export, from its run", required=False, is_option=True),
             ArgDef("--since", "Only post-mortems at or after this ISO-8601 timestamp", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
@@ -1766,7 +1766,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("stats.cost", "stats.verify-ledger"),
         args=(
-            ArgDef("evidence_dir", "Path to the job evidence directory to scan"),
+            ArgDef("evidence_dir", "Path to the job evidence folder to scan"),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
             _JSON_OPT,
@@ -1779,7 +1779,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         group_id="stats",
         subcommand="verify-ledger",
         description=(
-            "Reconcile the evidence files against the token ledger rows (read-only). "
+            "Reconcile the run evidence files against the token ledger rows (read-only). "
             "Exits 0 on a clean reconcile and non-zero when drift is found, so it is "
             "usable as a check."
         ),
@@ -1787,7 +1787,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("stats.cost", "stats.backfill-ledger"),
         args=(
-            ArgDef("evidence_dir", "Path to the job evidence directory to reconcile"),
+            ArgDef("evidence_dir", "Path to the job evidence folder to reconcile"),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
             _JSON_OPT,
@@ -1884,7 +1884,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="self.inspect",
         group_id="self",
         subcommand="inspect",
-        description="Read-only: inspect Remedy's own evidence for self-improvement items.",
+        description="Read-only: inspect Remedy's own run evidence for self-improvement items.",
         action_class="read_only",
         args=(
             ArgDef("--job-id", "Optional job to include in inspection", required=False, is_option=True),
@@ -1975,7 +1975,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="self.report",
         group_id="self",
         subcommand="report",
-        description="Read-only: self-dogfood report (what Remedy thinks is wrong + evidence).",
+        description="Read-only: self-dogfood report (what Remedy thinks is wrong, with the run evidence behind it).",
         action_class="read_only",
         args=(
             ArgDef("--job-id", "Optional job to include in the report", required=False, is_option=True),
