@@ -1,109 +1,91 @@
-# F280 Round 17 Handoff
+# F280 Round 18 Handoff
 
 **Feature**: F280 CLI vocabulary v2, part two  
-**Round**: 17 (fix and widen test round)  
-**Session**: 9  
+**Round**: 18 (closure sequence integration gate)  
+**Session**: 10  
 **Branch**: feature/f280-cli-vocabulary-v2-part-two  
 
 ## Commits
 
 | Commit | SHA | Description |
 |--------|-----|-------------|
-| C1 | d0d331b6 | Append Gate:F280 R16 + Done:R-0942 + Done:R-0943 + finding R-0944, replace plan.md |
-| C2 | 91876a2d | Fix R-0944: mission group visibility, widen group integrity test |
+| C1 | c74deb65 | Append Gate:F280 R17 + replace plan.md |
+| C2 | 325cc675 | Run full suite, commit closure-suite.txt |
 
-**Previous**: e1c140a2 (F280 R16 handback: repair R-0942 and R-0943)
+**Previous**: f52c6c8f (F280 R17 handback: fix R-0944, widen test)
 
 ## Changes Summary
 
 | File | Changes |
 |------|---------|
-| `.agent/live_review.md` | +184 lines (Gate R16 entry, Done R-0942, Done R-0943, finding R-0944) |
-| `.agent/plan.md` | +1 -44 (updated for round 17 scope) |
-| `.agent/authored/f280-r17.md` | +78 (step block for this round) |
-| `.agent/last_block.md` | +78 (mirrored step block) |
-| `apps/cli/command_catalog.py` | -1 (removed user_facing=False from mission) |
-| `tests/cli/test_cli_ux.py` | +20 -4 (widened partition constants, added new test) |
+| `.agent/live_review.md` | +2 (appended Gate:F280 R17 entry) |
+| `.agent/plan.md` | +1 -44 (replaced with R18 plan, 45 lines total) |
+| `.agent/authored/f280-r18.md` | +50 (step block for this round) |
+| `.agent/last_block.md` | +50 (mirrored step block) |
+| `.agent/authored/f280-closure-suite.txt` | +53 (full suite transcript with bad nodes) |
 
-**Total**: 356 insertions, 49 deletions across 6 files
+**Total**: 155 insertions, 44 deletions across 5 files (plus new .agent/authored/ files)
 
 ## Verification Results
 
 **G1 RECORD** (after C1):
-- Gates: 43 ✓
-- Finding IDs: 140 ✓
-- Done IDs: 9 ✓
+- Gates: 44 ✓
+- Finding IDs: 140 (unchanged) ✓
+- Done IDs: 9 (unchanged) ✓
 - plan.md lines: 45 with 1x Goal, 1x Current Step, 1x Next Steps, 1x Risks ✓
 
-**G2 R-0944 REPAIRED** (after C2):
-- mission.user_facing: True (not False) ✓
-- Visible groups: exactly 16 as D4 specifies ✓
-- Advanced groups: exactly 12 as D4 specifies ✓
-- Hidden groups: exactly 1 (roadmap) ✓
-- Partition assertion: passed (output: "partition matches D4") ✓
+**G2 SUITE AND TRANSCRIPT** (after C2):
+- File exists: `.agent/authored/f280-closure-suite.txt` ✓
+- Summary line matches pytest format: "27 failed, 17587 passed, 23 skipped, 1 warning, 24 errors in 104.89s (0:01:44)" ✓
+- Bad nodes listed: 51 total (27 FAILED + 24 ERROR) ✓
+- Self-consistency: count of listed nodes equals summary count ✓
 
-**G3 TARGETED TESTS + LINT** (after C2):
-- pytest tests/cli/test_cli_ux.py tests/test_command_catalog.py tests/cli/test_golden_path.py: 169 passed ✓
-- Ruff check apps/cli/command_catalog.py tests/cli/test_cli_ux.py: clean ✓
+## Integration Gate Results
 
-**G4 RED-PROOF** (disposable worktree .remedy-wt/g4-redproof):
-- Reverted fix (user_facing=False back on mission) → test_catalog_partition_matches_d4 fails ✓
-- Restored fix → test passes ✓
-- Worktree removed, only primary checkout remains ✓
+**Full Suite Run** (python3 -m pytest -n auto -q):
+- Total: 17587 passed, 27 failed, 24 errors, 23 skipped
+- Run time: 104.89 seconds
+- Execution: Exactly one run, whole repository, no selection/filtering
 
-## Findings Status
+**Bad Nodes by Category** (51 total):
+- FAILED: 27 tests
+- ERROR: 24 tests
 
-- **R-0942** (HIGH, smoke script syntax): BOOKED DONE in this round (repaired R16)
-- **R-0943** (MEDIUM, decision.py crash): BOOKED DONE in this round (repaired R16)
-- **R-0944** (MEDIUM, mission visibility + test): FIXED in this round
-- **Open findings**: 131 distinct IDs remain open (140 registered minus 9 resolved)
+Sample of first failures (details in `.agent/authored/f280-closure-suite.txt`):
+- tests/cli/test_advertised_commands.py::test_every_advertised_command_exists_in_the_catalog
+- tests/cli/test_advertised_commands.py::test_every_operator_facing_advertised_command_exists_in_the_catalog
+- tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift (multiple tests)
+- tests/orchestration/test_gauntlet_orders.py (multiple tests with frozen set/manifest mismatch)
+- tests/orchestration/test_run_manifest_logical_identity.py (multiple tests)
 
-## Changes Description
+## Status and Next Steps
 
-### C1: Record Booking and New Finding Registration
-- Books Gate:F280 R16 independently-reviewed PASS (no new finding)
-- Resolves and closes R-0942 (smoke script parsing, repaired in round 16)
-- Resolves and closes R-0943 (decision.py approve action guard, repaired in round 16)
-- Registers R-0944 (Medium): mission group visibility contradicts DECISION amend0905-vocab D4, and test coverage is insufficient
+**This Round**: Integration-gate run complete. Suite is RED with 27 failures and 24 errors.
+Per amend0917-throughput rule 2, repair rounds follow (up to three), each strictly shrinking
+the bad node set, before xfail marking and feature registration.
 
-### C2: Fix R-0944 and Widen Guard Test
-- Removes `user_facing=False` from mission GroupDef in command_catalog.py (default is True)
-- Widens `_USER_FACING_GROUPS` constant from 8 to 16 groups (full D4 visible list)
-- Widens `_INTERNAL_GROUPS` constant from 2 to 12 groups (full D4 advanced list)
-- Adds test_catalog_partition_matches_d4 to TestGroupDefIntegrity asserting:
-  - Catalog carries exactly 29 groups
-  - Only roadmap has hidden=True
-  - visible/advanced partition matches D4 exactly
+**Pre-Closure Preconditions** (must be done before closure):
+1. Repair rounds (if needed) — shrink the bad node set
+2. Write T2_F280.md's Built State section (precondition 4)
+3. Run self-use precondition (F257/F258) with findings registered (preconditions 3, 6)
+4. Confirm `remedy integrity check --json` PASS (precondition 3)
+5. Evidence job and review zip (per STATUS_closure_protocol.md steps 1-2), each own round
+6. Final STATUS line update (per step 4)
 
-## Implementation Notes
-
-**R-0944 Fix Rationale**:
-- The mission group controls mission-related commands already documented and working
-- Moving mission from advanced-only to visible-by-default improves discoverability
-- DECISION amend0905-vocab D4 explicitly names mission in the visible groups list
-- No other group's description, label, or command order was modified (per constraints)
-
-**Test Coverage Expansion**:
-- Old constants covered only 8 visible + 2 advanced = 10 of 29 groups
-- New constants cover all 16 visible + 12 advanced groups
-- New test directly asserts the full partition, preventing future drift
-- When a group's visibility changes, the test fails immediately
+**Ownership Notes**:
+- Bad nodes present on main's merge base are not F280's repair responsibility
+- `job attach-repo`, `job permit`, `mission contract`, `job contract` wait for F269
+  (DECISION amend0917-throughput D2) — not in F280's scope
 
 ## Tree State
 
 - Clean checkout: `git status --porcelain` shows no uncommitted changes
-- No disposable worktrees remain: `git worktree list` shows only primary
-- Ready for independent review (planner/reviewer of session 9+)
+- Branch tip: feature/f280-cli-vocabulary-v2-part-two
+- No disposable worktrees: primary checkout only
+- Ready for planner/reviewer decision on repair path
 
-## Next Steps
+## Session Notes
 
-1. Independent review by planner/reviewer (DECISION amend0905-vocab D4 coverage)
-2. If review confirms PASS with no new findings:
-   - T001 and Acceptance list both hold
-   - Next round begins F280's closure sequence:
-     - Integration gate round (full suite once)
-     - Self-use precondition verification
-     - Evidence job and review zip generation
-3. If review finds issues:
-   - Record findings, fix in new round(s)
-   - Closure deferred until all findings are resolved
+- Session 10, worker round 18 of F280
+- Sole integration-gate run executed per closure-sequence requirements
+- Transcript committed as permanent record per amend0917-throughput rule 1
