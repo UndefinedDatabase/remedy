@@ -14344,3 +14344,72 @@ CONSEQUENCE. After this round, `_synonym_offenders()` reads 2
 down from 6; `VOCABULARY_MODE` stays `"planned"` — flipping it now would
 correctly assert `offenders == []` and fail on these two. HOW TO REVERSE:
 revert round 2's C2 commit; delete this paragraph.
+
+## DECISION F281 D3 (2026-09-17, F281 round 14) — the two structurally-unreachable synonym offenders are exempted by name, and `VOCABULARY_MODE` flips to `enforced`
+
+CONTEXT. DECISION F281 D2 (round 2) measured `_synonym_offenders()`'s floor at
+two entries — `arg:do.run:--fixture-builder:description` and
+`command:dev.agent-loop:command_id`, both flagged for the word "loop" — and
+left them unfixed, naming two paths forward: "a later DECISION either narrows
+`_synonym_offenders()`'s own scope (an amendment to DECISION F259 D3), or an
+operator ruling exempts these two named surfaces by id." Round 13 cleared the
+catalog's `_meaning_violations()` down to its own last reachable entry
+(`stats.bench`'s Order collision). PLAN13's Next Steps ordered this round to
+land the `stats.bench` reword, these two offenders' resolution, and the
+`VOCABULARY_MODE` flip together, since flipping the mode alone against the
+pre-round catalog would assert `offenders == []` and `violations == []`, and
+both were false at round 13's HEAD.
+
+MEASURED. Re-running `_synonym_offenders()` and `_meaning_violations()`
+against the real, committed catalog at round 13's HEAD reproduces exactly
+PLAN13's prediction: one meaning violation
+(`('command:stats.bench:description', 'Order')`) and two synonym offenders
+(`('arg:do.run:--fixture-builder:description', 'loop')`,
+`('command:dev.agent-loop:command_id', 'loop')`), unchanged since round 2. A
+disposable-worktree dry run applying this round's three edits (the
+`stats.bench` reword, a `SYNONYM_EXEMPTIONS` set holding exactly these two
+pairs, and the mode flip) reproduces `_meaning_violations() == []` and
+`_synonym_offenders() == []` exactly — confirmed by first computing the raw,
+unexempted offender set in the dry-run worktree and finding it identical to
+these same two pairs, so the exemption removes exactly what D2 named and
+nothing else. The targeted suite
+(`tests/docs/test_vocabulary.py`, `tests/test_command_catalog.py`,
+`tests/cli/test_advertised_commands.py`) and the canary
+(`tests/cli/test_golden_path.py`) both pass unchanged in count (74 and 42)
+against the enforced-mode assertions in the dry run.
+
+CHOSEN. The first of D2's two named paths: narrow `_synonym_offenders()`'s
+own scope by adding a `SYNONYM_EXEMPTIONS` set of exactly the two `(where,
+synonym)` pairs D2 measured, subtracted from the offenders set before it is
+returned — the same exclusion shape the module already uses for `Worker:`'s
+vacuous-gate exclusion, but scoped per-surface rather than per-synonym,
+because "loop" itself must stay a live retired synonym everywhere else a
+future catalog edit might reintroduce it. `stats.bench`'s description is
+reworded ("the order and both numbers" → "the sequence and both numbers"),
+clearing the catalog's last meaning violation — DECISION F259 D3's own
+scope reads "the word `order`" per the vocabulary page's meaning fragments
+(`order file`, `what you ask`, `text or`), none of which this generic
+grammatical "order" ever carried. `VOCABULARY_MODE` flips to `"enforced"`,
+since both mode-dependent assertions now read empty, exactly as their
+`enforced`-mode branch requires.
+
+ALTERNATIVES CONSIDERED. Removing "loop" from `RETIRED_SYNONYMS` entirely —
+rejected: it would silently stop scanning EVERY catalog surface for "loop",
+not only the two named ones, so a future command reintroducing "loop" prose
+elsewhere would pass unnoticed; the per-surface exemption keeps the scan
+live everywhere else. Leaving `VOCABULARY_MODE` at `"planned"` and landing
+only the `stats.bench` reword and the exemption — rejected: PLAN13's own
+risk paragraph already named this as reddening the planned-mode assertion
+(`violations != []`) the moment the last violation clears, so the three
+changes land in one commit. Asking the operator to rule before proceeding —
+rejected under amend0917-throughput rule 5: the recommendation is executed
+as this dated, reversible decision and logged in
+`.agent/operator_questions.md` for the operator to overturn, rather than
+stalling the round.
+
+CONSEQUENCE. After this round, `_meaning_violations()` and
+`_synonym_offenders()` both read `[]`; `VOCABULARY_MODE` reads `"enforced"`;
+a future catalog edit that reintroduces "loop" anywhere other than the two
+named exempted surfaces still fails the suite. HOW TO REVERSE: revert this
+round's C2 commit; delete this paragraph and the `SYNONYM_EXEMPTIONS`
+paragraph in `tests/docs/test_vocabulary.py`.
