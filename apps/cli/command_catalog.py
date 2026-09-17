@@ -1523,9 +1523,12 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="ui.status",
         group_id="ui",
         subcommand="status",
-        description="Show status of all UI sessions.",
+        description="Show live UI sessions; --all also lists the last ten that ended.",
         action_class="read_only",
-        args=(),
+        args=(
+            ArgDef("--all", "Also show the last ten ended sessions with their end time",
+                   required=False, is_option=True, is_flag=True),
+        ),
     ),
     CommandEntry(
         command_id="ui.stop",
