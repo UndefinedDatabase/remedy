@@ -1,43 +1,44 @@
-# Handback — F281 Round 4
+# Handback — F281 Round 5
 
 ## Session
 
-SESSION 1 of feature F281 · round 4 · rounds so far 4
+SESSION 1 of feature F281 · round 5 · rounds so far 5
+
+This is round 5 of session 1 at the upper part of the 4-to-5 default and approaching the 6-to-8 target; the next round may be this session's last if a natural stopping point is reached, per a session's own honest self-assessment rather than a fixed count.
 
 ## Range
 
-Review of `2318dba4`..`aa5a127e`
+Review of `4297a267`..`5ba830cc`
 
 ## Commits
 
-### 9944f7ce F281 R4 C0a: save the round 4 step block under the authored directory
+### 04e27be3 F281 R5 C0a: save the round 5 step block under the authored directory
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f281-r4.md | +261 | Block copy, byte-for-byte verified |
+| .agent/authored/f281-r5.md | +259 | Block copy, byte-for-byte verified |
 
-### 4036fb58 F281 R4 C0b: mirror the round 4 step block into the last block state file
+### 68f1bf20 F281 R5 C0b: mirror the round 5 step block into the last block state file
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | +261/-197 | Block mirror, byte-for-byte verified |
+| .agent/last_block.md | +125/-127 | Block mirror, byte-for-byte verified |
 
-### 64aad85f F281 R4 C1: book round 3 PASS and re-point plan.md
+### 08d421d0 F281 R5 C1: book round 4 PASS and re-point plan.md
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | +2 | RECORD3 append, round 3 verdict booking |
-| .agent/plan.md | +38/-57 | PLAN4 rewrite, round 4 updated plan |
+| .agent/live_review.md | +2 | RECORD4 append, round 4 verdict booking |
+| .agent/plan.md | +39/-47 | PLAN5 rewrite, round 5 updated plan |
 
-### aa5a127e F281 R4 C2: clear the Order bucket via a shared constant and 8 of 9 Task-bucket violations
+### 5ba830cc F281 R5 C2: clear the full Evidence bucket and one Job side-effect fix (mission.report)
 | Path | +/- | Reason |
 |------|-----|--------|
-| apps/cli/command_catalog.py | +13/-13 | 9 FROM/TO edits: _LIST_DESC_ARG shared constant (12 sites), _TASK_OPT shared constant, brain.continue --task-type, job.run --max-rounds, job.run --repair-rounds, job.show --full (3-line string), job.context description (2-line string), mission.continue description, self.execute proposed_task_id and --job-id |
+| apps/cli/command_catalog.py | +12/-12 | 12 FROM/TO edits: `group:stats:description`, `group:self:description`, `arg:job.stop:--reason:description`, `command:mission.report:description`, `command:mission.abandon:description`, `arg:job.run:--no-stream-evidence:description`, `arg:stats.failures:--job:description`, `arg:stats.backfill-ledger:evidence_dir:description`, `command:stats.verify-ledger:description` (3-line string), `arg:stats.verify-ledger:evidence_dir:description`, `command:self.inspect:description`, `command:self.report:description` |
 
 ## External actions
 
 ```
-git push -u origin feature/f281-cli-help-surface
+git push
 To github.com:UndefinedDatabase/remedy.git
-   2318dba4..aa5a127e  feature/f281-cli-help-surface -> feature/f281-cli-help-surface
-Branch 'feature/f281-cli-help-surface' set up to track remote branch 'feature/f281-cli-help-surface' from 'origin'.
+   4297a267..5ba830cc  feature/f281-cli-help-surface -> feature/f281-cli-help-surface
 ```
 
 Exit code: 0.
@@ -47,21 +48,30 @@ Exit code: 0.
 ### G1: Meaning violations and synonym offenders
 
 ```
-$ python3 << 'SCRIPT'
+$ python3 << 'PYTHON_EOF'
 from tests.docs.test_vocabulary import _meaning_violations, _synonym_offenders
 
-violations = _meaning_violations()
-offenders = _synonym_offenders()
+meaning_v = _meaning_violations()
+synonym_s = _synonym_offenders()
 
-print(f"Meaning violations: {len(violations)}")
-print(f"Synonym offenders: {len(offenders)}")
-SCRIPT
+print(f"_meaning_violations() count: {len(meaning_v)}")
+print(f"_synonym_offenders() count: {len(synonym_s)}")
 
-Meaning violations: 245
-Synonym offenders: 2
+if len(synonym_s) > 0:
+    print("\nsynonym_offenders (first few):")
+    for i, item in enumerate(list(synonym_s)[:5]):
+        print(f"  {item}")
+PYTHON_EOF
+
+_meaning_violations() count: 232
+_synonym_offenders() count: 2
+
+synonym_offenders (first few):
+  ('arg:do.run:--fixture-builder:description', 'loop')
+  ('command:dev.agent-loop:command_id', 'loop')
 ```
 
-Exit code: 0. Expected: 245 violations (22 fixed from 267), 2 offenders (unchanged floor).
+Exit code: 0. Expected: 232 violations (13 fixed from 245), 2 offenders (unchanged floor). Delta: 245 → 232, exactly matching the block's prediction.
 
 ### G2: Targeted pytest tests
 
@@ -70,7 +80,7 @@ $ python3 -m pytest tests/docs/test_vocabulary.py tests/test_command_catalog.py 
 
 ........................................................................ [ 97%]
 ..                                                                       [100%]
-74 passed in 1.11s
+74 passed in 1.09s
 ```
 
 Exit code: 0. Expected: 74 passed (unchanged).
@@ -81,7 +91,7 @@ Exit code: 0. Expected: 74 passed (unchanged).
 $ python3 -m pytest tests/cli/test_golden_path.py -q
 
 ..........................................                               [100%]
-42 passed in 17.72s
+42 passed in 17.61s
 ```
 
 Exit code: 0. Expected: 42 passed (unchanged).
@@ -99,14 +109,12 @@ Exit code: 0. Expected: All checks passed!
 ### G5: Sweep for old text gone, new text present
 
 ```
-$ grep -c '"Reverse the sort order"' apps/cli/command_catalog.py
-0
+$ grep -c 'directory to scan\|directory to reconcile' apps/cli/command_catalog.py
 
-$ grep -c '"--desc", "Reverse the sort direction"' apps/cli/command_catalog.py
-1
+0
 ```
 
-Exit code: 0 for both. Expected: 0 occurrences of old text, 1 occurrence of new text (the shared constant).
+Exit code: 0. Expected: 0 occurrences of old "directory" text (both changed to "folder").
 
 ### G6: Tree state and worktree verification
 
@@ -115,41 +123,44 @@ $ git status --porcelain
 (empty)
 
 $ git worktree list
-/home/decodeux/Repos/remedy  aa5a127e [feature/f281-cli-help-surface]
+/home/decodeux/Repos/remedy  5ba830cc [feature/f281-cli-help-surface]
+
+$ git rev-parse HEAD
+5ba830cc1ac4718773c4e3802dfc135d68ea71b0
 ```
 
-Exit code: 0. Expected: tree empty, one worktree, HEAD matches remote feature/f281-cli-help-surface.
+Exit code: 0. Expected: tree empty, one worktree, HEAD at 5ba830cc on feature/f281-cli-help-surface.
 
 ## Authored-text proofs
 
 ### C0a block copy
 
 ```
-$ cmp .remedy-wt/f281-r4-block.md .agent/authored/f281-r4.md
+$ cmp .remedy-wt/f281-r5-block.md .agent/authored/f281-r5.md
 (no output)
 
-$ sha256sum .agent/authored/f281-r4.md
-73fa1a19a51115538008ce1b1313c31f335f4751440dbf47cb0ffb45df614a33  .agent/authored/f281-r4.md
+$ sha256sum .agent/authored/f281-r5.md
+a5a546865db909447a9fe3f09db329b2099ae4d0c167e92e6c64c0f257a2ddda  .agent/authored/f281-r5.md
 ```
 
-Exit code: 0. Block copy verified byte-for-byte identical at sha256 `73fa1a19a51115538008ce1b1313c31f335f4751440dbf47cb0ffb45df614a33`.
+Exit code: 0. Block copy verified byte-for-byte identical at sha256 `a5a546865db909447a9fe3f09db329b2099ae4d0c167e92e6c64c0f257a2ddda`.
 
 ### C0b block mirror
 
 ```
-$ cmp .remedy-wt/f281-r4-block.md .agent/last_block.md
+$ cmp .remedy-wt/f281-r5-block.md .agent/last_block.md
 (no output)
 
 $ sha256sum .agent/last_block.md
-73fa1a19a51115538008ce1b1313c31f335f4751440dbf47cb0ffb45df614a33  .agent/last_block.md
+a5a546865db909447a9fe3f09db329b2099ae4d0c167e92e6c64c0f257a2ddda  .agent/last_block.md
 ```
 
-Exit code: 0. Block mirror verified byte-for-byte identical at sha256 `73fa1a19a51115538008ce1b1313c31f335f4751440dbf47cb0ffb45df614a33`.
+Exit code: 0. Block mirror verified byte-for-byte identical at sha256 `a5a546865db909447a9fe3f09db329b2099ae4d0c167e92e6c64c0f257a2ddda`.
 
 ## Deviations & assumptions
 
-None. All 9 code edits matched the FROM text verbatim at the cited locations; all gates passed with the expected outputs.
+None. All 12 code edits matched the FROM text verbatim at the cited locations; all gates passed with the expected outputs; the vocabulary function measurements match exactly (245 → 232 meaning violations, 2 synonym offenders unchanged).
 
 ## Next
 
-Round 5: Re-run `_meaning_violations()` grouped by word at the start of the round; expected counts after this round are Task 0 or 1 (stats.bench may remain), Order 0 or 1 (stats.bench's own Order violation, same caveat), Evidence 12, Mission 16, Run ~29, Project 65, Job ~120 — 245 total. Take the next-smallest bucket by word-sense violation count and clear it via the same shared-constant strategy when possible.
+Round 6: Re-run `_meaning_violations()` grouped by word at the start of the round; expected counts after this round are Mission 16 (unchanged — none of this round's fixes touched a standalone Mission violation), Order 1 (`stats.bench`, unfixed), Run ~29-30, Project 65, Job ~120 — 232 total (measured directly this round; re-measure rather than trust). Take the next-smallest bucket (Mission, 16, unless a fresh measurement disagrees).
