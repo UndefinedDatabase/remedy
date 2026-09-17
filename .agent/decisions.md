@@ -14230,3 +14230,56 @@ CHOSEN. `102950ebadc06649aff95edee98c5438303211d0` is accepted as F280's closure
 ALTERNATIVE. Discard the built package and re-run SPEC E and SPEC Z against `98a5c352` in a repair round, rejected because it would spend a second full evidence-job run and a second ~25 MB zip build to change two metadata fields with no effect on the packaged content or its correctness, against a package that already, honestly, evidences exactly the commit it names.
 
 CONSEQUENCE. Closure round B's STATUS `[x]` line for F280 names `accepted HEAD 102950ebadc06649aff95edee98c5438303211d0`. R-0952 is Done in this same commit. HOW TO REVERSE: re-run SPEC E and SPEC Z of round 24's block against `98a5c352bb9cf06d3e6484284b4f0df82b9ed6c8`, replace the package and its manifest, and correct the STATUS line's accepted HEAD before the closure commit lands.
+
+## DECISION F281 D1 (2026-09-17, F281 round 1) — the `Worker:` → role-label rename touches three production sites, not the twelve a bare grep finds
+
+CONTEXT. DECISION F259 D3 named the role-label rename as the thing that "belongs
+to F261" (now F281, by DECISION amend0917-throughput D4's carry-forward) and
+explicitly excluded `Worker:` from the vocabulary test's own enforced-mode scan,
+so no gate depends on this rename. A repo-wide search for the literal `Worker:`
+finds twelve production sites, not one: `apps/cli/commands/do_cmd.py:618,621`;
+`packages/orchestration/pingpong_evidence.py:230` (plus line 232's `Worker write
+mode:`, the same reference without the bare colon); `apps/cli/commands/worker.py:
+67,227`; `packages/orchestration/brain_viewer.py:559,975`;
+`packages/orchestration/brain_detail.py:1175`;
+`packages/orchestration/project_brain.py:630`; and
+`apps/ui/src/components/panels/RightLivePanel.tsx:41`.
+
+MEASURED. The `do_cmd.py`/`pingpong_evidence.py` sites are the pingpong run
+report: each sits beside a sibling `Reviewer:` line built from
+`reviewer_provider`, and each one's own value comes from `builder_provider` —
+these are the retired BUILDER role label DECISION F259 D3 and D11a name. The
+`worker.py`/`brain_viewer.py`/`brain_detail.py`/`project_brain.py`/
+`RightLivePanel.tsx` sites all label a WORKER ADAPTER OR WORKER PROCESS record
+(`match.display_name`, `status.worker_id`, `node.label`, `spec.display_name`,
+`dashboard.workerStatus.lifecycle_state`) — the `worker` command group's own
+subject and the cockpit/brain views of it, a live, still-correct vocabulary
+sense per `docs/system/vocabulary.md`'s own Worker row (roles run ON a worker;
+the worker itself keeps its name). Two test assertions pin the retired string on
+the renamed side only: `tests/cli/test_cli_ux.py:592,665`, both against
+`_cmd_run_show`'s text-mode output.
+
+CHOSEN. Rename `Worker:` to `Builder:` (the pairing DECISION amend0905-vocab D1
+gives the Builder/Reviewer roles, confirmed by the sibling `Reviewer:` line
+already beside every one of these) at the five production line occurrences —
+`do_cmd.py:618`, `do_cmd.py:621`, `pingpong_evidence.py:230`, and
+`pingpong_evidence.py:232`'s `Worker write mode:` → `Builder write mode:` (the
+same role reference; leaving it unrenamed beside a freshly renamed `Builder:`
+line one line above would be the obvious residue a later reader trips on) —
+plus the two test assertions that pin the old string. The seven
+`worker`/`brain_*`/`project_brain.py`/`RightLivePanel.tsx` sites are UNTOUCHED:
+none is the retired role label, and DECISION F259 D3's own vocabulary keeps
+"worker" as the correct noun for the adapter/process entity.
+
+ALTERNATIVES CONSIDERED. Renaming all twelve sites on the bare grep — rejected,
+because it would rename the `worker` command group's own subject to `builder`,
+which is wrong on its own terms and is exactly the over-reach a naive
+grep-and-replace produces. Leaving `pingpong_evidence.py:232`'s "Worker write
+mode" unrenamed because it lacks the literal substring `Worker:` — rejected as
+the same class of miss in the other direction: leaving one role reference
+un-renamed beside its own freshly renamed sibling.
+
+CONSEQUENCE. `tests/cli/test_cli_ux.py`'s two assertions read `"Builder:" in
+out`; the pingpong text report and its `summary.md` evidence file both print
+`Builder:`/`Builder write mode:`; no other module's "Worker" reference changes.
+HOW TO REVERSE: revert this round's C3 commit; delete this paragraph.
