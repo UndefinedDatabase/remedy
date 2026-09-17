@@ -18,7 +18,7 @@ def _cmd_brain(job_id_str: str, *, json_output: bool = False) -> None:
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)
@@ -65,7 +65,7 @@ def _cmd_brain_node(job_id_str: str, node_id: str, *, json_output: bool = False)
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)
@@ -116,7 +116,7 @@ def _cmd_brain_view(job_id_str: str) -> None:
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)
@@ -169,7 +169,7 @@ def _prepare_viewer(job_id_str: str):
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)
@@ -282,7 +282,7 @@ def _cmd_context(job_id_str: str, *, json_output: bool = False) -> None:
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)
@@ -336,7 +336,7 @@ def _cmd_trust_report(job_id_str: str) -> None:
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)
@@ -361,7 +361,7 @@ def _cmd_timeline(job_id_str: str) -> None:
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)
@@ -382,7 +382,7 @@ def _cmd_cockpit(job_id_str: str) -> None:
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)
@@ -407,7 +407,7 @@ def _cmd_constitution(job_id_str: str) -> None:
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)
@@ -442,7 +442,7 @@ def _cmd_brain_continue(
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)
@@ -490,7 +490,7 @@ def _cmd_agent_loop(job_id_str: str) -> None:
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)

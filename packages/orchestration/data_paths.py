@@ -373,7 +373,7 @@ def resolve_job_id(raw: str) -> str:
         return lookup_job_id(raw)
     except JobIdAmbiguous as exc:
         _exit_ambiguous(raw, exc.matches)
-    except JobIdError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+    except JobIdError:
+        print(f"Error: No job matches {raw!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
 

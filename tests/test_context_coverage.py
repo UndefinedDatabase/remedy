@@ -556,7 +556,7 @@ class TestContextCoverageCli:
         with pytest.raises(SystemExit) as exc_info:
             main()
         assert exc_info.value.code == 1
-        assert "invalid job ID" in capsys.readouterr().err
+        assert "No job matches" in capsys.readouterr().err
 
     def test_unknown_job_exits_1(self, tmp_path, monkeypatch, capsys):
         import sys

@@ -18,7 +18,7 @@ def _cmd_file_why(job_id_str: str, path: str, *, json_output: bool = False) -> N
     try:
         job_id = lookup_job_id(job_id_str)
     except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+        print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
     try:
         job = require_job_plan(job_id)
