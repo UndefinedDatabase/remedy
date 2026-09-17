@@ -14413,3 +14413,51 @@ a future catalog edit that reintroduces "loop" anywhere other than the two
 named exempted surfaces still fails the suite. HOW TO REVERSE: revert this
 round's C2 commit; delete this paragraph and the `SYNONYM_EXEMPTIONS`
 paragraph in `tests/docs/test_vocabulary.py`.
+
+## DECISION F281 D4 (2026-09-17, F281 round 15) — `_box()`'s long right-column text wraps across continuation lines instead of being truncated with an ellipsis
+
+CONTEXT. `docs/roadmap/features/T2_F281.md`'s Acceptance list carries, verbatim
+from F261's T004 via F280's T002: "A 200-character option help renders without
+`…`." `apps/cli/help_renderer.py`'s `_box()`, the shared row-renderer behind
+`render_root_help`, `render_group_help` and `render_command_help`, truncated
+any row whose `"  {left}{pad}  {right}"` content exceeded `BOX_WIDTH` (78) to
+`BOX_WIDTH - 1` characters plus `"…"`.
+
+MEASURED. `apps/cli/command_catalog.py`'s real, committed catalog carries a
+221-character `ArgDef.help` string (`job.show --full`) and group descriptions
+up to 96 characters; before this round, `python3 -m apps.cli.grouped job show
+--help` truncated `--full`'s help with an ellipsis, and even the default
+`python3 -m apps.cli.grouped --help` (no option over 200 characters, only two
+group descriptions over 78) printed the ellipsis twice, and
+`python3 -m apps.cli.grouped --all-commands` printed it at least once. A
+disposable-worktree dry run of the fix reproduces zero ellipsis in `--help`,
+`--all-commands` and `job show --help`, and a mutation red-proof — reverting
+only the `_box()` edit — reddens exactly the round's own four ellipsis-guard
+tests (`test_long_content_wraps_without_ellipsis`,
+`test_root_help_has_no_ellipsis`, `test_every_group_help_has_no_ellipsis`,
+`test_every_command_help_has_no_ellipsis`, 19 passed / 4 failed) and no other
+test, confirming the fix is load-bearing.
+
+CHOSEN. `_box()` computes `prefix_width` (the fixed `"  {left}{pad}  "` gutter)
+and `wrap_width = BOX_WIDTH - prefix_width`, then calls
+`textwrap.wrap(right, width=wrap_width)` and emits one row per wrapped line,
+continuation lines indented under the right column by `prefix_width` spaces.
+No new dependency: `textwrap` is stdlib. The three render functions and every
+caller are unchanged — only `_box()`'s internals move, so the fix reaches
+`render_root_help`, `render_group_help` and `render_command_help` at once.
+
+ALTERNATIVES CONSIDERED. Widening `BOX_WIDTH` — rejected: no fixed width
+accommodates a 359-character command description (the longest in the
+catalog), and a wider box would still truncate eventually while making every
+short row wider for no reason. Wrapping only past a higher threshold and
+truncating past a second, larger one — rejected: the Acceptance line requires
+no truncation at all, not a longer rope. Reflowing with
+`shutil.get_terminal_size()` instead of a fixed width — rejected: the module's
+own docstring states "Deterministic — no terminal probing, fixed width (78
+inner)" as a design constraint this round does not touch.
+
+CONSEQUENCE. Every catalog surface's help text, however long, renders in full
+across as many lines as it needs; `remedy --help`, every `remedy <group>
+--help` and every `remedy <group> <command> --help` carry zero `"…"`
+characters, measured directly rather than assumed. HOW TO REVERSE: revert
+this round's C2 commit; delete this paragraph.

@@ -1,123 +1,92 @@
-# F281 Round 14 — step block
+# F281 Round 15 — step block
 
 ## Goal
 
-Book round 13's independently-reviewed PASS, then land the three-part
-convergence PLAN13 named: reword `stats.bench`'s lone remaining
-`_meaning_violations()` entry, exempt the two structurally-unreachable
-`_synonym_offenders()` entries by name (DECISION F281 D3), and flip
-`VOCABULARY_MODE` to `"enforced"` — all three in one commit, because
-flipping the mode alone against the pre-round catalog would assert
-`violations == []` and `offenders == []` and both are false until this
-round's edits land. Pre-verified in a disposable worktree (`.remedy-wt/`,
-removed after use) against a fresh re-import of the real
-`tests/docs/test_vocabulary.py` functions: post-edit,
-`_meaning_violations()` and `_synonym_offenders()` both read `[]`, and the
-targeted suite plus canary pass unchanged in count (74, 42).
+Book round 14's independently-reviewed PASS, then fix `apps/cli/help_renderer.py`'s
+`_box()` so long right-column text WRAPS across continuation lines instead of being
+truncated with an ellipsis (DECISION F281 D4), clearing the Acceptance line "A
+200-character option help renders without `…`." Pre-verified twice in disposable
+worktrees (`.remedy-wt/`, removed after use): the fix applied cleanly and
+`tests/test_help_renderer.py tests/test_grouped_cli.py -q` read `296 passed`
+(293 baseline + 3 new sweep tests, 1 test renamed with no count change); a
+mutation red-proof reverting ONLY the `_box()` edit reddened exactly the four
+ellipsis-guard tests (19 passed, 4 failed) and no other test, then re-applying
+restored `23 passed` in `tests/test_help_renderer.py` alone.
 
 ## Bundle
 
-C0a: save this block verbatim to `.agent/authored/f281-r14.md`.
+C0a: save this block verbatim to `.agent/authored/f281-r15.md`.
 C0b: mirror this block verbatim to `.agent/last_block.md`.
-C1: RECORD13 + DECISION F281 D3 + PLAN14 — one commit.
-C2: CODE — 1 FROM/TO edit in `apps/cli/command_catalog.py` (the
-`stats.bench` reword) and 3 edits in `tests/docs/test_vocabulary.py` (the
-`VOCABULARY_MODE` flip with its comment, a new `SYNONYM_EXEMPTIONS` block,
-and `_synonym_offenders()`'s return line) — one commit.
-C3: HANDBACK, including the `.agent/operator_questions.md` entry named in
-this block's Constraints.
+C1: RECORD14 + DECISION F281 D4 + PLAN15 — one commit.
+C2: CODE — 2 edits in `apps/cli/help_renderer.py` (the `textwrap` import and
+`_box()`'s wrap logic) and 2 edits in `tests/test_help_renderer.py` (rename
++ rewrite `test_long_content_truncated`, insert `TestNoEllipsisAcrossCatalog`)
+— one commit.
+C3: HANDBACK.
 
-## C1 — RECORD13 + DECISION F281 D3 + PLAN14
+## C1 — RECORD14 + DECISION F281 D4 + PLAN15
 
-### RECORD13 — append to `.agent/live_review.md`, after its current last
+### RECORD14 — append to `.agent/live_review.md`, after its current last
 line, separated by exactly one blank line, verbatim:
 
 ```
-Gate: F281 R13 — the F281 round 13 entry. VERDICT PASS. Written by the planner and reviewer of F281's second session after reading the committed range `b1f8478e`..`a8e42d10` (commits `c2f99c5d`, `81b07467`, `90bf6f46`, `a8e42d10`) and independently re-deriving every reading below; the worker's report was evidence for none of them except where named. THE TRANSPORT: `.agent/authored/f281-r13.md` and `.agent/last_block.md` are byte-identical, sha256 `0380ada514103de382fc02e93c1763cd9667644c5490c19e6ff6ba6dc1914433`, reproduced directly by `cmp` and `sha256sum`. THE CODE, reproduced by `git show 81b07467`: all 10 FROM/TO edits landed exactly as ordered, each appending ", under its mission" or "(under its mission)" to its own distinct ArgDef help string; a direct count of all 10 new literals and all 10 old literals over the committed file confirms 1 and 0 respectively for every pair. THE MEASUREMENT, reproduced directly at HEAD against the real, committed catalog: `_meaning_violations()` reads 1 (`('command:stats.bench:description', 'Order')`), `_synonym_offenders()` reads 2 (`('arg:do.run:--fixture-builder:description', 'loop')`, `('command:dev.agent-loop:command_id', 'loop')`) — both exactly matching the block's own G1 prediction (11→1, 10 fixed, 0 introduced). THE GATES, reproduced directly: `python3 -m pytest tests/docs/test_vocabulary.py tests/test_command_catalog.py tests/cli/test_advertised_commands.py -q` reads `74 passed`; `python3 -m pytest tests/cli/test_golden_path.py -q` reads `42 passed`; `python3 -m ruff check apps/cli/command_catalog.py` reads `All checks passed!`. THE TREE: `git status --porcelain` empty, `git worktree list` one row, HEAD `a8e42d10` matches `origin/feature/f281-cli-help-surface`. A PROSE SLIP (not a defect on disk): PLAN13, the plan.md content this round's own C1 replaces, ran 71 lines against AGENTS.md's `.agent/plan.md` cap of under 50 lines, undeclared by round 13's worker; logged in `.agent/prose_slips.md` by this same commit. WHY PASS: every byte independently reproduces, the vocabulary-function measurement matches exactly, all 10 edits are correct and complete, and the plan-length overage is the only defect found, corrected by this round's own PLAN14 rather than left standing.
-```
-
-### PROSE SLIP — append to `.agent/prose_slips.md`, after its current last
-line, separated by exactly one blank line, verbatim:
-
-```
-2026-09-17, F281 round 13 — the plan.md content round 13's own C1 wrote (PLAN13) ran 71 lines against AGENTS.md's stated cap of under 50 lines for `.agent/plan.md`, and round 13's worker did not declare the overage under "Deviations & assumptions." The reviewer found it on round 14's independent review; no gate or test reads `.agent/plan.md`'s length, so nothing besides the cap itself was violated, and round 14's own PLAN14 replacement is written under the cap. THE RULE THAT FOLLOWS: a plan-replacement slice is measured against AGENTS.md's stated caps at authoring time, the same way a `.agent/handoff.md` or catalog-file cap already is, and an overage is declared exactly like any other cap-bounded replacement (pre-emission checklist item 3).
+Gate: F281 R14 — the F281 round 14 entry. VERDICT PASS. Written by the planner and reviewer of F281's second session after reading the committed range `a8e42d10`..`eabb26f5` (commits `19d999c1`, `22412ceb`, `f3e301cc`, `eabb26f5`) and independently re-deriving every reading below; the worker's report was evidence for none of them except where named. THE TRANSPORT: `.agent/authored/f281-r14.md` and `.agent/last_block.md` are byte-identical, sha256 `c69adf225c91896c12cc5b678b65a6e5c3c9baa27a3bba0734c6208d53383127`, reproduced directly by `cmp` and `sha256sum`. THE CODE, reproduced by `git show 22412ceb`: all 4 FROM/TO edits landed exactly as ordered — the `stats.bench` reword, the `VOCABULARY_MODE` flip with its comment, the new `SYNONYM_EXEMPTIONS` block, and `_synonym_offenders()`'s return line — and the commit's path set is exactly the two declared files. THE MEASUREMENT, reproduced directly at HEAD against the real, committed catalog: `_meaning_violations()` reads `[]`, `_synonym_offenders()` reads `[]`, `VOCABULARY_MODE` reads `"enforced"` — matching the block's own G1 prediction exactly. THE G5 CHECK, reproduced directly: the raw (pre-exemption) offender set, recomputed by re-running `_synonym_offenders()`'s own loop without the final subtraction, reads exactly `{('arg:do.run:--fixture-builder:description', 'loop'), ('command:dev.agent-loop:command_id', 'loop')}`, identical to `SYNONYM_EXEMPTIONS` — the exemption removes exactly these two and nothing else. THE GATES, reproduced directly: `python3 -m pytest tests/docs/test_vocabulary.py tests/test_command_catalog.py tests/cli/test_advertised_commands.py -q` reads `74 passed`; `python3 -m pytest tests/cli/test_golden_path.py -q` reads `42 passed`; `python3 -m ruff check apps/cli/command_catalog.py tests/docs/test_vocabulary.py` reads `All checks passed!`. THE OPERATOR QUESTION: `.agent/operator_questions.md`'s Q1 entry lands exactly as the block's Constraints specify — heading `### Q1 — narrow vocabulary check's synonym scope (2026-09-17, F281, round 14)`, body in plain sentences with no ids, round numbers, decision ids or file paths, the standard closing sentence. THE TREE: `git status --porcelain` empty, `git worktree list` one row, HEAD `eabb26f5` matches `origin/feature/f281-cli-help-surface`. A HARMLESS SELF-REFERENCE NOTE (not a defect): the handback's own "Final HEAD: f3e301cc" names the commit before its own C3, the same convention round 13's handback used (`90bf6f46` before its own `a8e42d10`) — the true final HEAD, `eabb26f5`, is what this entry verifies. WHY PASS: every byte independently reproduces, all 4 code edits are correct and complete, the exemption is proven non-vacuous and exactly as narrow as DECISION F281 D3 claims, and the operator-questions entry matches its spec exactly.
 ```
 
 ### DECISION — append to `.agent/decisions.md`, after its current last
 line, separated by exactly one blank line, verbatim:
 
 ```
-## DECISION F281 D3 (2026-09-17, F281 round 14) — the two structurally-unreachable synonym offenders are exempted by name, and `VOCABULARY_MODE` flips to `enforced`
+## DECISION F281 D4 (2026-09-17, F281 round 15) — `_box()`'s long right-column text wraps across continuation lines instead of being truncated with an ellipsis
 
-CONTEXT. DECISION F281 D2 (round 2) measured `_synonym_offenders()`'s floor at
-two entries — `arg:do.run:--fixture-builder:description` and
-`command:dev.agent-loop:command_id`, both flagged for the word "loop" — and
-left them unfixed, naming two paths forward: "a later DECISION either narrows
-`_synonym_offenders()`'s own scope (an amendment to DECISION F259 D3), or an
-operator ruling exempts these two named surfaces by id." Round 13 cleared the
-catalog's `_meaning_violations()` down to its own last reachable entry
-(`stats.bench`'s Order collision). PLAN13's Next Steps ordered this round to
-land the `stats.bench` reword, these two offenders' resolution, and the
-`VOCABULARY_MODE` flip together, since flipping the mode alone against the
-pre-round catalog would assert `offenders == []` and `violations == []`, and
-both were false at round 13's HEAD.
+CONTEXT. `docs/roadmap/features/T2_F281.md`'s Acceptance list carries, verbatim
+from F261's T004 via F280's T002: "A 200-character option help renders without
+`…`." `apps/cli/help_renderer.py`'s `_box()`, the shared row-renderer behind
+`render_root_help`, `render_group_help` and `render_command_help`, truncated
+any row whose `"  {left}{pad}  {right}"` content exceeded `BOX_WIDTH` (78) to
+`BOX_WIDTH - 1` characters plus `"…"`.
 
-MEASURED. Re-running `_synonym_offenders()` and `_meaning_violations()`
-against the real, committed catalog at round 13's HEAD reproduces exactly
-PLAN13's prediction: one meaning violation
-(`('command:stats.bench:description', 'Order')`) and two synonym offenders
-(`('arg:do.run:--fixture-builder:description', 'loop')`,
-`('command:dev.agent-loop:command_id', 'loop')`), unchanged since round 2. A
-disposable-worktree dry run applying this round's three edits (the
-`stats.bench` reword, a `SYNONYM_EXEMPTIONS` set holding exactly these two
-pairs, and the mode flip) reproduces `_meaning_violations() == []` and
-`_synonym_offenders() == []` exactly — confirmed by first computing the raw,
-unexempted offender set in the dry-run worktree and finding it identical to
-these same two pairs, so the exemption removes exactly what D2 named and
-nothing else. The targeted suite
-(`tests/docs/test_vocabulary.py`, `tests/test_command_catalog.py`,
-`tests/cli/test_advertised_commands.py`) and the canary
-(`tests/cli/test_golden_path.py`) both pass unchanged in count (74 and 42)
-against the enforced-mode assertions in the dry run.
+MEASURED. `apps/cli/command_catalog.py`'s real, committed catalog carries a
+221-character `ArgDef.help` string (`job.show --full`) and group descriptions
+up to 96 characters; before this round, `python3 -m apps.cli.grouped job show
+--help` truncated `--full`'s help with an ellipsis, and even the default
+`python3 -m apps.cli.grouped --help` (no option over 200 characters, only two
+group descriptions over 78) printed the ellipsis twice, and
+`python3 -m apps.cli.grouped --all-commands` printed it at least once. A
+disposable-worktree dry run of the fix reproduces zero ellipsis in `--help`,
+`--all-commands` and `job show --help`, and a mutation red-proof — reverting
+only the `_box()` edit — reddens exactly the round's own four ellipsis-guard
+tests (`test_long_content_wraps_without_ellipsis`,
+`test_root_help_has_no_ellipsis`, `test_every_group_help_has_no_ellipsis`,
+`test_every_command_help_has_no_ellipsis`, 19 passed / 4 failed) and no other
+test, confirming the fix is load-bearing.
 
-CHOSEN. The first of D2's two named paths: narrow `_synonym_offenders()`'s
-own scope by adding a `SYNONYM_EXEMPTIONS` set of exactly the two `(where,
-synonym)` pairs D2 measured, subtracted from the offenders set before it is
-returned — the same exclusion shape the module already uses for `Worker:`'s
-vacuous-gate exclusion, but scoped per-surface rather than per-synonym,
-because "loop" itself must stay a live retired synonym everywhere else a
-future catalog edit might reintroduce it. `stats.bench`'s description is
-reworded ("the order and both numbers" → "the sequence and both numbers"),
-clearing the catalog's last meaning violation — DECISION F259 D3's own
-scope reads "the word `order`" per the vocabulary page's meaning fragments
-(`order file`, `what you ask`, `text or`), none of which this generic
-grammatical "order" ever carried. `VOCABULARY_MODE` flips to `"enforced"`,
-since both mode-dependent assertions now read empty, exactly as their
-`enforced`-mode branch requires.
+CHOSEN. `_box()` computes `prefix_width` (the fixed `"  {left}{pad}  "` gutter)
+and `wrap_width = BOX_WIDTH - prefix_width`, then calls
+`textwrap.wrap(right, width=wrap_width)` and emits one row per wrapped line,
+continuation lines indented under the right column by `prefix_width` spaces.
+No new dependency: `textwrap` is stdlib. The three render functions and every
+caller are unchanged — only `_box()`'s internals move, so the fix reaches
+`render_root_help`, `render_group_help` and `render_command_help` at once.
 
-ALTERNATIVES CONSIDERED. Removing "loop" from `RETIRED_SYNONYMS` entirely —
-rejected: it would silently stop scanning EVERY catalog surface for "loop",
-not only the two named ones, so a future command reintroducing "loop" prose
-elsewhere would pass unnoticed; the per-surface exemption keeps the scan
-live everywhere else. Leaving `VOCABULARY_MODE` at `"planned"` and landing
-only the `stats.bench` reword and the exemption — rejected: PLAN13's own
-risk paragraph already named this as reddening the planned-mode assertion
-(`violations != []`) the moment the last violation clears, so the three
-changes land in one commit. Asking the operator to rule before proceeding —
-rejected under amend0917-throughput rule 5: the recommendation is executed
-as this dated, reversible decision and logged in
-`.agent/operator_questions.md` for the operator to overturn, rather than
-stalling the round.
+ALTERNATIVES CONSIDERED. Widening `BOX_WIDTH` — rejected: no fixed width
+accommodates a 359-character command description (the longest in the
+catalog), and a wider box would still truncate eventually while making every
+short row wider for no reason. Wrapping only past a higher threshold and
+truncating past a second, larger one — rejected: the Acceptance line requires
+no truncation at all, not a longer rope. Reflowing with
+`shutil.get_terminal_size()` instead of a fixed width — rejected: the module's
+own docstring states "Deterministic — no terminal probing, fixed width (78
+inner)" as a design constraint this round does not touch.
 
-CONSEQUENCE. After this round, `_meaning_violations()` and
-`_synonym_offenders()` both read `[]`; `VOCABULARY_MODE` reads `"enforced"`;
-a future catalog edit that reintroduces "loop" anywhere other than the two
-named exempted surfaces still fails the suite. HOW TO REVERSE: revert this
-round's C2 commit; delete this paragraph and the `SYNONYM_EXEMPTIONS`
-paragraph in `tests/docs/test_vocabulary.py`.
+CONSEQUENCE. Every catalog surface's help text, however long, renders in full
+across as many lines as it needs; `remedy --help`, every `remedy <group>
+--help` and every `remedy <group> <command> --help` carry zero `"…"`
+characters, measured directly rather than assumed. HOW TO REVERSE: revert
+this round's C2 commit; delete this paragraph.
 ```
 
-### PLAN14 — replace the entire content of `.agent/plan.md` with exactly:
+### PLAN15 — replace the entire content of `.agent/plan.md` with exactly:
 
 ```
 # Plan — F281 CLI help surface
@@ -134,185 +103,195 @@ DONE when T001 and the Acceptance list hold.
 
 ## Current Step
 
-ROUND 14. C1 books round 13's PASS and adds DECISION F281 D3 (exempts the
-two structurally-unreachable synonym offenders by name; flips
-`VOCABULARY_MODE` to `"enforced"`). C2 rewords `stats.bench`'s description
-and lands the `SYNONYM_EXEMPTIONS` mechanism plus the mode flip in
-`tests/docs/test_vocabulary.py`. After this round:
-`_meaning_violations() == []`, `_synonym_offenders() == []`, both
-mode-dependent tests assert the enforced-mode branch and pass.
+ROUND 15. C1 books round 14's PASS. C2 fixes `apps/cli/help_renderer.py`'s
+`_box()`: long right-column text now WRAPS across continuation lines instead
+of being truncated with an ellipsis (DECISION F281 D4), clearing the
+Acceptance line "A 200-character option help renders without `…`." Three new
+tests in `tests/test_help_renderer.py` sweep the real catalog (root help,
+every group, every command) for zero ellipsis.
 
 ## Next Steps
 
-1. T001's remaining Acceptance items (group order, `doctor core`'s
-   dead-commands section, the 200-char help wrap, the README quickstart,
-   R-0805, R-0809, R-0934) are UNVERIFIED by this round — a quick grep found
-   nothing conclusive either way. Re-read `docs/roadmap/features/T2_F281.md`'s
-   Acceptance list fresh at round 15's claim; do not assume any one item is
-   done or not from this note.
-2. Session 2 of F281 is 6 delegated rounds in (rounds 9-14) after this round,
-   at the low end of the 6-to-8 target (amend0905-throughput). A further
-   round or two stays in scope; end the session on demonstrably exhausted
-   context, not at a nice seam.
+1. Remaining Acceptance items, freshly re-measured this round: the D4 visible
+   group order test does not exist yet; `doctor core`'s dead-commands section
+   does not exist (design item (c) of DECISION amend0905-vocab D11,
+   `T2_F271.md` T002 — check the scope-overlap risk below before authoring);
+   R-0805, R-0809, R-0895 and R-0934 are all still OPEN; the README quickstart
+   is unchanged. Re-measure fresh at round 16's claim rather than trusting
+   this line.
+2. Session 2 of F281 is 7 delegated rounds in (rounds 9-15), at the top of
+   the 6-to-8 target (amend0905-throughput). End this session after round 15
+   on demonstrably sufficient progress, or continue if context comfortably
+   suffices.
 
 ## Risks
 
-- Each remaining Acceptance item is its own measurement against the real
-  catalog/CLI output; do not batch more than one per round without a fresh
-  dry run, per the discipline DECISION F281 D3 followed.
+- The `doctor core` dead-commands section appears in BOTH this feature's own
+  Acceptance list and F271's (`T2_F271.md` T002, design item (c)) — F271 runs
+  AFTER F281 in STATUS order. Read both files fresh before claiming that item;
+  do not implement the same mechanism twice.
 ```
 
-## C2 — CODE (4 edits: 1 in `apps/cli/command_catalog.py`, 3 in
-`tests/docs/test_vocabulary.py`)
+## C2 — CODE (4 edits: 2 in `apps/cli/help_renderer.py`, 2 in
+`tests/test_help_renderer.py`)
 
 Apply each FROM → TO pair below EXACTLY. Every FROM string must appear
-verbatim EXACTLY ONCE; if it does not match, STOP and report the exact
-mismatch rather than guessing or forcing it.
+verbatim EXACTLY ONCE (edits 3 and 4 are APPEND pairs — TO contains FROM
+verbatim, checked by containment, not by occurrence count); if a
+single-occurrence FROM does not match exactly once, STOP and report the
+exact mismatch rather than guessing or forcing it.
 
-1. `stats.bench`'s description, in `apps/cli/command_catalog.py`. FROM (one
-   whole source line, 12-space indent):
+1. Add the `textwrap` import, in `apps/cli/help_renderer.py`. FROM (whole
+   3-line block):
 ```
-            "the series before it, and a regression warning naming the order and "
+from __future__ import annotations
+
+BOX_WIDTH = 78  # inner width (between vertical bars)
 ```
 TO:
 ```
-            "the series before it, and a regression warning naming the sequence and "
+from __future__ import annotations
+
+import textwrap
+
+BOX_WIDTH = 78  # inner width (between vertical bars)
 ```
 
-2. `VOCABULARY_MODE` and its comment, in `tests/docs/test_vocabulary.py`.
-   FROM (whole 5-line block):
+2. `_box()`'s row-rendering loop, in `apps/cli/help_renderer.py`. FROM (whole
+   9-line block, 4-space indent for `else:`):
 ```
-#: `"planned"` while the catalog still carries the retired words; F261 owns
-#: the renames and flips this constant to `"enforced"` in the same feature.
-#: It is a plain module constant on purpose — never a skip marker, so that
-#: both modes stay measured rather than switched off (T2_F259.md, T003).
-VOCABULARY_MODE = "planned"
+    else:
+        max_left = max(len(r[0]) for r in rows)
+        for left, right in rows:
+            pad = " " * (max_left - len(left))
+            content = f"  {left}{pad}  {right}"
+            # Truncate if too long, pad if too short
+            if len(content) > BOX_WIDTH:
+                content = content[: BOX_WIDTH - 1] + "…"
+            content = content.ljust(BOX_WIDTH)
+            lines.append(f"│{content}│")
 ```
 TO:
 ```
-#: `"enforced"` once F281 has cleared the catalog down to its structural floor
-#: (DECISION F281 D2, D3). It is a plain module constant on purpose — never a
-#: skip marker, so that both modes stay measured rather than switched off
-#: (T2_F259.md, T003).
-VOCABULARY_MODE = "enforced"
+    else:
+        max_left = max(len(r[0]) for r in rows)
+        prefix_width = 2 + max_left + 2
+        wrap_width = max(BOX_WIDTH - prefix_width, 1)
+        for left, right in rows:
+            pad = " " * (max_left - len(left))
+            prefix = f"  {left}{pad}  "
+            wrapped = textwrap.wrap(right, width=wrap_width) or [""]
+            lines.append(f"│{(prefix + wrapped[0]).ljust(BOX_WIDTH)}│")
+            for cont in wrapped[1:]:
+                lines.append(f"│{(' ' * prefix_width + cont).ljust(BOX_WIDTH)}│")
 ```
 
-3. `SYNONYM_EXEMPTIONS`, new block inserted in `tests/docs/test_vocabulary.py`
-   immediately after `RETIRED_SYNONYMS`'s closing bracket. FROM (the
-   `RETIRED_SYNONYMS` block plus the blank line after it — this pair is an
-   APPEND: TO contains FROM verbatim, confirmed by direct containment check):
+3. Rename and rewrite `test_long_content_truncated`, in
+   `tests/test_help_renderer.py`. FROM (whole 4-line block):
 ```
-RETIRED_SYNONYMS = [
-    "promote", "flight plan", "job-file", "task-file", "loop", "overnight",
-]
-
+    def test_long_content_truncated(self) -> None:
+        text = _box("Test", [("x" * 40, "y" * 50)])
+        for line in text.splitlines():
+            assert len(line) == BOX_WIDTH + 2, f"Line too long: {len(line)}"
 ```
 TO:
 ```
-RETIRED_SYNONYMS = [
-    "promote", "flight plan", "job-file", "task-file", "loop", "overnight",
-]
-
-#: Two catalog surfaces DECISION F281 D3 (2026-09-17) measured as structurally
-#: unreachable by this feature: `dev.agent-loop`'s command_id is a command-catalog
-#: rename, squarely F280's remit and this feature's own Do-not-touch, and
-#: `do.run --fixture-builder`'s description names `"repair-loop"`, a real,
-#: load-bearing accepted value asserted as a literal in three test files and
-#: named by two indexed docs pages — renaming it is a behaviour change, not a
-#: reword. Exempting them here is the scope-narrowing D2 itself named as the
-#: path to `"enforced"`; do not widen this set without its own DECISION.
-SYNONYM_EXEMPTIONS = {
-    ("arg:do.run:--fixture-builder:description", "loop"),
-    ("command:dev.agent-loop:command_id", "loop"),
-}
-
+    def test_long_content_wraps_without_ellipsis(self) -> None:
+        text = _box("Test", [("x" * 40, "y" * 50)])
+        assert "…" not in text
+        for line in text.splitlines():
+            assert len(line) == BOX_WIDTH + 2, f"Line too long: {len(line)}"
 ```
 
-4. `_synonym_offenders()`'s return line, in `tests/docs/test_vocabulary.py`.
-   FROM (one whole source line, 4-space indent):
+4. Insert `TestNoEllipsisAcrossCatalog`, in `tests/test_help_renderer.py`,
+   immediately before `class TestRenderError:` (this pair is an APPEND: TO
+   contains FROM verbatim, confirmed by direct containment check). FROM:
 ```
-    return sorted(offenders)
+class TestRenderError:
 ```
 TO:
 ```
-    return sorted(offenders - SYNONYM_EXEMPTIONS)
+class TestNoEllipsisAcrossCatalog:
+    """Acceptance (T2_F281.md): a 200-character option help renders without an
+    ellipsis — long text wraps instead of being truncated."""
+
+    def test_root_help_has_no_ellipsis(self) -> None:
+        from apps.cli.command_catalog import GROUPS
+        groups = [(g.id, g.description) for g in GROUPS.values()]
+        text = render_root_help("remedy", "Remedy.", groups)
+        assert "…" not in text
+
+    def test_every_group_help_has_no_ellipsis(self) -> None:
+        from apps.cli.command_catalog import GROUPS, get_commands_for_group
+        for group_id, group_def in GROUPS.items():
+            commands = [(c.subcommand, c.description) for c in get_commands_for_group(group_id)]
+            text = render_group_help("remedy", group_id, group_def.description, commands)
+            assert "…" not in text, f"group {group_id} help was truncated"
+
+    def test_every_command_help_has_no_ellipsis(self) -> None:
+        from apps.cli.command_catalog import CATALOG
+        for cmd in CATALOG:
+            positionals = [(a.name, a.help) for a in cmd.args if not a.is_option]
+            options = [(a.name, a.help) for a in cmd.args if a.is_option]
+            text = render_command_help(
+                "remedy", cmd.group_id, cmd.subcommand, cmd.description, positionals, options
+            )
+            assert "…" not in text, f"{cmd.command_id} help was truncated"
+
+
+class TestRenderError:
 ```
-   (This FROM string is a single-occurrence literal in this file — the only
-   other `return sorted(...)` in the file is `_meaning_violations()`'s
-   `return sorted(violations)`, a different variable name. Grep before
-   editing to confirm 1 occurrence.)
 
 ## Constraints
 
-- The C2 commit's path set is exactly two files: `apps/cli/command_catalog.py`
-  and `tests/docs/test_vocabulary.py`.
+- The C2 commit's path set is exactly two files: `apps/cli/help_renderer.py`
+  and `tests/test_help_renderer.py`. `tests/test_grouped_cli.py` is read by
+  G1 but not touched.
 - Bare `ruff` is denied to this session's shell; use `python3 -m ruff check
   <path>`.
-- Every FROM string is a SINGLE-OCCURRENCE literal (edit 3 excepted: an
-  APPEND pair, checked by containment, not by occurrence count); if any
-  pre-edit grep for a FROM reads anything other than the count this block
-  states, STOP and report rather than editing.
-- Do not touch any other line in either file. Do not touch
-  `docs/roadmap/features/T2_F259.md`'s own stale `VOCABULARY_MODE` mention
-  (line 188 of that file) — it is F259's own feature file, out of this
-  round's path set.
-- The `.agent/operator_questions.md` entry (written in C3, the handback
-  commit, per operator amendment amend0911-feedback rule C — "a session
-  writes or updates the file in its handback commit through the worker") is
-  the file's first entry (it currently reads
-  `EMPTY — nothing is waiting on the operator.`), heading exactly
-  `### Q1 — narrow vocabulary check's synonym scope (2026-09-17, F281,
-  round 14)`, body in plain sentences with no ids, round numbers, decision
-  ids or file paths, covering: what needs deciding (whether it is
-  acceptable for two specific pieces of command-line help text to keep an
-  otherwise-retired word, because changing either would rename a command
-  people already type or change what a command-line flag accepts); why it
-  matters (turning on the project's "no retired words in help text" rule
-  for real means either living with these two exceptions or reversing the
-  rule); the recommendation (keep the rule on, keep these two named
-  exceptions, and record the exception plainly so it is not removed by
-  accident later); and the standard closing sentence "the recommendation is
-  already executed and stands until you say otherwise."
+- No `.agent/operator_questions.md` entry this round: this fix directly
+  implements an explicit Acceptance line with no policy tradeoff, so there is
+  nothing for the operator to rule on.
+- Do not touch `docs/roadmap/features/T2_F281.md` or `T2_F271.md`; the scope
+  question PLAN15 names is read-only research for round 16, not this round's
+  work.
 
 ## Gates (at most six; run and record real exit codes)
 
-- G1 EMPTY SETS: import `tests.docs.test_vocabulary` fresh (new interpreter
-  process, not a cached import) and report `_meaning_violations()` and
-  `_synonym_offenders()` against the real, committed (post-edit) catalog.
-  Expect both to read exactly `[]`. If either is non-empty, STOP and report
-  the full list before committing.
-- G2 TARGETED: `python3 -m pytest tests/docs/test_vocabulary.py
-  tests/test_command_catalog.py tests/cli/test_advertised_commands.py -q` —
-  expect 74 passed, unchanged.
-- G3 CANARY: `python3 -m pytest tests/cli/test_golden_path.py -q` — expect
-  42 passed, unchanged.
-- G4 RUFF: `python3 -m ruff check apps/cli/command_catalog.py
-  tests/docs/test_vocabulary.py` reads `All checks passed!`.
-- G5 RAW-VS-EXEMPT: recompute the RAW (pre-exemption) offender set — the
-  same loop `_synonym_offenders()` runs, minus the final `- SYNONYM_EXEMPTIONS`
-  subtraction — and confirm it equals exactly
-  `{('arg:do.run:--fixture-builder:description', 'loop'),
-  ('command:dev.agent-loop:command_id', 'loop')}`, proving the exemption
-  removes exactly these two and nothing else (a non-vacuous exemption, not a
-  set that happened to already be empty).
+- G1 TARGETED: `python3 -m pytest tests/test_help_renderer.py
+  tests/test_grouped_cli.py -q` — expect `296 passed` (293 baseline + 3 new
+  sweep tests; the renamed test does not change the count).
+- G2 CANARY: `python3 -m pytest tests/cli/test_golden_path.py -q` — expect
+  `42 passed`, unchanged.
+- G3 RUFF: `python3 -m ruff check apps/cli/help_renderer.py
+  tests/test_help_renderer.py` reads `All checks passed!`.
+- G4 DIRECT MEASUREMENT: count occurrences of `"…"` in the real output
+  of `python3 -m apps.cli.grouped --help`, `python3 -m apps.cli.grouped
+  --all-commands` and `python3 -m apps.cli.grouped job show --help` — expect
+  `0`, `0`, `0` for all three (down from 2, a nonzero count, and 1
+  respectively before this round's fix).
+- G5 MUTATION RED-PROOF, in a disposable git worktree (`git worktree add
+  --detach`, removed after use): with this round's edits applied,
+  `python3 -m pytest tests/test_help_renderer.py -q` reads `23 passed`; then
+  revert ONLY edit 2 (the `_box()` FROM/TO pair) back to its FROM text,
+  leaving the import and both test edits applied, and re-run the same
+  command — expect exactly `test_long_content_wraps_without_ellipsis`,
+  `test_root_help_has_no_ellipsis`, `test_every_group_help_has_no_ellipsis`
+  and `test_every_command_help_has_no_ellipsis` to FAIL (`19 passed, 4
+  failed`) and no other test to change; then re-apply edit 2 and confirm
+  `23 passed` again before deleting the worktree.
 - G6 TREE: `git status --porcelain` empty, `git worktree list` shows only
   the primary checkout, HEAD matches `origin/feature/f281-cli-help-surface`
   after push. Re-run this LITERALLY as the LAST action before writing the
   handback.
 
-No mutation red-proof is ordered this round: G1 and G5 are themselves the
-red/green proof for a prose-and-scope edit to a docs-pinning test — G1
-report the true post-edit state and G5 proves the exemption set is exactly
-as narrow as D3 claims, not wider.
-
 ## Done-when
 
-C1 and C2 are committed with the exact path sets named above; G1-G6 all
-pass with real recorded output; the branch is pushed; the
-`.agent/operator_questions.md` entry lands exactly as Constraints specify;
-`.agent/handoff.md` is rewritten as C3 naming this round, its commits, its
-verification results, the operator-questions entry, and the next expected
-action (round 15 re-reads T2_F281.md's Acceptance list fresh and claims the
-next unverified item). If the worker corrects anything in this block, the
-correction is stated explicitly under "Deviations & assumptions" — never
-left silent.
+C1 and C2 are committed with the exact path sets named above; G1-G6 all pass
+with real recorded output; the branch is pushed; `.agent/handoff.md` is
+rewritten as C3 naming this round, its commits, its verification results,
+and the next expected action (round 16 re-reads `T2_F281.md`'s Acceptance
+list fresh, resolves the F271 dead-commands scope question PLAN15 names
+before touching that item, and claims the next unverified Acceptance line).
+If the worker corrects anything in this block, the correction is stated
+explicitly under "Deviations & assumptions" — never left silent.

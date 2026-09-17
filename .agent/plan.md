@@ -12,29 +12,30 @@ DONE when T001 and the Acceptance list hold.
 
 ## Current Step
 
-ROUND 14. C1 books round 13's PASS and adds DECISION F281 D3 (exempts the
-two structurally-unreachable synonym offenders by name; flips
-`VOCABULARY_MODE` to `"enforced"`). C2 rewords `stats.bench`'s description
-and lands the `SYNONYM_EXEMPTIONS` mechanism plus the mode flip in
-`tests/docs/test_vocabulary.py`. After this round:
-`_meaning_violations() == []`, `_synonym_offenders() == []`, both
-mode-dependent tests assert the enforced-mode branch and pass.
+ROUND 15. C1 books round 14's PASS. C2 fixes `apps/cli/help_renderer.py`'s
+`_box()`: long right-column text now WRAPS across continuation lines instead
+of being truncated with an ellipsis (DECISION F281 D4), clearing the
+Acceptance line "A 200-character option help renders without `…`." Three new
+tests in `tests/test_help_renderer.py` sweep the real catalog (root help,
+every group, every command) for zero ellipsis.
 
 ## Next Steps
 
-1. T001's remaining Acceptance items (group order, `doctor core`'s
-   dead-commands section, the 200-char help wrap, the README quickstart,
-   R-0805, R-0809, R-0934) are UNVERIFIED by this round — a quick grep found
-   nothing conclusive either way. Re-read `docs/roadmap/features/T2_F281.md`'s
-   Acceptance list fresh at round 15's claim; do not assume any one item is
-   done or not from this note.
-2. Session 2 of F281 is 6 delegated rounds in (rounds 9-14) after this round,
-   at the low end of the 6-to-8 target (amend0905-throughput). A further
-   round or two stays in scope; end the session on demonstrably exhausted
-   context, not at a nice seam.
+1. Remaining Acceptance items, freshly re-measured this round: the D4 visible
+   group order test does not exist yet; `doctor core`'s dead-commands section
+   does not exist (design item (c) of DECISION amend0905-vocab D11,
+   `T2_F271.md` T002 — check the scope-overlap risk below before authoring);
+   R-0805, R-0809, R-0895 and R-0934 are all still OPEN; the README quickstart
+   is unchanged. Re-measure fresh at round 16's claim rather than trusting
+   this line.
+2. Session 2 of F281 is 7 delegated rounds in (rounds 9-15), at the top of
+   the 6-to-8 target (amend0905-throughput). End this session after round 15
+   on demonstrably sufficient progress, or continue if context comfortably
+   suffices.
 
 ## Risks
 
-- Each remaining Acceptance item is its own measurement against the real
-  catalog/CLI output; do not batch more than one per round without a fresh
-  dry run, per the discipline DECISION F281 D3 followed.
+- The `doctor core` dead-commands section appears in BOTH this feature's own
+  Acceptance list and F271's (`T2_F271.md` T002, design item (c)) — F271 runs
+  AFTER F281 in STATUS order. Read both files fresh before claiming that item;
+  do not implement the same mechanism twice.
