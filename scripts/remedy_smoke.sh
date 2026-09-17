@@ -2121,8 +2121,8 @@ from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_pla
 job = JobPlan(
     job_title='smoke-approval',
     state=RunState.PLANNED,
-    flight_plan={
-        'schema_v': 'flight_plan_v1',
+    task_plan={
+        'schema_v': 'task_plan_v1',
         'tasks': [{'id': 'T001', 'title': 'Smoke task', 'goal': 'G',
                     'acceptance': ['done'], 'depends_on': [],
                     'est_tokens_band': 'M', 'files_hint': []}],

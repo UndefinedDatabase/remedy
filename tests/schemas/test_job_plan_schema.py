@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from packages.orchestration.schemas.models import (
     _LARGE_PLAN_THRESHOLD,
-    FLIGHT_PLAN_SCHEMA_V,
+    TASK_PLAN_SCHEMA_V,
     PlannedTask,
     TaskPlan,
     TaskPlanClarification,
@@ -30,7 +30,7 @@ def _task(tid: str = "T1", **overrides) -> dict:
 
 def _plan(**overrides) -> dict:
     base = {
-        "schema_v": "flight_plan_v1",
+        "schema_v": "task_plan_v1",
         "tasks": [_task()],
         "risks": [],
     }
@@ -42,8 +42,8 @@ class TestFlightPlanRoundTrip:
 
     def test_minimal_plan_roundtrips(self):
         fp = TaskPlan(**_plan())
-        assert fp.schema_v == "flight_plan_v1"
-        assert fp.SCHEMA_V == FLIGHT_PLAN_SCHEMA_V
+        assert fp.schema_v == "task_plan_v1"
+        assert fp.SCHEMA_V == TASK_PLAN_SCHEMA_V
         assert len(fp.tasks) == 1
         assert fp.tasks[0].id == "T1"
         d = fp.model_dump()

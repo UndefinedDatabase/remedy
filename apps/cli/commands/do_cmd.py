@@ -275,7 +275,7 @@ def _cmd_do_mission(
                 job_title=mission[:80], mission=mission, user_prompt=mission,
                 project_id=str(project.id),
                 intake=intake_result.value.model_dump(),
-                flight_plan=fp_dict,
+                task_plan=fp_dict,
                 tasks=tasks,
                 state=RunState.PLANNED,
                 budgets=job_budgets.model_dump(mode="json") if job_budgets is not None else None,
@@ -295,7 +295,7 @@ def _cmd_do_mission(
                 from packages.orchestration.job_plan import auto_approve_task_plan
                 fp_dict = auto_approve_task_plan(
                     fp_dict, job_evidence_export_dir(str(job.job_id)))
-                job.flight_plan = fp_dict
+                job.task_plan = fp_dict
                 save_job_plan(job)
                 plan_label = (
                     f"flight plan {fp_result.plan.schema_v} (approved via --yes)"

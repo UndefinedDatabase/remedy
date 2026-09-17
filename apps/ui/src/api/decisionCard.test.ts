@@ -201,7 +201,7 @@ describe("decisionAnswers", () => {
     // would take them. No DOM harness reaches the inbox component, so this is
     // the only evidence available that the browser half of the approval works.
     const card: DecisionInboxEntry = {
-      type: "flight_plan_approval",
+      type: "task_plan_approval",
       payload: { options: ["approve", "reject"] },
       answerable_by_decision_resolve: true,
     };
@@ -318,7 +318,7 @@ describe("buildDecisionCardModel clarifications", () => {
   function pendingPlanEntry(): DecisionInboxEntry {
     return {
       id: "fp:approval",
-      type: "flight_plan_approval",
+      type: "task_plan_approval",
       status: "open",
       severity: "blocker",
       safe_summary: "Flight plan awaiting approval (2 open questions).",

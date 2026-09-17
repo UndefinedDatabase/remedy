@@ -330,7 +330,7 @@ def _pending_plan_job(repo: Path, data_root: Path, goal: str,
         f"job = JobPlan(job_title='fixture', mission={goal!r}, project_id=str(project.id),"
         f"  intake={{'schema_v': 'ji1', 'goal': {goal!r},"
         f"           'mission_candidate': {mission_candidate!r}}},"
-        "   flight_plan={'schema_v': 'flight_plan_v1', '_approval': 'pending'},"
+        "   task_plan={'schema_v': 'task_plan_v1', '_approval': 'pending'},"
         "   state=RunState.PLANNED);"
         "save_job_plan(job); print(job.job_id)"
     )

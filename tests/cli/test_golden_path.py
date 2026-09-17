@@ -302,7 +302,7 @@ class TestLLMIntakeWiring:
         from packages.orchestration.job_plan import TaskPlanResult
         from packages.orchestration.schemas.models import TaskPlan
         _fp = TaskPlan(
-            schema_v="flight_plan_v1",
+            schema_v="task_plan_v1",
             tasks=[{"id": "T001", "title": "Do thing", "goal": "A goal",
                     "acceptance": ["Done"], "depends_on": [],
                     "est_tokens_band": "M", "files_hint": []}],
@@ -421,7 +421,7 @@ class TestLLMIntakeWiring:
         from packages.orchestration.job_plan import TaskPlanResult
         from packages.orchestration.schemas.models import TaskPlan
         _fp = TaskPlan(
-            schema_v="flight_plan_v1",
+            schema_v="task_plan_v1",
             tasks=[{"id": "T001", "title": "Do thing", "goal": "A goal",
                     "acceptance": ["Done"], "depends_on": [],
                     "est_tokens_band": "M", "files_hint": []}],

@@ -125,7 +125,7 @@ def smoke_check(*, blocking: bool = True, retry: bool = False) -> DoDCheck:
 
 def simple_plan(*acceptance: str) -> TaskPlan:
     return TaskPlan.model_validate({
-        "schema_v": "flight_plan_v1",
+        "schema_v": "task_plan_v1",
         "tasks": [{"id": "T001", "title": "t", "goal": "g",
                    "acceptance": list(acceptance) or ["tests/x.py passes"],
                    "est_tokens_band": "S"}],
@@ -562,7 +562,7 @@ class TestCorePathsVocabulary:
 class TestPathExtraction:
     def _ctx(self, *, goal: str = "", hints=(), acceptance=("done",)):
         plan = TaskPlan.model_validate({
-            "schema_v": "flight_plan_v1",
+            "schema_v": "task_plan_v1",
             "tasks": [{"id": "T001", "title": "t", "goal": "g",
                        "acceptance": list(acceptance), "est_tokens_band": "S"}],
         })

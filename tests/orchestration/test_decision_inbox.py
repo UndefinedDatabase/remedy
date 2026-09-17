@@ -37,7 +37,7 @@ PRODUCING_DECISION_TYPES = (
     "repo_dirty",
     "token_budget",
     "memory_review",
-    "flight_plan_approval",
+    "task_plan_approval",
     "task_decision",
 )
 
@@ -51,7 +51,7 @@ PRODUCING_DECISION_TYPES = (
 #: RESOLVED flight plan, which carries the same type and is refused;
 #: ``test_an_approved_flight_plan_card_is_not_answerable`` pins that case, for
 #: the reason its task-decision sibling gives.
-ANSWERABLE_DECISION_TYPES = ("flight_plan_approval", "task_decision")
+ANSWERABLE_DECISION_TYPES = ("task_plan_approval", "task_decision")
 
 FIXED_NOW = datetime(2026, 8, 23, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -141,7 +141,7 @@ def _fixture_memory_review() -> tuple[JobPlan, list[dict]]:
 
 
 def _fixture_flight_plan_approval() -> tuple[JobPlan, list[dict]]:
-    return _make_job(flight_plan={"_approval": "pending"}), []
+    return _make_job(task_plan={"_approval": "pending"}), []
 
 
 def _fixture_task_decision() -> tuple[JobPlan, list[dict]]:
@@ -163,7 +163,7 @@ PRODUCING_FIXTURES = {
     "repo_dirty": _fixture_repo_dirty,
     "token_budget": _fixture_token_budget,
     "memory_review": _fixture_memory_review,
-    "flight_plan_approval": _fixture_flight_plan_approval,
+    "task_plan_approval": _fixture_flight_plan_approval,
     "task_decision": _fixture_task_decision,
 }
 
@@ -245,7 +245,7 @@ def test_age_seconds_is_none_for_an_empty_stamp():
     # The flight-plan branch writes created_at="" — the empty case, upstream.
     job, events = _fixture_flight_plan_approval()
     card = _cards_by_type(
-        build_decision_inbox(job, events, now=FIXED_NOW))["flight_plan_approval"]
+        build_decision_inbox(job, events, now=FIXED_NOW))["task_plan_approval"]
     assert card["age_seconds"] is None
 
 
@@ -361,15 +361,15 @@ def test_an_approved_flight_plan_card_is_not_answerable():
 
     Sibling of the test above and for the identical reason its docstring
     gives: a type check cannot tell an open card from a resolved one, because
-    both read ``flight_plan_approval``.  Without this,
+    both read ``task_plan_approval``.  Without this,
     ``ANSWERABLE_DECISION_TYPES`` would be the only statement about the type
     and it would read as "every flight-plan card is answerable", which the
     door's ``_approval == "pending"`` condition makes false.
     """
-    job = _make_job(flight_plan={"_approval": "approved",
+    job = _make_job(task_plan={"_approval": "approved",
                                  "_approval_audit": {"reason": "approved"}})
     card = _cards_by_type(
-        build_decision_inbox(job, [], now=FIXED_NOW))["flight_plan_approval"]
+        build_decision_inbox(job, [], now=FIXED_NOW))["task_plan_approval"]
 
     assert card["id"] == "fp:approval"
     assert card["status"] == "resolved"

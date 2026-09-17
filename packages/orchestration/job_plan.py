@@ -92,7 +92,7 @@ _PLAN_RULES_SEGMENT = """\
 #: pre-migration template ended with one and `compose_prompt_segments` adds
 #: none, so dropping it is a one-byte CONTENT change, not a formatting nit.
 _PLAN_SCHEMA_DIRECTIVE_SEGMENT = """\
-Return ONLY a JSON object matching the flight_plan_v1 schema.
+Return ONLY a JSON object matching the task_plan_v1 schema.
 """
 
 # The conservative-defaults rule this prompt encodes, stated verbatim as
@@ -169,7 +169,7 @@ def make_task_plan_call_recorder(
     carrying ``composed``'s segment manifest so call evidence records which
     named segments produced the prompt.
 
-    The role is ``flight_plan``, deliberately NOT ``planner``: the ``planner``
+    The role is ``task_plan``, deliberately NOT ``planner``: the ``planner``
     traces belong to the OTHER planner path
     (``packages/orchestration/structured_planner.py`` over ``PlannerPlan``), and
     one spelling per concept is what keeps a per-role cache report from summing
@@ -181,7 +181,7 @@ def make_task_plan_call_recorder(
         kind = "flight-plan-retry" if is_parse_retry else "flight-plan"
         traces.append(build_trace_entry(
             prompt_text=effective_prompt,
-            role="flight_plan",
+            role="task_plan",
             provider=provider,
             provider_kind=provider_kind,
             prompt_kind=kind,
@@ -702,7 +702,7 @@ def task_plan_blocks_execution(job: Any) -> str | None:
     Returns "pending" when awaiting approval, "rejected" when plan was
     rejected and needs replanning.
     """
-    fp = getattr(job, "flight_plan", None)
+    fp = getattr(job, "task_plan", None)
     if not isinstance(fp, dict):
         return None
     approval = fp.get("_approval")
@@ -767,7 +767,7 @@ def replan(
 ) -> tuple[dict[str, Any], int]:
     """Apply a new flight plan version.
 
-    Returns (updated flight_plan dict for Job, new version number).
+    Returns (updated task_plan dict for Job, new version number).
     Raises ReplanRejectedError if any task has already completed.
     Old plan.md files are kept (plan.md, plan_v2.md, plan_v3.md, ...).
     """
@@ -816,17 +816,17 @@ def resolve_task_plan_approval(
     """
     from packages.orchestration.pingpong_job import save_job_plan
 
-    fp = job.flight_plan
+    fp = job.task_plan
     if reason != "approve":
         fp["_approval"] = "rejected"
-        job.flight_plan = fp
+        job.task_plan = fp
         save_job_plan(job)
         return None
     if questions:
         fp["clarifications_resolved"] = apply_clarification_answers(
             fp.get("clarifications_resolved"), answers)
     fp["_approval"] = "approved"
-    job.flight_plan = fp
+    job.task_plan = fp
     save_job_plan(job)
     from packages.orchestration.data_paths import job_evidence_export_dir
     return write_assumptions_md(

@@ -332,7 +332,7 @@ def _assumptions_section(job: JobPlan) -> tuple[dict, list[str]]:
     from packages.orchestration.data_paths import job_evidence_export_dir
     from packages.orchestration.job_plan import render_assumptions_md
 
-    fp = getattr(job, "flight_plan", None)
+    fp = getattr(job, "task_plan", None)
     clarifications = fp.get("clarifications_resolved") if isinstance(fp, dict) else None
     markdown = render_assumptions_md(clarifications)
     lines = [markdown]

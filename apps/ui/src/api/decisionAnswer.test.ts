@@ -154,7 +154,7 @@ describe("buildDecisionResolveCommand clarification answers", () => {
   function pendingPlanEntry(): DecisionInboxEntry {
     return {
       id: "fp:approval",
-      type: "flight_plan_approval",
+      type: "task_plan_approval",
       status: "open",
       safe_summary: "Flight plan awaiting approval (1 open question).",
       payload: {

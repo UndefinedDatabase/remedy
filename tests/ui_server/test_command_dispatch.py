@@ -166,7 +166,7 @@ class TestFlightPlanApprovalDispatchEffects:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         from packages.orchestration.pingpong_job import save_job_plan
         self.job = _make_job()
-        self.job.flight_plan = {"_approval": "pending"}
+        self.job.task_plan = {"_approval": "pending"}
         save_job_plan(self.job)
         self.job_id = str(self.job.job_id)
         self.tmp_path = tmp_path
@@ -198,7 +198,7 @@ class TestFlightPlanApprovalDispatchEffects:
 
         assert status == 200, body
         reloaded = load_job_plan(self.job.job_id)
-        assert reloaded.flight_plan["_approval"] == "approved", reloaded.flight_plan
+        assert reloaded.task_plan["_approval"] == "approved", reloaded.task_plan
 
     def test_a_supplied_clarification_answer_is_recorded_as_human(self):
         """DECISION F031 D26's whole point, read off disk rather than the wire.
@@ -210,7 +210,7 @@ class TestFlightPlanApprovalDispatchEffects:
         """
         from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
 
-        self.job.flight_plan = {"_approval": "pending", "clarifications_resolved": [
+        self.job.task_plan = {"_approval": "pending", "clarifications_resolved": [
             {"id": "q1", "question": "Which store?", "default_answer": "sqlite"}]}
         save_job_plan(self.job)
         port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
@@ -218,7 +218,7 @@ class TestFlightPlanApprovalDispatchEffects:
                                      answers={"q1": "use PostgreSQL"})
 
         assert status == 200, body
-        resolved = load_job_plan(self.job.job_id).flight_plan["clarifications_resolved"]
+        resolved = load_job_plan(self.job.job_id).task_plan["clarifications_resolved"]
         assert resolved[0]["answer"] == "use PostgreSQL", resolved
         assert resolved[0]["answered_by"] == "human", resolved
 

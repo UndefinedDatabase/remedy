@@ -307,7 +307,7 @@ def _cmd_decision_resolve(
             resolve_task_plan_approval,
         )
 
-        fp = getattr(job, "flight_plan", None)
+        fp = getattr(job, "task_plan", None)
         if not isinstance(fp, dict) or fp.get("_approval") != "pending":
             # Answers are asked once and written once. A late one is a
             # mistake worth naming, not a generic "nothing pending".

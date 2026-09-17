@@ -85,7 +85,7 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
 
     An ``fp:``-prefixed id is DECISION F031 D24's branch: the door hands it to
     ``job_plan.resolve_task_plan_approval`` and refuses unless
-    ``job.flight_plan`` is a dict whose ``_approval`` is ``"pending"``.  Those
+    ``job.task_plan`` is a dict whose ``_approval`` is ``"pending"``.  Those
     are the same two readings of the same object the door makes, taken from the
     job rather than from the card, so the two cannot drift apart silently.
 
@@ -111,16 +111,16 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
     decide only the status — while the door refuses that record.  The ``fp:``
     test above reads the ID PREFIX rather than the type for that very reason
     and not in defiance of it: the door dispatches on the prefix, while the
-    type ``flight_plan_approval`` is also what the RESOLVED card carries and
+    type ``task_plan_approval`` is also what the RESOLVED card carries and
     the door refuses that one.  Section (g) of
     ``tests/orchestration/test_decision_inbox.py`` builds exactly those
     fixtures, so this file no longer rests on an absence: the difference
     between the two predicates is caught by a test.
     """
     if str(decision_id).startswith("fp:"):
-        flight_plan = getattr(job, "flight_plan", None)
-        return (isinstance(flight_plan, dict)
-                and flight_plan.get("_approval") == "pending")
+        task_plan = getattr(job, "task_plan", None)
+        return (isinstance(task_plan, dict)
+                and task_plan.get("_approval") == "pending")
     record = find_task_decision(job, str(decision_id))
     return record is not None and record.get("status") == ESCALATION_STATUS_OPEN
 

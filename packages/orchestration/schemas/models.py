@@ -36,7 +36,7 @@ REVIEW_VERDICT_SCHEMA_V = "rv1"
 PLANNER_PLAN_SCHEMA_V = "pp1"
 DESIGN_SPEC_SCHEMA_V = "ds1"
 JOB_INTAKE_SCHEMA_V = "ji1"
-FLIGHT_PLAN_SCHEMA_V = "flight_plan_v1"
+TASK_PLAN_SCHEMA_V = "task_plan_v1"
 
 Verdict = Literal["pass", "fail", "needs_repair", "blocked"]
 Severity = Literal["blocker", "high", "medium", "low"]
@@ -129,7 +129,7 @@ class JobIntake(_Structured):
 
 TokenBand = Literal["S", "M", "L", "XL"]
 
-_MAX_FLIGHT_PLAN_TASKS = 25
+_MAX_TASK_PLAN_TASKS = 25
 _LARGE_PLAN_THRESHOLD = 12
 
 
@@ -183,8 +183,8 @@ class TaskPlan(_Structured):
     duplicate ids, no unknown dependencies, no cycles, hard task cap.
     """
 
-    SCHEMA_V: ClassVar[str] = FLIGHT_PLAN_SCHEMA_V
-    schema_v: Literal["flight_plan_v1"]  # required: no default
+    SCHEMA_V: ClassVar[str] = TASK_PLAN_SCHEMA_V
+    schema_v: Literal["task_plan_v1"]  # required: no default
     tasks: list[PlannedTask] = Field(min_length=1)
     risks: list[str] = Field(default_factory=list)
     clarifications_resolved: list[TaskPlanClarification] = Field(
@@ -196,9 +196,9 @@ class TaskPlan(_Structured):
 
     @model_validator(mode="after")
     def _validate_dag(self) -> TaskPlan:
-        if len(self.tasks) > _MAX_FLIGHT_PLAN_TASKS:
+        if len(self.tasks) > _MAX_TASK_PLAN_TASKS:
             raise ValueError(
-                f"TaskPlan exceeds {_MAX_FLIGHT_PLAN_TASKS}-task cap "
+                f"TaskPlan exceeds {_MAX_TASK_PLAN_TASKS}-task cap "
                 f"(got {len(self.tasks)})")
 
         ids: set[str] = set()
@@ -244,7 +244,7 @@ SCHEMA_REGISTRY: dict[str, type[_Structured]] = {
     PLANNER_PLAN_SCHEMA_V: PlannerPlan,
     DESIGN_SPEC_SCHEMA_V: DesignSpec,
     JOB_INTAKE_SCHEMA_V: JobIntake,
-    FLIGHT_PLAN_SCHEMA_V: TaskPlan,
+    TASK_PLAN_SCHEMA_V: TaskPlan,
     # F061: the compiled Definition of Done. Registered because a dod_v1
     # payload is PERSISTED (a job's evidence area) and therefore has to be
     # resolvable from its tag alone. Its provider-facing draft contract

@@ -425,7 +425,7 @@ class JobPlan:
     user_prompt: str = ""
     project_id: str = ""
     intake: dict | None = None
-    flight_plan: dict | None = None
+    task_plan: dict | None = None
     artifacts: list[Artifact] = field(default_factory=list)
     # NOT a `Budget()` default factory: an empty budget and an absent one are indistinguishable once exported, and
     # `budgets` above already carries the F018 limits, so a defaulted second
@@ -874,7 +874,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "user_prompt": job.user_prompt,
         "project_id": job.project_id,
         "intake": job.intake,
-        "flight_plan": job.flight_plan,
+        "task_plan": job.task_plan,
         "artifacts": [a.model_dump(mode="json") for a in job.artifacts],
         "budget": job.budget.model_dump(mode="json") if job.budget else None,
         "fences": job.fences.model_dump(mode="json") if job.fences else None,
@@ -985,7 +985,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         user_prompt=str(data.get("user_prompt", "") or ""),
         project_id=str(data.get("project_id", "") or ""),
         intake=data.get("intake"),
-        flight_plan=data.get("flight_plan"),
+        task_plan=data.get("task_plan"),
         artifacts=[Artifact(**a) for a in (data.get("artifacts") or [])],
         budget=Budget(**_budget) if (_budget := data.get("budget")) else None,
         fences=JobFences(**_fences) if (_fences := data.get("fences")) else None,

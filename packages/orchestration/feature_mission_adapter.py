@@ -61,8 +61,8 @@ from packages.orchestration.roadmap_index import (
     resolve_repo_root,
 )
 from packages.orchestration.schemas.models import (
-    FLIGHT_PLAN_SCHEMA_V,
     JOB_INTAKE_SCHEMA_V,
+    TASK_PLAN_SCHEMA_V,
     JobIntake,
     PlannedTask,
     TaskPlan,
@@ -376,7 +376,7 @@ def prepare_feature_mission(feature: str, repo_root: Path | str | None = None) -
         for slice_ in slices
     ]
     plan = TaskPlan(
-        schema_v=FLIGHT_PLAN_SCHEMA_V,
+        schema_v=TASK_PLAN_SCHEMA_V,
         tasks=tasks,
         risks=[],
         fences={"deny": fence_globs} if fence_globs else None,

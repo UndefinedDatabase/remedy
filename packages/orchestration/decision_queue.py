@@ -73,7 +73,7 @@ class HumanDecision:
 DECISION_TYPES = frozenset({
     "patch_approval", "stop_reason", "test_failure", "repo_dirty",
     "token_budget", "worker_approval", "memory_review", "revert_missing",
-    "flight_plan_approval",
+    "task_plan_approval",
     # F051: a task raised a question mid-run; its branch waits, the run does not.
     "task_decision",
 })
@@ -604,7 +604,7 @@ def list_decisions(
         pass
 
     # 7. Flight plan approval
-    _flight_plan = getattr(job, "flight_plan", None)
+    _flight_plan = getattr(job, "task_plan", None)
     if isinstance(_flight_plan, dict):
         _fp_approval = _flight_plan.get("_approval")
         if _fp_approval == "pending":
@@ -659,7 +659,7 @@ def list_decisions(
             # plan asked for approval — so it is emitted UNGUARDED, and that is
             # what keeps rule (a) of `evidence_triple_problems` satisfied for
             # the minimal job `tests/orchestration/test_mission_state.py` builds,
-            # `Job(name="t", flight_plan={"_approval": "pending"})`, which
+            # `Job(name="t", task_plan={"_approval": "pending"})`, which
             # supplies no clarifications and no intake at all.  Each open
             # question is cited only when it HAS an id: `open_clarification_
             # questions` defaults that field to the empty string, and rule (c)
@@ -683,10 +683,10 @@ def list_decisions(
                     ))
             decisions.append(HumanDecision(
                 id="fp:approval",
-                type="flight_plan_approval",
+                type="task_plan_approval",
                 status="open",
                 severity="blocker",
-                source="flight_plan",
+                source="task_plan",
                 related_node_id="",
                 related_intent_id="",
                 related_file="",
@@ -738,7 +738,7 @@ def list_decisions(
             # F032 T002f, the RESOLVED arm.  DECISION F032 D7 is why it owes a
             # triple at all: `enforce_decision_evidence` selects by TYPE ALONE
             # and never reads `status`, so both arms are enforced the moment
-            # `flight_plan_approval` joins `TRIPLE_REQUIRED_TYPES`, and this card
+            # `task_plan_approval` joins `TRIPLE_REQUIRED_TYPES`, and this card
             # is still RENDERED by `build_decision_inbox`.  Its refs are the
             # audit trail the answer actually left.  The card's own id is again
             # unguarded; `reason` reuses the variable computed above rather than
@@ -767,10 +767,10 @@ def list_decisions(
                 ))
             decisions.append(HumanDecision(
                 id="fp:approval",
-                type="flight_plan_approval",
+                type="task_plan_approval",
                 status="resolved",
                 severity="info",
-                source="flight_plan",
+                source="task_plan",
                 related_node_id="",
                 related_intent_id="",
                 related_file="",

@@ -42,7 +42,7 @@ def _valid_plan_json(n_tasks: int = 3) -> str:
             "files_hint": [f"src/file{i + 1}.py"],
         })
     return json.dumps({
-        "schema_v": "flight_plan_v1",
+        "schema_v": "task_plan_v1",
         "tasks": tasks,
         "risks": ["timeline risk"],
     })
@@ -74,7 +74,7 @@ class TestPlanJobLlm:
 
     def test_cyclic_plan_returns_parse_error(self):
         cyclic = json.dumps({
-            "schema_v": "flight_plan_v1",
+            "schema_v": "task_plan_v1",
             "tasks": [
                 {"id": "T1", "title": "A", "goal": "A", "acceptance": ["ok"],
                  "depends_on": ["T2"], "est_tokens_band": "S", "files_hint": []},
@@ -199,7 +199,7 @@ class TestRenderPlanMd:
                 "acceptance": ["ok"], "depends_on": [],
                 "est_tokens_band": "S", "files_hint": [],
             })
-        fp = TaskPlan(schema_v="flight_plan_v1", tasks=tasks, risks=[])
+        fp = TaskPlan(schema_v="task_plan_v1", tasks=tasks, risks=[])
         md = render_plan_md(fp)
         assert "Consider splitting" in md
 
@@ -273,7 +273,7 @@ class TestPlanJobLlmNormalization:
 
     def _xl_plan_json(self) -> str:
         return json.dumps({
-            "schema_v": "flight_plan_v1",
+            "schema_v": "task_plan_v1",
             "tasks": [{
                 "id": "T001",
                 "title": "Big task",

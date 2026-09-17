@@ -1643,8 +1643,8 @@ def _auto_approve_if_gated(job: Any) -> bool:
 
     if not task_plan_approval_open(job):
         return False
-    job.flight_plan = auto_approve_task_plan(
-        dict(job.flight_plan or {}), job_evidence_export_dir(str(job.job_id)))
+    job.task_plan = auto_approve_task_plan(
+        dict(job.task_plan or {}), job_evidence_export_dir(str(job.job_id)))
     save_job_plan(job)
     return True
 

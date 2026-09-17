@@ -511,10 +511,10 @@ class TestCommandChannelDoor:
         """
         from packages.orchestration.pingpong_job import save_job_plan
 
-        flight_plan = {"_approval": approval}
+        task_plan = {"_approval": approval}
         if clarifications is not None:
-            flight_plan["clarifications_resolved"] = clarifications
-        self.job.flight_plan = flight_plan
+            task_plan["clarifications_resolved"] = clarifications
+        self.job.task_plan = task_plan
         save_job_plan(self.job)
 
     def _resolve_flight_plan(self, port, token, nonce, answer, answers=None):

@@ -62,7 +62,7 @@ and token band estimates.
   deletes, overwrites, migrates, or otherwise takes a destructive path.
   If the safe choice is "change nothing", that is the default.
 
-Return ONLY a JSON object matching the flight_plan_v1 schema.
+Return ONLY a JSON object matching the task_plan_v1 schema.
 """
 
 

@@ -16,45 +16,45 @@ _CLI = [sys.executable, "-m", "apps.cli.grouped"]
 class TestFlightPlanApprovalDecisionType:
 
     def test_type_registered(self):
-        assert "flight_plan_approval" in DECISION_TYPES
+        assert "task_plan_approval" in DECISION_TYPES
 
 
 class TestFlightPlanApprovalDecision:
 
     def test_pending_creates_blocker(self):
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
-        fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"]
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
+        fp = [d for d in list_decisions(job, []) if d.type == "task_plan_approval"]
         assert len(fp) == 1
         assert fp[0].severity == "blocker"
         assert fp[0].status == "open"
         assert fp[0].id == "fp:approval"
 
     def test_approved_no_decision(self):
-        job = JobPlan(job_title="t", flight_plan={"_approval": "approved"})
-        fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"]
+        job = JobPlan(job_title="t", task_plan={"_approval": "approved"})
+        fp = [d for d in list_decisions(job, []) if d.type == "task_plan_approval"]
         assert len(fp) == 0
 
     def test_rejected_no_decision(self):
-        job = JobPlan(job_title="t", flight_plan={"_approval": "rejected"})
-        fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"]
+        job = JobPlan(job_title="t", task_plan={"_approval": "rejected"})
+        fp = [d for d in list_decisions(job, []) if d.type == "task_plan_approval"]
         assert len(fp) == 0
 
     def test_no_flight_plan_no_decision(self):
         job = JobPlan(job_title="t")
-        fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"]
+        fp = [d for d in list_decisions(job, []) if d.type == "task_plan_approval"]
         assert len(fp) == 0
 
     def test_next_actions(self):
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
-        fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"][0]
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
+        fp = [d for d in list_decisions(job, []) if d.type == "task_plan_approval"][0]
         actions = " ".join(fp.next_actions)
         assert "remedy decision resolve" in actions
         assert "--reason approve" in actions
         assert "--reason reject" in actions
 
     def test_safe_summary(self):
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
-        fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"][0]
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
+        fp = [d for d in list_decisions(job, []) if d.type == "task_plan_approval"][0]
         assert "awaiting approval" in fp.safe_summary.lower()
 
 
@@ -91,7 +91,7 @@ _FAKE_INTAKE_JSON = json.dumps({
 
 
 _FAKE_PLAN_JSON = json.dumps({
-    "schema_v": "flight_plan_v1",
+    "schema_v": "task_plan_v1",
     "tasks": [{
         "id": "T001", "title": "Do thing", "goal": "A goal",
         "acceptance": ["Done"], "depends_on": [],
@@ -137,7 +137,7 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
 
     if plan_succeeds:
         _fp = TaskPlan(
-            schema_v="flight_plan_v1",
+            schema_v="task_plan_v1",
             tasks=[{
                 "id": "T001", "title": "Do thing", "goal": "A goal",
                 "acceptance": ["Done"], "depends_on": [],
@@ -202,7 +202,7 @@ class TestFlightPlanLabel:
         assert data["state"] == "planned"
 
     def test_llm_plan_stores_pending_approval(self, tmp_path, monkeypatch):
-        """Successful LLM flight plan -> job.flight_plan._approval == 'pending'."""
+        """Successful LLM flight plan -> job.task_plan._approval == 'pending'."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         subprocess.run(
@@ -230,8 +230,8 @@ class TestFlightPlanLabel:
         )
         assert show.returncode == 0, show.stderr
         job_data = json.loads(show.stdout)
-        assert job_data["flight_plan"] is not None
-        assert job_data["flight_plan"]["_approval"] == "pending"
+        assert job_data["task_plan"] is not None
+        assert job_data["task_plan"]["_approval"] == "pending"
 
     def test_normalization_record_is_persisted_and_rendered(
             self, tmp_path, monkeypatch):
@@ -262,7 +262,7 @@ class TestFlightPlanLabel:
 
         from packages.orchestration.pingpong_job import load_job_plan
         saved = load_job_plan(job_id)
-        assert saved.flight_plan["_normalization"] == [{
+        assert saved.task_plan["_normalization"] == [{
             "kind": "split",
             "source_ids": ["T000"],
             "result_ids": ["T001"],
@@ -314,17 +314,17 @@ class TestApprovalGateEnforcement:
 
     def test_run_refused_while_pending(self, tmp_path, monkeypatch):
         from packages.orchestration.job_plan import task_plan_blocks_execution
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
         assert task_plan_blocks_execution(job) == "pending"
 
     def test_run_refused_while_rejected(self):
         from packages.orchestration.job_plan import task_plan_blocks_execution
-        job = JobPlan(job_title="t", flight_plan={"_approval": "rejected"})
+        job = JobPlan(job_title="t", task_plan={"_approval": "rejected"})
         assert task_plan_blocks_execution(job) == "rejected"
 
     def test_approved_not_blocked(self):
         from packages.orchestration.job_plan import task_plan_blocks_execution
-        job = JobPlan(job_title="t", flight_plan={"_approval": "approved"})
+        job = JobPlan(job_title="t", task_plan={"_approval": "approved"})
         assert task_plan_blocks_execution(job) is None
 
     def test_no_plan_not_blocked(self):
@@ -345,7 +345,7 @@ class TestApprovalGateEnforcement:
         job = JobPlan(
             job_title="rejected-test",
             state=RunState.PLANNED,
-            flight_plan={"_approval": "rejected"},
+            task_plan={"_approval": "rejected"},
             tasks=[TaskEntry(title="X")],
         )
         env_with_data = {**env, "REMEDY_DATA_DIR": str(tmp_path / "data")}
@@ -368,7 +368,7 @@ class TestDecisionResolve:
     def test_approve_flow(self, tmp_path, monkeypatch):
         from packages.orchestration.pingpong_job import save_job_plan
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
         save_job_plan(job)
         short_id = str(job.job_id)[:8]
 
@@ -377,12 +377,12 @@ class TestDecisionResolve:
 
         from packages.orchestration.pingpong_job import load_job_plan
         updated = load_job_plan(job.job_id)
-        assert updated.flight_plan["_approval"] == "approved"
+        assert updated.task_plan["_approval"] == "approved"
 
     def test_reject_flow(self, tmp_path, monkeypatch):
         from packages.orchestration.pingpong_job import save_job_plan
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
         save_job_plan(job)
         short_id = str(job.job_id)[:8]
 
@@ -391,14 +391,14 @@ class TestDecisionResolve:
 
         from packages.orchestration.pingpong_job import load_job_plan
         updated = load_job_plan(job.job_id)
-        assert updated.flight_plan["_approval"] == "rejected"
+        assert updated.task_plan["_approval"] == "rejected"
 
     def test_bad_reason_exits(self, tmp_path, monkeypatch):
         import pytest
 
         from packages.orchestration.pingpong_job import save_job_plan
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
         save_job_plan(job)
         short_id = str(job.job_id)[:8]
 
@@ -439,8 +439,8 @@ class TestAutoApproval:
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
         job_data = json.loads(show.stdout)
-        assert job_data["flight_plan"]["_approval"] == "approved"
-        assert job_data["flight_plan"]["_approval_audit"]["mode"] == "auto_yes"
+        assert job_data["task_plan"]["_approval"] == "approved"
+        assert job_data["task_plan"]["_approval_audit"]["mode"] == "auto_yes"
 
     def test_yes_not_blocked(self, tmp_path, monkeypatch):
         """--yes approved plan should not be blocked by approval gate."""
@@ -464,10 +464,10 @@ class TestAutoApproval:
         data = json.loads(captured.getvalue())
         fp_decisions = [
             d for d in list_decisions(JobPlan(job_title="t",
-                flight_plan={"_approval": "approved",
+                task_plan={"_approval": "approved",
                              "_approval_audit": {"mode": "auto_yes",
                                                  "reason": "auto-approved via --yes"}}), [])
-            if d.type == "flight_plan_approval"
+            if d.type == "task_plan_approval"
         ]
         open_decisions = [d for d in fp_decisions if d.status == "open"]
         resolved_decisions = [d for d in fp_decisions if d.status == "resolved"]
@@ -497,7 +497,7 @@ class TestConfigBudgetPrecedence:
         from packages.orchestration.job_plan import TaskPlanResult
         from packages.orchestration.schemas.models import TaskPlan
         _fp = TaskPlan(
-            schema_v="flight_plan_v1",
+            schema_v="task_plan_v1",
             tasks=[{
                 "id": "T001", "title": "Do thing", "goal": "A goal",
                 "acceptance": ["Done"], "depends_on": [],
@@ -556,7 +556,7 @@ class TestConfigBudgetPrecedence:
         from packages.orchestration.job_plan import TaskPlanResult
         from packages.orchestration.schemas.models import TaskPlan
         _fp = TaskPlan(
-            schema_v="flight_plan_v1",
+            schema_v="task_plan_v1",
             tasks=[{
                 "id": "T001", "title": "Do thing", "goal": "A goal",
                 "acceptance": ["Done"], "depends_on": [],
@@ -601,7 +601,7 @@ class TestReplanApprovalRearm:
         from packages.orchestration.schemas.models import TaskPlan
 
         old_plan = {
-            "schema_v": "flight_plan_v1",
+            "schema_v": "task_plan_v1",
             "tasks": [{"id": "T001", "title": "X", "goal": "G",
                         "acceptance": ["A"], "depends_on": [],
                         "est_tokens_band": "M", "files_hint": []}],
@@ -609,7 +609,7 @@ class TestReplanApprovalRearm:
             "_approval": "rejected",
         }
         new_plan = TaskPlan(
-            schema_v="flight_plan_v1",
+            schema_v="task_plan_v1",
             tasks=[{"id": "T001", "title": "Y", "goal": "G2",
                     "acceptance": ["B"], "depends_on": [],
                     "est_tokens_band": "S", "files_hint": []}],
@@ -628,7 +628,7 @@ class TestReplanApprovalRearm:
         from packages.orchestration.schemas.models import TaskPlan
 
         old_plan = {
-            "schema_v": "flight_plan_v1",
+            "schema_v": "task_plan_v1",
             "tasks": [{"id": "T001", "title": "X", "goal": "G",
                         "acceptance": ["A"], "depends_on": [],
                         "est_tokens_band": "M", "files_hint": []}],
@@ -636,7 +636,7 @@ class TestReplanApprovalRearm:
             "_approval": "approved",
         }
         new_plan = TaskPlan(
-            schema_v="flight_plan_v1",
+            schema_v="task_plan_v1",
             tasks=[{"id": "T001", "title": "Y", "goal": "G2",
                     "acceptance": ["B"], "depends_on": [],
                     "est_tokens_band": "S", "files_hint": []}],
@@ -672,8 +672,8 @@ class TestApprovalGoldenPathCLI:
         job = JobPlan(
             job_title="approval-smoke",
             state=RunState.PLANNED,
-            flight_plan={
-                "schema_v": "flight_plan_v1",
+            task_plan={
+                "schema_v": "task_plan_v1",
                 "tasks": [{"id": "T001", "title": "Do thing", "goal": "G",
                             "acceptance": ["Done"], "depends_on": [],
                             "est_tokens_band": "M", "files_hint": []}],

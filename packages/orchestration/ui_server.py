@@ -2994,7 +2994,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 open_clarification_questions,
                 resolve_task_plan_approval,
             )
-            fp = getattr(job, "flight_plan", None)
+            fp = getattr(job, "task_plan", None)
             if not isinstance(fp, dict) or fp.get("_approval") != "pending":
                 return None
             if answer not in ("approve", "reject"):

@@ -60,7 +60,7 @@ from packages.orchestration.prompt_segments import (
     compose_prompt_segments,
 )
 from packages.orchestration.prompt_trace import build_trace_entry
-from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, TaskPlan
+from packages.orchestration.schemas.models import TASK_PLAN_SCHEMA_V, TaskPlan
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 
 #: The id the deterministic fallback's single milestone carries.
@@ -509,7 +509,7 @@ def milestone_flight_plan(milestone: Milestone) -> TaskPlan:
         "files_hint": [],
     })
     return TaskPlan.model_validate({
-        "schema_v": FLIGHT_PLAN_SCHEMA_V,
+        "schema_v": TASK_PLAN_SCHEMA_V,
         "tasks": tasks,
     })
 

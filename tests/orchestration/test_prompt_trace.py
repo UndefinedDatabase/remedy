@@ -290,7 +290,7 @@ class TestSegmentManifest:
         )
         recorder(1, "fp1", False, composed.text)
         assert len(traces) == 1
-        assert traces[0].role == "flight_plan"
+        assert traces[0].role == "task_plan"
         assert traces[0].prompt_kind == "flight-plan"
         assert len(traces[0].segment_manifest) == 5
 
@@ -307,21 +307,21 @@ class TestSegmentManifest:
             prompt_text=composed.text, role="intake", composed_prompt=composed,
         )
         second = build_trace_entry(
-            prompt_text=composed.text, role="flight_plan", composed_prompt=composed,
+            prompt_text=composed.text, role="task_plan", composed_prompt=composed,
         )
         path = tmp_path / "prompt_trace.jsonl"
         write_trace_jsonl([first], path)
         append_trace_jsonl([second], path)
         lines = path.read_text().strip().split("\n")
         assert len(lines) == 2
-        assert [json.loads(x)["role"] for x in lines] == ["intake", "flight_plan"]
+        assert [json.loads(x)["role"] for x in lines] == ["intake", "task_plan"]
 
     def test_appending_to_a_missing_file_creates_it(self, tmp_path):
         from packages.orchestration.prompt_trace import append_trace_jsonl
 
         composed = compose_intake_prompt("demo mission")
         entry = build_trace_entry(
-            prompt_text=composed.text, role="flight_plan", composed_prompt=composed,
+            prompt_text=composed.text, role="task_plan", composed_prompt=composed,
         )
         path = tmp_path / "nested" / "prompt_trace.jsonl"
         append_trace_jsonl([entry], path)

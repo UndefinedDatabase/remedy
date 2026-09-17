@@ -14,7 +14,7 @@ On ``job.metadata["escalations"]`` — a list of plain JSON-safe dicts.  This is
 NOT a second decision queue: ``decision_queue`` stays the one read-only
 aggregation over existing records and simply derives one ``task_decision``
 entry per record, the same way it derives the flight-plan approval from
-``job.flight_plan``.  Answering goes through the existing
+``job.task_plan``.  Answering goes through the existing
 ``remedy decision resolve`` command.
 
 Two tasks raising the same question produce TWO records (deduplication is a

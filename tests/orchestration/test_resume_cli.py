@@ -117,7 +117,7 @@ class TestPendingStopRequest:
 
     def test_it_is_checked_before_the_plan_approval_gate(self, handed_off, capsys):
         job = make_job()
-        job.flight_plan = {"_approval": "pending"}
+        job.task_plan = {"_approval": "pending"}
         save_job_plan(job)
         request_stop(str(job.job_id), reason="stop first")
 
@@ -229,7 +229,7 @@ def job_cmd_checkpoints():
 class TestPlanApprovalGate:
     def test_a_pending_plan_blocks_the_resume(self, handed_off, capsys):
         job = make_job()
-        job.flight_plan = {"_approval": "pending"}
+        job.task_plan = {"_approval": "pending"}
         save_job_plan(job)
         put_checkpoint(job)
 
@@ -242,7 +242,7 @@ class TestPlanApprovalGate:
 
     def test_a_rejected_plan_blocks_the_resume(self, handed_off, capsys):
         job = make_job()
-        job.flight_plan = {"_approval": "rejected"}
+        job.task_plan = {"_approval": "rejected"}
         save_job_plan(job)
 
         with pytest.raises(SystemExit) as exc:
@@ -254,7 +254,7 @@ class TestPlanApprovalGate:
 
     def test_an_approved_plan_runs(self, handed_off):
         job = make_job()
-        job.flight_plan = {"_approval": "approved"}
+        job.task_plan = {"_approval": "approved"}
         save_job_plan(job)
         put_checkpoint(job)
         resume(job)
@@ -405,7 +405,7 @@ class TestDryRunPreview:
     def test_a_blocked_plan_gate_is_previewed_without_exiting_three(
             self, handed_off, capsys):
         job = make_job()
-        job.flight_plan = {"_approval": "pending"}
+        job.task_plan = {"_approval": "pending"}
         save_job_plan(job)
         put_checkpoint(job)
 

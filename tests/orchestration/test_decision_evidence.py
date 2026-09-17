@@ -300,7 +300,7 @@ def test_the_shipped_required_type_set_holds_exactly_the_upgraded_producers():
     """
     assert TRIPLE_REQUIRED_TYPES == frozenset({
         "token_budget", "test_failure", "patch_approval", "stop_reason",
-        "repo_dirty", "memory_review", "flight_plan_approval", "task_decision",
+        "repo_dirty", "memory_review", "task_plan_approval", "task_decision",
     })
 
 
@@ -309,7 +309,7 @@ def test_an_unenforced_tripleless_decision_is_left_alone():
 
     ``revert_missing`` IS THE STABLE EXAMPLE AND THE CHURN ENDS HERE.  This
     guard named ``memory_review`` until T002e enforced it and
-    ``flight_plan_approval`` until T002f enforced it, one move per round,
+    ``task_plan_approval`` until T002f enforced it, one move per round,
     because every name it used had a producer waiting to be upgraded.
     ``revert_missing`` does not: DECISION F031 D3 records that it and
     ``worker_approval`` HAVE NO PRODUCER AT ALL, and a type joins
@@ -1545,11 +1545,11 @@ FLIGHT_PLAN_RESOLVED_DOWNSIDE = (
 )
 
 
-def _flight_plan_decision(flight_plan: dict) -> HumanDecision:
+def _flight_plan_decision(task_plan: dict) -> HumanDecision:
     """The card the real branch builds from one stored flight plan."""
-    job = JobPlan(job_title="t", flight_plan=flight_plan)
+    job = JobPlan(job_title="t", task_plan=task_plan)
     decisions = [d for d in list_decisions(job, [])
-                 if d.type == "flight_plan_approval"]
+                 if d.type == "task_plan_approval"]
     assert len(decisions) == 1
     return decisions[0]
 
@@ -1789,10 +1789,10 @@ def test_the_flight_plan_card_exports_the_present_status(make_decision):
 
 
 def test_an_open_flight_plan_decision_without_a_triple_is_refused():
-    """`flight_plan_approval` is ENFORCED from this round, on the OPEN arm."""
+    """`task_plan_approval` is ENFORCED from this round, on the OPEN arm."""
     decision = _decision(
         decision_id="fp:approval",
-        decision_type="flight_plan_approval",
+        decision_type="task_plan_approval",
         evidence=None,
         payload={"options": ["approve", "reject"]},
     )
@@ -1802,7 +1802,7 @@ def test_an_open_flight_plan_decision_without_a_triple_is_refused():
 
     message = str(excinfo.value)
     assert "fp:approval" in message
-    assert "flight_plan_approval" in message
+    assert "task_plan_approval" in message
     assert "evidence_refs is empty: a decision must cite at least one ref." in message
 
 
@@ -1816,7 +1816,7 @@ def test_a_resolved_flight_plan_decision_without_a_triple_is_refused():
     decision = replace(
         _decision(
             decision_id="fp:approval",
-            decision_type="flight_plan_approval",
+            decision_type="task_plan_approval",
             evidence=None,
         ),
         status="resolved",
@@ -1829,7 +1829,7 @@ def test_a_resolved_flight_plan_decision_without_a_triple_is_refused():
 
     message = str(excinfo.value)
     assert "fp:approval" in message
-    assert "flight_plan_approval" in message
+    assert "task_plan_approval" in message
     assert "evidence_refs is empty: a decision must cite at least one ref." in message
 
 

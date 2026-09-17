@@ -454,7 +454,7 @@ class _LoopJob:
 
     def __init__(self, job_id: str = "job-0001"):
         self.job_id = job_id
-        self.flight_plan = None
+        self.task_plan = None
 
 
 def _dispatch_double(project_id, mission_id, step, *, root=None, now=None):

@@ -10,7 +10,7 @@
     "mission_candidate": true
   },
   "plan": {
-    "schema_v": "flight_plan_v1",
+    "schema_v": "task_plan_v1",
     "tasks": [
       {
         "id": "T001",

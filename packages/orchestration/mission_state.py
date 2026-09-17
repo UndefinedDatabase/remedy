@@ -735,7 +735,7 @@ def resolve_verify_command(job: Any) -> str:
         command = str(metadata.get("verify_command", "") or "").strip()
         if command:
             return command
-    plan = getattr(job, "flight_plan", None)
+    plan = getattr(job, "task_plan", None)
     if isinstance(plan, dict):
         command = str(plan.get("verify_command", "") or "").strip()
         if command:

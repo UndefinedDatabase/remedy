@@ -37,7 +37,7 @@ def _task(
 
 
 def _plan(tasks: list[PlannedTask]) -> TaskPlan:
-    return TaskPlan(schema_v="flight_plan_v1", tasks=list(tasks))
+    return TaskPlan(schema_v="task_plan_v1", tasks=list(tasks))
 
 
 @dataclass(frozen=True)

@@ -530,7 +530,7 @@ class _FakeJob:
 
     def __init__(self, job_id: str = "job-0001"):
         self.job_id = job_id
-        self.flight_plan = None
+        self.task_plan = None
 
 
 def _scripted(*responses: str):

@@ -36,7 +36,7 @@ _QUESTIONS = [
 def _pending_job() -> JobPlan:
     plan = carry_intake_clarifications(
         TaskPlan(**{
-            "schema_v": "flight_plan_v1",
+            "schema_v": "task_plan_v1",
             "tasks": [{
                 "id": "T1", "title": "T", "goal": "g",
                 "acceptance": ["ok"], "est_tokens_band": "S",
@@ -50,7 +50,7 @@ def _pending_job() -> JobPlan:
     )
     fp = plan.model_dump()
     fp["_approval"] = "pending"
-    return JobPlan(job_title="t", flight_plan=fp)
+    return JobPlan(job_title="t", task_plan=fp)
 
 
 class TestParseAnswerOptions:
@@ -109,8 +109,8 @@ class TestResolveWithAnswers:
             answer=['q1=use PostgreSQL'])
 
         updated = load_job_plan(job.job_id)
-        recs = updated.flight_plan["clarifications_resolved"]
-        assert updated.flight_plan["_approval"] == "approved"
+        recs = updated.task_plan["clarifications_resolved"]
+        assert updated.task_plan["_approval"] == "approved"
         assert recs[0]["answer"] == "use PostgreSQL"
         assert recs[0]["answered_by"] == "human"
 
@@ -126,7 +126,7 @@ class TestResolveWithAnswers:
                 answer=["q9=nope"])
         assert exc.value.code == 1
         # The plan must be untouched by a rejected answer set.
-        assert load_job_plan(job.job_id).flight_plan["_approval"] == "pending"
+        assert load_job_plan(job.job_id).task_plan["_approval"] == "pending"
 
     def test_answer_with_reject_is_an_error(self, tmp_path, monkeypatch):
         from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
@@ -139,7 +139,7 @@ class TestResolveWithAnswers:
                 str(job.job_id)[:8], "fp:approval", reason="reject",
                 answer=["q1=postgres"])
         assert exc.value.code == 1
-        assert load_job_plan(job.job_id).flight_plan["_approval"] == "pending"
+        assert load_job_plan(job.job_id).task_plan["_approval"] == "pending"
 
     def test_answer_on_other_decision_is_an_error(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
@@ -162,7 +162,7 @@ class TestWriteBackAndImmutability:
             str(job.job_id)[:8], "fp:approval", reason="approve",
             answer=["q1=use PostgreSQL"])
 
-        recs = load_job_plan(job.job_id).flight_plan["clarifications_resolved"]
+        recs = load_job_plan(job.job_id).task_plan["clarifications_resolved"]
         assert [(r["id"], r["answer"], r["answered_by"]) for r in recs] == [
             ("q1", "use PostgreSQL", "human"),
             ("q2", "no, leave auth untouched", "default"),
@@ -179,7 +179,7 @@ class TestWriteBackAndImmutability:
 
         _cmd_decision_resolve(str(job.job_id)[:8], "fp:approval", reason="approve")
 
-        recs = load_job_plan(job.job_id).flight_plan["clarifications_resolved"]
+        recs = load_job_plan(job.job_id).task_plan["clarifications_resolved"]
         assert [r["answered_by"] for r in recs] == ["default", "default"]
         assert [r["answer"] for r in recs] == [
             "keep SQLite", "no, leave auth untouched"]
@@ -202,7 +202,7 @@ class TestWriteBackAndImmutability:
         assert exc.value.code == 1
         assert "already resolved" in capsys.readouterr().err
 
-        recs = load_job_plan(job.job_id).flight_plan["clarifications_resolved"]
+        recs = load_job_plan(job.job_id).task_plan["clarifications_resolved"]
         assert recs[0]["answer"] == "use PostgreSQL"
 
     def test_no_open_decision_after_approval(self, tmp_path, monkeypatch):
@@ -216,31 +216,31 @@ class TestWriteBackAndImmutability:
 
         updated = load_job_plan(job.job_id)
         open_fp = [d for d in list_decisions(updated, [])
-                   if d.type == "flight_plan_approval" and d.status == "open"]
+                   if d.type == "task_plan_approval" and d.status == "open"]
         assert open_fp == []
 
     def test_reject_leaves_clarifications_untouched(self, tmp_path, monkeypatch):
         from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         job = _pending_job()
-        before = [dict(r) for r in job.flight_plan["clarifications_resolved"]]
+        before = [dict(r) for r in job.task_plan["clarifications_resolved"]]
         save_job_plan(job)
 
         _cmd_decision_resolve(str(job.job_id)[:8], "fp:approval", reason="reject")
 
         updated = load_job_plan(job.job_id)
-        assert updated.flight_plan["_approval"] == "rejected"
-        assert updated.flight_plan["clarifications_resolved"] == before
+        assert updated.task_plan["_approval"] == "rejected"
+        assert updated.task_plan["clarifications_resolved"] == before
 
     def test_plan_without_questions_keeps_empty_list(self, tmp_path, monkeypatch):
         from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
+        job = JobPlan(job_title="t", task_plan={"_approval": "pending"})
         save_job_plan(job)
 
         _cmd_decision_resolve(str(job.job_id)[:8], "fp:approval", reason="approve")
 
-        fp = load_job_plan(job.job_id).flight_plan
+        fp = load_job_plan(job.job_id).task_plan
         assert fp["_approval"] == "approved"
         assert "clarifications_resolved" not in fp
 
@@ -384,7 +384,7 @@ class TestUnattendedEndToEnd:
         )
 
         base_plan = TaskPlan(**{
-            "schema_v": "flight_plan_v1",
+            "schema_v": "task_plan_v1",
             "tasks": [{
                 "id": "T001", "title": "Do thing", "goal": "A goal",
                 "acceptance": ["Done"], "depends_on": [],
@@ -415,7 +415,7 @@ class TestUnattendedEndToEnd:
         assert "approved via --yes" in data["plan_label"]
 
         job = load_job_plan(data["job_id"])
-        recs = job.flight_plan["clarifications_resolved"]
+        recs = job.task_plan["clarifications_resolved"]
         assert [(r["id"], r["answer"], r["answered_by"]) for r in recs] == [
             ("q1", "keep the legacy table untouched", "default")]
 
@@ -424,7 +424,7 @@ class TestUnattendedEndToEnd:
                 "untouched | default |") in log
 
         open_fp = [d for d in list_decisions(job, [])
-                   if d.type == "flight_plan_approval" and d.status == "open"]
+                   if d.type == "task_plan_approval" and d.status == "open"]
         assert open_fp == []
 
     def test_exits_zero(self, tmp_path, monkeypatch):
