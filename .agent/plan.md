@@ -7,34 +7,32 @@ Branch: feature/f281-cli-help-surface, cut from `main` at
 
 Every catalog description, role label and help page reads as the finished
 vocabulary of DECISION amend0905-vocab D4 (`docs/roadmap/features/T2_F281.md`).
-DONE when T001 and the Acceptance list hold. As of round 26, IT DOES; the
-feature is in the closure sequence.
+DONE. T001 and the Acceptance list both hold; a READY_FOR_REVIEW package
+exists (round 31, independently verified).
 
 ## Current Step
 
-ROUND 30 — CLOSURE, RETRY C. C1 books round 29's FAIL (it claimed a
-BLOCKED_EVIDENCE package was ready for closure — a false live indicator,
-root-caused to `.agent/handoff.md` changing between evidence staging and
-the zip build). C2 rebuilds the evidence job and zip as ONE uninterrupted
-sequence — no commits, no tracked-file writes in between — confirms
-`READY_FOR_REVIEW`, runs the integrity check, and ONLY THEN writes the
-handback as the final, separate action.
+ROUND 32 — CLOSURE, FINAL. C1 books rounds 30 and 31's PASS verdicts. C2
+rotates the ledger. C3 writes the feature file's Built State section
+(closure precondition 4). C4 is the closure commit: STATUS `[~]`→`[x]`,
+README counters, final `.agent/` state. C5 opens the PR. The PR is NOT
+merged this session — merging is deferred to the next feature's start via
+the Open PR Gate.
 
 ## Next Steps
 
-1. Once a genuinely READY package exists, closure round B lands: STATUS
-   line (reviewer authors), README capability sync, self_use_queue.json's
-   `consumed_by` (already set to F281 in round 28 — confirm it survived),
-   ledger rotation, final commit, PR. Read
-   `docs/roadmap/STATUS_closure_protocol.md` step by step for the exact
-   commit shape and ordering.
-2. Session 4 continues while context comfortably suffices.
+1. None for F281 — closing.
+2. The next session's Phase 0 state probe will find this PR open and merge
+   it via the Open PR Gate before claiming the next feature.
 
 ## Risks
 
-- The evidence/zip staging mechanism is fragile to ANY tracked-file write
-  between staging and packaging — the next round that touches it keeps the
-  whole sequence to one uninterrupted burst with no commit in the middle,
-  and writes the handback ONLY after a confirmed READY status.
-- Round 28's self-use consumption and round 27's full-suite transcript
-  both stand untouched; do not redo either.
+- F281 ran 32 rounds across 4 sessions, past the standing 25-round/7-session
+  soft limit its own feature file names. This was not scope creep: the
+  Acceptance list was fully satisfied by round 26, and rounds 27-32 are the
+  closure sequence itself (full-suite run, self-use consumption, evidence,
+  zip, ledger, STATUS, PR) — amend0827-process-diet rule 1 exempts the
+  closure sequence from the pure-bookkeeping-round ban, and stopping
+  mid-closure with a built-but-unpackaged feature would have been a worse
+  outcome than finishing it. Recorded here for the operator's visibility,
+  not as an unresolved risk.
