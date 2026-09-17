@@ -6,39 +6,34 @@ Branch: feature/f280-cli-vocabulary-v2-part-two, cut from `main` at
 ## Goal
 
 Finish what F261 could not reach: the catalog `apps/cli/command_catalog.py` equals DECISION
-amend0905-vocab D4 apart from the words D4 gives F268, F269 and F273, and the help surface of
-T002 holds, per `docs/roadmap/features/T2_F280.md`.
+amend0905-vocab D4 apart from the words D4 gives F268, F269 and F273, and T001's remaining
+Acceptance lines hold, per `docs/roadmap/features/T2_F280.md` (T002 moved whole to F281 by
+DECISION amend0917-throughput D4).
 
 ## Current Step
 
-ROUND 13 books round 12's independently-reviewed PASS (Gate: F280 R12, one prose slip, no new
-R-id), authors DECISION F280 D8, and lands the first of DECISION F280 D7's two deferred items:
-the prompt-trace `kind` values `"flight-plan"`/`"flight-plan-retry"` become
-`"task-plan"`/`"task-plan-retry"` at their two exact-quoted sites (`job_plan.py:181`,
-`test_prompt_trace.py:294`) — measured to have no wider pattern match and no collision with the
-new spellings, per a dry run in a disposable worktree before authoring.
+ROUND 14 books round 13's independently-reviewed PASS (Gate: F280 R13, one prose slip, no new
+R-id), authors DECISION F280 D9, and lands the rest of the `flight_plan` rename DECISION
+amend0917-throughput D3 ordered — widened past D3's four items to the DAG-key construction sites
+and the identifier residue the dry run measured — as one 61-file, 339-line mechanical patch,
+reviewer-dry-run-tested twice in a disposable worktree before authoring.
 
 ## Next Steps
 
-1. DECISION F280 D7's remaining deferred item: the DAG-scheduling `inputs["flight"]` key —
-   needs its own naming DECISION (no existing convention; `task_plan` already retired for the
-   whole-job field, so it cannot simply reuse that name).
-2. D5's third owed item: the surviving English-prose noun "flight plan"/"flight-plan" (catalog
-   descriptions, CLI print statements, comments describing the concept, including the stale
-   `flight_plan.py` filename citations rounds 12 and earlier deliberately left untouched).
-3. The `"fp:"` decision-id prefix (5 sites) — explicitly out of scope for D6 (CHOSEN, SECOND);
-   needs its own DECISION and measurement before any round touches it.
-4. `propose`, once operator question Q4 is answered.
-5. `job attach-repo` and `job permit`, once a DECISION gives a writer (DECISION F280 D4).
-6. T002: README quickstart (R-0895), flag scanner blind spot (R-0934).
+1. `propose`'s deletion (DECISION amend0917-throughput D1 answers operator question Q4): the
+   `Decision` type `proposal` enqueue in `decision_queue.py`, `remedy decision list/show/answer`
+   as its only surface, the two surviving gates reading the answer, then the `propose` group's
+   deletion paragraph and its ids in `TestDeletedCommands`.
+2. `job attach-repo`/`job permit` wait for F269's contract writer (DECISION amend0917-throughput
+   D2) — not this feature's to close.
+3. The DAG-scheduling key rename D9 executes is now DONE; no further `flight_plan` item is owed.
+4. Remaining Acceptance lines: `job budget <id> set`, `worker doctor`, `job run --tasks n` are
+   already landed per prior rounds' Built State; confirm the catalog-vs-D4 diff at closure.
 
 ## Risks
 
-- 129 findings open by distinct id (unchanged this round); High: R-0803, R-0804, R-0807, none
+- 136 findings open by distinct id (unchanged this round); High: R-0803, R-0804, R-0807, none
   this feature's.
-- R-0899 (owned F273): `scripts/remedy_smoke.sh` section 3 reads a `state` key `job show` never
-  prints. R-0937 (owned F273): stale flag names in a test's comments. R-0938 (owned F280): a
-  stale round-6 handback count; nothing to fix.
-- `job attach-repo`/`job permit` are the only writers of a job's repo and test/revert grants;
-  their Acceptance line can't hold until a DECISION supplies a writer.
-- R-0935: the run contract never inherits a job's F018 budgets. Q4 (propose's deletion) is open.
+- R-0899 (owned F273), R-0937 (owned F273), R-0938 (owned F280, nothing to fix) — unchanged.
+- `propose`'s deletion is the largest remaining T001 item; DECISION amend0917-throughput D1 fixed
+  the design, so the executing round measures exact seams rather than re-deciding shape.
