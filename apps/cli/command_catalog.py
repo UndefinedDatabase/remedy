@@ -275,7 +275,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             ArgDef("question", "What you want explained"),
-            ArgDef("--job-id", "Job whose run log (its evidence) grounds the answer", required=False, is_option=True),
+            ArgDef("--job-id", "Job, under its mission, whose run log (its evidence) grounds the answer", required=False, is_option=True),
             # Grounding source (2), the workspace code. Read-only: the file is
             # opened for reading and nothing is written back, so this option
             # leaves the write_metadata class above untouched.
@@ -318,7 +318,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         args=(
             ArgDef("job_id", "Job ID to stop (under its mission)"),
-            ArgDef("--reason", "Why the job is being stopped (recorded in the run's evidence)", required=False, is_option=True, default=""),
+            ArgDef("--reason", "Why the job, under its mission, is being stopped (recorded in the run's evidence)", required=False, is_option=True, default=""),
             ArgDef("--source", "Who requested the stop (default: cli)", required=False, is_option=True, default="cli"),
             ArgDef("--status", "Show pending and consumed stop requests instead of requesting one", required=False, is_option=True, is_flag=True),
             _JSON_OPT,
@@ -745,7 +745,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("node_id", "Brain node ID to continue from"),
-            ArgDef("--prompt", "Prompt for the child job", required=True, is_option=True),
+            ArgDef("--prompt", "Prompt for the child job (under its mission)", required=True, is_option=True),
             ArgDef("--task-type", "Task type for the child job's next step", required=False, is_option=True),
             _JSON_OPT,
         ),
@@ -956,7 +956,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
-            ArgDef("next_step", "What this next job should do"),
+            ArgDef("next_step", "What this next job, under its mission, should do"),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
@@ -1644,7 +1644,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         supports_json=True,
         args=(
-            ArgDef("--job", "Only this job's evidence export, from its run", required=False, is_option=True),
+            ArgDef("--job", "Only this job's evidence export, from its run, under its mission", required=False, is_option=True),
             ArgDef("--since", "Only post-mortems at or after this ISO-8601 timestamp", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
@@ -1744,7 +1744,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--since", "Period start: only calls at or after this ISO-8601 timestamp", required=False, is_option=True),
             ArgDef("--until", "Period end, EXCLUSIVE: only calls before this ISO-8601 timestamp", required=False, is_option=True),
-            ArgDef("--job", "Only this job's calls, in this period and in the one before it", required=False, is_option=True),
+            ArgDef("--job", "Only this job's calls, under its mission, in this period and in the one before it", required=False, is_option=True),
             ArgDef("--by", "Group the cost table by role, model or day (default: grand total only)", required=False, is_option=True),
             ArgDef("--label", "Name the scope this report covers, printed in its header", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
@@ -1766,7 +1766,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("stats.cost", "stats.verify-ledger"),
         args=(
-            ArgDef("evidence_dir", "Path to the job evidence folder to scan"),
+            ArgDef("evidence_dir", "Path to the job evidence folder to scan (under its mission)"),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
             _JSON_OPT,
@@ -1787,7 +1787,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("stats.cost", "stats.backfill-ledger"),
         args=(
-            ArgDef("evidence_dir", "Path to the job evidence folder to reconcile"),
+            ArgDef("evidence_dir", "Path to the job evidence folder to reconcile (under its mission)"),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
             _JSON_OPT,
@@ -1887,7 +1887,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Read-only: inspect Remedy's own run evidence for self-improvement items.",
         action_class="read_only",
         args=(
-            ArgDef("--job-id", "Optional job to include in inspection", required=False, is_option=True),
+            ArgDef("--job-id", "Optional job, under its mission, to include in inspection", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
@@ -1978,7 +1978,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Read-only: self-dogfood report (what Remedy thinks is wrong, with the run evidence behind it).",
         action_class="read_only",
         args=(
-            ArgDef("--job-id", "Optional job to include in the report", required=False, is_option=True),
+            ArgDef("--job-id", "Optional job, under its mission, to include in the report", required=False, is_option=True),
             ArgDef("--markdown", "Render the report as markdown", required=False, is_option=True, default="false"),
             _JSON_OPT,
         ),
