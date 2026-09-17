@@ -73,3 +73,9 @@ No open findings tagged `Owner: F281` remain.
 ## Feature Status
 
 F281 is **CLOSED** pending PR merge. The feature's closure package is verified READY_FOR_REVIEW, all preconditions satisfied, all acceptance bullets hold. The PR will be created in C5 and merged via the Open PR Gate at the start of the next feature's session per AGENTS.md protocol.
+
+## Pull Request
+
+PR created in C5: https://github.com/UndefinedDatabase/remedy/pull/254
+
+**NOT MERGED** per instructions — merging is deferred to the next feature's session via the Open PR Gate per AGENTS.md Pull Request Workflow.
