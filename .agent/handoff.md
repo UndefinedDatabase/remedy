@@ -1,74 +1,43 @@
-# Handoff — F281 R26
+# Handoff — F281 R27
 
 **Session:** F281's fourth session
 
 ## Round Summary
 
-F281 Round 26 closes the final open Acceptance item, R-0895, which required rewriting the README Quickstart block to name only commands and flags the current catalog holds, and extending the advertised-commands test to scan that file. Three commits: C1 books round 25's PASS and updates the plan; C2 lands R-0895 with the README rewrite and test widening; C3 closes R-0895 and hands back to the reviewer.
+F281 Round 27 begins the closure sequence per amend0917-throughput. C1 books round 26's PASS verdict by appending to `.agent/live_review.md` and updating `.agent/plan.md`. C2 runs the full suite exactly once (the sole full-suite run allowed for this feature) and commits the transcript. C3 completes the round with this handoff.
+
+The suite ran clean: **17653 passed, 23 skipped, 1 warning in 197.15s** — no failures, no errors.
 
 ## Commits
 
 | Commit | Message |
 |--------|---------|
-| C1 | F281 R26 C1: book round 25 PASS, update plan |
-| C2 | F281 R26 C2: land R-0895 — rewrite README quickstart, sweep it for advertised commands |
-| C3 | F281 R26 C3: resolve R-0895, handback — Round 26 complete |
+| C1 | F281 R27 C1: book round 26 PASS, update plan |
+| C2 | F281 R27 C2: run full suite once, commit closure-suite.txt |
+| C3 | F281 R27 C3: handback — Round 27 complete |
 
-## Changes Summary
+## Suite Run Results
 
-**C1:** Appended round 25's Gate verdict to `.agent/live_review.md`, rewrote `.agent/plan.md` for round 26, saved ledger bytes to `.agent/authored/f281-r26.md` and `.agent/last_block.md`.
-
-**C2:** 
-- Rewrote the `## Quickstart` block in `README.md` to mirror `apps/cli/grouped.py`'s `_QUICK_START` golden path, replacing bare commands like `remedy doctor` with the correct `remedy doctor core`, and replacing the old multi-step flow with `remedy do run "<goal>" --repo . --json` followed by `remedy job show $JOB_ID --full`.
-- Added `_OPERATOR_FACING_SINGLE_FILES` constant to `tests/cli/test_advertised_commands.py` containing `"README.md"`.
-- Modified `_operator_facing_paths()` to prepend `_OPERATOR_FACING_SINGLE_FILES` to the paths list, widening the sweep to include `README.md`.
-
-**C3:** Appended R-0895 resolution to `.agent/live_review.md`.
-
-## Gate Results
-
-**G1 TARGETED:** `python3 -m pytest tests/cli/test_advertised_commands.py -q`
+**Real summary line:**
 ```
-14 passed in 0.48s
+17653 passed, 23 skipped, 1 warning in 197.15s
 ```
 
-**G2 CANARY:** `python3 -m pytest tests/cli/test_golden_path.py -q`
+**Bad-node list (nodes that failed or errored):**
 ```
-42 passed in 17.74s
-```
-
-**G3 RUFF:** `python3 -m ruff check tests/cli/test_advertised_commands.py`
-```
-All checks passed!
+(none)
 ```
 
-**G4 DIRECT MEASUREMENT:** `python3 -c "from tests.cli.test_advertised_commands import collect_operator_facing_advertisements; seen, unresolved = collect_operator_facing_advertisements(); print('seen:', seen); print('unresolved:', unresolved)"`
-```
-seen: 350
-unresolved: []
-```
-The pre-round sweep covered `scripts/*.sh`, `docs/system/*.md`, and `docs/guides/*.md`, totaling over 100 advertisements (the pre-existing floor). This round's README additions bring the total to 350, well above the floor and confirming the widened sweep is functional.
-
-**G5 MUTATION RED-PROOF:** In a disposable `git worktree` at HEAD `4580cd47`:
-- Initial run of `test_every_operator_facing_advertised_command_exists_in_the_catalog`: `1 passed`
-- After inserting `remedy bogus-group bogus-sub` into the README Quickstart block: test failed with `AssertionError: README.md:268: remedy bogus-group bogus-sub`
-- After reverting the bogus line: `1 passed`
-
-This confirms the widened sweep reaches `README.md` and catches unresolved invocations within it.
-
-**G6 TREE:** After C2:
-```
-git status --porcelain: (empty)
-git worktree list: /home/decodeux/Repos/remedy  4580cd47 [feature/f281-cli-help-surface]
-HEAD: 4580cd47 (matches origin/feature/f281-cli-help-surface)
-```
-
-All gates pass.
-
-## Findings
-
-**R-0895 CLOSED this round in C2.** This was F281's last open Acceptance item. Every other Acceptance bullet in `docs/roadmap/features/T2_F281.md` was independently verified true by the reviewer before this round was authored.
+The closure integration gate is CLEAN. Every node passed.
 
 ## Next Action
 
-F281's Acceptance list is fully satisfied. The next round (Round 27, session 4 continues) should execute the closure sequence as described in `docs/roadmap/STATUS_closure_protocol.md` in full: evidence job, fresh review zip, the authored STATUS `[~]`→`[x]` line, and the pull request.
+1. Read `.agent/authored/f281-closure-suite.txt` against `docs/agents/self_drive_protocol.md`'s amend0917-throughput rule 2 (CLOSURE REPAIR). Since the suite is clean on this branch, check whether the merge base commit `c617dd74` (where the branch forked from `main`) already shows any of these nodes as red in the hosted CI record. If the merge base is clean, this branch is ready for the full closure sequence. If the merge base shows pre-existing red nodes, mark them with `xfail(strict=True)` and register follow-up features before closing.
+
+2. Once determined, proceed with the closure algorithm: self-use consumption (precondition 6), evidence job, review zip, STATUS line update, final commit, and PR — reading `docs/roadmap/STATUS_closure_protocol.md` step by step.
+
+3. Session 4 continues while context comfortably suffices.
+
+## Risks
+
+- Pre-existing failures from the merge base: if `c617dd74` shows red nodes in CI, assume F280's own closure inherited them and do not assume they are new to F281. Cross-check before attempting repair.
