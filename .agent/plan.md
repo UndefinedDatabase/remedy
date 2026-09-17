@@ -13,61 +13,51 @@ Acceptance list hold.
 
 ## Current Step
 
-ROUND 4. C1 books round 3's PASS and re-points `.agent/plan.md`. C2 clears the
-full "Order" bucket in one edit (the shared `_LIST_DESC_ARG` constant's help
-text, referenced by all 12 `--desc` list-sort flags, fixes all 12 occurrences
-at once — a stronger leverage point than the per-command edits every prior
-round used) plus 8 of the 9 "Task" bucket violations (`brain.continue
---task-type`, `job.context --task` via the shared `_TASK_OPT` constant,
-`job.run --max-rounds`, `job.run --repair-rounds`, `job.show --full`,
-`job.context`'s own description, `mission.continue`'s own description,
-`self.execute --job-id`, `self.execute proposed_task_id`) — 22 total
-(1 shared-constant Order fix covering 12 sites, plus 9 Task-word edits,
-plus one more the diff found as a side effect), zero introduced.
+ROUND 5. C1 books round 4's PASS and re-points `.agent/plan.md`. C2 clears the
+full "Evidence" bucket (12 of 12: `group:stats:description`,
+`group:self:description`, `arg:job.stop:--reason:description`,
+`command:mission.report:description`, `command:mission.abandon:description`,
+`arg:job.run:--no-stream-evidence:description`,
+`arg:stats.failures:--job:description`,
+`arg:stats.backfill-ledger:evidence_dir:description`,
+`command:stats.verify-ledger:description`,
+`arg:stats.verify-ledger:evidence_dir:description`,
+`command:self.inspect:description`, `command:self.report:description`) plus
+one side-effect fix (`mission.report`'s Job violation, since its rewrite
+already needed the word "mission" nearby, which is one of Job's own three
+fragments) — 13 total, zero introduced.
 
-`command:stats.bench:description`'s Order AND Run violations are DELIBERATELY
-LEFT OPEN this round: its text — "a regression warning naming the order and
-both numbers" — uses "order" in the sense of a trend/regression's
-mathematical order (its degree), not DECISION amend0905-vocab D1's Order
-concept (what the human gave Remedy), and "runs" the same way ("the last
-run" is a bench execution, correctly the Run concept, but "Never runs the
-bench" is a verb use with no natural home for a fragment). Forcing either
-concept's fragment into a sentence about regression math would misdescribe
-the command. This is the same class of finding as DECISION F281 D2's two
-floor items — a genuine word-sense collision — but is NOT yet formalized as
-its own DECISION; a future round either writes one (accepting `stats.bench`
-as a second permanent floor item, or finding an honest rewording this
-session didn't) or clears it with a rewrite that actually works.
+After this round the ONLY remaining Order violation is `stats.bench`'s
+(unfixed, per round 4's note — mathematical "order", not the vocabulary
+concept), and Task and Evidence both read zero.
 
 ## Next Steps
 
-1. Re-run `_meaning_violations()` grouped by word at the start of round 5;
-   expected counts after this round: Task 0 or 1 (`stats.bench` may remain),
-   Order 0 or 1 (`stats.bench`'s own Order violation, same caveat), Evidence
-   12, Mission 16, Run ~29 (stats.bench's Run violation may still count),
-   Project 65, Job ~120 — 245 total (measured directly by this round's own
-   dry run; re-measure rather than trust this arithmetic). Take the
-   next-smallest bucket.
-2. When a bucket's violations share a single catalog-module CONSTANT (like
-   `_LIST_DESC_ARG` or `_TASK_OPT` this round), fixing the constant once
-   clears every command that references it — check for this BEFORE writing
-   N per-command edits; it is faster and structurally guarantees no site is
-   missed or drifts from its siblings.
+1. Re-run `_meaning_violations()` grouped by word at the start of round 6;
+   expected counts after this round: Mission 16 (unchanged — none of this
+   round's fixes touched a standalone Mission violation), Order 1
+   (`stats.bench`, unfixed), Run ~29-30, Project 65, Job ~120 — 232 total
+   (measured directly this round; re-measure rather than trust). Take the
+   next-smallest bucket (Mission, 16, unless a fresh measurement disagrees).
+2. Continue watching for the "fragment is itself a binding word" trap
+   (Mission's own fragments are order/job/contract — all three ARE binding
+   words) and the "same word, different sense" trap (`stats.bench`'s
+   mathematical order): every rewrite is checked against the FULL before/after
+   diff of the real `_meaning_violations()`/`_synonym_offenders()` functions,
+   never assumed safe from reading the text alone.
 3. Help wrap, `doctor core` dead-commands (D11d), the D11a catalog
    group-reach test, the visible-order data-pinned test, the F259 enforced
-   flip (bounded by DECISION F281 D2's two-item floor, possibly a third if
-   `stats.bench` becomes one), and the README quickstart's R-0895 line
-   remain entirely undone.
+   flip (bounded by DECISION F281 D2's two-item floor, possibly `stats.bench`
+   as a third), and the README quickstart's R-0895 line remain entirely
+   undone. This session (session 1 of F281) has now run 5 delegated rounds,
+   at the operator's 4-to-5 default and approaching the 6-to-8 target; the
+   next round may be this session's last if a natural stopping point is
+   reached, per a session's own honest self-assessment rather than a fixed
+   count.
 
 ## Risks
 
-- Same as rounds 2-3: every catalog description edit is verified by
+- Same as rounds 2-4: every catalog description edit is verified by
   re-running the real `_meaning_violations()`/`_synonym_offenders()`
   functions against the modified catalog before authoring, diffed fixed vs.
   introduced.
-- A word can appear in the catalog in a sense DECISION amend0905-vocab D1
-  does not define (`stats.bench`'s mathematical "order"; possibly others
-  waiting in the Job/Project/Run buckets, which are large enough that a
-  false-positive-sense collision is likely) — when a fragment cannot be
-  added without misdescribing the command, the violation is LEFT OPEN and
-  named, never forced.
