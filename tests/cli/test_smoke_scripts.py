@@ -84,3 +84,13 @@ def test_no_or_true_in_smoke_scripts():
     ]:
         source = (SCRIPTS / name).read_text()
         assert "|| true" not in source, f"{name} contains || true"
+
+
+def test_all_scripts_parse():
+    """Verify every scripts/*.py file parses successfully."""
+    import ast
+    for p in sorted(SCRIPTS.glob("*.py")):
+        try:
+            ast.parse(p.read_text())
+        except SyntaxError as e:
+            raise AssertionError(f"{p.name} does not parse: {e}")
