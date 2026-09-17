@@ -6,7 +6,7 @@ SESSION 2 of feature F281 · round 10 (round 2 of session 2) · rounds so far 10
 
 ## Range
 
-Review of `eb51e9c2`..`d98a8b55` (commits from round 10: `0e419f2f`, `d98a8b55`).
+Review of `eb51e9c2`..`8857b86b` (commits from round 10: `0e419f2f`, `d98a8b55`, `c797406b`, `8857b86b`).
 
 ## Commits
 
@@ -22,12 +22,23 @@ Review of `eb51e9c2`..`d98a8b55` (commits from round 10: `0e419f2f`, `d98a8b55`)
 | --- | --- | --- |
 | apps/cli/command_catalog.py | +9/-9 | 7 FROM/TO edits: _PROJECT_ID constant (1 definition, 6 call sites fixed by reference), "Path to the project..." literal (3 sites: runtime.serve, runtime.probe, runtime.stop), 5 group descriptions (status, memory, runtime, test, brain) |
 
+### c797406b F281 R10 C3: handback — Round 10 complete
+| Path | +/- | Reason |
+| --- | --- | --- |
+| .agent/handoff.md | +250/-255 | Handback rewrite, verification results and next steps |
+
+### 8857b86b F281 R10 C0a/C0b: save round 10 block to authored and last_block
+| Path | +/- | Reason |
+| --- | --- | --- |
+| .agent/authored/f281-r10.md | +261 | Block copy, byte-for-byte verified |
+| .agent/last_block.md | +520/-213 | Block mirror, byte-for-byte verified |
+
 ## External actions
 
 ```
 git push origin feature/f281-cli-help-surface
 To github.com:UndefinedDatabase/remedy.git
-   eb51e9c2..d98a8b55  feature/f281-cli-help-surface -> feature/f281-cli-help-surface
+   c797406b..8857b86b  feature/f281-cli-help-surface -> feature/f281-cli-help-surface
 ```
 
 Exit code: 0.
@@ -213,10 +224,10 @@ $ git status --porcelain
 (empty)
 
 $ git worktree list
-/home/decodeux/Repos/remedy  d98a8b55 [feature/f281-cli-help-surface]
+/home/decodeux/Repos/remedy  8857b86b [feature/f281-cli-help-surface]
 
 $ git log --oneline -1
-d98a8b55 F281 R10 C2: clear 14 Project violations
+8857b86b F281 R10 C0a/C0b: save round 10 block to authored and last_block
 ```
 
 Exit code: 0. Tree clean, one worktree, branch pushed to origin.
@@ -227,19 +238,19 @@ Exit code: 0. Tree clean, one worktree, branch pushed to origin.
 
 ```
 $ sha256sum .agent/authored/f281-r10.md
-<sha256 of round 10 block>  .agent/authored/f281-r10.md
+2e977b401c67924ce2346f0dde2057db36b54eea4ef62b881bab0f82c530ecf8  .agent/authored/f281-r10.md
 ```
 
-Exit code: 0. Block copy verified, byte-for-byte identical to source.
+Exit code: 0. Block copy verified, byte-for-byte identical to source (.remedy-wt/f281-r10-block.md).
 
 ### C0b block mirror
 
 ```
 $ sha256sum .agent/last_block.md
-<sha256 of round 10 block>  .agent/last_block.md
+2e977b401c67924ce2346f0dde2057db36b54eea4ef62b881bab0f82c530ecf8  .agent/last_block.md
 ```
 
-Exit code: 0. Block mirror verified, byte-for-byte identical to source.
+Exit code: 0. Block mirror verified, byte-for-byte identical to source (.remedy-wt/f281-r10-block.md).
 
 ## Deviations & assumptions
 
