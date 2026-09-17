@@ -1,78 +1,109 @@
-# F280 Round 16 Handoff
+# F280 Round 17 Handoff
 
 **Feature**: F280 CLI vocabulary v2, part two  
-**Round**: 16 (repair round)  
-**Session**: 8  
+**Round**: 17 (fix and widen test round)  
+**Session**: 9  
 **Branch**: feature/f280-cli-vocabulary-v2-part-two  
 
 ## Commits
 
 | Commit | SHA | Description |
 |--------|-----|-------------|
-| C1 | 90438da2 | Append Gate:F280 R15 + findings R-0942/R-0943, replace plan.md |
-| C2 | 75b0b192 | Fix R-0942: delete remedy_runtime_cli_smoke.py, remove Phase 1, add parse test |
-| C3 | b2a4260c | Fix R-0943: guard approve action, restore CLI round-trip tests |
+| C1 | d0d331b6 | Append Gate:F280 R16 + Done:R-0942 + Done:R-0943 + finding R-0944, replace plan.md |
+| C2 | 91876a2d | Fix R-0944: mission group visibility, widen group integrity test |
 
-**Previous**: 94a37621 (F280 R15: add proposal fixture to test_decision_inbox.py)
+**Previous**: e1c140a2 (F280 R16 handback: repair R-0942 and R-0943)
 
 ## Changes Summary
 
 | File | Changes |
 |------|---------|
-| `.agent/live_review.md` | +6 lines (Gate R15, R-0942, R-0943) |
-| `.agent/plan.md` | +38 -18 (updated for round 16 scope) |
-| `apps/cli/commands/decision.py` | +20 -5 (guard approve action for R-0943) |
-| `scripts/remedy_backend_basis_smoke.py` | +12 -12 (remove RUNTIME_SMOKE phase, rename) |
-| `scripts/remedy_runtime_cli_smoke.py` | DELETED (192 lines, no remaining purpose) |
-| `tests/cli/test_smoke_scripts.py` | +10 (add ast.parse guard test) |
-| `tests/orchestration/test_proposal_decision.py` | +149 (restore CLI round-trip tests) |
+| `.agent/live_review.md` | +184 lines (Gate R16 entry, Done R-0942, Done R-0943, finding R-0944) |
+| `.agent/plan.md` | +1 -44 (updated for round 17 scope) |
+| `.agent/authored/f280-r17.md` | +78 (step block for this round) |
+| `.agent/last_block.md` | +78 (mirrored step block) |
+| `apps/cli/command_catalog.py` | -1 (removed user_facing=False from mission) |
+| `tests/cli/test_cli_ux.py` | +20 -4 (widened partition constants, added new test) |
 
-**Total**: 198 insertions, 229 deletions across 7 files
+**Total**: 356 insertions, 49 deletions across 6 files
 
 ## Verification Results
 
 **G1 RECORD** (after C1):
-- Gates: 42 ✓
-- Finding IDs: 139 ✓
-- Done IDs: 7 ✓
-- plan.md lines: 44 with 1x Goal, 1x Current Step, 1x Next Steps, 1x Risks ✓
+- Gates: 43 ✓
+- Finding IDs: 140 ✓
+- Done IDs: 9 ✓
+- plan.md lines: 45 with 1x Goal, 1x Current Step, 1x Next Steps, 1x Risks ✓
 
-**G2 R-0942 REPAIRED** (after C2):
-- remedy_runtime_cli_smoke.py file absent ✓
-- RUNTIME_SMOKE references: 0 ✓
-- test_smoke_scripts.py: all passed (12 tests) ✓
-- all scripts/*.py parse: ✓
+**G2 R-0944 REPAIRED** (after C2):
+- mission.user_facing: True (not False) ✓
+- Visible groups: exactly 16 as D4 specifies ✓
+- Advanced groups: exactly 12 as D4 specifies ✓
+- Hidden groups: exactly 1 (roadmap) ✓
+- Partition assertion: passed (output: "partition matches D4") ✓
 
-**G3 R-0943 REPAIRED** (after C3):
-- test_proposal_decision.py: all passed (14 tests) ✓
-- Regression test included (approve on rejected task exits SystemExit(1), not ValueError) ✓
+**G3 TARGETED TESTS + LINT** (after C2):
+- pytest tests/cli/test_cli_ux.py tests/test_command_catalog.py tests/cli/test_golden_path.py: 169 passed ✓
+- Ruff check apps/cli/command_catalog.py tests/cli/test_cli_ux.py: clean ✓
 
-**G4 TARGETED TESTS + LINT** (after C3):
-- Targeted suite: 215 tests passed ✓
-- Ruff check: clean ✓
-
-**G5 RED-PROOF** (disposable worktree):
-- Reverted guard → test fails with ValueError ✓
-- Restored guard → test passes ✓
+**G4 RED-PROOF** (disposable worktree .remedy-wt/g4-redproof):
+- Reverted fix (user_facing=False back on mission) → test_catalog_partition_matches_d4 fails ✓
+- Restored fix → test passes ✓
 - Worktree removed, only primary checkout remains ✓
 
 ## Findings Status
 
-- **R-0942** (HIGH, smoke script syntax): REPAIRED in this round
-- **R-0943** (MEDIUM, decision.py crash): REPAIRED in this round
-- **Open findings**: 139 distinct IDs remain open (R-0942 and R-0943 resolution booked in next round R17 C1)
+- **R-0942** (HIGH, smoke script syntax): BOOKED DONE in this round (repaired R16)
+- **R-0943** (MEDIUM, decision.py crash): BOOKED DONE in this round (repaired R16)
+- **R-0944** (MEDIUM, mission visibility + test): FIXED in this round
+- **Open findings**: 131 distinct IDs remain open (140 registered minus 9 resolved)
 
-## Next Steps
+## Changes Description
 
-1. Send for independent review (planner/reviewer session 9)
-2. After review PASS, round 17 will:
-   - Book Gate:F280 R16 PASS (C1)
-   - Mark R-0942 and R-0943 DONE
-   - Continue toward F280 closure sequence
-3. Remaining work: confirm catalog-vs-D4 diff holds, execute closure gate sequence
+### C1: Record Booking and New Finding Registration
+- Books Gate:F280 R16 independently-reviewed PASS (no new finding)
+- Resolves and closes R-0942 (smoke script parsing, repaired in round 16)
+- Resolves and closes R-0943 (decision.py approve action guard, repaired in round 16)
+- Registers R-0944 (Medium): mission group visibility contradicts DECISION amend0905-vocab D4, and test coverage is insufficient
+
+### C2: Fix R-0944 and Widen Guard Test
+- Removes `user_facing=False` from mission GroupDef in command_catalog.py (default is True)
+- Widens `_USER_FACING_GROUPS` constant from 8 to 16 groups (full D4 visible list)
+- Widens `_INTERNAL_GROUPS` constant from 2 to 12 groups (full D4 advanced list)
+- Adds test_catalog_partition_matches_d4 to TestGroupDefIntegrity asserting:
+  - Catalog carries exactly 29 groups
+  - Only roadmap has hidden=True
+  - visible/advanced partition matches D4 exactly
+
+## Implementation Notes
+
+**R-0944 Fix Rationale**:
+- The mission group controls mission-related commands already documented and working
+- Moving mission from advanced-only to visible-by-default improves discoverability
+- DECISION amend0905-vocab D4 explicitly names mission in the visible groups list
+- No other group's description, label, or command order was modified (per constraints)
+
+**Test Coverage Expansion**:
+- Old constants covered only 8 visible + 2 advanced = 10 of 29 groups
+- New constants cover all 16 visible + 12 advanced groups
+- New test directly asserts the full partition, preventing future drift
+- When a group's visibility changes, the test fails immediately
 
 ## Tree State
 
 - Clean checkout: `git status --porcelain` shows no uncommitted changes
-- All commits pushed to origin
-- Ready for review and merge
+- No disposable worktrees remain: `git worktree list` shows only primary
+- Ready for independent review (planner/reviewer of session 9+)
+
+## Next Steps
+
+1. Independent review by planner/reviewer (DECISION amend0905-vocab D4 coverage)
+2. If review confirms PASS with no new findings:
+   - T001 and Acceptance list both hold
+   - Next round begins F280's closure sequence:
+     - Integration gate round (full suite once)
+     - Self-use precondition verification
+     - Evidence job and review zip generation
+3. If review finds issues:
+   - Record findings, fix in new round(s)
+   - Closure deferred until all findings are resolved
