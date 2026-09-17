@@ -227,9 +227,9 @@ def _build_summary_md(
     # Provider info
     pe = run_data.get("provider_evidence", {})
     lines.append("## Providers")
-    lines.append(f"- Worker: {run_data.get('builder_provider', 'unknown')} ({pe.get('builder_provider_kind', '')})")
+    lines.append(f"- Builder: {run_data.get('builder_provider', 'unknown')} ({pe.get('builder_provider_kind', '')})")
     lines.append(f"- Reviewer: {run_data.get('reviewer_provider', 'unknown')} ({pe.get('reviewer_provider_kind', '')})")
-    lines.append(f"- Worker write mode: {pe.get('builder_write_mode', 'none')}")
+    lines.append(f"- Builder write mode: {pe.get('builder_write_mode', 'none')}")
     lines.append("")
 
     # Task input

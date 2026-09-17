@@ -589,7 +589,7 @@ class TestTextReportTokenProof:
         from apps.cli.commands.do_cmd import _cmd_run_show
         _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
-        assert "Worker:" in out
+        assert "Builder:" in out
         assert "Reviewer:" in out
         assert "write mode:" in out
 
@@ -662,7 +662,7 @@ class TestConciseTextReport:
         _cmd_run_show(result.run_id, json_output=False)
         out = capsys.readouterr().out
         assert "Remedy Run" in out
-        assert "Worker:" in out
+        assert "Builder:" in out
         assert "Reviewer:" in out
         assert "Status:" in out
 

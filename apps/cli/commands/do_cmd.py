@@ -615,10 +615,10 @@ def _print_text_report(run_id: str, data: dict) -> None:
         r_wm = pe.get("reviewer_write_mode", "none")
         b_label = f"{data.get('builder_provider', 'unknown')} ({b_kind}, write mode: {b_wm})" if b_kind else data.get("builder_provider", "unknown")
         r_label = f"{data.get('reviewer_provider', 'unknown')} ({r_kind}, write mode: {r_wm})" if r_kind else data.get("reviewer_provider", "unknown")
-        print(f"Worker: {b_label}")
+        print(f"Builder: {b_label}")
         print(f"Reviewer: {r_label}")
     else:
-        print(f"Worker: {data.get('builder_provider', 'unknown')}")
+        print(f"Builder: {data.get('builder_provider', 'unknown')}")
         print(f"Reviewer: {data.get('reviewer_provider', 'unknown')}")
 
     # Rounds summary
