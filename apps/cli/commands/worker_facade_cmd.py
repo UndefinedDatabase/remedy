@@ -277,6 +277,26 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
                                  f"config: {_safe_err(exc)}")
             _warn("dead_model_comparison", comparison_failed, comparison_failed)
 
+    # -----------------------------------------------------------------
+    # T2_F271 design (c), scoped narrow by F281 (T2_F281.md Acceptance): the
+    # SECTION only — always shown, empty on the shipped catalog. The
+    # closure-precondition wiring and the fixture-based red-proof (planting a
+    # fake dead command and seeing it listed) are F271's, not this round's.
+    # -----------------------------------------------------------------
+    try:
+        from packages.orchestration.dead_command_check import dead_command_ids
+        cat_mod = importlib.import_module("apps.cli.command_catalog")
+        commands_mod = importlib.import_module("apps.cli.commands")
+        dead_commands = dead_command_ids(
+            ((e.command_id, e.group_id, e.subcommand) for e in cat_mod.CATALOG),
+            commands_mod.collect_all_handlers(),
+        )
+        _check("dead_command_scan", True,
+               f"{len(dead_commands)} dead of {len(cat_mod.CATALOG)} commands")
+    except Exception as exc:
+        dead_commands = []
+        _check("dead_command_scan", False, _safe_err(exc))
+
     blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
     ready = len(blockers) == 0
 
@@ -285,6 +305,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         "checks": checks,
         "blockers": blockers,
         "warnings": warnings,
+        "dead_commands": dead_commands,
     }
 
     if getattr(ns, "json", False):
@@ -302,6 +323,12 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
             # The compact rendering; `--json` carries the full `detail`.
             print(f"  [WARN] {w['warning']}: {w['summary']}")
         print("  (run with --json for each warning's full recorded reason)")
+    print("  dead commands:")
+    if dead_commands:
+        for cid in dead_commands:
+            print(f"    {cid}")
+    else:
+        print("    (none)")
 
 
 # ---------------------------------------------------------------------------
