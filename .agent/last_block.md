@@ -1,32 +1,30 @@
-# F281 Round 4 — step block
+# F281 Round 5 — step block
 
 ## Goal
 
-Book round 3's PASS, and clear the full "Order" bucket (via one shared
-constant fixing 12 of its occurrences at once) plus the full reachable
-"Task" bucket (8 of 9 — `stats.bench`'s own Order/Run violations use "order"
-in an unrelated mathematical sense and are left open, noted below) — 22
-total violations cleared, zero introduced, pre-verified against the real
+Book round 4's PASS, and clear the full "Evidence" bucket (12 of 12) plus one
+side-effect fix (`mission.report`'s Job violation, on the same description) —
+13 total violations cleared, zero introduced, pre-verified against the real
 `tests/docs/test_vocabulary.py` functions.
 
 ## Bundle
 
-C0a: save this block verbatim to `.agent/authored/f281-r4.md`.
+C0a: save this block verbatim to `.agent/authored/f281-r5.md`.
 C0b: mirror this block verbatim to `.agent/last_block.md`.
-C1: RECORD3 + PLAN4 — one commit.
-C2: CODE — 9 catalog text edits in `apps/cli/command_catalog.py`.
+C1: RECORD4 + PLAN5 — one commit.
+C2: CODE — 12 catalog text edits in `apps/cli/command_catalog.py`.
 C3: HANDBACK.
 
-## C1 — RECORD3 + PLAN4
+## C1 — RECORD4 + PLAN5
 
-### RECORD3 — append to `.agent/live_review.md`, after its current last line,
+### RECORD4 — append to `.agent/live_review.md`, after its current last line,
 separated by exactly one blank line, verbatim:
 
 ```
-Gate: F281 R3 — the F281 round 3 entry. VERDICT PASS. Written by the planner and reviewer of F281's first session after reading the committed range `b0fdf0f4`..`2318dba4` (commits `d724af14`, `54459a06`, `9e2e0e6e`, `ea111204`, `2318dba4`) and independently re-deriving every reading below; the worker's report was evidence for none of them except where named. THE TRANSPORT: `.agent/authored/f281-r3.md` and `.agent/last_block.md` are byte-identical to the reviewer's own authored block, sha256 `1a6f5de8bb29e99fe0d5628a10b09186f6dea49dc0de5f3c50ccb78e63843397`, 11187 bytes, reproduced directly. THE CODE, reproduced by `git show ea111204`: all 5 FROM/TO edits landed exactly as ordered, including both identical `decision_id` ArgDef occurrences (`decision.show` and `decision.resolve`); `decision.resolve`'s own description line, not in scope, is byte-unchanged. THE MEASUREMENT, reproduced directly at HEAD against the real, committed catalog (no monkeypatching): `_meaning_violations()` reads 267, `_synonym_offenders()` reads 2 — both exactly matching the block's own prediction (275→267, 8 fixed, 0 introduced). THE GATES, reproduced directly: `python3 -m pytest tests/docs/test_vocabulary.py tests/test_command_catalog.py tests/cli/test_advertised_commands.py -q` reads `74 passed`; `python3 -m pytest tests/cli/test_golden_path.py -q` reads `42 passed`; `python3 -m ruff check apps/cli/command_catalog.py` reads `All checks passed!`. THE TREE: `git status --porcelain` empty, `git worktree list` one row, HEAD `2318dba4` matches `origin/feature/f281-cli-help-surface`. WHY PASS: every byte independently reproduces and the vocabulary-function measurement matches exactly.
+Gate: F281 R4 — the F281 round 4 entry. VERDICT PASS. Written by the planner and reviewer of F281's first session after reading the committed range `2318dba4`..`4297a267` (commits `9944f7ce`, `4036fb58`, `64aad85f`, `aa5a127e`, `4297a267`) and independently re-deriving every reading below; the worker's report was evidence for none of them except where named. THE TRANSPORT: `.agent/authored/f281-r4.md` and `.agent/last_block.md` are byte-identical to the reviewer's own authored block, sha256 `73fa1a19a51115538008ce1b1313c31f335f4751440dbf47cb0ffb45df614a33`, 13405 bytes, reproduced directly. THE CODE, reproduced by `git show aa5a127e`: all 9 FROM/TO edits landed exactly as ordered, including the two shared constants `_LIST_DESC_ARG` (fixing all 12 of its call sites at once) and `_TASK_OPT`, whose neighbouring comment stayed byte-unchanged and still quotes a true substring of the new text. THE MEASUREMENT, reproduced directly at HEAD against the real, committed catalog: `_meaning_violations()` reads 245, `_synonym_offenders()` reads 2 — both exactly matching the block's own prediction (267→245, 22 fixed, 0 introduced). THE GATES, reproduced directly: `python3 -m pytest tests/docs/test_vocabulary.py tests/test_command_catalog.py tests/cli/test_advertised_commands.py -q` reads `74 passed`; `python3 -m pytest tests/cli/test_golden_path.py -q` reads `42 passed`; `python3 -m ruff check apps/cli/command_catalog.py` reads `All checks passed!`. THE TREE: `git status --porcelain` empty, `git worktree list` one row, HEAD `4297a267` matches `origin/feature/f281-cli-help-surface`. WHY PASS: every byte independently reproduces and the vocabulary-function measurement matches exactly.
 ```
 
-### PLAN4 — replace the entire content of `.agent/plan.md` with exactly:
+### PLAN5 — replace the entire content of `.agent/plan.md` with exactly:
 
 ```
 # Plan — F281 CLI help surface
@@ -44,182 +42,183 @@ Acceptance list hold.
 
 ## Current Step
 
-ROUND 4. C1 books round 3's PASS and re-points `.agent/plan.md`. C2 clears the
-full "Order" bucket in one edit (the shared `_LIST_DESC_ARG` constant's help
-text, referenced by all 12 `--desc` list-sort flags, fixes all 12 occurrences
-at once — a stronger leverage point than the per-command edits every prior
-round used) plus 8 of the 9 "Task" bucket violations (`brain.continue
---task-type`, `job.context --task` via the shared `_TASK_OPT` constant,
-`job.run --max-rounds`, `job.run --repair-rounds`, `job.show --full`,
-`job.context`'s own description, `mission.continue`'s own description,
-`self.execute --job-id`, `self.execute proposed_task_id`) — 22 total
-(1 shared-constant Order fix covering 12 sites, plus 9 Task-word edits,
-plus one more the diff found as a side effect), zero introduced.
+ROUND 5. C1 books round 4's PASS and re-points `.agent/plan.md`. C2 clears the
+full "Evidence" bucket (12 of 12: `group:stats:description`,
+`group:self:description`, `arg:job.stop:--reason:description`,
+`command:mission.report:description`, `command:mission.abandon:description`,
+`arg:job.run:--no-stream-evidence:description`,
+`arg:stats.failures:--job:description`,
+`arg:stats.backfill-ledger:evidence_dir:description`,
+`command:stats.verify-ledger:description`,
+`arg:stats.verify-ledger:evidence_dir:description`,
+`command:self.inspect:description`, `command:self.report:description`) plus
+one side-effect fix (`mission.report`'s Job violation, since its rewrite
+already needed the word "mission" nearby, which is one of Job's own three
+fragments) — 13 total, zero introduced.
 
-`command:stats.bench:description`'s Order AND Run violations are DELIBERATELY
-LEFT OPEN this round: its text — "a regression warning naming the order and
-both numbers" — uses "order" in the sense of a trend/regression's
-mathematical order (its degree), not DECISION amend0905-vocab D1's Order
-concept (what the human gave Remedy), and "runs" the same way ("the last
-run" is a bench execution, correctly the Run concept, but "Never runs the
-bench" is a verb use with no natural home for a fragment). Forcing either
-concept's fragment into a sentence about regression math would misdescribe
-the command. This is the same class of finding as DECISION F281 D2's two
-floor items — a genuine word-sense collision — but is NOT yet formalized as
-its own DECISION; a future round either writes one (accepting `stats.bench`
-as a second permanent floor item, or finding an honest rewording this
-session didn't) or clears it with a rewrite that actually works.
+After this round the ONLY remaining Order violation is `stats.bench`'s
+(unfixed, per round 4's note — mathematical "order", not the vocabulary
+concept), and Task and Evidence both read zero.
 
 ## Next Steps
 
-1. Re-run `_meaning_violations()` grouped by word at the start of round 5;
-   expected counts after this round: Task 0 or 1 (`stats.bench` may remain),
-   Order 0 or 1 (`stats.bench`'s own Order violation, same caveat), Evidence
-   12, Mission 16, Run ~29 (stats.bench's Run violation may still count),
-   Project 65, Job ~120 — 245 total (measured directly by this round's own
-   dry run; re-measure rather than trust this arithmetic). Take the
-   next-smallest bucket.
-2. When a bucket's violations share a single catalog-module CONSTANT (like
-   `_LIST_DESC_ARG` or `_TASK_OPT` this round), fixing the constant once
-   clears every command that references it — check for this BEFORE writing
-   N per-command edits; it is faster and structurally guarantees no site is
-   missed or drifts from its siblings.
+1. Re-run `_meaning_violations()` grouped by word at the start of round 6;
+   expected counts after this round: Mission 16 (unchanged — none of this
+   round's fixes touched a standalone Mission violation), Order 1
+   (`stats.bench`, unfixed), Run ~29-30, Project 65, Job ~120 — 232 total
+   (measured directly this round; re-measure rather than trust). Take the
+   next-smallest bucket (Mission, 16, unless a fresh measurement disagrees).
+2. Continue watching for the "fragment is itself a binding word" trap
+   (Mission's own fragments are order/job/contract — all three ARE binding
+   words) and the "same word, different sense" trap (`stats.bench`'s
+   mathematical order): every rewrite is checked against the FULL before/after
+   diff of the real `_meaning_violations()`/`_synonym_offenders()` functions,
+   never assumed safe from reading the text alone.
 3. Help wrap, `doctor core` dead-commands (D11d), the D11a catalog
    group-reach test, the visible-order data-pinned test, the F259 enforced
-   flip (bounded by DECISION F281 D2's two-item floor, possibly a third if
-   `stats.bench` becomes one), and the README quickstart's R-0895 line
-   remain entirely undone.
+   flip (bounded by DECISION F281 D2's two-item floor, possibly `stats.bench`
+   as a third), and the README quickstart's R-0895 line remain entirely
+   undone. This session (session 1 of F281) has now run 5 delegated rounds,
+   at the operator's 4-to-5 default and approaching the 6-to-8 target; the
+   next round may be this session's last if a natural stopping point is
+   reached, per a session's own honest self-assessment rather than a fixed
+   count.
 
 ## Risks
 
-- Same as rounds 2-3: every catalog description edit is verified by
+- Same as rounds 2-4: every catalog description edit is verified by
   re-running the real `_meaning_violations()`/`_synonym_offenders()`
   functions against the modified catalog before authoring, diffed fixed vs.
   introduced.
-- A word can appear in the catalog in a sense DECISION amend0905-vocab D1
-  does not define (`stats.bench`'s mathematical "order"; possibly others
-  waiting in the Job/Project/Run buckets, which are large enough that a
-  false-positive-sense collision is likely) — when a fragment cannot be
-  added without misdescribing the command, the violation is LEFT OPEN and
-  named, never forced.
 ```
 
-## C2 — CODE (9 catalog text edits, all in `apps/cli/command_catalog.py`)
+## C2 — CODE (12 catalog text edits, all in `apps/cli/command_catalog.py`)
 
 Apply each FROM → TO pair below EXACTLY. Every FROM string must appear
 verbatim, once, at the cited location; if it does not match, STOP and report
 the exact mismatch.
 
-1. The shared `_LIST_DESC_ARG` constant (near line 2191-2193, referenced by
-all 12 `--desc` list flags — editing it once fixes every site). FROM:
+1. GROUPS["stats"] (near line 125). FROM:
 ```
-_LIST_DESC_ARG = ArgDef(
-    "--desc", "Reverse the sort order",
-    required=False, is_option=True, is_flag=True)
+    "stats": GroupDef("stats", "Stats", "Honest counts from the evidence on disk."),
 ```
 TO:
 ```
-_LIST_DESC_ARG = ArgDef(
-    "--desc", "Reverse the sort direction",
-    required=False, is_option=True, is_flag=True)
+    "stats": GroupDef("stats", "Stats", "Honest counts from the run evidence on disk."),
 ```
 
-2. The shared `_TASK_OPT` constant (near line 155-157, referenced by
-`job.context`'s `--task` argument). FROM:
+2. GROUPS["self"] (near line 135). FROM:
 ```
-_TASK_OPT = ArgDef(
-    "--task", "Task to select: planned id (T001) or task-id prefix",
-    required=False, is_option=True)
+    "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
 ```
 TO:
 ```
-_TASK_OPT = ArgDef(
-    "--task", "Task to select from the job plan: planned id (T001) or task-id prefix",
-    required=False, is_option=True)
-```
-(The comment at line 165, `#: \`_TASK_OPT\`, which promises "planned id (T001) or task-id prefix":`, is UNCHANGED — its quoted phrase is still a literal substring of the new text, so it stays truthful.)
-
-3. `brain.continue`'s `--task-type` ArgDef (near line 749). FROM:
-```
-            ArgDef("--task-type", "Task type for the child job", required=False, is_option=True),
-```
-TO:
-```
-            ArgDef("--task-type", "Task type for the child job's next step", required=False, is_option=True),
+    "self": GroupDef("self", "Self", "Self-dogfood — inspect Remedy's own run evidence.", user_facing=False),
 ```
 
-4. `job.run`'s `--max-rounds` ArgDef (near line 1609). FROM:
+3. `job.stop`'s `--reason` ArgDef (near line 321). FROM:
 ```
-            ArgDef("--max-rounds", "Max ping-pong rounds per task (default: 3, persisted on continuation)", required=False, is_option=True, default=None),
+            ArgDef("--reason", "Why the job is being stopped (recorded in the evidence)", required=False, is_option=True, default=""),
 ```
 TO:
 ```
-            ArgDef("--max-rounds", "Max ping-pong rounds per task's run (default: 3, persisted on continuation)", required=False, is_option=True, default=None),
+            ArgDef("--reason", "Why the job is being stopped (recorded in the run's evidence)", required=False, is_option=True, default=""),
 ```
 
-5. `job.run`'s `--repair-rounds` ArgDef (near line 1610). FROM:
+4. `mission.report` CommandEntry description (near line 912). FROM:
 ```
-            ArgDef("--repair-rounds", "Max repair attempts per task (default: 2, 0=disabled, persisted on continuation)", required=False, is_option=True, default=None),
+        description="Read-only morning-style report built from the job's current evidence.",
 ```
 TO:
 ```
-            ArgDef("--repair-rounds", "Max repair attempts per task's run (default: 2, 0=disabled, persisted on continuation)", required=False, is_option=True, default=None),
+        description="Read-only morning-style report for a mission, built from its job's current run evidence.",
 ```
 
-6. `job.show`'s `--full` ArgDef (near lines 247-250, a 3-line string
-concatenation — match the exact three source lines including their
-indentation). FROM:
+5. `mission.abandon` CommandEntry description (near line 1015). FROM:
 ```
-            ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
-                   "and the job's sections (its permissions, fences, assumptions, "
-                   "completion digest, summary, status, report and Definition of Done)",
-                   required=False, is_option=True, is_flag=True),
+        description="Mark a mission abandoned — the goal is dropped; its jobs and their evidence stay.",
 ```
 TO:
 ```
-            ArgDef("--full", "Print every finding of a blocked task — a step in the job's plan — "
-                   "instead of the first ten, and the job's sections (its permissions, fences, "
-                   "assumptions, completion digest, summary, status, report and Definition of Done)",
-                   required=False, is_option=True, is_flag=True),
+        description="Mark a mission abandoned — the goal is dropped; its jobs and their run evidence stay.",
 ```
 
-7. `job.context`'s own description (near lines 366-367, a 2-line
-parenthesized string). FROM:
+6. `job.run`'s `--no-stream-evidence` ArgDef (near line 1614). FROM:
 ```
-        description=("Show the compiled context for one task — what it "
-                     "receives and what was omitted (F107)."),
+            ArgDef("--no-stream-evidence", "Explicitly disable raw stream evidence (overrides a persisted true). Omitted keeps the persisted/default mode", required=False, is_option=True),
 ```
 TO:
 ```
-        description=("Show the compiled context for one task in the job plan "
-                     "— what it receives and what was omitted (F107)."),
+            ArgDef("--no-stream-evidence", "Explicitly disable this run's raw stream evidence (overrides a persisted true). Omitted keeps the persisted/default mode", required=False, is_option=True),
 ```
 
-8. `mission.continue`'s own description (near line 955). FROM:
+7. `stats.failures`'s `--job` ArgDef (near line 1647). FROM:
 ```
-        description="Add the next job to a mission — its plan always begins with a task that verifies the previous job's Definition of Done.",
+            ArgDef("--job", "Only this job's evidence export", required=False, is_option=True),
 ```
 TO:
 ```
-        description="Add the next job to a mission — its plan always begins with a task (a step) that verifies the previous job's Definition of Done.",
+            ArgDef("--job", "Only this job's evidence export, from its run", required=False, is_option=True),
 ```
 
-9. `self.execute`'s two ArgDefs (near lines 1931-1932 — both edits are in the
-same CommandEntry, apply both). FROM:
+8. `stats.backfill-ledger`'s `evidence_dir` ArgDef (near line 1769). FROM:
 ```
-            ArgDef("proposed_task_id", "Approved self-dogfood proposed task id"),
-            ArgDef("--job-id", "Job that owns the proposed task", required=False, is_option=True),
+            ArgDef("evidence_dir", "Path to the job evidence directory to scan"),
 ```
 TO:
 ```
-            ArgDef("proposed_task_id", "Approved self-dogfood proposed task id (a step awaiting execution)"),
-            ArgDef("--job-id", "Job that owns the proposed task (a step in its plan)", required=False, is_option=True),
+            ArgDef("evidence_dir", "Path to the job evidence folder to scan"),
+```
+
+9. `stats.verify-ledger` CommandEntry description (near lines 1781-1785, a
+3-line string concatenation). FROM:
+```
+        description=(
+            "Reconcile the evidence files against the token ledger rows (read-only). "
+            "Exits 0 on a clean reconcile and non-zero when drift is found, so it is "
+            "usable as a check."
+        ),
+```
+TO:
+```
+        description=(
+            "Reconcile the run evidence files against the token ledger rows (read-only). "
+            "Exits 0 on a clean reconcile and non-zero when drift is found, so it is "
+            "usable as a check."
+        ),
+```
+
+10. `stats.verify-ledger`'s `evidence_dir` ArgDef (near line 1790). FROM:
+```
+            ArgDef("evidence_dir", "Path to the job evidence directory to reconcile"),
+```
+TO:
+```
+            ArgDef("evidence_dir", "Path to the job evidence folder to reconcile"),
+```
+
+11. `self.inspect` CommandEntry description (near line 1887). FROM:
+```
+        description="Read-only: inspect Remedy's own evidence for self-improvement items.",
+```
+TO:
+```
+        description="Read-only: inspect Remedy's own run evidence for self-improvement items.",
+```
+
+12. `self.report` CommandEntry description (near line 1978). FROM:
+```
+        description="Read-only: self-dogfood report (what Remedy thinks is wrong + evidence).",
+```
+TO:
+```
+        description="Read-only: self-dogfood report (what Remedy thinks is wrong, with the run evidence behind it).",
 ```
 
 ## Constraints
 
-- `command:stats.bench:description` is UNCHANGED this round — do not attempt
-  to fix its Order/Run violations; PLAN4 explains why.
+- `command:stats.bench:description` stays UNCHANGED (unrelated to this
+  round's scope; still the word-sense collision round 4 named).
 - The C2 commit's path set is exactly one file:
   `apps/cli/command_catalog.py`.
 - Bare `ruff` is denied to this session's shell; use `python3 -m ruff check
@@ -229,10 +228,10 @@ TO:
 
 - G1 VIOLATION DIFF: import `tests.docs.test_vocabulary` and report
   `_meaning_violations()` and `_synonym_offenders()` against the real,
-  committed (post-edit) catalog. Expect meaning violations to read 245,
-  synonym offenders unchanged at 2. If it doesn't read exactly 245, STOP and
-  report before committing (you may `git stash` your C2 edit to measure the
-  before-count as 267 for confidence, then restore).
+  committed (post-edit) catalog. Expect meaning violations to read 232,
+  synonym offenders unchanged at 2. If it doesn't read exactly 232, STOP and
+  report before committing (you may `git stash` your C2 edit to confirm the
+  before-count reads 245, then restore).
 - G2 TARGETED: `python3 -m pytest tests/docs/test_vocabulary.py
   tests/test_command_catalog.py tests/cli/test_advertised_commands.py -q` —
   expect 74 passed, unchanged.
@@ -240,22 +239,21 @@ TO:
   passed, unchanged.
 - G4 RUFF: `python3 -m ruff check apps/cli/command_catalog.py` reads `All
   checks passed!`.
-- G5 SWEEP: `grep -c '"Reverse the sort order"' apps/cli/command_catalog.py`
-  reads 0; `grep -c '"--desc", "Reverse the sort direction"'
-  apps/cli/command_catalog.py` reads 1 (the one shared constant).
+- G5 SWEEP: `grep -c 'directory to scan\|directory to reconcile'
+  apps/cli/command_catalog.py` reads 0 (both became "folder").
 - G6 TREE: `git status --porcelain` empty, `git worktree list` shows only the
   primary checkout, HEAD matches `origin/feature/f281-cli-help-surface` after
   push.
 
-No mutation red-proof is ordered this round, for the same reason rounds 2-3
+No mutation red-proof is ordered this round, for the same reason rounds 2-4
 named: G1's own before/after diff against the real vocabulary-check functions
 is the red/green proof for a prose-only catalog edit.
 
 ## Done-when
 
 C1 and C2 are committed with the exact path sets named above; G1-G6 all pass
-with real recorded output, G1's delta matching exactly (267→245); the branch
+with real recorded output, G1's delta matching exactly (245→232); the branch
 is pushed; `.agent/handoff.md` is rewritten as C3 naming this round, its
-commits, its verification results, and the next expected action (round 5
-re-measures the remaining ~245 violations by word and takes the
-next-smallest bucket per PLAN4's "Next Steps").
+commits, its verification results, and the next expected action (round 6
+re-measures the remaining ~232 violations by word and takes the
+next-smallest bucket per PLAN5's "Next Steps").
