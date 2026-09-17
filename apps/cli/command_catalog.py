@@ -1660,7 +1660,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="bench",
         description=(
             "Capability trend from the append-only bench history: the latest entry, "
-            "the series before it, and a regression warning naming the order and "
+            "the series before it, and a regression warning naming the sequence and "
             "both numbers. Never executes the bench (read-only)."
         ),
         action_class="read_only",
