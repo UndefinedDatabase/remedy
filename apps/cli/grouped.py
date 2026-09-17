@@ -370,7 +370,11 @@ def _print_root_help(*, show_all: bool = False) -> None:
         groups = [(gid, gdef.description) for gid, gdef in GROUPS.items() if not gdef.hidden]
         title = "All Commands"
     else:
-        groups = [(gid, GROUPS[gid].description) for gid in VISIBLE_GROUP_ORDER]
+        groups = [
+            (gid, GROUPS[gid].description)
+            for gid in VISIBLE_GROUP_ORDER
+            if not GROUPS[gid].hidden
+        ]
         title = "Commands"
     print(render_root_help(
         "remedy", "Remedy \u2014 Human-in-the-loop Project Brain", groups,
