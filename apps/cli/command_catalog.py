@@ -153,7 +153,7 @@ _JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, d
 #: F107: names ONE task of a job — its planned id (`T001`) or a prefix of its
 #: task UUID. A valued option, never a flag, and never defaulted to a guess.
 _TASK_OPT = ArgDef(
-    "--task", "Task to select: planned id (T001) or task-id prefix",
+    "--task", "Task to select from the job plan: planned id (T001) or task-id prefix",
     required=False, is_option=True)
 _REASON_OPT = ArgDef("--reason", "Reason text", required=False, is_option=True)
 _ANSWER_OPT = ArgDef(
@@ -244,9 +244,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(
             _JOB_ID,
-            ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
-                   "and the job's sections (its permissions, fences, assumptions, "
-                   "completion digest, summary, status, report and Definition of Done)",
+            ArgDef("--full", "Print every finding of a blocked task — a step in the job's plan — "
+                   "instead of the first ten, and the job's sections (its permissions, fences, "
+                   "assumptions, completion digest, summary, status, report and Definition of Done)",
                    required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
@@ -363,8 +363,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.context",
         group_id="job",
         subcommand="context",
-        description=("Show the compiled context for one task — what it "
-                     "receives and what was omitted (F107)."),
+        description=("Show the compiled context for one task in the job plan "
+                     "— what it receives and what was omitted (F107)."),
         action_class="read_only",
         args=(_JOB_ID, _TASK_OPT, _JSON_OPT),
         supports_json=True,
@@ -746,7 +746,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("node_id", "Brain node ID to continue from"),
             ArgDef("--prompt", "Prompt for the child job", required=True, is_option=True),
-            ArgDef("--task-type", "Task type for the child job", required=False, is_option=True),
+            ArgDef("--task-type", "Task type for the child job's next step", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -952,7 +952,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.continue",
         group_id="mission",
         subcommand="continue",
-        description="Add the next job to a mission — its plan always begins with a task that verifies the previous job's Definition of Done.",
+        description="Add the next job to a mission — its plan always begins with a task (a step) that verifies the previous job's Definition of Done.",
         action_class="write_metadata",
         args=(
             ArgDef("mission_id", "Mission id (or a unique prefix)"),
@@ -1606,8 +1606,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("job.show",),
         args=(
             ArgDef("job_id", "Job ID"),
-            ArgDef("--max-rounds", "Max ping-pong rounds per task (default: 3, persisted on continuation)", required=False, is_option=True, default=None),
-            ArgDef("--repair-rounds", "Max repair attempts per task (default: 2, 0=disabled, persisted on continuation)", required=False, is_option=True, default=None),
+            ArgDef("--max-rounds", "Max ping-pong rounds per task's run (default: 3, persisted on continuation)", required=False, is_option=True, default=None),
+            ArgDef("--repair-rounds", "Max repair attempts per task's run (default: 2, 0=disabled, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--test-command", "Test command to run in staging (persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--claude-cli-write-mode", "Claude CLI write mode: none, allowed-tools, dangerous-skip (default: none, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--stream-evidence", "Opt-in F004 raw stream evidence: use Claude CLI stream-json and write redacted raw_stream.jsonl + run_events.jsonl. Omitted keeps the persisted/default mode", required=False, is_option=True),
@@ -1928,8 +1928,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Metadata-only: start/resume a bounded self-improvement attempt (prepares a request; no apply).",
         action_class="write_metadata",
         args=(
-            ArgDef("proposed_task_id", "Approved self-dogfood proposed task id"),
-            ArgDef("--job-id", "Job that owns the proposed task", required=False, is_option=True),
+            ArgDef("proposed_task_id", "Approved self-dogfood proposed task id (a step awaiting execution)"),
+            ArgDef("--job-id", "Job that owns the proposed task (a step in its plan)", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
@@ -2189,7 +2189,7 @@ _LIST_SORT_ARG = ArgDef(
     "--sort", "Sort field; this command's own columns are the valid set (see --help)",
     required=False, is_option=True)
 _LIST_DESC_ARG = ArgDef(
-    "--desc", "Reverse the sort order",
+    "--desc", "Reverse the sort direction",
     required=False, is_option=True, is_flag=True)
 _LIST_SINCE_ARG = ArgDef(
     "--since",
