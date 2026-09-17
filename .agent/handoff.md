@@ -1,42 +1,42 @@
-# Handback — F281 Round 7
+# Handback — F281 Round 8
 
 ## Session
 
-SESSION 1 of feature F281 · round 7 · rounds so far 7. This is the 7th delegated round of session 1, inside the operator's 6-to-8 target. The session's next action is an honest assessment of whether to continue or end.
+SESSION 1 of feature F281 · round 8 · rounds so far 8. This is the 8th delegated round of session 1, at the TOP of the operator's 6-to-8 target. The session's next action is an honest assessment of whether to continue or end.
 
 ## Range
 
-Review of `cc1cd3b0`..`9f799af2`.
+Review of `d21b585b`..`73531f9c`.
 
 ## Commits
 
-### 79e4d8e2 F281 R7 C0a: save the round 7 step block under the authored directory
+### 47e694b7 F281 R8 C0a: save the round 8 step block under the authored directory
 | Path | +/- | Reason |
 | --- | --- | --- |
-| .agent/authored/f281-r7.md | +452 | Block copy, byte-for-byte verified |
+| .agent/authored/f281-r8.md | +213 | Block copy, byte-for-byte verified |
 
-### 147fcde9 F281 R7 C0b: mirror the round 7 step block into the last block state file
+### 0337abb7 F281 R8 C0b: mirror the round 8 step block into the last block state file
 | Path | +/- | Reason |
 | --- | --- | --- |
-| .agent/last_block.md | +452/-243 | Block mirror, byte-for-byte verified |
+| .agent/last_block.md | +213/-452 | Block mirror, byte-for-byte verified |
 
-### fcf5d0b9 F281 R7 C1: book round 6 PASS and re-point plan.md
+### 35d231b4 F281 R8 C1: book round 7 PASS and re-point plan.md
 | Path | +/- | Reason |
 | --- | --- | --- |
-| .agent/live_review.md | +1 | RECORD6 append, round 6 verdict booking |
-| .agent/plan.md | +63/-63 | PLAN7 rewrite, round 7 updated plan |
+| .agent/live_review.md | +1 | RECORD7 append, round 7 verdict booking |
+| .agent/plan.md | +65/-62 | PLAN8 rewrite, round 8 updated plan |
 
-### 9f799af2 F281 R7 C2: clear the full Run bucket (30 violations)
+### 73531f9c F281 R8 C2: clear the Project bucket violations (33 fixes via 4 shared-literal edits)
 | Path | +/- | Reason |
 | --- | --- | --- |
-| apps/cli/command_catalog.py | +31/-31 | 30 FROM/TO edits: ci group description, ci.run command and --stage, integrity.check command and --collect-only, teacher group description, teacher.ask command and --job-id, teacher.narrate description, test group description, test.status and test.result and test.list commands, test_run_id and --intent-id and --apply-id, mission.run command and --iterations and --no-llm, mission.readiness, run.show command and run_id, job.resume --cycles, job.run --test-command, job.apply command and --approve, job.evidence --verification-command, do.run --ui, stats.bench command and --series |
+| apps/cli/command_catalog.py | +13/-13 | 4 FROM/TO edits: _PROJECT_SCOPE_OPT constant (1 definition, 21 call sites fixed), "Project slug or UUID" literal (3 sites: project.current, project.attach, project.adopt), "Project UUID scope" literal (3 sites: memory.store, memory.recall, memory.list), "Project ID scope" literal (6 sites: memory.card-show, memory.card-approve, memory.card-reject, memory.card-stale, memory.card-supersede, memory.card-contradict) |
 
 ## External actions
 
 ```
 git push origin feature/f281-cli-help-surface
 To github.com:UndefinedDatabase/remedy.git
-   cc1cd3b0..9f799af2  feature/f281-cli-help-surface -> feature/f281-cli-help-surface
+   d21b585b..73531f9c  feature/f281-cli-help-surface -> feature/f281-cli-help-surface
 ```
 
 Exit code: 0.
@@ -54,11 +54,11 @@ print(f'_meaning_violations() = {len(violations)}')
 print(f'_synonym_offenders() = {len(offenders)}')
 "
 
-_meaning_violations() = 184
+_meaning_violations() = 151
 _synonym_offenders() = 2
 ```
 
-Exit code: 0. Expected: 184 violations (216 → 184, 32 fixed), 2 offenders (unchanged). Delta: 216 → 184, exactly matching the block's prediction (30 Run bucket + 2 Job bucket bonus fixes).
+Exit code: 0. Expected: 151 violations (184 → 151, 33 fixed), 2 offenders (unchanged). Delta: 184 → 151, exactly matching the block's prediction (33 Project bucket fixes).
 
 ### G2: Targeted pytest tests
 
@@ -67,7 +67,7 @@ $ python3 -m pytest tests/docs/test_vocabulary.py tests/test_command_catalog.py 
 
 ........................................................................ [ 97%]
 ..                                                                       [100%]
-74 passed in 1.15s
+74 passed in 1.09s
 ```
 
 Exit code: 0. Expected: 74 passed (unchanged).
@@ -78,7 +78,7 @@ Exit code: 0. Expected: 74 passed (unchanged).
 $ python3 -m pytest tests/cli/test_golden_path.py -q
 
 ..........................................                               [100%]
-42 passed in 18.39s
+42 passed in 17.69s
 ```
 
 Exit code: 0. Expected: 42 passed (unchanged).
@@ -93,23 +93,47 @@ All checks passed!
 
 Exit code: 0. Expected: All checks passed!
 
-### G5: Sweep for old text gone, new text present
+### G5: Sweep for new text present, old text gone
 
 ```
-$ grep -c '(same task as --task-id)' apps/cli/command_catalog.py
+$ grep -c "Scope to a project's repo (slug or UUID)" apps/cli/command_catalog.py
 
-2
+1
 ```
 
-Exit code: 0. Count of new phrase (edits 15 and 16): 2.
+Exit code: 0. Count of edit 1 (constant definition): 1.
 
 ```
-$ grep -c 'Dry-run by default' apps/cli/command_catalog.py
+$ grep -c "Project's repo, slug or UUID" apps/cli/command_catalog.py
+
+3
+```
+
+Exit code: 0. Count of edit 2 (project.current, project.attach, project.adopt): 3.
+
+```
+$ grep -c "Project's repo, UUID scope" apps/cli/command_catalog.py
+
+3
+```
+
+Exit code: 0. Count of edit 3 (memory.store, memory.recall, memory.list): 3.
+
+```
+$ grep -c "Project's repo, ID scope" apps/cli/command_catalog.py
+
+6
+```
+
+Exit code: 0. Count of edit 4 (memory.card-*): 6.
+
+```
+$ grep -c "Project slug or UUID\|Project UUID scope\|Project ID scope" apps/cli/command_catalog.py
 
 0
 ```
 
-Exit code: 0. Old string gone (edit 25 replaced).
+Exit code: 0. Old strings completely gone (all three old literals unmatched).
 
 ### G6: Tree state and worktree verification
 
@@ -118,10 +142,10 @@ $ git status --porcelain
 (empty)
 
 $ git worktree list
-/home/decodeux/Repos/remedy  9f799af2 [feature/f281-cli-help-surface]
+/home/decodeux/Repos/remedy  73531f9c [feature/f281-cli-help-surface]
 
 $ git log --oneline -1
-9f799af2 F281 R7 C2: clear the full Run bucket (30 violations)
+73531f9c F281 R8 C2: clear the Project bucket violations (33 fixes via 4 shared-literal edits)
 ```
 
 Exit code: 0. Tree clean, one worktree, branch pushed to origin.
@@ -131,31 +155,31 @@ Exit code: 0. Tree clean, one worktree, branch pushed to origin.
 ### C0a block copy
 
 ```
-$ cmp .remedy-wt/f281-r7-block.md .agent/authored/f281-r7.md
+$ cmp .remedy-wt/f281-r8-block.md .agent/authored/f281-r8.md
 (exit 0)
 
-$ sha256sum .agent/authored/f281-r7.md
-6ae5a011fc997fcf0c880c149590d10e72b204bd806a3c345bd9b33776809ca7  .agent/authored/f281-r7.md
+$ sha256sum .agent/authored/f281-r8.md
+1db42cce3a02f9d17cc371935c6a0407c47df752fe0a224222951662d79250bd  .agent/authored/f281-r8.md
 ```
 
-Exit code: 0. Block copy verified byte-for-byte identical at sha256 `6ae5a011fc997fcf0c880c149590d10e72b204bd806a3c345bd9b33776809ca7`.
+Exit code: 0. Block copy verified byte-for-byte identical at sha256 `1db42cce3a02f9d17cc371935c6a0407c47df752fe0a224222951662d79250bd`.
 
 ### C0b block mirror
 
 ```
-$ cmp .remedy-wt/f281-r7-block.md .agent/last_block.md
+$ cmp .remedy-wt/f281-r8-block.md .agent/last_block.md
 (exit 0)
 
 $ sha256sum .agent/last_block.md
-6ae5a011fc997fcf0c880c149590d10e72b204bd806a3c345bd9b33776809ca7  .agent/last_block.md
+1db42cce3a02f9d17cc371935c6a0407c47df752fe0a224222951662d79250bd  .agent/last_block.md
 ```
 
-Exit code: 0. Block mirror verified byte-for-byte identical at sha256 `6ae5a011fc997fcf0c880c149590d10e72b204bd806a3c345bd9b33776809ca7`.
+Exit code: 0. Block mirror verified byte-for-byte identical at sha256 `1db42cce3a02f9d17cc371935c6a0407c47df752fe0a224222951662d79250bd`.
 
 ## Deviations & assumptions
 
-None. All 30 code edits matched the FROM text verbatim at the cited locations; all gates passed with the exact outputs predicted (G1: 184 violations and 2 offenders; G2: 74 passed; G3: 42 passed; G4: All checks passed; G5: 2 new + 0 old; G6: clean tree); the vocabulary function measurements match exactly (216 → 184 meaning violations, 2 synonym offenders unchanged, 32 total fixed: 30 Run bucket + 2 Job bucket bonus fixes as documented in the block).
+None. All 4 code edits matched the FROM text verbatim at the cited locations (1 definition, 3 + 3 + 6 = 12 call sites); all gates passed with the exact outputs predicted (G1: 151 violations and 2 offenders, 33-violation improvement from 184; G2: 74 passed; G3: 42 passed; G4: All checks passed; G5: 1 + 3 + 3 + 6 = 13 new occurrences, 0 old); the vocabulary function measurements match exactly (184 → 151 meaning violations, 2 synonym offenders unchanged, 33 total fixed: Project bucket only, per the round's scope).
 
 ## Next
 
-Round 8: Re-run `_meaning_violations()` grouped by word at the start of round 8; expected: Project and Job are the only two buckets left, at approximately 183-184 total (re-measure rather than trust). Job (~118) is by far the largest; Project (~65) is next. Proceed with the largest remaining bucket or the next natural grouping per measurement.
+Round 9: Re-run `_meaning_violations()` grouped by word at the start of round 9; expected: Project (~32) and Job (~118) are the only two buckets left (plus Order's 1 unfixed `stats.bench` collision), at approximately 150-151 total (re-measure rather than trust). Job is now by far the largest; continue looking for shared constants there first (the many `job_id` ArgDefs are the obvious candidate) before writing per-command edits.
