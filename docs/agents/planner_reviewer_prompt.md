@@ -1024,11 +1024,14 @@ end the response with:
      verification.
   2. **Canary** — every handback additionally runs the golden-path smoke
      (fixed and fast: `pytest tests/cli/test_golden_path.py -q`).
-  3. **Integration gate** — the full suite runs exactly TWICE per feature:
-     a dedicated integration-gate round before closure (a regression there
-     is a normal repair round), plus the confirmation at closure per
-     STATUS_closure_protocol.md. Procedure: docs/agents/integration_gate.md
-     — paste blocks reference that file instead of restating the sequence.
+  3. **Integration gate** — the full suite runs exactly ONCE per feature, in
+     the closure sequence's integration-gate round, by the worker in the
+     primary checkout, transcript committed as
+     `.agent/authored/f<id>-closure-suite.txt`; closure re-confirms by reading
+     that transcript, never by re-running (operator amendment
+     amend0917-throughput, 2026-09-17, in docs/agents/self_drive_protocol.md,
+     which also carries the repair and follow-up rules). Procedure:
+     docs/agents/integration_gate.md.
   4. Full runs use `pytest -n auto` (pytest-xdist). Runtime budget: if the
      full suite exceeds ~5 min wall clock, schedule a perf pass (e.g.
      deselect via `slow`/`integration` markers, split, or parallelize
