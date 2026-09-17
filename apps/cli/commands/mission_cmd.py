@@ -138,8 +138,7 @@ def _load_mission_or_exit(project_id: str, mission_id: str) -> Any:
         resolved = resolve_mission_id(project_id, mission_id)
         return load_mission(project_id, resolved)
     except MissionNotFoundError:
-        print(f"Error: no mission {mission_id} in this project.", file=sys.stderr)
-        print("  List them with: remedy mission list", file=sys.stderr)
+        print(f"Error: No mission matches {mission_id!r}. Try: remedy mission list.", file=sys.stderr)
         sys.exit(EXIT_ERROR)
     except MissionError as exc:
         print(f"Error: {exc}", file=sys.stderr)

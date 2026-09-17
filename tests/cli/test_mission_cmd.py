@@ -258,7 +258,7 @@ class TestShow:
                     data_root, expect_ok=False)
 
         assert proc.returncode == 1
-        assert "no mission" in proc.stderr
+        assert "No mission matches" in proc.stderr
         assert "Traceback" not in proc.stderr
 
     def test_show_json_carries_each_link_state(self, project):
@@ -583,7 +583,7 @@ class TestContinue:
                      "--project", project_id], data_root, expect_ok=False)
 
         assert proc.returncode == 1
-        assert "no mission" in proc.stderr
+        assert "No mission matches" in proc.stderr
         assert "Traceback" not in proc.stderr
 
 
@@ -671,7 +671,7 @@ class TestStatusTransitions:
                     data_root, expect_ok=False)
 
         assert proc.returncode == 1
-        assert "no mission" in proc.stderr
+        assert "No mission matches" in proc.stderr
         assert "Traceback" not in proc.stderr
 
     def test_any_status_may_follow_any_other(self, project):
@@ -823,7 +823,7 @@ class TestPlan:
         data_root, project_id = project
         proc = _plan(data_root, project_id, "0" * 32, expect_ok=False)
         assert proc.returncode == 1
-        assert "no mission" in proc.stderr
+        assert "No mission matches" in proc.stderr
 
 
 class TestRecompileVersioning:
@@ -1034,7 +1034,7 @@ class TestHandoffCommand:
                     expect_ok=False)
 
         assert proc.returncode != 0
-        assert "no mission 'no-such-mission' exists to hand off" in proc.stderr
+        assert "No mission matches 'no-such-mission'. Try: remedy mission list." in proc.stderr
 
 
 class TestWatchdogCommandCatalog:
@@ -1103,7 +1103,7 @@ class TestMissionWatchdog:
                     data_root, expect_ok=False)
 
         assert proc.returncode == 1
-        assert "no mission" in proc.stderr
+        assert "No mission matches" in proc.stderr
         assert "Traceback" not in proc.stderr
 
 
@@ -1160,7 +1160,7 @@ class TestMissionResume:
                     data_root, expect_ok=False)
 
         assert proc.returncode == 1
-        assert "no mission" in proc.stderr
+        assert "No mission matches" in proc.stderr
         assert "Traceback" not in proc.stderr
 
 
