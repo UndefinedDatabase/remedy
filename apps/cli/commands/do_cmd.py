@@ -218,12 +218,12 @@ def _cmd_do_mission(
         plan_call_fn = make_structured_call_fn(TaskPlan)
 
     if plan_call_fn is not None:
-        from packages.orchestration.flight_plan import (
+        from packages.orchestration.job_plan import (
             apply_plan_budgets,
             apply_plan_fences,
-            compose_flight_plan_prompt,
-            make_flight_plan_call_recorder,
-            map_flight_plan_to_tasks,
+            compose_task_plan_prompt,
+            make_task_plan_call_recorder,
+            map_task_plan_to_tasks,
             plan_job_llm,
             write_plan_md,
         )
@@ -232,12 +232,12 @@ def _cmd_do_mission(
         # the provider receives and the manifest the trace records come from the
         # same composition — `prompt_chars` and `segment_manifest_chars` can no
         # longer describe two different prompts (R-0256).
-        plan_composed = compose_flight_plan_prompt(plan_intake_dict)
+        plan_composed = compose_task_plan_prompt(plan_intake_dict)
         fp_result = plan_job_llm(
             plan_intake_dict,
             plan_call_fn,
             composed=plan_composed,
-            on_call=make_flight_plan_call_recorder(
+            on_call=make_task_plan_call_recorder(
                 prompt_traces,
                 plan_composed,
                 provider="ollama",
@@ -248,7 +248,7 @@ def _cmd_do_mission(
             fp_dict = fp_result.plan.model_dump()
             fp_dict["_approval"] = "pending"
             fp_dict["_normalization"] = fp_result.transformations
-            tasks = map_flight_plan_to_tasks(fp_result.plan)
+            tasks = map_task_plan_to_tasks(fp_result.plan)
             from packages.core.models import JobBudgets, JobFences
             from packages.orchestration.budget_resolution import resolve_job_budgets
             config_budgets = resolve_job_budgets(project_root=repo)
@@ -290,10 +290,10 @@ def _cmd_do_mission(
                 # F034: --yes covers approval AND clarifications. Every open
                 # question runs on its documented default, recorded in the
                 # assumption log — unattended, but never silent. The semantics
-                # live in flight_plan.auto_approve_flight_plan so the
+                # live in job_plan.auto_approve_task_plan so the
                 # orchestrator loop runs the SAME approval, not a copy of it.
-                from packages.orchestration.flight_plan import auto_approve_flight_plan
-                fp_dict = auto_approve_flight_plan(
+                from packages.orchestration.job_plan import auto_approve_task_plan
+                fp_dict = auto_approve_task_plan(
                     fp_dict, job_evidence_export_dir(str(job.job_id)))
                 job.flight_plan = fp_dict
                 save_job_plan(job)

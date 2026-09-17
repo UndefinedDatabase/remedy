@@ -84,7 +84,7 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
     well-formed request would be accepted.
 
     An ``fp:``-prefixed id is DECISION F031 D24's branch: the door hands it to
-    ``flight_plan.resolve_flight_plan_approval`` and refuses unless
+    ``job_plan.resolve_task_plan_approval`` and refuses unless
     ``job.flight_plan`` is a dict whose ``_approval`` is ``"pending"``.  Those
     are the same two readings of the same object the door makes, taken from the
     job rather than from the card, so the two cannot drift apart silently.

@@ -276,16 +276,16 @@ class TestSegmentManifest:
     def test_the_cli_flight_plan_recorder_passes_the_composed_prompt(self):
         """Wiring guard: an unwired flight-plan manifest fails HERE (F105 R27)."""
         import apps.cli.commands.do_cmd as do_cmd
-        from packages.orchestration.flight_plan import (
-            compose_flight_plan_prompt,
-            make_flight_plan_call_recorder,
+        from packages.orchestration.job_plan import (
+            compose_task_plan_prompt,
+            make_task_plan_call_recorder,
         )
 
         traces: list = []
-        composed = compose_flight_plan_prompt(
+        composed = compose_task_plan_prompt(
             {"goal": "demo"}, project_facts="pinned facts"
         )
-        recorder = make_flight_plan_call_recorder(
+        recorder = make_task_plan_call_recorder(
             traces, composed, provider="ollama", provider_kind="ollama"
         )
         recorder(1, "fp1", False, composed.text)
@@ -295,7 +295,7 @@ class TestSegmentManifest:
         assert len(traces[0].segment_manifest) == 5
 
         source = inspect.getsource(do_cmd)
-        assert "make_flight_plan_call_recorder" in source
+        assert "make_task_plan_call_recorder" in source
         assert "prompt_traces" in source
 
     def test_appending_traces_keeps_the_earlier_ones(self, tmp_path):
@@ -347,8 +347,8 @@ class TestSegmentManifest:
         segments. The gate's equality is unreachable for any multi-segment
         prompt, so the true accounting identity is pinned here instead.
         """
-        from packages.orchestration.prompt_segments import PROMPT_SEGMENT_DELIMITER
         from packages.orchestration.pingpong_loop import compose_builder_prompt
+        from packages.orchestration.prompt_segments import PROMPT_SEGMENT_DELIMITER
 
         composed = compose_builder_prompt(
             "implement feature X",
@@ -432,11 +432,11 @@ class TestSegmentManifest:
         coverage gap — recorded instead of implied. Structured mode is forced on
         here so the assertion cannot depend on the ambient environment.
         """
-        from packages.orchestration.prompt_segments import PROMPT_SEGMENT_DELIMITER
         from packages.orchestration.pingpong_loop import (
             _reviewer_effective_prompt,
             compose_reviewer_prompt,
         )
+        from packages.orchestration.prompt_segments import PROMPT_SEGMENT_DELIMITER
 
         monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
         composed = compose_reviewer_prompt(

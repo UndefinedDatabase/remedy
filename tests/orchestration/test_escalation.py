@@ -334,7 +334,7 @@ class TestEscalationAssumptionLog:
     def test_it_is_not_the_flight_plan_assumption_log(self, tmp_path: Path):
         # The plan-time log states nothing in it was asked mid-run; mid-run
         # escalations therefore get their own file rather than making it lie.
-        from packages.orchestration.flight_plan import write_assumptions_md
+        from packages.orchestration.job_plan import write_assumptions_md
         job = make_job()
         escalate(job, 0)
         evidence = tmp_path / "evidence"

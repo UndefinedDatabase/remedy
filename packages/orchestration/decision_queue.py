@@ -610,7 +610,7 @@ def list_decisions(
         if _fp_approval == "pending":
             # F034: the plan's open questions ride THIS decision. One plan,
             # one human touchpoint — never one decision per question.
-            from packages.orchestration.flight_plan import open_clarification_questions
+            from packages.orchestration.job_plan import open_clarification_questions
             _questions = open_clarification_questions(
                 _flight_plan.get("clarifications_resolved"))
             _actions = [

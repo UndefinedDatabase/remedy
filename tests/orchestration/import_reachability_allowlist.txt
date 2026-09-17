@@ -117,7 +117,7 @@ packages.orchestration.failure_stats
 packages.orchestration.file_provenance
 packages.orchestration.final_job_review
 packages.orchestration.final_verifier
-packages.orchestration.flight_plan
+packages.orchestration.job_plan
 packages.orchestration.fresh_evidence_gate
 packages.orchestration.git_status
 packages.orchestration.guidance

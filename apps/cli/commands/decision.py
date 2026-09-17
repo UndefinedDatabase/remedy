@@ -301,10 +301,10 @@ def _cmd_decision_resolve(
             print(f"Error: {exc}", file=sys.stderr)
             sys.exit(1)
 
-        from packages.orchestration.flight_plan import (
+        from packages.orchestration.job_plan import (
             clarifications_already_resolved,
             open_clarification_questions,
-            resolve_flight_plan_approval,
+            resolve_task_plan_approval,
         )
 
         fp = getattr(job, "flight_plan", None)
@@ -348,7 +348,7 @@ def _cmd_decision_resolve(
             sys.exit(1)
 
         if reason == "approve":
-            log_path = resolve_flight_plan_approval(
+            log_path = resolve_task_plan_approval(
                 job, reason="approve", answers=answers, questions=questions)
             print(f"Flight plan approved for job {job_id_str}.")
             for q in questions:
@@ -362,7 +362,7 @@ def _cmd_decision_resolve(
             if as_mission:
                 _create_mission_for_job(job)
         else:
-            resolve_flight_plan_approval(
+            resolve_task_plan_approval(
                 job, reason="reject", answers=answers, questions=questions)
             print(f"Flight plan rejected for job {job_id_str}.")
     else:

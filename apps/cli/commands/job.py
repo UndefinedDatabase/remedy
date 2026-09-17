@@ -330,7 +330,7 @@ def _assumptions_section(job: JobPlan) -> tuple[dict, list[str]]:
     only when it already exists: the view reads it, and writes nothing.
     """
     from packages.orchestration.data_paths import job_evidence_export_dir
-    from packages.orchestration.flight_plan import render_assumptions_md
+    from packages.orchestration.job_plan import render_assumptions_md
 
     fp = getattr(job, "flight_plan", None)
     clarifications = fp.get("clarifications_resolved") if isinstance(fp, dict) else None
@@ -928,8 +928,8 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.flight_plan import flight_plan_blocks_execution
-    block_reason = flight_plan_blocks_execution(job)
+    from packages.orchestration.job_plan import task_plan_blocks_execution
+    block_reason = task_plan_blocks_execution(job)
     if block_reason == "pending":
         print(
             f"Error: plan awaiting approval. "
@@ -1249,8 +1249,8 @@ def _cmd_job_run_cycles(
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.flight_plan import flight_plan_blocks_execution
-    block_reason = flight_plan_blocks_execution(job)
+    from packages.orchestration.job_plan import task_plan_blocks_execution
+    block_reason = task_plan_blocks_execution(job)
     if block_reason == "pending":
         print(
             f"Error: plan awaiting approval. "
@@ -1317,7 +1317,7 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
     (R-0146).
     """
     from packages.orchestration.checkpoints import resolve_live_worktree_head
-    from packages.orchestration.flight_plan import flight_plan_blocks_execution
+    from packages.orchestration.job_plan import task_plan_blocks_execution
     from packages.orchestration.safe_points import stop_requested
 
     signal = stop_requested(jid)
@@ -1339,7 +1339,7 @@ def _resume_preview(job: JobPlan, jid: str, checkpoint: Any) -> dict[str, Any]:
     head = {"outcome": head_outcome, "checkpoint_head": checkpoint_head,
             "live_head": live_head}
 
-    gate = flight_plan_blocks_execution(job) or "open"
+    gate = task_plan_blocks_execution(job) or "open"
 
     pending_tasks = [t for t in job.tasks if t.status != RunState.COMPLETED]
     if job.tasks and not pending_tasks:
@@ -1465,7 +1465,7 @@ def _cmd_job_resume(
         resolve_live_worktree_head,
         worktree_drift_message,
     )
-    from packages.orchestration.flight_plan import flight_plan_blocks_execution
+    from packages.orchestration.job_plan import task_plan_blocks_execution
     from packages.orchestration.safe_points import consume_stop, stop_requested
 
     job_id = resolve_job_id(job_id_str)
@@ -1526,7 +1526,7 @@ def _cmd_job_resume(
             sys.exit(3)
 
     # 3. Plan-approval gate — the same check `remedy job resume` makes.
-    block_reason = flight_plan_blocks_execution(job)
+    block_reason = task_plan_blocks_execution(job)
     if block_reason == "pending":
         print(
             f"Error: plan awaiting approval. "
@@ -1622,8 +1622,8 @@ def _cmd_resume(
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.flight_plan import flight_plan_blocks_execution
-    block_reason = flight_plan_blocks_execution(job)
+    from packages.orchestration.job_plan import task_plan_blocks_execution
+    block_reason = task_plan_blocks_execution(job)
     if block_reason == "pending":
         print(
             f"Error: plan awaiting approval. "

@@ -21,7 +21,7 @@ from apps.cli.commands.decision import (
     parse_answer_options,
 )
 from apps.cli.grouped import main
-from packages.orchestration.flight_plan import carry_intake_clarifications
+from packages.orchestration.job_plan import carry_intake_clarifications
 from packages.orchestration.pingpong_job import JobPlan
 from packages.orchestration.schemas.models import TaskPlan
 
@@ -356,8 +356,8 @@ class TestUnattendedEndToEnd:
     """T004 — `remedy do --yes` runs the whole plan gate without a human."""
 
     def _run_unattended(self, tmp_path, monkeypatch):
-        from packages.orchestration.flight_plan import (
-            FlightPlanResult,
+        from packages.orchestration.job_plan import (
+            TaskPlanResult,
             carry_intake_clarifications,
         )
 
@@ -392,8 +392,8 @@ class TestUnattendedEndToEnd:
             }],
         })
         monkeypatch.setattr(
-            "packages.orchestration.flight_plan.plan_job_llm",
-            lambda intake, call_fn, **kw: FlightPlanResult(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(
                 plan=carry_intake_clarifications(base_plan, intake),
                 source="llm", calls=1),
         )

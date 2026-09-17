@@ -54,8 +54,8 @@ import os.path
 
 import pytest
 
-from packages.orchestration.flight_plan import compose_flight_plan_prompt
 from packages.orchestration.intake import compose_intake_prompt
+from packages.orchestration.job_plan import compose_task_plan_prompt
 from packages.orchestration.mission_compiler import (
     compose_mission_prompt,
     resolve_milestone_cap,
@@ -179,7 +179,7 @@ def _pair_plan() -> tuple[tuple[str, str], tuple[str, str]]:
     intakes = (plan_golden._INTAKE, plan_golden._OTHER_INTAKE)
     before = tuple(plan_golden._frozen_render(i) for i in intakes)
     after = tuple(
-        compose_flight_plan_prompt(
+        compose_task_plan_prompt(
             i, project_facts=plan_golden._PROJECT_FACTS).text
         for i in intakes
     )

@@ -32,7 +32,7 @@ from packages.orchestration.task_granularity import GranularityConfig, normalize
 
 
 @dataclass
-class FlightPlanResult:
+class TaskPlanResult:
     """Result of plan_job_llm."""
 
     plan: TaskPlan | None
@@ -109,7 +109,7 @@ Return ONLY a JSON object matching the flight_plan_v1 schema.
 # rules instead of stopping at the first intake character (F105 T003 site 3).
 # The segment BYTES are unchanged from the pre-migration template — only their
 # ORDER differs, which is the "modulo ordering" content-equality F105 requires.
-def compose_flight_plan_prompt(
+def compose_task_plan_prompt(
     intake_dict: dict[str, Any], *, project_facts: str = "",
 ) -> ComposedPrompt:
     """Compose the flight-plan prompt from registered segments, with its manifest."""
@@ -149,14 +149,14 @@ def _build_plan_prompt(intake_dict: dict[str, Any], *,
     and a test passes it to keep the rendered prompt independent of the working
     directory.
     """
-    return compose_flight_plan_prompt(intake_dict, project_facts=project_facts).text
+    return compose_task_plan_prompt(intake_dict, project_facts=project_facts).text
 
 
 # The recorder lives beside the composer, in this module, so the manifest and
 # the prompt it describes cannot drift apart: whoever changes flight-plan
 # composition sees the evidence writer in the same file (F105 T003 site 5, the
 # same reason `make_intake_call_recorder` sits in `intake.py`).
-def make_flight_plan_call_recorder(
+def make_task_plan_call_recorder(
     traces: list[Any],
     composed: ComposedPrompt,
     *,
@@ -441,11 +441,11 @@ def plan_job_llm(
     on_call: Callable[[int, str, bool, str], None] | None = None,
     granularity: GranularityConfig | None = None,
     composed: ComposedPrompt | None = None,
-) -> FlightPlanResult:
+) -> TaskPlanResult:
     """Generate a TaskPlan from a job's intake via LLM.
 
     Uses run_structured_call for schema validation + one parse retry.
-    Returns a FlightPlanResult; on failure, plan is None and error_hint
+    Returns a TaskPlanResult; on failure, plan is None and error_hint
     describes the failure class.
 
     ``composed`` lets a caller that ALREADY composed this prompt — the CLI, for
@@ -470,11 +470,11 @@ def plan_job_llm(
             allow_parse_retry=True,
         )
     except Exception as exc:
-        return FlightPlanResult(
+        return TaskPlanResult(
             plan=None, source="llm", error_hint=f"provider error: {exc}")
 
     if not outcome.ok:
-        return FlightPlanResult(
+        return TaskPlanResult(
             plan=None,
             source="llm",
             error_hint=outcome.hint,
@@ -502,7 +502,7 @@ def plan_job_llm(
     # F034: after normalization, so the questions ride the final plan shape.
     plan = carry_intake_clarifications(plan, intake)
 
-    return FlightPlanResult(
+    return TaskPlanResult(
         plan=plan,
         source="llm",
         calls=outcome.calls,
@@ -511,7 +511,7 @@ def plan_job_llm(
     )
 
 
-def map_flight_plan_to_tasks(plan: TaskPlan) -> list[TaskEntry]:
+def map_task_plan_to_tasks(plan: TaskPlan) -> list[TaskEntry]:
     """Convert TaskPlan tasks to core Task objects, preserving order.
 
     Flight plan metadata is stored in task.inputs["flight"] so the
@@ -696,7 +696,7 @@ def write_plan_md(
 # Replan versioning (T003)
 # ---------------------------------------------------------------------------
 
-def flight_plan_blocks_execution(job: Any) -> str | None:
+def task_plan_blocks_execution(job: Any) -> str | None:
     """Return blocking reason if flight plan prevents execution, else None.
 
     Returns "pending" when awaiting approval, "rejected" when plan was
@@ -711,9 +711,9 @@ def flight_plan_blocks_execution(job: Any) -> str | None:
     return None
 
 
-def flight_plan_approval_open(job: Any) -> bool:
+def task_plan_approval_open(job: Any) -> bool:
     """Return True if the job has a pending flight plan approval gate."""
-    return flight_plan_blocks_execution(job) is not None
+    return task_plan_blocks_execution(job) is not None
 
 
 #: What ``_approval_audit.mode`` records for an unattended approval. One
@@ -725,7 +725,7 @@ AUTO_APPROVAL_MODE = "auto_yes"
 AUTO_APPROVAL_REASON = "auto-approved via --yes"
 
 
-def auto_approve_flight_plan(
+def auto_approve_task_plan(
     flight_plan_body: dict[str, Any],
     evidence_dir: Path,
     *,
@@ -791,7 +791,7 @@ def replan(
     return new_plan_dict, new_version
 
 
-def resolve_flight_plan_approval(
+def resolve_task_plan_approval(
     job: Any,
     *,
     reason: str,

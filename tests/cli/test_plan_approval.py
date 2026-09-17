@@ -132,7 +132,7 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
         lambda model_cls, **kw: _fake_plan_call,
     )
 
-    from packages.orchestration.flight_plan import FlightPlanResult
+    from packages.orchestration.job_plan import TaskPlanResult
     from packages.orchestration.schemas.models import TaskPlan
 
     if plan_succeeds:
@@ -146,15 +146,15 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
             risks=[],
         )
         monkeypatch.setattr(
-            "packages.orchestration.flight_plan.plan_job_llm",
-            lambda intake, call_fn, **kw: FlightPlanResult(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(
                 plan=_fp, source="llm", calls=1,
                 transformations=list(transformations or [])),
         )
     else:
         monkeypatch.setattr(
-            "packages.orchestration.flight_plan.plan_job_llm",
-            lambda intake, call_fn, **kw: FlightPlanResult(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(
                 plan=None, source="llm", error_hint="parse failure"),
         )
 
@@ -313,24 +313,24 @@ class TestApprovalGateEnforcement:
     """R-0119/R-0130: execution refused while pending or rejected."""
 
     def test_run_refused_while_pending(self, tmp_path, monkeypatch):
-        from packages.orchestration.flight_plan import flight_plan_blocks_execution
+        from packages.orchestration.job_plan import task_plan_blocks_execution
         job = JobPlan(job_title="t", flight_plan={"_approval": "pending"})
-        assert flight_plan_blocks_execution(job) == "pending"
+        assert task_plan_blocks_execution(job) == "pending"
 
     def test_run_refused_while_rejected(self):
-        from packages.orchestration.flight_plan import flight_plan_blocks_execution
+        from packages.orchestration.job_plan import task_plan_blocks_execution
         job = JobPlan(job_title="t", flight_plan={"_approval": "rejected"})
-        assert flight_plan_blocks_execution(job) == "rejected"
+        assert task_plan_blocks_execution(job) == "rejected"
 
     def test_approved_not_blocked(self):
-        from packages.orchestration.flight_plan import flight_plan_blocks_execution
+        from packages.orchestration.job_plan import task_plan_blocks_execution
         job = JobPlan(job_title="t", flight_plan={"_approval": "approved"})
-        assert flight_plan_blocks_execution(job) is None
+        assert task_plan_blocks_execution(job) is None
 
     def test_no_plan_not_blocked(self):
-        from packages.orchestration.flight_plan import flight_plan_blocks_execution
+        from packages.orchestration.job_plan import task_plan_blocks_execution
         job = JobPlan(job_title="t")
-        assert flight_plan_blocks_execution(job) is None
+        assert task_plan_blocks_execution(job) is None
 
     def test_rejected_cli_exit_3(self, tmp_path):
         """R-0130: rejected plan refuses execution at CLI level."""
@@ -494,7 +494,7 @@ class TestConfigBudgetPrecedence:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
 
         # Mock plan suggests max_total_tokens = 99999
-        from packages.orchestration.flight_plan import FlightPlanResult
+        from packages.orchestration.job_plan import TaskPlanResult
         from packages.orchestration.schemas.models import TaskPlan
         _fp = TaskPlan(
             schema_v="flight_plan_v1",
@@ -507,15 +507,15 @@ class TestConfigBudgetPrecedence:
             budgets={"max_total_tokens": 99999},
         )
         monkeypatch.setattr(
-            "packages.orchestration.flight_plan.plan_job_llm",
-            lambda intake, call_fn, **kw: FlightPlanResult(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(
                 plan=_fp, source="llm", calls=1),
         )
         _setup_llm_mocks(monkeypatch, plan_succeeds=True)
         # Override plan_job_llm again since _setup_llm_mocks sets it
         monkeypatch.setattr(
-            "packages.orchestration.flight_plan.plan_job_llm",
-            lambda intake, call_fn, **kw: FlightPlanResult(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(
                 plan=_fp, source="llm", calls=1),
         )
         monkeypatch.chdir(str(repo))
@@ -553,7 +553,7 @@ class TestConfigBudgetPrecedence:
         )
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
 
-        from packages.orchestration.flight_plan import FlightPlanResult
+        from packages.orchestration.job_plan import TaskPlanResult
         from packages.orchestration.schemas.models import TaskPlan
         _fp = TaskPlan(
             schema_v="flight_plan_v1",
@@ -567,8 +567,8 @@ class TestConfigBudgetPrecedence:
         )
         _setup_llm_mocks(monkeypatch, plan_succeeds=True)
         monkeypatch.setattr(
-            "packages.orchestration.flight_plan.plan_job_llm",
-            lambda intake, call_fn, **kw: FlightPlanResult(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(
                 plan=_fp, source="llm", calls=1),
         )
         monkeypatch.chdir(str(repo))
@@ -597,7 +597,7 @@ class TestReplanApprovalRearm:
     """R-0129: replan re-arms _approval to pending."""
 
     def test_replan_rearms_approval(self, tmp_path):
-        from packages.orchestration.flight_plan import replan
+        from packages.orchestration.job_plan import replan
         from packages.orchestration.schemas.models import TaskPlan
 
         old_plan = {
@@ -624,7 +624,7 @@ class TestReplanApprovalRearm:
     def test_replan_rejected_after_completed_task(self, tmp_path):
         import pytest
 
-        from packages.orchestration.flight_plan import ReplanRejectedError, replan
+        from packages.orchestration.job_plan import ReplanRejectedError, replan
         from packages.orchestration.schemas.models import TaskPlan
 
         old_plan = {

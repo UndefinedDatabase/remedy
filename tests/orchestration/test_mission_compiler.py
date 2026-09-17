@@ -314,11 +314,11 @@ class TestPrompt:
 
     def test_repo_facts_come_from_the_shared_helper_not_a_copy(self):
         """A9/A6: one repo-facts block, used by the planner and by this one."""
-        from packages.orchestration import flight_plan, mission_compiler
+        from packages.orchestration import job_plan, mission_compiler
         from packages.orchestration.prompt_facts import repo_facts_block
 
         assert mission_compiler.repo_facts_block is repo_facts_block
-        assert flight_plan.repo_facts_block is repo_facts_block
+        assert job_plan.repo_facts_block is repo_facts_block
 
 
 # ---------------------------------------------------------------------------

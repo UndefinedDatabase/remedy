@@ -362,7 +362,7 @@ class DoDCompileResult:
     dod: DoD
     #: ``"llm"`` when the provider produced the compiled checks, else
     #: ``"deterministic"``. Mirrors ``dod.origin``; kept for symmetry with
-    #: IntakeResult/FlightPlanResult.
+    #: IntakeResult/TaskPlanResult.
     source: str
     #: Why the provider path was not used, when it was not.
     error_hint: str = ""

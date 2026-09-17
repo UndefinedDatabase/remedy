@@ -551,7 +551,7 @@ class TestCommandChannelDoor:
         """The second word, and the reason strict equality is against a PAIR.
 
         A rejection is an ANSWER, not a refusal: the door accepts it 200 and
-        `resolve_flight_plan_approval` writes `rejected`. A guard that only
+        `resolve_task_plan_approval` writes `rejected`. A guard that only
         pinned `approve` would let a later edit drop `reject` and leave the
         inbox offering a button the door answers 409.
         """
@@ -1451,10 +1451,10 @@ class TestCommandDoorImportGuard:
         ("packages.orchestration.escalation", "answer_task_decision"),     # D5
         ("packages.orchestration.evidence_index",
          "resolve_job_evidence_dir"),                               # F033 D4
-        ("packages.orchestration.flight_plan",
+        ("packages.orchestration.job_plan",
          "open_clarification_questions"),                           # F031 D24
-        ("packages.orchestration.flight_plan",
-         "resolve_flight_plan_approval"),                           # F031 D24
+        ("packages.orchestration.job_plan",
+         "resolve_task_plan_approval"),                             # F031 D24
         ("packages.orchestration.hunk_approval", "HunkApprovalRefusal"),  # F033 D4
         ("packages.orchestration.hunk_decision_record",
          "record_hunk_decision_from_view"),                         # F033 D4

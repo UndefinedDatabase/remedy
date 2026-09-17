@@ -141,7 +141,7 @@ class MissionCompileResult:
     plan: MissionPlan
     #: ``"llm"`` when the provider produced the milestones, else
     #: ``"deterministic"``. Mirrors ``plan.origin``; kept for symmetry with
-    #: IntakeResult / FlightPlanResult / DoDCompileResult.
+    #: IntakeResult / TaskPlanResult / DoDCompileResult.
     source: str
     #: Why the provider path was not used, when it was not.
     error_hint: str = ""
@@ -253,7 +253,7 @@ def compose_mission_prompt(goal: str, *, project_facts: str = "",
 
 # The recorder lives beside the composer, in this module, so the manifest and
 # the prompt it describes cannot drift apart — the same reason
-# `make_flight_plan_call_recorder` sits in `flight_plan.py` and
+# `make_task_plan_call_recorder` sits in `job_plan.py` and
 # `make_intake_call_recorder` in `intake.py` (F105 T003 site 2).
 def make_mission_plan_call_recorder(
     traces: list[Any],

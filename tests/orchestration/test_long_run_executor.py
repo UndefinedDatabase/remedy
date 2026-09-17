@@ -942,7 +942,7 @@ class TestJobRunCommand:
 
 
 def make_diamond_job(name: str = "diamond-job") -> JobPlan:
-    """A -> (B, C) -> D, expressed the way ``map_flight_plan_to_tasks`` does.
+    """A -> (B, C) -> D, expressed the way ``map_task_plan_to_tasks`` does.
 
     Plan order puts B before C, so a scheduler that just took the first PENDING
     task would pick the blocked branch and never reach C — which is exactly the

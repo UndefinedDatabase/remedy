@@ -890,7 +890,7 @@ def build_orchestrator_prompt(context: OrchestratorContext,
 # The recorder lives beside the composer, in this module, so the manifest and
 # the prompt it describes cannot drift apart — the same reason
 # `make_mission_plan_call_recorder` sits in `mission_compiler.py` and
-# `make_flight_plan_call_recorder` in `flight_plan.py` (F105 T003 site 4).
+# `make_task_plan_call_recorder` in `job_plan.py` (F105 T003 site 4).
 def make_orchestrator_call_recorder(
     traces: list[Any],
     composed: ComposedPrompt,
@@ -1534,7 +1534,7 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
     The dispatch path goes through ``mission_state.continue_mission`` — which
     creates the job, builds its plan verify-first and links it to the mission —
     then applies the audited unattended approval through
-    ``flight_plan.auto_approve_flight_plan`` when the job has an open plan gate,
+    ``job_plan.auto_approve_task_plan`` when the job has an open plan gate,
     and then RUNS the job through the existing multi-cycle executor
     (:func:`execute_dispatched_job`). Creating a job and walking away was
     R-0184: the milestone could never become done, so the loop re-dispatched
@@ -1635,15 +1635,15 @@ def _auto_approve_if_gated(job: Any) -> bool:
     helper ``remedy do run`` uses.
     """
     from packages.orchestration.data_paths import job_evidence_export_dir
-    from packages.orchestration.flight_plan import (
-        auto_approve_flight_plan,
-        flight_plan_approval_open,
+    from packages.orchestration.job_plan import (
+        auto_approve_task_plan,
+        task_plan_approval_open,
     )
     from packages.orchestration.pingpong_job import save_job_plan
 
-    if not flight_plan_approval_open(job):
+    if not task_plan_approval_open(job):
         return False
-    job.flight_plan = auto_approve_flight_plan(
+    job.flight_plan = auto_approve_task_plan(
         dict(job.flight_plan or {}), job_evidence_export_dir(str(job.job_id)))
     save_job_plan(job)
     return True

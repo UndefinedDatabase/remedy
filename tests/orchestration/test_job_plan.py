@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 
 from packages.core.models import RunState
-from packages.orchestration.flight_plan import (
+from packages.orchestration.job_plan import (
     apply_plan_budgets,
     apply_plan_fences,
-    map_flight_plan_to_tasks,
+    map_task_plan_to_tasks,
     plan_job_llm,
 )
 from packages.orchestration.schemas.models import TaskPlan
@@ -103,7 +103,7 @@ class TestMapFlightPlanToTasks:
 
     def test_three_tasks_in_order(self):
         fp = TaskPlan(**json.loads(_valid_plan_json(3)))
-        tasks = map_flight_plan_to_tasks(fp)
+        tasks = map_task_plan_to_tasks(fp)
         assert len(tasks) == 3
         for i, task in enumerate(tasks):
             assert task.status == RunState.PENDING
@@ -114,13 +114,13 @@ class TestMapFlightPlanToTasks:
 
     def test_description_combines_title_and_goal(self):
         fp = TaskPlan(**json.loads(_valid_plan_json(1)))
-        tasks = map_flight_plan_to_tasks(fp)
+        tasks = map_task_plan_to_tasks(fp)
         assert "Task 1" in tasks[0].title
         assert "Do thing 1" in tasks[0].title
 
     def test_depends_on_preserved(self):
         fp = TaskPlan(**json.loads(_valid_plan_json(3)))
-        tasks = map_flight_plan_to_tasks(fp)
+        tasks = map_task_plan_to_tasks(fp)
         assert tasks[0].inputs["flight"]["depends_on"] == []
         assert tasks[1].inputs["flight"]["depends_on"] == ["T001"]
         assert tasks[2].inputs["flight"]["depends_on"] == ["T002"]
@@ -168,7 +168,7 @@ class TestFencePrecedence:
 class TestRenderPlanMd:
 
     def test_deterministic_output(self):
-        from packages.orchestration.flight_plan import render_plan_md
+        from packages.orchestration.job_plan import render_plan_md
 
         fp = TaskPlan(**json.loads(_valid_plan_json(3)))
         r1 = render_plan_md(fp)
@@ -180,7 +180,7 @@ class TestRenderPlanMd:
         assert "T003" in r1
 
     def test_contains_acceptance_and_bands(self):
-        from packages.orchestration.flight_plan import render_plan_md
+        from packages.orchestration.job_plan import render_plan_md
 
         fp = TaskPlan(**json.loads(_valid_plan_json(2)))
         md = render_plan_md(fp)
@@ -188,7 +188,7 @@ class TestRenderPlanMd:
         assert "**Band:** M" in md
 
     def test_large_plan_note(self):
-        from packages.orchestration.flight_plan import render_plan_md
+        from packages.orchestration.job_plan import render_plan_md
         from packages.orchestration.schemas.models import _LARGE_PLAN_THRESHOLD
 
         n = _LARGE_PLAN_THRESHOLD + 1
@@ -204,14 +204,14 @@ class TestRenderPlanMd:
         assert "Consider splitting" in md
 
     def test_risks_rendered(self):
-        from packages.orchestration.flight_plan import render_plan_md
+        from packages.orchestration.job_plan import render_plan_md
 
         fp = TaskPlan(**json.loads(_valid_plan_json(1)))
         md = render_plan_md(fp)
         assert "timeline risk" in md
 
     def test_write_plan_md(self, tmp_path):
-        from packages.orchestration.flight_plan import write_plan_md
+        from packages.orchestration.job_plan import write_plan_md
 
         fp = TaskPlan(**json.loads(_valid_plan_json(2)))
         path = write_plan_md(fp, tmp_path)
@@ -220,7 +220,7 @@ class TestRenderPlanMd:
         assert "Flight Plan" in path.read_text()
 
     def test_write_plan_md_versioned(self, tmp_path):
-        from packages.orchestration.flight_plan import write_plan_md
+        from packages.orchestration.job_plan import write_plan_md
 
         fp = TaskPlan(**json.loads(_valid_plan_json(1)))
         p1 = write_plan_md(fp, tmp_path, version=1)
@@ -235,7 +235,7 @@ class TestNormalizationSection:
     """F016: the approver always sees what normalization did."""
 
     def test_empty_record_says_no_transformations(self):
-        from packages.orchestration.flight_plan import render_plan_md
+        from packages.orchestration.job_plan import render_plan_md
 
         fp = TaskPlan(**json.loads(_valid_plan_json(2)))
         md = render_plan_md(fp)
@@ -243,7 +243,7 @@ class TestNormalizationSection:
         assert "No transformations" in md
 
     def test_record_entries_are_rendered(self):
-        from packages.orchestration.flight_plan import render_plan_md
+        from packages.orchestration.job_plan import render_plan_md
 
         fp = TaskPlan(**json.loads(_valid_plan_json(2)))
         md = render_plan_md(fp, [{
@@ -256,7 +256,7 @@ class TestNormalizationSection:
         assert "too many acceptance criteria" in md
 
     def test_write_plan_md_threads_the_record(self, tmp_path):
-        from packages.orchestration.flight_plan import write_plan_md
+        from packages.orchestration.job_plan import write_plan_md
 
         fp = TaskPlan(**json.loads(_valid_plan_json(1)))
         path = write_plan_md(fp, tmp_path, transformations=[{
@@ -309,7 +309,7 @@ class TestPlanJobLlmNormalization:
         assert result.transformations == []
 
     def test_a_broken_threshold_never_loses_the_plan(self, monkeypatch):
-        import packages.orchestration.flight_plan as FP
+        import packages.orchestration.job_plan as FP
 
         def _boom() -> None:
             raise ValueError("split_band must be one of S, M, L, XL")
@@ -327,7 +327,7 @@ class TestPlanJobLlmNormalization:
 class TestReplan:
 
     def test_replan_appends_version(self, tmp_path):
-        from packages.orchestration.flight_plan import replan
+        from packages.orchestration.job_plan import replan
 
         fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
         fp1_dict = fp1.model_dump()
@@ -340,7 +340,7 @@ class TestReplan:
         assert (tmp_path / "plan_v2.md").exists()
 
     def test_replan_keeps_old_file(self, tmp_path):
-        from packages.orchestration.flight_plan import replan, write_plan_md
+        from packages.orchestration.job_plan import replan, write_plan_md
 
         fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
         write_plan_md(fp1, tmp_path, version=1)
@@ -355,7 +355,7 @@ class TestReplan:
     def test_replan_after_completed_task_rejected(self, tmp_path):
         import pytest
 
-        from packages.orchestration.flight_plan import ReplanRejectedError, replan
+        from packages.orchestration.job_plan import ReplanRejectedError, replan
 
         fp1 = TaskPlan(**json.loads(_valid_plan_json(2)))
         fp2 = TaskPlan(**json.loads(_valid_plan_json(1)))
@@ -368,9 +368,9 @@ class TestPlanJobLlmAcceptsAComposedPrompt:
     """R-0256: one composition feeds the provider AND the trace manifest."""
 
     def test_composed_text_is_the_prefix_the_provider_sees(self):
-        from packages.orchestration.flight_plan import compose_flight_plan_prompt
+        from packages.orchestration.job_plan import compose_task_plan_prompt
 
-        composed = compose_flight_plan_prompt(
+        composed = compose_task_plan_prompt(
             {"goal": "SENTINEL-PLAN-GOAL"}, project_facts="pinned facts",
         )
         seen: list[str] = []

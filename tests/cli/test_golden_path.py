@@ -299,7 +299,7 @@ class TestLLMIntakeWiring:
             lambda: _fake_call_fn,
         )
 
-        from packages.orchestration.flight_plan import FlightPlanResult
+        from packages.orchestration.job_plan import TaskPlanResult
         from packages.orchestration.schemas.models import TaskPlan
         _fp = TaskPlan(
             schema_v="flight_plan_v1",
@@ -309,8 +309,8 @@ class TestLLMIntakeWiring:
             risks=[],
         )
         monkeypatch.setattr(
-            "packages.orchestration.flight_plan.plan_job_llm",
-            lambda intake, call_fn, **kw: FlightPlanResult(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(
                 plan=_fp, source="llm", calls=1),
         )
 
@@ -418,7 +418,7 @@ class TestLLMIntakeWiring:
             lambda: _bad_call_fn,
         )
 
-        from packages.orchestration.flight_plan import FlightPlanResult
+        from packages.orchestration.job_plan import TaskPlanResult
         from packages.orchestration.schemas.models import TaskPlan
         _fp = TaskPlan(
             schema_v="flight_plan_v1",
@@ -428,8 +428,8 @@ class TestLLMIntakeWiring:
             risks=[],
         )
         monkeypatch.setattr(
-            "packages.orchestration.flight_plan.plan_job_llm",
-            lambda intake, call_fn, **kw: FlightPlanResult(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(
                 plan=_fp, source="llm", calls=1),
         )
 

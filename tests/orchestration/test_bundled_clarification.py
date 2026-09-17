@@ -9,7 +9,7 @@ the fp:approval decision payload, and the zero-clarification regression
 from __future__ import annotations
 
 from packages.orchestration.decision_queue import export_decision_json, list_decisions
-from packages.orchestration.flight_plan import (
+from packages.orchestration.job_plan import (
     _build_plan_prompt,
     apply_clarification_answers,
     carry_intake_clarifications,

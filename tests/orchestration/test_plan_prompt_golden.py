@@ -24,9 +24,9 @@ from __future__ import annotations
 import hashlib
 import json
 
-from packages.orchestration.flight_plan import (
+from packages.orchestration.job_plan import (
     _build_plan_prompt,
-    compose_flight_plan_prompt,
+    compose_task_plan_prompt,
 )
 from packages.orchestration.prompt_segments import ComposedPrompt
 
@@ -97,7 +97,7 @@ def _segment_texts(text: str) -> list[str]:
 
 def _composed(intake: dict | None = None) -> ComposedPrompt:
     """The composed prompt for the golden's fixed intake and repo facts."""
-    return compose_flight_plan_prompt(
+    return compose_task_plan_prompt(
         _INTAKE if intake is None else intake, project_facts=_PROJECT_FACTS)
 
 

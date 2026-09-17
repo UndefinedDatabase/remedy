@@ -157,7 +157,7 @@ class TestFlightPlanApprovalDispatchEffects:
 
     Its sibling `test_command_channel.py` pins what the door ANSWERS for the
     same requests. This class exists because a 200 proves only that the door
-    chose a status: whether `resolve_flight_plan_approval` ran, and how many
+    chose a status: whether `resolve_task_plan_approval` ran, and how many
     times the answer was persisted, is visible nowhere on the wire.
     """
 
@@ -225,7 +225,7 @@ class TestFlightPlanApprovalDispatchEffects:
     def test_the_accepted_fp_approval_saves_the_job_exactly_once(self, monkeypatch):
         """The only guard on the door's DELIBERATE omission of its own `save_job`.
 
-        `resolve_flight_plan_approval` saves on both of its arms, so the door
+        `resolve_task_plan_approval` saves on both of its arms, so the door
         does not save again — and a reader who finds that absence surprising is
         one edit away from "fixing" it into a double write. Counting the calls
         is what makes the omission a decision rather than an oversight.

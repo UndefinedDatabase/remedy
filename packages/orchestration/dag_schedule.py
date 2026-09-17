@@ -8,7 +8,7 @@ Dependency edges
 ----------------
 A task carries its Flight Plan metadata in ``task.inputs["flight"]``:
 ``planned_id`` is its own plan-level id and ``depends_on`` lists the planned
-ids it waits for (producer: ``map_flight_plan_to_tasks``, flight_plan.py).
+ids it waits for (producer: ``map_task_plan_to_tasks``, job_plan.py).
 Planned ids are resolved to task ids through the plan itself, so this module
 never needs the TaskPlan object.
 
