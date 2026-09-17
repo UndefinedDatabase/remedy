@@ -11,24 +11,26 @@ T002 holds, per `docs/roadmap/features/T2_F280.md`.
 
 ## Current Step
 
-ROUND 10 books round 9's independently-reviewed PASS (Gate: F280 R9, no new finding) and lands
-the first half of DECISION F280 D5's own CONSEQUENCE paragraph: module `flight_plan.py` becomes
-`job_plan.py`, `FlightPlanResult` becomes `TaskPlanResult`, and D5's eight named lowercase
-function names take the `task_plan` spelling, across every importer. `docs/system/vocabulary.md`
-moves with them (operator-facing corpus, zero missing paths). `FLIGHT_PLAN_SCHEMA_V` and
-`_MAX_FLIGHT_PLAN_TASKS` stay untouched — they live in `schemas/models.py`, and the schema-tag
-constant's VALUE is a persisted literal owed to the next round with its sibling literals. No
-persisted literal and no English-prose noun changes this round.
+ROUND 11 books round 10's independently-reviewed PASS (Gate: F280 R10, one prose slip appended
+to `prose_slips.md`, no new R-id) and is DECISION-ONLY: DECISION F280 D6 names the persisted-
+literal spellings the second half of D5's rename needs — `flight_plan` (job-record key/
+attribute) becomes `task_plan`, `FLIGHT_PLAN_SCHEMA_V`/`"flight_plan_v1"` become
+`TASK_PLAN_SCHEMA_V`/`"task_plan_v1"`, `_MAX_FLIGHT_PLAN_TASKS` becomes `_MAX_TASK_PLAN_TASKS`,
+`"flight_plan_approval"` becomes `"task_plan_approval"` — with NO migration shim, per DECISION
+D-A (`T2_F261.md`). No code changes this round.
 
 ## Next Steps
 
-1. The rename's second half: persisted literals (`flight_plan` job-record key, schema tag
-   `"flight_plan_v1"`/`FLIGHT_PLAN_SCHEMA_V`, decision type `"flight_plan_approval"` and its
-   `decision_queue.py` siblings, `_MAX_FLIGHT_PLAN_TASKS`) and the surviving English-prose noun,
-   behind a DECISION naming the new spellings (ruling 9's "no reader of the old job key").
-2. `propose`, once operator question Q4 is answered.
-3. `job attach-repo` and `job permit`, once a DECISION gives a writer (DECISION F280 D4).
-4. T002: README quickstart (R-0895), flag scanner blind spot (R-0934).
+1. Execute DECISION F280 D6: the mechanical persisted-literal rename, same boundary method as
+   round 10 (zero-count sweep for every old spelling; `.data/evidence_exports/`'s twelve
+   closure-evidence bundles and every accepted-history file stay untouched).
+2. D5's third owed item: the surviving English-prose noun "flight plan" (catalog descriptions,
+   CLI print statements, comments describing the concept) — its own round, after step 1 lands.
+3. The `"fp:"` decision-id prefix (5 sites) — explicitly out of scope for D6 (CHOSEN, SECOND);
+   needs its own DECISION and measurement before any round touches it.
+4. `propose`, once operator question Q4 is answered.
+5. `job attach-repo` and `job permit`, once a DECISION gives a writer (DECISION F280 D4).
+6. T002: README quickstart (R-0895), flag scanner blind spot (R-0934).
 
 ## Risks
 
