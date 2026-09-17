@@ -1,124 +1,40 @@
-── STEP T001/F280 — round 19 ────────────────────────────────────────
-Goal: Book round 18's PASS, register R-0945 through R-0950 (the closure
-suite's findings), and repair R-0945 through R-0949 — every one of the
-51 bad nodes the reviewer traced to an F280 round, dry-run-verified
-before authoring. R-0950 (4 nodes, investigated, unconnected to F280) is
-registered but not repaired.
+── STEP T001/F280 — round 20 ────────────────────────────────────────
+Goal: Book round 19's independently-reviewed PASS, resolve R-0945
+through R-0949, and write T2_F280.md's Built State section — closure
+precondition 4 (STATUS_closure_protocol.md).
 
 Bundle:
-1. Book Gate: F280 R18 (PASS); register R-0945 (Medium — round 14's
-   stale gauntlet-manifest digest), R-0946 (Low — a second stale
-   `propose list` hint in `job.py`), R-0947 (Low — seven dead `propose`
-   advertisements across three docs), R-0948 (Low — `test_job_stop.py`'s
-   orphaned `--status` demonstration), R-0949 (Low — two test files
-   still naming the deleted `propose` surface), R-0950 (Low — four
-   closure-suite nodes investigated and found unconnected to F280,
-   owner F273).
-2. Replace `.agent/plan.md` with the round-19 plan.
-3. Fix R-0945: in `scripts/gauntlet_orders/manifest.json`, the `g05`
-   entry's `sha256` becomes `9093b3fb2b191d9413e18b23141b334e5063dea44a5450d93a77a5038df60907`
-   (replacing `81c566cdd5009d540724253685eb71881affe25bd9c593a090aabe455f0b0272`)
-   and the top-level `set_hash` becomes
-   `6b8c3498ebab201c666cbb79223b56fe7cf3c9b5546ba341293fac8971d7a5b0`
-   (replacing `e50916bfb6340a85e094da258ce9d8025e5fa35467f6a6bf3b1b5256f6f30efc`)
-   — both values already recomputed and verified by the reviewer with the
-   module's own `hashlib.sha256`/`compute_set_hash` functions; apply
-   verbatim, do not recompute.
-4. Fix R-0946: in `apps/cli/commands/job.py`, the line
-   `next_action = f"remedy propose list {jid} --json"` becomes
-   `next_action = f"remedy decision list {jid} --json"`.
-5. Fix R-0947:
-   - `docs/system/core-product-spine-v0.md`: the quick-start step-4 line
-     `remedy propose list <job_id> --json` becomes
-     `remedy decision list <job_id> --json`; the command-taxonomy table
-     row `| \`propose list <id> --json\` | Proposed follow-up tasks | No | No |`
-     becomes `| \`decision list <id> --json\` | Proposed follow-ups and
-     other open decisions | No | No |`.
-   - `docs/system/first-fulfilled-job-demo-v0.md`: the demo's step 4
-     (`remedy propose list "$JOB_ID" --json`) and step 5 (three
-     `remedy propose approve/reject/defer "$JOB_ID" <task_id> --json`
-     lines) become `remedy decision list "$JOB_ID" --json` and three
-     `remedy decision resolve "$JOB_ID" proposal:<task_id> --reason
-     approve/reject/defer` lines, each with a one-line comment naming
-     round 15 and DECISION F280 D10 as the point of deletion and heir,
-     matching the file's own existing style for its `create`/`fulfill`
-     deletion notes.
-   - `docs/guides/simple-operator-quickstart-v0.md`: the quick-start
-     step-4 line and the first-fulfilled-job-demo section's result-check
-     line both change `remedy propose list` to `remedy decision list`,
-     same argument shape.
-6. Fix R-0948: in `tests/cli/test_job_stop.py`, delete the
-   `test_propose_list_status_still_takes_a_value` method whole; in
-   `test_only_declared_flags_are_flags`, delete the line
-   `assert ("propose.list", "--status") not in flags`; update the
-   `TestTheParserDoesNotBreakOtherCommands` class docstring to note that
-   `propose list` was F280 round 15's deletion (historical example, not
-   live).
-7. Fix R-0949: in `tests/cli/test_runtime_helpers.py`, the invocation
-   `["propose", "list", jid, "--json"]` becomes
-   `["decision", "list", jid, "--json"]`; in
-   `tests/orchestration/import_reachability_allowlist.txt`, delete the
-   line `apps.cli.commands.propose_cmd`.
-8. Write the handback and rewrite `.agent/handoff.md`, describing every
-   commit through the last one pushed.
+1. Book Gate: F280 R19 (PASS, no new finding); resolve R-0945, R-0946,
+   R-0947, R-0948 and R-0949 (all repaired and independently confirmed
+   by round 19's review).
+2. Replace `.agent/plan.md` with the round-20 plan.
+3. Append the reviewer's authored Built State section to
+   `docs/roadmap/features/T2_F280.md`, verbatim, at the end of the file.
+4. Write the handback and rewrite `.agent/handoff.md`.
 
-Change: `scripts/gauntlet_orders/manifest.json`, `apps/cli/commands/job.py`,
-`docs/system/core-product-spine-v0.md`, `docs/system/first-fulfilled-job-demo-v0.md`,
-`docs/guides/simple-operator-quickstart-v0.md`, `tests/cli/test_job_stop.py`,
-`tests/cli/test_runtime_helpers.py`, `tests/orchestration/import_reachability_allowlist.txt`,
-plus `.agent/live_review.md` and `.agent/plan.md`. Nothing else — no other
-gauntlet-order file, no other doc, no production behavior beyond the two
-named hint strings.
+Change: `docs/roadmap/features/T2_F280.md`, plus `.agent/live_review.md`
+and `.agent/plan.md`. Nothing else — no code change this round.
 
 Constraints:
-- The gauntlet-manifest fix touches ONLY the two named hex digests; no
-  other field, no reordering, no whitespace change to `manifest.json`.
-- No test's PASS/FAIL outcome is weakened — `test_job_stop.py`'s deleted
-  method had no working replacement command to re-target (R-0948's own
-  FIX says so); every other fix repoints an existing assertion at a
-  still-true fact.
-- Commit sequence: C1 (append Gate:F280 R18 + six findings + replace
-  plan.md, ONE commit) → C2 (fix R-0945, ONE commit) → C3 (fix R-0946
-  and R-0947, the two hint/doc clusters together, ONE commit) → C4 (fix
-  R-0948 and R-0949, the two test-file clusters together, ONE commit) →
-  C5 (handback commit). No commit lands after C5.
+- The Built State text is authored, verbatim; apply it byte-for-byte,
+  do not paraphrase or summarize it further.
+- Commit sequence: C1 (append Gate:F280 R19 + five Done: entries +
+  replace plan.md, ONE commit) → C2 (append the Built State section,
+  ONE commit) → C3 (handback commit). No commit lands after C3.
 
 Done when (exact verification commands; run each, record real exit codes
 and trimmed output):
 
 G1 THE RECORD — after C1: `grep -cE '^Gate: F\d+ R\d+ — ' .agent/live_review.md`
-reads 45; `grep -oE '^- (R-[0-9]{4}) — ' .agent/live_review.md | grep -oE 'R-[0-9]{4}' | sort -u | wc -l`
-reads 146; `grep -oE '^Done: (R-[0-9]{4}) — ' .agent/live_review.md | grep -oE 'R-[0-9]{4}' | sort -u | wc -l`
-reads 9 (unchanged); `wc -l < .agent/plan.md` reads 45 with exactly one
-each of `## Goal`, `## Current Step`, `## Next Steps`, `## Risks`.
+reads 46; `grep -oE '^- (R-[0-9]{4}) — ' .agent/live_review.md | grep -oE 'R-[0-9]{4}' | sort -u | wc -l`
+reads 146 (unchanged); `grep -oE '^Done: (R-[0-9]{4}) — ' .agent/live_review.md | grep -oE 'R-[0-9]{4}' | sort -u | wc -l`
+reads 14; `wc -l < .agent/plan.md` reads 39 with exactly one each of
+`## Goal`, `## Current Step`, `## Next Steps`, `## Risks`.
 
-G2 R-0945 REPAIRED — after C2: `python3 -m pytest
-tests/orchestration/test_gauntlet_orders.py
-tests/orchestration/test_self_run_gauntlet.py -q` reads `68 passed`.
-
-G3 R-0946/R-0947 REPAIRED — after C3: `python3 -m pytest
-tests/cli/test_advertised_commands.py tests/docs/ -q` reads all passed;
-`git grep -n 'propose list\|propose approve\|propose reject\|propose defer' -- docs/ apps/cli/commands/job.py`
-reads zero.
-
-G4 R-0948/R-0949 REPAIRED — after C4: `python3 -m pytest
-tests/cli/test_job_stop.py tests/cli/test_runtime_helpers.py
-tests/orchestration/test_import_reachability.py -q` reads all passed;
-`git grep -n 'propose' -- tests/cli/test_job_stop.py tests/cli/test_runtime_helpers.py tests/orchestration/import_reachability_allowlist.txt`
-reads zero.
-
-G5 THE FULL PREVIOUSLY-BAD SET, RE-VERIFIED TOGETHER — after C4:
-`python3 -m pytest tests/cli/test_advertised_commands.py
-tests/cli/test_job_stop.py tests/cli/test_runtime_helpers.py
-tests/orchestration/test_import_reachability.py
-tests/orchestration/test_gauntlet_orders.py
-tests/orchestration/test_self_run_gauntlet.py
-tests/cli/test_job_rerun_workspace_identity.py
-tests/orchestration/test_run_manifest_logical_identity.py -q` reads
-`135 passed` (the R-0950 four are among these 135 and pass here, serially
-— their closure-suite badness is `-n auto`-only, per R-0950); `python3 -m
-ruff check apps/cli/commands/job.py tests/cli/test_job_stop.py
-tests/cli/test_runtime_helpers.py` reads clean.
+G2 THE BUILT STATE LANDS VERBATIM — after C2: `docs/roadmap/features/T2_F280.md`
+ends with the authored section's exact bytes (`tail -c <n>` of the file
+equals the authored source, `cmp` clean); `python3 -m pytest tests/docs/ -q`
+reads all passed.
 
 Handback: completion report + rewrite .agent/handoff.md.
 ──────────────────────────────────────────────────────────────────────
