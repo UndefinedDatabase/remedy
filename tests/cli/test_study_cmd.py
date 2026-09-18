@@ -1,0 +1,127 @@
+"""Tests for `remedy study run` (F266 T001 CLI wiring).
+
+The load-bearing properties:
+1. The command calls run_study with study_call_fn() as the default call_fn
+2. It writes memory cards to the project store (action_class=write_metadata)
+3. It respects --path, --project, and --json flags
+4. It is registered in the catalog with user_facing=False
+5. It is discoverable via the command registry
+"""
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+
+from apps.cli.command_catalog import get_command, get_commands_for_group
+
+
+def _build_fixture_repo(tmp_path: Path) -> Path:
+    """Build a minimal fixture repository with recognizable structure."""
+    repo = tmp_path / "fixture_repo"
+    repo.mkdir()
+
+    # Create a basic structure that study._walk_repo will scan
+    (repo / "README.md").write_text("# Test Repo\n")
+    (repo / "pyproject.toml").write_text("[project]\nname = 'test'\n")
+    (repo / ".gitignore").write_text("*.pyc\n")
+
+    tests_dir = repo / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "test_example.py").write_text("def test_pass(): pass\n")
+
+    src_dir = repo / "src"
+    src_dir.mkdir()
+    (src_dir / "module.py").write_text("# module\n")
+
+    return repo
+
+
+def _setup_data_root(tmp_path: Path, monkeypatch) -> Path:
+    """Set up a data root in a temporary directory."""
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_root))
+    return data_root
+
+
+def _setup_project(data_root: Path, monkeypatch) -> str:
+    """Set up a registered project and return its ID."""
+    from packages.orchestration.project_registry import RemyProject, save_project
+
+    project = RemyProject(name="Study Test Project", slug="study-test")
+    save_project(project)
+    monkeypatch.setenv("REMEDY_PROJECT", "study-test")
+    return str(project.id)
+
+
+class TestStudyRunWritesCards:
+    """The command writes memory cards to the project store."""
+
+    def test_study_run_writes_cards_for_a_fixture_repo(self, tmp_path, monkeypatch, capsys):
+        """Test that study run writes exactly 4 memory cards."""
+        repo = _build_fixture_repo(tmp_path)
+        data_root = _setup_data_root(tmp_path, monkeypatch)
+        _setup_project(data_root, monkeypatch)
+
+        from apps.cli.commands.study_cmd import _cmd_study_run
+
+        # Run the command with JSON output to capture structured result
+        _cmd_study_run(str(repo), project=str(repo), json_output=True)
+        out = capsys.readouterr().out
+
+        result = json.loads(out)
+        assert result["cards_written"] == ["study:structure", "study:core_modules", "study:conventions", "study:entry_points"]
+        assert result["partial"] is False
+
+    def test_study_run_defaults_path_to_cwd(self, tmp_path, monkeypatch, capsys):
+        """Test that study run with path=None studies the current directory."""
+        repo = _build_fixture_repo(tmp_path)
+        data_root = _setup_data_root(tmp_path, monkeypatch)
+        _setup_project(data_root, monkeypatch)
+
+        from apps.cli.commands.study_cmd import _cmd_study_run
+
+        # Change to the fixture repo directory and call with path=None
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(str(repo))
+            _cmd_study_run(None, project=str(repo), json_output=True)
+        finally:
+            os.chdir(old_cwd)
+
+        out = capsys.readouterr().out
+        result = json.loads(out)
+        assert result["cards_written"]  # Should have written cards
+        assert len(result["cards_written"]) == 4
+
+
+class TestStudyCommandCatalogRegistration:
+    """The study.run command is registered in the catalog correctly."""
+
+    def test_study_command_registered_in_catalog(self):
+        """Test that study.run entry exists in the catalog."""
+        entry = get_command("study.run")
+        assert entry.group_id == "study"
+        assert entry.action_class == "write_metadata"
+        assert entry.supports_json is True
+
+    def test_study_command_in_study_group(self):
+        """Test that study.run appears in the study group."""
+        commands = get_commands_for_group("study")
+        command_ids = [cmd.command_id for cmd in commands]
+        assert "study.run" in command_ids
+
+    def test_study_group_not_in_visible_group_order(self):
+        """Test that study group is not in the default help order (DECISION F266 D3)."""
+        from apps.cli.command_catalog import GROUPS, VISIBLE_GROUP_ORDER
+
+        assert "study" not in VISIBLE_GROUP_ORDER
+        assert GROUPS["study"].user_facing is False
+
+    def test_study_group_not_hidden(self):
+        """Test that study group is hidden=False but user_facing=False (advanced/internal tier)."""
+        from apps.cli.command_catalog import GROUPS
+
+        assert GROUPS["study"].hidden is False
+        assert GROUPS["study"].user_facing is False
