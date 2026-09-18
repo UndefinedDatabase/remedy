@@ -11,11 +11,6 @@ pass and files APPROVED memory cards carrying `provenance: "machine-study"`
 (DECISION D-C, `docs/roadmap/features/T4_F266.md`), and `teacher ask`
 answers questions about that repository from those cards.
 
-## Current Step
+## Status
 
-ROUND 10 — Closure Algorithm steps 1–2: evidence job and review zip.
-
-## Next Steps
-
-Algorithm step 4 — the reviewer authors the STATUS line; step 5 — final
-commit + PR.
+CLOSED — F266 complete. PR awaits merge at the next feature's Open PR Gate.
