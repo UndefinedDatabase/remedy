@@ -125,6 +125,12 @@ DEFAULT_MODEL = _PROVIDER_DEFAULT_MODELS[DEFAULT_PROVIDER]
 #: this role, feeding the resolved model into ``make_structured_call_fn``;
 #: ``generate_artifact_summary`` itself still takes ``call_fn`` as a direct
 #: parameter and never resolves through this module directly.
+#: ``study`` (F266) runs a bounded, read-only comprehension pass over a
+#: repository and writes auto-approved memory cards with provenance
+#: `machine-study` (DECISION F266 D2). It is registered here so its calls
+#: resolve without the unknown-role warning, and tiered `summarize` for routing
+#: bookkeeping only (DECISION F266 D1). Default model is the same provider-aware
+#: default every other role gets, operator-overridable as usual.
 KNOWN_ROLES: tuple[str, ...] = (
     "builder",
     "reviewer",
@@ -135,6 +141,7 @@ KNOWN_ROLES: tuple[str, ...] = (
     "orchestrator",
     "teacher",
     "summary",
+    "study",
 )
 
 #: Resolvable fields on a RoleConfig, in declaration order.

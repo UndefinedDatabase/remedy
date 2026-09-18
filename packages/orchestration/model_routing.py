@@ -1252,6 +1252,8 @@ ROLE_TASK_CLASSES: dict[str, str] = {
     "final_verifier": "standard_review",
     "teacher": "summarize",
     "summary": "summarize",
+    # F266 D1: study reads repositories, tier matches teacher/summary
+    "study": "summarize",
     "orchestrator": "mission",
 }
 
