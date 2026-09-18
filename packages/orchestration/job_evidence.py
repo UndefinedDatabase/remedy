@@ -41,13 +41,17 @@ logger = logging.getLogger(__name__)
 _TASK_BODY_EVIDENCE_LIMIT = 500
 _WORKSPACE_DIFF_MAX_CHARS = 500_000
 
-_SAFE_TASK_ID_RE = re.compile(r"^T\d{3,}$")
+# A task id is `T<digits>` from a parsed job file, or the sixteen lowercase hex
+# characters `data_paths.mint_task_id` mints for a task built by code — the ids
+# every job `remedy do` plans carries (R-0912). Neither shape can hold a separator.
+_SAFE_TASK_ID_RE = re.compile(r"^(?:T\d{3,}|[0-9a-f]{16})$")
 
 
 def _task_evidence_dir(out_base: str, task_id: str) -> Path:
     """Return a contained task evidence directory inside out_base/task_runs/.
 
-    Only allows task IDs matching the expected format (T001, T002, ...).
+    Only allows task IDs of the two shapes `_SAFE_TASK_ID_RE` names (T001, T002,
+    ... or a minted sixteen-hex id).
     Raises ValueError on malicious, corrupt, or unexpected task IDs to prevent
     path traversal via persisted job state or symlink escapes.
 
@@ -56,7 +60,8 @@ def _task_evidence_dir(out_base: str, task_id: str) -> Path:
     """
     if not task_id or not _SAFE_TASK_ID_RE.fullmatch(task_id):
         raise ValueError(
-            f"Unsafe task ID {task_id!r}: must match T<digits> (e.g. T001). "
+            f"Unsafe task ID {task_id!r}: must match T<digits> (e.g. T001) or "
+            "sixteen lowercase hex characters. "
             "Aborting evidence export to prevent path traversal."
         )
     return _validate_output_path(out_base, f"task_runs/{task_id}")

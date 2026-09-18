@@ -503,6 +503,37 @@ class TestSafeTaskIdHelper:
             with pytest.raises(ValueError, match="Unsafe task ID"):
                 _task_evidence_dir(str(tmp_path), bad_id)
 
+    def test_minted_task_ids_accepted_and_near_misses_rejected(self, tmp_path):
+        """R-0912: the id `mint_task_id` mints — every `remedy do` task's — is accepted;
+        a near miss of that shape is not."""
+        from packages.orchestration.data_paths import mint_task_id
+        from packages.orchestration.job_evidence import _task_evidence_dir
+
+        minted = mint_task_id()
+        assert _task_evidence_dir(str(tmp_path), minted).name == minted
+        for bad_id in (minted.upper(), minted[:15], minted + "0", minted[:15] + "/"):
+            with pytest.raises(ValueError, match="Unsafe task ID"):
+                _task_evidence_dir(str(tmp_path), bad_id)
+
+    def test_a_job_whose_tasks_carry_the_minted_default_exports(
+            self, isolate_data_root, demo_repo, tmp_path):
+        """R-0912: a run job whose tasks were built by code exports its task runs."""
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry, _persist_job
+
+        job = JobPlan(repo_path=str(demo_repo), job_title="Minted ids",
+                      tasks=[TaskEntry(title="Write docs/a.md", body="Write docs/a.md")])
+        _persist_job(job)
+        [minted] = [t.task_id for t in job.tasks]
+        assert not minted.startswith("T")
+        run_job(job.job_id, builder_provider=_pass_provider(),
+                reviewer_provider=_pass_provider(), repair_rounds=0)
+
+        result = export_job_evidence(job.job_id, str(tmp_path / "evidence"))
+
+        assert "error" not in result
+        assert (tmp_path / "evidence" / "task_runs" / minted / "provider_evidence.json").is_file()
+
     def test_symlinked_task_runs_blocked(self, tmp_path):
         """Step 4927: _task_evidence_dir blocks symlink escape via task_runs/."""
         from packages.orchestration.job_evidence import _task_evidence_dir
