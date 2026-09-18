@@ -380,14 +380,6 @@ class TestBootcampStyleErrors:
         assert "Traceback" not in combined
         assert "Error" in combined
 
-    def test_missing_args_shows_command_help(self) -> None:
-        stdout, stderr, rc = _capture_grouped(["job", "attach-repo"])
-        assert rc == 2
-        combined = stdout + stderr
-        assert "Traceback" not in combined
-        # Should show command help with an argument's own name
-        assert "repo_path" in combined.lower()
-
     def test_no_old_flat_error_format(self) -> None:
         """Error must not say 'invalid choice' (old argparse)."""
         stdout, stderr, rc = _capture_grouped(["bogus"])

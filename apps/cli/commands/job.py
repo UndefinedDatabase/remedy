@@ -867,59 +867,6 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
         )
 
 
-def _cmd_attach_repo(job_id_str: str, repo_path_str: str) -> None:
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from pathlib import Path
-    repo_path = Path(repo_path_str)
-    if not repo_path.exists():
-        print(f"Error: repo_path does not exist: {repo_path_str!r}", file=sys.stderr)
-        sys.exit(1)
-    if not repo_path.is_dir():
-        print(f"Error: repo_path is not a directory: {repo_path_str!r}", file=sys.stderr)
-        sys.exit(1)
-
-    resolved = repo_path.resolve()
-    job.metadata["target_repo"] = str(resolved)
-    save_job_plan(job)
-    print(f"Job {job.job_id} | repo={resolved}")
-
-
-def _cmd_set_permission(job_id_str: str, action: str, capability_str: str) -> None:
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = require_job_plan(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    if action not in ("allow", "deny"):
-        print(f"Error: action must be 'allow' or 'deny', got {action!r}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.permissions import Capability, is_reserved, set_permission
-    try:
-        cap = Capability(capability_str)
-    except ValueError:
-        valid = ", ".join(c.value for c in Capability)
-        print(f"Error: unknown capability {capability_str!r}. Valid: {valid}", file=sys.stderr)
-        sys.exit(1)
-
-    set_permission(job, cap, allow=(action == "allow"))
-    save_job_plan(job)
-    print(f"Job {job.job_id} | permission {cap.value}={action}")
-    if is_reserved(cap):
-        print(
-            f"note: {cap.value} is reserved and has no effect in this version "
-            "(setting is persisted but not enforced at runtime)"
-        )
-
-
 def _cmd_run_next_task_local(job_id_str: str) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
@@ -2348,8 +2295,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         limit=getattr(args, "limit", None),
     ),
     "job.show": lambda args: _cmd_show_job(args.job_id, full=getattr(args, "full", False)),
-    "job.attach-repo": lambda args: _cmd_attach_repo(args.job_id, args.repo_path),
-    "job.permit": lambda args: _cmd_set_permission(args.job_id, args.action, args.permission),
     "job.budget": _cmd_job_budget_route,
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
     "job.checkpoints": lambda args: _cmd_checkpoints(

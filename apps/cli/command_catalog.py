@@ -321,28 +321,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("teacher.ask",),
     ),
     CommandEntry(
-        command_id="job.attach-repo",
-        group_id="job",
-        subcommand="attach-repo",
-        description="Attach a repository path to a job (under its mission).",
-        action_class="write_metadata",
-        args=(_JOB_ID, ArgDef("repo_path", "Path to the repository")),
-    ),
-    CommandEntry(
-        command_id="job.permit",
-        group_id="job",
-        subcommand="permit",
-        description="Grant or deny a permission for a job.",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("permission", "Permission name"),
-            ArgDef("action", "allow or deny"),
-        ),
-        requires_permission=True,
-        related=("job.show",),
-    ),
-    CommandEntry(
         command_id="job.stop",
         group_id="job",
         subcommand="stop",

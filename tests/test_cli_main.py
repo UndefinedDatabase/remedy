@@ -2,8 +2,6 @@
 CLI-level tests for permission-related commands in apps/cli/main.py.
 
 Tests cover:
-  - set-permission: reserved capability notice printed to stdout
-  - set-permission: no notice for active capabilities
   - the permissions section of `job show --full`: displays all four capabilities
   - the permissions section: all capabilities labeled [active] or [reserved]
   - the permissions section: effective allow/deny is reflected correctly
@@ -36,56 +34,6 @@ def _make_and_save_job(tmp_path, monkeypatch, **metadata_overrides) -> JobPlan:
     job.metadata.update(metadata_overrides)
     save_job_plan(job)
     return job
-
-
-# ---------------------------------------------------------------------------
-# set-permission: reserved capability notice
-# ---------------------------------------------------------------------------
-
-
-class TestSetPermissionReservedNotice:
-    def test_reserved_cap_prints_notice_on_allow(self, tmp_path, monkeypatch, capsys):
-        job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.commands.job import _cmd_set_permission
-
-        _cmd_set_permission(str(job.job_id), "allow", "repo_overwrite")
-        out = capsys.readouterr().out
-        assert "reserved" in out
-        assert "repo_overwrite" in out
-
-    def test_reserved_cap_prints_notice_on_deny(self, tmp_path, monkeypatch, capsys):
-        job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.commands.job import _cmd_set_permission
-
-        _cmd_set_permission(str(job.job_id), "deny", "shell_exec")
-        out = capsys.readouterr().out
-        assert "reserved" in out
-        assert "shell_exec" in out
-
-    def test_active_cap_no_reserved_notice(self, tmp_path, monkeypatch, capsys):
-        job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.commands.job import _cmd_set_permission
-
-        _cmd_set_permission(str(job.job_id), "allow", "repo_generated_write")
-        out = capsys.readouterr().out
-        assert "reserved" not in out
-
-    def test_workspace_write_no_reserved_notice(self, tmp_path, monkeypatch, capsys):
-        job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.commands.job import _cmd_set_permission
-
-        _cmd_set_permission(str(job.job_id), "deny", "workspace_write")
-        out = capsys.readouterr().out
-        assert "reserved" not in out
-
-    def test_set_permission_still_persists_for_reserved_cap(self, tmp_path, monkeypatch):
-        job = _make_and_save_job(tmp_path, monkeypatch)
-        from apps.cli.commands.job import _cmd_set_permission
-        from packages.orchestration.pingpong_job import load_job_plan
-
-        _cmd_set_permission(str(job.job_id), "allow", "repo_overwrite")
-        reloaded = load_job_plan(job.job_id)
-        assert reloaded.metadata["permissions"]["repo_overwrite"] == "allow"
 
 
 # ---------------------------------------------------------------------------

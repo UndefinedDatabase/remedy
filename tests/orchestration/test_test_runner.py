@@ -23,6 +23,18 @@ from packages.orchestration.pingpong_job import JobPlan
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
+# The repository binding a mission's contract writes (DECISION F269 D7),
+# written straight onto the job record: argv is the job id and the repo path.
+_BIND_TARGET_REPO = (
+    "import sys\n"
+    "from packages.orchestration.data_paths import resolve_job_id\n"
+    "from packages.orchestration.pingpong_job import require_job_plan, save_job_plan\n"
+    "job = require_job_plan(resolve_job_id(sys.argv[1]))\n"
+    "job.metadata['target_repo'] = sys.argv[2]\n"
+    "save_job_plan(job)\n"
+)
+
+
 def _make_job(task_count: int = 3):
     job = MagicMock()
     job.job_id = uuid4()
@@ -228,10 +240,12 @@ class TestPermitGuidanceArgOrder:
         job_id = r.stdout.decode().strip()
         assert job_id, f"failed to create job: {r.stderr.decode()}"
 
-        subprocess.run(
-            [sys.executable, "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
+        # The job's repository binding, written on its record (DECISION F269 D7).
+        bound = subprocess.run(
+            [sys.executable, "-c", _BIND_TARGET_REPO, job_id, str(repo.resolve())],
             capture_output=True, env=env, timeout=10,
         )
+        assert bound.returncode == 0, bound.stderr.decode()
 
         # Try to run tests without granting permission
         r = subprocess.run(
