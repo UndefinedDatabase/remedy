@@ -25,6 +25,7 @@
 | CI self-check | [ci-self-check-v1.md](system/ci-self-check-v1.md) | system |
 | cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
 | context | [context-inspector.md](system/context-inspector.md) | system |
+| contract templates | [website.md](contracts/website.md), [api-service.md](contracts/api-service.md), [cli-tool.md](contracts/cli-tool.md), [python-library.md](contracts/python-library.md) | contracts |
 | cost preview | [cost-preview-user-guide-v0.md](guides/cost-preview-user-guide-v0.md) | guide |
 | cost report | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | guide |
 | diff-only repair | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | system |
@@ -176,6 +177,18 @@ human action.
 | File | Description | Status |
 |------|-------------|--------|
 | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md) | Raise `CYCLE_SAFETY_CAP` 1 → 8 on the F075 10/10 gate evidence; the shipped default stays 1 | ACCEPTED & APPLIED 2026-08-07 |
+
+## Contract Templates (`docs/contracts/`)
+
+The four contract templates of DECISION F269 D1: each is the floor of a mission's contract,
+proposed from the order or forced with `remedy do --contract <name>`, and carries one fixture order.
+
+| File | Description |
+|------|-------------|
+| [website.md](contracts/website.md) | The contract floor for an order that builds a website |
+| [api-service.md](contracts/api-service.md) | The contract floor for an order that builds an HTTP API service |
+| [cli-tool.md](contracts/cli-tool.md) | The contract floor for an order that builds a command-line tool |
+| [python-library.md](contracts/python-library.md) | The contract floor for an order that builds a Python library |
 
 ## Roadmap (`docs/roadmap/`)
 
