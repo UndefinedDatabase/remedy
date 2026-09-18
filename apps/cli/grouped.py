@@ -553,9 +553,15 @@ def main(argv: list[str] | None = None) -> None:
                          "--force-job", "--force-mission",
                          "--step-by-step", "--plan-only", "--apply",
                          "--contract", "--commit", "--commit-auto",
-                         "--commit-with-history", "--push"}
+                         "--commit-with-history", "--push", "--project",
+                         "--builder-model", "--reviewer-model", "--planner-model",
+                         "--max-total-tokens", "--max-provider-calls",
+                         "--max-wall-clock-minutes", "--max-cost-usd", "--deadline"}
         _BARE_VALUED = {"--repo", "--builder-provider", "--reviewer-provider",
-                        "--contract", "--commit"}
+                        "--contract", "--commit", "--project", "--builder-model",
+                        "--reviewer-model", "--planner-model", "--max-total-tokens",
+                        "--max-provider-calls", "--max-wall-clock-minutes",
+                        "--max-cost-usd", "--deadline"}
         tail = raw[3:]
         _truly_bare = True
         i = 0

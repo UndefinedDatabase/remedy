@@ -153,6 +153,15 @@ def _cmd_do_order(
     yes: bool = False,
     builder_provider: str | None = None,
     reviewer_provider: str | None = None,
+    builder_model: str | None = None,
+    reviewer_model: str | None = None,
+    planner_model: str | None = None,
+    project: str | None = None,
+    max_total_tokens: str | None = None,
+    max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None,
+    max_cost_usd: str | None = None,
+    deadline: str | None = None,
     no_ui: bool = False,
     force_job: bool = False,
     force_mission: bool = False,
@@ -175,7 +184,11 @@ def _cmd_do_order(
     more jobs only the first runs and `waiting_job_ids` names the rest
     (DECISION F268 D12). Every job run is mirrored into the F103 ledger, and
     `do` ends with the measured tokens per role and cost read back from it,
-    under `cost` in `--json` (DECISION F268 D11).
+    under `cost` in `--json` (DECISION F268 D11). `--project` selects the
+    project the init step uses; the budget flags are resolved before the first
+    step and reach the run, as do `--builder-model` and `--reviewer-model`,
+    which every `remedy job run` Next line carries too; `--planner-model`
+    reaches every structured planner call (DECISION F268 D16 (4) to (7)).
     """
     if not order or not order.strip():
         print("Error: order must not be empty.", file=sys.stderr)
@@ -186,6 +199,31 @@ def _cmd_do_order(
         sys.exit(2)
     _validate_role_override("builder", "provider", builder_provider)
     _validate_role_override("reviewer", "provider", reviewer_provider)
+    _validate_role_override("builder", "model", builder_model)
+    _validate_role_override("reviewer", "model", reviewer_model)
+
+    # DECISION F268 D16 (5): resolved before the first step, as `job run` resolves
+    # them, and carried to the run only when a budget flag was given.
+    budgets_dict = None
+    if any(v is not None for v in (max_total_tokens, max_provider_calls,
+                                   max_wall_clock_minutes, max_cost_usd, deadline)):
+        from packages.orchestration.budget_resolution import (
+            BudgetConfigError,
+            resolve_job_budgets,
+        )
+        try:
+            budgets = resolve_job_budgets(
+                cli_max_total_tokens=max_total_tokens,
+                cli_max_provider_calls=max_provider_calls,
+                cli_max_wall_clock_minutes=max_wall_clock_minutes,
+                cli_max_cost_usd=max_cost_usd,
+                cli_deadline=deadline,
+                project_root=repo,
+            )
+        except (BudgetConfigError, ValueError) as exc:
+            print(f"Error: {exc} Nothing was run.", file=sys.stderr)
+            sys.exit(2)
+        budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
     from packages.orchestration.do_sequence import (
         DoContext,
@@ -201,6 +239,11 @@ def _cmd_do_order(
         repo=repo,
         builder_provider=builder_provider,
         reviewer_provider=reviewer_provider,
+        project_selector=project,
+        budgets=budgets_dict,
+        builder_model=builder_model,
+        reviewer_model=reviewer_model,
+        planner_model=planner_model,
         no_ui=no_ui,
         yes=yes,
         no_llm=no_llm,
@@ -262,6 +305,9 @@ def _cmd_do(
     json_output: bool = False,
     builder_provider: str | None = None,
     reviewer_provider: str | None = None,
+    builder_model: str | None = None,
+    reviewer_model: str | None = None,
+    planner_model: str | None = None,
     no_ui: bool = False,
     max_total_tokens: str | None = None,
     max_provider_calls: str | None = None,
@@ -297,7 +343,12 @@ def _cmd_do(
     if truly_bare:
         _cmd_do_order(goal, repo=repo, json_output=json_output, no_llm=no_llm,
                       yes=yes, builder_provider=builder_provider,
-                      reviewer_provider=reviewer_provider, no_ui=no_ui,
+                      reviewer_provider=reviewer_provider, builder_model=builder_model,
+                      reviewer_model=reviewer_model, planner_model=planner_model,
+                      project=project, max_total_tokens=max_total_tokens,
+                      max_provider_calls=max_provider_calls,
+                      max_wall_clock_minutes=max_wall_clock_minutes,
+                      max_cost_usd=max_cost_usd, deadline=deadline, no_ui=no_ui,
                       force_job=force_job, force_mission=force_mission,
                       step_by_step=step_by_step, plan_only=plan_only, apply=apply)
         return
@@ -817,6 +868,9 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False),
         builder_provider=getattr(args, "builder_provider", None),
         reviewer_provider=getattr(args, "reviewer_provider", None),
+        builder_model=getattr(args, "builder_model", None),
+        reviewer_model=getattr(args, "reviewer_model", None),
+        planner_model=getattr(args, "planner_model", None),
         no_ui=bool(getattr(args, "no_ui", False)),
         max_total_tokens=getattr(args, "max_total_tokens", None),
         max_provider_calls=getattr(args, "max_provider_calls", None),

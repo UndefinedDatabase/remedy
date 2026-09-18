@@ -93,6 +93,17 @@ class DoContext:
     repo: str = "."
     builder_provider: str | None = None
     reviewer_provider: str | None = None
+    #: `--project <slug-or-id>`: the init step selects this project instead of
+    #: resolving or registering the repository (DECISION F268 D16 (4)).
+    project_selector: str | None = None
+    #: The resolved `JobBudgets` as a dict, set only when a budget flag was given;
+    #: the run step passes it to `run_job` as `job run` does (DECISION F268 D16 (5)).
+    budgets: dict[str, Any] | None = None
+    builder_model: str | None = None
+    reviewer_model: str | None = None
+    #: `--planner-model`: `model=` of every structured planner call the plan and
+    #: shape steps build (DECISION F268 D16 (7)).
+    planner_model: str | None = None
     no_ui: bool = False
     yes: bool = False
     no_llm: bool = False
@@ -275,6 +286,7 @@ def plan_order_job(
     no_llm: bool = False,
     yes: bool = False,
     deterministic_tasks: list[TaskEntry] | None = None,
+    planner_model: str | None = None,
 ) -> OrderJobPlan:
     """Plan ONE job for an order: intake, then an LLM task plan or the deterministic one.
 
@@ -285,6 +297,8 @@ def plan_order_job(
     the job's tasks outright and skips the LLM task plan, which is how the
     shape step plans a job per deliverable or per job-sized slice of them.
     Every plan, LLM or deterministic, passes the deliverable validator.
+    ``planner_model`` is ``model=`` of the intake and task-plan calls
+    (DECISION F268 D16 (7)); omitted, the planner's configured model serves.
     Raises :class:`OrderJobPlanError` when an LLM task plan cannot be parsed
     (after writing the job's post-mortem), when a plan fails the validator,
     or when the order names more deliverables than one job holds.
@@ -320,7 +334,12 @@ def plan_order_job(
         intake_result = heuristic_intake(mission)
         intake_fallback_reason = "forced"
     else:
-        call_fn = make_provider_call_fn()
+        if planner_model:
+            from packages.orchestration.intake import make_structured_call_fn
+            from packages.orchestration.schemas import JobIntake
+            call_fn = make_structured_call_fn(JobIntake, model=planner_model)
+        else:
+            call_fn = make_provider_call_fn()
         if call_fn is not None:
             intake_composed = compose_intake_prompt(mission)
             intake_result = run_intake(
@@ -355,7 +374,7 @@ def plan_order_job(
         # There is deliberately NO fallback to it — without a TaskPlan-bound
         # provider we skip LLM planning and take the deterministic skeleton
         # below, exactly as the no-provider path does.
-        plan_call_fn = make_structured_call_fn(TaskPlan)
+        plan_call_fn = make_structured_call_fn(TaskPlan, model=planner_model)
 
     if plan_call_fn is not None:
         from packages.orchestration.job_plan import (
@@ -532,10 +551,17 @@ def plan_order_job(
 
 
 def _step_init(ctx: DoContext) -> tuple[str, str]:
-    """Register the repository if it is not, and add the ignore entries (D2). Nothing else."""
+    """Register the repository if it is not, and add the ignore entries (D2). Nothing else.
+
+    With `--project` the project is selected through `select_project` instead,
+    and an unknown one fails the step (DECISION F268 D16 (4)).
+    """
     from packages.orchestration.project_registry import (
+        InvalidProjectSelectorError,
+        ProjectNotFoundError,
         register_project_repo,
         resolve_project,
+        select_project,
     )
     from packages.orchestration.repo_ignore import ensure_ignore_entry, ignore_entries
     from packages.orchestration.worktrees import WorktreeError, repo_root
@@ -547,8 +573,15 @@ def _step_init(ctx: DoContext) -> tuple[str, str]:
             f"{Path(ctx.repo).resolve()} is not a git repository — run `git init` first")
     ctx.repo_root = str(root)
 
-    project = resolve_project(root)
-    if project is None:
+    if ctx.project_selector is not None:
+        try:
+            project, _source = select_project(ctx.project_selector, root)
+        except (ProjectNotFoundError, InvalidProjectSelectorError):
+            return DO_STEP_FAILED, (
+                f"no project matches --project {ctx.project_selector!r}; "
+                f"list them with: remedy project list")
+        detail = f"project {project.slug} ({project.id}) selected by --project"
+    elif (project := resolve_project(root)) is None:
         project = register_project_repo(root.name, root)
         detail = f"registered {root} as project {project.slug} ({project.id})"
     else:
@@ -623,7 +656,7 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
         from packages.orchestration.intake import make_structured_call_fn
         from packages.orchestration.mission_plan_schema import MissionPlanDraft
 
-        call_fn = make_structured_call_fn(MissionPlanDraft)
+        call_fn = make_structured_call_fn(MissionPlanDraft, model=ctx.planner_model)
     try:
         # Named exactly as `mission plan` names it: `make_structured_call_fn` is
         # Ollama-backed. Without a provider the compiler plans deterministically.
@@ -713,6 +746,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
                 no_llm=ctx.no_llm,
                 yes=ctx.yes,
                 deterministic_tasks=tasks,
+                planner_model=ctx.planner_model,
             )
         except OrderJobPlanError as exc:
             return DO_STEP_FAILED, str(exc)
@@ -750,12 +784,15 @@ def do_job_task_listing(ctx: DoContext) -> list[dict[str, Any]]:
     return listing
 
 
-def _provider_flags(ctx: DoContext) -> str:
+def _job_run_role_flags(ctx: DoContext) -> str:
+    """The role flags every `remedy job run` Next line carries: providers, then models (D16 (6))."""
     flags = ""
-    if ctx.builder_provider:
-        flags += f" --builder-provider {ctx.builder_provider}"
-    if ctx.reviewer_provider:
-        flags += f" --reviewer-provider {ctx.reviewer_provider}"
+    for flag, value in (("--builder-provider", ctx.builder_provider),
+                        ("--reviewer-provider", ctx.reviewer_provider),
+                        ("--builder-model", ctx.builder_model),
+                        ("--reviewer-model", ctx.reviewer_model)):
+        if value:
+            flags += f" {flag} {shlex.quote(value)}"
     return flags
 
 
@@ -770,7 +807,7 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan, run_job
 
     if ctx.plan_only:
-        ctx.next_lines.extend(f"remedy job run {job_id}{_provider_flags(ctx)}"
+        ctx.next_lines.extend(f"remedy job run {job_id}{_job_run_role_flags(ctx)}"
                               for job_id in ctx.job_ids)
         return DO_STEP_STOPPED, (
             f"--plan-only: no job was run; {len(ctx.job_ids)} job(s) planned, "
@@ -795,13 +832,16 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
         if blocked is not None:
             approve = f"remedy decision resolve {job_id} plan:approval --reason approve"
             ctx.next_lines.append(approve)
-            ctx.next_lines.append(f"remedy job run {job_id}{_provider_flags(ctx)}")
+            ctx.next_lines.append(f"remedy job run {job_id}{_job_run_role_flags(ctx)}")
             return DO_STEP_STOPPED, (
                 f"job {job_id}'s task plan is {blocked}, not approved; it was not run "
                 f"(--yes approves it unattended). Approve it with: {approve}")
 
         done = run_job(job_id, builder_name=ctx.builder_provider,
-                       reviewer_name=ctx.reviewer_provider)
+                       reviewer_name=ctx.reviewer_provider,
+                       builder_model=ctx.builder_model,
+                       reviewer_model=ctx.reviewer_model,
+                       budgets=ctx.budgets)
         # DECISION F268 D11: the job's cost reaches the F103 ledger exactly as
         # `job run` sends it there; never fatal, a failure is named in the summary.
         from packages.orchestration.job_evidence import mirror_job_run_into_ledger
@@ -926,7 +966,7 @@ def do_waiting_job_next_lines(ctx: DoContext) -> list[str]:
             continue
         before = ctx.job_ids[position - 1]
         lines.append(f"commit job {before}'s applied output in {repo}, then: "
-                     f"remedy job run {job_id}{_provider_flags(ctx)}")
+                     f"remedy job run {job_id}{_job_run_role_flags(ctx)}")
     return lines
 
 
