@@ -418,8 +418,8 @@ class TestDocsHelpReviewMemoryCommands:
 
     def test_quick_start_updated(self):
         from apps.cli.grouped import _QUICK_START
-        assert "do run" in _QUICK_START
-        assert "job show" in _QUICK_START
+        assert 'remedy do "Write a CONTRIBUTING.md"' in _QUICK_START
+        assert "remedy job list" in _QUICK_START
 
     def test_no_auto_commit_in_docs(self):
         """No docs suggesting automatic git commit."""

@@ -351,12 +351,14 @@ def build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 
 _QUICK_START = """\
- Quick start (run `remedy init` in the repository first):
-   1. remedy do run "<goal>" --repo . --json | tee /tmp/remedy-run.json
-   2. JOB_ID=$(python3 -c "import json; print(json.load(open('/tmp/remedy-run.json'))['job_id'])")
-   3. remedy job show $JOB_ID --full
+Quick start (in a git repository):
+  1. remedy init
+  2. remedy doctor core
+  3. remedy do "Write a CONTRIBUTING.md" --plan-only
+  4. remedy do "Write a CONTRIBUTING.md"
+  5. remedy job list
 
- Show all commands:  remedy --all-commands"""
+Show all commands:  remedy --all-commands"""
 
 
 def _print_root_help(*, show_all: bool = False) -> None:

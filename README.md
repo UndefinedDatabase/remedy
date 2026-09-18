@@ -272,14 +272,11 @@ pip install -e ".[dev]"          # add ,ollama for the local planner provider
 ## Quickstart
 
 ```bash
-remedy init                                # set up this repo (once)
-remedy doctor core                         # check local health
-remedy config show                         # view current settings
-remedy do run "<goal>" --repo . --json | tee /tmp/remedy-run.json
-JOB_ID=$(python3 -c "import json; print(json.load(open('/tmp/remedy-run.json'))['job_id'])")
-remedy job show $JOB_ID --full             # inspect the result
-remedy job stop $JOB_ID                    # stop at next safe point (F011)
-remedy runtime serve                       # start dev-server supervisor (F007)
+remedy init                                         # register this repository (once)
+remedy doctor core                                  # check local health
+remedy do "Write a CONTRIBUTING.md" --plan-only     # plan an example order, run nothing
+remedy do "Write a CONTRIBUTING.md"                 # plan and run it; stops before apply
+remedy job list                                     # the jobs it planned and ran
 ```
 
 `remedy <group>` with no subcommand prints that group's help.
