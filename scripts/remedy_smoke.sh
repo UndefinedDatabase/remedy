@@ -1984,7 +1984,7 @@ if d.get('version') != 1:
     print('ERROR: memory candidates version != 1', file=sys.stderr)
     sys.exit(1)
 candidates = d.get('candidates', [])
-# Repair loop should have created at least one candidate
+# The do sequence run may have created candidates; any it created must be pending
 if candidates:
     # Verify all are pending (not auto-approved)
     for c in candidates:
@@ -2069,7 +2069,7 @@ cl = build_checklist(job, events)
 chk(cl['version'] == 1, 'checklist version != 1')
 chk(len(cl.get('items', [])) > 0, 'checklist items empty')
 has_checked = any(i.get('checked') for i in cl['items'])
-chk(has_checked, 'no checked items in checklist after repair loop')
+chk(has_checked, 'no checked items in checklist after the do sequence run')
 for item in cl['items']:
     chk(item.get('label'), 'checklist item missing label')
     label = item['label']

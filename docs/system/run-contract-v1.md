@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Run Contract is an immutable execution boundary for a Remedy job run. It defines what actions are allowed, what paths are safe, and what budgets apply. It is enforced before each phase in `do_run` and `repair_loop`.
+A Run Contract is an immutable execution boundary for a Remedy job run. It defines what actions are allowed, what paths are safe, and what budgets apply. It is enforced before each phase in `repair_loop`.
 
 ## What the contract controls
 
@@ -51,9 +51,8 @@ budget fields `max_loops`, `max_test_runs`, `max_runtime_seconds`, `max_tokens` 
 default of `build_default_run_contract` when the job has none. No command sets any other field:
 F261 round 17 deleted the `contract` group, whose `set` subcommand also wrote
 `stop_before_apply`, `stop_on_unknown_risk`, `stop_on_medium_risk`, `no_cloud` and `notes`.
-The other contracts written are the default of `build_default_run_contract`, the caller
-override `do_run` persists for the job it creates, and the fixture contract of
-`job_fulfillment`, which no command reaches since F280 round 3 deleted `job fulfill`.
+The other contracts written are the default of `build_default_run_contract` and the
+fixture contract of `job_fulfillment`, which no command reaches since F280 round 3 deleted `job fulfill`.
 
 ## CLI
 
@@ -65,5 +64,4 @@ mission. A job's execution boundary is read as its permissions and fences with
 
 ## Integration
 
-- **do_run**: Loads persisted contract via `ensure_contract(job)`, checks before each phase, records usage
 - **repair_loop**: Loads same persisted contract via `ensure_contract(job)`, checks before create_fix_task and create_patch_intent, records usage

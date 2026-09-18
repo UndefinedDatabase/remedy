@@ -149,7 +149,7 @@ When the pipeline stops, the `stop_reason` field explains why:
 | `approval_required`              | Autonomy too low for auto-apply            | Increase autonomy or approve manually |
 | `source_apply_failed`            | Patch couldn't be applied to repo          | Check file state and patch format     |
 | `test_failed_after_apply`        | Tests failed after patch was applied       | Inspect test output                   |
-| `repair_budget_exhausted`        | Max repair cycles reached                  | Increase --max-cycles or fix manually |
+| `repair_budget_exhausted`        | Max repair cycles reached                  | Raise the repair budget or fix manually |
 | `repeated_patch_detected`        | Same patch produced twice in repair loop   | Model stuck, try different approach   |
 | `no_structured_patch_text`       | No patch in builder output                 | Check task description                |
 | `provider_unavailable`           | Ollama or provider not reachable           | Start Ollama: `ollama serve`          |
@@ -157,7 +157,7 @@ When the pipeline stops, the `stop_reason` field explains why:
 
 ## Repair Loop
 
-The repair loop runs up to `--max-cycles` attempts:
+The repair loop runs up to its configured maximum of attempts (`repair_loop_max_cycles`):
 
 1. Build: call builder for structured patch
 2. Parse: validate patch format and safety
