@@ -130,7 +130,6 @@ command to run next:
 - `packages/orchestration/do_run.py` — core flow + export + validation
 - `apps/cli/commands/do_cmd.py` — CLI wiring
 - `tests/orchestration/test_do_run.py` — 67 unit tests
-- `tests/cli/test_do_runtime.py` — 14 subprocess tests
 
 ## See also
 
