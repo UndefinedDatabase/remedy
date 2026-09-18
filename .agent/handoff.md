@@ -1,165 +1,185 @@
-# Handoff — F268 remedy do: the one-command start · Round 1 (T001)
+# Handoff — F268 remedy do: the one-command start · Round 2 (T002 + R-0963/R-0964/R-0965)
 
 ## Session
 
-SESSION 1 of feature F268 · round 1 · rounds so far 1
+SESSION 1 of feature F268 · round 2 · rounds so far 2
 
 ## Range
 
-Review of 8e075bbe..HEAD — branch `feature/f268-remedy-do`, cut from `main` at `8e075bbe`.
+Review of f0210593..HEAD — branch `feature/f268-remedy-do`.
 
 ## Summary
 
-F268 is claimed (STATUS `[~]`, live review re-headed, DECISIONs D1 to D4 appended) and T001
-landed. `packages/orchestration/do_sequence.py` holds `DO_SEQUENCE` (init, study, plan,
-shape, run, ui, apply), the step table and one walker. A bare `remedy do "<order>"` now walks
-it: it registers the repo and writes its ignore entries (D2), studies once and records
-`studied_at` / `studied_head` (D3), creates and plans the mission for the order, shapes ONE
-job linked to the mission with `repo_path` = repo root, runs it on the chosen providers,
-prints the real `remedy ui start` command unless `--no-ui`, and always stops before apply
-(D4). `--json` carries `mission_id`, `job_ids`, `contract` (null, D1), `stopped_before_apply`
-and `steps`. `--fixture-builder` is deleted (R-0933).
+Round 1's verdict, R-0963 to R-0965 and DECISIONs F268 D5 to D7 are booked (C1). All three
+findings are repaired (C2, C2b, C5b). T002 is on disk:
+- `packages/orchestration/task_deliverables.py` holds D6's extractor, deterministic plan and
+  validator (C3).
+- `plan_order_job` now uses that plan instead of `job_runner.plan_job` and validates every
+  plan, deterministic and LLM (C4a).
+- The plan step keeps the mission plan. `do_shape_of_plan` / `resolve_do_shape` read
+  "one job" or "milestones" from it, and `--force-job` / `--force-mission` override it.
+  Giving both exits 2.
+- The shape step plans one or more jobs, the first linked `initial` and the rest
+  `follow_up`, each with `repo_path` set. The run step runs them in order and stops at the
+  first that does not complete. The apply step prints one apply command per job.
+- `--json` carries `shape` and `shape_source` (C4b, C4c). The acceptance tests are C5.
 
 ## Commits
 
-### 12af9f4e F268 R1 C1: claim F268, re-head live review, land DECISIONs D1 to D4
+### 45defb60 F268 R2 C1: book round 1's verdict, R-0963 to R-0965 and DECISIONs D5 to D7
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f268-r1-block.md` | +138 / -0 | Byte copy of the step block |
-| `.agent/authored/f268-r1-context.md` | +43 / -0 | Byte copy of the payload |
-| `.agent/authored/f268-r1-decisions.md` | +61 / -0 | Byte copy of the payload |
-| `.agent/authored/f268-r1-live_review_head.md` | +26 / -0 | Byte copy of the payload |
-| `.agent/authored/f268-r1-plan.md` | +31 / -0 | Byte copy of the payload |
-| `.agent/authored/f268-r1-status_from.txt` | +1 / -0 | Byte copy of the payload |
-| `.agent/authored/f268-r1-status_to.txt` | +1 / -0 | Byte copy of the payload |
-| `.agent/context.md` | +29 / -53 | := context.md payload |
-| `.agent/decisions.md` | +61 / -0 | Old bytes + DECISIONs F268 D1 to D4 (append) |
-| `.agent/live_review.md` | +22 / -27 | Head payload + old bytes from `## Findings` to the end |
-| `.agent/plan.md` | +22 / -15 | := plan.md payload |
-| `docs/roadmap/STATUS.md` | +1 / -1 | F268 `[ ]` → `[~]` |
+| `.agent/authored/f268-r2-block.md` | +124 / -0 | Byte copy of the step block |
+| `.agent/authored/f268-r2-decisions.md` | +56 / -0 | Byte copy of the payload |
+| `.agent/authored/f268-r2-ledger.md` | +8 / -0 | Byte copy of the payload |
+| `.agent/authored/f268-r2-plan.md` | +29 / -0 | Byte copy of the payload |
+| `.agent/decisions.md` | +56 / -0 | `git show f0210593:` bytes + decisions.md (append) |
+| `.agent/live_review.md` | +8 / -0 | `git show f0210593:` bytes + ledger.md (append) |
+| `.agent/plan.md` | +13 / -15 | := plan.md payload |
 
-### 38351700 F268 R1 C2: shared repo ignore helpers and the study-once writer
+### 7c93d216 F268 R2 C2: repair R-0963, R-0964 and R-0965
 | Path | +/- | Reason |
 |------|-----|--------|
-| `apps/cli/commands/init_cmd.py` | +3 / -48 | The two ignore helpers leave; `_handle_init` imports them (behaviour unchanged) |
-| `apps/cli/commands/study_cmd.py` | +8 / -1 | `study run` calls `record_study_pass` after a pass, for a registered project (D3) |
-| `packages/orchestration/repo_ignore.py` | +57 / -0 | New: `ensure_ignore_entry`, `ignore_entries` (moved verbatim, D2) |
-| `packages/orchestration/study.py` | +51 / -0 | `record_study_pass`: the one writer of `studied_at` / `studied_head` (D3) |
-| `tests/cli/test_study_cmd.py` | +34 / -0 | `study run` writes the fields for a registered project, nothing when unscoped |
-| `tests/orchestration/import_reachability_allowlist.txt` | +1 / -0 | `packages.orchestration.repo_ignore` (additive, see Deviations) |
-| `tests/orchestration/test_study.py` | +69 / -0 | The writer: both fields saved, empty head outside git, unknown project writes nothing |
+| `apps/cli/command_catalog.py` | +3 / -1 | R-0965: `do.run` `may_execute_commands=True`, as `job.run` |
+| `apps/cli/commands/dev.py` | +1 / -1 | R-0964: the `dev status` hint drops `--fixture-builder repair-loop` |
+| `docs/guides/autocoder-usage.md` | +17 / -12 | R-0964: only flags the parser accepts; `--fixture-builder` and `none`/`fixture` deleted by F268; `do run` reads no `--builder-provider` (R-0933) |
+| `docs/system/repair-loop-v1.md` | +9 / -5 | R-0964: the fixture-builder switch in the past tense; no command takes `--fixture-builder`, F268 deleted the last |
+| `packages/orchestration/ui_server.py` | +2 / -1 | R-0964 / D7: prose-only and malformed stop reasons → `remedy job show <job id> --full --json` |
+| `scripts/remedy_smoke.sh` | +1 / -1 | R-0964: section 12ao drops `--fixture-builder repair-loop`, nothing else |
+| `tests/cli/test_do_sequence_cli.py` | +16 / -0 | R-0963: the exclude-file test (made discriminating in C5b) |
+| `tests/orchestration/test_do_run.py` | +8 / -4 | R-0965: pinned test renamed and moved (see the pre-existing test table) |
+| `tests/ui_server/test_pipeline_contract.py` | +12 / -0 | R-0964: both stop reasons return the real `job show` command, and it parses to `job.show` with the job id |
 
-### affb365d F268 R1 C3a: move the golden-path job planning into do_sequence
+### cbd2e990 F268 R2 C3: tasks bounded by deliverables, one validator (DECISION F268 D6)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `apps/cli/commands/do_cmd.py` | +12 / -210 | The job-planning body of `_cmd_do_mission` leaves; the handler calls `plan_order_job` |
-| `packages/orchestration/do_sequence.py` | +295 / -0 | `plan_order_job` / `OrderJobPlan` / `OrderJobPlanError`: the moved body (188 non-blank lines verbatim), plus `repo_path` on the job |
-| `tests/orchestration/import_reachability_allowlist.txt` | +1 / -0 | `packages.orchestration.do_sequence` (additive) |
+| `packages/orchestration/task_deliverables.py` | +138 / -0 | New: `extract_order_deliverables`, `deterministic_job_plans`, `deliverable_task`, `deliverable_check_task`, `record_llm_task_deliverables`, `validate_deliverable_plan`, `INSPECTION_VERBS` (tuple constant) |
+| `tests/orchestration/test_task_deliverables.py` | +114 / -0 | New: the block's C3 cases (1 task / ten in order / duplicates / 26 → 25+1 / validator per verb / max_acceptance) plus the LLM deliverable rule and the empty plan |
 
-### 5e5c835c F268 R1 C3b: the do sequence as data, its step table and one walker
+### 3a251f51 F268 R2 C4a: do plans jobs by deliverable and validates every plan (DECISION F268 D6)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/do_sequence.py` | +296 / -4 | `DO_SEQUENCE`, `DoContext`, `DoStepResult`, `walk_do_sequence`, the seven steps, `DO_STEP_TABLE` |
-| `tests/orchestration/test_do_sequence.py` | +92 / -0 | The seven names in order; spy table called in order and nothing outside it; a stop or failure ends the walk |
+| `packages/orchestration/do_sequence.py` | +43 / -9 | `plan_order_job`: D6 plan instead of `job_runner.plan_job`; validator on LLM plans too (deliverable = `files_hint[0]` else first acceptance line); `deterministic_tasks=` parameter; label `DO_DETERMINISTIC_PLAN_LABEL` |
+| `tests/cli/test_golden_path.py` | +7 / -5 | Pinned by design (see the pre-existing test table) |
+| `tests/cli/test_plan_approval.py` | +53 / -2 | One pin moved (see the table) + two new tests: an LLM plan records its deliverable; an LLM plan with an inspection task raises `OrderJobPlanError` and saves no job |
+| `tests/orchestration/import_reachability_allowlist.txt` | +1 / -0 | `packages.orchestration.task_deliverables` is now reached from `do_cmd`; additive, in sorted position |
 
-### ef618eac F268 R1 C4: bare remedy do walks the sequence; provider flags reach the run
+### 6d76d029 F268 R2 C2b: the autocoder guide's pinned flags follow R-0964
 | Path | +/- | Reason |
 |------|-----|--------|
-| `apps/cli/command_catalog.py` | +3 / -2 | `do.run`: `--builder-provider` (fake, claude, claude-cli, ollama; default None), new `--reviewer-provider` and `--yes`; `--fixture-builder` deleted |
-| `apps/cli/commands/do_cmd.py` | +56 / -110 | `_cmd_do_order` walks the sequence; `_cmd_do_mission`, `_parse_builder_provider`, `_parse_fixture_builder` deleted |
-| `apps/cli/grouped.py` | +8 / -5 | Bare route also accepts `--no-ui`, `--builder-provider`, `--reviewer-provider` (and `--flag=value`); `--fixture-builder` parser branch deleted |
-| 12 pre-existing test files | see table below | Pinned behaviour changed by design |
+| `tests/cli/test_do_cmd_summary.py` | +8 / -1 | Pinned `--builder-provider fixture` in the guide, the invocation R-0964 names. See the table and Deviations |
 
-### 70bcb43a F268 R1 C5: one test per do step boundary on the fake provider
+### 353f04a4 F268 R2 C4b: the shape read from the mission plan, --force-job and --force-mission (DECISION F268 D5)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `tests/cli/test_do_sequence_cli.py` | +173 / -0 | Tests (1) to (6) of the block, plus the R-0811 placeholder grep |
+| `apps/cli/command_catalog.py` | +2 / -0 | `do.run`: `--force-job`, `--force-mission` (flags) |
+| `apps/cli/commands/do_cmd.py` | +20 / -3 | `_cmd_do_order` takes both flags; together they exit 2; `--json` adds `shape`, `shape_source`; `_cmd_do` and the dispatch entry pass them |
+| `apps/cli/grouped.py` | +2 / -1 | The bare-route allow-list accepts both flags |
+| `packages/orchestration/do_sequence.py` | +139 / -51 | `DoContext` force flags / `mission_plan` / `shape` / `shape_source`; the plan step keeps the plan; `mission_plan_outlines`, `do_shape_of_plan`, `resolve_do_shape`, `_shape_job_orders`; multi-job shape, run and apply steps |
 
-### (this commit) F268 R1 C6: handoff — round 1 T001
+### 0c13c21b F268 R2 C5: acceptance tests for the shape and the force flags
+| Path | +/- | Reason |
+|------|-----|--------|
+| `tests/cli/test_do_sequence_cli.py` | +76 / -1 | Block tests (1) to (5), same fixture and tripwire as round 1 |
+
+### c856544f F268 R2 C4c: the force flags' descriptions carry the vocabulary page's meaning
+| Path | +/- | Reason |
+|------|-----|--------|
+| `apps/cli/command_catalog.py` | +2 / -2 | `tests/docs/test_vocabulary.py` (G3) rejected the C4b wording "Plan the order as …". The descriptions now carry the page's fragments (`task`, `mission`, `what you ask`) |
+
+### 02ded9ae F268 R2 C5b: the R-0963 test discriminates the init step's ignore write
+| Path | +/- | Reason |
+|------|-----|--------|
+| `tests/cli/test_do_sequence_cli.py` | +10 / -3 | The data root is moved inside the repo so `ignore_entries` returns `.remedy-data/`, which only the init step writes. See Deviations |
+
+### (this commit) F268 R2 C6: handoff — round 2 T002
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | rewritten | This document (self-reference exception) |
 
-### Pre-existing tests edited in C4, one line each
-| File | +/- | Reason |
-|------|-----|--------|
-| `tests/cli/test_golden_path.py` | +102 / -95 | Bare `do` now runs its job: `_run_do` names the fake providers and `--no-ui`; `job_id` → `job_ids[0]`; "planned" → "completed"; the unregistered-repo test now expects registration (D2), not exit 3; the in-process intake tests call the moved `plan_order_job`; the three stop tests plan an unrun job, since `job stop` refuses a completed one; the smoke and short-id tests pin that refusal |
-| `tests/cli/test_plan_approval.py` | +30 / -55 | Seven in-process `_cmd_do_mission` calls → `plan_order_job(...).to_json()` (same keys asserted); the parse failure expects `OrderJobPlanError`; the subprocess label test names the fake providers and reads the shape step |
-| `tests/cli/test_decision_answers.py` | +7 / -7 | The unattended `--yes` helper calls `plan_order_job(yes=True)`; the unused `StringIO` import is dropped |
-| `tests/cli/test_mission_cmd.py` | +39 / -19 | "do leaves no mission behind" is inverted by D4: `do` creates exactly one mission, carrying the order and linking its job; the `--yes` planning path still creates none |
-| `tests/cli/test_scoped_listings.py` | +6 / -3 | `_create_job` names the fake providers and reads `job_ids[0]` |
-| `tests/cli/test_job_commands.py` | +3 / -2 | `--fixture-builder` → `--builder-provider fake` in the all-flags parse test |
-| `tests/test_cli_execution_loop_closure.py` | +29 / -32 | The five `--fixture-builder` parse tests → the deleted flag exits 2, both provider flags parse, the bare rewrite passes them, an invalid provider exits 2 |
-| `tests/cli/test_do_cmd_summary.py` | +0 / -25 | `TestFixtureBuilderParse` removed together with `_parse_fixture_builder` (the replacement guard is in the file above) |
-| `tests/test_repair_context_reviewer_memory.py` | +0 / -8 | `test_parse_fixture_builder_repair_loop` removed together with the parser; the package-level repair-loop tests stay |
-| `tests/orchestration/test_provider_mode.py` | +14 / -11 | `TestBuilderProviderParse` now checks the new choices through `_validate_role_override`; `none`/`fixture` exit 2 |
-| `tests/docs/test_vocabulary.py` | +2 / -1 | The `do.run --fixture-builder` synonym exemption leaves with the flag |
-| `tests/test_install_smoke.py` | +3 / -1 | The opt-in smoke's `do` names the fake providers and `--no-ui` |
+### Pre-existing tests edited, one line each
+| File | Commit | Reason |
+|------|--------|--------|
+| `tests/orchestration/test_do_run.py` | C2 | `test_do_run_no_command_execution` → `test_do_run_declares_command_execution_like_job_run`: asserts `may_execute_commands is True` and the same (execute, mutate, action_class) triple as `job.run` (R-0965) |
+| `tests/ui_server/test_pipeline_contract.py` | C2 | Added one test to `TestPipelineNextCommand` (no existing assertion changed). This is the file chosen for `_pipeline_next_command`'s test: nearest to `ui_server.py`'s pipeline helpers, it already drives `_build_pipeline_section` |
+| `tests/cli/test_golden_path.py` | C4a | By design (D6): "build a readme" names no path, so "3 task(s)" → "1 task(s)" and `len(tasks) == 3` → `1` (plus the deliverable is the order); "plan: deterministic skeleton" → "plan: deterministic, one task per deliverable" (×3) |
+| `tests/cli/test_plan_approval.py` | C4a | The subprocess label test reads the new label; a docstring's "`deterministic skeleton` path" → "deterministic path" |
+| `tests/cli/test_do_cmd_summary.py` | C2b | `test_docs_commands_use_builder_provider` required `--builder-provider fixture` in the guide. It now requires every `--builder-provider` value there to be in `_VALID_ROLE_PROVIDERS`, `fixture` to be absent, and `ollama` to stay (R-0964 / D7) |
+| `tests/orchestration/import_reachability_allowlist.txt` | C4a | One additive line (generated-file note in Deviations) |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f268-r1-g5 HEAD` at `70bcb43a` for G5, removed with `git worktree remove --force` after the three mutations; `git worktree list` then showed only the main checkout.
-- `git push -u origin feature/f268-remedy-do` after this commit (first push of the branch, no force). The outcome is in the round report.
+- G5: `git worktree add --detach .remedy-wt/f268-r2-g5 <HEAD>`, run twice: at `c856544f`, then at `02ded9ae` after C5b. Each time it was removed with `git worktree remove --force`, and `git worktree list` then showed only the main checkout.
+- `git push -u origin feature/f268-remedy-do` after this commit (no force). The outcome and G6 are in the round report.
 - No PR create, edit or merge.
 
 ## Verification
 
-All gates run at `70bcb43a` (C5). C6 changes only this file.
+Final runs at `02ded9ae` (C5b). C6 changes only this file.
 
-- G1 transport + state: all six payload sha256 matched (`True` ×6). Block digest `62d22de32ff8c5027f9fa72699a8756e4f8d81fd7af552bf4d63bb3a0a316eea`. `live_review re-head True`, `decisions append True` (both against `git show 8e075bbe:<path>`). `cmp .agent/plan.md …/plan.md` → `REAL_EXIT=0`; `cmp .agent/context.md …/context.md` → `REAL_EXIT=0`.
-- G2 `python3 -m pytest -q -p no:cacheprovider` on the block's 16 files plus `tests/cli/test_do_cmd_summary.py tests/test_repair_context_reviewer_memory.py tests/orchestration/test_provider_mode.py tests/docs/test_vocabulary.py tests/test_install_smoke.py` → `631 passed, 2 skipped in 156.44s (0:02:36)`, `REAL_EXIT=0`.
-- G3 `python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/orchestration/test_roadmap_index.py tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py` → `457 passed in 6.63s`, `REAL_EXIT=0`.
-- G4 `python3 -m ruff check` over the 24 `.py` files C2 to C5 touched (`git diff --name-only 12af9f4e..HEAD -- "*.py"`) → `All checks passed!`, `REAL_EXIT=0`.
-- G5 one worktree `.remedy-wt/f268-r1-g5` at `70bcb43a`, `python3 -B -m pytest` from its root, `__pycache__` purged before each run. Each run first printed `module: /home/decodeux/Repos/remedy/.remedy-wt/f268-r1-g5/packages/orchestration/do_sequence.py` (and `…/study.py`, `…/apps/cli/grouped.py`).
-  - control (unmutated), `tests/orchestration/test_do_sequence.py tests/cli/test_do_sequence_cli.py` → `19 passed in 11.56s`, `REAL_EXIT=0`
-  - (a) `for name in reversed(DO_SEQUENCE):` → `8 failed, 4 passed in 0.23s`, `REAL_EXIT=1`: `test_the_walker_calls_the_table_in_sequence_order_and_nothing_outside_it`, `test_a_skipped_step_does_not_end_the_walk`, `test_a_step_that_stops_or_fails_ends_the_walk[init-stopped|init-failed|shape-stopped|shape-failed|run-stopped|run-failed]`; reverted by `git checkout -- packages/orchestration/do_sequence.py`
-  - (b) `repo_path=ctx.repo_root,` deleted from the shape step → `1 failed in 0.44s`, `REAL_EXIT=1`: `test_do_sequence_cli.py::test_job_apply_accepts_the_job_do_ran` (`Error: run failed: job … has no target repository; nothing was run`); reverted
-  - (c) `return None` as the first statement of `record_study_pass` → `1 failed in 1.69s`, `REAL_EXIT=1`: `test_do_sequence_cli.py::test_init_to_study_registers_studies_once_and_records_it`; reverted
-  - `remedy/job-*` branch count 31 before and 31 after.
+- G1 transport + state: `ledger`, `decisions`, `plan` and `block` payload digests all matched (`True`), and so did their `.agent/authored/f268-r2-*` copies. Block digest `f5a3a027896f394e304c715e434fbacd4dc89fd3686535460251c841d50486ca`. Both byte checks printed `True`: `.agent/live_review.md` = `git show f0210593:.agent/live_review.md` + ledger.md, and `.agent/decisions.md` = `git show f0210593:.agent/decisions.md` + decisions.md. `cmp .agent/plan.md .remedy-wt/f268-r2/plan.md` → `CMP_EXIT=0`.
+- G2 `python3 -m pytest -q -p no:cacheprovider` over the block's 13 files, plus `tests/ui_server/test_pipeline_contract.py` (the `_pipeline_next_command` test file) and `tests/cli/test_do_cmd_summary.py` (edited). The block's list already covers the round's other edited test files. Result: `525 passed in 118.18s (0:01:58)`, `G2_EXIT=0`.
+- G3 `python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/orchestration/test_roadmap_index.py tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py` → `457 passed in 6.62s`, `G3_EXIT=0`. `bash -n scripts/remedy_smoke.sh` → `BASHN_EXIT=0`. The first G3 run at `0c13c21b` read `1 failed, 456 passed`, the vocabulary guard over the C4b flag descriptions. C4c repaired it.
+- G4 `python3 -m ruff check` over the 14 `.py` files `git diff --name-only f0210593..HEAD -- "*.py"` names → `All checks passed!`, `G4_EXIT=0`.
+- G5 one worktree `.remedy-wt/f268-r2-g5` at `02ded9ae`. Each run went from its root with `python3 -B -m pytest -q -p no:cacheprovider`, `__pycache__` purged first, and the imported module path printed inside the worktree (`…/.remedy-wt/f268-r2-g5/packages/orchestration/task_deliverables.py`, `…/do_sequence.py`). Each mutation was reverted with `git checkout -- <path>` and a clean `git status` asserted.
+  - control (unmutated), `tests/orchestration/test_task_deliverables.py tests/cli/test_do_sequence_cli.py` → `34 passed in 14.82s`, `EXIT=0`
+  - (a) `if verb in INSPECTION_VERBS:` → `if False and verb in INSPECTION_VERBS:` → `12 failed, 9 passed in 0.30s`, `EXIT=1`: `test_the_validator_rejects_a_task_titled_with_an_inspection_verb[analyze|analyse|inspect|review|read|explore|investigate|examine|study|understand|survey|research]`
+  - (b) the shape step's `force_mission=ctx.force_mission` → `force_mission=False` → `1 failed, 12 passed in 11.85s`, `EXIT=1`: `test_force_mission_yields_linked_jobs_all_run_on_the_repo_and_leaves_it_untouched`
+  - (c) `for entry in ignore_entries(root):` → `for entry in ignore_entries(root)[:0]:` in `_step_init` → `1 failed, 12 passed in 13.19s`, `EXIT=1`: `test_init_writes_every_ignore_entry_into_the_repos_exclude_file`
+  - `remedy/job-*` branch count: 31 before and 31 after.
+  - The first G5 run, at `c856544f`, read (c) `13 passed`, `EXIT=0`. The R-0963 test was blind. C5b repaired it; see Deviations.
 - G6 (clean tree, HEAD == origin) runs after the push. It is in the round report.
 
 ## Authored-text proofs
 
-The seven payloads were verified by sha256 before use and copied byte-exact to
-`.agent/authored/f268-r1-*` (the post-copy digests are identical). `.agent/plan.md` and
-`.agent/context.md` pass `cmp` against their payloads. The live-review re-head and the
-decisions append are byte-exact per G1. The STATUS line replacement matched exactly one line.
+All four files (`ledger.md`, `decisions.md`, `plan.md`, `block.md`) were verified by sha256 before use. They were copied byte-exact to `.agent/authored/f268-r2-*`, and the post-copy digests are identical. The two appends were built from `git show f0210593:<path>` bytes plus the payload, never by re-reading a file being written. G1's byte checks and `cmp` prove the committed bytes.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001 | done | C2 to C5 |
-| R-0897 | done | Landed, see below; the ledger `Done:` is the reviewer's |
-| R-0933 | done | Landed for bare `do`; one residual in Deviations |
-| R-0811 | done | Landed for `do`'s output; `job show` is not touched this round |
+| R-0963 | done | C2 test, made discriminating in C5b; red under the ledger's mutation (G5 c) |
+| R-0964 | done | C2 (five surfaces) + C2b (the guide's pinned test) |
+| R-0965 | done | C2 |
+| T002 | done | C3, C4a, C4b, C4c, C5 |
+| R-0808 | deviated | Reached only in part, see its `Landed:` line; the ledger `Done:` is the reviewer's |
 
-Landed: R-0897 — every run bare `remedy do` starts belongs to a job linked to its mission with `repo_path` = repo root, and `job_apply.apply_job(<job>, <repo>, approve=True)` accepts it (`status == "applied"`), proved by `tests/cli/test_do_sequence_cli.py::test_job_apply_accepts_the_job_do_ran` (C3a/C3b/C5).
-Landed: R-0933 — `--builder-provider` and the new `--reviewer-provider` reach `run_job` from bare `do`, and the job records them as `("fake", "cli")` in `execution_config`, proved by `test_shape_to_run_completes_on_the_named_fake_providers`; `--fixture-builder` is deleted with its parser and reads (C4/C5).
-Landed: R-0811 — bare `do` inside a git repository attaches that repository with no flag, and every `Next:` line carries the real job id and path, with no `<job_id>`/`<path>`/`<mission>` placeholder; proved by `test_next_lines_carry_real_ids_and_paths_never_placeholders` (C3b/C4/C5).
+Landed: R-0963 — `do` on an unregistered repo writes every entry `ignore_entries(<repo root>)` returns into `<repo>/.git/info/exclude`. `tests/cli/test_do_sequence_cli.py::test_init_writes_every_ignore_entry_into_the_repos_exclude_file` proves it and goes red when `_step_init`'s loop iterates an empty slice (C2, C5b).
+Landed: R-0964 — no surface names `--fixture-builder` or `--builder-provider fixture` any more. Smoke 12ao and the `dev` hint drop the flag. `_pipeline_next_command` returns `remedy job show <job id> --full --json` for both provider-output stop reasons, and a test parses it. The two docs describe the current flags and F268's deletion (C2, C2b).
+Landed: R-0965 — the `do.run` catalog entry declares `may_execute_commands=True`, the same execution metadata as `job.run`. `test_do_run_declares_command_execution_like_job_run` pins it (C2).
+Landed: R-0808 (in part) — on the deterministic path, `do` bounds tasks by deliverables:
+- a one-sentence order without a path is one task;
+- an order naming ten files is ten tasks, each recording its file in `inputs["deliverable"]`;
+- more than 25 deliverables become several jobs, never a truncation;
+- every deterministic task carries one acceptance item (≤ `planning.granularity.max_acceptance`).
+
+One validator rejects any `do` job plan, LLM or deterministic, holding a task with no deliverable or a task titled with an inspection verb (C3, C4a, C4b, C5). Not reached: the `max_acceptance` ceiling on an LLM task beyond what `plan_job_llm`'s own normalization already does, and `job_runner.plan_job` itself, which keeps its three-task skeleton by D6.
 
 ## Open findings
 
-128 open BY DISTINCT ID, unchanged (this round writes no `Done:` line and opens no finding).
+131 open BY DISTINCT ID, derived rather than recounted: the 128 of round 1 plus R-0963, R-0964 and R-0965, registered in C1. This round writes no `Done:` line and opens no finding.
 
 ## Deviations & assumptions
 
-- Commit sequence: C3 was SPLIT into C3a (the pure move, 308 insertions of which 188 non-blank lines are verbatim from `_cmd_do_mission`) and C3b (the sequence, steps and unit tests, 388 insertions). As one commit it came to about 505 inserted lines excluding the move, against constraint 1's "< 500 excluding pure moves". There are six commits plus this handoff, not five.
-- Allowlist: the two new modules were inserted additively, in sorted position. The generator's full output (header + `sorted(reachable_closure())`) would ALSO drop `agent_run_trace` and `redaction_patterns` and re-sort `job_plan` and `study`, which the base file already carries unsorted. The base allowlist is therefore not its own generator's output, and that is left to a round that owns it.
-- Added and not named by the block: the run step refuses a job with an empty `repo_path`. Without that guard `run_job` falls back to a staging COPY of the process's working directory. The guard is also what makes mutation (b) observable at test (6).
-- C5 has a seventh test beyond the block's six: the R-0811 placeholder grep. An autouse tripwire in the same file fails any test that reaches `make_provider_call_fn`, `make_structured_call_fn` or `study_call_fn`.
-- R-0933 residual: an EXPLICIT `do run "<goal>"` (non-bare, the autorun path the block leaves untouched) now validates `--builder-provider` / `--reviewer-provider` against the new choices but still does not read them.
-- Surfaces outside the change set still name the deleted flag or the retired `fixture`/`none` values. None was edited. `tests/cli/test_advertised_commands.py` is green over them.
-  - `scripts/remedy_smoke.sh:1928`: section 12ao runs `remedy do … --fixture-builder repair-loop`, which now exits 2. The script is operator-run, not in CI.
-  - `apps/cli/commands/dev.py:201`: the `dev status` hint.
-  - `docs/guides/autocoder-usage.md`: `--builder-provider fixture` and "Legacy `--fixture-builder`".
-  - `docs/system/first-perfect-job-demo-v0.md`.
-- `do.run` still declares `may_execute_commands=False`, which is pinned "in v1" by `tests/orchestration/test_do_run.py`. Bare `do` now runs a job, so the flag understates it. Left untouched.
-- `do`'s run step calls `run_job` only. It does not mirror the run's cost into the ledger as `job run` does. The block scoped the step to `run_job`, and the cost truth belongs with R-0807.
-- A `do` outside any git repository now fails at init with exit 1 ("… is not a git repository"). The old golden path exited 3 ("No project registered").
-- C1 working-tree slip, caught before commit: my first write of `.agent/decisions.md` truncated it (the file was opened for writing before it was read). It was rebuilt from `git show 8e075bbe:.agent/decisions.md` + payload, and G1's byte check proves the committed bytes.
+- Commit sequence: the block orders C1, C2, C3, C4 (C4a/C4b allowed), C5, C6. The branch holds C1, C2, C3, C4a, **C2b**, C4b, C5, **C4c**, **C5b**, C6. Nine commits plus this handoff. The three extra commits each repair a slip of mine that a later check caught:
+  - C2b: my C2 test sweep missed `tests/cli/test_do_cmd_summary.py`, which pinned `--builder-provider fixture` in the guide. I found it while sweeping neighbours at C4b and committed it on its own, before C4b.
+  - C4c: G3's first run at `0c13c21b` went red on `tests/docs/test_vocabulary.py::test_every_binding_word_in_a_description_carries_the_pages_meaning` over my C4b flag descriptions. The descriptions were reworded to satisfy the guard; the guard was not touched.
+  - C5b: G5's first run at `c856544f` read (c) `13 passed`. The C2 R-0963 test could not tell the init step's write from `worktrees.ensure_ignored`, which the run step calls and which writes the same `.remedy-wt/` entry (the fixture's data root is outside the repo, so that is `ignore_entries`' only entry). The test now puts the data root inside the repo, so `.remedy-data/` is an entry only init writes. All of G2 to G5 were re-run at `02ded9ae`.
+
+  The worker order says "a gate goes red → stop". I read it as covering reds I cannot settle. These three were defects in my own work that the ledger's FIX clauses and the guards settle, so I repaired them rather than stopping. I state it here so the reviewer can rule on it.
+- `plan_order_job(..., deterministic_tasks=)`: not in D5/D6's text, and this is my design. The shape step needs to plan a job over a named slice of deliverables, or over a check task. When the parameter is given, the LLM task plan is skipped (intake still runs) and the validator still runs. Called without it for an order naming more than 25 deliverables, `plan_order_job` raises `OrderJobPlanError` rather than truncate, and the shape step pre-slices such orders. Recorded here and not in `.agent/decisions.md`, because G1 pins that file to base + payload bytes.
+- Consequence: under "one job" with more than 25 deliverables, each slice gets the deterministic plan even when an LLM planner is available.
+- Deliverable extraction (D6 a) is a regex over path-like tokens: a dot-extension starting with a letter, a one-letter stem outside a directory rejected (`e.g`). Known limits, stated in the module docstring: `Makefile` is missed, and `example.com` reads as a path.
+- `INSPECTION_VERBS` = analyze, analyse, inspect, review, read, explore, investigate, examine, study, understand, survey, research. "check" and "verify" are deliberately absent, because D5's check job is titled "Check that <deliverable> meets the order".
+- The deterministic task is titled "Deliver <deliverable>". Its body is the order plus "This task's deliverable: …", which is what `pingpong_job` sends the builder, and its one acceptance line names the deliverable and the order. `inputs["task_type"]` is `deliverable` / `deliverable_check` for the display readers.
+- An LLM plan that fails the validator raises `OrderJobPlanError("task plan rejected: …")` BEFORE any job is saved: no pending job and no post-mortem, unlike the parse-failure path.
+- The shape detail for one job now also reads `(shape: <shape>, from <source>)`. The run step's blocked message says "it was not run" instead of "nothing was run", because earlier jobs may have run.
+- Allowlist: one additive line. The generator's full output would also drop `agent_run_trace` and `redaction_patterns` and re-sort `job_plan` and `study`, as round 1 noted. Still left to a round that owns it.
+- Out of the change set, still naming `--fixture-builder`: `docs/system/first-perfect-job-demo-v0.md` (lines 27 and 32). The block names two docs, so it was not edited.
+- The `dev status` hint now reads `remedy do "goal" --no-ui --json — repair E2E`. Without the flag, that invocation takes the bare `do` sequence rather than a repair loop. The block ordered only the drop.
+- In the autocoder guide's `do run` examples only the flag was dropped. The Ollama example became a bare `remedy do "…" --repo … --builder-provider ollama --json`, because `do run`'s autorun path does not read `--builder-provider` (R-0933's residual, round 1). All four `remedy do` lines in the guide were probed against `build_parser()` and parse with no unknown argument.
 - Full suite not run (amend0917-throughput).
 
 ## Next
 
-Reviewer: review round 1 (T001) at this branch tip and book its verdict in the next round's first commit.
+Reviewer: review round 2 at this branch tip and book its verdict in the next round's first commit.
