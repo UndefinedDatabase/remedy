@@ -306,7 +306,8 @@ class TestAttachRepoTip:
         line = self._rendered_tip(job)
 
         assert line.endswith(f"remedy job attach-repo {job.job_id} {repo}")
-        assert not re.search(r"<[a-z_]+>", line)
+        text = summarize_readiness(assess_job_readiness(job, []))
+        assert not re.search(r"<[a-z_]+>", text)
 
     def test_the_tip_without_a_project_says_what_to_pass(self, tmp_path, monkeypatch):
         import re
@@ -318,4 +319,25 @@ class TestAttachRepoTip:
 
         assert f"remedy job attach-repo {job.job_id} " in line
         assert "path of the repository" in line
-        assert not re.search(r"<[a-z_]+>", line)
+        text = summarize_readiness(assess_job_readiness(job, []))
+        assert not re.search(r"<[a-z_]+>", text)
+
+    def test_every_tip_of_every_level_names_the_real_job(self, tmp_path, monkeypatch):
+        """R-0811: the whole summary and every level's tips — no `<…>`, the real job id."""
+        import re
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = JobPlan(job_id=mint_job_id(), job_title="no tasks yet", user_prompt="x")
+
+        report = assess_job_readiness(job, [], data_dir=tmp_path / "data")
+        text = summarize_readiness(report)
+        actions = [a for level in export_readiness_json(report)["levels"]
+                   for a in level["next_actions"]]
+
+        assert not re.search(r"<[a-z_]+>", text)
+        assert str(job.job_id) in text
+        assert f"remedy job plan {job.job_id}" in text
+        assert len(actions) == 7
+        for action in actions:
+            assert not re.search(r"<[a-z_]+>", action), action
+            assert str(job.job_id) in action, action

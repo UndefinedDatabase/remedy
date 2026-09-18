@@ -368,6 +368,51 @@ def test_q_at_the_first_halt_after_shape_runs_no_job_and_asks_every_job_to_stop(
     assert len(halts) == 4
 
 
+@pytest.mark.parametrize("after_shape", [False, True],
+                         ids=["the-first-halt", "the-first-halt-after-shape"])
+def test_end_of_input_at_a_halt_stops_the_walk_runs_no_job_and_asks_every_job_to_stop(
+        repo, capsys, monkeypatch, after_shape):
+    """R-0967 / DECISION F268 D8: end of input at a halt stops the walk exactly as `q` does.
+
+    At the very first halt no job exists yet; the second case reads end of input
+    at the first halt that sees the jobs, so the stop requests are measured too.
+    """
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import list_job_plans, load_job_plan
+    from packages.orchestration.safe_points import stop_requested
+
+    calls = _count_fake_provider_calls(monkeypatch)
+    halts: list[int] = []
+
+    def reader(*_prompt):
+        halts.append(len(halts))
+        if after_shape and not list_job_plans():
+            return ""
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", reader)
+    extra = ("--force-mission",) if after_shape else ()
+
+    data = json.loads(_do(capsys, "--json", "--step-by-step", *extra))
+
+    steps = [(s["name"], s["status"]) for s in data["steps"]]
+    job_ids = data["job_ids"]
+    if after_shape:
+        assert steps == [("init", "done"), ("study", "done"), ("plan", "done"),
+                         ("shape", "done"), ("run", "stopped")]
+        assert len(halts) == 4
+        assert len(job_ids) >= 2
+    else:
+        assert steps == [("init", "done"), ("study", "stopped")]
+        assert len(halts) == 1
+        assert job_ids == [] and list_job_plans() == []
+    assert data["steps"][-1]["detail"].startswith("not run: stopped by end of input")
+    assert calls["n"] == 0
+    assert [load_job_plan(j).state for j in job_ids] == [RunState.PLANNED] * len(job_ids)
+    requests = [stop_requested(j) for j in job_ids]
+    assert all(r is not None and r.source == "do" for r in requests), requests
+
+
 def test_plan_only_writes_the_mission_plan_plans_the_jobs_and_runs_none(
         repo, capsys, monkeypatch):
     from packages.core.models import RunState

@@ -228,7 +228,9 @@ def test_the_no_repo_tip_names_the_job_and_its_projects_repository(tmp_path, mon
                  if r.id == "derived_no_repo").next_actions
 
     assert tip == f"remedy job attach-repo {job.job_id} {repo}"
-    assert not re.search(_PLACEHOLDER_RE, tip)
+    for action in _every_next_action(job, []):
+        assert not re.search(_PLACEHOLDER_RE, action), action
+        assert str(job.job_id) in action, action
 
 
 def test_the_no_repo_tip_without_a_project_says_what_to_pass(tmp_path, monkeypatch):
@@ -245,4 +247,44 @@ def test_the_no_repo_tip_without_a_project_says_what_to_pass(tmp_path, monkeypat
 
     assert tip.startswith(f"remedy job attach-repo {job.job_id} ")
     assert "path of the repository" in tip
-    assert not re.search(_PLACEHOLDER_RE, tip)
+    for action in _every_next_action(job, []):
+        assert not re.search(_PLACEHOLDER_RE, action), action
+        assert str(job.job_id) in action, action
+
+
+def _every_next_action(job, events) -> list[str]:
+    from packages.orchestration.stop_reasons import derive_stop_reasons
+
+    return [a for r in derive_stop_reasons(job, events) for a in r.next_actions]
+
+
+def test_every_derived_next_action_names_the_real_job_and_no_placeholder(tmp_path, monkeypatch):
+    """R-0811: all four derived stop reasons at once — no `<…>` anywhere, the real ids everywhere."""
+    import re
+
+    from packages.orchestration.pingpong_job import JobPlan
+    from packages.orchestration.stop_reasons import derive_stop_reasons
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    job = JobPlan(job_title="every stop at once")
+    events = [
+        {"event": "test_run_completed", "metadata": {"status": "failed"}},
+        {"event": "patch_intent_created", "metadata": {"intent_id": "intent-a1"}},
+        {"event": "patch_intent_created", "metadata": {}},
+        {"event": "git_status_read", "metadata": {"dirty": True}},
+    ]
+
+    reasons = {r.id: r for r in derive_stop_reasons(job, events)}
+
+    assert sorted(reasons) == ["derived_dirty_repo", "derived_no_repo",
+                               "derived_not_approved", "derived_test_fail"]
+    actions = _every_next_action(job, events)
+    assert len(actions) == 6
+    for action in actions:
+        assert not re.search(_PLACEHOLDER_RE, action), action
+        assert str(job.job_id) in action, action
+    assert f"remedy test run {job.job_id}" in reasons["derived_test_fail"].next_actions
+    assert reasons["derived_not_approved"].next_actions == (
+        f"remedy patch approve {job.job_id} intent-a1",
+        f"remedy patch list {job.job_id} names the intent ids to approve",
+    )
