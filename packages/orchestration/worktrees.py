@@ -59,7 +59,7 @@ class WorktreeHandle:
     path: str                 # resolved worktree path
     branch: str               # remedy/<job-id>
     base_commit: str = ""     # main-checkout HEAD the worktree branched from
-    head_commit: str = ""     # worktree HEAD (== base_commit until committed)
+    head_commit: str = ""     # worktree HEAD: base_commit until a job task's commit (F270) moves it
     lock_path: str = ""
     created: bool = False     # True when this call created it (vs. reattached)
     #: File descriptor of the held lock. Not serialized.
@@ -405,6 +405,85 @@ def head_at(path: str | Path) -> str:
         return ""
 
 
+#: The one identity of every commit Remedy lands on a job worktree branch (F270).
+REMEDY_COMMIT_NAME = "Remedy"
+REMEDY_COMMIT_EMAIL = "remedy@local"
+
+#: The trailer keys naming the job and the task a Remedy job-branch commit belongs to.
+REMEDY_JOB_TRAILER = "Remedy-Job"
+REMEDY_TASK_TRAILER = "Remedy-Task"
+
+#: Wall-clock ceiling for one ``git add`` or ``git commit`` in a job worktree.
+GIT_COMMIT_TIMEOUT_SEC = 120
+
+
+# DECISION F270 D1 (2): Remedy commits only on its own `remedy/` branches, never the operator's.
+def commit_job_worktree(path: str | Path, message: str) -> str:
+    """Commit a job worktree's COMPLETE current state on its branch; return the new HEAD sha.
+
+    F270 T001, DECISION F270 D1 (1) and (2): ``git add -A .`` through the
+    worktree's own index, then one commit authored AND committed by
+    ``Remedy <remedy@local>`` — the identity is forced through the environment,
+    so neither the operator's git configuration nor their ``GIT_AUTHOR_*`` /
+    ``GIT_COMMITTER_*`` variables reach it — with no signing and no hook, because
+    hooks gate the operator's commits, not a branch the operator never checks
+    out. ``--allow-empty`` keeps one applied task one commit when it changed
+    nothing. A checkout whose current branch does not start with
+    ``BRANCH_PREFIX`` (the operator's own checkout, a detached HEAD) is refused
+    with ``WorktreeError`` before anything is written.
+    """
+    where = str(path)
+    branch = _git(where, "rev-parse", "--abbrev-ref", "HEAD").strip()
+    if not branch.startswith(BRANCH_PREFIX):
+        raise WorktreeError(
+            f"refusing to commit on branch {branch!r}: Remedy commits only on "
+            f"its own {BRANCH_PREFIX!r} job branches"
+        )
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": REMEDY_COMMIT_NAME,
+        "GIT_AUTHOR_EMAIL": REMEDY_COMMIT_EMAIL,
+        "GIT_COMMITTER_NAME": REMEDY_COMMIT_NAME,
+        "GIT_COMMITTER_EMAIL": REMEDY_COMMIT_EMAIL,
+    }
+    steps = (
+        ("add", ["add", "-A", "."], None),
+        ("commit", ["-c", "core.hooksPath=/dev/null", "commit", "--no-verify",
+                    "--no-gpg-sign", "--allow-empty", "--quiet", "-F", "-"], message),
+    )
+    for verb, args, stdin in steps:
+        proc = subprocess.run(
+            ["git", *args], cwd=where, env=env, input=stdin,
+            capture_output=True, text=True, timeout=GIT_COMMIT_TIMEOUT_SEC,
+        )
+        if proc.returncode != 0:
+            raise WorktreeError(
+                f"git {verb} in the job worktree failed ({proc.returncode}): "
+                f"{proc.stderr.strip()[:300]}"
+            )
+    return _git(where, "rev-parse", "HEAD").strip()
+
+
+def read_head_remedy_trailers(path: str | Path) -> dict[str, str]:
+    """The ``Remedy-Job`` and ``Remedy-Task`` trailers of a worktree's HEAD commit.
+
+    DECISION F270 D1 (4): how a resumed run recognises the commit an interrupted
+    run already made for a task. A key HEAD does not carry is absent.
+    """
+    out = _git(str(path), "log", "-1", "--format=%(trailers:only,unfold)", "HEAD")
+    found: dict[str, str] = {}
+    for line in out.splitlines():
+        key, sep, value = line.partition(":")
+        if sep and key.strip() in (REMEDY_JOB_TRAILER, REMEDY_TASK_TRAILER):
+            found[key.strip()] = value.strip()
+    return found
+
+
+def worktree_matches_head(path: str | Path) -> bool:
+    """True when the worktree holds no change against its HEAD commit (F270 D1 (4))."""
+    return not _git(str(path), "status", "--porcelain", "--untracked-files=all").strip()
+
+
 def diff(handle: WorktreeHandle) -> str:
     """Deterministic, repository-relative diff of everything the run changed.
 
@@ -437,14 +516,15 @@ def write_result_diff(handle: WorktreeHandle, out_path: str | Path) -> dict[str,
 
 
 def retain_for_recovery(handle: WorktreeHandle, reason: str = "") -> dict[str, Any]:
-    """Keep the worktree — and its uncommitted changes — for a later recovery.
+    """Keep the worktree — and whatever it holds past its branch tip — for a later recovery.
 
     The git worktree stays registered and the branch stays put; only the
     in-process fcntl lock is released, so a later ``recover()`` (from
-    ``remedy job resume``) can claim it. Nothing is committed and nothing is
-    merged: this is the safe end state whenever the branch-plus-diff hand-off
-    could NOT be persisted, because the run's changes are uncommitted and the
-    worktree is the only place they exist.
+    ``remedy job resume``) can claim it. This call commits nothing and merges
+    nothing: it is the safe end state whenever the branch-plus-diff hand-off
+    could NOT be persisted, because a run's changes past the branch tip — all
+    of a single run's, and a job task's that never reached its F270 commit —
+    exist only in the worktree.
     """
     release_lock(handle)
     return {

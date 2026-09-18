@@ -121,7 +121,9 @@ Staged files are listed in `staged_files` but are NOT target changes.
 
 - Real provider execution (uses fixture builder/reviewer)
 - Real test execution (tests run through Test Execution Service but in demo repo only)
-- Git operations (no commits, branches, or PRs)
+- Git operations on the target (no commit on the operator's branch, no PR; the
+  per-task commits a job makes on its own `remedy/job-<job id>` branch, F270,
+  are not exercised here)
 - Multi-repo support
 - Budget-aware stopping
 
@@ -137,7 +139,8 @@ Staged files are listed in `staged_files` but are NOT target changes.
 8. **Env file exclusion**: `.env`, `.env.*`, `.env-*` files excluded from staging copy
 9. **Symlink escape detection**: symlinks resolving outside repo root excluded from staging
 10. **No provider call**: fixture mode, no API key needed
-11. **No git operations**: no commits, no branches, no PRs
+11. **No git operations on the target**: no commit on the operator's branch, no PR
+    (a job's own `remedy/job-<job id>` branch gets one commit per applied task, F270)
 12. **Review required**: job cannot complete without review pass
 13. **Repair loop**: finding creates repair task, second review confirms fix
 14. **Approval gate**: patch intent must be approved before apply
