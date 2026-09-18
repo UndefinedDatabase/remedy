@@ -64,11 +64,7 @@ When patterns are strong enough (count >= 2-3), Remedy suggests project memory u
 - **medium**: real local model data exists with 5+ samples.
 - **high**: real data with 15+ samples.
 
-If confidence is low, the summary says "needs real model check." Run a real model check with:
-
-```sh
-REMEDY_REAL_OLLAMA_EVAL=1 scripts/remedy_builder_eval.sh --ollama
-```
+If confidence is low, the summary says "needs real model check." Confidence rises only as the project's jobs run their builder on a real model rather than a fixture.
 
 ## Dashboard
 

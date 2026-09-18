@@ -179,7 +179,6 @@ SUBPROCESS_FILES = {
 REAL_OLLAMA_FILES = {
     "test_real_ollama_smoke.py",
     "test_real_do_ollama_smoke.py",
-    "test_builder_eval.py",  # has skipif for real ollama section
 }
 
 # Smoke contract tests
