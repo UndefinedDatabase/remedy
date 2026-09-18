@@ -13,21 +13,16 @@ answers questions about that repository from those cards.
 
 ## Current Step
 
-ROUND 7 — T003: the three-step proved end to end against a foreign
-repository fixture. New test `tests/cli/test_study_teacher_e2e.py` runs
-`init` as a real subprocess, `study run` and `teacher ask` in-process (so
-both transport seams are controlled deterministically), on a fixture
-repository carrying a distinctive top-level directory name, and asserts
-`teacher ask` is shown that name only through the `study:structure` card —
-never derivable from general knowledge. Also books `Done: R-0959` and
-`Done: R-0960` (fixes landed round 5, never booked in round 6 — amend0827
-rule 1), and fixes newly-registered `R-0961` (an undersized subprocess
-timeout in round 5's own reachability test, made red by this environment's
-real, reachable local Ollama).
+ROUND 9 — Closure repair: fixing five genuine regressions found in round 8's
+closure suite (tests/docs/test_vocabulary.py, tests/cli/test_cli_ux.py,
+tests/orchestration/test_import_reachability.py, tests/orchestration/test_role_config.py,
+tests/regression/test_resource_safety.py). Five additional failures from round 8's
+suite are pre-existing xdist cross-test-pollution flakes reproduced at the fork
+point (ec520c17), recorded as R-0950 in live_review.md; no repair owed.
 
 ## Next Steps
 
-1. Closure sequence: Built State, evidence job, review zip, STATUS line, PR.
+1. Algorithm step 1: evidence job, then step 2: review zip.
 
 ## Risks
 
