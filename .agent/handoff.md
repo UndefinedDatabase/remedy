@@ -1,176 +1,148 @@
-# Handoff — F268 remedy do: the one-command start · Round 9 (DECISION F268 D16 (1) to (3), D17, R-0933)
+# Handoff — F268 remedy do: the one-command start · Round 10 (deletion round: the do v1 flow and dry_run_autorun)
 
 ## Session
 
-SESSION 2 of feature F268 · round 9 · rounds so far 9
+SESSION 2 of feature F268 · round 10 · rounds so far 10
 
 ## Range
 
-Review of 5243e0a6..HEAD — branch `feature/f268-remedy-do`.
+Review of 4362894d..HEAD — branch `feature/f268-remedy-do`.
 
 ## Summary
 
-Round 9 landed round 8's C3. Every `remedy do`, with or without the word `run`, now walks the F268 sequence. The bare-flag detection in `grouped.py`, the autorun branch of `_cmd_do` and the four flags only that branch read (`--autonomy-level`, `--max-cycles`, `--ui`, `--dry-run`) are gone from `do`. Smoke section `12ao` now runs the `do` sequence end to end, as DECISION F268 D17 (2) orders. The G2 list reads `1039 passed, 1 skipped`, and both G3 readings are 0 at the last code commit.
+Round 10 is a deletion round (amend0906-triage-throughput (1)). It booked round 9's PASS and R-0933's `Done:` line (C1). It deleted the phased `remedy do` v1 flow that round 9 left with no caller from `packages/orchestration/do_run.py`, and `dry_run_autorun` / `_autonomy_label` from `packages/orchestration/autorun.py` (C2). It deleted their tests (C3) and rewrote the do guide to describe the sequence (C4). G2 reads `1023 passed, 6 skipped`, exit 0. G3 reads 117 hits at `4362894d` and 0 at `34e51da9`. G4 reads `All checks passed!`.
 
-- **C2 production, built from round 8's patch** (`.remedy-wt/f268-r8/c3_production_dryrun.patch`, digest matched, applied cleanly with `git apply -3` at `0bac38f0`). The block ordered two changes to it:
-  - `--no-ui`'s help is now `Do not open the cockpit`. The word `job` is gone, and `tests/docs/test_vocabulary.py` passes.
-  - `--project`'s help is now `Select a registered project by slug or id instead of the repository's own` (D16 (4)).
-  - `_cmd_do` now does two things: it refuses the not-yet-available flags, then calls `_cmd_do_order(...)`. Its docstring records the deliberate absence of a second route. The dispatch lambda no longer passes `autonomy_level`, `max_cycles`, `injected_default`, `truly_bare`, `enable_ui` or `dry_run`.
-  - The `--dry-run` parser branch in `grouped.py` stays, because other commands still declare it. The `--max-cycles`, `--autonomy-level` and `--ui` branches are deleted.
-- **C3 tests and smoke:**
-  - (a) and (b): the deletions and rewrites below;
-  - (c): smoke `12ao` rewritten, and `REPAIR_JOB_ID` renamed `DO_JOB_ID` at all three uses;
-  - (d): the four docs lines;
-  - (e): two new tests in `tests/cli/test_do_flags.py`, one of them parametrized four ways.
-- **C3b repair:** `tests/docs/test_named_source_paths.py::test_every_source_path_an_operator_facing_page_names_exists` went red after C3. `docs/guides/do-run-v1.md:133` still named the deleted `tests/cli/test_do_runtime.py`. C3b deletes that line; the path is in the change set.
+- **C2 (a):** `do_run.py` keeps `DoRunNextAction`, `_REMEDY_CMD_RE` and `validate_next_safe_action_command`, with a new module docstring and only the `re` and `dataclass` imports. Before deleting, a grep of every other symbol (`DO_PHASES`, `DoRunPhase`, `DoRunStopReason`, `DoRunResult`, `_DO_V1_MAX_AUTONOMY`, `DoRunContract`, `_check_contract`, `run_do`, the four `_run_*_phase` helpers, `export_do_run_json`, `summarize_do_run`, `_do_emit`) over `apps/`, `packages/`, `scripts/`, `tests/`, `docs/` (minus `docs/roadmap/`) and `README.md` found callers only in `do_run.py` itself and in the tests C3 deletes. `repair_loop.py` imports only `DoRunNextAction`.
+- **C2 (b):** `dry_run_autorun` and `_autonomy_label` had callers only in `tests/cli/test_job_commands.py`, the two tests C3 deletes. The module docstring no longer names them and no longer calls the module `remedy do`'s loop. Autonomy level 0's line now reads "create the job only", which is what `run_autorun` does at level 0; the old line described the dry run. `run_autorun` is untouched.
+- **C2 (c):** `do.run`'s description now reads `Plan and run what you ask: study the repo, plan a mission of jobs and their tasks, run the first job, and stop before apply unless --apply.` `tests/docs/test_vocabulary.py` reads 8 passed: Plan and Run carry `task`, and Mission carries `job`. `do_cmd.py`'s module docstring now describes the sequence and names the other handlers the module holds.
+- **C4:** `docs/guides/do-run-v1.md` is rewritten in full. It covers the seven `DO_SEQUENCE` steps in order, one line each, the stop before apply, `--plan-only`, `--step-by-step`, the twelve `--json` keys `_cmd_do_order` prints, the flag list from the `do.run` entry and `validate_next_safe_action_command`. The title changed from "remedy do v1 — Cohesive Flow", which is no longer true, to "remedy do — the one-command start". `docs/system/run-contract-v1.md` lines 5, 55 and 68 no longer name `do_run`. `docs/guides/autocoder-usage.md` lines 152 and 160 no longer name `--max-cycles`, and `repair_budget_exhausted` is kept. Smoke line 1987's comment and line 2072's message no longer say a repair loop ran.
 
-### Tests deleted BY DESIGN (C3 (a)), each checked against its body first
+### Tests deleted BY DESIGN (C3), each checked against its body first
 
-| Test | Reason |
+`tests/orchestration/test_do_run.py`: 69 → 17 tests, so 52 were deleted. Every deleted test calls `run_do` (through `_run_with_tmp` or directly), `export_do_run_json`, `summarize_do_run` or `_run_build_phase`, or constructs `DoRunPhase` / `DoRunStopReason` or reads `DO_PHASES`. All of these symbols were deleted in C2.
+
+| Test(s) | Reason |
 |------|--------|
-| `tests/cli/test_do_runtime.py` (whole file: `TestDoRuntime`, `TestDoRuntimeText`, `TestDoRuntimeTruth`, 14 tests) | Every test runs `do … --autonomy-level N` or `--max-cycles 0` and asserts the autorun's JSON (`stop_reason`, `autonomy_capped`, `run_contract`, …). D16 (1) and (2) delete both the flags and that route |
-| `tests/cli/test_job_commands.py::TestDoDirectGoalCommandRewrite::test_do_direct_dry_run` | Parses `do "<goal>" --dry-run`; `--dry-run` left `do` (D16 (2)) |
-| `…::test_do_run_alias_still_works` | Parses `do run "<goal>" --dry-run`; same reason. The explicit `do run` routing is now pinned by the new `test_do_flags` test and the rewritten golden-path test |
-| `…::test_do_with_all_flags` | Passes `--autonomy-level 4 --max-cycles 2`, both of which left `do` |
-| `tests/test_cli_execution_loop_closure.py::TestUiBooleanFlagParsing::test_ui_bare_flag_parses` | Asserts `args.ui is True`; `--ui` left `do` |
-| `…::test_no_ui_suppresses` | Asserts `args.ui` beside `args.no_ui`; same reason |
-| `…::test_enable_ui_logic` | Asserts the `enable_ui` handler kwarg, which is deleted with `--ui` |
-| `tests/orchestration/test_autorun.py::TestCalcFixtureBuilderWithProof::test_no_ui_suppresses_ui` | D17 (1): asserts `kwargs["enable_ui"] is False`, and that kwarg left with `--ui`. Its now-unused `patch` import left with it (ruff F401) |
+| `TestPhaseModel::test_phases_defined`, `::test_phase_dataclass`, `::test_stop_reason` | Read `DO_PHASES`, `DoRunPhase`, `DoRunStopReason` |
+| `TestDoRunFlow` (11 tests) | Every one runs `run_do` through `_run_with_tmp` |
+| `TestDoRunExport` (7) | `run_do` + `export_do_run_json` |
+| `TestDoRunSafety` (6) | `run_do` + `export_do_run_json` / `summarize_do_run` |
+| `TestApprovalGate` (6 of 7: `test_stop_before_apply_default`, `test_no_source_apply_without_approval`, `test_no_apply_phase_before_approval`, `test_patch_intent_not_approved`, `test_proof_not_verified_before_apply`, `test_next_action_is_approval`) | `run_do`; `test_no_apply_import_in_do_run` is kept |
+| `TestContextProofAlignment` (2) | `run_do` |
+| `TestDoRunSummary` (3) | `run_do` + `summarize_do_run` |
+| `TestNextSafeActionValidation::test_all_emitted_actions_valid`, `::test_low_autonomy_action_valid` | Validate a `run_do` result's next action; the other 8 are kept |
+| `TestContextFailureStops` (3) | Patch `do_run._run_context_phase`, run `run_do` |
+| `TestContractConsolidation::test_contract_in_result` | Reads `run_do`'s `_contract`; the other 3 are kept |
+| `TestMaxLoopsEnforcement` (4) | `run_do` |
+| `TestAutonomyTruth` (3) | `run_do` |
+| `TestSystemArtifactKeepsTaskIdAbsent::test_the_build_phase_on_a_task_less_job_leaves_task_id_absent` | Imports `_run_build_phase` |
 
-### Tests rewritten BY DESIGN (C3 (b)) — none asserts less
+Its dead helpers `_make_repo` and `_run_with_tmp`, the imports `json`, `os`, `Path`, `patch` and `normalize_job_id`, and the deleted symbols' import names all went. The module docstring was rewritten to cover what remains.
 
-| Test | Before → after |
-|------|----------------|
-| `tests/cli/test_golden_path.py::TestDoMission::test_explicit_do_run_skips_golden_path` → `test_explicit_do_run_walks_the_do_sequence` | Before: `] shape:` absent from stdout. After: `do run "<order>"` with `--no-llm`, the fake roles and `--no-ui`; asserts exit 0 and `[done] shape:` in stdout |
-| `…::test_explicit_default_flag_skips_golden_path` → `test_explicit_default_flag_walks_the_do_sequence` | Before: `--autonomy-level 1` (the flag's default) kept `] shape:` out of stdout. After: `--repo .` (that flag's default, given explicitly); asserts exit 0 and `[done] shape:`. `--autonomy-level` itself left `do` and is pinned to exit 2 by `test_do_flags` |
-| `tests/test_cli_execution_loop_closure.py::TestDoProviderCliParsing::test_default_command_rewrite` | Only the `truly_bare` assertion is dropped; the docstring says "the one route" instead of "the bare sequence route" |
-| `tests/cli/test_job_commands.py::TestRemedyDo::test_do_command_in_catalog` | `may_mutate_repo is False` → `is True` (R-0969's value, D17 (3)); this was the red at base |
-| `tests/test_cli_execution_loop_closure.py::TestSmokeScriptNewCliSections::test_smoke_has_repair_loop_section` → `test_smoke_has_do_sequence_section` | Before: `repair-loop` and `12ao` somewhere in the script. After: `_SMOKE_SECTION="12ao"` exists; the section's single `remedy do "` line carries `--no-llm`, `--builder-provider fake` and `--reviewer-provider fake`; `--autonomy-level` appears nowhere in the script; the section sets `DO_JOB_ID=` |
+Kept (17): `TestPhaseModel::test_next_action`, `::test_contract_defaults`; `TestApprovalGate::test_no_apply_import_in_do_run`; 8 × `TestNextSafeActionValidation`; 3 × `TestCatalogMetadataTruth`; `TestContractConsolidation::test_contract_has_source`, `::test_contract_has_allowed_actions`, `::test_contract_has_denied_actions`. All are byte-identical to `4362894d`.
 
-### Tests added (C3 (e)), in `tests/cli/test_do_flags.py`
+| Other test | Reason |
+|------|--------|
+| `tests/orchestration/test_run_contract.py::TestApprovalGateRegression::test_no_fake_apply_phase` | Imports and runs `run_do` |
+| `tests/orchestration/test_test_failure_repair.py::TestDoRunIntegration` (3 tests) + its docstring line "Step 949: Integration — failure_summary field in DoRunResult" | Construct `DoRunResult`, call `export_do_run_json` |
+| `tests/cli/test_job_commands.py::TestRemedyDo::test_dry_run_no_side_effects`, `::test_dry_run_phases_by_autonomy` | Call `dry_run_autorun` |
+| `tests/orchestration/test_test_runner.py::TestPatchApplyTestLoop::test_autorun_has_test_phase` | Scans `autorun.py` for `run_tests`, a string only `dry_run_autorun` held |
 
-- `test_an_explicit_do_run_walks_the_sequence_and_its_job_has_the_cli_builder` (R-0933):
-  - the argv is `main(["do", "run", ORDER, --builder-provider fake, --reviewer-provider fake, --no-llm, --no-ui, --json])`;
-  - it asserts `mission_id`, `steps` is a list whose first five names are `init study plan shape run`, and the run step is `done`;
-  - the job's `execution_config` records `(builder, builder_source) == ("fake", "cli")`, and the same for the reviewer. The default source is `default`, so the `cli` source is what tells the two apart.
-- `test_a_flag_removed_from_do_exits_2_and_runs_nothing[autonomy-level|max-cycles|ui|dry-run]`:
-  - each flag, given to `remedy do "<order>"`, exits 2;
-  - stdout is empty, no job plan exists, and the repository stays unregistered.
+No other test went red (G2).
 
 ## Commits
 
-### 0bac38f0 F268 R9 C1: bookkeeping — book round 8's verdict, record DECISION F268 D17, round 9 plan and payloads
+### 170d4753 F268 R10 C1: bookkeeping — book round 9's verdict, R-0933 resolved, round 10 plan and payloads
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f268-r9-block.md` | +115 / -0 | Byte copy of the step block |
-| `.agent/authored/f268-r9-decisions.md` | +21 / -0 | Byte copy of the payload |
-| `.agent/authored/f268-r9-ledger.md` | +2 / -0 | Byte copy of the payload |
-| `.agent/authored/f268-r9-plan.md` | +26 / -0 | Byte copy of the payload |
-| `.agent/decisions.md` | +21 / -0 | `git show 5243e0a6:` bytes + decisions.md (DECISION F268 D17) |
-| `.agent/live_review.md` | +2 / -0 | `git show 5243e0a6:` bytes + ledger.md (Gate: F268 R8, PASS) |
-| `.agent/plan.md` | +6 / -6 | := plan.md payload |
+| `.agent/authored/f268-r10-block.md` | +107 / -0 | Byte copy of the block |
+| `.agent/authored/f268-r10-ledger.md` | +4 / -0 | Byte copy of ledger.md |
+| `.agent/authored/f268-r10-plan.md` | +23 / -0 | Byte copy of plan.md |
+| `.agent/live_review.md` | +4 / -0 | `4362894d` bytes + ledger.md (Gate F268 R9 PASS, `Done: R-0933`) |
+| `.agent/plan.md` | +6 / -9 | := plan.md |
 
-### 3bfddd48 F268 R9 C2: DECISION F268 D16 clauses 1 and 2 — every remedy do walks the sequence; the autorun branch and the autonomy, cycles, ui and dry-run flags leave do
+### 41d1e2ff F268 R10 C2: deletion — the do v1 flow leaves do_run.py, dry_run_autorun leaves autorun.py, the do.run description and do_cmd docstring describe the sequence
 | Path | +/- | Reason |
 |------|-----|--------|
-| `apps/cli/command_catalog.py` | +2 / -6 | Four ArgDefs deleted; `--no-ui` and `--project` help rewritten |
-| `apps/cli/commands/do_cmd.py` | +17 / -120 | `_cmd_do`'s autorun branch and parameters deleted; it always calls `_cmd_do_order`; the dispatch lambda loses six kwargs |
-| `apps/cli/grouped.py` | +0 / -43 | Truly-bare detection, `_did_inject`, and the `--max-cycles`, `--autonomy-level` and `--ui` parser branches deleted |
+| `packages/orchestration/do_run.py` | +9 / -613 | (a) keeps the three survivors |
+| `packages/orchestration/autorun.py` | +7 / -86 | (b) `dry_run_autorun`, `_autonomy_label`, docstring |
+| `apps/cli/command_catalog.py` | +1 / -1 | (c) `do.run` description |
+| `apps/cli/commands/do_cmd.py` | +8 / -1 | (c) module docstring |
 
-### 3f745d30 F268 R9 C3: tests and smoke — the autorun routing's tests leave, the golden-path and catalog pins follow D16 and D17, smoke 12ao runs the do sequence, R-0933's explicit do run test
+### c59b2498 F268 R10 C3: test deletion — the tests of the deleted do v1 flow and dry_run_autorun leave, by design
 | Path | +/- | Reason |
 |------|-----|--------|
-| `docs/guides/autocoder-usage.md` | +5 / -6 | Lines 22, 47–50 and 97 at `5243e0a6`: only flags `do` still has; the R-0933 paragraph now says every `do` walks one sequence |
-| `docs/guides/do-run-v1.md` | +1 / -1 | Line 19: `--autonomy-level 3` dropped |
-| `scripts/remedy_smoke.sh` | +25 / -34 | `12ao` is now a `do` sequence run on a one-commit fixture (D17 (2)); `REPAIR_JOB_ID` becomes `DO_JOB_ID` (three uses) |
-| `tests/cli/test_do_flags.py` | +37 / -1 | Two new tests (five cases); module docstring |
-| `tests/cli/test_do_runtime.py` | +0 / -348 | Deleted (C3 (a)) |
-| `tests/cli/test_golden_path.py` | +16 / -9 | Two rewrites (C3 (b)) |
-| `tests/cli/test_job_commands.py` | +2 / -36 | Three deletions; catalog pin True |
-| `tests/orchestration/test_autorun.py` | +1 / -22 | `test_no_ui_suppresses_ui` deleted; unused `patch` import dropped |
-| `tests/test_cli_execution_loop_closure.py` | +13 / -35 | Three deletions, one assertion dropped, smoke pin rewritten |
+| `tests/orchestration/test_do_run.py` | +8 / -550 | 52 tests, helpers, imports; docstring rewritten |
+| `tests/orchestration/test_run_contract.py` | +0 / -11 | `test_no_fake_apply_phase` |
+| `tests/orchestration/test_test_failure_repair.py` | +0 / -34 | `TestDoRunIntegration` + docstring line |
+| `tests/cli/test_job_commands.py` | +0 / -14 | Two `dry_run_autorun` tests |
+| `tests/orchestration/test_test_runner.py` | +0 / -5 | `test_autorun_has_test_phase` |
 
-### 6e909f13 F268 R9 C3b: repair — the do run v1 guide no longer names the deleted runtime test file
+### 34e51da9 F268 R10 C4: docs — the do guide describes the sequence, the run contract page, autocoder guide and smoke text stop naming the deleted flow
 | Path | +/- | Reason |
 |------|-----|--------|
-| `docs/guides/do-run-v1.md` | +0 / -1 | `tests/docs/test_named_source_paths.py` was red on line 133, `tests/cli/test_do_runtime.py` |
+| `docs/guides/do-run-v1.md` | +73 / -106 | Rewritten in full |
+| `docs/system/run-contract-v1.md` | +3 / -5 | Lines 5, 55, 68: no `do_run` caller |
+| `docs/guides/autocoder-usage.md` | +2 / -2 | Lines 152, 160: no `--max-cycles` |
+| `scripts/remedy_smoke.sh` | +2 / -2 | Lines 1987, 2072 |
 
-### (this commit) F268 R9 C4: handoff — round 9
+### C5 (this commit) F268 R10 C5: handoff
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/handoff.md` | rewritten | This document (self-reference exception) |
+| `.agent/handoff.md` | rewritten | This handback |
+
+Every commit is under 500 inserted lines; the largest is C1 with 144.
 
 ## External actions
 
-- `git worktree add -q --detach .remedy-wt/f268-r9-g5 6e909f13`, run from `.remedy-wt/f268-r9/g5b.py` (G5 (b)). The same script removed it with `git worktree remove --force` on that exact path, in a `finally`.
-- `git push` after this commit (no force); the outcome and G6 are in the round report.
-- No PR was created, edited or merged.
+- `git push origin feature/f268-remedy-do` after C4: pushed `4362894d..34e51da9`.
+- `git push origin feature/f268-remedy-do` after C5 (this commit).
+- No PR, worktree or gh action.
 
 ## Verification
 
-All gates ran at `6e909f13`, the last code commit; C4 changes only `.agent/handoff.md`.
+All gates ran after C4 at `34e51da9` and before C5.
 
-- **G1** `python3 .remedy-wt/f268-r9/g1.py` (reads HEAD through `git show`):
-  - `ledger.md digest True authored True`; `decisions.md digest True authored True`; `plan.md digest True authored True`; `block.md digest True authored True`;
-  - `.agent/live_review.md True`; `.agent/decisions.md True`;
-  - `.agent/plan.md True`.
-- **G2** the block's list, exactly (output in `.remedy-wt/f268-r9/g2.log`):
-  - `EXIT-0`, `1039 passed, 1 skipped in 146.60s (0:02:26)`.
-  - Before C3b, the same list read `1 failed, 1038 passed, 1 skipped`. The one failure was `tests/docs/test_named_source_paths.py::test_every_source_path_an_operator_facing_page_names_exists` (`docs/guides/do-run-v1.md:133: tests/cli/test_do_runtime.py`).
-  - At C2's tip, the list plus `tests/cli/test_do_runtime.py` read `23 failed, 1032 passed, 1 skipped`. Every failure was on C3's lists or was one of the two docs reds C3 (d) fixes.
-- **G3** `python3 .remedy-wt/f268-r8/g3.py 5243e0a6 6e909f13`:
-  - `5243e0a6 code reading 13 docs reading 5`, with the 13 code hits and 5 docs hits round 8 listed;
-  - `6e909f13 code reading 0 docs reading 0`.
-  - `REPAIR_JOB_ID` in `scripts/remedy_smoke.sh`: `git grep -c` reads `5243e0a6:scripts/remedy_smoke.sh:3` and finds no match at `6e909f13` (0).
-- **G4** `python3 -m ruff check` over the eight `.py` files that `git diff --name-only --diff-filter=d 5243e0a6 6e909f13 -- '*.py'` names (`apps/cli/command_catalog.py`, `apps/cli/commands/do_cmd.py`, `apps/cli/grouped.py`, `tests/cli/test_do_flags.py`, `tests/cli/test_golden_path.py`, `tests/cli/test_job_commands.py`, `tests/orchestration/test_autorun.py`, `tests/test_cli_execution_loop_closure.py`) → `All checks passed!`.
-- **G5 (a)** `python3 .remedy-wt/f268-r9/g5a.py`:
-  - The script builds a one-commit fixture under `.remedy-wt/f268-r9/g5a/` and sets `REMEDY_DATA_DIR` in its own `os.environ`. It extracts each command from `git show HEAD:scripts/remedy_smoke.sh` with its variable substituted and runs it through `[sys.executable, "-m", "apps.cli.grouped", …]`.
-  - `12ao argv: ['remedy', 'do', 'Make tests pass', '--repo', '<fixture>', '--builder-provider', 'fake', '--reviewer-provider', 'fake', '--no-llm', '--no-ui', '--json']` → `12ao remedy do exit 0`.
-  - 12ao's own JSON checker (extra) → `exit 0`, `do sequence: OK (jobs=1, stopped before apply)`.
-  - `DO_JOB_ID 66dc4e4282c54b64`; `12aq remedy memory candidates exit 0 version 1`.
-  - 12as UX gate checker via `[sys.executable, "-c", …]` → `exit 0`, `UX smoke gate: OK (story=5 journey items, checklist=2 items)`.
-- **G5 (b)** `python3 .remedy-wt/f268-r9/g5b.py 6e909f13`. One worktree at `.remedy-wt/f268-r9-g5` ran `python3 -B -m pytest -q -p no:cacheprovider tests/cli/test_do_flags.py` from its root, with `__pycache__` purged before each run:
-  - imported `do_cmd.py`: `/home/decodeux/Repos/remedy/.remedy-wt/f268-r9-g5/apps/cli/commands/do_cmd.py`;
-  - control → `exit 0`, `11 passed in 4.33s`;
-  - mutation: `ArgDef("--dry-run", "Show the plan's tasks without executing", …)` re-added to the `do.run` entry. The parser handling is `grouped.py`'s existing `--dry-run` store_true branch, asserted present once. The worktree's `git status` read `M apps/cli/command_catalog.py`. Result: `exit 1`, `FAILED tests/cli/test_do_flags.py::test_a_flag_removed_from_do_exits_2_and_runs_nothing[dry-run]`, `1 failed, 10 passed in 5.29s`;
-  - `git worktree list`: 1 row before and 1 row after. `remedy/job-*` branches: 31 before and 31 after.
-- **G6** (clean tree, local tip == origin) runs after the push; it is in the round report.
-- **Full suite** not run (amend0917-throughput).
+- **G1** (python byte check): `ledger.md True`, `plan.md True`, `block.md True` (sha256 against the block's digests); `append True` (`.agent/live_review.md` == `git show 4362894d:.agent/live_review.md` + ledger.md); `plan True` (`.agent/plan.md` == plan.md).
+- **G2** — the block's exact command, output in `.remedy-wt/f268-r10/g2.txt`: `1023 passed, 6 skipped in 81.17s (0:01:21)`, then `pytest exit 0` (the chain was `… && print('pytest exit 0') || print('pytest exit NONZERO')`). The 6 skips are all `tests/regression/test_named_bugs.py` "D3 quarantine (F252)" (lines 295, 312, 321, 387, 396, 403), read with `-rs` on the same list.
+- **G3** — `.remedy-wt/f268-r10/g3.py <rev>` reads `git ls-tree`/`git show` at the revision over apps/, packages/, scripts/, tests/, docs/ (minus docs/roadmap/) and README.md:
+  - `4362894d: files scanned 1300, hits 117`: 56 in `do_run.py`, 4 in `autorun.py`, 5 in `test_job_commands.py`, 40 in `test_do_run.py`, 2 in `test_run_contract.py`, 10 in `test_test_failure_repair.py`.
+  - `HEAD: files scanned 1300, hits 0`, with HEAD at `34e51da9` (`--print` printed no hit lines).
+- **G4** — `python3 -m ruff check` over the nine touched .py files (`do_run.py`, `autorun.py`, `command_catalog.py`, `do_cmd.py`, `test_do_run.py`, `test_run_contract.py`, `test_test_failure_repair.py`, `test_job_commands.py`, `test_test_runner.py`): `All checks passed!`
+- **G5** at `34e51da9`, after the first push: `git status --porcelain` printed nothing. `git rev-parse HEAD origin/feature/f268-remedy-do` printed `34e51da9e75a61bc7b25c8fa3463fca8558618dd` twice. `git worktree list` showed one row (`/home/decodeux/Repos/remedy 34e51da9 [feature/f268-remedy-do]`), and the `remedy/job-*` branch count was `31`. The same checks run again after the C5 push, and the round report carries that run.
 
 ## Authored-text proofs
 
-- Three payloads and the block matched their sha256 before use: `ledger.md` `4431cb8a…25ac`, `decisions.md` `5d4ace05…9708`, `plan.md` `c858f184…0906`, `block.md` `e7ec7bec…d3f8`. The same holds for round 8's patch, `813ff65a…39a8`.
-- Each was copied byte-exact to `.agent/authored/f268-r9-<name>`.
-- G1 shows, reading HEAD: every copy is identical; both appends equal their `git show 5243e0a6:` bytes plus the payload; `.agent/plan.md` equals plan.md.
-- `.agent/authored/f268-r9-block.md` sha256: `e7ec7bec1b0a2e2977b3de7e4f9a1c25c4c3846433e8e1c8c02179cb7fd0d3f8`.
+- The digests of `ledger.md` (`67ce92ee…48c6`) and `plan.md` (`34982dfe…2ec2`), and the block's own (`a995d010…cdc`), matched before use.
+- Byte copies are at `.agent/authored/f268-r10-{block,ledger,plan}.md`.
+- `.agent/authored/f268-r10-block.md` sha256: `a995d010b4fc114b2e1e533c360da4ae265876a527b504e59d4e6a5fa8383cdc`.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 bookkeeping | done | `0bac38f0` |
-| C2 D16 (1), (2) production | done | `3bfddd48` |
-| C3 tests, smoke, docs | done | `3f745d30`; red under G5 (b) |
-| C3b repair (named source path) | done | `6e909f13`, a red C3's file deletion caused |
-| C4 handoff | done | This commit |
-| R-0933 | done | Landed (see below) |
-
-Landed: R-0933 — every `remedy do`, including an explicit `remedy do run "<order>"`, walks the sequence, and its `--builder-provider` is the job's recorded builder with source `cli` (`3bfddd48`, test `tests/cli/test_do_flags.py::test_an_explicit_do_run_walks_the_sequence_and_its_job_has_the_cli_builder` in `3f745d30`).
+| C1 bookkeeping | done | `170d4753` |
+| C2 production deletion (a)(b)(c) | done | `41d1e2ff` |
+| C3 test deletion | done | `c59b2498` |
+| C4 docs | done | `34e51da9` |
+| C5 handoff | done | This commit |
+| R-0933 | done | Booked `Done:` in C1 |
 
 ## Open findings
 
-126 open by distinct id, derived with `.remedy-wt/f268-r4/count.py`: HEAD has 140 registrations and 14 `Done:` ids, the same as round 8. C1 booked a verdict and no `Done:`. This round opens no finding. R-0933 carries a `Landed:` line in this handoff only.
+125 open by distinct id, from `.remedy-wt/f268-r4/count.py`: HEAD has 140 registrations and 15 `Done:` ids. That is round 9's 126 minus R-0933, booked in C1. This round opens no finding.
 
 ## Deviations & assumptions
 
-- **Commit sequence.** The block ordered C1, C2, C3 and C4. The round ran C1, C2, C3, C3b and C4. C3b is a repair commit under constraint 3's repair clause, for a red that C3's deletion of `tests/cli/test_do_runtime.py` caused. That test's own message asks for the reference to be repaired "in the same commit as the file". Constraint 3 orders a commit of its own, and the block wins, so C3 alone leaves that one docs test red until C3b.
-- **Two test renames.** Round 9's rewrites renamed three tests to say what they now assert: `…_skips_golden_path` → `…_walks_the_do_sequence` (twice) and `test_smoke_has_repair_loop_section` → `test_smoke_has_do_sequence_section`.
-- **`test_explicit_default_flag_…`.** Its old flag, `--autonomy-level`, no longer exists, so "the sequence runs" is shown with `--repo .`, another flag given explicitly at its default. The removed flag's exit 2 is pinned in `test_do_flags`.
-- **Smoke `12ao` checks.** Only the three that D17 (2) names: JSON with `mission_id`, non-empty `job_ids`, `stopped_before_apply` true. The autorun section's raw-leak scan and its `version`/`cycles_run`/repair fields are gone with the autorun JSON. The fixture holds one committed `README.md`. The variables were renamed `TMP_DO` and `_DO_OUTPUT`.
-- **Docs held to the lines the block named.** `docs/guides/do-run-v1.md` lines 24–27 still list `--autonomy-level`, `--max-cycles` and `--dry-run` under "Flags:", and `docs/guides/autocoder-usage.md:153` and `:161` still name `--max-cycles`. Neither is on a `remedy do` line, so G3 does not see them, and the block did not name them. They describe `run_do`'s v1 flow, which leaves in the next deletion round. Two more stale texts were also left untouched: the 12aq comment "Repair loop should have created at least one candidate" and the 12as message "after repair loop".
-- **`do.run`'s description** (`Start a controlled autorun for a goal.`) and `do_cmd.py`'s module docstring still say "autorun". The block did not name them; they are left for the deletion round.
-- **Exit codes.** The shell guard refuses `$?`, so G2 ends in `&& echo EXIT-0 || echo EXIT-NONZERO`, and G5 prints each `returncode` from Python. G1 and G5 ran from script files under `.remedy-wt/f268-r9/`.
+- **Commit sequence:** as ordered (C1, C2, C3, C4, C5). Between C2 and C3 the tree is red by design: the tests C3 deletes import symbols C2 deleted.
+- **Pushed before the handoff.** C1 to C4 were pushed before C5 so that G5 could be read with real output. C5 is pushed after.
+- **Outside the change set, left untouched:**
+  - `docs/README.md:125` still describes the guide as "`remedy do` cohesive flow".
+  - `packages/orchestration/ui_server.py:3192`'s docstring still names `do_run` as a lazy importer of the catalog. That remains true: `validate_next_safe_action_command` imports it inside the function.
+- **Pre-existing red outside G2:** `tests/cli/test_product_spine.py` reads 3 failed: `TestJobFirstHappyPath::test_happy_path_starts_with_do`, `::test_happy_path_has_job_show` and `TestDoRunHelpAlignment::test_happy_path_uses_do_run`. They assert that the quick start's first line is `remedy do` and that it names `job show`. All three read `_QUICK_START` from `apps/cli/grouped.py`. That file is unchanged since `4362894d` (`git diff 4362894d --stat -- apps` names only `command_catalog.py` and `do_cmd.py`), so the three failures were already there before this round. With C4's docs changes stashed, the tree read the same 3 failed. The file is not on G2's list, and the round does not repair it.
+- **The guide's validator section.** `validate_next_safe_action_command` is described as what it is: a catalog check that `repair_loop`'s callers and the tests use. `do`'s own `Next:` lines are not passed through it, and the guide does not claim they are.
+- **The shell guard refuses `$?` and `${PIPESTATUS}`,** so G2's exit status comes from an `&& … ||` chain.
 
 ## Next
 
-Reviewer: review round 9 and book its verdict in round 10's first commit. Then run the deletion round of the plan's Next Steps (2): `run_do`, `export_do_run_json`, `summarize_do_run` and `dry_run_autorun` have no caller since round 9 and leave with their tests, together with the stale texts named under Deviations.
+Reviewer: review round 10 and book its verdict in the next round's first commit. Then the closure sequence (docs/roadmap/STATUS_closure_protocol.md). Operator questions open: 3.
