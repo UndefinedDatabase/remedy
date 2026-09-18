@@ -81,7 +81,7 @@ def _walk_repo(repo_root: str, max_entries: int) -> tuple[list[str], list[str], 
 
         # Add files in this directory
         for filename in sorted(filenames):
-            rel_filepath = os.path.join(rel_dirpath if rel_dirpath != "." else "", filename).lstrip("./")
+            rel_filepath = f"{rel_dirpath}/{filename}" if rel_dirpath != "." else filename
             files.append(rel_filepath)
 
             # Check cap after each file

@@ -5,7 +5,7 @@ import hashlib
 from pathlib import Path
 
 from packages.memory.local_gateway import list_memory
-from packages.orchestration.study import run_study
+from packages.orchestration.study import _walk_repo, run_study
 
 
 def _hash_tree(root: Path) -> dict[str, str]:
@@ -195,3 +195,20 @@ class TestStudyBasic:
             assert exc_card.key == heur_card.key
             # When exception occurs, should fall back to exact same heuristic
             assert exc_card.value == heur_card.value
+
+    def test_walk_repo_preserves_root_dotfile_names(self, tmp_path) -> None:
+        """Root-level dotfiles are returned with leading dot intact (R-0958 regression)."""
+        # Build fixture with a root-level .gitignore and README.md
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / ".gitignore").write_text("*.pyc\n")
+        (repo / "README.md").write_text("# Example\n")
+
+        # Walk the repo
+        dirs, files, hit_cap = _walk_repo(str(repo), max_entries=2000)
+
+        # Assert .gitignore is in files with its leading dot intact
+        assert ".gitignore" in files
+        assert "gitignore" not in files
+        assert "README.md" in files
+        assert not hit_cap
