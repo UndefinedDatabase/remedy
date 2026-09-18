@@ -50,7 +50,20 @@ WEBSITE_CRITERIA = [
     ("Every link between the site's own pages resolves, and a test proves it.", True),
     ("The test suite passes.", True),
     ("Every page has a title and one top-level heading, and a test proves it.", False),
+    ("No file is added that nothing references.", True),
+    ("Code that is replaced is deleted in the same task, never left beside its "
+     "replacement.", True),
+    ("No stub, placeholder or TODO body survives the job.", True),
 ]
+
+#: DECISION F269 D5 (5): the three hygiene criteria every template ends with,
+#: each measured by one rule of ``contract_hygiene``.
+HYGIENE_CRITERIA = (
+    ("No file is added that nothing references.", "unreferenced"),
+    ("Code that is replaced is deleted in the same task, never left beside its "
+     "replacement.", "replaced"),
+    ("No stub, placeholder or TODO body survives the job.", "stubs"),
+)
 
 CHECK = {"kind": "custom_cmd", "spec": {"argv": ["make", "lint"]},
          "description": "the lint target passes"}
@@ -107,7 +120,7 @@ def test_a_phrase_counts_only_between_non_word_non_hyphen_characters():
 def test_the_compiled_website_template_is_the_files_criteria_in_order():
     criteria = compile_contract_template(load_contract_template("website"))
 
-    assert [c.id for c in criteria] == ["C001", "C002", "C003", "C004"]
+    assert [c.id for c in criteria] == [f"C{n:03d}" for n in range(1, 8)]
     assert [(c.text, c.blocking) for c in criteria] == WEBSITE_CRITERIA
     assert {c.origin for c in criteria} == {"template"}
     assert {c.milestones for c in criteria} == {()}
@@ -116,6 +129,22 @@ def test_the_compiled_website_template_is_the_files_criteria_in_order():
         assert c.check["acceptance_refs"] == [f"{c.id}:0"]
         assert c.check["blocking"] is c.blocking
         DoDCheck.model_validate(c.check)
+
+
+@pytest.mark.parametrize("name", SHIPPED)
+def test_every_shipped_template_compiles_its_hygiene_criteria_to_their_check_lines(name):
+    criteria = compile_contract_template(load_contract_template(name))
+    hygiene = criteria[-len(HYGIENE_CRITERIA):]
+
+    assert [c.text for c in hygiene] == [text for text, _ in HYGIENE_CRITERIA]
+    for criterion, (_, rule) in zip(hygiene, HYGIENE_CRITERIA):
+        assert criterion.blocking is True
+        assert criterion.check == {
+            "id": f"ctr-{criterion.id}", "kind": "custom_cmd",
+            "spec": {"argv": ["python3", "-m", "packages.orchestration.contract_hygiene",
+                              rule]},
+            "blocking": True, "acceptance_refs": [f"{criterion.id}:0"],
+            "description": f"contract hygiene: {rule}", "source": "plan_acceptance"}
 
 
 def test_an_unknown_template_name_is_refused_naming_the_four():
