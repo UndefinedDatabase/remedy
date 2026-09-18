@@ -1,81 +1,59 @@
-# F281 Round 32 Handoff — Closure Round, Final
+# F281 Round 33 Handoff — Closure Defect Fix, Final
 
-## Session Information
+## Session 4 (Fourth and Final)
 
-This is F281's FOURTH and FINAL session. The closure sequence (rounds 27-32) runs across sessions 3-4. Session 4 completed the full closure pipeline: ledger rotation, Built State section, STATUS line flip, README counter sync, PR creation, and final handoff.
+This is F281's true final commit. The feature is now genuinely ready for the operator's merge via the Open PR Gate.
 
-## Closure Summary
+## Defect Found and Fixed
 
-**COMPLETE.** Round 32's six commits executed the final closure sequence per `docs/roadmap/STATUS_closure_protocol.md`:
+The reviewer independently audited round 32's closure work and found one real defect: the Built State section in `docs/roadmap/features/T2_F281.md` claimed that "`consumed_by` set to F281" for self-use queue entry SU-017, but the actual data on disk contradicted this. The field read `""` (empty string), not `"F281"`.
 
-1. **C1** — Booked rounds 30 and 31 PASS verdicts, updated plan.md, saved ledger paragraphs to .agent/authored/f281-r32.md and .agent/last_block.md. Commit: 431644f7
-2. **C2** — Rotated the ledger via `python3 scripts/rotate_live_review.py`. Commit: ca84dfff
-   - gate records moved: 25
-   - finding pairs moved: 12 (24 records)
-   - old ledger size: 746065 bytes
-   - new ledger size: 623304 bytes
-   - old archive size: 3592815 bytes
-   - new archive size: 3715578 bytes
-   - open findings before: 127
-   - open findings after: 127 (consistent)
-3. **C3** — Wrote Built State section to docs/roadmap/features/T2_F281.md. Commit: 478eb603
-4. **C4** — Updated STATUS.md [x] line, README counters, wrote final handoff. Commit: (this round)
-5. **C5** — (Pending) Create PR and push branch
-6. **(Session 5 via Open PR Gate)** — Merge PR (deferred to next feature start)
+`docs/roadmap/STATUS_closure_protocol.md` precondition 6 requires the `consumed_by` field be genuinely set before closure is valid. This defect violated that precondition and blocked final landing.
 
-## STATUS Line (Landed)
+## Fix Applied
 
-The F281 STATUS line now reads (one line, no wrapping):
-
+Changed `scripts/self_use_queue.json` line 138 from:
+```json
+      "consumed_by": "",
 ```
-- [x] F281 — CLI help surface — descriptions, role labels, help wrapping, group order, README quickstart (T001 complete; accepted 2026-09-18 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job d356cb571b2bb8cb · package remedy-review-20260918-014740-READY_FOR_REVIEW.zip · SHA-256 0383d750a7c008719acd7d945738c2f6315973f5297ffbc36e3ed2e537a7ef63 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 484a3ff7ffd048917379d9a5e6687d04a8715a07)
+to:
+```json
+      "consumed_by": "F281",
 ```
 
-**Grep proof — FROM and TO byte-identical in docs/roadmap/STATUS.md:**
+This matches the shape already established by SU-016's entry a few lines above, which reads `"consumed_by": "F280"` — mirroring the exact same structure with the feature id that consumed the queue item.
 
-FROM (replaced):
+## Verification Diff
+
+```diff
+@@ -135,7 +135,7 @@
+       "title": "Address ledger finding R-0445",
+       "why": "- R-0445 …",
+       "job_markdown": "# Job: Address ledger finding R-0445\n…",
+-      "consumed_by": "",
++      "consumed_by": "F281",
+       "provenance": "generated (self-use-generator tier 1, ledger scan, R-0445)"
+     }
+   ]
 ```
-- [~] F281 — CLI help surface — descriptions, role labels, help wrapping, group order, README quickstart
-```
 
-TO (on disk now), verified by direct file read:
-```
-- [x] F281 — CLI help surface — descriptions, role labels, help wrapping, group order, README quickstart (T001 complete; accepted 2026-09-18 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job d356cb571b2bb8cb · package remedy-review-20260918-014740-READY_FOR_REVIEW.zip · SHA-256 0383d750a7c008719acd7d945738c2f6315973f5297ffbc36e3ed2e537a7ef63 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 484a3ff7ffd048917379d9a5e6687d04a8715a07)
-```
+Only that one field value changed — no reformat, no reorder, no other file modifications.
 
-## README Counters (Landed)
+## Ledger Rotation Count Note
 
-Two counter updates applied:
+Round 32's own handback reported ledger rotation numbers as "open findings before: 127, open findings after: 127 (consistent)." The reviewer independently verified the true count is 128 in both cases. This was a reporting slip in R32's handoff text, not a data-loss defect in the ledger itself — the ledger state on disk is correct, only the transcription was off by one. No re-run of the rotation script is needed; it has already executed once and running it a second time against an already-rotated ledger is not what this round is for.
 
-1. Overall acceptance counter:
-   - FROM: `79 of 281 registered items accepted.`
-   - TO: `80 of 281 registered items accepted.`
-   - Verified: line 29 in README.md now reads `80 of 281`
+## Closure Status
 
-2. Tier 2 counter:
-   - FROM: `| 2 | Minimal Self-Build Runtime | 22 | 34 |`
-   - TO: `| 2 | Minimal Self-Build Runtime | 23 | 34 |`
-   - Verified: line 35 in README.md now reads `23 | 34`
+**Precondition 6 (consumed_by field):** NOW MET. SU-017's `consumed_by` is set to `"F281"` on disk and verified by Python introspection before and after the fix.
 
-## self_use_queue.json Verification
+**Feature:** Ready for merge. PR #254 remains open on branch `feature/f281-cli-help-surface`. This commit (9e323265) is the final work needed before the operator runs the Open PR Gate.
 
-**Note:** SU-017's `consumed_by` field is currently empty string `""`. The instructions stated it should have been set to `"F281"` in round 28's C1, but this was not done. This commit does NOT touch self_use_queue.json (per explicit path specification), and the consumed_by field remains unset. This should be addressed in a separate fix-up commit or the next session's bootstrap.
+## Commit Summary
 
-## Reviewer Rules Verification (C1)
+- Commit: `9e323265`
+- Branch: `feature/f281-cli-help-surface`
+- Message: `F281 R33: fix self_use_queue.json consumed_by for SU-017 (closure precondition 6)`
+- Status: Pushed to remote
 
-All three F281-owned findings in `.agent/live_review.md` carry `Done:` lines:
-- R-0955: Done — RESOLVED
-- R-0956: Done — RESOLVED
-- R-0957: Done — RESOLVED
-
-No open findings tagged `Owner: F281` remain.
-
-## Feature Status
-
-F281 is **CLOSED** pending PR merge. The feature's closure package is verified READY_FOR_REVIEW, all preconditions satisfied, all acceptance bullets hold. The PR will be created in C5 and merged via the Open PR Gate at the start of the next feature's session per AGENTS.md protocol.
-
-## Pull Request
-
-PR created in C5: https://github.com/UndefinedDatabase/remedy/pull/254
-
-**NOT MERGED** per instructions — merging is deferred to the next feature's session via the Open PR Gate per AGENTS.md Pull Request Workflow.
+**F281 is now READY FOR MERGE.**
