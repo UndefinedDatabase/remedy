@@ -100,14 +100,10 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--approved", action="store_true", help=arg.help)
             elif arg.name == "--approve":
                 parser.add_argument("--approve", action="store_true", dest="approve", help=arg.help)
-            elif arg.name == "--max-cycles":
-                parser.add_argument("--max-cycles", default="3", dest="max_cycles", help=arg.help)
             elif arg.name == "--auto-approve-low-risk":
                 parser.add_argument("--auto-approve-low-risk", action="store_true", dest="auto_approve_low_risk", help=arg.help)
             elif arg.name == "--no-tests":
                 parser.add_argument("--no-tests", action="store_true", dest="no_tests", help=arg.help)
-            elif arg.name == "--autonomy-level":
-                parser.add_argument("--autonomy-level", default="1", dest="autonomy_level", help=arg.help)
             elif arg.name == "--path":
                 parser.add_argument("--path", default=None, help=arg.help)
             elif arg.name == "--type":
@@ -128,8 +124,6 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--repo", default=arg.default, help=arg.help)
             elif arg.name == "--dry-run":
                 parser.add_argument("--dry-run", action="store_true", dest="dry_run", help=arg.help)
-            elif arg.name == "--ui":
-                parser.add_argument("--ui", action="store_true", dest="ui", help=arg.help)
             elif arg.name == "--fixture-reviewer":
                 parser.add_argument("--fixture-reviewer", action="store_true", dest="fixture_reviewer", help=arg.help)
             elif arg.name == "--after-task":
@@ -474,7 +468,6 @@ def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
 
     raw = argv if argv is not None else sys.argv[1:]
-    _did_inject = False
     group = resolve_group(raw[0]) if raw else None
     if group in _DEFAULT_COMMAND:
         subcmds = {c.subcommand for c in get_commands_for_group(group)}
@@ -486,7 +479,6 @@ def main(argv: list[str] | None = None) -> None:
             default_sub = _DEFAULT_COMMAND[group]
             raw = [raw[0], default_sub] + raw[1:]
             argv = raw
-            _did_inject = True
 
     # Intercept argparse errors for clean output
     try:
@@ -543,41 +535,6 @@ def main(argv: list[str] | None = None) -> None:
     if unknown:
         print(render_error(f"remedy {args._group} {args._subcmd}", f"Unrecognized arguments: {' '.join(unknown)}"), file=sys.stderr)
         sys.exit(2)
-
-    _truly_bare = False
-    if _did_inject and raw and raw[0] == "do" and len(raw) >= 3:
-        # The flags `remedy do "<order>"` (the F268 sequence) accepts; any other
-        # flag keeps the invocation on the `do run` autorun path.
-        _BARE_ALLOWED = {"--json", "--repo", "--no-llm", "--yes", "--no-ui",
-                         "--builder-provider", "--reviewer-provider",
-                         "--force-job", "--force-mission",
-                         "--step-by-step", "--plan-only", "--apply",
-                         "--contract", "--commit", "--commit-auto",
-                         "--commit-with-history", "--push", "--project",
-                         "--builder-model", "--reviewer-model", "--planner-model",
-                         "--max-total-tokens", "--max-provider-calls",
-                         "--max-wall-clock-minutes", "--max-cost-usd", "--deadline"}
-        _BARE_VALUED = {"--repo", "--builder-provider", "--reviewer-provider",
-                        "--contract", "--commit", "--project", "--builder-model",
-                        "--reviewer-model", "--planner-model", "--max-total-tokens",
-                        "--max-provider-calls", "--max-wall-clock-minutes",
-                        "--max-cost-usd", "--deadline"}
-        tail = raw[3:]
-        _truly_bare = True
-        i = 0
-        while i < len(tail):
-            tok = tail[i]
-            if tok.startswith("-"):
-                name, has_value = tok.split("=", 1)[0], "=" in tok
-                if name in _BARE_ALLOWED:
-                    if name in _BARE_VALUED and not has_value and i + 1 < len(tail):
-                        i += 1
-                else:
-                    _truly_bare = False
-                    break
-            i += 1
-    args._injected_default = _did_inject
-    args._truly_bare = _truly_bare
 
     command_id = getattr(args, "_command_id", None)
     if command_id is None:

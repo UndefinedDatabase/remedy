@@ -298,10 +298,6 @@ def _cmd_do(
     *,
     repo: str = ".",
     project: str | None = None,
-    autonomy_level: int = 2,
-    max_cycles: int = 3,
-    enable_ui: bool = False,
-    dry_run: bool = False,
     json_output: bool = False,
     builder_provider: str | None = None,
     reviewer_provider: str | None = None,
@@ -314,8 +310,6 @@ def _cmd_do(
     max_wall_clock_minutes: str | None = None,
     max_cost_usd: str | None = None,
     deadline: str | None = None,
-    injected_default: bool = False,
-    truly_bare: bool = False,
     no_llm: bool = False,
     yes: bool = False,
     force_job: bool = False,
@@ -329,115 +323,27 @@ def _cmd_do(
     commit_with_history: bool = False,
     push: bool = False,
 ) -> None:
-    # DECISION F268 D9 (3): before any step, on either path.
+    """`remedy do`, with or without the word `run`: the F268 sequence, always (DECISION F268 D16 (1)).
+
+    Remedy deliberately has no second route under `do`: the autorun branch and the
+    flags only it read (`--autonomy-level`, `--max-cycles`, `--ui`, `--dry-run`)
+    were deleted by DECISION F268 D16 (1) and (2).
+    """
+    # DECISION F268 D9 (3): before any step.
     _refuse_do_flags_not_yet_available({
         "--contract": contract, "--commit": commit, "--commit-auto": commit_auto,
         "--commit-with-history": commit_with_history, "--push": push,
     })
-    # --- The F268 sequence: `remedy do "<order>"` ---
-    # Fires ONLY when grouped.py determined the invocation is truly bare:
-    # `run` was injected AND no flag tokens besides the ones `_BARE_ALLOWED`
-    # names appeared in the raw argv. This catches `do "x" --autonomy-level 1`
-    # (explicit flag at default value) which value-equality checks cannot
-    # distinguish.
-    if truly_bare:
-        _cmd_do_order(goal, repo=repo, json_output=json_output, no_llm=no_llm,
-                      yes=yes, builder_provider=builder_provider,
-                      reviewer_provider=reviewer_provider, builder_model=builder_model,
-                      reviewer_model=reviewer_model, planner_model=planner_model,
-                      project=project, max_total_tokens=max_total_tokens,
-                      max_provider_calls=max_provider_calls,
-                      max_wall_clock_minutes=max_wall_clock_minutes,
-                      max_cost_usd=max_cost_usd, deadline=deadline, no_ui=no_ui,
-                      force_job=force_job, force_mission=force_mission,
-                      step_by_step=step_by_step, plan_only=plan_only, apply=apply)
-        return
-    _validate_role_override("builder", "provider", builder_provider)
-    _validate_role_override("reviewer", "provider", reviewer_provider)
-
-    # --- Budget resolution (always runs — catches config-only budgets) ---
-    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
-    try:
-        budgets = resolve_job_budgets(
-            cli_max_total_tokens=max_total_tokens,
-            cli_max_provider_calls=max_provider_calls,
-            cli_max_wall_clock_minutes=max_wall_clock_minutes,
-            cli_max_cost_usd=max_cost_usd,
-            cli_deadline=deadline,
-            project_root=repo,
-        )
-    except (BudgetConfigError, ValueError) as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(2)
-
-    # Require a goal
-    if not goal:
-        print("Error: provide a goal.", file=sys.stderr)
-        sys.exit(2)
-
-    if dry_run:
-        from packages.orchestration.autorun import dry_run_autorun
-        plan = dry_run_autorun(
-            goal, repo,
-            project_id=project,
-            autonomy_level=autonomy_level,
-            max_cycles=max_cycles,
-            enable_ui=enable_ui,
-        )
-        if json_output:
-            print(json.dumps(plan, indent=2))
-        else:
-            print(f"Dry run: {goal}")
-            print(f"Repo: {plan['repo_path']}")
-            print(f"Autonomy: {plan['autonomy_label']} (level {autonomy_level})")
-            print(f"Phases: {', '.join(plan['phases'])}")
-            print(f"Max cycles: {max_cycles}")
-            if plan["gates"]:
-                print(f"Gates: {', '.join(g['gate'] for g in plan['gates'])}")
-        return
-
-    # v1 cohesive flow — phased result
-    from packages.orchestration.do_run import (
-        export_do_run_json,
-        run_do,
-        summarize_do_run,
-    )
-    from packages.orchestration.project_registry import ProjectNotFoundError, select_project
-
-    _resolved_project = None
-    try:
-        _resolved_project, _src = select_project(project, repo)
-        _resolved_project_id = str(_resolved_project.id)
-    except ProjectNotFoundError:
-        print(
-            "Error: no project found. Run: remedy init\n"
-            "  or pass --project <slug-or-id>",
-            file=sys.stderr,
-        )
-        sys.exit(3)
-
-    try:
-        result = run_do(
-            goal, repo,
-            autonomy_level=autonomy_level,
-            max_loops=max_cycles,
-            stop_before_apply=True,
-            budgets=budgets,
-            project_id=_resolved_project_id,
-        )
-    except Exception as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    if _resolved_project is not None and result.job_id:
-        from packages.orchestration.project_registry import attach_job, save_project
-        attach_job(_resolved_project, result.job_id)
-        save_project(_resolved_project)
-
-    if json_output:
-        print(json.dumps(export_do_run_json(result, contract=result._contract), indent=2))
-    else:
-        print(summarize_do_run(result))
+    _cmd_do_order(goal, repo=repo, json_output=json_output, no_llm=no_llm,
+                  yes=yes, builder_provider=builder_provider,
+                  reviewer_provider=reviewer_provider, builder_model=builder_model,
+                  reviewer_model=reviewer_model, planner_model=planner_model,
+                  project=project, max_total_tokens=max_total_tokens,
+                  max_provider_calls=max_provider_calls,
+                  max_wall_clock_minutes=max_wall_clock_minutes,
+                  max_cost_usd=max_cost_usd, deadline=deadline, no_ui=no_ui,
+                  force_job=force_job, force_mission=force_mission,
+                  step_by_step=step_by_step, plan_only=plan_only, apply=apply)
 
 
 def _cmd_run_show(
@@ -856,15 +762,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         getattr(args, "goal", None) or "",
         repo=getattr(args, "repo", None) or ".",
         project=getattr(args, "project", None),
-        autonomy_level=int(getattr(args, "autonomy_level", None) or 2),
-        max_cycles=int(getattr(args, "max_cycles", None) or 3),
-        injected_default=getattr(args, "_injected_default", False),
-        truly_bare=getattr(args, "_truly_bare", False),
-        enable_ui=(
-            bool(getattr(args, "ui", False))
-            and not getattr(args, "no_ui", False)
-        ),
-        dry_run=getattr(args, "dry_run", False),
         json_output=getattr(args, "json", False),
         builder_provider=getattr(args, "builder_provider", None),
         reviewer_provider=getattr(args, "reviewer_provider", None),
