@@ -87,6 +87,7 @@ packages.orchestration.context_compiler
 packages.orchestration.context_coverage
 packages.orchestration.context_inspector
 packages.orchestration.continue_from_node
+packages.orchestration.contract_hygiene
 packages.orchestration.contract_templates
 packages.orchestration.cost_preview
 packages.orchestration.cost_report
