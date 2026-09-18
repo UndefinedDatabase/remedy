@@ -5,7 +5,9 @@ gate: a planned mission carries a three-criterion contract whose checks are
 decided by files in a tmp directory — two pass, one cannot.  One job is
 dispatched through ``execute_move`` with an ``execute`` seam that runs the REAL
 ``dod_gate.run_job_gate`` in that directory.  Afterwards the contract reads two
-``met`` and one ``unmet``, and ``evaluate_move`` refuses
+``met`` and one ``unmet`` — the unmet one whole-mission, so its check is
+reported in the job's DoD and the job's gate releases (DECISION F269 D6 (1))
+— and ``evaluate_move`` refuses
 ``declare_mission_achieved`` naming that criterion; once the check can pass
 and a job re-runs, the refusal is gone.
 
@@ -134,7 +136,9 @@ class TestTheContractHoldsTheMission:
         outcome = _dispatch(project_id, mission_id, tmp_path, workdir)
 
         assert outcome.status == "dispatched"
-        assert "gate=blocked" in outcome.detail
+        # DECISION F269 D6 (1): the only red check is C003's, a whole-mission
+        # criterion's, so it is reported in the job's DoD and the gate releases.
+        assert "gate=released" in outcome.detail
         assert _statuses(project_id, mission_id, tmp_path) == [
             ("C001", "met"), ("C002", "met"), ("C003", "unmet")]
         contract = read_mission_contract(load_mission(project_id, mission_id, tmp_path))
@@ -151,6 +155,26 @@ class TestTheContractHoldsTheMission:
 
         assert "blocking contract criteria are not met: C003" in reason
         assert "C001" not in reason and "C002" not in reason
+
+    def test_a_red_whole_mission_check_releases_the_job_but_holds_the_mission(
+            self, tmp_path, planned, workdir):
+        """DECISION F269 D6 (1): reported in the job's DoD, still decided on the contract."""
+        from packages.orchestration.dod_gate import load_dod, load_gate_result
+
+        project_id, mission_id = planned
+        outcome = _dispatch(project_id, mission_id, tmp_path, workdir)
+        mark_milestone_done(project_id, mission_id, "M001", tmp_path)
+
+        # The milestone's own DoD check `acc-001` is C001's check (same kind and
+        # spec), so C001's is not added a second time; it stays blocking.
+        blocking = {c.id: c.blocking for c in load_dod(outcome.job_id).checks}
+        assert blocking == {"acc-001": True, "ctr-C002": False, "ctr-C003": False}
+        result = load_gate_result(outcome.job_id)
+        assert (result["released"], result["blocking_red"], result["reported_red"]) == (
+            True, [], ["ctr-C003"])
+        assert _statuses(project_id, mission_id, tmp_path)[2] == ("C003", "unmet")
+        assert "blocking contract criteria are not met: C003" in _achieve_refusal(
+            project_id, mission_id, tmp_path)
 
     def test_once_the_check_can_pass_a_re_run_lifts_the_refusal(
             self, tmp_path, planned, workdir):

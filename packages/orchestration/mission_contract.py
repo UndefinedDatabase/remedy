@@ -31,7 +31,8 @@ hands the criteria to ``dod_compiler.compile_dod`` as one task each, and
 through :func:`write_planner_criteria` (D4 (2)).  This module never RUNS a
 check: the job's own gate in ``dod_gate.py`` does.  At dispatch the
 orchestrator merges a job's slice checks into that job's DoD
-(:func:`merge_contract_slice_into_dod`, D4 (3)), and after the job ran it
+(:func:`merge_contract_slice_into_dod`, D4 (3); a whole-mission criterion's
+check enters it as a reported, non-blocking check, D6 (1)), and after the job ran it
 reads the gate's verdict back onto the slice criteria
 (:func:`record_contract_results`, D4 (4)).
 
@@ -385,6 +386,14 @@ def merge_contract_slice_into_dod(mission: Any, milestone_id: str | None,
     slice checks.  A DoD file that will not parse is left alone — the gate
     already holds such a job, and overwriting it would hide that.  A mission
     with no contract, or a slice with no compiled check, changes nothing.
+
+    DECISION F269 D6 (1): a whole-mission criterion's check enters the DoD
+    with ``blocking`` false — a reported check the gate evaluates and never
+    holds on, because it describes the mission's end state and one job of a
+    many-milestone mission cannot meet it.  A milestone-scoped criterion's
+    check keeps the criterion's ``blocking``.  The criterion's status still
+    follows the evidence (:func:`record_contract_results`), so the mission
+    gate still holds the achieve move on it.
     """
     from packages.orchestration.dod_gate import dod_path, load_dod, store_dod
     from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD, DoDCheck
@@ -392,7 +401,8 @@ def merge_contract_slice_into_dod(mission: Any, milestone_id: str | None,
     contract = read_mission_contract(mission)
     if contract is None:
         return 0
-    slice_checks = [DoDCheck.model_validate(c.check)
+    slice_checks = [DoDCheck.model_validate(
+                        {**c.check, "blocking": c.blocking and bool(c.milestones)})
                     for c in job_contract_slice(contract, milestone_id)
                     if c.check is not None]
     if not slice_checks:

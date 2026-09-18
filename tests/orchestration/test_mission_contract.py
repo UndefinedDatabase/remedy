@@ -20,7 +20,8 @@ And what DECISION F269 D4 (1) and (2) require:
 
 And D4 (3) and (4): a job's DoD gains its slice checks without duplicating
 one it already has, and the job's stored gate result decides its slice
-criteria.
+criteria.  D6 (1): a whole-mission criterion's check enters the DoD
+non-blocking, a milestone-scoped one with the criterion's ``blocking``.
 
 Every test writes into ``tmp_path``; no real provider is called — a planned
 mission replays a recorded planner answer.
@@ -370,6 +371,30 @@ class TestTheJobDoDCarriesItsSlice:
         assert [(c.id, c.spec["selector"]) for c in dod.checks] == [
             ("ctr-C001", "tests/test_all.py"), ("ctr-C002", "tests/test_m1.py")]
         assert (dod.compiled, dod.origin) == (False, "deterministic")
+
+    def test_a_whole_mission_criterions_check_enters_non_blocking_though_the_criterion_blocks(
+            self, sliced):
+        """DECISION F269 D6 (1): a whole-mission check is reported, never held on."""
+        whole = read_mission_contract(sliced).criteria[0]
+        assert (whole.id, whole.milestones, whole.blocking) == ("C001", (), True)
+        assert whole.check["blocking"] is True
+
+        merge_contract_slice_into_dod(sliced, "M1", JOB)
+
+        [check] = [c for c in load_dod(JOB).checks if c.id == "ctr-C001"]
+        assert check.blocking is False
+
+    def test_a_milestone_scoped_blocking_criterions_check_enters_blocking(self, sliced):
+        """DECISION F269 D6 (1): a milestone's own criterion keeps its ``blocking``."""
+        merge_contract_slice_into_dod(sliced, "M1", JOB)
+
+        [check] = [c for c in load_dod(JOB).checks if c.id == "ctr-C002"]
+        assert check.blocking is True
+
+    def test_a_job_with_no_milestone_gets_only_non_blocking_checks(self, sliced):
+        assert merge_contract_slice_into_dod(sliced, None, JOB) == 1
+
+        assert [(c.id, c.blocking) for c in load_dod(JOB).checks] == [("ctr-C001", False)]
 
     def test_a_job_for_m1_gets_no_m2_scoped_check(self, sliced):
         merge_contract_slice_into_dod(sliced, "M1", JOB)
