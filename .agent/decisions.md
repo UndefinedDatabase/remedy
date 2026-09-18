@@ -14579,3 +14579,35 @@ entry follows. F271 layers the closure-precondition wiring and the
 fixture-based red-proof on top of `dead_command_ids` without redoing the
 mechanism. HOW TO REVERSE: revert this round's C2 commit; delete this
 paragraph.
+
+## DECISION F266 D1 (2026-09-18, reviewer, round 1) — the `study` role and its measured default model
+CHOSEN: register `study` in `packages/orchestration/role_config.KNOWN_ROLES` and set
+`packages/orchestration/model_routing.ROLE_TASK_CLASSES["study"] = "summarize"` — the same cheap
+tier `teacher` and `summary` already carry, per `docs/roadmap/features/T4_F266.md`'s Design
+section ("the cheapest task class capable of reading a repository"). MEASURED: F110 deliberately
+does not map a tier to a concrete model id (`role_config.py` module docstring) — every role
+resolves through the same precedence chain (CLI args > config file > provider-aware default) in
+`resolve_role_config`, so there is no existing "cheap model" to select. `study`'s default model is
+therefore the standard provider-aware default (`ollama-default`, or `claude-flagship` under a
+Claude provider) — identical to every other role's default — operator-overridable exactly like
+`teacher`/`summary`/`builder`. ALTERNATIVES CONSIDERED: hardcoding a specific cheap model id for
+`study` alone, rejected because it would contradict F110's own deliberate design (routing records a
+tier, never selects a model) and single out one role for a policy no other role has. REVERSE by
+removing `study` from both maps.
+
+## DECISION F266 D2 (2026-09-18, reviewer, round 1) — `provenance` on `MemoryEntry` and auto-approval as a data property
+CHOSEN: add `provenance: str = "human"` to `MemoryEntry` (plain `str`, not a `Literal`, because
+`docs/roadmap/features/T5_F265.md` already carries DECISION D-C's identical text for its own
+future provenance value and a closed `Literal` would force this feature to predict its spelling).
+`store_memory()` gains a keyword-only `provenance: str = "human"` parameter and its `approved`
+parameter becomes `approved: bool | None = None`: an explicit `approved=` argument is always
+honoured unchanged (preserves every existing caller's behaviour); when left `None`, the default is
+DERIVED from `provenance` — `True` when `provenance == "machine-study"`, `False` otherwise
+(identical to today's hardcoded default for every other provenance). This makes D-C's carve-out a
+property of the DATA (`provenance`) rather than a second code path `study` must remember to invoke
+correctly. ALTERNATIVES CONSIDERED: a separate `store_machine_study_memory()` wrapper, rejected
+because it duplicates `store_memory`'s validation/persistence logic for one field's worth of
+difference, and the downstream approval gates (`project_brain.py`, `context_summary.py`) already
+gate on `.approved` alone, so nothing downstream needs to know about `provenance` at all this round
+— only the write path does. REVERSE by deleting this paragraph, the `provenance` field, and
+reverting `store_memory`'s signature.

@@ -1,32 +1,33 @@
-# Live Review — F280 CLI vocabulary v2, part two
+# Live Review — F266 remedy study (repo comprehension pass)
 
-> Round-by-round review record, re-headed at the F280 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F261, which is
-> accepted: its STATUS line went `[x]` at `ea5b08f78be401efc227072f1b3a31fe764abda7` and its
-> pull request 251 merged at `9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`, at this session's
-> Open PR Gate. Only the heading, this paragraph and the `## Steps` section below are
-> rewritten. Everything from the `## Findings` line to the end of the file is carried forward
-> BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series across the re-head.
-> Measured by the reviewer at `9f1b6d250e68fb5ee3a2dd39d0a8ffef3eef0792`: 127 DISTINCT ids
-> matching `^- R-\d{4} — ` against 2 DISTINCT ids matching `^Done: R-\d{4} — `, so 125 findings
-> are open BY DISTINCT ID.
-> F261's last round, round 28, has an entry here: its verdict was written into pull request
-> 251, and under docs/agents/self_drive_protocol.md the reviewer books a branch-terminating
-> verdict into the next feature's first round. Records of features already `[x]` in
-> docs/roadmap/STATUS.md move to `.agent/live_review_archive.md` through
-> `scripts/rotate_live_review.py` in each closure sequence, under operator amendment
-> amend0905-throughput.
+> Round-by-round review record, re-headed at the F266 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F280; the feature
+> those rounds actually tracked was F281 (F280's branch continued as F281's own session, per
+> that session's own handoff history) — F281's STATUS line went `[x]` and its pull request 254
+> merged into `main` at the reviewer's Open PR Gate under docs/agents/self_drive_protocol.md,
+> before this round began. F281's true final round has no on-disk gate entry here by
+> construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md): its verdict lives in the
+> merged PR and in `.agent/handoff.md`'s git history only. Only the heading, this paragraph and
+> the `## Steps` section below are rewritten. Everything from the `## Findings` line to the end
+> of the file is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX
+> series across the re-head.
+> Measured by the reviewer, at the commit this branch was cut from: 131 DISTINCT ids matching
+> `^- R-\d+ — ` against 3 DISTINCT ids matching `^Done: R-\d+ — `, so 128 findings are open BY
+> DISTINCT ID.
 
 ## Steps
 
-THE ORDER BELOW IS T2_F280.md's Orchestrator brief, with T001 in the order of the inventory
-`.agent/f261_t003_inventory.md`, rounds J to P.
-R1 claim F280, re-head this record, book F261 round 28, rule DECISION F280 D1 and hand `job run`'s
-provider flags to the runner → the ping-pong path of `do run` with its flags and the scope plan,
-R-0894 → `job budget <id> set`, R-0906 and R-0909, then `job fulfill` → the fixtures off
-`job create`, then `job create`, `job attach-repo` and `job permit` → `propose`, with the ruling
-on its two surviving gates → the `flight_plan` rename → `worker doctor` and `job run --tasks` →
-T002 → the integration gate → the closure sequence.
+THE ORDER BELOW IS T4_F266.md's Orchestrator brief: T002's design (the `provenance` field and
+the auto-approval it drives) settled and landed FIRST alongside the `study` role_config entry,
+then T001 (the bounded comprehension pass itself, the largest slice and the budget risk), then
+CLI wiring for a standalone `study` command (F268 does not exist yet, so F266 ships `study` as
+its own entry point rather than waiting to be invoked by it), then T003 (the three-step `init`
+→ `study` → `teacher ask` proved end to end against a foreign repository fixture — this includes
+adding a memory-card grounding source to `teacher ask`, which has none today: `teacher_qa.py`
+reads only the ledger, one `--file`, and general knowledge).
+R1 claims F266, re-heads this record, and lands DECISION F266 D1 (the `study` role_config entry
+and its measured default model) and DECISION F266 D2 (the `provenance` field and auto-approval
+design).
 
 ## Findings
 

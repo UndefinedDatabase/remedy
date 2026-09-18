@@ -33,7 +33,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 
 ## Tier 4 — Repo Comprehension (operator order amend0831)
 
-- [ ] F266 — remedy study (repo comprehension pass)
+- [~] F266 — remedy study (repo comprehension pass)
 
 ## Tier 2 — Easy Start & Contract Block (operator order amend0905)
 

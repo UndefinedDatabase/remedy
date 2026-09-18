@@ -1,38 +1,40 @@
-# Plan — F281 CLI help surface
+# Plan — F266 remedy study (repo comprehension pass)
 
-Branch: feature/f281-cli-help-surface, cut from `main` at
-`c617dd74df26b8e677161b265a88d5926f4d78ab`.
+Branch: feature/f266-remedy-study, cut from `main` at the merge commit of
+pull request 254 (F281's closure).
 
 ## Goal
 
-Every catalog description, role label and help page reads as the finished
-vocabulary of DECISION amend0905-vocab D4 (`docs/roadmap/features/T2_F281.md`).
-DONE. T001 and the Acceptance list both hold; a READY_FOR_REVIEW package
-exists (round 31, independently verified).
+The three-step `remedy init` → `remedy study` → `remedy teacher` runs on an
+arbitrary repository: `study` performs a bounded, read-only comprehension
+pass and files APPROVED memory cards carrying `provenance: "machine-study"`
+(DECISION D-C, `docs/roadmap/features/T4_F266.md`), and `teacher ask`
+answers questions about that repository from those cards.
 
 ## Current Step
 
-ROUND 32 — CLOSURE, FINAL. C1 books rounds 30 and 31's PASS verdicts. C2
-rotates the ledger. C3 writes the feature file's Built State section
-(closure precondition 4). C4 is the closure commit: STATUS `[~]`→`[x]`,
-README counters, final `.agent/` state. C5 opens the PR. The PR is NOT
-merged this session — merging is deferred to the next feature's start via
-the Open PR Gate.
+ROUND 1 — claim F266 and settle T002's design first (per the Orchestrator
+brief). DECISION D1: register the `study` role_config role (task class
+`summarize`, the same cheap tier as `teacher`/`summary`; F110 deliberately
+maps no tier to a model id, so `study`'s default model is the standard
+provider-aware default like every other role, operator-overridable).
+DECISION D2: add `provenance` to `MemoryEntry`, thread it through
+`store_memory`, and make `provenance == "machine-study"` auto-approve at
+creation as a data property, not a second code path.
 
 ## Next Steps
 
-1. None for F281 — closing.
-2. The next session's Phase 0 state probe will find this PR open and merge
-   it via the Open PR Gate before claiming the next feature.
+1. T001 — the bounded comprehension pass (structure, core modules,
+   conventions, entry points), calling the new `study` role and stopping
+   at its budget cap with an honest partial result.
+2. CLI wiring — a standalone `study` command in the catalog.
+3. T003 — the three-step proved end to end against a foreign repository
+   fixture, including the new memory-card grounding source for
+   `teacher ask`.
+4. Closure sequence.
 
 ## Risks
 
-- F281 ran 32 rounds across 4 sessions, past the standing 25-round/7-session
-  soft limit its own feature file names. This was not scope creep: the
-  Acceptance list was fully satisfied by round 26, and rounds 27-32 are the
-  closure sequence itself (full-suite run, self-use consumption, evidence,
-  zip, ledger, STATUS, PR) — amend0827-process-diet rule 1 exempts the
-  closure sequence from the pure-bookkeeping-round ban, and stopping
-  mid-closure with a built-but-unpackaged feature would have been a worse
-  outcome than finishing it. Recorded here for the operator's visibility,
-  not as an unresolved risk.
+- `teacher ask` has no memory-card retrieval path today (measured this
+  round): T003 must add one, which is more than wiring three commands
+  together and should be sized as its own round.
