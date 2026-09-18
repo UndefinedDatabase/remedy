@@ -1595,8 +1595,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--max-cost-usd", "Maximum cost in USD for this job (F104 budget)", required=False, is_option=True, default=None),
             ArgDef("--deadline", "UTC deadline for this job as ISO 8601 string (F018 budget)", required=False, is_option=True, default=None),
             ArgDef("--no-llm", "Force heuristic intake (no LLM provider call)", required=False, is_option=True, is_flag=True),
-            ArgDef("--force-job", "Plan the order as ONE job, whatever shape the planner chose", required=False, is_option=True, is_flag=True),
-            ArgDef("--force-mission", "Plan the order as milestones of two or more jobs, whatever shape the planner chose", required=False, is_option=True, is_flag=True),
+            ArgDef("--force-job", "One job for what you ask, its tasks under the mission, whatever shape the planner chose", required=False, is_option=True, is_flag=True),
+            ArgDef("--force-mission", "Two or more jobs under the mission, one per milestone outline or deliverable, whatever shape the planner chose", required=False, is_option=True, is_flag=True),
         ),
         may_mutate_repo=False,
         # R-0965: a bare `remedy do "<order>"` runs its job through the same
