@@ -221,12 +221,12 @@ class Mission:
     written before F272 stays byte-identical and every reader that predates it
     keeps working — which is why :data:`MISSION_SCHEMA_VERSION` does NOT move
     for them either.  ``order`` is the :class:`MissionOrder` this mission came
-    from.  ``contract`` is RESERVED for F269 by DECISION amend0905-vocab D9 in
-    ``docs/system/vocabulary.md``, which rules that the contract is compiled
-    from the order and gives the building of it to that feature; this module
-    stores it and defines no shape for it, exactly as ``dossier_ref`` is
-    reserved for the dossier.  ``None`` and an absent key both mean "no
-    contract compiled yet", which is the truth today for every mission.
+    from.  ``contract`` is the mission's acceptance criteria (DECISION
+    amend0905-vocab D9).  Its SHAPE is owned by
+    ``packages/orchestration/mission_contract.py`` (DECISION F269 D2), which
+    validates it on read and on write and is its only production writer; this
+    module stores the body and defines no shape for it.  ``None`` and an absent
+    key both mean "no contract compiled yet".
     """
 
     id: str
@@ -603,12 +603,12 @@ def set_mission_contract(project_id: str, mission_id: str,
                          root: Path | None = None) -> Mission:
     """Persist the compiled CONTRACT on the mission record.
 
-    What belongs in this body is NOT ruled here: DECISION amend0905-vocab D9 in
-    ``docs/system/vocabulary.md`` rules that the contract is compiled from the
-    order, and gives the building of it to F269.  This function stores whatever
-    that feature compiles and defines no shape of its own, which is why the
-    field is reserved and empty until then.  Like :func:`set_mission_plan`, it
-    touches neither the goal, nor the status, nor the job chain.
+    What belongs in this body is NOT ruled here: its shape is owned by
+    ``packages/orchestration/mission_contract.py`` (DECISION F269 D2), whose
+    ``write_mission_contract`` validates a contract and then stores it through
+    this function.  This function is the storage call underneath and defines
+    no shape of its own.  Like :func:`set_mission_plan`, it touches neither the
+    goal, nor the status, nor the job chain.
     """
     if contract is not None and not isinstance(contract, dict):
         raise MissionError("a mission contract body must be an object")
