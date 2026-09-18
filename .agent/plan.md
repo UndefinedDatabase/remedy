@@ -12,12 +12,11 @@ proposal complete it (`docs/roadmap/features/T2_F269.md`).
 
 ## Current Step
 
-Round 11, closure: repair 1 — the hygiene check's git query gets a
-timeout, the closure suite's one bad node — then the self-use item, the
-integrity check, the evidence job and the review package.
+Closed. Round 12 booked the closure verdict PASS_WITH_RISKS, registered
+R-0972 for F273, rotated the ledger and flipped STATUS; the pull request
+into `main` waits for the Open PR Gate.
 
 ## Next Steps
 
-1. Book round 11's verdict, rotate the ledger, and the closure commit with
-   the STATUS line, the README counters and the self-use item consumed.
-2. Open the pull request.
+1. The next session merges F269's pull request at the Open PR Gate, then
+   claims the next feature under Rule A5.
