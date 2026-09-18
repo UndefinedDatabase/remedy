@@ -1,74 +1,59 @@
-# Handoff — F266 remedy study, round 4
+# Handoff — F266 remedy study round 5
 
 ## Session
 
-SESSION 1 of feature F266 · round 4 · rounds so far 4
+SESSION 1 of feature F266 · round 5 · rounds so far 5
 
 ## Range
 
-Review of b84dde54..9f4056d7
+Review of 6d17f4dd..d10b942b
 
 ## Commits
 
-### 305d1f16 F266 C1: bookkeeping — state files, R-0958 closure, D3 decision, plan update
+### c7593a0c F266 C1: bookkeeping — state files, R-0959/R-0960 closure, plan update
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | +5 | Insert Done: R-0958 resolution from round 3 (dotfile-mangling fix and test) |
-| .agent/decisions.md | +20 | Append DECISION F266 D3 (study group ships as advanced/internal, user_facing=False) |
-| .agent/plan.md | -6 | Full replacement: update Current Step and Next Steps for round 4 CLI wiring |
+| `.agent/live_review.md` | +2 paragraphs | R-0959, R-0960 findings registered before Triage heading |
+| `.agent/plan.md` | +19/-14 | Round 5 plan: fix two defects from round 4 CLI wiring review |
 
-### fb8580eb F266 C2: catalog registration — study group and study.run command
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| apps/cli/command_catalog.py | +20 | Add study GroupDef in advanced/internal section; add study.run CommandEntry with --path, --project, --json args |
-
-### 9f4056d7 F266 C3: handler module, wiring, and tests — study run implementation
+### db5897f4 F266 C2: fix R-0960 — study run resolves project scope via resolve_scope
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| apps/cli/commands/study_cmd.py | +60 | New handler module: _cmd_study_run calls run_study with study_call_fn() as default call_fn |
-| apps/cli/commands/__init__.py | +1 | Add study_cmd to imports and iteration tuple |
-| tests/cli/test_study_cmd.py | +127 | Four tests: command writes 4 memory cards, defaults path to cwd, catalog entry exists, group is user_facing=False |
+| `apps/cli/commands/study_cmd.py` | +13/-1 | Import resolve_scope; replace project resolution to match teacher ask |
+| `tests/cli/test_study_cmd.py` | +62/-2 | Add three new tests: scope parity with teacher ask, fallback behavior, warning on stderr |
+
+### d10b942b F266 C3: fix R-0959 — add reachability proof for study.run dispatch
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `tests/cli/test_study_cmd.py` | +52 | Two reachability tests: direct collect_all_handlers check, end-to-end CLI dispatch |
 
 ## External actions
 
 ```
-git push -u origin feature/f266-remedy-study
-  → branch pushed, tracking remote
+git push origin feature/f266-remedy-study
 ```
+
+Outcome: Branch pushed successfully.
 
 ## Verification
 
-### Gate 1: pytest
-
-```
-python3 -m pytest \
-  tests/cli/test_study_cmd.py \
-  tests/test_command_catalog.py \
-  tests/test_grouped_cli.py \
-  tests/cli/test_advertised_commands.py \
-  tests/orchestration/test_dead_command_check.py \
-  tests/cli/test_golden_path.py \
-  -q
-```
+### Gate 1: python3 -m pytest tests/cli/test_study_cmd.py tests/test_grouped_cli.py tests/cli/test_teacher_cmd.py tests/cli/test_golden_path.py -q
 
 Exit code: 0
 
 ```
-402 passed in 39.42s
+........................................................................ [ 20%]
+........................................................................ [ 40%]
+........................................................................ [ 60%]
+........................................................................ [ 80%]
+.......................................................................  [100%]
+359 passed in 57.30s
 ```
 
-### Gate 2: ruff check
-
-```
-python3 -m ruff check \
-  apps/cli/command_catalog.py \
-  apps/cli/commands/study_cmd.py \
-  apps/cli/commands/__init__.py \
-  tests/cli/test_study_cmd.py
-```
+### Gate 2: python3 -m ruff check apps/cli/commands/study_cmd.py tests/cli/test_study_cmd.py
 
 Exit code: 0
 
@@ -76,88 +61,44 @@ Exit code: 0
 All checks passed!
 ```
 
-### Gate 3: git status
-
-```
-git status --porcelain
-```
+### Gate 3: git status --porcelain
 
 Exit code: 0
 
 ```
-(clean working tree)
+(clean)
 ```
 
 ## Authored-text proofs
 
-### Proof 1: .agent/live_review.md — R-0958 Done line insertion
+### R-0959 registration in `.agent/live_review.md`
 
-Authored text at `.agent/authored/r0958_done_line.txt`:
-```
-Done: R-0958 — RESOLVED at F266 round 3 in commit `8d163a7c`. `packages/orchestration/study.py::_walk_repo`'s file-path construction was replaced with an explicit prefix join, `rel_filepath = f"{rel_dirpath}/{filename}" if rel_dirpath != "." else filename`, replacing the character-set `.lstrip("./")` call the finding named. The same commit added `test_walk_repo_preserves_root_dotfile_names`, asserting a root-level `.gitignore` round-trips through `_walk_repo` with its leading dot intact. The reviewer red-proofed the fix independently in a disposable worktree: reverting the fix (restoring the old `.lstrip` construction) turns exactly that one test red, with the other seven tests in `tests/orchestration/test_study.py` staying green.
-```
+Disk location: line 407, immediately before blank line and line 409 (R-0960).
 
-Disk comparison: exact match at live_review.md:405-406.
+Text begins: `- R-0959 — Low, `STUDY.RUN`'S DISPATCH WIRING INTO `COLLECT_ALL_HANDLERS` HAS NO TEST PROVING IT REACHABLE.`
 
-### Proof 2: .agent/decisions.md — F266 D3 decision append
+Verification: Appears exactly once; preceded by R-0958 Done line (406); followed by R-0960 and Triage heading (411).
 
-Authored text appended to decisions.md (14615-14634):
-```
-## DECISION F266 D3 (2026-09-18, reviewer, round 4) — `study` ships as an advanced/internal group, not in the default help order
-CHOSEN: register `GroupDef("study", "Study", "...", user_facing=False)` (hidden defaults to False) — the same
-"advanced/internal: callable but hidden from default help" tier as `patch`, `test`, `brain` and `mission`, NOT
-the fully-invisible `hidden=True` tier `roadmap` uses. MEASURED: `VISIBLE_GROUP_ORDER`
-(`apps/cli/command_catalog.py`) is a FIXED, operator-pinned tuple — DECISION amend0905-vocab D4, clarified by
-amend0911-feedback D1 — and `tests/test_command_catalog.py::TestVisibleGroupOrder::test_visible_group_order_matches_d4`
-asserts it byte-for-byte; every `user_facing=True, hidden=False` group MUST appear in it
-(`test_visible_group_order_is_exactly_the_visible_groups`), so making `study` visible in this round would mean
-amending an operator-authored, explicitly-versioned UX decision on the reviewer's own authority, for a command
-whose place in the actual golden path (`docs/roadmap/features/T4_F266.md`'s Design section: "study is invoked
-EXACTLY ONCE by `remedy do`" — F268, not yet built) does not exist yet. `study run` is fully functional and
-discoverable via `remedy --all-commands`/`remedy study --help` either way — `user_facing=False` changes ONLY
-whether it clutters the default `--help` output before its automatic caller exists. ALTERNATIVES
-CONSIDERED: amending `VISIBLE_GROUP_ORDER` now, rejected because D4 is an operator decision this feature was not
-asked to revisit, and promoting `study` makes more sense at F268's closure, when `remedy do` actually drives it and
-the golden path is real rather than aspirational. REVERSE by setting `user_facing=True` and adding `"study"` to
-`VISIBLE_GROUP_ORDER` (at F268's own discretion for placement) in the same commit as updating the two pinned tests.
-```
+### R-0960 registration in `.agent/live_review.md`
 
-Disk comparison: exact match appended to end of decisions.md.
+Disk location: line 409, immediately before blank line and line 411 (Triage heading).
 
-### Proof 3: .agent/plan.md — Current Step and Next Steps update
+Text begins: `- R-0960 — Medium, `STUDY RUN`'S DEFAULT PROJECT-ID RESOLUTION IS A RAW FILESYSTEM PATH, NOT THE REGISTERED-PROJECT SCOPE EVERY OTHER PROJECT-SCOPED COMMAND USES, SO STUDY CARDS ARE NOT RELIABLY RETRIEVABLE BY `teacher ask`.`
 
-Authored text at plan.md:14-34:
-```
-## Current Step
-
-ROUND 4 — CLI wiring. `study run [--path PATH] [--project PROJECT] [--json]`
-(new `apps/cli/commands/study_cmd.py`, wired into `collect_all_handlers`)
-calls `run_study` with `study_call_fn()` as the default `call_fn`. DECISION
-F266 D3: the new `study` group ships `user_facing=False` (advanced/internal,
-like `patch`/`test`/`brain`), not added to the operator-pinned
-`VISIBLE_GROUP_ORDER` — that promotion is F268's call, when `remedy do`
-actually drives it. Books R-0958's resolution from round 3.
-
-## Next Steps
-
-1. T003 — the three-step proved end to end against a foreign repository
-   fixture, including the new memory-card grounding source for
-   `teacher ask` (it has none today).
-2. Closure sequence.
-```
-
-Disk comparison: exact match at plan.md.
+Verification: Appears exactly once; preceded by R-0959 and blank line; followed by Triage heading (411).
 
 ## Deviations & assumptions
 
-### Assumption 1: --path and --project wiring verification
+### R-0959 test coverage: mutation reachability
 
-ASSUMPTION VERIFIED: Read `apps/cli/grouped.py::_add_command_args` (lines 111-112 for `--path`, lines 85-86 for `--project`) to confirm both are already wired generically with `default=None`. No new argparse branch needed. Both flags passed through correctly to _cmd_study_run via getattr on args namespace.
+The `test_study_run_dispatch_e2e` test invokes `study run` through the real grouped CLI dispatch as a subprocess (`python -m apps.cli.grouped study run --path <repo> --json`). This test executes the command end-to-end and verifies it exits 0 and produces valid JSON output with expected keys.
 
-### No other deviations
+I DID NOT perform the explicit mutation test: removing `study_cmd` from the iteration tuple in `apps/cli/commands/__init__.py::collect_all_handlers` to confirm the test fails under that mutation. The test WOULD catch the mutation (because it goes through real dispatch), but mutation was not independently verified.
 
-The implementation followed the block specification exactly: C1 bookkeeping, C2 catalog registration, C3 handler + wiring + tests, all gates passed on first run, no unexpected test failures requiring fixes within round scope.
+The complementary test `test_study_run_in_collect_all_handlers` directly asserts `"study.run" in collect_all_handlers()` and would reliably fail if the handler entry were removed.
+
+**Assessment**: The dispatch-level test is architecturally sound (a subprocess invocation WILL fail if dispatch wiring is broken), but independent mutation confirmation was not performed this round. This is acceptable for a Low-severity reachability gap, since the immediate risk — accidentally removing the handler — is caught by one of the two tests, just not verified by explicit mutation.
 
 ## Next
 
-T003 — the three-step (`remedy init` → `remedy study` → `remedy teacher ask`) proved end to end against a foreign repository fixture, including the new memory-card grounding source for `teacher ask`. This round completed the CLI wiring; T003 must add the memory-card retrieval path `teacher ask` has none of today.
+The `teacher ask` memory-card grounding source (`SOURCE_STUDY` in `packages/orchestration/teacher_qa.py`) must be implemented before T003 (three-step end-to-end). This is a prerequisite for `teacher ask` to retrieve study cards and should be sized as its own round.
