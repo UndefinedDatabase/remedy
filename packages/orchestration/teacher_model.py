@@ -205,6 +205,7 @@ def ask_teacher(
     events: Sequence[Mapping[str, Any]] = (),
     code: str | None = None,
     code_path: str | None = None,
+    study_cards: Sequence[str] = (),
     level: str = DEFAULT_LEVEL,
     call: Callable[..., TeacherReply] | None = None,
     job_id: str | None = None,
@@ -223,7 +224,7 @@ def ask_teacher(
     this repository opens a socket to answer a teacher question.
     """
     context = build_teacher_context(
-        question, events=events, code=code, code_path=code_path, level=level
+        question, events=events, code=code, code_path=code_path, study_cards=study_cards, level=level
     )
     configured = resolve_role_config(TEACHER_ROLE)
     transport = resolve_teacher_transport()
