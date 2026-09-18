@@ -48,6 +48,7 @@ path) is untouched this round — `study` writes cards through
   AST-sweep inventory test goes red.
 - Bare `ruff` is DENIED to this session's shell; `python3 -m ruff check
   <path>` is the spelling every gate of this feature orders.
+- Every round's gates run through `pytest` directly (`python3 -m pytest ...`), never a wrapper.
 - Destructive verification runs only inside a disposable git worktree,
   never in the primary checkout, which satisfies `git status --porcelain`
   empty at every verdict.
