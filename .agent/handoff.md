@@ -1,151 +1,175 @@
-# Handoff — F270 History apply: one commit per task, merge on demand · Round 1
+# Handoff — F270 History apply: one commit per task, merge on demand · Round 2
 
 ## Session
 
-SESSION 1 of feature F270 · round 1 · rounds so far 1
+SESSION 1 of feature F270 · round 2 · rounds so far 2
 
-Context self-assessment: the worker read the block, AGENTS.md, T2_F270.md, DECISION F270 D1, the prototype, `worktrees.py` in full and every `pingpong_job.py` region it edited once each, and every figure below comes from a command run in this round.
+Context self-assessment: the worker read the block, AGENTS.md, T2_F270.md, DECISION F270 D1 and D2, `job_apply.py` in full, the prototype diff and test, and the helpers it reuses. Every figure below comes from a command run in this round.
 
 ## Range
 
-Review of b7f966c0..HEAD — branch `feature/f270-history-apply`.
+Review of ff9d56a2..HEAD — branch `feature/f270-history-apply`.
 
 ## Summary
 
-Round 1 claims F270 and lands T001 per DECISION F270 D1: every applied task of a worktree-mode job lands as one commit on `remedy/job-<job id>`, authored and committed `Remedy <remedy@local>`, unsigned and hook-free, recorded on the task as `worktree_commit` and as the job's `worktree_head`, adopted rather than repeated when HEAD already carries this job's and this task's trailers over a clean worktree, and blocking the job with `task_<id>_worktree_commit_failed` when it fails.
+Round 2 lands T002 with T003 per DECISION F270 D2. `remedy job apply <job> --approve --commit-with-history` runs every existing gate of `apply_job` unchanged and in its present order. It then checks the D2 (2) refusals, checks them again right before the merge, and runs `git merge --no-ff --no-log --no-edit -m <message> <verified tip>` in the target, under the operator's own identity, configuration and hooks. The merge replaces the file copy and nothing else: the post-apply verification and the post-test run after it exactly as they do after a copy. A failed merge (a conflict or a refusing hook) is aborted with `git merge --abort`. HEAD, the status and `MERGE_HEAD` are then proved back where they were, and the refusal names git's unmerged paths or quotes the hook's output. Every refusal is a blocked apply and exits 0, as a blocked apply does today.
 
-- C1 claimed F270: payload copies, plan, context, the re-headed ledger (Gate F269 R13 PASS, `Done: R-0973`, R-0974 registered, Owner F273), DECISION F270 D1, STATUS `[~]`, and the R-0974 acceptance line in T2_F273.md.
-- C2 is the code: `commit_job_worktree`, `read_head_remedy_trailers` and `worktree_matches_head` in `worktrees.py`; the `TaskEntry.worktree_commit` field with its export and import, `build_task_commit_message`, `_commit_applied_task` and the seam in `run_job` in `pingpong_job.py`; the D1 (6) docstring and doc corrections.
-- C3 is the tests: seven new tests in `tests/orchestration/test_job_worktree_integration.py`.
-- C4 is this handoff.
+- C1 is the bookkeeping: the payload copies, round 1's verdict booked in the ledger, DECISION F270 D2, and the plan.
+- C2 is the code: `job_apply.py` (the flag, the refusals, the merge, the abort, the record fields, the summary and the next-step line), the `--commit-with-history` ArgDef on `job.apply`, and the pass-through in `_cmd_job_apply`.
+- C3 is the tests: 15 tests in the new `tests/orchestration/test_job_apply_history.py`.
+- C4 is this handoff, plus the block's byte copy that C1 missed (see Deviations).
 
 ## Commits
 
-### b58eeb95 F270 R1 C1: claim F270, book F269 round 13 verdict and R-0973 resolution, register R-0974, land DECISION F270 D1
+### 8b6a6a10 F270 R2 C1: book round 1's verdict, land DECISION F270 D2 and the round 2 plan
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f270-r1-block.md` | +121 / -0 | Byte copy of the block |
-| `.agent/authored/f270-r1-context.md` | +43 / -0 | Byte copy of context.md |
-| `.agent/authored/f270-r1-decisions.md` | +53 / -0 | Byte copy of decisions.md |
-| `.agent/authored/f270-r1-f273_from.txt` | +4 / -0 | Byte copy of f273_from.txt |
-| `.agent/authored/f270-r1-f273_to.txt` | +7 / -0 | Byte copy of f273_to.txt |
-| `.agent/authored/f270-r1-ledger.md` | +6 / -0 | Byte copy of ledger.md |
-| `.agent/authored/f270-r1-live_review_head.md` | +22 / -0 | Byte copy of live_review_head.md |
-| `.agent/authored/f270-r1-plan.md` | +28 / -0 | Byte copy of plan.md |
-| `.agent/authored/f270-r1-status_from.txt` | +1 / -0 | Byte copy of status_from.txt |
-| `.agent/authored/f270-r1-status_to.txt` | +1 / -0 | Byte copy of status_to.txt |
-| `.agent/context.md` | +17 / -15 | := context.md |
-| `.agent/decisions.md` | +53 / -0 | `b7f966c0` bytes + decisions.md (DECISION F270 D1) |
-| `.agent/live_review.md` | +24 / -20 | live_review_head.md + `b7f966c0` bytes from `## Findings` + ledger.md |
-| `.agent/plan.md` | +18 / -15 | := plan.md |
-| `docs/roadmap/STATUS.md` | +1 / -1 | F270 line `[ ]` to `[~]` (status_from.txt to status_to.txt) |
-| `docs/roadmap/features/T2_F273.md` | +3 / -0 | f273_from.txt replaced by f273_to.txt: the R-0974 acceptance line |
+| `.agent/authored/f270-r2-decisions.md` | +50 / -0 | Byte copy of decisions.md |
+| `.agent/authored/f270-r2-ledger.md` | +2 / -0 | Byte copy of ledger.md |
+| `.agent/authored/f270-r2-plan.md` | +28 / -0 | Byte copy of plan.md |
+| `.agent/decisions.md` | +50 / -0 | `ff9d56a2` bytes + decisions.md (DECISION F270 D2) |
+| `.agent/live_review.md` | +2 / -0 | `ff9d56a2` bytes + ledger.md (Gate F270 R1 PASS) |
+| `.agent/plan.md` | +9 / -9 | := plan.md |
 
-402 insertions, 51 deletions (`git show --numstat`).
+141 insertions, 9 deletions (`git show --numstat`).
 
-### ff323f0e F270 R1 C2: every applied task lands as one Remedy commit on its job worktree branch, adopted on resume, blocking the job on failure
+### 2c3f76ec F270 R2 C2: job apply --approve --commit-with-history merges the job branch with --no-ff as the operator, refusing and aborting without changing anything
 | Path | +/- | Reason |
 |------|-----|--------|
-| `docs/system/first-fulfilled-job-demo-v0.md` | +5 / -2 | D1 (6): lines 124 and 140 |
-| `packages/orchestration/pingpong_job.py` | +119 / -7 | Field, export/import, message builder, adopt-or-commit step, seam, D1 (6) docstrings |
-| `packages/orchestration/worktrees.py` | +86 / -6 | Commit helper, trailer reader, clean check, D1 (6) docstrings |
+| `apps/cli/command_catalog.py` | +1 / -0 | `--commit-with-history` ArgDef on `job.apply`: what it does and that it needs `--approve` |
+| `apps/cli/commands/do_cmd.py` | +8 / -1 | `_cmd_job_apply` parameter, docstring, pass-through, and the `job.apply` handler |
+| `packages/orchestration/job_apply.py` | +316 / -7 | D2 (1) to (7); docstrings of the module, `apply_job` and `_apply_from_workspace` |
 
-210 insertions, 15 deletions (`git show --numstat`).
+325 insertions, 8 deletions (`git show --numstat`).
 
-### 1da36563 F270 R1 C3: tests prove two Remedy commits for a two-task run, the operator's identity and hooks ignored, adoption, branch refusal, the message, copy mode and the failure block
+### 17c8c737 F270 R2 C3: tests prove the no-ff merge as the operator, the preview, plain copy unchanged, and every refusal leaving the target byte-identical
 | Path | +/- | Reason |
 |------|-----|--------|
-| `tests/orchestration/test_job_worktree_integration.py` | +205 / -0 | Class `TestPerTaskCommitsOnTheJobBranch`, t1 to t7 |
+| `tests/orchestration/test_job_apply_history.py` | +362 / -0 | h1 to h13 (h7 parametrised over a plain directory and a git target) plus one CLI test |
 
-205 insertions, 0 deletions (`git show --numstat`).
+362 insertions, 0 deletions (`git show --numstat`).
 
-### C4 (this commit) F270 R1 C4: handoff
+### C4 (this commit) F270 R2 C4: handoff
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | rewritten | This handback |
+| `.agent/authored/f270-r2-block.md` | +102 / -0 | Byte copy of the block (a payload C1 missed) |
 
-Every commit is under 500 inserted lines. The largest is C1, with 402.
+Every commit is under 500 inserted lines. The largest is C3, with 362.
 
-## What C2 builds (DECISION F270 D1)
+## What C2 builds (DECISION F270 D2)
 
-- `worktrees.commit_job_worktree(path, message) -> sha` refuses with `WorktreeError`, before anything is written, a checkout whose `rev-parse --abbrev-ref HEAD` does not start with `BRANCH_PREFIX`. Otherwise it runs `git add -A .` and then `git -c core.hooksPath=/dev/null commit --no-verify --no-gpg-sign --allow-empty --quiet -F -`. It sets `GIT_AUTHOR_NAME/EMAIL` and `GIT_COMMITTER_NAME/EMAIL` to `Remedy`/`remedy@local` in the environment. Every git call has a timeout: the two writes use `GIT_COMMIT_TIMEOUT_SEC = 120`, and the branch read and the `rev-parse` use `_git`'s 60 seconds.
-- `worktrees.read_head_remedy_trailers(path)` reads HEAD's `Remedy-Job` and `Remedy-Task` through `%(trailers:only,unfold)`. `worktrees.worktree_matches_head(path)` is `status --porcelain --untracked-files=all` empty.
-- `pingpong_job.build_task_commit_message(job, task)` writes the first line `task <n>: <title>`, where n is 1 plus the number of other tasks that carry a commit. The title is whitespace-collapsed and cut at a word boundary with `...` to at most 72 characters. The body sentence is `Remedy applied task <id> of job <id>, changing <files, at most ten then ...>.` Then come `contract: <met> of <total> criteria green` (or `contract: none`) and the two trailers.
-- `pingpong_job._commit_applied_task` adopts HEAD (via `W.snapshot`) when both trailers match and the worktree is clean. Otherwise it commits. It then sets `task.worktree_commit` and `job.worktree_head`.
-- The seam in `run_job` sits after `previous_summaries.append(task.proof_summary)` and before `tasks_run += 1; _persist_job(job)`. It runs only when `isolation_mode == "worktree"`, a handle exists and `worktree_commit` is blank. If the commit fails, the task becomes `TASK_BLOCKED` with error `worktree_commit_failed: <type>: <git error>`, and `_block_job` sets job error `task_<id>_worktree_commit_failed`.
-
-### D1 (6) sentences changed
-1. `worktrees.py` `WorktreeHandle.head_commit` comment: "worktree HEAD (== base_commit until committed)" → "worktree HEAD: base_commit until a job task's commit (F270) moves it".
-2. `worktrees.py` `retain_for_recovery` docstring: "Keep the worktree — and its uncommitted changes —" and "Nothing is committed and nothing is merged … because the run's changes are uncommitted and the worktree is the only place they exist" → this call commits nothing and merges nothing, and the changes past the branch tip (all of a single run's, and a job task's that never reached its F270 commit) exist only in the worktree.
-3. `pingpong_job.py` `_finalize_job_workspace` docstring: "(tree-to-tree — no commit, no merge)" → this step makes no commit and no merge, and the branch already carries one commit per applied task. "KEEP the worktree and its uncommitted changes" → "KEEP the worktree with every change it holds past the branch tip".
-4. `pingpong_job.py` `_finalize_job_workspace` retain comment: "the accepted changes are uncommitted and live ONLY in this worktree" → the hand-off lives in this worktree, and any change past the branch tip lives only there.
-5. `docs/system/first-fulfilled-job-demo-v0.md` line 124: "Git operations (no commits, branches, or PRs)" → no commit on the operator's branch and no PR; the per-task commits on `remedy/job-<job id>` (F270) are not exercised by the demo.
-6. Same file, line 140 (now 142): "No git operations: no commits, no branches, no PRs" → no commit on the operator's branch and no PR; a job's own branch gets one commit per applied task.
+- **Constants and helpers**:
+  - `HISTORY_REFUSED = "history_merge_refused"` prefixes every refusal reason.
+  - `_history_git(target, *args)` runs every git call of the path with `timeout=HISTORY_GIT_TIMEOUT_SEC` (120) and never raises: a timeout or an OS error returns rc -1.
+- **`_history_refusals(job, target, *, skip_blocked, skipped) -> list[str]`**, each entry one sentence, writing nothing. In order:
+  - a staging (copy-mode) job, ending the list, whose sentence says nothing was copied and a plain `--approve` copies;
+  - a target that is not the top level of a git repository, also ending the list;
+  - a detached `HEAD`;
+  - `MERGE_HEAD` present;
+  - `git status --porcelain --untracked-files=all` not empty, naming the paths (ten at most, then "and N more");
+  - `--skip-blocked` given;
+  - a file the copy would skip;
+  - `_job_branch_refusal`: the branch missing, its tip not `worktree_head`, or the sha256 of `git diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ <job_initial_tree> <tip>^{tree}` not `result_diff_sha256`. The diff is read in text mode and re-encoded as UTF-8, exactly as `worktrees.write_tree_diff` wrote `result.diff`.
+- **Where the refusals are checked** in `_apply_from_workspace`:
+  - First, after the mode-fidelity gate, which is the last existing gate before the preview branch. A real run blocks on the first sentence and puts the rest in `blocked_reasons`. A preview (`--dry-run` or no `--approve`) stays `dry_run` and carries every sentence in `blocked_reasons`; the summary lists them under "With --approve, --commit-with-history would be refused:" and the "To apply" line ends with `--commit-with-history`.
+  - Again right before the merge: after the record preflight, the baseline recheck and the durable pre-apply record. A refusal there persists the final record, as the neighbouring post-record failures do.
+- **`build_history_merge_message(job, n, target_branch)`**:
+  - The first line is `Merge the <n> task commits of Remedy job <first 8 of the id>`, or "task commit" when n is 1.
+  - The body sentence is `This merges <remedy/job-id>, the reviewed work of Remedy job <id>, onto <branch> with one commit per applied task.`
+  - Next comes the contract line from round 1's `pingpong_job._task_commit_contract_line`, imported rather than copied.
+  - Last come the trailers `Remedy-Job: <id>` and `Co-authored-by: Remedy <remedy@local>`, built from `worktrees.REMEDY_JOB_TRAILER` and `REMEDY_COMMIT_NAME/EMAIL`.
+- **`_merge_job_branch`**:
+  - It records the previous tip, `merged_branch`, `target_branch` and `history_commits` (`rev-list --reverse <worktree_base_commit>..<worktree_head>`), then merges.
+  - On success it proves `HEAD^1` is the previous tip and `HEAD^2` is `worktree_head`, and sets `merge_commit`.
+  - On failure it collects `git diff --name-only --diff-filter=U` into `merge_conflicts` and runs `git merge --abort` when `MERGE_HEAD` exists. It then re-reads HEAD, the status and `MERGE_HEAD`: if they are not restored it says so and resets nothing. Otherwise it returns the conflict sentence or the quoted git and hook output, with git's own "Not committing merge" advice line dropped. Output is capped at 300 characters.
+- **D2 (5)**: after a merge, a failed post-apply verification, a failed post-test and the parent check each add `_merge_undo_sentence` to `blocked_reasons` and to the summary. The sentence gives the merge sha, the previous tip, "nothing was pushed, Remedy undoes nothing itself", and the one command `git reset --keep <previous tip>`. The `Next:` line of a blocked apply that carries a merge commit names the same command. Remedy itself never runs `git reset`.
+- **D2 (6)**: the record and JSON export gain `commit_with_history`, `merged_branch`, `target_branch`, `history_commits`, `merge_commit` and `merge_conflicts`. A merged apply's summary reads `Merged <n> task commit(s) of <branch> onto <branch> as merge commit <sha>. Nothing was pushed.` "No commits or pushes were made" stays for an apply without the flag.
+- **D2 (7)**: exit codes are unchanged. `_cmd_job_apply` never exits non-zero on a blocked result, and the CLI test measures 0 for both runs.
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f270-r1-mut 1da36563` for G4, then `git worktree remove --force` on it. `git worktree list` afterwards: `/home/decodeux/Repos/remedy  1da36563 [feature/f270-history-apply]` alone.
-- After this commit: `git push -u origin feature/f270-history-apply`, never forced. No pull request is opened this round.
+- G4 ran `git worktree add --detach .remedy-wt/f270-r2/mut 17c8c737` and then `git worktree remove --force` on it. `git worktree list` afterwards shows only `/home/decodeux/Repos/remedy  17c8c737 [feature/f270-history-apply]`.
+- After this commit: `git push origin feature/f270-history-apply`, never forced. No pull request is opened this round.
 - No evidence job and no zip.
 
 ## Verification
 
-All gates ran at C3 (`1da36563`), before this commit.
+G1 to G4 ran at C3 (`17c8c737`), before this commit.
 
-- **G1**: `python3 .remedy-wt/f270-r1/g1.py`, exit 0:
+- **G1**: `python3 .remedy-wt/f270-r2/g1.py`, exit 0:
   ```
-  payload digests match: True
-  plan.md equals payload: True
-  context.md equals payload: True
-  live_review.md equals head + base from ## Findings + ledger: True
-  decisions.md equals base + payload: True
-  STATUS.md equals base with the pair applied: True
-  T2_F273.md equals base with the pair applied: True
-  authored copies equal payloads: True 10
-  block.md sha256: 86c4ec7a3489d8458103e0bb25d49369df829a8da2549c3fac5375fea735f418
+  digest ledger.md True
+  digest decisions.md True
+  digest plan.md True
+  digest block.md True
+  plan.md True
+  live_review.md True
+  decisions.md True
+  authored f270-r2-ledger.md True
+  authored f270-r2-decisions.md True
+  authored f270-r2-plan.md True
+  True
   ```
-- **G2**: the block's 31-path list, serial, `python3 -m pytest -q -p no:cacheprovider …`, exit 0: `1035 passed in 217.74s (0:03:37)`. The only test file this round edited, `test_job_worktree_integration.py`, is already first in the list.
-- **G3**: `python3 -m ruff check packages/orchestration/worktrees.py packages/orchestration/pingpong_job.py tests/orchestration/test_job_worktree_integration.py`, exit 0: `All checks passed!`
-- **G4**: `python3 .remedy-wt/f270-r1/g4.py`, exit 0. It uses one disposable worktree `.remedy-wt/f270-r1-mut` at `1da36563`, `__pycache__` purged before each run, and `python3 -B -m pytest -p no:cacheprovider tests/orchestration/test_job_worktree_integration.py` from the worktree root. Every run's imported module was `/home/decodeux/Repos/remedy/.remedy-wt/f270-r1-mut/packages/orchestration/worktrees.py`. Each mutation was reverted by its exact original bytes, and worktree status was empty after each revert.
-  - control (unmutated): exit 0, `20 passed`
-  - (a) seam's commit step skipped (`if False and (job.isolation_mode == …`): exit 1, `4 failed, 16 passed`: t1 `test_a_two_task_run_lands_two_remedy_commits_on_the_job_branch`, t2 `test_the_operators_identity_and_hooks_never_reach_the_job_commits`, t3 `test_a_commit_already_made_for_the_task_is_adopted_not_repeated`, t7 `test_a_failed_commit_blocks_the_job`
-  - (b) the two `GIT_COMMITTER_*` entries removed from the helper's environment: exit 1, `2 failed, 18 passed`: t1, t2
-  - (c) adoption check removed (`adopt = False and (…`): exit 1, `1 failed, 19 passed`: t3
-  - (d) branch refusal removed (`if False and not branch.startswith(BRANCH_PREFIX):`): exit 1, `1 failed, 19 passed`: t4 `test_the_commit_helper_refuses_the_operators_checkout`
-  - All ids are under `tests/orchestration/test_job_worktree_integration.py::TestPerTaskCommitsOnTheJobBranch::`. No mutation stayed green.
-- Full suite: not run (amend0917-throughput).
+  After the block copy was written for C4, `python3 .remedy-wt/f270-r2/c4_block.py` also exited 0: `block copy sha256 baefec097a18dbb309a1a90b4c049485dcb2efed37c5425e63150b4643b003a1` and `four authored copies equal payloads: True`.
+- **G2**: the block's 16-path list, whose first entry is the new file (the only test file this round edited), serial, `python3 -m pytest -q -p no:cacheprovider …`, exit 0: `514 passed in 183.42s (0:03:03)`.
+- **G3**: `python3 -m ruff check packages/orchestration/job_apply.py apps/cli/command_catalog.py apps/cli/commands/do_cmd.py tests/orchestration/test_job_apply_history.py`, exit 0: `All checks passed!`
+- **G4**: `python3 .remedy-wt/f270-r2/g4.py 17c8c737`, exit 0.
+  - It used one disposable worktree `.remedy-wt/f270-r2/mut` at `17c8c737`, purged `__pycache__` before each run, and ran `python3 -B -m pytest -p no:cacheprovider tests/orchestration/test_job_apply_history.py` from the worktree root.
+  - Every run's imported module was `/home/decodeux/Repos/remedy/.remedy-wt/f270-r2/mut/packages/orchestration/job_apply.py`.
+  - Each FROM matched exactly once. Each mutation was reverted to the original bytes, and the sha256 `4234f6c3…` matched after each revert.
+  - All ids below are under `tests/orchestration/test_job_apply_history.py::`.
+
+  | Run | Change | Result | Failing tests |
+  |-----|--------|--------|---------------|
+  | control | none (unmutated) | exit 0, `15 passed` | none |
+  | (a) | `_history_git(target, "merge", "--abort")` → `pass` | exit 1, `2 failed, 13 passed` | `TestRefusals::test_h6_a_git_conflict_is_aborted_naming_the_unmerged_paths`, `TestRefusals::test_h13_a_refusing_pre_merge_commit_hook_is_aborted_and_quoted` |
+  | (b) | `elif dirty:` → `elif False:` | exit 1, `3 failed, 12 passed` | `TestTheMerge::test_h3_without_approve_the_flag_previews_and_names_the_refusals`, `TestRefusals::test_h4_a_dirty_tree_is_refused_naming_the_path`, `TestThroughTheCli::test_a_refused_and_a_merging_run_exit_zero_with_their_record_keys` |
+  | (c) | `"--no-ff"` removed from the merge call | exit 1, `3 failed, 12 passed` | `TestTheMerge::test_h2_no_ff_even_where_a_fast_forward_was_possible`, `TestRefusals::test_h13_…` (a fast-forward runs no pre-merge-commit hook), `TestThroughTheCli::…` |
+  | (d) | `branch_refusal = ""` (no tip or diff-hash check) | exit 1, `2 failed, 13 passed` | `TestRefusals::test_h10_a_moved_branch_tip_is_refused`, `TestRefusals::test_h11_a_deleted_branch_is_refused` |
+  | (e) | the `symbolic-ref` check → `if False:` | exit 1, `1 failed, 14 passed` | `TestRefusals::test_h9_a_detached_head_is_refused` |
+  | (f) | `commit_with_history = False` at the top of `_apply_from_workspace` (the flag ignored, files copied) | exit 1, `13 failed, 2 passed` | including `TestTheMerge::test_h1_the_merge_lands_both_task_commits_as_the_operator` |
+
+  No mutation stayed green.
+- **Full suite**: not run (amend0917-throughput).
 
 ## Authored-text proofs
 
-- Byte copies are at `.agent/authored/f270-r1-{plan.md,context.md,live_review_head.md,ledger.md,decisions.md,status_from.txt,status_to.txt,f273_from.txt,f273_to.txt,block.md}`. All ten equal their payloads (G1). The block copy's sha256 is `86c4ec7a3489d8458103e0bb25d49369df829a8da2549c3fac5375fea735f418`, the digest the orchestrator named.
-- STATUS: TO contains FROM: False. FROM was 1x before and 0x after, and TO 1x after: a rewrite. T2_F273.md: TO contains FROM: True. FROM was 1x before and after, and TO 1x after. C1's diff adds exactly the three TO-only lines, in order: an append.
+- `.agent/authored/f270-r2-{ledger.md,decisions.md,plan.md}` (C1) and `.agent/authored/f270-r2-block.md` (C4) equal their payloads byte for byte (G1 and `c4_block.py`).
+- The block copy's sha256 is `baefec097a18dbb309a1a90b4c049485dcb2efed37c5425e63150b4643b003a1`, the digest the orchestrator named.
+- `.agent/live_review.md` and `.agent/decisions.md` are their `ff9d56a2` bytes with ledger.md and decisions.md appended. `.agent/plan.md` is plan.md (G1).
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 claim | done | `b58eeb95` |
-| C2 commit on the branch | done | `ff323f0e` |
-| C3 tests t1–t7 | done | `1da36563` |
+| C1 bookkeeping | deviated | `8b6a6a10`; the block copy landed in C4 instead |
+| C2 merge path | done | `2c3f76ec` |
+| C3 tests h1–h13 + CLI | done | `17c8c737` |
 | C4 handoff and push | done | This commit, then the push |
-| G1–G4 | done | All exit 0 and every mutation red |
+| G1–G4 | done | All exit 0; every mutation red |
 
 ## Open findings
 
-`python3 .remedy-wt/f268-r4/count.py` (distinct id) at HEAD reads `registrations 131 done 4 open 127`. This round registers R-0974 (Owner F273) and books `Done: R-0973`. Neither is F270's.
+`python3 .remedy-wt/f268-r4/count.py` (distinct id) at HEAD reads `registrations 131 done 4 open 127`. This round registers no finding and resolves none.
 
 ## Deviations & assumptions
 
-- **Commit sequence**: as ordered (C1, C2, C3, C4, then the push). No split into C2a/C2b: C2 has 210 insertions.
-- **A failed commit also marks its task `TASK_BLOCKED`.** D1 (5) names only the job's stop reason and the git error on the task. The task stays `TASK_APPLIED` in no case where its commit is missing. That matches the neighbouring post-apply failure (`target_repo_mutated_after_apply`), and it stops a resume from skipping the task as applied and folding its change into the next task's commit.
-- **An empty title**: the first line falls back to `task <n>: untitled task`. D1 does not settle this case. I did not measure whether the parser can produce an empty title.
-- **A malformed contract body**: `read_mission_contract` raises, so the commit step fails and the job blocks with `task_<id>_worktree_commit_failed`. This is the same body the job's DoD gate would refuse.
-- **Observation, not changed**: in the D1 (4) kill window (after the commit, before the save), `remedy job resume` compares the live head against a checkpoint's recorded `worktree_head` (`apps/cli/commands/job.py` around line 1465) and, per D1's CONTEXT, refuses with exit 3 on a difference. So a checkpoint written before the commit could stop the CLI path before `run_job` can adopt. This was not measured. The adoption is reachable through `resume_job_plan` and `run_job`, which is what t3 drives. Changing the CLI's head check is outside this round's change set.
-- **Observation, not changed**: `docs/system/vocabulary.md` line 269 still names the branch `remedy/<job id>` inside the verbatim DECISION amend0905-vocab D10 paragraph. It is a quoted operator decision, not a sentence saying the worktree is never committed on, so D1 (6) does not reach it.
-- **Scratch scripts**: `.remedy-wt/f270-r1/build_c1.py`, `g1.py` and `g4.py` (gitignored) did the byte work and ran G1 and G4.
+- **Commit sequence**: the order was C1, C2, C3, C4, then the push, with no split of C3. **The block's byte copy was not in C1.** The block lists `block.md` among the payloads, but C1 copied only ledger.md, decisions.md and plan.md, so G1 as run checked three copies. C4 adds `.agent/authored/f270-r2-block.md` and re-checks all four. C1 was not rewritten because C2 and C3 already sat on it.
+- **The merge names the verified tip sha, not the branch name**: `git merge … <worktree_head>`. `_job_branch_refusal` has just shown the branch tip equals that sha. Merging the sha means a branch that moves between the check and the merge cannot bring in unreviewed commits. The content is the same as D2 (3)'s merge "of `remedy/job-<job id>`", and the message names the branch.
+- **Two refusals D2 (2) does not list**:
+  - `MERGE_HEAD` already present. Without this check, the D2 (4) `git merge --abort` could abort the operator's own unfinished merge.
+  - A target that is a git repository but not its top level. The copy writes `target/<path>` while a merge writes `<top level>/<path>`, so the post-apply verification would compare the wrong files. I read D2's "not a git repository" as covering it.
+- **"1 task commit"**: D2 (3) writes `<n> task commits`. The first line uses the singular when n is 1, so it stays a sentence.
+- **Where a preview's refusals live**: a `dry_run` result with the flag carries its refusal sentences, each prefixed `history_merge_refused: `, in the existing `blocked_reasons` list. The alternative was a seventh record field, which D2 (6) does not name. The operator's previous tip for the D2 (5) undo sentence is kept on the result as `history_previous_head`, which is not exported. It reaches the record only inside that sentence in `blocked_reasons`.
+- **A hook's output is quoted on one line**: whitespace-collapsed, git's "Not committing merge; use 'git commit'…" advice dropped, capped at 300 characters. Measured on git 2.34.1 in a scratch probe: a failing `pre-merge-commit` hook leaves `MERGE_HEAD` and the job's files staged, and its stdout and stderr both reach git's stderr. For the `pkg` versus `pkg/mod.txt` clash, git 2.34.1 reports `pkg~HEAD` as the only unmerged path, and `git merge --abort` restores the operator's `pkg` file. h6 asserts every reported path appears in the sentence, not the literal `pkg~HEAD`.
+- **Observation, not changed**: the merge does not check that `worktree_base_commit` is an ancestor of the operator's `HEAD`. On a branch that does not contain the job's base, the merge also brings in the base's ancestry. D2's list does not name this case, the gates still bind the files, and nothing here would be overwritten.
+- **Observation, not changed**: R-0974 (a tracked but ignored file) can make the branch tip's tree differ from `result.diff`. The diff-hash refusal then refuses the merge rather than dropping the file silently. That is the designed outcome of D2 (2), and it was not tested this round.
+- **Not changed**: `do`'s `--commit-with-history` stays "not yet available" (T004), as the block orders. No `docs/` page changed. The Built State doc for the flag belongs to the closure sequence in `.agent/plan.md`.
+- **Scratch scripts**: `.remedy-wt/f270-r2/probe_git.py`, `c1.py`, `g1.py`, `g4.py` and `c4_block.py` are gitignored. They ran the git probe, did the byte work, and ran G1 and G4.
 
 ## Next
 
-Phase 1 rule 1 (`.agent/STOP`), then the review of round 1.
+Phase 1 rule 1 (`.agent/STOP`), then the review of round 2.
 
 Operator questions open: 5
