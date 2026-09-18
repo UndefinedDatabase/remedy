@@ -10,11 +10,14 @@ feature can add a second named list as a lookup rather than a rewrite
 The module sits under `packages/` rather than `apps/cli/commands/` because its
 steps call package functions and must be testable without the CLI.
 
-T001 scope: init registers and ignores and writes no file into the repository
+Scope: init registers and ignores and writes no file into the repository
 (D2); study runs once, on a non-empty repository only (D3); plan creates the
-mission record for the order and plans it (D4); shape yields ONE job linked to
-the mission; run runs it on the chosen providers; ui prints the real
-`remedy ui start` command unless `--no-ui`; apply always stops before apply.
+mission record for the order, plans it and keeps the plan (D4, D5); shape reads
+"one job" or "milestones" from that plan, `--force-job` / `--force-mission`
+overriding it, and plans the jobs, each bounded by deliverables (D5, D6); run
+runs every job in order on the chosen providers and stops at the first that
+does not complete; ui prints the real `remedy ui start` command unless
+`--no-ui`; apply always stops before apply and prints one apply command per job.
 """
 
 from __future__ import annotations
@@ -33,6 +36,13 @@ if TYPE_CHECKING:
 
 #: The sequence, as data (DECISION F268 D4). The walker reads nothing else.
 DO_SEQUENCE: tuple[str, ...] = ("init", "study", "plan", "shape", "run", "ui", "apply")
+
+#: The two shapes (DECISION F268 D5), and where the one in force came from.
+DO_SHAPE_ONE_JOB = "one job"
+DO_SHAPE_MILESTONES = "milestones"
+DO_SHAPE_SOURCE_PLANNER = "planner"
+DO_SHAPE_SOURCE_FORCE_JOB = "--force-job"
+DO_SHAPE_SOURCE_FORCE_MISSION = "--force-mission"
 
 DO_STEP_DONE = "done"
 DO_STEP_SKIPPED = "skipped"
@@ -66,9 +76,14 @@ class DoContext:
     no_ui: bool = False
     yes: bool = False
     no_llm: bool = False
+    force_job: bool = False
+    force_mission: bool = False
     repo_root: str = ""
     project: RemyProject | None = None
     mission_id: str = ""
+    mission_plan: Any = None
+    shape: str = ""
+    shape_source: str = ""
     job_ids: list[str] = field(default_factory=list)
     results: list[DoStepResult] = field(default_factory=list)
     next_lines: list[str] = field(default_factory=list)
@@ -517,36 +532,107 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
                                provider="ollama", provider_kind="ollama")
     except (MissionPlanInProgressError, MissionError) as exc:
         return DO_STEP_FAILED, f"mission {mission.id} was not planned: {exc}"
+    ctx.mission_plan = outcome.plan
     return DO_STEP_DONE, (
         f"mission {mission.id} plan v{outcome.version} ({outcome.source}, "
         f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}")
 
 
+def mission_plan_outlines(plan: Any) -> list[Any]:
+    """Every `jobs_draft` outline across the plan's milestones, in milestone order."""
+    if plan is None:
+        return []
+    return [outline for milestone in plan.milestones for outline in milestone.jobs_draft]
+
+
+def do_shape_of_plan(plan: Any) -> str:
+    """The planner's shape (DECISION F268 D5): two or more outlines are milestones."""
+    return DO_SHAPE_MILESTONES if len(mission_plan_outlines(plan)) >= 2 else DO_SHAPE_ONE_JOB
+
+
+def resolve_do_shape(plan: Any, *, force_job: bool = False,
+                     force_mission: bool = False) -> tuple[str, str]:
+    """``(shape, shape_source)``: a force flag wins over the plan; both at once is refused."""
+    if force_job and force_mission:
+        raise ValueError("--force-job and --force-mission cannot be given together")
+    if force_job:
+        return DO_SHAPE_ONE_JOB, DO_SHAPE_SOURCE_FORCE_JOB
+    if force_mission:
+        return DO_SHAPE_MILESTONES, DO_SHAPE_SOURCE_FORCE_MISSION
+    return do_shape_of_plan(plan), DO_SHAPE_SOURCE_PLANNER
+
+
+def _shape_job_orders(ctx: DoContext, shape: str) -> list[tuple[str, list[TaskEntry] | None]]:
+    """What to plan, one ``(order, deterministic_tasks)`` per job; ``None`` lets the planner choose."""
+    from packages.orchestration.task_deliverables import (
+        deliverable_check_task,
+        deliverable_task,
+        deterministic_job_plans,
+        extract_order_deliverables,
+    )
+
+    order = ctx.order
+    if shape == DO_SHAPE_ONE_JOB:
+        slices = deterministic_job_plans(order)
+        if len(slices) == 1:
+            return [(order, None)]
+        return [(order, tasks) for tasks in slices]
+    outlines = mission_plan_outlines(ctx.mission_plan)
+    if len(outlines) >= 2:
+        return [(outline.goal, None) for outline in outlines]
+    deliverables = extract_order_deliverables(order)
+    if len(deliverables) >= 2:
+        return [(order, [deliverable_task(d, order)]) for d in deliverables]
+    [only] = deliverables
+    return [(order, [deliverable_task(only, order)]),
+            (order, [deliverable_check_task(only, order)])]
+
+
 def _step_shape(ctx: DoContext) -> tuple[str, str]:
-    """T001: ONE job for the order, targeting the repository, linked to the mission."""
+    """Read the shape from the plan (or a force flag) and plan its jobs, linked to the mission (D5)."""
     from packages.orchestration.mission_state import (
+        MISSION_ROLE_FOLLOW_UP,
         MISSION_ROLE_INITIAL,
         link_job_to_mission,
     )
 
     try:
-        shaped = plan_order_job(
-            ctx.order,
-            project=ctx.project,
-            repo_path=ctx.repo_root,
-            no_llm=ctx.no_llm,
-            yes=ctx.yes,
-        )
-    except OrderJobPlanError as exc:
+        shape, source = resolve_do_shape(ctx.mission_plan, force_job=ctx.force_job,
+                                         force_mission=ctx.force_mission)
+    except ValueError as exc:
         return DO_STEP_FAILED, str(exc)
-    job_id = str(shaped.job.job_id)
-    link_job_to_mission(str(ctx.project.id), ctx.mission_id, job_id,
-                        role=MISSION_ROLE_INITIAL)
-    ctx.job_ids.append(job_id)
+    ctx.shape, ctx.shape_source = shape, source
+
+    shaped_jobs: list[OrderJobPlan] = []
+    for order, tasks in _shape_job_orders(ctx, shape):
+        try:
+            shaped = plan_order_job(
+                order,
+                project=ctx.project,
+                repo_path=ctx.repo_root,
+                no_llm=ctx.no_llm,
+                yes=ctx.yes,
+                deterministic_tasks=tasks,
+            )
+        except OrderJobPlanError as exc:
+            return DO_STEP_FAILED, str(exc)
+        job_id = str(shaped.job.job_id)
+        role = MISSION_ROLE_FOLLOW_UP if ctx.job_ids else MISSION_ROLE_INITIAL
+        link_job_to_mission(str(ctx.project.id), ctx.mission_id, job_id, role=role)
+        ctx.job_ids.append(job_id)
+        shaped_jobs.append(shaped)
+
+    first = shaped_jobs[0]
+    if len(shaped_jobs) == 1:
+        return DO_STEP_DONE, (
+            f"one job {ctx.job_ids[0]} linked to mission {ctx.mission_id} "
+            f"(shape: {shape}, from {source}): {len(first.job.tasks)} task(s), "
+            f"plan: {first.plan_label}, {first.intake_label}")
+    jobs = ", ".join(f"{str(s.job.job_id)} ({len(s.job.tasks)} task(s))" for s in shaped_jobs)
     return DO_STEP_DONE, (
-        f"one job {job_id} linked to mission {ctx.mission_id}: "
-        f"{len(shaped.job.tasks)} task(s), plan: {shaped.plan_label}, "
-        f"{shaped.intake_label}")
+        f"{len(shaped_jobs)} jobs linked to mission {ctx.mission_id} "
+        f"(shape: {shape}, from {source}): {jobs}; "
+        f"plan: {first.plan_label}, {first.intake_label}")
 
 
 def _provider_flags(ctx: DoContext) -> str:
@@ -559,35 +645,37 @@ def _provider_flags(ctx: DoContext) -> str:
 
 
 def _step_run(ctx: DoContext) -> tuple[str, str]:
-    """Run the job on the chosen builder and reviewer; stop at an open plan approval."""
+    """Run every job in order on the chosen builder and reviewer; stop at the first that does not complete."""
     from packages.orchestration.job_plan import task_plan_blocks_execution
     from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan, run_job
 
-    job_id = ctx.job_ids[-1]
-    job = load_job_plan(job_id)
-    if job is None:
-        return DO_STEP_FAILED, f"job {job_id} was not found in the job store"
-    if not job.repo_path:
-        # Without a target a run would fall back to copying the process's
-        # working directory, which is never the repository `do` was asked about.
-        return DO_STEP_FAILED, f"job {job_id} has no target repository; nothing was run"
+    ran: list[str] = []
+    for job_id in ctx.job_ids:
+        job = load_job_plan(job_id)
+        if job is None:
+            return DO_STEP_FAILED, f"job {job_id} was not found in the job store"
+        if not job.repo_path:
+            # Without a target a run would fall back to copying the process's
+            # working directory, which is never the repository `do` was asked about.
+            return DO_STEP_FAILED, f"job {job_id} has no target repository; nothing was run"
 
-    blocked = task_plan_blocks_execution(job)
-    if blocked is not None:
-        approve = f"remedy decision resolve {job_id} plan:approval --reason approve"
-        ctx.next_lines.append(approve)
-        ctx.next_lines.append(f"remedy job run {job_id}{_provider_flags(ctx)}")
-        return DO_STEP_STOPPED, (
-            f"job {job_id}'s task plan is {blocked}, not approved; nothing was run "
-            f"(--yes approves it unattended). Approve it with: {approve}")
+        blocked = task_plan_blocks_execution(job)
+        if blocked is not None:
+            approve = f"remedy decision resolve {job_id} plan:approval --reason approve"
+            ctx.next_lines.append(approve)
+            ctx.next_lines.append(f"remedy job run {job_id}{_provider_flags(ctx)}")
+            return DO_STEP_STOPPED, (
+                f"job {job_id}'s task plan is {blocked}, not approved; it was not run "
+                f"(--yes approves it unattended). Approve it with: {approve}")
 
-    done = run_job(job_id, builder_name=ctx.builder_provider,
-                   reviewer_name=ctx.reviewer_provider)
-    ctx.next_lines.append(f"remedy job show {job_id}")
-    if done.state != JOB_COMPLETED:
-        reason = f": {done.error}" if done.error else ""
-        return DO_STEP_FAILED, f"job {job_id} ended {done.state.value}{reason}"
-    return DO_STEP_DONE, f"job {job_id} ran {len(done.tasks)} task(s) to {done.state.value}"
+        done = run_job(job_id, builder_name=ctx.builder_provider,
+                       reviewer_name=ctx.reviewer_provider)
+        ctx.next_lines.append(f"remedy job show {job_id}")
+        if done.state != JOB_COMPLETED:
+            reason = f": {done.error}" if done.error else ""
+            return DO_STEP_FAILED, f"job {job_id} ended {done.state.value}{reason}"
+        ran.append(f"job {job_id} ran {len(done.tasks)} task(s) to {done.state.value}")
+    return DO_STEP_DONE, "; ".join(ran)
 
 
 def _step_ui(ctx: DoContext) -> tuple[str, str]:
@@ -600,13 +688,13 @@ def _step_ui(ctx: DoContext) -> tuple[str, str]:
 
 
 def _step_apply(ctx: DoContext) -> tuple[str, str]:
-    """T001 always stops before apply; nothing is written to the repository."""
-    command = (f"remedy job apply {ctx.job_ids[-1]} "
-               f"--repo {shlex.quote(ctx.repo_root)} --approve")
-    ctx.next_lines.append(command)
+    """Always stop before apply; print one real apply command per job, in run order."""
+    commands = [f"remedy job apply {job_id} --repo {shlex.quote(ctx.repo_root)} --approve"
+                for job_id in ctx.job_ids]
+    ctx.next_lines.extend(commands)
     return DO_STEP_STOPPED, (
         f"stopped before apply; {ctx.repo_root} is untouched. "
-        f"Apply the reviewed result with: {command}")
+        f"Apply the reviewed result with: {'; then '.join(commands)}")
 
 
 #: The step table. `walk_do_sequence` reaches a step only through this mapping.

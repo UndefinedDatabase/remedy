@@ -547,7 +547,8 @@ def main(argv: list[str] | None = None) -> None:
         # The flags `remedy do "<order>"` (the F268 sequence) accepts; any other
         # flag keeps the invocation on the `do run` autorun path.
         _BARE_ALLOWED = {"--json", "--repo", "--no-llm", "--yes", "--no-ui",
-                         "--builder-provider", "--reviewer-provider"}
+                         "--builder-provider", "--reviewer-provider",
+                         "--force-job", "--force-mission"}
         _BARE_VALUED = {"--repo", "--builder-provider", "--reviewer-provider"}
         tail = raw[3:]
         _truly_bare = True
