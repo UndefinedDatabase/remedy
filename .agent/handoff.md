@@ -6,7 +6,7 @@ SESSION 2 of feature F266 · round 7 · rounds so far 7
 
 ## Range
 
-Review of 05e5e328..e678fee7
+Review of 05e5e328..01a94105
 
 ## Commits
 
@@ -26,18 +26,35 @@ Review of 05e5e328..e678fee7
 |------|-----|--------|
 | `tests/cli/test_study_teacher_e2e.py` | 154 | New test file: tests the three-step (init → study run → teacher ask) end-to-end against a foreign repository fixture with a distinctive marker directory |
 
-### (current) F266 C4: handoff
+### 0b6a006b F266 C4: handoff
 | Path | Reason |
 |------|--------|
-| `.agent/handoff.md` | Rewritten per handback_template.md |
+| `.agent/handoff.md` | Rewritten per handback_template.md (C4) |
+
+### 01a94105 F266 C5: commit round-7 authored transport-proof copies
+| Path | Reason |
+|------|--------|
+| `.agent/authored/f266-r7-e2e-test.py` | Transport proof of test file creation (C5) |
+| `.agent/authored/f266-r7-live-review.md` | Transport proof of live_review.md append (C5) |
+| `.agent/authored/f266-r7-plan.md` | Transport proof of plan.md replacement (C5) |
 
 ## External actions
 
 ```
 git push origin feature/f266-remedy-study
+To github.com:UndefinedDatabase/remedy.git
+   05e5e328..0b6a006b  feature/f266-remedy-study -> feature/f266-remedy-study
 ```
 
-(Pending after commit 4)
+(After C4)
+
+```
+git push origin feature/f266-remedy-study
+To github.com:UndefinedDatabase/remedy.git
+   0b6a006b..01a94105  feature/f266-remedy-study -> feature/f266-remedy-study
+```
+
+(After C5)
 
 ## Verification
 
@@ -76,15 +93,12 @@ All checks passed!
 
 Exit code: 0
 
-Gate 5: git status --porcelain
+Gate 5: git status --porcelain (after C5)
 
 ```
-?? .agent/authored/f266-r7-e2e-test.py
-?? .agent/authored/f266-r7-live-review.md
-?? .agent/authored/f266-r7-plan.md
 ```
 
-(Only authored transport-proof files untracked; working tree otherwise clean)
+(Empty output; tree is clean)
 
 Exit code: 0
 
