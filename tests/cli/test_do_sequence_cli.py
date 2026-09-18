@@ -783,7 +783,7 @@ def test_contract_website_on_a_bare_order_gives_the_website_templates_criteria(r
         "; contract template website, forced by --contract")
 
 
-def test_contract_website_with_an_extra_requirement_adds_planner_criteria_and_drops_none(
+def test_contract_website_with_an_extra_requirement_adds_one_planner_criterion_naming_it(
         repo, capsys):
     order = "Write a CONTRIBUTING.md that also lists the release checklist"
 
@@ -793,7 +793,8 @@ def test_contract_website_with_an_extra_requirement_adds_planner_criteria_and_dr
     template = _template_criteria("website")
     assert _contract_by_origin(data, "template") == template
     assert _as_compiled(data["contract"]["criteria"][:len(template)]) == template
-    assert len(_contract_by_origin(data, "planner")) >= 1
+    [planner] = _contract_by_origin(data, "planner")
+    assert "lists the release checklist" in planner["text"]
 
 
 def test_without_contract_the_website_fixture_order_gets_the_proposed_template(repo, capsys):
