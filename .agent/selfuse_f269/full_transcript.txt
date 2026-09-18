@@ -1,0 +1,24 @@
+Job ID: 5edc7cfc1dee4d75
+Job Title: Address ledger finding R-0445
+Job State: stopped
+Isolation Mode: worktree
+Worktree Path: .remedy-wt/job-5edc7cfc1dee4d75
+Worktree Cleanup Status: retained
+Error: 
+
+Execution:
+- Builder: ollama
+- Reviewer: ollama
+- Repair Rounds: 2
+- Created: 2026-09-18T16:54:22.821043+00:00
+- Finished: 
+
+Task Summary:
+
+Task T001: Task 1
+- Status: pending
+- Reviewer Verdict: 
+- Final Status: stopped
+- Repair Rounds Used: 2
+- Repair Rounds Allowed: 2
+- Error: 
