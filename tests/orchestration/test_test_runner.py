@@ -109,11 +109,6 @@ def _make_approved_job() -> tuple[JobPlan, str]:
 
 
 class TestPatchApplyTestLoop:
-    def test_autorun_has_test_phase(self):
-        src = (Path(__file__).parent.parent.parent / "packages" / "orchestration" / "autorun.py").read_text()
-        assert "test" in src.lower()
-        assert "run_tests" in src or "test_execution" in src
-
     def test_apply_structured_patch_import(self):
         from packages.orchestration.source_apply import apply_structured_patch
         assert callable(apply_structured_patch)

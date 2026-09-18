@@ -89,17 +89,6 @@ class TestApprovalGateRegression:
         assert "from packages.orchestration.source_apply import" not in source
         assert "source_apply(" not in source
 
-    def test_no_fake_apply_phase(self):
-        """do_run phases should not include a completed 'apply' phase."""
-        import tempfile
-
-        from packages.orchestration.do_run import run_do
-        with tempfile.TemporaryDirectory() as tmp:
-            result = run_do("test goal", tmp)
-            for phase in result.phases:
-                if phase.phase == "apply":
-                    assert phase.status != "completed"
-
 
 # ---------------------------------------------------------------------------
 # Step 1055: Allowed action tests

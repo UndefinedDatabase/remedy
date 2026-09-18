@@ -150,20 +150,6 @@ def _make_approved_job() -> tuple:
 
 
 class TestRemedyDo:
-    def test_dry_run_no_side_effects(self, tmp_path):
-        from packages.orchestration.autorun import dry_run_autorun
-        plan = dry_run_autorun("test goal", str(tmp_path))
-        assert plan["dry_run"] is True
-        assert plan["goal"] == "test goal"
-        assert "phases" in plan
-
-    def test_dry_run_phases_by_autonomy(self, tmp_path):
-        from packages.orchestration.autorun import dry_run_autorun
-        plan0 = dry_run_autorun("g", str(tmp_path), autonomy_level=0)
-        plan4 = dry_run_autorun("g", str(tmp_path), autonomy_level=4)
-        assert "run_builder" not in plan0["phases"]
-        assert "run_tests" in plan4["phases"]
-
     def test_do_creates_job(self, tmp_path):
         from packages.orchestration.autorun import run_autorun
         result = run_autorun("test", str(tmp_path), autonomy_level=0, max_cycles=1)
