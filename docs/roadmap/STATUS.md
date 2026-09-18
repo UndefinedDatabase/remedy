@@ -37,7 +37,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 
 ## Tier 2 — Easy Start & Contract Block (operator order amend0905)
 
-- [ ] F268 — remedy do: the one-command start
+- [~] F268 — remedy do: the one-command start
 - [ ] F269 — Contract & contract templates
 - [ ] F270 — History apply: one commit per task, merge on demand
 - [ ] F271 — No more legacy: ownership, reachability, replace-is-delete
