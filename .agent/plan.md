@@ -12,12 +12,12 @@ unless asked otherwise (`docs/roadmap/features/T2_F268.md`).
 
 ## Current Step
 
-Round 12: book round 11's verdict; repair the closure suite's three bad
-nodes (repair round 1 of at most three); closure round A — the self-use
-item, the integrity check, the evidence job and the review zip.
+Closed: F268 is `[x]` in docs/roadmap/STATUS.md (live review
+PASS_WITH_RISKS, accepted HEAD `5883bccb`); its pull request into `main`
+is open and merges at the next feature's Open PR Gate.
 
 ## Next Steps
 
-1. Review round 12 and book its verdict in the next round's first commit.
-2. Closure round B: register any self-use defect, ledger rotation, finding
-   owners, the STATUS line and README in one commit, then the PR.
+1. Next session: Phase 1 rule 1 (`.agent/STOP`), then rule 2 — merge
+   F268's pull request at the Open PR Gate.
+2. Claim the next feature by Rule A5.

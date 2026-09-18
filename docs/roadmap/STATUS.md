@@ -37,7 +37,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 
 ## Tier 2 — Easy Start & Contract Block (operator order amend0905)
 
-- [~] F268 — remedy do: the one-command start
+- [x] F268 — remedy do: the one-command start (T001-T005 complete; accepted 2026-09-18 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f268r12e1001 · package remedy-review-20260918-140632-READY_FOR_REVIEW.zip · SHA-256 2c4ed9fa9d3c2e762dbf19a069cc378dfc7c46d973f9334e656f4dc9e873d86a · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5883bccb2b2d4362815215c6a24a71b67f9016f9)
 - [ ] F269 — Contract & contract templates
 - [ ] F270 — History apply: one commit per task, merge on demand
 - [ ] F271 — No more legacy: ownership, reachability, replace-is-delete
