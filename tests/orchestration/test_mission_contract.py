@@ -36,6 +36,9 @@ and text, carrying the prefilled order; a second raise while it is open,
 no blockers or no job raise nothing; only `yes` to a remainder decision
 starts the follow-up mission, whose contract is the blockers renumbered.
 
+D10 (R-0971): the carried blockers are origin ``amendment`` under one entry
+``A001``, so planning the follow-up keeps a blocker that was ``planner``.
+
 Every test writes into ``tmp_path``; no real provider is called — a planned
 mission replays a recorded planner answer.
 """
@@ -984,12 +987,63 @@ class TestTheRemainderAnswer:
         contract = read_mission_contract(follow_up)
         assert [(c.id, c.text, c.blocking, c.origin, c.milestones, c.status,
                  c.evidence_ref) for c in contract.criteria] == [
-            ("C001", "the docs name every command", True, "planner", (), "open", None),
-            ("C002", "tests/test_c.py passes", True, "template", (), "open", None)]
+            ("C001", "the docs name every command", True, "amendment", (), "open", None),
+            ("C002", "tests/test_c.py passes", True, "amendment", (), "open", None)]
         assert contract.criteria[0].check == source.criteria[1].check
         assert contract.criteria[1].check == {
             **source.criteria[2].check, "id": "ctr-C002", "acceptance_refs": ["C002:0"]}
-        assert contract.template is None and contract.amendments == ()
+        assert contract.template is None
+        assert [a["id"] for a in contract.amendments] == ["A001"]
+
+    def test_the_follow_up_holds_one_amendment_carrying_every_criterion(
+            self, tmp_path, monkeypatch):
+        """DECISION F269 D10: the remainder is carried as ONE amendment entry."""
+        from packages.orchestration.mission_contract import (
+            due_contract_amendments,
+            start_remainder_follow_up_mission,
+        )
+
+        mission_id, job_id, decision_id = self._raised(tmp_path, monkeypatch)
+        record = _answer(job_id, decision_id, "yes")
+
+        follow_up_id = start_remainder_follow_up_mission(job_id, record, root=tmp_path)
+
+        contract = read_mission_contract(load_mission(PROJECT, follow_up_id, tmp_path))
+        assert contract.amendments == ({
+            "id": "A001", "text": record["impact"],
+            "received_at": record["answered_at"], "applies_from": 1,
+            "criteria": ["C001", "C002"],
+            "understood": (f"carries the criteria mission {mission_id} left unmet: "
+                           "C002, C003 as C001, C002"),
+            "acknowledged_in": None},)
+        assert due_contract_amendments(contract, 1) == contract.amendments
+
+    def test_planning_the_follow_up_keeps_a_carried_planner_criterion(
+            self, tmp_path, monkeypatch):
+        """R-0971: a blocker whose origin was `planner` survives planning the follow-up."""
+        from packages.orchestration.mission_contract import start_remainder_follow_up_mission
+
+        mission_id, job_id, decision_id = self._raised(tmp_path, monkeypatch)
+        source = read_mission_contract(load_mission(PROJECT, mission_id, tmp_path))
+        assert source.criteria[1].origin == "planner"
+        record = _answer(job_id, decision_id, "yes")
+        follow_up_id = start_remainder_follow_up_mission(job_id, record, root=tmp_path)
+        before = read_mission_contract(load_mission(PROJECT, follow_up_id, tmp_path))
+
+        plan_mission(PROJECT, follow_up_id, None, root=tmp_path)
+
+        after = read_mission_contract(load_mission(PROJECT, follow_up_id, tmp_path))
+        carried, planner = after.criteria[:2], after.criteria[2:]
+        assert [(c.id, c.text, c.origin) for c in carried] == [
+            ("C001", "the docs name every command", "amendment"),
+            ("C002", "tests/test_c.py passes", "amendment")]
+        assert carried[1] == before.criteria[1]
+        assert planner and {c.origin for c in planner} == {"planner"}
+        assert [c.id for c in planner] == [f"C{n:03d}" for n in range(3, 3 + len(planner))]
+        [amendment] = after.amendments
+        assert amendment["id"] == "A001"
+        assert amendment["criteria"] == ["C001", "C002"]
+        assert "C002, C003 as C001, C002" in amendment["understood"]
 
     def test_no_creates_nothing(self, tmp_path, monkeypatch):
         from packages.orchestration.mission_contract import start_remainder_follow_up_mission

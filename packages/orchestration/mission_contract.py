@@ -51,7 +51,8 @@ proposed to the operator (DECISION F269 D9):
 :func:`raise_contract_remainder_decision` puts one decision in the inbox
 carrying the prefilled follow-up order, and a one-word ``yes`` at either
 answer door starts that follow-up mission through
-:func:`start_remainder_follow_up_mission`.
+:func:`start_remainder_follow_up_mission`, whose contract carries the
+remainder as one amendment (DECISION F269 D10).
 
 The names ``save_contract`` and ``load_contract`` belong to
 ``run_contract.py`` (a job's run contract, a different record) and are not
@@ -802,11 +803,18 @@ def start_remainder_follow_up_mission(job_id: str, record: Mapping[str, Any], *,
     follow-up mission in the same project, whose goal and order are the
     prefilled order the decision carries, and whose contract is the blockers
     of the mission the job belongs to, copied in order and renumbered from
-    ``C001`` — text, blocking, origin and check kept, whole-mission, ``open``,
-    no evidence.  A compiled check is relabelled to its new criterion id (D4
+    ``C001`` — text, blocking and check kept, whole-mission, ``open``, no
+    evidence.  A compiled check is relabelled to its new criterion id (D4
     (1)'s ``ctr-<id>`` and ``<id>:0``).  Any other answer or decision, a job
     that belongs to no mission, or a mission with no blockers left, creates
     nothing and returns None.
+
+    DECISION F269 D10: the carried criteria take origin ``amendment`` and the
+    contract holds ONE amendment entry ``A001`` naming them all — the
+    operator's ``yes`` is exactly an amendment — so planning the follow-up,
+    which replaces the planner's own criteria, keeps every one of them.  Its
+    ``received_at`` is the answer's time and it applies from round 1, so the
+    follow-up's first loop round acknowledges it like any amendment.
     """
     from packages.orchestration.dod_compiler import acceptance_line_key
     from packages.orchestration.escalation import ESCALATION_STATUS_ANSWERED
@@ -837,12 +845,24 @@ def start_remainder_follow_up_mission(job_id: str, record: Mapping[str, Any], *,
             **criterion.check, "id": f"{CONTRACT_CHECK_ID_PREFIX}{ident}",
             "acceptance_refs": [acceptance_line_key(ident, 0)]}
         criteria.append(ContractCriterion(
-            id=ident, text=criterion.text, origin=criterion.origin,
+            id=ident, text=criterion.text, origin="amendment",
             blocking=criterion.blocking, check=check))
+    carried = [c.id for c in criteria]
+    amendment = {
+        "id": "A001",
+        "text": order,
+        "received_at": (str(record.get("answered_at", "") or "")
+                        or (now or datetime.now(timezone.utc)).isoformat()),
+        "applies_from": 1,
+        "criteria": carried,
+        "understood": (f"carries the criteria mission {mission.id} left unmet: "
+                       f"{', '.join(c.id for c in blockers)} as {', '.join(carried)}"),
+        "acknowledged_in": None,
+    }
     follow_up = create_mission(mission.project_id, order, now=now, root=root)
     set_mission_order(mission.project_id, follow_up.id, MissionOrder(text=order), root)
-    write_mission_contract(mission.project_id, follow_up.id,
-                           MissionContract(criteria=tuple(criteria)), root)
+    write_mission_contract(mission.project_id, follow_up.id, MissionContract(
+        criteria=tuple(criteria), amendments=(amendment,)), root)
     return follow_up.id
 
 
