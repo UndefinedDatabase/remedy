@@ -1,5 +1,6 @@
-"""F268 T001 and T002 — `remedy do "<order>"` end to end, one test per step boundary,
-then the shape decision and the force flags (DECISIONs F268 D5 and D6).
+"""F268 T001 to T003 — `remedy do "<order>"` end to end, one test per step boundary,
+then the shape decision and the force flags (DECISIONs F268 D5 and D6), then
+`--step-by-step` and `--plan-only` (DECISION F268 D8).
 
 In-process through `apps.cli.grouped.main`, against a temporary git repository
 holding one committed file, with the data root under `tmp_path`, the fake
@@ -269,3 +270,137 @@ def test_the_shape_function_reads_milestones_from_two_outlines_and_one_job_from_
 
     assert do_shape_of_plan(one) == "one job"
     assert do_shape_of_plan(two) == "milestones"
+
+
+# ── T003: --step-by-step and --plan-only (DECISION F268 D8) ─────────────────
+
+PLAIN_RUN_STEPS = [("init", "done"), ("study", "done"), ("plan", "done"), ("shape", "done"),
+                   ("run", "done"), ("ui", "skipped"), ("apply", "stopped")]
+
+
+def _answer_every_halt(monkeypatch, answer):
+    """Stand in for the terminal: every `--step-by-step` halt reads through `input`.
+
+    ``answer`` is called with the halt's index and returns the line typed there.
+    Returns the list of halt indexes read, in order.
+    """
+    halts: list[int] = []
+
+    def reader(*_prompt):
+        halts.append(len(halts))
+        return answer(halts[-1])
+
+    monkeypatch.setattr("builtins.input", reader)
+    return halts
+
+
+def _count_fake_provider_calls(monkeypatch) -> dict[str, int]:
+    """Count every fake builder and reviewer call, across every provider instance."""
+    from packages.orchestration.pingpong_provider import FakeProvider
+
+    calls = {"n": 0}
+    for method in ("build", "review"):
+        original = getattr(FakeProvider, method)
+
+        def counted(self, *args, _original=original, **kwargs):
+            calls["n"] += 1
+            return _original(self, *args, **kwargs)
+
+        monkeypatch.setattr(FakeProvider, method, counted)
+    return calls
+
+
+def test_step_by_step_halts_at_least_three_times_and_completes_like_a_plain_run(
+        repo, capsys, monkeypatch):
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+
+    halts = _answer_every_halt(monkeypatch, lambda index: "")
+
+    data = json.loads(_do(capsys, "--json", "--step-by-step"))
+
+    assert len(halts) >= 3
+    assert [(s["name"], s["status"]) for s in data["steps"]] == PLAIN_RUN_STEPS
+    assert [load_job_plan(j).state for j in data["job_ids"]] == [JOB_COMPLETED]
+
+
+def test_no_provider_call_happens_while_a_halt_waits(repo, capsys, monkeypatch):
+    calls = _count_fake_provider_calls(monkeypatch)
+    waits: list[tuple[int, int]] = []
+
+    def reader(*_prompt):
+        entry = calls["n"]
+        exit_ = calls["n"]
+        waits.append((entry, exit_))
+        return ""
+
+    monkeypatch.setattr("builtins.input", reader)
+
+    _do(capsys, "--json", "--step-by-step")
+
+    assert len(waits) >= 3
+    assert all(entry == exit_ for entry, exit_ in waits)
+    # The counter is live: the run made calls, and a later halt saw them.
+    assert calls["n"] > 0
+    assert waits[-1][0] == calls["n"] > waits[0][0]
+
+
+def test_q_at_the_first_halt_after_shape_runs_no_job_and_asks_every_job_to_stop(
+        repo, capsys, monkeypatch):
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import list_job_plans, load_job_plan
+    from packages.orchestration.safe_points import stop_requested
+
+    # Jobs exist from the shape step on, so the first halt that sees one is after shape.
+    halts = _answer_every_halt(
+        monkeypatch, lambda index: "q" if list_job_plans() else "")
+
+    data = json.loads(_do(capsys, "--json", "--step-by-step", "--force-mission"))
+
+    job_ids = data["job_ids"]
+    assert len(job_ids) >= 2
+    assert [(s["name"], s["status"]) for s in data["steps"]] == [
+        ("init", "done"), ("study", "done"), ("plan", "done"), ("shape", "done"),
+        ("run", "stopped")]
+    assert _step(data, "run")["detail"].startswith("not run: stopped by 'q'")
+    assert [load_job_plan(j).state for j in job_ids] == [RunState.PLANNED] * len(job_ids)
+    requests = [stop_requested(j) for j in job_ids]
+    assert all(r is not None and r.source == "do" for r in requests), requests
+    assert len(halts) == 4
+
+
+def test_plan_only_writes_the_mission_plan_plans_the_jobs_and_runs_none(
+        repo, capsys, monkeypatch):
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.task_deliverables import task_deliverable
+
+    data = json.loads(_do(capsys, "--json", "--plan-only"))
+
+    assert Path(data["mission_plan_path"]).is_file()
+    assert data["contract"] is None
+    job_ids = data["job_ids"]
+    assert job_ids
+    assert [load_job_plan(j).state for j in job_ids] == [RunState.PLANNED] * len(job_ids)
+    run = _step(data, "run")
+    assert (run["status"], run["detail"].split(":", 1)[0]) == ("stopped", "--plan-only")
+    assert [job["job_id"] for job in data["jobs"]] == job_ids
+    for job in data["jobs"]:
+        planned = load_job_plan(job["job_id"]).tasks
+        assert job["tasks"] == [
+            {"title": t.title, "deliverable": task_deliverable(t)} for t in planned]
+        assert all(task["deliverable"] for task in job["tasks"])
+    assert data["jobs"][0]["tasks"][0]["deliverable"] == "CONTRIBUTING.md"
+
+
+def test_text_output_lists_each_tasks_deliverable(repo, capsys):
+    from packages.orchestration.pingpong_job import list_job_plans
+
+    out = _do(capsys, "--force-mission")
+
+    jobs = list_job_plans()
+    assert len(jobs) >= 2
+    for job in jobs:
+        for number, task in enumerate(job.tasks, start=1):
+            deliverable = task.inputs["deliverable"]
+            assert (f"  job {job.job_id} task {number}: {task.title}"
+                    f" — deliverable: {deliverable}") in out.splitlines()
