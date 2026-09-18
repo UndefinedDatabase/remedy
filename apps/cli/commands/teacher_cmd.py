@@ -152,6 +152,20 @@ def _cmd_teacher_ask(
     # lands in the ledger that command reads.
     scope = resolve_scope(project_flag=project, all_projects=False)
 
+    study_cards: tuple[str, ...] = ()
+    if scope.project_id:
+        from packages.memory.local_gateway import list_memory
+        entries = list_memory(project_id=scope.project_id)
+        study_entries = [e for e in entries if e.provenance == "machine-study"]
+        seen_keys: set[str] = set()
+        deduped = []
+        for entry in study_entries:  # list_memory sorts newest-first already
+            if entry.key in seen_keys:
+                continue
+            seen_keys.add(entry.key)
+            deduped.append(entry)
+        study_cards = tuple(f"{entry.key}: {entry.value}" for entry in deduped)
+
     resolved_job: str | None = None
     events: list[dict] = []
     if job_id:
@@ -164,14 +178,16 @@ def _cmd_teacher_ask(
         code = _read_grounding_file(file)
         code_path = file if code is not None else None
 
-    # The SAME `code` and `code_path` reach both contexts. The printed source
-    # list is derived from the context it describes, so the two cannot disagree.
+    # The SAME `code`, `code_path`, and `study_cards` reach both contexts. The
+    # printed source list is derived from the context it describes, so the two
+    # cannot disagree.
     sources = _grounding_sources(
         build_teacher_context(
             question,
             events=events,
             code=code,
             code_path=code_path,
+            study_cards=study_cards,
             level=resolved_level,
         )
     )
@@ -180,6 +196,7 @@ def _cmd_teacher_ask(
         events=events,
         code=code,
         code_path=code_path,
+        study_cards=study_cards,
         level=resolved_level,
         call=call,
         job_id=resolved_job,

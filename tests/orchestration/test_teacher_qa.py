@@ -62,7 +62,10 @@ class TestGroundingSourcesAreLabelled:
         assert code_facts[0].text.startswith("apps/x.py:")
 
     def test_the_prompt_labels_each_source_block(self):
-        prompt = render_prompt(build_teacher_context("?", events=_EVENTS, code=_CODE))
+        # All sources with facts should appear, plus concept which always appears
+        prompt = render_prompt(
+            build_teacher_context("?", events=_EVENTS, code=_CODE, study_cards=("study:structure: test",))
+        )
         for source in GROUNDING_SOURCES:
             assert f"[{source}]" in prompt
 

@@ -509,3 +509,98 @@ class TestTeacherAskGroundsInAWorkspaceFile:
         # the teacher read is byte-identical afterwards.
         assert _hash_tree(data_root, excluding=_LEDGER_NAME_PREFIX) == before
         assert source.read_bytes() == before_source
+
+
+class TestTeacherAskGroundsInStudyCards:
+    """The `study` grounding source — repository comprehension cards from `study run`."""
+
+    def test_teacher_ask_grounds_from_study_cards(self, teacher_ledger, capsys):
+        from packages.memory.local_gateway import store_memory
+
+        # Extract project_id from the ledger path:
+        # teacher_ledger = data_root / "projects" / str(project.id) / _LEDGER_NAME_PREFIX
+        # So: teacher_ledger.parent.name gives the project UUID
+        project_id = teacher_ledger.parent.name
+        store_memory(
+            key="study:structure",
+            value="a distinctive test narrative",
+            project_id=project_id,
+            provenance="machine-study",
+        )
+        call, prompts = _capturing()
+
+        _cmd_teacher_ask(
+            "what is the structure?",
+            call=call,
+            json_output=True,
+        )
+
+        payload = json.loads(capsys.readouterr().out)
+        # The model was SHOWN the study card and told its source.
+        assert len(prompts) == 1
+        assert "a distinctive test narrative" in prompts[0]
+        assert "study" in payload["grounding_sources"]
+
+    def test_teacher_ask_dedupes_study_cards_keeping_the_newest(self, teacher_ledger, capsys):
+        from packages.memory.local_gateway import store_memory, _jsonl_path, _load_entries, _rewrite_entries
+        from datetime import datetime, timezone, timedelta
+
+        # Extract project_id from the ledger path:
+        # teacher_ledger = data_root / "projects" / str(project.id) / _LEDGER_NAME_PREFIX
+        # So: teacher_ledger.parent.name gives the project UUID
+        project_id = teacher_ledger.parent.name
+        # Write two cards with the same key but different values.
+        # The first entry is created with an earlier timestamp.
+        old_entry = store_memory(
+            key="study:structure",
+            value="old narrative",
+            project_id=project_id,
+            provenance="machine-study",
+        )
+        # Manually set the old entry's timestamp to be earlier
+        path = _jsonl_path(project_id, None)
+        entries = _load_entries(path)
+        for e in entries:
+            if str(e.id) == str(old_entry.id):
+                old_time = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
+                e.created_at = old_time
+        _rewrite_entries(path, entries)
+
+        # Now write the new entry
+        store_memory(
+            key="study:structure",
+            value="new narrative",
+            project_id=project_id,
+            provenance="machine-study",
+        )
+        call, prompts = _capturing()
+
+        _cmd_teacher_ask(
+            "what is the structure?",
+            call=call,
+            json_output=True,
+        )
+
+        payload = json.loads(capsys.readouterr().out)
+        # The model was SHOWN only the new narrative, not the old one.
+        assert len(prompts) == 1
+        assert "new narrative" in prompts[0]
+        assert "old narrative" not in prompts[0]
+
+    def test_teacher_ask_grounding_sources_omit_study_when_no_cards(
+        self, teacher_ledger, capsys
+    ):
+        # No study cards written — the study source should not appear.
+        call, prompts = _capturing()
+
+        _cmd_teacher_ask(
+            "what is the structure?",
+            call=call,
+            json_output=True,
+        )
+
+        payload = json.loads(capsys.readouterr().out)
+        # Study is NOT in grounding sources when there are no cards.
+        assert "study" not in payload["grounding_sources"]
+        # Concept is always present.
+        assert "concept" in payload["grounding_sources"]
