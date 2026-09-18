@@ -1,115 +1,105 @@
-# Handoff — F270 History apply: one commit per task, merge on demand · Round 7 (closure round B)
+# Handoff — F270 History apply: one commit per task, merge on demand · Round 8 (CI repair)
 
 ## Session
 
-SESSION 1 of feature F270 · round 7 · rounds so far 7
+SESSION 1 of feature F270 · round 8 · rounds so far 8
 
-Context self-assessment: the worker read the block, AGENTS.md, closure protocol Algorithm steps 4 to 6 with the amend0905 rotation paragraph and F269's closure commits once each, and every figure below comes from a command run in this round.
+Context self-assessment: the worker read the block, AGENTS.md's Commit Gate and Open PR Gate, the ledger payload with R-0979, `wait_ready` in `packages/runtimes/dev_server.py` and the test it times once each, and every figure below comes from a command run in this round.
 
 ## Range
 
-Review of b1e5e846..HEAD — branch `feature/f270-history-apply`.
+Review of b91fb1ec..HEAD — branch `feature/f270-history-apply`.
 
 ## Summary
 
-Round 7 is closure round B:
+Round 8 repairs pull request 258's hosted CI under AGENTS.md amendment amend0820-gate-autonomy. Hosted run `35401706742` on `b91fb1ec` failed `tests/runtimes/test_dev_server.py::TestReadiness::test_delayed_readiness`.
 
-- C1 booked round 6's verdict (PASS_WITH_RISKS, F270's closure verdict) into `.agent/live_review.md` and saved byte copies of the seven payloads, the block included.
-- C2 rotated the live-review ledger. The open-findings count is 128 before and after.
-- C3 is the closure commit, the last commit on the branch (Rule A4): STATUS `[x]`, README, SU-021 `consumed_by: "F270"`, the final `.agent/plan.md` and this handoff.
-- C4 opens the pull request into `main` after the push. It is not merged.
+- C1 booked round 7's verdict (PASS) and R-0979 into `.agent/live_review.md`, set `.agent/plan.md`, and saved byte copies of the five payloads, the block included.
+- C2 is the repair. The test now takes `time.monotonic()` before `start()` and asserts that the whole wait from that point is at least 1.4 s. It no longer relies on `wait_ready`'s own clock, which starts only after `start()` has returned. No production file changed.
+- C3 is this handoff.
 
 ## Commits
 
-### be80be80 F270 R7 C1: book round 6's closure verdict PASS_WITH_RISKS and save the round 7 payload and block copies
+### f9b39633 F270 R8 C1: book round 7's closure verdict PASS, register R-0979, save the round 8 payload and block copies
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f270-r7-block.md` | +71 / -0 | Byte copy of the block |
-| `.agent/authored/f270-r7-ledger.md` | +2 / -0 | Byte copy of ledger.md |
-| `.agent/authored/f270-r7-pairs.py` | +45 / -0 | Byte copy of pairs.py |
-| `.agent/authored/f270-r7-plan.md` | +23 / -0 | Byte copy of plan.md |
-| `.agent/authored/f270-r7-pr_body.md` | +23 / -0 | Byte copy of pr_body.md |
-| `.agent/authored/f270-r7-readme_paragraph.txt` | +9 / -0 | Byte copy of readme_paragraph.txt |
-| `.agent/authored/f270-r7-status_line.txt` | +1 / -0 | Byte copy of status_line.txt |
-| `.agent/live_review.md` | +2 / -0 | `b1e5e846` bytes + ledger.md (Gate F270 R6 PASS_WITH_RISKS) |
+| `.agent/authored/f270-r8-block.md` | +67 / -0 | Byte copy of the block |
+| `.agent/authored/f270-r8-ledger.md` | +4 / -0 | Byte copy of ledger.md |
+| `.agent/authored/f270-r8-plan.md` | +25 / -0 | Byte copy of plan.md |
+| `.agent/authored/f270-r8-test_from.txt` | +6 / -0 | Byte copy of test_from.txt |
+| `.agent/authored/f270-r8-test_to.txt` | +9 / -0 | Byte copy of test_to.txt |
+| `.agent/live_review.md` | +4 / -0 | `b91fb1ec` bytes + ledger.md (Gate F270 R7 PASS, R-0979) |
+| `.agent/plan.md` | +7 / -5 | := plan.md |
 
-176 insertions, 0 deletions (`git show --numstat`).
+122 insertions, 5 deletions (`git show --numstat`).
 
-### 80c23593 F270 R7 C2: rotate the live-review ledger, 607467 to 568711 bytes, 128 open findings before and after
+### e0fe9573 F270 R8 C2: R-0979 — test_delayed_readiness times the wait from before start(), not from wait_ready's own clock
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | +0 / -38 | `scripts/rotate_live_review.py` moved 13 gate records and 3 finding pairs out |
-| `.agent/live_review_archive.md` | +38 / -0 | The same records, appended byte-verbatim |
+| `tests/runtimes/test_dev_server.py` | +4 / -1 | test_from.txt (1x at `b91fb1ec`) rewritten to test_to.txt |
 
-38 insertions, 38 deletions (`git show --numstat`).
+4 insertions, 1 deletion (`git show --numstat`).
 
-### C3 (this commit) F270 R7 C3: closure
+### C3 (this commit) F270 R8 C3: handoff
 | Path | +/- | Reason |
 |------|-----|--------|
-| `docs/roadmap/STATUS.md` | +1 / -1 | `pairs.py .`: F270 `[~]` → `[x]` with the reviewer's line |
-| `README.md` | +12 / -3 | `pairs.py .`: 83 → 84 accepted, Tier 2 done 25 → 26, the F270 paragraph |
-| `scripts/self_use_queue.json` | +1 / -1 | SU-021 `consumed_by: "F270"` (precondition 6) |
-| `.agent/plan.md` | +5 / -5 | := plan.md |
 | `.agent/handoff.md` | rewritten | This handback |
 
-Every commit is under 500 inserted lines. The largest is C1, with 176.
+Every commit is under 500 inserted lines. The largest is C1, with 122.
 
 ## External actions
 
-- `git push` after C3 (this commit), pushing C1 to C3.
-- C4, after the push: `gh pr create --base main --head feature/f270-history-apply --title "F270 — History apply: one commit per task, merge on demand" --body-file .agent/authored/f270-r7-pr_body.md`. The PR number cannot be written here because this commit precedes the PR; the round report carries it.
-- No merge, no worktree, no evidence job and no zip this round.
+- `git worktree add --detach .remedy-wt/f270-r8-g4 e0fe9573` for G4, then `git worktree remove --force` on it. `git worktree list` afterwards shows the primary checkout alone: `/home/decodeux/Repos/remedy  e0fe9573 [feature/f270-history-apply]`.
+- `git push` after C3 (this commit) pushes C1 to C3 to the branch of pull request 258. The push is not forced. This round does not merge, comment on or edit pull request 258.
+- No evidence job and no zip.
 
 ## Verification
 
-- **Transport**, before any write: `sha256sum` of the block read `8a98dc016dee0c52bf9263e4bd2ff947946343c4e868f6d5537a3e12a459ab37`, and all six payloads (ledger.md, plan.md, status_line.txt, readme_paragraph.txt, pairs.py, pr_body.md) matched the digests the block states.
-- **G1** (after C2), `python3 .remedy-wt/f270-r7/g1.py`, exit 0: `True` — `.agent/live_review.md` at C1 `be80be80` equals its `b1e5e846` bytes + ledger.md, and the seven `.agent/authored/f270-r7-*` copies at C1 equal their payloads.
-- **G2** `python3 scripts/rotate_live_review.py`, exit 0:
-  ```
-  gate records moved: 13
-  finding pairs moved: 3 (6 records)
-  old ledger size: 607467 bytes
-  new ledger size: 568711 bytes
-  old archive size: 3860151 bytes
-  new archive size: 3898907 bytes
-  open findings before: 128
-  open findings after: 128
-  ```
-  Equal, and matching the reviewer's dry run (13 gate records, 3 pairs, 128).
-- `python3 .remedy-wt/f270-r7/pairs.py .`, exit 0: `applied docs/roadmap/STATUS.md 1 pair(s)`, `applied README.md 3 pair(s)`, `applied scripts/self_use_queue.json 1 pair(s)`.
-- **G3** on C3's tree before its commit: `python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_golden_path.py tests/cli/test_advertised_commands.py tests/orchestration/test_roadmap_index.py tests/orchestration/test_live_review_rotation.py`, exit 0: `406 passed in 42.35s`, so 0 failed, matching the reviewer's dry run.
-- **G4** on C3's tree: `run_integrity_checks()` returned `passed True`, exit 0. All five checks read PASS: `handler_import` (handlers=147), `live_review_verdict`, `plan_consistency` (unchecked=0, context_complete=False), `relevant_untracked` (untracked=0, relevant=0) and `high_blockers_open` (no open blocker/high findings).
-- **G5** on C3's tree, `python3 .remedy-wt/f270-r7/g45.py g5`, exit 0: `status_line count 1`, `readme_paragraph count 1`, `SU-021 consumed_by 'F270'`.
-- **G6** after C4: the round report carries it.
+- **Transport**, before any write: `sha256sum` of the block read `5e54026c170c8761f273f356a543231db104036bc7155986aeccba0b3ecc78de`. ledger.md `025805f5…19e3`, plan.md `33e4f712…7dc9`, test_from.txt `7a638305…18a2` and test_to.txt `a9c01472…bbc4` each matched the block's digests.
+- **G1** at C2, `python3 .remedy-wt/f270-r8/g1_g2.py`, exit 0: each of the five payload digests `True`. Each `.agent/authored/f270-r8-*` copy equals its payload: `True` for all five. `.agent/plan.md equals plan.md: True`. `.agent/live_review.md equals b91fb1ec bytes + ledger.md: True`. `G1 ALL: True`.
+- **G2** (same script): `test_from.txt count: 0  test_to.txt count: 1`; `numstat of HEAD: e0fe9573 | 4	1	tests/runtimes/test_dev_server.py`, so that file alone. C2's build script printed `TO contains FROM: False` and `before FROM 1 TO 0 | after FROM 0 TO 1`.
+- **G3** at C2, primary checkout, serial: `python3 -m pytest -q -p no:cacheprovider tests/runtimes/test_dev_server.py tests/cli/test_golden_path.py tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py` → `208 passed in 64.34s (0:01:04)`, exit 0, 0 failed. `python3 -m ruff check tests/runtimes/test_dev_server.py` → `All checks passed!`, exit 0.
+- **G4**, disposable worktree `.remedy-wt/f270-r8-g4` at C2, run from its root. The `packages.runtimes.dev_server` import resolved inside the worktree.
+  - Control, unmutated, after purging `__pycache__` (0 dirs present): `python3 -B -m pytest -q -p no:cacheprovider tests/runtimes/test_dev_server.py::TestReadiness` → `4 passed in 3.87s`, exit 0.
+  - Mutant: in `wait_ready` the line `            if READY_STATUS_MIN <= status <= READY_STATUS_MAX:` (count 1, then 0) became `            if True:`. After purging `__pycache__` (2 dirs), the same command gave `4 failed in 0.37s`, exit 1. `test_delayed_readiness` went red on the new assertion: `assert (1437662.994474985 - 1437662.990302461) >= 1.4`. All four nodes failed:
+    ```
+    FAILED tests/runtimes/test_dev_server.py::TestReadiness::test_immediate_readiness
+    FAILED tests/runtimes/test_dev_server.py::TestReadiness::test_delayed_readiness
+    FAILED tests/runtimes/test_dev_server.py::TestReadiness::test_readiness_timeout_stops_the_tree_and_leaves_no_state
+    FAILED tests/runtimes/test_dev_server.py::TestReadiness::test_child_exits_before_readiness
+    ```
+  - The worktree was then removed (see External actions).
+- **G5** comes after the push, so the round report carries it.
+- Full suite not run (amend0917-throughput). The hosted CI re-runs it on the push.
 
 ## Authored-text proofs
 
-- Grep proof, STATUS line: `grep -c -x -F -f .remedy-wt/f270-r7/status_line.txt docs/roadmap/STATUS.md` → `1`, exit 0 (the whole line, byte-exact).
-- Grep proof, README paragraph: `grep -c -x -F -f .remedy-wt/f270-r7/readme_paragraph.txt README.md` → `9`, exit 0, for a payload of 9 lines (README lines 150 to 158); with G5's contiguous count 1, the paragraph is in the tree byte-identical and once.
-- Byte copies are at `.agent/authored/f270-r7-{block.md,ledger.md,plan.md,status_line.txt,readme_paragraph.txt,pairs.py,pr_body.md}`, true against their payloads (G1). The block copy's digest is `8a98dc016dee0c52bf9263e4bd2ff947946343c4e868f6d5537a3e12a459ab37`.
-- `.agent/live_review.md`: byte check `True` (G1). The C3 files: applied by `pairs.py`, which asserts FROM count 1 before and TO count 1 after.
-- `.agent/plan.md` := plan.md, byte copy.
+- The byte copies are at `.agent/authored/f270-r8-{block.md,ledger.md,plan.md,test_from.txt,test_to.txt}`. Each is `True` against its payload (G1). The block copy's digest is `5e54026c170c8761f273f356a543231db104036bc7155986aeccba0b3ecc78de`.
+- `.agent/live_review.md` and `.agent/plan.md`: byte checks `True` (G1).
+- `tests/runtimes/test_dev_server.py`: built from `git show b91fb1ec:` bytes with a single FROM→TO replace. The script asserts FROM 1x before, and FROM 0x and TO 1x after (G2).
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 bookkeeping | done | `be80be80`; Gate F270 R6 PASS_WITH_RISKS booked |
-| C2 rotation | done | `80c23593`; 128 open before and after |
-| C3 closure commit | done | This commit |
-| C4 pull request | done | After the push; the round report names it |
+| C1 bookkeeping | done | `f9b39633`; Gate F270 R7 PASS and R-0979 booked |
+| C2 repair (R-0979) | done | `e0fe9573`; G4 red-proof holds |
+| C3 handoff | done | This commit |
 
 ## Open findings
 
-The rotation script's counter reads 128 before and after. This round opens no finding and resolves none; R-0974, R-0977 and R-0978 stay open, owned by F273.
+By distinct id, `python3 scripts/rotate_live_review.py --dry-run` (exit 0, nothing written) reads `open findings before: 129`. That is round 7's 128 plus R-0979, which this round registers. R-0979 is repaired in C2 and stays open until the reviewer books its resolution. R-0974, R-0977 and R-0978 stay open, owned by F273.
 
 ## Deviations & assumptions
 
-- **Commit sequence:** as ordered (C1, C2, C3, then the PR). No extra commit.
-- **Driver scripts.** The byte copies and the append ran through `.remedy-wt/f270-r7/c1.py`, and G1, G4 and G5 through `g1.py` and `g45.py`, all gitignored scratch.
+- **Commit sequence:** as ordered (C1, C2, C3, then the push). No extra commit.
+- **Driver scripts:** the copies, the replace and the gates ran through gitignored scratch in `.remedy-wt/f270-r8/`: `c1_build.py`, `c2_build.py`, `g1_g2.py` and `g4_tools.py`.
+- **Open-findings count:** the count comes from the rotation script's `--dry-run`, which writes nothing (`git status --porcelain` was empty after it).
 
 ## Next
 
-Phase 1 rule 1 (`.agent/STOP`), then rule 2: merge F270's pull request at the Open PR Gate.
+1. Phase 1 rule 1 (`.agent/STOP`).
+2. The review of round 8.
+3. The Open PR Gate on pull request 258, after its hosted CI on the pushed tip.
 
 Operator questions open: 5
