@@ -1,0 +1,3 @@
+- R-0974 carries a resolution line naming the commit that makes
+  `packages/orchestration/worktrees.py` `write_tree` keep a tracked file that `.gitignore`
+  matches, with a test in which a job edits such a file and the edit reaches `result.diff`.
