@@ -267,15 +267,15 @@ class TestDoMission:
         # Legacy path runs (may fail due to no builder, but NOT the do sequence's output)
         assert "] shape:" not in result.stdout
 
-    def test_budget_flag_skips_golden_path(self, tmp_path):
-        """Mission + --max-total-tokens → legacy path (budgets honored)."""
+    def test_budget_flag_walks_the_do_sequence(self, tmp_path):
+        """Mission + --max-total-tokens → the do sequence (DECISION F268 D16 (5))."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
 
         result = _run_do(repo, env, "build a readme", ["--max-total-tokens", "500"])
-        # Legacy path — the do sequence's marker absent
-        assert "] shape:" not in result.stdout
+        # The do sequence's marker present: the budget flag no longer leaves it
+        assert "[done] shape:" in result.stdout, result.stderr
 
     def test_bare_mission_with_json_uses_golden_path(self, tmp_path):
         """Bare mission + --json → golden path (--json allowed)."""
