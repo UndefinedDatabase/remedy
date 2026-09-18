@@ -68,11 +68,17 @@ class TestStudyRunWritesCards:
 
         # Run the command with JSON output to capture structured result
         _cmd_study_run(str(repo), project=str(repo), json_output=True)
-        out = capsys.readouterr().out
+        captured = capsys.readouterr()
+        out = captured.out
+        err = captured.err
 
         result = json.loads(out)
         assert result["cards_written"] == ["study:structure", "study:core_modules", "study:conventions", "study:entry_points"]
         assert result["partial"] is False
+        # Verify the warning fired when no registered project found
+        assert "No registered project found" in err
+        # Verify stdout is still valid JSON despite warning on stderr
+        assert json.loads(out) is not None
 
     def test_study_run_defaults_path_to_cwd(self, tmp_path, monkeypatch, capsys):
         """Test that study run with path=None studies the current directory."""
@@ -94,6 +100,60 @@ class TestStudyRunWritesCards:
         result = json.loads(out)
         assert result["cards_written"]  # Should have written cards
         assert len(result["cards_written"]) == 4
+
+    def test_study_run_resolves_same_project_as_teacher_ask_via_registered_project(self, tmp_path, monkeypatch, capsys):
+        """Test that study run resolves the same project as teacher ask when registered."""
+        from apps.cli.commands.study_cmd import _cmd_study_run
+        from packages.orchestration.project_scope import resolve_scope
+
+        repo = _build_fixture_repo(tmp_path)
+        data_root = _setup_data_root(tmp_path, monkeypatch)
+        project_id = _setup_project(data_root, monkeypatch)
+
+        # Change to the fixture repo directory to enable project auto-detection
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(str(repo))
+            # Call study run with project=None to test auto-detection
+            _cmd_study_run(None, project=None, json_output=True)
+        finally:
+            os.chdir(old_cwd)
+
+        # Extract the project_id from the JSON output
+        captured = capsys.readouterr()
+        result = json.loads(captured.out)
+        study_project_id = result["project_id"]
+
+        # Resolve scope the same way teacher ask does
+        scope = resolve_scope(project_flag=None, all_projects=False, cwd=str(repo))
+        teacher_project_id = scope.project_id
+
+        # Both commands should resolve to the same project id
+        assert study_project_id == teacher_project_id
+        assert study_project_id == project_id
+
+    def test_study_run_warns_and_falls_back_when_no_project_registered(self, tmp_path, monkeypatch, capsys):
+        """Test that study run warns and falls back to path when no project registered."""
+        from apps.cli.commands.study_cmd import _cmd_study_run
+
+        repo = _build_fixture_repo(tmp_path)
+        data_root = _setup_data_root(tmp_path, monkeypatch)
+        # Do NOT call _setup_project, so no project is registered
+
+        # Run the command with JSON output
+        _cmd_study_run(str(repo), project=None, json_output=True)
+        captured = capsys.readouterr()
+        out = captured.out
+        err = captured.err
+
+        # Verify the warning is printed
+        assert "No registered project found" in err
+
+        # Verify stdout is still valid JSON
+        result = json.loads(out)
+
+        # Verify the project_id falls back to the absolute path
+        assert result["project_id"] == os.path.abspath(str(repo))
 
 
 class TestStudyCommandCatalogRegistration:

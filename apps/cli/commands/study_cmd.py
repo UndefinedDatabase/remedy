@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json as _json
 import os
+import sys
 
 
 def _cmd_study_run(
@@ -25,10 +26,21 @@ def _cmd_study_run(
     behavior without a running Ollama (same pattern as teacher_cmd's `call`
     parameter, DECISION F255 D8).
     """
+    from packages.orchestration.project_scope import resolve_scope
     from packages.orchestration.study import run_study, study_call_fn
 
     target = os.path.abspath(path or ".")
-    resolved_project = project or target
+    scope = resolve_scope(project_flag=project, all_projects=False, cwd=target)
+    if scope.project_id is not None:
+        resolved_project = scope.project_id
+    else:
+        resolved_project = project or target
+        print(
+            "No registered project found for this repository — cards are written "
+            "unscoped by path and may not be retrievable by `teacher ask` later. "
+            "Run `remedy init` first.",
+            file=sys.stderr,
+        )
     resolved_call_fn = call_fn if call_fn is not None else study_call_fn()
 
     result = run_study(target, project_id=resolved_project, call_fn=resolved_call_fn)
