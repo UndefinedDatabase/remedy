@@ -24,18 +24,23 @@ orchestrator records on each job it dispatches the milestone the job serves
 criterion plus every criterion scoped to that milestone, in contract order —
 a subset of the mission's criteria by construction.
 
-Deliberately absent: the compiled ``check`` of a criterion.  It stays null
-until T002 compiles it through F061's compiler, and this module never
-compiles, runs or gates anything.  The names ``save_contract`` and
-``load_contract`` belong to ``run_contract.py`` (a job's run contract, a
-different record) and are not used here.
+A criterion's ``check`` is compiled by F061's compiler, called here and never
+re-implemented (DECISION F269 D4 (1)): :func:`compile_contract_criteria`
+hands the criteria to ``dod_compiler.compile_dod`` as one task each, and
+``mission_compiler.plan_mission`` writes one planner criterion per milestone
+through :func:`write_planner_criteria` (D4 (2)).  This module never RUNS a
+check: the job's own gate in ``dod_gate.py`` does.
+
+The names ``save_contract`` and ``load_contract`` belong to
+``run_contract.py`` (a job's run contract, a different record) and are not
+used here.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +56,9 @@ CRITERION_STATUSES = (CRITERION_STATUS_OPEN, "met", "unmet")
 
 #: The job metadata key the orchestrator's dispatch writes (DECISION F269 D3).
 JOB_MILESTONE_KEY = "milestone_id"
+
+#: A compiled criterion's check id is this prefix plus the criterion id (D4 (1)).
+CONTRACT_CHECK_ID_PREFIX = "ctr-"
 
 _CRITERION_ID_RE = re.compile(r"^C\d{3}$")
 _CONTRACT_FIELDS = ("schema", "template", "criteria", "amendments")
@@ -236,6 +244,77 @@ def read_mission_contract(mission: Any) -> MissionContract | None:
     if body is None:
         return None
     return MissionContract.from_json(body)
+
+
+# ---------------------------------------------------------------------------
+# Compiling the criteria — F061's compiler, called (DECISION F269 D4 (1), (2))
+# ---------------------------------------------------------------------------
+
+
+def compile_contract_criteria(
+        criteria: Sequence[ContractCriterion],
+        call_fn: Callable[[str, int], str] | None = None,
+) -> tuple[ContractCriterion, ...]:
+    """Give every criterion its check, compiled by ``dod_compiler.compile_dod``.
+
+    The criteria become a ``TaskPlan`` of one task each — task id = criterion
+    id, the one acceptance line = the criterion text — and each criterion
+    takes the FIRST compiled check whose ``acceptance_refs`` holds
+    ``<criterion id>:0``, re-labelled as its own: id ``ctr-<criterion id>``,
+    that one ref, and the criterion's own ``blocking``.  F061's traceability
+    rule guarantees such a check exists.  ``call_fn=None`` is the compiler's
+    own deterministic path.
+    """
+    from packages.orchestration.dod_compiler import acceptance_line_key, compile_dod
+    from packages.orchestration.schemas.models import TASK_PLAN_SCHEMA_V, TaskPlan
+
+    if not criteria:
+        return ()
+    plan = TaskPlan(schema_v=TASK_PLAN_SCHEMA_V, tasks=[
+        {"id": c.id, "title": c.id, "goal": c.text, "acceptance": [c.text],
+         "est_tokens_band": "M"}
+        for c in criteria])
+    dod = compile_dod({}, plan, call_fn).dod
+    compiled: list[ContractCriterion] = []
+    for criterion in criteria:
+        ref = acceptance_line_key(criterion.id, 0)
+        check = next(c for c in dod.checks if ref in c.acceptance_refs)
+        body = check.model_dump(mode="json")
+        body.update(id=f"{CONTRACT_CHECK_ID_PREFIX}{criterion.id}",
+                    acceptance_refs=[ref], blocking=criterion.blocking)
+        compiled.append(replace(criterion, check=body))
+    return tuple(compiled)
+
+
+def write_planner_criteria(project_id: str, mission_id: str, plan: Any,
+                           root: Path | None = None) -> MissionContract:
+    """Write the mission's contract after its plan is compiled (D4 (2)).
+
+    Every criterion whose origin is not ``planner`` is kept with its id; the
+    planner criteria are replaced by one per milestone of ``plan`` — text =
+    the milestone's goal, scoped to that milestone, blocking — with fresh ids
+    after the highest kept one.  The new criteria, and any kept criterion that
+    has no check yet, are compiled with no provider; a kept check is kept.
+    """
+    from packages.orchestration.mission_state import load_mission
+
+    existing = read_mission_contract(load_mission(project_id, mission_id, root))
+    kept = [c for c in (existing.criteria if existing else ())
+            if c.origin != "planner"]
+    first = max((int(c.id[1:]) for c in kept), default=0) + 1
+    planner = [ContractCriterion(id=f"C{number:03d}", text=milestone.goal,
+                                 origin="planner", milestones=(milestone.id,))
+               for number, milestone in enumerate(plan.milestones, start=first)]
+    compiled = compile_contract_criteria(
+        [c for c in kept if c.check is None] + planner)
+    by_id = {c.id: c for c in compiled}
+    criteria = tuple(by_id.get(c.id, c) for c in kept) + tuple(
+        by_id[c.id] for c in planner)
+    contract = MissionContract(
+        criteria=criteria,
+        template=existing.template if existing else None,
+        amendments=existing.amendments if existing else ())
+    return write_mission_contract(project_id, mission_id, contract, root)
 
 
 # ---------------------------------------------------------------------------

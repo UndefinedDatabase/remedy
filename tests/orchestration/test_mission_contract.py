@@ -11,21 +11,33 @@ What DECISIONs F269 D2 and D3 require proof of:
   * the milestone recorder writes onto an existing job record and writes
     nothing for a job that does not exist.
 
-Every test writes into ``tmp_path``; no provider is called.
+And what DECISION F269 D4 (1) and (2) require:
+
+  * F061's compiler gives every criterion a check ``ctr-<id>`` tracing to
+    ``<id>:0`` and carrying the criterion's own ``blocking``;
+  * planning a mission writes one planner criterion per milestone, and a
+    re-plan keeps every non-planner criterion with its id.
+
+Every test writes into ``tmp_path``; no real provider is called — a planned
+mission replays a recorded planner answer.
 """
 from __future__ import annotations
 
 import copy
+import json
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
+from packages.orchestration.mission_compiler import plan_mission
 from packages.orchestration.mission_contract import (
     JOB_MILESTONE_KEY,
     ContractCriterion,
     ContractError,
     MissionContract,
+    compile_contract_criteria,
     job_contract_slice,
     read_job_milestone,
     read_mission_contract,
@@ -211,6 +223,111 @@ class TestTheJobMilestone:
         save_job_plan(job, tmp_path)
 
         assert read_job_milestone(str(job.job_id), tmp_path) is None
+
+
+def _criterion(ident: str, text: str, **over: Any) -> ContractCriterion:
+    return ContractCriterion(id=ident, text=text,
+                             origin=over.pop("origin", "template"), **over)
+
+
+class TestTheCompiledContract:
+    """DECISION F269 D4 (1): F061's compiler gives every criterion its check."""
+
+    def test_every_criterion_gets_its_own_check_with_its_own_blocking(self):
+        criteria = [_criterion("C001", "the suite passes"),
+                    _criterion("C002", "the docs read well", blocking=False),
+                    _criterion("C007", "tests/test_cli.py passes")]
+
+        compiled = compile_contract_criteria(criteria)
+
+        assert [c.id for c in compiled] == ["C001", "C002", "C007"]
+        for criterion in compiled:
+            assert criterion.check["id"] == f"ctr-{criterion.id}"
+            assert criterion.check["acceptance_refs"] == [f"{criterion.id}:0"]
+        assert [c.check["blocking"] for c in compiled] == [True, False, True]
+
+    def test_a_non_blocking_criterion_stays_non_blocking(self):
+        [compiled] = compile_contract_criteria(
+            [_criterion("C001", "the docs read well", blocking=False)])
+
+        assert compiled.blocking is False
+        assert compiled.check["blocking"] is False
+
+    def test_a_criterion_naming_a_test_path_compiles_to_that_selector(self):
+        [compiled] = compile_contract_criteria(
+            [_criterion("C001", "tests/test_cli.py::test_help passes")])
+
+        assert compiled.check["kind"] == "pytest"
+        assert compiled.check["spec"] == {"selector": "tests/test_cli.py::test_help"}
+
+    def test_the_compiled_check_is_a_valid_dod_check_and_survives_a_write(
+            self, tmp_path, mission):
+        from packages.orchestration.dod_schema import DoDCheck
+
+        compiled = compile_contract_criteria([_criterion("C001", "it builds")])
+        written = write_mission_contract(
+            PROJECT, mission.id, MissionContract(criteria=compiled), tmp_path)
+
+        assert DoDCheck.model_validate(written.criteria[0].check).id == "ctr-C001"
+
+    def test_nothing_to_compile_is_nothing(self):
+        assert compile_contract_criteria([]) == ()
+
+
+class TestThePlannerCriteria:
+    """DECISION F269 D4 (2): planning a mission writes its planner criteria."""
+
+    @pytest.fixture()
+    def planned(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        fixture = json.loads((Path(__file__).parent / "fixtures" / "mission"
+                              / "payments_platform.json").read_text(encoding="utf-8"))
+        draft = json.dumps(fixture["provider_draft"])
+        m = create_mission(PROJECT, fixture["mission"]["goal"])
+        return m, (lambda prompt, attempt: draft)
+
+    def test_a_planned_mission_carries_one_planner_criterion_per_milestone(
+            self, planned):
+        m, call_fn = planned
+        outcome = plan_mission(PROJECT, m.id, call_fn)
+
+        contract = read_mission_contract(load_mission(PROJECT, m.id))
+        milestones = outcome.plan.milestones
+        assert len(milestones) >= 2
+        assert [c.milestones for c in contract.criteria] == [
+            (ms.id,) for ms in milestones]
+        assert [c.text for c in contract.criteria] == [ms.goal for ms in milestones]
+        assert {c.origin for c in contract.criteria} == {"planner"}
+        assert all(c.blocking and c.check is not None for c in contract.criteria)
+        assert outcome.mission.contract == contract.to_json()
+
+    def test_a_plan_without_a_provider_still_writes_its_planner_criterion(
+            self, planned):
+        m, _call_fn = planned
+        outcome = plan_mission(PROJECT, m.id, None)
+
+        contract = read_mission_contract(outcome.mission)
+        assert [(c.id, c.milestones) for c in contract.criteria] == [("C001", ("M001",))]
+
+    def test_a_replan_keeps_a_non_planner_criterion_and_replaces_the_planner_ones(
+            self, planned):
+        m, call_fn = planned
+        write_mission_contract(PROJECT, m.id, MissionContract(criteria=(
+            _criterion("C001", "an old planner criterion", origin="planner",
+                       milestones=("M009",)),
+            _criterion("C004", "the readme names the install command"),
+        ), template="cli-tool"))
+
+        plan_mission(PROJECT, m.id, None)
+
+        contract = read_mission_contract(load_mission(PROJECT, m.id))
+        assert contract.template == "cli-tool"
+        kept, *planner = contract.criteria
+        assert (kept.id, kept.text, kept.origin) == (
+            "C004", "the readme names the install command", "template")
+        assert kept.check is not None
+        assert [(c.id, c.origin, c.milestones) for c in planner] == [
+            ("C005", "planner", ("M001",))]
 
 
 class TestTheRenderer:
