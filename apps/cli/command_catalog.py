@@ -403,6 +403,16 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("job.show",),
     ),
+    CommandEntry(
+        command_id="job.contract",
+        group_id="job",
+        subcommand="contract",
+        description="Show the slice of its mission's contract a job serves — the acceptance criteria for the whole mission and for the milestone it was dispatched for (read-only).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("job.show", "mission.contract"),
+    ),
 
     # ── project ──────────────────────────────────────────────────────────
     CommandEntry(
@@ -1024,6 +1034,20 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.list", "mission.start"),
+    ),
+    CommandEntry(
+        command_id="mission.contract",
+        group_id="mission",
+        subcommand="contract",
+        description="Show a mission's contract — its acceptance criteria, each with the milestones of its plan it covers (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "job.contract"),
     ),
     # Status transitions are their own explicit subcommands (R-0163): the verb
     # names the status, and nothing else in Remedy ever moves it.
