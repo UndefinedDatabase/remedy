@@ -324,3 +324,208 @@ class TestEvidenceUsesTheWorktreeResult:
             assert doc["isolation_mode"] == "worktree"
             assert doc["result_diff"]["sha256"]
             assert (out / "task_runs" / t.task_id / "result.diff").is_file()
+
+
+def _branch_commits(repo: Path, job) -> list[str]:
+    """The job branch's commits above its base, oldest first."""
+    return _git(repo, "rev-list", "--reverse",
+                f"{job.worktree_base_commit}..{job.worktree_branch}").split()
+
+
+def _trailer(repo: Path, sha: str, key: str) -> str:
+    return _git(repo, "log", "-1", f"--format=%(trailers:key={key},valueonly)", sha).strip()
+
+
+class TestPerTaskCommitsOnTheJobBranch:
+    """F270 T001, DECISION F270 D1: one Remedy commit per applied task on ``remedy/job-<id>``."""
+
+    def test_a_two_task_run_lands_two_remedy_commits_on_the_job_branch(
+        self, repo, monkeypatch,
+    ):
+        real_tree_diff = W.write_tree_diff
+        diff_to: list[str] = []
+
+        def tree_diff_spy(handle, before, after, out_path):
+            diff_to.append(after)
+            return real_tree_diff(handle, before, after, out_path)
+
+        monkeypatch.setattr(W, "write_tree_diff", tree_diff_spy)
+        seen: dict = {}
+        job = _run_two_task_job(repo, monkeypatch, seen)
+        assert job.state == JOB_COMPLETED
+
+        shas = _branch_commits(repo, job)
+        assert len(shas) == 2
+        subjects = [_git(repo, "log", "-1", "--format=%s", s).strip() for s in shas]
+        assert subjects == ["task 1: create one.txt",
+                            "task 2: read one.txt and create two.txt"]
+        for sha, task in zip(shas, job.tasks):
+            who = _git(repo, "log", "-1", "--format=%an <%ae>|%cn <%ce>", sha).strip()
+            assert who == "Remedy <remedy@local>|Remedy <remedy@local>"
+            paragraphs = _git(repo, "log", "-1", "--format=%B", sha).strip().split("\n\n")
+            assert paragraphs[-2].splitlines()[-1] == "contract: none"
+            assert _trailer(repo, sha, "Remedy-Job") == job.job_id
+            assert _trailer(repo, sha, "Remedy-Task") == task.task_id
+        assert [t.worktree_commit for t in job.tasks] == shas
+        reloaded = load_job_plan(job.job_id)
+        assert [t.worktree_commit for t in reloaded.tasks] == shas
+        assert job.worktree_head == reloaded.worktree_head == shas[-1]
+        # The branch tip's tree is the tree the job's result.diff was computed to.
+        tip_tree = _git(repo, "rev-parse", f"{shas[-1]}^{{tree}}").strip()
+        assert diff_to and diff_to[-1] == tip_tree
+        recomputed = _git(repo, "diff", "--no-color", "--no-ext-diff", "--src-prefix=a/",
+                          "--dst-prefix=b/", job.job_initial_tree, tip_tree)
+        assert (job_dir(job.job_id) / "result.diff").read_text() == recomputed
+        # The operator's HEAD never moves.
+        assert _git(repo, "rev-parse", "HEAD").strip() == job.worktree_base_commit
+        assert _git(repo, "status", "--porcelain") == ""
+
+    def test_the_operators_identity_and_hooks_never_reach_the_job_commits(
+        self, repo, monkeypatch,
+    ):
+        for var, value in (("GIT_AUTHOR_NAME", "Operator"),
+                           ("GIT_AUTHOR_EMAIL", "operator@example.com"),
+                           ("GIT_COMMITTER_NAME", "Operator"),
+                           ("GIT_COMMITTER_EMAIL", "operator@example.com")):
+            monkeypatch.setenv(var, value)
+        hook = repo / ".git" / "hooks" / "pre-commit"
+        hook.parent.mkdir(parents=True, exist_ok=True)
+        hook.write_text("#!/bin/sh\nexit 1\n")
+        hook.chmod(0o755)
+        # The hook is live: an ordinary commit in the repository is refused by it.
+        refused = subprocess.run(["git", "commit", "--allow-empty", "-qm", "probe"],
+                                 cwd=str(repo), capture_output=True, text=True)
+        assert refused.returncode != 0
+
+        job = _run_two_task_job(repo, monkeypatch, {})
+        assert job.state == JOB_COMPLETED
+        shas = _branch_commits(repo, job)
+        assert len(shas) == 2
+        for sha in shas:
+            who = _git(repo, "log", "-1", "--format=%an <%ae>|%cn <%ce>", sha).strip()
+            assert who == "Remedy <remedy@local>|Remedy <remedy@local>"
+
+    def test_a_commit_already_made_for_the_task_is_adopted_not_repeated(
+        self, repo, monkeypatch,
+    ):
+        job = parse_job_file(JOB_TEXT, str(repo))
+        first_task = job.tasks[0].task_id
+        holder: dict = {}
+        made: dict = {}
+        real_create = W.create
+
+        def spy(job_id, r):
+            h = real_create(job_id, r)
+            holder["path"] = h.path
+            return h
+
+        class _CommitsBeforeTheSave(_SequentialBuilder):
+            """Task 1 leaves the commit an interrupted run made before its save."""
+
+            def build(self, prompt, **kw):
+                out = super().build(prompt, **kw)
+                if self.calls == 1:
+                    ws = Path(holder["path"])
+                    _git(ws, "add", "-A", ".")
+                    _git(ws, "commit", "-qm", "task 1: create one.txt\n\n"
+                         f"Remedy-Job: {job.job_id}\nRemedy-Task: {first_task}")
+                    made["sha"] = _git(ws, "rev-parse", "HEAD").strip()
+                return out
+
+        monkeypatch.setattr(W, "create", spy)
+        prov = _CommitsBeforeTheSave(holder, {})
+        assert job.tasks[0].worktree_commit == ""
+        done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
+                       builder_name="fake", reviewer_name="fake", max_rounds=1)
+        assert done.state == JOB_COMPLETED
+        shas = _branch_commits(repo, done)
+        assert len(shas) == 2                       # adopted: no second commit of task 1
+        assert shas[0] == made["sha"] == done.tasks[0].worktree_commit
+        assert done.tasks[1].worktree_commit == shas[1]
+
+    def test_the_commit_helper_refuses_the_operators_checkout(self, repo):
+        (repo / "base.txt").write_text("edited\n")
+        (repo / "new.txt").write_text("new\n")
+        before = (_git(repo, "rev-parse", "HEAD"), _git(repo, "ls-files", "--stage"),
+                  _git(repo, "status", "--porcelain"))
+        with pytest.raises(W.WorktreeError, match="refusing to commit"):
+            W.commit_job_worktree(repo, "task 1: must not land\n")
+        after = (_git(repo, "rev-parse", "HEAD"), _git(repo, "ls-files", "--stage"),
+                 _git(repo, "status", "--porcelain"))
+        assert after == before
+
+    def test_the_message_cuts_a_long_title_and_states_the_contract_slice(
+        self, repo, monkeypatch,
+    ):
+        from types import SimpleNamespace
+
+        from packages.orchestration import mission_contract as MC
+        from packages.orchestration import mission_state as MS
+
+        job = parse_job_file(JOB_TEXT, str(repo))
+        task = job.tasks[0]
+        task.title = "  ".join(["rewrite the contact form handler"] * 4)
+        message = PJ.build_task_commit_message(job, task)
+        first = message.splitlines()[0]
+        assert len(first) <= 72 and first.endswith("...")
+        cut = first[len("task 1: "):-len("...")]
+        collapsed = " ".join(task.title.split())
+        assert collapsed.startswith(cut) and collapsed[len(cut)] == " "
+        assert message.split("\n\n")[-2] == "contract: none"
+
+        def criterion(cid, status, milestones=()):
+            return MC.ContractCriterion(id=cid, text=f"criterion {cid}", origin="planner",
+                                        milestones=tuple(milestones), status=status)
+
+        contract = MC.MissionContract(criteria=(
+            criterion("C001", "met"), criterion("C002", "open"),
+            criterion("C003", "met", ["M2"]), criterion("C004", "met", ["M1"]),
+        ))
+        mission = SimpleNamespace(contract=contract.to_json())
+        monkeypatch.setattr(MS, "mission_for_job", lambda job_id, root=None: mission)
+        monkeypatch.setattr(MC, "read_job_milestone", lambda job_id, root=None: "M1")
+        message = PJ.build_task_commit_message(job, task)
+        # The M1 slice is C001, C002 and C004; C003 serves M2 and is not counted.
+        assert message.split("\n\n")[-2] == "contract: 2 of 3 criteria green"
+
+    def test_a_non_git_target_commits_nothing(self, tmp_path, monkeypatch):
+        def forbidden(*a, **kw):
+            raise AssertionError("a copy-mode job must not commit")
+
+        monkeypatch.setattr(W, "commit_job_worktree", forbidden)
+        plain = tmp_path / "plain"
+        plain.mkdir()
+        (plain / "base.txt").write_text("base\n")
+        job = parse_job_file("# J\n\n## Task 1 — write\n\nWrite one.txt.\n", str(plain))
+
+        class _Simple:
+            def build(self, prompt, **kw):
+                return BuilderOutput(summary="noop", files_changed=[], provider="fake")
+
+            def review(self, prompt, **kw):
+                return ReviewerOutput(verdict="pass", confidence="high",
+                                      summary="ok", provider="fake")
+
+        prov = _Simple()
+        done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
+                       builder_name="fake", reviewer_name="fake", max_rounds=1)
+        assert done.isolation_mode == "copy"
+        assert done.tasks[0].status == PJ.TASK_APPLIED      # the seam was reached
+        assert "worktree_commit_failed" not in done.error
+        assert [t.worktree_commit for t in done.tasks] == [""]
+        assert [t.worktree_commit for t in load_job_plan(done.job_id).tasks] == [""]
+
+    def test_a_failed_commit_blocks_the_job(self, repo, monkeypatch):
+        def failing(path, message):
+            raise W.WorktreeError("git commit in the job worktree failed (1): boom")
+
+        monkeypatch.setattr(W, "commit_job_worktree", failing)
+        job = _run_two_task_job(repo, monkeypatch, {})
+        first = job.tasks[0]
+        assert job.state == JOB_BLOCKED
+        assert job.error == f"task_{first.task_id}_worktree_commit_failed"
+        assert first.status == PJ.TASK_BLOCKED and "boom" in first.error
+        assert job.tasks[1].status == PJ.TASK_SKIPPED
+        assert [t.worktree_commit for t in job.tasks] == ["", ""]
+        assert _branch_commits(repo, job) == []
+        assert load_job_plan(job.job_id).error == job.error
