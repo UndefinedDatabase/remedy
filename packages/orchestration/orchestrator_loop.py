@@ -1597,6 +1597,18 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
                                 _load(project_id, mission_id, root),
                                 payload["milestone_id"], str(job.job_id), root):
             detail += "; DoD attached"
+        # DECISION F269 D3 (1): the job records the milestone it serves, so its
+        # contract slice can be derived. The in-memory job is the one the
+        # executor saves next, so it carries the same key.
+        from packages.orchestration.mission_contract import (
+            JOB_MILESTONE_KEY,
+            record_job_milestone,
+        )
+
+        if record_job_milestone(str(job.job_id), payload["milestone_id"], root):
+            metadata = getattr(job, "metadata", None)
+            if isinstance(metadata, dict):
+                metadata[JOB_MILESTONE_KEY] = payload["milestone_id"]
         run = (execute or execute_dispatched_job)(job)
         # What execution PRODUCED, on the ledger entry, so the next iteration's
         # context shows why the milestone is or is not claimable.

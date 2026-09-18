@@ -633,6 +633,33 @@ class TestEveryMoveKindIsExercised:
         assert result.entries[0].outcome["status"] == "dispatched"
         assert result.entries[0].outcome["job_id"] == "job-0001"
 
+    def test_a_dispatched_job_records_its_milestone_on_disk(
+            self, tmp_path, mission, monkeypatch):
+        """DECISION F269 D3 (1): the real dispatch verb creates the job record,
+        and the dispatch branch writes the milestone it serves onto it — on
+        disk, and on the job the executor is handed next."""
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        executed: list[Any] = []
+
+        def execute(job):
+            executed.append(job)
+            return _FakeCycleRun()
+
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="build M001")),
+            root=tmp_path, execute=execute,
+            control_root_path=tmp_path / "control")
+        job_id = result.entries[0].outcome["job_id"]
+
+        stored = load_job_plan(job_id, tmp_path)
+        assert stored is not None, "the real dispatch verb created a job record"
+        assert stored.metadata["milestone_id"] == "M001"
+        assert executed[0].metadata["milestone_id"] == "M001"
+
     def test_declare_milestone_done_records_the_milestone(self, tmp_path,
                                                           mission, dispatched):
         run_mission(
