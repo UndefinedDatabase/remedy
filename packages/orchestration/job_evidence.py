@@ -952,11 +952,339 @@ def export_job_evidence(
 
     _write_json("manifest.json", manifest)
 
+    # DECISION F268 D13 / R-0892: the four flow artifacts the review-package check requires,
+    # written LAST so the final audit and the missing-artifact list describe the finished package.
+    _write_job_flow_artifacts(job, out_path, _write_json, written)
+
     return _redact_json_value({
         "job_id": job_id,
         "out_dir": str(out_path),
         "files": written,
         "manifest": manifest,
+    })
+
+
+# ── DECISION F268 D13: the flow artifacts, from the job's own records ──────────────────────
+#
+# `scripts/build_review_manifest.py` requires these root and per-task files of a provider-run
+# package. The script is not part of the installed package, so the lists are mirrored here;
+# `tests/cli/test_do_evidence_package.py` pins them equal to the script's own.
+REVIEW_REQUIRED_ROOT_ARTIFACTS = (
+    "job_flow.json",
+    "manifest.json",
+    "agent_run_trace.jsonl",
+    "agent_run_trace_summary.json",
+    "prompt_trace_summary.json",
+    "command_transcript.json",
+)
+REVIEW_REQUIRED_TASK_ARTIFACTS = (
+    "prompt_trace.jsonl",
+    "prompt_trace_summary.json",
+    "review.json",
+    "repair_loop.json",
+    "token_accounting.json",
+    "provider_evidence.json",
+)
+#: A task carrying `manual_repair_provenance.json` never has these; the script exempts them too.
+REVIEW_MANUAL_REPAIR_EXEMPT_ARTIFACTS = frozenset({
+    "prompt_trace.jsonl",
+    "prompt_trace_summary.json",
+    "provider_evidence.json",
+    "repair_loop.json",
+})
+
+_TEST_EXIT_RE = re.compile(r"^exit=(-?\d+)")
+
+
+def _read_export_json(out_path: Path, rel: str) -> Any:
+    try:
+        return json.loads((out_path / rel).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _exported_prompt_trace_index(task_dir: Path) -> dict[tuple[int, str], dict[str, Any]]:
+    """The exported `prompt_trace.jsonl` of one task, keyed by (round, role)."""
+    index: dict[tuple[int, str], dict[str, Any]] = {}
+    trace = task_dir / "prompt_trace.jsonl"
+    if not trace.is_file():
+        return index
+    for line in trace.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(entry, dict):
+            index[(entry.get("round", 0), entry.get("role", ""))] = entry
+    return index
+
+
+def _build_job_agent_run_trace(job: Any, out_path: Path, final_status: str | None) -> list[Any]:
+    """Reconstruct the job's agent run trace from its run records and the exported task runs.
+
+    The heir of the reconstruction `do job-flow` did (deleted in `70c78773`): the same events,
+    built with `agent_run_trace.create_trace_event`, but without the promote dry-run that
+    command ran and no export performs. Providers are the ones the job's execution config
+    recorded; a task's F004 stream events come from its exported `task_runs/<id>/streams/`.
+    """
+    from packages.orchestration.agent_run_trace import (
+        TRACE_SOURCE_LEGACY,
+        create_trace_event,
+        task_has_stream_evidence,
+        trace_events_from_task_streams,
+    )
+    from packages.orchestration.pingpong_loop import _provider_kind, load_run
+
+    ec = job.execution_config
+    builder = (getattr(ec, "builder", "") or "") if ec else ""
+    reviewer = (getattr(ec, "reviewer", "") or "") if ec else ""
+    b_kind = _provider_kind(builder) if builder else ""
+    r_kind = _provider_kind(reviewer) if reviewer else ""
+    src = TRACE_SOURCE_LEGACY
+    job_id = job.job_id
+    events = [create_trace_event(
+        "job_planned", job_id=job_id, safe_summary=f"{len(job.tasks)} tasks planned",
+        status=job.state, trace_source=src,
+    )]
+    for task in job.tasks:
+        events.append(create_trace_event(
+            "task_started", job_id=job_id, task_id=task.task_id,
+            safe_summary=(task.title or "")[:200], trace_source=src,
+        ))
+        run_data = load_run(task.run_id) if task.run_id else None
+        if not run_data:
+            events.append(create_trace_event(
+                "task_gate_evaluated", job_id=job_id, task_id=task.task_id,
+                status=task.status,
+                outcome="skipped" if task.status == "skipped" else "no_run",
+                safe_summary=task.error or task.status, trace_source=src,
+            ))
+            continue
+        task_dir = out_path / "task_runs" / task.task_id
+        if task_has_stream_evidence(task_dir):
+            events.extend(trace_events_from_task_streams(
+                task_dir, job_id=job_id, task_id=task.task_id, run_id=task.run_id))
+        pt_index = _exported_prompt_trace_index(task_dir)
+        pt_refs = [f"task_runs/{task.task_id}/prompt_trace.jsonl"] if pt_index else []
+        for rd in run_data.get("rounds") or []:
+            round_num = rd.get("round", 0)
+            is_repair = round_num > 1
+            if rd.get("builder"):
+                pt = pt_index.get((round_num, "builder"), {})
+                common = dict(job_id=job_id, task_id=task.task_id, run_id=task.run_id,
+                              round_num=round_num, role="builder", provider=builder,
+                              provider_kind=b_kind, trace_source=src)
+                events.append(create_trace_event(
+                    "repair_prompt_created" if is_repair else "builder_prompt_created",
+                    prompt_kind="repair" if is_repair else "initial",
+                    prompt_sha256=pt.get("prompt_sha256", ""),
+                    prompt_chars=pt.get("prompt_chars", 0),
+                    source_artifact_refs=pt_refs, **common,
+                ))
+                events.append(create_trace_event(
+                    "repair_output_received" if is_repair else "builder_output_received",
+                    changed_files_safe=(rd["builder"].get("files_changed") or [])[:20],
+                    **common,
+                ))
+            if rd.get("reviewer"):
+                review = rd["reviewer"]
+                finding_ids = [f.get("id", "") for f in review.get("findings") or []
+                               if isinstance(f, dict)][:20]
+                pt = pt_index.get((round_num, "reviewer"), {})
+                common = dict(job_id=job_id, task_id=task.task_id, run_id=task.run_id,
+                              round_num=round_num, role="reviewer", provider=reviewer,
+                              provider_kind=r_kind, trace_source=src)
+                events.append(create_trace_event(
+                    "reviewer_prompt_created",
+                    prompt_kind="re-review" if is_repair else "review",
+                    prompt_sha256=pt.get("prompt_sha256", ""),
+                    prompt_chars=pt.get("prompt_chars", 0),
+                    source_artifact_refs=pt_refs, **common,
+                ))
+                events.append(create_trace_event(
+                    "reviewer_output_received", verdict=review.get("verdict", ""),
+                    finding_ids=finding_ids, **common,
+                ))
+                for fid in finding_ids:
+                    events.append(create_trace_event(
+                        "review_finding_rechecked" if is_repair else "review_finding_opened",
+                        job_id=job_id, task_id=task.task_id, run_id=task.run_id,
+                        round_num=round_num, finding_ids=[fid], trace_source=src,
+                    ))
+        events.append(create_trace_event(
+            "task_gate_evaluated", job_id=job_id, task_id=task.task_id, run_id=task.run_id,
+            status=task.status, verdict=task.reviewer_verdict or "",
+            outcome="pass" if task.status in ("applied_to_job_workspace", "passed")
+            else task.status,
+            trace_source=src,
+        ))
+        if task.status == "applied_to_job_workspace":
+            events.append(create_trace_event(
+                "task_workspace_applied", job_id=job_id, task_id=task.task_id,
+                run_id=task.run_id, changed_files_safe=(task.safe_diff_files or [])[:20],
+                trace_source=src,
+            ))
+    events.append(create_trace_event(
+        "job_evidence_exported", job_id=job_id, trace_source=src))
+    if final_status:
+        events.append(create_trace_event(
+            "final_audit_completed", job_id=job_id, status=final_status,
+            safe_summary="final_verifier_report.json verdict", trace_source=src,
+        ))
+    return events
+
+
+def _executed_job_commands(job: Any, out_path: Path) -> list[dict[str, Any]]:
+    """Every command the job's records show was executed, in `do job-flow`'s transcript shape.
+
+    Two records hold executed commands: a task round that ran the job's test command (its
+    `test_passed` is not None, and its `test_summary` begins `exit=<code>` when the command
+    started), and each run in the export's own `verification_tests.json`. Nothing records a
+    per-command start or finish time, so those fields are null.
+    """
+    from packages.orchestration.pingpong_loop import load_run
+
+    repo = str(getattr(job, "repo_path", "") or "")
+    ec = job.execution_config
+    test_command = (getattr(ec, "test_command", "") or "") if ec else ""
+    commands: list[dict[str, Any]] = []
+    for task in job.tasks:
+        run_data = load_run(task.run_id) if task.run_id else None
+        for rd in (run_data or {}).get("rounds") or []:
+            if rd.get("test_passed") is None:
+                continue
+            match = _TEST_EXIT_RE.match(str(rd.get("test_summary") or ""))
+            commands.append({
+                "command_id": "task_test_command",
+                "argv_safe": _scrub_paths(test_command, repo) if test_command else None,
+                "task_id": task.task_id,
+                "run_id": task.run_id,
+                "round": rd.get("round"),
+                "exit_code": int(match.group(1)) if match else None,
+                "stderr_ref": "",
+                "started_at": None,
+                "finished_at": None,
+                "source": f"task_runs/{task.task_id} run record round {rd.get('round')}",
+            })
+    vt = _read_export_json(out_path, "verification_tests.json")
+    runs = (vt.get("runs") or []) if isinstance(vt, dict) else []
+    for run in runs:
+        if not isinstance(run, dict):
+            continue
+        commands.append({
+            "command_id": "verification_command",
+            "argv_safe": _scrub_paths(str(run.get("command") or ""), repo),
+            "exit_code": run.get("exit_code"),
+            "stderr_ref": "",
+            "started_at": None,
+            "finished_at": None,
+            "duration_seconds": run.get("duration_seconds"),
+            "source": f"verification_tests.json run {run.get('run_id')}",
+        })
+    return commands
+
+
+def _missing_review_artifacts(out_path: Path) -> list[str]:
+    """What the review-package check would call missing, read from the written package.
+
+    `job_flow.json` is the file this list is written into, so it is not counted.
+    """
+    missing = [art for art in REVIEW_REQUIRED_ROOT_ARTIFACTS
+               if art != "job_flow.json" and not (out_path / art).is_file()]
+    task_root = out_path / "task_runs"
+    for task_dir in sorted(task_root.iterdir()) if task_root.is_dir() else []:
+        if not task_dir.is_dir():
+            continue
+        manual = (task_dir / "manual_repair_provenance.json").is_file()
+        for art in REVIEW_REQUIRED_TASK_ARTIFACTS:
+            if manual and art in REVIEW_MANUAL_REPAIR_EXEMPT_ARTIFACTS:
+                continue
+            if not (task_dir / art).is_file():
+                missing.append(f"task_runs/{task_dir.name}/{art}")
+    return missing
+
+
+def _is_manual_only_completion(out_path: Path) -> bool:
+    """The review-package check's own test: the final job review declares the manual
+    completion mode AND every exported task run carries valid manual provenance."""
+    fjr = _read_export_json(out_path, "final_job_review.json")
+    if not isinstance(fjr, dict) or fjr.get("completion_mode") != "manual_operator_repair":
+        return False
+    task_root = out_path / "task_runs"
+    task_dirs = [d for d in task_root.iterdir() if d.is_dir()] if task_root.is_dir() else []
+    if not task_dirs:
+        return False
+    for task_dir in task_dirs:
+        mrp = _read_export_json(task_dir, "manual_repair_provenance.json")
+        if not (isinstance(mrp, dict) and mrp.get("manual_operator_repair") is True
+                and mrp.get("no_provider_calls") is True):
+            return False
+    return True
+
+
+def _write_job_flow_artifacts(
+    job: Any, out_path: Path, write_json: Any, written: dict[str, str],
+) -> None:
+    """Write `agent_run_trace.jsonl`, its summary, `command_transcript.json` and `job_flow.json`.
+
+    DECISION F268 D13: every value comes from a record the job or this export already has —
+    the final audit's status from `final_verifier_report.json`, the target guard's verdict
+    from `target_guard.json`, the trace from the run records and the exported task runs —
+    and a value with no source is null or absent, never filled in.
+
+    Remedy deliberately writes none of the four for a manual-only completion: no provider
+    flow ran, and the review-package check marks them not applicable for exactly that package.
+    """
+    from packages.orchestration.agent_run_trace import build_trace_summary, write_trace_jsonl
+
+    if _is_manual_only_completion(out_path):
+        return
+
+    fv = _read_export_json(out_path, "final_verifier_report.json")
+    verdict = fv.get("verdict") if isinstance(fv, dict) else None
+    final_status = verdict if isinstance(verdict, str) and verdict else None
+    tg = _read_export_json(out_path, "target_guard.json")
+    mutated = tg.get("target_mutated") if isinstance(tg, dict) else None
+
+    events = _build_job_agent_run_trace(job, out_path, final_status)
+    trace_path = _validate_output_path(str(out_path), "agent_run_trace.jsonl")
+    write_trace_jsonl(events, trace_path)
+    written["agent_run_trace.jsonl"] = str(trace_path)
+    trace_summary = build_trace_summary(events)
+    write_json("agent_run_trace_summary.json", trace_summary)
+
+    final_audit = {
+        "status": final_status,
+        "source": "final_verifier_report.json",
+    }
+    # The check requires a Boolean when the key is present, so a missing verdict is an absent key.
+    target_guard: dict[str, Any] = {"source": "target_guard.json"}
+    if isinstance(mutated, bool):
+        target_guard["mutated_target"] = mutated
+    commands = _executed_job_commands(job, out_path)
+    transcript: dict[str, Any] = {
+        "schema_version": "1.0.0",
+        "job_id": job.job_id,
+        "commands": commands,
+        "final_audit": final_audit,
+        "target_repo_mutated": target_guard.get("mutated_target"),
+        "target_guard": tg if isinstance(tg, dict) else None,
+    }
+    if not commands:
+        transcript["reason"] = (
+            "The job's records show no executed command: no task round ran a test command "
+            "and this export ran no verification command.")
+    write_json("command_transcript.json", transcript)
+
+    final_audit["missing_observability_artifacts"] = _missing_review_artifacts(out_path)
+    write_json("job_flow.json", {
+        "schema_version": "1.0.0",
+        "job_id": job.job_id,
+        "job_title": job.job_title,
+        "job_status": job.state,
+        "final_audit": final_audit,
+        "target_guard": target_guard,
+        "agent_run_trace_summary": trace_summary,
     })
 
 
