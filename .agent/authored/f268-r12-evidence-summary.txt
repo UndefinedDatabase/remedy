@@ -1,0 +1,53 @@
+Evidence Job Summary for F268 Round 12 Closure Round A
+
+Created: 2026-09-18
+Evidence job ID: f268r12e1001
+Head commit: 5883bccb2b2d4362815215c6a24a71b67f9016f9
+Base commit: 8e075bbeb5ef572b4f92738c4c4a07847c642f63 (the fork point)
+
+Base proof (pitfall (e)):
+  - git rev-list --ancestry-path 8e075bbe..5883bccb --count: 67
+  - git rev-list 8e075bbe..5883bccb --count: 67
+
+Deselection Applied: none
+
+Script: .remedy-wt/f268-r12/create_f268_evidence.py, adapted from
+.remedy-wt/scratch/create_f266_evidence_clean.py. Its first run parsed the
+collect-only output with F266's word filter, which dropped the five node ids
+whose names contain "failed", "skipped" or "error" (246 ids against 251
+passed). The parser now keeps every "tests/...::..." line and checks its count
+against pytest's "251 tests collected"; the bundle was rebuilt from that run.
+
+Test Verification Run:
+  - Run ID: vr-1012
+  - Test files: 8 files (sorted)
+    - tests/cli/test_do_evidence_package.py
+    - tests/cli/test_do_flags.py
+    - tests/cli/test_do_sequence_cli.py
+    - tests/cli/test_quick_start.py
+    - tests/orchestration/test_do_run.py
+    - tests/orchestration/test_job_evidence.py
+    - tests/orchestration/test_prompt_trace.py
+    - tests/orchestration/test_task_deliverables.py
+  - Node IDs collected: 251
+  - Passed: 251
+  - Failed: 0
+  - Skipped: 0
+  - Exit code: 0
+  - test_files: SORTED (required by packaging validator)
+
+Evidence Bundle:
+  - Job ID: f268r12e1001
+  - Verdict: PASS_WITH_RISKS
+  - Authoritative files: 61
+  - Commit count: 67
+  - Partition: T001=21, T002=21, T003=19
+  - Total passed: 251
+  - Manual completion: true
+  - Operator-attested tasks: T001, T002, T003
+
+Evidence Validation (scripts/build_review_manifest.py validate_evidence_candidate):
+  - is_valid_current_run: True
+  - validation_errors: []
+
+Evidence directory: .remedy-wt/f268_evidence_round12 (not committed)
