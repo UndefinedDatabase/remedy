@@ -1,0 +1,4 @@
+3 failed, 17735 passed, 23 skipped, 1 warning in 149.83s (0:02:29)
+tests/orchestration/test_prompt_trace.py::TestSegmentManifest::test_every_cli_call_site_hands_its_composition_down
+tests/orchestration/test_prompt_trace.py::TestSegmentManifest::test_the_cli_recorder_passes_the_composed_prompt
+tests/orchestration/test_prompt_trace.py::TestSegmentManifest::test_the_cli_task_plan_recorder_passes_the_composed_prompt
