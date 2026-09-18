@@ -731,9 +731,14 @@ def _cmd_job_apply(
     dry_run: bool = False,
     test_command: str = "",
     skip_blocked: bool = False,
+    commit_with_history: bool = False,
     json_output: bool = False,
 ) -> None:
-    """Review and apply job workspace changes to target repo."""
+    """Review and apply job workspace changes to target repo.
+
+    ``commit_with_history`` (DECISION F270 D2) merges the job branch instead of
+    copying; without ``--approve`` it previews, and a refusal is a blocked apply.
+    """
     from packages.orchestration.job_apply import (
         apply_job,
         export_job_apply_json,
@@ -750,6 +755,7 @@ def _cmd_job_apply(
         dry_run=dry_run,
         test_command=test_command,
         skip_blocked=skip_blocked,
+        commit_with_history=commit_with_history,
     )
 
     if json_output:
@@ -863,6 +869,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         dry_run=getattr(args, "dry_run", False),
         test_command=getattr(args, "test_command", None) or "",
         skip_blocked=getattr(args, "skip_blocked", False),
+        commit_with_history=bool(getattr(args, "commit_with_history", False)),
         json_output=getattr(args, "json", False),
     ),
     "job.evidence": lambda args: _cmd_job_evidence(
