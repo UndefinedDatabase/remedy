@@ -6,7 +6,7 @@ SESSION 2 of feature F266 · round 8 · rounds so far 8
 
 ## Range
 
-Review of 6ac50171..d442a77d
+Review of 6ac50171..b66c427b
 
 ## Commits
 
@@ -33,14 +33,22 @@ Review of 6ac50171..d442a77d
 | `.agent/authored/f266-integrity-check.txt` | 49 | Integrity check output (PASS, 5/5 checks, no blockers) |
 | `.agent/authored/f266-closure-suite.txt` | 445 | Full suite run output (10 failed, 17691 passed, 23 skipped, 153.46s) |
 
-## External actions
+### 487cd615 F266 C4: handoff — session 2, round 8
+| Path | Reason |
+|------|--------|
+| `.agent/handoff.md` | Rewritten per handback_template.md with all preconditions documented |
 
-`git push` — will execute at end of Commit 4
+### b66c427b F266 C5: commit the generated SU-018 queue entry
+| Path | +/- | Reason |
+|------|-----|--------|
+| `scripts/self_use_queue.json` | 8 | Appended SU-018 entry with consumed_by="" |
+
+## External actions
 
 ```
 git push origin feature/f266-remedy-study
 To github.com:UndefinedDatabase/remedy.git
-   0b6a006b..01a94105  feature/f266-remedy-study -> feature/f266-remedy-study
+   6ac50171..b66c427b  feature/f266-remedy-study -> feature/f266-remedy-study
 ```
 
 (After C5)
