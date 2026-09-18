@@ -118,7 +118,12 @@ command to run next:
 - Output size bounded (< 50 KB)
 - Autonomy capped at level 3
 - Context failure stops the run (no silent continue)
-- Catalog metadata: `may_mutate_repo=False`, `may_execute_commands=False`
+- Catalog metadata: the `do.run` entry declares `may_mutate_repo=True` and
+  `may_execute_commands=True`, because the same entry also covers
+  `remedy do "<order>"` (F268), which runs a job through `job run`'s runner
+  (R-0965) and, with `--apply`, writes the repository through `job apply`
+  (R-0969). The v1 flow this guide describes still mutates no file and runs no
+  command.
 
 ## Source Files
 

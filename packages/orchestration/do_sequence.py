@@ -15,10 +15,17 @@ Scope: init registers and ignores and writes no file into the repository
 mission record for the order, plans it and keeps the plan (D4, D5); shape reads
 "one job" or "milestones" from that plan, `--force-job` / `--force-mission`
 overriding it, and plans the jobs, each bounded by deliverables (D5, D6); run
-runs every job in order on the chosen providers and stops at the first that
-does not complete; ui opens the cockpit for the last job as a detached process
-unless `--no-ui`; apply stops before apply and prints one apply command per job,
-unless `--apply`, which applies every job in order (DECISION F268 D9).
+runs the first job on the chosen providers; ui opens the cockpit for the job
+that ran as a detached process unless `--no-ui`; apply stops before apply and
+prints the apply command for the job that ran, unless `--apply`, which applies
+it (DECISION F268 D9).
+
+DECISION F268 D12 (amending D10): in a walk of two or more jobs only the first
+runs. Every other job waits, because a job's workspace is cut from the target's
+HEAD commit and an apply does not commit, so a follow-up job run now could not
+see its predecessor's output. `do` names the waiting jobs, and for each prints
+the `remedy job run` command to use once its predecessor's applied output is
+committed. Chaining them inside one `do` needs F270's `--commit` family.
 
 DECISION F268 D8: `--step-by-step` halts after every step that did work and,
 inside run, before each job — points where no provider call is in flight — and
@@ -108,8 +115,16 @@ class DoContext:
     shape: str = ""
     shape_source: str = ""
     job_ids: list[str] = field(default_factory=list)
+    #: The jobs of a multi-job walk the run step did not run: each waits for its
+    #: predecessor's applied output to be committed (DECISION F268 D12).
+    waiting_job_ids: list[str] = field(default_factory=list)
     results: list[DoStepResult] = field(default_factory=list)
     next_lines: list[str] = field(default_factory=list)
+
+    @property
+    def run_job_ids(self) -> list[str]:
+        """The walk's jobs that are not waiting, in job order: the ones run, ui and apply act on."""
+        return [job_id for job_id in self.job_ids if job_id not in self.waiting_job_ids]
 
     @property
     def failed(self) -> bool:
@@ -739,7 +754,12 @@ def _provider_flags(ctx: DoContext) -> str:
 
 
 def _step_run(ctx: DoContext) -> tuple[str, str]:
-    """Run every job in order on the chosen builder and reviewer; stop at the first that does not complete."""
+    """Run the walk's first job on the chosen builder and reviewer; the rest wait (DECISION F268 D12).
+
+    A follow-up job's workspace would be cut from the target's HEAD, which an
+    apply does not move, so it runs only once its predecessor's applied output
+    is committed; the apply step prints how.
+    """
     from packages.orchestration.job_plan import task_plan_blocks_execution
     from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan, run_job
 
@@ -750,8 +770,9 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
             f"--plan-only: no job was run; {len(ctx.job_ids)} job(s) planned, "
             f"mission plan: {ctx.mission_plan_path}")
 
+    ctx.waiting_job_ids = list(ctx.job_ids[1:])
     ran: list[str] = []
-    for position, job_id in enumerate(ctx.job_ids, start=1):
+    for position, job_id in enumerate(ctx.run_job_ids, start=1):
         done_so_far = "; ".join(ran) or "no job has run yet"
         if not do_step_by_step_halt(
                 ctx, done_so_far, f"run job {job_id} ({position} of {len(ctx.job_ids)})"):
@@ -780,6 +801,11 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
             reason = f": {done.error}" if done.error else ""
             return DO_STEP_FAILED, f"job {job_id} ended {done.state.value}{reason}"
         ran.append(f"job {job_id} ran {len(done.tasks)} task(s) to {done.state.value}")
+    if ctx.waiting_job_ids:
+        ran.append(
+            f"job(s) {', '.join(ctx.waiting_job_ids)} wait: each runs only once the job "
+            f"before it is applied and committed, because a job's workspace is cut from "
+            f"{ctx.repo_root}'s HEAD commit (DECISION F268 D12)")
     return DO_STEP_DONE, "; ".join(ran)
 
 
@@ -858,10 +884,10 @@ def launch_do_cockpit(
 
 
 def _step_ui(ctx: DoContext) -> tuple[str, str]:
-    """Open the cockpit for the walk's last job, detached, unless `--no-ui` (DECISION F268 D9)."""
+    """Open the cockpit for the last job that ran, detached, unless `--no-ui` (DECISIONs F268 D9, D12)."""
     if ctx.no_ui:
         return DO_STEP_SKIPPED, "--no-ui given; the cockpit was not opened"
-    job_id = ctx.job_ids[-1]
+    job_id = ctx.run_job_ids[-1]
     command = f"remedy ui start {job_id}"
     if ctx.ui_launcher is None:
         ctx.next_lines.append(command)
@@ -877,17 +903,37 @@ def _step_ui(ctx: DoContext) -> tuple[str, str]:
         f"stop it with: {DO_COCKPIT_STOP_COMMAND}")
 
 
-def _step_apply(ctx: DoContext) -> tuple[str, str]:
-    """Stop before apply, printing one apply command per job; `--apply` applies every job.
+def do_waiting_job_next_lines(ctx: DoContext) -> list[str]:
+    """One line per waiting job, with real ids: commit its predecessor's applied output, then run it.
 
-    With `--apply` each job goes through `job_apply.apply_job(..., approve=True)`
-    in run order, and the walk fails at the first job that is not applied,
-    naming it and why (DECISION F268 D9 (2)). The apply gate is `job_apply`'s own.
+    DECISION F268 D12: a job's workspace is cut from the target's HEAD commit,
+    so a waiting job runs only once the job before it is applied AND committed.
+    """
+    repo = shlex.quote(ctx.repo_root)
+    lines = []
+    for position, job_id in enumerate(ctx.job_ids):
+        if job_id not in ctx.waiting_job_ids:
+            continue
+        before = ctx.job_ids[position - 1]
+        lines.append(f"commit job {before}'s applied output in {repo}, then: "
+                     f"remedy job run {job_id}{_provider_flags(ctx)}")
+    return lines
+
+
+def _step_apply(ctx: DoContext) -> tuple[str, str]:
+    """Stop before apply, printing the apply command per job that ran; `--apply` applies them.
+
+    With `--apply` each job that ran goes through `job_apply.apply_job(...,
+    approve=True)` in run order, and the walk fails at the first job that is not
+    applied, naming it and why (DECISION F268 D9 (2)). The apply gate is
+    `job_apply`'s own. A waiting job is never applied here; the Next lines say
+    how it runs (DECISION F268 D12).
     """
     if not ctx.apply:
         commands = [f"remedy job apply {job_id} --repo {shlex.quote(ctx.repo_root)} --approve"
-                    for job_id in ctx.job_ids]
+                    for job_id in ctx.run_job_ids]
         ctx.next_lines.extend(commands)
+        ctx.next_lines.extend(do_waiting_job_next_lines(ctx))
         return DO_STEP_STOPPED, (
             f"stopped before apply; {ctx.repo_root} is untouched. "
             f"Apply the reviewed result with: {'; then '.join(commands)}")
@@ -895,7 +941,7 @@ def _step_apply(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.job_apply import apply_job
 
     applied: list[str] = []
-    for job_id in ctx.job_ids:
+    for job_id in ctx.run_job_ids:
         result = apply_job(job_id, ctx.repo_root, approve=True)
         if result.status != "applied":
             why = result.blocked_reason or "; ".join(result.blocked_reasons) or "no reason given"
@@ -906,6 +952,7 @@ def _step_apply(ctx: DoContext) -> tuple[str, str]:
                 f"job {job_id} was not applied to {ctx.repo_root} "
                 f"(status {result.status}): {why}{before}")
         applied.append(f"job {job_id} applied {len(result.files_applied)} file(s)")
+    ctx.next_lines.extend(do_waiting_job_next_lines(ctx))
     return DO_STEP_DONE, f"{'; '.join(applied)} to {ctx.repo_root}"
 
 

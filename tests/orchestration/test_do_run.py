@@ -560,23 +560,27 @@ class TestContextFailureStops:
 
 class TestCatalogMetadataTruth:
 
-    def test_do_run_no_repo_mutation(self):
-        """do.run should not claim may_mutate_repo in v1."""
+    def test_do_run_declares_repo_mutation_like_job_apply(self):
+        """R-0969: `do "<order>" --apply` writes the repo through `job_apply`, so
+        do.run declares may_mutate_repo exactly as job.apply does."""
         from apps.cli.command_catalog import CATALOG
         entry = next(e for e in CATALOG if e.command_id == "do.run")
-        assert entry.may_mutate_repo is False, \
-            "v1 never mutates repo — fixture only, stops before apply"
+        job_apply = next(e for e in CATALOG if e.command_id == "job.apply")
+        assert entry.may_mutate_repo is True, \
+            "do.run --apply writes the repository"
+        assert entry.may_mutate_repo == job_apply.may_mutate_repo
 
     def test_do_run_declares_command_execution_like_job_run(self):
         """R-0965: bare `do "<order>"` runs a job through job.run's runner, so it
-        declares the same execution metadata as job.run."""
+        declares the same execution metadata as job.run. Its may_mutate_repo
+        follows job.apply instead (R-0969, the test above)."""
         from apps.cli.command_catalog import CATALOG
         entry = next(e for e in CATALOG if e.command_id == "do.run")
         job_run = next(e for e in CATALOG if e.command_id == "job.run")
         assert entry.may_execute_commands is True, \
             "do.run runs a job, which executes commands"
-        assert (entry.may_execute_commands, entry.may_mutate_repo, entry.action_class) == (
-            job_run.may_execute_commands, job_run.may_mutate_repo, job_run.action_class)
+        assert (entry.may_execute_commands, entry.action_class) == (
+            job_run.may_execute_commands, job_run.action_class)
 
     def test_do_run_action_class_not_apply_write(self):
         """do.run action_class should reflect data-only writes."""

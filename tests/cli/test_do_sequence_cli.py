@@ -212,8 +212,10 @@ def test_the_order_plans_one_job_of_at_most_three_tasks_by_the_planners_shape(re
     assert 1 <= len(load_job_plan(job_id).tasks) <= 3
 
 
-def test_force_mission_yields_linked_jobs_all_run_on_the_repo_and_leaves_it_untouched(
+def test_force_mission_yields_linked_jobs_runs_the_first_and_leaves_the_repo_untouched(
         repo, capsys):
+    """DECISION F268 D12: only the first job runs; the rest wait, named in `waiting_job_ids`."""
+    from packages.core.models import RunState
     from packages.orchestration.mission_state import load_mission
     from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
     from packages.orchestration.project_registry import resolve_project
@@ -229,11 +231,13 @@ def test_force_mission_yields_linked_jobs_all_run_on_the_repo_and_leaves_it_unto
     assert [(link.job_id, link.role) for link in mission.job_links] == [
         (job_ids[0], "initial"), *((j, "follow_up") for j in job_ids[1:])]
     jobs = [load_job_plan(j) for j in job_ids]
-    assert [job.state for job in jobs] == [JOB_COMPLETED] * len(jobs)
+    assert [job.state for job in jobs] == (
+        [JOB_COMPLETED] + [RunState.PLANNED] * (len(jobs) - 1))
+    assert data["waiting_job_ids"] == job_ids[1:]
     assert [job.repo_path for job in jobs] == [str(repo)] * len(jobs)
     assert _git(repo, "status", "--porcelain", "--untracked-files=all") == before
     applies = [line for line in data["next"] if line.startswith("remedy job apply ")]
-    assert applies == [f"remedy job apply {j} --repo {repo} --approve" for j in job_ids]
+    assert applies == [f"remedy job apply {job_ids[0]} --repo {repo} --approve"]
 
 
 def test_force_job_on_an_order_naming_ten_files_yields_one_job_of_ten_tasks(repo, capsys):
@@ -466,8 +470,9 @@ def _stand_in_for_the_cockpit(monkeypatch, launcher) -> None:
     monkeypatch.setattr("packages.orchestration.do_sequence.launch_do_cockpit", launcher)
 
 
-def test_without_no_ui_the_cockpit_opens_for_the_last_job_and_reports_its_url(
+def test_without_no_ui_the_cockpit_opens_for_the_job_that_ran_and_reports_its_url(
         repo, capsys, monkeypatch):
+    """DECISION F268 D12: in a walk of two jobs the cockpit opens for job 1, the one that ran."""
     launched: list[str] = []
 
     def launcher(job_id: str) -> str:
@@ -480,10 +485,10 @@ def test_without_no_ui_the_cockpit_opens_for_the_last_job_and_reports_its_url(
 
     job_ids = data["job_ids"]
     assert len(job_ids) >= 2
-    assert launched == [job_ids[-1]]
+    assert launched == [job_ids[0]]
     ui = _step(data, "ui")
     assert ui["status"] == "done"
-    assert f"http://127.0.0.1:43210/?job={job_ids[-1]}&token=t" in ui["detail"]
+    assert f"http://127.0.0.1:43210/?job={job_ids[0]}&token=t" in ui["detail"]
     assert "remedy ui stop" in ui["detail"]
     assert "remedy ui stop" in data["next"]
     assert [(s["name"], s["status"]) for s in data["steps"]][-2:] == [
@@ -535,10 +540,12 @@ def test_apply_applies_the_one_job_and_changes_the_targets_tracked_content(repo,
     assert _git(repo, "status", "--porcelain", "--untracked-files=all") == " M docs/README.md\n"
 
 
-def test_apply_with_force_mission_applies_every_job_in_order(repo, capsys, monkeypatch):
-    """Every job's fake build writes its own tracked file: jobs of one mission all
-    run against the unchanged target, so two jobs writing ONE file would be refused
-    at the second apply by `job_apply`'s baseline check (the next test)."""
+def test_apply_with_force_mission_applies_the_job_that_ran_and_leaves_the_rest_waiting(
+        repo, capsys, monkeypatch):
+    """DECISION F268 D12: every job's fake build would write its own tracked file, but
+    only job 1 runs, so only job 1's file is applied; the rest wait unrun."""
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import load_job_plan
     from packages.orchestration.pingpong_provider import FakeProvider
 
     tracked = [f"docs/job_{n:02d}.md" for n in range(20)]
@@ -558,12 +565,67 @@ def test_apply_with_force_mission_applies_every_job_in_order(repo, capsys, monke
     assert data["stopped_before_apply"] is False
     apply = _step(data, "apply")
     assert apply["status"] == "done"
-    assert [re.search(rf"job {j} applied \d+ file\(s\)", apply["detail"]) is not None
-            for j in job_ids] == [True] * len(job_ids)
-    assert apply["detail"].index(job_ids[0]) < apply["detail"].index(job_ids[-1])
+    assert re.search(rf"job {job_ids[0]} applied \d+ file\(s\)", apply["detail"])
+    assert [j for j in job_ids[1:] if j in apply["detail"]] == []
+    assert data["waiting_job_ids"] == job_ids[1:]
+    assert [load_job_plan(j).state for j in job_ids[1:]] == (
+        [RunState.PLANNED] * (len(job_ids) - 1))
     changed = _git(repo, "diff", "--name-only").split()
-    assert len(changed) >= len(job_ids)
+    assert len(changed) >= 1
     assert set(changed) <= set(tracked)
+
+
+def _waiting_job_has_no_run(job_id: str) -> bool:
+    from packages.core.models import RunState
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    job = load_job_plan(job_id)
+    return job.state == RunState.PLANNED and all(not t.run_id for t in job.tasks)
+
+
+def test_apply_with_force_mission_on_the_stock_fake_applies_job_1_and_job_2_waits(
+        repo, capsys):
+    """R-0968 / DECISION F268 D12 (2a): the case R-0968 measured — every build writes
+    the same file — now applies job 1, runs no other job and exits 0."""
+    assert not (repo / "docs" / "README.md").exists()
+
+    data = json.loads(_do(capsys, "--json", "--apply", "--force-mission"))
+
+    job_ids = data["job_ids"]
+    assert len(job_ids) >= 2
+    assert [(s["name"], s["status"]) for s in data["steps"]][-3:] == [
+        ("run", "done"), ("ui", "skipped"), ("apply", "done")]
+    assert f"job {job_ids[0]} applied 1 file(s)" in _step(data, "apply")["detail"]
+    assert "<!-- Remedy: " in (repo / "docs" / "README.md").read_text()
+    assert data["stopped_before_apply"] is False
+    assert data["waiting_job_ids"] == job_ids[1:]
+    assert [_waiting_job_has_no_run(j) for j in job_ids[1:]] == [True] * (len(job_ids) - 1)
+    assert (f"commit job {job_ids[0]}'s applied output in {repo}, then: "
+            f"remedy job run {job_ids[1]} --builder-provider fake "
+            f"--reviewer-provider fake") in data["next"]
+
+
+def test_without_apply_a_force_mission_walk_runs_job_1_and_prints_how_job_2_runs(
+        repo, capsys):
+    """R-0968 / DECISION F268 D12 (2b): job 1 runs, job 2 does not, and the Next lines
+    carry job 1's apply command and job 2's run command with real ids."""
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, list_job_plans, load_job_plan
+
+    out = _do(capsys, "--force-mission")
+
+    # The shape step's line names the jobs in walk order.
+    job_ids = re.findall(r"([0-9a-f]{16}) \(\d+ task\(s\)\)", out)
+    assert len(job_ids) >= 2
+    assert sorted(job_ids) == sorted(str(j.job_id) for j in list_job_plans())
+    assert load_job_plan(job_ids[0]).state == JOB_COMPLETED
+    assert _waiting_job_has_no_run(job_ids[1])
+    assert f"[done] run: job {job_ids[0]} ran " in out
+    next_lines = [line for line in out.splitlines() if line.startswith("Next: ")]
+    assert f"Next: remedy job apply {job_ids[0]} --repo {repo} --approve" in next_lines
+    assert (f"Next: commit job {job_ids[0]}'s applied output in {repo}, then: "
+            f"remedy job run {job_ids[1]} --builder-provider fake "
+            f"--reviewer-provider fake") in next_lines
+    assert not re.search(r"<[a-z_]+>", out)
 
 
 def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(

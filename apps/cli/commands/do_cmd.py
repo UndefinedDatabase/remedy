@@ -171,7 +171,9 @@ def _cmd_do_order(
     reads each answer with `input`; `--plan-only` ends the walk after
     shape (DECISION F268 D8). `--json` carries `contract: null` until F269
     lands (DECISION F268 D1), `shape` / `shape_source`, `mission_plan_path`
-    and `jobs`, every job's tasks with their deliverables.
+    and `jobs`, every job's tasks with their deliverables. In a walk of two or
+    more jobs only the first runs and `waiting_job_ids` names the rest
+    (DECISION F268 D12).
     """
     if not order or not order.strip():
         print("Error: order must not be empty.", file=sys.stderr)
@@ -213,6 +215,7 @@ def _cmd_do_order(
         print(json.dumps({
             "mission_id": ctx.mission_id or None,
             "job_ids": list(ctx.job_ids),
+            "waiting_job_ids": list(ctx.waiting_job_ids),
             "contract": None,
             "stopped_before_apply": ctx.stopped_before_apply,
             "shape": ctx.shape or None,
