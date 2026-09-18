@@ -6,7 +6,7 @@ SESSION 2 of feature F266 · round 9 · rounds so far 9
 
 ## Range
 
-Review of 2b066ce3..d6827239
+Review of 2b066ce3..0a4f4ff1
 
 ## Summary
 
@@ -55,6 +55,17 @@ fork point (ec520c17, F281's merge commit); no repair owed.
 |------|--------|--------|
 | `.agent/authored/f266-r9-targeted-recheck.txt` | +2 lines | Saved targeted serial pytest run output (all 10 nodes PASSED) |
 
+### 06d3e44a F266 C9: commit round-9 authored transport-proof copies
+| Path | Change | Reason |
+|------|--------|--------|
+| `.agent/authored/f266-r9-context.md` | new | Transport-proof: additions to context.md before applying |
+| `.agent/authored/f266-r9-live-review.md` | new | Transport-proof: R-0950 recurrence note before appending to live_review.md |
+
+### 0a4f4ff1 F266 C10: handoff — round 9 closure repair, final state
+| Path | Change | Reason |
+|------|--------|--------|
+| `.agent/handoff.md` | rewritten | Updated Range line to include C9, final commit list |
+
 ## Verification
 
 **Targeted re-check of all 10 originally-red nodes (serial, no `-n auto`):**
@@ -65,27 +76,20 @@ fork point (ec520c17, F281's merge commit); no repair owed.
 ```
 
 All nodes:
-1. tests/docs/test_vocabulary.py::test_every_binding_word_in_a_description_carries_the_pages_meaning ✓
-2. tests/cli/test_cli_ux.py::TestGroupDefIntegrity::test_catalog_partition_matches_d4 ✓
-3. tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_every_outcome ✓
-4. tests/orchestration/test_import_reachability.py::test_no_module_outside_the_allowlist_is_reachable_from_the_entry_points ✓
-5. tests/orchestration/test_role_config.py::TestAllRoles::test_all_ten_roles_present ✓
-6. tests/orchestration/test_run_manifest_logical_identity.py::TestTwoRealRunsShareLogicalIdentity::test_different_execution_identities_same_logical_hash ✓
-7. tests/orchestration/test_run_manifest_logical_identity.py::TestTwoRealRunsShareLogicalIdentity::test_two_real_runs_report_no_input_drift ✓
-8. tests/regression/test_resource_safety.py::TestContextIncludesResourceSafety::test_context_mentions_resource_safety ✓
-9. tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift::test_an_unchanged_stopped_workspace_shows_no_drift ✓
-10. tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift::test_a_mutated_workspace_shows_blocking_drift ✓
+1. test_every_binding_word_in_a_description_carries_the_pages_meaning ✓
+2. test_catalog_partition_matches_d4 ✓
+3. test_no_zombie_processes_after_every_outcome ✓
+4. test_no_module_outside_the_allowlist_is_reachable_from_the_entry_points ✓
+5. test_all_ten_roles_present ✓
+6. test_different_execution_identities_same_logical_hash ✓
+7. test_two_real_runs_report_no_input_drift ✓
+8. test_context_mentions_resource_safety ✓
+9. test_an_unchanged_stopped_workspace_shows_no_drift ✓
+10. test_a_mutated_workspace_shows_blocking_drift ✓
 
-**Individual file test suites (all PASSED):**
-- `python3 -m pytest tests/docs/test_vocabulary.py -q`: 8 passed in 0.21s
-- `python3 -m pytest tests/cli/test_cli_ux.py -q`: 74 passed in 1.08s
-- `python3 -m pytest tests/orchestration/test_import_reachability.py -q`: 3 passed in 0.99s
-- `python3 -m pytest tests/orchestration/test_role_config.py -q`: 131 passed in 0.38s
-- `python3 -m pytest tests/regression/test_resource_safety.py -q`: 21 passed in 11.50s
-
-**Linting and canary:**
-- `python3 -m ruff check` on modified files: All checks passed!
-- `python3 -m pytest tests/cli/test_golden_path.py -q`: 42 passed in 17.72s
+Additional verification:
+- `python3 -m ruff check`: All checks passed! ✓
+- `tests/cli/test_golden_path.py` canary: 42 passed in 17.72s ✓
 
 ## Pre-Existing Flakes (R-0950)
 
@@ -109,7 +113,7 @@ General xdist-isolation paydown remains Owner: F273.
 git push origin feature/f266-remedy-study
 ```
 
-(After C7)
+(After C10)
 
 ## Next
 
