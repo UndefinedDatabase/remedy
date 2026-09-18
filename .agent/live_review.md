@@ -1,24 +1,24 @@
-# Live Review — F270 History apply: one commit per task, merge on demand
+# Live Review — F271 No more legacy: ownership, reachability, replace-is-delete
 
-> Round-by-round review record, re-headed at the F270 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F269, whose STATUS
-> line went `[x]` and whose pull request 257 merged into `main` at the reviewer's Open PR Gate
-> under docs/agents/self_drive_protocol.md, as `b7f966c0`, after hosted CI run 35375982669 on its
-> repair commit `42151417` read pass. F269's round 13 has no gate entry written by its own round,
+> Round-by-round review record, re-headed at the F271 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F270, whose STATUS
+> line went `[x]` and whose pull request 258 merged into `main` at the reviewer's Open PR Gate
+> under docs/agents/self_drive_protocol.md, as `a4f79a94`, after hosted CI run 35403982576 on its
+> repair commit `bacd9254` read pass. F270's round 8 has no gate entry written by its own round,
 > by construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); its verdict and the
-> resolution of R-0973 are booked at the end of this file by F270's first commit. Only the
+> resolution of R-0979 are booked at the end of this file by F271's first commit. Only the
 > heading, this paragraph and the `## Steps` section below are rewritten. Everything from the
 > `## Findings` line to the end of the file is carried forward BYTE-IDENTICAL, and finding ids
 > continue the monotonic R-XXXX series across the re-head.
-> Measured by the reviewer at `b7f966c0`: 130 DISTINCT ids matching `^- R-\d+ — ` against 3
-> DISTINCT ids matching `^Done: R-\d+ — `, so 127 findings are open BY DISTINCT ID.
+> Measured by the reviewer at `a4f79a94`: 133 DISTINCT ids matching `^- R-\d+ — ` against 3
+> DISTINCT ids matching `^Done: R-\d+ — `, so 130 findings are open BY DISTINCT ID.
 
 ## Steps
 
-THE ORDER BELOW IS T2_F270.md's Orchestrator brief: T001 first, small and self-contained; T002
-next, never without T003's dirty-tree and conflict fixtures; T004's commit and push flags last.
-R1 claims F270, re-heads this record, books F269 round 13's verdict, registers R-0974, lands
-DECISION F270 D1 and builds T001.
+THE ORDER BELOW IS T2_F271.md's Orchestrator brief: T001 first, then T002; the red proofs are the
+substance. R1 claims F271, re-heads this record, books F270 round 8's verdict, lands DECISION F271
+D1, builds T001 and deletes `builder_eval.py` under DECISION amend0911-feedback D6. The
+orphan-module test, T002 and R-0893 follow.
 
 ## Findings
 
@@ -689,3 +689,7 @@ Gate: F270 R6 — the F270 round 6 entry, CLOSURE ROUND A. VERDICT PASS_WITH_RIS
 Gate: F270 R7 — the F270 round 7 entry, CLOSURE ROUND B. VERDICT PASS. Written by the planner and reviewer of F270's first session after reading the committed range `b1e5e846`..`b91fb1ec` bottom-up and re-deriving every reading below, and booked by round 8's first commit. THE ROUND'S SHAPE: C1 `be80be80` booked round 6's closure verdict PASS_WITH_RISKS; C2 `80c23593` rotated the ledger, 13 gate records and 3 finding pairs moved, 607467 to 568711 bytes, 128 open before and after by the rotation script's count; C3 `b91fb1ec`, the closure commit, flipped F270's STATUS line to `[x]`, set the README to 84 of 281 with Tier 2 at 26 and the F270 paragraph, set SU-021's `consumed_by` to `F270`, and wrote the final plan and handoff; C4 opened pull request 258 into `main`, OPEN and not a draft. THE GATES, re-run by the reviewer at `b91fb1ec`: a python check printed 16 checks with none failing — `.agent/live_review.md` at `be80be80` equals its `b1e5e846` bytes plus the payload, the seven `.agent/authored/f270-r7-*` copies equal the reviewer's scratch originals, the block's sha256 being `8a98dc016dee0c52bf9263e4bd2ff947946343c4e868f6d5537a3e12a459ab37`, the open set by distinct id is the same set before and after the rotation, the STATUS line and the README paragraph occur once each byte for byte, STATUS holds 84 `[x]` lines as the README says, SU-021 alone is consumed by `F270`, and each commit touches exactly the paths its block names; `tests/docs/`, the golden path, `tests/cli/test_advertised_commands.py`, `tests/orchestration/test_roadmap_index.py` and `tests/orchestration/test_live_review_rotation.py` read `406 passed`. AFTER THE ROUND: hosted run `35401706742` on `b91fb1ec` failed its `fast` stage at 1 failed and 3748 passed, the failure `tests/runtimes/test_dev_server.py::TestReadiness::test_delayed_readiness`, while the stages standard, ui, smoke and budgets passed; R-0979 below records it, and round 8 repairs it on the pull request's branch. WHY PASS: the closure sequence ran in the order `docs/roadmap/STATUS_closure_protocol.md` gives, and every applied text is byte-identical to its payload.
 
 - R-0979 — Low, `test_delayed_readiness` STARTS ITS CLOCK AFTER THE SERVER IT TIMES WAS LAUNCHED, SO ON A SLOW HOST IT READS THE REAL WAIT AS TOO SHORT, AND PULL REQUEST 258's HOSTED CI FAILS ON IT. Raised by the planner and reviewer of F270's first session after the closure pull request's hosted run, having searched the ledger and its archive for `delayed_readiness` and found nothing. THE DEFECT, at `b91fb1ec`: in `tests/runtimes/test_dev_server.py` the test launches a fixture server that listens only after sleeping 1.5 seconds, through `DevServer.start()`, and then asserts `res.elapsed_s >= 1.4`; but `wait_ready` in `packages/runtimes/dev_server.py` sets its `started` clock when it is called, after `start()` has returned, while the server's sleep began when `start()` launched the process, so every moment `start()` spends is missing from `elapsed_s`. MEASURED: hosted run `35401706742` on `b91fb1ec` failed the node with `assert 1.3587861769999563 >= 1.4`; the node passed within F270's closure suite locally. WHY LOW: the product waits correctly — only the test's clock is misplaced — but the hosted gate over pull request 258 cannot pass while it reads red. NOT F270's CODE: no F270 commit touches `packages/runtimes/` or that test file. FIX: the test takes `time.monotonic()` before `start()` and asserts the whole wait from there is at least 1.4 seconds, which a readiness declared early still fails. Owner: F270.
+
+Gate: F270 R8 — the F270 round 8 entry, REPAIR ON PULL REQUEST 258. VERDICT PASS. Written by the planner and reviewer of F270's first session into pull request 258 as a comment, because round 8 was the last round of its branch, and booked here by the next feature's first commit under operator amendment amend0827-process-diet rule 1. The round existed because hosted run `35401706742` on `b91fb1ec` failed its `fast` stage on the one node R-0979 names. Re-derived by that reviewer over `b91fb1ec`..`bacd9254`: a python check printed 11 checks with none failing — the five `.agent/authored/f270-r8-*` copies at `f9b39633` equal the reviewer's scratch originals, the block's sha256 being `5e54026c170c8761f273f356a543231db104036bc7155986aeccba0b3ecc78de`; `.agent/live_review.md` and `.agent/plan.md` at `f9b39633` equal their `b91fb1ec` bytes plus the payloads; `tests/runtimes/test_dev_server.py` at `e0fe9573` equals its `b91fb1ec` blob with the one authored pair applied; none of the three changes through `bacd9254`. `e0fe9573` touches that test file alone, and `bacd9254` touches `.agent/handoff.md` alone. The reviewer's run in the primary checkout at `bacd9254` of `tests/runtimes/test_dev_server.py`, `tests/cli/test_golden_path.py`, `tests/ui_server/test_dashboard_contract.py`, `tests/orchestration/test_test_runner.py` and `tests/regression/test_resource_safety.py` read `208 passed`, and `python3 -m ruff check tests/runtimes/test_dev_server.py` passed. In the reviewer's own disposable worktree at `b91fb1ec` with the pair applied, `TestReadiness` read `4 passed`, and with `wait_ready` accepting any status the test failed on the new assertion. Hosted run `35403982576` on `bacd9254` concluded `success`, the stages fast, standard, ui, smoke and budgets each passed, `fast` at 3749 passed where run `35401706742` had read 1 failed and 3748 passed.
+
+Done: R-0979 — RESOLVED by F270 round 8. `e0fe9573` makes `test_delayed_readiness` in `tests/runtimes/test_dev_server.py` take `time.monotonic()` before `DevServer.start()` and assert that the whole wait from there is at least 1.4 seconds, so the time `start()` spends is no longer missing from the measurement; `packages/runtimes/dev_server.py` is unchanged. Verified by the reviewer: with `wait_ready` made to accept any probe status, the test failed on the new assertion in a disposable worktree, round 8's own G4 read the same at `e0fe9573`, and hosted run `35403982576` on `bacd9254` passed every stage.
