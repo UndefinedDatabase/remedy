@@ -27,7 +27,11 @@ def _cmd_study_run(
     parameter, DECISION F255 D8).
     """
     from packages.orchestration.project_scope import resolve_scope
-    from packages.orchestration.study import run_study, study_call_fn
+    from packages.orchestration.study import (
+        record_study_pass,
+        run_study,
+        study_call_fn,
+    )
 
     target = os.path.abspath(path or ".")
     scope = resolve_scope(project_flag=project, all_projects=False, cwd=target)
@@ -44,6 +48,9 @@ def _cmd_study_run(
     resolved_call_fn = call_fn if call_fn is not None else study_call_fn()
 
     result = run_study(target, project_id=resolved_project, call_fn=resolved_call_fn)
+    if scope.project_id is not None:
+        # DECISION F268 D3: a study run by hand is the one study `remedy do` reads.
+        record_study_pass(scope.project_id, target)
 
     if json_output:
         print(_json.dumps({

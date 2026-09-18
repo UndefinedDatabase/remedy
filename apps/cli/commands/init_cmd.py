@@ -58,58 +58,13 @@ def _build_runtime_config(root: Path) -> tuple[str, str | None]:
     return _RUNTIME_SKIP, "skipped runtime autodetect (no known framework marker)"
 
 
-def _ensure_ignore_entry(root: Path, entry: str) -> str:
-    """Add *entry* to .git/info/exclude if missing. Return status word."""
-    import subprocess
-
-    proc = subprocess.run(
-        ["git", "rev-parse", "--git-common-dir"],
-        cwd=str(root), capture_output=True, text=True, timeout=10,
-    )
-    if proc.returncode != 0:
-        return "skipped"
-    git_dir_raw = proc.stdout.strip()
-    git_dir = Path(git_dir_raw) if Path(git_dir_raw).is_absolute() else root / git_dir_raw
-    exclude = git_dir / "info" / "exclude"
-    try:
-        existing = exclude.read_text(encoding="utf-8") if exclude.is_file() else ""
-        if entry not in existing.split():
-            exclude.parent.mkdir(parents=True, exist_ok=True)
-            with exclude.open("a", encoding="utf-8") as fh:
-                if existing and not existing.endswith("\n"):
-                    fh.write("\n")
-                fh.write(f"{entry}\n")
-            return "created"
-        return "exists"
-    except OSError:
-        return "skipped"
-
-
-def _ignore_entries(root: Path) -> list[str]:
-    """Return ignore patterns for data-dir and workspaces if inside repo."""
-    from packages.orchestration.data_paths import resolve_data_root, workspaces_dir
-    from packages.orchestration.worktrees import WORKTREE_DIRNAME
-
-    entries = [f"{WORKTREE_DIRNAME}/"]
-    data_root = resolve_data_root()
-    try:
-        rel = data_root.resolve().relative_to(root.resolve())
-        entries.append(f"{rel}/")
-        ws = workspaces_dir(data_root)
-        ws_rel = ws.resolve().relative_to(root.resolve())
-        if str(ws_rel) != str(rel):
-            entries.append(f"{ws_rel}/")
-    except ValueError:
-        pass
-    return entries
-
-
 def _handle_init(args: argparse.Namespace) -> None:
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.project_registry import (
         register_project_repo,
         resolve_project,
     )
+    from packages.orchestration.repo_ignore import ensure_ignore_entry, ignore_entries
     from packages.orchestration.worktrees import is_git_repo, repo_root
     from packages.runtimes.runtime_config import CONFIG_RELPATH
 
@@ -155,11 +110,11 @@ def _handle_init(args: argparse.Namespace) -> None:
         if skip_msg:
             steps.append({"status": "skipped", "target": skip_msg})
 
-    for entry in _ignore_entries(root):
+    for entry in ignore_entries(root):
         if print_only:
             steps.append({"status": "created", "target": f"ignore {entry}"})
         else:
-            status = _ensure_ignore_entry(root, entry)
+            status = ensure_ignore_entry(root, entry)
             steps.append({"status": status, "target": f"ignore {entry}"})
 
     if print_only:

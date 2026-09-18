@@ -188,6 +188,7 @@ packages.orchestration.repair_context
 packages.orchestration.repair_loop
 packages.orchestration.repair_request_builder
 packages.orchestration.repo_applicator
+packages.orchestration.repo_ignore
 packages.orchestration.repository_snapshot
 packages.orchestration.review_scope
 packages.orchestration.review_subject
