@@ -13,20 +13,19 @@ answers questions about that repository from those cards.
 
 ## Current Step
 
-ROUND 2 — T001, the bounded comprehension pass. `packages/orchestration/study.py::run_study`
-walks a repository (bounded entry cap, honest partial result), detects structure/core
-modules/conventions/entry points heuristically, and optionally narrates each category through
-an injectable `call_fn` bounded by the existing `should_stop`/`evaluate_budget` machinery
-(`max_provider_calls`), falling back to the heuristic value on exhaustion or on any call_fn
-exception — it never crashes. Each category is written as one card via `store_memory(...,
-provenance="machine-study")`, so T002's auto-approval connects end to end this round. Read-only
-against the studied repository, proved by a hash-tree test.
+ROUND 3 — fix R-0958 (the `_walk_repo` dotfile-mangling defect, registered
+this round) and land the `study` role's real provider bridge:
+`StudyCategoryNarration` (a minimal structured schema mirroring
+`GeneratedSummaryContent`), `study_call_fn()` (mirrors `summary_call_fn()`:
+`resolve_role_config("study")` → `make_structured_call_fn`, adapted to
+`run_study`'s existing plain-string `call_fn` contract so round 2's tests
+need no changes), and the matching `ROLE_CONFIG_CALL_SITES` inventory
+entry.
 
 ## Next Steps
 
-1. CLI wiring — a standalone `study` command in the catalog, plus the
-   `resolve_role_config("study", ...)` bridge call site (with the matching
-   `ROLE_CONFIG_CALL_SITES` inventory update).
+1. CLI wiring — a standalone `study` command in the catalog, using
+   `study_call_fn()` as its default `call_fn`.
 2. T003 — the three-step proved end to end against a foreign repository
    fixture, including the new memory-card grounding source for
    `teacher ask`.
