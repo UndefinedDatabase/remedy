@@ -1,4 +1,4 @@
-"""F269 T001 — the contract record on the mission and the job's derived slice.
+"""F269 T001 and T002 — the contract record, its compiled checks, the job's slice.
 
 What DECISIONs F269 D2 and D3 require proof of:
 
@@ -18,6 +18,10 @@ And what DECISION F269 D4 (1) and (2) require:
   * planning a mission writes one planner criterion per milestone, and a
     re-plan keeps every non-planner criterion with its id.
 
+And D4 (3) and (4): a job's DoD gains its slice checks without duplicating
+one it already has, and the job's stored gate result decides its slice
+criteria.
+
 Every test writes into ``tmp_path``; no real provider is called — a planned
 mission replays a recorded planner answer.
 """
@@ -31,6 +35,9 @@ from typing import Any
 
 import pytest
 
+from packages.orchestration.dod_gate import GateResult, load_dod, save_gate_result, store_dod
+from packages.orchestration.dod_runners import CheckEvidence
+from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD, DoDCheck
 from packages.orchestration.mission_compiler import plan_mission
 from packages.orchestration.mission_contract import (
     JOB_MILESTONE_KEY,
@@ -39,8 +46,10 @@ from packages.orchestration.mission_contract import (
     MissionContract,
     compile_contract_criteria,
     job_contract_slice,
+    merge_contract_slice_into_dod,
     read_job_milestone,
     read_mission_contract,
+    record_contract_results,
     record_job_milestone,
     render_contract_lines,
     write_mission_contract,
@@ -262,8 +271,6 @@ class TestTheCompiledContract:
 
     def test_the_compiled_check_is_a_valid_dod_check_and_survives_a_write(
             self, tmp_path, mission):
-        from packages.orchestration.dod_schema import DoDCheck
-
         compiled = compile_contract_criteria([_criterion("C001", "it builds")])
         written = write_mission_contract(
             PROJECT, mission.id, MissionContract(criteria=compiled), tmp_path)
@@ -328,6 +335,109 @@ class TestThePlannerCriteria:
         assert kept.check is not None
         assert [(c.id, c.origin, c.milestones) for c in planner] == [
             ("C005", "planner", ("M001",))]
+
+
+JOB = "0123456789abcdef"
+
+
+def _pytest_check(check_id: str, selector: str) -> DoDCheck:
+    return DoDCheck(id=check_id, kind="pytest", spec={"selector": selector},
+                    blocking=True, source="plan_acceptance")
+
+
+@pytest.fixture()
+def sliced(tmp_path, monkeypatch):
+    """A mission whose compiled contract has a whole-mission, an M1 and an M2
+    criterion, each naming its own test file; the data root is ``tmp_path``."""
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    m = create_mission(PROJECT, "Ship the tool", root=tmp_path)
+    write_mission_contract(PROJECT, m.id, MissionContract(
+        criteria=compile_contract_criteria([
+            _criterion("C001", "tests/test_all.py passes"),
+            _criterion("C002", "tests/test_m1.py passes", milestones=("M1",)),
+            _criterion("C003", "tests/test_m2.py passes", milestones=("M2",)),
+        ])), tmp_path)
+    return load_mission(PROJECT, m.id, tmp_path)
+
+
+class TestTheJobDoDCarriesItsSlice:
+    """DECISION F269 D4 (3): the job's DoD carries its contract slice."""
+
+    def test_a_job_with_no_dod_gets_one_holding_its_slice_checks(self, sliced):
+        assert merge_contract_slice_into_dod(sliced, "M1", JOB) == 2
+
+        dod = load_dod(JOB)
+        assert [(c.id, c.spec["selector"]) for c in dod.checks] == [
+            ("ctr-C001", "tests/test_all.py"), ("ctr-C002", "tests/test_m1.py")]
+        assert (dod.compiled, dod.origin) == (False, "deterministic")
+
+    def test_a_job_for_m1_gets_no_m2_scoped_check(self, sliced):
+        merge_contract_slice_into_dod(sliced, "M1", JOB)
+
+        selectors = [c.spec["selector"] for c in load_dod(JOB).checks]
+        assert "tests/test_m2.py" not in selectors
+
+    def test_a_check_equal_in_kind_and_spec_is_not_added_a_second_time(
+            self, sliced):
+        store_dod(JOB, DoD(schema_v=DOD_SCHEMA_V, compiled=False,
+                           origin="deterministic",
+                           checks=[_pytest_check("acc-001", "tests/test_all.py")]))
+
+        assert merge_contract_slice_into_dod(sliced, "M1", JOB) == 1
+
+        dod = load_dod(JOB)
+        assert [(c.id, c.spec["selector"]) for c in dod.checks] == [
+            ("acc-001", "tests/test_all.py"), ("ctr-C002", "tests/test_m1.py")]
+
+    def test_merging_twice_adds_nothing_the_second_time(self, sliced):
+        merge_contract_slice_into_dod(sliced, "M1", JOB)
+
+        assert merge_contract_slice_into_dod(sliced, "M1", JOB) == 0
+        assert len(load_dod(JOB).checks) == 2
+
+    def test_a_mission_without_a_contract_stores_nothing(self, tmp_path,
+                                                         monkeypatch, mission):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        assert merge_contract_slice_into_dod(mission, "M1", JOB) == 0
+        assert load_dod(JOB) is None
+
+
+def _gate_result(*passed_or_failed: tuple[str, str]) -> GateResult:
+    return GateResult(released=all(s == "passed" for _, s in passed_or_failed),
+                      evidence=tuple(CheckEvidence(
+                          check_id=check_id, kind="pytest", source="plan_acceptance",
+                          blocking=True, status=status, reason="", command="",
+                          argv=(), cwd="", exit_code=0, duration_ms=0,
+                          output_tail="") for check_id, status in passed_or_failed))
+
+
+class TestTheJobGateDecidesItsCriteria:
+    """DECISION F269 D4 (4): statuses are read back from the job's gate."""
+
+    def test_statuses_and_evidence_follow_the_stored_gate_result(self, tmp_path,
+                                                                 sliced):
+        store_dod(JOB, DoD(schema_v=DOD_SCHEMA_V, compiled=False,
+                           origin="deterministic",
+                           checks=[_pytest_check("acc-001", "tests/test_all.py")]))
+        merge_contract_slice_into_dod(sliced, "M1", JOB)
+        save_gate_result(JOB, _gate_result(("acc-001", "passed"),
+                                           ("ctr-C002", "failed")))
+
+        record_contract_results(PROJECT, sliced.id, JOB, "M1", tmp_path)
+
+        contract = read_mission_contract(load_mission(PROJECT, sliced.id, tmp_path))
+        assert [(c.id, c.status, c.evidence_ref) for c in contract.criteria] == [
+            ("C001", "met", f"{JOB}:acc-001"),
+            ("C002", "unmet", f"{JOB}:ctr-C002"),
+            ("C003", "open", None)]
+
+    def test_no_gate_result_changes_nothing(self, tmp_path, sliced):
+        merge_contract_slice_into_dod(sliced, "M1", JOB)
+
+        assert record_contract_results(PROJECT, sliced.id, JOB, "M1", tmp_path) is None
+
+        assert load_mission(PROJECT, sliced.id, tmp_path).contract == sliced.contract
 
 
 class TestTheRenderer:

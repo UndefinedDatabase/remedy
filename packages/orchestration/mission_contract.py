@@ -29,7 +29,11 @@ re-implemented (DECISION F269 D4 (1)): :func:`compile_contract_criteria`
 hands the criteria to ``dod_compiler.compile_dod`` as one task each, and
 ``mission_compiler.plan_mission`` writes one planner criterion per milestone
 through :func:`write_planner_criteria` (D4 (2)).  This module never RUNS a
-check: the job's own gate in ``dod_gate.py`` does.
+check: the job's own gate in ``dod_gate.py`` does.  At dispatch the
+orchestrator merges a job's slice checks into that job's DoD
+(:func:`merge_contract_slice_into_dod`, D4 (3)), and after the job ran it
+reads the gate's verdict back onto the slice criteria
+(:func:`record_contract_results`, D4 (4)).
 
 The names ``save_contract`` and ``load_contract`` belong to
 ``run_contract.py`` (a job's run contract, a different record) and are not
@@ -360,6 +364,102 @@ def record_job_milestone(job_id: str, milestone_id: str,
     job.metadata = {**(job.metadata or {}), JOB_MILESTONE_KEY: str(milestone_id)}
     save_job_plan(job, root)
     return True
+
+
+# ---------------------------------------------------------------------------
+# The job's DoD carries its slice, and the job's gate decides it (D4 (3), (4))
+# ---------------------------------------------------------------------------
+
+
+def _same_check(a_kind: Any, a_spec: Any, b_kind: Any, b_spec: Any) -> bool:
+    """Two checks are the same check when their ``kind`` and ``spec`` are equal."""
+    return a_kind == b_kind and a_spec == b_spec
+
+
+def merge_contract_slice_into_dod(mission: Any, milestone_id: str | None,
+                                  job_id: str) -> int:
+    """Add a job's slice checks to its stored DoD; return how many were added.
+
+    A slice criterion's check is added only when no check already in the DoD
+    has the same ``kind`` and ``spec``; a job with no DoD gets one made of its
+    slice checks.  A DoD file that will not parse is left alone — the gate
+    already holds such a job, and overwriting it would hide that.  A mission
+    with no contract, or a slice with no compiled check, changes nothing.
+    """
+    from packages.orchestration.dod_gate import dod_path, load_dod, store_dod
+    from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD, DoDCheck
+
+    contract = read_mission_contract(mission)
+    if contract is None:
+        return 0
+    slice_checks = [DoDCheck.model_validate(c.check)
+                    for c in job_contract_slice(contract, milestone_id)
+                    if c.check is not None]
+    if not slice_checks:
+        return 0
+    dod = load_dod(job_id)
+    if dod is None and dod_path(job_id).is_file():
+        return 0
+    present = list(dod.checks) if dod is not None else []
+    taken = {c.id for c in present}
+    added: list[DoDCheck] = []
+    for check in slice_checks:
+        if any(_same_check(c.kind, c.spec, check.kind, check.spec)
+               for c in present + added):
+            continue
+        ident, n = check.id, 2
+        while ident in taken:
+            ident, n = f"{check.id}-{n}", n + 1
+        taken.add(ident)
+        added.append(check.model_copy(update={"id": ident}))
+    if not added:
+        return 0
+    store_dod(job_id, DoD(
+        schema_v=DOD_SCHEMA_V, checks=present + added,
+        compiled=dod.compiled if dod is not None else False,
+        origin=dod.origin if dod is not None else "deterministic"))
+    return len(added)
+
+
+def record_contract_results(project_id: str, mission_id: str, job_id: str,
+                            milestone_id: str | None,
+                            root: Path | None = None) -> MissionContract | None:
+    """Read a job's gate result back onto its slice criteria (D4 (4)).
+
+    Each slice criterion whose check has the ``kind`` and ``spec`` of a check
+    in the job's stored DoD becomes ``met`` when that check's evidence passed
+    and ``unmet`` otherwise, with ``evidence_ref`` = ``<job id>:<check id>``.
+    A job with no gate result, or no readable DoD, changes nothing and returns
+    None; otherwise the contract as written is returned.
+    """
+    from packages.orchestration.dod_gate import load_dod, load_gate_result
+    from packages.orchestration.dod_runners import STATUS_PASSED
+    from packages.orchestration.mission_state import load_mission
+
+    contract = read_mission_contract(load_mission(project_id, mission_id, root))
+    if contract is None:
+        return None
+    result = load_gate_result(job_id)
+    dod = load_dod(job_id)
+    if result is None or dod is None:
+        return None
+    passed = {str(e.get("check_id")) for e in result.get("checks") or []
+              if isinstance(e, dict) and e.get("status") == STATUS_PASSED}
+    in_slice = {c.id for c in job_contract_slice(contract, milestone_id)}
+    criteria: list[ContractCriterion] = []
+    for criterion in contract.criteria:
+        check = criterion.check
+        match = None if criterion.id not in in_slice or check is None else next(
+            (c for c in dod.checks
+             if _same_check(c.kind, c.spec, check.get("kind"), check.get("spec"))),
+            None)
+        if match is not None:
+            criterion = replace(
+                criterion, status="met" if match.id in passed else "unmet",
+                evidence_ref=f"{job_id}:{match.id}")
+        criteria.append(criterion)
+    return write_mission_contract(
+        project_id, mission_id, replace(contract, criteria=tuple(criteria)), root)
 
 
 # ---------------------------------------------------------------------------

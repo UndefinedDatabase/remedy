@@ -1589,27 +1589,35 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
         detail = f"job {job.job_id} dispatched for {payload['milestone_id']}"
         if approved:
             detail += " (plan auto-approved, audited)"
-        # R-0188: give the job its milestone's DoD before it runs, or the gate
-        # has nothing to evaluate when it finishes.
+        from packages.orchestration.mission_contract import (
+            JOB_MILESTONE_KEY,
+            merge_contract_slice_into_dod,
+            record_contract_results,
+            record_job_milestone,
+        )
         from packages.orchestration.mission_state import load_mission as _load
 
-        if attach_milestone_dod(project_id, mission_id,
-                                _load(project_id, mission_id, root),
+        # R-0188: give the job its milestone's DoD before it runs, or the gate
+        # has nothing to evaluate when it finishes.
+        current = _load(project_id, mission_id, root)
+        if attach_milestone_dod(project_id, mission_id, current,
                                 payload["milestone_id"], str(job.job_id), root):
             detail += "; DoD attached"
+        # DECISION F269 D4 (3): the job's DoD carries its contract slice, so
+        # the job's own gate decides the criteria it serves.
+        merge_contract_slice_into_dod(current, payload["milestone_id"],
+                                      str(job.job_id))
         # DECISION F269 D3 (1): the job records the milestone it serves, so its
         # contract slice can be derived. The in-memory job is the one the
         # executor saves next, so it carries the same key.
-        from packages.orchestration.mission_contract import (
-            JOB_MILESTONE_KEY,
-            record_job_milestone,
-        )
-
         if record_job_milestone(str(job.job_id), payload["milestone_id"], root):
             metadata = getattr(job, "metadata", None)
             if isinstance(metadata, dict):
                 metadata[JOB_MILESTONE_KEY] = payload["milestone_id"]
         run = (execute or execute_dispatched_job)(job)
+        # DECISION F269 D4 (4): the job's gate result decides its slice criteria.
+        record_contract_results(project_id, mission_id, str(job.job_id),
+                                payload["milestone_id"], root)
         # What execution PRODUCED, on the ledger entry, so the next iteration's
         # context shows why the milestone is or is not claimable.
         detail += (f"; executed: terminal={getattr(run, 'terminal_status', '')}"
