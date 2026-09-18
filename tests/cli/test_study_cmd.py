@@ -11,9 +11,12 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 from apps.cli.command_catalog import get_command, get_commands_for_group
+from apps.cli.commands import collect_all_handlers
 
 
 def _build_fixture_repo(tmp_path: Path) -> Path:
@@ -185,3 +188,52 @@ class TestStudyCommandCatalogRegistration:
 
         assert GROUPS["study"].hidden is False
         assert GROUPS["study"].user_facing is False
+
+
+class TestStudyCommandReachability:
+    """Tests that prove study.run is truly reachable through the CLI dispatch."""
+
+    def test_study_run_in_collect_all_handlers(self):
+        """Test that study.run is a key in collect_all_handlers() result (R-0959)."""
+        handlers = collect_all_handlers()
+        assert "study.run" in handlers
+        assert callable(handlers["study.run"])
+
+    def test_study_run_dispatch_e2e(self, tmp_path, monkeypatch):
+        """Test that study run is callable through the real CLI dispatch (R-0959)."""
+        # Build a fixture repo
+        repo = tmp_path / "fixture_repo"
+        repo.mkdir()
+        (repo / "README.md").write_text("# Test Repo\n")
+        (repo / "pyproject.toml").write_text("[project]\nname = 'test'\n")
+
+        # Set up data root and isolate it
+        data_root = tmp_path / "data"
+        data_root.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_root))
+
+        # Invoke study run through the real grouped CLI dispatch as a subprocess
+        # Use --path option syntax (not positional argument)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "apps.cli.grouped",
+                "study",
+                "run",
+                "--path",
+                str(repo),
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        # The command must exit 0
+        assert result.returncode == 0, f"study run failed: {result.stderr}"
+        # The output must be valid JSON
+        output = json.loads(result.stdout)
+        # The output must contain expected keys
+        assert "cards_written" in output
+        assert "project_id" in output
