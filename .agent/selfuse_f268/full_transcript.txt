@@ -1,0 +1,24 @@
+Job ID: fcba47b830c24c89
+Job Title: Address ledger finding R-0445
+Job State: blocked
+Isolation Mode: worktree
+Worktree Path: .remedy-wt/job-fcba47b830c24c89
+Worktree Cleanup Status: retained
+Error: task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+
+Execution:
+- Builder: ollama
+- Reviewer: ollama
+- Repair Rounds: 2
+- Created: 2026-09-18T12:01:08.476151+00:00
+- Finished: 
+
+Task Summary:
+
+Task T001: Task 1
+- Status: blocked
+- Reviewer Verdict: fail
+- Final Status: repair_exhausted
+- Repair Rounds Used: 2
+- Repair Rounds Allowed: 2
+- Error: completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
