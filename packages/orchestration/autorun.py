@@ -1,11 +1,13 @@
 """
-Autorun v1 — controlled execution loop for ``remedy do``.
+Autorun v1 — a goal-driven execution path, `run_autorun`.
 
-Runs a goal-driven loop: create job, inject source context,
-run builder, create patch intent, gate approval, apply, test.
+Creates a job, injects source context, runs a builder (fixture, repair-loop
+fixture or Ollama), creates a patch intent, gates approval, applies and tests.
+`remedy do` no longer calls it: every `remedy do` walks
+`packages/orchestration/do_sequence.py` (DECISION F268 D16).
 
-Autonomy levels:
-  0 — observe:   dry-run, show plan only
+Autonomy levels, as `run_autorun` reads its `autonomy_level`:
+  0 — observe:   create the job only
   1 — propose:   create job + task, no execution
   2 — generate:  run builder, create patch intent (needs approval)
   3 — apply:     apply approved patches only
@@ -17,7 +19,6 @@ Autonomy levels:
 Public API::
 
     run_autorun(goal, repo_path, ...) -> AutorunResult
-    dry_run_autorun(goal, repo_path, ...) -> dict
 """
 
 from __future__ import annotations
@@ -39,77 +40,6 @@ class AutorunResult:
     error: str = ""
     stop_reason: str = ""
     provider: str = ""
-
-
-def dry_run_autorun(
-    goal: str,
-    repo_path: str,
-    *,
-    project_id: str | None = None,
-    autonomy_level: int = 2,
-    max_cycles: int = 3,
-    enable_ui: bool = False,
-) -> dict[str, Any]:
-    """Dry run — no LLM, no repo mutation. Shows what would happen."""
-
-    repo = Path(repo_path).resolve()
-    repo_exists = repo.is_dir()
-
-    # Check for manifests
-    manifests = []
-    if repo_exists:
-        for name in ("package.json", "pyproject.toml", "Cargo.toml", "go.mod", "Makefile"):
-            if (repo / name).is_file():
-                manifests.append(name)
-
-    # Token budget estimate
-    token_budget = 2000
-    if autonomy_level >= 2:
-        token_budget = 4000
-
-    plan = {
-        "version": 1,
-        "dry_run": True,
-        "goal": goal,
-        "repo_path": str(repo),
-        "repo_exists": repo_exists,
-        "project_id": project_id,
-        "autonomy_level": autonomy_level,
-        "autonomy_label": _autonomy_label(autonomy_level),
-        "max_cycles": max_cycles,
-        "manifests_found": manifests,
-        "phases": [],
-        "token_budget": token_budget,
-        "ui_plan": {
-            "enabled": enable_ui,
-            "url_template": "http://127.0.0.1:8787/?job=<job_id>&token=<token>",
-        },
-        "gates": [],
-    }
-
-    # Phases based on autonomy
-    phases = ["create_project", "create_job", "attach_repo"]
-    if autonomy_level >= 1:
-        phases.append("source_context_injection")
-    if autonomy_level >= 2:
-        phases.extend(["run_builder", "create_patch_intent"])
-    if autonomy_level >= 3:
-        phases.extend(["approval_gate", "apply_patch"])
-    if autonomy_level >= 4:
-        phases.append("run_tests")
-    if autonomy_level >= 5:
-        phases.append("revert_on_failure")
-    if autonomy_level >= 6:
-        phases.append("repair_loop")
-    plan["phases"] = phases
-
-    # Gates
-    if autonomy_level >= 2:
-        plan["gates"].append({"gate": "approval", "description": "Human must approve patch before apply"})
-    if autonomy_level >= 4:
-        plan["gates"].append({"gate": "test_permission", "description": "test_execution permission required"})
-
-    return plan
 
 
 def run_autorun(
@@ -725,15 +655,6 @@ def _run_ollama_builder(
 
     save_job_plan(job)
     return result
-
-
-def _autonomy_label(level: int) -> str:
-    labels = {
-        0: "observe", 1: "propose", 2: "generate",
-        3: "apply", 4: "test", 5: "revert",
-        6: "loop", 7: "blocked",
-    }
-    return labels.get(level, "unknown")
 
 
 def _emit(data_dir: str | Path, job_id: UUID, event: str, metadata: dict[str, Any]) -> None:

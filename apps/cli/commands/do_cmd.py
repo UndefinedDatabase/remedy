@@ -1,4 +1,11 @@
-"""CLI handler for ``remedy do`` — high-level guided autorun."""
+"""CLI handler for ``remedy do "<order>"``: plan and run an order through the F268 sequence.
+
+Every `remedy do`, with or without the word `run`, walks
+`packages/orchestration/do_sequence.py` — init, study, plan, shape, run, ui,
+apply — and stops before apply unless `--apply` (DECISIONs F268 D4, D9, D16).
+The module also holds the `run.show`, `run.list`, `job.run`, `job.apply` and
+`job.evidence` handlers.
+"""
 
 from __future__ import annotations
 
