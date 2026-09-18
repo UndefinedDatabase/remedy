@@ -255,12 +255,20 @@ def run_hygiene_rule(rule: str, changes: WorkTreeChanges) -> list[HygieneFinding
 # ── measuring a git work tree ──────────────────────────────────────────────
 
 
+#: Seconds one ``git`` query may take; a tree that hangs git cannot be measured.
+_GIT_TIMEOUT_SEC = 60
+
+
 def _git(cwd: Path, *args: str) -> str:
     # Optional locks off: measuring must never write the index of a live worktree.
     env = dict(os.environ, GIT_OPTIONAL_LOCKS="0")
     try:
         done = subprocess.run(["git", "-c", "core.quotePath=false", *args], cwd=str(cwd),
-                              capture_output=True, text=True, env=env, check=False)
+                              capture_output=True, text=True, env=env, check=False,
+                              timeout=_GIT_TIMEOUT_SEC)
+    except subprocess.TimeoutExpired as exc:
+        raise HygieneMeasureError(
+            f"git {' '.join(args)} timed out after {_GIT_TIMEOUT_SEC}s") from exc
     except OSError as exc:
         raise HygieneMeasureError(f"git could not run: {exc}") from exc
     if done.returncode != 0:

@@ -234,6 +234,23 @@ def test_an_unknown_rule_exits_2():
     assert contract_hygiene.main([]) == EXIT_CANNOT_MEASURE
 
 
+def test_a_git_query_that_times_out_exits_2_cannot_measure(repo, monkeypatch, capsys):
+    monkeypatch.chdir(repo)
+    timeouts: list[object] = []
+
+    def hanging_run(argv, *args, **kwargs):
+        timeouts.append(kwargs.get("timeout"))
+        raise subprocess.TimeoutExpired(argv, kwargs.get("timeout"))
+
+    monkeypatch.setattr(contract_hygiene.subprocess, "run", hanging_run)
+
+    assert contract_hygiene.main(["unreferenced"]) == EXIT_CANNOT_MEASURE
+    assert timeouts == [contract_hygiene._GIT_TIMEOUT_SEC]
+    err = capsys.readouterr().err
+    assert "cannot measure" in err
+    assert f"timed out after {contract_hygiene._GIT_TIMEOUT_SEC}s" in err
+
+
 # ── through F061's real gate ───────────────────────────────────────────────
 
 
