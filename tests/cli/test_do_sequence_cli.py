@@ -1,4 +1,5 @@
-"""F268 T001 — `remedy do "<order>"` end to end, one test per step boundary.
+"""F268 T001 and T002 — `remedy do "<order>"` end to end, one test per step boundary,
+then the shape decision and the force flags (DECISIONs F268 D5 and D6).
 
 In-process through `apps.cli.grouped.main`, against a temporary git repository
 holding one committed file, with the data root under `tmp_path`, the fake
@@ -187,3 +188,77 @@ def test_next_lines_carry_real_ids_and_paths_never_placeholders(repo, capsys):
     assert next_lines
     assert all(job_id in line for line in next_lines)
     assert f"Next: remedy job apply {job_id} --repo {repo} --approve" in next_lines
+
+
+# ── T002: the shape and the force flags (DECISION F268 D5) ─────────────────
+
+TEN_FILES = [f"docs/part_{n:02d}.md" for n in range(10)]
+
+
+def test_the_order_plans_one_job_of_at_most_three_tasks_by_the_planners_shape(repo, capsys):
+    data = _do_json(capsys)
+
+    [job_id] = data["job_ids"]
+    assert (data["shape"], data["shape_source"]) == ("one job", "planner")
+    from packages.orchestration.pingpong_job import load_job_plan
+    assert 1 <= len(load_job_plan(job_id).tasks) <= 3
+
+
+def test_force_mission_yields_linked_jobs_all_run_on_the_repo_and_leaves_it_untouched(
+        repo, capsys):
+    from packages.orchestration.mission_state import load_mission
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+    from packages.orchestration.project_registry import resolve_project
+
+    before = _git(repo, "status", "--porcelain", "--untracked-files=all")
+
+    data = json.loads(_do(capsys, "--json", "--force-mission"))
+
+    assert (data["shape"], data["shape_source"]) == ("milestones", "--force-mission")
+    job_ids = data["job_ids"]
+    assert len(job_ids) >= 2
+    mission = load_mission(str(resolve_project(repo).id), data["mission_id"])
+    assert [(link.job_id, link.role) for link in mission.job_links] == [
+        (job_ids[0], "initial"), *((j, "follow_up") for j in job_ids[1:])]
+    jobs = [load_job_plan(j) for j in job_ids]
+    assert [job.state for job in jobs] == [JOB_COMPLETED] * len(jobs)
+    assert [job.repo_path for job in jobs] == [str(repo)] * len(jobs)
+    assert _git(repo, "status", "--porcelain", "--untracked-files=all") == before
+    applies = [line for line in data["next"] if line.startswith("remedy job apply ")]
+    assert applies == [f"remedy job apply {j} --repo {repo} --approve" for j in job_ids]
+
+
+def test_force_job_on_an_order_naming_ten_files_yields_one_job_of_ten_tasks(repo, capsys):
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    order = "Write " + ", ".join(TEN_FILES)
+
+    data = json.loads(_do(capsys, "--json", "--force-job", order=order))
+
+    assert (data["shape"], data["shape_source"]) == ("one job", "--force-job")
+    [job_id] = data["job_ids"]
+    tasks = load_job_plan(job_id).tasks
+    assert [t.inputs["deliverable"] for t in tasks] == TEN_FILES
+
+
+def test_force_job_and_force_mission_together_exit_2(repo, capsys):
+    with pytest.raises(SystemExit) as exc:
+        _do(capsys, "--force-job", "--force-mission")
+
+    assert exc.value.code == 2
+    assert "cannot be given together" in capsys.readouterr().err
+
+
+def test_the_shape_function_reads_milestones_from_two_outlines_and_one_job_from_one():
+    from packages.orchestration.do_sequence import do_shape_of_plan
+    from packages.orchestration.mission_compiler import deterministic_mission_plan
+    from packages.orchestration.mission_plan_schema import MissionPlan
+
+    one = deterministic_mission_plan(ORDER)
+    data = one.model_dump()
+    data["milestones"][0]["jobs_draft"].append(
+        dict(title="Changelog", goal="Write a CHANGELOG.md", est_band="M"))
+    two = MissionPlan(**data)
+
+    assert do_shape_of_plan(one) == "one job"
+    assert do_shape_of_plan(two) == "milestones"
