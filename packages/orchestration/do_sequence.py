@@ -12,7 +12,8 @@ steps call package functions and must be testable without the CLI.
 
 Scope: init registers and ignores and writes no file into the repository
 (D2); study runs once, on a non-empty repository only (D3); plan creates the
-mission record for the order, plans it and keeps the plan (D4, D5); shape reads
+mission record for the order, writes the contract template forced or proposed
+onto it (DECISION F269 D1 (4)), plans it and keeps the plan (D4, D5); shape reads
 "one job" or "milestones" from that plan, `--force-job` / `--force-mission`
 overriding it, and plans the jobs, each bounded by deliverables (D5, D6); run
 runs the first job on the chosen providers; ui opens the cockpit for the job
@@ -104,6 +105,10 @@ class DoContext:
     #: `--planner-model`: `model=` of every structured planner call the plan and
     #: shape steps build (DECISION F268 D16 (7)).
     planner_model: str | None = None
+    #: `--contract <name>`: the contract template the plan step writes onto the
+    #: new mission; ``None`` applies the one proposed from the order, if any
+    #: (DECISION F269 D1 (4)).
+    contract_template: str | None = None
     no_ui: bool = False
     yes: bool = False
     no_llm: bool = False
@@ -631,11 +636,23 @@ def _step_study(ctx: DoContext) -> tuple[str, str]:
 
 
 def _step_plan(ctx: DoContext) -> tuple[str, str]:
-    """Create the mission record for the order, record the order, and plan it (D4)."""
+    """Create the mission record for the order, record the order, and plan it (D4).
+
+    Before the plan, the contract template forced by `--contract`, or else the
+    one proposed from the order, is written onto the new mission, so the
+    planner's criteria are added after it and none of its criteria are dropped
+    (DECISION F269 D1 (4)); the detail says whether it was forced or proposed.
+    """
+    from packages.orchestration.contract_templates import (
+        ContractTemplateError,
+        propose_contract_template,
+        write_template_contract,
+    )
     from packages.orchestration.mission_compiler import (
         MissionPlanInProgressError,
         plan_mission,
     )
+    from packages.orchestration.mission_contract import ContractError
     from packages.orchestration.mission_state import (
         MissionError,
         MissionOrder,
@@ -650,6 +667,17 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     except MissionError as exc:
         return DO_STEP_FAILED, f"no mission created: {exc}"
     ctx.mission_id = mission.id
+
+    template, how = ctx.contract_template, "forced by --contract"
+    try:
+        if template is None:
+            template, how = propose_contract_template(ctx.order), "proposed from the order"
+        if template is not None:
+            write_template_contract(project_id, mission.id, template)
+    except (ContractTemplateError, ContractError, MissionError) as exc:
+        return DO_STEP_FAILED, f"mission {mission.id} was not planned: {exc}"
+    contract_note = (f"contract template {template}, {how}" if template is not None
+                     else "no contract template, none proposed from the order")
 
     call_fn = None
     if not ctx.no_llm:
@@ -668,7 +696,8 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     ctx.mission_plan_path = str(outcome.plan_path)
     return DO_STEP_DONE, (
         f"mission {mission.id} plan v{outcome.version} ({outcome.source}, "
-        f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}")
+        f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}; "
+        f"{contract_note}")
 
 
 def mission_plan_outlines(plan: Any) -> list[Any]:

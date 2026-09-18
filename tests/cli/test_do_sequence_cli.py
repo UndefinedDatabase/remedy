@@ -157,14 +157,14 @@ def test_shape_to_run_completes_on_the_named_fake_providers(repo, capsys):
     assert (config.reviewer, config.reviewer_source) == ("fake", "cli")
 
 
-def _recorded_contract(repo, data):
+def _recorded_contract(repo, data, origins=frozenset({"planner"})):
     """The contract on the walk's mission record: planned, so never null."""
     from packages.orchestration.mission_state import load_mission
     from packages.orchestration.project_registry import resolve_project
 
     body = load_mission(str(resolve_project(repo).id), data["mission_id"]).contract
     assert body is not None and body["schema"] == "contract_v1"
-    assert {c["origin"] for c in body["criteria"]} == {"planner"}
+    assert {c["origin"] for c in body["criteria"]} == set(origins)
     return body
 
 
@@ -719,8 +719,7 @@ def test_a_job_whose_cost_mirror_failed_is_named_not_counted_as_zero(
 
 
 NOT_YET_AVAILABLE = [
-    (("--contract", "strict"), "F269"),
-    (("--commit", "Add the contributing guide"), "F270"),
+    (("--commit","Add the contributing guide"), "F270"),
     (("--commit-auto",), "F270"),
     (("--commit-with-history",), "F270"),
     (("--push",), "F270"),
@@ -743,6 +742,78 @@ def test_a_flag_whose_feature_is_not_built_refuses_before_any_step(
     captured = capsys.readouterr()
     assert captured.out == ""
     assert f"{flag[0]} is not yet available; {feature} brings it" in captured.err
+    assert [p for p in data_root.rglob("*") if p.is_file()] == []
+    assert resolve_project(repo) is None
+    assert list_job_plans() == []
+
+
+# ── F269 T003: `--contract` and the proposed template (DECISION F269 D1 (4)) ──
+
+
+def _template_criteria(name: str) -> list[dict]:
+    from packages.orchestration.contract_templates import (
+        compile_contract_template,
+        load_contract_template,
+    )
+
+    return [c.to_json() for c in compile_contract_template(load_contract_template(name))]
+
+
+def _contract_by_origin(data: dict, origin: str) -> list[dict]:
+    return [c for c in data["contract"]["criteria"] if c["origin"] == origin]
+
+
+def test_contract_website_on_a_bare_order_gives_the_website_templates_criteria(repo, capsys):
+    data = json.loads(_do(capsys, "--json", "--contract", "website"))
+
+    assert data["contract"] == _recorded_contract(repo, data, {"template", "planner"})
+    assert data["contract"]["template"] == "website"
+    assert _contract_by_origin(data, "template") == _template_criteria("website")
+    assert _step(data, "plan")["detail"].endswith(
+        "; contract template website, forced by --contract")
+
+
+def test_contract_website_with_an_extra_requirement_adds_planner_criteria_and_drops_none(
+        repo, capsys):
+    order = "Write a CONTRIBUTING.md that also lists the release checklist"
+
+    data = json.loads(_do(capsys, "--json", "--contract", "website", order=order))
+
+    assert data["contract"]["template"] == "website"
+    template = _template_criteria("website")
+    assert _contract_by_origin(data, "template") == template
+    assert data["contract"]["criteria"][:len(template)] == template
+    assert len(_contract_by_origin(data, "planner")) >= 1
+
+
+def test_without_contract_the_website_fixture_order_gets_the_proposed_template(repo, capsys):
+    from packages.orchestration.contract_templates import load_contract_template
+
+    order = load_contract_template("website").fixture_order
+
+    data = _do_json(capsys, order=order)
+
+    assert data["contract"]["template"] == "website"
+    assert _contract_by_origin(data, "template") == _template_criteria("website")
+    detail = _step(data, "plan")["detail"]
+    assert detail.endswith("; contract template website, proposed from the order")
+
+
+def test_contract_naming_no_template_exits_2_naming_the_templates_and_writes_nothing(
+        repo, capsys):
+    from packages.orchestration.pingpong_job import list_job_plans
+    from packages.orchestration.project_registry import resolve_project
+
+    data_root = repo.parent / "data"
+
+    with pytest.raises(SystemExit) as exc:
+        _do(capsys, "--json", "--contract", "nosuch")
+
+    assert exc.value.code == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert ("--contract 'nosuch' is not a contract template; the templates are "
+            "api-service, cli-tool, python-library, website. Nothing was run.") in captured.err
     assert [p for p in data_root.rglob("*") if p.is_file()] == []
     assert resolve_project(repo) is None
     assert list_job_plans() == []
