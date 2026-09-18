@@ -1,0 +1,44 @@
+{
+ "C1": {
+  ".agent/live_review.md": [
+   [
+    "describes the heir's package. Owner: F268.",
+    "describes the heir's package. Owner: F273."
+   ]
+  ],
+  "docs/roadmap/features/T2_F273.md": [
+   [
+    "real ids, with a test per module grepping the rendered text for `<[a-z_]+>`.\n\n## Do not touch\n",
+    "real ids, with a test per module grepping the rendered text for `<[a-z_]+>`.\n- R-0892 carries a resolution line naming the commit that makes\n  `.claude/skills/remedy-evidence-review/SKILL.md` describe the package\n  `packages/orchestration/job_evidence.py` `_write_job_flow_artifacts` writes, as the page\n  prepared at `.agent/authored/f268-r7-skill.md` does; F268 landed the package half.\n\n## Do not touch\n"
+   ]
+  ]
+ },
+ "C3": {
+  "docs/roadmap/STATUS.md": [
+   [
+    "- [~] F268 — remedy do: the one-command start\n",
+    "- [x] F268 — remedy do: the one-command start (T001-T005 complete; accepted 2026-09-18 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f268r12e1001 · package remedy-review-20260918-140632-READY_FOR_REVIEW.zip · SHA-256 2c4ed9fa9d3c2e762dbf19a069cc378dfc7c46d973f9334e656f4dc9e873d86a · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5883bccb2b2d4362815215c6a24a71b67f9016f9)\n"
+   ]
+  ],
+  "README.md": [
+   [
+    "81 of 281 registered items accepted.",
+    "82 of 281 registered items accepted."
+   ],
+   [
+    "| 2 | Minimal Self-Build Runtime | 23 | 34 |",
+    "| 2 | Minimal Self-Build Runtime | 24 | 34 |"
+   ],
+   [
+    "belong to the follow-up feature the STATUS ledger registers directly\nafter it).\n\nAccepted in Tier 3 so far:",
+    "belong to the follow-up feature the STATUS ledger registers directly\nafter it),\nF268 remedy do, the one-command start (`remedy do \"<order>\"` walks one\nsequence held as data — init, study, plan, shape, run, ui, apply — so it\nregisters the repository, studies it once, plans a mission whose every task\nnames the deliverable it produces, runs the first job and stops before apply\nunless `--apply`; `--plan-only` stops after planning and `--step-by-step`\nhalts between steps; the measured tokens per role and the cost are printed at\nthe end; a run's exported evidence passes the review-package check; and\n`remedy --help` opens with five quick-start lines that each run as printed).\n\nAccepted in Tier 3 so far:"
+   ]
+  ],
+  "scripts/self_use_queue.json": [
+   [
+    "\"consumed_by\": \"\",",
+    "\"consumed_by\": \"F268\","
+   ]
+  ]
+ }
+}
