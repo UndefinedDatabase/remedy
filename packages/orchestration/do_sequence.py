@@ -1018,6 +1018,21 @@ def _add_measured(total: float | int | None, value: float | int | None) -> float
     return value if total is None else total + value
 
 
+def do_mission_contract(ctx: DoContext) -> dict[str, Any] | None:
+    """The walk's mission contract body as its record holds it, or None.
+
+    None when the walk created no mission or the mission has no contract
+    (DECISION F269 D4 (6)); read from the record, so it is the contract as
+    the walk left it.
+    """
+    if not ctx.mission_id or ctx.project is None:
+        return None
+    from packages.orchestration.mission_state import load_mission
+
+    body = load_mission(str(ctx.project.id), ctx.mission_id).contract
+    return body if isinstance(body, dict) else None
+
+
 def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
     """The walk's measured tokens per role and cost, or None when no job ran.
 

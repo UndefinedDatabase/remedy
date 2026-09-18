@@ -157,6 +157,17 @@ def test_shape_to_run_completes_on_the_named_fake_providers(repo, capsys):
     assert (config.reviewer, config.reviewer_source) == ("fake", "cli")
 
 
+def _recorded_contract(repo, data):
+    """The contract on the walk's mission record: planned, so never null."""
+    from packages.orchestration.mission_state import load_mission
+    from packages.orchestration.project_registry import resolve_project
+
+    body = load_mission(str(resolve_project(repo).id), data["mission_id"]).contract
+    assert body is not None and body["schema"] == "contract_v1"
+    assert {c["origin"] for c in body["criteria"]} == {"planner"}
+    return body
+
+
 def test_run_to_stop_leaves_the_target_untouched_and_stops_before_apply(repo, capsys):
     before = _git(repo, "status", "--porcelain", "--untracked-files=all")
     head = _git(repo, "rev-parse", "HEAD")
@@ -166,7 +177,8 @@ def test_run_to_stop_leaves_the_target_untouched_and_stops_before_apply(repo, ca
     assert _git(repo, "status", "--porcelain", "--untracked-files=all") == before
     assert _git(repo, "rev-parse", "HEAD") == head
     assert data["stopped_before_apply"] is True
-    assert data["contract"] is None
+    # DECISION F269 D4 (6): the mission's contract body, as its record holds it.
+    assert data["contract"] == _recorded_contract(repo, data)
     assert [s["name"] for s in data["steps"]] == [
         "init", "study", "plan", "shape", "run", "ui", "apply"]
     assert _step(data, "apply")["status"] == "stopped"
@@ -426,7 +438,8 @@ def test_plan_only_writes_the_mission_plan_plans_the_jobs_and_runs_none(
     data = json.loads(_do(capsys, "--json", "--plan-only"))
 
     assert Path(data["mission_plan_path"]).is_file()
-    assert data["contract"] is None
+    # DECISION F269 D4 (6): planning wrote the contract; --plan-only reports it.
+    assert data["contract"] == _recorded_contract(repo, data)
     job_ids = data["job_ids"]
     assert job_ids
     assert [load_job_plan(j).state for j in job_ids] == [RunState.PLANNED] * len(job_ids)

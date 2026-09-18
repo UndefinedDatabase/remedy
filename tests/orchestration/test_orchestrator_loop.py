@@ -1316,6 +1316,53 @@ class TestAPlanLessMissionCannotBeDeclaredAchieved:
                              project_id=PROJECT, mission_id=mission.id) == ""
 
 
+class TestTheContractHoldsTheAchievedClaim:
+    """DECISION F269 D4 (5): with every milestone done, a blocking contract
+    criterion that is not met still refuses ``declare_mission_achieved``,
+    naming its id; a contract body that breaks a D2 rule refuses with the rule.
+    The end-to-end proof through the real gate is ``test_mission_gate.py``."""
+
+    @staticmethod
+    def _criterion(ident: str, status: str, *, blocking: bool = True) -> dict:
+        return {"id": ident, "text": f"{ident} holds", "blocking": blocking,
+                "origin": "template", "milestones": [], "check": None,
+                "status": status, "evidence_ref": None}
+
+    def _reason(self, tmp_path, mission, contract: dict) -> str:
+        from packages.orchestration.mission_state import set_mission_contract
+
+        for milestone in ("M001", "M002"):
+            mark_milestone_done(PROJECT, mission.id, milestone, tmp_path)
+        set_mission_contract(PROJECT, mission.id, contract, tmp_path)
+        move = OrchestratorMove.model_validate_json(
+            _move_json("declare_mission_achieved"))
+        return evaluate_move(load_mission(PROJECT, mission.id, tmp_path), move,
+                             observe=_no_evidence, project_id=PROJECT,
+                             mission_id=mission.id)
+
+    def _contract(self, *criteria: dict) -> dict:
+        return {"schema": "contract_v1", "template": None,
+                "criteria": list(criteria), "amendments": []}
+
+    def test_unmet_and_open_blocking_criteria_refuse_by_id(self, tmp_path, mission):
+        reason = self._reason(tmp_path, mission, self._contract(
+            self._criterion("C001", "met"), self._criterion("C002", "unmet"),
+            self._criterion("C003", "open")))
+
+        assert reason.endswith("2 blocking contract criteria are not met: C002, C003")
+
+    def test_a_non_blocking_unmet_criterion_does_not_hold(self, tmp_path, mission):
+        assert self._reason(tmp_path, mission, self._contract(
+            self._criterion("C001", "met"),
+            self._criterion("C002", "unmet", blocking=False))) == ""
+
+    def test_a_broken_body_refuses_with_the_rule(self, tmp_path, mission):
+        reason = self._reason(tmp_path, mission, self._contract(
+            self._criterion("C001", "done")))
+
+        assert "status is open, met or unmet" in reason
+
+
 # ---------------------------------------------------------------------------
 # F075 R3 — the exception boundary
 # ---------------------------------------------------------------------------

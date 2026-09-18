@@ -54,7 +54,8 @@ mission_id, job_ids, waiting_job_ids, contract, stopped_before_apply,
 shape, shape_source, mission_plan_path, jobs, steps, cost, next
 ```
 
-- `contract` is `null` until F269 lands.
+- `contract` is the mission's contract body as its record holds it, or `null`
+  when the mission has none (DECISION F269 D4 (6)).
 - `jobs` lists every job's tasks with their deliverables.
 - `steps` holds one `{name, status, detail}` per step the walk reached.
 - `cost` carries the measured tokens per role and cost, read back from the ledger.

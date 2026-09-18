@@ -1973,7 +1973,9 @@ def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
     ``abort_with_reason`` and ``declare_mission_achieved`` are the loop's ways
     of stopping, and refusing a stop would be the silent loop this feature
     exists to prevent — except that claiming the mission is achieved while
-    milestones are still open is itself an advance, and is checked.
+    milestones are still open is itself an advance, and is checked — as is
+    claiming it while a blocking contract criterion is not met (DECISION F269
+    D4 (5)).
     """
     from packages.orchestration.orchestrator_move_schema import (
         MOVE_DECLARE_MILESTONE_DONE,
@@ -2011,6 +2013,22 @@ def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
             return (f"the mission cannot be achieved while "
                     f"{len(open_ones)} milestone(s) are still open: "
                     f"{', '.join(open_ones)}")
+        # DECISION F269 D4 (5): the contract holds the claim while a blocking
+        # criterion is not met, and a body that breaks a D2 rule holds it too.
+        from packages.orchestration.mission_contract import (
+            ContractError,
+            contract_blockers,
+            read_mission_contract,
+        )
+
+        try:
+            blockers = contract_blockers(read_mission_contract(mission))
+        except ContractError as exc:
+            return f"the mission cannot be achieved: its contract is unreadable — {exc}"
+        if blockers:
+            return (f"the mission cannot be achieved while "
+                    f"{len(blockers)} blocking contract criteria are not met: "
+                    f"{', '.join(blockers)}")
     return ""
 
 

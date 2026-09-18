@@ -296,6 +296,9 @@ def _cmd_mission_set_status(mission_id: str, verb: str, *,
     the status, and that is the whole rule.  There is deliberately NO
     transition table here — any valid status may follow any other, because a
     human typing the command is the authority on what the mission's state is.
+    ``achieve`` therefore is NOT refused by an unmet blocking contract
+    criterion; it names those criteria in one line before the status line and
+    as ``unmet_blocking_criteria`` under ``--json`` (DECISION F269 D4 (5)).
 
     This surface is not the only writer, though.  The orchestrator loop's own
     terminal moves write ``achieved`` and ``abandoned`` with no human in the
@@ -312,6 +315,22 @@ def _cmd_mission_set_status(mission_id: str, verb: str, *,
     project_id = _resolve_project_id(project)
     mission = _load_mission_or_exit(project_id, mission_id)
 
+    # DECISION F269 D4 (5): `achieve` stays the human's judgement and is never
+    # refused, but it says which blocking criteria it overrides.
+    unmet: list[str] | None = None
+    if verb == "achieve":
+        from packages.orchestration.mission_contract import (
+            ContractError,
+            contract_blockers,
+            read_mission_contract,
+        )
+
+        try:
+            unmet = list(contract_blockers(read_mission_contract(mission)))
+        except ContractError as exc:
+            print(f"Warning: the mission's contract is unreadable: {exc}",
+                  file=sys.stderr)
+
     try:
         updated = set_mission_status(project_id, mission.id, _status_for_verb(verb))
     except MissionError as exc:
@@ -319,10 +338,15 @@ def _cmd_mission_set_status(mission_id: str, verb: str, *,
         sys.exit(EXIT_ERROR)
 
     if json_output:
-        print(_json.dumps({"version": 1, "mission": _mission_json(updated)},
-                          sort_keys=True))
+        body: dict[str, Any] = {"version": 1, "mission": _mission_json(updated)}
+        if verb == "achieve":
+            body["unmet_blocking_criteria"] = unmet
+        print(_json.dumps(body, sort_keys=True))
         return
     print(updated.id)
+    if unmet:
+        print(f"  Unmet blocking criteria: {', '.join(unmet)} "
+              f"(achieved by your judgement over the contract)")
     print(f"  Status: {updated.status}")
 
 

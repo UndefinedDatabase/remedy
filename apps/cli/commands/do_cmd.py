@@ -185,8 +185,9 @@ def _cmd_do_order(
     `--force-job` / `--force-mission` override the planner's shape and exit 2
     together (DECISION F268 D5). `--step-by-step` halts between steps and
     reads each answer with `input`; `--plan-only` ends the walk after
-    shape (DECISION F268 D8). `--json` carries `contract: null` until F269
-    lands (DECISION F268 D1), `shape` / `shape_source`, `mission_plan_path`
+    shape (DECISION F268 D8). `--json` carries the mission's `contract` body,
+    or null when it has none (DECISION F269 D4 (6)), `shape` /
+    `shape_source`, `mission_plan_path`
     and `jobs`, every job's tasks with their deliverables. In a walk of two or
     more jobs only the first runs and `waiting_job_ids` names the rest
     (DECISION F268 D12). Every job run is mirrored into the F103 ledger, and
@@ -237,6 +238,7 @@ def _cmd_do_order(
         do_cost_summary,
         do_cost_summary_lines,
         do_job_task_listing,
+        do_mission_contract,
         launch_do_cockpit,
         walk_do_sequence,
     )
@@ -272,7 +274,7 @@ def _cmd_do_order(
             "mission_id": ctx.mission_id or None,
             "job_ids": list(ctx.job_ids),
             "waiting_job_ids": list(ctx.waiting_job_ids),
-            "contract": None,
+            "contract": do_mission_contract(ctx),
             "stopped_before_apply": ctx.stopped_before_apply,
             "shape": ctx.shape or None,
             "shape_source": ctx.shape_source or None,

@@ -463,6 +463,23 @@ def record_contract_results(project_id: str, mission_id: str, job_id: str,
 
 
 # ---------------------------------------------------------------------------
+# The mission gate (D4 (5))
+# ---------------------------------------------------------------------------
+
+
+def contract_blockers(contract: MissionContract | None) -> tuple[str, ...]:
+    """The ids of the blocking criteria whose status is not ``met``, in order.
+
+    These hold the orchestrator's ``declare_mission_achieved``; a mission with
+    no contract has none.
+    """
+    if contract is None:
+        return ()
+    return tuple(c.id for c in contract.criteria
+                 if c.blocking and c.status != "met")
+
+
+# ---------------------------------------------------------------------------
 # Rendering — one renderer for `mission contract` and `job contract`
 # ---------------------------------------------------------------------------
 
