@@ -310,7 +310,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="study.run",
         group_id="study",
         subcommand="run",
-        description="Run a bounded, read-only comprehension pass over a repository and file the findings as approved memory cards.",
+        description="Execute a bounded, read-only comprehension pass over a repository and file the findings as approved memory cards.",
         action_class="write_metadata",
         args=(
             ArgDef("--path", "Repository path to study (defaults to the current directory)", required=False, is_option=True),
