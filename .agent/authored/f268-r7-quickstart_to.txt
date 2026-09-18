@@ -1,0 +1,9 @@
+_QUICK_START = """\
+Quick start (in a git repository):
+  1. remedy init
+  2. remedy doctor core
+  3. remedy do "Write a CONTRIBUTING.md" --plan-only
+  4. remedy do "Write a CONTRIBUTING.md"
+  5. remedy job list
+
+Show all commands:  remedy --all-commands"""
