@@ -732,12 +732,17 @@ def _cmd_job_apply(
     test_command: str = "",
     skip_blocked: bool = False,
     commit_with_history: bool = False,
+    commit: str | None = None,
+    commit_auto: bool = False,
+    push: bool = False,
     json_output: bool = False,
 ) -> None:
     """Review and apply job workspace changes to target repo.
 
     ``commit_with_history`` (DECISION F270 D2) merges the job branch instead of
-    copying; without ``--approve`` it previews, and a refusal is a blocked apply.
+    copying; ``commit`` and ``commit_auto`` (DECISION F270 D3) copy and then
+    commit exactly the copied files; ``push`` pushes what landed. Without
+    ``--approve`` they preview, and a refusal or a clash is a blocked apply.
     """
     from packages.orchestration.job_apply import (
         apply_job,
@@ -756,6 +761,9 @@ def _cmd_job_apply(
         test_command=test_command,
         skip_blocked=skip_blocked,
         commit_with_history=commit_with_history,
+        commit_message=commit,
+        commit_auto=commit_auto,
+        push=push,
     )
 
     if json_output:
@@ -870,6 +878,9 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         test_command=getattr(args, "test_command", None) or "",
         skip_blocked=getattr(args, "skip_blocked", False),
         commit_with_history=bool(getattr(args, "commit_with_history", False)),
+        commit=getattr(args, "commit", None),
+        commit_auto=bool(getattr(args, "commit_auto", False)),
+        push=bool(getattr(args, "push", False)),
         json_output=getattr(args, "json", False),
     ),
     "job.evidence": lambda args: _cmd_job_evidence(

@@ -2,15 +2,20 @@
 
 Applying is a separate explicit human-approved action.
 Never auto-applies. Requires --approve flag.
-A plain apply copies files and makes no git commit. The one exception is the
-operator's own ``--commit-with-history`` flag (DECISION F270 D2): with --approve
-it runs ``git merge --no-ff`` of the job branch onto the operator's current
-branch, under the operator's identity and hooks, instead of copying. Never a
-git push, a git reset or a git checkout.
+A plain apply copies files and makes no git commit and no push. The exceptions
+are the operator's own flags, each needing --approve and each run under the
+operator's identity, configuration and hooks: ``--commit-with-history``
+(DECISION F270 D2) runs ``git merge --no-ff`` of the job branch onto the
+operator's current branch instead of copying; ``--commit "<message>"`` and
+``--commit-auto`` (DECISION F270 D3) copy, then land ONE commit of exactly the
+copied files; ``--push`` then pushes what landed to the branch's configured
+upstream, never forced. Never a git reset of a branch, a git checkout or a
+forced push.
 
 Public API:
     apply_job(job_id, target_repo, *, approve, dry_run, test_command,
-              skip_blocked, commit_with_history) -> JobApplyResult
+              skip_blocked, commit_with_history, commit_message, commit_auto,
+              push) -> JobApplyResult
 """
 from __future__ import annotations
 
@@ -318,7 +323,7 @@ class JobApplyResult:
     """Result of a job apply attempt."""
     job_id: str = ""
     job_apply_id: str = field(default_factory=lambda: uuid4().hex[:16])
-    status: str = ""  # blocked, dry_run, approved_apply_started, applied, applied_test_failed, applied_record_update_failed
+    status: str = ""  # blocked, dry_run, approved_apply_started, applied, applied_test_failed, applied_push_failed, applied_record_update_failed
     approved: bool = False
     dry_run: bool = False
     target_repo: str = ""
@@ -1217,17 +1222,26 @@ def apply_job(
     test_command: str = "",
     skip_blocked: bool = False,
     commit_with_history: bool = False,
+    commit_message: str | None = None,
+    commit_auto: bool = False,
+    push: bool = False,
 ) -> JobApplyResult:
     """Apply reviewed job workspace changes into target repo.
 
     Without --approve, returns dry-run preview only. Never auto-applies.
-    A plain apply makes no git commit; there is never a git push, reset or
-    checkout. ``commit_with_history`` (DECISION F270 D2) is the one exception:
-    with --approve, and after every gate below has passed, it replaces the
-    copy of files, and only the copy, with a ``git merge --no-ff`` of the job
-    branch onto the operator's current branch; ``_history_refusals`` refuses
-    it with one sentence, changing nothing. Without --approve it previews and
-    names every refusal the real run would meet.
+    A plain apply makes no git commit and no push; there is never a git
+    reset of a branch, a checkout or a forced push. The operator's flags are
+    the exceptions, each refused with one sentence that changes nothing, and
+    each previewing without --approve with every refusal the real run would
+    meet. ``commit_with_history`` (DECISION F270 D2) replaces the copy of
+    files, and only the copy, with a ``git merge --no-ff`` of the job branch
+    onto the operator's current branch. ``commit_message`` (``--commit``) and
+    ``commit_auto`` (``--commit-auto``, DECISION F270 D3) copy as a plain
+    apply does and, after the verification and the post-test pass, land ONE
+    commit of exactly the copied files. ``push`` then pushes what landed to
+    the branch's upstream, never forced. The three ``--commit…`` flags are
+    mutually exclusive and ``push`` needs one; a clash is refused before the
+    job is read.
 
     Every applied file must come from a task apply manifest.
     No workspace fallback scanning. Baseline-aware target safety.
@@ -1252,8 +1266,17 @@ def apply_job(
         post_test_command=test_command,
         skip_blocked=skip_blocked,
         commit_with_history=commit_with_history,
+        commit_message=commit_message or "",
+        push=push,
         started_at=datetime.now(timezone.utc).isoformat(),
     )
+
+    # --- DECISION F270 D3 (1): the flags themselves, before the job is read ---
+    mode, flags_refusal = commit_flags_refusal(commit_message, commit_auto,
+                                               commit_with_history, push)
+    result.commit_message_mode = mode
+    if flags_refusal:
+        return _block(result, flags_refusal)
 
     # --- Load job ---
     job = load_job_plan(job_id)
@@ -1574,22 +1597,18 @@ def _apply_from_workspace(
     if mode_blocks:
         return _block(result, f"mode_check_failed: {mode_blocks}")
 
-    # --- DECISION F270 D2 (2): --commit-with-history refusals, after every gate ---
-    history_refusals = [
-        f"{HISTORY_REFUSED}: {sentence}"
-        for sentence in (_history_refusals(job, target, skip_blocked=skip_blocked,
-                                           skipped=skipped)
-                         if commit_with_history else [])
-    ]
-    if history_refusals and approve and not dry_run:
-        _block(result, history_refusals[0])
-        result.blocked_reasons.extend(history_refusals[1:])
+    # --- DECISION F270 D2 (2), D3 (2) and (5): the --commit… and --push refusals, after every gate ---
+    flag_refusals = _flag_refusals(job, result, target, planned,
+                                   skip_blocked=skip_blocked, skipped=skipped)
+    if flag_refusals and approve and not dry_run:
+        _block(result, flag_refusals[0])
+        result.blocked_reasons.extend(flag_refusals[1:])
         return result
 
     # --- Dry-run or unapproved: preview only ---
     if dry_run or not approve:
-        # A preview with the flag names every refusal the real run would meet.
-        result.blocked_reasons.extend(history_refusals)
+        # A preview with a flag names every refusal the real run would meet.
+        result.blocked_reasons.extend(flag_refusals)
         result.status = "dry_run"
         result.finished_at = datetime.now(timezone.utc).isoformat()
         _persist_outcome([])
@@ -1620,11 +1639,22 @@ def _apply_from_workspace(
     except OSError as exc:
         return _block(result, f"pre_apply_record_failed: {exc}")
 
+    # --- The same refusals, again, right before anything is written ---
+    late = _flag_refusals(job, result, target, planned,
+                          skip_blocked=skip_blocked, skipped=skipped)
+    if late:
+        result.status = "blocked"
+        result.blocked_reason = late[0]
+        result.blocked_reasons.extend(late)
+        result.files_applied = []
+        result.finished_at = datetime.now(timezone.utc).isoformat()
+        _persist_outcome([])
+        return result
+
     # --- DECISION F270 D2 (3)/(4): the merge replaces the copy, and only the copy ---
     applied: list[str] = []
     if commit_with_history:
-        late = _history_refusals(job, target, skip_blocked=skip_blocked, skipped=skipped)
-        why = late[0] if late else _merge_job_branch(job, result, target)
+        why = _merge_job_branch(job, result, target)
         if why:
             result.status = "blocked"
             result.blocked_reason = (f"post_merge_check_failed: {why}" if result.merge_commit
@@ -1723,6 +1753,40 @@ def _apply_from_workspace(
         if not passed:
             result.status = "applied_test_failed"
             _note_merge_undo(result)
+            if result.commit_message_mode in ("message", "auto"):
+                flag = COMMIT_MODE_FLAGS[result.commit_message_mode]
+                result.blocked_reasons.append(
+                    f"The post-test failed, so {flag} made no commit and nothing was "
+                    f"pushed; the {len(applied)} copied file(s) are in the working tree, "
+                    f"not committed.")
+            result.finished_at = datetime.now(timezone.utc).isoformat()
+            _persist_outcome(applied)
+            return result
+
+    # --- DECISION F270 D3 (3): ONE commit of exactly the copied files, after they verified and tested ---
+    if result.commit_message_mode in ("message", "auto"):
+        why = _commit_applied_files(job, result, target, applied)
+        if why:
+            result.status = "blocked"
+            result.blocked_reason = f"commit_failed: {why}"
+            result.blocked_reasons.append(result.blocked_reason)
+            if result.commit_sha:
+                result.blocked_reasons.append(_commit_undo_sentence(result))
+            result.finished_at = datetime.now(timezone.utc).isoformat()
+            _persist_outcome(applied)
+            return result
+    elif result.merge_commit:
+        result.commit_sha = result.merge_commit
+
+    # --- DECISION F270 D3 (5): push what landed; a failed push leaves it landed and says so ---
+    if result.push and result.commit_sha:
+        _push_landed_commit(result, target)
+        if not result.pushed:
+            result.status = "applied_push_failed"
+            result.blocked_reasons.append(
+                f"The push of {result.commit_sha[:12]} failed "
+                f"({result.push_error}); the commit stays on {result.target_branch}, "
+                f"so push it by hand once the cause is fixed.")
             result.finished_at = datetime.now(timezone.utc).isoformat()
             _persist_outcome(applied)
             return result
@@ -1835,6 +1899,13 @@ def export_job_apply_json(result: JobApplyResult) -> dict[str, Any]:
         "history_commits": result.history_commits,
         "merge_commit": result.merge_commit,
         "merge_conflicts": result.merge_conflicts,
+        "commit_message_mode": result.commit_message_mode,
+        "commit_sha": result.commit_sha,
+        "push": result.push,
+        "pushed": result.pushed,
+        "push_remote": result.push_remote,
+        "push_ref": result.push_ref,
+        "push_error": result.push_error,
     }
     return _redact_json_value(raw)
 
@@ -1866,6 +1937,19 @@ def _next_step_for_apply(result: JobApplyResult) -> str:
     if reason.startswith(f"{HISTORY_REFUSED}:"):
         return ("Next: do what the sentence above asks and re-run with "
                 "--commit-with-history, or re-run without it to copy the files and "
+                "commit them yourself.")
+
+    if result.commit_sha:
+        return (f"Next: inspect the commit {result.commit_sha[:12]} on "
+                f"{result.target_branch}; if it must go, run `git reset --keep "
+                f"{result.history_previous_head}` yourself.")
+
+    if reason.startswith((f"{COMMIT_REFUSED}:", f"{PUSH_REFUSED}:")):
+        return ("Next: do what the sentence above asks and re-run, or re-run with "
+                "--approve alone to copy the files and commit them yourself.")
+
+    if reason.startswith("commit_failed:"):
+        return ("Next: the files are copied and not committed; fix what git said, then "
                 "commit them yourself.")
 
     if reason.startswith("blocked_paths:"):
@@ -1946,21 +2030,35 @@ def summarize_job_apply(result: JobApplyResult) -> str:
             for fr in result.file_readiness:
                 lines.append(f"  {fr.path} [{fr.kind}] "
                              f"baseline={fr.baseline_status} ws={fr.workspace_status}")
-        refusals = [r for r in result.blocked_reasons if r.startswith(f"{HISTORY_REFUSED}:")]
-        if result.commit_with_history:
+        prefixes = (HISTORY_REFUSED, COMMIT_REFUSED, PUSH_REFUSED)
+        refusals = [r.split(": ", 1)[1] for r in result.blocked_reasons
+                    if r.split(":", 1)[0] in prefixes]
+        flag = COMMIT_MODE_FLAGS.get(result.commit_message_mode, "")
+        if flag:
             lines.append("")
             if refusals:
-                lines.append("With --approve, --commit-with-history would be refused:")
-                lines.extend(f"  {r[len(HISTORY_REFUSED) + 2:]}" for r in refusals)
+                lines.append(f"With --approve, {flag}{' --push' if result.push else ''} "
+                             f"would be refused:")
+                lines.extend(f"  {r}" for r in refusals)
             else:
-                lines.append("With --approve, --commit-with-history merges the job branch "
-                             "onto your current branch with git merge --no-ff instead of "
-                             "copying files.")
+                if result.commit_message_mode == "history":
+                    lines.append("With --approve, --commit-with-history merges the job "
+                                 "branch onto your current branch with git merge --no-ff "
+                                 "instead of copying files.")
+                else:
+                    lines.append(f"With --approve, {flag} copies the files and then "
+                                 f"commits exactly them on your current branch, as you.")
+                if result.push:
+                    lines.append("With --approve, --push then pushes that branch to its "
+                                 "configured upstream, never forced.")
         lines.append("")
+        flag_words = (f"--commit {shlex.quote(result.commit_message)}"
+                      if result.commit_message_mode == "message" else flag)
         lines.append(
             f"To apply: remedy job apply {result.job_id}"
             f" --repo <target> --approve"
-            + (" --commit-with-history" if result.commit_with_history else "")
+            + (f" {flag_words}" if flag_words else "")
+            + (" --push" if result.push else "")
         )
 
     elif result.status == "applied":
@@ -1981,13 +2079,28 @@ def summarize_job_apply(result: JobApplyResult) -> str:
                 f"Post-test: {'passed' if result.post_test_passed else 'FAILED'}"
             )
         lines.append("")
+        pushed = (f"Pushed it to {result.push_remote} {result.push_ref}, never forced."
+                  if result.pushed else "Nothing was pushed.")
         if result.merge_commit:
             lines.append(
                 f"Merged {len(result.history_commits)} task commit(s) of "
                 f"{result.merged_branch} onto {result.target_branch} as merge commit "
-                f"{result.merge_commit}. Nothing was pushed.")
+                f"{result.merge_commit}. {pushed}")
+        elif result.commit_sha:
+            lines.append(
+                f"Committed the {len(result.files_applied)} copied file(s) on "
+                f"{result.target_branch} as {result.commit_sha}, as you. {pushed}")
         else:
             lines.append("No commits or pushes were made. Review and commit manually.")
+
+    elif result.status == "applied_push_failed":
+        lines.append("")
+        lines.append(f"Applied {len(result.files_applied)} file(s) and landed "
+                     f"{result.commit_sha} on {result.target_branch}, but the push to "
+                     f"{result.push_remote or '(no remote)'} {result.push_ref or '(no ref)'} "
+                     f"failed: {result.push_error}")
+        lines.append("The commit stays where it landed and nothing was forced; push it "
+                     "by hand once the cause is fixed.")
 
     elif result.status == "applied_test_failed":
         lines.append("")
@@ -1995,6 +2108,9 @@ def summarize_job_apply(result: JobApplyResult) -> str:
         if result.merge_commit:
             lines.append(_merge_undo_sentence(result))
         else:
+            if result.commit_message_mode in ("message", "auto"):
+                lines.append(f"{COMMIT_MODE_FLAGS[result.commit_message_mode]} made no "
+                             f"commit and nothing was pushed.")
             lines.append("Manual review required. Changes are in working tree, not committed.")
 
     elif result.status == "applied_record_update_failed":
@@ -2013,6 +2129,8 @@ def summarize_job_apply(result: JobApplyResult) -> str:
         lines.append(f"BLOCKED: {result.blocked_reason}")
         if result.merge_commit:
             lines.append(_merge_undo_sentence(result))
+        elif result.commit_sha:
+            lines.append(_commit_undo_sentence(result))
 
     if result.files_blocked:
         lines.append("")
