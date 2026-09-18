@@ -751,7 +751,14 @@ def _shape_job_orders(ctx: DoContext, shape: str) -> list[tuple[str, list[TaskEn
 
 
 def _step_shape(ctx: DoContext) -> tuple[str, str]:
-    """Read the shape from the plan (or a force flag) and plan its jobs, linked to the mission (D5)."""
+    """Read the shape from the plan (or a force flag) and plan its jobs, linked to the mission (D5).
+
+    As each job is linked, its contract slice is merged into its DoD (DECISION
+    F269 D6 (3)); `do`'s jobs serve no milestone, so the slice is the
+    whole-mission criteria, whose checks the job's gate reports and never
+    holds on (D6 (1)).
+    """
+    from packages.orchestration.mission_contract import merge_contract_slice_into_dod
     from packages.orchestration.mission_state import (
         MISSION_ROLE_FOLLOW_UP,
         MISSION_ROLE_INITIAL,
@@ -781,7 +788,8 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
             return DO_STEP_FAILED, str(exc)
         job_id = str(shaped.job.job_id)
         role = MISSION_ROLE_FOLLOW_UP if ctx.job_ids else MISSION_ROLE_INITIAL
-        link_job_to_mission(str(ctx.project.id), ctx.mission_id, job_id, role=role)
+        mission = link_job_to_mission(str(ctx.project.id), ctx.mission_id, job_id, role=role)
+        merge_contract_slice_into_dod(mission, None, job_id)
         ctx.job_ids.append(job_id)
         shaped_jobs.append(shaped)
 
@@ -1060,6 +1068,36 @@ def do_mission_contract(ctx: DoContext) -> dict[str, Any] | None:
 
     body = load_mission(str(ctx.project.id), ctx.mission_id).contract
     return body if isinstance(body, dict) else None
+
+
+def do_unmet_blocking_criteria(contract: dict[str, Any] | None) -> list[str]:
+    """The contract's blocking criteria not met after the walk, in contract order.
+
+    DECISION F269 D6 (4): the blockers of D4 (5), read from the body
+    `do_mission_contract` returns; empty when the walk left no contract.
+    """
+    from packages.orchestration.mission_contract import MissionContract, contract_blockers
+
+    return list(contract_blockers(
+        None if contract is None else MissionContract.from_json(contract)))
+
+
+def do_contract_summary_line(contract: dict[str, Any] | None) -> str | None:
+    """The one text line naming the contract's state after the walk, or None without one.
+
+    DECISION F269 D6 (4): the met criteria counted against all of them, and
+    each blocking criterion not met named with its status, `open` or `unmet`.
+    """
+    if contract is None:
+        return None
+    from packages.orchestration.mission_contract import MissionContract
+
+    criteria = MissionContract.from_json(contract).criteria
+    met = sum(1 for c in criteria if c.status == "met")
+    unmet = [f"{c.id} ({c.status})" for c in criteria if c.blocking and c.status != "met"]
+    tail = (f"blocking criteria not met: {', '.join(unmet)}" if unmet
+            else "every blocking criterion is met")
+    return f"Contract: {met} of {len(criteria)} criteria met; {tail}"
 
 
 def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:

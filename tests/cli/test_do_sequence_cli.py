@@ -756,11 +756,21 @@ def _template_criteria(name: str) -> list[dict]:
         load_contract_template,
     )
 
-    return [c.to_json() for c in compile_contract_template(load_contract_template(name))]
+    return _as_compiled(
+        [c.to_json() for c in compile_contract_template(load_contract_template(name))])
+
+
+#: The fields the job's gate writes after the run (DECISION F269 D6 (2), (3)).
+_GATE_WRITTEN_FIELDS = ("status", "evidence_ref")
+
+
+def _as_compiled(criteria: list[dict]) -> list[dict]:
+    """Criteria without the fields the walk's gated job decides: what the template compiled."""
+    return [{k: v for k, v in c.items() if k not in _GATE_WRITTEN_FIELDS} for c in criteria]
 
 
 def _contract_by_origin(data: dict, origin: str) -> list[dict]:
-    return [c for c in data["contract"]["criteria"] if c["origin"] == origin]
+    return _as_compiled([c for c in data["contract"]["criteria"] if c["origin"] == origin])
 
 
 def test_contract_website_on_a_bare_order_gives_the_website_templates_criteria(repo, capsys):
@@ -782,7 +792,7 @@ def test_contract_website_with_an_extra_requirement_adds_planner_criteria_and_dr
     assert data["contract"]["template"] == "website"
     template = _template_criteria("website")
     assert _contract_by_origin(data, "template") == template
-    assert data["contract"]["criteria"][:len(template)] == template
+    assert _as_compiled(data["contract"]["criteria"][:len(template)]) == template
     assert len(_contract_by_origin(data, "planner")) >= 1
 
 
@@ -817,6 +827,76 @@ def test_contract_naming_no_template_exits_2_naming_the_templates_and_writes_not
     assert [p for p in data_root.rglob("*") if p.is_file()] == []
     assert resolve_project(repo) is None
     assert list_job_plans() == []
+
+
+# ── F269 round 5: `do`'s job is gated on its contract slice (DECISION F269 D6) ──
+
+SUITE_PASSES = "The test suite passes."
+
+
+def test_contract_cli_tool_gates_the_job_on_its_whole_mission_checks_and_names_the_unmet(
+        repo, capsys):
+    """D6 (1), (3), (4): the repository has no tests, so the suite criterion reads
+    `unmet`; the hygiene criteria read `met`; the job still completes."""
+    from packages.orchestration.dod_gate import load_dod, load_gate_result
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+
+    data = json.loads(_do(capsys, "--json", "--contract", "cli-tool"))
+
+    [job_id] = data["job_ids"]
+    criteria = data["contract"]["criteria"]
+    whole = [c for c in criteria if not c["milestones"]]
+    assert [c["origin"] for c in whole] == ["template"] * 7
+    # Every whole-mission check is in the job's DoD (the four suite-judged
+    # criteria share one check), and not one of them is blocking.
+    dod = load_dod(job_id)
+    assert {(c.kind, json.dumps(c.spec, sort_keys=True)) for c in dod.checks} == {
+        (c["check"]["kind"], json.dumps(c["check"]["spec"], sort_keys=True)) for c in whole}
+    assert [c.blocking for c in dod.checks] == [False] * len(dod.checks)
+    assert load_gate_result(job_id)["released"] is True
+    assert load_job_plan(job_id).state == JOB_COMPLETED
+
+    by_text = {c["text"]: c for c in criteria}
+    suite = by_text[SUITE_PASSES]
+    assert suite["status"] == "unmet"
+    assert suite["evidence_ref"].startswith(f"{job_id}:")
+    hygiene = [c for c in whole if c["check"]["kind"] == "custom_cmd"]
+    assert len(hygiene) == 3
+    assert [c["status"] for c in hygiene] == ["met"] * 3
+
+    # Not met, in contract order: the four suite-judged template criteria
+    # (unmet: no tests) and the planner's milestone criterion (open: `do`'s job
+    # serves no milestone, so nothing evaluated it).
+    suite_judged = [c for c in whole if c["check"]["kind"] != "custom_cmd"]
+    planner = [c for c in criteria if c["origin"] == "planner"]
+    assert [c["status"] for c in suite_judged] == ["unmet"] * 4
+    assert [c["status"] for c in planner] == ["open"] * len(planner)
+    expected = [c["id"] for c in suite_judged + planner]
+    assert expected == [c["id"] for c in criteria if c not in hygiene]
+    assert data["unmet_blocking_criteria"] == expected
+
+    out = _do(capsys, "--contract", "cli-tool", order="Write a CHANGELOG.md")
+    [line] = [line for line in out.splitlines() if line.startswith("Contract: ")]
+    named = ", ".join([f"{c['id']} (unmet)" for c in suite_judged]
+                      + [f"{c['id']} (open)" for c in planner])
+    assert line == (f"Contract: 3 of {len(criteria)} criteria met; "
+                    f"blocking criteria not met: {named}")
+
+
+def test_a_do_whose_order_proposes_no_template_names_only_criteria_not_met(repo, capsys):
+    from packages.orchestration.dod_gate import load_dod
+
+    data = _do_json(capsys)
+
+    [job_id] = data["job_ids"]
+    assert data["contract"]["template"] is None
+    # No whole-mission criterion: the job's slice is empty and it stores no DoD.
+    assert load_dod(job_id) is None
+    criteria = data["contract"]["criteria"]
+    assert criteria
+    assert {(c["origin"], c["blocking"], c["status"]) for c in criteria} == {
+        ("planner", True, "open")}
+    assert data["unmet_blocking_criteria"] == [c["id"] for c in criteria]
 
 
 def test_the_old_name_with_history_is_never_created(repo, capsys):

@@ -50,12 +50,17 @@ fails at the first job that is not applied, naming it and why.
 `--json` prints one object with these keys:
 
 ```
-mission_id, job_ids, waiting_job_ids, contract, stopped_before_apply,
-shape, shape_source, mission_plan_path, jobs, steps, cost, next
+mission_id, job_ids, waiting_job_ids, contract, unmet_blocking_criteria,
+stopped_before_apply, shape, shape_source, mission_plan_path, jobs, steps,
+cost, next
 ```
 
 - `contract` is the mission's contract body as its record holds it, or `null`
   when the mission has none (DECISION F269 D4 (6)).
+- `unmet_blocking_criteria` lists the ids of the contract's blocking criteria
+  not met after the walk, in contract order, or `[]` without a contract
+  (DECISION F269 D6 (4)); the text output prints them on one `Contract:` line
+  with each one's status.
 - `jobs` lists every job's tasks with their deliverables.
 - `steps` holds one `{name, status, detail}` per step the walk reached.
 - `cost` carries the measured tokens per role and cost, read back from the ledger.

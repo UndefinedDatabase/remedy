@@ -186,7 +186,10 @@ def _cmd_do_order(
     together (DECISION F268 D5). `--step-by-step` halts between steps and
     reads each answer with `input`; `--plan-only` ends the walk after
     shape (DECISION F268 D8). `--json` carries the mission's `contract` body,
-    or null when it has none (DECISION F269 D4 (6)), `shape` /
+    or null when it has none (DECISION F269 D4 (6)), and
+    `unmet_blocking_criteria`, its blocking criteria not met after the walk in
+    contract order; the text output prints one `Contract:` line counting the
+    met criteria and naming each of those with its status (D6 (4)), `shape` /
     `shape_source`, `mission_plan_path`
     and `jobs`, every job's tasks with their deliverables. In a walk of two or
     more jobs only the first runs and `waiting_job_ids` names the rest
@@ -238,10 +241,12 @@ def _cmd_do_order(
 
     from packages.orchestration.do_sequence import (
         DoContext,
+        do_contract_summary_line,
         do_cost_summary,
         do_cost_summary_lines,
         do_job_task_listing,
         do_mission_contract,
+        do_unmet_blocking_criteria,
         launch_do_cockpit,
         walk_do_sequence,
     )
@@ -272,13 +277,15 @@ def _cmd_do_order(
     jobs = do_job_task_listing(ctx)
     # DECISION F268 D11: measured tokens per role and cost, read from the ledger.
     cost = do_cost_summary(ctx)
+    contract = do_mission_contract(ctx)
 
     if json_output:
         print(json.dumps({
             "mission_id": ctx.mission_id or None,
             "job_ids": list(ctx.job_ids),
             "waiting_job_ids": list(ctx.waiting_job_ids),
-            "contract": do_mission_contract(ctx),
+            "contract": contract,
+            "unmet_blocking_criteria": do_unmet_blocking_criteria(contract),
             "stopped_before_apply": ctx.stopped_before_apply,
             "shape": ctx.shape or None,
             "shape_source": ctx.shape_source or None,
@@ -296,6 +303,9 @@ def _cmd_do_order(
                     for number, task in enumerate(job["tasks"], start=1):
                         print(f"  job {job['job_id']} task {number}: {task['title']}"
                               f" — deliverable: {task['deliverable'] or '(none)'}")
+        contract_line = do_contract_summary_line(contract)
+        if contract_line is not None:
+            print(contract_line)
         for line in do_cost_summary_lines(cost):
             print(line)
         for line in ctx.next_lines:
