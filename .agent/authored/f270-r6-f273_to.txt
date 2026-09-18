@@ -1,0 +1,6 @@
+- R-0977 carries a resolution line naming the commit that makes `remedy do` record on each
+  job the milestone it came from, with a test in which a two-milestone `do` run ends with no
+  planner criterion `open`.
+- R-0978 carries a resolution line naming the commit that makes
+  `tests/cli/test_study_cmd.py` `test_study_run_dispatch_e2e` run `study run` without a real
+  model, with its subprocess limit lowered rather than raised.

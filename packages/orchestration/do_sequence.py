@@ -26,7 +26,17 @@ runs. Every other job waits, because a job's workspace is cut from the target's
 HEAD commit and an apply does not commit, so a follow-up job run now could not
 see its predecessor's output. `do` names the waiting jobs, and for each prints
 the `remedy job run` command to use once its predecessor's applied output is
-committed. Chaining them inside one `do` needs F270's `--commit` family.
+committed.
+
+DECISION F270 D4: under a commit flag (`--commit "<message>"`, `--commit-auto`
+or `--commit-with-history`) no job waits: the run step applies and commits (or
+merges) each job before the next job's worktree is cut, and the apply step
+applies the last. The apply step never passes `--push` to `apply_job`; with
+`--push`, or `apply.push_after_mission` and a commit flag, it pushes the last
+landed commit ONCE after the last job, through `job_apply.push_to_upstream`.
+Only a blocking criterion of the mission that is `unmet` refuses that push;
+each one still `open` is named. A walk that stops keeps what it committed and
+pushes nothing.
 
 DECISION F268 D11: run mirrors each job it ran into the F103 ledger, as `job run`
 does, and `do_cost_summary` reads the measured tokens per role and cost back
@@ -122,6 +132,21 @@ class DoContext:
     plan_only: bool = False
     #: `--apply`: the apply step applies every job instead of stopping (DECISION F268 D9).
     apply: bool = False
+    #: The commit flag every apply passes to `apply_job`, at most one of the three
+    #: set; each implies `--apply` and chains the walk's jobs (DECISION F270 D4 (1), (2)).
+    commit_message: str | None = None
+    commit_auto: bool = False
+    commit_with_history: bool = False
+    #: Push the mission ONCE after its last job; `push_source` names why: `--push`
+    #: or `apply.push_after_mission`. Never passed to `apply_job` (D4 (4), (5)).
+    push: bool = False
+    push_source: str = ""
+    #: One ``{job_id, sha, branch}`` per commit or merge the walk landed, in job order.
+    landed: list[dict[str, str]] = field(default_factory=list)
+    #: Each job applied so far → the sentence saying so, in apply order.
+    applied: dict[str, str] = field(default_factory=dict)
+    #: The mission's one push (D4 (7)); None while the walk has not asked it.
+    push_outcome: dict[str, Any] | None = None
     #: Reads one line at a `--step-by-step` halt, raising `EOFError` at end of
     #: input like `input`, which the CLI supplies; ``None`` reads as end of input.
     read_line: Callable[[], str] | None = None
@@ -151,6 +176,13 @@ class DoContext:
     def run_job_ids(self) -> list[str]:
         """The walk's jobs that are not waiting, in job order: the ones run, ui and apply act on."""
         return [job_id for job_id in self.job_ids if job_id not in self.waiting_job_ids]
+
+    @property
+    def commit_mode(self) -> str:
+        """``message``, ``auto``, ``history`` or ``""``: the walk's commit flag, as `job_apply` names it."""
+        if self.commit_message is not None:
+            return "message"
+        return "auto" if self.commit_auto else "history" if self.commit_with_history else ""
 
     @property
     def failed(self) -> bool:
@@ -184,9 +216,11 @@ def walk_do_sequence(ctx: DoContext,
             continue
         coming = DO_SEQUENCE[index + 1]
         if not do_step_by_step_halt(ctx, f"{name}: {detail}", f"the {coming} step"):
+            # DECISION F270 D4 (2): a stopped walk under a commit flag says what stays.
+            note = do_stopped_walk_note(ctx) if ctx.commit_mode else ""
             ctx.results.append(DoStepResult(
                 name=coming, status=DO_STEP_STOPPED,
-                detail=f"not run: {ctx.halt_reason}"))
+                detail=f"not run: {ctx.halt_reason}{note}"))
             break
     return ctx
 
@@ -870,13 +904,32 @@ def do_budget_stop_remainder(ctx: DoContext, job: Any) -> str:
             f"remainder decision {decision_id} was raised")
 
 
-def _step_run(ctx: DoContext) -> tuple[str, str]:
-    """Run the walk's first job on the chosen builder and reviewer; the rest wait (DECISION F268 D12).
+def do_stopped_walk_note(ctx: DoContext) -> str:
+    """The tail of a stopped walk's detail under a commit flag: what stays, and no push (D4 (2))."""
+    if not ctx.landed:
+        return "; no commit landed and nothing was pushed"
+    shas = ", ".join(entry["sha"][:12] for entry in ctx.landed)
+    return (f"; the {len(ctx.landed)} commit(s) that landed ({shas}) stay on "
+            f"{ctx.landed[-1]['branch']}, and nothing was pushed")
 
-    A follow-up job's workspace would be cut from the target's HEAD, which an
-    apply does not move, so it runs only once its predecessor's applied output
-    is committed; the apply step prints how.
+
+def _step_run(ctx: DoContext) -> tuple[str, str]:
+    """Run the walk's jobs; without a commit flag only the first, and the rest wait (F268 D12).
+
+    Without a commit flag a follow-up job's workspace would be cut from the
+    target's HEAD, which an apply does not move, so it runs only once its
+    predecessor's applied output is committed; the apply step prints how.
+    Under a commit flag every job runs, and each job before the last is
+    applied and committed before the next is cut (DECISION F270 D4 (2)); a
+    walk that stops here says what it committed and that nothing was pushed.
     """
+    status, detail = _run_the_walks_jobs(ctx)
+    if status in DO_WALK_ENDING_STATUSES and ctx.commit_mode and not ctx.plan_only:
+        detail += do_stopped_walk_note(ctx)
+    return status, detail
+
+
+def _run_the_walks_jobs(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.job_plan import task_plan_blocks_execution
     from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan, run_job
 
@@ -887,7 +940,10 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
             f"--plan-only: no job was run; {len(ctx.job_ids)} job(s) planned, "
             f"mission plan: {ctx.mission_plan_path}")
 
-    ctx.waiting_job_ids = list(ctx.job_ids[1:])
+    # DECISION F270 D4 (2): a commit flag lets every job run, each cut from a HEAD
+    # that holds its predecessor's committed output.
+    chain = bool(ctx.commit_mode)
+    ctx.waiting_job_ids = [] if chain else list(ctx.job_ids[1:])
     ran: list[str] = []
     for position, job_id in enumerate(ctx.run_job_ids, start=1):
         done_so_far = "; ".join(ran) or "no job has run yet"
@@ -926,6 +982,11 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
             return DO_STEP_FAILED, (f"job {job_id} ended {done.state.value}{reason}"
                                     f"{do_budget_stop_remainder(ctx, done)}")
         ran.append(f"job {job_id} ran {len(done.tasks)} task(s) to {done.state.value}")
+        if chain and position < len(ctx.job_ids):
+            failure = do_apply_one_job(ctx, job_id)
+            if failure:
+                return DO_STEP_FAILED, f"{failure}; ran before it: {'; '.join(ran)}"
+            ran.append(f"{ctx.applied[job_id]} before the next job ran")
     if ctx.waiting_job_ids:
         ran.append(
             f"job(s) {', '.join(ctx.waiting_job_ids)} wait: each runs only once the job "
@@ -1052,7 +1113,10 @@ def _step_apply(ctx: DoContext) -> tuple[str, str]:
     approve=True)` in run order, and the walk fails at the first job that is not
     applied, naming it and why (DECISION F268 D9 (2)). The apply gate is
     `job_apply`'s own. A waiting job is never applied here; the Next lines say
-    how it runs (DECISION F268 D12).
+    how it runs (DECISION F268 D12). Under a commit flag the jobs the run step
+    already applied are not applied again, and a push is asked once after the
+    last job (DECISION F270 D4 (4)); in a walk of one job a red contract
+    refuses it before anything is applied (D4 (6)).
     """
     if not ctx.apply:
         commands = [f"remedy job apply {job_id} --repo {shlex.quote(ctx.repo_root)} --approve"
@@ -1063,22 +1127,124 @@ def _step_apply(ctx: DoContext) -> tuple[str, str]:
             f"stopped before apply; {ctx.repo_root} is untouched. "
             f"Apply the reviewed result with: {'; then '.join(commands)}")
 
+    if ctx.push and len(ctx.run_job_ids) == 1:
+        # D4 (6): one job's contract is final once it ran, so red refuses before anything.
+        refusals, still_open = do_mission_push_refusals(ctx)
+        if refusals:
+            ctx.push_outcome = _do_push_record(ctx, "", still_open, error=" ".join(refusals))
+            return DO_STEP_FAILED, (
+                f"{ctx.push_source} was refused, so nothing was applied, committed or "
+                f"pushed: {' '.join(refusals)}")
+
+    for job_id in ctx.run_job_ids:
+        if job_id in ctx.applied:
+            continue
+        failure = do_apply_one_job(ctx, job_id)
+        if failure:
+            return DO_STEP_FAILED, failure + (do_stopped_walk_note(ctx) if ctx.commit_mode else "")
+    ctx.next_lines.extend(do_waiting_job_next_lines(ctx))
+    detail = f"{'; '.join(ctx.applied.values())} to {ctx.repo_root}"
+    if not ctx.push:
+        return DO_STEP_DONE, detail
+    status, sentence = do_push_mission(ctx)
+    return status, f"{detail}; {sentence}"
+
+
+def do_apply_one_job(ctx: DoContext, job_id: str) -> str:
+    """Apply one job with the walk's commit flag and never its push; "" or why it was not applied.
+
+    Without a commit flag the call is `apply_job(job_id, repo, approve=True)`,
+    exactly as before F270. In a walk of several jobs `--commit`'s line gains
+    ` (job <k> of <n>)` and `--commit-auto` asks each job's title first
+    (DECISION F270 D4 (3)). What landed is added to ``ctx.landed``.
+    """
     from packages.orchestration.job_apply import apply_job
 
-    applied: list[str] = []
-    for job_id in ctx.run_job_ids:
-        result = apply_job(job_id, ctx.repo_root, approve=True)
-        if result.status != "applied":
-            why = result.blocked_reason or "; ".join(result.blocked_reasons) or "no reason given"
-            ctx.next_lines.append(f"remedy job apply {job_id} --repo "
-                                  f"{shlex.quote(ctx.repo_root)} --dry-run")
-            before = f"; applied before it: {'; '.join(applied)}" if applied else ""
-            return DO_STEP_FAILED, (
-                f"job {job_id} was not applied to {ctx.repo_root} "
+    flags: dict[str, Any] = {}
+    if ctx.commit_mode:
+        total = len(ctx.job_ids)
+        message = ctx.commit_message
+        if message is not None and total > 1:
+            message = f"{message.strip()} (job {ctx.job_ids.index(job_id) + 1} of {total})"
+        # D4 (4): the push is the mission's, asked once after the last job, never here.
+        flags = {"commit_message": message, "commit_auto": ctx.commit_auto,
+                 "commit_with_history": ctx.commit_with_history,
+                 "commit_auto_title_first": total > 1}
+    result = apply_job(job_id, ctx.repo_root, approve=True, **flags)
+    if result.status != "applied":
+        why = result.blocked_reason or "; ".join(result.blocked_reasons) or "no reason given"
+        ctx.next_lines.append(f"remedy job apply {job_id} --repo "
+                              f"{shlex.quote(ctx.repo_root)} --dry-run")
+        before = (f"; applied before it: {'; '.join(ctx.applied.values())}"
+                  if ctx.applied else "")
+        return (f"job {job_id} was not applied to {ctx.repo_root} "
                 f"(status {result.status}): {why}{before}")
-        applied.append(f"job {job_id} applied {len(result.files_applied)} file(s)")
-    ctx.next_lines.extend(do_waiting_job_next_lines(ctx))
-    return DO_STEP_DONE, f"{'; '.join(applied)} to {ctx.repo_root}"
+    said = f"job {job_id} applied {len(result.files_applied)} file(s)"
+    if result.commit_sha:
+        ctx.landed.append({"job_id": job_id, "sha": result.commit_sha,
+                           "branch": result.target_branch})
+        said += f" and landed {result.commit_sha[:12]} on {result.target_branch}"
+    ctx.applied[job_id] = said
+    return ""
+
+
+def do_mission_push_refusals(ctx: DoContext) -> tuple[list[str], list[str]]:
+    """``(refusals, open)`` for the walk's one push: the upstream's, then the mission's; reads only.
+
+    `job_apply`'s own refusals (DECISIONs F270 D3 (5) and D4 (6)), asked of the
+    walk's mission rather than of one job's.
+    """
+    from packages.orchestration.job_apply import mission_push_refusals, upstream_push_refusals
+    from packages.orchestration.mission_state import load_mission
+
+    def read_mission() -> Any:
+        if not ctx.mission_id or ctx.project is None:
+            return None
+        return load_mission(str(ctx.project.id), ctx.mission_id)
+
+    refusals, still_open = mission_push_refusals(read_mission)
+    return upstream_push_refusals(Path(ctx.repo_root)) + refusals, still_open
+
+
+def _do_push_record(ctx: DoContext, sha: str, still_open: list[str], *,
+                    error: str = "") -> dict[str, Any]:
+    """The `push` object of `do --json` (DECISION F270 D4 (7)), before the push is tried."""
+    return {"pushed": False, "sha": sha, "remote": "", "ref": "", "error": error,
+            "source": ctx.push_source, "open_blocking_criteria": list(still_open)}
+
+
+def do_push_mission(ctx: DoContext) -> tuple[str, str]:
+    """Push the walk's last landed commit ONCE, never forced; ``(status, sentence)``.
+
+    DECISION F270 D4 (4): push is a mission-level act, so it runs once, after
+    the last job, through the push `job apply` uses. The refusals are asked
+    again first; a refused or failed push leaves every commit where it landed
+    and fails the step, so `do` exits 1. The blocking criteria still open are
+    named whatever happens (D4 (6)).
+    """
+    from packages.orchestration.job_apply import push_open_criteria_sentence, push_to_upstream
+
+    if not ctx.landed:
+        return DO_STEP_DONE, "nothing landed, so nothing was pushed"
+    last = ctx.landed[-1]
+    refusals, still_open = do_mission_push_refusals(ctx)
+    ctx.push_outcome = _do_push_record(ctx, last["sha"], still_open)
+    named = push_open_criteria_sentence(still_open).rstrip(".")
+    named = f"; {named}" if named else ""
+    if refusals:
+        ctx.push_outcome["error"] = " ".join(refusals)
+        return DO_STEP_FAILED, (
+            f"{ctx.push_source} was refused after the commits landed, so nothing was pushed "
+            f"and they stay on {last['branch']}: {' '.join(refusals)}")
+    outcome = push_to_upstream(Path(ctx.repo_root), last["sha"], last["branch"])
+    ctx.push_outcome.update(pushed=outcome.pushed, remote=outcome.remote,
+                            ref=outcome.ref, error=outcome.error)
+    if not outcome.pushed:
+        return DO_STEP_FAILED, (
+            f"the push of {last['sha'][:12]} failed ({outcome.error}); the commit stays on "
+            f"{last['branch']}, so push it by hand once the cause is fixed{named}")
+    return DO_STEP_DONE, (f"pushed {last['sha'][:12]} to {outcome.remote} {outcome.ref} once, "
+                          f"never forced ({ctx.push_source}){named}")
 
 
 # ---------------------------------------------------------------------------

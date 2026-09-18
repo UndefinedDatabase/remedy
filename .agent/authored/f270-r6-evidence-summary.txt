@@ -1,0 +1,51 @@
+Evidence Job Summary for F270 Round 6 Closure Round A
+
+Created: 2026-09-19
+Evidence job ID: f270r6e1001
+Head commit: 3e9897ac5409f6e198d90fc342a37c3a56304a78
+Base commit: b7f966c0b597ab1da010f3e245c055b9e8d54509 (the fork point)
+
+Base proof (pitfall (e)):
+  - git rev-list --ancestry-path b7f966c0b597ab1da010f3e245c055b9e8d54509..3e9897ac5409f6e198d90fc342a37c3a56304a78 --count: 27
+  - git rev-list b7f966c0b597ab1da010f3e245c055b9e8d54509..3e9897ac5409f6e198d90fc342a37c3a56304a78 --count: 27
+
+Deselection Applied: none
+
+Script: .remedy-wt/f270-r6/create_f270_evidence.py, adapted from
+.remedy-wt/f269-r11/create_f269_evidence.py: the test files, the fork-point
+base, the run id, the evidence dir, the job id and title, the step range and
+the review feature id changed; the collect-only parser, which keeps every
+"tests/...::..." line and checks its count against pytest's "N tests
+collected", is F269's unchanged.
+
+Test Verification Run:
+  - Run ID: vr-1112
+  - Test files: 5 files (sorted)
+    - tests/cli/test_do_commit_flags.py
+    - tests/cli/test_do_sequence_cli.py
+    - tests/orchestration/test_job_apply_commit.py
+    - tests/orchestration/test_job_apply_history.py
+    - tests/orchestration/test_job_worktree_integration.py
+  - Node IDs collected: 164
+  - Passed: 164
+  - Failed: 0
+  - Skipped: 0
+  - Exit code: 0
+  - Output hash: 099b7c1e9d7e288c0e3cf586b156e01919635e9cc350e54c45dafebe764473cd
+  - test_files: SORTED (required by packaging validator)
+
+Evidence Bundle:
+  - Job ID: f270r6e1001
+  - Verdict: PASS_WITH_RISKS
+  - Authoritative files: 19
+  - Commit count: 27
+  - Partition: T001=7, T002=7, T003=5
+  - Total passed: 164
+  - Manual completion: true
+  - Operator-attested tasks: T001, T002, T003
+
+Evidence Validation (scripts/build_review_manifest.py validate_evidence_candidate):
+  - is_valid_current_run: True
+  - validation_errors: []
+
+Evidence directory: .remedy-wt/f270_evidence_round6 (not committed)

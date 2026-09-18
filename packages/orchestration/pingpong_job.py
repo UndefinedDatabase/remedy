@@ -197,6 +197,9 @@ class TaskEntry:
     # same record for the same reason: the exporter emits JSON, never a model object.
     output_artifact_ids: list[str] = field(default_factory=list)
     budget: dict | None = None
+    # F270 T001, DECISION F270 D1 (4): the commit this task landed on the job worktree
+    # branch once applied; "" when none was made (copy mode, or not applied yet).
+    worktree_commit: str = ""
 
 
 # F112 T003b2a: translates a live TaskEntry into the granularity machinery's
@@ -916,6 +919,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "task_attempt_state": t.task_attempt_state,
                 "output_artifact_ids": t.output_artifact_ids,
                 "budget": t.budget,
+                "worktree_commit": t.worktree_commit,
             }
             for t in job.tasks
         ],
@@ -1022,6 +1026,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             task_attempt_state=t.get("task_attempt_state", ""),
             output_artifact_ids=list(t.get("output_artifact_ids") or []),
             budget=t.get("budget"),
+            # A record written before F270 carries no key: the task has no commit.
+            worktree_commit=str(t.get("worktree_commit", "") or ""),
         ))
     return job
 
@@ -1377,11 +1383,14 @@ def _drop_checkpoint_refs(job: JobPlan) -> str:
 def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
     """The ONE cleanup path for a job-owned worktree.
 
-    Completed job: persist the job-level ``result.diff`` (tree-to-tree — no commit,
-    no merge), remove the physical worktree, keep the result branch, release the
-    lock, mark ``clean``. Any other end state (paused, blocked, failed, raised):
-    persist what we can, KEEP the worktree and its uncommitted changes, release the
-    lock, and stay recoverable. A clean cleanup is never claimed before it happened.
+    Completed job: persist the job-level ``result.diff`` (tree-to-tree, from the
+    job's initial tree to the worktree's complete final state — this step makes no
+    commit and no merge; the branch already carries one commit per applied task,
+    DECISION F270 D1), remove the physical worktree, keep the result branch,
+    release the lock, mark ``clean``. Any other end state (paused, blocked, failed,
+    raised): persist what we can, KEEP the worktree with every change it holds past
+    the branch tip, release the lock, and stay recoverable. A clean cleanup is
+    never claimed before it happened.
     """
     if handle is None:
         return
@@ -1443,8 +1452,9 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
                 )
     else:
         # Not finished, blocked by the coverage gate, or the hand-off could not be
-        # persisted: the accepted changes are uncommitted and live ONLY in this
-        # worktree. Keep it. A coverage block is an honest RETAIN (the diff was
+        # persisted: the job's hand-off lives in this worktree, and any change past
+        # the branch tip (a task stopped before its F270 commit) lives ONLY here.
+        # Keep it. A coverage block is an honest RETAIN (the diff was
         # writable, it just was not the reviewed work), not a storage failure.
         res = W.retain_for_recovery(
             handle, job.result_diff_error if job.result_diff_error else "")
@@ -1995,6 +2005,104 @@ def _recorded_hunk_ledger_for_task(job: Any, task: Any):
         )
     except Exception:
         return HunkDecisionLedger(())
+
+
+#: The longest first line of a per-task commit message on the job branch (F270 D1 (3)).
+TASK_COMMIT_SUBJECT_MAX = 72
+
+#: How many applied files a per-task commit message names before ``...`` (F270 D1 (3)).
+TASK_COMMIT_FILES_NAMED = 10
+
+
+def _task_commit_contract_line(job: JobPlan) -> str:
+    """``contract: <met> of <total> criteria green`` over the job's slice, or ``contract: none``.
+
+    DECISION F270 D1 (3) over DECISION F269 D3's slice, read as recorded when
+    the commit is made: a job's own gate records its criteria after its last
+    task, so a per-task line states what was recorded, never a forecast.
+    """
+    from packages.orchestration.mission_contract import (
+        job_contract_slice,
+        read_job_milestone,
+        read_mission_contract,
+    )
+    from packages.orchestration.mission_state import mission_for_job
+
+    mission = mission_for_job(str(job.job_id))
+    contract = read_mission_contract(mission) if mission is not None else None
+    if contract is None:
+        return "contract: none"
+    criteria = job_contract_slice(contract, read_job_milestone(str(job.job_id)))
+    met = sum(1 for c in criteria if c.status == "met")
+    return f"contract: {met} of {len(criteria)} criteria green"
+
+
+def fit_commit_subject(head: str, text: str) -> str:
+    """``head`` then ``text`` whitespace-collapsed, cut at a word boundary with ``...`` to 72 characters.
+
+    The one subject fitter of every first line Remedy writes: the per-task
+    commits of DECISION F270 D1 (3) and the ``--commit-auto`` commit of
+    DECISION F270 D3 (4).
+    """
+    text = " ".join((text or "").split())
+    if len(head) + len(text) > TASK_COMMIT_SUBJECT_MAX:
+        room = TASK_COMMIT_SUBJECT_MAX - len(head) - len("...")
+        window = text[: room + 1]
+        cut = window.rsplit(" ", 1)[0] if " " in window else text[:room]
+        text = cut.rstrip() + "..."
+    return f"{head}{text}"
+
+
+def build_task_commit_message(job: JobPlan, task: TaskEntry) -> str:
+    """The message of an applied task's commit on ``remedy/job-<id>`` (DECISION F270 D1 (3)).
+
+    First line ``task <n>: <title>``, n being 1 plus the number of the job's
+    tasks that already carry a commit, the title whitespace-collapsed and cut
+    at a word boundary with ``...`` so the line stays within 72 characters;
+    one body sentence naming the task, the job and the applied files; the
+    contract line as the last body line; then the ``Remedy-Job`` and
+    ``Remedy-Task`` trailers.
+    """
+    from packages.orchestration.worktrees import REMEDY_JOB_TRAILER, REMEDY_TASK_TRAILER
+
+    number = 1 + sum(1 for t in job.tasks if t.worktree_commit and t is not task)
+    subject = fit_commit_subject(f"task {number}: ",
+                                 " ".join((task.title or "").split()) or "untitled task")
+    files = list(task.apply_manifest.applied_files) if task.apply_manifest else []
+    named = ", ".join(files[:TASK_COMMIT_FILES_NAMED])
+    if len(files) > TASK_COMMIT_FILES_NAMED:
+        named += ", ..."
+    changed = f"changing {named}" if files else "changing no file"
+    body = f"Remedy applied task {task.task_id} of job {job.job_id}, {changed}."
+    return (f"{subject}\n\n{body}\n\n{_task_commit_contract_line(job)}\n\n"
+            f"{REMEDY_JOB_TRAILER}: {job.job_id}\n"
+            f"{REMEDY_TASK_TRAILER}: {task.task_id}\n")
+
+
+def _commit_applied_task(job: JobPlan, task: TaskEntry, handle: Any) -> str:
+    """Adopt or make the applied task's commit on the job branch; record and return its sha.
+
+    DECISION F270 D1 (4): a worktree whose HEAD already carries this job's and
+    this task's trailers while it holds no change against HEAD is a commit an
+    interrupted run made before it could save; it is adopted, never repeated.
+    Otherwise ``worktrees.commit_job_worktree`` commits the worktree's complete
+    state. The sha becomes the task's ``worktree_commit`` and the job's
+    ``worktree_head``, so a resumed job's head check matches. Raises on failure.
+    """
+    from packages.orchestration import worktrees as W
+
+    trailers = W.read_head_remedy_trailers(handle.path)
+    adopt = (trailers.get(W.REMEDY_JOB_TRAILER) == str(job.job_id)
+             and trailers.get(W.REMEDY_TASK_TRAILER) == task.task_id
+             and W.worktree_matches_head(handle.path))
+    if adopt:
+        sha = W.snapshot(handle)
+    else:
+        sha = W.commit_job_worktree(handle.path, build_task_commit_message(job, task))
+        handle.head_commit = sha
+    task.worktree_commit = sha
+    job.worktree_head = sha
+    return sha
 
 
 def _gate_job_definition_of_done(job: JobPlan) -> str:
@@ -2879,6 +2987,21 @@ def run_job(
                 tokens_estimated=len(task_prompt) // 4,
             )
             previous_summaries.append(task.proof_summary)
+
+            # F270 T001, DECISION F270 D1 (1): one commit per applied task on the job
+            # worktree branch, recorded on the task before the save below, so a
+            # resumed run adopts it instead of committing the task twice. A copy-mode
+            # job has no branch and commits nothing.
+            if (job.isolation_mode == "worktree" and job_handle is not None
+                    and not task.worktree_commit):
+                try:
+                    _commit_applied_task(job, task, job_handle)
+                except Exception as exc:
+                    # D1 (5): a failed commit blocks the job; nothing is retried silently.
+                    task.status = TASK_BLOCKED
+                    task.error = f"worktree_commit_failed: {type(exc).__name__}: {exc}"
+                    _block_job(job, idx, f"task_{task.task_id}_worktree_commit_failed")
+                    return job
 
             tasks_run += 1
             _persist_job(job)

@@ -1,0 +1,6 @@
+        server = DevServer(_spec(project, "server.py", "1.5"), project)
+        server.start()
+        try:
+            res = server.wait_ready()
+            assert res.ok
+            assert res.elapsed_s >= 1.4          # it really did wait

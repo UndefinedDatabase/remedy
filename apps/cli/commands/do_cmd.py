@@ -10,6 +10,7 @@ The module also holds the `run.show`, `run.list`, `job.run`, `job.apply` and
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
@@ -125,29 +126,76 @@ def _resolve_cli_role_configs(
     return resolved
 
 
-#: DECISION F268 D9 (3): `do.run`'s flags whose feature is not built yet, and that
-#: feature. Each refuses with exit 2 before any step; the entry leaves this table
-#: in the round its feature lands. `--with-history` is deliberately never declared.
-_DO_FLAGS_NOT_YET_AVAILABLE: tuple[tuple[str, str], ...] = (
-    ("--commit", "F270"),
-    ("--commit-auto", "F270"),
-    ("--commit-with-history", "F270"),
-    ("--push", "F270"),
-)
+#: DECISION F270 D4 (5): the one sentence `do` prints on stderr, so `--json` stays
+#: clean, when `apply.push_after_mission` is set and no commit flag was given.
+#: `--with-history` is deliberately never declared (DECISION F270 D2).
+DO_PUSH_KEY_WITHOUT_COMMIT = (
+    "apply.push_after_mission is set, but no --commit, --commit-auto or "
+    "--commit-with-history was given, so this run commits nothing and pushes nothing.")
 
 
-def _refuse_do_flags_not_yet_available(given: dict[str, object]) -> None:
-    """Exit 2 naming the first flag given whose feature is not built yet, and that feature.
+def _refuse_before_any_step(sentences: list[str]) -> None:
+    """Exit 2 printing each refusal with "Nothing was run." (DECISION F270 D4 (1))."""
+    for sentence in sentences:
+        print(f"Error: {sentence} Nothing was run.", file=sys.stderr)
+    sys.exit(2)
 
-    ``given`` maps each flag of `_DO_FLAGS_NOT_YET_AVAILABLE` to its parsed value;
-    ``None`` or ``False`` means the flag was not given.
+
+def _resolve_do_commit_flags(
+    repo: str, *, commit: str | None, commit_auto: bool, commit_with_history: bool,
+    push: bool, plan_only: bool,
+) -> tuple[str, str]:
+    """``(mode, push_source)`` for `do`'s commit and push flags, or exit 2 before any step.
+
+    DECISION F270 D4 (1): `job apply`'s own flag rules (a clash, a lone
+    `--push`, an empty or multi-line `--commit` message), a commit flag with
+    `--plan-only`, then — with a commit flag — the checkout refusals of D3 (2),
+    and with a push the upstream refusals of D3 (5), all asked of the target's
+    top level before any step, so a long run is never spent on a commit or a
+    push that cannot happen. D4 (5): `apply.push_after_mission`, read with the
+    repository's configuration, makes a run with a commit flag push as
+    `--push` would; without one it prints `DO_PUSH_KEY_WITHOUT_COMMIT`.
+    ``push_source`` is ``--push``, ``apply.push_after_mission`` or ``""``.
     """
-    for flag, feature in _DO_FLAGS_NOT_YET_AVAILABLE:
-        value = given.get(flag)
-        if value is not None and value is not False:
-            print(f"Error: {flag} is not yet available; {feature} brings it. "
-                  f"Nothing was run.", file=sys.stderr)
-            sys.exit(2)
+    from pathlib import Path
+
+    from packages.orchestration.config import load_config, push_after_mission_enabled
+    from packages.orchestration.job_apply import (
+        COMMIT_MODE_FLAGS,
+        checkout_refusals,
+        commit_flags_refusal,
+        upstream_push_refusals,
+    )
+    from packages.orchestration.worktrees import WorktreeError, repo_root
+
+    mode, refusal = commit_flags_refusal(commit, commit_auto, commit_with_history, push)
+    if refusal:
+        _refuse_before_any_step([refusal.split(": ", 1)[1]])
+    if mode and plan_only:
+        given = COMMIT_MODE_FLAGS[mode] + (" and --push" if push else "")
+        _refuse_before_any_step([f"--plan-only runs no job, so {given} would have nothing "
+                                 f"to apply, commit or push."])
+    try:
+        top: Path | None = Path(repo_root(repo))
+    except (WorktreeError, OSError, subprocess.SubprocessError):
+        top = None                     # not a repository: the init step fails and says so
+    try:
+        key = push_after_mission_enabled(load_config(Path(top or repo) / "remedy.toml"))
+    except Exception:
+        key = False                    # Remedy never pushes on a value it cannot read
+    source = "--push" if push else ("apply.push_after_mission" if key and mode else "")
+    if key and not mode:
+        print(DO_PUSH_KEY_WITHOUT_COMMIT, file=sys.stderr)
+    if not mode or top is None:
+        return mode, source
+    landing, what = (("the task commits", "merge into") if mode == "history"
+                     else ("the commit", "commit on"))
+    refusals, _stop = checkout_refusals(top, landing=landing, what=what)
+    if source:
+        refusals += upstream_push_refusals(top)
+    if refusals:
+        _refuse_before_any_step(refusals)
+    return mode, source
 
 
 def _cmd_do_order(
@@ -175,6 +223,10 @@ def _cmd_do_order(
     plan_only: bool = False,
     apply: bool = False,
     contract: str | None = None,
+    commit: str | None = None,
+    commit_auto: bool = False,
+    commit_with_history: bool = False,
+    push_source: str = "",
 ) -> None:
     """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
 
@@ -202,7 +254,11 @@ def _cmd_do_order(
     reaches every structured planner call (DECISION F268 D16 (4) to (7)).
     `contract` is the template `--contract` forces, already checked by
     `_cmd_do`; ``None`` lets the plan step apply the one proposed from the
-    order (DECISION F269 D1 (4)).
+    order (DECISION F269 D1 (4)). ``commit``, ``commit_auto`` and
+    ``commit_with_history`` are the commit flag, already checked by `_cmd_do`,
+    and ``push_source`` says why the mission is pushed once, or "" (DECISION
+    F270 D4); `--json` carries `landed`, each commit the walk landed with its
+    job, and `push`, the mission's one push or null (D4 (7)).
     """
     if not order or not order.strip():
         print("Error: order must not be empty.", file=sys.stderr)
@@ -270,6 +326,11 @@ def _cmd_do_order(
         step_by_step=step_by_step,
         plan_only=plan_only,
         apply=apply,
+        commit_message=commit,
+        commit_auto=commit_auto,
+        commit_with_history=commit_with_history,
+        push=bool(push_source),
+        push_source=push_source,
         # Looked up at call time, so the walk reads the terminal the CLI runs in.
         read_line=input,
         ui_launcher=launch_do_cockpit,
@@ -293,6 +354,8 @@ def _cmd_do_order(
             "jobs": jobs,
             "steps": [r.to_json() for r in ctx.results],
             "cost": cost,
+            "landed": list(ctx.landed),
+            "push": ctx.push_outcome,
             "next": list(ctx.next_lines),
         }, indent=2))
     else:
@@ -352,11 +415,10 @@ def _cmd_do(
     flags only it read (`--autonomy-level`, `--max-cycles`, `--ui`, `--dry-run`)
     were deleted by DECISION F268 D16 (1) and (2).
     """
-    # DECISION F268 D9 (3): before any step.
-    _refuse_do_flags_not_yet_available({
-        "--commit": commit, "--commit-auto": commit_auto,
-        "--commit-with-history": commit_with_history, "--push": push,
-    })
+    # DECISION F270 D4 (1): the commit and push flags are refused before any step.
+    mode, push_source = _resolve_do_commit_flags(
+        repo, commit=commit, commit_auto=commit_auto,
+        commit_with_history=commit_with_history, push=push, plan_only=plan_only)
     # DECISION F269 D1 (4): a name that is not a template exits 2 before any step.
     if contract is not None:
         from packages.orchestration.contract_templates import list_contract_templates
@@ -376,8 +438,11 @@ def _cmd_do(
                   max_wall_clock_minutes=max_wall_clock_minutes,
                   max_cost_usd=max_cost_usd, deadline=deadline, no_ui=no_ui,
                   force_job=force_job, force_mission=force_mission,
-                  step_by_step=step_by_step, plan_only=plan_only, apply=apply,
-                  contract=contract)
+                  step_by_step=step_by_step, plan_only=plan_only,
+                  # Every commit flag implies --apply (T2_F270.md, DECISION F270 D4 (1)).
+                  apply=apply or bool(mode), contract=contract,
+                  commit=commit, commit_auto=commit_auto,
+                  commit_with_history=commit_with_history, push_source=push_source)
 
 
 def _cmd_run_show(
@@ -731,9 +796,19 @@ def _cmd_job_apply(
     dry_run: bool = False,
     test_command: str = "",
     skip_blocked: bool = False,
+    commit_with_history: bool = False,
+    commit: str | None = None,
+    commit_auto: bool = False,
+    push: bool = False,
     json_output: bool = False,
 ) -> None:
-    """Review and apply job workspace changes to target repo."""
+    """Review and apply job workspace changes to target repo.
+
+    ``commit_with_history`` (DECISION F270 D2) merges the job branch instead of
+    copying; ``commit`` and ``commit_auto`` (DECISION F270 D3) copy and then
+    commit exactly the copied files; ``push`` pushes what landed. Without
+    ``--approve`` they preview, and a refusal or a clash is a blocked apply.
+    """
     from packages.orchestration.job_apply import (
         apply_job,
         export_job_apply_json,
@@ -750,6 +825,10 @@ def _cmd_job_apply(
         dry_run=dry_run,
         test_command=test_command,
         skip_blocked=skip_blocked,
+        commit_with_history=commit_with_history,
+        commit_message=commit,
+        commit_auto=commit_auto,
+        push=push,
     )
 
     if json_output:
@@ -863,6 +942,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         dry_run=getattr(args, "dry_run", False),
         test_command=getattr(args, "test_command", None) or "",
         skip_blocked=getattr(args, "skip_blocked", False),
+        commit_with_history=bool(getattr(args, "commit_with_history", False)),
+        commit=getattr(args, "commit", None),
+        commit_auto=bool(getattr(args, "commit_auto", False)),
+        push=bool(getattr(args, "push", False)),
         json_output=getattr(args, "json", False),
     ),
     "job.evidence": lambda args: _cmd_job_evidence(

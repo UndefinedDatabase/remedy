@@ -59,6 +59,7 @@ env var  >  project config  >  user config  >  built-in default
 | `cycles.verify_command` | string | `REMEDY_CYCLES_VERIFY_COMMAND` | (none) | no |
 | `model_routing.task_class_tiers` | table | (TOML only) | (none) | no |
 | `model_routing.promotion_evidence` | table | (TOML only) | (none) | no |
+| `apply.push_after_mission` | bool | `REMEDY_APPLY_PUSH_AFTER_MISSION` | `false` | no |
 
 The table above is not exhaustive — later features added their own keys
 (`scope.*`, `budget.*`, `postmortem.*`). The key registry

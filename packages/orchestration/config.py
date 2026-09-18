@@ -706,6 +706,17 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=None,
     ),
+    # DECISION F270 D3 (7): registered here, read only by push_after_mission_enabled.
+    ConfigKeySpec(
+        key="apply.push_after_mission",
+        env_var="REMEDY_APPLY_PUSH_AFTER_MISSION",
+        description=(
+            "Push the branch a mission's commit landed on to its configured "
+            "upstream at the end of the mission, exactly as --push would (F270)."
+        ),
+        value_type=bool,
+        default=False,
+    ),
 )
 
 _KEY_SPEC_MAP: dict[str, ConfigKeySpec] = {s.key: s for s in _CONFIG_KEY_SPECS}
@@ -1010,6 +1021,22 @@ def reset_config() -> None:
     """Clear the cached config — forces reload on next get_config() call."""
     global _CACHED_CONFIG
     _CACHED_CONFIG = None
+
+
+def push_after_mission_enabled(config: RemedyConfig | None = None) -> bool:
+    """True only when the operator set ``apply.push_after_mission`` to a true value.
+
+    DECISION F270 D3 (7). A TOML boolean is read as it is; a string — the env
+    var, a quoted TOML value — is true only for ``1``, ``true`` or ``yes``, so
+    the string ``"false"`` is false. Any other value is false: Remedy never
+    pushes on a value it cannot read. ``job apply`` never calls this.
+    """
+    value = (config if config is not None else get_config()).get("apply.push_after_mission")
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes")
+    return False
 
 
 def write_toml_template(path: Path) -> None:

@@ -1,0 +1,6 @@
+- R-0974 carries a resolution line naming the commit that makes
+  `packages/orchestration/worktrees.py` `write_tree` keep a tracked file that `.gitignore`
+  matches, with a test in which a job edits such a file and the edit reaches `result.diff`.
+- R-0977 carries a resolution line naming the commit that makes `remedy do` record on each
+  job the milestone it came from, with a test in which a two-milestone `do` run ends with no
+  planner criterion `open`.

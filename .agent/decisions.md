@@ -15289,3 +15289,210 @@ ALTERNATIVES: keeping carried `planner` criteria in `write_planner_criteria`, re
 re-plan must be able to replace the planner's own criteria; a fourth origin, rejected because the
 operator's "yes" is exactly an amendment. REVERSE: restore D9 (3)'s origin rule, which re-opens
 R-0971, and delete this paragraph.
+
+## DECISION F270 D1 (2026-09-18, reviewer, round 1) — one commit per applied task on the job worktree branch
+CONTEXT: `docs/roadmap/features/T2_F270.md` T001 and Design ask for a commit on the job worktree
+branch after each passed task, authored `Remedy <remedy@local>`, first line `task <n>: <title>` as
+a sentence under 72 characters, the contract state as the last body line. Measured at `b7f966c0`:
+the branch is `remedy/job-<job id>` (`job_worktree_id` in `packages/orchestration/pingpong_job.py`
+prefixes `job-`), not the `remedy/<job id>` the feature file writes, and nothing commits on it;
+`run_job` records a task `TASK_APPLIED` and its proof summary before the `_persist_job` call that
+saves it; a job's contract criteria change status only in `_gate_job_definition_of_done`, after
+its last task; `remedy job resume` refuses with exit 3 when the live worktree `HEAD` differs from
+the job's recorded `worktree_head`. A research helper's prototype in a disposable worktree at
+`b7f966c0` measured a two-task fake run landing two commits, 0 failures over the worktree, apply
+and resume test files, and — with no adoption rule — a second commit of the same task after a
+kill between the commit and the save; the reviewer re-ran its two-commit test there, green, and
+red at `assert 0 == 2` with the seam disabled.
+CHOSEN: (1) WHERE. In `run_job`, after a task is applied and its proof summary is set and before
+the `_persist_job` that records it, only when the job's isolation mode is `worktree`; a copy-mode
+job commits nothing. The worktree's complete state is committed through its own index (`git add
+-A .`), so the branch tip carries exactly what the tasks left in the worktree. (2) IDENTITY.
+Author and committer are `Remedy <remedy@local>` whatever the operator's git configuration or
+environment says; nothing is signed and no hook runs, because hooks are the operator's gate on the
+operator's commits and must not block a job over a branch the operator never checks out. A task
+that changed nothing still gets its commit, so one applied task is one commit. The helper that
+commits lives in `packages/orchestration/worktrees.py` and refuses, with nothing written, a
+checkout whose current branch does not start with `BRANCH_PREFIX`: it can never commit on the
+operator's branch. (3) MESSAGE. First line `task <n>: <title>`, n being 1 plus the number of the
+job's tasks that already carry a commit (so the branch reads 1, 2, 3 without the gaps a split
+parent leaves), the title whitespace-collapsed and cut at a word boundary with `...` so the line
+is at most 72 characters; a blank line; one body sentence naming the task id, the job id and the
+files the task's apply manifest lists (at most ten, then `...`); a blank line; the line `contract:
+<met> of <total> criteria green` over the job's slice (DECISION F269 D3) as recorded when the
+commit is made, or `contract: none` when the job belongs to no mission with a contract; a blank
+line; the trailers `Remedy-Job: <job id>` and `Remedy-Task: <task id>`. The contract line is the
+last body line and the trailers follow as git's trailer paragraph. A job's own gate records its
+criteria after its last task, so a per-task line states the criteria as recorded before that
+gate — what was recorded, never a forecast. (4) RECORD AND RESUME. The commit's sha is stored on
+the task as `worktree_commit` (exported and imported with the job record, "" when none) and
+becomes the job's `worktree_head`, so a resumed job's head check matches. A task already carrying
+`worktree_commit` is not committed again. A task whose run was interrupted after its commit and
+before the save is recognised by the worktree `HEAD` carrying both trailers for this job and this
+task while the worktree holds no change against `HEAD`; that commit is adopted, never repeated.
+(5) FAILURE. A commit that fails blocks the job with stop reason
+`task_<task id>_worktree_commit_failed` and the git error on the task; nothing is retried
+silently. (6) Every docstring and doc sentence that says the job worktree is never committed on
+is corrected in the same round. The branch tip's tree equals the tree `result.diff` is computed
+to, except for a tracked file that `.gitignore` matches, which the branch keeps and the snapshot
+drops (R-0974, owned by F273).
+ALTERNATIVES: committing only the files the apply manifest lists, rejected because the next task
+and `result.diff` both see the whole worktree, so the branch tip would drift from the job's diff;
+one commit at the job's end, rejected because T001 asks for one per task; running the operator's
+hooks, rejected for the reason (2) gives. REVERSE: remove the seam call, the commit helper and the
+task field, restore the docstrings, and delete this paragraph; the branch then carries no commits,
+as before.
+
+## DECISION F270 D2 (2026-09-18, reviewer, round 2) — `job apply --approve --commit-with-history` merges the job branch, and its refusals
+CONTEXT: `docs/roadmap/features/T2_F270.md` T002 and T003 ask for a `--no-ff` merge of the job
+branch onto the operator's current branch after a clean-tree check, refused on conflict with the
+conflicting paths and no file overwritten (DECISION F263 D-E), and refused for a staging target.
+Measured at `ff9d56a2` by a research helper's prototype in a disposable worktree, which the
+reviewer read: `apply_job` in `packages/orchestration/job_apply.py` runs its gates (job and tasks,
+target guard, manifests, file coverage, blocked paths, baseline, modes, record preflight), then
+copies files rebuilt from `result.diff`, then verifies them, and writes one record under
+`job_apply_records/`; a blocked apply exits 0; the job stores `job_initial_tree` and
+`result_diff_sha256` but no final tree; and the baseline gate already refuses any operator change,
+committed or not, to a path the job writes, so such a hand edit never reaches git at all.
+CHOSEN: (1) THE FLAG. `--commit-with-history` on `job apply` needs `--approve`; without it the
+command previews as today, the preview naming the flag and every refusal the real run would meet.
+Every existing gate runs unchanged and in its present order; the merge replaces only the copy of
+files, and the post-apply verification and post-test run after it as they run after a copy. (2)
+REFUSALS, each one sentence, each changing nothing on disk, checked after the existing gates and
+again immediately before the merge: the job ran in copy mode (a staging target) — nothing is
+copied and the sentence says a plain `--approve` copies; the target is not a git repository; the
+operator's checkout is on a detached `HEAD`; `git status --porcelain --untracked-files=all` in the
+target prints anything — the sentence names the paths; `--skip-blocked` is given, or a file the
+copy would skip exists, because a merge cannot leave a path out; the job branch is missing, its
+tip is not the job's `worktree_head`, or the sha256 of the diff from `job_initial_tree` to the
+tip's tree is not `result_diff_sha256` — the branch is then not the reviewed work. (3) THE MERGE.
+`git merge --no-ff --no-log` of `remedy/job-<job id>` in the target, under the operator's own git
+identity, configuration and hooks. Message: first line `Merge the <n> task commits of Remedy job
+<first eight characters of the job id>` (at most 72 characters); a blank line; one body sentence
+naming the branch and the operator's branch; a blank line; the contract line of DECISION F270 D1
+(3); a blank line; the trailers `Remedy-Job: <job id>` and `Co-authored-by: Remedy
+<remedy@local>`. (4) A MERGE THAT FAILS — a conflict or a refusing hook — is aborted with `git
+merge --abort`; `HEAD`, the index and every file are then what they were before, and the refusal
+names the paths git reports unmerged, or quotes the hook's own output. Remedy never runs `git
+reset` on the operator's branch. (5) AFTER A MERGE, a failed post-apply verification or post-test
+is reported with the merge commit's sha and the operator's previous tip, so the operator can undo
+it with one command; Remedy undoes nothing itself. (6) THE RECORD. The apply record gains
+`commit_with_history`, `merged_branch`, `target_branch`, `history_commits`, `merge_commit` and
+`merge_conflicts`; the summary of a merged apply names the commit count, both branches and the
+merge commit and says that nothing was pushed, and the summary line "No commits or pushes were
+made" stays for an apply without the flag, where it is still true. (7) EXIT CODES stay as they
+are: a refused apply is a blocked apply and exits as one does today. (8) THE HAND EDIT OF F263
+D-E is proved twice: a committed operator edit to a file the job writes is refused by the
+baseline gate before any merge and stays intact; a real git conflict, which the file gates cannot
+see (the job writes `pkg/mod.txt`, the operator commits a file named `pkg`), is aborted by (4).
+ALTERNATIVES: letting the flag imply `--approve`, rejected because the approval semantics are on
+the feature's Do-not-touch list; relaxing the baseline gate so git decides every overlap,
+rejected because it weakens a gate; resetting the operator's branch after a failed post-test,
+rejected because Remedy never rewrites the operator's branch; storing the final tree on the job,
+rejected because the diff hash already binds the branch to the reviewed work. REVERSE: remove the
+flag, the merge path and its record fields, and delete this paragraph; `job apply` copies as
+before.
+
+## DECISION F270 D3 (2026-09-18, reviewer, round 3) — `job apply` gains `--commit "<message>"`, `--commit-auto` and `--push`, and the config key `apply.push_after_mission` is registered
+CONTEXT: `docs/roadmap/features/T2_F270.md` Design (the flag family, author and trailers, commit
+messages for humans, `--push`) and T004. Measured at `4a615385` by a research helper's prototype in
+a disposable worktree, which the reviewer read: a `Mission` has a `goal` and no title;
+`contract_blockers` in `packages/orchestration/mission_contract.py` lists every blocking
+criterion of the whole mission that is not `met`; the per-task subject `task 2: add the contact
+form` cannot pass a verb-first rule; `git add` of a path the target's `.gitignore` matches fails;
+no test pins the config registry's key list or `job.apply`'s argument list. `do`'s own flags stay
+refused until the next round.
+CHOSEN: (1) THE FLAGS on `job apply`: `--commit "<message>"`, `--commit-auto` and D2's
+`--commit-with-history` are mutually exclusive; `--push` needs one of them. A clash, a lone
+`--push`, and a `--commit` message that is empty or spans more than one line are refused before
+the job is read. Like D2 (1), each flag needs `--approve`; without it the command previews and
+names every refusal the real run would meet. A refusal is a blocked apply and exits as one (D2
+(7)). (2) CHECKOUT REFUSALS, shared with D2 and checked after the existing gates and again right
+before anything is written, each one sentence, each changing nothing: a target below its
+repository's top level; a detached `HEAD`; the operator's own merge, rebase, cherry-pick or revert
+in progress; a dirty tree, naming the paths; for `--commit` and `--commit-auto`, a copied path the
+target's `.gitignore` matches. A staging job may be committed onto a git target, because the
+commit holds only the copied files; D2 still refuses it for `--commit-with-history`. (3) THE
+COMMIT. After the copy, its verification and the post-test pass, ONE commit on the operator's
+current branch of exactly the copied files, under the operator's own identity, configuration and
+hooks; afterwards its parent must be the previous tip and it must touch no other path. A post-test
+that fails leaves the files copied and uncommitted, and the record says so; a commit that fails
+is recorded as blocked and its paths are unstaged, the index only — the branch is never reset.
+(4) MESSAGES. `--commit`: the operator's line, unchanged, as the first line. `--commit-auto`: the
+first line is the mission's goal, else the job's title, else `Apply the <n> tasks of Remedy job
+<first eight characters of the job id>`, the first candidate that passes the rule — one line, at
+most 72 characters, at least three words, the first word from a fixed list of imperative verbs —
+cut at a word boundary by the same fitter the per-task commits use; the body lists the task
+titles. Both then carry one body sentence naming the job, the contract line of D1 (3) as the last
+body line, and the trailers `Remedy-Job: <job id>` and `Co-authored-by: Remedy <remedy@local>`.
+The per-task commits and `--commit-auto` share the subject fitter, the contract line and the
+trailer names; the verb rule binds `--commit-auto` only. (5) `--push`, after the commit or merge
+and the post-test, runs `git push --porcelain <remote> <landed sha>:<upstream ref>` to the
+branch's configured upstream, never with force and never to another branch, with no credential
+prompt and a timeout. It is refused before anything is written when the branch has no upstream
+(the sentence names `git push --set-upstream <remote> <branch>`), when the upstream is a local
+branch, when the mission's contract cannot be read, and while any blocking criterion of the
+job's mission is not `met` — the push is a mission-level act, so the whole mission counts, and
+an `open` criterion is not green. A push that fails after the commit landed leaves the commit,
+records status `applied_push_failed` with git's words, and tells the operator to push by hand.
+(6) THE RECORD keeps D2's fields and adds `commit_message_mode` (`""`, `message`, `auto`,
+`history`), `commit_sha`, `push`, `pushed`, `push_remote` (the remote's name, never its URL),
+`push_ref` and `push_error`. (7) THE CONFIG KEY `apply.push_after_mission`: a bool, default
+false, env var `REMEDY_APPLY_PUSH_AFTER_MISSION`, one-sentence help, read by one helper that also
+reads the string `"false"` as false; `job apply` never reads it, and a plain `--approve` with the
+key set commits and pushes nothing. `do` uses it in the next round.
+ALTERNATIVES: exiting 2 for a flag clash as `do` does, rejected for consistency with D2 (7) and
+so `do` can reuse the refusals through `apply_job`; committing before the post-test as D2 merges
+before it, rejected because a copy can stay uncommitted at no cost while a merge cannot be half
+made; counting only the job's slice for `--push`, rejected because a push publishes the whole
+mission's branch. REVERSE: remove the three flags, the shared refusals' new members, the record
+fields and the key, and delete this paragraph.
+
+## DECISION F270 D4 (2026-09-18, reviewer, round 4) — `do` takes the commit and push flags, chains its jobs under them, pushes once per mission; a push is held by a RED blocking criterion, amending D3 (5)
+CONTEXT: `docs/roadmap/features/T2_F270.md` Design: the flag family is "passed through by `do`";
+every `--commit…` flag implies `--apply`; push is a mission-level act, `do` pushes once at the end
+of the mission, not per job; `apply.push_after_mission` makes unattended runs push as `--push`
+would; a push happens "only when no blocking contract criterion is red". DECISION F268 D12 left
+a `do` walk of several jobs running the first and leaving the rest waiting, because a plain apply
+does not commit and a job's worktree is cut from `HEAD`, and it names F270's `--commit` family as
+what lets the jobs chain. Measured at `8e9c2fad` by a research helper's prototype in a disposable
+worktree, which the reviewer read: `_DO_FLAGS_NOT_YET_AVAILABLE` in `apps/cli/commands/do_cmd.py`
+holds exactly these four flags; chaining under a commit flag is 46 lines of
+`packages/orchestration/do_sequence.py` and changes no F268 test; and — by DECISION F269 D6 —
+`do`'s jobs serve no milestone, so the planner's per-milestone blocking criteria of a `do` mission
+are never evaluated and stay `open`, which under D3 (5) would refuse every real `do --push`.
+CHOSEN: (1) FLAGS. `do` accepts `--commit "<message>"`, `--commit-auto`, `--commit-with-history`
+and `--push` with `job apply`'s rules (D3 (1)): one commit flag at most, `--push` only with one, a
+`--commit` message non-empty and one line; each commit flag implies `--apply`; with `--plan-only`
+any of them is refused. These refusals, and the checkout refusals of D3 (2), and with a push the
+upstream refusals of D3 (5), are asked BEFORE any step runs and exit 2 with "Nothing was run.", so
+a long run is never spent on a push that cannot happen. The four flags leave
+`_DO_FLAGS_NOT_YET_AVAILABLE`, which goes with its refusal function once empty. (2) CHAINING.
+Under a commit flag no job of the walk waits: each job is run, applied and committed (or merged)
+before the next job's worktree is cut, so each sees the work before it; without a commit flag F268
+D12 stands unchanged. A walk that stops at a job commits what it had applied, pushes nothing, and
+says so. (3) MESSAGES in a walk of more than one job: `--commit` gives each job's commit the
+operator's line followed by ` (job <k> of <n>)`; `--commit-auto` takes each job's title first,
+then the mission's goal, then the fixed sentence, under D3 (4)'s rule; `--commit-with-history`
+merges each job's branch in turn. (4) ONE PUSH. The apply step never passes `--push` to
+`apply_job`; after the walk's last job `do` asks the upstream and contract refusals again and
+pushes the last landed commit once, never forced, through the same push function `job apply`
+uses. A refused or failed push leaves every commit where it landed and exits 1. (5) THE KEY.
+`apply.push_after_mission`, read with the repository's configuration, makes a `do` run with a
+commit flag push exactly as `--push` would; with the key set and no commit flag, `do` commits and
+pushes nothing and prints one sentence saying so on stderr, so `--json` stays clean. (6) RED, for
+`do` and for `job apply` alike, amending D3 (5): a push is refused while any blocking criterion of
+the mission is `unmet` — the spec's "red"; a blocking criterion still `open`, which no gate has
+evaluated yet, does not hold the push but is named in the push's output and record as not yet
+evaluated. For a single-job `do` and for `job apply`, a red contract refuses before anything is
+applied; in a chained walk, where the contract is final only after the last job, the commits land
+and the push is refused. (7) `do --json` gains `landed` (each landed commit with its job) and
+`push` (remote, ref, pushed, error, and the open blocking criteria named). `docs/guides/do-run-v1.md`
+states the flags, that Remedy never commits on the operator's branch by itself, and the new keys.
+ALTERNATIVES: keeping D3 (5)'s `open`-blocks rule, rejected because by F269 D6 it refuses every
+real `do --push` and so turns the feature's push acceptance into a fixture-only property; one
+job per `do` under a commit flag, rejected because F268 D12 hands the chaining to exactly this
+flag family and a mission-level push over one of several jobs would publish a partial mission;
+pushing per job, rejected by the feature file. REVERSE: restore the four flags to
+`_DO_FLAGS_NOT_YET_AVAILABLE` with its refusal, remove the chaining and the mission push, restore
+D3 (5)'s `open`-blocks rule, and delete this paragraph.
