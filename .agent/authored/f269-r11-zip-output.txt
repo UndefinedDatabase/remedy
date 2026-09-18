@@ -1,0 +1,33 @@
+F269 Round 11 Review Zip Build Output (closure round A)
+
+Attempts: one zip build, READY_FOR_REVIEW on the first attempt.
+
+Command: bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f269_evidence_round11
+Built from a clean tree at the accepted HEAD 2a7f22c443350195a08b366abd17a5c3b3a4d1f3.
+
+Script output (final lines):
+  REVIEW_PACKAGE_CREATED=true
+  PACKAGE_STATUS=READY_FOR_REVIEW
+  REVIEW_SUBJECT_ALIGNMENT=PASS
+  EVIDENCE_AUTHORITATIVE=true
+  REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips
+  ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20260918-190009-READY_FOR_REVIEW.zip
+
+Package Details:
+- Filename: remedy-review-20260918-190009-READY_FOR_REVIEW.zip
+- SHA-256: bf0a454507933ee7848b83825eb599b07fb4eed0d44de84270d03acd91149172
+- Package status: READY_FOR_REVIEW
+- Package path: NOT ARCHIVED (left where the script built it, /home/decodeux/Repos/remedy-history/zips)
+- Member count: 4514
+- Authoritative count: 77
+- Manifest sha256: c5bd911d1f384a43846128666e1a4e2f81fe519ee2741027d0ff5f4bc3b6814e
+
+Read out of the package (.review_zip_manifest.json, committed_review_subject):
+- head_commit: 2a7f22c443350195a08b366abd17a5c3b3a4d1f3 (equals C4)
+- base_commit: 0955dd4c22b8533823aae05a8ec8b98fac88aafd
+
+Evidence Validation:
+- is_valid_current_run: True
+- validation_errors: []
+
+Evidence directory: .remedy-wt/f269_evidence_round11 (not committed)
