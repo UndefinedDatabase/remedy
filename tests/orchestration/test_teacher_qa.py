@@ -19,6 +19,7 @@ from packages.orchestration.teacher_qa import (
     SOURCE_CODE,
     SOURCE_CONCEPT,
     SOURCE_LEDGER,
+    SOURCE_STUDY,
     build_teacher_context,
     claim_set,
     no_model_refusal,
@@ -70,6 +71,25 @@ class TestGroundingSourcesAreLabelled:
         assert f"[{SOURCE_CONCEPT}]" in prompt
         assert f"[{SOURCE_LEDGER}]" not in prompt
         assert f"[{SOURCE_CODE}]" not in prompt
+
+    def test_study_cards_are_included_in_facts(self):
+        ctx = build_teacher_context("?", study_cards=("study:structure: some narrative",))
+        study_facts = [f for f in ctx.facts if f.source == SOURCE_STUDY]
+        assert len(study_facts) == 1
+        assert study_facts[0].text == "study:structure: some narrative"
+
+    def test_no_study_facts_when_study_cards_empty(self):
+        ctx = build_teacher_context("?", study_cards=())
+        assert not [f for f in ctx.facts if f.source == SOURCE_STUDY]
+
+    def test_the_study_block_appears_in_the_prompt(self):
+        prompt = render_prompt(build_teacher_context("?", study_cards=("study:structure: a test narrative",)))
+        assert f"[{SOURCE_STUDY}]" in prompt
+        assert "a test narrative" in prompt
+
+    def test_grounding_sources_has_four_entries_in_order(self):
+        assert len(GROUNDING_SOURCES) == 4
+        assert GROUNDING_SOURCES == (SOURCE_LEDGER, SOURCE_CODE, SOURCE_STUDY, SOURCE_CONCEPT)
 
 
 class TestTheLevelDialChangesDepthNotFacts:

@@ -33,20 +33,22 @@ from typing import Any
 
 from packages.orchestration.teacher_narration import narrate_run_events
 
-#: The three grounding sources, in the order
+#: The four grounding sources, in the order
 #: docs/agents/teacher_conventions.md lists them: what is happening, what this
-#: code does, and what a term means.
+#: code does, what the repository comprehension cards found, and what a term means.
 SOURCE_LEDGER = "ledger"
 SOURCE_CODE = "code"
+SOURCE_STUDY = "study"
 SOURCE_CONCEPT = "concept"
 
-GROUNDING_SOURCES: tuple[str, ...] = (SOURCE_LEDGER, SOURCE_CODE, SOURCE_CONCEPT)
+GROUNDING_SOURCES: tuple[str, ...] = (SOURCE_LEDGER, SOURCE_CODE, SOURCE_STUDY, SOURCE_CONCEPT)
 
 #: The honesty rule each source carries, quoted into the prompt beside its facts
 #: so the model is told the rule at the point it would break it.
 SOURCE_HONESTY: dict[str, str] = {
     SOURCE_LEDGER: "Assert only what these events show; where they are silent, say unknown.",
     SOURCE_CODE: "Explain only the code shown; never invent a call site, a flag or a file.",
+    SOURCE_STUDY: "Assert only what these repository-comprehension cards show; where they are silent, say unknown.",
     SOURCE_CONCEPT: "General knowledge, explicitly not a claim about this project's state.",
 }
 
@@ -87,15 +89,18 @@ def build_teacher_context(
     events: Sequence[Mapping[str, Any]] = (),
     code: str | None = None,
     code_path: str | None = None,
+    study_cards: Sequence[str] = (),
     level: str = DEFAULT_LEVEL,
 ) -> TeacherContext:
     """Assemble the small context for one question.
 
     Ledger facts are the Stage 1 narration of ``events``, reused rather than
     re-derived. A code fact exists only when code was actually supplied, because
-    a fact about code nobody read is the invention this role must refuse. An
-    unrecognised ``level`` falls back to :data:`DEFAULT_LEVEL` rather than
-    raising: a teacher that could fail a run would not be passive.
+    a fact about code nobody read is the invention this role must refuse. Study
+    facts are repository-comprehension cards from ``study run`` and exist only
+    when a non-empty sequence was supplied. An unrecognised ``level`` falls back
+    to :data:`DEFAULT_LEVEL` rather than raising: a teacher that could fail a run
+    would not be passive.
     """
     if level not in LEVEL_DEPTH:
         level = DEFAULT_LEVEL
@@ -106,6 +111,8 @@ def build_teacher_context(
     if code is not None and code.strip():
         where = code_path or "the supplied code"
         facts.append(GroundedFact(SOURCE_CODE, f"{where}:\n{code}"))
+    if study_cards:
+        facts.extend(GroundedFact(SOURCE_STUDY, text) for text in study_cards)
 
     return TeacherContext(question=question, level=level, facts=tuple(facts))
 
