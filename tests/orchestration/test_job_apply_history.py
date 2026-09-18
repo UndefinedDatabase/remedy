@@ -295,6 +295,60 @@ class TestRefusals:
         assert '"no merges on fridays"' in sentence and "aborted" in sentence
         assert _git(repo, "log", "--format=%s").splitlines() == ["init"]
 
+    def test_h14_a_tip_at_the_recorded_head_whose_tree_is_not_the_reviewed_diff_is_refused(
+        self, repo, monkeypatch,
+    ):
+        """R-0975: the tip matches the recorded head, so only the diff hash can see it."""
+        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+
+        job = _completed(repo, monkeypatch)
+        # A commit on the reviewed tip whose tree is the job's initial tree, recorded as the head.
+        other = _git(repo, "commit-tree", job.job_initial_tree, "-p", job.worktree_head,
+                     "-m", "not the reviewed work").strip()
+        _git(repo, "update-ref", f"refs/heads/{job.worktree_branch}", other)
+        stored = load_job_plan(job.job_id)
+        stored.worktree_head = other
+        save_job_plan(stored)
+        job = load_job_plan(job.job_id)
+        assert _git(repo, "rev-parse", job.worktree_branch).strip() == job.worktree_head
+        before = _state(repo)
+        sentence = _refused(_apply_with_history(repo, job), before, repo)
+        assert "does not hold the changes of the job's reviewed result.diff" in sentence
+        assert _git(repo, "rev-parse", job.worktree_branch).strip() == other
+
+    def test_h15_the_operators_own_conflicted_merge_is_refused_and_left_untouched(
+        self, repo, monkeypatch,
+    ):
+        """R-0975: Remedy's abort must never cancel a merge the operator started."""
+        job = _completed(repo, monkeypatch)
+        branch = _git(repo, "symbolic-ref", "--short", "HEAD").strip()
+        _git(repo, "checkout", "-q", "-b", "side")
+        _operator_commit(repo, "base.txt", "side\n", "Edit base on the side")
+        _git(repo, "checkout", "-q", branch)
+        _operator_commit(repo, "base.txt", "main\n", "Edit base on the branch")
+        merge = subprocess.run(["git", "merge", "side"], cwd=str(repo),
+                               capture_output=True, text=True, timeout=60)
+        assert merge.returncode != 0 and (repo / ".git" / "MERGE_HEAD").exists()
+        merge_head = (repo / ".git" / "MERGE_HEAD").read_bytes()
+        conflicted = (repo / "base.txt").read_bytes()
+        before = _state(repo)
+        sentence = _refused(_apply_with_history(repo, job), before, repo)
+        assert "in the middle of a merge of its own" in sentence
+        assert (repo / ".git" / "MERGE_HEAD").read_bytes() == merge_head
+        assert (repo / "base.txt").read_bytes() == conflicted
+        assert _git(repo, "diff", "--name-only", "--diff-filter=U").split() == ["base.txt"]
+
+    def test_h16_a_subdirectory_of_a_repository_is_refused(self, repo, monkeypatch):
+        """R-0975: a merge from a subdirectory would land on the whole repository."""
+        job = _completed(repo, monkeypatch)
+        (repo / "sub").mkdir()
+        before = _state(repo)
+        result = apply_job(job.job_id, str(repo / "sub"), approve=True,
+                           commit_with_history=True)
+        sentence = _refused(result, before, repo)
+        assert "not the top level of a git repository" in sentence
+        assert not (repo / "sub" / "one.txt").exists() and not (repo / "one.txt").exists()
+
 
 class _OneFileBuilder:
     def __init__(self, holder: dict, rel: str):

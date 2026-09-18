@@ -1925,7 +1925,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--dry-run", "Preview only, no target mutation", required=False, is_option=True, default="false"),
             ArgDef("--test-command", "Post-apply test command", required=False, is_option=True, default=""),
             ArgDef("--skip-blocked", "Apply the non-blocked files and deliberately leave the protected ones not applied (they are named, never written)", required=False, is_option=True, is_flag=True),
-            ArgDef("--commit-with-history", "Merge the job's per-task commits onto your current branch with git merge --no-ff instead of copying files, as you and under your hooks; needs --approve (without it, preview only) and refuses a dirty tree, a detached HEAD, a staging job and a conflict, changing nothing", required=False, is_option=True, is_flag=True),
+            ArgDef("--commit-with-history", "Merge the job's commits, one per applied task step, onto your current branch with git merge --no-ff instead of copying files, as you and under your hooks; needs --approve (without it, preview only) and refuses a dirty tree, a detached HEAD, a staging job and a conflict, changing nothing", required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
         may_mutate_repo=True,
