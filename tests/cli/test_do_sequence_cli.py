@@ -658,6 +658,53 @@ def test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job(
     assert f"Error: apply failed: job {job_id} was not applied" in captured.err
 
 
+# ── R-0807's F268 half: measured tokens per role and cost (DECISION F268 D11) ──
+
+
+def test_the_json_cost_has_a_row_per_role_with_the_ledgers_own_numbers(repo, capsys):
+    from packages.orchestration.project_registry import resolve_project
+    from packages.orchestration.token_ledger import query_cost
+
+    data = _do_json(capsys)
+
+    [job_id] = data["job_ids"]
+    report = query_cost(project_id=str(resolve_project(repo).id), job_id=job_id, by="role")
+    assert report.ledger_exists and report.rows, "the run step mirrored nothing into the ledger"
+    assert data["cost"]["roles"] == [
+        {"role": row.bucket, "calls": row.calls, "tokens_in": row.tokens_in,
+         "tokens_out": row.tokens_out, "cache_read": row.cache_read, "cost_usd": row.cost_usd}
+        for row in sorted(report.rows, key=lambda r: str(r.bucket))]
+    assert data["cost"]["cost_usd"] == report.total.cost_usd
+    assert (data["cost"]["job_ids"], data["cost"]["mirror_failed_job_ids"]) == ([job_id], [])
+
+    out = _do(capsys, order="Write a CHANGELOG.md")
+    assert re.search(r"^Tokens builder: input .+, output .+, cache read .+ \(\d+ call\(s\)\)$",
+                     out, re.MULTILINE)
+    assert re.search(r"^Cost: ", out, re.MULTILINE)
+
+
+def test_a_job_whose_cost_mirror_failed_is_named_not_counted_as_zero(
+        repo, capsys, monkeypatch):
+    def mirror_fails(job_id):
+        return {"ledger_mirrored": False, "out_dir": "", "error": "OSError: disk full"}
+
+    monkeypatch.setattr("packages.orchestration.job_evidence.mirror_job_run_into_ledger",
+                        mirror_fails)
+
+    data = _do_json(capsys)
+
+    [job_id] = data["job_ids"]
+    assert data["cost"]["mirror_failed_job_ids"] == [job_id]
+    assert data["cost"]["mirror_errors"] == {job_id: "OSError: disk full"}
+    assert (data["cost"]["roles"], data["cost"]["cost_usd"], data["cost"]["job_ids"]) == (
+        [], None, [])
+
+    out = _do(capsys, order="Write a CHANGELOG.md")
+    [second] = re.findall(r"one job ([0-9a-f]{16}) linked", out)
+    assert f"Cost NOT recorded to the ledger for job {second}: OSError: disk full" in out
+    assert "Cost: not reported by the provider" in out
+
+
 NOT_YET_AVAILABLE = [
     (("--contract", "strict"), "F269"),
     (("--commit", "Add the contributing guide"), "F270"),

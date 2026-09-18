@@ -27,6 +27,10 @@ see its predecessor's output. `do` names the waiting jobs, and for each prints
 the `remedy job run` command to use once its predecessor's applied output is
 committed. Chaining them inside one `do` needs F270's `--commit` family.
 
+DECISION F268 D11: run mirrors each job it ran into the F103 ledger, as `job run`
+does, and `do_cost_summary` reads the measured tokens per role and cost back
+through `token_ledger.query_cost`.
+
 DECISION F268 D8: `--step-by-step` halts after every step that did work and,
 inside run, before each job — points where no provider call is in flight — and
 reads one line through the context's `read_line`; `q` or end of input stops the
@@ -118,6 +122,8 @@ class DoContext:
     #: The jobs of a multi-job walk the run step did not run: each waits for its
     #: predecessor's applied output to be committed (DECISION F268 D12).
     waiting_job_ids: list[str] = field(default_factory=list)
+    #: Each job the run step ran → `mirror_job_run_into_ledger`'s answer for it (DECISION F268 D11).
+    cost_mirrors: dict[str, dict[str, Any]] = field(default_factory=dict)
     results: list[DoStepResult] = field(default_factory=list)
     next_lines: list[str] = field(default_factory=list)
 
@@ -796,6 +802,10 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
 
         done = run_job(job_id, builder_name=ctx.builder_provider,
                        reviewer_name=ctx.reviewer_provider)
+        # DECISION F268 D11: the job's cost reaches the F103 ledger exactly as
+        # `job run` sends it there; never fatal, a failure is named in the summary.
+        from packages.orchestration.job_evidence import mirror_job_run_into_ledger
+        ctx.cost_mirrors[job_id] = mirror_job_run_into_ledger(job_id)
         ctx.next_lines.append(f"remedy job show {job_id}")
         if done.state != JOB_COMPLETED:
             reason = f": {done.error}" if done.error else ""
@@ -954,6 +964,77 @@ def _step_apply(ctx: DoContext) -> tuple[str, str]:
         applied.append(f"job {job_id} applied {len(result.files_applied)} file(s)")
     ctx.next_lines.extend(do_waiting_job_next_lines(ctx))
     return DO_STEP_DONE, f"{'; '.join(applied)} to {ctx.repo_root}"
+
+
+# ---------------------------------------------------------------------------
+# The measured cost of the walk, read from the F103 ledger (DECISION F268 D11).
+# ---------------------------------------------------------------------------
+
+
+def _add_measured(total: float | int | None, value: float | int | None) -> float | int | None:
+    """Sum two ledger figures as the ledger's own SUM does: None only when both are None."""
+    if value is None:
+        return total
+    return value if total is None else total + value
+
+
+def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:
+    """The walk's measured tokens per role and cost, or None when no job ran.
+
+    Read through `token_ledger.query_cost(..., job_id=<id>, by="role")` for each
+    job the run step mirrored, and summed over them; a figure no call reported
+    stays None, never 0. A job whose mirror failed is named in
+    `mirror_failed_job_ids`, with its error, and contributes nothing.
+    """
+    if not ctx.cost_mirrors:
+        return None
+    from packages.orchestration.token_ledger import query_cost
+
+    failed = {job_id: str(mirror.get("error") or "")
+              for job_id, mirror in ctx.cost_mirrors.items()
+              if not mirror.get("ledger_mirrored")}
+    roles: dict[str | None, dict[str, Any]] = {}
+    for job_id in ctx.cost_mirrors:
+        if job_id in failed:
+            continue
+        report = query_cost(project_id=str(ctx.project.id), job_id=job_id, by="role")
+        for row in report.rows:
+            role = roles.setdefault(row.bucket, {
+                "role": row.bucket, "calls": 0, "tokens_in": None, "tokens_out": None,
+                "cache_read": None, "cost_usd": None})
+            role["calls"] += row.calls
+            for key in ("tokens_in", "tokens_out", "cache_read", "cost_usd"):
+                role[key] = _add_measured(role[key], getattr(row, key))
+    cost_usd = None
+    for role in roles.values():
+        cost_usd = _add_measured(cost_usd, role["cost_usd"])
+    return {
+        "roles": sorted(roles.values(), key=lambda r: str(r["role"])),
+        "cost_usd": cost_usd,
+        "job_ids": [job_id for job_id in ctx.cost_mirrors if job_id not in failed],
+        "mirror_failed_job_ids": list(failed),
+        "mirror_errors": failed,
+    }
+
+
+def _measured(value: float | int | None) -> str:
+    return "not reported" if value is None else f"{value}"
+
+
+def do_cost_summary_lines(summary: dict[str, Any] | None) -> list[str]:
+    """The text lines of `do_cost_summary`: one per role, one for the cost, one per failed mirror."""
+    if summary is None:
+        return []
+    lines = [f"Tokens {role['role'] or '(role not named)'}: input {_measured(role['tokens_in'])}, "
+             f"output {_measured(role['tokens_out'])}, "
+             f"cache read {_measured(role['cache_read'])} ({role['calls']} call(s))"
+             for role in summary["roles"]]
+    cost = summary["cost_usd"]
+    lines.append("Cost: not reported by the provider" if cost is None
+                 else f"Cost: ${cost:.6f} (measured, from the ledger)")
+    lines.extend(f"Cost NOT recorded to the ledger for job {job_id}: {error}"
+                 for job_id, error in summary["mirror_errors"].items())
+    return lines
 
 
 #: The step table. `walk_do_sequence` reaches a step only through this mapping.

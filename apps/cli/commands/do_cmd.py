@@ -173,7 +173,9 @@ def _cmd_do_order(
     lands (DECISION F268 D1), `shape` / `shape_source`, `mission_plan_path`
     and `jobs`, every job's tasks with their deliverables. In a walk of two or
     more jobs only the first runs and `waiting_job_ids` names the rest
-    (DECISION F268 D12).
+    (DECISION F268 D12). Every job run is mirrored into the F103 ledger, and
+    `do` ends with the measured tokens per role and cost read back from it,
+    under `cost` in `--json` (DECISION F268 D11).
     """
     if not order or not order.strip():
         print("Error: order must not be empty.", file=sys.stderr)
@@ -187,6 +189,8 @@ def _cmd_do_order(
 
     from packages.orchestration.do_sequence import (
         DoContext,
+        do_cost_summary,
+        do_cost_summary_lines,
         do_job_task_listing,
         launch_do_cockpit,
         walk_do_sequence,
@@ -210,6 +214,8 @@ def _cmd_do_order(
         ui_launcher=launch_do_cockpit,
     ))
     jobs = do_job_task_listing(ctx)
+    # DECISION F268 D11: measured tokens per role and cost, read from the ledger.
+    cost = do_cost_summary(ctx)
 
     if json_output:
         print(json.dumps({
@@ -223,6 +229,7 @@ def _cmd_do_order(
             "mission_plan_path": ctx.mission_plan_path or None,
             "jobs": jobs,
             "steps": [r.to_json() for r in ctx.results],
+            "cost": cost,
             "next": list(ctx.next_lines),
         }, indent=2))
     else:
@@ -233,6 +240,8 @@ def _cmd_do_order(
                     for number, task in enumerate(job["tasks"], start=1):
                         print(f"  job {job['job_id']} task {number}: {task['title']}"
                               f" — deliverable: {task['deliverable'] or '(none)'}")
+        for line in do_cost_summary_lines(cost):
+            print(line)
         for line in ctx.next_lines:
             print(f"Next: {line}")
     if ctx.failed:

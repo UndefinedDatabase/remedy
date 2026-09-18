@@ -172,6 +172,50 @@ def mirror_job_run_into_ledger(job_id: str) -> dict[str, Any]:
     }
 
 
+#: What `builder_context` in `context_strategy.json` can and cannot say, written beside it.
+_BUILDER_CONTEXT_NOTE = (
+    "One entry per task and round. builder_tokens_used is what the builder call of "
+    "that round reported. The runner records the builder's input and cache-read "
+    "tokens per task run, not per round, so task_builder_input_tokens and "
+    "task_builder_cache_read_tokens are that task run's builder totals, repeated on "
+    "each of its rounds, and null where the provider reported none."
+)
+
+
+def _builder_context_by_round(job: Any) -> list[dict[str, Any]]:
+    """The builder's reported context size for each task and round of *job* (DECISION F268 D11).
+
+    Read from each task's own run record — the record `_write_task_run_evidence`
+    exports — and nothing else: the round's `builder.tokens_used`, and the task
+    run's builder totals the runner aggregated into
+    `token_accounting.usage_actuals.by_role.builder`, which stay None when no
+    builder call reported usage (the fake provider reports none). A task that
+    never ran has no entry.
+    """
+    from packages.orchestration.pingpong_loop import load_run
+
+    entries: list[dict[str, Any]] = []
+    for task in job.tasks:
+        run_data = load_run(task.run_id) if task.run_id else None
+        if not run_data:
+            continue
+        accounting = run_data.get("token_accounting") or {}
+        builder = ((accounting.get("usage_actuals") or {}).get("by_role") or {}).get(
+            "builder") or {}
+        measured = bool(builder.get("actual_call_count"))
+        for round_data in run_data.get("rounds") or []:
+            entries.append({
+                "task_id": task.task_id,
+                "run_id": task.run_id,
+                "round": round_data.get("round"),
+                "kind": round_data.get("kind"),
+                "builder_tokens_used": (round_data.get("builder") or {}).get("tokens_used"),
+                "task_builder_input_tokens": builder.get("input_tokens") if measured else None,
+                "task_builder_cache_read_tokens": builder.get("cache_read") if measured else None,
+            })
+    return entries
+
+
 def export_job_evidence(
     job_id: str,
     out_dir: str,
@@ -236,6 +280,9 @@ def export_job_evidence(
     }
     if job.execution_config:
         cs["strategy"] = job.execution_config.context_strategy
+    # DECISION F268 D11 / R-0807: the context size sent to the builder, per task and round.
+    cs["builder_context_note"] = _BUILDER_CONTEXT_NOTE
+    cs["builder_context"] = _builder_context_by_round(job)
     _write_json("context_strategy.json", cs)
 
     tg = _export_target_guard(job.target_guard)
