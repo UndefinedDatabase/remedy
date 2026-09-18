@@ -1023,7 +1023,7 @@ def _build_job_agent_run_trace(job: Any, out_path: Path, final_status: str | Non
     """Reconstruct the job's agent run trace from its run records and the exported task runs.
 
     The heir of the reconstruction `do job-flow` did (deleted in `70c78773`): the same events,
-    built with `agent_run_trace.create_trace_event`, but without the promote dry-run that
+    built with `agent_run_trace.create_trace_event`, but without the dry-run apply that
     command ran and no export performs. Providers are the ones the job's execution config
     recorded; a task's F004 stream events come from its exported `task_runs/<id>/streams/`.
     """
