@@ -39,51 +39,48 @@ def _make_job(*, tasks=None, name="test", metadata=None):
 # Step 155 — Fixture Builder Mode CLI Closure
 # =========================================================================
 
-class TestFixtureBuilderCliParsing:
-    """--fixture-builder must accept bare, repair-loop, =repair-loop forms."""
+class TestDoProviderCliParsing:
+    """F268 (R-0933): `--fixture-builder` is deleted from `do`; the builder and reviewer
+    of the run `do "<order>"` starts are chosen by `--builder-provider` / `--reviewer-provider`."""
 
-    def test_parser_bare_fixture_builder(self):
+    def test_parser_refuses_the_deleted_fixture_builder(self):
+        from apps.cli.grouped import build_parser
+        with pytest.raises(SystemExit) as exc:
+            build_parser().parse_args(
+                ["do", "run", "goal", "--fixture-builder", "repair-loop", "--no-ui", "--json"])
+        assert exc.value.code == 2
+
+    def test_parser_takes_both_provider_flags(self):
         from apps.cli.grouped import build_parser
         p = build_parser()
         args, unk = p.parse_known_args(
-            ["do", "run", "goal", "--fixture-builder", "--no-ui", "--json"])
-        assert args.fixture_builder == "true"
-        assert unk == []
-
-    def test_parser_fixture_builder_repair_loop(self):
-        from apps.cli.grouped import build_parser
-        p = build_parser()
-        args, unk = p.parse_known_args(
-            ["do", "run", "goal", "--fixture-builder", "repair-loop", "--no-ui", "--json"])
-        assert args.fixture_builder == "repair-loop"
-        assert unk == []
-
-    def test_parser_fixture_builder_equals(self):
-        from apps.cli.grouped import build_parser
-        p = build_parser()
-        args, unk = p.parse_known_args(
-            ["do", "run", "goal", "--fixture-builder=repair-loop", "--no-ui", "--json"])
-        assert args.fixture_builder == "repair-loop"
+            ["do", "run", "goal", "--builder-provider", "fake",
+             "--reviewer-provider=claude-cli", "--no-ui", "--json"])
+        assert (args.builder_provider, args.reviewer_provider) == ("fake", "claude-cli")
         assert unk == []
 
     def test_default_command_rewrite(self):
-        """remedy do '<goal>' rewrites to do run '<goal>'."""
+        """remedy do '<goal>' rewrites to do run '<goal>' and stays on the bare sequence route."""
         from apps.cli.grouped import main
         with patch("apps.cli.commands.do_cmd._cmd_do") as mock_do:
-            main(["do", "Make tests pass", "--fixture-builder", "repair-loop",
-                  "--no-ui", "--json"])
+            main(["do", "Make tests pass", "--builder-provider", "fake",
+                  "--reviewer-provider=fake", "--no-ui", "--json"])
         assert mock_do.called
         kwargs = mock_do.call_args[1]
-        assert kwargs["fixture_builder"] == "repair-loop"
+        assert kwargs["builder_provider"] == "fake"
+        assert kwargs["reviewer_provider"] == "fake"
+        assert kwargs["no_ui"] is True
+        assert kwargs["truly_bare"] is True
 
-    def test_invalid_fixture_mode_fails(self):
-        """Invalid fixture mode should fail cleanly."""
-        from apps.cli.commands.do_cmd import _parse_fixture_builder
-        assert _parse_fixture_builder("true") is True
-        assert _parse_fixture_builder("repair-loop") == "repair-loop"
-        assert _parse_fixture_builder("false") is False
-        with pytest.raises(SystemExit):
-            _parse_fixture_builder("bogus-mode")
+    def test_invalid_provider_fails(self):
+        """A provider outside the four `create_provider` builds exits 2."""
+        from apps.cli.commands.do_cmd import _validate_role_override
+        for name in ("fake", "claude", "claude-cli", "ollama", None):
+            _validate_role_override("builder", "provider", name)
+        for bad in ("fixture", "none", "bogus-mode"):
+            with pytest.raises(SystemExit) as exc:
+                _validate_role_override("reviewer", "provider", bad)
+            assert exc.value.code == 2
 
     def test_main_py_under_120_lines(self):
         main_py = _ROOT / "apps" / "cli" / "main.py"

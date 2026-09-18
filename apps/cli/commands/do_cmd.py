@@ -18,21 +18,6 @@ if TYPE_CHECKING:
     import argparse
 
 
-_VALID_PROVIDERS = frozenset({"none", "fixture", "ollama"})
-
-
-def _parse_builder_provider(val: object) -> str:
-    s = str(val).lower().strip()
-    if s in _VALID_PROVIDERS:
-        return s
-    print(
-        f"Error: invalid --builder-provider: {val!r}. "
-        f"Allowed: none, fixture, ollama.",
-        file=sys.stderr,
-    )
-    sys.exit(2)
-
-
 _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
 
 
@@ -133,80 +118,59 @@ def _resolve_cli_role_configs(
     return resolved
 
 
-_MISSION_DISPLAY_MAX = 120
-
-
-def _cmd_do_mission(
-    mission: str,
+def _cmd_do_order(
+    order: str,
     *,
     repo: str = ".",
     json_output: bool = False,
     no_llm: bool = False,
     yes: bool = False,
+    builder_provider: str | None = None,
+    reviewer_provider: str | None = None,
+    no_ui: bool = False,
 ) -> None:
-    """Golden-path: mission string → planned job (F147 T001)."""
-    if not mission or not mission.strip():
-        print("Error: mission must not be empty.", file=sys.stderr)
+    """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
+
+    init, study, plan, shape, run, ui and apply, in that order, through
+    `packages.orchestration.do_sequence`; T001 always stops before apply.
+    `--json` carries `contract: null` until F269 lands (DECISION F268 D1).
+    """
+    if not order or not order.strip():
+        print("Error: order must not be empty.", file=sys.stderr)
         sys.exit(2)
+    _validate_role_override("builder", "provider", builder_provider)
+    _validate_role_override("reviewer", "provider", reviewer_provider)
 
-    from packages.orchestration.project_registry import resolve_project
-    project = resolve_project(repo)
-    if project is None:
-        print(
-            "No project registered for this repo. Run: remedy init",
-            file=sys.stderr,
-        )
-        sys.exit(3)
+    from packages.orchestration.do_sequence import DoContext, walk_do_sequence
 
-    from packages.orchestration.do_sequence import OrderJobPlanError, plan_order_job
-
-    try:
-        shaped = plan_order_job(mission, project=project, repo_path=repo,
-                                no_llm=no_llm, yes=yes)
-    except OrderJobPlanError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-    job = shaped.job
-    intake_result = shaped.intake_result
-    intake_fallback_reason = shaped.intake_fallback_reason
-    plan_label = shaped.plan_label
-
-    short_id = str(job.job_id)[:8]
-    display_mission = mission if len(mission) <= _MISSION_DISPLAY_MAX else mission[:_MISSION_DISPLAY_MAX] + "…"
+    ctx = walk_do_sequence(DoContext(
+        order=order,
+        repo=repo,
+        builder_provider=builder_provider,
+        reviewer_provider=reviewer_provider,
+        no_ui=no_ui,
+        yes=yes,
+        no_llm=no_llm,
+    ))
 
     if json_output:
-        import json as _json
-        print(_json.dumps({
-            "job_id": str(job.job_id),
-            "short_id": short_id,
-            "project_slug": project.slug,
-            "state": job.state.value,
-            "mission": mission,
-            "intake": {
-                "source": intake_result.source,
-                "goal": intake_result.value.goal,
-                "fallback_reason": intake_fallback_reason,
-            },
-            "tasks": [
-                {"task_id": str(t.task_id), "description": t.title}
-                for t in job.tasks
-            ],
-            "plan_label": plan_label,
-            "next_command": "remedy status",
+        print(json.dumps({
+            "mission_id": ctx.mission_id or None,
+            "job_ids": list(ctx.job_ids),
+            "contract": None,
+            "stopped_before_apply": ctx.stopped_before_apply,
+            "steps": [r.to_json() for r in ctx.results],
+            "next": list(ctx.next_lines),
         }, indent=2))
-        return
-
-    print(f"Job: {short_id}")
-    print(f"Project: {project.slug}")
-    print(f"Mission: {display_mission}")
-    print(f"State: {job.state.value}")
-    print(shaped.intake_label)
-    print("Tasks:")
-    for t in job.tasks:
-        task_type = t.inputs.get("task_type", "")
-        print(f"  - {task_type}: {t.title}")
-    print(f"plan: {plan_label}")
-    print("Next: remedy status")
+    else:
+        for result in ctx.results:
+            print(f"[{result.status}] {result.name}: {result.detail}")
+        for line in ctx.next_lines:
+            print(f"Next: {line}")
+    if ctx.failed:
+        print(f"Error: {ctx.results[-1].name} failed: {ctx.results[-1].detail}",
+              file=sys.stderr)
+        sys.exit(1)
 
 
 def _cmd_do(
@@ -219,8 +183,9 @@ def _cmd_do(
     enable_ui: bool = False,
     dry_run: bool = False,
     json_output: bool = False,
-    fixture_builder: bool | str = False,
-    builder_provider: str = "none",
+    builder_provider: str | None = None,
+    reviewer_provider: str | None = None,
+    no_ui: bool = False,
     max_total_tokens: str | None = None,
     max_provider_calls: str | None = None,
     max_wall_clock_minutes: str | None = None,
@@ -231,15 +196,19 @@ def _cmd_do(
     no_llm: bool = False,
     yes: bool = False,
 ) -> None:
-    # --- Bare-mission golden path (F147) ---
+    # --- The F268 sequence: `remedy do "<order>"` ---
     # Fires ONLY when grouped.py determined the invocation is truly bare:
-    # `run` was injected AND no flag tokens besides --json/--repo/--no-llm/--yes
-    # appeared in the raw argv. This catches `do "x" --autonomy-level 1`
+    # `run` was injected AND no flag tokens besides the ones `_BARE_ALLOWED`
+    # names appeared in the raw argv. This catches `do "x" --autonomy-level 1`
     # (explicit flag at default value) which value-equality checks cannot
     # distinguish.
-    if truly_bare and goal:
-        _cmd_do_mission(goal, repo=repo, json_output=json_output, no_llm=no_llm, yes=yes)
+    if truly_bare:
+        _cmd_do_order(goal, repo=repo, json_output=json_output, no_llm=no_llm,
+                      yes=yes, builder_provider=builder_provider,
+                      reviewer_provider=reviewer_provider, no_ui=no_ui)
         return
+    _validate_role_override("builder", "provider", builder_provider)
+    _validate_role_override("reviewer", "provider", reviewer_provider)
 
     # --- Budget resolution (always runs — catches config-only budgets) ---
     from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
@@ -477,30 +446,6 @@ def _print_text_report(run_id: str, data: dict) -> None:
             print(f"  Estimated saved: ~{savings} tokens (~{pct}%)")
         if ta.get("token_note"):
             print(f"  Note: {ta['token_note']}")
-
-
-_VALID_FIXTURE_MODES = frozenset({"true", "false", "repair-loop"})
-
-
-def _parse_fixture_builder(val: object) -> bool | str:
-    """Parse --fixture-builder value: true/false/repair-loop.
-
-    Fails with SystemExit(2) on unknown modes.
-    """
-    s = str(val).lower().strip()
-    if s in ("true", "1", "yes"):
-        return True
-    if s == "repair-loop":
-        return "repair-loop"
-    if s in ("false", "0", "no"):
-        return False
-    import sys
-    print(
-        f"Error: invalid --fixture-builder mode: {val!r}. "
-        f"Allowed: true, false, repair-loop.",
-        file=sys.stderr,
-    )
-    sys.exit(2)
 
 
 def _cmd_job_run(
@@ -776,8 +721,9 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         ),
         dry_run=getattr(args, "dry_run", False),
         json_output=getattr(args, "json", False),
-        fixture_builder=_parse_fixture_builder(getattr(args, "fixture_builder", "false")),
-        builder_provider=_parse_builder_provider(getattr(args, "builder_provider", "none")),
+        builder_provider=getattr(args, "builder_provider", None),
+        reviewer_provider=getattr(args, "reviewer_provider", None),
+        no_ui=bool(getattr(args, "no_ui", False)),
         max_total_tokens=getattr(args, "max_total_tokens", None),
         max_provider_calls=getattr(args, "max_provider_calls", None),
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),

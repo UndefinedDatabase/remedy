@@ -449,42 +449,62 @@ class TestApprovalOptIn:
         assert len(_missions_on_disk(data_root)) == 2
 
 
-class TestPlainDoFlowCreatesNoMission:
-    """The negative proof the order requires: no opt-in, no command, no mission."""
+def _mission_records(data_root: Path) -> list[Path]:
+    """Only the mission RECORDS (`missions/<project>/<mission>.json`), not the plan's DoD files."""
+    return sorted((data_root / "missions").glob("*/*.json"))
 
-    def test_a_plain_do_run_leaves_no_mission_behind(self, repo_project):
+
+def _do_json(repo: Path, data_root: Path, order: str) -> dict:
+    """`remedy do "<order>"` on the fake providers, with no model call and no cockpit."""
+    out = _run_in(repo, ["do", order, "--no-llm", "--json", "--no-ui",
+                         "--builder-provider", "fake", "--reviewer-provider", "fake"],
+                  data_root).stdout
+    return json.loads(out)
+
+
+class TestDoCreatesOneMissionPerOrder:
+    """F268 DECISION D4 (after amendment amend0905-vocab D2): `do` creates the mission
+    record for EVERY order, and exactly one; the plan approval still creates none."""
+
+    def test_a_plain_do_creates_exactly_one_mission_carrying_the_order(self, repo_project):
         repo, data_root = repo_project
 
-        _run_in(repo, ["do", "Keep the importer working from now on",
-                       "--no-llm", "--json"], data_root)
+        data = _do_json(repo, data_root, "Keep the importer working from now on")
 
-        assert _missions_on_disk(data_root) == []
+        [record] = _mission_records(data_root)
+        mission = json.loads(record.read_text())
+        assert mission["id"] == data["mission_id"]
+        assert mission["order"]["text"] == "Keep the importer working from now on"
+        assert [link["job_id"] for link in mission["job_links"]] == data["job_ids"]
 
-    def test_not_even_when_the_goal_smells_long_lived(self, repo_project):
-        """The hint is recorded on the intake; it still creates nothing."""
+    def test_a_long_lived_goal_still_gets_only_the_one_mission(self, repo_project):
+        """The hint is recorded on the intake; it adds no second, opt-in mission."""
         repo, data_root = repo_project
 
-        out = _run_in(repo, ["do", "Maintain the CI pipeline continuously",
-                             "--no-llm", "--json"], data_root).stdout
-        job_id = json.loads(out)["job_id"]
+        data = _do_json(repo, data_root, "Maintain the CI pipeline continuously")
+        job_id = data["job_ids"][0]
         job = json.loads((data_root / "jobs" / job_id / "job.json").read_text())
 
         assert job["intake"]["mission_candidate"] is True
-        assert _missions_on_disk(data_root) == []
+        assert len(_mission_records(data_root)) == 1
 
-    def test_an_auto_approved_run_creates_no_mission(self, repo_project):
+    def test_an_auto_approved_plan_creates_no_mission(self, repo_project):
         """Unattended approval covers the plan, never the mission opt-in.
 
-        Driven through ``_cmd_do_mission(yes=True)`` because the auto-approval
-        path is the one an unattended caller takes; if any approval path could
-        create a mission on its own, this is where it would show.
+        Driven through ``do_sequence.plan_order_job(yes=True)`` — the shape
+        step's planning, moved there from ``_cmd_do_mission`` by F268 — because
+        the auto-approval path is the one an unattended caller takes; if any
+        approval path could create a mission on its own, this is where it would
+        show. The mission `do` creates comes from its plan step, not from here.
         """
         repo, data_root = repo_project
         script = (
             "import sys; sys.path.insert(0, '.');"
-            "from apps.cli.commands.do_cmd import _cmd_do_mission;"
-            f"_cmd_do_mission('Keep it green from now on', repo={str(repo)!r},"
-            "  json_output=True, no_llm=True, yes=True)"
+            "from packages.orchestration.do_sequence import plan_order_job;"
+            "from packages.orchestration.project_registry import resolve_project;"
+            f"plan_order_job('Keep it green from now on',"
+            f"  project=resolve_project({str(repo)!r}), repo_path={str(repo)!r},"
+            "  no_llm=True, yes=True)"
         )
         proc = subprocess.run(
             [sys.executable, "-c", script], cwd=str(REPO_ROOT),

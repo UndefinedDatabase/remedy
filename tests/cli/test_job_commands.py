@@ -341,13 +341,14 @@ class TestDoDirectGoalCommandRewrite:
                 "--repo", "/tmp/test",
                 "--autonomy-level", "4",
                 "--max-cycles", "2",
-                "--fixture-builder",
+                "--builder-provider", "fake",
                 "--no-ui",
                 "--json",
             ])
             mock_do.assert_called_once()
             _, kwargs = mock_do.call_args
-            assert kwargs.get("fixture_builder") or mock_do.call_args[0][0] == "Fix bug"
+            assert mock_do.call_args[0][0] == "Fix bug"
+            assert kwargs["builder_provider"] == "fake"
 
     def test_default_rewrite_dict(self):
         """Default command dict includes both ui and do."""

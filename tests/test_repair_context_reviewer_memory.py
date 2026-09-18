@@ -212,14 +212,6 @@ class TestRepairLoopTwoCycleFixture:
             assert events_dict.get("repair_loop_used") == "True"
             assert events_dict.get("tests_passed") == "True"
 
-    def test_parse_fixture_builder_repair_loop(self):
-        from apps.cli.commands.do_cmd import _parse_fixture_builder
-        assert _parse_fixture_builder("repair-loop") == "repair-loop"
-        assert _parse_fixture_builder("true") is True
-        assert _parse_fixture_builder("false") is False
-        with pytest.raises(SystemExit):
-            _parse_fixture_builder("anything")
-
 
 # =========================================================================
 # Step 151 — Reviewer recommendation v1

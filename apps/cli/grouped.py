@@ -128,8 +128,6 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--repo", default=arg.default, help=arg.help)
             elif arg.name == "--dry-run":
                 parser.add_argument("--dry-run", action="store_true", dest="dry_run", help=arg.help)
-            elif arg.name == "--fixture-builder":
-                parser.add_argument("--fixture-builder", nargs="?", const="true", default="false", dest="fixture_builder", help=arg.help)
             elif arg.name == "--ui":
                 parser.add_argument("--ui", action="store_true", dest="ui", help=arg.help)
             elif arg.name == "--fixture-reviewer":
@@ -546,15 +544,20 @@ def main(argv: list[str] | None = None) -> None:
 
     _truly_bare = False
     if _did_inject and raw and raw[0] == "do" and len(raw) >= 3:
-        _BARE_ALLOWED = {"--json", "--repo", "--no-llm", "--yes"}
+        # The flags `remedy do "<order>"` (the F268 sequence) accepts; any other
+        # flag keeps the invocation on the `do run` autorun path.
+        _BARE_ALLOWED = {"--json", "--repo", "--no-llm", "--yes", "--no-ui",
+                         "--builder-provider", "--reviewer-provider"}
+        _BARE_VALUED = {"--repo", "--builder-provider", "--reviewer-provider"}
         tail = raw[3:]
         _truly_bare = True
         i = 0
         while i < len(tail):
             tok = tail[i]
             if tok.startswith("-"):
-                if tok in _BARE_ALLOWED:
-                    if tok == "--repo" and i + 1 < len(tail):
+                name, has_value = tok.split("=", 1)[0], "=" in tok
+                if name in _BARE_ALLOWED:
+                    if name in _BARE_VALUED and not has_value and i + 1 < len(tail):
                         i += 1
                 else:
                     _truly_bare = False

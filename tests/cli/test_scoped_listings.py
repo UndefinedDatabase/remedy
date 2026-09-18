@@ -74,14 +74,17 @@ def _create_job(repo, env, mission):
     ``--no-llm`` for the same reason the golden-path canary forces it: this
     file tests project SCOPING of listings, not planning. Without the flag
     ``do`` runs a real task-plan call, so the fixture's runtime becomes
-    provider latency and the 30s subprocess timeout decides the verdict.
+    provider latency and the 30s subprocess timeout decides the verdict. The
+    fake builder and reviewer for the same reason: since F268 ``do`` runs the
+    job it plans.
     """
     result = _run_cli(
-        ["do", mission, "--no-llm", "--json"], env, cwd=str(repo),
+        ["do", mission, "--no-llm", "--json", "--no-ui",
+         "--builder-provider", "fake", "--reviewer-provider", "fake"], env, cwd=str(repo),
     )
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
-    full_id = data["job_id"]
+    full_id = data["job_ids"][0]
     return full_id[:8], full_id
 
 

@@ -11,7 +11,6 @@ import json
 import os
 import subprocess
 import sys
-from io import StringIO
 
 import pytest
 
@@ -399,11 +398,12 @@ class TestUnattendedEndToEnd:
         )
         monkeypatch.chdir(str(repo))
 
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("test mission", repo=str(repo), json_output=True, yes=True)
-        return json.loads(captured.getvalue())
+        # F268 moved the golden-path job planning out of `_cmd_do_mission` into
+        # `do_sequence.plan_order_job`, the function `remedy do`'s shape step calls.
+        from packages.orchestration.do_sequence import plan_order_job
+        from packages.orchestration.project_registry import resolve_project
+        return plan_order_job("test mission", project=resolve_project(repo),
+                              repo_path=str(repo), yes=True).to_json()
 
     def test_default_recorded_and_logged_without_a_human(
             self, tmp_path, monkeypatch):
@@ -428,7 +428,7 @@ class TestUnattendedEndToEnd:
         assert open_fp == []
 
     def test_exits_zero(self, tmp_path, monkeypatch):
-        """_cmd_do_mission returning normally is exit 0 for the CLI."""
+        """The unattended planning returns normally: nothing waits for a human."""
         self._run_unattended(tmp_path, monkeypatch)
 
 

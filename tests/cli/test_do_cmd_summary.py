@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 
 class TestJobSummaryJSON:
     def test_json_output_includes_pipeline_status(self):
@@ -57,29 +55,6 @@ class TestJobSummaryJSON:
         assert "def " not in out
         assert "return" not in out
         assert "import" not in out
-
-
-class TestFixtureBuilderParse:
-    def test_parse_true(self):
-        from apps.cli.commands.do_cmd import _parse_fixture_builder
-        assert _parse_fixture_builder("true") is True
-        assert _parse_fixture_builder("True") is True
-        assert _parse_fixture_builder("1") is True
-        assert _parse_fixture_builder("yes") is True
-
-    def test_parse_false(self):
-        from apps.cli.commands.do_cmd import _parse_fixture_builder
-        assert _parse_fixture_builder("false") is False
-        assert _parse_fixture_builder("0") is False
-
-    def test_parse_repair_loop(self):
-        from apps.cli.commands.do_cmd import _parse_fixture_builder
-        assert _parse_fixture_builder("repair-loop") == "repair-loop"
-
-    def test_parse_invalid_exits(self):
-        from apps.cli.commands.do_cmd import _parse_fixture_builder
-        with pytest.raises(SystemExit):
-            _parse_fixture_builder("invalid-mode")
 
 
 class TestDocsExist:
