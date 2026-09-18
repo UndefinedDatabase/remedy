@@ -1817,10 +1817,11 @@ class TestTheCallSiteInventoryIsChecked:
     def test_only_two_of_the_seven_call_sites_pass_a_role_literal(self):
         # WHY THE INVENTORY PINS SITES AND NOT ROLE STRINGS, as a measurement: a
         # sweep keyed on literal roles alone would reach two of seven and report a
-        # clean bill for the five it never looked at.
+        # clean bill for the five it never looked at. (Now eight call sites and three
+        # literal roles as of F266 T001's study role addition.)
         literal = [role for _, role in ROLE_CONFIG_CALL_SITES if role != DYNAMIC_ROLE_MARKER]
-        assert len(ROLE_CONFIG_CALL_SITES) == 7
-        assert len(literal) == 2
+        assert len(ROLE_CONFIG_CALL_SITES) == 8
+        assert len(literal) == 3
 
     def test_the_inventory_carries_no_line_numbers(self):
         # A line number moves under any edit ABOVE the call, so an inventory keyed

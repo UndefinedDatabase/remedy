@@ -17,9 +17,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
 
+from pydantic import BaseModel
+
 from packages.core.models import JobBudgets
 from packages.memory.local_gateway import store_memory
 from packages.orchestration.budget_guard import BudgetCounters
+from packages.orchestration.intake import make_structured_call_fn
+from packages.orchestration.role_config import resolve_role_config
 from packages.orchestration.safe_points import should_stop
 
 #: Directories to prune while walking (matching pingpong_loop.py pattern).
@@ -41,6 +45,42 @@ STUDY_CATEGORIES = ("structure", "core_modules", "conventions", "entry_points")
 
 #: Default maximum number of directory+file entries to scan.
 DEFAULT_MAX_ENTRIES = 2000
+
+
+class StudyCategoryNarration(BaseModel):
+    """The structured shape a `study` provider call must answer.
+
+    A single narrated paragraph — the narrative field — nothing else.
+    """
+
+    narrative: str
+
+
+def study_call_fn() -> Callable[[str, int], str] | None:
+    """Build a call_fn for the `study` role, or None.
+
+    Bridges DECISION F266 D1's role registration to an actual callable:
+    resolve_role_config("study") supplies the model, make_structured_call_fn
+    does the rest, bound to StudyCategoryNarration's schema. The returned
+    callable is adapted to run_study's plain-string call_fn contract: it
+    parses the structured JSON response and returns only the `narrative`
+    field, so run_study itself needs no awareness of the schema. Honest
+    None under the same conditions make_structured_call_fn already returns
+    None for (no ollama package importable, no reachable server) — never
+    raises; a JSON-parse failure is also swallowed by run_study's own
+    try/except around every call_fn invocation, which already exists.
+    """
+    role_cfg = resolve_role_config("study")
+    raw_fn = make_structured_call_fn(StudyCategoryNarration, model=role_cfg.model)
+    if raw_fn is None:
+        return None
+
+    def _adapted(prompt: str, attempt: int) -> str:
+        result = raw_fn(prompt, attempt)
+        parsed = StudyCategoryNarration.model_validate_json(result)
+        return parsed.narrative
+
+    return _adapted
 
 
 def _walk_repo(repo_root: str, max_entries: int) -> tuple[list[str], list[str], bool]:

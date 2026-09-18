@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 
 from packages.memory.local_gateway import list_memory
-from packages.orchestration.study import _walk_repo, run_study
+from packages.orchestration.study import _walk_repo, run_study, study_call_fn
 
 
 def _hash_tree(root: Path) -> dict[str, str]:
@@ -212,3 +213,36 @@ class TestStudyBasic:
         assert "gitignore" not in files
         assert "README.md" in files
         assert not hit_cap
+
+    def test_study_call_fn_returns_none_without_ollama(self) -> None:
+        """study_call_fn returns None when Ollama is not available."""
+        # tests/conftest.py::_no_live_ollama_reach (autouse) already refuses
+        # a live Ollama connection for every unmarked test.
+        assert study_call_fn() is None
+
+    def test_study_call_fn_returns_callable_and_extracts_narrative(self, monkeypatch) -> None:
+        """study_call_fn returns callable that extracts narrative from JSON."""
+        import sys
+        import types
+
+        fake_ollama = types.ModuleType("ollama")
+
+        class FakeClient:
+            def __init__(self, host=None):
+                pass
+
+            def list(self):
+                return []
+
+            def chat(self, **kwargs):
+                content = json.dumps({"narrative": "a test narrative"})
+                msg = types.SimpleNamespace(content=content)
+                return types.SimpleNamespace(message=msg)
+
+        fake_ollama.Client = FakeClient
+        monkeypatch.setitem(sys.modules, "ollama", fake_ollama)
+
+        fn = study_call_fn()
+        assert fn is not None
+        result = fn("test prompt", 0)
+        assert result == "a test narrative"

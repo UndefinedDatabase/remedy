@@ -1419,6 +1419,7 @@ ROLE_CONFIG_CALL_SITES: tuple[tuple[str, str], ...] = (
     ("packages/orchestration/pingpong_job.py", DYNAMIC_ROLE_MARKER),
     ("packages/orchestration/role_config.py", "orchestrator"),
     ("packages/orchestration/self_use_runner.py", DYNAMIC_ROLE_MARKER),
+    ("packages/orchestration/study.py", "study"),
     ("packages/orchestration/teacher_model.py", DYNAMIC_ROLE_MARKER),
     ("packages/orchestration/teacher_model.py", DYNAMIC_ROLE_MARKER),
 )
