@@ -13,23 +13,21 @@ answers questions about that repository from those cards.
 
 ## Current Step
 
-ROUND 6 — the `teacher ask` grounding source `teacher ask` never had:
-`SOURCE_STUDY` in `packages/orchestration/teacher_qa.py`, threaded through
-`ask_teacher` and `_cmd_teacher_ask`, which fetches every `machine-study`
-card for the resolved project, deduplicated by key keeping only the
-NEWEST value per key (a repeated `study run` on the same project appends
-rather than overwrites, per the memory store's own append-only design —
-the same staleness-by-recency pattern `context_summary.py` already
-applies elsewhere), and renders them as one `[study]` prompt block.
-`docs/agents/teacher_conventions.md` gains a fourth grounding-source
-bullet to match.
+ROUND 7 — T003: the three-step proved end to end against a foreign
+repository fixture. New test `tests/cli/test_study_teacher_e2e.py` runs
+`init` as a real subprocess, `study run` and `teacher ask` in-process (so
+both transport seams are controlled deterministically), on a fixture
+repository carrying a distinctive top-level directory name, and asserts
+`teacher ask` is shown that name only through the `study:structure` card —
+never derivable from general knowledge. Also books `Done: R-0959` and
+`Done: R-0960` (fixes landed round 5, never booked in round 6 — amend0827
+rule 1), and fixes newly-registered `R-0961` (an undersized subprocess
+timeout in round 5's own reachability test, made red by this environment's
+real, reachable local Ollama).
 
 ## Next Steps
 
-1. T003 — the three-step proved end to end against a foreign repository
-   fixture: `study run` then `teacher ask` genuinely answering from what
-   it found.
-2. Closure sequence.
+1. Closure sequence: Built State, evidence job, review zip, STATUS line, PR.
 
 ## Risks
 
