@@ -1997,6 +1997,37 @@ def _recorded_hunk_ledger_for_task(job: Any, task: Any):
         return HunkDecisionLedger(())
 
 
+def _gate_job_definition_of_done(job: JobPlan) -> str:
+    """Run a finished job's DoD gate in its workspace; the blocker, or "" when released.
+
+    DECISION F269 D6 (2): this runs when every task has passed and BEFORE the
+    workspace is finalized, because a completed job's worktree is removed in
+    ``run_job``'s ``finally`` and a gate run after that has no tree.  A job with
+    no stored DoD is not gated (``run_job_gate`` returns None and writes no
+    result), so such a job ends exactly as it did before.  A gate that does not
+    release returns ``dod_gate.gate_blocker``'s ``dod_blocking_red:<ids>`` —
+    F061's rule that a job ends green only when all blocking checks pass.  For
+    a job that belongs to a mission, the gate's result is then read onto the
+    job's contract slice (``mission_contract.record_contract_results``).
+    """
+    from packages.orchestration.dod_gate import gate_blocker, run_job_gate
+
+    result = run_job_gate(str(job.job_id), job.job_workspace_path)
+    if result is None:
+        return ""
+    from packages.orchestration.mission_contract import (
+        read_job_milestone,
+        record_contract_results,
+    )
+    from packages.orchestration.mission_state import mission_for_job
+
+    mission = mission_for_job(str(job.job_id))
+    if mission is not None:
+        record_contract_results(mission.project_id, mission.id, str(job.job_id),
+                                read_job_milestone(str(job.job_id)))
+    return gate_blocker(result)
+
+
 # ---------------------------------------------------------------------------
 # Sequential job runner (Steps 4829-4830, 4837-4838, 4857-4869)
 # ---------------------------------------------------------------------------
@@ -2875,7 +2906,15 @@ def run_job(
         )
         has_pending = any(t.status == TASK_PENDING for t in job.tasks)
 
-        if all_done:
+        # DECISION F269 D6 (2): the job's DoD gate, in the workspace, before the
+        # `finally` below finalizes it; a gate that holds blocks the job, and
+        # the finalizer then keeps its worktree.
+        dod_blocker = _gate_job_definition_of_done(job) if all_done else ""
+
+        if dod_blocker:
+            job.state = JOB_BLOCKED
+            job.error = dod_blocker
+        elif all_done:
             job.state = JOB_COMPLETED
             job.finished_at = datetime.now(timezone.utc).isoformat()
 
