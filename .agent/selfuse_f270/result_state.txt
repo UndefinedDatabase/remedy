@@ -1,0 +1,8 @@
+Job State: blocked
+Stop Reason: 
+Stop Source: 
+Stop Request ID: 
+Stopped At: 
+
+Task States:
+  T001: repair_exhausted (verdict: fail)
