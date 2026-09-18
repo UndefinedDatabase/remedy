@@ -21,7 +21,7 @@ _USER_FACING_GROUPS = {
 # Internal groups that MUST NOT appear in default help
 _INTERNAL_GROUPS = {
     "brain", "event", "patch", "test", "blocker", "change", "file",
-    "snapshot", "self", "ci", "integrity", "dev"
+    "snapshot", "self", "ci", "integrity", "dev", "study"
 }
 
 
@@ -739,8 +739,8 @@ class TestGroupDefIntegrity:
         assert sorted(kept - set(GROUPS)) == []
 
     def test_catalog_partition_matches_d4(self):
-        """The catalog carries exactly 29 groups partitioned as DECISION amend0905-vocab D4 names them."""
-        assert len(GROUPS) == 29
+        """The catalog carries exactly 30 groups partitioned as DECISION amend0905-vocab D4 names them."""
+        assert len(GROUPS) == 30
 
         # Only roadmap should be hidden
         hidden_groups = {gid for gid, g in GROUPS.items() if g.hidden}

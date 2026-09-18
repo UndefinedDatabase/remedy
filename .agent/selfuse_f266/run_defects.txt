@@ -1,0 +1,4 @@
+From describe_self_use_run_defects():
+
+1. job 091d81901ed74c31 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+2. T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail

@@ -124,13 +124,20 @@ def store_memory(
     job_id: str | None = None,
     tags: list[str] | None = None,
     source_type: str = "human",
-    approved: bool = False,
+    provenance: str = "human",
+    approved: bool | None = None,
 ) -> MemoryEntry:
     """Store a new memory entry. Returns the created entry.
+
+    When approved is None (default), it is derived from provenance: True when
+    provenance == "machine-study", False otherwise (per DECISION F266 D2).
+    An explicit approved argument always overrides the derived default.
 
     Raises MemoryRedactionError if key or value violates the blocklist.
     """
     _validate_memory(key, value)
+    if approved is None:
+        approved = provenance == "machine-study"
     entry = MemoryEntry(
         project_id=project_id,
         job_id=job_id,
@@ -138,6 +145,7 @@ def store_memory(
         value=value,
         tags=tags or [],
         source_type=source_type,  # type: ignore[arg-type]
+        provenance=provenance,
         approved=approved,
     )
     path = _jsonl_path(project_id, job_id)

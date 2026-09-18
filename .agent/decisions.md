@@ -14579,3 +14579,52 @@ entry follows. F271 layers the closure-precondition wiring and the
 fixture-based red-proof on top of `dead_command_ids` without redoing the
 mechanism. HOW TO REVERSE: revert this round's C2 commit; delete this
 paragraph.
+
+## DECISION F266 D1 (2026-09-18, reviewer, round 1) — the `study` role and its measured default model
+CHOSEN: register `study` in `packages/orchestration/role_config.KNOWN_ROLES` and set
+`packages/orchestration/model_routing.ROLE_TASK_CLASSES["study"] = "summarize"` — the same cheap
+tier `teacher` and `summary` already carry, per `docs/roadmap/features/T4_F266.md`'s Design
+section ("the cheapest task class capable of reading a repository"). MEASURED: F110 deliberately
+does not map a tier to a concrete model id (`role_config.py` module docstring) — every role
+resolves through the same precedence chain (CLI args > config file > provider-aware default) in
+`resolve_role_config`, so there is no existing "cheap model" to select. `study`'s default model is
+therefore the standard provider-aware default (`ollama-default`, or `claude-flagship` under a
+Claude provider) — identical to every other role's default — operator-overridable exactly like
+`teacher`/`summary`/`builder`. ALTERNATIVES CONSIDERED: hardcoding a specific cheap model id for
+`study` alone, rejected because it would contradict F110's own deliberate design (routing records a
+tier, never selects a model) and single out one role for a policy no other role has. REVERSE by
+removing `study` from both maps.
+
+## DECISION F266 D2 (2026-09-18, reviewer, round 1) — `provenance` on `MemoryEntry` and auto-approval as a data property
+CHOSEN: add `provenance: str = "human"` to `MemoryEntry` (plain `str`, not a `Literal`, because
+`docs/roadmap/features/T5_F265.md` already carries DECISION D-C's identical text for its own
+future provenance value and a closed `Literal` would force this feature to predict its spelling).
+`store_memory()` gains a keyword-only `provenance: str = "human"` parameter and its `approved`
+parameter becomes `approved: bool | None = None`: an explicit `approved=` argument is always
+honoured unchanged (preserves every existing caller's behaviour); when left `None`, the default is
+DERIVED from `provenance` — `True` when `provenance == "machine-study"`, `False` otherwise
+(identical to today's hardcoded default for every other provenance). This makes D-C's carve-out a
+property of the DATA (`provenance`) rather than a second code path `study` must remember to invoke
+correctly. ALTERNATIVES CONSIDERED: a separate `store_machine_study_memory()` wrapper, rejected
+because it duplicates `store_memory`'s validation/persistence logic for one field's worth of
+difference, and the downstream approval gates (`project_brain.py`, `context_summary.py`) already
+gate on `.approved` alone, so nothing downstream needs to know about `provenance` at all this round
+— only the write path does. REVERSE by deleting this paragraph, the `provenance` field, and
+reverting `store_memory`'s signature.
+## DECISION F266 D3 (2026-09-18, reviewer, round 4) — `study` ships as an advanced/internal group, not in the default help order
+CHOSEN: register `GroupDef("study", "Study", "...", user_facing=False)` (hidden defaults to False) — the same
+"advanced/internal: callable but hidden from default help" tier as `patch`, `test`, `brain` and `mission`, NOT
+the fully-invisible `hidden=True` tier `roadmap` uses. MEASURED: `VISIBLE_GROUP_ORDER`
+(`apps/cli/command_catalog.py`) is a FIXED, operator-pinned tuple — DECISION amend0905-vocab D4, clarified by
+amend0911-feedback D1 — and `tests/test_command_catalog.py::TestVisibleGroupOrder::test_visible_group_order_matches_d4`
+asserts it byte-for-byte; every `user_facing=True, hidden=False` group MUST appear in it
+(`test_visible_group_order_is_exactly_the_visible_groups`), so making `study` visible in this round would mean
+amending an operator-authored, explicitly-versioned UX decision on the reviewer's own authority, for a command
+whose place in the actual golden path (`docs/roadmap/features/T4_F266.md`'s Design section: "study is invoked
+EXACTLY ONCE by `remedy do`" — F268, not yet built) does not exist yet. `study run` is fully functional and
+discoverable via `remedy --all-commands`/`remedy study --help` either way — `user_facing=False` changes ONLY
+whether it clutters the default `--help` output before its automatic caller exists. ALTERNATIVES
+CONSIDERED: amending `VISIBLE_GROUP_ORDER` now, rejected because D4 is an operator decision this feature was not
+asked to revisit, and promoting `study` makes more sense at F268's closure, when `remedy do` actually drives it and
+the golden path is real rather than aspirational. REVERSE by setting `user_facing=True` and adding `"study"` to
+`VISIBLE_GROUP_ORDER` (at F268's own discretion for placement) in the same commit as updating the two pinned tests.

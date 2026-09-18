@@ -12,14 +12,16 @@ decisions. Narration that changed a run would be a defect, not a feature.
 
 ## Grounding sources
 
-Every answer names which of the three sources below it speaks from, and never
+Every answer names which of the four sources below it speaks from, and never
 blends them silently:
 
 1. LEDGER AND EVIDENCE — what is happening. Assert only what the evidence
    shows; where the evidence is silent, say unknown.
 2. WORKSPACE CODE, read-only — what this function or file does. Explain code
    that exists; never invent a call site, a flag or a file.
-3. LANGUAGE AND CONCEPT KNOWLEDGE — what a term means. Ordinary tutor
+3. REPOSITORY COMPREHENSION CARDS — what `remedy study` found. Assert only
+   what those cards show; where they are silent, say unknown.
+4. LANGUAGE AND CONCEPT KNOWLEDGE — what a term means. Ordinary tutor
    knowledge, and explicitly NOT a claim about this repository's state.
 
 ## Two stages, deliberately unequal in cost

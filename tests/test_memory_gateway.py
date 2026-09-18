@@ -238,6 +238,41 @@ class TestContextCoverageMemorySignal:
         assert pm_signal.present is True
 
 
+class TestProvenanceAndAutoApproval:
+    """F266 D2: provenance field and auto-approval for machine-study cards."""
+
+    def test_store_memory_machine_study_provenance_is_auto_approved(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        entry = store_memory("key", "value", provenance="machine-study")
+        assert entry.approved is True
+        assert entry.provenance == "machine-study"
+
+    def test_store_memory_default_provenance_still_requires_approval(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        entry = store_memory("key", "value")
+        assert entry.approved is False
+        assert entry.provenance == "human"
+
+    def test_store_memory_explicit_approved_overrides_provenance_derivation(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        entry = store_memory("key", "value", provenance="machine-study", approved=False)
+        assert entry.approved is False
+        assert entry.provenance == "machine-study"
+
+    def test_memory_entry_provenance_round_trips_through_json(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        entry = MemoryEntry(key="test", value="val", provenance="machine-study")
+        line = entry.to_json_line()
+        parsed = json.loads(line)
+        restored = MemoryEntry.from_dict(parsed)
+        assert restored.provenance == "machine-study"
+
+        # Also test that missing provenance defaults to "human"
+        d = {"id": str(entry.id), "key": "test", "value": "val"}
+        restored_default = MemoryEntry.from_dict(d)
+        assert restored_default.provenance == "human"
+
+
 class TestMemoryRedactionBlocklist:
     """R-0031: store_memory() must reject forbidden patterns and keys."""
 

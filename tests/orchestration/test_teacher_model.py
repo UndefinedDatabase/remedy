@@ -131,6 +131,20 @@ class TestTheInjectedSeam:
         assert "[ledger]" in prompt and "[concept]" in prompt
         assert "Name the source you answer from." in prompt
 
+    def test_study_cards_reach_the_rendered_prompt(self, tmp_path):
+        transport = _RecordingTransport()
+
+        ask_teacher(
+            "what did you find?",
+            study_cards=("study:structure: a test narrative",),
+            call=transport,
+            ledger_path=tmp_path / "ledger.sqlite",
+        )
+
+        prompt = transport.prompts[0]
+        assert "a test narrative" in prompt
+        assert "[study]" in prompt
+
 
 class TestAnAnsweredQuestion:
     def test_one_question_writes_exactly_one_row_attributed_to_the_teacher(self, tmp_path):

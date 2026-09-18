@@ -1,0 +1,7 @@
+Builder: ollama
+Reviewer: ollama
+Repair Rounds Allowed: 2
+Max Rounds: 3
+Context Strategy: task_bounded_sequential_job
+Timeout: 120s
+Isolation: worktree

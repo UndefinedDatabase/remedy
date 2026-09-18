@@ -1252,6 +1252,8 @@ ROLE_TASK_CLASSES: dict[str, str] = {
     "final_verifier": "standard_review",
     "teacher": "summarize",
     "summary": "summarize",
+    # F266 D1: study reads repositories, tier matches teacher/summary
+    "study": "summarize",
     "orchestrator": "mission",
 }
 
@@ -1417,6 +1419,7 @@ ROLE_CONFIG_CALL_SITES: tuple[tuple[str, str], ...] = (
     ("packages/orchestration/pingpong_job.py", DYNAMIC_ROLE_MARKER),
     ("packages/orchestration/role_config.py", "orchestrator"),
     ("packages/orchestration/self_use_runner.py", DYNAMIC_ROLE_MARKER),
+    ("packages/orchestration/study.py", "study"),
     ("packages/orchestration/teacher_model.py", DYNAMIC_ROLE_MARKER),
     ("packages/orchestration/teacher_model.py", DYNAMIC_ROLE_MARKER),
 )

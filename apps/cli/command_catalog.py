@@ -137,6 +137,7 @@ GROUPS: dict[str, GroupDef] = {
     "ci": GroupDef("ci", "CI", "Remedy's own CI stages, executed locally.", user_facing=False),
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
     "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False),
+    "study": GroupDef("study", "Study", "Bounded, read-only repository comprehension pass. Files approved memory cards for `teacher ask` to answer from.", user_facing=False),
     # -- Hidden: in no help at all, callable (DECISION amend0905-vocab D4) --
     "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True),
 }
@@ -299,6 +300,25 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("teacher.narrate",),
+    ),
+
+    CommandEntry(
+        # write_metadata: study runs a comprehension pass over a repository
+        # and writes approved memory cards to the project's memory store.
+        # Same classification reasoning as teacher.ask, which also writes to
+        # project state and may cost a model call (DECISION F255 D10).
+        command_id="study.run",
+        group_id="study",
+        subcommand="run",
+        description="Execute a bounded, read-only comprehension pass over a repository and file the findings as approved memory cards.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("--path", "Repository path to study (defaults to the current directory)", required=False, is_option=True),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("teacher.ask",),
     ),
     CommandEntry(
         command_id="job.attach-repo",

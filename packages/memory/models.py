@@ -14,7 +14,7 @@ class MemoryEntry:
     """A single memory entry stored in the local gateway.
 
     Fields follow the spec: version, id, project_id, job_id, key, value,
-    tags, source_type, source_id, created_at, expires_at, approved,
+    tags, source_type, source_id, provenance, created_at, expires_at, approved,
     confidence_source, redaction_policy.
 
     Evidence Card extensions (v2):
@@ -33,6 +33,7 @@ class MemoryEntry:
     tags: list[str] = field(default_factory=list)
     source_type: Literal["human", "agent", "system"] = "human"
     source_id: str | None = None
+    provenance: str = "human"
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     expires_at: str | None = None
     approved: bool = False
@@ -60,6 +61,7 @@ class MemoryEntry:
             "tags": self.tags,
             "source_type": self.source_type,
             "source_id": self.source_id,
+            "provenance": self.provenance,
             "created_at": self.created_at,
             "expires_at": self.expires_at,
             "approved": self.approved,
@@ -89,6 +91,7 @@ class MemoryEntry:
             tags=d.get("tags", []),
             source_type=d.get("source_type", "human"),
             source_id=d.get("source_id"),
+            provenance=d.get("provenance", "human"),
             created_at=d.get("created_at", ""),
             expires_at=d.get("expires_at"),
             approved=d.get("approved", False),

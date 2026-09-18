@@ -33,7 +33,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 
 ## Tier 4 — Repo Comprehension (operator order amend0831)
 
-- [ ] F266 — remedy study (repo comprehension pass)
+- [x] F266 — remedy study (repo comprehension pass) (T001-T003 complete; accepted 2026-09-18 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f266r10e1001 · package remedy-review-20260918-050332-READY_FOR_REVIEW.zip · SHA-256 705e2ca5b021a314140efe9bf8e06cc1a514238ac6759b865fe63ef0ae3db1cc · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD e8b9536623272c9b0d6abe897a1a713b6675ce2c)
 
 ## Tier 2 — Easy Start & Contract Block (operator order amend0905)
 

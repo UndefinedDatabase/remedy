@@ -1,59 +1,80 @@
-# F281 Round 33 Handoff — Closure Defect Fix, Final
+# Handoff — F266 remedy study · Round 12 (CI repair)
 
-## Session 4 (Fourth and Final)
+## Session
 
-This is F281's true final commit. The feature is now genuinely ready for the operator's merge via the Open PR Gate.
+SESSION 3 of feature F266 · round 12 · rounds so far 12
 
-## Defect Found and Fixed
+## Range
 
-The reviewer independently audited round 32's closure work and found one real defect: the Built State section in `docs/roadmap/features/T2_F281.md` claimed that "`consumed_by` set to F281" for self-use queue entry SU-017, but the actual data on disk contradicted this. The field read `""` (empty string), not `"F281"`.
+Review of 603f03fa..HEAD — CI repair of pull request 255's branch (`feature/f266-remedy-study`).
 
-`docs/roadmap/STATUS_closure_protocol.md` precondition 6 requires the `consumed_by` field be genuinely set before closure is valid. This defect violated that precondition and blocked final landing.
+## Summary
 
-## Fix Applied
+Hosted CI run 35302242291 on `603f03fa` failed because the R11 closure rewrite of
+`.agent/plan.md` dropped its `## Next Steps` section (finding R-0962). This round
+booked the reviewer's R11 verdict and R-0962 (C1), restored `.agent/plan.md` from the
+reviewer-authored payload and booked R-0962's `Done:` line (C2), and rewrote this
+handoff (C3). No file outside `.agent/` was touched.
 
-Changed `scripts/self_use_queue.json` line 138 from:
-```json
-      "consumed_by": "",
-```
-to:
-```json
-      "consumed_by": "F281",
-```
+## Commits
 
-This matches the shape already established by SU-016's entry a few lines above, which reads `"consumed_by": "F280"` — mirroring the exact same structure with the feature id that consumed the queue item.
+### 804de270 F266 R12 C1: book R11 verdict and finding R-0962
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/authored/f266-r12-done.md` | +1 / -0 | Byte copy of the reviewer's `Done:` payload |
+| `.agent/authored/f266-r12-ledger.md` | +5 / -0 | Byte copy of the reviewer's R11 gate + R-0962 payload |
+| `.agent/authored/f266-r12-plan.md` | +24 / -0 | Byte copy of the reviewer's plan.md payload |
+| `.agent/live_review.md` | +5 / -0 | Appended the R11 FAIL gate record and finding R-0962 |
 
-## Verification Diff
+### 7abade99 F266 R12 C2: restore plan.md Next Steps (R-0962)
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/live_review.md` | +1 / -0 | Appended `Done: R-0962 — RESOLVED` |
+| `.agent/plan.md` | +9 / -1 | Replaced with the payload; `## Next Steps` restored |
 
-```diff
-@@ -135,7 +135,7 @@
-       "title": "Address ledger finding R-0445",
-       "why": "- R-0445 …",
-       "job_markdown": "# Job: Address ledger finding R-0445\n…",
--      "consumed_by": "",
-+      "consumed_by": "F281",
-       "provenance": "generated (self-use-generator tier 1, ledger scan, R-0445)"
-     }
-   ]
-```
+### (this commit) F266 R12 C3: handoff — round 12 CI repair
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/handoff.md` | rewritten | This document (self-reference exception: a handoff cannot table its own counts) |
 
-Only that one field value changed — no reformat, no reorder, no other file modifications.
+## External actions
 
-## Ledger Rotation Count Note
+- `git push` of `feature/f266-remedy-study` after this commit (plain, no force). Its outcome is in the round report, because this file cannot record a push that happens after it is committed.
+- No PR create, edit or merge. No worktree add or remove.
 
-Round 32's own handback reported ledger rotation numbers as "open findings before: 127, open findings after: 127 (consistent)." The reviewer independently verified the true count is 128 in both cases. This was a reporting slip in R32's handoff text, not a data-loss defect in the ledger itself — the ledger state on disk is correct, only the transcription was off by one. No re-run of the rotation script is needed; it has already executed once and running it a second time against an already-rotated ledger is not what this round is for.
+## Verification
 
-## Closure Status
+Run at `7abade99` (C2). C3 changes only this file, and none of the gate test files reference `handoff.md`.
 
-**Precondition 6 (consumed_by field):** NOW MET. SU-017's `consumed_by` is set to `"F281"` on disk and verified by Python introspection before and after the fix.
+1. `cmp .agent/plan.md .remedy-wt/f266-r12/plan.md` → no output, `REAL_EXIT=0`
+2. Python: bytes of `git show 603f03fa:.agent/live_review.md` + ledger payload + done payload == `.agent/live_review.md` → `True`, `REAL_EXIT=0`
+3. `python3 -m pytest -q -p no:cacheprovider` on the three R-0962 nodes (`test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_plan_md_current`, `test_dashboard_contract.py::TestAgentStateFilesCurrentBranch::test_plan_md_references_current_steps`, `test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_plan_md_references_current_steps`) → `3 passed in 0.21s`, `REAL_EXIT=0`
+4. `python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py tests/orchestration/test_roadmap_index.py` → `457 passed in 7.37s`, `REAL_EXIT=0`
+5. `git diff --stat 603f03fa..HEAD` and 6. clean tree + HEAD == origin tip: these run after this commit and the push, so their output is in the round report.
 
-**Feature:** Ready for merge. PR #254 remains open on branch `feature/f281-cli-help-surface`. This commit (9e323265) is the final work needed before the operator runs the Open PR Gate.
+## Authored-text proofs
 
-## Commit Summary
+- `cmp .agent/authored/f266-r12-ledger.md .remedy-wt/f266-r12/ledger.md` → `REAL_EXIT=0` (payload 1716 bytes, sha256 `6ac3e05b…87af` verified before use)
+- `cmp .agent/authored/f266-r12-plan.md .remedy-wt/f266-r12/plan.md` → `REAL_EXIT=0` (914 bytes, sha256 `50b6c291…009c` verified)
+- `cmp .agent/authored/f266-r12-done.md .remedy-wt/f266-r12/done.md` → `REAL_EXIT=0` (177 bytes, sha256 `5a67975f…7e18` verified)
+- `.agent/live_review.md`: 548032 → 549748 (C1, +1716) → 549925 (C2, +177) bytes; gate 2 above proves it is byte-exact.
 
-- Commit: `9e323265`
-- Branch: `feature/f281-cli-help-surface`
-- Message: `F281 R33: fix self_use_queue.json consumed_by for SU-017 (closure precondition 6)`
-- Status: Pushed to remote
+## Item status
 
-**F281 is now READY FOR MERGE.**
+| Item | Status | Reason |
+|------|--------|--------|
+| R-0962 | done | Opened in C1 and resolved in C2 of this round |
+
+## Open findings
+
+127, unchanged from R11 (R-0962 was opened and resolved in this round).
+
+## Deviations & assumptions
+
+- The commit sequence matches the block (C1, C2, C3), with no extra, dropped or reordered commits.
+- Gate 3 was also run before C2 was committed, to check the `3 passed` claim in the `Done:` line. It gave the same result.
+- Gates 5 and 6, and the push outcome, come after this commit, so they are reported in the round report and not here.
+
+## Next
+
+Phase 1 rule 1 (.agent/STOP) then rule 2: merge PR 255 at the Open PR Gate once CI on the new tip is green.

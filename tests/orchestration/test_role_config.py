@@ -159,7 +159,7 @@ class TestAllRoles:
         assert cfg.model == DEFAULT_MODEL
         assert cfg.effort == DEFAULT_EFFORT
 
-    def test_all_nine_roles_present(self):
+    def test_all_ten_roles_present(self):
         assert KNOWN_ROLES == (
             "builder",
             "reviewer",
@@ -178,6 +178,9 @@ class TestAllRoles:
             # so F110 (model routing by task class) has a named routing
             # target; same built-in defaults as every other role.
             "summary",
+            # F266: the repo-comprehension role. Same built-in defaults as
+            # every other role.
+            "study",
         )
 
     def test_per_role_config_is_independent(self):
