@@ -1,149 +1,176 @@
-# Handoff — F268 remedy do: the one-command start · Round 4 (T004 + R-0967/R-0811)
+# Handoff — F268 remedy do: the one-command start · Round 5 (R-0968/R-0969/R-0807)
 
 ## Session
 
-SESSION 1 of feature F268 · round 4 · rounds so far 4
+SESSION 1 of feature F268 · round 5 · rounds so far 5
 
 ## Range
 
-Review of f831d374..HEAD — branch `feature/f268-remedy-do`.
+Review of 994f045a..HEAD — branch `feature/f268-remedy-do`.
 
 ## Summary
 
-C1 books round 3's verdict, the `Done:` lines for R-0964 and R-0966, the registration of R-0967, and DECISION F268 D9. It also replaces the plan.
+The round stopped once, after C1. The block's C2 ordered DECISION F268 D10's `--apply` chaining: job k+1 runs on top of job k's applied output. The dry run showed this cannot work:
+- A job's workspace is a `git worktree` cut from the target's HEAD commit (`worktrees.py:330,366`).
+- `job_apply` writes the working tree without committing.
 
-C2 makes two repairs:
-- R-0967: a test in `tests/cli/test_do_sequence_cli.py` whose reader raises `EOFError` at a halt. It asserts that the walk stopped there, that no job ran and no provider was called, and that every job of the walk has a stop request.
-- R-0811 remainder: every tip in `stop_reasons.py` and `autonomy_readiness.py` now names the real job id. The approve tip also names each real intent id, and no tip prints an angle-bracket placeholder or `"<goal>"`. `tasks_defined` is now `remedy job plan <real job id>`.
+So with D10 implemented as written, `remedy do "Write a CONTRIBUTING.md" --apply --force-mission` on the fake provider exited 1 both ways:
+- untracked `docs/README.md`: `target_created_since_job`;
+- tracked `docs/README.md`: `target_changed_since_job`.
 
-C3 lands T004 per D9:
-- The ui step opens the cockpit for the last job through `DoContext.ui_launcher`. The CLI passes `launch_do_cockpit`, which spawns `sys.executable -m apps.cli.grouped ui start <job id> --port 0 --info-file <data root>/ui/sessions/do-<job id>.json` with `start_new_session=True` and output to `<data root>/ui/do_logs/<job id>.log`. It then waits up to 15 s for the info file. The step reports the URL and `remedy ui stop`. A launch that does not come up is `skipped`, with the reason and `remedy ui start <job id>`.
-- `--apply`: the apply step calls `apply_job(<job id>, <repo root>, approve=True)` for each job in order. The first job whose status is not `applied` fails the walk, naming the job, the status and the reason. On success, `stopped_before_apply` is false.
-- `--contract`, `--commit`, `--commit-auto`, `--commit-with-history` and `--push` are declared on `do.run` and are on the bare-route allow-list (`--contract` and `--commit` are also in the valued set). Each exits 2 before any step with `<flag> is not yet available; F269|F270 brings it`. `--with-history` does not exist.
+Job 2's builder saw the HEAD content of the file. The reviewer ruled: resume from C1 and book DECISION F268 D12 in C1b. D12 amends D10, and C2 is amended per D12, with tests (2a) and (2b) replacing test (2).
 
-C4 adds the acceptance tests (1) to (5), plus one test that `--with-history` is rejected.
+- C2 (D12, R-0968): in a walk of two or more jobs, the run step runs job 1 only and reports `done`, naming the waiting jobs. The ui step opens the cockpit for job 1. The apply step applies job 1 with `--apply`; without it, it stops with job 1's apply command. Each waiting job gets a Next line with real ids: `commit job <predecessor>'s applied output in <repo>, then: remedy job run <id> <provider flags>`. `--json` adds `waiting_job_ids`. A one-job walk is unchanged.
+- C2 (R-0969): `do.run` declares `may_mutate_repo=True`. `docs/guides/do-run-v1.md`'s stale catalog line is corrected.
+- C3a (R-0912's guard half, needed by D11): `do` plans tasks with minted sixteen-hex ids, which `job_evidence`'s task-id guard refused. So every `do` job's evidence export, and with it the cost mirror, failed with `Unsafe task ID`. The guard now also accepts `mint_task_id`'s exact shape.
+- C3 (D11, R-0807's F268 half): the run step mirrors each job it runs through `mirror_job_run_into_ledger`, the call `_cmd_job_run` makes. `do` ends with one `Tokens <role>: input …, output …, cache read … (n call(s))` line per role and one `Cost:` line. These are read through `query_cost(project_id=…, job_id=<id>, by="role")` and summed over the walk's jobs, and a figure no call reported stays `not reported` / null. `--json` carries `cost` with `roles`, `cost_usd`, `job_ids`, `mirror_failed_job_ids` and `mirror_errors`. `context_strategy.json` gains `builder_context`, one entry per task and round, and a `builder_context_note`.
 
 ## Commits
 
-### e151e8bd F268 R4 C1: book round 3's verdict, R-0967 and DECISION F268 D9
+### 718696e8 F268 R5 C1: book round 4's verdict, R-0968, R-0969, R-0970 and DECISIONs F268 D10/D11
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f268-r4-block.md` | +115 / -0 | Byte copy of the step block |
-| `.agent/authored/f268-r4-decisions.md` | +22 / -0 | Byte copy of the payload |
-| `.agent/authored/f268-r4-ledger.md` | +8 / -0 | Byte copy of the payload |
-| `.agent/authored/f268-r4-plan.md` | +29 / -0 | Byte copy of the payload |
-| `.agent/decisions.md` | +22 / -0 | `git show f831d374:` bytes + decisions.md (append) |
-| `.agent/live_review.md` | +8 / -0 | `git show f831d374:` bytes + ledger.md (append) |
-| `.agent/plan.md` | +11 / -11 | := plan.md payload |
+| `.agent/authored/f268-r5-block.md` | +108 / -0 | Byte copy of the step block |
+| `.agent/authored/f268-r5-decisions.md` | +32 / -0 | Byte copy of the payload |
+| `.agent/authored/f268-r5-f273_line.md` | +3 / -0 | Byte copy of the payload |
+| `.agent/authored/f268-r5-ledger.md` | +12 / -0 | Byte copy of the payload |
+| `.agent/authored/f268-r5-plan.md` | +26 / -0 | Byte copy of the payload |
+| `.agent/decisions.md` | +32 / -0 | `git show 994f045a:` bytes + decisions.md (append) |
+| `.agent/live_review.md` | +12 / -0 | `git show 994f045a:` bytes + ledger.md (append) |
+| `.agent/plan.md` | +7 / -10 | := plan.md payload |
+| `docs/roadmap/features/T2_F273.md` | +3 / -0 | f273_line.md inserted after the one line `  text, run before the commit that saves it.` (R-0970's owner line) |
 
-### 6b1e1254 F268 R4 C2: repair R-0967 and R-0811's remaining placeholder tips
+### 9aba205d F268 R5 C1b: DECISION F268 D12 amends D10; prose slip; plan
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/autonomy_readiness.py` | +9 / -6 | R-0811: `job_id = str(job.job_id)` in `_assess_level`. Changed tips: `tasks_defined` → `remedy job plan {job_id}`, the two `job permit` tips, `test discover`, `dev agent-loop` and `decision list` now carry the real id |
-| `packages/orchestration/stop_reasons.py` | +16 / -3 | R-0811: new `_patch_approve_tips` (one `remedy patch approve {job_id} {intent_id}` per distinct intent id in the events; an event without an id adds `remedy patch list {job_id} names the intent ids to approve`). `remedy test run {job_id}`. The two plain sentences now name the job, and the dirty-repo sentence also names its target path |
-| `tests/cli/test_do_sequence_cli.py` | +45 / -0 | R-0967: parametrized test, end of input at the first halt and at the first halt after shape |
-| `tests/orchestration/test_stop_reasons.py` | +44 / -2 | R-0811: the two round 3 tests now check every derived next action, and there is a new all-four-reasons test (6 actions, no `<[a-z_]+>`, real job id in each, exact approve tips) |
-| `tests/test_autonomy_readiness.py` | +24 / -2 | R-0811: the two round 3 tests check the whole summary, and there is a new test over the summary and all 7 level tips |
+| `.agent/authored/f268-r5-decisions_b.md` | +22 / -0 | Byte copy of the payload |
+| `.agent/authored/f268-r5-plan_b.md` | +28 / -0 | Byte copy of the payload |
+| `.agent/authored/f268-r5-prose_slip.md` | +1 / -0 | Byte copy of the payload |
+| `.agent/decisions.md` | +22 / -0 | `git show 718696e8:` bytes + decisions_b.md (append) |
+| `.agent/plan.md` | +4 / -2 | := plan_b.md payload |
+| `.agent/prose_slips.md` | +1 / -0 | `git show 718696e8:` bytes + prose_slip.md (append) |
 
-### 66d62854 F268 R4 C3: the detached cockpit, --apply, and the F269/F270 flags refusing as not yet available (DECISION F268 D9)
+### c3cfdd31 F268 R5 C2: a multi-job walk runs job 1 and names the jobs that wait (DECISION F268 D12, R-0968); do.run declares may_mutate_repo (R-0969)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `apps/cli/command_catalog.py` | +6 / -0 | `do.run`: `--apply`, `--commit-auto`, `--commit-with-history` and `--push` (flags); `--contract` and `--commit` (valued). Descriptions pass the vocabulary guard (`--apply` uses "job" with "mission", and avoids "in order", which would count as Order) |
-| `apps/cli/commands/do_cmd.py` | +51 / -2 | `_DO_FLAGS_NOT_YET_AVAILABLE` table and `_refuse_do_flags_not_yet_available`, called first in `_cmd_do`. `apply` is threaded through to `DoContext`, with `ui_launcher=launch_do_cockpit`. The dispatch entry reads all six flags |
-| `apps/cli/grouped.py` | +5 / -2 | All six flags are in `_BARE_ALLOWED`; `--contract` and `--commit` are also in `_BARE_VALUED` |
-| `packages/orchestration/do_sequence.py` | +129 / -13 | `DoContext.apply` and `ui_launcher`. New `DO_COCKPIT_WAIT_SECONDS`, `DO_COCKPIT_STOP_COMMAND`, `DoCockpitLaunchError`, `do_cockpit_argv`, `do_cockpit_paths` and `launch_do_cockpit`. `_step_ui` and `_step_apply` are rewritten; the module docstring is updated |
+| `apps/cli/command_catalog.py` | +3 / -1 | R-0969: `do.run` `may_mutate_repo=True`, with the reason comment |
+| `apps/cli/commands/do_cmd.py` | +4 / -1 | `--json` `waiting_job_ids`; docstring |
+| `docs/guides/do-run-v1.md` | +6 / -1 | The stale `may_mutate_repo=False`, `may_execute_commands=False` line now states both True and why (R-0965, R-0969); the v1 flow it describes is unchanged |
+| `packages/orchestration/do_sequence.py` | +61 / -14 | D12: `DoContext.waiting_job_ids` and `run_job_ids`. `_step_run` runs `run_job_ids` only and names the waiting jobs. `_step_ui` opens `run_job_ids[-1]`. `_step_apply` acts on `run_job_ids` and appends `do_waiting_job_next_lines`. Module docstring |
+| `tests/cli/test_do_sequence_cli.py` | +76 / -14 | Three multi-job tests updated by design (table below), plus the new (2a) and (2b) |
+| `tests/orchestration/test_do_run.py` | +11 / -7 | R-0969: the pinned test renamed and flipped. R-0965's sibling now compares `may_mutate_repo` via the new test (table below) |
 
-### 2751135f F268 R4 C4: acceptance tests for the detached cockpit, --apply and the flags not yet available
+### 09f63f40 F268 R5 C3a: job evidence accepts the minted task id every do job carries, so its cost mirror can run (R-0912's guard half)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `tests/cli/test_do_sequence_cli.py` | +234 / -0 | Block tests (1) to (5), plus `test_the_old_name_with_history_is_never_created`. Same fixture and tripwire as rounds 1 to 3; the launcher is replaced by monkeypatching `packages.orchestration.do_sequence.launch_do_cockpit` |
+| `packages/orchestration/job_evidence.py` | +8 / -3 | `_SAFE_TASK_ID_RE` = `^(?:T\d{3,}|[0-9a-f]{16})$`, with the why-comment. The docstring and error message name both shapes |
+| `tests/orchestration/test_job_evidence.py` | +31 / -0 | The minted id is accepted, and its near misses (upper case, 15 characters, 17 characters, a trailing `/`) are rejected. A run job whose task carries the minted default exports `task_runs/<id>/provider_evidence.json` |
 
-### (this commit) F268 R4 C5: handoff — round 4 T004
+### d1acc2ae F268 R5 C3: do mirrors each job into the ledger and prints measured tokens per role and cost; the builder's context size per task and round reaches context_strategy.json (DECISION F268 D11, R-0807)
+| Path | +/- | Reason |
+|------|-----|--------|
+| `apps/cli/commands/do_cmd.py` | +10 / -1 | `cost = do_cost_summary(ctx)`; `--json` `cost`; text prints `do_cost_summary_lines` before the Next lines |
+| `packages/orchestration/do_sequence.py` | +81 / -0 | `DoContext.cost_mirrors`; the mirror call after `run_job`; `_add_measured`, `do_cost_summary`, `_measured` and `do_cost_summary_lines`; docstring |
+| `packages/orchestration/job_evidence.py` | +47 / -0 | `_BUILDER_CONTEXT_NOTE`, `_builder_context_by_round`; `context_strategy.json` gains `builder_context_note` and `builder_context` |
+| `tests/cli/test_do_sequence_cli.py` | +47 / -0 | The cost test against `query_cost`, and the failed-mirror test |
+| `tests/orchestration/test_job_evidence.py` | +22 / -0 | The `context_strategy.json` builder-context test |
+
+### (this commit) F268 R5 C4: handoff — round 5
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | rewritten | This document (self-reference exception) |
 
 ### Pre-existing tests edited, one line each
-| File | Commit | Reason |
-|------|--------|--------|
-| `tests/orchestration/test_stop_reasons.py` | C2 | In both round 3 no-repo tests, the placeholder check on the one `attach-repo` tip becomes a check over every derived next action (no `<[a-z_]+>`, real job id). This widens the check, as the block orders |
-| `tests/test_autonomy_readiness.py` | C2 | In both `TestAttachRepoTip` tests, the placeholder check moves from the one `attach-repo` line to the whole rendered summary. The line's exact-text assertions are kept |
-| `tests/cli/test_do_sequence_cli.py` | C2, C4 | New tests appended. No existing assertion changed |
+| File | Test | Commit | Reason |
+|------|------|--------|--------|
+| `tests/orchestration/test_do_run.py` | `test_do_run_no_repo_mutation` → `test_do_run_declares_repo_mutation_like_job_apply` | C2 | R-0969's fix clause: it now asserts `may_mutate_repo is True` and equal to `job.apply`'s |
+| `tests/orchestration/test_do_run.py` | `test_do_run_declares_command_execution_like_job_run` | C2 | Its tuple compared `may_mutate_repo` with `job.run`'s False, which R-0969 changes by design. It now compares `may_execute_commands` and `action_class` with `job.run`, and `may_mutate_repo` is asserted against `job.apply` by the test above (the reviewer's ruling) |
+| `tests/cli/test_do_sequence_cli.py` | `test_force_mission_yields_linked_jobs_all_run_on_the_repo_and_leaves_it_untouched` → `…_runs_the_first_and_leaves_the_repo_untouched` | C2 | D12 by design: job 1 `COMPLETED`, the rest `PLANNED`, `waiting_job_ids == job_ids[1:]`, one apply line (job 1's) |
+| `tests/cli/test_do_sequence_cli.py` | `test_without_no_ui_the_cockpit_opens_for_the_last_job_and_reports_its_url` → `…_for_the_job_that_ran_…` | C2 | D12 by design: the launcher is called with `job_ids[0]`, and the URL names it |
+| `tests/cli/test_do_sequence_cli.py` | `test_apply_with_force_mission_applies_every_job_in_order` → `test_apply_with_force_mission_applies_the_job_that_ran_and_leaves_the_rest_waiting` | C2 | D12 by design: only job 1's file is applied, no other job id is in the apply detail, and the rest are `PLANNED` and waiting |
 
 ## External actions
 
-- Probes, not tests, run from `.remedy-wt/f268-r4/` with a scratch data root under it, deleted afterwards:
-  - `probe_launch.py` called the real `launch_do_cockpit` for a saved job, through its `spawn` parameter with `--no-open` appended so that no browser opened. Output: a URL `http://127.0.0.1:46389/?job=…&token=…`. `ui status` showed `[RUNNING] job=… pid=2958701`, `ui stop` printed `Stopped 1 session(s).`, and `ps -p 2958701` then exited 1.
-  - `probe_apply.py` ran `remedy do … --apply` as a subprocess on fixture repositories.
-- G5: `git worktree add --detach .remedy-wt/f268-r4-g5 HEAD` at `2751135f`, removed with `git worktree remove --force`. `git worktree list` showed only the main checkout before and after.
-- C2 was amended once before any push (see Deviations). No force-push.
-- `git push` after this commit (no force). The outcome and G6 are in the round report.
+- The D10 dry run, before the stop: a temporary `tests/cli/test_zz_r5_probe.py` and an uncommitted `do_sequence.py` edit, both removed or reverted with `git checkout --`. A second temporary probe of the same name dumped a fake `do` job's evidence and ledger; it was removed before C3a. Neither was committed.
+- G5: `git worktree add --detach .remedy-wt/f268-r5/g5wt d1acc2ae`, removed with `git worktree remove --force` (exit 0). `git worktree list` showed only the main checkout before and after.
+- `git push` after this commit (no force). C1 `718696e8` was local-only through the stop and was never amended. The push outcome and G6 are in the round report.
 - No PR create, edit or merge.
 
 ## Verification
 
-All runs at `2751135f` (C4). C5 changes only this file.
+All runs at `d1acc2ae` (C3). C4 changes only this file.
 
-- G1 transport + state: `ledger`, `decisions`, `plan` and `block` each printed `scratch True authored True`. Block digest `3a80270fed2db1fa0131ba0fd85531888ab049c3c32c4153c869f4c42e2890f2`. Both byte checks printed True (`live_review append True`, `decisions append True`), with `PY_EXIT=0`. `cmp .agent/plan.md .remedy-wt/f268-r4/plan.md` → `CMP_EXIT=0`.
-- G2 `python3 -m pytest -q -p no:cacheprovider` over the block's 13 files → `473 passed, 6 skipped in 72.36s (0:01:12)`, `REAL_EXIT=0`. That set already includes every test file this round edited.
-  - Before C2 was committed, a wider sweep ran every test file that names `derive_stop_reasons`, `assess_job_readiness`, `summarize_readiness`, `guidance`, `project_brain`, `decision_queue`, `autonomy_loop` or `memory_learn` (50 files): `2748 passed, 11 skipped`.
-  - Before C4, a probe made `launch_do_cockpit` raise `AssertionError` and ran the 14 test files that reach the `do` walk: `452 passed, 1 skipped`. No existing test reaches the real launcher. The subprocess tests either pass `--no-ui` (`test_golden_path.py`, `test_install_smoke.py`) or take the non-bare path (`test_do_runtime.py`).
-- G3 `python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/orchestration/test_roadmap_index.py tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py` → `457 passed in 6.71s`, `REAL_EXIT=0`.
-- G4 `python3 -m ruff check` over the nine `.py` files C2 to C4 touched (`stop_reasons.py`, `autonomy_readiness.py`, `do_sequence.py`, `do_cmd.py`, `command_catalog.py`, `grouped.py`, `test_stop_reasons.py`, `test_autonomy_readiness.py`, `test_do_sequence_cli.py`) → `All checks passed!`, `RUFF_EXIT=0`.
-- G5: one worktree, `.remedy-wt/f268-r4-g5`, at `2751135f`, driven by `.remedy-wt/f268-r4/g5.sh`. Every run went from the worktree root with `python3 -B -m pytest -q -p no:cacheprovider tests/cli/test_do_sequence_cli.py`. `__pycache__` was purged before each run, and each run first printed `IMPORTED …/.remedy-wt/f268-r4-g5/packages/orchestration/do_sequence.py` and `IMPORTED …/.remedy-wt/f268-r4-g5/apps/cli/commands/do_cmd.py`. Each mutation was a single-occurrence replacement, reverted with `git checkout -- <path>`, after which `git status --porcelain` printed nothing.
-  - control (unmutated) → `32 passed in 26.35s`, `EXIT=0`
-  - (a) in `do_step_by_step_halt`, `except EOFError: answer = None` → `answer = ""` → `2 failed, 30 passed in 28.73s`, `EXIT=1`: `test_end_of_input_at_a_halt_stops_the_walk_runs_no_job_and_asks_every_job_to_stop[the-first-halt]` and `[the-first-halt-after-shape]`
-  - (b) in `_step_apply`, `if not ctx.apply:` → `if not False:` → `3 failed, 29 passed in 22.34s`, `EXIT=1`: `test_apply_applies_the_one_job_and_changes_the_targets_tracked_content`, `test_apply_with_force_mission_applies_every_job_in_order` and `test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job`
-  - (c) the `("--push", "F270"),` line removed from `_DO_FLAGS_NOT_YET_AVAILABLE` → `1 failed, 31 passed in 23.94s`, `EXIT=1`: `test_a_flag_whose_feature_is_not_built_refuses_before_any_step[--push]`
-  - `WORKTREE_REMOVED=0`. The `remedy/job-*` branch count was 31 before and 31 after.
+- G1 transport + state (`.remedy-wt/f268-r5/g1.py`) → `REAL_EXIT=0`:
+  - For all eight payloads (`block`, `ledger`, `decisions`, `plan`, `f273_line`, `decisions_b`, `prose_slip`, `plan_b`): `digest True authored-copy True`.
+  - Against `994f045a`: `C1 live_review append True`, `C1 decisions append True`, `C1 T2_F273 insert (anchor count 1) True`.
+  - Against `718696e8`: `C1b decisions append True`, `C1b prose_slips append True`, `C1b plan replace True`.
+  - `cmp .agent/plan.md .remedy-wt/f268-r5/plan_b.md` → `CMP_EXIT=0`. The block's `cmp` against `plan.md` no longer holds, because C1b replaced it by ruling.
+- G2 `python3 -m pytest -q -p no:cacheprovider` over the block's nine files (this includes every test file this round edited) → `521 passed in 102.34s (0:01:42)`, `REAL_EXIT=0`.
+- G3 `python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/orchestration/test_roadmap_index.py tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py` → `457 passed in 6.69s`, `REAL_EXIT=0`.
+- G4 `python3 -m ruff check` over `do_sequence.py`, `job_evidence.py`, `do_cmd.py`, `command_catalog.py`, `test_do_sequence_cli.py`, `test_do_run.py` and `test_job_evidence.py` → `All checks passed!`, `REAL_EXIT=0`.
+- G5: one worktree `.remedy-wt/f268-r5/g5wt` at `d1acc2ae`, driven by `.remedy-wt/f268-r5/g5.py`.
+  - Each run went from the worktree root with `python3 -B -m pytest -q -p no:cacheprovider tests/cli/test_do_sequence_cli.py tests/orchestration/test_job_evidence.py`. `__pycache__` was purged first, and each run printed `…/.remedy-wt/f268-r5/g5wt/packages/orchestration/do_sequence.py | …/g5wt/packages/orchestration/job_evidence.py`.
+  - Each mutation was a single-occurrence replacement, reverted with `git checkout --` and then checked with an empty `git status --porcelain`.
+  - control → `132 passed in 56.35s`, exit 0.
+  - (a) `ctx.waiting_job_ids = list(ctx.job_ids[1:])` → `= []` (the run step runs every job) → `5 failed, 127 passed`, exit 1. Failing: `test_force_mission_yields_linked_jobs_runs_the_first_and_leaves_the_repo_untouched`, `test_without_no_ui_the_cockpit_opens_for_the_job_that_ran_and_reports_its_url`, `test_apply_with_force_mission_applies_the_job_that_ran_and_leaves_the_rest_waiting`, `test_apply_with_force_mission_on_the_stock_fake_applies_job_1_and_job_2_waits` (2a) and `test_without_apply_a_force_mission_walk_runs_job_1_and_prints_how_job_2_runs` (2b).
+  - (b) the mirror call → `pass` → `2 failed, 130 passed`, exit 1. Failing: `test_the_json_cost_has_a_row_per_role_with_the_ledgers_own_numbers` and `test_a_job_whose_cost_mirror_failed_is_named_not_counted_as_zero`.
+  - (c) `cs["builder_context"] = _builder_context_by_round(job)` → `= []` → `1 failed, 131 passed`, exit 1. Failing: `TestCompletedJobExport::test_context_strategy_carries_the_builders_context_per_task_and_round`.
+  - The `remedy/job-*` branch count was 31 before and 31 after.
+- C3a red check (in the checkout, before its commit): the guard reverted to `^T\d{3,}$` → both new `minted` tests failed (`2 failed, 93 deselected`). Restored.
 - G6 (clean tree, HEAD == origin) runs after the push. It is in the round report.
 
 ## Authored-text proofs
 
-All four files (`ledger.md`, `decisions.md`, `plan.md`, `block.md`) were verified by sha256 before use. They were copied byte-exact to `.agent/authored/f268-r4-*`, and the post-copy digests are identical (G1). The two appends were built from `git show f831d374:<path>` bytes plus the payload, never from a file being written. G1's byte checks and `cmp` prove the committed bytes.
+All eight payloads were verified by sha256 before use. They were copied byte-exact to `.agent/authored/f268-r5-*`, and the post-copy comparisons print True (G1). The appends were built from `git show 994f045a:` bytes (C1) and `git show 718696e8:` bytes (C1b) plus the payload, never from a file being written. G1 proves the committed bytes.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 bookkeeping | done | |
-| R-0967 | done | C2. Red under G5 (a) |
-| R-0811 remainder | done | C2: every tip in the two named modules |
-| T004 (1) detached cockpit | done | C3, C4 tests (1) and (5) |
-| T004 (2) `--apply` | done | C3, C4 tests (2) and (3). Red under G5 (b) |
-| T004 (3) flags not yet available | done | C3, C4 test (4). Red under G5 (c) |
+| C1 bookkeeping | done | `718696e8` |
+| C1b bookkeeping (ruling) | done | `9aba205d` |
+| R-0968 | deviated | Repaired per D12, which amends D10 by ruling, not per D10. C2; red under G5 (a) |
+| R-0969 | done | C2, with the guide correction |
+| R-0807 F268 half | done | C3 (+ C3a). Red under G5 (b) and (c) |
+| C4 handoff | done | This commit |
 
-Landed: R-0967 — `test_end_of_input_at_a_halt_stops_the_walk_runs_no_job_and_asks_every_job_to_stop` in `tests/cli/test_do_sequence_cli.py` has a reader that raises `EOFError`. At the first halt it asserts the walk ended `study: stopped` with `not run: stopped by end of input`, with no job and no provider call. At the first halt after shape, with `--force-mission`, it asserts the walk ended `run: stopped` with ≥2 jobs still `PLANNED`, each carrying a `source="do"` stop request. Both cases fail when `EOFError` is read as an empty answer (G5 (a)) (C2).
-Landed: R-0811 — `stop_reasons.derive_stop_reasons` and `autonomy_readiness._assess_level` no longer print any `<…>` placeholder or `"<goal>"`. Every next action names the real job id, and the approve tip names each real intent id. `tests/orchestration/test_stop_reasons.py` covers all four derived reasons, and `tests/test_autonomy_readiness.py` covers the whole rendered summary and all seven level tips; both assert no `<[a-z_]+>` and the real job id (C2).
+Landed: R-0968 — per DECISION F268 D12, a walk of two or more jobs runs job 1 only; the rest are listed in `waiting_job_ids`, and each gets a Next line, with real ids, to commit its predecessor's applied output and then `remedy job run <id>`. `--apply` applies job 1 and exits 0 on the stock fake provider, where every build writes the same file: `test_apply_with_force_mission_on_the_stock_fake_applies_job_1_and_job_2_waits`, and `test_without_apply_a_force_mission_walk_runs_job_1_and_prints_how_job_2_runs` for the path without `--apply`. Both are red when the run step runs every job (C2).
+Landed: R-0969 — the `do.run` entry in `apps/cli/command_catalog.py` declares `may_mutate_repo=True`, pinned by `test_do_run_declares_repo_mutation_like_job_apply` in `tests/orchestration/test_do_run.py`, which also asserts it is equal to `job.apply`'s (C2).
+Landed: R-0807's F268 half — `do` mirrors each job it runs into the F103 ledger and ends with measured tokens per role and a cost line, read through `token_ledger.query_cost(..., job_id=<id>, by="role")`. `--json` `cost` carries the same numbers and names any job whose mirror failed. `context_strategy.json` carries `builder_context`, one entry per task and round. Tests: `test_the_json_cost_has_a_row_per_role_with_the_ledgers_own_numbers`, `test_a_job_whose_cost_mirror_failed_is_named_not_counted_as_zero` and `test_context_strategy_carries_the_builders_context_per_task_and_round` (C3, C3a).
 
 ## Open findings
 
-127 open by distinct id, derived with `.remedy-wt/f268-r4/count.py`. The ledger at HEAD holds 137 distinct `- R-nnnn —` registrations and 10 distinct `Done:` ids. The same derivation at `f831d374` reads 136 / 8 / 128, which matches round 3's count. C1 booked R-0967 and two `Done:` lines (R-0964, R-0966). This round writes no `Done:` line and opens no finding.
+128 open by distinct id, derived with `.remedy-wt/f268-r4/count.py`. The ledger at HEAD holds 140 distinct `- R-nnnn —` registrations and 12 distinct `Done:` ids. Against round 4's 127, C1 registered three (R-0968, R-0969, R-0970) and booked two `Done:` lines (R-0967, R-0811). This round writes no `Done:` line and opens no finding.
 
 ## Deviations & assumptions
 
-- Commit sequence: C1, C2, C3, C4, C5, as the block orders. C2 was first committed without R-0967's test (`574e7dc3`) and then amended, before any push, to `6b1e1254`, so that C2 holds both repairs as the block's bundle states. `574e7dc3` was never pushed, and no force-push happened.
-- **`--apply` with more than one job, measured.** Every job of a mission runs against the unchanged target, because the run step runs all jobs before apply. So when two jobs write the same file, the second apply is refused by `job_apply`'s baseline check: `target_changed_since_job` for a tracked file, `target_created_since_job` for a new one.
-  - The stock `FakeProvider()` writes `docs/README.md` for every build, so `remedy do "Write a CONTRIBUTING.md" --apply --force-mission` on the fake provider always exits 1. `probe_apply.py` measured `apply: failed — job 17c1… was not applied … (status blocked): baseline_check_failed: ['target_changed_since_job: docs/README.md']; applied before it: job 2733… applied 1 file(s)`.
-  - That is D9's "stop at the first not applied, naming why", working as designed. It also means `--apply` cannot apply a mission whose jobs touch a common file. I did not register a finding: the reviewer decides.
-  - C4 test (2)'s `--force-mission` case therefore monkeypatches `FakeProvider.__init__` so that each construction writes its own tracked file (`docs/job_NN.md`), and test (3) is the refused counterpart. Production code does not change for this.
-- "Tracked content changes": the fake builder writes `docs/README.md`, which the round 1 fixture does not track. So the apply tests first commit that file (and `docs/job_NN.md`) into the target, and then assert `git diff --name-only`.
-- R-0967's test is parametrized. The fix clause's "first halt" comes before any job exists, which would make "every job has a stop request" vacuous. The second case reads end of input at the first halt after shape (the round 3 `q`-test selector), so the stop requests are actually measured. Both cases go red under the mutation.
-- R-0811 wording choices, all free of placeholders:
-  - The two plain-sentence next actions now name the job, per the block's "every stop-reason next action … carry the real job id": `Review the failed test output of job <id>.` and `Commit or stash the changes in the target repository of job <id> (<target_repo>).`
-  - An intent event without an id yields `remedy patch list <id> names the intent ids to approve`.
-  - `tasks_defined` is `remedy job plan <id>`. `job.plan` is in the catalog, and `_cmd_plan_job_local` handles it.
-- Cockpit info file location: `ui start --info-file X` writes its session record ONLY to X (`ui._cmd_ui_start`: `info_file or session_file`). The file therefore goes in `<data root>/ui/sessions/`, which makes the reported `remedy ui stop` true (probed, see External actions). A launch that times out terminates the child, and a child that exits early is reported with its exit code. Either way, the log path is named.
-- A ui step that opens the cockpit reports `done` (it was `skipped`). A context without a launcher (library callers) reports `skipped` with the manual command. With `--step-by-step`, a `done` ui step is followed by one more halt before apply.
-- `--apply` treats any status other than `applied` as not applied, including `applied_test_failed` and `applied_cleanup_failed`. A failure adds `Next: remedy job apply <id> --repo <root> --dry-run`.
-- The refusal runs first in `_cmd_do`, so it covers both the bare route and `do run`, even before an empty goal is rejected. The table is static: the round that lands F269 or F270 removes its rows. It does not read `STATUS.md`.
-- `do.run` still declares `may_mutate_repo=False`, although `--apply` writes the repository. `tests/orchestration/test_do_run.py:564` pins it false, so the reviewer decides.
-- Added beyond the block: `test_the_old_name_with_history_is_never_created`, which checks that `--with-history` exits 2.
-- Placeholders outside this change set remain: `timeline.py:435,505` (`remedy do run "<goal>"`), `trust_report.py:326` (`remedy patch approve <job_id> <intent_id>`), and the two round 3 named (`self_dogfood_execution.py`, `test_execution_service.py`).
-- `--apply` on the non-bare `do run` path is ignored by the autorun path, as the other bare-only flags are.
-- Docs: `docs/guides/do-run-v1.md`'s "v1 always stops before apply" describes the unchanged autorun path, so no doc was edited. `.agent/context.md` was not updated; it is not in the change set.
-- Full suite not run (amend0917-throughput).
+- **Commit sequence.** The block ordered C1–C4. The round ran C1, stop, C1b, C2 (amended), C3a, C3, C4:
+  - The stop and C1b follow the reviewer's ruling; C2 follows D12, not D10.
+  - C3a is an extra commit, not in the block, covered below.
+  - C1 stayed local and unamended through the stop.
+- **C3a repairs half of R-0912, an F273-owned finding, inside F268.** D11's mirror fails for every `do` job, because `job_evidence`'s task-id guard refused the minted ids `do`'s deterministic tasks carry. This was measured: `mirror_job_run_into_ledger` returned `ValueError: Unsafe task ID '215f0eeefa4f41a9'`, and `query_cost` read `ledger_exists=False`. So C3's cost test could not be met.
+  - R-0912's own FIX clause allows "widen the guard"; `job_evidence.py` is in C3's change set and not on the do-not-touch list.
+  - The shape accepted is exactly `[0-9a-f]{16}`. Every traversal case of the existing tests still raises.
+  - R-0912's premise "a job made by the product's own flow is unaffected" no longer holds, since `do` makes such jobs.
+  - What remains for its owner: the exit-with-message half; and the four other copies of `^T\d{3,}$` in `token_truth.py:36` (its `_task_ids` scan skips minted-id task runs; `token_ledger`'s backfill scan is unfiltered and unaffected), `missing_tests_gate.py`, `spec_compliance.py` and `scratch_file_guard.py`.
+  - No `Done:` line is written. The reviewer decides whether R-0912 needs a note.
+- **`builder_context` granularity.** D11 asks for the builder's reported input and cache-read tokens "for each task and round". The run record does not hold them per round:
+  - Each round's `builder` dict carries only `tokens_used`.
+  - Per-call `usage_actuals` stay in memory on `ProviderAttempt` and are written only as run-wide or per-role totals (`token_accounting.usage_actuals.by_role`, `pingpong_loop.py:4304-4434`).
+  - Writing per-round figures would change the runner, which is outside the change set.
+  - So each task-round entry carries `builder_tokens_used` (that round's own report) plus `task_builder_input_tokens` and `task_builder_cache_read_tokens`: the task run's builder totals, repeated on each of its rounds, and null where no builder call reported usage. `builder_context_note` says so in the file.
+  - The fake provider reports `tokens_used=100` and no usage, so the test asserts 100 per round and null totals.
+  - The reader is the task's own run record (`load_run`), the record `_write_task_run_evidence` exports; there is no parse of provider output.
+- **Cost summation.** Per role and job, rows come straight from `query_cost`. Across jobs they are summed the way the ledger's `SUM` sums: None only when every value is None. The total cost is the sum of the role costs.
+  - With one job, `cost_usd` equals `query_cost(...).total.cost_usd`, which the test asserts.
+  - A job whose mirror failed contributes nothing and is named, with its error, in `mirror_failed_job_ids` and `mirror_errors`, and in a `Cost NOT recorded to the ledger for job <id>: <error>` text line.
+  - The mirror runs after every `run_job`, whatever state the job ended in, as `_cmd_job_run` does.
+- **Waiting-job Next lines name each job's predecessor.** For job 2 that is job 1, as ordered. For job 3 it is job 2: job 3 cannot run until job 2 is applied and committed, so naming job 1 there would be false. Test (2b) asserts job 2's exact line.
+- **The ui step and the halt text.** With `--force-mission` and no `--no-ui`, the cockpit opens for job 1. The `--step-by-step` halt before job 1 still reads `(1 of <N jobs>)`, where N is the number of jobs in the walk.
+- **`docs/guides/do-run-v1.md`** corrected in C2, per the ruling. It had no separate `may_mutate_repo` statement besides that one line.
+- **Plan.** `.agent/plan.md` is the reviewer's `plan_b.md`, byte-exact. Its "Current Step" names round 5's work and was not rewritten to record completion, because G1 checks it byte-for-byte. `.agent/context.md` was not updated, because it is not in the change set.
+- **Full suite** not run (amend0917-throughput).
 
 ## Next
 
-Reviewer: review round 4 at this branch tip and book its verdict in the next round's first commit.
+Reviewer: review round 5 at this branch tip and book its verdict in the next round's first commit.
