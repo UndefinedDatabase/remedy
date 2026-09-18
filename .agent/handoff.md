@@ -1,123 +1,126 @@
-# Handoff — F269 Contract & contract templates · Round 9 (R-0971 repair)
+# Handoff — F269 Contract & contract templates · Round 10 (closure: integration gate)
 
 ## Session
 
-SESSION 1 of feature F269 · round 9 · rounds so far 9
+SESSION 2 of feature F269 · round 10 · rounds so far 10
 
-Context self-assessment: the round fit in one worker context with room to spare; every gate below was run in this session at C2 `5a01e5e2`, none carried over from memory.
+Context self-assessment: the round fit in one worker context with ample room; every gate below was run in this session, none carried over from memory.
 
 ## Range
 
-Review of f7775533..HEAD — branch `feature/f269-contract`.
+Review of 6d10133e..HEAD — branch `feature/f269-contract`.
 
 ## Summary
 
-Round 9 lands DECISION F269 D10 and repairs R-0971:
+Round 10 opens the closure sequence:
 
-- C1 books round 8's verdict and finding R-0971 (ledger), appends DECISION F269 D10, writes the round 9 plan, and saves the payloads (ledger, decisions, plan) and the block.
-- C2, in `packages/orchestration/mission_contract.py::start_remainder_follow_up_mission`: each carried blocker is written with origin `amendment` (was: the blocker's own origin); text, blocking and the relabelled check are kept as D9 (3) orders. The follow-up's contract now holds ONE amendment entry: `id` `A001`, `text` the prefilled order, `received_at` the record's `answered_at` (the current time only when the record carries none), `applies_from` 1, `criteria` every carried id, `understood` `carries the criteria mission <id> left unmet: <old ids> as <new ids>` (ids joined by `, `), `acknowledged_in` null. `write_planner_criteria` is untouched: it keeps every non-`planner` criterion, so planning the follow-up keeps the carried ones and appends the planner's own after them.
+- C1 books round 9's verdict (Gate F269 R9, PASS) and R-0971's `Done:` line in the ledger, writes the round 10 plan, and saves the payloads (ledger, plan, built_state) and the block.
+- C2 pins Acceptance bullet 3's first half exactly: the extra-requirement order yields exactly ONE `planner` criterion, and its text names the release checklist.
+- C3 appends the Built State to `docs/roadmap/features/T2_F269.md`.
+- C4 runs the integration-gate suite ONCE in the primary checkout and commits its transcript. It is RED: 1 failed.
 
-Landed: R-0971 — a remainder follow-up's carried criteria are origin `amendment` under one entry `A001`, so `plan_mission` keeps every one of them with its id and text (C2 `5a01e5e2`).
+Closure suite transcript (`.agent/authored/f269-closure-suite.txt`), verbatim:
+```
+1 failed, 17950 passed, 23 skipped, 1 warning in 174.14s (0:02:54)
+tests/test_subprocess_timeouts.py::test_no_production_subprocess_call_is_missing_a_timeout
+```
+
+The failure message read: `AssertionError: 1 production subprocess call(s) carry no timeout=; a hung child hangs the unattended loop forever: packages/orchestration/contract_hygiene.py:262`. That line is `_git`'s `subprocess.run([...], cwd=..., capture_output=True, text=True, env=env, check=False)`, added by F269 R4 C2 `1cef2b6a`, so under amend0917-throughput (2) this bad node is F269's to repair. Per the block, nothing was repaired in this round.
 
 ## Commits
 
-### 65400392 F269 R9 C1: the finding first — round 8 verdict and R-0971, DECISION F269 D10, the round 9 plan and payloads
+### 4871a211 F269 R10 C1: bookkeeping — round 9 verdict and R-0971 resolution booked, the round 10 plan and payloads
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f269-r9-block.md` | +69 / -0 | Byte copy of block.md |
-| `.agent/authored/f269-r9-decisions.md` | +18 / -0 | Byte copy of decisions.md |
-| `.agent/authored/f269-r9-ledger.md` | +4 / -0 | Byte copy of ledger.md |
-| `.agent/authored/f269-r9-plan.md` | +24 / -0 | Byte copy of plan.md |
-| `.agent/decisions.md` | +18 / -0 | `f7775533` bytes + decisions.md (D10) |
-| `.agent/live_review.md` | +4 / -0 | `f7775533` bytes + ledger.md (Gate F269 R8, R-0971) |
-| `.agent/plan.md` | +7 / -9 | := plan.md |
+| `.agent/authored/f269-r10-block.md` | +71 / -0 | Byte copy of block.md |
+| `.agent/authored/f269-r10-built_state.md` | +59 / -0 | Byte copy of built_state.md |
+| `.agent/authored/f269-r10-ledger.md` | +4 / -0 | Byte copy of ledger.md |
+| `.agent/authored/f269-r10-plan.md` | +25 / -0 | Byte copy of plan.md |
+| `.agent/live_review.md` | +4 / -0 | `6d10133e` bytes + ledger.md (Gate F269 R9, Done: R-0971) |
+| `.agent/plan.md` | +8 / -7 | := plan.md |
 
-### 5a01e5e2 F269 R9 C2: a follow-up mission carries its remainder as one amendment, so planning it keeps every carried criterion
+### e0f1d13b F269 R10 C2: the extra-requirement order pins exactly one planner criterion, naming the release checklist
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/mission_contract.py` | +26 / -6 | `start_remainder_follow_up_mission`: carried origin `amendment`, the one `A001` entry written with the contract; its docstring and the module docstring name D10 |
-| `tests/orchestration/test_mission_contract.py` | +57 / -3 | UPDATED `test_yes_creates_the_follow_up_with_the_order_and_the_blockers`: the two carried criteria's origin is now `amendment` (was `planner`, `template`); every other pinned property (ids, text, blocking, whole-mission, `open`, no evidence, the kept and the relabelled check, template null) is kept, and `contract.amendments == ()` becomes the ids `["A001"]`. NEW `test_the_follow_up_holds_one_amendment_carrying_every_criterion`: the whole entry equals `{"id": "A001", "text": <impact>, "received_at": <answered_at>, "applies_from": 1, "criteria": ["C001","C002"], "understood": "carries the criteria mission <id> left unmet: C002, C003 as C001, C002", "acknowledged_in": None}`, and `due_contract_amendments(contract, 1)` returns it. NEW THE R-0971 TEST `test_planning_the_follow_up_keeps_a_carried_planner_criterion`: the source's C002 is asserted `planner`; after `yes`, `plan_mission(PROJECT, <follow-up>, None, root=tmp_path)` (no provider); the first two criteria are `("C001","the docs name every command","amendment")` and `("C002","tests/test_c.py passes","amendment")`, C002 unchanged by the plan; the rest are non-empty, all `planner`, numbered from `C003`; the one amendment is `A001` with criteria `["C001","C002"]` and `understood` naming `C002, C003 as C001, C002`. The module docstring names D10 |
+| `tests/cli/test_do_sequence_cli.py` | +3 / -2 | Renamed `test_contract_website_with_an_extra_requirement_adds_planner_criteria_and_drops_none` to `..._adds_one_planner_criterion_naming_it`; `assert len(_contract_by_origin(data, "planner")) >= 1` became `[planner] = _contract_by_origin(data, "planner")` + `assert "lists the release checklist" in planner["text"]`. Nothing else changed |
 
-### C3 (this commit) F269 R9 C3: handoff
+### 58e0d53d F269 R10 C3: the feature file's Built State — the contract, its templates, gate, amendments and remainder as built
+| Path | +/- | Reason |
+|------|-----|--------|
+| `docs/roadmap/features/T2_F269.md` | +59 / -0 | `6d10133e` bytes + built_state.md (append only) |
+
+### 810d0343 F269 R10 C4: the integration-gate suite, run once — 1 failed, 17950 passed, 23 skipped
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/authored/f269-closure-suite.txt` | +2 / -0 | The run's summary line and its one bad node id |
+
+### C5 (this commit) F269 R10 C5: handoff
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | rewrite | This file |
 
-Existing tests whose pinned behaviour D10 changes: only `TestTheRemainderAnswer::test_yes_creates_the_follow_up_with_the_order_and_the_blockers` (above). `tests/orchestration/test_mission_gate.py::TestTheRemainderAtBudgetEnd` and the cockpit door test in `tests/ui_server/test_command_channel.py` pin id, text and status only, and pass unchanged.
-
 ## External actions
 
-- G4: `git worktree add --detach .remedy-wt/f269-r9/g4wt 5a01e5e2` (exit 0), then `git worktree remove --force` (exit 0). `git worktree list` afterwards: `/home/decodeux/Repos/remedy  5a01e5e2 [feature/f269-contract]`.
+- No worktree was added or removed. `git worktree list` before C4: `/home/decodeux/Repos/remedy  58e0d53d [feature/f269-contract]`.
 - `git push` runs after this commit. Its outcome and G5 are in the worker's final report.
 - No PR was created, edited or merged.
 
 ## Verification
 
-All gates ran at C2 `5a01e5e2` with a clean tree. The scripts are `.remedy-wt/f269-r9/gates.py` and `.remedy-wt/f269-r9/g4.py`; each exit code is a subprocess return code.
+G1 to G3 ran at C3 `58e0d53d` with a clean tree. Exit codes come from `bash -c '<cmd>; echo "REAL_EXIT=$?"'`.
 
-G1 transport + state, `python3 .remedy-wt/f269-r9/gates.py g1`:
+G1 transport + state, `python3 .remedy-wt/f269-r10/g1.py`:
 ```
-ledger.md digest matched: True authored copy equal: True
-decisions.md digest matched: True authored copy equal: True
-plan.md digest matched: True authored copy equal: True
-block.md digest matched: True authored copy equal: True
+digests True copies True live_review True T2_F269 True plan True
 True
+REAL_EXIT=0
 ```
-(the last line: `.agent/plan.md` == plan.md, and `.agent/live_review.md` and `.agent/decisions.md` == their `f7775533` bytes + their slice; the script's own exit was 0.)
+(the four payload digests match the block; each `.agent/authored/f269-r10-*` copy is byte-equal to its payload; `.agent/live_review.md` and `T2_F269.md` equal their `6d10133e` bytes + payload; `.agent/plan.md` equals plan.md.)
 
-G2, `python3 .remedy-wt/f269-r9/gates.py g2`, runs `python3 -m pytest -q -p no:cacheprovider` over the block's list verbatim. The one test file this round edited, `tests/orchestration/test_mission_contract.py`, is in it:
+G2, `python3 -m pytest -q -p no:cacheprovider tests/cli/test_do_sequence_cli.py tests/cli/test_golden_path.py tests/docs/`:
 ```
-886 passed in 104.65s (0:01:44)
-exit 0
+394 passed in 76.73s (0:01:16)
+REAL_EXIT=0
 ```
 
-G3, `python3 .remedy-wt/f269-r9/gates.py g3` = `python3 -m ruff check packages/orchestration/mission_contract.py tests/orchestration/test_mission_contract.py`:
+G3, `python3 -m ruff check tests/cli/test_do_sequence_cli.py`:
 ```
 All checks passed!
-exit 0
+REAL_EXIT=0
 ```
 
-G4 mutation red-proof, `python3 .remedy-wt/f269-r9/g4.py`: one worktree at C2, `python3 -B -m pytest -q -p no:cacheprovider tests/orchestration/test_mission_contract.py` from the worktree root, `__pycache__` purged before each run. Mutation: in `start_remainder_follow_up_mission`, `id=ident, text=criterion.text, origin="amendment",` becomes `id=ident, text=criterion.text, origin=criterion.origin,`.
+G4, the C4 run: `python3 -m pytest -n auto -q` in the primary checkout at `58e0d53d`, serially after G3 with no other pytest process running (`pgrep -af pytest` showed only itself):
 ```
-worktree HEAD: 5a01e5e2
-module: /home/decodeux/Repos/remedy/.remedy-wt/f269-r9/g4wt/packages/orchestration/mission_contract.py
-CONTROL summary: 121 passed in 0.85s
-CONTROL exit 0
-MUTANT summary: 3 failed, 118 passed in 0.94s
-MUTANT FAILED tests/orchestration/test_mission_contract.py::TestTheRemainderAnswer::test_yes_creates_the_follow_up_with_the_order_and_the_blockers
-MUTANT FAILED tests/orchestration/test_mission_contract.py::TestTheRemainderAnswer::test_the_follow_up_holds_one_amendment_carrying_every_criterion
-MUTANT FAILED tests/orchestration/test_mission_contract.py::TestTheRemainderAnswer::test_planning_the_follow_up_keeps_a_carried_planner_criterion
-MUTANT exit 1
-R-0971 test red: True
-remove: 0
-/home/decodeux/Repos/remedy  5a01e5e2 [feature/f269-contract]
+FAILED tests/test_subprocess_timeouts.py::test_no_production_subprocess_call_is_missing_a_timeout
+1 failed, 17950 passed, 23 skipped, 1 warning in 174.14s (0:02:54)
+REAL_EXIT=1 WALL=176s
 ```
-
-Full suite: not run (amend0917-throughput).
+Bad-node count: 1. Committed transcript sha256: `06ff8bc64d5b4689283d79de94d0eb09c7029840f03d0c0cbff8e3a13d348f75`. The run left the tree clean apart from the transcript. `remedy/job-*` branches: 32 before C4, 32 after it.
 
 ## Authored-text proofs
 
-In G1 above, each of the four payloads matches its block digest and is byte-equal to its `.agent/authored/f269-r9-*` copy. `.agent/plan.md`, `.agent/live_review.md` and `.agent/decisions.md` equal their ordered construction.
+In G1 above, each of the four payloads matches its block digest and is byte-equal to its `.agent/authored/f269-r10-*` copy. `.agent/plan.md`, `.agent/live_review.md` and `T2_F269.md` equal their ordered construction.
 
 ## Deviations & assumptions
 
-1. No departure from the ordered commit sequence (C1, C2, C3).
-2. Assumption: D10's `understood` template leaves the list separator open; the ids are joined by `, ` — the separator the contract renderer already uses for an amendment's criteria.
-3. Assumption: `received_at` is the answer record's `answered_at` (which `answer_task_decision` always writes); only a record without one falls back to `now` or the current time, so a hand-built record still yields a valid entry.
-4. Reading of G4's red, from the code: with the mutation, the carried criteria keep `planner` and `template`, and the `A001` entry then breaks D8 (1)'s rule "amendment criteria are amendment criteria of the contract", so `write_mission_contract` raises `ContractError` inside `start_remainder_follow_up_mission`; the three tests fail there rather than at the planning step. No second mutation was run.
-5. The authored copies include `f269-r9-block.md`, as the block's PAYLOADS list names block.md and round 8's C1 did the same.
+1. The commit sequence followed the block exactly (C1, C2, C3, C4, C5).
+2. The run log went to `.remedy-wt/f269-r10/suite_run.txt`. That path is gitignored scratch inside the repository directory, not outside it as `docs/agents/integration_gate.md` step 2 asks, because `/tmp` is denied to this session. It is a `.txt` file, and git status stayed clean.
+3. Assumption: C4's "summary line exactly as pytest printed it" means the last line of the `-q` output. The bad-node list is taken from the `FAILED ` and `ERROR ` short-summary lines, with the ` - message` suffix removed. There were no `ERROR` lines.
+4. Observation, left untouched because of constraint 6: line 5 of `T2_F269.md` still reads "REGISTRATION ONLY — nothing in this file has been implemented.", which contradicts the Built State appended below it. The closure commit may want to update that banner.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 the finding first | done | |
-| C2 the D10 repair + R-0971 test | done | assumptions 2, 3 |
-| G1 to G4 at C2 | done | |
-| C3 handoff + push | done | |
+| C1 bookkeeping | done | |
+| C2 acceptance pin | done | |
+| C3 Built State | done | |
+| G1 to G3 at C3 | done | |
+| C4 integration gate (G4) | done | red: 1 bad node, not repaired per the block |
+| C5 handoff + push | done | |
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP`.
-2. Then the review of round 9 (DECISION F269 D10: the follow-up carries its remainder as one amendment; R-0971's repair), with its verdict and R-0971's resolution booked in the next round's first commit.
-3. Then the closure sequence: the Built State of `docs/roadmap/features/T2_F269.md` and any docs page the shipped commands need, the integration-gate suite once, evidence, package, STATUS.
+2. Then the review of round 10: the C2 acceptance pin, the Built State, and the red closure suite transcript.
+3. Then the closure steps: repair `tests/test_subprocess_timeouts.py::test_no_production_subprocess_call_is_missing_a_timeout` (the `_git` call in `packages/orchestration/contract_hygiene.py` needs a `timeout=`) under amend0917-throughput (2), using at most three shrinking repair rounds; then the self-use item, `remedy integrity check`, the evidence job, the review package, the verdict booking, and the STATUS closure commit with the PR.
 
 Operator questions open: 5
