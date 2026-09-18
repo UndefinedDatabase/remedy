@@ -17,10 +17,12 @@ Three things live here, all pure (no I/O, no provider):
     never a task of its own (DECISION amend0911-feedback D3, R-0808).
 
 A path-like token is a word holding a dot-extension that starts with a letter
-(`CONTRIBUTING.md`, `src/app.py`, `.github/workflows/ci.yml`). Deliberately not
-recognised: extension-less names such as `Makefile`, and one-letter stems such
-as `e.g`; a bare domain such as `example.com` does read as a path. The extractor
-is a deterministic floor, the LLM planner is the ceiling.
+(`CONTRIBUTING.md`, `src/app.py`, `.github/workflows/ci.yml`), or one of the
+extension-less file names `EXTENSIONLESS_DELIVERABLE_NAMES` lists (`Makefile`,
+`docker/Dockerfile`). No token inside a URL — `https://…` or `www.…` — is a
+deliverable (R-0966). Deliberately not recognised: one-letter stems such as
+`e.g`; a bare domain such as `example.com` outside a URL does read as a path.
+The extractor is a deterministic floor, the LLM planner is the ceiling.
 """
 
 from __future__ import annotations
@@ -46,6 +48,23 @@ _PATH_TOKEN_RE = re.compile(
     r"(?![\w/-])"
 )
 
+#: Common file names without a dot-extension that an order names as a deliverable
+#: (R-0966). Matched case-sensitively, optionally under a directory.
+EXTENSIONLESS_DELIVERABLE_NAMES: tuple[str, ...] = (
+    "Makefile", "GNUmakefile", "Dockerfile", "Containerfile", "Jenkinsfile",
+    "Procfile", "Gemfile", "Rakefile", "Vagrantfile", "Brewfile", "Justfile",
+    "LICENSE", "CODEOWNERS",
+)
+
+_EXTENSIONLESS_TOKEN_RE = re.compile(
+    r"(?<![\w/.-])"
+    r"((?:\.?[\w-]+/)*(?:" + "|".join(map(re.escape, EXTENSIONLESS_DELIVERABLE_NAMES)) + r"))"
+    r"(?![\w/-]|\.\w)"
+)
+
+#: A URL, with a scheme or starting `www.`, up to the next whitespace; a token inside one is no path.
+_URL_RE = re.compile(r"(?<![\w.-])(?:[A-Za-z][A-Za-z0-9+.-]*://|www\.)\S+")
+
 
 class DeliverablePlanError(ValueError):
     """A job plan holds a task without a deliverable, or an inspection task."""
@@ -53,9 +72,16 @@ class DeliverablePlanError(ValueError):
 
 def extract_order_deliverables(order: str) -> list[str]:
     """The order's path-like tokens in first-appearance order, deduplicated; else the order."""
+    urls = [m.span() for m in _URL_RE.finditer(order)]
+    matches = sorted(
+        (m.start(1), m.group(1))
+        for regex in (_PATH_TOKEN_RE, _EXTENSIONLESS_TOKEN_RE)
+        for m in regex.finditer(order)
+    )
     found: list[str] = []
-    for match in _PATH_TOKEN_RE.finditer(order):
-        token = match.group(1)
+    for start, token in matches:
+        if any(url_start <= start < url_end for url_start, url_end in urls):
+            continue
         # A one-letter stem outside a directory is an abbreviation (`e.g`, `i.e`).
         one_letter = "/" not in token and len(token.lstrip(".").split(".", 1)[0]) < 2
         if one_letter or token in found:

@@ -294,7 +294,9 @@ def _assess_level(
 
     if lvl == 1:
         # propose: need repo + tasks
-        _check("attached_repo", "remedy job attach-repo <job_id> <path>")
+        from packages.orchestration.stop_reasons import job_attach_repo_tip
+        _check("attached_repo",
+               None if signals.get("attached_repo") else job_attach_repo_tip(job))
         _check("tasks_defined", "remedy do run \"<goal>\"")
 
     elif lvl == 2:

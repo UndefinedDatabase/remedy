@@ -140,7 +140,7 @@ def run_autorun(
     data_dir = resolve_data_root()
     result = AutorunResult(job_id="", cycles_run=0, stage="init")
 
-    # Resolve provider: --builder-provider takes precedence over --fixture-builder
+    # Resolve provider: builder_provider takes precedence over fixture_builder
     if builder_provider == "fixture":
         fixture_builder = fixture_builder or True
     elif builder_provider == "ollama":

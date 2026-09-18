@@ -280,3 +280,42 @@ class TestVerifiedSnapshotSignal:
         ]
         report = assess_job_readiness(job, events, data_dir=data_dir)
         assert "verified_snapshot" in report.levels[5].present_signals
+
+
+class TestAttachRepoTip:
+    """R-0811: the readiness tip names the real job and a real path, never a placeholder."""
+
+    @staticmethod
+    def _rendered_tip(job) -> str:
+        text = summarize_readiness(assess_job_readiness(job, []))
+        [line] = [ln for ln in text.splitlines() if "attach-repo" in ln]
+        return line
+
+    def test_the_tip_names_the_job_and_its_projects_repository(self, tmp_path, monkeypatch):
+        import re
+
+        from packages.orchestration.project_registry import RemyProject, save_project
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        repo = tmp_path / "the-repo"
+        repo.mkdir()
+        project = RemyProject(name="the-repo", canonical_repo_path=str(repo))
+        save_project(project)
+        job = _make_job(project_id=str(project.id))
+
+        line = self._rendered_tip(job)
+
+        assert line.endswith(f"remedy job attach-repo {job.job_id} {repo}")
+        assert not re.search(r"<[a-z_]+>", line)
+
+    def test_the_tip_without_a_project_says_what_to_pass(self, tmp_path, monkeypatch):
+        import re
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _make_job()
+
+        line = self._rendered_tip(job)
+
+        assert f"remedy job attach-repo {job.job_id} " in line
+        assert "path of the repository" in line
+        assert not re.search(r"<[a-z_]+>", line)

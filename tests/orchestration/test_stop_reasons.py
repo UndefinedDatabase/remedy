@@ -201,3 +201,48 @@ class TestDashboardStopReason:
 
         state = _build_live_state_json(job)
         assert state["stop_reason"] == ""
+
+
+# ---------------------------------------------------------------------------
+# R-0811: the no-repo tip names the real job and a real path, never a placeholder
+# ---------------------------------------------------------------------------
+
+_PLACEHOLDER_RE = r"<[a-z_]+>"
+
+
+def test_the_no_repo_tip_names_the_job_and_its_projects_repository(tmp_path, monkeypatch):
+    import re
+
+    from packages.orchestration.pingpong_job import JobPlan
+    from packages.orchestration.project_registry import RemyProject, save_project
+    from packages.orchestration.stop_reasons import derive_stop_reasons
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    repo = tmp_path / "the-repo"
+    repo.mkdir()
+    project = RemyProject(name="the-repo", canonical_repo_path=str(repo))
+    save_project(project)
+    job = JobPlan(job_title="no repo yet", project_id=str(project.id))
+
+    [tip] = next(r for r in derive_stop_reasons(job, [])
+                 if r.id == "derived_no_repo").next_actions
+
+    assert tip == f"remedy job attach-repo {job.job_id} {repo}"
+    assert not re.search(_PLACEHOLDER_RE, tip)
+
+
+def test_the_no_repo_tip_without_a_project_says_what_to_pass(tmp_path, monkeypatch):
+    import re
+
+    from packages.orchestration.pingpong_job import JobPlan
+    from packages.orchestration.stop_reasons import derive_stop_reasons
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    job = JobPlan(job_title="no project")
+
+    [tip] = next(r for r in derive_stop_reasons(job, [])
+                 if r.id == "derived_no_repo").next_actions
+
+    assert tip.startswith(f"remedy job attach-repo {job.job_id} ")
+    assert "path of the repository" in tip
+    assert not re.search(_PLACEHOLDER_RE, tip)

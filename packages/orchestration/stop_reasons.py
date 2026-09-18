@@ -184,6 +184,35 @@ def resolve_stop_reason(job_id: str, stop_id: str, reason: str) -> StopReason | 
     return target
 
 
+def _job_project_repo_path(job: Any) -> str:
+    """The canonical repository path of *job*'s project, or "" when it has none."""
+    project_id = str(getattr(job, "project_id", "") or
+                     (getattr(job, "metadata", None) or {}).get("project_id") or "")
+    if not project_id:
+        return ""
+    from uuid import UUID
+
+    from packages.orchestration.project_registry import ProjectNotFoundError, load_project
+    try:
+        project = load_project(UUID(project_id))
+    except (ValueError, ProjectNotFoundError, OSError):
+        return ""
+    return project.canonical_repo_path or ""
+
+
+# R-0811: the tip carries the real job id and a real path, never a placeholder.
+def job_attach_repo_tip(job: Any) -> str:
+    """The `remedy job attach-repo` command for *job*: its project's repo, else what to pass."""
+    import shlex
+
+    job_id = str(job.job_id)
+    repo = _job_project_repo_path(job)
+    if repo:
+        return f"remedy job attach-repo {job_id} {shlex.quote(repo)}"
+    return (f"remedy job attach-repo {job_id} followed by the path of the "
+            f"repository this job should change")
+
+
 def derive_stop_reasons(
     job: Any,
     events: list[dict[str, Any]],
@@ -203,7 +232,7 @@ def derive_stop_reasons(
             created_at=now, resolved_at=None,
             related_node_id="", related_intent_id="", related_file="",
             safe_summary="No target repository attached to job.",
-            next_actions=("remedy job attach-repo <job_id> <path>",),
+            next_actions=(job_attach_repo_tip(job),),
         ))
 
     # Test failures

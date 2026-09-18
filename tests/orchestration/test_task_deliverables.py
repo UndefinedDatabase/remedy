@@ -10,6 +10,7 @@ import pytest
 from packages.orchestration.pingpong_job import TaskEntry
 from packages.orchestration.schemas.models import _MAX_TASK_PLAN_TASKS
 from packages.orchestration.task_deliverables import (
+    EXTENSIONLESS_DELIVERABLE_NAMES,
     INSPECTION_VERBS,
     DeliverablePlanError,
     deliverable_check_task,
@@ -48,6 +49,30 @@ def test_a_file_named_twice_is_one_deliverable():
     order = "Update src/app.py and tests/test_app.py, then src/app.py once more"
 
     assert extract_order_deliverables(order) == ["src/app.py", "tests/test_app.py"]
+
+
+@pytest.mark.parametrize("name", EXTENSIONLESS_DELIVERABLE_NAMES)
+def test_an_extensionless_file_name_is_a_deliverable(name):
+    # R-0966: the dot-extension pattern alone read this order as one vague deliverable.
+    order = f"Fix the {name}."
+
+    assert extract_order_deliverables(order) == [name]
+
+
+def test_extensionless_names_keep_their_directory_and_order_beside_paths():
+    order = "Add docker/Dockerfile, then update src/app.py and the Makefile"
+
+    assert extract_order_deliverables(order) == ["docker/Dockerfile", "src/app.py", "Makefile"]
+
+
+@pytest.mark.parametrize("order", [
+    "Fetch https://example.com/download?file=report.pdf and write notes.md",
+    "Follow www.example.com/page then write notes.md",
+    "See https://example.com/docs and write notes.md",
+])
+def test_no_token_inside_a_url_is_a_deliverable(order):
+    # R-0966: the query string's file and the scheme-less host each read as a path.
+    assert extract_order_deliverables(order) == ["notes.md"]
 
 
 def test_more_files_than_one_job_holds_become_two_jobs_and_none_is_dropped():
