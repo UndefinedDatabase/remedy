@@ -42,7 +42,9 @@ An operator message after the order is an AMENDMENT (DECISION F269 D8):
 :func:`amend_mission_contract` adds its criterion and appends its entry
 ``{"id", "text", "received_at", "applies_from", "criteria", "understood",
 "acknowledged_in"}``, whose rules are checked on read and on write like
-every other D2 rule.
+every other D2 rule.  The orchestrator loop acknowledges each amendment in
+its ledger in the round it applies from (:func:`due_contract_amendments`,
+:func:`record_amendments_acknowledged`).
 
 The names ``save_contract`` and ``load_contract`` belong to
 ``run_contract.py`` (a job's run contract, a different record) and are not
@@ -433,6 +435,40 @@ def amend_mission_contract(project_id: str, mission_id: str, text: str, *,
         template=existing.template if existing else None,
         amendments=(*amendments, amendment))
     return write_mission_contract(project_id, mission_id, contract, root)
+
+
+def due_contract_amendments(contract: MissionContract | None,
+                            round_number: int) -> tuple[dict[str, Any], ...]:
+    """The amendments a loop round must acknowledge, in contract order (D8 (4)).
+
+    Every amendment whose ``applies_from`` is at most ``round_number`` and whose
+    ``acknowledged_in`` is still null; a mission with no contract has none.
+    """
+    if contract is None:
+        return ()
+    return tuple(a for a in contract.amendments
+                 if a["applies_from"] <= round_number and a["acknowledged_in"] is None)
+
+
+def record_amendments_acknowledged(project_id: str, mission_id: str,
+                                   amendment_ids: Sequence[str], round_number: int,
+                                   root: Path | None = None) -> MissionContract:
+    """Set ``acknowledged_in`` to ``round_number`` on the named amendments (D8 (4)).
+
+    The one field an acknowledgement writes; every other field of every entry,
+    and every criterion, is written back as it was read.
+    """
+    from packages.orchestration.mission_state import load_mission
+
+    contract = read_mission_contract(load_mission(project_id, mission_id, root))
+    if contract is None:
+        raise ContractError("an acknowledged amendment is in the contract",
+                            f"mission {mission_id} has no contract")
+    wanted = set(amendment_ids)
+    amendments = tuple({**a, "acknowledged_in": round_number} if a["id"] in wanted else a
+                       for a in contract.amendments)
+    return write_mission_contract(
+        project_id, mission_id, replace(contract, amendments=amendments), root)
 
 
 # ---------------------------------------------------------------------------

@@ -928,6 +928,47 @@ def make_orchestrator_call_recorder(
     return _record
 
 
+#: The ledger entry's ``move.kind`` for an amendment acknowledgement (DECISION
+#: F269 D8 (4)). A ledger-only kind: the loop writes it, no model proposes it,
+#: so it is not in the move schema.
+MOVE_ACKNOWLEDGE_AMENDMENT = "acknowledge_amendment"
+
+#: The acknowledgement entry's ``outcome.status``.
+OUTCOME_ACKNOWLEDGED = "acknowledged"
+
+
+def acknowledge_due_amendments(project_id: str, mission_id: str, mission: Any,
+                               iteration: int, *,
+                               record: Callable[[dict[str, Any], MoveOutcome], None],
+                               root: Path | None = None) -> int:
+    """Acknowledge every amendment due in this round; return how many (D8 (4)).
+
+    Each due amendment — ``applies_from`` at most ``iteration``,
+    ``acknowledged_in`` null — gets ONE ledger entry through ``record``, move
+    kind :data:`MOVE_ACKNOWLEDGE_AMENDMENT` with its id, outcome
+    :data:`OUTCOME_ACKNOWLEDGED` and detail ``<understood>; applies from round
+    <n>``; THEN its ``acknowledged_in`` is set to ``iteration``, so an
+    acknowledgement is never recorded on the contract without its ledger entry.
+    """
+    from packages.orchestration.mission_contract import (
+        due_contract_amendments,
+        read_mission_contract,
+        record_amendments_acknowledged,
+    )
+
+    due = due_contract_amendments(read_mission_contract(mission), iteration)
+    for amendment in due:
+        record({"kind": MOVE_ACKNOWLEDGE_AMENDMENT,
+                "payload": {"amendment_id": amendment["id"]}},
+               MoveOutcome(status=OUTCOME_ACKNOWLEDGED,
+                           detail=f"{amendment['understood']}; applies from round "
+                                  f"{amendment['applies_from']}"))
+    if due:
+        record_amendments_acknowledged(project_id, mission_id,
+                                       [a["id"] for a in due], iteration, root)
+    return len(due)
+
+
 def run_mission(
     mission_id: str,
     limits: LoopLimits | None = None,
@@ -986,7 +1027,10 @@ def run_mission(
                           is recorded as unlabelled rather than guessed
 
     Every iteration leaves a ledger entry — including the ones that end the
-    run — so the audit trail has no gaps where a decision used to be.
+    run — so the audit trail has no gaps where a decision used to be. An
+    iteration in which a contract amendment takes effect first leaves one
+    acknowledgement entry per such amendment
+    (:func:`acknowledge_due_amendments`, DECISION F269 D8 (4)).
     """
     from packages.orchestration.mission_state import (
         MISSION_STATUS_ACTIVE,
@@ -1085,6 +1129,18 @@ def run_mission(
         cost: dict[str, Any] = {"calls": 0, "usage": None,
                                 "usage_source": USAGE_UNMEASURED}
         try:
+            # DECISION F269 D8 (4): before this round's move, every amendment
+            # that applies from this round or earlier and is not yet
+            # acknowledged gets its ledger entry, which costs no call. The
+            # round's jobs take its check at dispatch (D8 (3)).
+            if acknowledge_due_amendments(
+                    pid, mission_id, mission, iteration, root=root,
+                    record=lambda move, outcome: _record(
+                        iteration, "", move, outcome,
+                        {"calls": 0, "usage": None,
+                         "usage_source": USAGE_UNMEASURED})):
+                mission = load_mission(pid, mission_id, root)
+
             # The dossier is refreshed BEFORE the context is assembled, so the
             # prompt's first section and the mission's own dossier file describe
             # the same state rather than drifting an iteration apart.

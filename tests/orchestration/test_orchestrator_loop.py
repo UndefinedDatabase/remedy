@@ -2588,3 +2588,139 @@ class TestOrchestratorEvidenceSink:
                   / "apps" / "cli" / "commands" / "mission_cmd.py").read_text()
         ran = source.index("result = run_mission(")
         assert 'provider_kind="ollama"' in source[ran:ran + 200]
+
+
+# ---------------------------------------------------------------------------
+# F269 T004 — an amendment between rounds takes effect in the next round
+# ---------------------------------------------------------------------------
+
+
+class TestAnAmendmentTakesEffectInTheNextRound:
+    """DECISION F269 D8 (3) and (4), T2_F269.md's fourth Acceptance line.
+
+    Round 1 dispatches a job; then an amendment naming a test path no existing
+    check selects is applied, applying from round 2; round 2 acknowledges it
+    in the ledger before its move and dispatches a job whose DoD carries the
+    amendment's check; round 3 acknowledges nothing again. Fake dispatch,
+    execute and evidence seams and a scripted provider: no model, no process.
+    """
+
+    AMENDMENT = "tests/test_login.py passes"
+
+    @pytest.fixture()
+    def ran(self, tmp_path, monkeypatch, dispatched):
+        from packages.orchestration.mission_contract import (
+            ContractCriterion,
+            MissionContract,
+            amend_mission_contract,
+            compile_contract_criteria,
+            write_mission_contract,
+        )
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        m = create_mission(PROJECT, "Ship the thing", root=tmp_path)
+        set_mission_plan(PROJECT, m.id,
+                         _plan(("M001", ()), ("M002", ())).model_dump(), tmp_path)
+        write_mission_contract(PROJECT, m.id, MissionContract(
+            criteria=compile_contract_criteria([ContractCriterion(
+                id="C001", text="tests/test_app.py passes", origin="template")])),
+            tmp_path)
+        run = {"root": tmp_path, "dispatch": dispatched,
+               "execute": _executed, "evidence": _no_evidence,
+               "control_root_path": tmp_path / "control", "project_id": PROJECT}
+        first = run_mission(
+            m.id, LoopLimits(max_iterations=1),
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="build M001")), **run)
+        amended = amend_mission_contract(PROJECT, m.id, self.AMENDMENT, root=tmp_path)
+        later = run_mission(
+            m.id, LoopLimits(max_iterations=2),
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M002",
+                                         step="build M002"),
+                              _move_json("wait_on_decisions")), **run)
+        return {"mission_id": m.id, "root": tmp_path, "first": first,
+                "later": later, "amendment": amended.amendments[-1],
+                "ledger": read_ledger(PROJECT, m.id, tmp_path)}
+
+    @staticmethod
+    def _acks(entries):
+        return [e for e in entries
+                if (e.get("move") or {}).get("kind") == "acknowledge_amendment"]
+
+    def test_the_amendment_applies_from_round_two(self, ran):
+        assert ran["amendment"]["applies_from"] == 2
+        assert ran["amendment"]["acknowledged_in"] is None
+
+    def test_round_two_acknowledges_it_before_its_move(self, ran):
+        from packages.orchestration.mission_contract import read_mission_contract
+
+        entries = ran["ledger"]
+        assert [(e["iteration"], e["move"].get("kind")) for e in entries] == [
+            (1, "dispatch_job"), (2, "acknowledge_amendment"), (2, "dispatch_job"),
+            (3, "wait_on_decisions")]
+        ack = entries[1]
+        assert ack["move"]["payload"] == {"amendment_id": "A001"}
+        assert ack["outcome"]["status"] == "acknowledged"
+        assert ack["outcome"]["detail"] == (
+            f"adds blocking criterion C002: {self.AMENDMENT}; applies from round 2")
+        contract = read_mission_contract(
+            load_mission(PROJECT, ran["mission_id"], ran["root"]))
+        assert contract.amendments[0]["acknowledged_in"] == 2
+
+    def test_only_the_job_dispatched_from_round_two_carries_the_amendments_check(
+            self, ran):
+        from packages.orchestration.dod_gate import load_dod
+
+        first_job, second_job = [e["outcome"]["job_id"] for e in ran["ledger"]
+                                 if e["move"].get("kind") == "dispatch_job"]
+        selectors = {job: [c.spec.get("selector") for c in load_dod(job).checks]
+                     for job in (first_job, second_job)}
+        assert selectors[first_job] == ["tests/test_app.py"]
+        assert selectors[second_job] == ["tests/test_app.py", "tests/test_login.py"]
+
+    def test_a_third_round_writes_no_second_acknowledgement(self, ran):
+        acks = self._acks(ran["ledger"])
+        assert [(e["iteration"], e["move"]["payload"]["amendment_id"])
+                for e in acks] == [(2, "A001")]
+        assert ran["later"].terminal == TERMINAL_WAITING
+        assert ran["later"].iterations == 2
+
+    # ── every reader of the ledger keeps its reading for such an entry ──
+
+    def test_the_acknowledgement_costs_no_call(self, ran, tmp_path):
+        [ack] = self._acks(ran["ledger"])
+        assert ack["cost"] == {"calls": 0, "usage": None,
+                               "usage_source": USAGE_UNMEASURED}
+        trace = mission_evidence_dir(PROJECT, ran["mission_id"], tmp_path) \
+            / "prompt_trace.jsonl"
+        rows = trace.read_text(encoding="utf-8").splitlines()
+        assert len(rows) == 3, "one trace row per provider call, none for the ack"
+
+    def test_the_watchdog_reads_it_as_no_progress_and_no_burn(self, ran):
+        from packages.orchestration.watchdog import (
+            dispatched_entries,
+            evaluate_no_progress,
+            latest_trips_from_ledger,
+            measured_tokens,
+        )
+
+        [ack] = self._acks(ran["ledger"])
+        assert dispatched_entries([ack]) == []
+        assert measured_tokens(ack) is None
+        assert latest_trips_from_ledger(ran["ledger"]) == []
+        dispatch = ran["ledger"][0]
+        assert evaluate_no_progress([dispatch, ack, dispatch, ack, dispatch],
+                                    repeats=3) is not None
+        assert evaluate_no_progress([dispatch, ack, ack], repeats=2) is None
+
+    def test_the_rendered_ledger_shows_what_was_understood(self, ran):
+        text = render_ledger(ran["ledger"])
+        assert "[2] acknowledge_amendment -> acknowledged" in text
+        assert "    amendment_id: A001" in text
+        assert (f"    outcome: adds blocking criterion C002: {self.AMENDMENT}; "
+                "applies from round 2") in text
+
+    def test_the_next_iteration_index_counts_rounds_not_entries(self, ran):
+        from packages.orchestration.orchestrator_loop import next_iteration_index
+
+        assert next_iteration_index(PROJECT, ran["mission_id"], ran["root"]) == 4
