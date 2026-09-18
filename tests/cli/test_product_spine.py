@@ -4,10 +4,21 @@ stale doc strings, and fast test lane existence."""
 from __future__ import annotations
 
 import os
+import re
 import stat
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
+
+#: The two quick-start lines that register the repository and check its health
+#: before any line runs work (DECISION F268 D15, lines one and two).
+_QUICK_START_SETUP = ("remedy init", "remedy doctor core")
+
+
+def _quick_start_commands() -> list[str]:
+    """The command of every numbered line of the root help's quick start, in order."""
+    from apps.cli.grouped import _QUICK_START
+    return re.findall(r"^\s*\d+\.\s+(remedy\b.*?)\s*$", _QUICK_START, re.MULTILINE)
 
 #: Where an ist-doc can live after the docs restructure (index: docs/README.md).
 _DOC_DIRS = ("system", "guides", "")
@@ -266,14 +277,16 @@ class TestJobFirstHappyPath:
     """Top-level help uses job-first language."""
 
     def test_happy_path_starts_with_do(self):
-        from apps.cli.grouped import _QUICK_START
-        lines = _QUICK_START.strip().splitlines()
-        first_cmd_line = [l for l in lines if l.strip().startswith("1.")][0]
-        assert "remedy do" in first_cmd_line
+        # Lines one and two register and check health (DECISION F268 D15); the
+        # first numbered line that runs work is a `remedy do` line.
+        commands = _quick_start_commands()
+        assert commands[:2] == list(_QUICK_START_SETUP)
+        first_work = [c for c in commands if c not in _QUICK_START_SETUP][0]
+        assert first_work.startswith("remedy do ")
 
-    def test_happy_path_has_job_show(self):
-        from apps.cli.grouped import _QUICK_START
-        assert "job show" in _QUICK_START
+    def test_happy_path_lists_the_jobs(self):
+        # Line five lists the jobs (DECISION F268 D15).
+        assert "remedy job list" in _quick_start_commands()
 
     def test_happy_path_no_mission_as_primary(self):
         from apps.cli.grouped import _QUICK_START
@@ -549,10 +562,8 @@ class TestDoRunHelpAlignment:
     """Happy path and docs use do run syntax consistently."""
 
     def test_happy_path_uses_do_run(self):
-        from apps.cli.grouped import _QUICK_START
-        lines = _QUICK_START.strip().splitlines()
-        first = [l for l in lines if l.strip().startswith('1.')][0]
-        assert 'do run' in first or 'remedy do' in first
+        commands = _quick_start_commands()
+        assert any(c.startswith("remedy do ") for c in commands)
 
     def test_spine_doc_uses_do_run(self):
         text = _read_doc('core-product-spine-v0.md')
