@@ -253,19 +253,21 @@ class TestDoMission:
         assert show.returncode == 0
         assert "--- Intake ---" not in show.stderr
 
-    def test_explicit_do_run_skips_golden_path(self, tmp_path):
-        """Explicit `remedy do run "goal"` → legacy path, not golden path."""
+    def test_explicit_do_run_walks_the_do_sequence(self, tmp_path):
+        """Explicit `remedy do run "goal"` → the do sequence (DECISION F268 D16 (1))."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
 
         result = subprocess.run(
-            [*_CLI, "do", "run", "build a readme"],
+            [*_CLI, "do", "run", "build a readme", "--no-llm",
+             "--builder-provider", "fake", "--reviewer-provider", "fake", "--no-ui"],
             capture_output=True, text=True, timeout=30,
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
-        # Legacy path runs (may fail due to no builder, but NOT the do sequence's output)
-        assert "] shape:" not in result.stdout
+        # The do sequence's marker present: the word `run` no longer leaves it
+        assert result.returncode == 0, result.stderr
+        assert "[done] shape:" in result.stdout
 
     def test_budget_flag_walks_the_do_sequence(self, tmp_path):
         """Mission + --max-total-tokens → the do sequence (DECISION F268 D16 (5))."""
@@ -289,14 +291,19 @@ class TestDoMission:
         assert data["steps"][0]["name"] == "init"
         assert data["stopped_before_apply"] is True
 
-    def test_explicit_default_flag_skips_golden_path(self, tmp_path):
-        """Mission + --autonomy-level 1 (default value) → legacy path."""
+    def test_explicit_default_flag_walks_the_do_sequence(self, tmp_path):
+        """Mission + --repo . (the flag's default value, given explicitly) → the do sequence.
+
+        DECISION F268 D16 (1): no flag of `do` routes elsewhere; `--autonomy-level`,
+        which this test gave before, left `do` with D16 (2).
+        """
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
 
-        result = _run_do(repo, env, "build a readme", ["--autonomy-level", "1"])
-        assert "] shape:" not in result.stdout
+        result = _run_do(repo, env, "build a readme", ["--repo", "."])
+        assert result.returncode == 0, result.stderr
+        assert "[done] shape:" in result.stdout
 
     def test_bare_mission_with_repo_uses_golden_path(self, tmp_path):
         """Bare mission + --repo . → golden path (--repo allowed)."""

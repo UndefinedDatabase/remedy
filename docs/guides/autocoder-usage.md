@@ -19,7 +19,7 @@ Each stage can stop the pipeline with an explicit `stop_reason`.
 ### Fixture smoke (CI-safe, no Ollama required)
 
 ```sh
-remedy do run "fix the add function" --repo /tmp/myrepo --autonomy-level 4 --max-cycles 1 --json
+remedy do run "fix the add function" --repo /tmp/myrepo --builder-provider fake --reviewer-provider fake --no-llm --json
 ```
 
 ### Real Ollama via `remedy do` (requires running Ollama)
@@ -44,10 +44,9 @@ remedy worker unload --provider ollama --all
 
 ## Builder Providers
 
-`remedy do run` with autorun flags (`--autonomy-level`, `--max-cycles`, …) always runs the
-deterministic fixture builder, no LLM; it accepts `--builder-provider` but does not read it
-(R-0933). The builder of a bare `remedy do "<order>"` is chosen with `--builder-provider`
-(and the reviewer with `--reviewer-provider`):
+Every `remedy do`, with or without the word `run`, walks the same sequence (DECISION F268
+D16). Its builder is chosen with `--builder-provider` (and the reviewer with
+`--reviewer-provider`):
 
 | Provider     | What it does                                | When to use                     |
 |--------------|---------------------------------------------|---------------------------------|
@@ -94,7 +93,7 @@ Output (version 2) includes:
 ### Dashboard JSON
 
 ```sh
-remedy do run "fix the bug" --repo ./myrepo --ui
+remedy do run "fix the bug" --repo ./myrepo
 ```
 
 Dashboard shows:

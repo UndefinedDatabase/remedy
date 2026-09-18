@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -360,27 +360,6 @@ class TestCalcFixtureBuilderWithProof:
         do_run = next(c for c in CATALOG if c.command_id == "do.run")
         arg_names = [a.name for a in do_run.args]
         assert "--no-ui" in arg_names
-
-    def test_no_ui_suppresses_ui(self):
-        """--no-ui should suppress UI even if --ui is set."""
-        from apps.cli.commands.do_cmd import COMMAND_HANDLERS
-
-        class FakeArgs:
-            goal = "test"
-            repo = "."
-            project = None
-            autonomy_level = "1"
-            max_cycles = "1"
-            ui = "true"
-            no_ui = True
-            dry_run = True
-            json = True
-            fixture_builder = False
-
-        with patch("apps.cli.commands.do_cmd._cmd_do") as mock_do:
-            COMMAND_HANDLERS["do.run"](FakeArgs())
-            _, kwargs = mock_do.call_args
-            assert kwargs["enable_ui"] is False
 
     def test_no_old_fixture_references(self):
         """No references to fixture_module or greet() in autorun."""

@@ -1920,61 +1920,52 @@ print('    localhost UI: OK (url=' + url + ')')
     fi
 
     # -------------------------------------------------------------------------
-    # 12ao. Repair-loop fixture E2E (Step 155-156)
+    # 12ao. do sequence E2E on a fixture repository (DECISION F268 D17 (2))
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12ao"
-    echo "--- 12ao. Repair-loop fixture E2E"
-    TMP_REPAIR=$(mktemp -d)
-    _REPAIR_OUTPUT=$(remedy do "Make tests pass" --repo "${TMP_REPAIR}" --autonomy-level 6 --max-cycles 3 --no-ui --json 2>&1) || {
-        echo "    repair-loop command failed (rc=$?)"
-        echo "    output: ${_REPAIR_OUTPUT}"
+    echo "--- 12ao. do sequence E2E"
+    TMP_DO=$(mktemp -d)
+    git -C "${TMP_DO}" init -q
+    git -C "${TMP_DO}" config user.email "smoke@example.invalid"
+    git -C "${TMP_DO}" config user.name "Remedy Smoke"
+    echo "# do smoke fixture" >"${TMP_DO}/README.md"
+    git -C "${TMP_DO}" add .
+    git -C "${TMP_DO}" commit -q -m "initial do fixture"
+    _DO_OUTPUT=$(remedy do "Make tests pass" --repo "${TMP_DO}" --builder-provider fake --reviewer-provider fake --no-llm --no-ui --json 2>&1) || {
+        echo "    do command failed (rc=$?)"
+        echo "    output: ${_DO_OUTPUT}"
         remedy do run --help 2>&1 || true
         return 1
     }
-    echo "${_REPAIR_OUTPUT}" | python3 -c "
+    echo "${_DO_OUTPUT}" | python3 -c "
 import sys, json
 raw = sys.stdin.read()
 try:
     d = json.loads(raw)
 except json.JSONDecodeError:
-    print('ERROR: repair-loop output not valid JSON', file=sys.stderr)
+    print('ERROR: do output not valid JSON', file=sys.stderr)
     print('Raw: ' + raw[:200], file=sys.stderr)
     sys.exit(1)
-if d.get('version') != 1:
-    print('ERROR: repair-loop version != 1', file=sys.stderr)
+if not d.get('mission_id'):
+    print('ERROR: do missing mission_id', file=sys.stderr)
     sys.exit(1)
-if not d.get('job_id'):
-    print('ERROR: repair-loop missing job_id', file=sys.stderr)
+if not d.get('job_ids'):
+    print('ERROR: do job_ids empty', file=sys.stderr)
     sys.exit(1)
-if d.get('cycles_run', 0) < 2:
-    print('ERROR: repair-loop cycles_run < 2: ' + str(d.get('cycles_run')), file=sys.stderr)
+if d.get('stopped_before_apply') is not True:
+    print('ERROR: do stopped_before_apply not true', file=sys.stderr)
     sys.exit(1)
-if not d.get('repair_context_created'):
-    print('ERROR: repair_context_created not true', file=sys.stderr)
-    sys.exit(1)
-if not d.get('repair_loop_used'):
-    print('ERROR: repair_loop_used not true', file=sys.stderr)
-    sys.exit(1)
-if not d.get('tests_passed'):
-    print('ERROR: tests_passed not true', file=sys.stderr)
-    sys.exit(1)
-# No raw leaks
-full = json.dumps(d)
-for bad in ('raw_output','command_output','Traceback','stdout','stderr'):
-    if bad in full:
-        print('ERROR: repair-loop raw leak: ' + bad, file=sys.stderr)
-        sys.exit(1)
-print('    repair-loop: OK (cycles=' + str(d['cycles_run']) + ', stage=' + d.get('stage','?') + ')')
+print('    do sequence: OK (jobs=' + str(len(d['job_ids'])) + ', stopped before apply)')
 "
-    REPAIR_JOB_ID=$(echo "${_REPAIR_OUTPUT}" | python3 -c "import sys,json; print(json.loads(sys.stdin.read())['job_id'])")
-    rm -rf "${TMP_REPAIR}"
+    DO_JOB_ID=$(echo "${_DO_OUTPUT}" | python3 -c "import sys,json; print(json.loads(sys.stdin.read())['job_ids'][0])")
+    rm -rf "${TMP_DO}"
 
     # -------------------------------------------------------------------------
     # 12aq. Memory candidates (Step 158)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12aq"
     echo "--- 12aq. Memory candidates"
-    _MC_OUTPUT=$(remedy memory candidates "${REPAIR_JOB_ID}" --json 2>&1) || {
+    _MC_OUTPUT=$(remedy memory candidates "${DO_JOB_ID}" --json 2>&1) || {
         echo "    memory candidates command failed (rc=$?)"
         echo "    output: ${_MC_OUTPUT}"
         remedy memory candidates --help 2>&1 || true
@@ -2049,7 +2040,7 @@ def chk(cond, msg):
         print('ERROR: ' + msg, file=sys.stderr)
         sys.exit(1)
 
-job = require_job_plan('${REPAIR_JOB_ID}')
+job = require_job_plan('${DO_JOB_ID}')
 data_dir = resolve_data_root()
 events = load_run_events(data_dir, job.job_id)
 

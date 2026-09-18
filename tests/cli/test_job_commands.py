@@ -179,7 +179,8 @@ class TestRemedyDo:
         from apps.cli.command_catalog import get_command
         cmd = get_command("do.run")
         assert cmd.group_id == "do"
-        assert cmd.may_mutate_repo is False  # v1: fixture only, no repo mutation
+        # R-0969 and DECISION F268 D17 (3): `do` runs a job, which writes the repository.
+        assert cmd.may_mutate_repo is True
 
 
 # ---------------------------------------------------------------------------
@@ -299,23 +300,6 @@ class TestDoDirectGoalCommandRewrite:
         # "Make tests pass" is not a known subcommand
         assert "Make tests pass" not in subcmds
 
-    def test_do_direct_dry_run(self):
-        """remedy do '<goal>' --dry-run --json should work."""
-        from apps.cli.grouped import main as grouped_main
-        with patch("apps.cli.commands.do_cmd._cmd_do") as mock_do:
-            grouped_main(["do", "Make tests pass", "--dry-run", "--json"])
-            mock_do.assert_called_once()
-            args = mock_do.call_args
-            assert args[0][0] == "Make tests pass"
-
-    def test_do_run_alias_still_works(self):
-        """remedy do run '<goal>' --dry-run --json should still work."""
-        from apps.cli.grouped import main as grouped_main
-        with patch("apps.cli.commands.do_cmd._cmd_do") as mock_do:
-            grouped_main(["do", "run", "Make tests pass", "--dry-run", "--json"])
-            mock_do.assert_called_once()
-            assert mock_do.call_args[0][0] == "Make tests pass"
-
     def test_do_no_args_shows_help(self):
         """remedy do with no args should show group help."""
         from apps.cli.grouped import main as grouped_main
@@ -331,24 +315,6 @@ class TestDoDirectGoalCommandRewrite:
             grouped_main(["do", "--help"])
             output = str(mock_print.call_args[0][0])
             assert "do" in output.lower()
-
-    def test_do_with_all_flags(self):
-        """remedy do '<goal>' with all flags should parse correctly."""
-        from apps.cli.grouped import main as grouped_main
-        with patch("apps.cli.commands.do_cmd._cmd_do") as mock_do:
-            grouped_main([
-                "do", "Fix bug",
-                "--repo", "/tmp/test",
-                "--autonomy-level", "4",
-                "--max-cycles", "2",
-                "--builder-provider", "fake",
-                "--no-ui",
-                "--json",
-            ])
-            mock_do.assert_called_once()
-            _, kwargs = mock_do.call_args
-            assert mock_do.call_args[0][0] == "Fix bug"
-            assert kwargs["builder_provider"] == "fake"
 
     def test_default_rewrite_dict(self):
         """Default command dict includes both ui and do."""

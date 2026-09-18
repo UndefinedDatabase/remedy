@@ -3,7 +3,8 @@
 `--project` selects the project the init step uses; the budget flags are resolved
 before the first step and reach the job; `--builder-model` and `--reviewer-model`
 reach the job and every `remedy job run` Next line; `--planner-model` reaches every
-structured planner call (D16 (4) to (7)).
+structured planner call (D16 (4) to (7)). An explicit `remedy do run` walks the same
+sequence, and the flags only the deleted autorun read exit 2 (D16 (1), (2), R-0933).
 
 In-process through `apps.cli.grouped.main`, against a temporary git repository
 holding one committed file, with the data root under `tmp_path`, the fake builder
@@ -198,3 +199,38 @@ def test_planner_model_reaches_every_structured_planner_call(repo, capsys, monke
     # The plan step's mission plan call and the shape step's intake call, at least.
     assert {"MissionPlanDraft", "JobIntake"} <= {name for name, _model in calls}, calls
     assert [model for _name, model in calls] == ["p1"] * len(calls), calls
+
+
+# ── one route under `do` (DECISION F268 D16 (1), (2), R-0933) ────────────────
+
+
+def test_an_explicit_do_run_walks_the_sequence_and_its_job_has_the_cli_builder(repo, capsys):
+    """R-0933: `--builder-provider` given to an explicit `do run` is the job's builder."""
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    main(["do", "run", ORDER, *FAKE_ROLES, "--no-llm", "--no-ui", "--json"])
+    data = json.loads(capsys.readouterr().out)
+
+    assert data["mission_id"]
+    assert isinstance(data["steps"], list)
+    assert [s["name"] for s in data["steps"]][:5] == ["init", "study", "plan", "shape", "run"]
+    assert _step(data, "run")["status"] == "done"
+    [job_id] = data["job_ids"]
+    config = load_job_plan(job_id).execution_config
+    assert (config.builder, config.builder_source) == ("fake", "cli")
+    assert (config.reviewer, config.reviewer_source) == ("fake", "cli")
+
+
+@pytest.mark.parametrize("removed", [
+    ("--autonomy-level", "1"), ("--max-cycles", "1"), ("--ui",), ("--dry-run",)],
+    ids=["autonomy-level", "max-cycles", "ui", "dry-run"])
+def test_a_flag_removed_from_do_exits_2_and_runs_nothing(repo, capsys, removed):
+    from packages.orchestration.pingpong_job import list_job_plans
+    from packages.orchestration.project_registry import resolve_project
+
+    code, out, _err = _exit_code_and_output(capsys, *removed)
+
+    assert code == 2
+    assert out == ""
+    assert list_job_plans() == []
+    assert resolve_project(repo) is None
