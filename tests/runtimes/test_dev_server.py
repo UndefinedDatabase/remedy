@@ -131,11 +131,14 @@ class TestReadiness:
 
     def test_delayed_readiness(self, project):
         server = DevServer(_spec(project, "server.py", "1.5"), project)
+        # The server's 1.5s delay starts when start() launches it, and wait_ready's own
+        # clock only after start() returns, so the wait is measured from before start().
+        launched = time.monotonic()
         server.start()
         try:
             res = server.wait_ready()
             assert res.ok
-            assert res.elapsed_s >= 1.4          # it really did wait
+            assert time.monotonic() - launched >= 1.4   # it really did wait
         finally:
             server.stop()
 
