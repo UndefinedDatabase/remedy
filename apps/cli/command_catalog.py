@@ -108,8 +108,8 @@ class CommandEntry:
 GROUPS: dict[str, GroupDef] = {
     # -- Golden path (pinned first in help) --
     "do": GroupDef("do", "Do", "Run, report, and apply Remedy tasks."),
-    "status": GroupDef("status", "Status", "Project status overview."),
-    "decision": GroupDef("decision", "Decision", "Human decision queue."),
+    "status": GroupDef("status", "Status", "Project status overview, across its repos and missions."),
+    "decision": GroupDef("decision", "Decision", "The queue of decisions Remedy cannot answer for itself."),
     # -- User-facing primary commands --
     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
@@ -118,42 +118,55 @@ GROUPS: dict[str, GroupDef] = {
     "ui": GroupDef("ui", "UI", "Open the local UI."),
     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
     "config": GroupDef("config", "Config", "View or change settings.", aliases=("settings",)),
-    "worker": GroupDef("worker", "Worker", "Manage worker connections."),
-    "memory": GroupDef("memory", "Memory", "Project memory."),
-    "teacher": GroupDef("teacher", "Teacher", "Explain a run. Read-only, never steers it."),
-    "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project dev server."),
-    "stats": GroupDef("stats", "Stats", "Honest counts from the evidence on disk."),
+    "worker": GroupDef("worker", "Worker", "Manage the workers that support a role: builder, reviewer, planner or teacher."),
+    "memory": GroupDef("memory", "Memory", "Memory scoped to the project's repos and missions."),
+    "teacher": GroupDef("teacher", "Teacher", "Explain a run from its evidence. Read-only, never steers it."),
+    "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project's repo dev server."),
+    "stats": GroupDef("stats", "Stats", "Honest counts from the run evidence on disk."),
     # -- Advanced / internal commands (callable but hidden from default help) --
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False),
-    "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
-    "brain": GroupDef("brain", "Brain", "Inspect the project brain graph.", user_facing=False),
-    "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded run-loop facade (internal)."),
+    "test": GroupDef("test", "Test", "Discover and execute tests in the project's repo.", user_facing=False),
+    "brain": GroupDef("brain", "Brain", "Inspect the project's repo brain graph.", user_facing=False),
+    "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded orchestrator facade (internal)."),
     "change": GroupDef("change", "Change", "Review change sets (proof chain view).", user_facing=False),
     "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False),
     "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False),
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons.", user_facing=False),
-    "self": GroupDef("self", "Self", "Self-dogfood — inspect own evidence.", user_facing=False),
+    "self": GroupDef("self", "Self", "Self-dogfood — inspect Remedy's own run evidence.", user_facing=False),
     "dev": GroupDef("dev", "Dev", "Developer utilities.", user_facing=False),
-    "ci": GroupDef("ci", "CI", "Remedy's own CI stages, run locally.", user_facing=False),
+    "ci": GroupDef("ci", "CI", "Remedy's own CI stages, executed locally.", user_facing=False),
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
     "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False),
     # -- Hidden: in no help at all, callable (DECISION amend0905-vocab D4) --
-    "roadmap": GroupDef("roadmap", "Roadmap", "Read-only roadmap mirror — what is active, what is next. Proposes, never starts.", user_facing=False, hidden=True),
+    "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True),
 }
+
+#: The default `remedy --help` order (DECISION amend0905-vocab D4, clarified by
+#: amend0911-feedback D1): the sixteen visible groups in this fixed order, then
+#: `absorb` (F263) and `chat` (F264) once each ships — two reserved slots, not
+#: registered as empty groups (D1). `_print_root_help` iterates this tuple, never
+#: `GROUPS`' own dict order, so a new visible group added elsewhere in `GROUPS`
+#: cannot silently reorder the help output; `TestVisibleGroupOrder` in
+#: `tests/test_command_catalog.py` pins both the tuple's own content and its
+#: completeness against `GROUPS`.
+VISIBLE_GROUP_ORDER: tuple[str, ...] = (
+    "do", "mission", "job", "run", "decision", "status", "stats", "teacher",
+    "memory", "ui", "config", "doctor", "project", "init", "worker", "runtime",
+)
 
 
 # ---------------------------------------------------------------------------
 # Argument shorthands
 # ---------------------------------------------------------------------------
 
-_JOB_ID = ArgDef("job_id", "UUID of the job")
-_PROJECT_ID = ArgDef("project_id", "UUID or name of the project")
+_JOB_ID = ArgDef("job_id", "UUID of the job (under its mission)")
+_PROJECT_ID = ArgDef("project_id", "UUID or name of the project (its repo)")
 _INTENT_ID = ArgDef("intent_id", "Intent ID (integer)")
 _JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false")
 #: F107: names ONE task of a job — its planned id (`T001`) or a prefix of its
 #: task UUID. A valued option, never a flag, and never defaulted to a guess.
 _TASK_OPT = ArgDef(
-    "--task", "Task to select: planned id (T001) or task-id prefix",
+    "--task", "Task to select from the job plan: planned id (T001) or task-id prefix",
     required=False, is_option=True)
 _REASON_OPT = ArgDef("--reason", "Reason text", required=False, is_option=True)
 _ANSWER_OPT = ArgDef(
@@ -188,7 +201,7 @@ _AS_MISSION_FLAG = ArgDef(
     "--as-mission",
     "When approving: also create a mission for this goal and link this job as its initial job",
     required=False, is_option=True, is_flag=True)
-_PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to project (slug or UUID)", required=False, is_option=True)
+_PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to a project's repo (slug or UUID)", required=False, is_option=True)
 _ALL_PROJECTS_FLAG = ArgDef("--all-projects", "Show jobs from all projects", required=False, is_option=True, is_flag=True)
 
 
@@ -205,7 +218,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Initialize a Remedy project in the current git repo.",
         action_class="write_metadata",
         args=(
-            ArgDef("--project-name", "Project display name (default: directory name)", required=False, is_option=True),
+            ArgDef("--project-name", "Project's repo display name (default: directory name)", required=False, is_option=True),
             ArgDef("--print-only", "Show what would happen without writing anything", required=False, is_option=True, is_flag=True),
             ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false"),
         ),
@@ -216,7 +229,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="status.run",
         group_id="status",
         subcommand="run",
-        description="Show project status overview.",
+        description="Show project status overview, across its repos and missions.",
         action_class="read_only",
         args=(
             _PROJECT_SCOPE_OPT,
@@ -231,7 +244,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.list",
         group_id="job",
         subcommand="list",
-        description="List jobs (scoped to current project by default).",
+        description="List jobs (scoped to the current project's repo by default).",
         action_class="read_only",
         args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG, _JSON_OPT),
         supports_json=True,
@@ -240,13 +253,13 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.show",
         group_id="job",
         subcommand="show",
-        description="Show job details; the output is always JSON, so --json is accepted and changes nothing.",
+        description="Show job details, under its mission; the output is always JSON, so --json is accepted and changes nothing.",
         action_class="read_only",
         args=(
             _JOB_ID,
-            ArgDef("--full", "Print every finding of a blocked task instead of the first ten, "
-                   "and the job's sections (its permissions, fences, assumptions, "
-                   "completion digest, summary, status, report and Definition of Done)",
+            ArgDef("--full", "Print every finding of a blocked task — a step in the job's plan — "
+                   "instead of the first ten, and the job's sections (its permissions, fences, "
+                   "assumptions, completion digest, summary, status, report and Definition of Done)",
                    required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
@@ -257,7 +270,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="teacher.narrate",
         group_id="teacher",
         subcommand="narrate",
-        description="Narrate a job's run log in plain sentences (read-only).",
+        description="Narrate a job's run evidence in plain sentences, under its mission (read-only).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -271,11 +284,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="teacher.ask",
         group_id="teacher",
         subcommand="ask",
-        description="Ask the teacher about a run or your code. Records one spend row; never steers the run.",
+        description="Ask the teacher about a run's evidence or your code. Records one spend row; never steers the run.",
         action_class="write_metadata",
         args=(
             ArgDef("question", "What you want explained"),
-            ArgDef("--job-id", "Job whose run log grounds the answer", required=False, is_option=True),
+            ArgDef("--job-id", "Job, under its mission, whose run log (its evidence) grounds the answer", required=False, is_option=True),
             # Grounding source (2), the workspace code. Read-only: the file is
             # opened for reading and nothing is written back, so this option
             # leaves the write_metadata class above untouched.
@@ -291,7 +304,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.attach-repo",
         group_id="job",
         subcommand="attach-repo",
-        description="Attach a repository path to a job.",
+        description="Attach a repository path to a job (under its mission).",
         action_class="write_metadata",
         args=(_JOB_ID, ArgDef("repo_path", "Path to the repository")),
     ),
@@ -313,12 +326,12 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.stop",
         group_id="job",
         subcommand="stop",
-        description="Request a safe stop of a running job (F011 kill switch).",
+        description="Request a safe stop of a running job, under its mission (F011 kill switch).",
         action_class="write_metadata",
         supports_json=True,
         args=(
-            ArgDef("job_id", "Job ID to stop"),
-            ArgDef("--reason", "Why the job is being stopped (recorded in the evidence)", required=False, is_option=True, default=""),
+            ArgDef("job_id", "Job ID to stop (under its mission)"),
+            ArgDef("--reason", "Why the job, under its mission, is being stopped (recorded in the run's evidence)", required=False, is_option=True, default=""),
             ArgDef("--source", "Who requested the stop (default: cli)", required=False, is_option=True, default="cli"),
             ArgDef("--status", "Show pending and consumed stop requests instead of requesting one", required=False, is_option=True, is_flag=True),
             _JSON_OPT,
@@ -338,7 +351,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         supports_json=True,
         args=(
-            ArgDef("job_id", "Job ID to inspect"),
+            ArgDef("job_id", "Job ID to inspect (under its mission)"),
             ArgDef("action", "Omit to show the budget; set writes one field", required=False),
             ArgDef("field", "The field set writes; a wrong name lists the settable ones", required=False),
             ArgDef("value", "The integer value set writes", required=False),
@@ -363,8 +376,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.context",
         group_id="job",
         subcommand="context",
-        description=("Show the compiled context for one task — what it "
-                     "receives and what was omitted (F107)."),
+        description=("Show the compiled context for one task in the job plan "
+                     "— what it receives and what was omitted (F107)."),
         action_class="read_only",
         args=(_JOB_ID, _TASK_OPT, _JSON_OPT),
         supports_json=True,
@@ -376,11 +389,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="project.create",
         group_id="project",
         subcommand="create",
-        description="Create a new project.",
+        description="Create a new project for a repo.",
         action_class="write_metadata",
         args=(
-            ArgDef("name", "Project name"),
-            ArgDef("--description", "Project description", required=False, is_option=True),
+            ArgDef("name", "Project name (its repo)"),
+            ArgDef("--description", "Project description (its repo)", required=False, is_option=True),
         ),
         related=("project.show",),
     ),
@@ -397,7 +410,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="project.show",
         group_id="project",
         subcommand="show",
-        description="Show project details.",
+        description="Show the project's repo details.",
         action_class="read_only",
         args=(_PROJECT_ID, _JSON_OPT),
         supports_json=True,
@@ -415,7 +428,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="project.attach-job",
         group_id="project",
         subcommand="attach-job",
-        description="Link a job to a project.",
+        description="Link a job to a project's repo, under its mission.",
         action_class="write_metadata",
         args=(_PROJECT_ID, _JOB_ID),
     ),
@@ -423,7 +436,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="project.brain",
         group_id="project",
         subcommand="brain",
-        description="Show the aggregate project brain graph across all jobs.",
+        description="Show the aggregate brain graph of the project's repo, across all jobs.",
         action_class="read_only",
         args=(_PROJECT_ID, _JSON_OPT),
         supports_json=True,
@@ -433,7 +446,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="project.context",
         group_id="project",
         subcommand="context",
-        description="Show project context and constitution.",
+        description="Show the project's repo context and constitution.",
         action_class="read_only",
         args=(_PROJECT_ID, _JSON_OPT),
         supports_json=True,
@@ -444,7 +457,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="project.summary",
         group_id="project",
         subcommand="summary",
-        description="Show project-level summary with patterns and suggestions.",
+        description="Show the project's repo-level summary with patterns and suggestions.",
         action_class="read_only",
         args=(_PROJECT_ID, _JSON_OPT),
         supports_json=True,
@@ -454,10 +467,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="project.current",
         group_id="project",
         subcommand="current",
-        description="Show the project resolved from the current directory.",
+        description="Show the project's repo, resolved from the current directory.",
         action_class="read_only",
         args=(
-            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, slug or UUID", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -470,7 +483,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Attach a repository path to the current project.",
         action_class="write_metadata",
         args=(
-            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, slug or UUID", required=False, is_option=True),
             ArgDef("--repo", "Path to the repository", required=True, is_option=True),
         ),
         related=("project.current",),
@@ -479,11 +492,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="project.adopt",
         group_id="project",
         subcommand="adopt",
-        description="Adopt a single unscoped job into the current project.",
+        description="Adopt a single unscoped job into the current project's repo, under its mission.",
         action_class="write_metadata",
         args=(
             _JOB_ID,
-            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, slug or UUID", required=False, is_option=True),
         ),
         related=("project.attach-job", "job.list"),
     ),
@@ -493,7 +506,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="patch.list",
         group_id="patch",
         subcommand="list",
-        description="List patch intents for a job.",
+        description="List patch intents for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -556,7 +569,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="patch.approve-hunks",
         group_id="patch",
         subcommand="approve-hunks",
-        description="Record a hunk-level approve and reject decision over a job's diff.",
+        description="Record a hunk-level approve-or-reject answer over one of a job's tasks.",
         action_class="approval_gate",
         args=(_JOB_ID, _TASK_RUN_OPT, _APPROVE_HUNK_OPT, _REJECT_HUNK_OPT, _JSON_OPT),
         supports_json=True,
@@ -583,15 +596,15 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="test.run",
         group_id="test",
         subcommand="run",
-        description="Run discovered tests for a job (contract-gated, resource-safe).",
+        description="Run the discovered tests for a job's tasks, gated by its contract (the job's acceptance criteria) and resource-safe.",
         action_class="test_execution",
         args=(
             _JOB_ID,
             ArgDef("--task-id", "Link run to a task ID", required=False,
                    is_option=True, default=""),
-            ArgDef("--intent-id", "Link run to a patch intent ID", required=False,
+            ArgDef("--intent-id", "Link run to a patch intent ID (same task as --task-id)", required=False,
                    is_option=True, default=""),
-            ArgDef("--apply-id", "Link run to an apply record ID", required=False,
+            ArgDef("--apply-id", "Link run to an apply record ID (same task as --task-id)", required=False,
                    is_option=True, default=""),
             ArgDef("--timeout-seconds", "Override process timeout (seconds)", required=False,
                    is_option=True, default=""),
@@ -607,7 +620,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="test.status",
         group_id="test",
         subcommand="status",
-        description="Show current test run status for a job (lease state, latest run, usage).",
+        description="Show current test run status for a job's tasks (lease state, latest run, usage).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -618,9 +631,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="test.result",
         group_id="test",
         subcommand="result",
-        description="Show a safe test run result by test_run_id (read-only; no raw output).",
+        description="Show a safe test run result for a task, by test_run_id (read-only; no raw output).",
         action_class="read_only",
-        args=(ArgDef("test_run_id", "Test run ID"), _JSON_OPT),
+        args=(ArgDef("test_run_id", "Test run ID (identifies one task's test execution)"), _JSON_OPT),
         supports_json=True,
         related=("test.run", "test.list"),
     ),
@@ -628,7 +641,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="test.list",
         group_id="test",
         subcommand="list",
-        description="List safe test run records for a job (read-only; no raw output).",
+        description="List safe test run records for a job's tasks (read-only; no raw output).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -648,7 +661,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="snapshot.create",
         group_id="snapshot",
         subcommand="create",
-        description="Record an honest metadata snapshot proof of a job's repo (write_metadata; NOT a rollback restore).",
+        description="Record an honest metadata snapshot proof of a job's repo, under its mission (write_metadata; NOT a rollback restore).",
         action_class="write_metadata",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -673,7 +686,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="brain.graph",
         group_id="brain",
         subcommand="graph",
-        description="Show the project brain graph.",
+        description="Show the project's repo brain graph.",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -702,7 +715,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="brain.context",
         group_id="brain",
         subcommand="context",
-        description="Show brain context for a job.",
+        description="Show brain context for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -712,7 +725,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="brain.trust",
         group_id="brain",
         subcommand="trust",
-        description="Show the trust report for a job.",
+        description="Show the trust report for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID,),
         related=("brain.timeline",),
@@ -721,7 +734,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="brain.timeline",
         group_id="brain",
         subcommand="timeline",
-        description="Show the event timeline for a job.",
+        description="Show the event timeline for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID,),
         related=("brain.trust",),
@@ -731,7 +744,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="brain.cockpit",
         group_id="brain",
         subcommand="cockpit",
-        description="Show the human cockpit summary for a job.",
+        description="Show the human cockpit summary for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID,),
         related=("brain.graph", "brain.trust"),
@@ -740,13 +753,13 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="brain.continue",
         group_id="brain",
         subcommand="continue",
-        description="Create a child job from a brain node (continue-from-node).",
+        description="Create a child job, under its mission, from a brain node (continue-from-node).",
         action_class="write_metadata",
         args=(
             _JOB_ID,
             ArgDef("node_id", "Brain node ID to continue from"),
-            ArgDef("--prompt", "Prompt for the child job", required=True, is_option=True),
-            ArgDef("--task-type", "Task type for the child job", required=False, is_option=True),
+            ArgDef("--prompt", "Prompt for the child job (under its mission)", required=True, is_option=True),
+            ArgDef("--task-type", "Task type for the child job's next step", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -756,7 +769,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="brain.constitution",
         group_id="brain",
         subcommand="constitution",
-        description="Show the project constitution for a job.",
+        description="Show the project's repo constitution for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID,),
         related=("brain.context",),
@@ -798,7 +811,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="worker.list",
         group_id="worker",
         subcommand="list",
-        description="List known worker provider specs.",
+        description="List the worker provider specs available for each role: builder, reviewer, planner or teacher.",
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
@@ -808,7 +821,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="worker.show",
         group_id="worker",
         subcommand="show",
-        description="Show details of a single worker adapter.",
+        description="Show the details of a single worker adapter: the model and the roles (builder, reviewer, planner, teacher) it supports.",
         action_class="read_only",
         args=(ArgDef("provider_id", "Provider ID (e.g. ollama)"), _JSON_OPT),
         supports_json=True,
@@ -844,7 +857,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="worker.status",
         group_id="worker",
         subcommand="status",
-        description="Show current worker status.",
+        description="Show the current status of each worker: which role (builder, reviewer, planner or teacher) it is running, if any.",
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
@@ -854,24 +867,24 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="worker.doctor",
         group_id="worker",
         subcommand="doctor",
-        description="Read-only: is each available worker provider's own tooling actually reachable?",
+        description="Read-only: is each available worker provider's own tooling actually reachable for the roles (builder, reviewer, planner, teacher) it supports?",
         action_class="read_only",
         args=(_JSON_OPT,),
         supports_json=True,
         related=("worker.list", "worker.resources"),
     ),
 
-    # ── mission (the F070 orchestrator loop, keyed on a mission id) ──────
+    # ── mission (the F070 orchestrator, keyed on a mission id) ──────────
     CommandEntry(
         command_id="mission.run",
         group_id="mission",
         subcommand="run",
-        description="Run the F070 orchestrator loop for one mission. Stops on a terminal move, the iteration limit, a stop request or an escalation.",
+        description="Execute the F070 orchestrator for one mission's jobs. Stops on a terminal move, the iteration limit, a stop request or an escalation.",
         action_class="write_metadata",
         args=(
-            ArgDef("run_id", "Mission id (F070 loop)"),
-            ArgDef("--iterations", "Max orchestrator iterations this run", required=False, is_option=True),
-            ArgDef("--no-llm", "Run without a provider — reports the honest no_provider terminal", required=False, is_option=True, is_flag=True),
+            ArgDef("run_id", "Mission id (F070 orchestrator) that owns the jobs"),
+            ArgDef("--iterations", "Max iterations before the orchestrator stops", required=False, is_option=True),
+            ArgDef("--no-llm", "Execute without a provider — reports the honest no_provider terminal", required=False, is_option=True, is_flag=True),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
@@ -882,10 +895,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.watchdog",
         group_id="mission",
         subcommand="watchdog",
-        description="Evaluate a mission's autonomy tripwires and report what fired, with the evidence behind it (read-only: it pauses nothing and raises no decision).",
+        description="Evaluate a mission's autonomy tripwires over its jobs and report what fired, with the run's evidence behind it — read-only: it pauses nothing and answers no decision.",
         action_class="read_only",
         args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
@@ -896,10 +909,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.handoff",
         group_id="mission",
         subcommand="handoff",
-        description="Compose this mission's handoff artifact — dossier, checkpoint reference, open decisions and next intent — so a fresh context can resume from it (F079).",
+        description="Compose this mission's handoff artifact — dossier, checkpoint reference, open decisions, next intent and its jobs — so a fresh context can resume from it (F079).",
         action_class="write_metadata",
         args=(
-            ArgDef("mission_id", "Mission id"),
+            ArgDef("mission_id", "Mission id that owns the jobs"),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -909,7 +922,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.report",
         group_id="mission",
         subcommand="report",
-        description="Read-only morning-style report built from the job's current evidence.",
+        description="Read-only morning-style report for a mission, built from its job's current run evidence.",
         action_class="read_only",
         args=(
             _JOB_ID,
@@ -931,7 +944,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Create a mission — a persistent goal above the jobs that will serve it (explicit; never automatic).",
         action_class="write_metadata",
         args=(
-            ArgDef("goal", "The persistent goal this mission exists for"),
+            ArgDef("goal", "The persistent goal this mission exists for, before any job is created"),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
@@ -952,11 +965,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.continue",
         group_id="mission",
         subcommand="continue",
-        description="Add the next job to a mission — its plan always begins with a task that verifies the previous job's Definition of Done.",
+        description="Add the next job to a mission — its plan always begins with a task (a step) that verifies the previous job's Definition of Done.",
         action_class="write_metadata",
         args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix)"),
-            ArgDef("next_step", "What this next job should do"),
+            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
+            ArgDef("next_step", "What this next job, under its mission, should do"),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
@@ -970,7 +983,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Compile a mission's goal into a milestone plan (recompiles keep prior versions; refused once a milestone is in progress). Creates no jobs and starts nothing.",
         action_class="write_metadata",
         args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
             ArgDef("--no-llm", "Compile deterministically (no LLM provider call)", required=False, is_option=True, is_flag=True),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
@@ -985,7 +998,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Show one mission and its job chain, each job with the state the job store reports now.",
         action_class="read_only",
         args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
@@ -1001,7 +1014,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Mark a mission achieved — an explicit human judgement, never inferred from its jobs.",
         action_class="write_metadata",
         args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
@@ -1012,10 +1025,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.abandon",
         group_id="mission",
         subcommand="abandon",
-        description="Mark a mission abandoned — the goal is dropped; its jobs and their evidence stay.",
+        description="Mark a mission abandoned — the goal is dropped; its jobs and their run evidence stay.",
         action_class="write_metadata",
         args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
@@ -1026,10 +1039,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.pause",
         group_id="mission",
         subcommand="pause",
-        description="Mark a mission paused — the goal still stands, work on it does not.",
+        description="Mark a mission paused — the goal still stands, work on its jobs does not.",
         action_class="write_metadata",
         args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
@@ -1040,10 +1053,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.resume",
         group_id="mission",
         subcommand="resume",
-        description="Mark a mission active again — the pause is lifted; the tripwire that caused it is not cleared.",
+        description="Mark a mission active again — the pause on its jobs is lifted; the tripwire that caused it is not cleared.",
         action_class="write_metadata",
         args=(
-            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
         ),
@@ -1054,7 +1067,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.readiness",
         group_id="mission",
         subcommand="readiness",
-        description="Read-only: is this job safe to run unattended?",
+        description="Read-only: is this job, under its mission, safe to execute unattended?",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -1085,8 +1098,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("key", "Memory key"),
             ArgDef("value", "Memory value"),
-            ArgDef("--project", "Project UUID scope", required=False, is_option=True),
-            ArgDef("--job", "Job UUID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, UUID scope", required=False, is_option=True),
+            ArgDef("--job", "Job UUID scope (under its mission)", required=False, is_option=True),
             ArgDef("--tags", "Comma-separated tags", required=False, is_option=True),
             ArgDef("--approved", "Mark as approved", required=False, is_option=True),
         ),
@@ -1098,8 +1111,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Recall memory entries by keyword.",
         action_class="read_only",
         args=(
-            ArgDef("--project", "Project UUID scope", required=False, is_option=True),
-            ArgDef("--job", "Job UUID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, UUID scope", required=False, is_option=True),
+            ArgDef("--job", "Job UUID scope (under its mission)", required=False, is_option=True),
             ArgDef("--keyword", "Search keyword", required=False, is_option=True),
             ArgDef("--limit", "Max entries to return (default: 5)", required=False, is_option=True, default="5"),
             _JSON_OPT,
@@ -1113,8 +1126,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="List all memory entries for a scope.",
         action_class="read_only",
         args=(
-            ArgDef("--project", "Project UUID scope", required=False, is_option=True),
-            ArgDef("--job", "Job UUID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, UUID scope", required=False, is_option=True),
+            ArgDef("--job", "Job UUID scope (under its mission)", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -1124,7 +1137,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="memory.learn",
         group_id="memory",
         subcommand="learn",
-        description="Learn memory from job run evidence.",
+        description="Learn memory from job run evidence (under its mission).",
         action_class="write_metadata",
         args=(
             _JOB_ID,
@@ -1142,8 +1155,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -1156,8 +1169,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
     CommandEntry(
@@ -1168,8 +1181,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
     CommandEntry(
@@ -1180,8 +1193,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             ArgDef("memory_id", "Memory entry ID", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
     CommandEntry(
@@ -1193,8 +1206,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("old_id", "Memory ID to supersede", required=True),
             ArgDef("new_id", "Memory ID that supersedes", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
     CommandEntry(
@@ -1206,15 +1219,15 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("memory_id", "Memory ID to contradict", required=True),
             ArgDef("by_id", "Memory ID that contradicts", required=True),
-            ArgDef("--project", "Project ID scope", required=False, is_option=True),
-            ArgDef("--job", "Job ID scope", required=False, is_option=True),
+            ArgDef("--project", "Project's repo, ID scope", required=False, is_option=True),
+            ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
     CommandEntry(
         command_id="memory.candidates",
         group_id="memory",
         subcommand="candidates",
-        description="List memory candidates for a job (pending human approval).",
+        description="List memory candidates for a job, under its mission (pending human approval).",
         action_class="read_only",
         args=(
             _JOB_ID,
@@ -1254,7 +1267,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="change.list",
         group_id="change",
         subcommand="list",
-        description="List change sets for a job (proof chain review).",
+        description="List change sets for a job, under its mission (proof chain review).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -1306,7 +1319,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="event.list",
         group_id="event",
         subcommand="list",
-        description="List audit events for a job (safe, redacted).",
+        description="List audit events for a job, under its mission (safe, redacted).",
         action_class="read_only",
         args=(
             _JOB_ID,
@@ -1334,7 +1347,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="event.timeline",
         group_id="event",
         subcommand="timeline",
-        description="Show full event timeline for a job.",
+        description="Show full event timeline for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -1344,7 +1357,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="event.replay",
         group_id="event",
         subcommand="replay",
-        description="Replay job progress from event ledger (safe, redacted).",
+        description="Replay job progress, under its mission, from event ledger (safe, redacted).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -1356,7 +1369,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.checkpoints",
         group_id="job",
         subcommand="checkpoints",
-        description="List resume-safe checkpoints for a job.",
+        description="List resume-safe checkpoints for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -1369,8 +1382,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description=(
             "Resume a job. Without --checkpoint: continue from the newest valid "
             "cycle checkpoint (F047) — a pending stop request is consumed first, "
-            "worktree drift refuses, the plan-approval gate still applies. With "
-            "--checkpoint <id>: resume from that safe event-replay checkpoint."
+            "worktree drift refuses, the plan-approval gate (approving the job's "
+            "tasks) still applies. With --checkpoint <id>: resume from that safe "
+            "event-replay checkpoint."
         ),
         action_class="apply_write",
         args=(
@@ -1378,7 +1392,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--checkpoint", "Event-replay checkpoint ID to resume from",
                    required=False, is_option=True),
             ArgDef("--dry-run", "Preview resume without executing", required=False, is_option=True, default="false"),
-            ArgDef("--cycles", "Maximum cycles for the resumed run (capped by the rollout default)",
+            ArgDef("--cycles", "Maximum cycles for the resumed run's tasks (capped by the rollout default)",
                    required=False, is_option=True),
             ArgDef("--unattended",
                    "Run without a human present: a task decision that carries a safe "
@@ -1404,7 +1418,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="blocker.list",
         group_id="blocker",
         subcommand="list",
-        description="List stop reasons / blockers for a job.",
+        description="List stop reasons / blockers for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -1440,7 +1454,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="decision.list",
         group_id="decision",
         subcommand="list",
-        description="List pending human decisions for a job.",
+        description="List pending human decisions for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -1449,11 +1463,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="decision.show",
         group_id="decision",
         subcommand="show",
-        description="Show a single decision by ID.",
+        description="Show a single decision — its question and answer, if any.",
         action_class="read_only",
         args=(
             _JOB_ID,
-            ArgDef("decision_id", "Decision ID"),
+            ArgDef("decision_id", "ID of the decision to answer or resolve"),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -1466,7 +1480,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             _JOB_ID,
-            ArgDef("decision_id", "Decision ID"),
+            ArgDef("decision_id", "ID of the decision to answer or resolve"),
             _REASON_OPT,
             _ANSWER_OPT,
             _AS_MISSION_FLAG,
@@ -1476,7 +1490,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="decision.explain",
         group_id="decision",
         subcommand="explain",
-        description="Explain all pending decisions for a job.",
+        description="Explain all pending decisions for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID,),
     ),
@@ -1486,7 +1500,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="ui.start",
         group_id="ui",
         subcommand="start",
-        description="Start the localhost UI server for a job.",
+        description="Start the localhost UI server for a job (under its mission).",
         action_class="read_only",
         args=(
             _JOB_ID,
@@ -1509,9 +1523,12 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="ui.status",
         group_id="ui",
         subcommand="status",
-        description="Show status of all UI sessions.",
+        description="Show live UI sessions; --all also lists the last ten that ended.",
         action_class="read_only",
-        args=(),
+        args=(
+            ArgDef("--all", "Also show the last ten ended sessions with their end time",
+                   required=False, is_option=True, is_flag=True),
+        ),
     ),
     CommandEntry(
         command_id="ui.stop",
@@ -1525,7 +1542,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="ui.open",
         group_id="ui",
         subcommand="open",
-        description="Open browser for a specific job UI session.",
+        description="Open browser for a specific job UI session (under its mission).",
         action_class="read_only",
         args=(_JOB_ID,),
     ),
@@ -1542,11 +1559,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("goal", "Goal to accomplish", required=False),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
-            ArgDef("--project", "Project ID to use or create", required=False, is_option=True),
+            ArgDef("--project", "Project ID to use or create (its repo)", required=False, is_option=True),
             ArgDef("--autonomy-level", "Autonomy level 0-7 (default: 2)", required=False, is_option=True, default="2"),
             ArgDef("--max-cycles", "Maximum cycles (default: 3)", required=False, is_option=True, default="3"),
-            ArgDef("--ui", "Start UI alongside run", required=False, is_option=True, default="false"),
-            ArgDef("--dry-run", "Show plan without executing", required=False, is_option=True, default="false"),
+            ArgDef("--ui", "Start UI alongside execution", required=False, is_option=True, default="false"),
+            ArgDef("--dry-run", "Show the plan's tasks without executing", required=False, is_option=True, default="false"),
             ArgDef("--json", "Output JSON", required=False, is_option=True, default="false"),
             ArgDef("--fixture-builder", "Fixture builder mode: true (default) or repair-loop", required=False, is_option=True, default="false"),
             ArgDef("--builder-provider", "Builder provider: none, fixture, ollama (default: none)", required=False, is_option=True, default="none"),
@@ -1565,12 +1582,12 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="run.show",
         group_id="run",
         subcommand="show",
-        description="Show a persisted ping-pong run report.",
+        description="Show a persisted ping-pong run report, task and evidence included.",
         action_class="read_only",
         supports_json=True,
         related=("do.run",),
         args=(
-            ArgDef("run_id", "Run ID"),
+            ArgDef("run_id", "Run ID (its task and evidence folder)"),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
             _JSON_OPT,
         ),
@@ -1604,13 +1621,13 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("job.show",),
         args=(
-            ArgDef("job_id", "Job ID"),
-            ArgDef("--max-rounds", "Max ping-pong rounds per task (default: 3, persisted on continuation)", required=False, is_option=True, default=None),
-            ArgDef("--repair-rounds", "Max repair attempts per task (default: 2, 0=disabled, persisted on continuation)", required=False, is_option=True, default=None),
-            ArgDef("--test-command", "Test command to run in staging (persisted on continuation)", required=False, is_option=True, default=None),
+            ArgDef("job_id", "Job ID (under its mission)"),
+            ArgDef("--max-rounds", "Max ping-pong rounds per task's run (default: 3, persisted on continuation)", required=False, is_option=True, default=None),
+            ArgDef("--repair-rounds", "Max repair attempts per task's run (default: 2, 0=disabled, persisted on continuation)", required=False, is_option=True, default=None),
+            ArgDef("--test-command", "Test command to execute in staging (persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--claude-cli-write-mode", "Claude CLI write mode: none, allowed-tools, dangerous-skip (default: none, persisted on continuation)", required=False, is_option=True, default=None),
             ArgDef("--stream-evidence", "Opt-in F004 raw stream evidence: use Claude CLI stream-json and write redacted raw_stream.jsonl + run_events.jsonl. Omitted keeps the persisted/default mode", required=False, is_option=True),
-            ArgDef("--no-stream-evidence", "Explicitly disable raw stream evidence (overrides a persisted true). Omitted keeps the persisted/default mode", required=False, is_option=True),
+            ArgDef("--no-stream-evidence", "Explicitly disable this run's raw stream evidence (overrides a persisted true). Omitted keeps the persisted/default mode", required=False, is_option=True),
             ArgDef("--tasks", "Max tasks to execute (omitted keeps persisted; 0=all)", required=False, is_option=True, default=None),
             ArgDef("--timeout-sec", "Raw per-call timeout in seconds (omitted keeps persisted/default)", required=False, is_option=True, default=None),
             ArgDef("--max-output-chars", "Max provider output chars (omitted keeps persisted/default)", required=False, is_option=True, default=None),
@@ -1643,7 +1660,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         supports_json=True,
         args=(
-            ArgDef("--job", "Only this job's evidence export", required=False, is_option=True),
+            ArgDef("--job", "Only this job's evidence export, from its run, under its mission", required=False, is_option=True),
             ArgDef("--since", "Only post-mortems at or after this ISO-8601 timestamp", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
@@ -1658,15 +1675,15 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         group_id="stats",
         subcommand="bench",
         description=(
-            "Capability trend from the append-only bench history: the last run, "
-            "the series before it, and a regression warning naming the order and "
-            "both numbers. Never runs the bench (read-only)."
+            "Capability trend from the append-only bench history: the latest entry, "
+            "the series before it, and a regression warning naming the sequence and "
+            "both numbers. Never executes the bench (read-only)."
         ),
         action_class="read_only",
         supports_json=True,
         related=("stats.cost", "stats.report"),
         args=(
-            ArgDef("--series", "Which bench series to read (default: the series of the latest run)", required=False, is_option=True),
+            ArgDef("--series", "Which bench series to read (default: the series of the latest entry)", required=False, is_option=True),
             ArgDef("--multiplier", "Warn when cost or wall time exceeds the trailing median by this factor (default: 1.5)", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
             _JSON_OPT,
@@ -1689,7 +1706,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("stats.backfill-ledger", "stats.verify-ledger"),
         args=(
             ArgDef("--since", "Only calls at or after this ISO-8601 timestamp", required=False, is_option=True),
-            ArgDef("--job", "Only this job's calls", required=False, is_option=True),
+            ArgDef("--job", "Only this job's calls (under its mission)", required=False, is_option=True),
             ArgDef("--by", "Group the figures by role, model or day (default: grand total only)", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
@@ -1712,7 +1729,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("stats.cost", "stats.backfill-ledger"),
         args=(
             ArgDef("--since", "Only calls at or after this ISO-8601 timestamp", required=False, is_option=True),
-            ArgDef("--job", "Only this job's calls", required=False, is_option=True),
+            ArgDef("--job", "Only this job's calls (under its mission)", required=False, is_option=True),
             ArgDef("--by", "Group the shares by role, model or day (default: grand total only)", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
@@ -1743,7 +1760,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--since", "Period start: only calls at or after this ISO-8601 timestamp", required=False, is_option=True),
             ArgDef("--until", "Period end, EXCLUSIVE: only calls before this ISO-8601 timestamp", required=False, is_option=True),
-            ArgDef("--job", "Only this job's calls, in this period and in the one before it", required=False, is_option=True),
+            ArgDef("--job", "Only this job's calls, under its mission, in this period and in the one before it", required=False, is_option=True),
             ArgDef("--by", "Group the cost table by role, model or day (default: grand total only)", required=False, is_option=True),
             ArgDef("--label", "Name the scope this report covers, printed in its header", required=False, is_option=True),
             _PROJECT_SCOPE_OPT,
@@ -1757,7 +1774,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         group_id="stats",
         subcommand="backfill-ledger",
         description=(
-            "Mirror an evidence directory's finalized task runs into the project's token "
+            "Mirror an evidence directory's finalized task runs into the project's repo-scoped token "
             "ledger. WRITES the ledger (never the evidence) and is idempotent: a re-run "
             "adds no row."
         ),
@@ -1765,7 +1782,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("stats.cost", "stats.verify-ledger"),
         args=(
-            ArgDef("evidence_dir", "Path to the job evidence directory to scan"),
+            ArgDef("evidence_dir", "Path to the job evidence folder to scan (under its mission)"),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
             _JSON_OPT,
@@ -1778,7 +1795,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         group_id="stats",
         subcommand="verify-ledger",
         description=(
-            "Reconcile the evidence files against the token ledger rows (read-only). "
+            "Reconcile the run evidence files against the token ledger rows (read-only). "
             "Exits 0 on a clean reconcile and non-zero when drift is found, so it is "
             "usable as a check."
         ),
@@ -1786,7 +1803,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("stats.cost", "stats.backfill-ledger"),
         args=(
-            ArgDef("evidence_dir", "Path to the job evidence directory to reconcile"),
+            ArgDef("evidence_dir", "Path to the job evidence folder to reconcile (under its mission)"),
             _PROJECT_SCOPE_OPT,
             _ALL_PROJECTS_FLAG,
             _JSON_OPT,
@@ -1798,12 +1815,12 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="runtime.serve",
         group_id="runtime",
         subcommand="serve",
-        description="Start the project dev server and leave it running.",
+        description="Start the project's repo dev server and leave it running.",
         action_class="write_metadata",
         supports_json=True,
         related=("runtime.probe", "runtime.stop"),
         args=(
-            ArgDef("--repo", "Path to the project (defaults to the current directory)", required=False, is_option=True, default="."),
+            ArgDef("--repo", "Path to the project's repo (defaults to the current directory)", required=False, is_option=True, default="."),
             _JSON_OPT,
         ),
         may_mutate_repo=False,
@@ -1818,7 +1835,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("runtime.serve", "runtime.stop"),
         args=(
-            ArgDef("--repo", "Path to the project (defaults to the current directory)", required=False, is_option=True, default="."),
+            ArgDef("--repo", "Path to the project's repo (defaults to the current directory)", required=False, is_option=True, default="."),
             _JSON_OPT,
         ),
         may_mutate_repo=False,
@@ -1833,7 +1850,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("runtime.serve", "runtime.probe"),
         args=(
-            ArgDef("--repo", "Path to the project (defaults to the current directory)", required=False, is_option=True, default="."),
+            ArgDef("--repo", "Path to the project's repo (defaults to the current directory)", required=False, is_option=True, default="."),
             _JSON_OPT,
         ),
         may_mutate_repo=False,
@@ -1844,14 +1861,14 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.evidence",
         group_id="job",
         subcommand="evidence",
-        description="Export a self-contained evidence bundle for an entire job.",
+        description="Export a self-contained evidence bundle for an entire job (under its mission).",
         action_class="test_execution",
         supports_json=True,
         related=("job.run", "job.show"),
         args=(
-            ArgDef("job_id", "Job ID"),
+            ArgDef("job_id", "Job ID (under its mission)"),
             ArgDef("--out", "Output directory for bundle files", required=False, is_option=True, default=""),
-            ArgDef("--verification-command", "Explicit verification command to execute and record (repeatable). Each is run and stored as a verification run covering the test files it names", required=False, is_option=True),
+            ArgDef("--verification-command", "Explicit verification command to execute and record (repeatable) into the evidence bundle. Each execution is stored as a verification run covering the test files it names", required=False, is_option=True),
             _JSON_OPT,
         ),
         may_mutate_repo=False,
@@ -1861,14 +1878,14 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.apply",
         group_id="job",
         subcommand="apply",
-        description="Review and apply job workspace changes to target repo. Dry-run by default; --approve applies.",
+        description="Review and apply job workspace changes to target repo, under its mission. Preview by default; --approve applies.",
         action_class="write_metadata",
         supports_json=True,
         related=("job.run", "job.evidence"),
         args=(
-            ArgDef("job_id", "Job ID"),
+            ArgDef("job_id", "Job ID (under its mission)"),
             ArgDef("--repo", "Path to target repository", required=False, is_option=True, default="."),
-            ArgDef("--approve", "Apply changes (without this flag, dry-run only)", required=False, is_option=True, default="false"),
+            ArgDef("--approve", "Apply changes (without this flag, preview only)", required=False, is_option=True, default="false"),
             ArgDef("--dry-run", "Preview only, no target mutation", required=False, is_option=True, default="false"),
             ArgDef("--test-command", "Post-apply test command", required=False, is_option=True, default=""),
             ArgDef("--skip-blocked", "Apply the non-blocked files and deliberately leave the protected ones not applied (they are named, never written)", required=False, is_option=True, is_flag=True),
@@ -1883,10 +1900,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="self.inspect",
         group_id="self",
         subcommand="inspect",
-        description="Read-only: inspect Remedy's own evidence for self-improvement items.",
+        description="Read-only: inspect Remedy's own run evidence for self-improvement items.",
         action_class="read_only",
         args=(
-            ArgDef("--job-id", "Optional job to include in inspection", required=False, is_option=True),
+            ArgDef("--job-id", "Optional job, under its mission, to include in inspection", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
@@ -1896,10 +1913,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="self.plan",
         group_id="self",
         subcommand="plan",
-        description="Read-only: build a self-improvement plan (grouped items, top recommendations).",
+        description="Read-only: build a self-improvement plan of grouped tasks and top recommendations.",
         action_class="read_only",
         args=(
-            ArgDef("--job-id", "Optional job to include in the plan", required=False, is_option=True),
+            ArgDef("--job-id", "Optional job whose tasks are included in the plan", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
@@ -1927,8 +1944,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Metadata-only: start/resume a bounded self-improvement attempt (prepares a request; no apply).",
         action_class="write_metadata",
         args=(
-            ArgDef("proposed_task_id", "Approved self-dogfood proposed task id"),
-            ArgDef("--job-id", "Job that owns the proposed task", required=False, is_option=True),
+            ArgDef("proposed_task_id", "Approved self-dogfood proposed task id (a step awaiting execution)"),
+            ArgDef("--job-id", "Job that owns the proposed task (a step in its plan)", required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True, may_mutate_repo=False, may_execute_commands=False,
@@ -1974,10 +1991,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="self.report",
         group_id="self",
         subcommand="report",
-        description="Read-only: self-dogfood report (what Remedy thinks is wrong + evidence).",
+        description="Read-only: self-dogfood report (what Remedy thinks is wrong, with the run evidence behind it).",
         action_class="read_only",
         args=(
-            ArgDef("--job-id", "Optional job to include in the report", required=False, is_option=True),
+            ArgDef("--job-id", "Optional job, under its mission, to include in the report", required=False, is_option=True),
             ArgDef("--markdown", "Render the report as markdown", required=False, is_option=True, default="false"),
             _JSON_OPT,
         ),
@@ -1990,7 +2007,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="dev.agent-loop",
         group_id="dev",
         subcommand="agent-loop",
-        description="Run the agent loop for a job (dev/testing).",
+        description="Inspect the agent's cycle state for a job, under its mission (dev/testing).",
         action_class="dev_helper",
         args=(_JOB_ID,),
         may_execute_commands=True,
@@ -2020,7 +2037,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="roadmap.status",
         group_id="roadmap",
         subcommand="status",
-        description="Show the active roadmap feature, its blockers and its milestone.",
+        description="Show the active feature in Remedy's own roadmap, its blockers and its milestone.",
         action_class="read_only",
         args=(
             ArgDef("--repo", "Repository to mirror (default: this Remedy checkout)", required=False, is_option=True),
@@ -2033,7 +2050,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="roadmap.next",
         group_id="roadmap",
         subcommand="next",
-        description="Propose the next roadmap feature and its file path. Starts nothing.",
+        description="Propose the next feature in Remedy's own roadmap and its file path; starts nothing.",
         action_class="read_only",
         args=(
             ArgDef("--repo", "Repository to mirror (default: this Remedy checkout)", required=False, is_option=True),
@@ -2048,10 +2065,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="ci.run",
         group_id="ci",
         subcommand="run",
-        description="Run Remedy's own CI stages locally and print the summary.",
+        description="Execute Remedy's own CI stages locally and print the summary.",
         action_class="test_execution",
         args=(
-            ArgDef("--stage", "Run one stage by name instead of all of them", required=False, is_option=True),
+            ArgDef("--stage", "Execute one stage by name instead of all of them", required=False, is_option=True),
             ArgDef("--json", "Output as JSON", required=False, is_option=True),
         ),
         supports_json=True,
@@ -2063,11 +2080,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="integrity.check",
         group_id="integrity",
         subcommand="check",
-        description="Run pre-handoff integrity checks.",
+        description="Execute pre-handoff integrity checks.",
         action_class="read_only",
         args=(
             ArgDef("--json", "Output as JSON", required=False, is_option=True),
-            ArgDef("--collect-only", "Also run pytest collect-only", required=False, is_option=True, default="false"),
+            ArgDef("--collect-only", "Also execute pytest collect-only", required=False, is_option=True, default="false"),
         ),
         supports_json=True,
     ),
@@ -2092,7 +2109,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="snapshot.list-applies",
         group_id="snapshot",
         subcommand="list-applies",
-        description="List durable apply records for a job.",
+        description="List durable apply records for a job (under its mission).",
         action_class="read_only",
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
@@ -2188,7 +2205,7 @@ _LIST_SORT_ARG = ArgDef(
     "--sort", "Sort field; this command's own columns are the valid set (see --help)",
     required=False, is_option=True)
 _LIST_DESC_ARG = ArgDef(
-    "--desc", "Reverse the sort order",
+    "--desc", "Reverse the sort direction",
     required=False, is_option=True, is_flag=True)
 _LIST_SINCE_ARG = ArgDef(
     "--since",

@@ -1,0 +1,21 @@
+Job ID: bc1d99d87d024fce
+Job Title: Address ledger finding R-0445
+Job State: blocked
+Isolation Mode: worktree
+Worktree Path: .remedy-wt/job-bc1d99d87d024fce
+
+Execution:
+- Builder: ollama
+- Reviewer: ollama
+- Repair Rounds: 2
+- Created: 2026-09-17T23:08:09.081349+00:00
+- Stopped: 
+
+Task Summary:
+
+Task T001: Task 1
+- Status: blocked
+- Reviewer Verdict: fail
+- Final Status: repair_exhausted
+- Repair Rounds Used: 2
+- Repair Rounds Allowed: 2

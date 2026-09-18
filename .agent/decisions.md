@@ -14230,3 +14230,352 @@ CHOSEN. `102950ebadc06649aff95edee98c5438303211d0` is accepted as F280's closure
 ALTERNATIVE. Discard the built package and re-run SPEC E and SPEC Z against `98a5c352` in a repair round, rejected because it would spend a second full evidence-job run and a second ~25 MB zip build to change two metadata fields with no effect on the packaged content or its correctness, against a package that already, honestly, evidences exactly the commit it names.
 
 CONSEQUENCE. Closure round B's STATUS `[x]` line for F280 names `accepted HEAD 102950ebadc06649aff95edee98c5438303211d0`. R-0952 is Done in this same commit. HOW TO REVERSE: re-run SPEC E and SPEC Z of round 24's block against `98a5c352bb9cf06d3e6484284b4f0df82b9ed6c8`, replace the package and its manifest, and correct the STATUS line's accepted HEAD before the closure commit lands.
+
+## DECISION F281 D1 (2026-09-17, F281 round 1) — the `Worker:` → role-label rename touches three production sites, not the twelve a bare grep finds
+
+CONTEXT. DECISION F259 D3 named the role-label rename as the thing that "belongs
+to F261" (now F281, by DECISION amend0917-throughput D4's carry-forward) and
+explicitly excluded `Worker:` from the vocabulary test's own enforced-mode scan,
+so no gate depends on this rename. A repo-wide search for the literal `Worker:`
+finds twelve production sites, not one: `apps/cli/commands/do_cmd.py:618,621`;
+`packages/orchestration/pingpong_evidence.py:230` (plus line 232's `Worker write
+mode:`, the same reference without the bare colon); `apps/cli/commands/worker.py:
+67,227`; `packages/orchestration/brain_viewer.py:559,975`;
+`packages/orchestration/brain_detail.py:1175`;
+`packages/orchestration/project_brain.py:630`; and
+`apps/ui/src/components/panels/RightLivePanel.tsx:41`.
+
+MEASURED. The `do_cmd.py`/`pingpong_evidence.py` sites are the pingpong run
+report: each sits beside a sibling `Reviewer:` line built from
+`reviewer_provider`, and each one's own value comes from `builder_provider` —
+these are the retired BUILDER role label DECISION F259 D3 and D11a name. The
+`worker.py`/`brain_viewer.py`/`brain_detail.py`/`project_brain.py`/
+`RightLivePanel.tsx` sites all label a WORKER ADAPTER OR WORKER PROCESS record
+(`match.display_name`, `status.worker_id`, `node.label`, `spec.display_name`,
+`dashboard.workerStatus.lifecycle_state`) — the `worker` command group's own
+subject and the cockpit/brain views of it, a live, still-correct vocabulary
+sense per `docs/system/vocabulary.md`'s own Worker row (roles run ON a worker;
+the worker itself keeps its name). Two test assertions pin the retired string on
+the renamed side only: `tests/cli/test_cli_ux.py:592,665`, both against
+`_cmd_run_show`'s text-mode output.
+
+CHOSEN. Rename `Worker:` to `Builder:` (the pairing DECISION amend0905-vocab D1
+gives the Builder/Reviewer roles, confirmed by the sibling `Reviewer:` line
+already beside every one of these) at the five production line occurrences —
+`do_cmd.py:618`, `do_cmd.py:621`, `pingpong_evidence.py:230`, and
+`pingpong_evidence.py:232`'s `Worker write mode:` → `Builder write mode:` (the
+same role reference; leaving it unrenamed beside a freshly renamed `Builder:`
+line one line above would be the obvious residue a later reader trips on) —
+plus the two test assertions that pin the old string. The seven
+`worker`/`brain_*`/`project_brain.py`/`RightLivePanel.tsx` sites are UNTOUCHED:
+none is the retired role label, and DECISION F259 D3's own vocabulary keeps
+"worker" as the correct noun for the adapter/process entity.
+
+ALTERNATIVES CONSIDERED. Renaming all twelve sites on the bare grep — rejected,
+because it would rename the `worker` command group's own subject to `builder`,
+which is wrong on its own terms and is exactly the over-reach a naive
+grep-and-replace produces. Leaving `pingpong_evidence.py:232`'s "Worker write
+mode" unrenamed because it lacks the literal substring `Worker:` — rejected as
+the same class of miss in the other direction: leaving one role reference
+un-renamed beside its own freshly renamed sibling.
+
+CONSEQUENCE. `tests/cli/test_cli_ux.py`'s two assertions read `"Builder:" in
+out`; the pingpong text report and its `summary.md` evidence file both print
+`Builder:`/`Builder write mode:`; no other module's "Worker" reference changes.
+HOW TO REVERSE: revert this round's C3 commit; delete this paragraph.
+
+## DECISION F281 D2 (2026-09-17, F281 round 2) — two of the six retired-synonym offenders are structurally unreachable by this feature, and the F259 enforced flip is bounded by them
+
+CONTEXT. T001 orders the F259 `VOCABULARY_MODE` flip to `enforced`
+(`tests/docs/test_vocabulary.py`), gated by two mode-dependent checks:
+`_synonym_offenders()` (6 hits measured at F281's claim) and
+`_meaning_violations()` (294 hits). `_synonym_offenders()` scans, per DECISION
+F259 D3's own scope, "every group's `id`, `label` and `description`, and every
+command's `command_id`, `description`" — not prose alone. Two of the six hits
+are not prose this feature may reword: `command:dev.agent-loop:command_id` is
+the command's own id, and `docs/roadmap/features/T2_F281.md`'s Do-not-touch
+clause states "the catalog's set of groups and commands is F280's; this
+feature changes no command id." `arg:do.run:--fixture-builder:description`
+names a real, load-bearing CLI value: `_VALID_FIXTURE_MODES` in
+`apps/cli/commands/do_cmd.py:680` is the frozenset `{"true", "false",
+"repair-loop"}`, and `"repair-loop"` by that exact spelling is asserted as a
+literal parsed value in `tests/test_cli_execution_loop_closure.py`,
+`tests/test_repair_context_reviewer_memory.py` and
+`tests/cli/test_do_cmd_summary.py`, and named as a whole feature pair
+(`docs/system/repair-loop-v0.md`, `repair-loop-v1.md`) that `docs/README.md`
+indexes. Rewording the ArgDef's help text to avoid the word "loop" while still
+naming the real accepted value truthfully is not possible; renaming the value
+itself is a behaviour change to what the command accepts, which
+`docs/roadmap/features/T2_F281.md`'s own scope statement forbids ("this
+feature rewrites what help says, not what a command does").
+
+CHOSEN. This round fixes the four synonym offenders that ARE pure prose —
+`command:mission.run:description`, `group:mission:description`,
+`arg:mission.run:run_id:description` (all three: "F070 orchestrator loop" →
+"F070 orchestrator", no persisted or tested literal involved — confirmed by
+grep, zero hits for the exact phrases before this round's edit) and
+`command:dev.agent-loop:description` (its command_id is untouched; only the
+description's own wording changes, since `_cmd_agent_loop` is in fact a
+read-only inspector — it derives and prints a state summary, per
+`apps/cli/commands/brain.py:489-513` — not an executor of a loop, so the
+reword is also a correctness improvement, not only a synonym dodge). The
+remaining two — `dev.agent-loop`'s command_id and `--fixture-builder`'s
+`repair-loop` value — are LEFT NAMED AND UNFIXED, and this decision is the
+record of why: the `enforced` flip's Acceptance line is met against a floor of
+these two, not against zero, until a later DECISION either narrows
+`_synonym_offenders()`'s own scanned fields (an amendment to DECISION F259
+D3) or an operator ruling exempts these two named surfaces by id.
+
+ALTERNATIVES CONSIDERED. Renaming `dev.agent-loop`'s command_id anyway (e.g.
+to `dev.agent-status`) — rejected: it is a command-catalog rename, squarely
+inside F280's remit and this feature's own Do-not-touch, and `dev` group
+commands are debugging surfaces with no F281 mandate to touch. Renaming the
+`repair-loop` VALUE to something synonym-clean (e.g. `repair-cycle`) —
+rejected: it is a behaviour change (the CLI would stop accepting a value
+operators and three test files already depend on), squarely the "not what a
+command does" boundary this feature's own scope statement draws; if ever
+wanted, it is a DECISION for whichever feature owns `do run`'s flag surface,
+with a measured blast radius across the test and docs files named above.
+Leaving all six offenders untouched this round — rejected: four of them cost
+nothing but a reword and no test or doc depends on their current spelling.
+
+CONSEQUENCE. After this round, `_synonym_offenders()` reads 2
+(`arg:do.run:--fixture-builder:description`, `command:dev.agent-loop:command_id`),
+down from 6; `VOCABULARY_MODE` stays `"planned"` — flipping it now would
+correctly assert `offenders == []` and fail on these two. HOW TO REVERSE:
+revert round 2's C2 commit; delete this paragraph.
+
+## DECISION F281 D3 (2026-09-17, F281 round 14) — the two structurally-unreachable synonym offenders are exempted by name, and `VOCABULARY_MODE` flips to `enforced`
+
+CONTEXT. DECISION F281 D2 (round 2) measured `_synonym_offenders()`'s floor at
+two entries — `arg:do.run:--fixture-builder:description` and
+`command:dev.agent-loop:command_id`, both flagged for the word "loop" — and
+left them unfixed, naming two paths forward: "a later DECISION either narrows
+`_synonym_offenders()`'s own scope (an amendment to DECISION F259 D3), or an
+operator ruling exempts these two named surfaces by id." Round 13 cleared the
+catalog's `_meaning_violations()` down to its own last reachable entry
+(`stats.bench`'s Order collision). PLAN13's Next Steps ordered this round to
+land the `stats.bench` reword, these two offenders' resolution, and the
+`VOCABULARY_MODE` flip together, since flipping the mode alone against the
+pre-round catalog would assert `offenders == []` and `violations == []`, and
+both were false at round 13's HEAD.
+
+MEASURED. Re-running `_synonym_offenders()` and `_meaning_violations()`
+against the real, committed catalog at round 13's HEAD reproduces exactly
+PLAN13's prediction: one meaning violation
+(`('command:stats.bench:description', 'Order')`) and two synonym offenders
+(`('arg:do.run:--fixture-builder:description', 'loop')`,
+`('command:dev.agent-loop:command_id', 'loop')`), unchanged since round 2. A
+disposable-worktree dry run applying this round's three edits (the
+`stats.bench` reword, a `SYNONYM_EXEMPTIONS` set holding exactly these two
+pairs, and the mode flip) reproduces `_meaning_violations() == []` and
+`_synonym_offenders() == []` exactly — confirmed by first computing the raw,
+unexempted offender set in the dry-run worktree and finding it identical to
+these same two pairs, so the exemption removes exactly what D2 named and
+nothing else. The targeted suite
+(`tests/docs/test_vocabulary.py`, `tests/test_command_catalog.py`,
+`tests/cli/test_advertised_commands.py`) and the canary
+(`tests/cli/test_golden_path.py`) both pass unchanged in count (74 and 42)
+against the enforced-mode assertions in the dry run.
+
+CHOSEN. The first of D2's two named paths: narrow `_synonym_offenders()`'s
+own scope by adding a `SYNONYM_EXEMPTIONS` set of exactly the two `(where,
+synonym)` pairs D2 measured, subtracted from the offenders set before it is
+returned — the same exclusion shape the module already uses for `Worker:`'s
+vacuous-gate exclusion, but scoped per-surface rather than per-synonym,
+because "loop" itself must stay a live retired synonym everywhere else a
+future catalog edit might reintroduce it. `stats.bench`'s description is
+reworded ("the order and both numbers" → "the sequence and both numbers"),
+clearing the catalog's last meaning violation — DECISION F259 D3's own
+scope reads "the word `order`" per the vocabulary page's meaning fragments
+(`order file`, `what you ask`, `text or`), none of which this generic
+grammatical "order" ever carried. `VOCABULARY_MODE` flips to `"enforced"`,
+since both mode-dependent assertions now read empty, exactly as their
+`enforced`-mode branch requires.
+
+ALTERNATIVES CONSIDERED. Removing "loop" from `RETIRED_SYNONYMS` entirely —
+rejected: it would silently stop scanning EVERY catalog surface for "loop",
+not only the two named ones, so a future command reintroducing "loop" prose
+elsewhere would pass unnoticed; the per-surface exemption keeps the scan
+live everywhere else. Leaving `VOCABULARY_MODE` at `"planned"` and landing
+only the `stats.bench` reword and the exemption — rejected: PLAN13's own
+risk paragraph already named this as reddening the planned-mode assertion
+(`violations != []`) the moment the last violation clears, so the three
+changes land in one commit. Asking the operator to rule before proceeding —
+rejected under amend0917-throughput rule 5: the recommendation is executed
+as this dated, reversible decision and logged in
+`.agent/operator_questions.md` for the operator to overturn, rather than
+stalling the round.
+
+CONSEQUENCE. After this round, `_meaning_violations()` and
+`_synonym_offenders()` both read `[]`; `VOCABULARY_MODE` reads `"enforced"`;
+a future catalog edit that reintroduces "loop" anywhere other than the two
+named exempted surfaces still fails the suite. HOW TO REVERSE: revert this
+round's C2 commit; delete this paragraph and the `SYNONYM_EXEMPTIONS`
+paragraph in `tests/docs/test_vocabulary.py`.
+
+## DECISION F281 D4 (2026-09-17, F281 round 15) — `_box()`'s long right-column text wraps across continuation lines instead of being truncated with an ellipsis
+
+CONTEXT. `docs/roadmap/features/T2_F281.md`'s Acceptance list carries, verbatim
+from F261's T004 via F280's T002: "A 200-character option help renders without
+`…`." `apps/cli/help_renderer.py`'s `_box()`, the shared row-renderer behind
+`render_root_help`, `render_group_help` and `render_command_help`, truncated
+any row whose `"  {left}{pad}  {right}"` content exceeded `BOX_WIDTH` (78) to
+`BOX_WIDTH - 1` characters plus `"…"`.
+
+MEASURED. `apps/cli/command_catalog.py`'s real, committed catalog carries a
+221-character `ArgDef.help` string (`job.show --full`) and group descriptions
+up to 96 characters; before this round, `python3 -m apps.cli.grouped job show
+--help` truncated `--full`'s help with an ellipsis, and even the default
+`python3 -m apps.cli.grouped --help` (no option over 200 characters, only two
+group descriptions over 78) printed the ellipsis twice, and
+`python3 -m apps.cli.grouped --all-commands` printed it at least once. A
+disposable-worktree dry run of the fix reproduces zero ellipsis in `--help`,
+`--all-commands` and `job show --help`, and a mutation red-proof — reverting
+only the `_box()` edit — reddens exactly the round's own four ellipsis-guard
+tests (`test_long_content_wraps_without_ellipsis`,
+`test_root_help_has_no_ellipsis`, `test_every_group_help_has_no_ellipsis`,
+`test_every_command_help_has_no_ellipsis`, 19 passed / 4 failed) and no other
+test, confirming the fix is load-bearing.
+
+CHOSEN. `_box()` computes `prefix_width` (the fixed `"  {left}{pad}  "` gutter)
+and `wrap_width = BOX_WIDTH - prefix_width`, then calls
+`textwrap.wrap(right, width=wrap_width)` and emits one row per wrapped line,
+continuation lines indented under the right column by `prefix_width` spaces.
+No new dependency: `textwrap` is stdlib. The three render functions and every
+caller are unchanged — only `_box()`'s internals move, so the fix reaches
+`render_root_help`, `render_group_help` and `render_command_help` at once.
+
+ALTERNATIVES CONSIDERED. Widening `BOX_WIDTH` — rejected: no fixed width
+accommodates a 359-character command description (the longest in the
+catalog), and a wider box would still truncate eventually while making every
+short row wider for no reason. Wrapping only past a higher threshold and
+truncating past a second, larger one — rejected: the Acceptance line requires
+no truncation at all, not a longer rope. Reflowing with
+`shutil.get_terminal_size()` instead of a fixed width — rejected: the module's
+own docstring states "Deterministic — no terminal probing, fixed width (78
+inner)" as a design constraint this round does not touch.
+
+CONSEQUENCE. Every catalog surface's help text, however long, renders in full
+across as many lines as it needs; `remedy --help`, every `remedy <group>
+--help` and every `remedy <group> <command> --help` carry zero `"…"`
+characters, measured directly rather than assumed. HOW TO REVERSE: revert
+this round's C2 commit; delete this paragraph.
+
+## DECISION F281 D5 (2026-09-17, F281 round 16) — the default `remedy --help` order is pinned as data (`VISIBLE_GROUP_ORDER`), read by `_print_root_help` instead of `GROUPS`' own dict order
+
+CONTEXT. `docs/roadmap/features/T2_F281.md`'s Acceptance list requires: "`remedy
+--help` shows the D4 visible groups in the D4 order; the visible order is the
+eighteen-slot order with `absorb` and `chat` absent until F263/F264 ship, and a
+test pins the order as data so F263/F264 add a group without reordering."
+DECISION amend0905-vocab D4 names the sixteen currently-shipped visible groups
+in a fixed order; DECISION amend0911-feedback D1 reserves two further slots for
+`absorb` (F263) and `chat` (F264), unregistered until each ships.
+`apps/cli/grouped.py`'s `_print_root_help` built its "Commands" box by
+iterating `GROUPS.items()`, Python's dict INSERTION order, filtered to
+`user_facing and not hidden` — never D4's own order.
+
+MEASURED. `GROUPS`' dict insertion order at round 15's HEAD reads `do, status,
+decision, init, job, run, project, ui, doctor, config, worker, memory,
+teacher, runtime, stats, ..., mission` (mission defined near the bottom of the
+dict, among the advanced/internal entries though it is itself `user_facing`);
+D4's order reads `do, mission, job, run, decision, status, stats, teacher,
+memory, ui, config, doctor, project, init, worker, runtime`. The two SETS are
+identical (sixteen ids, confirmed by direct set comparison), so no group was
+missing or extra — only the printed SEQUENCE was wrong. `remedy --help`'s real
+output before this round's fix showed `do, status, decision, init, job, run,
+project, ui, doctor, config, worker, memory, teacher, runtime, stats,
+mission`, differing from D4 on every position after the first. The existing
+canary test `tests/cli/test_golden_path.py::TestHelpPinning::test_do_status_decision_pinned_first`
+asserted only a four-way relative order (`do < status < decision < init`) that
+happened to hold under the wrong dict order, so it never caught the
+discrepancy (registered as R-0955, resolved in this same round).
+
+CHOSEN. `apps/cli/command_catalog.py` gains `VISIBLE_GROUP_ORDER: tuple[str,
+...]`, a plain module-level tuple naming the sixteen ids in D4's exact order,
+with a comment naming D4, D1, the two reserved future slots, and the
+completeness test that binds it to `GROUPS`. `_print_root_help`'s default
+(non-`--all-commands`) branch iterates `VISIBLE_GROUP_ORDER` and looks up each
+id's description in `GROUPS`, instead of iterating `GROUPS.items()`. The
+`--all-commands` branch is UNCHANGED: the Acceptance line names only the
+default `remedy --help` view, and D4's own "Advanced" list is a separate,
+smaller ordering question this round does not touch.
+
+ALTERNATIVES CONSIDERED. Reordering `GROUPS`' own dict literal to match D4 —
+rejected: the dict's insertion order would then be doing double duty as both
+"the order commands are defined in the source" and "the order help prints
+them," so a future contributor adding a new visible group in an editorially
+sensible place in the dict (next to a related group) would silently reorder
+help output; a named, separately-tested tuple makes the coupling explicit and
+gives F263/F264 a single line to extend rather than a dict position to find.
+Sorting `GROUPS` by some computed key (usage frequency, alphabetical) —
+rejected: D4 is an explicit, operator-chosen order with no derivable rule
+behind it (it groups by workflow role, not alphabetically), so nothing but a
+literal, pinned list can reproduce it.
+
+CONSEQUENCE. `remedy --help` now prints the sixteen visible groups in exactly
+DECISION amend0905-vocab D4's order, measured directly rather than assumed;
+`TestVisibleGroupOrder` in `tests/test_command_catalog.py` fails if
+`VISIBLE_GROUP_ORDER`'s content drifts from D4's sixteen ids OR from `GROUPS`'
+own visible set, and `TestRootHelpVisibleOrder` / `TestHelpPinning` fail if
+`_print_root_help` stops reading it. HOW TO REVERSE: revert this round's C2
+commit; delete this paragraph.
+
+
+## DECISION F281 D6 (2026-09-17, F281 round 17) — `remedy doctor core`'s dead-commands section detects a dead command by FOUR independent reference signals, never by the handler function's own `__name__`
+
+CONTEXT. `docs/roadmap/features/T2_F281.md`'s Acceptance list requires:
+"`remedy doctor core` lists dead commands as a section and the section is
+empty." `docs/roadmap/features/T2_F271.md`'s Design (c) names the fuller
+mechanism — "a catalog command whose handler is referenced by no test and no
+script is reported as a section" — but F271 itself runs AFTER F281 and owns
+the closure-precondition wiring and the fixture-based red-proof (planting a
+fake dead command and seeing it listed); PLAN16's Risks scoped this round to
+the section and its detection mechanism alone.
+
+MEASURED. `collect_all_handlers()` maps 146 of 146 catalog command_ids to a
+handler; 122 are `lambda`s closing over the real implementation function
+(`"job.list": lambda args: _cmd_list_jobs(...)`), so `__name__` reads the
+literal `"<lambda>"` for most commands — a check keyed on it alone would call
+nearly every command dead. A design using only `co_names` plus the dotted and
+spaced forms, scanned as text over `tests/` + `scripts/`, measured 8 false
+"dead" commands (e.g. `roadmap.status`, `dev.smoke-help`), each genuinely
+tested only via a `subprocess` argv list holding the group and the
+subcommand as two separate string tokens (`["roadmap", "status"]`), the same
+blind spot F275 round 33's own command-deletion sweep recorded: no substring
+scan sees two list elements as one command.
+
+CHOSEN. `packages/orchestration/dead_command_check.py` (new module, no
+`apps.cli.*` import, mirroring `dead_model_list.py`'s isolation) exposes
+`dead_command_ids(catalog, handlers, root=None)`; a command counts as
+referenced when ANY of four signals holds: (1) an `ast`-detected adjacent
+string pair `("<group>", "<subcommand>")` in a list/tuple literal under
+`root`'s `tests/` or `scripts/` — the fix for the argv-list blind spot; (2)
+the spaced form as a substring; (3) the dotted `command_id` as a substring;
+(4) any of the handler's own `co_names` (plus `__name__` when not
+`"<lambda>"`) as a whole-word match. Wired into `_cmd_doctor_core` as a HARD
+check (`dead_command_scan`) plus an ALWAYS-SHOWN section, never conditional
+on non-emptiness like the F254 warnings block — the Acceptance line lists the
+section itself, so a later fixture command must appear the moment it exists.
+`--json` gets a new `dead_commands` key. Measured on the shipped catalog: `0
+dead of 146`, matching T2_F271.md's "Expected empty after F261."
+
+ALTERNATIVES CONSIDERED. `__name__` alone — rejected: 122 of 146 handlers
+share the literal name `"<lambda>"`. Text scan only (no AST pair) —
+rejected: measured 8 false positives, training an operator to ignore the
+section exactly as `_warn`'s docstring warns against. A `CommandEntry.handler`
+field instead of `collect_all_handlers()` — deferred: a catalog-shape change
+outside this round's scope and T2_F271's "Do not touch"; the plain-argument
+shape lets a later feature swap the source without touching this module.
+
+CONSEQUENCE. `remedy doctor core` always prints `dead commands:`, `(none)`
+today; `--json` always carries `"dead_commands": []` today.
+`test_dead_command_check.py` pins the algorithm (a synthetic dead command is
+found, a synthetic argv-list-only reference is not) and asserts the real
+catalog reads empty; `test_worker_facade_cmd.py` pins the section's presence
+in both render modes. The allowlist gains one line, mirroring how
+`dead_model_list` was added — the new module is stdlib-only, so no further
+entry follows. F271 layers the closure-precondition wiring and the
+fixture-based red-proof on top of `dead_command_ids` without redoing the
+mechanism. HOW TO REVERSE: revert this round's C2 commit; delete this
+paragraph.

@@ -351,7 +351,7 @@ class TestJobFacadeNoAgent:
             except SystemExit as exc:
                 code = exc.code
         assert code not in (None, 0)
-        assert "invalid job ID" in err.getvalue()
+        assert "No job matches" in err.getvalue()
         assert "not-a-uuid" in err.getvalue()
         assert "Traceback" not in err.getvalue()
         assert out.getvalue().strip() == ""

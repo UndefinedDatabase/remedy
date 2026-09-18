@@ -26,7 +26,7 @@ def _cmd_snapshot_inspect(job_id_str: str, snapshot_id: str, *, as_json: bool = 
         if as_json:
             print(_json.dumps({"error": "invalid_job_id", "job_id": job_id_str}))
         else:
-            print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+            print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
 
     try:
@@ -35,7 +35,7 @@ def _cmd_snapshot_inspect(job_id_str: str, snapshot_id: str, *, as_json: bool = 
         if as_json:
             print(_json.dumps({"error": "job_not_found", "job_id": job_id_str}))
         else:
-            print(f"Error: job {job_id_str!r} not found.", file=sys.stderr)
+            print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
 
     data_dir = resolve_data_root()
@@ -102,7 +102,7 @@ def _cmd_snapshot_list_applies(job_id_str: str, *, as_json: bool = False) -> Non
         if as_json:
             print(_json.dumps({"error": "invalid_job_id", "job_id": job_id_str}))
         else:
-            print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
+            print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
 
     try:
@@ -111,7 +111,7 @@ def _cmd_snapshot_list_applies(job_id_str: str, *, as_json: bool = False) -> Non
         if as_json:
             print(_json.dumps({"error": "job_not_found", "job_id": job_id_str}))
         else:
-            print(f"Error: job {job_id_str!r} not found.", file=sys.stderr)
+            print(f"Error: No job matches {job_id_str!r}. Try: remedy job list.", file=sys.stderr)
         sys.exit(1)
 
     data_dir = resolve_data_root()

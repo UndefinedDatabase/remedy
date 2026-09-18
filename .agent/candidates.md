@@ -6,7 +6,12 @@
 > candidate: description · source feature · date. Any entry present at
 > feature-claim time is a block condition.
 
-CANDIDATE (2026-09-17, F280 round 26 C1) — `.agent/authored/f280-r26.md`, the block-save copy round 26's own C1 made of the paste block this round applied, is 211 bytes shorter than the reviewer's own authored original: it is missing the block's final closing separator line (the `──...──` rule this repository's convention puts at the end of every paste block), confirmed by direct byte comparison against the reviewer's own scratch copy of the block. `.agent/last_block.md` is byte-identical to the truncated `.agent/authored/f280-r26.md`, so both carriers share the same gap. Every PAYLOAD the block ordered (RECORD26, FINDING953, PLAN26, DONE953, TEST26) is independently verified byte-for-byte correct — against the reviewer's own originals and against the files each was applied to — so this gap is confined to the closing decorative line of the saved block copy itself, which carries no constraint, gate or payload text of its own; nothing the round certified is wrong. Source feature: F280. Suggested repair: the next round that saves a block under `.agent/authored/` on any feature registers this as an R-id and checks whether the worker's block-save step is silently dropping trailing content in general, which would be worth catching before it ever drops something load-bearing rather than decorative.
+EMPTY — no candidate is open.
+
+The entry F280 round 26's own C1 recorded on 2026-09-17 — the block-save transport
+gap in `.agent/authored/f280-r26.md` — was registered in F281 round 1 as finding
+`R-0954` in `.agent/live_review.md`; the measurement and the routing are on that
+record.
 
 The entry F275's closure gate recorded on 2026-09-14 — the self-use runner hands `run_job`
 the role config's provider names but not its model names — was registered in F261 round 1 as

@@ -247,7 +247,7 @@ class TestTeacherReachesTaskJobs:
 
     def test_an_unknown_id_still_exits_one(self, data_root, capsys):
         assert _exit_code(lambda: _cmd_teacher_narrate("dddddddddddddddd")) == 1
-        assert "no job matches prefix" in capsys.readouterr().err
+        assert "No job matches" in capsys.readouterr().err
 
     def test_a_directory_without_a_job_file_is_not_a_job(self, data_root, capsys):
         """A half-created or hand-made directory must not resolve as a job."""
@@ -256,7 +256,7 @@ class TestTeacherReachesTaskJobs:
         job_dir(self.TASK_JOB_ID, data_root).mkdir(parents=True)
 
         assert _exit_code(lambda: _cmd_teacher_narrate(self.TASK_JOB_ID)) == 1
-        assert "no job matches prefix" in capsys.readouterr().err
+        assert "No job matches" in capsys.readouterr().err
 
 
 class TestTeacherCatalogDeclaration:

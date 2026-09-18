@@ -447,7 +447,7 @@ class JobNotFoundError(Exception):
     """Raised when no job record exists for the requested id."""
 
     def __init__(self, job_id: str) -> None:
-        super().__init__(f"Job not found: {job_id}")
+        super().__init__(f"No job matches {job_id!r}. Try: remedy job list.")
         self.job_id = job_id
 
 

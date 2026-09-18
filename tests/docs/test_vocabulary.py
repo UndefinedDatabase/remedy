@@ -20,11 +20,11 @@ from pathlib import Path
 
 from apps.cli.command_catalog import CATALOG, GROUPS
 
-#: `"planned"` while the catalog still carries the retired words; F261 owns
-#: the renames and flips this constant to `"enforced"` in the same feature.
-#: It is a plain module constant on purpose — never a skip marker, so that
-#: both modes stay measured rather than switched off (T2_F259.md, T003).
-VOCABULARY_MODE = "planned"
+#: `"enforced"` once F281 has cleared the catalog down to its structural floor
+#: (DECISION F281 D2, D3). It is a plain module constant on purpose — never a
+#: skip marker, so that both modes stay measured rather than switched off
+#: (T2_F259.md, T003).
+VOCABULARY_MODE = "enforced"
 
 REPO = Path(__file__).resolve().parents[2]
 PAGE = REPO / "docs" / "system" / "vocabulary.md"
@@ -51,6 +51,19 @@ BINDING_WORDS = [
 RETIRED_SYNONYMS = [
     "promote", "flight plan", "job-file", "task-file", "loop", "overnight",
 ]
+
+#: Two catalog surfaces DECISION F281 D3 (2026-09-17) measured as structurally
+#: unreachable by this feature: `dev.agent-loop`'s command_id is a command-catalog
+#: rename, squarely F280's remit and this feature's own Do-not-touch, and
+#: `do.run --fixture-builder`'s description names `"repair-loop"`, a real,
+#: load-bearing accepted value asserted as a literal in three test files and
+#: named by two indexed docs pages — renaming it is a behaviour change, not a
+#: reword. Exempting them here is the scope-narrowing D2 itself named as the
+#: path to `"enforced"`; do not widen this set without its own DECISION.
+SYNONYM_EXEMPTIONS = {
+    ("arg:do.run:--fixture-builder:description", "loop"),
+    ("command:dev.agent-loop:command_id", "loop"),
+}
 
 #: The do-not-confuse table's rows, in page order.
 CONFUSION_PAIRS = [
@@ -164,7 +177,7 @@ def _synonym_offenders() -> list[tuple[str, str]]:
         for synonym in RETIRED_SYNONYMS:
             if synonym.lower() in lowered:
                 offenders.add((where, synonym))
-    return sorted(offenders)
+    return sorted(offenders - SYNONYM_EXEMPTIONS)
 
 
 def _is_description(where: str) -> bool:

@@ -1,58 +1,59 @@
-# Handoff — F280 round 26
+# F281 Round 33 Handoff — Closure Defect Fix, Final
 
-## Session
+## Session 4 (Fourth and Final)
 
-SESSION 16 of feature F280 · round 26 · rounds so far 26
+This is F281's true final commit. The feature is now genuinely ready for the operator's merge via the Open PR Gate.
 
-## Range
+## Defect Found and Fixed
 
-Post-closure CI repair: `dd62df2d`..HEAD (C1 and C2) + C3 handback
+The reviewer independently audited round 32's closure work and found one real defect: the Built State section in `docs/roadmap/features/T2_F281.md` claimed that "`consumed_by` set to F281" for self-use queue entry SU-017, but the actual data on disk contradicted this. The field read `""` (empty string), not `"F281"`.
 
-## Commits
+`docs/roadmap/STATUS_closure_protocol.md` precondition 6 requires the `consumed_by` field be genuinely set before closure is valid. This defect violated that precondition and blocked final landing.
 
-### 2196c22e F280 R26 C1: record R25 PASS (RECORD26), register R-0953 CI defect, and replace plan.md with PLAN26
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/live_review.md` | +468/-0 | Append RECORD26 and FINDING953 |
-| `.agent/plan.md` | +38/-45 | Replace with PLAN26 slice |
-| `.agent/authored/f280-r26.md` | +3195/-0 | Block file, verbatim transport |
-| `.agent/last_block.md` | +3195/-3084 | Copy of C1 block file |
+## Fix Applied
 
-### 6a87e5b8 F280 R26 C2: fix R-0953 test assertion to match real doc content post-D10
-| Path | +/- | Reason |
-|------|-----|--------|
-| `tests/orchestration/test_job_fulfillment.py` | +5/-1 | Fix test to assert exact doc span |
-| `.agent/live_review.md` | +1/-0 | Append DONE953 slice |
+Changed `scripts/self_use_queue.json` line 138 from:
+```json
+      "consumed_by": "",
+```
+to:
+```json
+      "consumed_by": "F281",
+```
 
-## External actions
+This matches the shape already established by SU-016's entry a few lines above, which reads `"consumed_by": "F280"` — mirroring the exact same structure with the feature id that consumed the queue item.
 
-None; no pull request creation or evidence job runs on a post-closure repair round under amend0820-gate-autonomy.
+## Verification Diff
 
-## Verification
+```diff
+@@ -135,7 +135,7 @@
+       "title": "Address ledger finding R-0445",
+       "why": "- R-0445 …",
+       "job_markdown": "# Job: Address ledger finding R-0445\n…",
+-      "consumed_by": "",
++      "consumed_by": "F281",
+       "provenance": "generated (self-use-generator tier 1, ledger scan, R-0445)"
+     }
+   ]
+```
 
-All gates pass:
-- G1 (RECORD): 24 Gate lines, 136 distinct R-ids, 4 distinct Done ids (unchanged), 38 plan lines with all four sections, 647405 bytes
-- G2 (REPAIRED): 6 tests in TestFulfilledDemoGuide pass, ruff clean, 5 distinct Done ids (R-0953 now resolved), 648285 bytes in live_review.md
-- G3 (WIDER): 406 passed (tests/orchestration/test_job_fulfillment.py + tests/docs/), no remaining "propose list" references in tests/
-- G4 (TREE): clean worktree, single worktree, HEAD matches origin, exact path set (C1 and C2 files only, plus handoff)
-- G5 (CANARY): tests/cli/test_golden_path.py reads 42 passed
+Only that one field value changed — no reformat, no reorder, no other file modifications.
 
-## Authored-text proofs
+## Ledger Rotation Count Note
 
-- RECORD26 slice extracted from block: 9435 bytes, matches appended to live_review.md
-- FINDING953 slice extracted from block: 2079 bytes, matches appended to live_review.md
-- PLAN26 slice extracted from block: 2675 bytes, matches disk
-- DONE953 slice extracted from block: 838 bytes, matches appended to live_review.md
-- TEST26 FROM/TO blocks extracted and applied verbatim; test now passes (was failing)
+Round 32's own handback reported ledger rotation numbers as "open findings before: 127, open findings after: 127 (consistent)." The reviewer independently verified the true count is 128 in both cases. This was a reporting slip in R32's handoff text, not a data-loss defect in the ledger itself — the ledger state on disk is correct, only the transcription was off by one. No re-run of the rotation script is needed; it has already executed once and running it a second time against an already-rotated ledger is not what this round is for.
 
-## Deviations & assumptions
+## Closure Status
 
-None. The round is a straightforward CI repair under the Open PR Gate exception (amend0820-gate-autonomy). C1 records round 25's PASS and registers R-0953, which was discovered by the Open PR Gate's CI run on pull request 253 at hosted CI run 35234360948. C2 fixes the root cause (test assertion against stale doc content from round 19's own R-0947 fix). C3 is this handoff.
+**Precondition 6 (consumed_by field):** NOW MET. SU-017's `consumed_by` is set to `"F281"` on disk and verified by Python introspection before and after the fix.
 
-## Next
+**Feature:** Ready for merge. PR #254 remains open on branch `feature/f281-cli-help-surface`. This commit (9e323265) is the final work needed before the operator runs the Open PR Gate.
 
-1. Push the branch and re-trigger CI.
-2. Once CI passes: Phase 1 rule 1 (`.agent/STOP`), then Open PR Gate merges pull request 253.
-3. Rule A5: claim the next feature.
+## Commit Summary
 
-This session completed F280's post-closure repair sequence. The branch carries F280's accepted HEAD and closure artifacts; this round adds only a CI defect fix against hosted CI run 35234360948's single red node. Pull request 253 (feature/f280-cli-vocabulary-v2-part-two into main) is open and will merge once CI re-triggers green.
+- Commit: `9e323265`
+- Branch: `feature/f281-cli-help-surface`
+- Message: `F281 R33: fix self_use_queue.json consumed_by for SU-017 (closure precondition 6)`
+- Status: Pushed to remote
+
+**F281 is now READY FOR MERGE.**

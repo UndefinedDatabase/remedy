@@ -113,7 +113,7 @@ class MissionForHandoffNotFoundError(HandoffError):
     """
 
     def __init__(self, mission_id: str) -> None:
-        super().__init__(f"no mission {mission_id!r} exists to hand off")
+        super().__init__(f"No mission matches {mission_id!r}. Try: remedy mission list.")
         self.mission_id = mission_id
 
 

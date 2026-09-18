@@ -138,6 +138,24 @@ class TestDoctorCore:
         assert "READY" in out
 
 
+class TestDoctorCoreDeadCommands:
+    """T2_F271 design (c), scoped narrow by F281: the section only, always
+    shown — empty on the shipped catalog."""
+
+    def test_text_mode_shows_the_section_empty(self, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=False))
+        out = capsys.readouterr().out
+        assert "dead commands:" in out
+        assert "(none)" in out
+
+    def test_json_mode_carries_the_key_empty(self, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        assert out["dead_commands"] == []
+
+
 class TestDoctorCoreFromAnotherDirectory:
     """The doctor diagnoses the INSTALLATION, not the working directory.
 

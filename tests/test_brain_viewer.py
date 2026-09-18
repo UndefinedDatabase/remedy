@@ -606,7 +606,7 @@ class TestBrainViewCli:
             main()
         assert exc_info.value.code == 1
         err = capsys.readouterr().err
-        assert "invalid job ID" in err
+        assert "No job matches" in err
 
     def test_job_not_found_exits_1(self, tmp_path, monkeypatch, capsys):
         import sys

@@ -261,7 +261,7 @@ class TestLookupJobId:
             "aaaa1111-0000-0000-0000-000000000002",
         ]
 
-    def test_resolve_job_id_keeps_its_exit_codes_and_its_exact_messages(
+    def test_resolve_job_id_keeps_its_exit_codes_and_unifies_its_message(
         self, monkeypatch, tmp_path, capsys
     ):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -270,11 +270,11 @@ class TestLookupJobId:
         with pytest.raises(SystemExit) as exc_info:
             resolve_job_id("not-a-hex")
         assert exc_info.value.code == 1
-        assert capsys.readouterr().err == "Error: invalid job ID: 'not-a-hex'\n"
+        assert capsys.readouterr().err == "Error: No job matches 'not-a-hex'. Try: remedy job list.\n"
         with pytest.raises(SystemExit) as exc_info:
             resolve_job_id("deadbeef")
         assert exc_info.value.code == 1
-        assert capsys.readouterr().err == "Error: no job matches prefix 'deadbeef'\n"
+        assert capsys.readouterr().err == "Error: No job matches 'deadbeef'. Try: remedy job list.\n"
 
 
 class TestNormalizeJobId:

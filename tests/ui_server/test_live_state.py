@@ -392,6 +392,144 @@ class TestSessionRegistry:
         assert _is_pid_alive(os.getpid()) is True
         assert _is_pid_alive(999999999) is False
 
+    def test_dead_session_is_archived_not_just_deleted(self, tmp_path, monkeypatch):
+        import apps.cli.commands.ui as ui_mod
+
+        def patched_sessions_dir():
+            d = tmp_path / "ui" / "sessions"
+            d.mkdir(parents=True, exist_ok=True)
+            return d
+
+        def patched_dead_sessions_dir():
+            d = tmp_path / "ui" / "sessions_dead"
+            d.mkdir(parents=True, exist_ok=True)
+            return d
+
+        monkeypatch.setattr(ui_mod, "_sessions_dir", patched_sessions_dir)
+        monkeypatch.setattr(ui_mod, "_dead_sessions_dir", patched_dead_sessions_dir)
+
+        # Write one session with an unreachable pid
+        info = {"job_id": "dead-job", "pid": 999999999, "url": "http://127.0.0.1:8787"}
+        ui_mod._write_session("test-session", info)
+
+        # Prune dead sessions
+        alive = ui_mod._prune_dead_and_get_live()
+        assert len(alive) == 0
+
+        # Verify the live session file is gone
+        live_sessions = list((tmp_path / "ui" / "sessions").glob("*.json"))
+        assert len(live_sessions) == 0
+
+        # Verify it was archived
+        dead_sessions = ui_mod._read_dead_sessions()
+        assert len(dead_sessions) == 1
+        assert dead_sessions[0]["job_id"] == "dead-job"
+        assert "ended_at" in dead_sessions[0]
+
+    def test_status_default_never_shows_dead_but_all_does(self, tmp_path, monkeypatch, capsys):
+        import apps.cli.commands.ui as ui_mod
+
+        def patched_sessions_dir():
+            d = tmp_path / "ui" / "sessions"
+            d.mkdir(parents=True, exist_ok=True)
+            return d
+
+        def patched_dead_sessions_dir():
+            d = tmp_path / "ui" / "sessions_dead"
+            d.mkdir(parents=True, exist_ok=True)
+            return d
+
+        monkeypatch.setattr(ui_mod, "_sessions_dir", patched_sessions_dir)
+        monkeypatch.setattr(ui_mod, "_dead_sessions_dir", patched_dead_sessions_dir)
+
+        # Write one live session and one dead session
+        live_info = {"job_id": "live-job", "pid": os.getpid(), "url": "http://127.0.0.1:8787", "port": 8787}
+        ui_mod._write_session("live-session", live_info)
+
+        # Archive a dead session directly
+        import datetime
+        dead_info = {"job_id": "dead-job", "pid": 999999999, "url": "http://127.0.0.1:8788", "port": 8788,
+                     "ended_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+        dead_dir = patched_dead_sessions_dir()
+        (dead_dir / "dead-session.json").write_text(json.dumps(dead_info, indent=2))
+
+        # Test default view (no --all)
+        ui_mod._cmd_ui_status(show_all=False)
+        captured = capsys.readouterr()
+        assert "DEAD" not in captured.out
+        assert "live-job" in captured.out
+
+        # Test with --all flag
+        ui_mod._cmd_ui_status(show_all=True)
+        captured = capsys.readouterr()
+        assert "DEAD" in captured.out
+        assert "dead-job" in captured.out
+        assert "ended=" in captured.out
+
+    def test_dead_archive_is_capped_at_ten(self, tmp_path, monkeypatch):
+        import apps.cli.commands.ui as ui_mod
+        import datetime
+
+        def patched_dead_sessions_dir():
+            d = tmp_path / "ui" / "sessions_dead"
+            d.mkdir(parents=True, exist_ok=True)
+            return d
+
+        monkeypatch.setattr(ui_mod, "_dead_sessions_dir", patched_dead_sessions_dir)
+
+        # Write eleven already-archived dead session records directly
+        dead_dir = patched_dead_sessions_dir()
+        for i in range(11):
+            info = {
+                "job_id": f"job-{i}",
+                "pid": 999999999 + i,
+                "ended_at": f"2026-01-01T00:00:{i:02d}+00:00"
+            }
+            (dead_dir / f"session-{i}.json").write_text(json.dumps(info, indent=2))
+
+        # Prune the archive
+        ui_mod._prune_dead_archive()
+
+        # Verify exactly ten remain
+        remaining = list(dead_dir.glob("*.json"))
+        assert len(remaining) == 10
+
+        # Verify the oldest (i=0) was evicted
+        remaining_data = [json.loads(f.read_text()) for f in remaining]
+        job_ids = [d["job_id"] for d in remaining_data]
+        assert "job-0" not in job_ids
+        assert "job-10" in job_ids
+
+    def test_ui_status_all_flag_round_trips_through_grouped_cli(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        import apps.cli.commands.ui as ui_mod
+        from apps.cli import grouped
+        import datetime
+
+        # Create the data dirs
+        sessions_dir = tmp_path / "ui" / "sessions"
+        dead_dir = tmp_path / "ui" / "sessions_dead"
+        sessions_dir.mkdir(parents=True, exist_ok=True)
+        dead_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write one dead session directly (unreachable pid)
+        dead_info = {
+            "job_id": "dead-job",
+            "pid": 999999999,
+            "ended_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+        (dead_dir / "dead-session.json").write_text(json.dumps(dead_info, indent=2))
+
+        # Call without --all
+        grouped.main(["ui", "status"])
+        captured = capsys.readouterr()
+        assert "DEAD" not in captured.out
+
+        # Call with --all
+        grouped.main(["ui", "status", "--all"])
+        captured = capsys.readouterr()
+        assert "DEAD" in captured.out
+
 
 
 

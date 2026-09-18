@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-79 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+80 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 22 | 34 |
+| 2 | Minimal Self-Build Runtime | 23 | 34 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -264,12 +264,13 @@ pip install -e ".[dev]"          # add ,ollama for the local planner provider
 ## Quickstart
 
 ```bash
-remedy doctor                              # check local health
+remedy init                                # set up this repo (once)
+remedy doctor core                         # check local health
 remedy config show                         # view current settings
-remedy job create --plan plan.yaml         # create a job from a plan
-remedy do run <job-id>                     # run the job
-remedy run show <job-id>                   # generate the report
-remedy job stop <job-id>                   # stop at next safe point (F011)
+remedy do run "<goal>" --repo . --json | tee /tmp/remedy-run.json
+JOB_ID=$(python3 -c "import json; print(json.load(open('/tmp/remedy-run.json'))['job_id'])")
+remedy job show $JOB_ID --full             # inspect the result
+remedy job stop $JOB_ID                    # stop at next safe point (F011)
 remedy runtime serve                       # start dev-server supervisor (F007)
 ```
 
