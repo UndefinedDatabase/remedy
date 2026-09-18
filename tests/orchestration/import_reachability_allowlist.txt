@@ -101,6 +101,7 @@ packages.orchestration.diff_repair_apply
 packages.orchestration.diff_repair_response
 packages.orchestration.diff_view_source
 packages.orchestration.do_run
+packages.orchestration.do_sequence
 packages.orchestration.dod_compiler
 packages.orchestration.dod_gate
 packages.orchestration.dod_runners
