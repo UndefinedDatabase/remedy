@@ -1,0 +1,2 @@
+1 failed, 17950 passed, 23 skipped, 1 warning in 174.14s (0:02:54)
+tests/test_subprocess_timeouts.py::test_no_production_subprocess_call_is_missing_a_timeout
