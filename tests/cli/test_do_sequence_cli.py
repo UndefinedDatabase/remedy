@@ -468,7 +468,7 @@ def test_text_output_lists_each_tasks_deliverable(repo, capsys):
                     f" — deliverable: {deliverable}") in out.splitlines()
 
 
-# ── T004: the cockpit, --apply and the flags not yet available (DECISION F268 D9) ──
+# ── T004: the cockpit, --apply and the commit flags' refusals (DECISIONs F268 D9, F270 D4) ──
 
 
 def _do_with_ui(capsys, *extra: str, order: str = ORDER) -> str:
@@ -718,33 +718,43 @@ def test_a_job_whose_cost_mirror_failed_is_named_not_counted_as_zero(
     assert "Cost: not reported by the provider" in out
 
 
-NOT_YET_AVAILABLE = [
-    (("--commit","Add the contributing guide"), "F270"),
-    (("--commit-auto",), "F270"),
-    (("--commit-with-history",), "F270"),
-    (("--push",), "F270"),
+#: DECISION F270 D4 (1): the four flags F268 D9 refused as not yet available now
+#: have `job apply`'s rules; each case below is one they refuse before any step.
+COMMIT_FLAG_REFUSALS = [
+    (("--commit", "Add the contributing guide", "--plan-only"),
+     "--plan-only runs no job, so --commit would have nothing to apply"),
+    (("--commit-auto", "--plan-only"),
+     "--plan-only runs no job, so --commit-auto would have nothing to apply"),
+    (("--commit-with-history", "--plan-only"),
+     "--plan-only runs no job, so --commit-with-history would have nothing to apply"),
+    (("--push",),
+     "--push pushes what --commit, --commit-auto or --commit-with-history lands, so it "
+     "is refused alone"),
 ]
 
 
-@pytest.mark.parametrize(("flag", "feature"), NOT_YET_AVAILABLE,
-                         ids=[flag[0] for flag, _ in NOT_YET_AVAILABLE])
-def test_a_flag_whose_feature_is_not_built_refuses_before_any_step(
-        repo, capsys, flag, feature):
+@pytest.mark.parametrize(("flags", "sentence"), COMMIT_FLAG_REFUSALS,
+                         ids=[flags[0] for flags, _ in COMMIT_FLAG_REFUSALS])
+def test_a_commit_or_push_flag_it_cannot_honour_refuses_before_any_step(
+        repo, capsys, flags, sentence):
     from packages.orchestration.pingpong_job import list_job_plans
     from packages.orchestration.project_registry import resolve_project
 
     data_root = repo.parent / "data"
+    head = _git(repo, "rev-parse", "HEAD")
 
     with pytest.raises(SystemExit) as exc:
-        _do(capsys, "--json", *flag)
+        _do(capsys, "--json", *flags)
 
     assert exc.value.code == 2
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert f"{flag[0]} is not yet available; {feature} brings it" in captured.err
+    assert sentence in captured.err and "Nothing was run." in captured.err
+    assert "not yet available" not in captured.err
     assert [p for p in data_root.rglob("*") if p.is_file()] == []
     assert resolve_project(repo) is None
     assert list_job_plans() == []
+    assert _git(repo, "rev-parse", "HEAD") == head
 
 
 # ── F269 T003: `--contract` and the proposed template (DECISION F269 D1 (4)) ──

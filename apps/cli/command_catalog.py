@@ -1602,10 +1602,10 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--plan-only", "Stop after the shape step: nothing is executed, and the output lists every deliverable", required=False, is_option=True, is_flag=True),
             ArgDef("--apply", "Apply each job of the mission to the repository, one after another, as `remedy job apply --approve` does; stops at the first that is not applied", required=False, is_option=True, is_flag=True),
             ArgDef("--contract", "Force this contract template as the floor of the mission's acceptance criteria, instead of the one Remedy proposes: api-service, cli-tool, python-library or website", required=False, is_option=True, default=None),
-            ArgDef("--commit", "Not yet available, F270 brings it: commit the applied result with this message", required=False, is_option=True, default=None),
-            ArgDef("--commit-auto", "Not yet available, F270 brings it: commit the applied result with a generated message", required=False, is_option=True, is_flag=True),
-            ArgDef("--commit-with-history", "Not yet available, F270 brings it: commit the applied result with a message that carries its history", required=False, is_option=True, is_flag=True),
-            ArgDef("--push", "Not yet available, F270 brings it: push the commit", required=False, is_option=True, is_flag=True),
+            ArgDef("--commit", "Implies --apply: apply each job as `remedy job apply --approve --commit` does, landing one commit of exactly its copied files on your current branch, as you, with this one line as its first line, followed by the job's number when the mission has several jobs; each job runs only after the one before it is committed. Refused before any step with --plan-only, another commit flag, a dirty tree or a detached HEAD", required=False, is_option=True, default=None),
+            ArgDef("--commit-auto", "As --commit, with a first line Remedy writes from the job's title or the mission's goal", required=False, is_option=True, is_flag=True),
+            ArgDef("--commit-with-history", "Implies --apply: merge each job's commits, one per applied task step, onto your current branch with git merge --no-ff instead of copying, as `remedy job apply --approve --commit-with-history` does; each job runs only after the one before it is merged", required=False, is_option=True, is_flag=True),
+            ArgDef("--push", "With a commit flag only: push your branch to its configured upstream once, after the mission's last job, never forced; refused alone and, before any step, without an upstream; refused while any blocking criteria of the mission contract are unmet, naming those still open. The config key apply.push_after_mission does the same", required=False, is_option=True, is_flag=True),
         ),
         # R-0969: `remedy do "<order>" --apply` writes the repository through
         # `job_apply`, exactly as `job.apply` does, which declares the same.
