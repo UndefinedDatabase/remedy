@@ -1030,7 +1030,9 @@ def run_mission(
     run — so the audit trail has no gaps where a decision used to be. An
     iteration in which a contract amendment takes effect first leaves one
     acknowledgement entry per such amendment
-    (:func:`acknowledge_due_amendments`, DECISION F269 D8 (4)).
+    (:func:`acknowledge_due_amendments`, DECISION F269 D8 (4)). A run that
+    reaches its iteration limit with blocking contract criteria open raises
+    the remainder decision and names it in its detail (DECISION F269 D9 (2)).
     """
     from packages.orchestration.mission_state import (
         MISSION_STATUS_ACTIVE,
@@ -1352,6 +1354,23 @@ def run_mission(
     result.terminal = TERMINAL_ITERATION_LIMIT
     result.detail = (f"reached the {bounds.max_iterations}-iteration limit "
                      f"with the mission still active")
+    # DECISION F269 D9 (2): the budget is spent with blocking criteria open, so
+    # the remainder goes to the operator as one decision carrying the
+    # prefilled follow-up order; none is raised twice while one is open.
+    from packages.orchestration.mission_contract import (
+        ContractError,
+        raise_contract_remainder_decision,
+    )
+
+    try:
+        remainder = raise_contract_remainder_decision(pid, mission_id, root=root,
+                                                      now=now)
+    except ContractError as exc:
+        result.detail += f"; no remainder decision was raised: {exc}"
+    else:
+        if remainder:
+            result.detail += (f"; blocking contract criteria are not met, so "
+                              f"remainder decision {remainder} was raised")
     return build_boundary_handoff(result, root)
 
 

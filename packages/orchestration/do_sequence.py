@@ -32,6 +32,10 @@ DECISION F268 D11: run mirrors each job it ran into the F103 ledger, as `job run
 does, and `do_cost_summary` reads the measured tokens per role and cost back
 through `token_ledger.query_cost`.
 
+DECISION F269 D9 (2): a job the run step ran that its budget stopped while the
+mission's contract has blockers raises the remainder decision, and the Next
+lines name the command that answers it `yes`.
+
 DECISION F268 D8: `--step-by-step` halts after every step that did work and,
 inside run, before each job — points where no provider call is in flight — and
 reads one line through the context's `read_line`; `q` or end of input stops the
@@ -838,6 +842,34 @@ def _job_run_role_flags(ctx: DoContext) -> str:
     return flags
 
 
+def do_budget_stop_remainder(ctx: DoContext, job: Any) -> str:
+    """Raise the remainder decision for a job its budget stopped; the detail's tail, or "".
+
+    DECISION F269 D9 (2): a job that did not complete and whose ``stop_source``
+    is budget, while the mission's contract has blockers, raises the remainder
+    decision, and the Next lines name it with the command that answers it.
+    The state is not read: a budget stop mid-run ends ``stopped``, while one
+    before any work (a deadline already past) leaves the job ``planned``, and
+    both are the budget ending the job.  Any other ending, no mission, no
+    blocker or an open remainder decision adds nothing.
+    """
+    from packages.orchestration.mission_contract import (
+        CONTRACT_REMAINDER_YES,
+        raise_contract_remainder_decision,
+    )
+
+    if job.stop_source != "budget" or not ctx.mission_id or ctx.project is None:
+        return ""
+    decision_id = raise_contract_remainder_decision(str(ctx.project.id), ctx.mission_id)
+    if decision_id is None:
+        return ""
+    # The full job id, as every other Next line of the walk names it.
+    ctx.next_lines.append(f"remedy decision resolve {job.job_id} {decision_id} "
+                          f"--reason {CONTRACT_REMAINDER_YES}")
+    return (f"; its budget stopped it with blocking contract criteria open, so "
+            f"remainder decision {decision_id} was raised")
+
+
 def _step_run(ctx: DoContext) -> tuple[str, str]:
     """Run the walk's first job on the chosen builder and reviewer; the rest wait (DECISION F268 D12).
 
@@ -891,7 +923,8 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
         ctx.next_lines.append(f"remedy job show {job_id}")
         if done.state != JOB_COMPLETED:
             reason = f": {done.error}" if done.error else ""
-            return DO_STEP_FAILED, f"job {job_id} ended {done.state.value}{reason}"
+            return DO_STEP_FAILED, (f"job {job_id} ended {done.state.value}{reason}"
+                                    f"{do_budget_stop_remainder(ctx, done)}")
         ran.append(f"job {job_id} ran {len(done.tasks)} task(s) to {done.state.value}")
     if ctx.waiting_job_ids:
         ran.append(

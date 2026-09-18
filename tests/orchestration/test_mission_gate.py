@@ -14,6 +14,11 @@ and a job re-runs, the refusal is gone.
 ``remedy mission achieve`` on such a mission is the operator's override: it
 exits 0, names the unmet criteria and sets the status (D4 (5)).
 
+DECISION F269 D9: the same mission run by ``run_mission`` with the real
+gate and a three-round budget ends ``iteration_limit`` with one open
+remainder decision naming the unmet criterion, and ``yes`` to it at the CLI
+starts the follow-up mission holding exactly that criterion.
+
 No provider is called: the plan and every check are compiled on F061's
 deterministic path.  Missions and job evidence live under ``tmp_path``.
 """
@@ -230,3 +235,121 @@ class TestTheOperatorsAchieveIsNotHeld:
         main(["mission", "achieve", mission_id, "--project", project_id, "--json"])
 
         assert json.loads(capsys.readouterr().out)["unmet_blocking_criteria"] == []
+
+
+class TestTheRemainderAtBudgetEnd:
+    """DECISION F269 D9 — T005's Acceptance, end to end with the real job gate.
+
+    `run_mission` with a scripted orchestrator dispatches M001 (the real gate
+    runs in the tmp directory), declares M001 done, then claims the mission
+    achieved, which the contract refuses on C003; the three-round budget ends
+    there.  The run ends `iteration_limit` with one open remainder decision
+    naming C003, and `remedy decision resolve ... --reason yes` starts the
+    follow-up mission whose contract is exactly C003.
+    """
+
+    SCRIPT = (
+        {"kind": "dispatch_job", "payload": {"milestone_id": "M001",
+                                              "step": "build M001"}},
+        {"kind": "declare_milestone_done", "payload": {"milestone_id": "M001"}},
+        {"kind": "declare_mission_achieved"},
+    )
+
+    def _scripted(self):
+        from packages.orchestration.orchestrator_move_schema import (
+            ORCHESTRATOR_MOVE_SCHEMA_V,
+        )
+
+        answers = [json.dumps({"schema_v": ORCHESTRATOR_MOVE_SCHEMA_V, **move})
+                   for move in self.SCRIPT]
+        calls: list[str] = []
+
+        def call_fn(prompt: str, attempt: int) -> str:
+            calls.append(prompt)
+            return answers[min(len(calls), len(answers)) - 1]
+
+        return call_fn
+
+    def _run(self, tmp_path, planned, workdir):
+        """The loop with the real gate; its observation is what that gate decided.
+
+        The ``execute`` seam does not move the job record's state, so the
+        milestone evidence is read from what the seam ran: before the dispatch
+        there is none, after it the job completed with the gate's verdict.
+        """
+        from packages.orchestration.orchestrator_loop import (
+            LoopLimits,
+            MilestoneEvidence,
+            run_mission,
+        )
+
+        project_id, mission_id = planned
+        ran: list[JobExecution] = []
+        gate = _run_the_real_gate_in(workdir)
+
+        def execute(job):
+            ran.append(gate(job))
+            return ran[-1]
+
+        def evidence(_project_id, _mission_id, _milestone_id):
+            if not ran:
+                return MilestoneEvidence()
+            return MilestoneEvidence(job_id="gated", job_state="completed",
+                                     gate_released=ran[-1].gate_released)
+
+        result = run_mission(
+            mission_id, LoopLimits(max_iterations=len(self.SCRIPT)),
+            project_id=project_id, call_fn=self._scripted(), root=tmp_path,
+            execute=execute, evidence=evidence,
+            control_root_path=tmp_path / "control")
+        return project_id, mission_id, result
+
+    def _open_remainders(self, project_id, mission_id, root):
+        from packages.orchestration.mission_contract import CONTRACT_REMAINDER_MARKER
+        from packages.orchestration.orchestrator_loop import open_mission_decisions
+
+        return [r for r in open_mission_decisions(load_mission(project_id, mission_id, root))
+                if r["question"].startswith(CONTRACT_REMAINDER_MARKER)]
+
+    def test_the_run_ends_blocked_with_one_remainder_decision_naming_the_criterion(
+            self, tmp_path, planned, workdir):
+        from packages.orchestration.orchestrator_loop import TERMINAL_ITERATION_LIMIT
+
+        project_id, mission_id, result = self._run(tmp_path, planned, workdir)
+
+        assert result.terminal == TERMINAL_ITERATION_LIMIT
+        [refused] = [e for e in result.entries if e.outcome["status"] == "refused"]
+        assert refused.move["kind"] == MOVE_DECLARE_MISSION_ACHIEVED
+        assert "blocking contract criteria are not met: C003" in refused.outcome["detail"]
+        assert _statuses(project_id, mission_id, tmp_path) == [
+            ("C001", "met"), ("C002", "met"), ("C003", "unmet")]
+        [record] = self._open_remainders(project_id, mission_id, tmp_path)
+        assert "C003: tests/test_c.py passes" in record["question"]
+        assert "C001" not in record["question"] and "C002" not in record["question"]
+        assert f"remainder decision {record['decision_id']} was raised" in result.detail
+
+    def test_yes_at_the_cli_starts_the_follow_up_mission_holding_the_unmet_criterion(
+            self, tmp_path, planned, workdir, capsys):
+        from packages.orchestration.mission_state import list_missions
+
+        project_id, mission_id, _result = self._run(tmp_path, planned, workdir)
+        [record] = self._open_remainders(project_id, mission_id, tmp_path)
+        job_id = load_mission(project_id, mission_id, tmp_path).latest_link().job_id
+        capsys.readouterr()
+
+        try:
+            main(["decision", "resolve", job_id, record["decision_id"], "--reason", "yes"])
+            code = 0
+        except SystemExit as exc:
+            code = exc.code or 0
+
+        assert code == 0
+        out = capsys.readouterr().out
+        [follow_up] = [m for m in list_missions(project_id, tmp_path) if m.id != mission_id]
+        assert f"Follow-up mission {follow_up.id} started" in out
+        assert f"remedy mission plan {follow_up.id}" in out
+        contract = read_mission_contract(follow_up)
+        assert [(c.id, c.text, c.status) for c in contract.criteria] == [
+            ("C001", "tests/test_c.py passes", "open")]
+        assert follow_up.order.text == record["impact"]
+        assert self._open_remainders(project_id, mission_id, tmp_path) == []

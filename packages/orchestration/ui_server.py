@@ -2975,7 +2975,10 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         reader searching for it should stop here: F056 makes the mission opt-in
         an explicit flag whose default is NO, so a door that cannot carry the
         flag creates no mission, and silently creating one would be the opposite
-        of that default.
+        of that default.  The one mission this door does create is DECISION
+        F269 D9 (3)'s: an explicit `yes` to a contract remainder decision, whose
+        question offered exactly that, starts the follow-up mission, and the
+        result carries its id as `follow_up_mission_id`.
         """
         from datetime import datetime, timezone
 
@@ -3022,8 +3025,19 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         if record is None:
             return None
         save_job_plan(job)
-        return {"command": payload["command"], "outcome": "accepted",
+        body = {"command": payload["command"], "outcome": "accepted",
                 "decision_id": str(record.get("decision_id", ""))}
+        # DECISION F269 D9 (3): a `yes` to a contract remainder decision starts
+        # the follow-up mission here as it does at the CLI door, so a cockpit
+        # "yes" is never recorded and then silently does nothing; its id rides
+        # in the result. Every other answer is recorded and no more.
+        from packages.orchestration.mission_contract import (
+            start_remainder_follow_up_mission,
+        )
+        follow_up = start_remainder_follow_up_mission(str(job.job_id), record)
+        if follow_up is not None:
+            body["follow_up_mission_id"] = follow_up
+        return body
 
     def _dispatch_approve_hunks(self, job: Any,
                                 payload: Any) -> dict[str, Any] | None:

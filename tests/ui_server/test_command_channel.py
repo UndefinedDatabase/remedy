@@ -500,6 +500,52 @@ class TestCommandChannelDoor:
             control_root_path=self.tmp_path / "control") == {"status": 200,
                                                              "body": body}
 
+    def test_yes_to_a_contract_remainder_decision_starts_the_follow_up_mission(self):
+        """DECISION F269 D9 (3): the cockpit's `yes` acts as the CLI's does.
+
+        The job belongs to a mission whose contract holds one blocking criterion
+        not met; the remainder decision raised for it is answered `yes` through
+        this door, which answers 200 carrying the follow-up mission's id, and
+        that mission's contract holds exactly the unmet criterion.
+        """
+        from packages.orchestration.mission_contract import (
+            ContractCriterion,
+            MissionContract,
+            raise_contract_remainder_decision,
+            read_mission_contract,
+            write_mission_contract,
+        )
+        from packages.orchestration.mission_state import (
+            create_mission,
+            link_job_to_mission,
+            load_mission,
+        )
+
+        project_id = "p-remainder"
+        mission = create_mission(project_id, "Ship the tool")
+        link_job_to_mission(project_id, mission.id, self.job_id, "initial")
+        write_mission_contract(project_id, mission.id, MissionContract(criteria=(
+            ContractCriterion(id="C001", text="the tool ships", origin="template",
+                              status="met"),
+            ContractCriterion(id="C002", text="tests/test_c.py passes",
+                              origin="template", status="unmet"))))
+        decision_id = raise_contract_remainder_decision(project_id, mission.id)
+
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(
+                command="decision.resolve", client_nonce="nonce-remainder",
+                args={"decision_id": decision_id, "answer": "yes"}),
+            headers=self._auth_headers(token))
+
+        assert status == 200, body
+        assert sorted(body) == ["command", "decision_id", "follow_up_mission_id",
+                                "outcome"], body
+        follow_up = load_mission(project_id, body["follow_up_mission_id"])
+        assert [(c.id, c.text, c.status) for c in read_mission_contract(
+            follow_up).criteria] == [("C001", "tests/test_c.py passes", "open")]
+
     # -- D.7: the `plan:` branch DECISION F031 D24 rules ----------------------
 
     def _save_task_plan(self, approval: str, clarifications=None) -> None:
@@ -1455,6 +1501,8 @@ class TestCommandDoorImportGuard:
          "open_clarification_questions"),                           # F031 D24
         ("packages.orchestration.job_plan",
          "resolve_task_plan_approval"),                             # F031 D24
+        ("packages.orchestration.mission_contract",
+         "start_remainder_follow_up_mission"),                      # F269 D9
         ("packages.orchestration.hunk_approval", "HunkApprovalRefusal"),  # F033 D4
         ("packages.orchestration.hunk_decision_record",
          "record_hunk_decision_from_view"),                         # F033 D4

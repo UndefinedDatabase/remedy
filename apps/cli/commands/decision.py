@@ -290,6 +290,24 @@ def _cmd_decision_resolve(
         for ref in answered.get("cross_references", []):
             print(f"  Same question also asked as: {ref}")
         print(f"Resume the run: remedy job resume {job_id_str} --json")
+        # DECISION F269 D9 (3): a `yes` to a contract remainder decision starts
+        # the follow-up mission; every other answer is recorded and no more.
+        from packages.orchestration.mission_contract import (
+            ContractError,
+            start_remainder_follow_up_mission,
+        )
+        from packages.orchestration.mission_state import MissionError
+
+        try:
+            follow_up = start_remainder_follow_up_mission(str(job.job_id), answered)
+        except (ContractError, MissionError) as exc:
+            print(f"Error: the answer is recorded, but the follow-up mission was "
+                  f"not started: {exc}", file=sys.stderr)
+            sys.exit(1)
+        if follow_up is not None:
+            print(f"Follow-up mission {follow_up} started with the unmet criteria "
+                  f"as its contract.")
+            print(f"  Next: remedy mission plan {follow_up}")
     elif decision_id.startswith("plan:"):
         from packages.orchestration.data_paths import resolve_job_id as _rji
         from packages.orchestration.pingpong_job import JobNotFoundError, require_job_plan

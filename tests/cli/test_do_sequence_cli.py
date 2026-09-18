@@ -956,3 +956,37 @@ def test_the_default_launcher_starts_ui_start_detached_and_reads_its_url(tmp_pat
         launch_do_cockpit("abc123", wait_seconds=0, spawn=lambda argv, **kw: silent,
                           sleep=lambda _s: None)
     assert silent.terminated is True
+
+
+# ── F269 round 8: a budget stop with blockers raises the remainder (DECISION F269 D9) ──
+
+
+def test_a_job_its_budget_stops_with_blockers_raises_the_remainder_and_names_its_answer(
+        repo, capsys):
+    """D9 (2): `run_job`'s own budget check stops the job — a deadline already
+    past, the budget the fake providers cannot dodge, since they report no
+    calls or tokens to count — while the contract has blockers, so one
+    remainder decision is raised and the Next lines name the command that
+    answers it `yes`."""
+    from packages.orchestration.escalation import find_task_decision
+    from packages.orchestration.mission_contract import CONTRACT_REMAINDER_MARKER
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+
+    with pytest.raises(SystemExit) as exc:
+        _do(capsys, "--json", "--contract", "cli-tool",
+            "--deadline", "2000-01-01T00:00:00+00:00")
+
+    assert exc.value.code == 1
+    data = json.loads(capsys.readouterr().out)
+    [job_id] = data["job_ids"]
+    job = load_job_plan(job_id)
+    assert job.state != JOB_COMPLETED
+    assert (job.stop_source, job.stop_reason) == ("budget", "budget_exhausted:deadline")
+    assert data["unmet_blocking_criteria"]
+    [decision_id] = re.findall(r"remainder decision (td:\S+) was raised",
+                               _step(data, "run")["detail"])
+    record = find_task_decision(job, decision_id)
+    assert record["question"].startswith(CONTRACT_REMAINDER_MARKER)
+    assert all(f"{ident}: " in record["question"]
+               for ident in data["unmet_blocking_criteria"])
+    assert f"remedy decision resolve {job_id} {decision_id} --reason yes" in data["next"]
