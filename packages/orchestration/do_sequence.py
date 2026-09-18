@@ -756,9 +756,13 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
     As each job is linked, its contract slice is merged into its DoD (DECISION
     F269 D6 (3)); `do`'s jobs serve no milestone, so the slice is the
     whole-mission criteria, whose checks the job's gate reports and never
-    holds on (D6 (1)).
+    holds on (D6 (1)).  Beside that merge, the contract binds the job to its
+    repository and grants it (DECISION F269 D7).
     """
-    from packages.orchestration.mission_contract import merge_contract_slice_into_dod
+    from packages.orchestration.mission_contract import (
+        grant_contract_job_repository,
+        merge_contract_slice_into_dod,
+    )
     from packages.orchestration.mission_state import (
         MISSION_ROLE_FOLLOW_UP,
         MISSION_ROLE_INITIAL,
@@ -790,6 +794,7 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         role = MISSION_ROLE_FOLLOW_UP if ctx.job_ids else MISSION_ROLE_INITIAL
         mission = link_job_to_mission(str(ctx.project.id), ctx.mission_id, job_id, role=role)
         merge_contract_slice_into_dod(mission, None, job_id)
+        grant_contract_job_repository(mission, job_id)
         ctx.job_ids.append(job_id)
         shaped_jobs.append(shaped)
 

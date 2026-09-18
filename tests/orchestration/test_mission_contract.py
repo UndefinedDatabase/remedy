@@ -22,6 +22,9 @@ And D4 (3) and (4): a job's DoD gains its slice checks without duplicating
 one it already has, and the job's stored gate result decides its slice
 criteria.  D6 (1): a whole-mission criterion's check enters the DoD
 non-blocking, a milestone-scoped one with the criterion's ``blocking``.
+D7: a contract's job, dispatched or made by `remedy do`, is bound to its
+repository and granted the three repository capabilities; a mission with no
+contract writes nothing, and a binding already set is kept.
 
 Every test writes into ``tmp_path``; no real provider is called — a planned
 mission replays a recorded planner answer.
@@ -484,3 +487,130 @@ class TestTheRenderer:
 
         assert "  Criteria: (none)" in lines
         assert "  Template: (none)" in lines
+
+
+# ── DECISION F269 D7: the contract binds each of its jobs and grants it ──
+
+GRANTS = ("repo_test_run", "repo_generated_write", "repo_revert")
+
+
+def _allowed(job) -> dict[str, bool]:
+    from packages.orchestration.permissions import Capability, is_allowed
+
+    return {grant: is_allowed(job, Capability(grant)) for grant in GRANTS}
+
+
+@pytest.fixture()
+def registered(tmp_path, monkeypatch):
+    """A registered project whose canonical repository is ``tmp_path/repo``."""
+    from packages.orchestration.project_registry import RemyProject, save_project
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    canonical = tmp_path / "repo"
+    canonical.mkdir()
+    project = RemyProject(name="Bound", slug="bound", canonical_repo_path=str(canonical))
+    save_project(project)
+    return str(project.id), str(canonical)
+
+
+def _dispatch_one_job(project_id: str, mission_id: str, root: Path):
+    """Dispatch one job through ``execute_move``; return (stored job, job the executor got)."""
+    from packages.orchestration.orchestrator_loop import JobExecution, execute_move
+    from packages.orchestration.orchestrator_move_schema import MOVE_DISPATCH_JOB
+
+    seen: list[Any] = []
+
+    def execute(job):
+        seen.append(job)
+        return JobExecution(terminal_status="all_green", job_status="completed")
+
+    move = SimpleNamespace(kind=MOVE_DISPATCH_JOB,
+                           payload={"milestone_id": "M1", "step": "build M1"})
+    outcome = execute_move(project_id, mission_id, move, root=root, execute=execute)
+    assert outcome.status == "dispatched"
+    return load_job_plan(outcome.job_id, root), seen[0]
+
+
+class TestTheContractBindsAndGrantsItsJobs:
+    """DECISION F269 D7: the heir of `job attach-repo` and `job permit`."""
+
+    def test_a_dispatched_job_gets_the_projects_repository_and_the_three_grants(
+            self, tmp_path, registered):
+        project_id, canonical = registered
+        m = create_mission(project_id, "Ship the tool", root=tmp_path)
+        write_mission_contract(project_id, m.id, MissionContract(criteria=(
+            _criterion("C001", "the tool ships"),)), tmp_path)
+
+        stored, given = _dispatch_one_job(project_id, m.id, tmp_path)
+
+        assert stored.repo_path == ""
+        assert stored.metadata["target_repo"] == canonical
+        assert _allowed(stored) == dict.fromkeys(GRANTS, True)
+        # The executor saves the in-memory job next, so it carries the same values.
+        assert given.metadata["target_repo"] == canonical
+        assert _allowed(given) == dict.fromkeys(GRANTS, True)
+
+    def test_a_do_job_is_bound_to_its_own_repo_path_and_granted(self, tmp_path,
+                                                                monkeypatch, capsys):
+        import subprocess
+
+        from apps.cli.grouped import main
+
+        def tripwire(*args, **kwargs):
+            raise AssertionError("remedy do reached a model-call factory under --no-llm")
+
+        for factory in ("packages.orchestration.intake.make_provider_call_fn",
+                        "packages.orchestration.intake.make_structured_call_fn",
+                        "packages.orchestration.study.study_call_fn"):
+            monkeypatch.setattr(factory, tripwire)
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        target = tmp_path / "target"
+        target.mkdir()
+        for args in (("init", "-q"), ("config", "user.email", "t@e.com"),
+                     ("config", "user.name", "T"), ("config", "commit.gpgsign", "false")):
+            subprocess.run(["git", *args], cwd=target, check=True, capture_output=True)
+        (target / "README.md").write_text("# target\n")
+        subprocess.run(["git", "add", "-A"], cwd=target, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-qm", "init"], cwd=target, check=True,
+                       capture_output=True)
+        monkeypatch.chdir(target)
+
+        main(["do", "Write a CONTRIBUTING.md", "--no-llm", "--no-ui", "--json",
+              "--plan-only", "--builder-provider", "fake", "--reviewer-provider", "fake"])
+        data = json.loads(capsys.readouterr().out)
+
+        assert data["contract"]["criteria"]
+        [job_id] = data["job_ids"]
+        job = load_job_plan(job_id)
+        assert job.repo_path == str(target.resolve())
+        assert job.metadata["target_repo"] == job.repo_path
+        assert _allowed(job) == dict.fromkeys(GRANTS, True)
+
+    def test_a_mission_with_no_contract_writes_nothing(self, tmp_path, registered):
+        project_id, _canonical = registered
+        m = create_mission(project_id, "Ship the tool", root=tmp_path)
+
+        stored, given = _dispatch_one_job(project_id, m.id, tmp_path)
+
+        for job in (stored, given):
+            assert "target_repo" not in job.metadata
+            assert "permissions" not in job.metadata
+            assert _allowed(job) == dict.fromkeys(GRANTS, False)
+
+    def test_a_target_repo_already_set_is_not_overwritten(self, tmp_path, registered):
+        from packages.orchestration.mission_contract import grant_contract_job_repository
+
+        project_id, _canonical = registered
+        m = create_mission(project_id, "Ship the tool", root=tmp_path)
+        write_mission_contract(project_id, m.id, MissionContract(criteria=(
+            _criterion("C001", "the tool ships"),)), tmp_path)
+        job = JobPlan(job_title="fixture", repo_path=str(tmp_path / "own"),
+                      metadata={"target_repo": str(tmp_path / "elsewhere")})
+        save_job_plan(job, tmp_path)
+
+        grant_contract_job_repository(load_mission(project_id, m.id, tmp_path),
+                                      str(job.job_id), tmp_path)
+
+        stored = load_job_plan(str(job.job_id), tmp_path)
+        assert stored.metadata["target_repo"] == str(tmp_path / "elsewhere")
+        assert _allowed(stored) == dict.fromkeys(GRANTS, True)

@@ -34,7 +34,9 @@ orchestrator merges a job's slice checks into that job's DoD
 (:func:`merge_contract_slice_into_dod`, D4 (3); a whole-mission criterion's
 check enters it as a reported, non-blocking check, D6 (1)), and after the job ran it
 reads the gate's verdict back onto the slice criteria
-(:func:`record_contract_results`, D4 (4)).
+(:func:`record_contract_results`, D4 (4)).  Beside that merge, both sites bind
+the job to its repository and grant it what the repository commands check
+(:func:`grant_contract_job_repository`, D7).
 
 The names ``save_contract`` and ``load_contract`` belong to
 ``run_contract.py`` (a job's run contract, a different record) and are not
@@ -429,6 +431,66 @@ def merge_contract_slice_into_dod(mission: Any, milestone_id: str | None,
         compiled=dod.compiled if dod is not None else False,
         origin=dod.origin if dod is not None else "deterministic"))
     return len(added)
+
+
+# ---------------------------------------------------------------------------
+# The job's repository and grants come from the contract (DECISION F269 D7)
+# ---------------------------------------------------------------------------
+
+#: The grants a contract gives each of its jobs: exactly what `test run`,
+#: `test discover`, `patch apply`, `patch revert` and `self execute` check.
+CONTRACT_JOB_GRANTS = ("repo_test_run", "repo_generated_write", "repo_revert")
+
+#: The job metadata key the repository binding is written under.
+JOB_TARGET_REPO_KEY = "target_repo"
+
+
+def _project_canonical_repo(project_id: str) -> str:
+    """The project's canonical repository path, or "" when it has none."""
+    from uuid import UUID
+
+    from packages.orchestration.project_registry import ProjectNotFoundError, load_project
+
+    try:
+        project = load_project(UUID(str(project_id)))
+    except (ValueError, ProjectNotFoundError, OSError):
+        return ""
+    return project.canonical_repo_path or ""
+
+
+def grant_contract_job_repository(mission: Any, job_id: str,
+                                  root: Path | None = None) -> dict[str, Any]:
+    """Bind a contract's job to its repository and grant it the three capabilities.
+
+    DECISION F269 D7: a contract is the operator's accepted order for its
+    repository, so each of its jobs gets ``metadata["target_repo"]`` — the
+    job's own ``repo_path``, else the project's canonical repository, else
+    nothing — and the grants :data:`CONTRACT_JOB_GRANTS` allowed.  A
+    ``target_repo`` already set is never overwritten and no grant is ever
+    denied.  A mission with no contract, or no readable job record, writes
+    nothing.  Returns the metadata entries written, for a caller holding the
+    job in memory to carry the same values.
+    """
+    from packages.orchestration.permissions import Capability, set_permission
+    from packages.orchestration.pingpong_job import load_job_plan_safe, save_job_plan
+
+    if read_mission_contract(mission) is None:
+        return {}
+    job, _degraded = load_job_plan_safe(job_id, root)
+    if job is None:
+        return {}
+    if job.metadata is None:
+        job.metadata = {}
+    if not job.metadata.get(JOB_TARGET_REPO_KEY):
+        repo = job.repo_path or _project_canonical_repo(
+            getattr(mission, "project_id", ""))
+        if repo:
+            job.metadata[JOB_TARGET_REPO_KEY] = str(repo)
+    for grant in CONTRACT_JOB_GRANTS:
+        set_permission(job, Capability(grant), allow=True)
+    save_job_plan(job, root)
+    return {key: job.metadata[key] for key in (JOB_TARGET_REPO_KEY, "permissions")
+            if key in job.metadata}
 
 
 def record_contract_results(project_id: str, mission_id: str, job_id: str,

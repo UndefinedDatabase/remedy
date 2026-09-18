@@ -1591,6 +1591,7 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
             detail += " (plan auto-approved, audited)"
         from packages.orchestration.mission_contract import (
             JOB_MILESTONE_KEY,
+            grant_contract_job_repository,
             merge_contract_slice_into_dod,
             record_contract_results,
             record_job_milestone,
@@ -1607,6 +1608,11 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
         # the job's own gate decides the criteria it serves.
         merge_contract_slice_into_dod(current, payload["milestone_id"],
                                       str(job.job_id))
+        # DECISION F269 D7: the contract binds the job to its repository and
+        # grants it; the in-memory job carries the same values, as below.
+        granted = grant_contract_job_repository(current, str(job.job_id), root)
+        if granted and isinstance(getattr(job, "metadata", None), dict):
+            job.metadata.update(granted)
         # DECISION F269 D3 (1): the job records the milestone it serves, so its
         # contract slice can be derived. The in-memory job is the one the
         # executor saves next, so it carries the same key.
