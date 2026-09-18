@@ -14948,3 +14948,344 @@ later sections read, under the name `DO_JOB_ID`. (3) The `do.run` catalog pin in
 `12aq` and the UX gate together, rejected because the probe shows a sequence job serves the two later
 sections unchanged. REVERSE: restore the section and the two tests from git history; delete this
 paragraph.
+
+## DECISION F269 D2 (2026-09-18, reviewer, round 1) — the contract record's shape on the mission
+CONTEXT: `docs/roadmap/features/T2_F269.md` Design names the fields — `contract.criteria[]` with
+`text`, `blocking`, `check`, `status`, `evidence_ref`, the `origin` of DECISION amend0911-feedback
+D5, `contract.template` and `contract.amendments[]` — and leaves their exact encoding open. Measured
+at `0955dd4c`: `Mission.contract` in `packages/orchestration/mission_state.py` is an optional dict
+that `set_mission_contract` stores without a shape, and only tests call that setter. The feature
+file reserves the number D1 for the template format, which T003 records; this round takes D2 and D3.
+CHOSEN: the body is one JSON object `{"schema": "contract_v1", "template": <name or null>,
+"criteria": [...], "amendments": [...]}`, owned by a new module
+`packages/orchestration/mission_contract.py` that validates it on read and on write and is the only
+production writer of `Mission.contract`. A criterion is `{"id", "text", "blocking", "origin",
+"milestones", "check", "status", "evidence_ref"}`: `id` is `C` plus three digits, unique in the
+contract, kept in list order; `text` is non-empty after stripping; `blocking` is a bool, true by
+default; `origin` is one of `template`, `planner`, `amendment`; `milestones` is a list of mission-plan
+milestone ids, empty meaning the whole mission; `check` is null until T002 compiles it through
+F061's compiler, otherwise an object; `status` is one of `open`, `met`, `unmet`, `open` by default;
+`evidence_ref` is null or a non-empty string. `amendments` is a list of objects stored verbatim;
+T004 rules an entry's fields. A body that breaks any of these rules is refused with an error naming
+the rule, on read as well as on write — never repaired and never half-loaded.
+`set_mission_contract` stays the storage call underneath, and its docstring points at the new module.
+ALTERNATIVES: a pydantic model beside `dod_schema.py`, rejected because the mission record is a
+frozen dataclass stored through `to_json`, and the smaller shape keeps one serialisation style per
+record; criteria keyed by id in an object, rejected because order is what the renderers print.
+REVERSE: delete `packages/orchestration/mission_contract.py` with its tests and this paragraph;
+`Mission.contract` is still an optional dict underneath.
+
+## DECISION F269 D3 (2026-09-18, reviewer, round 1) — the job slice is computed from the milestone a job was dispatched for, and the two renderers
+CONTEXT: T2_F269.md Design rules "which criteria this job's tasks serve, computed from the mission
+plan". Measured at `0955dd4c`: the mission plan holds milestones, and the orchestrator's dispatch
+branch in `packages/orchestration/orchestrator_loop.py` passes `payload["milestone_id"]` to
+`attach_milestone_dod` but writes it nowhere on the job, so no stored field says which milestone a
+job serves. A job made by `remedy do` or by `mission continue` serves no milestone.
+CHOSEN: (1) the dispatch branch records the milestone on the job as `metadata["milestone_id"]`,
+through one function of `mission_contract.py` that returns False and writes nothing when the job
+record does not exist. (2) A job's slice is every criterion whose `milestones` is empty plus every
+criterion whose `milestones` contains the job's milestone, in contract order; a job with no
+milestone gets the whole-mission criteria only. The slice is a subset of the mission's criteria by
+construction. (3) `remedy mission contract <id>` and `remedy job contract <id>` are read-only,
+support `--json`, and live in a new `apps/cli/commands/contract_cmd.py`; `mission contract` takes
+the same project scope option `mission show` takes. A mission or job id that matches nothing exits
+1. A mission with no contract, and a job that belongs to no mission, print one sentence saying so
+and exit 0, with `"contract": null` under `--json`. A contract body that fails D2's rules exits 1
+with the rule it broke.
+ALTERNATIVES: derive the milestone from the job's `dod.json`, rejected because a milestone without
+a `dod_ref` stores no DoD and would then serve nothing; record the milestone on the mission's job
+link, rejected because `MissionJobLink` is shared with every mission reader and a job-side key
+changes no mission record. REVERSE: drop the dispatch call, delete the two commands with their
+catalog entries and tests, and delete this paragraph.
+
+## DECISION F269 D4 (2026-09-18, reviewer, round 2) — the contract is compiled by F061's compiler, gated inside each job's own DoD, and holds the loop's achieve move
+CONTEXT: T2_F269.md T002 rules "F061's compiler over the criteria; the mission gate that holds a
+mission open on a red blocking criterion", reusing `dod_gate.py` and never a second mechanism, and
+its Acceptance wants an amendment to change "the DoD of the next round". Measured at `17edb194`:
+`dod_compiler.compile_dod` turns a `TaskPlan`'s acceptance lines into `DoDCheck`s whose
+`acceptance_refs` name `<task id>:<index>`, and with no provider it falls back to one pytest check
+per distinct selector; `dod_gate.run_job_gate` evaluates a job's stored DoD in the job's workspace
+inside `execute_dispatched_job` and persists the result by job id; `evaluate_move` refuses
+`declare_mission_achieved` only for a missing plan or an open milestone; `remedy mission achieve`
+calls `set_mission_status` with no guard, and its catalog entry calls it an explicit human
+judgement; `plan_mission` writes no contract.
+CHOSEN: (1) COMPILE. `mission_contract.py` gains a compiler that builds a `TaskPlan` with one task
+per criterion (task id = criterion id, `acceptance` = [the criterion text]), calls
+`dod_compiler.compile_dod`, and gives each criterion the FIRST check whose `acceptance_refs` holds
+`<criterion id>:0`, stored as that check's `model_dump(mode="json")` with `id` set to
+`ctr-<criterion id>`, `acceptance_refs` set to [`<criterion id>:0`] and `blocking` set to the
+criterion's own. (2) PLANNER CRITERIA. `plan_mission`, after the milestone DoDs are attached,
+writes the mission's contract: every criterion whose origin is not `planner` is kept with its id,
+and the planner criteria are replaced by one per milestone of the compiled plan — text = the
+milestone's goal, `milestones` = [its id], blocking — with fresh ids after the highest kept one,
+all compiled by (1) with no provider (`call_fn=None`, F061's own deterministic path). (3) THE JOB'S
+DoD CARRIES ITS SLICE. At dispatch, after `attach_milestone_dod`, the orchestrator merges the
+job's slice checks into that job's stored DoD through `dod_gate.load_dod` and `store_dod`, adding a
+criterion's check only when no check already in the DoD has the same `kind` and `spec`, and
+creating a DoD from the slice checks when the job has none. (4) RESULTS. After the dispatched job
+has executed, the orchestrator reads that job's stored DoD and gate result and sets each slice
+criterion whose check's `kind` and `spec` match a DoD check to `met` when that check's evidence
+passed and `unmet` otherwise, with `evidence_ref` = `<job id>:<check id>`; a job with no gate
+result changes nothing. (5) THE GATE. A contract's blockers are its blocking criteria whose status
+is not `met`. `evaluate_move` refuses `declare_mission_achieved` while any exist, naming their ids,
+after the existing plan and milestone refusals; a contract body that breaks a D2 rule refuses with
+the rule. `remedy mission achieve` stays the human's explicit judgement and is NOT refused: it
+prints one line naming the unmet blocking criteria before its status line (text) and carries them as
+`unmet_blocking_criteria` (`--json`). (6) `remedy do --json` reports the mission's contract body,
+or null when it has none, in place of DECISION F268 D1's fixed null.
+ALTERNATIVES: a mission-level evaluation of the criteria's checks, rejected because it needs a
+tree the job gate already has and would run the same checks a second time — the second mechanism
+T002 forbids; refusing `mission achieve` too, rejected for now because the catalog defines it as
+the operator's override, and recorded as an operator question instead; passing the planner's
+structured call function to the contract compiler, rejected because that function is built for the
+mission-plan schema, not the DoD draft schema. REVERSE: drop the calls from `plan_mission` and
+`execute_move`, delete the compiler, merge and result functions with their tests, restore
+`do`'s null, and delete this paragraph.
+
+## DECISION F269 D1 (2026-09-18, reviewer, round 3) — the contract template format, its proposal and `--contract`
+CONTEXT: T2_F269.md reserves this number for the template format ("`docs/contracts/<name>.md`,
+human-readable, compiled to criteria") and names four templates, one fixture order each, a planner
+proposal and `--contract <name>`. Measured at `b487e3f7`: `docs/contracts/` does not exist;
+`remedy do --contract` exits 2 through `_DO_FLAGS_NOT_YET_AVAILABLE` in `apps/cli/commands/do_cmd.py`;
+`do_sequence._step_plan` creates the mission and sets its order before `plan_mission`, and
+`write_planner_criteria` keeps every non-planner criterion; the wheel ships `packages` and `apps`
+only, so no file under `docs/` reaches an installed wheel; no `do` job stores a DoD or runs a gate.
+CHOSEN: (1) FORMAT. A template is `docs/contracts/<name>.md`, and its first line is exactly
+`# Contract template — <name>`, where `<name>` is the file stem. It has three `## ` sections, which
+the loader reads by their exact headings: `## Proposed when the order mentions` — one bullet per
+phrase, lowercase; `## Criteria` — one bullet per criterion, `- blocking: <text>` or
+`- advisory: <text>`, optionally followed by one line indented two spaces, `check: <JSON object>`,
+which must validate as an F061 `DraftCheck` apart from its id and is used as that criterion's
+check instead of the compiled one; `## Fixture order` — one paragraph, the order the template's
+tests plan. Any other non-blank line under those sections is refused with the file and line named.
+Prose before the first section is free. (2) COMPILE. A template compiles to criteria with origin `template`, whole-mission
+scope, ids `C001` upward in file order, and each check either from its `check:` line (id
+`ctr-<criterion id>`, refs [`<criterion id>:0`], the criterion's `blocking`) or from DECISION F269
+D4 (1)'s compiler. (3) PROPOSAL. The proposal is deterministic: each template scores the number of its
+phrases that occur in the order, case-insensitive, where an occurrence counts only when the
+characters on either side of it are neither word characters nor hyphens; the single top scorer
+is proposed, and a top score of zero, or a tie at the top, proposes nothing. (4) `do`. `remedy do --contract <name>`
+forces a template, and a name that is not a template exits 2 naming the templates before any step
+runs; without the flag the proposal applies when there is one. The chosen template is written onto
+the new mission before `plan_mission`, so the planner's criteria are added after it and none of its
+criteria are dropped (DECISION amend0911-feedback D5), and the plan step's detail says whether it
+was forced or proposed. (5) The templates are read from the source tree. The hygiene criteria
+T2_F269.md puts in every template land in the next round, with a check that measures them. Until
+then no template carries them, because F061's compiler would judge them by the test suite alone,
+and that is a live indicator that does not measure the claim.
+ALTERNATIVES: a YAML or JSON template, rejected because the feature file asks for human-readable
+Markdown; a proposal by a model call, rejected because it changes the mission-plan draft schema or
+adds a structured call for one word, and the deterministic match is testable; shipping the
+templates in the wheel, rejected here because distribution is F215's and nothing installs Remedy
+from a wheel today. REVERSE: delete `docs/contracts/`, the loader and its tests, restore the
+`--contract` refusal row, and delete this paragraph.
+
+## DECISION F269 D5 (2026-09-18, reviewer, round 4) — the three hygiene criteria, the check that measures them, and the reviewer's rule
+CONTEXT: T2_F269.md Design puts three blocking hygiene criteria in every template and gives the
+reviewer role the matching rule, and DECISION F269 D1 (5) held them back until a check measures
+them. Measured at `fc9aae2b`: F061's check kinds are fixed and this feature may not add one, and
+`custom_cmd` runs an argv whose first word is on `test_runner._EXECUTION_SAFE_EXECUTABLES`, which
+holds `python3` and not `git`; a `run_job` worktree has the base commit as `HEAD` and the builder's
+changes uncommitted, so `git` inside it lists what the job added and changed; the orchestrator's
+job workspace is not a git tree; `FakeProvider`'s reviewer never reads its prompt; the reviewer's
+system text in `packages/orchestration/pingpong_loop.py` is pinned byte for byte by
+`tests/orchestration/test_reviewer_prompt_golden.py`.
+CHOSEN: (1) THE CHECK. A new standard-library module `packages/orchestration/contract_hygiene.py`
+holds three pure rules over a root and a list of files, and a command line
+`python3 -m packages.orchestration.contract_hygiene <rule>` that finds, with `git` run from the
+current directory, the files added since `HEAD` (untracked and not ignored, plus added in the index)
+and the files changed since `HEAD` with their added lines, applies one rule, prints one line per
+finding naming the path, and exits 0 on none, 1 on findings, and 2 when it cannot measure (not a
+git work tree, or `git` failing) — so a tree it cannot read is a red check, never a met criterion.
+CODE FILES are `.py`, `.js`, `.jsx`, `.ts` and `.tsx`. (2) `unreferenced`: an added code file is
+reported unless another file of the tree — tracked or added, not ignored, read as text up to one
+megabyte — contains the file's stem where neither neighbouring character is a word character, or
+the file is exempt: named `__init__.py`, `__main__.py`, `conftest.py` or `setup.py`, a test file
+(its name starts with `test_` or ends with `_test.py`, or it holds `.test.` or `.spec.`, or a
+directory on its path is named `tests` or `test`). (3) `replaced`: an added file is reported when
+removing one marker from its name — a `_new`, `_old`, `_copy`, `_backup`, `_bak` or `_v<digits>`
+suffix of the stem, a `new_` or `old_` prefix, or a trailing `.bak` or `.orig` — gives the path of
+a file that still exists beside it; this measures the file-level form of the criterion, and the
+reviewer's prompt rule covers replaced code inside a file. (4) `stubs`: in added code files, every
+line, and in changed code files, every added line, holding `TODO`, `FIXME` or `XXX` as a word is
+reported; in Python files that parse, every function whose definition line is added and whose body,
+after an optional docstring, is only `pass`, `...` or `raise NotImplementedError` is reported,
+unless it is decorated `abstractmethod` or `overload`. (5) THE TEMPLATES. Every template gains the
+three criteria, blocking, each with a `check:` line of kind `custom_cmd` running its rule. (6) THE
+REVIEWER'S RULE. The reviewer's system text gains one sentence: a change that adds a file nothing
+references, or leaves replaced code beside its replacement, is rejected with the path named. The
+round enforces the measurable half itself: after the reviewer answered, the `unreferenced` and
+`replaced` rules run over the files the job has added so far (new against the job's base in a job
+worktree, absent from the original repository in a staging copy); each finding is appended to the
+reviewer's findings with the path in `file` and in the summary, and a `pass` verdict becomes
+`needs_repair`, so the repair decision treats it as any reviewer finding.
+ALTERNATIVES: a new F061 check kind, rejected because the feature file forbids touching F061's
+kinds and runners; leaving the three criteria to F061's compiler, rejected because it would judge
+them by the test suite, which does not measure them; enforcing the rule only through the prompt,
+rejected because the fake reviewer cannot prove it and a real reviewer can miss it. REVERSE:
+delete `contract_hygiene.py` and its tests, the three criteria from the templates, the sentence
+and the round hook, restore the golden renders, and delete this paragraph.
+
+## DECISION F269 D6 (2026-09-18, reviewer, round 5) — whole-mission checks are reported, not blocking, in a job's DoD; `do`'s job is gated before its worktree goes
+CONTEXT: DECISION F269 D3 (2) puts every whole-mission criterion in every job's slice, and D4 (3)
+merges each slice check into the job's DoD with the criterion's own `blocking`. Read at `09d7641f`
+in `packages/orchestration/orchestrator_loop.py`: `evaluate_milestone_done` refuses a milestone
+whose job's gate did not release. A whole-mission criterion describes the mission's end state, so a
+mission with two or more milestones would hold its first milestone on a criterion only its last
+job can meet, and never reach the last. Also read at `09d7641f`: no `remedy do` job stores a DoD or
+runs a gate; `pingpong_job.run_job` removes a completed job's worktree in its `finally` block, so a
+gate run after `run_job` returns has no tree; `do`'s jobs record no milestone.
+CHOSEN: (1) AMENDING D4 (3). A whole-mission criterion's check enters a job's DoD with `blocking`
+false — a reported check the gate evaluates and never holds on — and a milestone-scoped criterion's
+check keeps the criterion's `blocking`. D4 (4) is unchanged: the criterion's status follows the
+evidence either way, so the mission gate of D4 (5) still holds the achieve move until the latest
+evaluation reads it met. (2) THE GATE IN `run_job`. When every task has passed and the job has a
+stored DoD, `run_job` runs `dod_gate.run_job_gate` in the job's workspace before the workspace is
+finalized; a gate that does not release blocks the job with the gate's `dod_blocking_red:<ids>`
+reason (F061's rule that a job ends green only when all blocking checks pass), and then, for a job
+that belongs to a mission, `record_contract_results` reads the result onto the job's slice. (3)
+`do`. The shape step merges each job's slice into its DoD as it links the job to the mission;
+`do`'s jobs serve no milestone, so their slice is the whole-mission criteria. (4) `do`'s result
+names the contract's state after the walk: `--json` carries `unmet_blocking_criteria`, the
+blockers of D4 (5) in contract order, and the text output carries one line counting the met
+criteria against all of them and naming each blocking criterion not met with its status, `open`
+or `unmet`.
+ALTERNATIVES: blocking whole-mission checks only in the mission's last job, rejected because a plan
+may end in more than one milestone and "last" is then not one job; a mission-level evaluation,
+rejected in D4 already; recording on each `do` job the milestone its outline came from, rejected
+for now because the planner criteria it would put in `do`'s jobs are judged by the test suite and
+would block every `do` job in a repository with no tests — they stay the orchestrator's to evaluate.
+REVERSE: restore the criterion's own `blocking` in the merge, delete the gate call in `run_job`,
+the merge call in `do`'s shape step and the result lines, and delete this paragraph.
+
+## DECISION F269 D7 (2026-09-18, reviewer, round 6) — the contract binds a job to its repository and grants it, and `job attach-repo` and `job permit` are deleted
+CONTEXT: DECISIONs amend0917-throughput D2 and F280 D4 keep `remedy job attach-repo` and `remedy job
+permit` until F269's contract writes a job's repository binding and grants. Measured at `c93d117d`:
+`test run` requires `metadata["target_repo"]` and the grant `repo_test_run`; `test discover` and
+`self execute` require `target_repo`; `patch apply` requires `target_repo` and `repo_generated_write`;
+`patch revert` requires `target_repo` and `repo_revert`; grants live in `metadata["permissions"]`
+and are written by `permissions.set_permission`; no job-creation path writes `target_repo`, and no
+production code outside the two handlers writes `repo_test_run` or `repo_revert`; a `do` job
+carries `repo_path`, a job made by `continue_mission` carries neither; the orchestrator's dispatch
+and `do`'s shape step both call `mission_contract.merge_contract_slice_into_dod` for every job of a
+mission.
+CHOSEN, FIRST — THE WRITER. `mission_contract.py` gains one function, called beside
+`merge_contract_slice_into_dod` at both sites, that does nothing for a mission with no contract,
+and otherwise writes on the job record: `metadata["target_repo"]` := the job's `repo_path` when it
+has one, else the project's `canonical_repo_path` when it has one, else nothing; and the grants
+`repo_test_run`, `repo_generated_write` and `repo_revert` allowed. Those three are exactly what the
+five surviving commands check, and a contract is the operator's accepted order for that
+repository. It never denies a grant and never overwrites a `target_repo` already set.
+CHOSEN, SECOND — THE DELETION. `job.attach-repo` and `job.permit` go: their catalog entries,
+handlers and dispatch entries; `TestRequiredCommands.REQUIRED` loses them and
+`TestDeletedCommands.DELETED` gains them; tests that asserted the commands themselves are deleted;
+tests that used them to set up a job write the binding and grants directly on the job record
+instead; every production, script and `docs/system` or `docs/guides` string that tells a reader to
+run either command names the heir instead: a job gets its repository and grants from its mission's
+contract, shown by `remedy job contract <id>`, and tests asserting that guidance follow it.
+THE HEIR: the contract writer above, for every job of a mission that has a contract, which is every
+mission `plan_mission` planned and every `remedy do` walk. WHAT IS LOST: a job of a mission with no
+contract — a mission never planned — has no command left that binds or grants it; the five commands
+refuse such a job with their existing reasons. No stub, alias or compatibility reader is left.
+ALTERNATIVES: a `grants` field on the contract compiled per template, rejected because nothing today
+reads a grant other than the five commands and they all need the same three; keeping `job permit`
+for denials, rejected because the grants default to denied and nothing but these commands ever
+reads them. REVERSE: revert the round's writer and deletion commits and delete this paragraph.
+
+## DECISION F269 D8 (2026-09-18, reviewer, round 7) — an amendment's shape, its round of effect, its recompile and its acknowledgement
+CONTEXT: T2_F269.md T004 rules that every later operator message is an amendment "recorded on the
+mission, DoD recompiled, acknowledged with what was understood and from which round it applies",
+that F264 builds the channel and this feature owns the data shape and the recompile, and its
+Acceptance wants an amendment sent between rounds to change the DoD of the next round and be
+acknowledged in the run log with the round it applies from. DECISION F269 D2 stored
+`amendments[]` entries verbatim and left their fields to T004. Measured at `c4bd55c1`: a mission's
+rounds are the orchestrator loop's iterations, numbered per mission by
+`orchestrator_loop.next_iteration_index`, and its run log is the append-only
+`ledger.jsonl` that `append_ledger_entry` writes and `render_ledger` prints; each dispatched job's
+DoD takes its contract slice at dispatch (D4 (3), D6 (1)).
+CHOSEN: (1) SHAPE. An amendment entry is `{"id", "text", "received_at", "applies_from",
+"criteria", "understood", "acknowledged_in"}`: `id` is `A` plus three digits, unique; `text` is
+the operator's message, non-empty; `received_at` is an ISO timestamp; `applies_from` is the round
+it takes effect from, an integer of at least 1; `criteria` lists the ids of the criteria it added,
+each present in the contract with origin `amendment`; `understood` is the sentence that says what
+was understood; `acknowledged_in` is null until acknowledged, then the round it was acknowledged
+in, never before `applies_from`. D2's validation now applies these rules on read and on write.
+(2) AMEND. One function in `mission_contract.py` amends a mission's contract from a message: it
+creates the contract when the mission has none; adds one criterion — the message as its text,
+origin `amendment`, whole-mission unless milestones are given, blocking unless told otherwise —
+compiled by D4 (1)'s compiler; and appends the entry with `applies_from` = the mission's next
+round, `understood` = "adds blocking criterion <id>: <text>" (or "advisory"). It never edits an
+existing criterion or entry. No command is added: F264 owns the route. (3) THE NEXT ROUND. Because
+a job's DoD takes its slice at dispatch, every job dispatched from `applies_from` on carries the
+amendment's check and every job dispatched before it does not. (4) ACKNOWLEDGEMENT. At the start of
+each loop round, before its move, every amendment whose `applies_from` is at most that round and
+whose `acknowledged_in` is null gets one ledger entry in that round — move kind
+`acknowledge_amendment` with the amendment id, outcome status `acknowledged` and detail
+`<understood>; applies from round <n>` — and its `acknowledged_in` set to that round. (5) The
+contract renderers list the amendments after the criteria, each with its round of effect, its
+acknowledgement and the criteria it added.
+ALTERNATIVES: acknowledging at the moment the message is received, rejected because the run log
+is the loop's and nothing runs between rounds to write it; changing an existing criterion's text,
+rejected because the record is the audit and an amendment adds, so a replaced wording is a new
+criterion; a command to send amendments, rejected because F264 owns the channel. REVERSE: delete
+the amend function, the acknowledgement in the loop, the entry rules and their tests, and this
+paragraph.
+
+## DECISION F269 D9 (2026-09-18, reviewer, round 8) — the remainder proposal: when it is raised, what it carries, and what a one-word "yes" does
+CONTEXT: T2_F269.md T005 rules "at budget end with blocking criteria open, a decision in the F031
+inbox carrying the open criteria as a prefilled follow-up order; the operator answers with one
+word", and its Acceptance wants a fixture with one unfulfillable criterion to end blocked with a
+remainder decision naming that criterion; F031's inbox contract is this feature's Do-not-touch.
+Measured at `5fac20d6`: a decision is an escalation record raised by
+`escalation.enqueue_task_decision` on a job's task, and its type in the inbox is always
+`task_decision`, so a new record changes no pinned type set; `escalate_repeated_refusal` and the
+watchdog attach theirs to the mission's latest linked job's first task and dedupe by a marker at
+the start of the question; answering is `remedy decision resolve <job> <id> --reason <answer>` or
+the cockpit's `_dispatch_decision_resolve`, both calling `answer_task_decision`, which records and
+never acts, while the CLI's `plan:` branch already creates a mission under `--as-mission`; the
+cockpit door's imports are the closed set `TestCommandDoorImportGuard.ALLOWED_IMPORTS` pins, which
+a ruled DECISION may widen in its own commit; `run_mission` ends at its budget with the terminal
+`iteration_limit`, and a `do` job stopped by its budget ends `stopped` with `stop_source` budget;
+no mission records a link to another.
+CHOSEN: (1) THE DECISION. One function in `mission_contract.py` raises it: when the mission's
+contract has blockers (D4 (5)) and no OPEN remainder decision exists on the mission's jobs, it
+enqueues one on the latest linked job's first task — the question starting with the marker
+`[contract remainder]` and naming the mission and every blocker by id and text, options `yes` and
+`no`, no safe default (a human answers), and `impact` = the prefilled follow-up order: `Meet the
+acceptance criteria mission <id> left unmet: <text>; <text>.` It returns the decision id, or None
+when there are no blockers, an open one exists, or the mission has no job with a task. (2) WHEN.
+`run_mission`, on reaching `iteration_limit` with blockers, raises it and names its id in the
+result's detail; `remedy do`, when a job it ran ended stopped by its budget with blockers, raises
+it and names it, with its answer command, in the Next lines. "Ends blocked" in the Acceptance is
+that state: the run stopped at its budget, the achieve move is held by the contract, and the
+remainder decision is open naming each blocker. (3) THE ANSWER. Both answer doors, after a
+successful answer of a `td:` record, call one function in `mission_contract.py` that acts only on a
+remainder decision answered exactly `yes`: it creates the follow-up mission — goal and order = the
+prefilled order; contract = the blockers copied in order, renumbered from `C001`, with their text,
+blocking, origin and check, whole-mission, `open`, no evidence — and returns its id, which the CLI
+prints with `remedy mission plan <id>` as the next step and the cockpit returns in its command
+result. Any other answer records only. The cockpit door's `ALLOWED_IMPORTS` gains exactly that
+function, under this DECISION.
+ALTERNATIVES: a new decision type, rejected because the inbox pins its type sets and F031 is not
+this feature's to change; creating the follow-up when the decision is raised, rejected because the
+operator's answer is the order to start it; acting only in the CLI, rejected because a cockpit
+"yes" would then be recorded and silently do nothing. REVERSE: delete the two functions, their
+calls in the loop, `do` and both doors, the widened import, their tests, and this paragraph.
+
+## DECISION F269 D10 (2026-09-18, reviewer, round 9) — a follow-up mission carries its remainder as one amendment, amending D9 (3)
+CONTEXT: finding R-0971: DECISION F269 D9 (3) kept each carried blocker's origin, and planning the
+follow-up, which the answer door names as the next step, replaces every `planner` criterion
+(DECISION F269 D4 (2)), so the carried remainder is lost. DECISION F269 D8 gives the contract
+exactly one origin for a criterion the operator added after the plan: `amendment`, which
+`write_planner_criteria` keeps with its id, and an amendment entry that records what was
+understood and from which round it applies.
+CHOSEN: the follow-up mission's contract carries the blockers as origin `amendment`, renumbered
+from `C001` with their text, blocking and check as D9 (3) orders, and ONE amendment entry `A001`:
+its text the prefilled order, `received_at` the answer's time, `applies_from` 1, `criteria` every
+carried id, `understood` "carries the criteria mission <id> left unmet: <old ids> as <new ids>",
+`acknowledged_in` null — so the follow-up's first loop round acknowledges it in its ledger as any
+amendment. Everything else in D9 stands.
+ALTERNATIVES: keeping carried `planner` criteria in `write_planner_criteria`, rejected because a
+re-plan must be able to replace the planner's own criteria; a fourth origin, rejected because the
+operator's "yes" is exactly an amendment. REVERSE: restore D9 (3)'s origin rule, which re-opens
+R-0971, and delete this paragraph.

@@ -44,6 +44,19 @@ from packages.orchestration.test_runner import (
 # ---------------------------------------------------------------------------
 
 
+# The `repo_test_run` grant a mission's contract writes (DECISION F269 D7),
+# written straight onto the job record: argv is the job id.
+_GRANT_REPO_TEST_RUN = (
+    "import sys\n"
+    "from packages.orchestration.data_paths import resolve_job_id\n"
+    "from packages.orchestration.permissions import Capability, set_permission\n"
+    "from packages.orchestration.pingpong_job import require_job_plan, save_job_plan\n"
+    "job = require_job_plan(resolve_job_id(sys.argv[1]))\n"
+    "set_permission(job, Capability.repo_test_run, allow=True)\n"
+    "save_job_plan(job)\n"
+)
+
+
 def _make_job(*, with_repo: str | None = None) -> JobPlan:
     job = JobPlan(job_title="test", state=RunState.PENDING)
     if with_repo is not None:
@@ -869,12 +882,13 @@ class TestCliRunTestsLocal:
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
         job_id = self._create_job(tmp_path)
 
-        # Grant permission but don't attach repo.
-        sp.run(
-            ["python3", "-m", "apps.cli.main",
-             "job", "permit", job_id, "repo_test_run", "allow"],
+        # Grant permission but don't attach repo: the grant a mission's
+        # contract writes (DECISION F269 D7), written on the job record.
+        granted = sp.run(
+            ["python3", "-c", _GRANT_REPO_TEST_RUN, job_id],
             env=env, capture_output=True,
         )
+        assert granted.returncode == 0, granted.stderr.decode()
 
         rc, out, err = self._run_cli(
             ["test", "run", job_id],

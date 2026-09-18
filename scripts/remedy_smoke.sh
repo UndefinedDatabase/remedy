@@ -326,12 +326,24 @@ print('    job state=planned, 1 task, task_type=write_readme: OK')
     rm -f "${_TMP_JOB}"
 
     # -------------------------------------------------------------------------
-    # 4. Attach repo + set permission; link repo to project
+    # 4. Bind repo + grant repo_generated_write; link repo to project
     # -------------------------------------------------------------------------
+    # A job gets its repository and grants from its mission's contract, shown
+    # by `remedy job contract <job_id>` (DECISION F269 D7). This job belongs to
+    # no contract, so the smoke writes the binding and grant on its record.
     _SMOKE_SECTION="4"
-    echo "--- 4. Attach repo + set permission"
-    remedy job attach-repo "${JOB_ID}" "${TARGET_REPO}"
-    remedy job permit "${JOB_ID}" repo_generated_write allow
+    echo "--- 4. Bind repo + grant repo_generated_write"
+    python3 -c "
+import sys
+from pathlib import Path
+from packages.orchestration.data_paths import resolve_job_id
+from packages.orchestration.permissions import Capability, set_permission
+from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
+job = require_job_plan(resolve_job_id(sys.argv[1]))
+job.metadata['target_repo'] = str(Path(sys.argv[2]).resolve())
+set_permission(job, Capability.repo_generated_write, allow=True)
+save_job_plan(job)
+" "${JOB_ID}" "${TARGET_REPO}"
     remedy project attach-repo "${PROJECT_ID}" "${TARGET_REPO}"
 
     # -------------------------------------------------------------------------
@@ -557,7 +569,16 @@ print('    proof event: OK  events=' + str(len(events)) + '  after_sha=' + event
         # 6i. Step 33: grant repo_test_run, run tests
         _SMOKE_SECTION="6i"
         echo "--- 6i. Grant repo_test_run permission"
-        remedy job permit "${JOB_ID}" repo_test_run allow
+        # The grant a mission's contract writes (DECISION F269 D7), on the record.
+        python3 -c "
+import sys
+from packages.orchestration.data_paths import resolve_job_id
+from packages.orchestration.permissions import Capability, set_permission
+from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
+job = require_job_plan(resolve_job_id(sys.argv[1]))
+set_permission(job, Capability.repo_test_run, allow=True)
+save_job_plan(job)
+" "${JOB_ID}"
         echo "    repo_test_run: allowed"
 
         _SMOKE_SECTION="6j"

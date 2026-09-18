@@ -88,8 +88,8 @@ def _job_identity(job: Any) -> str:
 
 
 # WHY this reads two places: a job carries its checkout as its own `repo_path`
-# field, while `job._cmd_attach_repo` and `job_fulfillment` record a target repo
-# inside `metadata["target_repo"]`.
+# field, while the contract's `grant_contract_job_repository` and `job_fulfillment`
+# record a target repo inside `metadata["target_repo"]`.
 def _job_target_repo(job: Any) -> str:
     """The job's target repo, or "" for a job carrying neither spelling."""
     repo_path = getattr(job, "repo_path", "")

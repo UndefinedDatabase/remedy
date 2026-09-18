@@ -766,6 +766,12 @@ def plan_mission(
     plan = attach_milestone_dods(
         result.plan, goal=mission.goal, evidence_dir=evidence_dir,
         call_fn=call_fn)
+    # DECISION F269 D4 (2): one planner criterion per milestone, compiled by
+    # F061's compiler with no provider, written before the plan so the record
+    # this returns carries both.
+    from packages.orchestration.mission_contract import write_planner_criteria
+
+    write_planner_criteria(project_id, mission.id, plan, root)
 
     previous = mission.mission_plan if isinstance(mission.mission_plan, dict) else None
     versions = list((previous or {}).get(PLAN_VERSIONS_KEY, []))

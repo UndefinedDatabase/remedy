@@ -951,7 +951,12 @@ class TestTheMissionCarriesItsOrderAndItsContract:
         assert load_mission("proj", mission.id, root=tmp_path).order == order
 
     def test_the_contract_round_trips_through_disk(self, tmp_path):
-        """RESERVED for F269 per DECISION amend0905-vocab D9; empty until then."""
+        """The storage call keeps whatever body it is handed, shape unchecked.
+
+        The contract's shape is owned by
+        ``packages/orchestration/mission_contract.py`` (DECISION F269 D2),
+        which validates a body before it stores it through this call.
+        """
         mission = create_mission("proj", "ship the thing", root=tmp_path)
 
         set_mission_contract("proj", mission.id, {"criteria": ["tests pass"]},

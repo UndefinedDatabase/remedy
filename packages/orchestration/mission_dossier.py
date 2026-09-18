@@ -847,6 +847,24 @@ PLAN_RISK_ID_TEMPLATE = "PR{index:03d}"
 ITERATION_ID_TEMPLATE = "I{iteration:03d}"
 
 
+def _ledger_decision_id(entry: dict[str, Any]) -> str:
+    """The DECISIONS id of one ledger entry: its iteration, ``I002``.
+
+    An amendment acknowledgement shares its round's number with that round's
+    move (DECISION F269 D8 (4)), so it carries its amendment id as well —
+    ``I002-A001`` — and the move written after it does not replace it.
+    """
+    from packages.orchestration.orchestrator_loop import MOVE_ACKNOWLEDGE_AMENDMENT
+
+    ident = ITERATION_ID_TEMPLATE.format(iteration=int(entry.get("iteration", 0) or 0))
+    move = entry.get("move") or {}
+    if move.get("kind") == MOVE_ACKNOWLEDGE_AMENDMENT:
+        amendment_id = (move.get("payload") or {}).get("amendment_id")
+        if isinstance(amendment_id, str) and amendment_id:
+            ident += f"-{amendment_id}"
+    return ident
+
+
 def mission_iteration_facts(mission: Any, *,
                             done_milestones: Sequence[str] = (),
                             ledger: Sequence[dict[str, Any]] = (),
@@ -882,8 +900,7 @@ def mission_iteration_facts(mission: Any, *,
 
     decisions = [
         DossierItem(
-            id=ITERATION_ID_TEMPLATE.format(
-                iteration=int(entry.get("iteration", 0) or 0)),
+            id=_ledger_decision_id(entry),
             text=str((entry.get("move") or {}).get("kind", "") or "no move"),
             resolved=True,
             outcome=str((entry.get("outcome") or {}).get("status", "") or ""))

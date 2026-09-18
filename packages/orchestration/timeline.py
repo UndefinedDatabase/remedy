@@ -410,8 +410,9 @@ def _derive_next_action(job: JobPlan, events: list[dict[str, Any]]) -> str:
     ):
         cap = last_terminal.get("metadata", {}).get("capability", "workspace_write")
         return (
-            f"  {_NEXT} Grant permission if appropriate:\n"
-            f"      remedy job permit {job_id_str} {cap} allow"
+            f"  {_NEXT} Missing permission {cap}; a job gets its repository and "
+            f"grants from its mission's contract:\n"
+            f"      remedy job contract {job_id_str}"
         )
 
     # Patch intent risk: flag review if any medium/high/unknown risk present

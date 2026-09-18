@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-82 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+83 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 24 | 34 |
+| 2 | Minimal Self-Build Runtime | 25 | 34 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -136,7 +136,17 @@ names the deliverable it produces, runs the first job and stops before apply
 unless `--apply`; `--plan-only` stops after planning and `--step-by-step`
 halts between steps; the measured tokens per role and the cost are printed at
 the end; a run's exported evidence passes the review-package check; and
-`remedy --help` opens with five quick-start lines that each run as printed).
+`remedy --help` opens with five quick-start lines that each run as printed),
+F269 contract and contract templates (a mission carries one contract of
+acceptance criteria, each compiled to a check by the DoD compiler, and the
+run cannot declare the mission achieved while a blocking criterion is unmet;
+`remedy mission contract` and `remedy job contract` show it; four templates —
+website, api-service, cli-tool, python-library — are its floor, proposed from
+the order or forced with `remedy do "<order>" --contract <name>`, each
+carrying three blocking hygiene criteria; an amendment applies from the next
+round and is
+acknowledged in the mission's ledger; and at budget end a one-word `yes`
+starts a follow-up mission carrying the unmet criteria).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

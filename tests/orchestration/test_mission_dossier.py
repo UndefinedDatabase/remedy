@@ -840,6 +840,24 @@ class TestFactsComeFromRecordedArtifacts:
         assert facts.decisions[0].text == "dispatch_job"
         assert facts.decisions[0].outcome == "dispatched"
 
+    def test_an_amendment_acknowledgement_keeps_its_own_line_beside_its_rounds_move(
+            self, tmp_path):
+        """DECISION F269 D8 (4): the acknowledgement shares round 2 with the
+        move written after it, and neither replaces the other."""
+        mission = _mission(tmp_path, ("M001", ()))
+        facts = mission_iteration_facts(mission, ledger=[
+            {"iteration": 2, "move": {"kind": "acknowledge_amendment",
+                                      "payload": {"amendment_id": "A001"}},
+             "outcome": {"status": "acknowledged"}},
+            {"iteration": 2, "move": {"kind": "dispatch_job"},
+             "outcome": {"status": "dispatched"}}])
+
+        assert [(d.id, d.text, d.outcome) for d in facts.decisions] == [
+            ("I002-A001", "acknowledge_amendment", "acknowledged"),
+            ("I002", "dispatch_job", "dispatched")]
+        merged = append_facts(start_dossier(GOAL), facts)
+        assert [d.id for d in merged.decisions] == ["I002-A001", "I002"]
+
     def test_the_next_step_is_the_first_ready_open_milestone(self, tmp_path):
         mission = _mission(tmp_path, ("M001", ()), ("M002", ("M001",)))
         assert mission_iteration_facts(mission).next_step.startswith(

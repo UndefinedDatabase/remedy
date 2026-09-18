@@ -608,12 +608,12 @@ class TestNextSafeAction:
         out = summarize_trust_report(job, [])
         assert "job resume" in out
 
-    def test_workspace_denied_suggests_set_permission(self):
+    def test_workspace_denied_names_the_contract(self):
         job = _make_job()
         job.tasks.append(_make_pending_task())
         set_permission(job, Capability.workspace_write, allow=False)
         out = summarize_trust_report(job, [])
-        assert "job permit" in out
+        assert f"remedy job contract {job.job_id}" in out
 
     def test_interrupted_suggests_timeline(self):
         job = _make_job()

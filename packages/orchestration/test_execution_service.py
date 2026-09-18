@@ -604,8 +604,10 @@ def execute_test_run(
         result.status = "blocked"
         result.stop_reason = "permission_denied"
         result.safe_summary = "Permission repo_test_run not granted."
-        result.next_safe_action = f"remedy job permit {job.job_id} repo_test_run allow"
-        result.contract_guidance = f"remedy job permit {job.job_id} repo_test_run allow"
+        # DECISION F269 D7: a job gets its grants from its mission's contract.
+        result.next_safe_action = f"remedy job contract {job.job_id}"
+        result.contract_guidance = (f"a job gets its repository and grants from its "
+                                    f"mission's contract: remedy job contract {job.job_id}")
         _emit(data_dir, job_id_parsed, "test_run_blocked", {
             "test_run_id": test_run_id,
             "reason": "permission_denied",
@@ -622,14 +624,14 @@ def execute_test_run(
             result.status = "blocked"
             result.stop_reason = "no_target_repo"
             result.safe_summary = "No target repository attached to job."
-            result.next_safe_action = f"remedy job attach-repo {job.job_id} <repo_path>"
+            result.next_safe_action = f"remedy job contract {job.job_id}"
             return result
         repo_root = Path(target_repo_str).resolve()
     if not repo_root.is_dir():
         result.status = "blocked"
         result.stop_reason = "target_repo_not_a_directory"
         result.safe_summary = "Target repository path does not exist."
-        result.next_safe_action = f"remedy job attach-repo {job.job_id} <repo_path>"
+        result.next_safe_action = f"remedy job contract {job.job_id}"
         return result
 
     # ── Gate 4: Load and validate contract ──────────────────────────────────

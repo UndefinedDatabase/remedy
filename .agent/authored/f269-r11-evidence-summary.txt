@@ -1,0 +1,54 @@
+Evidence Job Summary for F269 Round 11 Closure Round A
+
+Created: 2026-09-18
+Evidence job ID: f269r11e1001
+Head commit: 2a7f22c443350195a08b366abd17a5c3b3a4d1f3
+Base commit: 0955dd4c22b8533823aae05a8ec8b98fac88aafd (the fork point)
+
+Base proof (pitfall (e)):
+  - git rev-list --ancestry-path 0955dd4c..2a7f22c4 --count: 52
+  - git rev-list 0955dd4c..2a7f22c4 --count: 52
+
+Deselection Applied: none
+
+Script: .remedy-wt/f269-r11/create_f269_evidence.py, adapted from
+.remedy-wt/f268-r12/create_f268_evidence.py: the test files, the fork-point
+base, the run id, the evidence dir, the job id and title and the review
+feature id changed; the collect-only parser, which keeps every
+"tests/...::..." line and checks its count against pytest's "N tests
+collected", is F268's unchanged.
+
+Test Verification Run:
+  - Run ID: vr-1111
+  - Test files: 8 files (sorted)
+    - tests/cli/test_contract_cmd.py
+    - tests/cli/test_do_sequence_cli.py
+    - tests/orchestration/test_contract_hygiene.py
+    - tests/orchestration/test_contract_templates.py
+    - tests/orchestration/test_mission_contract.py
+    - tests/orchestration/test_mission_gate.py
+    - tests/orchestration/test_orchestrator_loop.py
+    - tests/orchestration/test_pingpong_job_dod_gate.py
+  - Node IDs collected: 448
+  - Passed: 448
+  - Failed: 0
+  - Skipped: 0
+  - Exit code: 0
+  - Output hash: 0e99beedf7e6b84bd8a7cfd7eb49e0154933d54a596f5969160d8fe25e1de133
+  - test_files: SORTED (required by packaging validator)
+
+Evidence Bundle:
+  - Job ID: f269r11e1001
+  - Verdict: PASS_WITH_RISKS
+  - Authoritative files: 77
+  - Commit count: 52
+  - Partition: T001=26, T002=26, T003=25
+  - Total passed: 448
+  - Manual completion: true
+  - Operator-attested tasks: T001, T002, T003
+
+Evidence Validation (scripts/build_review_manifest.py validate_evidence_candidate):
+  - is_valid_current_run: True
+  - validation_errors: []
+
+Evidence directory: .remedy-wt/f269_evidence_round11 (not committed)

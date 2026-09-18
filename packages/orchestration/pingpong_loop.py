@@ -838,6 +838,7 @@ _REVIEWER_SYSTEM = """\
 You are a code Reviewer.
 Review the builder's changes against the original goal.
 Be strict but fair. Only flag real issues.
+A change that adds a file nothing references, or leaves replaced code beside its replacement, is rejected with the path named.
 Return ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.
 """
 
@@ -2431,6 +2432,64 @@ def _apply_fake_builder_changes(
 
 
 # ---------------------------------------------------------------------------
+# F269 T003: the round enforces the reviewer's hygiene rule (DECISION F269 D5 (6))
+# ---------------------------------------------------------------------------
+
+#: The measurable half of the reviewer's hygiene rule, run by the round itself
+#: after the reviewer answered, so neither a fake nor a real reviewer can miss it.
+ROUND_HYGIENE_RULES = ("unreferenced", "replaced")
+
+
+def _workspace_hygiene_changes(staging: Path, original: Path, isolation_mode: str) -> Any:
+    """The files the job has added so far, as ``contract_hygiene`` measures them.
+
+    In a worktree they are the files new against the job's base commit; in a
+    staging copy, the files absent from the original repository.
+    """
+    from packages.orchestration.contract_hygiene import WorkTreeChanges, measure_work_tree
+
+    if isolation_mode == "worktree":
+        return measure_work_tree(staging)
+    added = tuple(rel for rel in _find_staging_changes(staging, original)
+                  if not (original / rel).exists())
+    tree: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(staging, followlinks=False):
+        dirnames[:] = [d for d in dirnames if d not in _STAGING_NOISE_DIRS
+                       and not (Path(dirpath) / d).is_symlink()]
+        tree.extend(Path(os.path.relpath(os.path.join(dirpath, fn), staging)).as_posix()
+                    for fn in filenames if fn not in _STAGING_NOISE_FILES)
+    return WorkTreeChanges(root=staging, added=added, tree=tuple(sorted(tree)))
+
+
+def round_hygiene_findings(
+    staging: Path, original: Path, isolation_mode: str,
+) -> list[ReviewFinding]:
+    """The round's hygiene findings, each naming its path in ``file`` and in the summary.
+
+    A workspace that cannot be measured is itself a finding: an unread tree is
+    never a met criterion (DECISION F269 D5 (1)).
+    """
+    from packages.orchestration.contract_hygiene import HygieneMeasureError, run_hygiene_rule
+
+    try:
+        changes = _workspace_hygiene_changes(staging, original, isolation_mode)
+    except HygieneMeasureError as exc:
+        return [ReviewFinding(
+            id="HYG-unmeasured", severity="high",
+            summary=f"contract hygiene could not measure the workspace: {exc}",
+            required_fix="leave the workspace a readable git work tree")]
+    fixes = {
+        "unreferenced": "reference the file from the code that uses it, or delete it",
+        "replaced": "delete the replaced file, keeping only its replacement",
+    }
+    return [ReviewFinding(id=f"HYG-{rule}-{finding.path}", severity="high",
+                          file=finding.path, summary=f"{finding.path}: {finding.message}",
+                          required_fix=fixes[rule])
+            for rule in ROUND_HYGIENE_RULES
+            for finding in run_hygiene_rule(rule, changes)]
+
+
+# ---------------------------------------------------------------------------
 # F001: Retry wrapper for provider calls
 # ---------------------------------------------------------------------------
 
@@ -3913,6 +3972,17 @@ def run_pingpong(
                 result.final_status = "review_failed"
                 result.error = reviewer_out.error
                 break
+
+            # --- F269 D5 (6): the round's hygiene rule ---
+            # The reviewer has answered; the round now measures what the job has
+            # added so far. Each finding joins the reviewer's, and a pass becomes
+            # needs_repair, so the repair decision treats it as any other finding.
+            hygiene_findings = round_hygiene_findings(
+                staging, original, staging_result.isolation_mode)
+            if hygiene_findings:
+                reviewer_out.findings = list(reviewer_out.findings) + hygiene_findings
+                if reviewer_out.verdict == "pass":
+                    reviewer_out.verdict = "needs_repair"
 
             # --- Reviewer output coherence validation ---
             coherence_error = validate_reviewer_output(reviewer_out, test_passed=rd.test_passed)

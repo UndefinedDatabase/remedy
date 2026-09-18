@@ -280,14 +280,17 @@ workspace  →  .data/workspaces/<job_id>/   (Remedy writes; always)
 target repo →  user-supplied directory       (Remedy writes selectively; only when attached)
 ```
 
-**Attaching a repo** stores the resolved absolute path in `job.metadata["target_repo"]`:
+**Binding a repo** stores the path in `job.metadata["target_repo"]`. A job gets its
+repository and grants from its mission's contract (DECISION F269 D7): for every job of a
+mission with a contract, `mission_contract.grant_contract_job_repository` binds the job's
+own `repo_path`, else its project's canonical repository, and grants `repo_test_run`,
+`repo_generated_write` and `repo_revert`. The contract a job serves is shown by:
 
 ```bash
-remedy job attach-repo <job_id> /path/to/my-repo
+remedy job contract <job_id>
 ```
 
-No files are written during attachment — only the path is recorded. The path is validated
-at attach time (must exist and be a directory) and resolved to an absolute path.
+No files are written during binding — only the path is recorded.
 
 **Safe repo application** (`packages/orchestration/repo_applicator.py`) bridges the
 workspace and the target repo for eligible task output. Rules:
@@ -558,7 +561,8 @@ path, repo path, patch intent count and risk levels. Unknown events render as
 `warnings=N` field is omitted when `warning_count` is zero).
 
 **Next suggested action (deterministic, no LLM):**
-1. Last terminal is `task_run_failed/permission_denied` → suggest `set-permission`.
+1. Last terminal is `task_run_failed/permission_denied` → suggest `job contract`, where a
+   job's grants come from.
 2. `patch_intent_created` with medium/high/unknown risk → suggest review.
 3. Pending tasks remain → suggest `run-next-task-local`.
 4. No pending tasks → suggest inspect or `create-job`.
@@ -615,7 +619,8 @@ controller must not treat interrupted=True as auto-continue=True. The `Next best
 section still guides the human operator to inspect the timeline and then resume manually.
 
 **Next best action priority (deterministic, no LLM):**
-1. Workspace_write denied + pending tasks → `set-permission … allow workspace_write`.
+1. Workspace_write denied + pending tasks → `job contract <job_id>` (a job gets its
+   repository and grants from its mission's contract).
 2. Interrupted run + pending tasks → `timeline <job_id>` then `run-next-task-local`.
 3. Patch risk (medium/high/unknown) + pending tasks → review, then `run-next-task-local`.
 4. Pending tasks, no blockers → `run-next-task-local`.
@@ -902,8 +907,9 @@ Historical `permission_denied` events are **ignored** (treated as stale) when:
 ```
 
 Summary output renders `"permission_denied:workspace_write"` as
-`blockers: permission_denied (workspace_write)`.  The next-action hint renders the
-concrete `remedy job permit <job_id> workspace_write` allow command.
+`blockers: permission_denied (workspace_write)`.  The next-action hint names the missing
+capability and `remedy job contract <job_id>`: a job gets its repository and grants from its
+mission's contract.
 
 **`agent_loop_inspected` run-log schema (intentionally minimal and fixed):**
 
@@ -1451,7 +1457,7 @@ Each `connected_to` entry: `{"direction": "incoming"|"outgoing", "edge_type", "n
 | `patch_intent` | Target path, action, risk, state — no diff preview |
 | `approval_decision` | State, decided_at, decided_by — no approval_reason |
 | `verification` | Pass/fail status and task ref |
-| `permission_blocker` | Blocked capability + `set-permission` hint |
+| `permission_blocker` | Blocked capability + `job contract` hint |
 | `run_event` | Event type and outcome — no message or command output |
 | `agent_loop` | Stage, decision, cycle |
 | `constitution` | Source count, has_test_commands |

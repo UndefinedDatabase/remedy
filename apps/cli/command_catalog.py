@@ -321,28 +321,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("teacher.ask",),
     ),
     CommandEntry(
-        command_id="job.attach-repo",
-        group_id="job",
-        subcommand="attach-repo",
-        description="Attach a repository path to a job (under its mission).",
-        action_class="write_metadata",
-        args=(_JOB_ID, ArgDef("repo_path", "Path to the repository")),
-    ),
-    CommandEntry(
-        command_id="job.permit",
-        group_id="job",
-        subcommand="permit",
-        description="Grant or deny a permission for a job.",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("permission", "Permission name"),
-            ArgDef("action", "allow or deny"),
-        ),
-        requires_permission=True,
-        related=("job.show",),
-    ),
-    CommandEntry(
         command_id="job.stop",
         group_id="job",
         subcommand="stop",
@@ -402,6 +380,16 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID, _TASK_OPT, _JSON_OPT),
         supports_json=True,
         related=("job.show",),
+    ),
+    CommandEntry(
+        command_id="job.contract",
+        group_id="job",
+        subcommand="contract",
+        description="Show the slice of its mission's contract a job serves — the acceptance criteria for the whole mission and for the milestone it was dispatched for (read-only).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("job.show", "mission.contract"),
     ),
 
     # ── project ──────────────────────────────────────────────────────────
@@ -1025,6 +1013,20 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("mission.list", "mission.start"),
     ),
+    CommandEntry(
+        command_id="mission.contract",
+        group_id="mission",
+        subcommand="contract",
+        description="Show a mission's contract — its acceptance criteria, each with the milestones of its plan it covers (read-only).",
+        action_class="read_only",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "job.contract"),
+    ),
     # Status transitions are their own explicit subcommands (R-0163): the verb
     # names the status, and nothing else in Remedy ever moves it.
     CommandEntry(
@@ -1599,7 +1601,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--step-by-step", "Halt after each step that did work: print what happened and what comes next; Enter continues, q stops", required=False, is_option=True, is_flag=True),
             ArgDef("--plan-only", "Stop after the shape step: nothing is executed, and the output lists every deliverable", required=False, is_option=True, is_flag=True),
             ArgDef("--apply", "Apply each job of the mission to the repository, one after another, as `remedy job apply --approve` does; stops at the first that is not applied", required=False, is_option=True, is_flag=True),
-            ArgDef("--contract", "Not yet available, F269 brings it: the contract template that gives the acceptance criteria", required=False, is_option=True, default=None),
+            ArgDef("--contract", "Force this contract template as the floor of the mission's acceptance criteria, instead of the one Remedy proposes: api-service, cli-tool, python-library or website", required=False, is_option=True, default=None),
             ArgDef("--commit", "Not yet available, F270 brings it: commit the applied result with this message", required=False, is_option=True, default=None),
             ArgDef("--commit-auto", "Not yet available, F270 brings it: commit the applied result with a generated message", required=False, is_option=True, is_flag=True),
             ArgDef("--commit-with-history", "Not yet available, F270 brings it: commit the applied result with a message that carries its history", required=False, is_option=True, is_flag=True),

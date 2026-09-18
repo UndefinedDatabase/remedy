@@ -129,7 +129,6 @@ def _resolve_cli_role_configs(
 #: feature. Each refuses with exit 2 before any step; the entry leaves this table
 #: in the round its feature lands. `--with-history` is deliberately never declared.
 _DO_FLAGS_NOT_YET_AVAILABLE: tuple[tuple[str, str], ...] = (
-    ("--contract", "F269"),
     ("--commit", "F270"),
     ("--commit-auto", "F270"),
     ("--commit-with-history", "F270"),
@@ -175,6 +174,7 @@ def _cmd_do_order(
     step_by_step: bool = False,
     plan_only: bool = False,
     apply: bool = False,
+    contract: str | None = None,
 ) -> None:
     """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
 
@@ -185,8 +185,12 @@ def _cmd_do_order(
     `--force-job` / `--force-mission` override the planner's shape and exit 2
     together (DECISION F268 D5). `--step-by-step` halts between steps and
     reads each answer with `input`; `--plan-only` ends the walk after
-    shape (DECISION F268 D8). `--json` carries `contract: null` until F269
-    lands (DECISION F268 D1), `shape` / `shape_source`, `mission_plan_path`
+    shape (DECISION F268 D8). `--json` carries the mission's `contract` body,
+    or null when it has none (DECISION F269 D4 (6)), and
+    `unmet_blocking_criteria`, its blocking criteria not met after the walk in
+    contract order; the text output prints one `Contract:` line counting the
+    met criteria and naming each of those with its status (D6 (4)), `shape` /
+    `shape_source`, `mission_plan_path`
     and `jobs`, every job's tasks with their deliverables. In a walk of two or
     more jobs only the first runs and `waiting_job_ids` names the rest
     (DECISION F268 D12). Every job run is mirrored into the F103 ledger, and
@@ -196,6 +200,9 @@ def _cmd_do_order(
     step and reach the run, as do `--builder-model` and `--reviewer-model`,
     which every `remedy job run` Next line carries too; `--planner-model`
     reaches every structured planner call (DECISION F268 D16 (4) to (7)).
+    `contract` is the template `--contract` forces, already checked by
+    `_cmd_do`; ``None`` lets the plan step apply the one proposed from the
+    order (DECISION F269 D1 (4)).
     """
     if not order or not order.strip():
         print("Error: order must not be empty.", file=sys.stderr)
@@ -234,9 +241,12 @@ def _cmd_do_order(
 
     from packages.orchestration.do_sequence import (
         DoContext,
+        do_contract_summary_line,
         do_cost_summary,
         do_cost_summary_lines,
         do_job_task_listing,
+        do_mission_contract,
+        do_unmet_blocking_criteria,
         launch_do_cockpit,
         walk_do_sequence,
     )
@@ -251,6 +261,7 @@ def _cmd_do_order(
         builder_model=builder_model,
         reviewer_model=reviewer_model,
         planner_model=planner_model,
+        contract_template=contract,
         no_ui=no_ui,
         yes=yes,
         no_llm=no_llm,
@@ -266,13 +277,15 @@ def _cmd_do_order(
     jobs = do_job_task_listing(ctx)
     # DECISION F268 D11: measured tokens per role and cost, read from the ledger.
     cost = do_cost_summary(ctx)
+    contract = do_mission_contract(ctx)
 
     if json_output:
         print(json.dumps({
             "mission_id": ctx.mission_id or None,
             "job_ids": list(ctx.job_ids),
             "waiting_job_ids": list(ctx.waiting_job_ids),
-            "contract": None,
+            "contract": contract,
+            "unmet_blocking_criteria": do_unmet_blocking_criteria(contract),
             "stopped_before_apply": ctx.stopped_before_apply,
             "shape": ctx.shape or None,
             "shape_source": ctx.shape_source or None,
@@ -290,6 +303,9 @@ def _cmd_do_order(
                     for number, task in enumerate(job["tasks"], start=1):
                         print(f"  job {job['job_id']} task {number}: {task['title']}"
                               f" — deliverable: {task['deliverable'] or '(none)'}")
+        contract_line = do_contract_summary_line(contract)
+        if contract_line is not None:
+            print(contract_line)
         for line in do_cost_summary_lines(cost):
             print(line)
         for line in ctx.next_lines:
@@ -338,9 +354,19 @@ def _cmd_do(
     """
     # DECISION F268 D9 (3): before any step.
     _refuse_do_flags_not_yet_available({
-        "--contract": contract, "--commit": commit, "--commit-auto": commit_auto,
+        "--commit": commit, "--commit-auto": commit_auto,
         "--commit-with-history": commit_with_history, "--push": push,
     })
+    # DECISION F269 D1 (4): a name that is not a template exits 2 before any step.
+    if contract is not None:
+        from packages.orchestration.contract_templates import list_contract_templates
+
+        templates = list_contract_templates()
+        if contract not in templates:
+            print(f"Error: --contract {contract!r} is not a contract template; the "
+                  f"templates are {', '.join(templates) or '(none)'}. Nothing was run.",
+                  file=sys.stderr)
+            sys.exit(2)
     _cmd_do_order(goal, repo=repo, json_output=json_output, no_llm=no_llm,
                   yes=yes, builder_provider=builder_provider,
                   reviewer_provider=reviewer_provider, builder_model=builder_model,
@@ -350,7 +376,8 @@ def _cmd_do(
                   max_wall_clock_minutes=max_wall_clock_minutes,
                   max_cost_usd=max_cost_usd, deadline=deadline, no_ui=no_ui,
                   force_job=force_job, force_mission=force_mission,
-                  step_by_step=step_by_step, plan_only=plan_only, apply=apply)
+                  step_by_step=step_by_step, plan_only=plan_only, apply=apply,
+                  contract=contract)
 
 
 def _cmd_run_show(

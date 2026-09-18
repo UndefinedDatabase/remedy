@@ -461,8 +461,9 @@ def _derive_next_action(job: JobPlan, signals: dict[str, Any]) -> str:
 
     if not ws_allowed and pending:
         return (
-            f"  {_NEXT} Grant workspace permission, then run:\n"
-            f"      remedy job permit {job.job_id} workspace_write allow\n"
+            f"  {_NEXT} workspace_write is denied; a job gets its repository and "
+            f"grants from its mission's contract:\n"
+            f"      remedy job contract {job.job_id}\n"
             f"      remedy job resume {job.job_id}"
         )
 

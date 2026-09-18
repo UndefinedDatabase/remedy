@@ -8,7 +8,8 @@ Test execution in Remedy v1 is contract-gated, resource-safe, and evidence-linke
 
 A real test command may only run when **both** conditions are true:
 
-1. **Permission granted**: `remedy job permit <job_id> repo_test_run allow`
+1. **Permission granted**: `repo_test_run` — a job gets its repository and grants from its
+   mission's contract, shown by `remedy job contract <job_id>` (DECISION F269 D7)
 2. **Contract budget set**: the contract's `max_test_runs` above 0, which
    `remedy job budget <job_id> set max_test_runs <n>` writes (DECISION F280 D3); unless it is
    set, the default contract has `max_test_runs=0`
@@ -150,7 +151,7 @@ When blocked, the CLI provides the appropriate next safe action:
 
 | Reason | Guidance |
 |--------|----------|
-| Permission missing | `remedy job permit <job_id> repo_test_run allow` |
+| Permission missing | `remedy job contract <job_id>` — a job gets its grants from its mission's contract |
 | Budget zero/exhausted | no command — nothing writes a contract budget since F261 round 17 |
 | Action denied | `remedy job show <job_id> --full --json` |
 | Another run active | `remedy test status <job_id>` (safe retry, not immediate) |

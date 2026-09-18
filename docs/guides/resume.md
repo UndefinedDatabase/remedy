@@ -57,7 +57,7 @@ Requires:
 | `resume_mode_not_implemented` | This resume path doesn't exist yet | Wait for future implementation |
 | `missing_patch_payload` | Structured patch not persisted on job | Re-run builder instead |
 | `approval_pending` | Patch needs approval first | `remedy patch approve <job_id> <intent_id>` |
-| `permission_denied` | Job lacks required permission | `remedy job permit <job_id> repo_test_run allow` |
+| `permission_denied` | Job lacks required permission | A job gets its grants from its mission's contract: `remedy job contract <job_id>` |
 | `missing_repo_path` | No target repo on job | Attach repo first |
 | `repo_path_not_found` | Repo directory doesn't exist | Check path |
 | `missing_test_candidate` | No test command discovered | Add tests or Makefile |

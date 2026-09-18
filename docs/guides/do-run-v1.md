@@ -20,7 +20,7 @@ remedy do run "add a hello() function" --repo . --json
 |------|--------------|
 | `init` | Registers the repository as a project if it is not one (or selects `--project`), and adds the ignore entries; writes no file into the repository. |
 | `study` | Studies the repository once, and only when it holds a commit with a tracked file; skipped when already studied. |
-| `plan` | Creates the mission record for the order, records the order, and plans it. |
+| `plan` | Creates the mission record for the order, records the order, writes the contract template forced by `--contract` or proposed from the order onto it, and plans it. |
 | `shape` | Reads the shape from the plan — one job, or milestones — or from `--force-job` / `--force-mission`, and plans the jobs, each linked to the mission. |
 | `run` | Runs the first job on the chosen builder and reviewer; in a walk of two or more jobs the rest wait until the job before them is applied and committed. |
 | `ui` | Opens the cockpit for the job that ran as a detached process, unless `--no-ui`. |
@@ -50,11 +50,17 @@ fails at the first job that is not applied, naming it and why.
 `--json` prints one object with these keys:
 
 ```
-mission_id, job_ids, waiting_job_ids, contract, stopped_before_apply,
-shape, shape_source, mission_plan_path, jobs, steps, cost, next
+mission_id, job_ids, waiting_job_ids, contract, unmet_blocking_criteria,
+stopped_before_apply, shape, shape_source, mission_plan_path, jobs, steps,
+cost, next
 ```
 
-- `contract` is `null` until F269 lands.
+- `contract` is the mission's contract body as its record holds it, or `null`
+  when the mission has none (DECISION F269 D4 (6)).
+- `unmet_blocking_criteria` lists the ids of the contract's blocking criteria
+  not met after the walk, in contract order, or `[]` without a contract
+  (DECISION F269 D6 (4)); the text output prints them on one `Contract:` line
+  with each one's status.
 - `jobs` lists every job's tasks with their deliverables.
 - `steps` holds one `{name, status, detail}` per step the walk reached.
 - `cost` carries the measured tokens per role and cost, read back from the ledger.
@@ -78,9 +84,12 @@ Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
 - `--force-job`, `--force-mission` — override the planner's shape; not together
 - `--step-by-step`, `--plan-only` — above
 - `--apply` — apply each job that ran instead of stopping before apply
-- `--contract`, `--commit`, `--commit-auto`, `--commit-with-history`, `--push` —
-  not yet available: each exits 2 before any step, naming the feature that
-  brings it (F269 or F270)
+- `--contract <name>` — force one of the templates under `docs/contracts/`
+  (api-service, cli-tool, python-library, website) instead of the one proposed
+  from the order; a name that is not a template exits 2 before any step
+- `--commit`, `--commit-auto`, `--commit-with-history`, `--push` — not yet
+  available: each exits 2 before any step, naming the feature that brings it
+  (F270)
 
 ## Next-line commands
 

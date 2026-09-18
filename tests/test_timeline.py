@@ -21,7 +21,7 @@ Coverage:
   - summarize_timeline: includes header (job id, state, task counts)
   - summarize_timeline: includes status and next-action sections
   - next action: suggests run-next-task-local when pending tasks exist
-  - next action: suggests set-permission when last event is permission_denied
+  - next action: names `job contract` and the capability when last event is permission_denied
   - next action: flags patch intent risk when medium/high present
   - CLI: prints timeline for a job with run logs
   - CLI: handles missing run logs gracefully (no crash, clear message)
@@ -717,7 +717,7 @@ class TestDeriveNextAction:
         assert "job resume" in out
         assert str(job.job_id) in out
 
-    def test_permission_denied_suggests_set_permission(self):
+    def test_permission_denied_names_the_contract_and_the_capability(self):
         job = _make_job()
         task_id = str(uuid4())
         events = [
@@ -729,7 +729,7 @@ class TestDeriveNextAction:
              "metadata": {"capability": "workspace_write"}},
         ]
         out = summarize_timeline(job, events)
-        assert "job permit" in out
+        assert f"remedy job contract {job.job_id}" in out
         assert "workspace_write" in out
 
     def test_patch_intent_with_high_risk_warns(self):

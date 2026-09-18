@@ -12,7 +12,8 @@ steps call package functions and must be testable without the CLI.
 
 Scope: init registers and ignores and writes no file into the repository
 (D2); study runs once, on a non-empty repository only (D3); plan creates the
-mission record for the order, plans it and keeps the plan (D4, D5); shape reads
+mission record for the order, writes the contract template forced or proposed
+onto it (DECISION F269 D1 (4)), plans it and keeps the plan (D4, D5); shape reads
 "one job" or "milestones" from that plan, `--force-job` / `--force-mission`
 overriding it, and plans the jobs, each bounded by deliverables (D5, D6); run
 runs the first job on the chosen providers; ui opens the cockpit for the job
@@ -30,6 +31,10 @@ committed. Chaining them inside one `do` needs F270's `--commit` family.
 DECISION F268 D11: run mirrors each job it ran into the F103 ledger, as `job run`
 does, and `do_cost_summary` reads the measured tokens per role and cost back
 through `token_ledger.query_cost`.
+
+DECISION F269 D9 (2): a job the run step ran that its budget stopped while the
+mission's contract has blockers raises the remainder decision, and the Next
+lines name the command that answers it `yes`.
 
 DECISION F268 D8: `--step-by-step` halts after every step that did work and,
 inside run, before each job — points where no provider call is in flight — and
@@ -104,6 +109,10 @@ class DoContext:
     #: `--planner-model`: `model=` of every structured planner call the plan and
     #: shape steps build (DECISION F268 D16 (7)).
     planner_model: str | None = None
+    #: `--contract <name>`: the contract template the plan step writes onto the
+    #: new mission; ``None`` applies the one proposed from the order, if any
+    #: (DECISION F269 D1 (4)).
+    contract_template: str | None = None
     no_ui: bool = False
     yes: bool = False
     no_llm: bool = False
@@ -631,11 +640,23 @@ def _step_study(ctx: DoContext) -> tuple[str, str]:
 
 
 def _step_plan(ctx: DoContext) -> tuple[str, str]:
-    """Create the mission record for the order, record the order, and plan it (D4)."""
+    """Create the mission record for the order, record the order, and plan it (D4).
+
+    Before the plan, the contract template forced by `--contract`, or else the
+    one proposed from the order, is written onto the new mission, so the
+    planner's criteria are added after it and none of its criteria are dropped
+    (DECISION F269 D1 (4)); the detail says whether it was forced or proposed.
+    """
+    from packages.orchestration.contract_templates import (
+        ContractTemplateError,
+        propose_contract_template,
+        write_template_contract,
+    )
     from packages.orchestration.mission_compiler import (
         MissionPlanInProgressError,
         plan_mission,
     )
+    from packages.orchestration.mission_contract import ContractError
     from packages.orchestration.mission_state import (
         MissionError,
         MissionOrder,
@@ -650,6 +671,17 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     except MissionError as exc:
         return DO_STEP_FAILED, f"no mission created: {exc}"
     ctx.mission_id = mission.id
+
+    template, how = ctx.contract_template, "forced by --contract"
+    try:
+        if template is None:
+            template, how = propose_contract_template(ctx.order), "proposed from the order"
+        if template is not None:
+            write_template_contract(project_id, mission.id, template)
+    except (ContractTemplateError, ContractError, MissionError) as exc:
+        return DO_STEP_FAILED, f"mission {mission.id} was not planned: {exc}"
+    contract_note = (f"contract template {template}, {how}" if template is not None
+                     else "no contract template, none proposed from the order")
 
     call_fn = None
     if not ctx.no_llm:
@@ -668,7 +700,8 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     ctx.mission_plan_path = str(outcome.plan_path)
     return DO_STEP_DONE, (
         f"mission {mission.id} plan v{outcome.version} ({outcome.source}, "
-        f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}")
+        f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}; "
+        f"{contract_note}")
 
 
 def mission_plan_outlines(plan: Any) -> list[Any]:
@@ -722,7 +755,18 @@ def _shape_job_orders(ctx: DoContext, shape: str) -> list[tuple[str, list[TaskEn
 
 
 def _step_shape(ctx: DoContext) -> tuple[str, str]:
-    """Read the shape from the plan (or a force flag) and plan its jobs, linked to the mission (D5)."""
+    """Read the shape from the plan (or a force flag) and plan its jobs, linked to the mission (D5).
+
+    As each job is linked, its contract slice is merged into its DoD (DECISION
+    F269 D6 (3)); `do`'s jobs serve no milestone, so the slice is the
+    whole-mission criteria, whose checks the job's gate reports and never
+    holds on (D6 (1)).  Beside that merge, the contract binds the job to its
+    repository and grants it (DECISION F269 D7).
+    """
+    from packages.orchestration.mission_contract import (
+        grant_contract_job_repository,
+        merge_contract_slice_into_dod,
+    )
     from packages.orchestration.mission_state import (
         MISSION_ROLE_FOLLOW_UP,
         MISSION_ROLE_INITIAL,
@@ -752,7 +796,9 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
             return DO_STEP_FAILED, str(exc)
         job_id = str(shaped.job.job_id)
         role = MISSION_ROLE_FOLLOW_UP if ctx.job_ids else MISSION_ROLE_INITIAL
-        link_job_to_mission(str(ctx.project.id), ctx.mission_id, job_id, role=role)
+        mission = link_job_to_mission(str(ctx.project.id), ctx.mission_id, job_id, role=role)
+        merge_contract_slice_into_dod(mission, None, job_id)
+        grant_contract_job_repository(mission, job_id)
         ctx.job_ids.append(job_id)
         shaped_jobs.append(shaped)
 
@@ -794,6 +840,34 @@ def _job_run_role_flags(ctx: DoContext) -> str:
         if value:
             flags += f" {flag} {shlex.quote(value)}"
     return flags
+
+
+def do_budget_stop_remainder(ctx: DoContext, job: Any) -> str:
+    """Raise the remainder decision for a job its budget stopped; the detail's tail, or "".
+
+    DECISION F269 D9 (2): a job that did not complete and whose ``stop_source``
+    is budget, while the mission's contract has blockers, raises the remainder
+    decision, and the Next lines name it with the command that answers it.
+    The state is not read: a budget stop mid-run ends ``stopped``, while one
+    before any work (a deadline already past) leaves the job ``planned``, and
+    both are the budget ending the job.  Any other ending, no mission, no
+    blocker or an open remainder decision adds nothing.
+    """
+    from packages.orchestration.mission_contract import (
+        CONTRACT_REMAINDER_YES,
+        raise_contract_remainder_decision,
+    )
+
+    if job.stop_source != "budget" or not ctx.mission_id or ctx.project is None:
+        return ""
+    decision_id = raise_contract_remainder_decision(str(ctx.project.id), ctx.mission_id)
+    if decision_id is None:
+        return ""
+    # The full job id, as every other Next line of the walk names it.
+    ctx.next_lines.append(f"remedy decision resolve {job.job_id} {decision_id} "
+                          f"--reason {CONTRACT_REMAINDER_YES}")
+    return (f"; its budget stopped it with blocking contract criteria open, so "
+            f"remainder decision {decision_id} was raised")
 
 
 def _step_run(ctx: DoContext) -> tuple[str, str]:
@@ -849,7 +923,8 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
         ctx.next_lines.append(f"remedy job show {job_id}")
         if done.state != JOB_COMPLETED:
             reason = f": {done.error}" if done.error else ""
-            return DO_STEP_FAILED, f"job {job_id} ended {done.state.value}{reason}"
+            return DO_STEP_FAILED, (f"job {job_id} ended {done.state.value}{reason}"
+                                    f"{do_budget_stop_remainder(ctx, done)}")
         ran.append(f"job {job_id} ran {len(done.tasks)} task(s) to {done.state.value}")
     if ctx.waiting_job_ids:
         ran.append(
@@ -1016,6 +1091,51 @@ def _add_measured(total: float | int | None, value: float | int | None) -> float
     if value is None:
         return total
     return value if total is None else total + value
+
+
+def do_mission_contract(ctx: DoContext) -> dict[str, Any] | None:
+    """The walk's mission contract body as its record holds it, or None.
+
+    None when the walk created no mission or the mission has no contract
+    (DECISION F269 D4 (6)); read from the record, so it is the contract as
+    the walk left it.
+    """
+    if not ctx.mission_id or ctx.project is None:
+        return None
+    from packages.orchestration.mission_state import load_mission
+
+    body = load_mission(str(ctx.project.id), ctx.mission_id).contract
+    return body if isinstance(body, dict) else None
+
+
+def do_unmet_blocking_criteria(contract: dict[str, Any] | None) -> list[str]:
+    """The contract's blocking criteria not met after the walk, in contract order.
+
+    DECISION F269 D6 (4): the blockers of D4 (5), read from the body
+    `do_mission_contract` returns; empty when the walk left no contract.
+    """
+    from packages.orchestration.mission_contract import MissionContract, contract_blockers
+
+    return list(contract_blockers(
+        None if contract is None else MissionContract.from_json(contract)))
+
+
+def do_contract_summary_line(contract: dict[str, Any] | None) -> str | None:
+    """The one text line naming the contract's state after the walk, or None without one.
+
+    DECISION F269 D6 (4): the met criteria counted against all of them, and
+    each blocking criterion not met named with its status, `open` or `unmet`.
+    """
+    if contract is None:
+        return None
+    from packages.orchestration.mission_contract import MissionContract
+
+    criteria = MissionContract.from_json(contract).criteria
+    met = sum(1 for c in criteria if c.status == "met")
+    unmet = [f"{c.id} ({c.status})" for c in criteria if c.blocking and c.status != "met"]
+    tail = (f"blocking criteria not met: {', '.join(unmet)}" if unmet
+            else "every blocking criterion is met")
+    return f"Contract: {met} of {len(criteria)} criteria met; {tail}"
 
 
 def do_cost_summary(ctx: DoContext) -> dict[str, Any] | None:

@@ -422,3 +422,94 @@ class TestCompiledContextTokenBudget:
         )
 
         assert "token_budget" not in captured
+
+
+# ---------------------------------------------------------------------------
+# F269 T003 — the round's hygiene rule (DECISION F269 D5 (6))
+# ---------------------------------------------------------------------------
+
+_HYGIENE_JOB = """# Job: Greet
+
+## Task 1
+Make the greeting friendlier.
+"""
+
+
+def _git(repo: Path, *args: str) -> str:
+    import subprocess
+
+    return subprocess.run(["git", *args], cwd=str(repo), capture_output=True,
+                          text=True, check=True).stdout
+
+
+@pytest.fixture
+def hygiene_repo(tmp_path: Path) -> Path:
+    """A git repository whose base commit holds main.py and util.py."""
+    repo = tmp_path / "hygiene_repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "t@e.com")
+    _git(repo, "config", "user.name", "T")
+    _git(repo, "config", "commit.gpgsign", "false")
+    (repo / "main.py").write_text("print('hello')\n")
+    (repo / "util.py").write_text("def helper():\n    return 1\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    return repo
+
+
+class TestTheRoundRejectsAHygieneViolation:
+    """THE ACCEPTANCE TEST of T2_F269: a fixture builder output that adds a file
+    nothing imports is rejected by the reviewer with the path in the finding,
+    proved with the fake provider — whose reviewer passes and never reads its
+    prompt, so the rejection is the round's own."""
+
+    @staticmethod
+    def _run(repo: Path, builder_files: list[str]):
+        from packages.orchestration.pingpong_job import parse_job_file, run_job
+        from packages.orchestration.pingpong_loop import load_run
+
+        job = parse_job_file(_HYGIENE_JOB, str(repo))
+        done = run_job(
+            job.job_id,
+            builder_provider=FakeProvider(builder_files=builder_files, pass_on_round=1),
+            reviewer_provider=FakeProvider(pass_on_round=1),
+            builder_name="fake", reviewer_name="fake", repair_rounds=0,
+        )
+        return done, load_run(done.tasks[0].run_id)
+
+    def test_an_added_file_nothing_references_blocks_the_job_naming_the_path(
+            self, hygiene_repo):
+        from packages.orchestration.pingpong_job import JOB_BLOCKED
+
+        job, run = self._run(hygiene_repo, ["orphan_module.py"])
+
+        assert job.state == JOB_BLOCKED
+        (only_round,) = run["rounds"]
+        reviewer = only_round["reviewer"]
+        assert reviewer["verdict"] == "needs_repair"
+        assert [(f["file"], f["summary"]) for f in reviewer["findings"]] == [
+            ("orphan_module.py",
+             "orphan_module.py: an added file that no other file references")]
+        assert run["final_status"] == "repair_exhausted"
+        assert run["repair_loop"]["decisions"][-1]["repair_decision"] == "stop_repair_disabled"
+
+    def test_a_changed_file_that_was_already_there_completes(self, hygiene_repo):
+        from packages.orchestration.pingpong_job import JOB_COMPLETED
+
+        job, run = self._run(hygiene_repo, ["main.py"])
+
+        assert job.state == JOB_COMPLETED
+        assert run["rounds"][-1]["reviewer"]["verdict"] == "pass"
+        assert run["rounds"][-1]["reviewer"]["findings"] == []
+
+    def test_a_replacement_left_beside_its_original_is_rejected_naming_it(
+            self, hygiene_repo):
+        from packages.orchestration.pingpong_job import JOB_BLOCKED
+
+        job, run = self._run(hygiene_repo, ["util_v2.py"])
+
+        assert job.state == JOB_BLOCKED
+        findings = run["rounds"][-1]["reviewer"]["findings"]
+        assert ("util_v2.py", "util_v2.py: added beside util.py, which it replaces") in [
+            (f["file"], f["summary"]) for f in findings]

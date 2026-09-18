@@ -495,7 +495,7 @@ class TestApplyTaskOutputToRepo:
 
 
 # ---------------------------------------------------------------------------
-# attach-repo validation (mirrors _cmd_attach_repo logic)
+# stale repo roots: the job's bound repository is gone
 # ---------------------------------------------------------------------------
 
 

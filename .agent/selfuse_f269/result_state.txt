@@ -1,0 +1,8 @@
+Job State: stopped
+Stop Reason: budget_exhausted:max_provider_calls
+Stop Source: budget
+Stop Request ID: budget_864b0559d956f226
+Stopped At: 2026-09-18T16:57:53.129656+00:00
+
+Task States:
+  T001: stopped (verdict: )

@@ -928,6 +928,47 @@ def make_orchestrator_call_recorder(
     return _record
 
 
+#: The ledger entry's ``move.kind`` for an amendment acknowledgement (DECISION
+#: F269 D8 (4)). A ledger-only kind: the loop writes it, no model proposes it,
+#: so it is not in the move schema.
+MOVE_ACKNOWLEDGE_AMENDMENT = "acknowledge_amendment"
+
+#: The acknowledgement entry's ``outcome.status``.
+OUTCOME_ACKNOWLEDGED = "acknowledged"
+
+
+def acknowledge_due_amendments(project_id: str, mission_id: str, mission: Any,
+                               iteration: int, *,
+                               record: Callable[[dict[str, Any], MoveOutcome], None],
+                               root: Path | None = None) -> int:
+    """Acknowledge every amendment due in this round; return how many (D8 (4)).
+
+    Each due amendment — ``applies_from`` at most ``iteration``,
+    ``acknowledged_in`` null — gets ONE ledger entry through ``record``, move
+    kind :data:`MOVE_ACKNOWLEDGE_AMENDMENT` with its id, outcome
+    :data:`OUTCOME_ACKNOWLEDGED` and detail ``<understood>; applies from round
+    <n>``; THEN its ``acknowledged_in`` is set to ``iteration``, so an
+    acknowledgement is never recorded on the contract without its ledger entry.
+    """
+    from packages.orchestration.mission_contract import (
+        due_contract_amendments,
+        read_mission_contract,
+        record_amendments_acknowledged,
+    )
+
+    due = due_contract_amendments(read_mission_contract(mission), iteration)
+    for amendment in due:
+        record({"kind": MOVE_ACKNOWLEDGE_AMENDMENT,
+                "payload": {"amendment_id": amendment["id"]}},
+               MoveOutcome(status=OUTCOME_ACKNOWLEDGED,
+                           detail=f"{amendment['understood']}; applies from round "
+                                  f"{amendment['applies_from']}"))
+    if due:
+        record_amendments_acknowledged(project_id, mission_id,
+                                       [a["id"] for a in due], iteration, root)
+    return len(due)
+
+
 def run_mission(
     mission_id: str,
     limits: LoopLimits | None = None,
@@ -986,7 +1027,12 @@ def run_mission(
                           is recorded as unlabelled rather than guessed
 
     Every iteration leaves a ledger entry — including the ones that end the
-    run — so the audit trail has no gaps where a decision used to be.
+    run — so the audit trail has no gaps where a decision used to be. An
+    iteration in which a contract amendment takes effect first leaves one
+    acknowledgement entry per such amendment
+    (:func:`acknowledge_due_amendments`, DECISION F269 D8 (4)). A run that
+    reaches its iteration limit with blocking contract criteria open raises
+    the remainder decision and names it in its detail (DECISION F269 D9 (2)).
     """
     from packages.orchestration.mission_state import (
         MISSION_STATUS_ACTIVE,
@@ -1085,6 +1131,18 @@ def run_mission(
         cost: dict[str, Any] = {"calls": 0, "usage": None,
                                 "usage_source": USAGE_UNMEASURED}
         try:
+            # DECISION F269 D8 (4): before this round's move, every amendment
+            # that applies from this round or earlier and is not yet
+            # acknowledged gets its ledger entry, which costs no call. The
+            # round's jobs take its check at dispatch (D8 (3)).
+            if acknowledge_due_amendments(
+                    pid, mission_id, mission, iteration, root=root,
+                    record=lambda move, outcome: _record(
+                        iteration, "", move, outcome,
+                        {"calls": 0, "usage": None,
+                         "usage_source": USAGE_UNMEASURED})):
+                mission = load_mission(pid, mission_id, root)
+
             # The dossier is refreshed BEFORE the context is assembled, so the
             # prompt's first section and the mission's own dossier file describe
             # the same state rather than drifting an iteration apart.
@@ -1296,6 +1354,23 @@ def run_mission(
     result.terminal = TERMINAL_ITERATION_LIMIT
     result.detail = (f"reached the {bounds.max_iterations}-iteration limit "
                      f"with the mission still active")
+    # DECISION F269 D9 (2): the budget is spent with blocking criteria open, so
+    # the remainder goes to the operator as one decision carrying the
+    # prefilled follow-up order; none is raised twice while one is open.
+    from packages.orchestration.mission_contract import (
+        ContractError,
+        raise_contract_remainder_decision,
+    )
+
+    try:
+        remainder = raise_contract_remainder_decision(pid, mission_id, root=root,
+                                                      now=now)
+    except ContractError as exc:
+        result.detail += f"; no remainder decision was raised: {exc}"
+    else:
+        if remainder:
+            result.detail += (f"; blocking contract criteria are not met, so "
+                              f"remainder decision {remainder} was raised")
     return build_boundary_handoff(result, root)
 
 
@@ -1589,15 +1664,41 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
         detail = f"job {job.job_id} dispatched for {payload['milestone_id']}"
         if approved:
             detail += " (plan auto-approved, audited)"
-        # R-0188: give the job its milestone's DoD before it runs, or the gate
-        # has nothing to evaluate when it finishes.
+        from packages.orchestration.mission_contract import (
+            JOB_MILESTONE_KEY,
+            grant_contract_job_repository,
+            merge_contract_slice_into_dod,
+            record_contract_results,
+            record_job_milestone,
+        )
         from packages.orchestration.mission_state import load_mission as _load
 
-        if attach_milestone_dod(project_id, mission_id,
-                                _load(project_id, mission_id, root),
+        # R-0188: give the job its milestone's DoD before it runs, or the gate
+        # has nothing to evaluate when it finishes.
+        current = _load(project_id, mission_id, root)
+        if attach_milestone_dod(project_id, mission_id, current,
                                 payload["milestone_id"], str(job.job_id), root):
             detail += "; DoD attached"
+        # DECISION F269 D4 (3): the job's DoD carries its contract slice, so
+        # the job's own gate decides the criteria it serves.
+        merge_contract_slice_into_dod(current, payload["milestone_id"],
+                                      str(job.job_id))
+        # DECISION F269 D7: the contract binds the job to its repository and
+        # grants it; the in-memory job carries the same values, as below.
+        granted = grant_contract_job_repository(current, str(job.job_id), root)
+        if granted and isinstance(getattr(job, "metadata", None), dict):
+            job.metadata.update(granted)
+        # DECISION F269 D3 (1): the job records the milestone it serves, so its
+        # contract slice can be derived. The in-memory job is the one the
+        # executor saves next, so it carries the same key.
+        if record_job_milestone(str(job.job_id), payload["milestone_id"], root):
+            metadata = getattr(job, "metadata", None)
+            if isinstance(metadata, dict):
+                metadata[JOB_MILESTONE_KEY] = payload["milestone_id"]
         run = (execute or execute_dispatched_job)(job)
+        # DECISION F269 D4 (4): the job's gate result decides its slice criteria.
+        record_contract_results(project_id, mission_id, str(job.job_id),
+                                payload["milestone_id"], root)
         # What execution PRODUCED, on the ledger entry, so the next iteration's
         # context shows why the milestone is or is not claimable.
         detail += (f"; executed: terminal={getattr(run, 'terminal_status', '')}"
@@ -1953,7 +2054,9 @@ def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
     ``abort_with_reason`` and ``declare_mission_achieved`` are the loop's ways
     of stopping, and refusing a stop would be the silent loop this feature
     exists to prevent — except that claiming the mission is achieved while
-    milestones are still open is itself an advance, and is checked.
+    milestones are still open is itself an advance, and is checked — as is
+    claiming it while a blocking contract criterion is not met (DECISION F269
+    D4 (5)).
     """
     from packages.orchestration.orchestrator_move_schema import (
         MOVE_DECLARE_MILESTONE_DONE,
@@ -1991,6 +2094,22 @@ def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
             return (f"the mission cannot be achieved while "
                     f"{len(open_ones)} milestone(s) are still open: "
                     f"{', '.join(open_ones)}")
+        # DECISION F269 D4 (5): the contract holds the claim while a blocking
+        # criterion is not met, and a body that breaks a D2 rule holds it too.
+        from packages.orchestration.mission_contract import (
+            ContractError,
+            contract_blockers,
+            read_mission_contract,
+        )
+
+        try:
+            blockers = contract_blockers(read_mission_contract(mission))
+        except ContractError as exc:
+            return f"the mission cannot be achieved: its contract is unreadable — {exc}"
+        if blockers:
+            return (f"the mission cannot be achieved while "
+                    f"{len(blockers)} blocking contract criteria are not met: "
+                    f"{', '.join(blockers)}")
     return ""
 
 

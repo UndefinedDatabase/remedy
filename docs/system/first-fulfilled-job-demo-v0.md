@@ -30,8 +30,10 @@ No real provider. No network. No git operations. No hidden execution.
 
 ```bash
 # 1. The `create` word under `job` built the job here, until F280 round 6 deleted it;
-#    `do run "<goal>"` is the CLI's own job-creation path today.
-remedy job attach-repo "$JOB_ID" /path/to/demo/repo  # see Repo Requirements below
+#    `do run "<goal>"` is the CLI's own job-creation path today. The repository was
+#    attached here too, until F269 round 6 deleted that word: a job gets its repository and
+#    grants from its mission's contract (see Repo Requirements below).
+remedy job contract "$JOB_ID"
 
 # 2. A `fulfill` word under `job` ran fulfillment here in fixture-demo mode, with `--json`,
 #    until F280 round 3 deleted it

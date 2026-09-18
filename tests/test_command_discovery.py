@@ -65,6 +65,18 @@ def _register_project(repo: Path, env: dict) -> None:
     assert r.returncode == 0, r.stderr.decode()
 
 
+# The repository binding a mission's contract writes (DECISION F269 D7),
+# written straight onto the job record: argv is the job id and the repo path.
+_BIND_TARGET_REPO = (
+    "import sys\n"
+    "from packages.orchestration.data_paths import resolve_job_id\n"
+    "from packages.orchestration.pingpong_job import require_job_plan, save_job_plan\n"
+    "job = require_job_plan(resolve_job_id(sys.argv[1]))\n"
+    "job.metadata['target_repo'] = sys.argv[2]\n"
+    "save_job_plan(job)\n"
+)
+
+
 def _make_job() -> JobPlan:
     return JobPlan(job_title="test", state=RunState.PENDING)
 
@@ -569,10 +581,12 @@ class TestCLIDiscoverCommands:
         assert r.returncode == 0, r.stderr.decode()
         job_id = r.stdout.decode().strip()
         assert job_id, "job create produced no job id"
-        subprocess.run(
-            ["python3", "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
+        # The job's repository binding, written on its record (DECISION F269 D7).
+        bound = subprocess.run(
+            ["python3", "-c", _BIND_TARGET_REPO, job_id, str(repo.resolve())],
             capture_output=True, env=env, timeout=15,
         )
+        assert bound.returncode == 0, bound.stderr.decode()
         return job_id
 
     def test_json_output_is_pure_json(self, tmp_path):
@@ -971,10 +985,12 @@ class TestCLIDiscoverCommandsSchemaV1:
         assert r.returncode == 0, r.stderr.decode()
         job_id = r.stdout.decode().strip()
         assert job_id, "job create produced no job id"
-        subprocess.run(
-            ["python3", "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
+        # The job's repository binding, written on its record (DECISION F269 D7).
+        bound = subprocess.run(
+            ["python3", "-c", _BIND_TARGET_REPO, job_id, str(repo.resolve())],
             capture_output=True, env=env, timeout=15,
         )
+        assert bound.returncode == 0, bound.stderr.decode()
         return job_id, env
 
     def test_json_has_version_1(self, tmp_path):

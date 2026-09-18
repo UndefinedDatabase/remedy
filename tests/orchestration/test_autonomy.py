@@ -426,14 +426,6 @@ class TestGeneratedCommandCatalogConsistency:
         ids = {(c.group_id, c.subcommand) for c in CATALOG}
         assert ("test", "list") in ids, "remedy test list must be a registered catalog command"
 
-    def test_permit_arg_order_correct(self):
-        """remedy job permit order: <job_id> <permission> <action>."""
-        from apps.cli.command_catalog import get_command
-        cmd = get_command("job.permit")
-        # Args should be: job_id, permission, action
-        arg_names = [a.name for a in cmd.args]
-        assert arg_names == ["job_id", "permission", "action"]
-
     def test_generated_commands_reference_catalog(self):
         """Generated guidance commands should use valid catalog entries."""
         from apps.cli.command_catalog import CATALOG

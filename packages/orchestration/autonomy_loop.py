@@ -207,7 +207,7 @@ def _decide(
             return ("run_tests", "test execution allowed (level 3: test_execution)",
                     "remedy test run <job_id>", "")
         return ("blocked", "repo_test_run permission not granted (level 3: test_execution)",
-                "remedy job permit <job_id> repo_test_run allow", "missing_permission")
+                "remedy job contract <job_id>", "missing_permission")
 
     # Level 4: bounded_loop — can run agent loop with max_cycles
     if autonomy_level == 4:

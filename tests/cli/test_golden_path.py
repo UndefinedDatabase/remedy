@@ -125,7 +125,12 @@ class TestDoMission:
         assert "intake: heuristic (forced by --no-llm)" in shape["detail"]
         assert "plan: deterministic, one task per deliverable" in shape["detail"]
         assert data["stopped_before_apply"] is True
-        assert data["contract"] is None
+        # DECISION F269 D4 (6): the planned mission's contract, one planner
+        # criterion for the one milestone of the deterministic plan.
+        contract = data["contract"]
+        assert contract["schema"] == "contract_v1"
+        assert [(c["id"], c["origin"], c["milestones"])
+                for c in contract["criteria"]] == [("C001", "planner", ["M001"])]
 
     def test_unregistered_repo_is_registered_by_do(self, tmp_path):
         """F268 D2: `do` registers an unregistered repository instead of exiting 3."""
