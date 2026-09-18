@@ -1,20 +1,103 @@
 """F268 — `remedy do "<order>"` as DATA: the step names, the step table, one walker.
 
-This first slice holds only the shape step's job planning, moved here from
-`_cmd_do_mission` in apps/cli/commands/do_cmd.py; the sequence, the step table
-and the walker follow (DECISION F268 D4).
+DECISION F268 D4. `DO_SEQUENCE` is the one ordered list of step names; the
+table maps each name to its step function; `walk_do_sequence` calls steps only
+through that table, only in that order, and ends the walk at the first step
+that stops or fails. No step is called from prose-order code, so a later
+feature can add a second named list as a lookup rather than a rewrite
+(DECISION amend0911-feedback D3).
+
+The module sits under `packages/` rather than `apps/cli/commands/` because its
+steps call package functions and must be testable without the CLI.
+
+T001 scope: init registers and ignores and writes no file into the repository
+(D2); study runs once, on a non-empty repository only (D3); plan creates the
+mission record for the order and plans it (D4); shape yields ONE job linked to
+the mission; run runs it on the chosen providers; ui prints the real
+`remedy ui start` command unless `--no-ui`; apply always stops before apply.
 """
 
 from __future__ import annotations
 
+import shlex
+import subprocess
 import sys
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from packages.orchestration.pingpong_job import JobPlan
     from packages.orchestration.project_registry import RemyProject
+
+#: The sequence, as data (DECISION F268 D4). The walker reads nothing else.
+DO_SEQUENCE: tuple[str, ...] = ("init", "study", "plan", "shape", "run", "ui", "apply")
+
+DO_STEP_DONE = "done"
+DO_STEP_SKIPPED = "skipped"
+DO_STEP_STOPPED = "stopped"
+DO_STEP_FAILED = "failed"
+
+#: A step reporting one of these ends the walk; later steps are not called.
+DO_WALK_ENDING_STATUSES = frozenset({DO_STEP_STOPPED, DO_STEP_FAILED})
+
+
+@dataclass(frozen=True)
+class DoStepResult:
+    """What one step did: its name, a status word and a sentence with real ids."""
+
+    name: str
+    status: str
+    detail: str
+
+    def to_json(self) -> dict[str, str]:
+        return {"name": self.name, "status": self.status, "detail": self.detail}
+
+
+@dataclass
+class DoContext:
+    """Everything one `remedy do` walk carries from step to step."""
+
+    order: str
+    repo: str = "."
+    builder_provider: str | None = None
+    reviewer_provider: str | None = None
+    no_ui: bool = False
+    yes: bool = False
+    no_llm: bool = False
+    repo_root: str = ""
+    project: RemyProject | None = None
+    mission_id: str = ""
+    job_ids: list[str] = field(default_factory=list)
+    results: list[DoStepResult] = field(default_factory=list)
+    next_lines: list[str] = field(default_factory=list)
+
+    @property
+    def failed(self) -> bool:
+        return any(r.status == DO_STEP_FAILED for r in self.results)
+
+    @property
+    def stopped_before_apply(self) -> bool:
+        """True unless the apply step itself ran to completion."""
+        return not any(r.name == "apply" and r.status == DO_STEP_DONE
+                       for r in self.results)
+
+
+#: A step takes the context and returns ``(status, detail)``; the walker names it.
+DoStep = Callable[[DoContext], tuple[str, str]]
+
+
+def walk_do_sequence(ctx: DoContext,
+                     table: Mapping[str, DoStep] | None = None) -> DoContext:
+    """Call each step of `DO_SEQUENCE` through the table, in order, until one ends the walk."""
+    steps = DO_STEP_TABLE if table is None else table
+    for name in DO_SEQUENCE:
+        status, detail = steps[name](ctx)
+        ctx.results.append(DoStepResult(name=name, status=status, detail=detail))
+        if status in DO_WALK_ENDING_STATUSES:
+            break
+    return ctx
 
 
 # ---------------------------------------------------------------------------
@@ -293,3 +376,212 @@ def plan_order_job(
         intake_fallback_reason=intake_fallback_reason,
         plan_label=plan_label,
     )
+
+
+# ---------------------------------------------------------------------------
+# The steps. Each returns (status, detail); a skipped or stopped step says why.
+# ---------------------------------------------------------------------------
+
+
+def _step_init(ctx: DoContext) -> tuple[str, str]:
+    """Register the repository if it is not, and add the ignore entries (D2). Nothing else."""
+    from packages.orchestration.project_registry import (
+        register_project_repo,
+        resolve_project,
+    )
+    from packages.orchestration.repo_ignore import ensure_ignore_entry, ignore_entries
+    from packages.orchestration.worktrees import WorktreeError, repo_root
+
+    try:
+        root = repo_root(ctx.repo)
+    except (WorktreeError, OSError, subprocess.SubprocessError):
+        return DO_STEP_FAILED, (
+            f"{Path(ctx.repo).resolve()} is not a git repository — run `git init` first")
+    ctx.repo_root = str(root)
+
+    project = resolve_project(root)
+    if project is None:
+        project = register_project_repo(root.name, root)
+        detail = f"registered {root} as project {project.slug} ({project.id})"
+    else:
+        detail = f"project {project.slug} ({project.id}) already registered for {root}"
+    ctx.project = project
+    for entry in ignore_entries(root):
+        ensure_ignore_entry(root, entry)
+    return DO_STEP_DONE, detail
+
+
+def _repo_has_committed_file(repo_root: str) -> bool:
+    """At least one commit exists and HEAD holds at least one tracked file."""
+    proc = subprocess.run(
+        ["git", "ls-tree", "-r", "--name-only", "HEAD"],
+        cwd=repo_root, capture_output=True, text=True, timeout=30,
+    )
+    return proc.returncode == 0 and bool(proc.stdout.strip())
+
+
+def _step_study(ctx: DoContext) -> tuple[str, str]:
+    """Study the repository exactly once, and only when it is non-empty (D3)."""
+    from packages.orchestration.study import (
+        record_study_pass,
+        run_study,
+        study_call_fn,
+    )
+
+    metadata = ctx.project.metadata
+    if metadata.get("studied_at"):
+        return DO_STEP_SKIPPED, (
+            f"already studied at {metadata['studied_at']} "
+            f"(head {metadata.get('studied_head') or 'none'}); study again by hand: "
+            f"remedy study run --path {shlex.quote(ctx.repo_root)}")
+    if not _repo_has_committed_file(ctx.repo_root):
+        return DO_STEP_SKIPPED, (
+            f"{ctx.repo_root} has no commit holding a tracked file — nothing to study")
+
+    call_fn = None if ctx.no_llm else study_call_fn()
+    result = run_study(ctx.repo_root, project_id=str(ctx.project.id), call_fn=call_fn)
+    updated = record_study_pass(str(ctx.project.id), ctx.repo_root)
+    if updated is not None:
+        ctx.project = updated
+    detail = f"{len(result.cards_written)} memory card(s) written for project {ctx.project.slug}"
+    if result.partial:
+        detail += f" (PARTIAL — {result.stopped_reason})"
+    return DO_STEP_DONE, detail
+
+
+def _step_plan(ctx: DoContext) -> tuple[str, str]:
+    """Create the mission record for the order, record the order, and plan it (D4)."""
+    from packages.orchestration.mission_compiler import (
+        MissionPlanInProgressError,
+        plan_mission,
+    )
+    from packages.orchestration.mission_state import (
+        MissionError,
+        MissionOrder,
+        create_mission,
+        set_mission_order,
+    )
+
+    project_id = str(ctx.project.id)
+    try:
+        mission = create_mission(project_id, ctx.order)
+        set_mission_order(project_id, mission.id, MissionOrder(text=ctx.order))
+    except MissionError as exc:
+        return DO_STEP_FAILED, f"no mission created: {exc}"
+    ctx.mission_id = mission.id
+
+    call_fn = None
+    if not ctx.no_llm:
+        from packages.orchestration.intake import make_structured_call_fn
+        from packages.orchestration.mission_plan_schema import MissionPlanDraft
+
+        call_fn = make_structured_call_fn(MissionPlanDraft)
+    try:
+        # Named exactly as `mission plan` names it: `make_structured_call_fn` is
+        # Ollama-backed. Without a provider the compiler plans deterministically.
+        outcome = plan_mission(project_id, mission.id, call_fn,
+                               provider="ollama", provider_kind="ollama")
+    except (MissionPlanInProgressError, MissionError) as exc:
+        return DO_STEP_FAILED, f"mission {mission.id} was not planned: {exc}"
+    return DO_STEP_DONE, (
+        f"mission {mission.id} plan v{outcome.version} ({outcome.source}, "
+        f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}")
+
+
+def _step_shape(ctx: DoContext) -> tuple[str, str]:
+    """T001: ONE job for the order, targeting the repository, linked to the mission."""
+    from packages.orchestration.mission_state import (
+        MISSION_ROLE_INITIAL,
+        link_job_to_mission,
+    )
+
+    try:
+        shaped = plan_order_job(
+            ctx.order,
+            project=ctx.project,
+            repo_path=ctx.repo_root,
+            no_llm=ctx.no_llm,
+            yes=ctx.yes,
+        )
+    except OrderJobPlanError as exc:
+        return DO_STEP_FAILED, str(exc)
+    job_id = str(shaped.job.job_id)
+    link_job_to_mission(str(ctx.project.id), ctx.mission_id, job_id,
+                        role=MISSION_ROLE_INITIAL)
+    ctx.job_ids.append(job_id)
+    return DO_STEP_DONE, (
+        f"one job {job_id} linked to mission {ctx.mission_id}: "
+        f"{len(shaped.job.tasks)} task(s), plan: {shaped.plan_label}, "
+        f"{shaped.intake_label}")
+
+
+def _provider_flags(ctx: DoContext) -> str:
+    flags = ""
+    if ctx.builder_provider:
+        flags += f" --builder-provider {ctx.builder_provider}"
+    if ctx.reviewer_provider:
+        flags += f" --reviewer-provider {ctx.reviewer_provider}"
+    return flags
+
+
+def _step_run(ctx: DoContext) -> tuple[str, str]:
+    """Run the job on the chosen builder and reviewer; stop at an open plan approval."""
+    from packages.orchestration.job_plan import task_plan_blocks_execution
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan, run_job
+
+    job_id = ctx.job_ids[-1]
+    job = load_job_plan(job_id)
+    if job is None:
+        return DO_STEP_FAILED, f"job {job_id} was not found in the job store"
+    if not job.repo_path:
+        # Without a target a run would fall back to copying the process's
+        # working directory, which is never the repository `do` was asked about.
+        return DO_STEP_FAILED, f"job {job_id} has no target repository; nothing was run"
+
+    blocked = task_plan_blocks_execution(job)
+    if blocked is not None:
+        approve = f"remedy decision resolve {job_id} plan:approval --reason approve"
+        ctx.next_lines.append(approve)
+        ctx.next_lines.append(f"remedy job run {job_id}{_provider_flags(ctx)}")
+        return DO_STEP_STOPPED, (
+            f"job {job_id}'s task plan is {blocked}, not approved; nothing was run "
+            f"(--yes approves it unattended). Approve it with: {approve}")
+
+    done = run_job(job_id, builder_name=ctx.builder_provider,
+                   reviewer_name=ctx.reviewer_provider)
+    ctx.next_lines.append(f"remedy job show {job_id}")
+    if done.state != JOB_COMPLETED:
+        reason = f": {done.error}" if done.error else ""
+        return DO_STEP_FAILED, f"job {job_id} ended {done.state.value}{reason}"
+    return DO_STEP_DONE, f"job {job_id} ran {len(done.tasks)} task(s) to {done.state.value}"
+
+
+def _step_ui(ctx: DoContext) -> tuple[str, str]:
+    """Until T004 the cockpit does not open by itself: print its real command, or skip."""
+    if ctx.no_ui:
+        return DO_STEP_SKIPPED, "--no-ui given; the cockpit was not opened"
+    command = f"remedy ui start {ctx.job_ids[-1]}"
+    ctx.next_lines.append(command)
+    return DO_STEP_SKIPPED, f"the cockpit does not open by itself yet; open it with: {command}"
+
+
+def _step_apply(ctx: DoContext) -> tuple[str, str]:
+    """T001 always stops before apply; nothing is written to the repository."""
+    command = (f"remedy job apply {ctx.job_ids[-1]} "
+               f"--repo {shlex.quote(ctx.repo_root)} --approve")
+    ctx.next_lines.append(command)
+    return DO_STEP_STOPPED, (
+        f"stopped before apply; {ctx.repo_root} is untouched. "
+        f"Apply the reviewed result with: {command}")
+
+
+#: The step table. `walk_do_sequence` reaches a step only through this mapping.
+DO_STEP_TABLE: dict[str, DoStep] = {
+    "init": _step_init,
+    "study": _step_study,
+    "plan": _step_plan,
+    "shape": _step_shape,
+    "run": _step_run,
+    "ui": _step_ui,
+    "apply": _step_apply,
+}
