@@ -26,7 +26,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-80 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+81 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -34,7 +34,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 23 | 34 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
-| 4 | Memory & Learning | 0 | 17 |
+| 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
@@ -184,6 +184,14 @@ prompt with an audited line, and a non-tty pipe with neither flag exits
 with the estimate and the `--yes` hint rather than hanging. Real cost
 bands for `job.resume` are not calibrated yet, so its own estimate reads
 `ESTIMATE_UNAVAILABLE` today — still confirmed, never silently skipped).
+
+Accepted in Tier 4 so far:
+F266 remedy study (a bounded, read-only repository comprehension pass —
+`remedy study run` — that files auto-approved memory cards carrying
+provenance `machine-study`, so `remedy teacher ask` can answer questions
+about a repository it never watched being built; proved end to end,
+`init` → `study run` → `teacher ask`, against a foreign repository fixture
+whose answer is only derivable from a card it wrote).
 
 Accepted in Tier 5 so far:
 F255 teacher role (`remedy teacher narrate`, `remedy teacher ask`, teacher spend
