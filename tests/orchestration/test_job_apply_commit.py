@@ -9,6 +9,7 @@ the real `run_job` with fake providers; no provider and no network is used.
 """
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,6 +18,7 @@ import pytest
 
 from packages.orchestration import mission_contract as MC
 from packages.orchestration import mission_state as MS
+from packages.orchestration.config import get_key_spec, load_config, push_after_mission_enabled
 from packages.orchestration.job_apply import (
     COMMIT_REFUSED,
     PUSH_REFUSED,
@@ -343,3 +345,176 @@ class TestFlagRefusals:
         assert "uncommitted changes in scratch.txt" in summary and "no upstream" in summary
         assert "--approve --commit 'Add the page' --push" in summary
 
+
+class TestPush:
+    def test_p1_exactly_one_push_to_the_upstream_never_forced(
+        self, repo, monkeypatch, tmp_path,
+    ):
+        remote = _bare_upstream(repo, tmp_path)
+        assert _git(remote, "config", "receive.denyNonFastForwards").strip() == "true"
+        job = _completed(repo, monkeypatch)
+        branch, before = _branch(repo), _head(repo)
+        result = apply_job(job.job_id, str(repo), approve=True,
+                           commit_message="Add the contact page", push=True)
+        assert result.status == "applied", (result.blocked_reason, result.push_error)
+        head = _head(repo)
+        assert _pushes(tmp_path) == [f"refs/heads/{branch} {before} {head}"]
+        assert _git(remote, "rev-parse", f"refs/heads/{branch}").strip() == head
+        assert result.pushed and result.push_remote == "origin"
+        assert result.push_ref == f"refs/heads/{branch}" and result.push_error == ""
+        record = load_job_apply_record(job.job_id, result.job_apply_id)
+        assert record["pushed"] is True and record["push_remote"] == "origin"
+        assert str(remote) not in json.dumps(record)            # the name, never the URL
+        assert "never forced" in summarize_job_apply(result)
+
+    def test_p2_the_push_argv_names_the_upstream_and_no_force(
+        self, repo, monkeypatch, tmp_path,
+    ):
+        from packages.orchestration import job_apply as JA
+
+        _bare_upstream(repo, tmp_path)
+        job = _completed(repo, monkeypatch)
+        seen: list[tuple[str, ...]] = []
+        real = JA._history_git
+
+        def spy(target, *args, **kw):
+            if "push" in args:
+                seen.append(args)
+            return real(target, *args, **kw)
+
+        monkeypatch.setattr(JA, "_history_git", spy)
+        result = apply_job(job.job_id, str(repo), approve=True,
+                           commit_message="Add the page", push=True)
+        assert result.pushed, result.push_error
+        assert seen == [("push", "--porcelain", "origin",
+                         f"{result.commit_sha}:refs/heads/{_branch(repo)}")]
+
+    def test_p3_the_history_merge_is_pushed_once(self, repo, monkeypatch, tmp_path):
+        remote = _bare_upstream(repo, tmp_path)
+        job = _completed(repo, monkeypatch)
+        result = apply_job(job.job_id, str(repo), approve=True, commit_with_history=True,
+                           push=True)
+        assert result.status == "applied", (result.blocked_reason, result.push_error)
+        assert result.commit_sha == result.merge_commit != ""
+        assert len(_pushes(tmp_path)) == 1
+        assert _git(remote, "rev-parse", _branch(repo)).strip() == result.merge_commit
+
+    def test_p4_no_upstream_is_refused_naming_the_command(self, repo, monkeypatch, tmp_path):
+        remote = tmp_path / "remote.git"
+        subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True, timeout=60)
+        _git(repo, "remote", "add", "origin", str(remote))
+        job = _completed(repo, monkeypatch)
+        before = _state(repo)
+        sentence = _refused(apply_job(job.job_id, str(repo), approve=True,
+                                      commit_message="Add the page", push=True),
+                            PUSH_REFUSED, before, repo)
+        assert f"`git push --set-upstream origin {_branch(repo)}`" in sentence
+        assert _git(remote, "for-each-ref") == "" and not (repo / "one.txt").exists()
+
+    @pytest.mark.parametrize("status", ["open", "unmet"])
+    def test_p5_a_blocking_criterion_not_met_is_refused_before_anything(
+        self, repo, monkeypatch, tmp_path, status,
+    ):
+        _bare_upstream(repo, tmp_path)
+        job = _completed(repo, monkeypatch)
+        _mission(monkeypatch, statuses={"C001": ("met", True), "C002": (status, True),
+                                        "C003": ("open", False)})
+        before = _state(repo)
+        sentence = _refused(apply_job(job.job_id, str(repo), approve=True,
+                                      commit_auto=True, push=True),
+                            PUSH_REFUSED, before, repo)
+        assert "criteria C002 are not met" in sentence and "C003" not in sentence
+        assert _pushes(tmp_path) == [] and not (repo / "one.txt").exists()
+
+    def test_p6_a_push_that_fails_leaves_the_commit_and_says_so(
+        self, repo, monkeypatch, tmp_path,
+    ):
+        remote = _bare_upstream(repo, tmp_path)
+        hook = remote / "hooks" / "pre-receive"
+        hook.write_text("#!/bin/sh\necho the remote is frozen >&2\nexit 1\n")
+        hook.chmod(0o755)
+        job = _completed(repo, monkeypatch)
+        remote_tip = _git(remote, "rev-parse", _branch(repo)).strip()
+        result = apply_job(job.job_id, str(repo), approve=True,
+                           commit_message="Add the page", push=True)
+        assert result.status == "applied_push_failed"
+        assert result.pushed is False and "the remote is frozen" in result.push_error
+        assert result.commit_sha == _head(repo) != remote_tip
+        assert _git(remote, "rev-parse", _branch(repo)).strip() == remote_tip
+        assert "stays where it landed" in summarize_job_apply(result)
+        record = load_job_apply_record(job.job_id, result.job_apply_id)
+        assert record["status"] == "applied_push_failed" and record["push_error"]
+
+
+class TestNoCommitWithoutAFlag:
+    @pytest.mark.parametrize("key_set", [False, True])
+    def test_n1_plain_approve_commits_and_pushes_nothing(
+        self, repo, monkeypatch, tmp_path, key_set,
+    ):
+        _bare_upstream(repo, tmp_path)
+        if key_set:
+            monkeypatch.setenv("REMEDY_APPLY_PUSH_AFTER_MISSION", "true")
+        job = _completed(repo, monkeypatch)
+        head = _head(repo)
+        result = apply_job(job.job_id, str(repo), approve=True)
+        assert result.status == "applied", result.blocked_reason
+        assert result.commit_sha == "" and result.commit_message_mode == "" and not result.pushed
+        assert _head(repo) == head and _pushes(tmp_path) == []
+        assert sorted(_git(repo, "status", "--porcelain").splitlines()) == [
+            "?? one.txt", "?? two.txt"]
+        assert "No commits or pushes were made" in summarize_job_apply(result)
+
+
+class TestTheConfigKey:
+    def test_k1_registered_as_a_bool_defaulting_to_false(self):
+        spec = get_key_spec("apply.push_after_mission")
+        assert spec is not None and spec.value_type is bool and spec.default is False
+        assert spec.env_var == "REMEDY_APPLY_PUSH_AFTER_MISSION"
+        assert spec.description.endswith(".") and ". " not in spec.description
+
+    @pytest.mark.parametrize("raw, expected", [
+        (None, False), ("true", True), ("1", True), ("yes", True),
+        ("false", False), ("0", False), ("maybe", False),
+    ])
+    def test_k2_the_helper_reads_only_a_true_env_value_as_true(
+        self, monkeypatch, tmp_path, raw, expected,
+    ):
+        if raw is None:
+            monkeypatch.delenv("REMEDY_APPLY_PUSH_AFTER_MISSION", raising=False)
+        else:
+            monkeypatch.setenv("REMEDY_APPLY_PUSH_AFTER_MISSION", raw)
+        config = load_config(tmp_path / "none.toml", tmp_path / "none-user.toml")
+        assert push_after_mission_enabled(config) is expected
+
+    @pytest.mark.parametrize("toml_value, expected", [
+        ("true", True), ("false", False), ('"false"', False), ('"true"', True)])
+    def test_k3_the_toml_string_false_is_false(self, monkeypatch, tmp_path,
+                                               toml_value, expected):
+        monkeypatch.delenv("REMEDY_APPLY_PUSH_AFTER_MISSION", raising=False)
+        project = tmp_path / "remedy.toml"
+        project.write_text(f"[remedy.apply]\npush_after_mission = {toml_value}\n")
+        config = load_config(project, tmp_path / "none-user.toml")
+        assert push_after_mission_enabled(config) is expected
+
+
+class TestThroughTheCli:
+    def test_a_clash_is_a_blocked_apply_and_a_commit_lands(self, repo, monkeypatch, data_root):
+        from tests.cli.runtime_helpers import run_grouped_cli
+
+        job = _completed(repo, monkeypatch)
+        base = ["job", "apply", job.job_id, "--repo", str(repo), "--approve", "--json"]
+        clash = run_grouped_cli(base + ["--commit", "Add the page", "--commit-auto"],
+                                data_root, timeout=120)
+        assert clash.returncode == 0, clash.stderr          # a blocked apply exits 0
+        assert json.loads(clash.stdout)["blocked_reason"].startswith(f"{COMMIT_REFUSED}: ")
+        alone = run_grouped_cli(base + ["--push"], data_root, timeout=120)
+        assert json.loads(alone.stdout)["blocked_reason"].startswith(f"{PUSH_REFUSED}: ")
+
+        landed = run_grouped_cli(base + ["--commit", "Add the contact page"],
+                                 data_root, timeout=120)
+        assert landed.returncode == 0, landed.stderr
+        data = json.loads(landed.stdout)
+        assert data["status"] == "applied", data["blocked_reason"]
+        assert all(key in data for key in COMMIT_KEYS)
+        assert data["commit_sha"] == _head(repo)
+        assert _paragraphs(repo)[0] == "Add the contact page"
