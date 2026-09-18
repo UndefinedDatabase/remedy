@@ -13,23 +13,24 @@ answers questions about that repository from those cards.
 
 ## Current Step
 
-ROUND 4 — CLI wiring. `study run [--path PATH] [--project PROJECT] [--json]`
-(new `apps/cli/commands/study_cmd.py`, wired into `collect_all_handlers`)
-calls `run_study` with `study_call_fn()` as the default `call_fn`. DECISION
-F266 D3: the new `study` group ships `user_facing=False` (advanced/internal,
-like `patch`/`test`/`brain`), not added to the operator-pinned
-`VISIBLE_GROUP_ORDER` — that promotion is F268's call, when `remedy do`
-actually drives it. Books R-0958's resolution from round 3.
+ROUND 5 — fix two defects the reviewer found in round 4's CLI wiring
+before they block T003. R-0960 (Medium): `study run` now resolves its
+project scope through `resolve_scope`, the SAME mechanism `teacher ask`
+uses, so both commands agree on one registered project id for one
+repository — falling back to the raw path with an honest warning only
+when no project is registered. R-0959 (Low): a direct test now proves
+`"study.run"` is a real key of `collect_all_handlers()`'s result, not
+just present in the catalog.
 
 ## Next Steps
 
-1. T003 — the three-step proved end to end against a foreign repository
-   fixture, including the new memory-card grounding source for
-   `teacher ask` (it has none today).
-2. Closure sequence.
+1. The `teacher ask` memory-card grounding source (`SOURCE_STUDY` in
+   `packages/orchestration/teacher_qa.py`) — it has none today.
+2. T003 — the three-step proved end to end against a foreign repository
+   fixture.
+3. Closure sequence.
 
 ## Risks
 
-- `teacher ask` has no memory-card retrieval path today (measured round
-  1): T003 must add one, which is more than wiring three commands
-  together and should be sized as its own round.
+- None new this round; the two fixes above were caught before landing
+  anything that depended on them.
