@@ -226,6 +226,7 @@ packages.orchestration.structured_outputs
 packages.orchestration.structured_patch
 packages.orchestration.structured_planner
 packages.orchestration.task_actor_binding
+packages.orchestration.task_deliverables
 packages.orchestration.task_execution
 packages.orchestration.task_granularity
 packages.orchestration.task_registry

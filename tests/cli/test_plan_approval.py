@@ -118,7 +118,7 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
     `intake.make_structured_call_fn` hands back a callable, and the real factory
     decides that by probing a live Ollama server. Leaving it unmocked made these
     tests read the developer machine instead of their own fixtures: green with a
-    server up, and on a CI runner silently down the `deterministic skeleton`
+    server up, and on a CI runner silently down the deterministic
     path, where every assertion below is about the plan that never got built.
     """
     def _fake_call(prompt: str, attempt: int) -> str:
@@ -186,7 +186,7 @@ class TestTaskPlanLabel:
         assert result.returncode == 0, result.stderr
         data = json.loads(result.stdout)
         shape = next(s for s in data["steps"] if s["name"] == "shape")
-        assert "plan: deterministic skeleton," in shape["detail"]
+        assert "plan: deterministic, one task per deliverable," in shape["detail"]
 
     def test_llm_task_plan_label(self, tmp_path, monkeypatch):
         """Successful LLM task plan -> label contains 'task plan' + 'awaiting approval'."""
@@ -302,6 +302,57 @@ class TestTaskPlanLabel:
         ev_dir = data_dir / "evidence_exports" / str(saved_job.job_id)
         postmortem_files = list(ev_dir.glob("*postmortem*")) if ev_dir.exists() else []
         assert len(postmortem_files) > 0, f"postmortem file must exist in {ev_dir}"
+
+    def test_llm_plan_records_each_tasks_deliverable(self, tmp_path, monkeypatch):
+        """DECISION F268 D6: an LLM task's deliverable is its first files_hint, else
+        its first acceptance line — here "Done", the mocked plan's only criterion."""
+        repo = _git_repo(tmp_path)
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        subprocess.run(
+            [*_CLI, "init"], capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=_env(tmp_path), stdin=subprocess.DEVNULL,
+        )
+        monkeypatch.chdir(str(repo))
+        _setup_llm_mocks(monkeypatch, plan_succeeds=True)
+
+        shaped = _shape_order(repo, "test mission")
+
+        assert [t.inputs["deliverable"] for t in shaped.job.tasks] == ["Done"]
+
+    def test_llm_plan_holding_an_inspection_task_is_rejected(self, tmp_path, monkeypatch):
+        """DECISION F268 D6: the one validator runs on the LLM plan too."""
+        import pytest
+
+        from packages.orchestration.do_sequence import OrderJobPlanError
+        from packages.orchestration.job_plan import TaskPlanResult
+        from packages.orchestration.pingpong_job import list_job_plans
+        from packages.orchestration.schemas.models import TaskPlan
+
+        repo = _git_repo(tmp_path)
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        subprocess.run(
+            [*_CLI, "init"], capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=_env(tmp_path), stdin=subprocess.DEVNULL,
+        )
+        monkeypatch.chdir(str(repo))
+        _setup_llm_mocks(monkeypatch, plan_succeeds=True)
+        inspecting = TaskPlan(
+            schema_v="task_plan_v1",
+            tasks=[{
+                "id": "T001", "title": "Analyze the repository", "goal": "Understand it",
+                "acceptance": ["Notes written"], "depends_on": [],
+                "est_tokens_band": "M", "files_hint": ["notes.md"],
+            }],
+            risks=[],
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(plan=inspecting, source="llm", calls=1),
+        )
+
+        with pytest.raises(OrderJobPlanError, match="is inspection"):
+            _shape_order(repo, "test mission")
+        assert list_job_plans() == []
 
 
 class TestApprovalGateEnforcement:

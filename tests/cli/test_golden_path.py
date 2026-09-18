@@ -97,10 +97,11 @@ class TestDoMission:
 
         out = result.stdout
         assert re.search(r"\[done\] shape: one job [0-9a-f]{16} linked to mission", out)
-        assert "3 task(s)" in out
+        # DECISION F268 D6: an order naming no path is ONE deliverable, so one task.
+        assert "1 task(s)" in out
         assert "to completed" in out
         assert "intake: heuristic (forced by --no-llm)" in out
-        assert "plan: deterministic skeleton" in out
+        assert "plan: deterministic, one task per deliverable" in out
         assert "[stopped] apply: stopped before apply" in out
         assert "Next: remedy job apply " in out
 
@@ -118,10 +119,11 @@ class TestDoMission:
         assert job["status"] == "completed"
         assert job["mission"] == "build a readme"
         assert job["intake"]["goal"]
-        assert len(job["tasks"]) == 3
+        assert len(job["tasks"]) == 1
+        assert job["tasks"][0]["inputs"]["deliverable"] == "build a readme"
         shape = next(s for s in data["steps"] if s["name"] == "shape")
         assert "intake: heuristic (forced by --no-llm)" in shape["detail"]
-        assert "plan: deterministic skeleton" in shape["detail"]
+        assert "plan: deterministic, one task per deliverable" in shape["detail"]
         assert data["stopped_before_apply"] is True
         assert data["contract"] is None
 
@@ -159,7 +161,7 @@ class TestDoMission:
 
         result = _run_do(repo, env, "ship it")
         assert result.returncode == 0
-        assert "plan: deterministic skeleton" in result.stdout
+        assert "plan: deterministic, one task per deliverable" in result.stdout
 
     def test_old_job_json_without_mission_loads(self, tmp_path):
         """Pre-F147 job JSON without mission field must still load."""

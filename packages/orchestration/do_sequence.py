@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from packages.orchestration.pingpong_job import JobPlan
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry
     from packages.orchestration.project_registry import RemyProject
 
 #: The sequence, as data (DECISION F268 D4). The walker reads nothing else.
@@ -106,6 +106,10 @@ def walk_do_sequence(ctx: DoContext,
 # ---------------------------------------------------------------------------
 
 
+#: The plan label of a job planned without an LLM task plan (DECISION F268 D6).
+DO_DETERMINISTIC_PLAN_LABEL = "deterministic, one task per deliverable"
+
+
 class OrderJobPlanError(Exception):
     """The task plan for an order could not be generated; the job is left unplanned."""
 
@@ -156,13 +160,20 @@ def plan_order_job(
     repo_path: str = "",
     no_llm: bool = False,
     yes: bool = False,
+    deterministic_tasks: list[TaskEntry] | None = None,
 ) -> OrderJobPlan:
-    """Plan ONE job for an order: intake, then an LLM task plan or the deterministic skeleton.
+    """Plan ONE job for an order: intake, then an LLM task plan or the deterministic one.
 
     ``repo_path`` is the job's target repository. ``yes`` auto-approves an LLM
     task plan through ``job_plan.auto_approve_task_plan`` (F034). The job is
-    saved and attached to ``project``. Raises :class:`OrderJobPlanError` when
-    an LLM task plan cannot be parsed, after writing the job's post-mortem.
+    saved and attached to ``project``. The deterministic plan is one task per
+    deliverable of the order (DECISION F268 D6); ``deterministic_tasks`` names
+    the job's tasks outright and skips the LLM task plan, which is how the
+    shape step plans a job per deliverable or per job-sized slice of them.
+    Every plan, LLM or deterministic, passes the deliverable validator.
+    Raises :class:`OrderJobPlanError` when an LLM task plan cannot be parsed
+    (after writing the job's post-mortem), when a plan fails the validator,
+    or when the order names more deliverables than one job holds.
     """
     from packages.core.models import RunState
     from packages.orchestration.intake import (
@@ -172,8 +183,13 @@ def plan_order_job(
         make_provider_call_fn,
         run_intake,
     )
-    from packages.orchestration.job_runner import plan_job
     from packages.orchestration.pingpong_job import JobPlan, save_job_plan
+    from packages.orchestration.task_deliverables import (
+        DeliverablePlanError,
+        deterministic_job_plans,
+        record_llm_task_deliverables,
+        validate_deliverable_plan,
+    )
 
     mission = order
     repo = repo_path
@@ -213,10 +229,10 @@ def plan_order_job(
 
     # --- Task Plan (LLM) or deterministic fallback ---
     job = None
-    plan_label = "deterministic skeleton"
+    plan_label = DO_DETERMINISTIC_PLAN_LABEL
 
     plan_call_fn = None
-    if call_fn is not None and not no_llm:
+    if call_fn is not None and not no_llm and deterministic_tasks is None:
         from packages.orchestration.intake import make_structured_call_fn
         from packages.orchestration.schemas.models import TaskPlan
         # Planning needs a call_fn bound to TaskPlan: the intake one binds
@@ -259,6 +275,11 @@ def plan_order_job(
             fp_dict["_approval"] = "pending"
             fp_dict["_normalization"] = fp_result.transformations
             tasks = map_task_plan_to_tasks(fp_result.plan)
+            record_llm_task_deliverables(tasks)
+            try:
+                validate_deliverable_plan(tasks)
+            except DeliverablePlanError as exc:
+                raise OrderJobPlanError(f"task plan rejected: {exc}") from exc
             from packages.core.models import JobBudgets, JobFences
             from packages.orchestration.budget_resolution import resolve_job_budgets
             config_budgets = resolve_job_budgets(project_root=repo)
@@ -347,14 +368,27 @@ def plan_order_job(
             )
 
     if job is None:
+        if deterministic_tasks is not None:
+            tasks = list(deterministic_tasks)
+        else:
+            plans = deterministic_job_plans(mission)
+            if len(plans) > 1:
+                raise OrderJobPlanError(
+                    f"the order names {sum(len(p) for p in plans)} deliverables, more than "
+                    f"one job holds; `remedy do` plans them as {len(plans)} jobs")
+            [tasks] = plans
+        try:
+            validate_deliverable_plan(tasks)
+        except DeliverablePlanError as exc:
+            raise OrderJobPlanError(f"task plan rejected: {exc}") from exc
         job = JobPlan(
             job_title=mission[:80], mission=mission, user_prompt=mission,
             project_id=str(project.id),
             repo_path=target_repo_path,
             intake=intake_result.value.model_dump(),
+            tasks=tasks,
+            state=RunState.PLANNED,
         )
-        plan_result = plan_job(job)
-        job = plan_result.job
         save_job_plan(job)
 
     if prompt_traces:
