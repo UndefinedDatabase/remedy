@@ -13,4 +13,12 @@ answers questions about that repository from those cards.
 
 ## Status
 
-CLOSED — F266 complete. PR awaits merge at the next feature's Open PR Gate.
+CLOSED — F266 complete. Round 12 repaired the hosted-CI red this file's
+closure rewrite caused (finding R-0962).
+
+## Next Steps
+
+1. Merge pull request 255 at the Open PR Gate once its hosted CI run on
+   this branch's tip reads green.
+2. Claim the next feature in `docs/roadmap/STATUS.md` order (Rule A5) on a
+   fresh `feature/*` branch cut from the updated `main`.
