@@ -1,0 +1,1 @@
+2026-09-18, F269 round 11 — the reviewer's block stated "68 passed over the G2 files" for a dry run over a different file list (`tests/orchestration/test_pingpong.py` in, `tests/cli/test_golden_path.py` out); the G2 list read 110 passed. A count quoted beside a gate is measured over that gate's exact list.
