@@ -13,23 +13,20 @@ answers questions about that repository from those cards.
 
 ## Current Step
 
-ROUND 3 — fix R-0958 (the `_walk_repo` dotfile-mangling defect, registered
-this round) and land the `study` role's real provider bridge:
-`StudyCategoryNarration` (a minimal structured schema mirroring
-`GeneratedSummaryContent`), `study_call_fn()` (mirrors `summary_call_fn()`:
-`resolve_role_config("study")` → `make_structured_call_fn`, adapted to
-`run_study`'s existing plain-string `call_fn` contract so round 2's tests
-need no changes), and the matching `ROLE_CONFIG_CALL_SITES` inventory
-entry.
+ROUND 4 — CLI wiring. `study run [--path PATH] [--project PROJECT] [--json]`
+(new `apps/cli/commands/study_cmd.py`, wired into `collect_all_handlers`)
+calls `run_study` with `study_call_fn()` as the default `call_fn`. DECISION
+F266 D3: the new `study` group ships `user_facing=False` (advanced/internal,
+like `patch`/`test`/`brain`), not added to the operator-pinned
+`VISIBLE_GROUP_ORDER` — that promotion is F268's call, when `remedy do`
+actually drives it. Books R-0958's resolution from round 3.
 
 ## Next Steps
 
-1. CLI wiring — a standalone `study` command in the catalog, using
-   `study_call_fn()` as its default `call_fn`.
-2. T003 — the three-step proved end to end against a foreign repository
+1. T003 — the three-step proved end to end against a foreign repository
    fixture, including the new memory-card grounding source for
-   `teacher ask`.
-3. Closure sequence.
+   `teacher ask` (it has none today).
+2. Closure sequence.
 
 ## Risks
 

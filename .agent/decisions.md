@@ -14611,3 +14611,20 @@ difference, and the downstream approval gates (`project_brain.py`, `context_summ
 gate on `.approved` alone, so nothing downstream needs to know about `provenance` at all this round
 — only the write path does. REVERSE by deleting this paragraph, the `provenance` field, and
 reverting `store_memory`'s signature.
+## DECISION F266 D3 (2026-09-18, reviewer, round 4) — `study` ships as an advanced/internal group, not in the default help order
+CHOSEN: register `GroupDef("study", "Study", "...", user_facing=False)` (hidden defaults to False) — the same
+"advanced/internal: callable but hidden from default help" tier as `patch`, `test`, `brain` and `mission`, NOT
+the fully-invisible `hidden=True` tier `roadmap` uses. MEASURED: `VISIBLE_GROUP_ORDER`
+(`apps/cli/command_catalog.py`) is a FIXED, operator-pinned tuple — DECISION amend0905-vocab D4, clarified by
+amend0911-feedback D1 — and `tests/test_command_catalog.py::TestVisibleGroupOrder::test_visible_group_order_matches_d4`
+asserts it byte-for-byte; every `user_facing=True, hidden=False` group MUST appear in it
+(`test_visible_group_order_is_exactly_the_visible_groups`), so making `study` visible in this round would mean
+amending an operator-authored, explicitly-versioned UX decision on the reviewer's own authority, for a command
+whose place in the actual golden path (`docs/roadmap/features/T4_F266.md`'s Design section: "study is invoked
+EXACTLY ONCE by `remedy do`" — F268, not yet built) does not exist yet. `study run` is fully functional and
+discoverable via `remedy --all-commands`/`remedy study --help` either way — `user_facing=False` changes ONLY
+whether it clutters the default `--help` output before its automatic caller exists. ALTERNATIVES
+CONSIDERED: amending `VISIBLE_GROUP_ORDER` now, rejected because D4 is an operator decision this feature was not
+asked to revisit, and promoting `study` makes more sense at F268's closure, when `remedy do` actually drives it and
+the golden path is real rather than aspirational. REVERSE by setting `user_facing=True` and adding `"study"` to
+`VISIBLE_GROUP_ORDER` (at F268's own discretion for placement) in the same commit as updating the two pinned tests.
