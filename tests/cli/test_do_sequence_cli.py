@@ -90,13 +90,20 @@ def test_init_to_study_registers_studies_once_and_records_it(repo, capsys):
     assert resolve_project(repo).metadata["studied_at"] == studied_at
 
 
-def test_init_writes_every_ignore_entry_into_the_repos_exclude_file(repo, capsys):
-    """R-0963 / DECISION F268 D2: the init step keeps Remedy's own paths out of `git status`."""
+def test_init_writes_every_ignore_entry_into_the_repos_exclude_file(repo, capsys, monkeypatch):
+    """R-0963 / DECISION F268 D2: the init step keeps Remedy's own paths out of `git status`.
+
+    The data root sits INSIDE the repository here, so `ignore_entries` returns its
+    entry as well as `.remedy-wt/`. Only the init step writes the data-root entry;
+    the run step's worktree code writes `.remedy-wt/` by itself, which alone would
+    let this test pass with the init step's loop emptied.
+    """
     from packages.orchestration.repo_ignore import ignore_entries
 
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(repo / ".remedy-data"))
     exclude = repo / ".git" / "info" / "exclude"
     entries = ignore_entries(repo)
-    assert entries
+    assert ".remedy-data/" in entries
     before = exclude.read_text(encoding="utf-8").split() if exclude.is_file() else []
     assert not set(entries) & set(before)
 
