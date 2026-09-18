@@ -1,0 +1,2 @@
+1 failed, 18060 passed, 23 skipped, 1 warning in 252.18s (0:04:12)
+tests/cli/test_study_cmd.py::TestStudyCommandReachability::test_study_run_dispatch_e2e
