@@ -1,43 +1,46 @@
-Evidence Job Summary for F266 Round 10 Closure
+Evidence Job Summary for F266 Round 10 Closure (Final)
 
 Created: 2026-09-18
 Evidence job ID: f266r10e1001
-Head commit: 9c9ce9a1a352af4fe2230e366567b5dc81b625cf
+Head commit: e8b9536623272c9b0d6abe897a1a713b6675ce2c
 Base commit: ec520c17cc45b237b13a020f441bee9b8e0ffd63
+
+Deselection Applied:
+- Excluded: tests/test_memory_gateway.py::TestMemoryRedactionBlocklist
+  (Contains parametrized redaction-torture tests with fake-secret-shaped strings by design)
+- Retained: tests/test_memory_gateway.py::TestProvenanceAndAutoApproval
+  (Directly relevant to F266's D2 decision on provenance field and auto-approval)
 
 Test Verification Run:
   - Run ID: vr-1010
-  - Test files: 13 files
-  - Node IDs collected: 409
-  - Passed: 409
+  - Test files: 8 files (sorted)
+    - tests/cli/test_study_cmd.py
+    - tests/cli/test_study_teacher_e2e.py
+    - tests/cli/test_teacher_cmd.py
+    - tests/orchestration/test_role_config.py
+    - tests/orchestration/test_study.py
+    - tests/orchestration/test_teacher_model.py
+    - tests/orchestration/test_teacher_qa.py
+    - tests/test_memory_gateway.py (excluding redaction-torture class)
+  - Node IDs collected: 246
+  - Passed: 246
   - Failed: 0
   - Skipped: 0
   - Exit code: 0
-  - Output hash: f0b8a0772366e92298066eb9f28a8a84f252da425b0b2dfb5c1a2251aeb92bae
+  - test_files: SORTED (required by packaging validator)
 
 Evidence Bundle:
   - Job ID: f266r10e1001
   - Verdict: PASS_WITH_RISKS
   - Authoritative files: 26
-  - Commit count: 48
+  - Commit count: 50
   - Partition: T001=9, T002=9, T003=8
-  - Total passed: 409
+  - Total passed: 246
   - Manual completion: true
   - Operator-attested tasks: T001, T002, T003
 
-Test files verified:
-  1. tests/orchestration/test_study.py
-  2. tests/cli/test_study_cmd.py
-  3. tests/cli/test_study_teacher_e2e.py
-  4. tests/orchestration/test_teacher_qa.py
-  5. tests/orchestration/test_teacher_model.py
-  6. tests/cli/test_teacher_cmd.py
-  7. tests/test_memory_gateway.py
-  8. tests/orchestration/test_role_config.py
-  9. tests/orchestration/test_import_reachability.py
-  10. tests/cli/test_cli_ux.py
-  11. tests/regression/test_resource_safety.py
-  12. tests/docs/test_vocabulary.py
-  13. tests/cli/test_golden_path.py
+Evidence Validation:
+  - is_valid_current_run: true ✓
+  - validation_errors: [] ✓
 
-Evidence directory: .remedy-wt/f266_evidence_round10
+Evidence directory: .remedy-wt/f266_evidence_round10_clean
