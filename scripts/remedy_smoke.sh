@@ -1925,7 +1925,7 @@ print('    localhost UI: OK (url=' + url + ')')
     _SMOKE_SECTION="12ao"
     echo "--- 12ao. Repair-loop fixture E2E"
     TMP_REPAIR=$(mktemp -d)
-    _REPAIR_OUTPUT=$(remedy do "Make tests pass" --repo "${TMP_REPAIR}" --autonomy-level 6 --max-cycles 3 --fixture-builder repair-loop --no-ui --json 2>&1) || {
+    _REPAIR_OUTPUT=$(remedy do "Make tests pass" --repo "${TMP_REPAIR}" --autonomy-level 6 --max-cycles 3 --no-ui --json 2>&1) || {
         echo "    repair-loop command failed (rc=$?)"
         echo "    output: ${_REPAIR_OUTPUT}"
         remedy do run --help 2>&1 || true

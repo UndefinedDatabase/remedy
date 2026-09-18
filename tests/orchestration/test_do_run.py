@@ -567,12 +567,16 @@ class TestCatalogMetadataTruth:
         assert entry.may_mutate_repo is False, \
             "v1 never mutates repo — fixture only, stops before apply"
 
-    def test_do_run_no_command_execution(self):
-        """do.run should not claim may_execute_commands in v1."""
+    def test_do_run_declares_command_execution_like_job_run(self):
+        """R-0965: bare `do "<order>"` runs a job through job.run's runner, so it
+        declares the same execution metadata as job.run."""
         from apps.cli.command_catalog import CATALOG
         entry = next(e for e in CATALOG if e.command_id == "do.run")
-        assert entry.may_execute_commands is False, \
-            "v1 runs no external commands"
+        job_run = next(e for e in CATALOG if e.command_id == "job.run")
+        assert entry.may_execute_commands is True, \
+            "do.run runs a job, which executes commands"
+        assert (entry.may_execute_commands, entry.may_mutate_repo, entry.action_class) == (
+            job_run.may_execute_commands, job_run.may_mutate_repo, job_run.action_class)
 
     def test_do_run_action_class_not_apply_write(self):
         """do.run action_class should reflect data-only writes."""

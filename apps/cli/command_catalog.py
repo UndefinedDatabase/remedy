@@ -1597,7 +1597,9 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--no-llm", "Force heuristic intake (no LLM provider call)", required=False, is_option=True, is_flag=True),
         ),
         may_mutate_repo=False,
-        may_execute_commands=False,
+        # R-0965: a bare `remedy do "<order>"` runs its job through the same
+        # runner as `job.run`, so it declares the same execution metadata.
+        may_execute_commands=True,
     ),
     CommandEntry(
         command_id="run.show",

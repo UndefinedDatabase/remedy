@@ -89,6 +89,22 @@ def test_init_to_study_registers_studies_once_and_records_it(repo, capsys):
     assert resolve_project(repo).metadata["studied_at"] == studied_at
 
 
+def test_init_writes_every_ignore_entry_into_the_repos_exclude_file(repo, capsys):
+    """R-0963 / DECISION F268 D2: the init step keeps Remedy's own paths out of `git status`."""
+    from packages.orchestration.repo_ignore import ignore_entries
+
+    exclude = repo / ".git" / "info" / "exclude"
+    entries = ignore_entries(repo)
+    assert entries
+    before = exclude.read_text(encoding="utf-8").split() if exclude.is_file() else []
+    assert not set(entries) & set(before)
+
+    _do_json(capsys)
+
+    written = exclude.read_text(encoding="utf-8").split()
+    assert [entry for entry in entries if entry not in written] == []
+
+
 def test_study_to_plan_creates_the_mission_carrying_the_order(repo, capsys):
     from packages.orchestration.mission_state import load_mission
     from packages.orchestration.project_registry import resolve_project

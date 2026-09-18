@@ -34,12 +34,16 @@ the job id, the failure artifact id and an optional fixture-builder switch, and 
   absolute paths, secrets, or tracebacks.
 - Creates (or reuses) a **Fix Task** linked to the failure / test run / original
   task / intent / apply / repair attempt.
-- With `--fixture-builder`, runs the deterministic fixture repair builder. For
-  supported failure kinds it creates a **Repair Artifact** that yields a real,
-  resolvable **Fix Patch Intent** (pending approval) and stops at
-  `approval_required`. The next safe action is
+- With its fixture-builder switch, ran the deterministic fixture repair builder. For
+  supported failure kinds it created a **Repair Artifact** that yielded a real,
+  resolvable **Fix Patch Intent** (pending approval) and stopped at
+  `approval_required`. The next safe action was
   `remedy patch approve <job_id> <repair_intent_id>`.
-- Without `--fixture-builder` it stops at `fix_task_created`.
+- Without the switch it stopped at `fix_task_created`.
+
+No command takes a `--fixture-builder` flag any more: the `repair` words went in F261
+round 22, and F268 deleted the last one, on `remedy do`. `remedy do` chooses its
+builder with `--builder-provider` (`claude`, `claude-cli`, `fake` or `ollama`).
 - Unsupported failures (e.g. `timeout`, `collection_failed`, `unknown`) stop at
   `repair_builder_unavailable` — the Fix Task is still created.
 

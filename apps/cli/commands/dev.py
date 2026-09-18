@@ -198,7 +198,7 @@ def _dev_status(*, json_output: bool = False) -> None:
         print("Commands:")
         print("  remedy ui <job_id>                          — open UI")
         print("  remedy worker unload --all                  — free VRAM")
-        print('  remedy do "goal" --fixture-builder repair-loop --no-ui --json  — repair E2E')
+        print('  remedy do "goal" --no-ui --json             — repair E2E')
         print("  remedy memory candidates <job_id> --json    — memory candidates")
         print("  remedy dev status --json                    — this status")
         print("  source scripts/remedy_smoke.sh && remedy_smoke     — smoke")

@@ -4,7 +4,7 @@
 
 The autocoder pipeline runs in stages:
 
-1. **Builder**: Calls the selected provider (fixture or Ollama) to generate a structured patch
+1. **Builder**: Calls the builder (the deterministic fixture on `do run`) to generate a structured patch
 2. **Parse**: Validates the patch format, paths, and safety constraints
 3. **Intent**: Creates a patch intent record with change explanations
 4. **Approval**: Gates application — requires human approval at autonomy < 3
@@ -19,13 +19,13 @@ Each stage can stop the pipeline with an explicit `stop_reason`.
 ### Fixture smoke (CI-safe, no Ollama required)
 
 ```sh
-remedy do run "fix the add function" --repo /tmp/myrepo --builder-provider fixture --autonomy-level 4 --max-cycles 1 --json
+remedy do run "fix the add function" --repo /tmp/myrepo --autonomy-level 4 --max-cycles 1 --json
 ```
 
 ### Real Ollama via `remedy do` (requires running Ollama)
 
 ```sh
-remedy do run "add a hello() function" --repo /tmp/myrepo --builder-provider ollama --autonomy-level 2 --max-cycles 1 --json
+remedy do "add a hello() function" --repo /tmp/myrepo --builder-provider ollama --json
 ```
 
 ### Real Ollama smoke via pytest (opt-in)
@@ -44,15 +44,20 @@ remedy worker unload --provider ollama --all
 
 ## Builder Providers
 
-| Provider   | What it does                                | When to use                     |
-|------------|---------------------------------------------|---------------------------------|
-| `none`     | No builder runs (default)                   | Inspection, dry run             |
-| `fixture`  | Deterministic fixture, no LLM               | CI, testing, demos              |
-| `ollama`   | Calls real local Ollama model               | Local model experiments         |
+`remedy do run` with autorun flags (`--autonomy-level`, `--max-cycles`, …) always runs the
+deterministic fixture builder, no LLM; it accepts `--builder-provider` but does not read it
+(R-0933). The builder of a bare `remedy do "<order>"` is chosen with `--builder-provider`
+(and the reviewer with `--reviewer-provider`):
 
-Select with `--builder-provider none|fixture|ollama`.
+| Provider     | What it does                                | When to use                     |
+|--------------|---------------------------------------------|---------------------------------|
+| `fake`       | Deterministic fake provider, no LLM         | CI, testing, demos              |
+| `ollama`     | Calls real local Ollama model               | Local model experiments         |
+| `claude`     | Calls the Claude API                        | Real runs                       |
+| `claude-cli` | Calls the local Claude CLI                  | Real runs                       |
 
-Legacy `--fixture-builder true|repair-loop` still works but `--builder-provider` takes precedence.
+Omitted, each role takes its role config. F268 deleted the `--fixture-builder` flag and the
+`none` and `fixture` values of `--builder-provider`; the parser refuses all three (exit 2).
 
 ## Autonomy Levels
 
@@ -73,7 +78,7 @@ Legacy `--fixture-builder true|repair-loop` still works but `--builder-provider`
 ### Job summary (JSON output)
 
 ```sh
-remedy do run "fix the bug" --repo ./myrepo --builder-provider fixture --json
+remedy do run "fix the bug" --repo ./myrepo --json
 ```
 
 Output (version 2) includes:
@@ -89,7 +94,7 @@ Output (version 2) includes:
 ### Dashboard JSON
 
 ```sh
-remedy do run "fix the bug" --repo ./myrepo --builder-provider fixture --ui
+remedy do run "fix the bug" --repo ./myrepo --ui
 ```
 
 Dashboard shows:
