@@ -13,11 +13,11 @@ changes on the operator's branch only when the operator asks
 
 ## Current Step
 
-Round 6, closure round A: book round 5's verdict and R-0978 for F273,
-then the self-use item, the integrity check, the evidence job and the
-review package at the accepted head.
+Closed. Round 7 booked the closure verdict PASS_WITH_RISKS, rotated the
+ledger and flipped STATUS; the pull request into `main` waits for the
+Open PR Gate.
 
 ## Next Steps
 
-1. Closure round B: the verdict bookings, the ledger rotation, STATUS,
-   README, the self-use item consumed, and the pull request.
+1. The next session merges F270's pull request at the Open PR Gate, then
+   claims the next feature under Rule A5.

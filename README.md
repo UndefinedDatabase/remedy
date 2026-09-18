@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-83 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+84 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 25 | 34 |
+| 2 | Minimal Self-Build Runtime | 26 | 34 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -146,7 +146,16 @@ the order or forced with `remedy do "<order>" --contract <name>`, each
 carrying three blocking hygiene criteria; an amendment applies from the next
 round and is
 acknowledged in the mission's ledger; and at budget end a one-word `yes`
-starts a follow-up mission carrying the unmet criteria).
+starts a follow-up mission carrying the unmet criteria),
+F270 history apply (every applied task of a job lands as one commit on its
+`remedy/job-<job id>` branch; `remedy job apply <job> --approve
+--commit-with-history` merges those commits onto the operator's branch with
+`--no-ff` and refuses a dirty tree, a conflict or a staging job, changing
+nothing; `--commit "<message>"` and `--commit-auto` land one commit of the
+copied files, and `--push` pushes it once, never forced, to the branch's
+upstream while no blocking criterion is unmet; `remedy do` passes the flags
+through, chains its jobs under a commit flag and pushes the mission once; and
+without one of those flags Remedy commits nothing on the operator's branch).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

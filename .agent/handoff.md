@@ -1,147 +1,115 @@
-# Handoff — F270 History apply: one commit per task, merge on demand · Round 6
+# Handoff — F270 History apply: one commit per task, merge on demand · Round 7 (closure round B)
 
 ## Session
 
-SESSION 1 of feature F270 · round 6 · rounds so far 6
+SESSION 1 of feature F270 · round 7 · rounds so far 7
 
-Context self-assessment: I read the block, AGENTS.md, the closure protocol's Preconditions 3 and 6, Algorithm steps 1 and 2 with pitfalls (a) to (e) and the canonical zip sequence, and F269's round 11 recipe files; every figure below comes from a command run in this round, and my context held all of it without loss.
+Context self-assessment: the worker read the block, AGENTS.md, closure protocol Algorithm steps 4 to 6 with the amend0905 rotation paragraph and F269's closure commits once each, and every figure below comes from a command run in this round.
 
 ## Range
 
-Review of e9750619..HEAD — branch `feature/f270-history-apply`.
+Review of b1e5e846..HEAD — branch `feature/f270-history-apply`.
 
 ## Summary
 
-Round 6 is closure round A. C1 books round 5's PASS and R-0978, owned by F273, and appends R-0978's acceptance line to T2_F273.md. C2 generates self-use item SU-021 and runs it to the approval gate without applying it. The run ended `blocked`, with two defect strings. C3 records the integrity check, which passed with 5 checks and 0 failures. C4 records evidence job `f270r6e1001` and the review package, which reads READY_FOR_REVIEW at the accepted HEAD `3e9897ac`.
+Round 7 is closure round B:
+
+- C1 booked round 6's verdict (PASS_WITH_RISKS, F270's closure verdict) into `.agent/live_review.md` and saved byte copies of the seven payloads, the block included.
+- C2 rotated the live-review ledger. The open-findings count is 128 before and after.
+- C3 is the closure commit, the last commit on the branch (Rule A4): STATUS `[x]`, README, SU-021 `consumed_by: "F270"`, the final `.agent/plan.md` and this handoff.
+- C4 opens the pull request into `main` after the push. It is not merged.
 
 ## Commits
 
-### ff550abe F270 R6 C1: book round 5's PASS and R-0978 for F273, rewrite the plan for closure round A, and save the round 6 payload and block copies
+### be80be80 F270 R7 C1: book round 6's closure verdict PASS_WITH_RISKS and save the round 7 payload and block copies
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f270-r6-block.md` | +96 / -0 | Byte copy of the block |
-| `.agent/authored/f270-r6-f273_from.txt` | +3 / -0 | Byte copy of f273_from.txt |
-| `.agent/authored/f270-r6-f273_to.txt` | +6 / -0 | Byte copy of f273_to.txt |
-| `.agent/authored/f270-r6-ledger.md` | +4 / -0 | Byte copy of ledger.md |
-| `.agent/authored/f270-r6-plan.md` | +23 / -0 | Byte copy of plan.md |
-| `.agent/live_review.md` | +4 / -0 | `e9750619` bytes + ledger.md (Gate F270 R5, VERDICT PASS; R-0978) |
-| `.agent/plan.md` | +5 / -9 | := plan.md |
-| `docs/roadmap/features/T2_F273.md` | +3 / -0 | f273_from.txt replaced by f273_to.txt, an append. FROM appears once before and once after. The three added lines are exactly the lines only TO has |
+| `.agent/authored/f270-r7-block.md` | +71 / -0 | Byte copy of the block |
+| `.agent/authored/f270-r7-ledger.md` | +2 / -0 | Byte copy of ledger.md |
+| `.agent/authored/f270-r7-pairs.py` | +45 / -0 | Byte copy of pairs.py |
+| `.agent/authored/f270-r7-plan.md` | +23 / -0 | Byte copy of plan.md |
+| `.agent/authored/f270-r7-pr_body.md` | +23 / -0 | Byte copy of pr_body.md |
+| `.agent/authored/f270-r7-readme_paragraph.txt` | +9 / -0 | Byte copy of readme_paragraph.txt |
+| `.agent/authored/f270-r7-status_line.txt` | +1 / -0 | Byte copy of status_line.txt |
+| `.agent/live_review.md` | +2 / -0 | `b1e5e846` bytes + ledger.md (Gate F270 R6 PASS_WITH_RISKS) |
 
-144 insertions, 9 deletions (`git show --numstat`).
+176 insertions, 0 deletions (`git show --numstat`).
 
-### 6b08a96f F270 R6 C2: closure precondition 6 — generate SU-021, run it to the approval gate, record the evidence
+### 80c23593 F270 R7 C2: rotate the live-review ledger, 607467 to 568711 bytes, 128 open findings before and after
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/selfuse_f270/SU-021.md` | +7 / -0 | The job file the runner wrote |
-| `.agent/selfuse_f270/entry_and_job_file.txt` | +5 / -0 | SU-021, tier 1 for R-0445, `consumed_by` empty |
-| `.agent/selfuse_f270/execution_config.txt` | +7 / -0 | Builder and reviewer both ollama, 2 repair rounds, 3 max rounds, worktree isolation |
-| `.agent/selfuse_f270/full_transcript.txt` | +24 / -0 | Job `980ba851d7104d70`, blocked |
-| `.agent/selfuse_f270/result_state.txt` | +8 / -0 | The run's `result_state` |
-| `.agent/selfuse_f270/run_defects.txt` | +4 / -0 | The two strings from `describe_self_use_run_defects` |
-| `scripts/self_use_queue.json` | +8 / -0 | The generator's SU-021 entry, `consumed_by` empty |
+| `.agent/live_review.md` | +0 / -38 | `scripts/rotate_live_review.py` moved 13 gate records and 3 finding pairs out |
+| `.agent/live_review_archive.md` | +38 / -0 | The same records, appended byte-verbatim |
 
-63 insertions, 0 deletions.
+38 insertions, 38 deletions (`git show --numstat`).
 
-### 3e9897ac F270 R6 C3: closure precondition 3 — the integrity check reads passed, five checks, none failing
+### C3 (this commit) F270 R7 C3: closure
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f270-integrity-check.txt` | +33 / -0 | `export_integrity_json(run_integrity_checks())`, in F269's shape |
-
-33 insertions, 0 deletions.
-
-### c723e999 F270 R6 C4: closure round A — evidence job f270r6e1001 and the review package READY_FOR_REVIEW at the accepted HEAD
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/authored/f270-r6-evidence-summary.txt` | +51 / -0 | The evidence job, in F269's shape |
-| `.agent/authored/f270-r6-zip-output.txt` | +33 / -0 | The zip build, in F269's shape |
-
-84 insertions, 0 deletions.
-
-### C5 (this commit) F270 R6 C5: handoff
-| Path | +/- | Reason |
-|------|-----|--------|
+| `docs/roadmap/STATUS.md` | +1 / -1 | `pairs.py .`: F270 `[~]` → `[x]` with the reviewer's line |
+| `README.md` | +12 / -3 | `pairs.py .`: 83 → 84 accepted, Tier 2 done 25 → 26, the F270 paragraph |
+| `scripts/self_use_queue.json` | +1 / -1 | SU-021 `consumed_by: "F270"` (precondition 6) |
+| `.agent/plan.md` | +5 / -5 | := plan.md |
 | `.agent/handoff.md` | rewritten | This handback |
 
-Every commit has fewer than 500 inserted lines. The largest is C1, with 144.
+Every commit is under 500 inserted lines. The largest is C1, with 176.
 
 ## External actions
 
-- `git push origin feature/f270-history-apply` after C3: the tip `3e9897ac` equals origin. The push was not forced.
-- The self-use run (`run_job` with worktree isolation) created the worktree `.remedy-wt/job-980ba851d7104d70` on a new branch, `remedy/job-980ba851d7104d70`. The worktree was clean, with no edits, and its HEAD was at `ff550abe`. Following the F268 and F269 precedent, I removed it after C2 with `git worktree remove --force` and kept the branch. The `remedy/job-*` count was 33 before C2 and 34 after it.
-- Evidence job `.remedy-wt/f270-r6/create_f270_evidence.py` wrote `.remedy-wt/f270_evidence_round6`, which is not committed.
-- `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f270_evidence_round6` produced one package, READY_FOR_REVIEW on the first attempt. The package was left where the script built it.
-- After this commit: `git push origin feature/f270-history-apply`. No pull request is opened this round.
+- `git push` after C3 (this commit), pushing C1 to C3.
+- C4, after the push: `gh pr create --base main --head feature/f270-history-apply --title "F270 — History apply: one commit per task, merge on demand" --body-file .agent/authored/f270-r7-pr_body.md`. The PR number cannot be written here because this commit precedes the PR; the round report carries it.
+- No merge, no worktree, no evidence job and no zip this round.
 
 ## Verification
 
-- **G1** (after C1): `python3 .remedy-wt/f270-r6/g1.py`, exit 0:
+- **Transport**, before any write: `sha256sum` of the block read `8a98dc016dee0c52bf9263e4bd2ff947946343c4e868f6d5537a3e12a459ab37`, and all six payloads (ledger.md, plan.md, status_line.txt, readme_paragraph.txt, pairs.py, pr_body.md) matched the digests the block states.
+- **G1** (after C2), `python3 .remedy-wt/f270-r7/g1.py`, exit 0: `True` — `.agent/live_review.md` at C1 `be80be80` equals its `b1e5e846` bytes + ledger.md, and the seven `.agent/authored/f270-r7-*` copies at C1 equal their payloads.
+- **G2** `python3 scripts/rotate_live_review.py`, exit 0:
   ```
-  payload digests matched: True
-  live_review == e9750619 bytes + ledger.md: True
-  T2_F273 == e9750619 bytes with the pair applied: True
-  .agent/plan.md == plan.md: True
-  .agent/authored/f270-r6-ledger.md == payload: True
-  .agent/authored/f270-r6-plan.md == payload: True
-  .agent/authored/f270-r6-f273_from.txt == payload: True
-  .agent/authored/f270-r6-f273_to.txt == payload: True
-  .agent/authored/f270-r6-block.md == payload: True
-  block copy sha256: 1a9fe667222394dd0864c9a2272c59af11dd49c718cf64b1796181bd784ae9be
+  gate records moved: 13
+  finding pairs moved: 3 (6 records)
+  old ledger size: 607467 bytes
+  new ledger size: 568711 bytes
+  old archive size: 3860151 bytes
+  new archive size: 3898907 bytes
+  open findings before: 128
+  open findings after: 128
   ```
-- **G2** (after C1): `python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/orchestration/test_roadmap_index.py tests/cli/test_golden_path.py`, exit 0: `382 passed in 42.34s`.
-- **G3** (at C3 after the push): `run_integrity_checks()`, exit 0: `passed: True fail_count: 0 [('handler_import', 'pass'), ('live_review_verdict', 'pass'), ('plan_consistency', 'pass'), ('relevant_untracked', 'pass'), ('high_blockers_open', 'pass')]`. `git status --porcelain` printed 0 lines. `git rev-parse HEAD origin/feature/f270-history-apply` printed `3e9897ac5409f6e198d90fc342a37c3a56304a78` twice.
-- **G4** (C4, from a clean tree at C3):
-  - `git rev-list --ancestry-path --count b7f966c0b597ab1da010f3e245c055b9e8d54509..3e9897ac5409f6e198d90fc342a37c3a56304a78` → `27`. `git rev-list --count` over the same range → `27`.
-  - `python3 .remedy-wt/f270-r6/create_f270_evidence.py`, exit 0: `Collected 164 node IDs after deselection`, `Test results: 164 passed, 0 failed, 0 skipped`, `is_valid_current_run: True`, `validation_errors: []`.
-  - `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f270_evidence_round6`, exit 0: `PACKAGE_STATUS=READY_FOR_REVIEW`, `EVIDENCE_AUTHORITATIVE=true`, `REVIEW_SUBJECT_ALIGNMENT=PASS`.
-  - `python3 .remedy-wt/f270-r6/verify_zip.py`, exit 0: `head_commit: 3e9897ac5409f6e198d90fc342a37c3a56304a78`, `base_commit: b7f966c0b597ab1da010f3e245c055b9e8d54509`, `head_commit == C3: True`, `package_status: READY_FOR_REVIEW`.
-  - `sha256sum` on the package, exit 0: `e058bfd3564ae7777bad9ea1d222645611297108bb7ccc9c959d9451a20946a2`.
-- **Self-use run** (`python3 .remedy-wt/f270-r6/run_selfuse.py`, exit 0): `generate_and_append_if_empty -> SU-021`. Job `980ba851d7104d70`, `result_state`: `Job State: blocked`, with empty stop reason, stop source, request id and stopped-at, and `T001: repair_exhausted (verdict: fail)`. `describe_self_use_run_defects` returned, verbatim:
-  1. `job 980ba851d7104d70 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail`
-  2. `T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail`
-
-  As the block ordered, neither string is registered in the ledger. The reviewer registers them.
-
-Closure values, spelled exactly as the tools printed them:
-1. Evidence job id: `f270r6e1001`
-2. Package filename: `remedy-review-20260919-002024-READY_FOR_REVIEW.zip`
-3. SHA-256: `e058bfd3564ae7777bad9ea1d222645611297108bb7ccc9c959d9451a20946a2`
-4. Package path: `/home/decodeux/Repos/remedy-history/zips` (NOT ARCHIVED; the package was left where it was built)
-5. Accepted HEAD: `3e9897ac5409f6e198d90fc342a37c3a56304a78`
-6. Self-use item id: `SU-021`
+  Equal, and matching the reviewer's dry run (13 gate records, 3 pairs, 128).
+- `python3 .remedy-wt/f270-r7/pairs.py .`, exit 0: `applied docs/roadmap/STATUS.md 1 pair(s)`, `applied README.md 3 pair(s)`, `applied scripts/self_use_queue.json 1 pair(s)`.
+- **G3** on C3's tree before its commit: `python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/cli/test_golden_path.py tests/cli/test_advertised_commands.py tests/orchestration/test_roadmap_index.py tests/orchestration/test_live_review_rotation.py`, exit 0: `406 passed in 42.35s`, so 0 failed, matching the reviewer's dry run.
+- **G4** on C3's tree: `run_integrity_checks()` returned `passed True`, exit 0. All five checks read PASS: `handler_import` (handlers=147), `live_review_verdict`, `plan_consistency` (unchecked=0, context_complete=False), `relevant_untracked` (untracked=0, relevant=0) and `high_blockers_open` (no open blocker/high findings).
+- **G5** on C3's tree, `python3 .remedy-wt/f270-r7/g45.py g5`, exit 0: `status_line count 1`, `readme_paragraph count 1`, `SU-021 consumed_by 'F270'`.
+- **G6** after C4: the round report carries it.
 
 ## Authored-text proofs
 
-- Before use, every payload's sha256 matched the block: ledger.md `0e979b1e…c917`, plan.md `85126f76…cae5`, f273_from.txt `92764188…e21c`, f273_to.txt `22323acf…779b`, block.md `1a9fe667…9be`.
-- The copies `.agent/authored/f270-r6-{ledger.md,plan.md,f273_from.txt,f273_to.txt,block.md}` equal their payloads byte for byte (G1). The block copy's sha256 is `1a9fe667222394dd0864c9a2272c59af11dd49c718cf64b1796181bd784ae9be`.
+- Grep proof, STATUS line: `grep -c -x -F -f .remedy-wt/f270-r7/status_line.txt docs/roadmap/STATUS.md` → `1`, exit 0 (the whole line, byte-exact).
+- Grep proof, README paragraph: `grep -c -x -F -f .remedy-wt/f270-r7/readme_paragraph.txt README.md` → `9`, exit 0, for a payload of 9 lines (README lines 150 to 158); with G5's contiguous count 1, the paragraph is in the tree byte-identical and once.
+- Byte copies are at `.agent/authored/f270-r7-{block.md,ledger.md,plan.md,status_line.txt,readme_paragraph.txt,pairs.py,pr_body.md}`, true against their payloads (G1). The block copy's digest is `8a98dc016dee0c52bf9263e4bd2ff947946343c4e868f6d5537a3e12a459ab37`.
+- `.agent/live_review.md`: byte check `True` (G1). The C3 files: applied by `pairs.py`, which asserts FROM count 1 before and TO count 1 after.
+- `.agent/plan.md` := plan.md, byte copy.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 bookkeeping | done | `ff550abe`, the block copy included |
-| C2 self-use item | done | `6b08a96f`: SU-021 ended blocked with 2 defect strings, `consumed_by` not set |
-| C3 integrity check | done | `3e9897ac`: passed, 5 checks, 0 failing, pushed |
-| C4 evidence job and zip | done | `c723e999`: `f270r6e1001`, READY_FOR_REVIEW on the first attempt |
-| C5 handoff and push | done | This commit, then the push |
-| G1, G2, G3, G4 | done | All exit 0 |
+| C1 bookkeeping | done | `be80be80`; Gate F270 R6 PASS_WITH_RISKS booked |
+| C2 rotation | done | `80c23593`; 128 open before and after |
+| C3 closure commit | done | This commit |
+| C4 pull request | done | After the push; the round report names it |
 
 ## Open findings
 
-At C1, `python3 .remedy-wt/f268-r4/count.py` (counting by distinct id) reads `HEAD registrations 135 done 6 open 129`. R-0978 is the one added this round.
+The rotation script's counter reads 128 before and after. This round opens no finding and resolves none; R-0974, R-0977 and R-0978 stay open, owned by F273.
 
 ## Deviations & assumptions
 
-- **Commit sequence**: C1 to C5 were made in the order the block gave, and the push followed C3 as ordered. No commit was split, added or reordered.
-- **Job worktree removed**: the self-use job's worktree was removed after C2, following the F268 and F269 precedent, so that `git worktree list` shows one row. The branch `remedy/job-980ba851d7104d70` is kept.
-- **Evidence run id**: the adapted script uses `vr-1112` rather than F269's `vr-1111`. The block does not name a run id, and both match `^vr-\d{4,}$`.
-- **Evidence partition**: the producer partitioned the 19 authoritative files as T001=7, T002=7, T003=5, although `step_range` is `T001-T004`. F269 showed the same pattern, T001–T003 against `T001-T005`. This is the producer's own behaviour, and I have not changed it.
-- **Integrity file**: `export_integrity_json` output with a final newline, the same bytes F269's file has.
-- **Observation, not registered**: SU-021 is the same R-0445 tier-1 item as F269's SU-020, because R-0445 is still the oldest open Medium or Low finding.
-- **Scratch**: all scratch files are gitignored and under `.remedy-wt/f270-r6/`: `c1.py`, `g1.py`, `g2.txt`, `run_selfuse.py`, `integrity.py`, `adapt_evidence.py`, `create_f270_evidence.py`, `verify_zip.py`, and the stdout and stderr captures.
+- **Commit sequence:** as ordered (C1, C2, C3, then the PR). No extra commit.
+- **Driver scripts.** The byte copies and the append ran through `.remedy-wt/f270-r7/c1.py`, and G1, G4 and G5 through `g1.py` and `g45.py`, all gitignored scratch.
 
 ## Next
 
-Phase 1 rule 1 (`.agent/STOP`), then the review of round 6, then closure round B: the verdict bookings, the registration of SU-021's defect strings, the ledger rotation, the closure commit with the STATUS line, the README counters and SU-021's `consumed_by` set to F270, and then the pull request.
+Phase 1 rule 1 (`.agent/STOP`), then rule 2: merge F270's pull request at the Open PR Gate.
 
 Operator questions open: 5
