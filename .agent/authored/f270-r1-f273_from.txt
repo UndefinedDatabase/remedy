@@ -1,0 +1,4 @@
+- R-0972 carries a resolution line naming the commit that makes
+  `packages/orchestration/self_use_findings.py` `describe_self_use_run_defects` answer a
+  defect for a `stopped` job quoting its stop reason and one per `stopped` task, with a test
+  feeding a stopped `JobPlan` whose errors are blank.

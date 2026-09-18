@@ -39,7 +39,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 
 - [x] F268 — remedy do: the one-command start (T001-T005 complete; accepted 2026-09-18 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f268r12e1001 · package remedy-review-20260918-140632-READY_FOR_REVIEW.zip · SHA-256 2c4ed9fa9d3c2e762dbf19a069cc378dfc7c46d973f9334e656f4dc9e873d86a · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5883bccb2b2d4362815215c6a24a71b67f9016f9)
 - [x] F269 — Contract & contract templates (T001-T005 complete; accepted 2026-09-18 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f269r11e1001 · package remedy-review-20260918-190009-READY_FOR_REVIEW.zip · SHA-256 bf0a454507933ee7848b83825eb599b07fb4eed0d44de84270d03acd91149172 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 2a7f22c443350195a08b366abd17a5c3b3a4d1f3)
-- [ ] F270 — History apply: one commit per task, merge on demand
+- [~] F270 — History apply: one commit per task, merge on demand
 - [ ] F271 — No more legacy: ownership, reachability, replace-is-delete
 - [ ] F273 — Findings paydown v1
 - [ ] F276 — Data-root hygiene & disk budget
