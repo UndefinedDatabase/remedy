@@ -26,6 +26,11 @@ D7: a contract's job, dispatched or made by `remedy do`, is bound to its
 repository and granted the three repository capabilities; a mission with no
 contract writes nothing, and a binding already set is kept.
 
+D8: every amendment rule is refused on write and on a raw read; amending
+adds one compiled ``amendment`` criterion with the next free id and an entry
+that applies from the mission's next round, touches nothing already there,
+and survives a re-plan; the renderer lists the amendments after the criteria.
+
 Every test writes into ``tmp_path``; no real provider is called — a planned
 mission replays a recorded planner answer.
 """
@@ -48,6 +53,7 @@ from packages.orchestration.mission_contract import (
     ContractCriterion,
     ContractError,
     MissionContract,
+    amend_mission_contract,
     compile_contract_criteria,
     job_contract_slice,
     merge_contract_slice_into_dod,
@@ -614,3 +620,218 @@ class TestTheContractBindsAndGrantsItsJobs:
         stored = load_job_plan(str(job.job_id), tmp_path)
         assert stored.metadata["target_repo"] == str(tmp_path / "elsewhere")
         assert _allowed(stored) == dict.fromkeys(GRANTS, True)
+
+
+# ── DECISION F269 D8: an amendment's shape, its round of effect, its criterion ──
+
+
+def _amendment(**over: Any) -> dict[str, Any]:
+    """A valid amendment entry that added C004 and applies from round 2."""
+    body = {"id": "A001", "text": "tests/test_login.py passes",
+            "received_at": "2026-09-18T10:00:00+00:00", "applies_from": 2,
+            "criteria": ["C004"],
+            "understood": "adds blocking criterion C004: tests/test_login.py passes",
+            "acknowledged_in": None}
+    body.update(over)
+    return body
+
+
+def _amended_body() -> dict[str, Any]:
+    """The valid three-criterion body plus one amendment and the criterion it added."""
+    body = _body()
+    body["criteria"].append(
+        {"id": "C004", "text": "tests/test_login.py passes", "blocking": True,
+         "origin": "amendment", "milestones": [], "check": None,
+         "status": "open", "evidence_ref": None})
+    body["amendments"] = [_amendment()]
+    return body
+
+
+def _broken_amendment(field: str, value: Any) -> dict[str, Any]:
+    """The amended body with ONE amendment field replaced, or removed."""
+    body = _amended_body()
+    if value is _DELETE:
+        del body["amendments"][0][field]
+    else:
+        body["amendments"][0][field] = value
+    return body
+
+
+def _twice_amended() -> dict[str, Any]:
+    body = _amended_body()
+    body["amendments"].append(_amendment())
+    return body
+
+
+#: (rule named in the error, the broken body) — one row per D8 (1) rule.
+BROKEN_AMENDMENTS = [
+    ("fields are known", _broken_amendment("weight", 3)),
+    ("required fields are present", _broken_amendment("acknowledged_in", _DELETE)),
+    ("amendment id is A plus three digits", _broken_amendment("id", "A1")),
+    ("amendment id is unique in the contract", _twice_amended()),
+    ("amendment text is non-empty", _broken_amendment("text", "  ")),
+    ("received_at is an ISO timestamp", _broken_amendment("received_at", "yesterday")),
+    ("applies_from is a round of at least 1", _broken_amendment("applies_from", 0)),
+    ("applies_from is a round of at least 1", _broken_amendment("applies_from", True)),
+    ("amendment criteria are amendment criteria of the contract",
+     _broken_amendment("criteria", "C004")),
+    ("amendment criteria are amendment criteria of the contract",
+     _broken_amendment("criteria", ["C009"])),
+    ("amendment criteria are amendment criteria of the contract",
+     _broken_amendment("criteria", ["C001"])),
+    ("understood is non-empty", _broken_amendment("understood", "")),
+    ("acknowledged_in is null or a round not before applies_from",
+     _broken_amendment("acknowledged_in", 1)),
+    ("acknowledged_in is null or a round not before applies_from",
+     _broken_amendment("acknowledged_in", "2")),
+]
+
+AMENDMENT_IDS = [f"{i:02d}-{rule}" for i, (rule, _b) in enumerate(BROKEN_AMENDMENTS)]
+
+
+class TestTheAmendmentShape:
+    """DECISION F269 D8 (1): every rule is refused on write and on a raw read."""
+
+    def test_a_valid_amendment_round_trips(self, tmp_path, mission):
+        write_mission_contract(PROJECT, mission.id, _amended_body(), tmp_path)
+
+        loaded = read_mission_contract(load_mission(PROJECT, mission.id, tmp_path))
+
+        assert loaded.to_json() == _amended_body()
+
+    @pytest.mark.parametrize(("rule", "body"), BROKEN_AMENDMENTS, ids=AMENDMENT_IDS)
+    def test_a_broken_amendment_is_refused_on_write(self, tmp_path, mission, rule,
+                                                    body):
+        with pytest.raises(ContractError) as caught:
+            write_mission_contract(PROJECT, mission.id, copy.deepcopy(body), tmp_path)
+
+        assert caught.value.rule == rule
+        assert rule in str(caught.value)
+        assert load_mission(PROJECT, mission.id, tmp_path).contract is None
+
+    @pytest.mark.parametrize(("rule", "body"), BROKEN_AMENDMENTS, ids=AMENDMENT_IDS)
+    def test_a_broken_amendment_stored_raw_is_refused_on_read(self, tmp_path,
+                                                              mission, rule, body):
+        set_mission_contract(PROJECT, mission.id, copy.deepcopy(body), tmp_path)
+
+        with pytest.raises(ContractError) as caught:
+            read_mission_contract(load_mission(PROJECT, mission.id, tmp_path))
+
+        assert caught.value.rule == rule
+        assert rule in str(caught.value)
+
+
+def _ledger_rounds(mission_id: str, root: Path, *rounds: int) -> None:
+    from packages.orchestration.orchestrator_loop import LedgerEntry, append_ledger_entry
+
+    for number in rounds:
+        append_ledger_entry(PROJECT, mission_id, LedgerEntry(
+            iteration=number, context_digest="d", move={"kind": "dispatch_job"},
+            outcome={"status": "dispatched"}), root)
+
+
+class TestAmendingAContract:
+    """DECISION F269 D8 (2): the amend function."""
+
+    def test_a_mission_with_no_contract_gets_one(self, tmp_path, mission):
+        contract = amend_mission_contract(PROJECT, mission.id,
+                                          "tests/test_login.py passes", root=tmp_path)
+
+        assert contract.template is None
+        assert [(c.id, c.origin) for c in contract.criteria] == [("C001", "amendment")]
+        [amendment] = contract.amendments
+        assert (amendment["id"], amendment["applies_from"], amendment["criteria"],
+                amendment["acknowledged_in"]) == ("A001", 1, ["C001"], None)
+        stored = read_mission_contract(load_mission(PROJECT, mission.id, tmp_path))
+        assert stored == contract
+
+    def test_the_criterion_is_an_amendment_compiled_with_the_next_free_id(
+            self, tmp_path, mission):
+        write_mission_contract(PROJECT, mission.id, _body(), tmp_path)
+
+        contract = amend_mission_contract(PROJECT, mission.id,
+                                          "tests/test_login.py passes", root=tmp_path)
+
+        added = contract.criteria[-1]
+        assert (added.id, added.origin, added.blocking, added.milestones) == (
+            "C004", "amendment", True, ())
+        assert added.text == "tests/test_login.py passes"
+        assert added.check["id"] == "ctr-C004"
+        assert added.check["spec"] == {"selector": "tests/test_login.py"}
+        assert contract.amendments[0]["understood"] == (
+            "adds blocking criterion C004: tests/test_login.py passes")
+
+    def test_an_advisory_milestone_amendment_says_so(self, tmp_path, mission):
+        contract = amend_mission_contract(PROJECT, mission.id, "the docs read well",
+                                          milestones=("M1",), blocking=False,
+                                          root=tmp_path)
+
+        added = contract.criteria[-1]
+        assert (added.blocking, added.milestones) == (False, ("M1",))
+        assert contract.amendments[0]["understood"] == (
+            "adds advisory criterion C001: the docs read well")
+
+    def test_it_applies_from_the_missions_next_round(self, tmp_path, mission):
+        _ledger_rounds(mission.id, tmp_path, 1, 2)
+
+        contract = amend_mission_contract(PROJECT, mission.id, "it builds",
+                                          root=tmp_path)
+
+        assert contract.amendments[0]["applies_from"] == 3
+
+    def test_a_second_amendment_leaves_the_first_byte_identical(self, tmp_path,
+                                                                 mission):
+        write_mission_contract(PROJECT, mission.id, _body(), tmp_path)
+        amend_mission_contract(PROJECT, mission.id, "it builds", root=tmp_path)
+        was = load_mission(PROJECT, mission.id, tmp_path).contract
+
+        amend_mission_contract(PROJECT, mission.id, "tests/test_login.py passes",
+                               root=tmp_path)
+
+        body = load_mission(PROJECT, mission.id, tmp_path).contract
+        assert [a["id"] for a in body["amendments"]] == ["A001", "A002"]
+        assert body["amendments"][1]["criteria"] == ["C005"]
+        assert json.dumps(body["criteria"][:4]) == json.dumps(was["criteria"])
+        assert json.dumps(body["amendments"][0]) == json.dumps(was["amendments"][0])
+
+    def test_a_replan_keeps_the_amendment_criterion_and_entry(self, tmp_path,
+                                                              monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        m = create_mission(PROJECT, "Ship the tool")
+        plan_mission(PROJECT, m.id, None)
+        amended = amend_mission_contract(PROJECT, m.id, "tests/test_login.py passes")
+        [criterion] = [c for c in amended.criteria if c.origin == "amendment"]
+
+        plan_mission(PROJECT, m.id, None)
+
+        contract = read_mission_contract(load_mission(PROJECT, m.id))
+        assert [c for c in contract.criteria if c.origin == "amendment"] == [criterion]
+        assert contract.amendments == amended.amendments
+
+
+class TestTheRendererListsAmendments:
+    """DECISION F269 D8 (5): amendments follow the criteria."""
+
+    def test_each_amendment_shows_its_round_acknowledgement_and_criteria(self):
+        body = _amended_body()
+        body["amendments"].append(_amendment(id="A002", acknowledged_in=3))
+        contract = MissionContract.from_json(body)
+
+        lines = render_contract_lines("Contract of mission m1", contract.template,
+                                      contract.criteria, contract.amendments)
+
+        text = "\n".join(lines)
+        assert text.index("C004") < text.index("Amendments: 2")
+        assert ("    A001  applies from round 2  not yet acknowledged  adds C004"
+                in lines)
+        assert ("    A002  applies from round 2  acknowledged in round 3  adds C004"
+                in lines)
+        assert "          tests/test_login.py passes" in lines
+
+    def test_no_amendments_prints_no_section(self):
+        contract = MissionContract.from_json(_body())
+
+        lines = render_contract_lines("t", contract.template, contract.criteria,
+                                      contract.amendments)
+
+        assert not any("Amendments" in line for line in lines)

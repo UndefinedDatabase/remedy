@@ -38,6 +38,12 @@ reads the gate's verdict back onto the slice criteria
 the job to its repository and grant it what the repository commands check
 (:func:`grant_contract_job_repository`, D7).
 
+An operator message after the order is an AMENDMENT (DECISION F269 D8):
+:func:`amend_mission_contract` adds its criterion and appends its entry
+``{"id", "text", "received_at", "applies_from", "criteria", "understood",
+"acknowledged_in"}``, whose rules are checked on read and on write like
+every other D2 rule.
+
 The names ``save_contract`` and ``load_contract`` belong to
 ``run_contract.py`` (a job's run contract, a different record) and are not
 used here.
@@ -48,6 +54,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -68,9 +75,13 @@ JOB_MILESTONE_KEY = "milestone_id"
 CONTRACT_CHECK_ID_PREFIX = "ctr-"
 
 _CRITERION_ID_RE = re.compile(r"^C\d{3}$")
+_AMENDMENT_ID_RE = re.compile(r"^A\d{3}$")
 _CONTRACT_FIELDS = ("schema", "template", "criteria", "amendments")
 _CRITERION_FIELDS = ("id", "text", "blocking", "origin", "milestones", "check",
                      "status", "evidence_ref")
+#: An amendment entry's fields, every one required (DECISION F269 D8 (1)).
+_AMENDMENT_FIELDS = ("id", "text", "received_at", "applies_from", "criteria",
+                     "understood", "acknowledged_in")
 
 
 class ContractError(ValueError):
@@ -169,11 +180,53 @@ class ContractCriterion:
                    evidence_ref=body.get("evidence_ref"))
 
 
+def _is_round(value: Any) -> bool:
+    """A loop round number: an int of at least 1, and never a bool."""
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 1
+
+
+def _check_amendment(body: dict[str, Any],
+                     criteria: Mapping[str, ContractCriterion]) -> None:
+    """Refuse an amendment entry that breaks a DECISION F269 D8 (1) rule."""
+    _refuse_unknown_fields(body, _AMENDMENT_FIELDS, "an amendment")
+    _require_fields(body, _AMENDMENT_FIELDS, "an amendment")
+    ident = body["id"]
+    if not isinstance(ident, str) or not _AMENDMENT_ID_RE.match(ident):
+        raise ContractError("amendment id is A plus three digits", f"got {ident!r}")
+    if not isinstance(body["text"], str) or not body["text"].strip():
+        raise ContractError("amendment text is non-empty", f"amendment {ident}")
+    received = body["received_at"]
+    try:
+        datetime.fromisoformat(received)
+    except (TypeError, ValueError):
+        raise ContractError("received_at is an ISO timestamp",
+                            f"amendment {ident} has {received!r}") from None
+    if not _is_round(body["applies_from"]):
+        raise ContractError("applies_from is a round of at least 1",
+                            f"amendment {ident} has {body['applies_from']!r}")
+    added = body["criteria"]
+    if (not isinstance(added, list)
+            or not all(isinstance(c, str) for c in added)
+            or len(set(added)) != len(added)
+            or not all(c in criteria and criteria[c].origin == "amendment"
+                       for c in added)):
+        raise ContractError("amendment criteria are amendment criteria of the contract",
+                            f"amendment {ident} has {added!r}")
+    if not isinstance(body["understood"], str) or not body["understood"].strip():
+        raise ContractError("understood is non-empty", f"amendment {ident}")
+    acknowledged = body["acknowledged_in"]
+    if acknowledged is not None and (
+            not _is_round(acknowledged) or acknowledged < body["applies_from"]):
+        raise ContractError("acknowledged_in is null or a round not before applies_from",
+                            f"amendment {ident} has {acknowledged!r}")
+
+
 @dataclass(frozen=True)
 class MissionContract:
     """A mission's contract: its criteria in order, its template, its amendments.
 
-    ``amendments`` are stored verbatim; T004 rules an entry's fields.
+    An amendment is a dict with the fields DECISION F269 D8 (1) rules, checked
+    here, so a read and a write refuse the same broken entry.
     """
 
     criteria: tuple[ContractCriterion, ...]
@@ -197,6 +250,14 @@ class MissionContract:
                 isinstance(a, dict) for a in self.amendments):
             raise ContractError("amendments is a list of objects",
                                 f"got {self.amendments!r}")
+        by_id = {c.id: c for c in self.criteria}
+        amendment_ids: set[str] = set()
+        for amendment in self.amendments:
+            _check_amendment(amendment, by_id)
+            if amendment["id"] in amendment_ids:
+                raise ContractError("amendment id is unique in the contract",
+                                    f"{amendment['id']} appears twice")
+            amendment_ids.add(amendment["id"])
 
     def to_json(self) -> dict[str, Any]:
         return {"schema": CONTRACT_SCHEMA, "template": self.template,
@@ -321,6 +382,56 @@ def write_planner_criteria(project_id: str, mission_id: str, plan: Any,
         criteria=criteria,
         template=existing.template if existing else None,
         amendments=existing.amendments if existing else ())
+    return write_mission_contract(project_id, mission_id, contract, root)
+
+
+# ---------------------------------------------------------------------------
+# Amendments (DECISION F269 D8)
+# ---------------------------------------------------------------------------
+
+
+def amend_mission_contract(project_id: str, mission_id: str, text: str, *,
+                           milestones: Sequence[str] = (),
+                           blocking: bool = True,
+                           root: Path | None = None,
+                           now: datetime | None = None) -> MissionContract:
+    """Amend a mission's contract from an operator message (D8 (2)).
+
+    Creates the contract when the mission has none; adds ONE criterion — the
+    message as its text, origin ``amendment``, whole-mission unless
+    ``milestones`` are given, compiled by F061's compiler with the next free
+    id — and appends the amendment entry, whose ``applies_from`` is the
+    mission's next loop round (``orchestrator_loop.next_iteration_index``).
+    Every job dispatched from that round on takes the new check in its DoD at
+    dispatch (D8 (3)); the loop acknowledges the entry in that round (D8 (4)).
+    No existing criterion or entry is edited.  No command calls this: F264
+    owns the route an amendment arrives by.
+    """
+    from packages.orchestration.mission_state import load_mission
+    from packages.orchestration.orchestrator_loop import next_iteration_index
+
+    existing = read_mission_contract(load_mission(project_id, mission_id, root))
+    criteria = existing.criteria if existing else ()
+    amendments = existing.amendments if existing else ()
+    criterion_id = f"C{max((int(c.id[1:]) for c in criteria), default=0) + 1:03d}"
+    [criterion] = compile_contract_criteria([ContractCriterion(
+        id=criterion_id, text=text, origin="amendment", blocking=blocking,
+        milestones=tuple(milestones))])
+    amendment_id = f"A{max((int(a['id'][1:]) for a in amendments), default=0) + 1:03d}"
+    kind = "blocking" if blocking else "advisory"
+    amendment = {
+        "id": amendment_id,
+        "text": text,
+        "received_at": (now or datetime.now(timezone.utc)).isoformat(),
+        "applies_from": next_iteration_index(project_id, mission_id, root),
+        "criteria": [criterion_id],
+        "understood": f"adds {kind} criterion {criterion_id}: {text}",
+        "acknowledged_in": None,
+    }
+    contract = MissionContract(
+        criteria=(*criteria, criterion),
+        template=existing.template if existing else None,
+        amendments=(*amendments, amendment))
     return write_mission_contract(project_id, mission_id, contract, root)
 
 
@@ -557,13 +668,19 @@ def contract_blockers(contract: MissionContract | None) -> tuple[str, ...]:
 
 
 def render_contract_lines(title: str, template: str | None,
-                          criteria: Sequence[ContractCriterion]) -> list[str]:
-    """The text lines both contract commands print, criteria in contract order."""
+                          criteria: Sequence[ContractCriterion],
+                          amendments: Sequence[Mapping[str, Any]] = ()) -> list[str]:
+    """The text lines both contract commands print, criteria in contract order.
+
+    The amendments follow the criteria (DECISION F269 D8 (5)), each with its
+    round of effect, its acknowledgement and the criteria it added; a contract
+    with none prints no amendment section.
+    """
     lines = [title, f"  Template: {template or '(none)'}"]
     if not criteria:
         lines.append("  Criteria: (none)")
-        return lines
-    lines.append(f"  Criteria: {len(criteria)}")
+    else:
+        lines.append(f"  Criteria: {len(criteria)}")
     for c in criteria:
         scope = ", ".join(c.milestones) if c.milestones else "whole mission"
         kind = "blocking" if c.blocking else "advisory"
@@ -571,4 +688,13 @@ def render_contract_lines(title: str, template: str | None,
         lines.append(f"          {c.text}")
         if c.evidence_ref:
             lines.append(f"          evidence: {c.evidence_ref}")
+    if amendments:
+        lines.append(f"  Amendments: {len(amendments)}")
+    for a in amendments:
+        acknowledged = (f"acknowledged in round {a['acknowledged_in']}"
+                        if a.get("acknowledged_in") is not None
+                        else "not yet acknowledged")
+        lines.append(f"    {a['id']}  applies from round {a['applies_from']}  "
+                     f"{acknowledged}  adds {', '.join(a['criteria']) or 'nothing'}")
+        lines.append(f"          {a['text']}")
     return lines

@@ -148,6 +148,48 @@ class TestTheMissionView:
         assert "origin is template, planner or amendment" in proc.stderr
 
 
+class TestTheMissionViewListsAmendments:
+    """DECISION F269 D8 (5): `mission contract` shows each amendment."""
+
+    @pytest.fixture
+    def amended(self, project) -> tuple[Path, str, str, dict]:
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Ship the tool")
+        body = json.loads(json.dumps(CONTRACT))
+        body["criteria"].append(
+            {"id": "C004", "text": "tests/test_login.py passes", "blocking": True,
+             "origin": "amendment", "milestones": [], "check": None,
+             "status": "open", "evidence_ref": None})
+        body["amendments"] = [
+            {"id": "A001", "text": "tests/test_login.py passes",
+             "received_at": "2026-09-18T10:00:00+00:00", "applies_from": 2,
+             "criteria": ["C004"],
+             "understood": "adds blocking criterion C004: tests/test_login.py passes",
+             "acknowledged_in": 2}]
+        _store_contract(data_root, project_id, mission_id, body)
+        return data_root, project_id, mission_id, body
+
+    def test_text_lists_the_amendment_after_the_criteria(self, amended):
+        data_root, project_id, mission_id, _body = amended
+
+        out = _run(["mission", "contract", mission_id, "--project", project_id],
+                   data_root).stdout
+
+        assert "  Amendments: 1" in out
+        assert ("    A001  applies from round 2  acknowledged in round 2  adds C004"
+                in out)
+        assert out.index("C004") < out.index("Amendments: 1")
+
+    def test_json_carries_the_amendment(self, amended):
+        data_root, project_id, mission_id, body = amended
+
+        shown = json.loads(_run(["mission", "contract", mission_id, "--project",
+                                 project_id, "--json"], data_root).stdout)
+
+        assert shown["contract"] == body
+        assert shown["contract"]["amendments"][0]["applies_from"] == 2
+
+
 class TestTheJobView:
     def test_a_job_for_m1_renders_the_whole_mission_and_m1_criteria(
             self, contracted):

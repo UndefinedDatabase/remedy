@@ -61,7 +61,8 @@ def _cmd_mission_contract(mission_id: str, *, project: str | None = None,
         print(f"Mission {mission.id} has no contract yet.")
         return
     for line in render_contract_lines(f"Contract of mission {mission.id}",
-                                      contract.template, contract.criteria):
+                                      contract.template, contract.criteria,
+                                      contract.amendments):
         print(line)
 
 
