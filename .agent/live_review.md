@@ -1,28 +1,26 @@
-# Live Review — F268 remedy do: the one-command start
+# Live Review — F269 Contract & contract templates
 
-> Round-by-round review record, re-headed at the F268 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F266, whose STATUS
-> line went `[x]` and whose pull request 255 merged into `main` at the reviewer's Open PR Gate
-> under docs/agents/self_drive_protocol.md, as `8e075bbe`, after its round 12 repaired the
-> hosted-CI red recorded as R-0962. F266's round 12 has no gate entry here by construction (§4
-> item 13 of docs/agents/planner_reviewer_prompt.md): the reviewer re-ran its gates at `750af12a`
-> and read PASS, hosted CI run 35314590748 on that commit read success, and that verdict lives in
-> the merged PR and in `.agent/handoff.md`'s git history. Only the heading, this paragraph and the
+> Round-by-round review record, re-headed at the F269 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F268, whose STATUS
+> line went `[x]` and whose pull request 256 merged into `main` at the reviewer's Open PR Gate
+> under docs/agents/self_drive_protocol.md, as `0955dd4c`, after hosted CI run 35343783159 on its
+> closure commit `0ecf18ac` read pass. F268's round 13 has no gate entry written by its own round,
+> by construction (§4 item 13 of docs/agents/planner_reviewer_prompt.md); its verdict is booked
+> at the end of this file by F269's first commit. Only the heading, this paragraph and the
 > `## Steps` section below are rewritten. Everything from the `## Findings` line to the end of the
 > file is carried forward BYTE-IDENTICAL, and finding ids continue the monotonic R-XXXX series
 > across the re-head.
-> Measured by the reviewer at `8e075bbe`: 132 DISTINCT ids matching `^- R-\d+ — ` against 4
-> DISTINCT ids matching `^Done: R-\d+ — `, so 128 findings are open BY DISTINCT ID.
+> Measured by the reviewer at `0955dd4c`: 128 DISTINCT ids matching `^- R-\d+ — ` against 3
+> DISTINCT ids matching `^Done: R-\d+ — `, so 125 findings are open BY DISTINCT ID.
 
 ## Steps
 
-THE ORDER BELOW IS T2_F268.md's Orchestrator brief: T001 first and alone, because it is the
-acceptance skeleton — the sequence as data, walked end to end on the fake provider, init → study
-→ plan → shape → run → stop before apply, one test per step boundary. T002 (the shape decision
-and the force flags) and T003 (step-by-step and plan-only) follow in either order; T004 (cockpit
-auto-open and the apply pass-through) reads F270's state on the day; T005 (the quick start) is
-written last, against the shipped catalog.
-R1 claims F268, re-heads this record, lands DECISIONs F268 D1 to D4, and builds T001.
+THE ORDER BELOW IS T2_F269.md's Orchestrator brief: T001 then T002 in sequence, because the
+mission gate needs the record; T003 is independent of T002 and may run beside it; T004 and T005
+last. The deletion of `job attach-repo` and `job permit` (DECISION amend0917-throughput D2) lands
+once the contract writes a job's repository binding and grants.
+R1 claims F269, re-heads this record, books F268 round 13's verdict, lands DECISIONs F269 D2 and
+D3, and builds T001.
 
 ## Findings
 
@@ -689,3 +687,5 @@ Gate: F268 R10 — the F268 round 10 entry. VERDICT PASS. Written by the planner
 Gate: F268 R11 — the F268 round 11 entry. VERDICT PASS; the closure suite it ran is red and round 12 repairs it. Written by the planner and reviewer of F268's second session after reading the committed range `a70e66a8`..`205b10a5` bottom-up and re-deriving every reading below. THE ROUND'S SHAPE: C1 `7f46f7a2` booked round 10's verdict and a prose slip; C2 `668d5d41` rewrote `tests/cli/test_product_spine.py`'s three quick-start pins to DECISION F268 D15's five lines; C3 `12f83da7` appended the Built State to `docs/roadmap/features/T2_F268.md`, which the reviewer checked equals its `a70e66a8` bytes plus the authored payload; C4 `322626a2` committed `.agent/authored/f268-closure-suite.txt`, sha256 `43597e65d5d8c3d4667972b8a380c799d72622d23f02844f82e5c3acc2f4cf77`, reading `3 failed, 17735 passed, 23 skipped, 1 warning in 149.83s (0:02:29)`. THE GATES, re-run by the reviewer at `205b10a5`: the block's G2 list read `514 passed`. THE CLOSURE SUITE'S BAD SET, reproduced by the reviewer at `205b10a5` (`tests/orchestration/test_prompt_trace.py` read `3 failed, 40 passed`): `TestSegmentManifest::test_the_cli_recorder_passes_the_composed_prompt`, `::test_the_cli_task_plan_recorder_passes_the_composed_prompt` and `::test_every_cli_call_site_hands_its_composition_down` read `inspect.getsource(apps.cli.commands.do_cmd)` for `make_intake_call_recorder`, `make_task_plan_call_recorder`, `prompt_traces`, `composed=intake_composed,` and `composed=plan_composed,`, which F268 round 1's `affb365d` moved with the golden-path planning into `packages/orchestration/do_sequence.py`, where the reviewer counted each at least once at `205b10a5`. They have been red on this branch since `affb365d`; no round gate named `tests/orchestration/test_prompt_trace.py`, which is the gap amend0917-throughput's single closure suite exists to catch. No new id: the guards pin a wiring that moved, not a defect in it. WHY PASS: the round did what its block ordered and stopped at the red run as ordered.
 
 Gate: F268 R12 — the F268 round 12 entry. VERDICT PASS_WITH_RISKS — F268's closure verdict. Written by the planner and reviewer of F268's second session after reading the committed range `205b10a5`..`c784f6b3` bottom-up and re-deriving every reading below. THE ROUND'S SHAPE: C1 `12068ead` booked round 11's verdict; C2 `fa8f9703`, repair round 1 under amend0917-throughput (2), pointed the three `TestSegmentManifest` wiring guards of `tests/orchestration/test_prompt_trace.py` at `packages.orchestration.do_sequence`, keeping every asserted string; C3 `1be1950d` generated self-use item SU-019 and ran it to the approval gate (closure precondition 6); C4 `5883bccb` committed the integrity check, `passed` with five checks and no failure (precondition 3), and is the accepted head commit the package covers; C5 `4ef52e4d` recorded evidence job `f268r12e1001` and the package `remedy-review-20260918-140632-READY_FOR_REVIEW.zip`. THE GATES, re-run by the reviewer at `c784f6b3`: `tests/orchestration/test_prompt_trace.py`, `tests/cli/test_do_sequence_cli.py` and `tests/cli/test_golden_path.py` read `121 passed`, so the closure suite's bad set shrank from three nodes to none with no node newly bad; `python3 -m ruff check tests/orchestration/test_prompt_trace.py` read `All checks passed!`. THE PACKAGE, read by the reviewer out of the archive in `/home/decodeux/Repos/remedy-history/zips`: sha256 `2c4ed9fa9d3c2e762dbf19a069cc378dfc7c46d973f9334e656f4dc9e873d86a`; `.review_zip_manifest.json` `package_status` `READY_FOR_REVIEW`, `committed_review_subject.head_commit` `5883bccb2b2d4362815215c6a24a71b67f9016f9` and `base_commit` `8e075bbeb5ef572b4f92738c4c4a07847c642f63`, the fork point. THE SELF-USE RUN: SU-019 was generated from R-0445, the same finding F266's SU-018 was generated from, and its job `fcba47b830c24c89` ended blocked at `repair_exhausted`; `describe_self_use_run_defects` returned `job fcba47b830c24c89 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail` and `T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail`. Under §3 item 30 these are registered as new evidence on R-0784, the open finding describing exactly this outcome for the same item, not as a new id; and because R-0445 stays open, the generator's tier 1 will hand every closure the same item until R-0445 is resolved, which is R-0784's and F273's to weigh. THE RISKS THE CLOSE CARRIES: R-0892 stays open for its `.claude/skills/remedy-evidence-review/SKILL.md` half, which the session's permission system refused to write, re-assigned by this round's first commit to F273 with the prepared page `.agent/authored/f268-r7-skill.md` named there; R-0807 stays open for its F260 half, already F273's; operator questions Q2 and Q3 stand. WHY PASS_WITH_RISKS: every T-slice of `docs/roadmap/features/T2_F268.md` has a PASS round, the one closure suite's bad set is repaired, the package is READY_FOR_REVIEW at `5883bccb`, and the open items are owned and named.
+
+Gate: F268 R13 — the F268 round 13 entry. VERDICT PASS. Written by the planner and reviewer of F268's second session after reading the committed range `c784f6b3`..`0ecf18ac` bottom-up, and booked by F269's first commit because the closure commit had to be the branch's last. THE ROUND'S SHAPE, closure round B: C1 `b4aec4f5` booked round 12's verdict and re-assigned R-0892 to F273 with one Acceptance line in `docs/roadmap/features/T2_F273.md`; C2 `ceb91ba9` rotated this ledger from 594113 to 572794 bytes, the rotation script reading 124 open findings before and after; C3 `0ecf18ac` flipped F268's STATUS line to `[x]`, moved the README to 82 of 281 accepted, marked SU-019 consumed by F268 and wrote the final plan and handoff; C4 opened pull request 256. THE GATES, re-run by the reviewer at `0ecf18ac`: `tests/docs/` and `tests/cli/test_golden_path.py` read `352 passed`; `run_integrity_checks()` read passed with no failing check; `Owner: F273.` stood on R-0892 once; the closure commit's diff held exactly the authored pairs. AFTER THE ROUND: hosted CI run 35343783159 on `0ecf18ac` read pass, and the pull request merged at F269's Open PR Gate as `0955dd4c`, where the reviewer's targeted base reading over `tests/docs/`, the golden path and the existing test files F269 round 1's block names read `1150 passed`. WHY PASS: the closure sequence ran in the order `docs/roadmap/STATUS_closure_protocol.md` gives, and every reading it quotes reproduced.
