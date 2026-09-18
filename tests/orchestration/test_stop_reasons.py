@@ -204,7 +204,8 @@ class TestDashboardStopReason:
 
 
 # ---------------------------------------------------------------------------
-# R-0811: the no-repo tip names the real job and a real path, never a placeholder
+# R-0811: the no-repo tip names the real job and a real path, never a placeholder;
+# since DECISION F269 D7 it names `job contract`, where a job's repository comes from
 # ---------------------------------------------------------------------------
 
 _PLACEHOLDER_RE = r"<[a-z_]+>"
@@ -227,13 +228,15 @@ def test_the_no_repo_tip_names_the_job_and_its_projects_repository(tmp_path, mon
     [tip] = next(r for r in derive_stop_reasons(job, [])
                  if r.id == "derived_no_repo").next_actions
 
-    assert tip == f"remedy job attach-repo {job.job_id} {repo}"
+    assert tip == (f"remedy job contract {job.job_id} — a job gets its repository and "
+                   f"grants from its mission's contract; its project's repository is {repo}")
     for action in _every_next_action(job, []):
         assert not re.search(_PLACEHOLDER_RE, action), action
         assert str(job.job_id) in action, action
 
 
-def test_the_no_repo_tip_without_a_project_says_what_to_pass(tmp_path, monkeypatch):
+def test_the_no_repo_tip_without_a_project_names_where_the_repository_comes_from(
+        tmp_path, monkeypatch):
     import re
 
     from packages.orchestration.pingpong_job import JobPlan
@@ -245,8 +248,8 @@ def test_the_no_repo_tip_without_a_project_says_what_to_pass(tmp_path, monkeypat
     [tip] = next(r for r in derive_stop_reasons(job, [])
                  if r.id == "derived_no_repo").next_actions
 
-    assert tip.startswith(f"remedy job attach-repo {job.job_id} ")
-    assert "path of the repository" in tip
+    assert tip == (f"remedy job contract {job.job_id} — a job gets its repository and "
+                   f"grants from its mission's contract")
     for action in _every_next_action(job, []):
         assert not re.search(_PLACEHOLDER_RE, action), action
         assert str(job.job_id) in action, action

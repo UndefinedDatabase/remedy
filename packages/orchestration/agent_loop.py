@@ -418,9 +418,11 @@ def _next_action(job: JobPlan, state: AgentLoopState) -> str:
         cap_arg = "<capability>"
         if state.blocked_reason and ":" in state.blocked_reason:
             cap_arg = state.blocked_reason.split(":", 1)[1]
+        # DECISION F269 D7: a job gets its grants from its mission's contract.
         return (
-            f"  {_NEXT} Grant the missing permission:\n"
-            f"      remedy job permit {full_id} {cap_arg} allow"
+            f"  {_NEXT} Missing permission {cap_arg}; a job gets its repository and "
+            f"grants from its mission's contract:\n"
+            f"      remedy job contract {full_id}"
         )
     if d == AgentLoopDecision.NEEDS_APPROVAL:
         return (

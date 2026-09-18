@@ -19,7 +19,7 @@ Coverage:
   - summarize sections: Agents, Loop state, Next action
   - next action for each decision type
   - blockers display: "permission_denied (workspace_write)"
-  - next action uses concrete capability: "remedy job permit … workspace_write allow"
+  - next action names the concrete capability and "remedy job contract <id>" (F269 D7)
   - stale blocker fix: historical perm_denied + task_run_completed → not blocked
   - historical perm_denied + later pass + pending medium intent → needs_approval
   - historical perm_denied + later pass + approved intent → complete
@@ -523,7 +523,7 @@ class TestSummarizeLoopState:
         out = summarize_agent_loop_state(job, state)
         assert "job plan" in out
 
-    def test_next_action_blocked_suggests_set_permission_with_capability(self):
+    def test_next_action_blocked_names_the_contract_and_the_capability(self):
         """Next action for BLOCKED must include the concrete capability name."""
         job = _make_job()
         task = _pending_task()
@@ -531,7 +531,7 @@ class TestSummarizeLoopState:
         events = [_perm_denied_event(str(job.job_id), task_id=str(task.task_id))]
         state = derive_agent_loop_state(job, events)
         out = summarize_agent_loop_state(job, state)
-        assert "job permit" in out
+        assert f"remedy job contract {job.job_id}" in out
         assert "workspace_write" in out
 
     def test_next_action_blocked_no_capability_fallback(self):
@@ -549,7 +549,7 @@ class TestSummarizeLoopState:
         }
         state = derive_agent_loop_state(job, [ev])
         out = summarize_agent_loop_state(job, state)
-        assert "job permit" in out
+        assert f"remedy job contract {job.job_id}" in out
         assert "<capability>" in out
 
     def test_next_action_needs_approval_suggests_list_intents(self):

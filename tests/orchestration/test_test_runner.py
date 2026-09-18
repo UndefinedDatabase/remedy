@@ -180,11 +180,11 @@ class TestHeadlessSmokeNosBrowserLaunch:
 
 
 class TestPermitGuidanceArgOrder:
-    def test_permit_guidance_has_correct_arg_order(self):
-        """Permission guidance must show: remedy job permit <id> repo_test_run allow"""
+    def test_permission_guidance_names_the_contract(self):
+        """Permission guidance must show: remedy job contract <id> (DECISION F269 D7)"""
         # Since Steps 1099+ CLI delegates to test_execution_service, check service
         svc_src = Path("packages/orchestration/test_execution_service.py").read_text()
-        assert "repo_test_run allow" in svc_src
+        assert "remedy job contract {job.job_id}" in svc_src
         assert "allow repo_test_run" not in svc_src
         # CLI wrapper must not reverse the order either
         cli_src = Path("apps/cli/commands/test_cmds.py").read_text()
@@ -253,29 +253,23 @@ class TestPermitGuidanceArgOrder:
             capture_output=True, env=env, timeout=10,
         )
         stderr = r.stderr.decode()
-        # Correct order
-        assert "repo_test_run allow" in stderr
-        # Wrong order absent
+        # A job's grants come from its mission's contract (DECISION F269 D7)
+        assert f"remedy job contract {job_id}" in stderr
         assert "allow repo_test_run" not in stderr
 
     def test_generated_commands_validate_against_catalog(self):
-        """Commands from readiness next_actions use correct catalog arg order."""
+        """Commands from readiness next_actions use the catalog's arg order."""
         from packages.orchestration.autonomy_readiness import assess_job_readiness
 
         job = _make_job_s261()
         report = assess_job_readiness(job, [])
+        assert any("job contract" in action for action in report.next_actions)
         for action in report.next_actions:
-            if "job permit" in action:
-                # Must be: remedy job permit <id> <permission> allow
+            if "job contract" in action:
+                # Must be: remedy job contract <id> (DECISION F269 D7)
                 parts = action.split()
-                # Find "permit" index
-                idx = parts.index("permit")
-                # After permit: <job_id> <permission> <action>
-                after = parts[idx + 1:]
-                assert len(after) >= 3, f"bad permit command: {action}"
-                assert after[-1] == "allow", f"last arg should be 'allow': {action}"
-                assert after[-2] in ("repo_test_run", "repo_generated_write", "workspace_write"), \
-                    f"permission should be before action: {action}"
+                idx = parts.index("contract")
+                assert parts[idx + 1] == str(job.job_id), f"bad contract command: {action}"
 
 
 # ---------------------------------------------------------------------------

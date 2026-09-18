@@ -278,8 +278,8 @@ def _derive_attention(job: JobPlan, signals: dict[str, Any]) -> list[str]:
     # workspace_write denied blocks all task execution
     if pending and not is_allowed(job, Capability.workspace_write):
         items.append(
-            "workspace_write is required to run tasks — "
-            "grant with: remedy job permit <job_id> workspace_write allow"
+            "workspace_write is required to run tasks — a job gets its repository "
+            "and grants from its mission's contract: remedy job contract <job_id>"
         )
 
     # Patch intent risk and approval state
@@ -321,8 +321,8 @@ def _derive_attention(job: JobPlan, signals: dict[str, Any]) -> list[str]:
     )
     if (signals["last_patch"] or signals["last_repo"]) and repo_explicitly_denied:
         items.append(
-            "Repo writes are denied — allow with: "
-            "remedy job permit <job_id> repo_generated_write allow"
+            "Repo writes are denied — a job gets its repository and grants from "
+            "its mission's contract: remedy job contract <job_id>"
         )
 
     return items
@@ -397,8 +397,9 @@ def _derive_next_action(job: JobPlan, signals: dict[str, Any]) -> str:
     # Hard blocker: workspace permission denied
     if pending and not ws_ok:
         return (
-            f"  {_NEXT} Grant workspace_write permission:\n"
-            f"      remedy job permit {job_id_str} workspace_write allow"
+            f"  {_NEXT} workspace_write is denied; a job gets its repository and "
+            f"grants from its mission's contract:\n"
+            f"      remedy job contract {job_id_str}"
         )
 
     # Interrupted run with pending tasks: inspect first

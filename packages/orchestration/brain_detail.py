@@ -617,7 +617,8 @@ def _detail_blocker(
     )
 
     next_actions = [
-        f"remedy job permit {job_id_str} {capability} allow",
+        f"remedy job contract {job_id_str} — a job gets its repository and grants "
+        f"({capability}) from its mission's contract",
         f"remedy job show {job_id_str} --full",
     ]
 

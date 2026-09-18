@@ -541,7 +541,9 @@ class TestExecuteTestRunGates:
                     result = execute_test_run(req)
         assert result.status == "blocked"
         assert result.stop_reason == "permission_denied"
-        assert "repo_test_run" in result.next_safe_action
+        # DECISION F269 D7: the grant comes from the job's mission's contract.
+        assert "repo_test_run" in result.safe_summary
+        assert result.next_safe_action == f"remedy job contract {job.job_id}"
 
     def test_contract_budget_zero_blocked(self, tmp_path):
         from packages.orchestration.run_contract import RunUsage

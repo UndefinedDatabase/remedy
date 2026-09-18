@@ -55,7 +55,8 @@ with `blocked_ineligible` and a real next-safe action:
 - `repo_generated_write` permission is granted;
 - the persisted Run Contract allows the apply action (`patch_apply`);
 - `stop_before_apply` is `false`;
-- a safe target repository is attached (`remedy job attach-repo`);
+- a safe target repository is bound (a job gets its repository and grants from its
+  mission's contract, shown by `remedy job contract <job_id>`, DECISION F269 D7);
 - the patch structure is valid;
 - `repo_test_run` permission is granted and `max_test_runs > 0`;
 - no continuation is already active (lease free).

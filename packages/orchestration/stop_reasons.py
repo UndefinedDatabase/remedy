@@ -200,17 +200,20 @@ def _job_project_repo_path(job: Any) -> str:
     return project.canonical_repo_path or ""
 
 
+#: Where a job's repository binding and grants come from (DECISION F269 D7).
+JOB_GRANTS_HEIR = "a job gets its repository and grants from its mission's contract"
+
+
 # R-0811: the tip carries the real job id and a real path, never a placeholder.
-def job_attach_repo_tip(job: Any) -> str:
-    """The `remedy job attach-repo` command for *job*: its project's repo, else what to pass."""
+def job_contract_repo_tip(job: Any) -> str:
+    """The `remedy job contract` tip for *job* with no repository, naming its project's repo."""
     import shlex
 
-    job_id = str(job.job_id)
+    tip = f"remedy job contract {job.job_id} — {JOB_GRANTS_HEIR}"
     repo = _job_project_repo_path(job)
     if repo:
-        return f"remedy job attach-repo {job_id} {shlex.quote(repo)}"
-    return (f"remedy job attach-repo {job_id} followed by the path of the "
-            f"repository this job should change")
+        return f"{tip}; its project's repository is {shlex.quote(repo)}"
+    return tip
 
 
 # R-0811: one real approve command per intent the events name; an intent whose
@@ -243,7 +246,7 @@ def derive_stop_reasons(
             created_at=now, resolved_at=None,
             related_node_id="", related_intent_id="", related_file="",
             safe_summary="No target repository attached to job.",
-            next_actions=(job_attach_repo_tip(job),),
+            next_actions=(job_contract_repo_tip(job),),
         ))
 
     # Test failures

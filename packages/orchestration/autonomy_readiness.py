@@ -294,25 +294,26 @@ def _assess_level(
 
     # R-0811: every tip names this job by its real id, never a placeholder.
     job_id = str(job.job_id)
+    from packages.orchestration.stop_reasons import JOB_GRANTS_HEIR
 
     if lvl == 1:
         # propose: need repo + tasks
-        from packages.orchestration.stop_reasons import job_attach_repo_tip
+        from packages.orchestration.stop_reasons import job_contract_repo_tip
         _check("attached_repo",
-               None if signals.get("attached_repo") else job_attach_repo_tip(job))
+               None if signals.get("attached_repo") else job_contract_repo_tip(job))
         _check("tasks_defined", f"remedy job plan {job_id}")
 
     elif lvl == 2:
         # approved_apply: need repo + permission + approved patch + proof
         _check("attached_repo")
-        _check("repo_generated_write", f"remedy job permit {job_id} repo_generated_write allow")
+        _check("repo_generated_write", f"remedy job contract {job_id} — {JOB_GRANTS_HEIR}")
         _check("approved_patch")
         _check("apply_proof")
 
     elif lvl == 3:
         # test_execution: need command discovery + permission + test proof
         _check("command_discovery", f"remedy test discover {job_id}")
-        _check("repo_test_run", f"remedy job permit {job_id} repo_test_run allow")
+        _check("repo_test_run", f"remedy job contract {job_id} — {JOB_GRANTS_HEIR}")
         _check("test_proof")
 
     elif lvl == 4:

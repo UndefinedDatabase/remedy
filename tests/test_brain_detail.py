@@ -422,7 +422,8 @@ class TestBuildBrainNodeDetail:
         detail = build_brain_node_detail(job, graph, blk_node.id, events)
         assert detail.node_type == NT_BLOCKER
         assert "workspace_write" in detail.explanation
-        assert any("job permit" in a for a in detail.next_actions)
+        assert any(a.startswith(f"remedy job contract {job.job_id} ") and "workspace_write" in a
+                   for a in detail.next_actions)
 
     def test_blocker_next_action_has_capability(self):
         job = _make_job()
@@ -591,7 +592,7 @@ class TestSummarizeBrainNodeDetail:
         detail = build_brain_node_detail(job, graph, blk_node.id, events)
         out = summarize_brain_node_detail(detail)
         assert "Next actions" in out
-        assert "job permit" in out
+        assert "job contract" in out
 
 
 # ---------------------------------------------------------------------------

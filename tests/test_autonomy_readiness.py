@@ -282,13 +282,14 @@ class TestVerifiedSnapshotSignal:
         assert "verified_snapshot" in report.levels[5].present_signals
 
 
-class TestAttachRepoTip:
-    """R-0811: the readiness tip names the real job and a real path, never a placeholder."""
+class TestContractRepoTip:
+    """R-0811: the readiness tip names the real job and a real path, never a placeholder;
+    since DECISION F269 D7 it names `job contract`, where a job's repository comes from."""
 
     @staticmethod
     def _rendered_tip(job) -> str:
         text = summarize_readiness(assess_job_readiness(job, []))
-        [line] = [ln for ln in text.splitlines() if "attach-repo" in ln]
+        [line] = [ln for ln in text.splitlines() if "job contract" in ln]
         return line
 
     def test_the_tip_names_the_job_and_its_projects_repository(self, tmp_path, monkeypatch):
@@ -305,11 +306,14 @@ class TestAttachRepoTip:
 
         line = self._rendered_tip(job)
 
-        assert line.endswith(f"remedy job attach-repo {job.job_id} {repo}")
+        assert line.endswith(f"remedy job contract {job.job_id} — a job gets its repository "
+                             f"and grants from its mission's contract; its project's "
+                             f"repository is {repo}")
         text = summarize_readiness(assess_job_readiness(job, []))
         assert not re.search(r"<[a-z_]+>", text)
 
-    def test_the_tip_without_a_project_says_what_to_pass(self, tmp_path, monkeypatch):
+    def test_the_tip_without_a_project_names_where_the_repository_comes_from(
+            self, tmp_path, monkeypatch):
         import re
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
@@ -317,8 +321,8 @@ class TestAttachRepoTip:
 
         line = self._rendered_tip(job)
 
-        assert f"remedy job attach-repo {job.job_id} " in line
-        assert "path of the repository" in line
+        assert line.endswith(f"remedy job contract {job.job_id} — a job gets its repository "
+                             f"and grants from its mission's contract")
         text = summarize_readiness(assess_job_readiness(job, []))
         assert not re.search(r"<[a-z_]+>", text)
 

@@ -490,7 +490,8 @@ def evaluate_self_execution_eligibility(
     if not (job.metadata or {}).get("target_repo"):
         elig.blockers.append("no_target_repo")
         elig.stop_reason = StopReason.NO_TARGET_REPO
-        elig.next_safe_action = f"remedy job attach-repo {jid} <path>"
+        # DECISION F269 D7: a job gets its repository from its mission's contract.
+        elig.next_safe_action = f"remedy job contract {jid}"
         elig.safe_summary = "No target repository attached."
         return elig
     if not _branch_is_mutation_safe():

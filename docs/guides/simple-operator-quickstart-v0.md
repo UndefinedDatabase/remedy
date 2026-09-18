@@ -76,8 +76,9 @@ bounded loops. For normal operation, use `job` commands.
 ```bash
 # The `create` word under `job` built the job here, until F280 round 6 deleted it; the fixture
 # fulfillment step that followed was deleted by round 3. `do run "<goal>"` is the CLI's own
-# job-creation path today.
-remedy job attach-repo "$JOB_ID" /path/to/repo
+# job-creation path today. The repository was attached here too, until F269 round 6 deleted
+# that word: a job gets its repository and grants from its mission's contract.
+remedy job contract "$JOB_ID"
 
 # Check result
 remedy job show "$JOB_ID" --full --json

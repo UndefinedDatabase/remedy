@@ -532,7 +532,7 @@ def _dispatch_one_job(project_id: str, mission_id: str, root: Path):
 
 
 class TestTheContractBindsAndGrantsItsJobs:
-    """DECISION F269 D7: the heir of `job attach-repo` and `job permit`."""
+    """DECISION F269 D7: the heir of the deleted `attach-repo` and `permit` words of `job`."""
 
     def test_a_dispatched_job_gets_the_projects_repository_and_the_three_grants(
             self, tmp_path, registered):
