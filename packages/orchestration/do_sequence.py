@@ -18,6 +18,12 @@ overriding it, and plans the jobs, each bounded by deliverables (D5, D6); run
 runs every job in order on the chosen providers and stops at the first that
 does not complete; ui prints the real `remedy ui start` command unless
 `--no-ui`; apply always stops before apply and prints one apply command per job.
+
+DECISION F268 D8: `--step-by-step` halts after every step that did work and,
+inside run, before each job — points where no provider call is in flight — and
+reads one line through the context's `read_line`; `q` or end of input stops the
+walk and asks every job of the walk to stop through `safe_points.request_stop`.
+`--plan-only` ends the walk after shape: run reports stopped and runs no job.
 """
 
 from __future__ import annotations
@@ -78,10 +84,18 @@ class DoContext:
     no_llm: bool = False
     force_job: bool = False
     force_mission: bool = False
+    step_by_step: bool = False
+    plan_only: bool = False
+    #: Reads one line at a `--step-by-step` halt, raising `EOFError` at end of
+    #: input like `input`, which the CLI supplies; ``None`` reads as end of input.
+    read_line: Callable[[], str] | None = None
+    #: Why a `--step-by-step` halt stopped the walk; "" while it has not.
+    halt_reason: str = ""
     repo_root: str = ""
     project: RemyProject | None = None
     mission_id: str = ""
     mission_plan: Any = None
+    mission_plan_path: str = ""
     shape: str = ""
     shape_source: str = ""
     job_ids: list[str] = field(default_factory=list)
@@ -105,14 +119,69 @@ DoStep = Callable[[DoContext], tuple[str, str]]
 
 def walk_do_sequence(ctx: DoContext,
                      table: Mapping[str, DoStep] | None = None) -> DoContext:
-    """Call each step of `DO_SEQUENCE` through the table, in order, until one ends the walk."""
+    """Call each step of `DO_SEQUENCE` through the table, in order, until one ends the walk.
+
+    With `--step-by-step`, a step that did work is followed by a halt before the
+    next step (DECISION F268 D8); a halt that stops reports the next step stopped.
+    """
     steps = DO_STEP_TABLE if table is None else table
-    for name in DO_SEQUENCE:
+    for index, name in enumerate(DO_SEQUENCE):
         status, detail = steps[name](ctx)
         ctx.results.append(DoStepResult(name=name, status=status, detail=detail))
         if status in DO_WALK_ENDING_STATUSES:
             break
+        if status != DO_STEP_DONE or index + 1 == len(DO_SEQUENCE):
+            continue
+        coming = DO_SEQUENCE[index + 1]
+        if not do_step_by_step_halt(ctx, f"{name}: {detail}", f"the {coming} step"):
+            ctx.results.append(DoStepResult(
+                name=coming, status=DO_STEP_STOPPED,
+                detail=f"not run: {ctx.halt_reason}"))
+            break
     return ctx
+
+
+#: The answer at a `--step-by-step` halt that stops the walk; end of input stops it too.
+DO_HALT_STOP_ANSWER = "q"
+
+
+def do_step_by_step_halt(ctx: DoContext, done: str, coming: str) -> bool:
+    """One `--step-by-step` halt: print what happened and what comes next, read one line.
+
+    Returns True to go on. Without `--step-by-step` it returns True at once. `q`
+    or end of input returns False, records the reason on the context and asks
+    every job of the walk to stop through the F011 kill switch (DECISION F268 D8).
+    No provider call is in flight here: every caller halts between whole steps
+    or between whole jobs.
+    """
+    if not ctx.step_by_step:
+        return True
+    print(f"[step-by-step] done: {done}", file=sys.stderr)
+    print(f"[step-by-step] next: {coming}. Enter continues, "
+          f"{DO_HALT_STOP_ANSWER} stops.", file=sys.stderr)
+    try:
+        answer = ctx.read_line() if ctx.read_line is not None else None
+    except EOFError:
+        answer = None
+    if answer is not None and answer.strip().lower() != DO_HALT_STOP_ANSWER:
+        return True
+
+    from packages.orchestration.safe_points import StopControlError, request_stop
+
+    said = "end of input" if answer is None else f"{DO_HALT_STOP_ANSWER!r}"
+    reason = f"stopped by {said} at the --step-by-step halt before {coming}"
+    failures = []
+    for job_id in ctx.job_ids:
+        try:
+            request_stop(job_id, reason=reason, source="do")
+        except (StopControlError, OSError) as exc:
+            failures.append(f"job {job_id}: {exc}")
+    if ctx.job_ids:
+        reason += f"; a stop was requested for job(s) {', '.join(ctx.job_ids)}"
+    if failures:
+        reason += f" (not recorded for {'; '.join(failures)})"
+    ctx.halt_reason = reason
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -533,6 +602,7 @@ def _step_plan(ctx: DoContext) -> tuple[str, str]:
     except (MissionPlanInProgressError, MissionError) as exc:
         return DO_STEP_FAILED, f"mission {mission.id} was not planned: {exc}"
     ctx.mission_plan = outcome.plan
+    ctx.mission_plan_path = str(outcome.plan_path)
     return DO_STEP_DONE, (
         f"mission {mission.id} plan v{outcome.version} ({outcome.source}, "
         f"{len(outcome.plan.milestones)} milestone(s)): {outcome.plan_path}")
@@ -635,6 +705,21 @@ def _step_shape(ctx: DoContext) -> tuple[str, str]:
         f"plan: {first.plan_label}, {first.intake_label}")
 
 
+def do_job_task_listing(ctx: DoContext) -> list[dict[str, Any]]:
+    """Every job of the walk in job order: ``{job_id, tasks: [{title, deliverable}]}``."""
+    from packages.orchestration.pingpong_job import load_job_plan
+    from packages.orchestration.task_deliverables import task_deliverable
+
+    listing: list[dict[str, Any]] = []
+    for job_id in ctx.job_ids:
+        job = load_job_plan(job_id)
+        tasks = [] if job is None else [
+            {"title": task.title, "deliverable": task_deliverable(task)}
+            for task in job.tasks]
+        listing.append({"job_id": job_id, "tasks": tasks})
+    return listing
+
+
 def _provider_flags(ctx: DoContext) -> str:
     flags = ""
     if ctx.builder_provider:
@@ -649,8 +734,19 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
     from packages.orchestration.job_plan import task_plan_blocks_execution
     from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan, run_job
 
+    if ctx.plan_only:
+        ctx.next_lines.extend(f"remedy job run {job_id}{_provider_flags(ctx)}"
+                              for job_id in ctx.job_ids)
+        return DO_STEP_STOPPED, (
+            f"--plan-only: no job was run; {len(ctx.job_ids)} job(s) planned, "
+            f"mission plan: {ctx.mission_plan_path}")
+
     ran: list[str] = []
-    for job_id in ctx.job_ids:
+    for position, job_id in enumerate(ctx.job_ids, start=1):
+        done_so_far = "; ".join(ran) or "no job has run yet"
+        if not do_step_by_step_halt(
+                ctx, done_so_far, f"run job {job_id} ({position} of {len(ctx.job_ids)})"):
+            return DO_STEP_STOPPED, f"{ctx.halt_reason}; ran before the halt: {done_so_far}"
         job = load_job_plan(job_id)
         if job is None:
             return DO_STEP_FAILED, f"job {job_id} was not found in the job store"

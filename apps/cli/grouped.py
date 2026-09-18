@@ -548,7 +548,8 @@ def main(argv: list[str] | None = None) -> None:
         # flag keeps the invocation on the `do run` autorun path.
         _BARE_ALLOWED = {"--json", "--repo", "--no-llm", "--yes", "--no-ui",
                          "--builder-provider", "--reviewer-provider",
-                         "--force-job", "--force-mission"}
+                         "--force-job", "--force-mission",
+                         "--step-by-step", "--plan-only"}
         _BARE_VALUED = {"--repo", "--builder-provider", "--reviewer-provider"}
         tail = raw[3:]
         _truly_bare = True

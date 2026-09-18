@@ -1597,6 +1597,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--no-llm", "Force heuristic intake (no LLM provider call)", required=False, is_option=True, is_flag=True),
             ArgDef("--force-job", "One job for what you ask, its tasks under the mission, whatever shape the planner chose", required=False, is_option=True, is_flag=True),
             ArgDef("--force-mission", "Two or more jobs under the mission, one per milestone outline or deliverable, whatever shape the planner chose", required=False, is_option=True, is_flag=True),
+            ArgDef("--step-by-step", "Halt after each step that did work: print what happened and what comes next; Enter continues, q stops", required=False, is_option=True, is_flag=True),
+            ArgDef("--plan-only", "Stop after the shape step: nothing is executed, and the output lists every deliverable", required=False, is_option=True, is_flag=True),
         ),
         may_mutate_repo=False,
         # R-0965: a bare `remedy do "<order>"` runs its job through the same

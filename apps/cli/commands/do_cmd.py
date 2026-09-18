@@ -130,14 +130,19 @@ def _cmd_do_order(
     no_ui: bool = False,
     force_job: bool = False,
     force_mission: bool = False,
+    step_by_step: bool = False,
+    plan_only: bool = False,
 ) -> None:
     """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
 
     init, study, plan, shape, run, ui and apply, in that order, through
     `packages.orchestration.do_sequence`; the walk always stops before apply.
     `--force-job` / `--force-mission` override the planner's shape and exit 2
-    together (DECISION F268 D5). `--json` carries `contract: null` until F269
-    lands (DECISION F268 D1), and `shape` / `shape_source`.
+    together (DECISION F268 D5). `--step-by-step` halts between steps and
+    reads each answer with `input`; `--plan-only` ends the walk after
+    shape (DECISION F268 D8). `--json` carries `contract: null` until F269
+    lands (DECISION F268 D1), `shape` / `shape_source`, `mission_plan_path`
+    and `jobs`, every job's tasks with their deliverables.
     """
     if not order or not order.strip():
         print("Error: order must not be empty.", file=sys.stderr)
@@ -149,7 +154,11 @@ def _cmd_do_order(
     _validate_role_override("builder", "provider", builder_provider)
     _validate_role_override("reviewer", "provider", reviewer_provider)
 
-    from packages.orchestration.do_sequence import DoContext, walk_do_sequence
+    from packages.orchestration.do_sequence import (
+        DoContext,
+        do_job_task_listing,
+        walk_do_sequence,
+    )
 
     ctx = walk_do_sequence(DoContext(
         order=order,
@@ -161,7 +170,12 @@ def _cmd_do_order(
         no_llm=no_llm,
         force_job=force_job,
         force_mission=force_mission,
+        step_by_step=step_by_step,
+        plan_only=plan_only,
+        # Looked up at call time, so the walk reads the terminal the CLI runs in.
+        read_line=input,
     ))
+    jobs = do_job_task_listing(ctx)
 
     if json_output:
         print(json.dumps({
@@ -171,12 +185,19 @@ def _cmd_do_order(
             "stopped_before_apply": ctx.stopped_before_apply,
             "shape": ctx.shape or None,
             "shape_source": ctx.shape_source or None,
+            "mission_plan_path": ctx.mission_plan_path or None,
+            "jobs": jobs,
             "steps": [r.to_json() for r in ctx.results],
             "next": list(ctx.next_lines),
         }, indent=2))
     else:
         for result in ctx.results:
             print(f"[{result.status}] {result.name}: {result.detail}")
+            if result.name == "shape" and result.status == "done":
+                for job in jobs:
+                    for number, task in enumerate(job["tasks"], start=1):
+                        print(f"  job {job['job_id']} task {number}: {task['title']}"
+                              f" — deliverable: {task['deliverable'] or '(none)'}")
         for line in ctx.next_lines:
             print(f"Next: {line}")
     if ctx.failed:
@@ -209,6 +230,8 @@ def _cmd_do(
     yes: bool = False,
     force_job: bool = False,
     force_mission: bool = False,
+    step_by_step: bool = False,
+    plan_only: bool = False,
 ) -> None:
     # --- The F268 sequence: `remedy do "<order>"` ---
     # Fires ONLY when grouped.py determined the invocation is truly bare:
@@ -220,7 +243,8 @@ def _cmd_do(
         _cmd_do_order(goal, repo=repo, json_output=json_output, no_llm=no_llm,
                       yes=yes, builder_provider=builder_provider,
                       reviewer_provider=reviewer_provider, no_ui=no_ui,
-                      force_job=force_job, force_mission=force_mission)
+                      force_job=force_job, force_mission=force_mission,
+                      step_by_step=step_by_step, plan_only=plan_only)
         return
     _validate_role_override("builder", "provider", builder_provider)
     _validate_role_override("reviewer", "provider", reviewer_provider)
@@ -748,6 +772,8 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         yes=getattr(args, "yes", False),
         force_job=bool(getattr(args, "force_job", False)),
         force_mission=bool(getattr(args, "force_mission", False)),
+        step_by_step=bool(getattr(args, "step_by_step", False)),
+        plan_only=bool(getattr(args, "plan_only", False)),
     ),
     "run.show": lambda args: _cmd_run_show(
         args.run_id,
