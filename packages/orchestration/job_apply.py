@@ -24,6 +24,7 @@ import json
 import os
 import shlex
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -380,6 +381,12 @@ class JobApplyResult:
     push_remote: str = ""             # the remote's name, never its URL
     push_ref: str = ""                # the upstream ref pushed to
     push_error: str = ""
+    #: DECISION F270 D4 (6): the mission's blocking criteria still ``open`` when
+    #: the push was asked; named, never holding it — only an ``unmet`` one does.
+    push_open_criteria: list[str] = field(default_factory=list)
+    #: DECISION F270 D4 (3): `remedy do`'s walk of several jobs asks --commit-auto
+    #: for each job's title before the mission's goal; not a record field.
+    commit_auto_title_first: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -463,7 +470,7 @@ _OPERATION_HEADS = (("CHERRY_PICK_HEAD", "a cherry-pick"), ("REVERT_HEAD", "a re
 _REBASE_DIRS = ("rebase-merge", "rebase-apply")
 
 
-def _checkout_refusals(target: Path, *, landing: str, what: str) -> tuple[list[str], bool]:
+def checkout_refusals(target: Path, *, landing: str, what: str) -> tuple[list[str], bool]:
     """The operator checkout's refusals every ``--commit…`` flag shares; ``(sentences, stop)``.
 
     DECISION F270 D2 (2) and D3 (2): a target below its repository's top
@@ -519,8 +526,8 @@ def _history_refusals(
         return [f"Job {job.job_id} ran in a staging copy, not on a git branch, so it "
                 f"has no task commits to merge and nothing was copied; a plain "
                 f"--approve copies its files."]
-    refusals, stop = _checkout_refusals(target, landing="the task commits",
-                                        what="merge into")
+    refusals, stop = checkout_refusals(target, landing="the task commits",
+                                       what="merge into")
     if stop:
         return refusals
     if skip_blocked:
@@ -716,17 +723,20 @@ def _mission_goal(job: Any) -> str:
     return " ".join(str(getattr(mission, "goal", "") or "").split()) if mission else ""
 
 
-def build_auto_commit_subject(job: Any) -> str:
+def build_auto_commit_subject(job: Any, *, title_first: bool = False) -> str:
     """The --commit-auto first line (DECISION F270 D3 (4)).
 
     The mission's goal, else the job's title, else ``Apply the <n> tasks of
     Remedy job <id8>``: the first candidate that, with its first letter
     capitalised and cut by the per-task commits' own fitter, passes
-    :func:`commit_subject_problem`.
+    :func:`commit_subject_problem`. ``title_first`` asks the job's title
+    before the mission's goal, as `remedy do` does for each job of a walk of
+    several (DECISION F270 D4 (3)), so their commits do not all read alike.
     """
     from packages.orchestration.pingpong_job import fit_commit_subject
 
-    for candidate in (_mission_goal(job), " ".join((job.job_title or "").split())):
+    candidates = [_mission_goal(job), " ".join((job.job_title or "").split())]
+    for candidate in (candidates[::-1] if title_first else candidates):
         if candidate:
             subject = fit_commit_subject("", candidate[:1].upper() + candidate[1:])
             if not commit_subject_problem(subject):
@@ -765,7 +775,7 @@ def _commit_refusals(target: Path, planned: list[str]) -> list[str]:
     target's ``.gitignore`` matches. A staging job is not refused: the commit
     holds only the copied files.
     """
-    refusals, stop = _checkout_refusals(target, landing="the commit", what="commit on")
+    refusals, stop = checkout_refusals(target, landing="the commit", what="commit on")
     if stop or not planned:
         return refusals
     rc, out, err = _history_git(target, "check-ignore", "--", *planned)
@@ -789,41 +799,69 @@ def _branch_upstream(target: Path) -> tuple[str, str, str]:
     return branch, remote, merge
 
 
-def _push_refusals(job: Any, target: Path) -> list[str]:
-    """Every sentence refusing --push here; reads only (DECISION F270 D3 (5)).
+def upstream_push_refusals(target: Path) -> list[str]:
+    """The sentences refusing a push of the target's current branch by its upstream; reads only.
 
-    No upstream, an upstream that is a local branch, a mission contract that
-    cannot be read, and any blocking criterion of the job's whole mission that
-    is not ``met`` — an ``open`` criterion is not green.
+    DECISION F270 D3 (5): no upstream, or an upstream that is a local branch.
+    It needs no job, so `remedy do` asks it before its first step (DECISION
+    F270 D4 (1)).
     """
-    from packages.orchestration.mission_contract import (
-        contract_blockers,
-        read_mission_contract,
-    )
-    from packages.orchestration.mission_state import mission_for_job
-
-    refusals: list[str] = []
     branch, remote, merge = _branch_upstream(target)
     if branch and (not remote or not merge):
         remotes = _history_git(target, "remote")[1].split()
         name = (remotes[0] if len(remotes) == 1
                 else "origin" if "origin" in remotes else "<remote>")
-        refusals.append(f"The branch {branch} has no upstream to push to; "
-                        f"`git push --set-upstream {name} {branch}` sets one.")
-    elif branch and remote == ".":
-        refusals.append(f"The upstream of {branch} is the local branch {merge}, and "
-                        f"--push never writes another branch of this repository.")
+        return [f"The branch {branch} has no upstream to push to; "
+                f"`git push --set-upstream {name} {branch}` sets one."]
+    if branch and remote == ".":
+        return [f"The upstream of {branch} is the local branch {merge}, and "
+                f"--push never writes another branch of this repository."]
+    return []
+
+
+def mission_push_refusals(read_mission: Callable[[], Any]) -> tuple[list[str], list[str]]:
+    """``(refusals, open)``: the contract's sentences refusing a push, and its open blockers.
+
+    DECISION F270 D4 (6), amending D3 (5): a push is refused while any
+    blocking criterion of the whole mission is ``unmet`` — the feature's
+    "red" — or when the contract cannot be read. A blocking criterion still
+    ``open``, which no gate has evaluated yet, does not hold the push; its id
+    is returned in ``open`` so the push's output and record name it.
+    ``read_mission`` returns the mission, or None without one. Reads only.
+    """
+    from packages.orchestration.mission_contract import read_mission_contract
+
     try:
-        mission = mission_for_job(str(job.job_id))
-        blockers = contract_blockers(read_mission_contract(mission) if mission else None)
+        mission = read_mission()
+        contract = read_mission_contract(mission) if mission else None
     except Exception as exc:
-        return refusals + [f"The mission's contract cannot be read "
-                           f"({type(exc).__name__}: {str(exc)[:120]}), so no push can be "
-                           f"shown safe."]
-    if blockers:
-        refusals.append(f"The mission's blocking contract criteria {', '.join(blockers)} "
-                        f"are not met, so nothing is pushed.")
-    return refusals
+        return [f"The mission's contract cannot be read "
+                f"({type(exc).__name__}: {str(exc)[:120]}), so no push can be "
+                f"shown safe."], []
+    blocking = [c for c in (contract.criteria if contract else ()) if c.blocking]
+    unmet = [c.id for c in blocking if c.status == "unmet"]
+    still_open = [c.id for c in blocking if c.status not in ("met", "unmet")]
+    if unmet:
+        return [f"The mission's blocking contract criteria {', '.join(unmet)} are "
+                f"unmet, so nothing is pushed."], still_open
+    return [], still_open
+
+
+def push_open_criteria_sentence(still_open: list[str]) -> str:
+    """The sentence naming the blocking criteria no gate has evaluated yet, or "" (D4 (6))."""
+    if not still_open:
+        return ""
+    return (f"The mission's blocking contract criteria {', '.join(still_open)} are "
+            f"still open, not yet evaluated by any gate; only an unmet criterion "
+            f"holds a push.")
+
+
+def _push_refusals(job: Any, target: Path) -> tuple[list[str], list[str]]:
+    """``(refusals, open)`` for --push here: the upstream's, then the job's mission's; reads only."""
+    from packages.orchestration.mission_state import mission_for_job
+
+    refusals, still_open = mission_push_refusals(lambda: mission_for_job(str(job.job_id)))
+    return upstream_push_refusals(target) + refusals, still_open
 
 
 def _flag_refusals(job: Any, result: JobApplyResult, target: Path, planned: list[str],
@@ -842,7 +880,8 @@ def _flag_refusals(job: Any, result: JobApplyResult, target: Path, planned: list
     else:
         return []
     if result.push:
-        found += [f"{PUSH_REFUSED}: {s}" for s in _push_refusals(job, target)]
+        refusals, result.push_open_criteria = _push_refusals(job, target)
+        found += [f"{PUSH_REFUSED}: {s}" for s in refusals]
     return found
 
 
@@ -862,8 +901,8 @@ def _commit_applied_files(job: Any, result: JobApplyResult, target: Path,
         return f"The target's HEAD could not be read ({err.strip()[:150]}), so nothing was committed."
     result.history_previous_head = before
     result.target_branch = _history_git(target, "symbolic-ref", "-q", "--short", "HEAD")[1].strip()
-    subject = (build_auto_commit_subject(job) if result.commit_message_mode == "auto"
-               else result.commit_message.strip())
+    subject = (build_auto_commit_subject(job, title_first=result.commit_auto_title_first)
+               if result.commit_message_mode == "auto" else result.commit_message.strip())
     message = build_apply_commit_message(job, subject, applied,
                                          list_tasks=result.commit_message_mode == "auto")
     rc, out, err = _history_git(target, "add", "--", *applied)
@@ -903,23 +942,42 @@ def _push_landed_commit(result: JobApplyResult, target: Path) -> None:
     credential prompt and a timeout. A failure is recorded, never raised: the
     commit stays where it landed.
     """
+    outcome = push_to_upstream(target, result.commit_sha, result.target_branch)
+    result.pushed = outcome.pushed
+    result.push_remote, result.push_ref, result.push_error = (
+        outcome.remote, outcome.ref, outcome.error)
+
+
+@dataclass(frozen=True)
+class PushOutcome:
+    """What one push did; ``remote`` is the remote's name, never its URL."""
+
+    pushed: bool
+    remote: str
+    ref: str
+    error: str
+
+
+def push_to_upstream(target: Path, sha: str, branch_expected: str) -> PushOutcome:
+    """``git push --porcelain <remote> <sha>:<upstream ref>``; never forced, never raises.
+
+    DECISION F270 D3 (5): only while the target is still on
+    ``branch_expected`` and that branch still has a named remote and an
+    upstream ref, with no credential prompt and a timeout. It needs no apply
+    result, so `remedy do` pushes its mission's last landed commit with it
+    once (DECISION F270 D4 (4)).
+    """
     branch, remote, merge = _branch_upstream(target)
     named = remote in _history_git(target, "remote")[1].split()
-    result.push_remote = remote if named else ("(not a named remote)" if remote else "")
-    result.push_ref = merge
-    if branch != result.target_branch or not named or not merge or not result.commit_sha:
-        result.push_error = (f"the branch or its upstream changed after the commit "
-                             f"({branch or 'detached HEAD'}, upstream "
-                             f"{result.push_remote or 'none'} {merge or 'none'}), so "
-                             f"nothing was pushed")
-        return
+    shown = remote if named else ("(not a named remote)" if remote else "")
+    if branch != branch_expected or not named or not merge or not sha:
+        return PushOutcome(False, shown, merge, (
+            f"the branch or its upstream changed after the commit "
+            f"({branch or 'detached HEAD'}, upstream {shown or 'none'} {merge or 'none'}), "
+            f"so nothing was pushed"))
     env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
-    rc, out, err = _history_git(target, "push", "--porcelain", remote,
-                                f"{result.commit_sha}:{merge}", env=env)
-    if rc == 0:
-        result.pushed = True
-    else:
-        result.push_error = _quoted_git_output(out, err)
+    rc, out, err = _history_git(target, "push", "--porcelain", remote, f"{sha}:{merge}", env=env)
+    return PushOutcome(rc == 0, shown, merge, "" if rc == 0 else _quoted_git_output(out, err))
 
 
 # ---------------------------------------------------------------------------
@@ -1225,6 +1283,7 @@ def apply_job(
     commit_message: str | None = None,
     commit_auto: bool = False,
     push: bool = False,
+    commit_auto_title_first: bool = False,
 ) -> JobApplyResult:
     """Apply reviewed job workspace changes into target repo.
 
@@ -1239,7 +1298,11 @@ def apply_job(
     ``commit_auto`` (``--commit-auto``, DECISION F270 D3) copy as a plain
     apply does and, after the verification and the post-test pass, land ONE
     commit of exactly the copied files. ``push`` then pushes what landed to
-    the branch's upstream, never forced. The three ``--commit…`` flags are
+    the branch's upstream, never forced; only a blocking criterion of the
+    mission that is ``unmet`` refuses it, and every one still ``open`` is
+    named (DECISION F270 D4 (6)). ``commit_auto_title_first`` asks the job's
+    title before the mission's goal for the ``--commit-auto`` first line
+    (DECISION F270 D4 (3)). The three ``--commit…`` flags are
     mutually exclusive and ``push`` needs one; a clash is refused before the
     job is read.
 
@@ -1268,6 +1331,7 @@ def apply_job(
         commit_with_history=commit_with_history,
         commit_message=commit_message or "",
         push=push,
+        commit_auto_title_first=commit_auto_title_first,
         started_at=datetime.now(timezone.utc).isoformat(),
     )
 
@@ -1906,6 +1970,7 @@ def export_job_apply_json(result: JobApplyResult) -> dict[str, Any]:
         "push_remote": result.push_remote,
         "push_ref": result.push_ref,
         "push_error": result.push_error,
+        "push_open_criteria": result.push_open_criteria,
     }
     return _redact_json_value(raw)
 
@@ -2051,6 +2116,8 @@ def summarize_job_apply(result: JobApplyResult) -> str:
                 if result.push:
                     lines.append("With --approve, --push then pushes that branch to its "
                                  "configured upstream, never forced.")
+            if result.push and result.push_open_criteria:
+                lines.append(push_open_criteria_sentence(result.push_open_criteria))
         lines.append("")
         flag_words = (f"--commit {shlex.quote(result.commit_message)}"
                       if result.commit_message_mode == "message" else flag)
@@ -2092,6 +2159,8 @@ def summarize_job_apply(result: JobApplyResult) -> str:
                 f"{result.target_branch} as {result.commit_sha}, as you. {pushed}")
         else:
             lines.append("No commits or pushes were made. Review and commit manually.")
+        if result.push and result.push_open_criteria:
+            lines.append(push_open_criteria_sentence(result.push_open_criteria))
 
     elif result.status == "applied_push_failed":
         lines.append("")
@@ -2101,6 +2170,8 @@ def summarize_job_apply(result: JobApplyResult) -> str:
                      f"failed: {result.push_error}")
         lines.append("The commit stays where it landed and nothing was forced; push it "
                      "by hand once the cause is fixed.")
+        if result.push_open_criteria:
+            lines.append(push_open_criteria_sentence(result.push_open_criteria))
 
     elif result.status == "applied_test_failed":
         lines.append("")

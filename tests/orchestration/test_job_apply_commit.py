@@ -40,7 +40,7 @@ from tests.orchestration.test_job_worktree_integration import (  # noqa: F401  (
 )
 
 COMMIT_KEYS = ("commit_message_mode", "commit_sha", "push", "pushed", "push_remote",
-               "push_ref", "push_error")
+               "push_ref", "push_error", "push_open_criteria")
 
 
 def _branch(repo: Path) -> str:
@@ -249,6 +249,16 @@ class TestCommitAuto:
     def test_a3_the_rule_rejects_an_id_a_verbless_line_and_a_long_line(self, line):
         assert commit_subject_problem(line) != ""
 
+    def test_a5_title_first_asks_the_jobs_title_before_the_missions_goal(self, monkeypatch):
+        """DECISION F270 D4 (3): `remedy do`'s walk of several jobs asks each job's title first."""
+        from packages.orchestration.job_apply import build_auto_commit_subject
+
+        _mission(monkeypatch, goal="add the contact page to the site")
+        job = SimpleNamespace(job_id="0123456789abcdef", job_title="write the footer links",
+                              tasks=[])
+        assert build_auto_commit_subject(job) == "Add the contact page to the site"
+        assert build_auto_commit_subject(job, title_first=True) == "Write the footer links"
+
     def test_a4_the_rule_accepts_a_short_sentence(self):
         assert commit_subject_problem("Add the contact page") == ""
         assert commit_subject_problem("Fix the " + "a" * 64) == ""    # exactly 72
@@ -411,20 +421,41 @@ class TestPush:
         assert f"`git push --set-upstream origin {_branch(repo)}`" in sentence
         assert _git(remote, "for-each-ref") == "" and not (repo / "one.txt").exists()
 
-    @pytest.mark.parametrize("status", ["open", "unmet"])
-    def test_p5_a_blocking_criterion_not_met_is_refused_before_anything(
-        self, repo, monkeypatch, tmp_path, status,
+    def test_p5_an_unmet_blocking_criterion_is_refused_before_anything(
+        self, repo, monkeypatch, tmp_path,
     ):
+        """DECISION F270 D4 (6): an `unmet` blocking criterion is red and holds the push."""
         _bare_upstream(repo, tmp_path)
         job = _completed(repo, monkeypatch)
-        _mission(monkeypatch, statuses={"C001": ("met", True), "C002": (status, True),
-                                        "C003": ("open", False)})
+        _mission(monkeypatch, statuses={"C001": ("met", True), "C002": ("unmet", True),
+                                        "C003": ("unmet", False), "C004": ("open", True)})
         before = _state(repo)
         sentence = _refused(apply_job(job.job_id, str(repo), approve=True,
                                       commit_auto=True, push=True),
                             PUSH_REFUSED, before, repo)
-        assert "criteria C002 are not met" in sentence and "C003" not in sentence
+        assert "criteria C002 are unmet, so nothing is pushed" in sentence
+        assert "C003" not in sentence and "C004" not in sentence
         assert _pushes(tmp_path) == [] and not (repo / "one.txt").exists()
+
+    def test_p7_an_open_blocking_criterion_is_pushed_and_named(
+        self, repo, monkeypatch, tmp_path,
+    ):
+        """DECISION F270 D4 (6): an `open` blocking criterion, which no gate has evaluated,
+        does not hold the push; it is named in the output and the record."""
+        remote = _bare_upstream(repo, tmp_path)
+        job = _completed(repo, monkeypatch)
+        _mission(monkeypatch, statuses={"C001": ("met", True), "C002": ("open", True),
+                                        "C003": ("open", False)})
+        result = apply_job(job.job_id, str(repo), approve=True, commit_auto=True, push=True)
+        assert result.status == "applied", (result.blocked_reason, result.push_error)
+        assert result.pushed and len(_pushes(tmp_path)) == 1
+        assert _git(remote, "rev-parse", _branch(repo)).strip() == result.commit_sha
+        assert result.push_open_criteria == ["C002"]
+        record = load_job_apply_record(job.job_id, result.job_apply_id)
+        assert record["push_open_criteria"] == ["C002"]
+        summary = summarize_job_apply(result)
+        assert "criteria C002 are still open, not yet evaluated" in summary
+        assert "C003" not in summary
 
     def test_p6_a_push_that_fails_leaves_the_commit_and_says_so(
         self, repo, monkeypatch, tmp_path,
