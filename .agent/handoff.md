@@ -1,126 +1,194 @@
-# Handoff — F269 Contract & contract templates · Round 10 (closure: integration gate)
+# Handoff — F269 Contract & contract templates · Round 11 (closure: repair 1 and round A)
 
 ## Session
 
-SESSION 2 of feature F269 · round 10 · rounds so far 10
+SESSION 2 of feature F269 · round 11 · rounds so far 11
 
 Context self-assessment: the round fit in one worker context with ample room; every gate below was run in this session, none carried over from memory.
 
 ## Range
 
-Review of 6d10133e..HEAD — branch `feature/f269-contract`.
+Review of c11fd76a..HEAD — branch `feature/f269-contract`.
 
 ## Summary
 
-Round 10 opens the closure sequence:
+Round 11 does closure repair 1 and closure round A:
 
-- C1 books round 9's verdict (Gate F269 R9, PASS) and R-0971's `Done:` line in the ledger, writes the round 10 plan, and saves the payloads (ledger, plan, built_state) and the block.
-- C2 pins Acceptance bullet 3's first half exactly: the extra-requirement order yields exactly ONE `planner` criterion, and its text names the release checklist.
-- C3 appends the Built State to `docs/roadmap/features/T2_F269.md`.
-- C4 runs the integration-gate suite ONCE in the primary checkout and commits its transcript. It is RED: 1 failed.
-
-Closure suite transcript (`.agent/authored/f269-closure-suite.txt`), verbatim:
-```
-1 failed, 17950 passed, 23 skipped, 1 warning in 174.14s (0:02:54)
-tests/test_subprocess_timeouts.py::test_no_production_subprocess_call_is_missing_a_timeout
-```
-
-The failure message read: `AssertionError: 1 production subprocess call(s) carry no timeout=; a hung child hangs the unattended loop forever: packages/orchestration/contract_hygiene.py:262`. That line is `_git`'s `subprocess.run([...], cwd=..., capture_output=True, text=True, env=env, check=False)`, added by F269 R4 C2 `1cef2b6a`, so under amend0917-throughput (2) this bad node is F269's to repair. Per the block, nothing was repaired in this round.
+- C1 books round 10's verdict (Gate F269 R10, PASS), writes the round 11 plan, and saves the payloads and the block.
+- C2 is repair 1. `_git` in `packages/orchestration/contract_hygiene.py` now passes `timeout=_GIT_TIMEOUT_SEC` (60). A git query that times out raises `HygieneMeasureError`, so `main` reports "cannot measure" and exits 2. The closure suite's one bad node, `tests/test_subprocess_timeouts.py::test_no_production_subprocess_call_is_missing_a_timeout`, is green again. One new test pins the timeout path.
+- C3 covers precondition 6. The queue had no pending item, so `generate_and_append_if_empty` created SU-020 (tier 1, R-0445). `run_next_self_use_item` then ran it in worktree isolation, without applying anything. The job `5edc7cfc1dee4d75` ended `stopped` with the stop reason `budget_exhausted:max_provider_calls`. `describe_self_use_run_defects` returned an empty tuple.
+- C4 covers precondition 3. `run_integrity_checks` returned passed: 5 checks, 0 failing.
+- C5 covers closure round A. Evidence job `f269r11e1001` is valid. The review package is READY_FOR_REVIEW, and the head_commit in its manifest equals C4.
 
 ## Commits
 
-### 4871a211 F269 R10 C1: bookkeeping — round 9 verdict and R-0971 resolution booked, the round 10 plan and payloads
+### bf7883bb F269 R11 C1: bookkeeping — round 10 verdict booked, the round 11 plan and payloads
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f269-r10-block.md` | +71 / -0 | Byte copy of block.md |
-| `.agent/authored/f269-r10-built_state.md` | +59 / -0 | Byte copy of built_state.md |
-| `.agent/authored/f269-r10-ledger.md` | +4 / -0 | Byte copy of ledger.md |
-| `.agent/authored/f269-r10-plan.md` | +25 / -0 | Byte copy of plan.md |
-| `.agent/live_review.md` | +4 / -0 | `6d10133e` bytes + ledger.md (Gate F269 R9, Done: R-0971) |
-| `.agent/plan.md` | +8 / -7 | := plan.md |
+| `.agent/authored/f269-r11-block.md` | +123 / -0 | Byte copy of block.md |
+| `.agent/authored/f269-r11-ledger.md` | +2 / -0 | Byte copy of ledger.md |
+| `.agent/authored/f269-r11-plan.md` | +23 / -0 | Byte copy of plan.md |
+| `.agent/live_review.md` | +2 / -0 | `c11fd76a` bytes + ledger.md (Gate F269 R10) |
+| `.agent/plan.md` | +6 / -8 | := plan.md |
 
-### e0f1d13b F269 R10 C2: the extra-requirement order pins exactly one planner criterion, naming the release checklist
+### 7f3c2575 F269 R11 C2: repair 1 — the hygiene check's git query carries a timeout, and a git that hangs is cannot-measure, exit 2
 | Path | +/- | Reason |
 |------|-----|--------|
-| `tests/cli/test_do_sequence_cli.py` | +3 / -2 | Renamed `test_contract_website_with_an_extra_requirement_adds_planner_criteria_and_drops_none` to `..._adds_one_planner_criterion_naming_it`; `assert len(_contract_by_origin(data, "planner")) >= 1` became `[planner] = _contract_by_origin(data, "planner")` + `assert "lists the release checklist" in planner["text"]`. Nothing else changed |
+| `packages/orchestration/contract_hygiene.py` | +9 / -1 | (a) `#:` comment + `_GIT_TIMEOUT_SEC = 60` directly above `def _git(`; (b) `timeout=_GIT_TIMEOUT_SEC` on the `subprocess.run`; (c) `except subprocess.TimeoutExpired as exc:` raising `HygieneMeasureError(f"git {' '.join(args)} timed out after {_GIT_TIMEOUT_SEC}s") from exc`, before `except OSError` |
+| `tests/orchestration/test_contract_hygiene.py` | +17 / -0 | (d) `test_a_git_query_that_times_out_exits_2_cannot_measure`, directly after `test_an_unknown_rule_exits_2` |
 
-### 58e0d53d F269 R10 C3: the feature file's Built State — the contract, its templates, gate, amendments and remainder as built
+### a971944c F269 R11 C3: closure precondition 6 — generate SU-020, run it to the approval gate, record the evidence
 | Path | +/- | Reason |
 |------|-----|--------|
-| `docs/roadmap/features/T2_F269.md` | +59 / -0 | `6d10133e` bytes + built_state.md (append only) |
+| `.agent/selfuse_f269/SU-020.md` | +7 / -0 | The job file the runner wrote |
+| `.agent/selfuse_f269/entry_and_job_file.txt` | +5 / -0 | Entry id, title, provenance, consumed_by (empty), job file |
+| `.agent/selfuse_f269/execution_config.txt` | +7 / -0 | Builder/reviewer ollama, 2 repair rounds, 3 max rounds, worktree isolation |
+| `.agent/selfuse_f269/full_transcript.txt` | +24 / -0 | Job and task summary |
+| `.agent/selfuse_f269/result_state.txt` | +8 / -0 | Job state and stop fields |
+| `.agent/selfuse_f269/run_defects.txt` | +3 / -0 | `describe_self_use_run_defects` output: `(empty tuple)` |
+| `scripts/self_use_queue.json` | +8 / -0 | The generator's SU-020 entry, `consumed_by` empty |
 
-### 810d0343 F269 R10 C4: the integration-gate suite, run once — 1 failed, 17950 passed, 23 skipped
+### 2a7f22c4 F269 R11 C4: closure precondition 3 — the integrity check reads passed, five checks, none failing
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f269-closure-suite.txt` | +2 / -0 | The run's summary line and its one bad node id |
+| `.agent/authored/f269-integrity-check.txt` | +33 / -0 | `export_integrity_json(run_integrity_checks())`, F268's shape |
 
-### C5 (this commit) F269 R10 C5: handoff
+### 1e076536 F269 R11 C5: closure round A — evidence job f269r11e1001 and the review package READY_FOR_REVIEW at the accepted HEAD
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/authored/f269-r11-evidence-summary.txt` | +54 / -0 | Evidence job summary, F268's shape |
+| `.agent/authored/f269-r11-zip-output.txt` | +33 / -0 | Zip build output, F268's shape |
+
+### C6 (this commit) F269 R11 C6: handoff
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | rewrite | This file |
 
 ## External actions
 
-- No worktree was added or removed. `git worktree list` before C4: `/home/decodeux/Repos/remedy  58e0d53d [feature/f269-contract]`.
-- `git push` runs after this commit. Its outcome and G5 are in the worker's final report.
+- `git worktree add --detach .remedy-wt/f269-r11-mut 7f3c2575`, for the G2 mutation red-proof. Removed afterwards with `git worktree remove --force` (`worktree removed: True`).
+- The self-use run (`run_job`, worktree isolation) created the worktree `.remedy-wt/job-5edc7cfc1dee4d75` on the new branch `remedy/job-5edc7cfc1dee4d75`. That worktree was clean, with no edits and HEAD at `7f3c2575`. Following F268's precedent, I removed it with `git worktree remove --force` after C3 so that G6 reads one row. The branch is kept.
+- `git push -u origin feature/f269-contract` after C4: `c11fd76a..2a7f22c4  feature/f269-contract -> feature/f269-contract`.
+- `bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f269_evidence_round11`, one attempt, READY_FOR_REVIEW (see G5).
+- `git push` of C5 and C6 runs after this commit. Its outcome and G6 are in the worker's final report.
 - No PR was created, edited or merged.
 
 ## Verification
 
-G1 to G3 ran at C3 `58e0d53d` with a clean tree. Exit codes come from `bash -c '<cmd>; echo "REAL_EXIT=$?"'`.
+Exit codes come from `bash -c '<cmd>; echo "REAL_EXIT=$?"'`.
 
-G1 transport + state, `python3 .remedy-wt/f269-r10/g1.py`:
+G1 transport + state. The payload digests were checked before use:
 ```
-digests True copies True live_review True T2_F269 True plan True
-True
+9700b1437e9803edee42568d36ad2458b6390f0f03413d284b888c0a64fb9fb6  ledger.md   (matches)
+3f5daacfb4a7ab57c32268fa7b5e5605ff7645414a69888d9ae288121e0d9c7b  plan.md     (matches)
+ab58516b66de30f1ede03a61662f1e6dcadd1e639b8c6c1ebd106746e6bfdc8b  block.md    (matches)
+```
+After C2, `python3 .remedy-wt/f269-r11/g1_g2.py 7f3c2575` (G1 part):
+```
+G1 live_review == c11fd76a bytes + ledger.md: True
+G1 .agent/plan.md == plan.md: True
+G1 .agent/authored/f269-r11-ledger.md == payload: True
+G1 .agent/authored/f269-r11-plan.md == payload: True
+G1 .agent/authored/f269-r11-block.md == payload: True
+```
+
+G2, `python3 -m pytest -q -p no:cacheprovider tests/test_subprocess_timeouts.py tests/orchestration/test_contract_hygiene.py tests/orchestration/test_pingpong.py tests/cli/test_golden_path.py`:
+```
+110 passed in 44.46s
 REAL_EXIT=0
 ```
-(the four payload digests match the block; each `.agent/authored/f269-r10-*` copy is byte-equal to its payload; `.agent/live_review.md` and `T2_F269.md` equal their `6d10133e` bytes + payload; `.agent/plan.md` equals plan.md.)
-
-G2, `python3 -m pytest -q -p no:cacheprovider tests/cli/test_do_sequence_cli.py tests/cli/test_golden_path.py tests/docs/`:
+G2 mutation red-proof, one worktree `.remedy-wt/f269-r11-mut` at `7f3c2575`, `__pycache__` purged before each run, `python3 -B -m pytest -q -p no:cacheprovider tests/test_subprocess_timeouts.py tests/orchestration/test_contract_hygiene.py` from its root:
 ```
-394 passed in 76.73s (0:01:16)
-REAL_EXIT=0
+--- control: imported module path: /home/decodeux/Repos/remedy/.remedy-wt/f269-r11-mut/packages/orchestration/contract_hygiene.py
+   28 passed in 2.79s
+   REAL_EXIT=0
+--- mutation A (except TimeoutExpired clause deleted): imported module path: /home/decodeux/Repos/remedy/.remedy-wt/f269-r11-mut/packages/orchestration/contract_hygiene.py
+   FAILED tests/orchestration/test_contract_hygiene.py::test_a_git_query_that_times_out_exits_2_cannot_measure
+   1 failed, 27 passed in 2.61s
+   REAL_EXIT=1
+--- mutation B (timeout=_GIT_TIMEOUT_SEC deleted from the call): imported module path: /home/decodeux/Repos/remedy/.remedy-wt/f269-r11-mut/packages/orchestration/contract_hygiene.py
+   FAILED tests/test_subprocess_timeouts.py::test_no_production_subprocess_call_is_missing_a_timeout
+   FAILED tests/orchestration/test_contract_hygiene.py::test_a_git_query_that_times_out_exits_2_cannot_measure
+   2 failed, 26 passed in 2.71s
+   REAL_EXIT=1
+worktree removed: True
 ```
 
-G3, `python3 -m ruff check tests/cli/test_do_sequence_cli.py`:
+G3, `python3 -m ruff check packages/orchestration/contract_hygiene.py tests/orchestration/test_contract_hygiene.py`:
 ```
 All checks passed!
 REAL_EXIT=0
 ```
 
-G4, the C4 run: `python3 -m pytest -n auto -q` in the primary checkout at `58e0d53d`, serially after G3 with no other pytest process running (`pgrep -af pytest` showed only itself):
+G4. `run_integrity_checks()` returned `True 0` (passed, fail_count). All five checks read `pass`: handler_import (`handlers=147`), live_review_verdict, plan_consistency (`unchecked=0, context_complete=False`), relevant_untracked (`untracked=0, relevant=0`), high_blockers_open (`no open blocker/high findings`). After the C4 push:
 ```
-FAILED tests/test_subprocess_timeouts.py::test_no_production_subprocess_call_is_missing_a_timeout
-1 failed, 17950 passed, 23 skipped, 1 warning in 174.14s (0:02:54)
-REAL_EXIT=1 WALL=176s
+git status --porcelain            -> (empty)
+git rev-parse HEAD origin/feature/f269-contract
+2a7f22c443350195a08b366abd17a5c3b3a4d1f3
+2a7f22c443350195a08b366abd17a5c3b3a4d1f3
+REAL_EXIT=0
 ```
-Bad-node count: 1. Committed transcript sha256: `06ff8bc64d5b4689283d79de94d0eb09c7029840f03d0c0cbff8e3a13d348f75`. The run left the tree clean apart from the transcript. `remedy/job-*` branches: 32 before C4, 32 after it.
+
+G5, from a clean tree at C4:
+```
+git rev-list --ancestry-path --count 0955dd4c22b8533823aae05a8ec8b98fac88aafd..2a7f22c443350195a08b366abd17a5c3b3a4d1f3 -> 52
+git rev-list --count 0955dd4c22b8533823aae05a8ec8b98fac88aafd..2a7f22c443350195a08b366abd17a5c3b3a4d1f3               -> 52
+python3 .remedy-wt/f269-r11/create_f269_evidence.py   REAL_EXIT=0
+  Collected 448 node IDs after deselection
+  Test results: 448 passed, 0 failed, 0 skipped
+  is_valid_current_run: True
+  validation_errors: []
+bash scripts/make_review_zip.sh --evidence-dir .remedy-wt/f269_evidence_round11   REAL_EXIT=0
+  PACKAGE_STATUS=READY_FOR_REVIEW
+  EVIDENCE_AUTHORITATIVE=true
+  REVIEW_SUBJECT_ALIGNMENT=PASS
+python3 .remedy-wt/f269-r11/verify_zip.py   REAL_EXIT=0
+  manifest members: ['.review_zip_manifest.json']
+  head_commit: 2a7f22c443350195a08b366abd17a5c3b3a4d1f3
+  base_commit: 0955dd4c22b8533823aae05a8ec8b98fac88aafd
+  head_commit == C4: True
+  package_status: READY_FOR_REVIEW
+sha256sum /home/decodeux/Repos/remedy-history/zips/remedy-review-20260918-190009-READY_FOR_REVIEW.zip   REAL_EXIT=0
+  bf0a454507933ee7848b83825eb599b07fb4eed0d44de84270d03acd91149172
+```
+
+Self-use defect strings from `describe_self_use_run_defects`, verbatim: none. The function returned `()` (empty tuple).
+
+Closure values, spelled as the tools printed them:
+1. Evidence job id: `f269r11e1001`
+2. Package filename: `remedy-review-20260918-190009-READY_FOR_REVIEW.zip`
+3. SHA-256: `bf0a454507933ee7848b83825eb599b07fb4eed0d44de84270d03acd91149172`
+4. Package path: `NOT ARCHIVED`
+5. Accepted HEAD: `2a7f22c443350195a08b366abd17a5c3b3a4d1f3`
+6. Self-use item id: `SU-020`
 
 ## Authored-text proofs
 
-In G1 above, each of the four payloads matches its block digest and is byte-equal to its `.agent/authored/f269-r10-*` copy. `.agent/plan.md`, `.agent/live_review.md` and `T2_F269.md` equal their ordered construction.
+G1 above shows the three payloads matching their block digests and each byte-equal to its `.agent/authored/f269-r11-*` copy. It also shows `.agent/plan.md` equal to plan.md, and `.agent/live_review.md` equal to its `c11fd76a` bytes + ledger.md. Digest of the saved block `.agent/authored/f269-r11-block.md`: `ab58516b66de30f1ede03a61662f1e6dcadd1e639b8c6c1ebd106746e6bfdc8b`.
 
 ## Deviations & assumptions
 
-1. The commit sequence followed the block exactly (C1, C2, C3, C4, C5).
-2. The run log went to `.remedy-wt/f269-r10/suite_run.txt`. That path is gitignored scratch inside the repository directory, not outside it as `docs/agents/integration_gate.md` step 2 asks, because `/tmp` is denied to this session. It is a `.txt` file, and git status stayed clean.
-3. Assumption: C4's "summary line exactly as pytest printed it" means the last line of the `-q` output. The bad-node list is taken from the `FAILED ` and `ERROR ` short-summary lines, with the ` - message` suffix removed. There were no `ERROR` lines.
-4. Observation, left untouched because of constraint 6: line 5 of `T2_F269.md` still reads "REGISTRATION ONLY — nothing in this file has been implemented.", which contradicts the Built State appended below it. The closure commit may want to update that banner.
+1. The commit sequence followed the block exactly (C1, C2, C3, C4, push, C5, C6).
+2. The block says the reviewer's dry run gave "68 passed over the G2 files". My G2 run gives 110. The collect-only split is test_golden_path 42 + test_contract_hygiene 27 + test_pingpong 40 + test_subprocess_timeouts 1. So 68 equals the G2 list without `tests/cli/test_golden_path.py`. This is a prose count only; the gate (0 failed) holds.
+3. Mutation B was applied by replacing `timeout=_GIT_TIMEOUT_SEC)` with `)`, which removes exactly the keyword the block names. The call stays syntactically valid.
+4. The self-use job's worktree `.remedy-wt/job-5edc7cfc1dee4d75` was removed after C3, following F268 R12's precedent, so that G6 reads one worktree row. The branch `remedy/job-5edc7cfc1dee4d75` is kept. `remedy/job-*` count: 32 before C3, 33 after.
+5. Observation for the reviewer, not registered (per C3): SU-020's job did not reach a reviewer verdict. It stopped on `budget_exhausted:max_provider_calls` (stop source `budget`, request `budget_864b0559d956f226`), and T001 ended `stopped` after 2 repair rounds with an empty verdict. For this stopped run `describe_self_use_run_defects` returned the empty tuple, while F268's `blocked` run produced two strings. Whether a budget stop should itself count as a defect is the reviewer's call.
+6. The evidence script's `run_id` is `vr-1111` (F268 used `vr-1012`). It matches pitfall (c)'s `^vr-\d{4,}$`.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C1 bookkeeping | done | |
-| C2 acceptance pin | done | |
-| C3 Built State | done | |
-| G1 to G3 at C3 | done | |
-| C4 integration gate (G4) | done | red: 1 bad node, not repaired per the block |
-| C5 handoff + push | done | |
+| C2 repair 1 | done | the closure suite's one bad node repaired; mutations A and B red |
+| G1 to G3 at C2 | done | |
+| C3 self-use item | done | SU-020; defects `()` |
+| C4 integrity check (G4) | done | passed, 0 failing; C1 to C4 pushed |
+| C5 evidence job and zip (G5) | done | READY_FOR_REVIEW, head_commit == C4 |
+| C6 handoff + push | done | |
 
 ## Next
 
 1. Phase 1 rule 1: check `.agent/STOP`.
-2. Then the review of round 10: the C2 acceptance pin, the Built State, and the red closure suite transcript.
-3. Then the closure steps: repair `tests/test_subprocess_timeouts.py::test_no_production_subprocess_call_is_missing_a_timeout` (the `_git` call in `packages/orchestration/contract_hygiene.py` needs a `timeout=`) under amend0917-throughput (2), using at most three shrinking repair rounds; then the self-use item, `remedy integrity check`, the evidence job, the review package, the verdict booking, and the STATUS closure commit with the PR.
+2. Then the review of round 11: repair 1 (the `_git` timeout and its test), the self-use run SU-020, the integrity check, and the evidence job and review package.
+3. Then closure round B: book round 11's verdict, rotate the ledger, and make the closure commit with the STATUS line, the README counters and SU-020's `consumed_by` set to F269, followed by the PR.
 
 Operator questions open: 5
