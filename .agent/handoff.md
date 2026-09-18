@@ -1,70 +1,64 @@
-# Handoff — F268 remedy do: the one-command start · Round 3 (T003 + R-0964/R-0966/R-0811)
+# Handoff — F268 remedy do: the one-command start · Round 4 (T004 + R-0967/R-0811)
 
 ## Session
 
-SESSION 1 of feature F268 · round 3 · rounds so far 3
+SESSION 1 of feature F268 · round 4 · rounds so far 4
 
 ## Range
 
-Review of 57ca6293..HEAD — branch `feature/f268-remedy-do`.
+Review of f831d374..HEAD — branch `feature/f268-remedy-do`.
 
 ## Summary
 
-C1 books round 2's verdict and R-0966, adds DECISION F268 D8, and replaces the plan.
+C1 books round 3's verdict, the `Done:` lines for R-0964 and R-0966, the registration of R-0967, and DECISION F268 D9. It also replaces the plan.
 
-C2 makes three repairs:
-- R-0964's residue: the demo doc, the `autorun.py` comment and the `dev` hint.
-- R-0966: the extractor now recognises extension-less file names and skips tokens inside URLs.
-- R-0811's `job show` half: both `attach-repo` tips print the real job id. They add the project's repository when the job has one, and otherwise a sentence saying what to pass.
+C2 makes two repairs:
+- R-0967: a test in `tests/cli/test_do_sequence_cli.py` whose reader raises `EOFError` at a halt. It asserts that the walk stopped there, that no job ran and no provider was called, and that every job of the walk has a stop request.
+- R-0811 remainder: every tip in `stop_reasons.py` and `autonomy_readiness.py` now names the real job id. The approve tip also names each real intent id, and no tip prints an angle-bracket placeholder or `"<goal>"`. `tasks_defined` is now `remedy job plan <real job id>`.
 
-C3 lands T003 per D8:
-- `--step-by-step` halts after every step that did work and before each job in the run step. At each halt it reads one line through `DoContext.read_line`, which the CLI sets to `input`. `q` or end of input stops the walk and calls `safe_points.request_stop(..., source="do")` for every job of the walk.
-- `--plan-only` ends the walk after shape. The run step reports it stopped, with the reason `--plan-only`.
-- Text output lists every job's tasks with their deliverables after the shape line. `--json` adds `jobs` and `mission_plan_path`.
+C3 lands T004 per D9:
+- The ui step opens the cockpit for the last job through `DoContext.ui_launcher`. The CLI passes `launch_do_cockpit`, which spawns `sys.executable -m apps.cli.grouped ui start <job id> --port 0 --info-file <data root>/ui/sessions/do-<job id>.json` with `start_new_session=True` and output to `<data root>/ui/do_logs/<job id>.log`. It then waits up to 15 s for the info file. The step reports the URL and `remedy ui stop`. A launch that does not come up is `skipped`, with the reason and `remedy ui start <job id>`.
+- `--apply`: the apply step calls `apply_job(<job id>, <repo root>, approve=True)` for each job in order. The first job whose status is not `applied` fails the walk, naming the job, the status and the reason. On success, `stopped_before_apply` is false.
+- `--contract`, `--commit`, `--commit-auto`, `--commit-with-history` and `--push` are declared on `do.run` and are on the bare-route allow-list (`--contract` and `--commit` are also in the valued set). Each exits 2 before any step with `<flag> is not yet available; F269|F270 brings it`. `--with-history` does not exist.
 
-C4 adds the five acceptance tests.
+C4 adds the acceptance tests (1) to (5), plus one test that `--with-history` is rejected.
 
 ## Commits
 
-### bd9f5e97 F268 R3 C1: book round 2's verdict, R-0966 and DECISION F268 D8
+### e151e8bd F268 R4 C1: book round 3's verdict, R-0967 and DECISION F268 D9
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f268-r3-block.md` | +114 / -0 | Byte copy of the step block |
-| `.agent/authored/f268-r3-decisions.md` | +19 / -0 | Byte copy of the payload |
-| `.agent/authored/f268-r3-ledger.md` | +12 / -0 | Byte copy of the payload |
-| `.agent/authored/f268-r3-plan.md` | +29 / -0 | Byte copy of the payload |
-| `.agent/decisions.md` | +19 / -0 | `git show 57ca6293:` bytes + decisions.md (append) |
-| `.agent/live_review.md` | +12 / -0 | `git show 57ca6293:` bytes + ledger.md (append) |
-| `.agent/plan.md` | +10 / -10 | := plan.md payload |
+| `.agent/authored/f268-r4-block.md` | +115 / -0 | Byte copy of the step block |
+| `.agent/authored/f268-r4-decisions.md` | +22 / -0 | Byte copy of the payload |
+| `.agent/authored/f268-r4-ledger.md` | +8 / -0 | Byte copy of the payload |
+| `.agent/authored/f268-r4-plan.md` | +29 / -0 | Byte copy of the payload |
+| `.agent/decisions.md` | +22 / -0 | `git show f831d374:` bytes + decisions.md (append) |
+| `.agent/live_review.md` | +8 / -0 | `git show f831d374:` bytes + ledger.md (append) |
+| `.agent/plan.md` | +11 / -11 | := plan.md payload |
 
-### bb422e99 F268 R3 C2: repair R-0964's residue, R-0966 and R-0811's job show half
+### 6b1e1254 F268 R4 C2: repair R-0967 and R-0811's remaining placeholder tips
 | Path | +/- | Reason |
 |------|-----|--------|
-| `apps/cli/commands/dev.py` | +1 / -1 | R-0964: the hint for bare `do` now reads "plan and run a job, stop before apply", not "repair E2E" |
-| `docs/system/first-perfect-job-demo-v0.md` | +1 / -2 | R-0964: both `--fixture-builder true` uses dropped (`do run`'s `run_do` path is fixture-only) |
-| `packages/orchestration/autonomy_readiness.py` | +3 / -1 | R-0811: the level-1 `attached_repo` tip is `job_attach_repo_tip(job)`, computed only when the signal is missing |
-| `packages/orchestration/autorun.py` | +1 / -1 | R-0964: the comment names the parameters, not the deleted flag |
-| `packages/orchestration/stop_reasons.py` | +30 / -1 | R-0811: new `job_attach_repo_tip` and `_job_project_repo_path` (job `project_id`, else `metadata["project_id"]` → `load_project` → `canonical_repo_path`); `sr:derived_no_repo` uses the tip |
-| `packages/orchestration/task_deliverables.py` | +32 / -6 | R-0966: `EXTENSIONLESS_DELIVERABLE_NAMES` (named constant), `_EXTENSIONLESS_TOKEN_RE`, `_URL_RE` (a scheme or `www.`); both token regexes are merged in order of appearance; tokens inside a URL span are skipped; docstring updated |
-| `tests/cli/test_open_decisions_view.py` | +3 / -1 | Pinned placeholder moved (pre-existing test table) |
-| `tests/orchestration/test_stop_reasons.py` | +45 / -0 | R-0811: one test with a project (exact command), one without (sentence); both check the job id is there and no `<[a-z_]+>` is |
-| `tests/orchestration/test_task_deliverables.py` | +25 / -0 | R-0966: a parametrized test per extension-less name, directory and order kept, three URL cases |
-| `tests/test_autonomy_readiness.py` | +39 / -0 | R-0811: two tests over the rendered `summarize_readiness` line (with a project and without) |
+| `packages/orchestration/autonomy_readiness.py` | +9 / -6 | R-0811: `job_id = str(job.job_id)` in `_assess_level`. Changed tips: `tasks_defined` → `remedy job plan {job_id}`, the two `job permit` tips, `test discover`, `dev agent-loop` and `decision list` now carry the real id |
+| `packages/orchestration/stop_reasons.py` | +16 / -3 | R-0811: new `_patch_approve_tips` (one `remedy patch approve {job_id} {intent_id}` per distinct intent id in the events; an event without an id adds `remedy patch list {job_id} names the intent ids to approve`). `remedy test run {job_id}`. The two plain sentences now name the job, and the dirty-repo sentence also names its target path |
+| `tests/cli/test_do_sequence_cli.py` | +45 / -0 | R-0967: parametrized test, end of input at the first halt and at the first halt after shape |
+| `tests/orchestration/test_stop_reasons.py` | +44 / -2 | R-0811: the two round 3 tests now check every derived next action, and there is a new all-four-reasons test (6 actions, no `<[a-z_]+>`, real job id in each, exact approve tips) |
+| `tests/test_autonomy_readiness.py` | +24 / -2 | R-0811: the two round 3 tests check the whole summary, and there is a new test over the summary and all 7 level tips |
 
-### e515bca7 F268 R3 C3: --step-by-step and --plan-only, and every job's tasks in do's output (DECISION F268 D8)
+### 66d62854 F268 R4 C3: the detached cockpit, --apply, and the F269/F270 flags refusing as not yet available (DECISION F268 D9)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `apps/cli/command_catalog.py` | +2 / -0 | `do.run`: `--step-by-step`, `--plan-only` (flags). Their descriptions use no binding word, so the vocabulary guard passes |
-| `apps/cli/commands/do_cmd.py` | +30 / -4 | `_cmd_do_order` / `_cmd_do` / the dispatch entry pass both flags, and `read_line=input` is looked up at call time. `--json` gains `mission_plan_path` and `jobs`. Text output prints one line per task after the shape line |
-| `apps/cli/grouped.py` | +2 / -1 | Both flags join `_BARE_ALLOWED` |
-| `packages/orchestration/do_sequence.py` | +99 / -3 | `DoContext` gains `step_by_step`, `plan_only`, `read_line`, `halt_reason` and `mission_plan_path`. `do_step_by_step_halt` added, called by the walker after each `done` step and by the run step before each job. `--plan-only` branch in `_step_run`. `do_job_task_listing` added |
+| `apps/cli/command_catalog.py` | +6 / -0 | `do.run`: `--apply`, `--commit-auto`, `--commit-with-history` and `--push` (flags); `--contract` and `--commit` (valued). Descriptions pass the vocabulary guard (`--apply` uses "job" with "mission", and avoids "in order", which would count as Order) |
+| `apps/cli/commands/do_cmd.py` | +51 / -2 | `_DO_FLAGS_NOT_YET_AVAILABLE` table and `_refuse_do_flags_not_yet_available`, called first in `_cmd_do`. `apply` is threaded through to `DoContext`, with `ui_launcher=launch_do_cockpit`. The dispatch entry reads all six flags |
+| `apps/cli/grouped.py` | +5 / -2 | All six flags are in `_BARE_ALLOWED`; `--contract` and `--commit` are also in `_BARE_VALUED` |
+| `packages/orchestration/do_sequence.py` | +129 / -13 | `DoContext.apply` and `ui_launcher`. New `DO_COCKPIT_WAIT_SECONDS`, `DO_COCKPIT_STOP_COMMAND`, `DoCockpitLaunchError`, `do_cockpit_argv`, `do_cockpit_paths` and `launch_do_cockpit`. `_step_ui` and `_step_apply` are rewritten; the module docstring is updated |
 
-### 1cde5fdb F268 R3 C4: acceptance tests for --step-by-step, --plan-only and the task listing
+### 2751135f F268 R4 C4: acceptance tests for the detached cockpit, --apply and the flags not yet available
 | Path | +/- | Reason |
 |------|-----|--------|
-| `tests/cli/test_do_sequence_cli.py` | +137 / -2 | Block tests (1) to (5). They use the same fixture and tripwire as rounds 1 and 2, and the reader is `builtins.input` monkeypatched. The module docstring now names T003 |
+| `tests/cli/test_do_sequence_cli.py` | +234 / -0 | Block tests (1) to (5), plus `test_the_old_name_with_history_is_never_created`. Same fixture and tripwire as rounds 1 to 3; the launcher is replaced by monkeypatching `packages.orchestration.do_sequence.launch_do_cockpit` |
 
-### (this commit) F268 R3 C5: handoff — round 3 T003
+### (this commit) F268 R4 C5: handoff — round 4 T004
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | rewritten | This document (self-reference exception) |
@@ -72,84 +66,84 @@ C4 adds the five acceptance tests.
 ### Pre-existing tests edited, one line each
 | File | Commit | Reason |
 |------|--------|--------|
-| `tests/cli/test_open_decisions_view.py` | C2 | `test_the_block_is_queue_wide_not_task_decision_only` pinned `next_safe_action == "remedy job attach-repo <job_id> <path>"`, the placeholder R-0811 removes. It now asserts that the value starts with `remedy job attach-repo <real job id> ` and holds no `<` |
-| `tests/orchestration/test_stop_reasons.py`, `tests/test_autonomy_readiness.py`, `tests/orchestration/test_task_deliverables.py`, `tests/cli/test_do_sequence_cli.py` | C2, C4 | New tests appended. No existing assertion changed |
+| `tests/orchestration/test_stop_reasons.py` | C2 | In both round 3 no-repo tests, the placeholder check on the one `attach-repo` tip becomes a check over every derived next action (no `<[a-z_]+>`, real job id). This widens the check, as the block orders |
+| `tests/test_autonomy_readiness.py` | C2 | In both `TestAttachRepoTip` tests, the placeholder check moves from the one `attach-repo` line to the whole rendered summary. The line's exact-text assertions are kept |
+| `tests/cli/test_do_sequence_cli.py` | C2, C4 | New tests appended. No existing assertion changed |
 
 ## External actions
 
-- G5: `git worktree add --detach .remedy-wt/f268-r3-g5 HEAD` at `1cde5fdb`, removed with `git worktree remove` afterwards. `git worktree list` showed only the main checkout before and after.
+- Probes, not tests, run from `.remedy-wt/f268-r4/` with a scratch data root under it, deleted afterwards:
+  - `probe_launch.py` called the real `launch_do_cockpit` for a saved job, through its `spawn` parameter with `--no-open` appended so that no browser opened. Output: a URL `http://127.0.0.1:46389/?job=…&token=…`. `ui status` showed `[RUNNING] job=… pid=2958701`, `ui stop` printed `Stopped 1 session(s).`, and `ps -p 2958701` then exited 1.
+  - `probe_apply.py` ran `remedy do … --apply` as a subprocess on fixture repositories.
+- G5: `git worktree add --detach .remedy-wt/f268-r4-g5 HEAD` at `2751135f`, removed with `git worktree remove --force`. `git worktree list` showed only the main checkout before and after.
+- C2 was amended once before any push (see Deviations). No force-push.
 - `git push` after this commit (no force). The outcome and G6 are in the round report.
 - No PR create, edit or merge.
 
 ## Verification
 
-All runs at `1cde5fdb` (C4). C5 changes only this file.
+All runs at `2751135f` (C4). C5 changes only this file.
 
-- G1 transport + state: the `ledger`, `decisions`, `plan` and `block` payload digests all matched (`True`), and so did their `.agent/authored/f268-r3-*` copies. Block digest `be20fd3ea5648ed0915dca61008dc20b634780251c0a3a70e81bbe37db79135f`. Both byte checks printed `True`: `.agent/live_review.md` = `git show 57ca6293:.agent/live_review.md` + ledger.md, and `.agent/decisions.md` = `git show 57ca6293:.agent/decisions.md` + decisions.md. `cmp .agent/plan.md .remedy-wt/f268-r3/plan.md` → `REAL_EXIT=0`.
-- G2 `python3 -m pytest -q -p no:cacheprovider` over the block's 11 files, plus `tests/orchestration/test_stop_reasons.py`, `tests/test_autonomy_readiness.py` (the two modules' test files) and `tests/cli/test_open_decisions_view.py` (edited) → `495 passed in 101.14s (0:01:41)`, `REAL_EXIT=0`. Before C2 was committed, a wider sweep also ran: every test file naming `stop_reasons`, `autonomy_readiness` or `next_safe_action` (41 files), `-n 4`, read `1472 passed, 6 skipped`, exit 0.
-- G3 `python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/orchestration/test_roadmap_index.py tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py` → `457 passed in 6.74s`, `REAL_EXIT=0`.
-- G4 `python3 -m ruff check` over the 14 `.py` files that `git diff --name-only 57ca6293 HEAD -- "*.py"` names → `All checks passed!`, `REAL_EXIT=0`.
-- G5: one worktree, `.remedy-wt/f268-r3-g5`, at `1cde5fdb`. Every run went from the worktree root with `python3 -B -m pytest -q -p no:cacheprovider -rf tests/cli/test_do_sequence_cli.py`. `__pycache__` was purged before each run, and each run first printed the imported paths `…/.remedy-wt/f268-r3-g5/packages/orchestration/do_sequence.py` and `…/.remedy-wt/f268-r3-g5/apps/cli/commands/do_cmd.py`. After each mutation, `git checkout -- <path>` reverted it and a clean `git status` was asserted.
-  - control (unmutated) → `18 passed in 17.01s`, `REAL_EXIT=0`
-  - (a) in `do_step_by_step_halt`, `answer = ctx.read_line() if ctx.read_line is not None else None` → `return True` → `3 failed, 15 passed in 18.99s`, `REAL_EXIT=1`: `test_step_by_step_halts_at_least_three_times_and_completes_like_a_plain_run`, `test_no_provider_call_happens_while_a_halt_waits`, `test_q_at_the_first_halt_after_shape_runs_no_job_and_asks_every_job_to_stop`
-  - (b) `request_stop(job_id, reason=reason, source="do")` → `pass` → `1 failed, 17 passed in 15.97s`, `REAL_EXIT=1`: `test_q_at_the_first_halt_after_shape_runs_no_job_and_asks_every_job_to_stop`
-  - (c) in the `do.run` dispatch entry, `plan_only=bool(getattr(args, "plan_only", False))` → `plan_only=False` → `1 failed, 17 passed in 17.65s`, `REAL_EXIT=1`: `test_plan_only_writes_the_mission_plan_plans_the_jobs_and_runs_none`
-  - `remedy/job-*` branch count: 31 before and 31 after.
+- G1 transport + state: `ledger`, `decisions`, `plan` and `block` each printed `scratch True authored True`. Block digest `3a80270fed2db1fa0131ba0fd85531888ab049c3c32c4153c869f4c42e2890f2`. Both byte checks printed True (`live_review append True`, `decisions append True`), with `PY_EXIT=0`. `cmp .agent/plan.md .remedy-wt/f268-r4/plan.md` → `CMP_EXIT=0`.
+- G2 `python3 -m pytest -q -p no:cacheprovider` over the block's 13 files → `473 passed, 6 skipped in 72.36s (0:01:12)`, `REAL_EXIT=0`. That set already includes every test file this round edited.
+  - Before C2 was committed, a wider sweep ran every test file that names `derive_stop_reasons`, `assess_job_readiness`, `summarize_readiness`, `guidance`, `project_brain`, `decision_queue`, `autonomy_loop` or `memory_learn` (50 files): `2748 passed, 11 skipped`.
+  - Before C4, a probe made `launch_do_cockpit` raise `AssertionError` and ran the 14 test files that reach the `do` walk: `452 passed, 1 skipped`. No existing test reaches the real launcher. The subprocess tests either pass `--no-ui` (`test_golden_path.py`, `test_install_smoke.py`) or take the non-bare path (`test_do_runtime.py`).
+- G3 `python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/orchestration/test_roadmap_index.py tests/ui_server/test_dashboard_contract.py tests/orchestration/test_test_runner.py` → `457 passed in 6.71s`, `REAL_EXIT=0`.
+- G4 `python3 -m ruff check` over the nine `.py` files C2 to C4 touched (`stop_reasons.py`, `autonomy_readiness.py`, `do_sequence.py`, `do_cmd.py`, `command_catalog.py`, `grouped.py`, `test_stop_reasons.py`, `test_autonomy_readiness.py`, `test_do_sequence_cli.py`) → `All checks passed!`, `RUFF_EXIT=0`.
+- G5: one worktree, `.remedy-wt/f268-r4-g5`, at `2751135f`, driven by `.remedy-wt/f268-r4/g5.sh`. Every run went from the worktree root with `python3 -B -m pytest -q -p no:cacheprovider tests/cli/test_do_sequence_cli.py`. `__pycache__` was purged before each run, and each run first printed `IMPORTED …/.remedy-wt/f268-r4-g5/packages/orchestration/do_sequence.py` and `IMPORTED …/.remedy-wt/f268-r4-g5/apps/cli/commands/do_cmd.py`. Each mutation was a single-occurrence replacement, reverted with `git checkout -- <path>`, after which `git status --porcelain` printed nothing.
+  - control (unmutated) → `32 passed in 26.35s`, `EXIT=0`
+  - (a) in `do_step_by_step_halt`, `except EOFError: answer = None` → `answer = ""` → `2 failed, 30 passed in 28.73s`, `EXIT=1`: `test_end_of_input_at_a_halt_stops_the_walk_runs_no_job_and_asks_every_job_to_stop[the-first-halt]` and `[the-first-halt-after-shape]`
+  - (b) in `_step_apply`, `if not ctx.apply:` → `if not False:` → `3 failed, 29 passed in 22.34s`, `EXIT=1`: `test_apply_applies_the_one_job_and_changes_the_targets_tracked_content`, `test_apply_with_force_mission_applies_every_job_in_order` and `test_an_apply_the_baseline_check_refuses_fails_the_walk_naming_the_job`
+  - (c) the `("--push", "F270"),` line removed from `_DO_FLAGS_NOT_YET_AVAILABLE` → `1 failed, 31 passed in 23.94s`, `EXIT=1`: `test_a_flag_whose_feature_is_not_built_refuses_before_any_step[--push]`
+  - `WORKTREE_REMOVED=0`. The `remedy/job-*` branch count was 31 before and 31 after.
 - G6 (clean tree, HEAD == origin) runs after the push. It is in the round report.
 
 ## Authored-text proofs
 
-All four files (`ledger.md`, `decisions.md`, `plan.md`, `block.md`) were verified by sha256 before use. They were copied byte-exact to `.agent/authored/f268-r3-*`, and the post-copy digests are identical. The two appends were built from `git show 57ca6293:<path>` bytes plus the payload, never by re-reading a file being written. G1's byte checks and `cmp` prove the committed bytes.
+All four files (`ledger.md`, `decisions.md`, `plan.md`, `block.md`) were verified by sha256 before use. They were copied byte-exact to `.agent/authored/f268-r4-*`, and the post-copy digests are identical (G1). The two appends were built from `git show f831d374:<path>` bytes plus the payload, never from a file being written. G1's byte checks and `cmp` prove the committed bytes.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C1 bookkeeping | done | |
-| R-0964 residue | done | C2 |
-| R-0966 | done | C2; the URL example is corrected in Deviations |
-| R-0811 (`job show` half) | done | C2: the two tips the block names. Other placeholder tips remain, see Deviations |
-| T003 `--step-by-step` / `--plan-only` | done | C3, C4 |
-| Task listing in `do`'s output | done | C3, C4 test (5) |
+| R-0967 | done | C2. Red under G5 (a) |
+| R-0811 remainder | done | C2: every tip in the two named modules |
+| T004 (1) detached cockpit | done | C3, C4 tests (1) and (5) |
+| T004 (2) `--apply` | done | C3, C4 tests (2) and (3). Red under G5 (b) |
+| T004 (3) flags not yet available | done | C3, C4 test (4). Red under G5 (c) |
 
-Landed: R-0964 — no remaining surface the round 2 gate named still shows a rejected invocation or the deleted flag. `docs/system/first-perfect-job-demo-v0.md`'s two `do run` commands lost `--fixture-builder true`. The comment in `autorun.py` names the parameters rather than `--fixture-builder`, and the `dev status` hint describes bare `do` as "plan and run a job, stop before apply" (C2).
-Landed: R-0966 — `extract_order_deliverables` recognises the names in `EXTENSIONLESS_DELIVERABLE_NAMES` (`Makefile`, `Dockerfile`, `LICENSE` and others), optionally under a directory, and skips every token inside a URL: one with a scheme, or one starting `www.`. `tests/orchestration/test_task_deliverables.py` has a test per name and three URL cases. At `57ca6293`, the name tests and two of the URL cases read the base extractor's wrong answer (C2).
-Landed: R-0811 (`job show` half) — `sr:derived_no_repo` and the readiness `attached_repo` tip print `remedy job attach-repo <real job id> <project's canonical_repo_path>`. When the job has no project with a path, they print `remedy job attach-repo <real job id> followed by the path of the repository this job should change`. Four tests assert the real id and that no `<[a-z_]+>` survives. The `job show` status test now asserts the same (C2).
+Landed: R-0967 — `test_end_of_input_at_a_halt_stops_the_walk_runs_no_job_and_asks_every_job_to_stop` in `tests/cli/test_do_sequence_cli.py` has a reader that raises `EOFError`. At the first halt it asserts the walk ended `study: stopped` with `not run: stopped by end of input`, with no job and no provider call. At the first halt after shape, with `--force-mission`, it asserts the walk ended `run: stopped` with ≥2 jobs still `PLANNED`, each carrying a `source="do"` stop request. Both cases fail when `EOFError` is read as an empty answer (G5 (a)) (C2).
+Landed: R-0811 — `stop_reasons.derive_stop_reasons` and `autonomy_readiness._assess_level` no longer print any `<…>` placeholder or `"<goal>"`. Every next action names the real job id, and the approve tip names each real intent id. `tests/orchestration/test_stop_reasons.py` covers all four derived reasons, and `tests/test_autonomy_readiness.py` covers the whole rendered summary and all seven level tips; both assert no `<[a-z_]+>` and the real job id (C2).
 
 ## Open findings
 
-128 open BY DISTINCT ID, derived: the ledger at HEAD holds 136 distinct `- R-nnnn —` registrations and 8 distinct `Done:` ids. The same derivation at `57ca6293` reads 131, matching round 2's count. C1 booked R-0966 and four `Done:` lines (R-0963, R-0965, R-0808, R-0897). This round writes no `Done:` line and opens no finding.
+127 open by distinct id, derived with `.remedy-wt/f268-r4/count.py`. The ledger at HEAD holds 137 distinct `- R-nnnn —` registrations and 10 distinct `Done:` ids. The same derivation at `f831d374` reads 136 / 8 / 128, which matches round 3's count. C1 booked R-0967 and two `Done:` lines (R-0964, R-0966). This round writes no `Done:` line and opens no finding.
 
 ## Deviations & assumptions
 
-- Commit sequence: C1, C2, C3, C4, C5, as the block orders. No extra commit.
-- R-0966's stated URL example does not reproduce. Measured at `57ca6293`: `extract_order_deliverables("See https://example.com/docs and write notes.md")` returns `['notes.md']`, because `_PATH_TOKEN_RE`'s lookbehind already rejects a token that follows `/`. Two URL forms do leak at base:
-  - a file in a query string: `https://example.com/download?file=report.pdf` → `report.pdf`
-  - a URL without a scheme: `www.example.com/page` → `www.example`
-
-  The tests use those two as the discriminating cases, and keep the ledger's example as a control that passes at base. The ledger line is the reviewer's record and was not edited.
-- R-0811 scope: only the two tips the block names were changed. Other placeholder next-actions still exist in these files:
-  - `stop_reasons.py`: `remedy test run <job_id>` and `remedy patch approve <job_id> <intent_id>`
-  - `autonomy_readiness.py`: `remedy do run "<goal>"` and several `<job_id>` tips
-  - outside the change set: `self_dogfood_execution.py:493` and `test_execution_service.py:625,632` still print `attach-repo {id} <path>` / `<repo_path>`
-
-  That is why the readiness tests check the rendered `attach-repo` line, not the whole summary.
-- The tip helper `job_attach_repo_tip` lives in `stop_reasons.py`, and `autonomy_readiness.py` imports it lazily. It is one function for both tips, and `project_registry.py` is outside the change set. It calls `load_project`, which runs the existing legacy-record migration.
-- D8 halt placement, read literally:
-  - The walker halts after every `done` step, and the run step halts before each job. After shape there are therefore two back-to-back halts: "next: the run step", then "next: run job X (1 of N)".
-  - Skipped steps (study on a studied repo, ui with `--no-ui`) do not halt.
-  - Any line other than `q` (case-insensitive, trimmed) continues. D8 names only the empty line.
-  - A `read_line` of `None` counts as end of input and stops the walk. Library callers get no hidden stdin read.
-- Stop reporting: when `q` comes at a walker halt, the step that did not run is added to `results` as `stopped` with detail `not run: stopped by 'q' at the --step-by-step halt before the <step> step; a stop was requested for job(s) …`, so `--json` shows why the walk ended. When `q` comes inside the run step, the run step itself reports `stopped` with the same reason. Per the block's wording, `request_stop` goes to every job of the walk, including jobs that already completed. A `StopControlError` or `OSError` from it is caught and named in the reason instead of crashing the walk.
-- Halt text goes to stderr, so `--json` stdout stays parseable.
-- `--plan-only` also adds one `Next: remedy job run <id>[ provider flags]` line per job. Its run detail reads `--plan-only: no job was run; N job(s) planned, mission plan: <path>`.
-- `--step-by-step` and `--plan-only` act only on the bare route (`_BARE_ALLOWED`). `remedy do run "<goal>" --plan-only` stays on the autorun path, which ignores them, as it does the force flags.
-- Test (2): the reader reads the provider counter on entry and on exit. Because the reader is synchronous, the two are equal by construction. To show the counter is live, the test also asserts that the run made calls and that the last halt saw more than the first.
-- Test (3) picks "the first halt after shape" by state: the reader answers `q` once `list_job_plans()` is non-empty. It also asserts that this was the fourth halt, with init, study, plan and shape each having done work. It runs with `--force-mission`, so "every job" means two or more.
-- `jobs` in `--json` is `[]` when the walk ended before shape. A task without a recorded deliverable prints `(none)` in text output (none does on the deterministic path).
-- `.agent/context.md` was not updated; it is not in the change set.
+- Commit sequence: C1, C2, C3, C4, C5, as the block orders. C2 was first committed without R-0967's test (`574e7dc3`) and then amended, before any push, to `6b1e1254`, so that C2 holds both repairs as the block's bundle states. `574e7dc3` was never pushed, and no force-push happened.
+- **`--apply` with more than one job, measured.** Every job of a mission runs against the unchanged target, because the run step runs all jobs before apply. So when two jobs write the same file, the second apply is refused by `job_apply`'s baseline check: `target_changed_since_job` for a tracked file, `target_created_since_job` for a new one.
+  - The stock `FakeProvider()` writes `docs/README.md` for every build, so `remedy do "Write a CONTRIBUTING.md" --apply --force-mission` on the fake provider always exits 1. `probe_apply.py` measured `apply: failed — job 17c1… was not applied … (status blocked): baseline_check_failed: ['target_changed_since_job: docs/README.md']; applied before it: job 2733… applied 1 file(s)`.
+  - That is D9's "stop at the first not applied, naming why", working as designed. It also means `--apply` cannot apply a mission whose jobs touch a common file. I did not register a finding: the reviewer decides.
+  - C4 test (2)'s `--force-mission` case therefore monkeypatches `FakeProvider.__init__` so that each construction writes its own tracked file (`docs/job_NN.md`), and test (3) is the refused counterpart. Production code does not change for this.
+- "Tracked content changes": the fake builder writes `docs/README.md`, which the round 1 fixture does not track. So the apply tests first commit that file (and `docs/job_NN.md`) into the target, and then assert `git diff --name-only`.
+- R-0967's test is parametrized. The fix clause's "first halt" comes before any job exists, which would make "every job has a stop request" vacuous. The second case reads end of input at the first halt after shape (the round 3 `q`-test selector), so the stop requests are actually measured. Both cases go red under the mutation.
+- R-0811 wording choices, all free of placeholders:
+  - The two plain-sentence next actions now name the job, per the block's "every stop-reason next action … carry the real job id": `Review the failed test output of job <id>.` and `Commit or stash the changes in the target repository of job <id> (<target_repo>).`
+  - An intent event without an id yields `remedy patch list <id> names the intent ids to approve`.
+  - `tasks_defined` is `remedy job plan <id>`. `job.plan` is in the catalog, and `_cmd_plan_job_local` handles it.
+- Cockpit info file location: `ui start --info-file X` writes its session record ONLY to X (`ui._cmd_ui_start`: `info_file or session_file`). The file therefore goes in `<data root>/ui/sessions/`, which makes the reported `remedy ui stop` true (probed, see External actions). A launch that times out terminates the child, and a child that exits early is reported with its exit code. Either way, the log path is named.
+- A ui step that opens the cockpit reports `done` (it was `skipped`). A context without a launcher (library callers) reports `skipped` with the manual command. With `--step-by-step`, a `done` ui step is followed by one more halt before apply.
+- `--apply` treats any status other than `applied` as not applied, including `applied_test_failed` and `applied_cleanup_failed`. A failure adds `Next: remedy job apply <id> --repo <root> --dry-run`.
+- The refusal runs first in `_cmd_do`, so it covers both the bare route and `do run`, even before an empty goal is rejected. The table is static: the round that lands F269 or F270 removes its rows. It does not read `STATUS.md`.
+- `do.run` still declares `may_mutate_repo=False`, although `--apply` writes the repository. `tests/orchestration/test_do_run.py:564` pins it false, so the reviewer decides.
+- Added beyond the block: `test_the_old_name_with_history_is_never_created`, which checks that `--with-history` exits 2.
+- Placeholders outside this change set remain: `timeline.py:435,505` (`remedy do run "<goal>"`), `trust_report.py:326` (`remedy patch approve <job_id> <intent_id>`), and the two round 3 named (`self_dogfood_execution.py`, `test_execution_service.py`).
+- `--apply` on the non-bare `do run` path is ignored by the autorun path, as the other bare-only flags are.
+- Docs: `docs/guides/do-run-v1.md`'s "v1 always stops before apply" describes the unchanged autorun path, so no doc was edited. `.agent/context.md` was not updated; it is not in the change set.
 - Full suite not run (amend0917-throughput).
 
 ## Next
 
-Reviewer: review round 3 at this branch tip and book its verdict in the next round's first commit.
+Reviewer: review round 4 at this branch tip and book its verdict in the next round's first commit.
