@@ -2037,6 +2037,22 @@ def _task_commit_contract_line(job: JobPlan) -> str:
     return f"contract: {met} of {len(criteria)} criteria green"
 
 
+def fit_commit_subject(head: str, text: str) -> str:
+    """``head`` then ``text`` whitespace-collapsed, cut at a word boundary with ``...`` to 72 characters.
+
+    The one subject fitter of every first line Remedy writes: the per-task
+    commits of DECISION F270 D1 (3) and the ``--commit-auto`` commit of
+    DECISION F270 D3 (4).
+    """
+    text = " ".join((text or "").split())
+    if len(head) + len(text) > TASK_COMMIT_SUBJECT_MAX:
+        room = TASK_COMMIT_SUBJECT_MAX - len(head) - len("...")
+        window = text[: room + 1]
+        cut = window.rsplit(" ", 1)[0] if " " in window else text[:room]
+        text = cut.rstrip() + "..."
+    return f"{head}{text}"
+
+
 def build_task_commit_message(job: JobPlan, task: TaskEntry) -> str:
     """The message of an applied task's commit on ``remedy/job-<id>`` (DECISION F270 D1 (3)).
 
@@ -2050,20 +2066,15 @@ def build_task_commit_message(job: JobPlan, task: TaskEntry) -> str:
     from packages.orchestration.worktrees import REMEDY_JOB_TRAILER, REMEDY_TASK_TRAILER
 
     number = 1 + sum(1 for t in job.tasks if t.worktree_commit and t is not task)
-    head = f"task {number}: "
-    title = " ".join((task.title or "").split()) or "untitled task"
-    if len(head) + len(title) > TASK_COMMIT_SUBJECT_MAX:
-        room = TASK_COMMIT_SUBJECT_MAX - len(head) - len("...")
-        window = title[: room + 1]
-        cut = window.rsplit(" ", 1)[0] if " " in window else title[:room]
-        title = cut.rstrip() + "..."
+    subject = fit_commit_subject(f"task {number}: ",
+                                 " ".join((task.title or "").split()) or "untitled task")
     files = list(task.apply_manifest.applied_files) if task.apply_manifest else []
     named = ", ".join(files[:TASK_COMMIT_FILES_NAMED])
     if len(files) > TASK_COMMIT_FILES_NAMED:
         named += ", ..."
     changed = f"changing {named}" if files else "changing no file"
     body = f"Remedy applied task {task.task_id} of job {job.job_id}, {changed}."
-    return (f"{head}{title}\n\n{body}\n\n{_task_commit_contract_line(job)}\n\n"
+    return (f"{subject}\n\n{body}\n\n{_task_commit_contract_line(job)}\n\n"
             f"{REMEDY_JOB_TRAILER}: {job.job_id}\n"
             f"{REMEDY_TASK_TRAILER}: {task.task_id}\n")
 

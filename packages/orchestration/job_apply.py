@@ -365,6 +365,16 @@ class JobApplyResult:
     merge_conflicts: list[str] = field(default_factory=list)
     #: The operator's tip before the merge; named in the undo sentence, not a record field.
     history_previous_head: str = ""
+    # DECISION F270 D3 (6): --commit "<message>", --commit-auto and --push.
+    commit_message_mode: str = ""     # "" | "message" | "auto" | "history"
+    #: The operator's --commit line; it is in the commit itself, not a record field.
+    commit_message: str = ""
+    commit_sha: str = ""              # the commit (or merge commit) that landed
+    push: bool = False                # --push was given
+    pushed: bool = False
+    push_remote: str = ""             # the remote's name, never its URL
+    push_ref: str = ""                # the upstream ref pushed to
+    push_error: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -381,16 +391,19 @@ HISTORY_GIT_TIMEOUT_SEC = 120
 HISTORY_PATHS_NAMED = 10
 
 
-def _history_git(target: Path, *args: str) -> tuple[int, str, str]:
-    """One git call in the target for the history merge; never raises.
+def _history_git(target: Path, *args: str,
+                 env: dict[str, str] | None = None) -> tuple[int, str, str]:
+    """One git call in the target for the merge, the commit or the push; never raises.
 
     Returns ``(returncode, stdout, stderr)``, the returncode being -1 when git
-    could not finish (a timeout, a missing binary).
+    could not finish (a timeout, a missing binary). ``env``, when given,
+    replaces the environment and closes stdin, so git can prompt no one.
     """
+    extra: dict[str, Any] = {"env": env, "stdin": subprocess.DEVNULL} if env is not None else {}
     try:
         proc = subprocess.run(
             ["git", *args], cwd=str(target), capture_output=True, text=True,
-            timeout=HISTORY_GIT_TIMEOUT_SEC,
+            timeout=HISTORY_GIT_TIMEOUT_SEC, **extra,
         )
     except subprocess.TimeoutExpired:
         return -1, "", f"git {args[0]} timed out after {HISTORY_GIT_TIMEOUT_SEC}s"
@@ -438,6 +451,56 @@ def _job_branch_refusal(job: Any, target: Path) -> str:
     return ""
 
 
+#: The operator's own unfinished operations, besides a merge, that git marks by a ref.
+_OPERATION_HEADS = (("CHERRY_PICK_HEAD", "a cherry-pick"), ("REVERT_HEAD", "a revert"))
+
+#: The directories git keeps while a rebase (or ``git am``) is unfinished.
+_REBASE_DIRS = ("rebase-merge", "rebase-apply")
+
+
+def _checkout_refusals(target: Path, *, landing: str, what: str) -> tuple[list[str], bool]:
+    """The operator checkout's refusals every ``--commit…`` flag shares; ``(sentences, stop)``.
+
+    DECISION F270 D2 (2) and D3 (2): a target below its repository's top
+    level, a detached HEAD, the operator's own merge, rebase, cherry-pick or
+    revert in progress, and a dirty tree. ``landing`` says what lands ("the
+    task commits"), ``what`` the act ("merge into"). Reads only. ``stop`` is
+    True when the target is not a repository's top level, because nothing
+    after that can be asked.
+    """
+    rc, top, _err = _history_git(target, "rev-parse", "--show-toplevel")
+    if rc != 0 or Path(top.strip()).resolve() != target.resolve():
+        return [f"{target} is not the top level of a git repository, so there is no "
+                f"branch to {what}; a plain --approve copies the files."], True
+    refusals: list[str] = []
+    if _history_git(target, "symbolic-ref", "-q", "HEAD")[0] != 0:
+        refusals.append(f"The target is on a detached HEAD; check out the branch "
+                        f"{landing} should land on and re-run.")
+    if _history_git(target, "rev-parse", "-q", "--verify", "MERGE_HEAD")[0] == 0:
+        # Remedy's abort must only ever abort Remedy's own merge.
+        refusals.append("The target is in the middle of a merge of its own; finish or "
+                        "abort it and re-run.")
+    for head, operation in _OPERATION_HEADS:
+        if _history_git(target, "rev-parse", "-q", "--verify", head)[0] == 0:
+            refusals.append(f"The target is in the middle of {operation} of its own; "
+                            f"finish or abort it and re-run.")
+    for name in _REBASE_DIRS:
+        rc, path, _err = _history_git(target, "rev-parse", "--git-path", name)
+        if rc == 0 and path.strip() and (target / path.strip()).exists():
+            refusals.append("The target is in the middle of a rebase of its own; finish "
+                            "or abort it and re-run.")
+            break
+    rc, out, err = _history_git(target, "status", "--porcelain", "--untracked-files=all")
+    dirty = [line[3:] for line in out.splitlines() if line.strip()]
+    if rc != 0:
+        refusals.append(f"git status failed in the target ({err.strip()[:150]}), so "
+                        f"its tree cannot be shown clean.")
+    elif dirty:
+        refusals.append(f"The target has uncommitted changes in {_named_paths(dirty)}; "
+                        f"commit or stash them and re-run.")
+    return refusals, False
+
+
 def _history_refusals(
     job: Any, target: Path, *, skip_blocked: bool, skipped: list[str],
 ) -> list[str]:
@@ -451,26 +514,10 @@ def _history_refusals(
         return [f"Job {job.job_id} ran in a staging copy, not on a git branch, so it "
                 f"has no task commits to merge and nothing was copied; a plain "
                 f"--approve copies its files."]
-    rc, top, _err = _history_git(target, "rev-parse", "--show-toplevel")
-    if rc != 0 or Path(top.strip()).resolve() != target.resolve():
-        return [f"{target} is not the top level of a git repository, so there is no "
-                f"branch to merge into; a plain --approve copies the files."]
-    refusals: list[str] = []
-    if _history_git(target, "symbolic-ref", "-q", "HEAD")[0] != 0:
-        refusals.append("The target is on a detached HEAD; check out the branch the "
-                        "task commits should land on and re-run.")
-    if _history_git(target, "rev-parse", "-q", "--verify", "MERGE_HEAD")[0] == 0:
-        # Remedy's abort must only ever abort Remedy's own merge.
-        refusals.append("The target is in the middle of a merge of its own; finish or "
-                        "abort it and re-run.")
-    rc, out, err = _history_git(target, "status", "--porcelain", "--untracked-files=all")
-    dirty = [line[3:] for line in out.splitlines() if line.strip()]
-    if rc != 0:
-        refusals.append(f"git status failed in the target ({err.strip()[:150]}), so "
-                        f"its tree cannot be shown clean.")
-    elif dirty:
-        refusals.append(f"The target has uncommitted changes in {_named_paths(dirty)}; "
-                        f"commit or stash them and re-run.")
+    refusals, stop = _checkout_refusals(target, landing="the task commits",
+                                        what="merge into")
+    if stop:
+        return refusals
     if skip_blocked:
         refusals.append("--commit-with-history merges the whole job branch and cannot "
                         "leave protected paths out, so it does not combine with "
@@ -572,6 +619,302 @@ def _note_merge_undo(result: JobApplyResult) -> None:
     """After a merge, put the undo sentence in the record of a failed verification or post-test."""
     if result.merge_commit:
         result.blocked_reasons.append(_merge_undo_sentence(result))
+
+
+# ---------------------------------------------------------------------------
+# DECISION F270 D3: --commit "<message>", --commit-auto and --push
+# ---------------------------------------------------------------------------
+
+#: The reason prefix of every --commit / --commit-auto refusal and of a flag clash.
+COMMIT_REFUSED = "commit_refused"
+
+#: The reason prefix of every --push refusal.
+PUSH_REFUSED = "push_refused"
+
+#: The verbs a --commit-auto first line may start with (DECISION F270 D3 (4)).
+COMMIT_AUTO_VERBS = (
+    "Add", "Apply", "Build", "Change", "Clean", "Create", "Document", "Extend",
+    "Fix", "Implement", "Improve", "Make", "Merge", "Move", "Refactor", "Remove",
+    "Rename", "Replace", "Support", "Test", "Update", "Use", "Write",
+)
+
+#: The fewest words a --commit-auto first line may have.
+COMMIT_AUTO_MIN_WORDS = 3
+
+#: The flag each commit mode is spelled as on the command line.
+COMMIT_MODE_FLAGS = {"message": "--commit", "auto": "--commit-auto",
+                     "history": "--commit-with-history"}
+
+
+def commit_flags_refusal(commit_message: str | None, commit_auto: bool,
+                         commit_with_history: bool, push: bool) -> tuple[str, str]:
+    """``(mode, refusal)`` for the ``--commit…`` flags and ``--push``, read before the job.
+
+    DECISION F270 D3 (1): the three ``--commit…`` flags are mutually
+    exclusive, ``--push`` needs one of them, and a ``--commit`` message must be
+    one non-empty line. ``mode`` is ``""``, ``message``, ``auto`` or
+    ``history``; ``refusal`` is ``""`` or the prefixed reason of ONE sentence.
+    """
+    given = [mode for mode, on in (("message", commit_message is not None),
+                                   ("auto", commit_auto),
+                                   ("history", commit_with_history)) if on]
+    if len(given) > 1:
+        flags = " and ".join(COMMIT_MODE_FLAGS[m] for m in given)
+        return "", (f"{COMMIT_REFUSED}: {flags} each decide how the applied work is "
+                    f"committed, so only one of them may be given and nothing was applied.")
+    mode = given[0] if given else ""
+    if push and not mode:
+        return "", (f"{PUSH_REFUSED}: --push pushes what --commit, --commit-auto or "
+                    f"--commit-with-history lands, so it is refused alone and nothing "
+                    f"was applied.")
+    if mode == "message":
+        line = (commit_message or "").strip()
+        if not line:
+            return mode, (f"{COMMIT_REFUSED}: --commit needs the first line of the commit "
+                          f"message and the one given is empty, so nothing was applied.")
+        if "\n" in line or "\r" in line:
+            return mode, (f"{COMMIT_REFUSED}: --commit takes one line, the commit's first "
+                          f"line, because Remedy writes the body, the contract line and the "
+                          f"trailers, so nothing was applied.")
+    return mode, ""
+
+
+def commit_subject_problem(line: str) -> str:
+    """``""`` when ``line`` passes the --commit-auto rule, else why it does not.
+
+    DECISION F270 D3 (4): one line of at most 72 characters, at least three
+    words, the first one of :data:`COMMIT_AUTO_VERBS` — so neither an id alone
+    (``T002``) nor a label without a verb passes.
+    """
+    from packages.orchestration.pingpong_job import TASK_COMMIT_SUBJECT_MAX
+
+    if not line.strip() or "\n" in line or "\r" in line:
+        return "it is not one line"
+    if len(line) > TASK_COMMIT_SUBJECT_MAX:
+        return f"it is {len(line)} characters long, over {TASK_COMMIT_SUBJECT_MAX}"
+    words = line.split()
+    if words[0] not in COMMIT_AUTO_VERBS:
+        return f"its first word {words[0]!r} is not one of the verbs {', '.join(COMMIT_AUTO_VERBS)}"
+    if len(words) < COMMIT_AUTO_MIN_WORDS:
+        return f"it has {len(words)} words, fewer than {COMMIT_AUTO_MIN_WORDS}"
+    return ""
+
+
+def _mission_goal(job: Any) -> str:
+    """The goal of the job's mission, whitespace-collapsed, or ``""``."""
+    from packages.orchestration.mission_state import mission_for_job
+
+    try:
+        mission = mission_for_job(str(job.job_id))
+    except Exception:
+        return ""
+    return " ".join(str(getattr(mission, "goal", "") or "").split()) if mission else ""
+
+
+def build_auto_commit_subject(job: Any) -> str:
+    """The --commit-auto first line (DECISION F270 D3 (4)).
+
+    The mission's goal, else the job's title, else ``Apply the <n> tasks of
+    Remedy job <id8>``: the first candidate that, with its first letter
+    capitalised and cut by the per-task commits' own fitter, passes
+    :func:`commit_subject_problem`.
+    """
+    from packages.orchestration.pingpong_job import fit_commit_subject
+
+    for candidate in (_mission_goal(job), " ".join((job.job_title or "").split())):
+        if candidate:
+            subject = fit_commit_subject("", candidate[:1].upper() + candidate[1:])
+            if not commit_subject_problem(subject):
+                return subject
+    n = len(job.tasks)
+    return f"Apply the {n} {'task' if n == 1 else 'tasks'} of Remedy job {str(job.job_id)[:8]}"
+
+
+def build_apply_commit_message(job: Any, subject: str, files: list[str], *,
+                               list_tasks: bool) -> str:
+    """The message of a --commit or --commit-auto commit (DECISION F270 D3 (4)).
+
+    The first line; one body sentence naming the job; with ``list_tasks``
+    (``--commit-auto``) the task titles; the contract line of DECISION F270
+    D1 (3) as the last body line; the ``Remedy-Job`` and ``Co-authored-by``
+    trailers.
+    """
+    from packages.orchestration import worktrees as W
+    from packages.orchestration.pingpong_job import _task_commit_contract_line
+
+    n = len(files)
+    body = (f"This commits the {n} {'file' if n == 1 else 'files'} that Remedy job "
+            f"{job.job_id} changed, as reviewed and applied.")
+    titles = "\n".join(f"- {' '.join((t.title or 'untitled task').split())}"
+                       for t in job.tasks)
+    tasks = f"\n\n{titles}" if list_tasks and titles else ""
+    return (f"{subject}\n\n{body}{tasks}\n\n{_task_commit_contract_line(job)}\n\n"
+            f"{W.REMEDY_JOB_TRAILER}: {job.job_id}\n"
+            f"Co-authored-by: {W.REMEDY_COMMIT_NAME} <{W.REMEDY_COMMIT_EMAIL}>\n")
+
+
+def _commit_refusals(target: Path, planned: list[str]) -> list[str]:
+    """Every sentence refusing --commit / --commit-auto here; reads only.
+
+    DECISION F270 D3 (2): the shared checkout refusals, then a copied path the
+    target's ``.gitignore`` matches. A staging job is not refused: the commit
+    holds only the copied files.
+    """
+    refusals, stop = _checkout_refusals(target, landing="the commit", what="commit on")
+    if stop or not planned:
+        return refusals
+    rc, out, err = _history_git(target, "check-ignore", "--", *planned)
+    if rc == 0:
+        ignored = [p for p in out.splitlines() if p.strip()]
+        refusals.append(f"The target's .gitignore matches {_named_paths(ignored)}, so a "
+                        f"commit cannot hold it; a plain --approve copies it.")
+    elif rc != 1:
+        refusals.append(f"git check-ignore failed in the target ({err.strip()[:150]}), so "
+                        f"the copied paths cannot be shown committable.")
+    return refusals
+
+
+def _branch_upstream(target: Path) -> tuple[str, str, str]:
+    """``(branch, remote, merge ref)`` of the target's current branch; ``""`` where git has none."""
+    branch = _history_git(target, "symbolic-ref", "-q", "--short", "HEAD")[1].strip()
+    if not branch:
+        return "", "", ""
+    remote = _history_git(target, "config", "--get", f"branch.{branch}.remote")[1].strip()
+    merge = _history_git(target, "config", "--get", f"branch.{branch}.merge")[1].strip()
+    return branch, remote, merge
+
+
+def _push_refusals(job: Any, target: Path) -> list[str]:
+    """Every sentence refusing --push here; reads only (DECISION F270 D3 (5)).
+
+    No upstream, an upstream that is a local branch, a mission contract that
+    cannot be read, and any blocking criterion of the job's whole mission that
+    is not ``met`` — an ``open`` criterion is not green.
+    """
+    from packages.orchestration.mission_contract import (
+        contract_blockers,
+        read_mission_contract,
+    )
+    from packages.orchestration.mission_state import mission_for_job
+
+    refusals: list[str] = []
+    branch, remote, merge = _branch_upstream(target)
+    if branch and (not remote or not merge):
+        remotes = _history_git(target, "remote")[1].split()
+        name = (remotes[0] if len(remotes) == 1
+                else "origin" if "origin" in remotes else "<remote>")
+        refusals.append(f"The branch {branch} has no upstream to push to; "
+                        f"`git push --set-upstream {name} {branch}` sets one.")
+    elif branch and remote == ".":
+        refusals.append(f"The upstream of {branch} is the local branch {merge}, and "
+                        f"--push never writes another branch of this repository.")
+    try:
+        mission = mission_for_job(str(job.job_id))
+        blockers = contract_blockers(read_mission_contract(mission) if mission else None)
+    except Exception as exc:
+        return refusals + [f"The mission's contract cannot be read "
+                           f"({type(exc).__name__}: {str(exc)[:120]}), so no push can be "
+                           f"shown safe."]
+    if blockers:
+        refusals.append(f"The mission's blocking contract criteria {', '.join(blockers)} "
+                        f"are not met, so nothing is pushed.")
+    return refusals
+
+
+def _flag_refusals(job: Any, result: JobApplyResult, target: Path, planned: list[str],
+                   *, skip_blocked: bool, skipped: list[str]) -> list[str]:
+    """Every prefixed refusal of the operator's ``--commit…`` and ``--push`` flags; reads only.
+
+    DECISION F270 D2 (2) and D3 (2), (5): checked after every existing gate
+    and again right before anything is written.
+    """
+    mode = result.commit_message_mode
+    if mode == "history":
+        found = [f"{HISTORY_REFUSED}: {s}" for s in _history_refusals(
+            job, target, skip_blocked=skip_blocked, skipped=skipped)]
+    elif mode in ("message", "auto"):
+        found = [f"{COMMIT_REFUSED}: {s}" for s in _commit_refusals(target, planned)]
+    else:
+        return []
+    if result.push:
+        found += [f"{PUSH_REFUSED}: {s}" for s in _push_refusals(job, target)]
+    return found
+
+
+def _commit_applied_files(job: Any, result: JobApplyResult, target: Path,
+                          applied: list[str]) -> str:
+    """ONE commit of exactly ``applied`` on the operator's branch, as the operator; "" or ONE sentence.
+
+    DECISION F270 D3 (3). ``git add`` then ``git commit --only`` of those
+    paths under the operator's identity, configuration and hooks. A commit
+    that fails takes the paths back out of the index and leaves the copied
+    files in the tree; Remedy never moves the branch. A commit that landed
+    must have the previous tip as its parent and touch no other path.
+    """
+    rc, before, err = _history_git(target, "rev-parse", "HEAD")
+    before = before.strip()
+    if rc != 0 or not before:
+        return f"The target's HEAD could not be read ({err.strip()[:150]}), so nothing was committed."
+    result.history_previous_head = before
+    result.target_branch = _history_git(target, "symbolic-ref", "-q", "--short", "HEAD")[1].strip()
+    subject = (build_auto_commit_subject(job) if result.commit_message_mode == "auto"
+               else result.commit_message.strip())
+    message = build_apply_commit_message(job, subject, applied,
+                                         list_tasks=result.commit_message_mode == "auto")
+    rc, out, err = _history_git(target, "add", "--", *applied)
+    if rc == 0:
+        rc, out, err = _history_git(target, "commit", "-q", "--only", "-m", message,
+                                    "--", *applied)
+    if rc != 0:
+        _history_git(target, "restore", "--staged", "--", *applied)
+        return (f"git commit of the {len(applied)} copied file(s) was refused "
+                f"(\"{_quoted_git_output(out, err)}\"), so they are copied and not committed.")
+    heads = _history_git(target, "rev-parse", "HEAD", "HEAD^")[1].split()
+    result.commit_sha = heads[0] if heads else ""
+    touched = _history_git(target, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z",
+                           result.commit_sha)[1].split("\0")
+    stray = sorted({p for p in touched if p} - set(applied))
+    if heads[1:] != [before]:
+        return (f"git commit reported success but HEAD {result.commit_sha[:12]} is not one "
+                f"commit on the previous tip {before[:12]}.")
+    if stray:
+        return (f"git commit reported success but {result.commit_sha[:12]} also touches "
+                f"{_named_paths(stray)}, which Remedy did not copy.")
+    return ""
+
+
+def _commit_undo_sentence(result: JobApplyResult) -> str:
+    """What a --commit / --commit-auto commit left, and the one command that undoes it."""
+    prev = result.history_previous_head
+    return (f"The commit {result.commit_sha} is on {result.target_branch}, whose "
+            f"previous tip was {prev}; nothing was pushed, Remedy undoes nothing itself, "
+            f"and `git reset --keep {prev}` undoes the commit.")
+
+
+def _push_landed_commit(result: JobApplyResult, target: Path) -> None:
+    """``git push --porcelain <remote> <landed sha>:<upstream ref>``; never forced; records the outcome.
+
+    DECISION F270 D3 (5). Only to the branch's configured upstream, with no
+    credential prompt and a timeout. A failure is recorded, never raised: the
+    commit stays where it landed.
+    """
+    branch, remote, merge = _branch_upstream(target)
+    named = remote in _history_git(target, "remote")[1].split()
+    result.push_remote = remote if named else ("(not a named remote)" if remote else "")
+    result.push_ref = merge
+    if branch != result.target_branch or not named or not merge or not result.commit_sha:
+        result.push_error = (f"the branch or its upstream changed after the commit "
+                             f"({branch or 'detached HEAD'}, upstream "
+                             f"{result.push_remote or 'none'} {merge or 'none'}), so "
+                             f"nothing was pushed")
+        return
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
+    rc, out, err = _history_git(target, "push", "--porcelain", remote,
+                                f"{result.commit_sha}:{merge}", env=env)
+    if rc == 0:
+        result.pushed = True
+    else:
+        result.push_error = _quoted_git_output(out, err)
 
 
 # ---------------------------------------------------------------------------
