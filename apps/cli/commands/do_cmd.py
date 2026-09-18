@@ -118,6 +118,32 @@ def _resolve_cli_role_configs(
     return resolved
 
 
+#: DECISION F268 D9 (3): `do.run`'s flags whose feature is not built yet, and that
+#: feature. Each refuses with exit 2 before any step; the entry leaves this table
+#: in the round its feature lands. `--with-history` is deliberately never declared.
+_DO_FLAGS_NOT_YET_AVAILABLE: tuple[tuple[str, str], ...] = (
+    ("--contract", "F269"),
+    ("--commit", "F270"),
+    ("--commit-auto", "F270"),
+    ("--commit-with-history", "F270"),
+    ("--push", "F270"),
+)
+
+
+def _refuse_do_flags_not_yet_available(given: dict[str, object]) -> None:
+    """Exit 2 naming the first flag given whose feature is not built yet, and that feature.
+
+    ``given`` maps each flag of `_DO_FLAGS_NOT_YET_AVAILABLE` to its parsed value;
+    ``None`` or ``False`` means the flag was not given.
+    """
+    for flag, feature in _DO_FLAGS_NOT_YET_AVAILABLE:
+        value = given.get(flag)
+        if value is not None and value is not False:
+            print(f"Error: {flag} is not yet available; {feature} brings it. "
+                  f"Nothing was run.", file=sys.stderr)
+            sys.exit(2)
+
+
 def _cmd_do_order(
     order: str,
     *,
@@ -132,11 +158,14 @@ def _cmd_do_order(
     force_mission: bool = False,
     step_by_step: bool = False,
     plan_only: bool = False,
+    apply: bool = False,
 ) -> None:
     """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
 
     init, study, plan, shape, run, ui and apply, in that order, through
-    `packages.orchestration.do_sequence`; the walk always stops before apply.
+    `packages.orchestration.do_sequence`; the walk stops before apply unless
+    `--apply`, and the ui step opens the cockpit detached through
+    `launch_do_cockpit` unless `--no-ui` (DECISION F268 D9).
     `--force-job` / `--force-mission` override the planner's shape and exit 2
     together (DECISION F268 D5). `--step-by-step` halts between steps and
     reads each answer with `input`; `--plan-only` ends the walk after
@@ -157,6 +186,7 @@ def _cmd_do_order(
     from packages.orchestration.do_sequence import (
         DoContext,
         do_job_task_listing,
+        launch_do_cockpit,
         walk_do_sequence,
     )
 
@@ -172,8 +202,10 @@ def _cmd_do_order(
         force_mission=force_mission,
         step_by_step=step_by_step,
         plan_only=plan_only,
+        apply=apply,
         # Looked up at call time, so the walk reads the terminal the CLI runs in.
         read_line=input,
+        ui_launcher=launch_do_cockpit,
     ))
     jobs = do_job_task_listing(ctx)
 
@@ -232,7 +264,18 @@ def _cmd_do(
     force_mission: bool = False,
     step_by_step: bool = False,
     plan_only: bool = False,
+    apply: bool = False,
+    contract: str | None = None,
+    commit: str | None = None,
+    commit_auto: bool = False,
+    commit_with_history: bool = False,
+    push: bool = False,
 ) -> None:
+    # DECISION F268 D9 (3): before any step, on either path.
+    _refuse_do_flags_not_yet_available({
+        "--contract": contract, "--commit": commit, "--commit-auto": commit_auto,
+        "--commit-with-history": commit_with_history, "--push": push,
+    })
     # --- The F268 sequence: `remedy do "<order>"` ---
     # Fires ONLY when grouped.py determined the invocation is truly bare:
     # `run` was injected AND no flag tokens besides the ones `_BARE_ALLOWED`
@@ -244,7 +287,7 @@ def _cmd_do(
                       yes=yes, builder_provider=builder_provider,
                       reviewer_provider=reviewer_provider, no_ui=no_ui,
                       force_job=force_job, force_mission=force_mission,
-                      step_by_step=step_by_step, plan_only=plan_only)
+                      step_by_step=step_by_step, plan_only=plan_only, apply=apply)
         return
     _validate_role_override("builder", "provider", builder_provider)
     _validate_role_override("reviewer", "provider", reviewer_provider)
@@ -774,6 +817,12 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         force_mission=bool(getattr(args, "force_mission", False)),
         step_by_step=bool(getattr(args, "step_by_step", False)),
         plan_only=bool(getattr(args, "plan_only", False)),
+        apply=bool(getattr(args, "apply", False)),
+        contract=getattr(args, "contract", None),
+        commit=getattr(args, "commit", None),
+        commit_auto=bool(getattr(args, "commit_auto", False)),
+        commit_with_history=bool(getattr(args, "commit_with_history", False)),
+        push=bool(getattr(args, "push", False)),
     ),
     "run.show": lambda args: _cmd_run_show(
         args.run_id,

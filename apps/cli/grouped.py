@@ -549,8 +549,11 @@ def main(argv: list[str] | None = None) -> None:
         _BARE_ALLOWED = {"--json", "--repo", "--no-llm", "--yes", "--no-ui",
                          "--builder-provider", "--reviewer-provider",
                          "--force-job", "--force-mission",
-                         "--step-by-step", "--plan-only"}
-        _BARE_VALUED = {"--repo", "--builder-provider", "--reviewer-provider"}
+                         "--step-by-step", "--plan-only", "--apply",
+                         "--contract", "--commit", "--commit-auto",
+                         "--commit-with-history", "--push"}
+        _BARE_VALUED = {"--repo", "--builder-provider", "--reviewer-provider",
+                        "--contract", "--commit"}
         tail = raw[3:]
         _truly_bare = True
         i = 0

@@ -16,8 +16,9 @@ mission record for the order, plans it and keeps the plan (D4, D5); shape reads
 "one job" or "milestones" from that plan, `--force-job` / `--force-mission`
 overriding it, and plans the jobs, each bounded by deliverables (D5, D6); run
 runs every job in order on the chosen providers and stops at the first that
-does not complete; ui prints the real `remedy ui start` command unless
-`--no-ui`; apply always stops before apply and prints one apply command per job.
+does not complete; ui opens the cockpit for the last job as a detached process
+unless `--no-ui`; apply stops before apply and prints one apply command per job,
+unless `--apply`, which applies every job in order (DECISION F268 D9).
 
 DECISION F268 D8: `--step-by-step` halts after every step that did work and,
 inside run, before each job — points where no provider call is in flight — and
@@ -28,9 +29,11 @@ walk and asks every job of the walk to stop through `safe_points.request_stop`.
 
 from __future__ import annotations
 
+import json
 import shlex
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -86,9 +89,15 @@ class DoContext:
     force_mission: bool = False
     step_by_step: bool = False
     plan_only: bool = False
+    #: `--apply`: the apply step applies every job instead of stopping (DECISION F268 D9).
+    apply: bool = False
     #: Reads one line at a `--step-by-step` halt, raising `EOFError` at end of
     #: input like `input`, which the CLI supplies; ``None`` reads as end of input.
     read_line: Callable[[], str] | None = None
+    #: Opens the cockpit for a job id and returns its URL, raising
+    #: `DoCockpitLaunchError` when it does not come up; the CLI supplies
+    #: `launch_do_cockpit`. ``None`` opens nothing and prints the command.
+    ui_launcher: Callable[[str], str] | None = None
     #: Why a `--step-by-step` halt stopped the walk; "" while it has not.
     halt_reason: str = ""
     repo_root: str = ""
@@ -774,23 +783,130 @@ def _step_run(ctx: DoContext) -> tuple[str, str]:
     return DO_STEP_DONE, "; ".join(ran)
 
 
+# ---------------------------------------------------------------------------
+# The cockpit, opened detached (DECISION F268 D9 (1)).
+# ---------------------------------------------------------------------------
+
+
+#: How long the ui step waits for the detached cockpit to write its info file.
+DO_COCKPIT_WAIT_SECONDS = 15.0
+
+#: The stop command the ui step reports; it stops every running UI session.
+DO_COCKPIT_STOP_COMMAND = "remedy ui stop"
+
+
+class DoCockpitLaunchError(Exception):
+    """The detached cockpit did not come up; the message says why and where its log is."""
+
+
+def do_cockpit_argv(job_id: str, info_file: Path | str) -> list[str]:
+    """The detached cockpit's command line: `remedy ui start` on an automatic port."""
+    return [sys.executable, "-m", "apps.cli.grouped", "ui", "start", job_id,
+            "--port", "0", "--info-file", str(info_file)]
+
+
+def do_cockpit_paths(job_id: str) -> tuple[Path, Path]:
+    """``(info_file, log_file)`` under the data root, which init keeps out of `git status`.
+
+    The info file sits in the UI session registry `remedy ui start` itself
+    writes to, so `remedy ui status` and `remedy ui stop` see the cockpit.
+    """
+    from packages.orchestration.data_paths import resolve_data_root
+
+    ui_root = Path(resolve_data_root()) / "ui"
+    return ui_root / "sessions" / f"do-{job_id}.json", ui_root / "do_logs" / f"{job_id}.log"
+
+
+def launch_do_cockpit(
+    job_id: str,
+    *,
+    wait_seconds: float = DO_COCKPIT_WAIT_SECONDS,
+    spawn: Callable[..., Any] = subprocess.Popen,
+    sleep: Callable[[float], None] = time.sleep,
+) -> str:
+    """Start the cockpit for *job_id* in its own session and return its URL.
+
+    The child outlives `remedy do`: it runs in a new session with its output in
+    a log file. Waits at most ``wait_seconds`` for the info file; a child that
+    exits first or does not come up in time raises `DoCockpitLaunchError`
+    (a child still starting is terminated, so no half-started server is left).
+    """
+    info_file, log_file = do_cockpit_paths(job_id)
+    info_file.parent.mkdir(parents=True, exist_ok=True)
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    info_file.unlink(missing_ok=True)
+    with open(log_file, "ab") as log:
+        child = spawn(do_cockpit_argv(job_id, info_file), stdin=subprocess.DEVNULL,
+                      stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        try:
+            url = json.loads(info_file.read_text(encoding="utf-8")).get("url", "")
+        except (OSError, ValueError):
+            url = ""
+        if url:
+            return url
+        code = child.poll()
+        if code is not None:
+            raise DoCockpitLaunchError(
+                f"the cockpit exited with code {code} before it came up; its log: {log_file}")
+        if time.monotonic() >= deadline:
+            child.terminate()
+            raise DoCockpitLaunchError(
+                f"the cockpit did not come up within {wait_seconds:g}s; its log: {log_file}")
+        sleep(0.1)
+
+
 def _step_ui(ctx: DoContext) -> tuple[str, str]:
-    """Until T004 the cockpit does not open by itself: print its real command, or skip."""
+    """Open the cockpit for the walk's last job, detached, unless `--no-ui` (DECISION F268 D9)."""
     if ctx.no_ui:
         return DO_STEP_SKIPPED, "--no-ui given; the cockpit was not opened"
-    command = f"remedy ui start {ctx.job_ids[-1]}"
-    ctx.next_lines.append(command)
-    return DO_STEP_SKIPPED, f"the cockpit does not open by itself yet; open it with: {command}"
+    job_id = ctx.job_ids[-1]
+    command = f"remedy ui start {job_id}"
+    if ctx.ui_launcher is None:
+        ctx.next_lines.append(command)
+        return DO_STEP_SKIPPED, f"no cockpit launcher on this walk; open it with: {command}"
+    try:
+        url = ctx.ui_launcher(job_id)
+    except (DoCockpitLaunchError, OSError) as exc:
+        ctx.next_lines.append(command)
+        return DO_STEP_SKIPPED, f"the cockpit was not opened: {exc}; open it with: {command}"
+    ctx.next_lines.append(DO_COCKPIT_STOP_COMMAND)
+    return DO_STEP_DONE, (
+        f"the cockpit for job {job_id} is open at {url}; "
+        f"stop it with: {DO_COCKPIT_STOP_COMMAND}")
 
 
 def _step_apply(ctx: DoContext) -> tuple[str, str]:
-    """Always stop before apply; print one real apply command per job, in run order."""
-    commands = [f"remedy job apply {job_id} --repo {shlex.quote(ctx.repo_root)} --approve"
-                for job_id in ctx.job_ids]
-    ctx.next_lines.extend(commands)
-    return DO_STEP_STOPPED, (
-        f"stopped before apply; {ctx.repo_root} is untouched. "
-        f"Apply the reviewed result with: {'; then '.join(commands)}")
+    """Stop before apply, printing one apply command per job; `--apply` applies every job.
+
+    With `--apply` each job goes through `job_apply.apply_job(..., approve=True)`
+    in run order, and the walk fails at the first job that is not applied,
+    naming it and why (DECISION F268 D9 (2)). The apply gate is `job_apply`'s own.
+    """
+    if not ctx.apply:
+        commands = [f"remedy job apply {job_id} --repo {shlex.quote(ctx.repo_root)} --approve"
+                    for job_id in ctx.job_ids]
+        ctx.next_lines.extend(commands)
+        return DO_STEP_STOPPED, (
+            f"stopped before apply; {ctx.repo_root} is untouched. "
+            f"Apply the reviewed result with: {'; then '.join(commands)}")
+
+    from packages.orchestration.job_apply import apply_job
+
+    applied: list[str] = []
+    for job_id in ctx.job_ids:
+        result = apply_job(job_id, ctx.repo_root, approve=True)
+        if result.status != "applied":
+            why = result.blocked_reason or "; ".join(result.blocked_reasons) or "no reason given"
+            ctx.next_lines.append(f"remedy job apply {job_id} --repo "
+                                  f"{shlex.quote(ctx.repo_root)} --dry-run")
+            before = f"; applied before it: {'; '.join(applied)}" if applied else ""
+            return DO_STEP_FAILED, (
+                f"job {job_id} was not applied to {ctx.repo_root} "
+                f"(status {result.status}): {why}{before}")
+        applied.append(f"job {job_id} applied {len(result.files_applied)} file(s)")
+    return DO_STEP_DONE, f"{'; '.join(applied)} to {ctx.repo_root}"
 
 
 #: The step table. `walk_do_sequence` reaches a step only through this mapping.
