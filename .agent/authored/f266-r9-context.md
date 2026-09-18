@@ -1,0 +1,1 @@
+- Every round's gates run through `pytest` directly (`python3 -m pytest ...`), never a wrapper.
