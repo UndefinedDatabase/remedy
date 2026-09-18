@@ -237,3 +237,37 @@ class TestStudyCommandReachability:
         # The output must contain expected keys
         assert "cards_written" in output
         assert "project_id" in output
+
+
+class TestStudyRunRecordsStudyOnce:
+    """DECISION F268 D3 — `study run` writes the study-once fields `remedy do` reads."""
+
+    def test_a_registered_project_gets_studied_at_and_studied_head(self, tmp_path, monkeypatch, capsys):
+        from uuid import UUID
+
+        from apps.cli.commands.study_cmd import _cmd_study_run
+        from packages.orchestration.project_registry import load_project
+
+        repo = _build_fixture_repo(tmp_path)
+        data_root = _setup_data_root(tmp_path, monkeypatch)
+        project_id = _setup_project(data_root, monkeypatch)
+
+        _cmd_study_run(str(repo), project=None, json_output=True)
+        capsys.readouterr()
+
+        saved = load_project(UUID(project_id))
+        assert saved.metadata["studied_at"]
+        # The fixture is not a git repository, so there is no HEAD to record.
+        assert saved.metadata["studied_head"] == ""
+
+    def test_an_unscoped_study_writes_no_project_record(self, tmp_path, monkeypatch, capsys):
+        from apps.cli.commands.study_cmd import _cmd_study_run
+        from packages.orchestration.project_registry import list_projects
+
+        repo = _build_fixture_repo(tmp_path)
+        _setup_data_root(tmp_path, monkeypatch)
+
+        _cmd_study_run(str(repo), project=None, json_output=True)
+        capsys.readouterr()
+
+        assert list_projects() == []

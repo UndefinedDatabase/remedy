@@ -240,8 +240,8 @@ class TestHappyPath:
     def test_happy_path_in_help(self, capsys):
         grouped_main([])
         out = capsys.readouterr().out
-        assert "do run" in out
-        assert "job show" in out
+        assert 'remedy do "Write a CONTRIBUTING.md"' in out
+        assert "remedy job list" in out
 
 
 # ---------------------------------------------------------------------------
@@ -529,47 +529,63 @@ class TestShellFlow:
 # Quick start tests
 # ---------------------------------------------------------------------------
 
-class TestQuickStart:
-    def test_quick_start_has_auto_job_id(self, capsys):
-        grouped_main([])
-        out = capsys.readouterr().out
-        assert "JOB_ID" in out
+_NUMBERED_LINE = r"^  (\d+)\. (remedy .*)$"
 
-    def test_quick_start_has_tee(self, capsys):
+
+class TestQuickStart:
+    def test_quick_start_needs_no_job_id(self, capsys):
+        """DECISION F268 D15: line five lists the jobs, so no line carries a job id or a shell variable."""
         grouped_main([])
         out = capsys.readouterr().out
-        assert "tee" in out
+        assert "  5. remedy job list\n" in out
+        for token in ("JOB_ID", "$", "job_id"):
+            assert token not in out
+
+    def test_quick_start_has_exactly_five_numbered_lines(self):
+        import re
+
+        from apps.cli.grouped import _QUICK_START
+        numbers = [int(n) for n, _line in re.findall(_NUMBERED_LINE, _QUICK_START, re.MULTILINE)]
+        assert numbers == [1, 2, 3, 4, 5]
 
     def test_quick_start_no_manual_job_id(self):
         import re
 
         from apps.cli.grouped import _QUICK_START
         assert "<job_id>" not in _QUICK_START
-        assert re.findall(r"<[a-z_-]+>", _QUICK_START) == ["<goal>"]
+        assert re.findall(r"<[^>]*>", _QUICK_START) == []
 
     def test_quick_start_flags_are_declared_by_their_commands(self):
-        """Every flag of a quick-start step is one its command declares.
+        """Every numbered quick-start line resolves to a catalog entry declaring each of its flags.
 
-        The advertised-command flag sweep stops at the quote closing `"<goal>"`, so it never
-        reads the flags after the goal; this test reads each step to the pipe.
+        A group word not followed by one of its subcommands resolves through the group's
+        default command, as `apps.cli.grouped.main` resolves it (`remedy do "<order>"` is
+        `do run`, `remedy init` is `init run`).
         """
         import re
+        import shlex
 
         from apps.cli.command_catalog import CATALOG
-        from apps.cli.grouped import _QUICK_START
+        from apps.cli.grouped import _DEFAULT_COMMAND, _QUICK_START
 
         declared = {(c.group_id, c.subcommand): {a.name for a in c.args} for c in CATALOG}
-        steps = 0
-        for line in _QUICK_START.splitlines():
-            m = re.search(r"remedy ([a-z][a-z0-9-]*) ([a-z][a-z0-9-]*)(.*)", line)
-            if not m:
-                continue
-            pair = (m.group(1), m.group(2))
+        pairs = []
+        for _number, line in re.findall(_NUMBERED_LINE, _QUICK_START, re.MULTILINE):
+            words = shlex.split(line)[1:]
+            group = resolve_group(words[0])
+            assert group is not None, line
+            subcommands = {c.subcommand for c in get_commands_for_group(group)}
+            if len(words) > 1 and words[1] in subcommands:
+                pair, rest = (group, words[1]), words[2:]
+            else:
+                assert group in _DEFAULT_COMMAND, line
+                pair, rest = (group, _DEFAULT_COMMAND[group]), words[1:]
             assert pair in declared, line
-            flags = re.findall(r"(?<![\w-])--[a-z][a-z0-9-]*", m.group(3).split("|", 1)[0])
+            flags = [w.split("=", 1)[0] for w in rest if w.startswith("-")]
             assert [f for f in flags if f not in declared[pair]] == [], line
-            steps += 1
-        assert steps == 2
+            pairs.append(pair)
+        assert pairs == [("init", "run"), ("doctor", "core"), ("do", "run"), ("do", "run"),
+                         ("job", "list")]
 
 
 # ---------------------------------------------------------------------------

@@ -100,14 +100,10 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--approved", action="store_true", help=arg.help)
             elif arg.name == "--approve":
                 parser.add_argument("--approve", action="store_true", dest="approve", help=arg.help)
-            elif arg.name == "--max-cycles":
-                parser.add_argument("--max-cycles", default="3", dest="max_cycles", help=arg.help)
             elif arg.name == "--auto-approve-low-risk":
                 parser.add_argument("--auto-approve-low-risk", action="store_true", dest="auto_approve_low_risk", help=arg.help)
             elif arg.name == "--no-tests":
                 parser.add_argument("--no-tests", action="store_true", dest="no_tests", help=arg.help)
-            elif arg.name == "--autonomy-level":
-                parser.add_argument("--autonomy-level", default="1", dest="autonomy_level", help=arg.help)
             elif arg.name == "--path":
                 parser.add_argument("--path", default=None, help=arg.help)
             elif arg.name == "--type":
@@ -128,10 +124,6 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--repo", default=arg.default, help=arg.help)
             elif arg.name == "--dry-run":
                 parser.add_argument("--dry-run", action="store_true", dest="dry_run", help=arg.help)
-            elif arg.name == "--fixture-builder":
-                parser.add_argument("--fixture-builder", nargs="?", const="true", default="false", dest="fixture_builder", help=arg.help)
-            elif arg.name == "--ui":
-                parser.add_argument("--ui", action="store_true", dest="ui", help=arg.help)
             elif arg.name == "--fixture-reviewer":
                 parser.add_argument("--fixture-reviewer", action="store_true", dest="fixture_reviewer", help=arg.help)
             elif arg.name == "--after-task":
@@ -353,12 +345,14 @@ def build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 
 _QUICK_START = """\
- Quick start (run `remedy init` in the repository first):
-   1. remedy do run "<goal>" --repo . --json | tee /tmp/remedy-run.json
-   2. JOB_ID=$(python3 -c "import json; print(json.load(open('/tmp/remedy-run.json'))['job_id'])")
-   3. remedy job show $JOB_ID --full
+Quick start (in a git repository):
+  1. remedy init
+  2. remedy doctor core
+  3. remedy do "Write a CONTRIBUTING.md" --plan-only
+  4. remedy do "Write a CONTRIBUTING.md"
+  5. remedy job list
 
- Show all commands:  remedy --all-commands"""
+Show all commands:  remedy --all-commands"""
 
 
 def _print_root_help(*, show_all: bool = False) -> None:
@@ -474,7 +468,6 @@ def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
 
     raw = argv if argv is not None else sys.argv[1:]
-    _did_inject = False
     group = resolve_group(raw[0]) if raw else None
     if group in _DEFAULT_COMMAND:
         subcmds = {c.subcommand for c in get_commands_for_group(group)}
@@ -486,7 +479,6 @@ def main(argv: list[str] | None = None) -> None:
             default_sub = _DEFAULT_COMMAND[group]
             raw = [raw[0], default_sub] + raw[1:]
             argv = raw
-            _did_inject = True
 
     # Intercept argparse errors for clean output
     try:
@@ -543,25 +535,6 @@ def main(argv: list[str] | None = None) -> None:
     if unknown:
         print(render_error(f"remedy {args._group} {args._subcmd}", f"Unrecognized arguments: {' '.join(unknown)}"), file=sys.stderr)
         sys.exit(2)
-
-    _truly_bare = False
-    if _did_inject and raw and raw[0] == "do" and len(raw) >= 3:
-        _BARE_ALLOWED = {"--json", "--repo", "--no-llm", "--yes"}
-        tail = raw[3:]
-        _truly_bare = True
-        i = 0
-        while i < len(tail):
-            tok = tail[i]
-            if tok.startswith("-"):
-                if tok in _BARE_ALLOWED:
-                    if tok == "--repo" and i + 1 < len(tail):
-                        i += 1
-                else:
-                    _truly_bare = False
-                    break
-            i += 1
-    args._injected_default = _did_inject
-    args._truly_bare = _truly_bare
 
     command_id = getattr(args, "_command_id", None)
     if command_id is None:

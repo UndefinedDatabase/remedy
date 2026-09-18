@@ -13,6 +13,15 @@ from packages.orchestration.pingpong_job import JobPlan
 _CLI = [sys.executable, "-m", "apps.cli.grouped"]
 
 
+def _shape_order(repo, order, **kwargs):
+    """The golden-path job planning, called directly: F268 moved it out of
+    `_cmd_do_mission` into `do_sequence.plan_order_job`, the shape step's function."""
+    from packages.orchestration.do_sequence import plan_order_job
+    from packages.orchestration.project_registry import resolve_project
+
+    return plan_order_job(order, project=resolve_project(repo), repo_path=str(repo), **kwargs)
+
+
 class TestTaskPlanApprovalDecisionType:
 
     def test_type_registered(self):
@@ -109,7 +118,7 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
     `intake.make_structured_call_fn` hands back a callable, and the real factory
     decides that by probing a live Ollama server. Leaving it unmocked made these
     tests read the developer machine instead of their own fixtures: green with a
-    server up, and on a CI runner silently down the `deterministic skeleton`
+    server up, and on a CI runner silently down the deterministic
     path, where every assertion below is about the plan that never got built.
     """
     def _fake_call(prompt: str, attempt: int) -> str:
@@ -169,13 +178,15 @@ class TestTaskPlanLabel:
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
         result = subprocess.run(
-            [*_CLI, "do", "test mission", "--no-llm", "--json"],
+            [*_CLI, "do", "test mission", "--no-llm", "--json",
+             "--builder-provider", "fake", "--reviewer-provider", "fake", "--no-ui"],
             capture_output=True, text=True, timeout=30,
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
         assert result.returncode == 0, result.stderr
         data = json.loads(result.stdout)
-        assert data["plan_label"] == "deterministic skeleton"
+        shape = next(s for s in data["steps"] if s["name"] == "shape")
+        assert "plan: deterministic, one task per deliverable," in shape["detail"]
 
     def test_llm_task_plan_label(self, tmp_path, monkeypatch):
         """Successful LLM task plan -> label contains 'task plan' + 'awaiting approval'."""
@@ -189,14 +200,9 @@ class TestTaskPlanLabel:
         _setup_llm_mocks(monkeypatch, plan_succeeds=True)
         monkeypatch.chdir(str(repo))
 
-        from io import StringIO
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
+        shaped = _shape_order(repo, "test mission")
 
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("test mission", repo=str(repo), json_output=True)
-
-        data = json.loads(captured.getvalue())
+        data = shaped.to_json()
         assert "task plan" in data["plan_label"].lower()
         assert "awaiting approval" in data["plan_label"].lower()
         assert data["state"] == "planned"
@@ -213,14 +219,9 @@ class TestTaskPlanLabel:
         _setup_llm_mocks(monkeypatch, plan_succeeds=True)
         monkeypatch.chdir(str(repo))
 
-        from io import StringIO
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
+        shaped = _shape_order(repo, "test mission")
 
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("test mission", repo=str(repo), json_output=True)
-
-        data = json.loads(captured.getvalue())
+        data = shaped.to_json()
         job_id = data["job_id"]
 
         show = subprocess.run(
@@ -252,13 +253,8 @@ class TestTaskPlanLabel:
         }])
         monkeypatch.chdir(str(repo))
 
-        from io import StringIO
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("test mission", repo=str(repo), json_output=True)
-        job_id = json.loads(captured.getvalue())["job_id"]
+        shaped = _shape_order(repo, "test mission")
+        job_id = shaped.to_json()["job_id"]
 
         from packages.orchestration.pingpong_job import load_job_plan
         saved = load_job_plan(job_id)
@@ -290,10 +286,9 @@ class TestTaskPlanLabel:
 
         import pytest
 
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        with pytest.raises(SystemExit) as exc_info:
-            _cmd_do_mission("test mission", repo=str(repo), json_output=True)
-        assert exc_info.value.code != 0
+        from packages.orchestration.do_sequence import OrderJobPlanError
+        with pytest.raises(OrderJobPlanError, match="task plan generation failed"):
+            _shape_order(repo, "test mission")
 
         # Verify saved job: state != planned, tasks empty
         from packages.orchestration.pingpong_job import list_job_plans
@@ -307,6 +302,57 @@ class TestTaskPlanLabel:
         ev_dir = data_dir / "evidence_exports" / str(saved_job.job_id)
         postmortem_files = list(ev_dir.glob("*postmortem*")) if ev_dir.exists() else []
         assert len(postmortem_files) > 0, f"postmortem file must exist in {ev_dir}"
+
+    def test_llm_plan_records_each_tasks_deliverable(self, tmp_path, monkeypatch):
+        """DECISION F268 D6: an LLM task's deliverable is its first files_hint, else
+        its first acceptance line — here "Done", the mocked plan's only criterion."""
+        repo = _git_repo(tmp_path)
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        subprocess.run(
+            [*_CLI, "init"], capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=_env(tmp_path), stdin=subprocess.DEVNULL,
+        )
+        monkeypatch.chdir(str(repo))
+        _setup_llm_mocks(monkeypatch, plan_succeeds=True)
+
+        shaped = _shape_order(repo, "test mission")
+
+        assert [t.inputs["deliverable"] for t in shaped.job.tasks] == ["Done"]
+
+    def test_llm_plan_holding_an_inspection_task_is_rejected(self, tmp_path, monkeypatch):
+        """DECISION F268 D6: the one validator runs on the LLM plan too."""
+        import pytest
+
+        from packages.orchestration.do_sequence import OrderJobPlanError
+        from packages.orchestration.job_plan import TaskPlanResult
+        from packages.orchestration.pingpong_job import list_job_plans
+        from packages.orchestration.schemas.models import TaskPlan
+
+        repo = _git_repo(tmp_path)
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        subprocess.run(
+            [*_CLI, "init"], capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=_env(tmp_path), stdin=subprocess.DEVNULL,
+        )
+        monkeypatch.chdir(str(repo))
+        _setup_llm_mocks(monkeypatch, plan_succeeds=True)
+        inspecting = TaskPlan(
+            schema_v="task_plan_v1",
+            tasks=[{
+                "id": "T001", "title": "Analyze the repository", "goal": "Understand it",
+                "acceptance": ["Notes written"], "depends_on": [],
+                "est_tokens_band": "M", "files_hint": ["notes.md"],
+            }],
+            risks=[],
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.job_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: TaskPlanResult(plan=inspecting, source="llm", calls=1),
+        )
+
+        with pytest.raises(OrderJobPlanError, match="is inspection"):
+            _shape_order(repo, "test mission")
+        assert list_job_plans() == []
 
 
 class TestApprovalGateEnforcement:
@@ -422,14 +468,9 @@ class TestAutoApproval:
         _setup_llm_mocks(monkeypatch, plan_succeeds=True)
         monkeypatch.chdir(str(repo))
 
-        from io import StringIO
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
+        shaped = _shape_order(repo, "test mission", yes=True)
 
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("test mission", repo=str(repo), json_output=True, yes=True)
-
-        data = json.loads(captured.getvalue())
+        data = shaped.to_json()
         assert "approved via --yes" in data["plan_label"]
 
         job_id = data["job_id"]
@@ -454,14 +495,9 @@ class TestAutoApproval:
         _setup_llm_mocks(monkeypatch, plan_succeeds=True)
         monkeypatch.chdir(str(repo))
 
-        from io import StringIO
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
+        shaped = _shape_order(repo, "test mission", yes=True)
 
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("test mission", repo=str(repo), json_output=True, yes=True)
-
-        data = json.loads(captured.getvalue())
+        data = shaped.to_json()
         fp_decisions = [
             d for d in list_decisions(JobPlan(job_title="t",
                 task_plan={"_approval": "approved",
@@ -520,14 +556,9 @@ class TestConfigBudgetPrecedence:
         )
         monkeypatch.chdir(str(repo))
 
-        from io import StringIO
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
+        shaped = _shape_order(repo, "test mission")
 
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("test mission", repo=str(repo), json_output=True)
-
-        data = json.loads(captured.getvalue())
+        data = shaped.to_json()
         job_id = data["job_id"]
 
         show = subprocess.run(
@@ -573,14 +604,9 @@ class TestConfigBudgetPrecedence:
         )
         monkeypatch.chdir(str(repo))
 
-        from io import StringIO
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
+        shaped = _shape_order(repo, "test mission")
 
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("test mission", repo=str(repo), json_output=True)
-
-        data = json.loads(captured.getvalue())
+        data = shaped.to_json()
         job_id = data["job_id"]
 
         show = subprocess.run(

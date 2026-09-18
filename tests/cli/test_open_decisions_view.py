@@ -359,4 +359,6 @@ def test_the_block_is_queue_wide_not_task_decision_only(capsys):
     assert status["open_decision_count"] == 1
     assert status["open_decisions"][0]["type"] == "stop_reason"
     assert status["blockers"][0] == "awaiting_decision"
-    assert status["next_safe_action"] == "remedy job attach-repo <job_id> <path>"
+    # R-0811: the tip carries the real job id and no angle-bracket placeholder.
+    assert status["next_safe_action"].startswith(f"remedy job attach-repo {job.job_id} ")
+    assert "<" not in status["next_safe_action"]

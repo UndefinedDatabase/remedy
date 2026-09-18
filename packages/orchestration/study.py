@@ -14,7 +14,9 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -25,6 +27,9 @@ from packages.orchestration.budget_guard import BudgetCounters
 from packages.orchestration.intake import make_structured_call_fn
 from packages.orchestration.role_config import resolve_role_config
 from packages.orchestration.safe_points import should_stop
+
+if TYPE_CHECKING:
+    from packages.orchestration.project_registry import RemyProject
 
 #: Directories to prune while walking (matching pingpong_loop.py pattern).
 STUDY_EXCLUDE_DIRS: frozenset[str] = frozenset({
@@ -305,3 +310,49 @@ def run_study(
         result.cards_written.append(entry.key)
 
     return result
+
+
+def _repo_head_commit(repo_root: str) -> str:
+    """The repository's HEAD commit id, or "" when there is none to read."""
+    import subprocess
+
+    try:
+        proc = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", "HEAD"],
+            cwd=repo_root, capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return proc.stdout.strip() if proc.returncode == 0 else ""
+
+
+# DECISION F268 D3: the ONE writer of study-once. `remedy study run` and the
+# study step of `remedy do` both call it after a pass completes, so a study run
+# by hand counts as the one study `do` would otherwise run.
+def record_study_pass(project_id: str, repo_root: str, *,
+                      now: datetime | None = None) -> RemyProject | None:
+    """Record a completed study pass on the project record and save it.
+
+    Writes ``metadata["studied_at"]`` (ISO-8601 UTC) and
+    ``metadata["studied_head"]`` (the repository's HEAD commit id at study
+    time, "" when it has none). Returns the saved project, or None when
+    ``project_id`` names no registered project — an unscoped study has no
+    record to write to.
+    """
+    from uuid import UUID
+
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        load_project,
+        save_project,
+    )
+
+    try:
+        project = load_project(UUID(str(project_id)))
+    except (ValueError, ProjectNotFoundError):
+        return None
+    stamp = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    project.metadata["studied_at"] = stamp.isoformat()
+    project.metadata["studied_head"] = _repo_head_commit(repo_root)
+    save_project(project)
+    return project

@@ -259,8 +259,8 @@ class TestSegmentManifest:
         assert loaded["segment_manifest_chars"] == entry.segment_manifest_chars
 
     def test_the_cli_recorder_passes_the_composed_prompt(self):
-        """Wiring guard: a manifest field the CLI never fills fails HERE."""
-        import apps.cli.commands.do_cmd as do_cmd
+        """Wiring guard: a manifest field `do_sequence` never fills fails HERE."""
+        import packages.orchestration.do_sequence as do_sequence
 
         traces: list = []
         composed = compose_intake_prompt("demo mission")
@@ -271,11 +271,11 @@ class TestSegmentManifest:
         assert len(traces) == 1
         assert len(traces[0].segment_manifest) == 3
 
-        assert "make_intake_call_recorder" in inspect.getsource(do_cmd)
+        assert "make_intake_call_recorder" in inspect.getsource(do_sequence)
 
     def test_the_cli_task_plan_recorder_passes_the_composed_prompt(self):
         """Wiring guard: an unwired task-plan manifest fails HERE (F105 R27)."""
-        import apps.cli.commands.do_cmd as do_cmd
+        import packages.orchestration.do_sequence as do_sequence
         from packages.orchestration.job_plan import (
             compose_task_plan_prompt,
             make_task_plan_call_recorder,
@@ -294,7 +294,7 @@ class TestSegmentManifest:
         assert traces[0].prompt_kind == "task-plan"
         assert len(traces[0].segment_manifest) == 5
 
-        source = inspect.getsource(do_cmd)
+        source = inspect.getsource(do_sequence)
         assert "make_task_plan_call_recorder" in source
         assert "prompt_traces" in source
 
@@ -329,9 +329,9 @@ class TestSegmentManifest:
 
     def test_every_cli_call_site_hands_its_composition_down(self):
         """R-0256 wiring guard: a site that composes twice fails HERE."""
-        import apps.cli.commands.do_cmd as do_cmd
+        import packages.orchestration.do_sequence as do_sequence
 
-        source = inspect.getsource(do_cmd)
+        source = inspect.getsource(do_sequence)
         assert "composed=intake_composed," in source
         assert "composed=plan_composed," in source
 
@@ -387,7 +387,7 @@ class TestSegmentManifest:
 
         The behaviour test above passes even when this call site is unwired,
         because it never touches `pingpong_loop` — which is why this guard
-        exists. Same `inspect.getsource` pattern as the CLI guards above.
+        exists. Same `inspect.getsource` pattern as the `do_sequence` guards above.
 
         THE SITES ARE SELECTED BY THE ROLE THEY DECLARE, NEVER BY POSITION.
         F109 `R-0774` added a SECOND builder append inside the resume-fallback

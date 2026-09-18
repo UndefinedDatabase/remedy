@@ -184,6 +184,46 @@ def resolve_stop_reason(job_id: str, stop_id: str, reason: str) -> StopReason | 
     return target
 
 
+def _job_project_repo_path(job: Any) -> str:
+    """The canonical repository path of *job*'s project, or "" when it has none."""
+    project_id = str(getattr(job, "project_id", "") or
+                     (getattr(job, "metadata", None) or {}).get("project_id") or "")
+    if not project_id:
+        return ""
+    from uuid import UUID
+
+    from packages.orchestration.project_registry import ProjectNotFoundError, load_project
+    try:
+        project = load_project(UUID(project_id))
+    except (ValueError, ProjectNotFoundError, OSError):
+        return ""
+    return project.canonical_repo_path or ""
+
+
+# R-0811: the tip carries the real job id and a real path, never a placeholder.
+def job_attach_repo_tip(job: Any) -> str:
+    """The `remedy job attach-repo` command for *job*: its project's repo, else what to pass."""
+    import shlex
+
+    job_id = str(job.job_id)
+    repo = _job_project_repo_path(job)
+    if repo:
+        return f"remedy job attach-repo {job_id} {shlex.quote(repo)}"
+    return (f"remedy job attach-repo {job_id} followed by the path of the "
+            f"repository this job should change")
+
+
+# R-0811: one real approve command per intent the events name; an intent whose
+# id the event lacks is reached through the job's intent listing instead.
+def _patch_approve_tips(job_id: str, intent_events: list[dict[str, Any]]) -> tuple[str, ...]:
+    """`remedy patch approve` for every awaiting intent, by its real id, in event order."""
+    intent_ids = [str((e.get("metadata") or {}).get("intent_id") or "") for e in intent_events]
+    tips = [f"remedy patch approve {job_id} {iid}" for iid in dict.fromkeys(intent_ids) if iid]
+    if "" in intent_ids:
+        tips.append(f"remedy patch list {job_id} names the intent ids to approve")
+    return tuple(tips)
+
+
 def derive_stop_reasons(
     job: Any,
     events: list[dict[str, Any]],
@@ -203,7 +243,7 @@ def derive_stop_reasons(
             created_at=now, resolved_at=None,
             related_node_id="", related_intent_id="", related_file="",
             safe_summary="No target repository attached to job.",
-            next_actions=("remedy job attach-repo <job_id> <path>",),
+            next_actions=(job_attach_repo_tip(job),),
         ))
 
     # Test failures
@@ -217,7 +257,8 @@ def derive_stop_reasons(
             created_at=now, resolved_at=None,
             related_node_id="", related_intent_id="", related_file="",
             safe_summary=f"{len(test_fails)} test run(s) failed.",
-            next_actions=("Review test output.", "remedy test run <job_id>"),
+            next_actions=(f"Review the failed test output of job {job_id}.",
+                          f"remedy test run {job_id}"),
         ))
 
     # Unapproved intents
@@ -235,7 +276,7 @@ def derive_stop_reasons(
             created_at=now, resolved_at=None,
             related_node_id="", related_intent_id="", related_file="",
             safe_summary=f"{len(unapproved)} patch intent(s) awaiting approval.",
-            next_actions=("remedy patch approve <job_id> <intent_id>",),
+            next_actions=_patch_approve_tips(job_id, unapproved),
         ))
 
     # Dirty repo blocks higher levels
@@ -249,7 +290,8 @@ def derive_stop_reasons(
                 status="active", created_at=now, resolved_at=None,
                 related_node_id="", related_intent_id="", related_file="",
                 safe_summary="Target repository has uncommitted changes.",
-                next_actions=("Commit or stash changes in target repo.",),
+                next_actions=(f"Commit or stash the changes in the target repository "
+                              f"of job {job_id}{f' ({target_repo})' if target_repo else ''}.",),
             ))
 
     return reasons

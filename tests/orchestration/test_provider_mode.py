@@ -201,22 +201,25 @@ class TestStopReasonPropagation:
 
 
 class TestBuilderProviderParse:
-    def test_parse_none(self):
-        from apps.cli.commands.do_cmd import _parse_builder_provider
-        assert _parse_builder_provider("none") == "none"
+    """F268 (R-0933): `do`'s `--builder-provider` takes the four providers
+    `create_provider` builds; the old none/fixture values are refused."""
 
-    def test_parse_fixture(self):
-        from apps.cli.commands.do_cmd import _parse_builder_provider
-        assert _parse_builder_provider("fixture") == "fixture"
+    def test_the_four_providers_and_omission_are_accepted(self):
+        from apps.cli.commands.do_cmd import _validate_role_override
+        for name in ("fake", "claude", "claude-cli", "ollama", None):
+            _validate_role_override("builder", "provider", name)
 
-    def test_parse_ollama(self):
-        from apps.cli.commands.do_cmd import _parse_builder_provider
-        assert _parse_builder_provider("ollama") == "ollama"
+    def test_the_retired_values_exit_2(self):
+        from apps.cli.commands.do_cmd import _validate_role_override
+        for bad in ("none", "fixture"):
+            with pytest.raises(SystemExit) as exc:
+                _validate_role_override("builder", "provider", bad)
+            assert exc.value.code == 2
 
     def test_parse_invalid_exits(self):
-        from apps.cli.commands.do_cmd import _parse_builder_provider
+        from apps.cli.commands.do_cmd import _validate_role_override
         with pytest.raises(SystemExit):
-            _parse_builder_provider("invalid")
+            _validate_role_override("builder", "provider", "invalid")
 
     def test_catalog_has_builder_provider_arg(self):
         from apps.cli.command_catalog import CATALOG

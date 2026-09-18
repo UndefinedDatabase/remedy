@@ -280,3 +280,64 @@ class TestVerifiedSnapshotSignal:
         ]
         report = assess_job_readiness(job, events, data_dir=data_dir)
         assert "verified_snapshot" in report.levels[5].present_signals
+
+
+class TestAttachRepoTip:
+    """R-0811: the readiness tip names the real job and a real path, never a placeholder."""
+
+    @staticmethod
+    def _rendered_tip(job) -> str:
+        text = summarize_readiness(assess_job_readiness(job, []))
+        [line] = [ln for ln in text.splitlines() if "attach-repo" in ln]
+        return line
+
+    def test_the_tip_names_the_job_and_its_projects_repository(self, tmp_path, monkeypatch):
+        import re
+
+        from packages.orchestration.project_registry import RemyProject, save_project
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        repo = tmp_path / "the-repo"
+        repo.mkdir()
+        project = RemyProject(name="the-repo", canonical_repo_path=str(repo))
+        save_project(project)
+        job = _make_job(project_id=str(project.id))
+
+        line = self._rendered_tip(job)
+
+        assert line.endswith(f"remedy job attach-repo {job.job_id} {repo}")
+        text = summarize_readiness(assess_job_readiness(job, []))
+        assert not re.search(r"<[a-z_]+>", text)
+
+    def test_the_tip_without_a_project_says_what_to_pass(self, tmp_path, monkeypatch):
+        import re
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _make_job()
+
+        line = self._rendered_tip(job)
+
+        assert f"remedy job attach-repo {job.job_id} " in line
+        assert "path of the repository" in line
+        text = summarize_readiness(assess_job_readiness(job, []))
+        assert not re.search(r"<[a-z_]+>", text)
+
+    def test_every_tip_of_every_level_names_the_real_job(self, tmp_path, monkeypatch):
+        """R-0811: the whole summary and every level's tips — no `<…>`, the real job id."""
+        import re
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = JobPlan(job_id=mint_job_id(), job_title="no tasks yet", user_prompt="x")
+
+        report = assess_job_readiness(job, [], data_dir=tmp_path / "data")
+        text = summarize_readiness(report)
+        actions = [a for level in export_readiness_json(report)["levels"]
+                   for a in level["next_actions"]]
+
+        assert not re.search(r"<[a-z_]+>", text)
+        assert str(job.job_id) in text
+        assert f"remedy job plan {job.job_id}" in text
+        assert len(actions) == 7
+        for action in actions:
+            assert not re.search(r"<[a-z_]+>", action), action
+            assert str(job.job_id) in action, action

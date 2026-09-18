@@ -214,7 +214,9 @@ def test_the_wheel_installs_and_the_installed_cli_runs_the_golden_path(tmp_path)
     )
     assert init.returncode == 0, init.stderr
     do = subprocess.run(
-        [str(remedy), "do", "install smoke mission", "--no-llm"], cwd=str(project), env=env,
+        # F268: bare `do` runs the job it plans, so the fake builder and reviewer keep it offline.
+        [str(remedy), "do", "install smoke mission", "--no-llm", "--no-ui",
+         "--builder-provider", "fake", "--reviewer-provider", "fake"], cwd=str(project), env=env,
         capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL,
     )
     assert do.returncode == 0, do.stderr

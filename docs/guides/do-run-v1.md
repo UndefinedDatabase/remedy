@@ -1,131 +1,102 @@
-# remedy do v1 — Cohesive Flow
+# remedy do — the one-command start
 
-> How `remedy do` runs a phased, fixture-only pipeline that stops before apply.
+> How `remedy do "<order>"` plans and runs what you ask, and stops before apply.
 
 ## Overview
 
-`remedy do` is the primary entry point for guided work. In v1 it runs a
-fixture-only flow: no real LLM calls, no Ollama, no file mutations, no
-external command execution. The flow creates real Job/Task/Artifact records,
-inspects context, builds a fixture proposal, creates a patch intent, and
-stops at an approval gate.
-
-v1 writes only to the Remedy data store (Job/Task/Artifact). It does **not**
-mutate repo files or execute external commands.
-
-## Usage
+`remedy do "<order>"` walks one fixed sequence of steps, read as data from
+`DO_SEQUENCE` in `packages/orchestration/do_sequence.py`. Every `remedy do`,
+with or without the word `run`, walks it (DECISION F268 D16); there is no
+second route under `do`.
 
 ```
-remedy do run "add a safe docs change" --repo . --autonomy-level 3 --json
+remedy do "add a hello() function" --repo . --json
+remedy do run "add a hello() function" --repo . --json
 ```
 
-Flags:
+## The steps, in order
+
+| Step | What it does |
+|------|--------------|
+| `init` | Registers the repository as a project if it is not one (or selects `--project`), and adds the ignore entries; writes no file into the repository. |
+| `study` | Studies the repository once, and only when it holds a commit with a tracked file; skipped when already studied. |
+| `plan` | Creates the mission record for the order, records the order, and plans it. |
+| `shape` | Reads the shape from the plan — one job, or milestones — or from `--force-job` / `--force-mission`, and plans the jobs, each linked to the mission. |
+| `run` | Runs the first job on the chosen builder and reviewer; in a walk of two or more jobs the rest wait until the job before them is applied and committed. |
+| `ui` | Opens the cockpit for the job that ran as a detached process, unless `--no-ui`. |
+| `apply` | Stops before apply and prints the apply command for each job that ran, unless `--apply`, which applies them. |
+
+A step that stops or fails ends the walk; the steps after it are not called.
+
+## Stop before apply
+
+Without `--apply` the walk ends at `apply` with the repository untouched and a
+`Next:` line per job that ran, of the form
+`remedy job apply <job_id> --repo <repo> --approve`. With `--apply` each job that
+ran is applied in run order, as `remedy job apply --approve` does, and the walk
+fails at the first job that is not applied, naming it and why.
+
+## --plan-only and --step-by-step
+
+- `--plan-only` ends the walk after `shape`: `run` reports stopped, no job is
+  run, and a `remedy job run <job_id>` line is printed per planned job.
+- `--step-by-step` halts after every step that did work, and inside `run`
+  before each job: it prints what happened and what comes next, and reads one
+  line. Enter continues; `q` or end of input stops the walk and asks every job
+  of the walk to stop.
+
+## JSON output
+
+`--json` prints one object with these keys:
+
+```
+mission_id, job_ids, waiting_job_ids, contract, stopped_before_apply,
+shape, shape_source, mission_plan_path, jobs, steps, cost, next
+```
+
+- `contract` is `null` until F269 lands.
+- `jobs` lists every job's tasks with their deliverables.
+- `steps` holds one `{name, status, detail}` per step the walk reached.
+- `cost` carries the measured tokens per role and cost, read back from the ledger.
+- `next` holds the `Next:` lines.
+
+## Flags
+
+Read from the `do.run` catalog entry in `apps/cli/command_catalog.py`:
+
 - `--repo` — target repository path (default `.`)
-- `--autonomy-level` — 0-7 accepted, capped at 3 in v1
-- `--max-cycles` — max loops (v1 caps to 1, single pass)
-- `--json` — structured JSON output
-- `--dry-run` — plan-only mode (no records created)
+- `--project` — select a registered project by slug or id instead of the repository's own
+- `--json` — the JSON output above
+- `--builder-provider`, `--reviewer-provider` — claude, claude-cli, fake or ollama
+- `--builder-model`, `--reviewer-model` — model for the role on every task `do` runs
+- `--planner-model` — model for every planner call of the plan and shape steps
+- `--yes` — approve the job's plan of tasks unattended
+- `--no-ui` — do not open the cockpit
+- `--max-total-tokens`, `--max-provider-calls`, `--max-wall-clock-minutes`,
+  `--max-cost-usd`, `--deadline` — the job's budgets
+- `--no-llm` — heuristic intake, no LLM provider call
+- `--force-job`, `--force-mission` — override the planner's shape; not together
+- `--step-by-step`, `--plan-only` — above
+- `--apply` — apply each job that ran instead of stopping before apply
+- `--contract`, `--commit`, `--commit-auto`, `--commit-with-history`, `--push` —
+  not yet available: each exits 2 before any step, naming the feature that
+  brings it (F269 or F270)
 
-## Phased Flow
+## Next-line commands
 
-```
-init → plan → context → build → patch_intent → approval_required → stop
-```
-
-| Phase | What happens |
-|-------|-------------|
-| `init` | Create Job with user prompt, attach repo via Artifact metadata |
-| `plan` | Create Task from goal |
-| `context` | Run context inspector; stop if BLOCKED or on error |
-| `build` | Create fixture builder proposal (safe summary, no raw content) |
-| `patch_intent` | Create intent ID via `make_intent_id()` |
-| `approval_required` | Flow stops — approval needed before apply |
-| `proof` | Build proof chain (expected incomplete before apply) |
-
-### Context Failure Stops the Run
-
-If the context inspector raises an unexpected error, the flow stops with
-`context_error`. No build phase, no patch intent. The `next_safe_action`
-points to `remedy job context <job_id> --task <task_id> --json` for diagnosis.
-
-## Run Contract
-
-`do_run` loads the persisted contract via `ensure_contract(job)` (source `default_v1` on first call). If the caller passes `autonomy_level` or `stop_before_apply` values that differ from the stored contract, a modified copy is saved back with source `do_v1_caller_override`.
-
-| Field | Default | Notes |
-|-------|---------|-------|
-| `autonomy_level` | 2 | Capped at 3 |
-| `stop_before_apply` | `True` | Always true in v1 |
-| `max_loops` | 1 | Single pass in v1 (input capped to 1) |
-| `allowed_actions` | plan, build_artifact, create_patch_intent | |
-| `denied_actions` | apply_patch, arbitrary_shell, network_fetch | |
-
-The run contract and usage summary are visible in `--json` output under the `run_contract` key.
-
-## Autonomy Truth
-
-JSON output exposes both requested and effective autonomy:
-
-- `autonomy_level` — effective (capped at 3)
-- `requested_autonomy_level` — what the user asked for
-- `autonomy_capped` — boolean, true if capped
-- `cap_reason` — why the cap was applied
-
-## max_loops Truth
-
-- `--max-cycles 0` → `invalid_input` stop, no job created
-- `--max-cycles 1` → normal single pass
-- `--max-cycles 3` → still single pass (v1 caps to 1), contract shows `max_loops: 1`
-
-## JSON Output Contract
-
-Top-level keys in `--json` output:
-
-```
-version, job_id, task_id, artifact_ids, patch_intent_id,
-proof_status, phases, stop_reason, next_safe_action,
-autonomy_level, requested_autonomy_level, autonomy_capped, cap_reason,
-repo_path_safe, context_summary, generated_at, run_contract
-```
-
-- `stop_reason.reason` — `approval_required`, `context_blocked`, `context_error`, `invalid_input`
-- `next_safe_action.command` — a fully validated catalog command (group.subcommand)
-- `repo_path_safe` — basename only, no absolute paths
-- No raw file content, secrets, or diffs in output
-
-## Next Safe Action
-
-All `next_safe_action.command` values are validated against the command catalog
-using `validate_next_safe_action_command()`. This checks the full
-`remedy <group> <subcommand>` maps to a real `<group>.<subcommand>` catalog entry.
-
-## Approval Gate
-
-v1 always stops before apply. The `next_safe_action` tells the user what
-command to run next:
-
-- Normal stop: `remedy patch approve <job_id> <intent_id>`
-- Context blocked/error: `remedy job context <job_id> --task <task_id> --json`
-- No patch intent: `remedy job show <job_id> --json`
-
-## Safety Guarantees
-
-- No file mutations in v1
-- No external command execution
-- No `shell=True` anywhere
-- No secrets or `.env` content in output
-- No absolute paths in JSON
-- Output size bounded (< 50 KB)
-- Autonomy capped at level 3
-- Context failure stops the run (no silent continue)
-- Catalog metadata: `may_mutate_repo=False`, `may_execute_commands=False`
+`validate_next_safe_action_command` in `packages/orchestration/do_run.py`
+checks that a `remedy <group> <subcommand> ...` command names a real
+`<group>.<subcommand>` entry of the command catalog; `DoRunNextAction` in the
+same module is the label, command and reason of one next action, which
+`packages/orchestration/repair_loop.py` builds its results with.
 
 ## Source Files
 
-- `packages/orchestration/do_run.py` — core flow + export + validation
-- `apps/cli/commands/do_cmd.py` — CLI wiring
-- `tests/orchestration/test_do_run.py` — 67 unit tests
-- `tests/cli/test_do_runtime.py` — 14 subprocess tests
+- `packages/orchestration/do_sequence.py` — the steps, `DO_SEQUENCE` and the walker
+- `apps/cli/commands/do_cmd.py` — CLI wiring and the output
+- `packages/orchestration/do_run.py` — `DoRunNextAction` and `validate_next_safe_action_command`
+- `tests/cli/test_do_sequence_cli.py`, `tests/cli/test_do_flags.py` — the sequence through the CLI
+- `tests/orchestration/test_do_run.py` — the Next-line validator and the `do.run` catalog metadata
 
 ## See also
 

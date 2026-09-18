@@ -1662,7 +1662,8 @@ def _pipeline_next_command(
     if stop_reason == "provider_unavailable":
         return "remedy worker resources --json"
     if stop_reason in ("provider_output_prose_only", "provider_output_malformed"):
-        return "remedy do \"<goal>\" --repo . --builder-provider fixture --json"
+        # DECISION F268 D7: show the output the provider returned, for this job.
+        return f"remedy job show {job_id} --full --json"
     if stop_reason == "test_failed_after_apply":
         return f"remedy job show {job_id} --full --json"
     if stop_reason == "repair_budget_exhausted":

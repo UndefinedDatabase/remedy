@@ -183,6 +183,18 @@ class TestPipelineNextCommand:
         assert parts[0] == "remedy"
         assert parts[1] in catalog_groups or parts[1] == "do"
 
+    def test_provider_output_stop_reasons_name_a_real_job_show(self):
+        """R-0964 / DECISION F268 D7: a real command carrying the real job id, which parses."""
+        from apps.cli.grouped import build_parser
+        from packages.orchestration.ui_server import _pipeline_next_command
+
+        job_id = "0123456789abcdef"
+        for stop_reason in ("provider_output_prose_only", "provider_output_malformed"):
+            cmd = _pipeline_next_command(job_id, stop_reason, False, "", "", "")
+            assert cmd == f"remedy job show {job_id} --full --json"
+            args, unknown = build_parser().parse_known_args(cmd.split()[1:])
+            assert (args._command_id, args.job_id, unknown) == ("job.show", job_id, [])
+
 
 class TestPipelineNoRawLeaks:
     def test_no_raw_content_in_pipeline(self, tmp_path, monkeypatch):

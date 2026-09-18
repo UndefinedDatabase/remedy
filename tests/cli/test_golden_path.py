@@ -44,9 +44,16 @@ def _init_project(repo, env):
 
 
 def _run_do(repo, env, mission, extra_args=None):
+    """`remedy do` on the fake builder and reviewer, with no model call and no cockpit.
+
+    F268: a bare `do "<order>"` now RUNS the job it plans, so every call names
+    the fake providers; without them the run would reach the role config's
+    real provider.
+    """
     args = list(extra_args or [])
     if "--no-llm" not in args:
         args.append("--no-llm")
+    args += ["--builder-provider", "fake", "--reviewer-provider", "fake", "--no-ui"]
     return subprocess.run(
         [*_CLI, "do", mission, *args],
         capture_output=True, text=True, timeout=30,
@@ -54,11 +61,33 @@ def _run_do(repo, env, mission, extra_args=None):
     )
 
 
+def _shape_order(repo, order, **kwargs):
+    """The shape step's job planning, called directly (F268 moved it out of `_cmd_do_mission`)."""
+    from packages.orchestration.do_sequence import plan_order_job
+    from packages.orchestration.project_registry import resolve_project
+
+    return plan_order_job(order, project=resolve_project(repo), repo_path=str(repo), **kwargs)
+
+
+def _planned_job_id(tmp_path, monkeypatch, repo, order="build a readme"):
+    """A job planned by the golden-path planning and NOT run: the only kind `job stop` accepts.
+
+    F268 made bare `do` run its job to completion, and `job stop` refuses a
+    completed job, so the stop tests plan their job through the moved planning.
+    """
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+    return str(_shape_order(repo, order, no_llm=True).job.job_id)
+
+
+def _job_record(tmp_path, job_id):
+    return json.loads((tmp_path / "data" / "jobs" / job_id / "job.json").read_text())
+
+
 # ── T001: remedy do "<mission>" ────────────────────────────────────────
 
 
 class TestDoMission:
-    def test_do_mission_creates_planned_job(self, tmp_path):
+    def test_do_mission_creates_and_runs_one_job(self, tmp_path):
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
@@ -67,12 +96,14 @@ class TestDoMission:
         assert result.returncode == 0, result.stderr
 
         out = result.stdout
-        assert "Job:" in out
-        assert "State: planned" in out
+        assert re.search(r"\[done\] shape: one job [0-9a-f]{16} linked to mission", out)
+        # DECISION F268 D6: an order naming no path is ONE deliverable, so one task.
+        assert "1 task(s)" in out
+        assert "to completed" in out
         assert "intake: heuristic (forced by --no-llm)" in out
-        assert "analyze_requirements" in out
-        assert "Next: remedy status" in out
-        assert "plan: deterministic skeleton" in out
+        assert "plan: deterministic, one task per deliverable" in out
+        assert "[stopped] apply: stopped before apply" in out
+        assert "Next: remedy job apply " in out
 
     def test_do_mission_json(self, tmp_path):
         repo = _git_repo(tmp_path)
@@ -83,22 +114,29 @@ class TestDoMission:
         assert result.returncode == 0, result.stderr
 
         data = json.loads(result.stdout)
-        assert data["state"] == "planned"
-        assert data["mission"] == "build a readme"
-        assert data["intake"]["source"] == "heuristic"
-        assert data["intake"]["fallback_reason"] == "forced"
-        assert data["intake"]["goal"]
-        assert len(data["tasks"]) == 3
-        assert data["next_command"] == "remedy status"
-        assert "plan_label" in data
+        [job_id] = data["job_ids"]
+        job = _job_record(tmp_path, job_id)
+        assert job["status"] == "completed"
+        assert job["mission"] == "build a readme"
+        assert job["intake"]["goal"]
+        assert len(job["tasks"]) == 1
+        assert job["tasks"][0]["inputs"]["deliverable"] == "build a readme"
+        shape = next(s for s in data["steps"] if s["name"] == "shape")
+        assert "intake: heuristic (forced by --no-llm)" in shape["detail"]
+        assert "plan: deterministic, one task per deliverable" in shape["detail"]
+        assert data["stopped_before_apply"] is True
+        assert data["contract"] is None
 
-    def test_missing_project_exits_3(self, tmp_path):
+    def test_unregistered_repo_is_registered_by_do(self, tmp_path):
+        """F268 D2: `do` registers an unregistered repository instead of exiting 3."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
 
-        result = _run_do(repo, env, "build a readme")
-        assert result.returncode == 3
-        assert "No project registered for this repo. Run: remedy init" in result.stderr
+        result = _run_do(repo, env, "build a readme", ["--json"])
+        assert result.returncode == 0, result.stderr
+        init = json.loads(result.stdout)["steps"][0]
+        assert init["name"] == "init"
+        assert init["detail"].startswith(f"registered {repo.resolve()} as project ")
 
     def test_empty_mission_exits_2(self, tmp_path):
         repo = _git_repo(tmp_path)
@@ -123,7 +161,7 @@ class TestDoMission:
 
         result = _run_do(repo, env, "ship it")
         assert result.returncode == 0
-        assert "plan: deterministic skeleton" in result.stdout
+        assert "plan: deterministic, one task per deliverable" in result.stdout
 
     def test_old_job_json_without_mission_loads(self, tmp_path):
         """Pre-F147 job JSON without mission field must still load."""
@@ -153,7 +191,7 @@ class TestDoMission:
         result = _run_do(repo, env, long_mission, ["--json"])
         assert result.returncode == 0
         data = json.loads(result.stdout)
-        assert data["mission"] == long_mission
+        assert _job_record(tmp_path, data["job_ids"][0])["mission"] == long_mission
 
     def test_no_llm_flag_uses_golden_path(self, tmp_path):
         """--no-llm is allowed on the golden path (forces heuristic intake)."""
@@ -164,8 +202,9 @@ class TestDoMission:
         result = _run_do(repo, env, "build a readme", ["--no-llm", "--json"])
         assert result.returncode == 0, result.stderr
         data = json.loads(result.stdout)
-        assert data["intake"]["source"] == "heuristic"
-        assert data["next_command"] == "remedy status"
+        shape = next(s for s in data["steps"] if s["name"] == "shape")
+        assert "intake: heuristic (forced by --no-llm)" in shape["detail"]
+        assert data["steps"][0]["name"] == "init"
 
     def test_intake_persisted_on_job(self, tmp_path):
         """Intake dict is persisted on the saved job."""
@@ -175,7 +214,7 @@ class TestDoMission:
 
         result = _run_do(repo, env, "fix src/main.py and update README.md", ["--json"])
         assert result.returncode == 0, result.stderr
-        job_id = json.loads(result.stdout)["job_id"]
+        job_id = json.loads(result.stdout)["job_ids"][0]
 
         show = subprocess.run(
             [*_CLI, "job", "show", job_id],
@@ -214,29 +253,31 @@ class TestDoMission:
         assert show.returncode == 0
         assert "--- Intake ---" not in show.stderr
 
-    def test_explicit_do_run_skips_golden_path(self, tmp_path):
-        """Explicit `remedy do run "goal"` → legacy path, not golden path."""
+    def test_explicit_do_run_walks_the_do_sequence(self, tmp_path):
+        """Explicit `remedy do run "goal"` → the do sequence (DECISION F268 D16 (1))."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
 
         result = subprocess.run(
-            [*_CLI, "do", "run", "build a readme"],
+            [*_CLI, "do", "run", "build a readme", "--no-llm",
+             "--builder-provider", "fake", "--reviewer-provider", "fake", "--no-ui"],
             capture_output=True, text=True, timeout=30,
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
-        # Legacy path runs (may fail due to no builder, but NOT golden-path output)
-        assert "Next: remedy status" not in result.stdout
+        # The do sequence's marker present: the word `run` no longer leaves it
+        assert result.returncode == 0, result.stderr
+        assert "[done] shape:" in result.stdout
 
-    def test_budget_flag_skips_golden_path(self, tmp_path):
-        """Mission + --max-total-tokens → legacy path (budgets honored)."""
+    def test_budget_flag_walks_the_do_sequence(self, tmp_path):
+        """Mission + --max-total-tokens → the do sequence (DECISION F268 D16 (5))."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
 
         result = _run_do(repo, env, "build a readme", ["--max-total-tokens", "500"])
-        # Legacy path — golden-path marker absent
-        assert "Next: remedy status" not in result.stdout
+        # The do sequence's marker present: the budget flag no longer leaves it
+        assert "[done] shape:" in result.stdout, result.stderr
 
     def test_bare_mission_with_json_uses_golden_path(self, tmp_path):
         """Bare mission + --json → golden path (--json allowed)."""
@@ -247,16 +288,22 @@ class TestDoMission:
         result = _run_do(repo, env, "build a readme", ["--json"])
         assert result.returncode == 0
         data = json.loads(result.stdout)
-        assert data["next_command"] == "remedy status"
+        assert data["steps"][0]["name"] == "init"
+        assert data["stopped_before_apply"] is True
 
-    def test_explicit_default_flag_skips_golden_path(self, tmp_path):
-        """Mission + --autonomy-level 1 (default value) → legacy path."""
+    def test_explicit_default_flag_walks_the_do_sequence(self, tmp_path):
+        """Mission + --repo . (the flag's default value, given explicitly) → the do sequence.
+
+        DECISION F268 D16 (1): no flag of `do` routes elsewhere; `--autonomy-level`,
+        which this test gave before, left `do` with D16 (2).
+        """
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
 
-        result = _run_do(repo, env, "build a readme", ["--autonomy-level", "1"])
-        assert "Next: remedy status" not in result.stdout
+        result = _run_do(repo, env, "build a readme", ["--repo", "."])
+        assert result.returncode == 0, result.stderr
+        assert "[done] shape:" in result.stdout
 
     def test_bare_mission_with_repo_uses_golden_path(self, tmp_path):
         """Bare mission + --repo . → golden path (--repo allowed)."""
@@ -267,7 +314,8 @@ class TestDoMission:
         result = _run_do(repo, env, "build a readme", ["--repo", str(repo), "--json"])
         assert result.returncode == 0
         data = json.loads(result.stdout)
-        assert data["next_command"] == "remedy status"
+        assert data["steps"][0]["name"] == "init"
+        assert data["stopped_before_apply"] is True
 
 
 # ── R-0112: LLM intake wiring + evidence ─────────────────────────────
@@ -317,14 +365,7 @@ class TestLLMIntakeWiring:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         monkeypatch.chdir(str(repo))
 
-        from io import StringIO
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("build a readme", repo=str(repo), json_output=True)
-
-        data = json.loads(captured.getvalue())
+        data = _shape_order(repo, "build a readme").to_json()
         assert data["intake"]["source"] == "llm"
         assert data["intake"]["fallback_reason"] == ""
         assert data["intake"]["goal"] == "Fake-provider goal for R-0112."
@@ -358,14 +399,7 @@ class TestLLMIntakeWiring:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         monkeypatch.chdir(str(repo))
 
-        from io import StringIO
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("build a readme", repo=str(repo), json_output=True)
-
-        data = json.loads(captured.getvalue())
+        data = _shape_order(repo, "build a readme").to_json()
         assert data["intake"]["source"] == "heuristic"
         assert data["intake"]["fallback_reason"] == "provider_unavailable"
 
@@ -388,14 +422,7 @@ class TestLLMIntakeWiring:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         monkeypatch.chdir(str(repo))
 
-        from io import StringIO
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("build a readme", repo=str(repo), json_output=True, no_llm=True)
-
-        data = json.loads(captured.getvalue())
+        data = _shape_order(repo, "build a readme", no_llm=True).to_json()
         assert data["intake"]["source"] == "heuristic"
         assert data["intake"]["fallback_reason"] == "forced"
         assert len(provider_called) == 0, "provider must not be called with --no-llm"
@@ -436,15 +463,8 @@ class TestLLMIntakeWiring:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         monkeypatch.chdir(str(repo))
 
-        from io import StringIO
-        captured = StringIO()
-        monkeypatch.setattr("sys.stdout", captured)
-
-        from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("build a readme", repo=str(repo))
-
-        stdout_text = captured.getvalue()
-        assert "intake: heuristic fallback (provider error)" in stdout_text
+        shaped = _shape_order(repo, "build a readme")
+        assert shaped.intake_label == "intake: heuristic fallback (provider error)"
 
 
 # ── T002: remedy status ───────────────────────────────────────────────
@@ -476,7 +496,7 @@ class TestStatus:
         assert result.returncode == 0
         assert "No jobs." in result.stdout
 
-    def test_status_shows_planned_job(self, tmp_path):
+    def test_status_shows_the_do_job(self, tmp_path):
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
@@ -484,7 +504,7 @@ class TestStatus:
 
         result = _run_status(repo, env)
         assert result.returncode == 0
-        assert "planned" in result.stdout
+        assert "completed" in result.stdout
 
     def test_status_json_schema(self, tmp_path):
         repo = _git_repo(tmp_path)
@@ -526,8 +546,8 @@ class TestStatus:
         assert result.returncode == 0
 
         data = json.loads(result.stdout)
-        planned_jobs = data["jobs"].get("planned", [])
-        assert len(planned_jobs) >= 2
+        completed_jobs = data["jobs"].get("completed", [])
+        assert len(completed_jobs) >= 2
 
     def test_status_corrupt_file_handled(self, tmp_path):
         repo = _git_repo(tmp_path)
@@ -592,15 +612,13 @@ class TestStatus:
         data = json.loads(result.stdout)
         assert data["scope"] in ("all projects", data.get("project", "current"))
 
-    def test_status_stop_pending(self, tmp_path):
+    def test_status_stop_pending(self, tmp_path, monkeypatch):
         """F011 stop request via CLI → stops_pending counts it."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
 
-        do_result = _run_do(repo, env, "build a readme", ["--json"])
-        assert do_result.returncode == 0
-        job_id = json.loads(do_result.stdout)["job_id"]
+        job_id = _planned_job_id(tmp_path, monkeypatch, repo)
 
         stop = subprocess.run(
             [*_CLI, "job", "stop", job_id],
@@ -622,7 +640,7 @@ class TestStatus:
 
         do_result = _run_do(repo, env, "build a readme", ["--json"])
         assert do_result.returncode == 0
-        job_id = json.loads(do_result.stdout)["job_id"]
+        job_id = json.loads(do_result.stdout)["job_ids"][0]
 
         runs_dir = tmp_path / "data" / "job_logs" / job_id
         runs_dir.mkdir(parents=True, exist_ok=True)
@@ -642,15 +660,13 @@ class TestStatus:
         data = json.loads(result.stdout)
         assert data["decisions_open"] >= 1
 
-    def test_job_stop_golden_path_job(self, tmp_path):
+    def test_job_stop_golden_path_job(self, tmp_path, monkeypatch):
         """remedy job stop <golden-path id> exits 0 and records request."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
 
-        do_result = _run_do(repo, env, "build a readme", ["--json"])
-        assert do_result.returncode == 0
-        job_id = json.loads(do_result.stdout)["job_id"]
+        job_id = _planned_job_id(tmp_path, monkeypatch, repo)
 
         stop = subprocess.run(
             [*_CLI, "job", "stop", job_id, "--json"],
@@ -709,7 +725,7 @@ class TestHelpPinning:
 
 class TestGoldenPathSmoke:
     def test_init_do_status_stop_flow(self, tmp_path):
-        """Golden path: init → do → status → stop → status shows stop."""
+        """Golden path: init → do → status → stop → status: do ran the job, so stop is refused."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
 
@@ -719,32 +735,33 @@ class TestGoldenPathSmoke:
         do = _run_do(repo, env, "build a readme", ["--json"])
         assert do.returncode == 0, do.stderr
         do_data = json.loads(do.stdout)
-        job_id = do_data["job_id"]
-        short_id = do_data["short_id"]
+        job_id = do_data["job_ids"][0]
+        short_id = job_id[:8]
 
         status = _run_status(repo, env, ["--json"])
         assert status.returncode == 0, status.stderr
         status_data = json.loads(status.stdout)
 
-        planned_ids = [j["job_id"] for j in status_data["jobs"].get("planned", [])]
-        assert job_id in planned_ids
+        completed_ids = [j["job_id"] for j in status_data["jobs"].get("completed", [])]
+        assert job_id in completed_ids
 
         text_status = _run_status(repo, env)
         assert text_status.returncode == 0
         assert short_id in text_status.stdout
-        assert "planned" in text_status.stdout
+        assert "completed" in text_status.stdout
 
         stop = subprocess.run(
             [*_CLI, "job", "stop", job_id],
             capture_output=True, text=True, timeout=30,
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
-        assert stop.returncode == 0, stop.stderr
+        assert stop.returncode == 1
+        assert f"job {job_id} is already completed" in stop.stderr
 
         status2 = _run_status(repo, env, ["--json"])
         assert status2.returncode == 0
         status2_data = json.loads(status2.stdout)
-        assert status2_data["stops_pending"] >= 1
+        assert status2_data["stops_pending"] == 0
 
 
 # ── Short-ID resolution (R-0097) ─────────────────────────────────────
@@ -759,21 +776,20 @@ class TestShortIdResolution:
 
         do = _run_do(repo, env, "build a readme")
         assert do.returncode == 0, do.stderr
-        m = re.search(r"Job:\s+([0-9a-f]{8})", do.stdout)
-        assert m, f"no short id in do output: {do.stdout!r}"
-        short_id = m.group(1)
+        m = re.search(r"one job ([0-9a-f]{16})", do.stdout)
+        assert m, f"no job id in do output: {do.stdout!r}"
+        full_id = m.group(1)
+        short_id = full_id[:8]
 
+        # The job `do` ran is completed, so the stop is refused — by the FULL id the
+        # screen-displayed short id resolved to, which is what this test proves.
         stop = subprocess.run(
             [*_CLI, "job", "stop", short_id],
             capture_output=True, text=True, timeout=30,
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
-        assert stop.returncode == 0, (stop.stderr, stop.stdout)
-        assert "Stop requested" in stop.stdout
-
-        status = _run_status(repo, env, ["--json"])
-        assert status.returncode == 0
-        assert json.loads(status.stdout)["stops_pending"] >= 1
+        assert stop.returncode == 1, (stop.stderr, stop.stdout)
+        assert f"job {full_id} is already completed" in stop.stderr
 
     def test_ambiguous_short_id_exits_2(self, tmp_path):
         """Two jobs sharing a prefix → exit 2 with candidates listed."""
@@ -783,10 +799,10 @@ class TestShortIdResolution:
 
         do1 = _run_do(repo, env, "first job", ["--json"])
         assert do1.returncode == 0
-        id1 = json.loads(do1.stdout)["job_id"]
+        id1 = json.loads(do1.stdout)["job_ids"][0]
         do2 = _run_do(repo, env, "second job", ["--json"])
         assert do2.returncode == 0
-        id2 = json.loads(do2.stdout)["job_id"]
+        id2 = json.loads(do2.stdout)["job_ids"][0]
 
         # Find shortest common prefix (at least 4 chars).
         common = 0
@@ -864,7 +880,7 @@ class TestShortIdResolution:
 
         do = _run_do(repo, env, "build a readme", ["--json"])
         assert do.returncode == 0
-        job_id = json.loads(do.stdout)["job_id"]
+        job_id = json.loads(do.stdout)["job_ids"][0]
         short = job_id[:8]
 
         result = subprocess.run(
@@ -884,7 +900,7 @@ class TestShortIdResolution:
 
         do = _run_do(repo, env, "build a readme", ["--json"])
         assert do.returncode == 0
-        job_id = json.loads(do.stdout)["job_id"]
+        job_id = json.loads(do.stdout)["job_ids"][0]
         short = job_id[:8]
 
         result = subprocess.run(

@@ -1,4 +1,11 @@
-"""CLI handler for ``remedy do`` — high-level guided autorun."""
+"""CLI handler for ``remedy do "<order>"``: plan and run an order through the F268 sequence.
+
+Every `remedy do`, with or without the word `run`, walks
+`packages/orchestration/do_sequence.py` — init, study, plan, shape, run, ui,
+apply — and stops before apply unless `--apply` (DECISIONs F268 D4, D9, D16).
+The module also holds the `run.show`, `run.list`, `job.run`, `job.apply` and
+`job.evidence` handlers.
+"""
 
 from __future__ import annotations
 
@@ -16,21 +23,6 @@ from apps.cli.commands.run_invocation import (
 
 if TYPE_CHECKING:
     import argparse
-
-
-_VALID_PROVIDERS = frozenset({"none", "fixture", "ollama"})
-
-
-def _parse_builder_provider(val: object) -> str:
-    s = str(val).lower().strip()
-    if s in _VALID_PROVIDERS:
-        return s
-    print(
-        f"Error: invalid --builder-provider: {val!r}. "
-        f"Allowed: none, fixture, ollama.",
-        file=sys.stderr,
-    )
-    sys.exit(2)
 
 
 _VALID_CLI_WRITE_MODES = frozenset({"none", "allowed-tools", "dangerous-skip"})
@@ -133,278 +125,179 @@ def _resolve_cli_role_configs(
     return resolved
 
 
-_MISSION_DISPLAY_MAX = 120
+#: DECISION F268 D9 (3): `do.run`'s flags whose feature is not built yet, and that
+#: feature. Each refuses with exit 2 before any step; the entry leaves this table
+#: in the round its feature lands. `--with-history` is deliberately never declared.
+_DO_FLAGS_NOT_YET_AVAILABLE: tuple[tuple[str, str], ...] = (
+    ("--contract", "F269"),
+    ("--commit", "F270"),
+    ("--commit-auto", "F270"),
+    ("--commit-with-history", "F270"),
+    ("--push", "F270"),
+)
 
 
-def _cmd_do_mission(
-    mission: str,
+def _refuse_do_flags_not_yet_available(given: dict[str, object]) -> None:
+    """Exit 2 naming the first flag given whose feature is not built yet, and that feature.
+
+    ``given`` maps each flag of `_DO_FLAGS_NOT_YET_AVAILABLE` to its parsed value;
+    ``None`` or ``False`` means the flag was not given.
+    """
+    for flag, feature in _DO_FLAGS_NOT_YET_AVAILABLE:
+        value = given.get(flag)
+        if value is not None and value is not False:
+            print(f"Error: {flag} is not yet available; {feature} brings it. "
+                  f"Nothing was run.", file=sys.stderr)
+            sys.exit(2)
+
+
+def _cmd_do_order(
+    order: str,
     *,
     repo: str = ".",
     json_output: bool = False,
     no_llm: bool = False,
     yes: bool = False,
+    builder_provider: str | None = None,
+    reviewer_provider: str | None = None,
+    builder_model: str | None = None,
+    reviewer_model: str | None = None,
+    planner_model: str | None = None,
+    project: str | None = None,
+    max_total_tokens: str | None = None,
+    max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None,
+    max_cost_usd: str | None = None,
+    deadline: str | None = None,
+    no_ui: bool = False,
+    force_job: bool = False,
+    force_mission: bool = False,
+    step_by_step: bool = False,
+    plan_only: bool = False,
+    apply: bool = False,
 ) -> None:
-    """Golden-path: mission string → planned job (F147 T001)."""
-    if not mission or not mission.strip():
-        print("Error: mission must not be empty.", file=sys.stderr)
+    """`remedy do "<order>"` — walk the F268 sequence (DECISION F268 D4).
+
+    init, study, plan, shape, run, ui and apply, in that order, through
+    `packages.orchestration.do_sequence`; the walk stops before apply unless
+    `--apply`, and the ui step opens the cockpit detached through
+    `launch_do_cockpit` unless `--no-ui` (DECISION F268 D9).
+    `--force-job` / `--force-mission` override the planner's shape and exit 2
+    together (DECISION F268 D5). `--step-by-step` halts between steps and
+    reads each answer with `input`; `--plan-only` ends the walk after
+    shape (DECISION F268 D8). `--json` carries `contract: null` until F269
+    lands (DECISION F268 D1), `shape` / `shape_source`, `mission_plan_path`
+    and `jobs`, every job's tasks with their deliverables. In a walk of two or
+    more jobs only the first runs and `waiting_job_ids` names the rest
+    (DECISION F268 D12). Every job run is mirrored into the F103 ledger, and
+    `do` ends with the measured tokens per role and cost read back from it,
+    under `cost` in `--json` (DECISION F268 D11). `--project` selects the
+    project the init step uses; the budget flags are resolved before the first
+    step and reach the run, as do `--builder-model` and `--reviewer-model`,
+    which every `remedy job run` Next line carries too; `--planner-model`
+    reaches every structured planner call (DECISION F268 D16 (4) to (7)).
+    """
+    if not order or not order.strip():
+        print("Error: order must not be empty.", file=sys.stderr)
         sys.exit(2)
+    if force_job and force_mission:
+        print("Error: --force-job and --force-mission cannot be given together.",
+              file=sys.stderr)
+        sys.exit(2)
+    _validate_role_override("builder", "provider", builder_provider)
+    _validate_role_override("reviewer", "provider", reviewer_provider)
+    _validate_role_override("builder", "model", builder_model)
+    _validate_role_override("reviewer", "model", reviewer_model)
 
-    from packages.orchestration.project_registry import resolve_project
-    project = resolve_project(repo)
-    if project is None:
-        print(
-            "No project registered for this repo. Run: remedy init",
-            file=sys.stderr,
+    # DECISION F268 D16 (5): resolved before the first step, as `job run` resolves
+    # them, and carried to the run only when a budget flag was given.
+    budgets_dict = None
+    if any(v is not None for v in (max_total_tokens, max_provider_calls,
+                                   max_wall_clock_minutes, max_cost_usd, deadline)):
+        from packages.orchestration.budget_resolution import (
+            BudgetConfigError,
+            resolve_job_budgets,
         )
-        sys.exit(3)
-
-    from packages.core.models import RunState
-    from packages.orchestration.intake import (
-        compose_intake_prompt,
-        heuristic_intake,
-        make_intake_call_recorder,
-        make_provider_call_fn,
-        run_intake,
-    )
-    from packages.orchestration.job_runner import plan_job
-    from packages.orchestration.pingpong_job import JobPlan, save_job_plan
-
-    call_fn = None
-    intake_result = None
-    # One list, one write: it carries every prompt trace this command produces,
-    # intake and task plan alike, because `write_trace_jsonl` opens its path
-    # with mode "w" and a second write would truncate the first.
-    prompt_traces: list = []
-    intake_fallback_reason = ""
-    if no_llm:
-        intake_result = heuristic_intake(mission)
-        intake_fallback_reason = "forced"
-    else:
-        call_fn = make_provider_call_fn()
-        if call_fn is not None:
-            intake_composed = compose_intake_prompt(mission)
-            intake_result = run_intake(
-                mission,
-                call_fn,
-                composed=intake_composed,
-                on_call=make_intake_call_recorder(
-                    prompt_traces,
-                    intake_composed,
-                    provider="ollama",
-                    provider_kind="ollama",
-                ),
-            )
-            if intake_result.source == "heuristic":
-                intake_fallback_reason = "provider_error"
-
-        if intake_result is None:
-            intake_result = heuristic_intake(mission)
-            intake_fallback_reason = "provider_unavailable"
-
-    # --- Task Plan (LLM) or deterministic fallback ---
-    job = None
-    plan_label = "deterministic skeleton"
-
-    plan_call_fn = None
-    if call_fn is not None and not no_llm:
-        from packages.orchestration.intake import make_structured_call_fn
-        from packages.orchestration.schemas.models import TaskPlan
-        # Planning needs a call_fn bound to TaskPlan: the intake one binds
-        # the provider's native schema to JobIntake, so the provider would
-        # answer in intake shape and every plan attempt would fail validation.
-        # There is deliberately NO fallback to it — without a TaskPlan-bound
-        # provider we skip LLM planning and take the deterministic skeleton
-        # below, exactly as the no-provider path does.
-        plan_call_fn = make_structured_call_fn(TaskPlan)
-
-    if plan_call_fn is not None:
-        from packages.orchestration.job_plan import (
-            apply_plan_budgets,
-            apply_plan_fences,
-            compose_task_plan_prompt,
-            make_task_plan_call_recorder,
-            map_task_plan_to_tasks,
-            plan_job_llm,
-            write_plan_md,
-        )
-        plan_intake_dict = intake_result.value.model_dump()
-        # Composed exactly ONCE here and handed to `plan_job_llm`, so the bytes
-        # the provider receives and the manifest the trace records come from the
-        # same composition — `prompt_chars` and `segment_manifest_chars` can no
-        # longer describe two different prompts (R-0256).
-        plan_composed = compose_task_plan_prompt(plan_intake_dict)
-        fp_result = plan_job_llm(
-            plan_intake_dict,
-            plan_call_fn,
-            composed=plan_composed,
-            on_call=make_task_plan_call_recorder(
-                prompt_traces,
-                plan_composed,
-                provider="ollama",
-                provider_kind="ollama",
-            ),
-        )
-        if fp_result.plan is not None:
-            fp_dict = fp_result.plan.model_dump()
-            fp_dict["_approval"] = "pending"
-            fp_dict["_normalization"] = fp_result.transformations
-            tasks = map_task_plan_to_tasks(fp_result.plan)
-            from packages.core.models import JobBudgets, JobFences
-            from packages.orchestration.budget_resolution import resolve_job_budgets
-            config_budgets = resolve_job_budgets(project_root=repo)
-            config_budgets_dict = config_budgets.model_dump(exclude_none=True) if config_budgets else None
-            merged_budgets = apply_plan_budgets(config_budgets_dict, fp_result.plan.budgets)
-            merged_fences = apply_plan_fences(None, fp_result.plan.fences)
-            job_budgets = None
-            if merged_budgets:
-                try:
-                    job_budgets = JobBudgets(**{
-                        k: v for k, v in merged_budgets.items()
-                        if k in JobBudgets.model_fields})
-                except Exception:
-                    pass
-            job_fences = None
-            if merged_fences:
-                try:
-                    job_fences = JobFences(**{
-                        k: v for k, v in merged_fences.items()
-                        if k in JobFences.model_fields})
-                except Exception:
-                    pass
-            job = JobPlan(
-                job_title=mission[:80], mission=mission, user_prompt=mission,
-                project_id=str(project.id),
-                intake=intake_result.value.model_dump(),
-                task_plan=fp_dict,
-                tasks=tasks,
-                state=RunState.PLANNED,
-                budgets=job_budgets.model_dump(mode="json") if job_budgets is not None else None,
-                fences=job_fences,
-            )
-            save_job_plan(job)
-            from packages.orchestration.data_paths import job_evidence_export_dir
-            write_plan_md(
-                fp_result.plan, job_evidence_export_dir(str(job.job_id)),
-                transformations=fp_result.transformations)
-            if yes:
-                # F034: --yes covers approval AND clarifications. Every open
-                # question runs on its documented default, recorded in the
-                # assumption log — unattended, but never silent. The semantics
-                # live in job_plan.auto_approve_task_plan so the
-                # orchestrator loop runs the SAME approval, not a copy of it.
-                from packages.orchestration.job_plan import auto_approve_task_plan
-                fp_dict = auto_approve_task_plan(
-                    fp_dict, job_evidence_export_dir(str(job.job_id)))
-                job.task_plan = fp_dict
-                save_job_plan(job)
-                plan_label = (
-                    f"task plan {fp_result.plan.schema_v} (approved via --yes)"
-                )
-            else:
-                plan_label = (
-                    f"task plan {fp_result.plan.schema_v} (awaiting approval)"
-                )
-        else:
-            job = JobPlan(
-                job_title=mission[:80], mission=mission, user_prompt=mission,
-                project_id=str(project.id),
-                intake=intake_result.value.model_dump(),
-                state=RunState.PENDING,
-            )
-            save_job_plan(job)
-            from packages.orchestration.data_paths import job_evidence_export_dir
-            from packages.orchestration.failure_postmortem import (
-                FailureSignals,
-                build_job_rollup,
-                write_postmortem,
-            )
-            signals = FailureSignals(
-                error_class="parse",
-                error_text=fp_result.error_hint or "task plan parse failure",
-            )
-            pm = build_job_rollup(job_id=str(job.job_id), signals=signals)
-            ev_dir = job_evidence_export_dir(str(job.job_id))
-            ev_dir.mkdir(parents=True, exist_ok=True)
-            try:
-                write_postmortem(ev_dir, pm, root=ev_dir)
-            except Exception as exc:
-                print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
-            print(
-                f"Error: task plan generation failed: "
-                f"{fp_result.error_hint or 'parse failure'}",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-
-    if job is None:
-        job = JobPlan(
-            job_title=mission[:80], mission=mission, user_prompt=mission,
-            project_id=str(project.id),
-            intake=intake_result.value.model_dump(),
-        )
-        plan_result = plan_job(job)
-        job = plan_result.job
-        save_job_plan(job)
-
-    if prompt_traces:
-        from packages.orchestration.prompt_trace import write_trace_jsonl
-        from packages.orchestration.run_log import RunLogWriter
-        log = RunLogWriter(job_id=job.job_id)
         try:
-            write_trace_jsonl(prompt_traces, log.path.parent / "prompt_trace.jsonl")
-        except OSError:
-            pass
+            budgets = resolve_job_budgets(
+                cli_max_total_tokens=max_total_tokens,
+                cli_max_provider_calls=max_provider_calls,
+                cli_max_wall_clock_minutes=max_wall_clock_minutes,
+                cli_max_cost_usd=max_cost_usd,
+                cli_deadline=deadline,
+                project_root=repo,
+            )
+        except (BudgetConfigError, ValueError) as exc:
+            print(f"Error: {exc} Nothing was run.", file=sys.stderr)
+            sys.exit(2)
+        budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
-    from packages.orchestration.project_registry import attach_job, save_project
-    attach_job(project, str(job.job_id))
-    save_project(project)
+    from packages.orchestration.do_sequence import (
+        DoContext,
+        do_cost_summary,
+        do_cost_summary_lines,
+        do_job_task_listing,
+        launch_do_cockpit,
+        walk_do_sequence,
+    )
 
-    short_id = str(job.job_id)[:8]
-    display_mission = mission if len(mission) <= _MISSION_DISPLAY_MAX else mission[:_MISSION_DISPLAY_MAX] + "…"
+    ctx = walk_do_sequence(DoContext(
+        order=order,
+        repo=repo,
+        builder_provider=builder_provider,
+        reviewer_provider=reviewer_provider,
+        project_selector=project,
+        budgets=budgets_dict,
+        builder_model=builder_model,
+        reviewer_model=reviewer_model,
+        planner_model=planner_model,
+        no_ui=no_ui,
+        yes=yes,
+        no_llm=no_llm,
+        force_job=force_job,
+        force_mission=force_mission,
+        step_by_step=step_by_step,
+        plan_only=plan_only,
+        apply=apply,
+        # Looked up at call time, so the walk reads the terminal the CLI runs in.
+        read_line=input,
+        ui_launcher=launch_do_cockpit,
+    ))
+    jobs = do_job_task_listing(ctx)
+    # DECISION F268 D11: measured tokens per role and cost, read from the ledger.
+    cost = do_cost_summary(ctx)
 
     if json_output:
-        import json as _json
-        print(_json.dumps({
-            "job_id": str(job.job_id),
-            "short_id": short_id,
-            "project_slug": project.slug,
-            "state": job.state.value,
-            "mission": mission,
-            "intake": {
-                "source": intake_result.source,
-                "goal": intake_result.value.goal,
-                "fallback_reason": intake_fallback_reason,
-            },
-            "tasks": [
-                {"task_id": str(t.task_id), "description": t.title}
-                for t in job.tasks
-            ],
-            "plan_label": plan_label,
-            "next_command": "remedy status",
+        print(json.dumps({
+            "mission_id": ctx.mission_id or None,
+            "job_ids": list(ctx.job_ids),
+            "waiting_job_ids": list(ctx.waiting_job_ids),
+            "contract": None,
+            "stopped_before_apply": ctx.stopped_before_apply,
+            "shape": ctx.shape or None,
+            "shape_source": ctx.shape_source or None,
+            "mission_plan_path": ctx.mission_plan_path or None,
+            "jobs": jobs,
+            "steps": [r.to_json() for r in ctx.results],
+            "cost": cost,
+            "next": list(ctx.next_lines),
         }, indent=2))
-        return
-
-    print(f"Job: {short_id}")
-    print(f"Project: {project.slug}")
-    print(f"Mission: {display_mission}")
-    print(f"State: {job.state.value}")
-    if intake_result.source == "llm":
-        intake_label = "intake: llm"
-    elif intake_fallback_reason == "forced":
-        intake_label = "intake: heuristic (forced by --no-llm)"
-    elif intake_fallback_reason == "provider_unavailable":
-        intake_label = "intake: heuristic fallback (provider unavailable)"
-    elif intake_fallback_reason == "provider_error":
-        intake_label = "intake: heuristic fallback (provider error)"
     else:
-        intake_label = f"intake: {intake_result.source}"
-    print(intake_label)
-    print("Tasks:")
-    for t in job.tasks:
-        task_type = t.inputs.get("task_type", "")
-        print(f"  - {task_type}: {t.title}")
-    print(f"plan: {plan_label}")
-    print("Next: remedy status")
+        for result in ctx.results:
+            print(f"[{result.status}] {result.name}: {result.detail}")
+            if result.name == "shape" and result.status == "done":
+                for job in jobs:
+                    for number, task in enumerate(job["tasks"], start=1):
+                        print(f"  job {job['job_id']} task {number}: {task['title']}"
+                              f" — deliverable: {task['deliverable'] or '(none)'}")
+        for line in do_cost_summary_lines(cost):
+            print(line)
+        for line in ctx.next_lines:
+            print(f"Next: {line}")
+    if ctx.failed:
+        print(f"Error: {ctx.results[-1].name} failed: {ctx.results[-1].detail}",
+              file=sys.stderr)
+        sys.exit(1)
 
 
 def _cmd_do(
@@ -412,116 +305,52 @@ def _cmd_do(
     *,
     repo: str = ".",
     project: str | None = None,
-    autonomy_level: int = 2,
-    max_cycles: int = 3,
-    enable_ui: bool = False,
-    dry_run: bool = False,
     json_output: bool = False,
-    fixture_builder: bool | str = False,
-    builder_provider: str = "none",
+    builder_provider: str | None = None,
+    reviewer_provider: str | None = None,
+    builder_model: str | None = None,
+    reviewer_model: str | None = None,
+    planner_model: str | None = None,
+    no_ui: bool = False,
     max_total_tokens: str | None = None,
     max_provider_calls: str | None = None,
     max_wall_clock_minutes: str | None = None,
     max_cost_usd: str | None = None,
     deadline: str | None = None,
-    injected_default: bool = False,
-    truly_bare: bool = False,
     no_llm: bool = False,
     yes: bool = False,
+    force_job: bool = False,
+    force_mission: bool = False,
+    step_by_step: bool = False,
+    plan_only: bool = False,
+    apply: bool = False,
+    contract: str | None = None,
+    commit: str | None = None,
+    commit_auto: bool = False,
+    commit_with_history: bool = False,
+    push: bool = False,
 ) -> None:
-    # --- Bare-mission golden path (F147) ---
-    # Fires ONLY when grouped.py determined the invocation is truly bare:
-    # `run` was injected AND no flag tokens besides --json/--repo/--no-llm/--yes
-    # appeared in the raw argv. This catches `do "x" --autonomy-level 1`
-    # (explicit flag at default value) which value-equality checks cannot
-    # distinguish.
-    if truly_bare and goal:
-        _cmd_do_mission(goal, repo=repo, json_output=json_output, no_llm=no_llm, yes=yes)
-        return
+    """`remedy do`, with or without the word `run`: the F268 sequence, always (DECISION F268 D16 (1)).
 
-    # --- Budget resolution (always runs — catches config-only budgets) ---
-    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
-    try:
-        budgets = resolve_job_budgets(
-            cli_max_total_tokens=max_total_tokens,
-            cli_max_provider_calls=max_provider_calls,
-            cli_max_wall_clock_minutes=max_wall_clock_minutes,
-            cli_max_cost_usd=max_cost_usd,
-            cli_deadline=deadline,
-            project_root=repo,
-        )
-    except (BudgetConfigError, ValueError) as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(2)
-
-    # Require a goal
-    if not goal:
-        print("Error: provide a goal.", file=sys.stderr)
-        sys.exit(2)
-
-    if dry_run:
-        from packages.orchestration.autorun import dry_run_autorun
-        plan = dry_run_autorun(
-            goal, repo,
-            project_id=project,
-            autonomy_level=autonomy_level,
-            max_cycles=max_cycles,
-            enable_ui=enable_ui,
-        )
-        if json_output:
-            print(json.dumps(plan, indent=2))
-        else:
-            print(f"Dry run: {goal}")
-            print(f"Repo: {plan['repo_path']}")
-            print(f"Autonomy: {plan['autonomy_label']} (level {autonomy_level})")
-            print(f"Phases: {', '.join(plan['phases'])}")
-            print(f"Max cycles: {max_cycles}")
-            if plan["gates"]:
-                print(f"Gates: {', '.join(g['gate'] for g in plan['gates'])}")
-        return
-
-    # v1 cohesive flow — phased result
-    from packages.orchestration.do_run import (
-        export_do_run_json,
-        run_do,
-        summarize_do_run,
-    )
-    from packages.orchestration.project_registry import ProjectNotFoundError, select_project
-
-    _resolved_project = None
-    try:
-        _resolved_project, _src = select_project(project, repo)
-        _resolved_project_id = str(_resolved_project.id)
-    except ProjectNotFoundError:
-        print(
-            "Error: no project found. Run: remedy init\n"
-            "  or pass --project <slug-or-id>",
-            file=sys.stderr,
-        )
-        sys.exit(3)
-
-    try:
-        result = run_do(
-            goal, repo,
-            autonomy_level=autonomy_level,
-            max_loops=max_cycles,
-            stop_before_apply=True,
-            budgets=budgets,
-            project_id=_resolved_project_id,
-        )
-    except Exception as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    if _resolved_project is not None and result.job_id:
-        from packages.orchestration.project_registry import attach_job, save_project
-        attach_job(_resolved_project, result.job_id)
-        save_project(_resolved_project)
-
-    if json_output:
-        print(json.dumps(export_do_run_json(result, contract=result._contract), indent=2))
-    else:
-        print(summarize_do_run(result))
+    Remedy deliberately has no second route under `do`: the autorun branch and the
+    flags only it read (`--autonomy-level`, `--max-cycles`, `--ui`, `--dry-run`)
+    were deleted by DECISION F268 D16 (1) and (2).
+    """
+    # DECISION F268 D9 (3): before any step.
+    _refuse_do_flags_not_yet_available({
+        "--contract": contract, "--commit": commit, "--commit-auto": commit_auto,
+        "--commit-with-history": commit_with_history, "--push": push,
+    })
+    _cmd_do_order(goal, repo=repo, json_output=json_output, no_llm=no_llm,
+                  yes=yes, builder_provider=builder_provider,
+                  reviewer_provider=reviewer_provider, builder_model=builder_model,
+                  reviewer_model=reviewer_model, planner_model=planner_model,
+                  project=project, max_total_tokens=max_total_tokens,
+                  max_provider_calls=max_provider_calls,
+                  max_wall_clock_minutes=max_wall_clock_minutes,
+                  max_cost_usd=max_cost_usd, deadline=deadline, no_ui=no_ui,
+                  force_job=force_job, force_mission=force_mission,
+                  step_by_step=step_by_step, plan_only=plan_only, apply=apply)
 
 
 def _cmd_run_show(
@@ -675,30 +504,6 @@ def _print_text_report(run_id: str, data: dict) -> None:
             print(f"  Estimated saved: ~{savings} tokens (~{pct}%)")
         if ta.get("token_note"):
             print(f"  Note: {ta['token_note']}")
-
-
-_VALID_FIXTURE_MODES = frozenset({"true", "false", "repair-loop"})
-
-
-def _parse_fixture_builder(val: object) -> bool | str:
-    """Parse --fixture-builder value: true/false/repair-loop.
-
-    Fails with SystemExit(2) on unknown modes.
-    """
-    s = str(val).lower().strip()
-    if s in ("true", "1", "yes"):
-        return True
-    if s == "repair-loop":
-        return "repair-loop"
-    if s in ("false", "0", "no"):
-        return False
-    import sys
-    print(
-        f"Error: invalid --fixture-builder mode: {val!r}. "
-        f"Allowed: true, false, repair-loop.",
-        file=sys.stderr,
-    )
-    sys.exit(2)
 
 
 def _cmd_job_run(
@@ -964,18 +769,13 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         getattr(args, "goal", None) or "",
         repo=getattr(args, "repo", None) or ".",
         project=getattr(args, "project", None),
-        autonomy_level=int(getattr(args, "autonomy_level", None) or 2),
-        max_cycles=int(getattr(args, "max_cycles", None) or 3),
-        injected_default=getattr(args, "_injected_default", False),
-        truly_bare=getattr(args, "_truly_bare", False),
-        enable_ui=(
-            bool(getattr(args, "ui", False))
-            and not getattr(args, "no_ui", False)
-        ),
-        dry_run=getattr(args, "dry_run", False),
         json_output=getattr(args, "json", False),
-        fixture_builder=_parse_fixture_builder(getattr(args, "fixture_builder", "false")),
-        builder_provider=_parse_builder_provider(getattr(args, "builder_provider", "none")),
+        builder_provider=getattr(args, "builder_provider", None),
+        reviewer_provider=getattr(args, "reviewer_provider", None),
+        builder_model=getattr(args, "builder_model", None),
+        reviewer_model=getattr(args, "reviewer_model", None),
+        planner_model=getattr(args, "planner_model", None),
+        no_ui=bool(getattr(args, "no_ui", False)),
         max_total_tokens=getattr(args, "max_total_tokens", None),
         max_provider_calls=getattr(args, "max_provider_calls", None),
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
@@ -983,6 +783,16 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         deadline=getattr(args, "deadline", None),
         no_llm=getattr(args, "no_llm", False),
         yes=getattr(args, "yes", False),
+        force_job=bool(getattr(args, "force_job", False)),
+        force_mission=bool(getattr(args, "force_mission", False)),
+        step_by_step=bool(getattr(args, "step_by_step", False)),
+        plan_only=bool(getattr(args, "plan_only", False)),
+        apply=bool(getattr(args, "apply", False)),
+        contract=getattr(args, "contract", None),
+        commit=getattr(args, "commit", None),
+        commit_auto=bool(getattr(args, "commit_auto", False)),
+        commit_with_history=bool(getattr(args, "commit_with_history", False)),
+        push=bool(getattr(args, "push", False)),
     ),
     "run.show": lambda args: _cmd_run_show(
         args.run_id,

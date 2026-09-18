@@ -24,12 +24,11 @@ cd "$DEMO_REPO" && git init && echo "x = 1" > main.py && git add . && git commit
 remedy do run "Fix the bug in main.py" \
   --repo "$DEMO_REPO" \
   --json \
-  --fixture-builder true \
   --autonomy-level 2
 
 # 3. Extract the job ID from output
 JOB_ID=$(remedy do run "Fix the bug in main.py" \
-  --repo "$DEMO_REPO" --json --fixture-builder true --autonomy-level 2 \
+  --repo "$DEMO_REPO" --json --autonomy-level 2 \
   | python3 -c "import sys,json; print(json.load(sys.stdin).get('job_id',''))")
 
 # 4. Check job status and read the job report

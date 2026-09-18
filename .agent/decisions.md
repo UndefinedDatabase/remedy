@@ -14628,3 +14628,323 @@ CONSIDERED: amending `VISIBLE_GROUP_ORDER` now, rejected because D4 is an operat
 asked to revisit, and promoting `study` makes more sense at F268's closure, when `remedy do` actually drives it and
 the golden path is real rather than aspirational. REVERSE by setting `user_facing=True` and adding `"study"` to
 `VISIBLE_GROUP_ORDER` (at F268's own discretion for placement) in the same commit as updating the two pinned tests.
+
+## DECISION F268 D1 (2026-09-18, reviewer, round 1) — F268 is claimed before F269, and `do` reports the contract as absent
+CONTEXT: `docs/roadmap/features/T2_F268.md` lists F269 (contract) under "Depends on", while the
+operator's order of DECISION amend0905-vocab D12, recorded in the comment above the Tier 2 block of
+`docs/roadmap/STATUS.md`, runs F266, F268, F269 in that order, and Rule A5 proposes F268 now. F269
+is `[ ]`: measured at `8e075bbe`, `mission_state.Mission.contract` exists and nothing writes it.
+CHOSEN: claim F268 under Rule A5. Until F269 is `[x]`, `do` writes no contract, its `--json`
+carries `"contract": null`, and `--contract <template>` lands with T004's pass-through family
+printing "not yet available (F269)" — the same documented-dependency form the feature file already
+prescribes for F270's flags. The Acceptance line reading "`--plan-only` writes mission plan,
+contract and job plans" is met for the contract half by F269's own closure, not by a stub here.
+ALTERNATIVES: claim F269 first, rejected because it overrides the operator's recorded order on the
+reviewer's own authority; invent a placeholder contract, rejected because F269 owns its shape and a
+stub is what the feature file forbids. REVERSE: move F269's STATUS line above F268's in a docs
+round and delete this paragraph.
+
+## DECISION F268 D2 (2026-09-18, reviewer, round 1) — `do`'s init step registers and ignores, and writes no file into the repository
+CONTEXT: measured at `8e075bbe`, `_handle_init` in `apps/cli/commands/init_cmd.py` writes
+`remedy.toml` and `.remedy/config.toml` into the repository root and adds only the worktree
+directory and the data directory to `.git/info/exclude`, so a `do` that ran all of `init` would
+leave two untracked paths in `git status` — against the Acceptance line "`git status` in the target
+is unchanged until `--apply`".
+CHOSEN: `do`'s init step performs registration (`register_project_repo`) and the
+`.git/info/exclude` entries, and nothing else; the two ignore helpers move out of `init_cmd.py`
+into a `packages/orchestration/` module that both `remedy init` and the step import, with `remedy
+init`'s own behaviour unchanged. `remedy init` stays the command that writes the two config files;
+both are optional, measured at `8e075bbe`: `load_config_spec` in `packages/runtimes/runtime_config.py`
+returns None for an absent `.remedy/config.toml`, and the loader in `packages/orchestration/config.py`
+reads an absent project `remedy.toml` as an empty table.
+ALTERNATIVES: run the whole of `init`, rejected by the Acceptance line above; add the two config
+files to `.git/info/exclude` as well, rejected because it would hide files `remedy init` writes on
+purpose for the operator to commit. REVERSE: call the full init body from the step and delete this
+paragraph.
+
+## DECISION F268 D3 (2026-09-18, reviewer, round 1) — study-once lives on the project record and both study paths write it
+CONTEXT: T2_F268.md's Design says F266 adds the `studied_at` / `studied_head` write and `do` reads
+it; measured at `8e075bbe`, no Python file carries either name, so F266 closed without the write.
+CHOSEN: `RemyProject.metadata["studied_at"]` (ISO-8601 UTC) and `["studied_head"]` (the repository's
+HEAD commit id at study time) are written by ONE function in `packages/orchestration/study.py`, which
+both `remedy study run` and `do`'s study step call after a study pass completes. `do` studies only
+when the repository has at least one commit holding at least one tracked file AND `studied_at` is
+absent; otherwise the step is skipped with the reason printed. ALTERNATIVES: infer "studied" from
+the presence of `machine-study` memory cards, rejected because cards can be deleted by card hygiene
+and a deleted card must not re-trigger a paid pass; write the fields from `do` only, rejected
+because a study run by hand must count as the one study. REVERSE: delete the function and its two
+calls; delete this paragraph.
+
+## DECISION F268 D4 (2026-09-18, reviewer, round 1) — the sequence module, and what T001 does at the steps later slices own
+CHOSEN: `packages/orchestration/do_sequence.py` holds `DO_SEQUENCE`, the ordered tuple `("init",
+"study", "plan", "shape", "run", "ui", "apply")`, a table mapping each name to its step function,
+and one walker that calls steps only through that table, in that order. The plan step creates the
+mission record for every order (DECISION amend0905-vocab D2) and plans it through
+`mission_compiler.plan_mission`, deterministically when no planner provider is available. In T001
+the shape step always yields ONE job linked to the mission, with `repo_path` set to the repository
+root; T002 replaces that with the planner's structured shape output and the force flags. The ui
+step is skipped under `--no-ui` and otherwise, until T004, prints the real `remedy ui start` command
+for the job; the apply step always stops before apply until T004 adds `--apply`. A skipped or
+stopped step prints why, with real ids. ALTERNATIVES: place the module under `apps/cli/commands/`,
+rejected because its steps call package functions and must be testable without the CLI.
+REVERSE: route bare `do` back to the pre-F268 handler from git history; delete the module and this
+paragraph.
+
+## DECISION F268 D5 (2026-09-18, reviewer, round 2) — the shape is read from the mission plan, and the force flags override it
+CONTEXT: measured at `f0210593`, `mission_compiler.plan_mission` returns a plan whose milestones each
+carry `jobs_draft` outlines, the deterministic plan holds exactly one milestone with one outline, and
+nothing turns an outline into a job.
+CHOSEN: the plan step keeps the plan it produced on the walk's context, and one pure function in
+`packages/orchestration/do_sequence.py` reads the shape from it: `"milestones"` when the plan's
+outlines number two or more across all milestones, otherwise `"one job"`. `--force-job` makes the
+shape `"one job"` whatever the plan says; `--force-mission` makes it `"milestones"`; both together
+exit 2. Under `"milestones"` the shape step plans one job per outline, the outline's goal being that
+job's order; when fewer than two outlines exist (the deterministic plan, and every forced mission
+over it), the jobs are one per deliverable of DECISION D6, and when the order has a single
+deliverable the second job is its check — one task whose deliverable is the named check that the
+first job's deliverable meets the order. The first job is linked `initial` and every later one
+`follow_up`, each with `repo_path` set; the run step runs them in order and stops at the first that
+does not complete; the apply step prints one real apply command per job. `--json` carries `shape`
+and `shape_source` (`planner`, `--force-job` or `--force-mission`).
+ALTERNATIVES: add a shape field to `MissionPlanDraft`, rejected because the planner's internals are
+this feature's Do-not-touch and the outline count already is the planner's structured answer;
+build the follow-up jobs through `mission_state.continue_mission`, rejected because it sets no
+`repo_path` and builds verify-first tasks from a previous job's DoD, which a job that has not yet
+run does not have. REVERSE: delete the shape function, the two flags and the multi-job branch;
+delete this paragraph.
+
+## DECISION F268 D6 (2026-09-18, reviewer, round 2) — tasks are bounded by deliverables, and one validator enforces it
+CONTEXT: measured at `f0210593`, `job_runner.plan_job` (the deterministic skeleton `do` falls back
+to) makes the same three tasks for every order — `analyze_requirements`,
+`define_acceptance_checks`, `prepare_implementation_plan` — none naming a deliverable and the first
+an inspection task, which R-0808 and DECISION amend0911-feedback D3 forbid; no task model has a
+deliverable field; the only task-count cap is `_MAX_TASK_PLAN_TASKS = 25`, which rejects a plan
+rather than truncating it.
+CHOSEN: a new pure module `packages/orchestration/task_deliverables.py` holds (a) the deterministic
+deliverable extractor — the file-path-like tokens of the order in order of first appearance,
+deduplicated, and the order itself as the single deliverable when it names none; (b) the
+deterministic job plan `do` uses in place of `job_runner.plan_job`: one task per deliverable, its
+deliverable recorded in the task's `inputs["deliverable"]`, one acceptance item each (so every
+`planning.granularity.*` ceiling holds), and more deliverables than `_MAX_TASK_PLAN_TASKS` become
+several jobs rather than a truncated one; (c) one validator, run by `plan_order_job` on every job it
+plans, deterministic or LLM, that rejects a job holding a task with no deliverable or a task whose
+title begins with an inspection verb, the reject surfacing as the existing `OrderJobPlanError`. An
+LLM task's deliverable is its first `files_hint` entry, else its first acceptance line.
+`job_runner.plan_job` and its own tests stay as they are; `do` no longer calls it.
+ALTERNATIVES: a required `deliverable` field on `PlannedTask`, rejected as a planner-internals change
+that would re-shape every `task_plan_v1` payload the suite builds; rewriting `job_runner.plan_job`,
+rejected because its tests pin it as a standalone planner and `do` is its only production caller.
+REVERSE: route `plan_order_job` back to `job_runner.plan_job`, delete the module and the validator
+call; delete this paragraph.
+
+## DECISION F268 D7 (2026-09-18, reviewer, round 2) — a surviving hint names a real command or nothing
+CHOSEN: when the deletion of `--fixture-builder` leaves a surface naming it (R-0964), the surface
+drops the flag where the rest of its invocation still parses, and otherwise names a real command
+carrying the real job id; `_pipeline_next_command`'s prose-only and malformed-output stop reasons
+return `remedy job show <job id> --full --json`, which the parser accepts and which shows the
+output the provider returned. ALTERNATIVES: point those stop reasons at `remedy do` with a fake
+provider, rejected because a fake run is not a diagnosis of a real provider's malformed output.
+REVERSE: restore the old strings from git history; delete this paragraph.
+
+## DECISION F268 D8 (2026-09-18, reviewer, round 3) — where `--step-by-step` halts, and what `--plan-only` stops after
+CONTEXT: T2_F268.md's Design reuses the safe points where budget and stop are checked
+(`packages/orchestration/safe_points.py`); measured at `57ca6293`, `pingpong_job.run_job` checks them
+through an internal stop check before the run, before each task, between provider calls and after the
+loop, and exposes no hook for a caller to pause there.
+CHOSEN: `--step-by-step` halts at the walker's step boundaries — after every step that did work and
+before the next — and, inside the run step, before each job; at those points no provider call is in
+flight by construction, because a step returns only after its own calls have returned. At each halt
+`do` prints what just happened and what comes next and reads one line: an empty line continues, `q`
+(or end of input) stops the walk with the halted step's successor unrun and, when a job exists,
+records the stop through `safe_points.request_stop` for every job of the walk, so the F011 path
+carries it. The line is read through a function the walk's context carries, so a test can supply
+it. `--plan-only` ends the walk after the shape step: the run step reports stopped with the reason
+`--plan-only`, no job is run, and the output lists the mission plan's path, the contract (null,
+DECISION D1) and every job's tasks with their deliverables. Both flags join the bare-route
+allow-list. ALTERNATIVES: a pause hook inside `run_job`'s own stop check, rejected because it
+changes the runner shared by every job path for a behaviour only `do` asks for. REVERSE: delete the
+two flags, the halt function and the `--plan-only` branch; delete this paragraph.
+
+## DECISION F268 D9 (2026-09-18, reviewer, round 4) — the cockpit opens detached, `--apply` applies every job, and the flags of unbuilt features refuse before any step
+CONTEXT: measured at `f831d374`, `ui._cmd_ui_start` in `apps/cli/commands/ui.py` blocks in
+`start_ui_server`'s serve loop and opens the browser itself unless `--no-open`; `ui stop` stops every
+running UI session; `job_apply.apply_job(job_id, target_repo, approve=True)` applies one job; F269
+and F270 are `[ ]` in `docs/roadmap/STATUS.md`.
+CHOSEN: (1) unless `--no-ui`, the ui step starts `remedy ui start <job id> --port 0 --info-file <path>`
+for the walk's last job as a DETACHED child process (its own session, output to a log file under the
+data root, never the repository), waits a bounded time for the info file, and reports the cockpit's
+URL and the stop command `remedy ui stop`; a launch that does not come up in time is reported
+`skipped` with the reason and the manual command, because the run's result does not depend on the
+cockpit. The launcher is a function the walk's context carries, so tests never start a server.
+(2) `--apply` makes the apply step call `apply_job(<job id>, <repo root>, approve=True)` for every job
+of the walk in order, stopping at the first that is not applied and naming why; `--json`'s
+`stopped_before_apply` is then false. Without `--apply` the step is unchanged. (3) `--contract
+<template>` (F269) and `--commit "<message>"`, `--commit-auto`, `--commit-with-history`, `--push`
+(F270) are declared on `do.run` and, while their feature is not `[x]`, each exits 2 before any step
+runs, printing that it is not yet available and which feature brings it; the old name
+`--with-history` is never created. ALTERNATIVES: run the cockpit in-process on a thread, rejected
+because the server's serve loop would hold `do` open after its last step; omit the unbuilt flags,
+rejected because T2_F268.md's Design names them as a documented dependency. REVERSE: delete the
+launcher, the `--apply` branch and the refusing flags; delete this paragraph.
+
+## DECISION F268 D10 (2026-09-18, reviewer, round 5) — a follow-up job runs only on top of its predecessor's applied output
+CONTEXT: R-0968. Measured at `994f045a`, every job's workspace is cut from the target's HEAD when
+the job runs, and `pingpong_job.run_job` takes no base other than the target.
+CHOSEN: in a walk of two or more jobs, job k+1 runs only after job k is APPLIED to the target. With
+`--apply`, the run step applies each job through the apply step's own function right after it
+completes and before the next job runs, stopping at the first job that is not applied; the apply
+step then reports the jobs already applied and applies nothing twice. Without `--apply`, the run
+step runs job 1 only and reports `stopped`, naming why the rest wait and printing, with real ids,
+the apply command for job 1 and the `remedy job run` command for job 2; the walk's `--json`
+carries every planned job in `job_ids` as before. A walk of one job is unchanged. DECISION F268 D5
+is amended accordingly: its sentence "the run step runs them in order and stops at the first that
+does not complete" now reads through this decision. ALTERNATIVES: cut job k+1's workspace from job
+k's result branch, rejected because it changes the runner every job path shares and leaves the
+target and the branches disagreeing about what was delivered; run every job and apply them all
+afterwards, rejected by R-0968. REVERSE: restore the run step's loop over every job; delete this
+paragraph.
+
+## DECISION F268 D11 (2026-09-18, reviewer, round 5) — `do`'s cost summary reads the ledger, and the builder's context size is evidence
+CONTEXT: R-0807's F268 half. Measured at `994f045a`, `remedy job run` mirrors a finished job into the
+F103 token ledger through `job_evidence.mirror_job_run_into_ledger` and `do`'s run step does not;
+`token_ledger.query_cost(..., job_id=..., by="role")` aggregates the ledger by role; the
+`context_strategy.json` that `job_evidence` writes names the strategy and carries no size.
+CHOSEN: after each job completes, the run step mirrors it into the ledger exactly as `job run`
+does; at the end of the walk `do` prints one line per role with the measured input, output and
+cache-read tokens and one line with the measured cost, read through `query_cost` for the walk's
+jobs, and `--json` carries the same numbers under `cost`; a job whose mirror failed is named, never
+counted as zero. `context_strategy.json` gains the context size sent to the builder per round — the
+builder call's reported input and cache-read tokens for each task and round, read from the run's
+own evidence — written by `job_evidence`'s existing writer. ALTERNATIVES: sum tokens from the run
+logs inside `do`, rejected because the ledger is the one cost truth and a second sum is a second
+answer. REVERSE: delete the summary, the mirror call and the new field; delete this paragraph.
+
+## DECISION F268 D12 (2026-09-18, reviewer, round 5) — D10 amended: a follow-up job waits until its predecessor's output is committed
+CONTEXT: D10's `--apply` half cannot hold. Measured by the round 5 worker at `994f045a` and confirmed
+by the reviewer's reading of `worktrees.py` and `job_apply.py`: a job's workspace is a git worktree
+cut from the target's HEAD commit, and `job_apply.apply_job` writes the target's working tree
+without committing, so applying job k leaves job k+1's workspace exactly where it was, and the
+second apply is refused by the baseline check (`target_created_since_job` /
+`target_changed_since_job`) — the worker's dry run of D10 as written read exit 1 both ways. The
+reviewer authored D10 without the dry run docs/agents/self_drive_protocol.md's own practice asks
+for; the slip is recorded in `.agent/prose_slips.md`.
+CHOSEN: in a walk of two or more jobs, the run step runs job 1 only and reports `done`, naming the
+jobs that wait and why; the ui step opens the cockpit for job 1; the apply step, with `--apply`,
+applies job 1 and reports `done`, and without it stops before apply with job 1's apply command. For
+every waiting job `do` prints, with real ids, that job 1's applied output must be committed first
+and then `remedy job run <id>` for the next job, and `--json` lists them as `waiting_job_ids`.
+Chaining the jobs inside one `do` needs a commit per applied job, which is F270's `--commit`
+family (DECISION amend0911-feedback D4), still refused as not yet available (DECISION F268 D9); it
+lands with F270, not here. D10 is superseded wherever it says otherwise; a walk of one job is
+unchanged. ALTERNATIVES: cut job k+1's workspace from a commit holding job k's output, rejected
+because it changes the runner and the worktree layer every job path shares; have `do` commit each
+applied job itself, rejected because committing is F270's and the refusal of `--commit` would then
+be false. REVERSE: delete this paragraph and restore D10's run loop.
+
+## DECISION F268 D13 (2026-09-18, reviewer, round 6) — the job evidence export writes the four flow artifacts from the job's own records
+CONTEXT: R-0892. Measured at `68cf6a13` by the reviewer's research helper: `scripts/build_review_manifest.py`
+`REQUIRED_ROOT_ARTIFACTS` names `job_flow.json`, `agent_run_trace.jsonl`,
+`agent_run_trace_summary.json` and `command_transcript.json` beside two files the export already
+writes; their only writers lived in `apps/cli/commands/do_cmd.py` and left with `do job-flow`
+(commit `70c78773`); `packages/orchestration/agent_run_trace.py` still holds the trace builders and
+nothing calls them to write files.
+CHOSEN: `job_evidence.export_job_evidence` writes the four files at the package root from records
+the job already has, never from invented values: the agent run trace and its summary through the
+builders in `agent_run_trace.py` over the exported task runs; `job_flow.json` carrying the job id,
+the final audit's status from the export's own `final_verifier_report.json`, the missing
+observability artifacts computed against the manifest script's own required lists after every
+other file is written, and the target guard's `mutated_target` from the export's `target_guard.json`;
+`command_transcript.json` carrying only commands the job's records show were executed, in the shape
+the deleted writer used (read at `70c78773^`), with an empty list and its reason when there were
+none. A field with no source is absent or null, never filled. The check itself is unchanged.
+ALTERNATIVES: drop the four files from the required lists, rejected because relaxing a trust check
+is a change to that check, which R-0892's own fix clause does not ask for. REVERSE: delete the
+writer step; delete this paragraph.
+
+## DECISION F268 D14 (2026-09-18, reviewer, round 6) — the quick start in `remedy --help` is five real lines with a real example order
+CHOSEN: `_QUICK_START` in `apps/cli/grouped.py` becomes five numbered command lines, each a real
+command with real values and no angle-bracket placeholder: register the repository, check health,
+plan an example order without running it, run it, and apply it — the example order being
+`Write a CONTRIBUTING.md`, the order T2_F268.md's first Acceptance line uses. The README Quickstart
+mirrors the same five lines. A test runs the five lines in order on a fixture repository, with the
+fake provider chosen through the repository's own configuration rather than a flag, so every line
+stays copyable as printed, and asserts each exits 0. ALTERNATIVES: keep a `"<goal>"` placeholder,
+rejected because T005 asks for lines that work as printed. REVERSE: restore `_QUICK_START` and the
+README section from git history; delete this paragraph.
+
+## DECISION F268 D15 (2026-09-18, reviewer, round 7) — the quick start's five lines and how a test runs them, amending D14
+CONTEXT: D14 had the quick-start test choose the fake builder and reviewer through the fixture
+repository's own `remedy.toml`; the round 6 worker measured at `68cf6a13` that no such route exists
+(`pingpong_job.default_role_provider_name` reads no configuration file). The reviewer's scratch
+probe at `8746b21e`, in-process through `apps.cli.grouped.main` on a fresh git repository with
+`REMEDY_DATA_DIR` set: the five lines below, with the suffix below added to each `remedy do` line,
+each exited 0, and `git status --porcelain` in the target listed only the untracked `.remedy/` and
+`remedy.toml` that `init` writes.
+CHOSEN: `_QUICK_START` is these five numbered lines, printed exactly so and copyable as printed:
+`remedy init`, `remedy doctor core`, `remedy do "Write a CONTRIBUTING.md" --plan-only`,
+`remedy do "Write a CONTRIBUTING.md"`, `remedy job list`. Line five lists the jobs rather than
+applying one: `job apply` takes a job id a printed line cannot know, a second `do --apply` would
+plan a new mission, and line four's run already ends with a `Next:` line carrying the real apply
+command. The README Quickstart carries the same five lines. The test reads the lines from the
+rendered `remedy --help` output, runs them in order on a fixture repository, appends exactly
+`--builder-provider fake --reviewer-provider fake --no-llm --no-ui` to each `remedy do` line and
+nothing to any other line, and asserts each exits 0 and that the target's `git status --porcelain`
+after the fifth line equals its reading after the first, so nothing the run produced reached the
+target (the same probe with `--apply` on line four added an untracked `docs/`). D14's other
+clauses stand. ALTERNATIVES: add a `remedy.toml`
+route for role providers, rejected because it widens `role_config` for a help-text test.
+REVERSE: restore `_QUICK_START` and the README section from git history; delete this paragraph.
+
+## DECISION F268 D16 (2026-09-18, reviewer, round 8) — every `remedy do` walks the sequence, with T2_F268.md's flag list
+CONTEXT: T2_F268.md's Design lists `do`'s flags completely and says nothing else lives under `do`;
+R-0933 is `--builder-provider` validated and then unread on the non-bare path. Measured at
+`3c18ade2` by the reviewer's research helper and the reviewer's scratch probe: `apps/cli/grouped.py`
+sends `remedy do "<order>"` to the sequence only when every flag after the order is in its bare-flag
+list, and anything else (`--project`, a budget flag, `--autonomy-level`, an explicit `do run`) to the
+autorun branch of `_cmd_do`, which calls `run_do` with no provider; `run_job` in
+`packages/orchestration/pingpong_job.py` already takes `budgets`, `builder_model` and
+`reviewer_model` — on a fixture, a dict from `resolve_job_budgets(cli_max_total_tokens="100000")`
+was recorded as the job's budgets and both models as `cli`-sourced in its `execution_config`;
+`select_project("<slug>", repo)` resolved a registered slug and raised `ProjectNotFoundError` for an
+unknown one; `intake.make_structured_call_fn` takes `model=`; the planner has exactly one provider,
+Ollama, and `role_config` knows no planner role.
+CHOSEN: (1) every `remedy do` invocation, with or without the word `run`, walks the sequence; the
+bare-flag detection in `grouped.py` and the autorun branch of `_cmd_do` leave. (2) `--autonomy-level`,
+`--max-cycles`, `--ui` and `--dry-run` leave `do` (catalog, parser, handler). (3) `--no-llm` stays,
+outside the Design's list: it is how a fake-provider walk plans without a model, and every
+acceptance test uses it. (4) `--project <slug-or-id>`: the init step selects that project through
+`select_project` instead of resolving or registering the repository; an unknown project fails the
+init step and nothing after it runs. (5) The budget flags are resolved with `resolve_job_budgets`
+before the first step, an invalid value exits 2 with nothing run, and when any budget flag is given
+the run step passes the resolved budgets to `run_job`, as `job run` does. (6) `--builder-model` and
+`--reviewer-model` are validated as `job run` validates them, passed to `run_job`, and carried on every
+`Next: remedy job run` line beside the provider flags. (7) `--planner-model` is passed as `model=` to
+every structured planner call the plan and shape steps build; under `--no-llm` there is none.
+(8) `--planner-provider` is NOT created: its one legal value would be `ollama`, and a flag with one
+value advertises a choice that does not exist; the operator may overturn this (operator question
+Q3). R-0933 is resolved by (1) together with a test that reads the provider recorded on a job that
+an explicit `remedy do run "<order>" --builder-provider fake` started.
+ALTERNATIVES: keep the autorun branch for the flags outside the list, rejected because the Design
+says nothing else lives under `do` and R-0933 is that branch. REVERSE: restore the branch, the
+bare-flag detection and the four flags from git history; delete this paragraph.
+
+## DECISION F268 D17 (2026-09-18, reviewer, round 9) — what D16's deletion takes with it, and the smoke section that replaces the autorun one
+CONTEXT: round 8's worker measured, with D16 (1) to (3) applied as a dry run at `deac5e74`, three
+consequences no clause of D16 names, and the reviewer reproduced them at `5243e0a6`: a test calling
+the `do.run` handler with `--ui` and `--no-ui`; `scripts/remedy_smoke.sh` section `12ao`, which runs
+`remedy do` with `--autonomy-level 6 --max-cycles 3` and checks the autorun's JSON, and whose job id
+sections `12aq` and the UX smoke gate after it read; and a pin of `do.run`'s `may_mutate_repo` still
+asserting False. The reviewer's scratch probe at `5243e0a6` on a fixture git repository: `remedy do
+"Make tests pass" --repo <fixture> --builder-provider fake --reviewer-provider fake --no-llm --no-ui
+--json` exited 0 with one job and `stopped_before_apply` true; `remedy memory candidates <that job>
+--json` exited 0 at `version` 1; and the smoke script's UX gate checker, run with that job id,
+exited 0 (`story=5 journey items, checklist=2 items`).
+CHOSEN: (1) `test_no_ui_suppresses_ui` in `tests/orchestration/test_autorun.py` leaves with `--ui`.
+(2) Smoke section `12ao` becomes a `do` sequence end-to-end: a fixture git repository with one
+commit, the command above with the fixture's path, and checks that the output is JSON with a
+`mission_id`, a non-empty `job_ids` and `stopped_before_apply` true; its first job id is the id the
+later sections read, under the name `DO_JOB_ID`. (3) The `do.run` catalog pin in
+`tests/cli/test_job_commands.py` asserts True, R-0969's value. ALTERNATIVES: delete sections `12ao`,
+`12aq` and the UX gate together, rejected because the probe shows a sequence job serves the two later
+sections unchanged. REVERSE: restore the section and the two tests from git history; delete this
+paragraph.

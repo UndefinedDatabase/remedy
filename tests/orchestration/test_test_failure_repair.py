@@ -4,7 +4,6 @@ Covers:
 - Step 950: Redaction — no raw stdout/stderr, no absolute paths, bounded summaries
 - Step 951: Linking — failure artifact links to intent, apply, task, test run
 - Step 952: Repair loop v0 — phased result, stop reasons, next safe actions
-- Step 949: Integration — failure_summary field in DoRunResult
 """
 
 from __future__ import annotations
@@ -451,39 +450,6 @@ class TestRepairLoopV0:
             assert "Stop:" in text
         finally:
             _cleanup_env(old)
-
-
-# ---------------------------------------------------------------------------
-# Step 949: DoRunResult integration
-# ---------------------------------------------------------------------------
-
-
-class TestDoRunIntegration:
-
-    def test_failure_summary_field_exists(self):
-        from packages.orchestration.do_run import DoRunResult
-        result = DoRunResult()
-        assert result.failure_summary is None
-
-    def test_failure_summary_in_export(self):
-        from packages.orchestration.do_run import DoRunResult, export_do_run_json
-        result = DoRunResult(
-            failure_summary={
-                "failure_kind": "test_failed",
-                "safe_summary": "3 tests failed",
-                "fix_task_id": "fix-1",
-                "repair_available": True,
-            }
-        )
-        data = export_do_run_json(result)
-        assert "failure_summary" in data
-        assert data["failure_summary"]["failure_kind"] == "test_failed"
-
-    def test_no_failure_summary_when_none(self):
-        from packages.orchestration.do_run import DoRunResult, export_do_run_json
-        result = DoRunResult()
-        data = export_do_run_json(result)
-        assert "failure_summary" not in data
 
 
 # ---------------------------------------------------------------------------

@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-81 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+82 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 23 | 34 |
+| 2 | Minimal Self-Build Runtime | 24 | 34 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -128,7 +128,15 @@ its deletion paragraph; `plan` hidden as `roadmap`, `teach` renamed
 `teacher`, and `settings` an alias over `config`; the gated prunes, the
 flight-plan rename and the help surface were split off at the soft limit
 and belong to the follow-up feature the STATUS ledger registers directly
-after it).
+after it),
+F268 remedy do, the one-command start (`remedy do "<order>"` walks one
+sequence held as data — init, study, plan, shape, run, ui, apply — so it
+registers the repository, studies it once, plans a mission whose every task
+names the deliverable it produces, runs the first job and stops before apply
+unless `--apply`; `--plan-only` stops after planning and `--step-by-step`
+halts between steps; the measured tokens per role and the cost are printed at
+the end; a run's exported evidence passes the review-package check; and
+`remedy --help` opens with five quick-start lines that each run as printed).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
@@ -272,14 +280,11 @@ pip install -e ".[dev]"          # add ,ollama for the local planner provider
 ## Quickstart
 
 ```bash
-remedy init                                # set up this repo (once)
-remedy doctor core                         # check local health
-remedy config show                         # view current settings
-remedy do run "<goal>" --repo . --json | tee /tmp/remedy-run.json
-JOB_ID=$(python3 -c "import json; print(json.load(open('/tmp/remedy-run.json'))['job_id'])")
-remedy job show $JOB_ID --full             # inspect the result
-remedy job stop $JOB_ID                    # stop at next safe point (F011)
-remedy runtime serve                       # start dev-server supervisor (F007)
+remedy init                                         # register this repository (once)
+remedy doctor core                                  # check local health
+remedy do "Write a CONTRIBUTING.md" --plan-only     # plan an example order, run nothing
+remedy do "Write a CONTRIBUTING.md"                 # plan and run it; stops before apply
+remedy job list                                     # the jobs it planned and ran
 ```
 
 `remedy <group>` with no subcommand prints that group's help.

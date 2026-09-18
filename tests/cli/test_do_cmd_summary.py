@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 
 class TestJobSummaryJSON:
     def test_json_output_includes_pipeline_status(self):
@@ -59,29 +57,6 @@ class TestJobSummaryJSON:
         assert "import" not in out
 
 
-class TestFixtureBuilderParse:
-    def test_parse_true(self):
-        from apps.cli.commands.do_cmd import _parse_fixture_builder
-        assert _parse_fixture_builder("true") is True
-        assert _parse_fixture_builder("True") is True
-        assert _parse_fixture_builder("1") is True
-        assert _parse_fixture_builder("yes") is True
-
-    def test_parse_false(self):
-        from apps.cli.commands.do_cmd import _parse_fixture_builder
-        assert _parse_fixture_builder("false") is False
-        assert _parse_fixture_builder("0") is False
-
-    def test_parse_repair_loop(self):
-        from apps.cli.commands.do_cmd import _parse_fixture_builder
-        assert _parse_fixture_builder("repair-loop") == "repair-loop"
-
-    def test_parse_invalid_exits(self):
-        from apps.cli.commands.do_cmd import _parse_fixture_builder
-        with pytest.raises(SystemExit):
-            _parse_fixture_builder("invalid-mode")
-
-
 class TestDocsExist:
     def test_autocoder_usage_doc_exists(self):
         from pathlib import Path
@@ -103,11 +78,18 @@ class TestDocsExist:
         assert "none" in content.lower()
 
     def test_docs_commands_use_builder_provider(self):
+        """R-0964 / DECISION F268 D7: every value the guide passes is one the CLI accepts."""
+        import re
         from pathlib import Path
+
+        from apps.cli.commands.do_cmd import _VALID_ROLE_PROVIDERS
         doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
-        assert "--builder-provider fixture" in content
         assert "--builder-provider ollama" in content
+        values = re.findall(r"--builder-provider (\w[\w-]*)", content)
+        assert values
+        assert set(values) <= _VALID_ROLE_PROVIDERS
+        assert "--builder-provider fixture" not in content
 
     def test_docs_pipeline_overview(self):
         from pathlib import Path

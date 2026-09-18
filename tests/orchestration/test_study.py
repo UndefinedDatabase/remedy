@@ -246,3 +246,72 @@ class TestStudyBasic:
         assert fn is not None
         result = fn("test prompt", 0)
         assert result == "a test narrative"
+
+
+def _git_repo_with_one_commit(root: Path) -> tuple[Path, str]:
+    """A git repository holding one committed file, and its HEAD commit id."""
+    import subprocess
+
+    root.mkdir()
+    def git(*args: str) -> str:
+        return subprocess.run(["git", *args], cwd=str(root), capture_output=True,
+                              text=True, check=True).stdout.strip()
+    git("init", "-q")
+    git("config", "user.email", "t@e.com")
+    git("config", "user.name", "T")
+    git("config", "commit.gpgsign", "false")
+    (root / "README.md").write_text("# r\n")
+    git("add", "-A")
+    git("commit", "-qm", "init")
+    return root, git("rev-parse", "HEAD")
+
+
+class TestRecordStudyPass:
+    """DECISION F268 D3 — the one writer of `studied_at` / `studied_head`."""
+
+    def test_writes_both_fields_on_the_saved_project_record(self, tmp_path, monkeypatch) -> None:
+        from datetime import datetime, timezone
+
+        from packages.orchestration.project_registry import (
+            load_project,
+            register_project_repo,
+        )
+        from packages.orchestration.study import record_study_pass
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        repo, head = _git_repo_with_one_commit(tmp_path / "repo")
+        project = register_project_repo("repo", repo)
+        now = datetime(2026, 9, 18, 12, 0, tzinfo=timezone.utc)
+
+        returned = record_study_pass(str(project.id), str(repo), now=now)
+
+        saved = load_project(project.id)
+        assert saved.metadata["studied_at"] == "2026-09-18T12:00:00+00:00"
+        assert saved.metadata["studied_head"] == head
+        assert returned is not None
+        assert returned.metadata == saved.metadata
+
+    def test_a_repository_without_head_records_an_empty_head(self, tmp_path, monkeypatch) -> None:
+        from packages.orchestration.project_registry import RemyProject, load_project, save_project
+        from packages.orchestration.study import record_study_pass
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        plain = tmp_path / "plain"
+        plain.mkdir()
+        project = RemyProject(name="plain", slug="plain")
+        save_project(project)
+
+        record_study_pass(str(project.id), str(plain))
+
+        saved = load_project(project.id)
+        assert saved.metadata["studied_head"] == ""
+        assert saved.metadata["studied_at"]
+
+    def test_an_unregistered_project_id_writes_nothing(self, tmp_path, monkeypatch) -> None:
+        from packages.orchestration.study import record_study_pass
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+
+        assert record_study_pass(str(tmp_path / "not-a-uuid"), str(tmp_path)) is None
+        assert record_study_pass("00000000-0000-0000-0000-000000000042", str(tmp_path)) is None
+        assert not (tmp_path / "data" / "projects").exists()

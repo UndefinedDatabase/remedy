@@ -60,8 +60,9 @@ RETIRED_SYNONYMS = [
 #: named by two indexed docs pages — renaming it is a behaviour change, not a
 #: reword. Exempting them here is the scope-narrowing D2 itself named as the
 #: path to `"enforced"`; do not widen this set without its own DECISION.
+#: F268 round 1 deleted `do.run --fixture-builder` (finding R-0933), so its
+#: exemption left the set with the flag.
 SYNONYM_EXEMPTIONS = {
-    ("arg:do.run:--fixture-builder:description", "loop"),
     ("command:dev.agent-loop:command_id", "loop"),
 }
 

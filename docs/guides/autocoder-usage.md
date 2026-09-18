@@ -4,7 +4,7 @@
 
 The autocoder pipeline runs in stages:
 
-1. **Builder**: Calls the selected provider (fixture or Ollama) to generate a structured patch
+1. **Builder**: Calls the builder (the deterministic fixture on `do run`) to generate a structured patch
 2. **Parse**: Validates the patch format, paths, and safety constraints
 3. **Intent**: Creates a patch intent record with change explanations
 4. **Approval**: Gates application — requires human approval at autonomy < 3
@@ -19,13 +19,13 @@ Each stage can stop the pipeline with an explicit `stop_reason`.
 ### Fixture smoke (CI-safe, no Ollama required)
 
 ```sh
-remedy do run "fix the add function" --repo /tmp/myrepo --builder-provider fixture --autonomy-level 4 --max-cycles 1 --json
+remedy do run "fix the add function" --repo /tmp/myrepo --builder-provider fake --reviewer-provider fake --no-llm --json
 ```
 
 ### Real Ollama via `remedy do` (requires running Ollama)
 
 ```sh
-remedy do run "add a hello() function" --repo /tmp/myrepo --builder-provider ollama --autonomy-level 2 --max-cycles 1 --json
+remedy do "add a hello() function" --repo /tmp/myrepo --builder-provider ollama --json
 ```
 
 ### Real Ollama smoke via pytest (opt-in)
@@ -44,15 +44,19 @@ remedy worker unload --provider ollama --all
 
 ## Builder Providers
 
-| Provider   | What it does                                | When to use                     |
-|------------|---------------------------------------------|---------------------------------|
-| `none`     | No builder runs (default)                   | Inspection, dry run             |
-| `fixture`  | Deterministic fixture, no LLM               | CI, testing, demos              |
-| `ollama`   | Calls real local Ollama model               | Local model experiments         |
+Every `remedy do`, with or without the word `run`, walks the same sequence (DECISION F268
+D16). Its builder is chosen with `--builder-provider` (and the reviewer with
+`--reviewer-provider`):
 
-Select with `--builder-provider none|fixture|ollama`.
+| Provider     | What it does                                | When to use                     |
+|--------------|---------------------------------------------|---------------------------------|
+| `fake`       | Deterministic fake provider, no LLM         | CI, testing, demos              |
+| `ollama`     | Calls real local Ollama model               | Local model experiments         |
+| `claude`     | Calls the Claude API                        | Real runs                       |
+| `claude-cli` | Calls the local Claude CLI                  | Real runs                       |
 
-Legacy `--fixture-builder true|repair-loop` still works but `--builder-provider` takes precedence.
+Omitted, each role takes its role config. F268 deleted the `--fixture-builder` flag and the
+`none` and `fixture` values of `--builder-provider`; the parser refuses all three (exit 2).
 
 ## Autonomy Levels
 
@@ -73,7 +77,7 @@ Legacy `--fixture-builder true|repair-loop` still works but `--builder-provider`
 ### Job summary (JSON output)
 
 ```sh
-remedy do run "fix the bug" --repo ./myrepo --builder-provider fixture --json
+remedy do run "fix the bug" --repo ./myrepo --json
 ```
 
 Output (version 2) includes:
@@ -89,7 +93,7 @@ Output (version 2) includes:
 ### Dashboard JSON
 
 ```sh
-remedy do run "fix the bug" --repo ./myrepo --builder-provider fixture --ui
+remedy do run "fix the bug" --repo ./myrepo
 ```
 
 Dashboard shows:
@@ -145,7 +149,7 @@ When the pipeline stops, the `stop_reason` field explains why:
 | `approval_required`              | Autonomy too low for auto-apply            | Increase autonomy or approve manually |
 | `source_apply_failed`            | Patch couldn't be applied to repo          | Check file state and patch format     |
 | `test_failed_after_apply`        | Tests failed after patch was applied       | Inspect test output                   |
-| `repair_budget_exhausted`        | Max repair cycles reached                  | Increase --max-cycles or fix manually |
+| `repair_budget_exhausted`        | Max repair cycles reached                  | Raise the repair budget or fix manually |
 | `repeated_patch_detected`        | Same patch produced twice in repair loop   | Model stuck, try different approach   |
 | `no_structured_patch_text`       | No patch in builder output                 | Check task description                |
 | `provider_unavailable`           | Ollama or provider not reachable           | Start Ollama: `ollama serve`          |
@@ -153,7 +157,7 @@ When the pipeline stops, the `stop_reason` field explains why:
 
 ## Repair Loop
 
-The repair loop runs up to `--max-cycles` attempts:
+The repair loop runs up to its configured maximum of attempts (`repair_loop_max_cycles`):
 
 1. Build: call builder for structured patch
 2. Parse: validate patch format and safety
