@@ -46,6 +46,13 @@ every other D2 rule.  The orchestrator loop acknowledges each amendment in
 its ledger in the round it applies from (:func:`due_contract_amendments`,
 :func:`record_amendments_acknowledged`).
 
+When a run stops at its budget with blocking criteria open, the REMAINDER is
+proposed to the operator (DECISION F269 D9):
+:func:`raise_contract_remainder_decision` puts one decision in the inbox
+carrying the prefilled follow-up order, and a one-word ``yes`` at either
+answer door starts that follow-up mission through
+:func:`start_remainder_follow_up_mission`.
+
 The names ``save_contract`` and ``load_contract`` belong to
 ``run_contract.py`` (a job's run contract, a different record) and are not
 used here.
@@ -696,6 +703,147 @@ def contract_blockers(contract: MissionContract | None) -> tuple[str, ...]:
         return ()
     return tuple(c.id for c in contract.criteria
                  if c.blocking and c.status != "met")
+
+
+# ---------------------------------------------------------------------------
+# The remainder proposal (DECISION F269 D9)
+# ---------------------------------------------------------------------------
+
+#: The start of a remainder decision's question, and the WHOLE of its dedupe
+#: key: the watchdog's precedent (DECISION F077 D2), because
+#: ``enqueue_task_decision`` writes a fixed key set and the question is the one
+#: field a caller controls.  A remainder decision is an ordinary
+#: ``task_decision`` in the inbox; no decision type is added (D9).
+CONTRACT_REMAINDER_MARKER = "[contract remainder]"
+
+#: The one answer that starts the follow-up mission; any other only records.
+CONTRACT_REMAINDER_YES = "yes"
+
+#: The options a remainder decision offers.  It has no safe default: a human answers.
+CONTRACT_REMAINDER_OPTIONS = (CONTRACT_REMAINDER_YES, "no")
+
+
+def contract_blocking_criteria(
+        contract: MissionContract | None) -> tuple[ContractCriterion, ...]:
+    """The criteria :func:`contract_blockers` names, in contract order."""
+    blockers = set(contract_blockers(contract))
+    return () if contract is None else tuple(
+        c for c in contract.criteria if c.id in blockers)
+
+
+def contract_remainder_order(mission_id: str,
+                             blockers: Sequence[ContractCriterion]) -> str:
+    """The prefilled follow-up order a remainder decision carries (D9 (1))."""
+    return (f"Meet the acceptance criteria mission {mission_id} left unmet: "
+            f"{'; '.join(c.text for c in blockers)}.")
+
+
+def raise_contract_remainder_decision(project_id: str, mission_id: str, *,
+                                      root: Path | None = None,
+                                      now: datetime | None = None) -> str | None:
+    """Put the remainder of a mission's contract in front of the operator (D9 (1)).
+
+    When the contract has blockers and no OPEN remainder decision exists on
+    any of the mission's jobs, ONE decision is enqueued on the latest linked
+    job's first task — the attachment ``escalate_repeated_refusal`` and the
+    watchdog use.  Its question starts with :data:`CONTRACT_REMAINDER_MARKER`
+    and names the mission and every blocker by id and text; its options are
+    ``yes`` and ``no``; it has no safe default; its ``impact`` is the
+    prefilled follow-up order.  Returns the decision id, or None when there
+    are no blockers, an open remainder decision already exists, or the
+    mission has no job with a task to attach one to.
+    """
+    from packages.orchestration.data_paths import normalize_job_id
+    from packages.orchestration.escalation import enqueue_task_decision
+    from packages.orchestration.mission_state import load_mission
+    from packages.orchestration.orchestrator_loop import open_mission_decisions
+    from packages.orchestration.pingpong_job import require_job_plan, save_job_plan
+
+    mission = load_mission(project_id, mission_id, root)
+    blockers = contract_blocking_criteria(read_mission_contract(mission))
+    if not blockers:
+        return None
+    if any(str(record.get("question", "") or "").startswith(CONTRACT_REMAINDER_MARKER)
+           for record in open_mission_decisions(mission)):
+        return None
+    link = mission.latest_link()
+    if link is None:
+        return None
+    try:
+        job = require_job_plan(normalize_job_id(link.job_id))
+    except Exception:  # noqa: BLE001 — an unreadable job has no task to attach to
+        return None
+    tasks = list(getattr(job, "tasks", ()) or ())
+    if not tasks:
+        return None
+    named = "; ".join(f"{c.id}: {c.text}" for c in blockers)
+    record = enqueue_task_decision(
+        job,
+        task_id=tasks[0].task_id,
+        question=(f"{CONTRACT_REMAINDER_MARKER} Mission {mission_id} stopped at its "
+                  f"budget with {len(blockers)} blocking acceptance criteria not "
+                  f"met — {named}. Start a follow-up mission to meet them?"),
+        options=CONTRACT_REMAINDER_OPTIONS,
+        safe_default="",
+        impact=contract_remainder_order(mission_id, blockers),
+        now=now or datetime.now(timezone.utc))
+    save_job_plan(job)
+    return str(record.get("decision_id", "")) or None
+
+
+def start_remainder_follow_up_mission(job_id: str, record: Mapping[str, Any], *,
+                                      root: Path | None = None,
+                                      now: datetime | None = None) -> str | None:
+    """Act on an answered remainder decision; return the follow-up mission's id (D9 (3)).
+
+    Both answer doors call this after a ``td:`` decision was answered.  It acts
+    only on a remainder decision (its question starts with
+    :data:`CONTRACT_REMAINDER_MARKER`) answered exactly ``yes``: it creates the
+    follow-up mission in the same project, whose goal and order are the
+    prefilled order the decision carries, and whose contract is the blockers
+    of the mission the job belongs to, copied in order and renumbered from
+    ``C001`` — text, blocking, origin and check kept, whole-mission, ``open``,
+    no evidence.  A compiled check is relabelled to its new criterion id (D4
+    (1)'s ``ctr-<id>`` and ``<id>:0``).  Any other answer or decision, a job
+    that belongs to no mission, or a mission with no blockers left, creates
+    nothing and returns None.
+    """
+    from packages.orchestration.dod_compiler import acceptance_line_key
+    from packages.orchestration.escalation import ESCALATION_STATUS_ANSWERED
+    from packages.orchestration.mission_state import (
+        MissionOrder,
+        create_mission,
+        mission_for_job,
+        set_mission_order,
+    )
+
+    if not str(record.get("question", "") or "").startswith(CONTRACT_REMAINDER_MARKER):
+        return None
+    if (record.get("status") != ESCALATION_STATUS_ANSWERED
+            or record.get("answer") != CONTRACT_REMAINDER_YES):
+        return None
+    mission = mission_for_job(str(job_id), root)
+    if mission is None:
+        return None
+    blockers = contract_blocking_criteria(read_mission_contract(mission))
+    if not blockers:
+        return None
+    order = (str(record.get("impact", "") or "")
+             or contract_remainder_order(mission.id, blockers))
+    criteria: list[ContractCriterion] = []
+    for number, criterion in enumerate(blockers, start=1):
+        ident = f"C{number:03d}"
+        check = None if criterion.check is None else {
+            **criterion.check, "id": f"{CONTRACT_CHECK_ID_PREFIX}{ident}",
+            "acceptance_refs": [acceptance_line_key(ident, 0)]}
+        criteria.append(ContractCriterion(
+            id=ident, text=criterion.text, origin=criterion.origin,
+            blocking=criterion.blocking, check=check))
+    follow_up = create_mission(mission.project_id, order, now=now, root=root)
+    set_mission_order(mission.project_id, follow_up.id, MissionOrder(text=order), root)
+    write_mission_contract(mission.project_id, follow_up.id,
+                           MissionContract(criteria=tuple(criteria)), root)
+    return follow_up.id
 
 
 # ---------------------------------------------------------------------------

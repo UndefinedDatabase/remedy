@@ -31,6 +31,11 @@ adds one compiled ``amendment`` criterion with the next free id and an entry
 that applies from the mission's next round, touches nothing already there,
 and survives a re-plan; the renderer lists the amendments after the criteria.
 
+D9: a mission with blockers gets ONE remainder decision naming each by id
+and text, carrying the prefilled order; a second raise while it is open,
+no blockers or no job raise nothing; only `yes` to a remainder decision
+starts the follow-up mission, whose contract is the blockers renumbered.
+
 Every test writes into ``tmp_path``; no real provider is called — a planned
 mission replays a recorded planner answer.
 """
@@ -38,6 +43,7 @@ from __future__ import annotations
 
 import copy
 import json
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -835,3 +841,188 @@ class TestTheRendererListsAmendments:
                                       contract.amendments)
 
         assert not any("Amendments" in line for line in lines)
+
+
+# ── DECISION F269 D9: the remainder proposal and what a one-word "yes" does ──
+
+
+def _remainder_mission(tmp_path, monkeypatch, *, blockers: bool = True,
+                       job: bool = True):
+    """A mission with a four-criterion contract and, unless told otherwise, one
+    linked job with one task: C001 met; C002 blocking and open; C003 blocking,
+    unmet and compiled; C004 advisory.  Without ``blockers`` every blocking
+    criterion is met."""
+    from packages.orchestration.mission_state import link_job_to_mission
+    from packages.orchestration.pingpong_job import TaskEntry
+
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    m = create_mission(PROJECT, "Ship the tool", root=tmp_path)
+    [compiled] = compile_contract_criteria([_criterion("C003", "tests/test_c.py passes")])
+    status = "open" if blockers else "met"
+    write_mission_contract(PROJECT, m.id, MissionContract(criteria=(
+        _criterion("C001", "the tool ships", status="met", evidence_ref="j:acc-001"),
+        _criterion("C002", "the docs name every command", origin="planner",
+                   milestones=("M1",), status=status),
+        replace(compiled, status="unmet" if blockers else "met",
+                evidence_ref="j:ctr-C003"),
+        _criterion("C004", "the code is pleasant", blocking=False),
+    )), tmp_path)
+    job_id = ""
+    if job:
+        plan = JobPlan(job_title="remainder", tasks=[TaskEntry(title="Write the tool")])
+        save_job_plan(plan)
+        job_id = str(plan.job_id)
+        link_job_to_mission(PROJECT, m.id, job_id, "initial", root=tmp_path)
+    return m.id, job_id
+
+
+def _decision(job_id: str, decision_id: str) -> dict[str, Any]:
+    from packages.orchestration.escalation import find_task_decision
+
+    return find_task_decision(load_job_plan(job_id), decision_id)
+
+
+def _answer(job_id: str, decision_id: str, answer: str) -> dict[str, Any]:
+    from datetime import datetime, timezone
+
+    from packages.orchestration.escalation import answer_task_decision
+
+    job = load_job_plan(job_id)
+    record = answer_task_decision(job, decision_id, answer=answer,
+                                  now=datetime.now(timezone.utc))
+    save_job_plan(job)
+    return record
+
+
+class TestTheRemainderDecision:
+    """D9 (1): one decision, on the latest job's first task, naming every blocker."""
+
+    def test_a_mission_with_two_blockers_gets_one_decision_naming_both(
+            self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import (
+            CONTRACT_REMAINDER_MARKER,
+            raise_contract_remainder_decision,
+        )
+
+        mission_id, job_id = _remainder_mission(tmp_path, monkeypatch)
+
+        decision_id = raise_contract_remainder_decision(PROJECT, mission_id, root=tmp_path)
+
+        job = load_job_plan(job_id)
+        [record] = job.metadata["escalations"]
+        assert record["decision_id"] == decision_id
+        assert record["task_id"] == str(job.tasks[0].task_id)
+        question = record["question"]
+        assert question.startswith(CONTRACT_REMAINDER_MARKER)
+        assert mission_id in question
+        assert "C002: the docs name every command" in question
+        assert "C003: tests/test_c.py passes" in question
+        assert "C001" not in question and "C004" not in question
+        assert record["options"] == ["yes", "no"]
+        assert record["safe_default"] == ""
+        assert record["impact"] == (
+            f"Meet the acceptance criteria mission {mission_id} left unmet: "
+            f"the docs name every command; tests/test_c.py passes.")
+        assert record["status"] == "open"
+
+    def test_a_second_raise_while_it_is_open_returns_none(self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import raise_contract_remainder_decision
+
+        mission_id, job_id = _remainder_mission(tmp_path, monkeypatch)
+        first = raise_contract_remainder_decision(PROJECT, mission_id, root=tmp_path)
+
+        second = raise_contract_remainder_decision(PROJECT, mission_id, root=tmp_path)
+
+        assert first and second is None
+        assert len(load_job_plan(job_id).metadata["escalations"]) == 1
+
+    def test_no_blockers_raises_nothing(self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import raise_contract_remainder_decision
+
+        mission_id, job_id = _remainder_mission(tmp_path, monkeypatch, blockers=False)
+
+        assert raise_contract_remainder_decision(PROJECT, mission_id, root=tmp_path) is None
+        assert "escalations" not in (load_job_plan(job_id).metadata or {})
+
+    def test_a_mission_with_no_job_raises_nothing(self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import raise_contract_remainder_decision
+
+        mission_id, _job_id = _remainder_mission(tmp_path, monkeypatch, job=False)
+
+        assert raise_contract_remainder_decision(PROJECT, mission_id, root=tmp_path) is None
+
+
+class TestTheRemainderAnswer:
+    """D9 (3): only a remainder decision answered exactly `yes` starts the follow-up."""
+
+    def _raised(self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import raise_contract_remainder_decision
+
+        mission_id, job_id = _remainder_mission(tmp_path, monkeypatch)
+        decision_id = raise_contract_remainder_decision(PROJECT, mission_id, root=tmp_path)
+        return mission_id, job_id, decision_id
+
+    def _missions(self, tmp_path) -> list[str]:
+        from packages.orchestration.mission_state import list_missions
+
+        return sorted(m.id for m in list_missions(PROJECT, tmp_path))
+
+    def test_yes_creates_the_follow_up_with_the_order_and_the_blockers(
+            self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import start_remainder_follow_up_mission
+
+        mission_id, job_id, decision_id = self._raised(tmp_path, monkeypatch)
+        source = read_mission_contract(load_mission(PROJECT, mission_id, tmp_path))
+        record = _answer(job_id, decision_id, "yes")
+
+        follow_up_id = start_remainder_follow_up_mission(job_id, record, root=tmp_path)
+
+        assert follow_up_id and follow_up_id != mission_id
+        follow_up = load_mission(PROJECT, follow_up_id, tmp_path)
+        assert follow_up.goal == record["impact"]
+        assert follow_up.order.text == record["impact"]
+        contract = read_mission_contract(follow_up)
+        assert [(c.id, c.text, c.blocking, c.origin, c.milestones, c.status,
+                 c.evidence_ref) for c in contract.criteria] == [
+            ("C001", "the docs name every command", True, "planner", (), "open", None),
+            ("C002", "tests/test_c.py passes", True, "template", (), "open", None)]
+        assert contract.criteria[0].check == source.criteria[1].check
+        assert contract.criteria[1].check == {
+            **source.criteria[2].check, "id": "ctr-C002", "acceptance_refs": ["C002:0"]}
+        assert contract.template is None and contract.amendments == ()
+
+    def test_no_creates_nothing(self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import start_remainder_follow_up_mission
+
+        mission_id, job_id, decision_id = self._raised(tmp_path, monkeypatch)
+        record = _answer(job_id, decision_id, "no")
+
+        assert start_remainder_follow_up_mission(job_id, record, root=tmp_path) is None
+        assert self._missions(tmp_path) == [mission_id]
+
+    def test_another_answer_creates_nothing(self, tmp_path, monkeypatch):
+        from packages.orchestration.mission_contract import start_remainder_follow_up_mission
+
+        mission_id, job_id, decision_id = self._raised(tmp_path, monkeypatch)
+        record = _answer(job_id, decision_id, "yes please")
+
+        assert start_remainder_follow_up_mission(job_id, record, root=tmp_path) is None
+        assert self._missions(tmp_path) == [mission_id]
+
+    def test_a_decision_that_is_not_a_remainder_creates_nothing(self, tmp_path,
+                                                                monkeypatch):
+        from datetime import datetime, timezone
+
+        from packages.orchestration.escalation import enqueue_task_decision
+        from packages.orchestration.mission_contract import start_remainder_follow_up_mission
+
+        mission_id, job_id = _remainder_mission(tmp_path, monkeypatch)
+        job = load_job_plan(job_id)
+        other = enqueue_task_decision(job, task_id=job.tasks[0].task_id,
+                                      question="Which database?", options=("yes", "no"),
+                                      now=datetime.now(timezone.utc))
+        save_job_plan(job)
+        record = _answer(job_id, other["decision_id"], "yes")
+
+        assert start_remainder_follow_up_mission(job_id, record, root=tmp_path) is None
+        assert self._missions(tmp_path) == [mission_id]
