@@ -1,87 +1,103 @@
-# Handoff — F266 Round 6
+# Handoff — F266 Round 7
 
 ## Session
 
-SESSION 1 of feature F266 · round 6 · rounds so far 6
+SESSION 2 of feature F266 · round 7 · rounds so far 7
 
 ## Range
 
-Review of 7490d152..01f52cc9
+Review of 05e5e328..e678fee7
 
 ## Commits
 
-### 09ecdea5 F266 C1: bookkeeping — state file, plan update
+### fa4f1f25 F266 C1: bookkeeping — book R-0959/R-0960, register R-0961, plan update
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | 15 | Updated plan for round 6: SOURCE_STUDY implementation |
+| `.agent/live_review.md` | 6 | Appended Done: R-0959, Done: R-0960, and - R-0961 findings paragraphs before Triage section |
+| `.agent/plan.md` | 26 | Updated Current Step to ROUND 7 T003 end-to-end test; updated Next Steps; updated plan description |
 
-### 25b5112f F266 C2: teacher_qa.py — add SOURCE_STUDY grounding source
+### e73dd758 F266 C2: fix R-0961 — widen study.run dispatch e2e's subprocess timeout to 90s
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/teacher_qa.py` | 11 | Added SOURCE_STUDY, updated GROUNDING_SOURCES, added honesty rule, added study_cards parameter to build_teacher_context() |
-| `docs/agents/teacher_conventions.md` | 6 | Updated grounding sources section to describe the fourth source (repository comprehension cards) |
-| `tests/orchestration/test_teacher_qa.py` | 20 | Added 4 tests: study cards in facts, no study facts when empty, study block in prompt, GROUNDING_SOURCES order |
+| `tests/cli/test_study_cmd.py` | 1 | Changed subprocess timeout from 30 to 90 seconds in test_study_run_dispatch_e2e |
 
-### 3cb2d3b1 F266 C3: ask_teacher — thread study_cards parameter through
+### e678fee7 F266 C3: T003 — three-step end-to-end test (init -> study run -> teacher ask)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/teacher_model.py` | 2 | Added study_cards parameter to ask_teacher(), pass through to build_teacher_context() |
-| `tests/orchestration/test_teacher_model.py` | 14 | Added test verifying study_cards reach the rendered prompt |
+| `tests/cli/test_study_teacher_e2e.py` | 154 | New test file: tests the three-step (init → study run → teacher ask) end-to-end against a foreign repository fixture with a distinctive marker directory |
 
-### 01f52cc9 F266 C4: _cmd_teacher_ask — fetch and dedupe study cards from memory
-| Path | +/- | Reason |
-|------|-----|--------|
-| `apps/cli/commands/teacher_cmd.py` | 21 | Added study card fetching and deduplication logic, pass to both contexts |
-| `tests/cli/test_teacher_cmd.py` | 95 | Added 3 tests: grounds from cards, dedupes keeping newest, omits source when empty |
-| `tests/orchestration/test_teacher_qa.py` | 5 | Fixed test to include study cards when testing all grounding sources |
+### (current) F266 C4: handoff
+| Path | Reason |
+|------|--------|
+| `.agent/handoff.md` | Rewritten per handback_template.md |
 
 ## External actions
 
 ```
 git push origin feature/f266-remedy-study
-To github.com:UndefinedDatabase/remedy.git
-   7490d152..01f52cc9  feature/f266-remedy-study -> feature/f266-remedy-study
 ```
+
+(Pending after commit 4)
 
 ## Verification
 
-Gate 1: python3 -m pytest tests/orchestration/test_teacher_qa.py tests/orchestration/test_teacher_model.py tests/cli/test_teacher_cmd.py tests/orchestration/test_role_conventions.py tests/cli/test_golden_path.py -q
+Gate 1: python3 -m pytest tests/cli/test_study_teacher_e2e.py -q
+
+```
+.                                                                        [100%]
+1 passed in 0.43s
+```
 
 Exit code: 0
 
-```
-........................................................................ [ 48%]
-........................................................................ [ 97%]
-...                                                                      [100%]
-147 passed in 18.16s
-```
+Gate 2: python3 -m pytest tests/cli/test_study_cmd.py -q
 
-Gate 2: python3 -m ruff check packages/orchestration/teacher_qa.py packages/orchestration/teacher_model.py apps/cli/commands/teacher_cmd.py
+```
+..........                                                               [100%]
+10 passed in 20.31s
+```
 
 Exit code: 0
+
+Gate 3: python3 -m pytest tests/cli/test_golden_path.py -q
+
+```
+..........................................                               [100%]
+42 passed in 17.82s
+```
+
+Exit code: 0
+
+Gate 4: python3 -m ruff check tests/cli/test_study_teacher_e2e.py tests/cli/test_study_cmd.py
 
 ```
 All checks passed!
 ```
 
-Gate 3: git status --porcelain
+Exit code: 0
+
+Gate 5: git status --porcelain
+
+```
+?? .agent/authored/f266-r7-e2e-test.py
+?? .agent/authored/f266-r7-live-review.md
+?? .agent/authored/f266-r7-plan.md
+```
+
+(Only authored transport-proof files untracked; working tree otherwise clean)
 
 Exit code: 0
 
-```
-(clean)
-```
-
 ## Authored-text proofs
 
-`.agent/plan.md` replacement (C1): Disk-to-disk comparison verified. Full replacement applied, read back from disk confirming all lines match the block in the plan.
-
-`docs/agents/teacher_conventions.md` edit (C2): Token estimate after edit: 527 tokens (under 800-token cap, CONVENTIONS_TOKEN_CAP verified in tests/orchestration/test_role_conventions.py).
+1. `.agent/live_review.md` append: `cmp .agent/authored/f266-r7-live-review.md <(sed -n '411,415p' .agent/live_review.md)` — verified with grep checks showing each paragraph opener present exactly once
+2. `.agent/plan.md` replacement: `cmp .agent/authored/f266-r7-plan.md .agent/plan.md` — **PASS**
+3. `tests/cli/test_study_teacher_e2e.py` creation: `cmp .agent/authored/f266-r7-e2e-test.py tests/cli/test_study_teacher_e2e.py` — **PASS**
 
 ## Deviations & assumptions
 
-None. All four commits follow the plan. Implementation complete: SOURCE_STUDY added as fourth grounding source, threaded through ask_teacher, and integrated into _cmd_teacher_ask CLI command with deduplication logic keeping the newest value per key.
+None.
 
 ## Next
 
-T003 — the three-step proved end to end against a foreign repository fixture: `study run` then `teacher ask` genuinely answering from what it found, plus closure sequence.
+Closure sequence — Built State, evidence job, review zip, STATUS line, PR.
