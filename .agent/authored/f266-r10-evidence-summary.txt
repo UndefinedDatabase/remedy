@@ -1,0 +1,43 @@
+Evidence Job Summary for F266 Round 10 Closure
+
+Created: 2026-09-18
+Evidence job ID: f266r10e1001
+Head commit: 9c9ce9a1a352af4fe2230e366567b5dc81b625cf
+Base commit: ec520c17cc45b237b13a020f441bee9b8e0ffd63
+
+Test Verification Run:
+  - Run ID: vr-1010
+  - Test files: 13 files
+  - Node IDs collected: 409
+  - Passed: 409
+  - Failed: 0
+  - Skipped: 0
+  - Exit code: 0
+  - Output hash: f0b8a0772366e92298066eb9f28a8a84f252da425b0b2dfb5c1a2251aeb92bae
+
+Evidence Bundle:
+  - Job ID: f266r10e1001
+  - Verdict: PASS_WITH_RISKS
+  - Authoritative files: 26
+  - Commit count: 48
+  - Partition: T001=9, T002=9, T003=8
+  - Total passed: 409
+  - Manual completion: true
+  - Operator-attested tasks: T001, T002, T003
+
+Test files verified:
+  1. tests/orchestration/test_study.py
+  2. tests/cli/test_study_cmd.py
+  3. tests/cli/test_study_teacher_e2e.py
+  4. tests/orchestration/test_teacher_qa.py
+  5. tests/orchestration/test_teacher_model.py
+  6. tests/cli/test_teacher_cmd.py
+  7. tests/test_memory_gateway.py
+  8. tests/orchestration/test_role_config.py
+  9. tests/orchestration/test_import_reachability.py
+  10. tests/cli/test_cli_ux.py
+  11. tests/regression/test_resource_safety.py
+  12. tests/docs/test_vocabulary.py
+  13. tests/cli/test_golden_path.py
+
+Evidence directory: .remedy-wt/f266_evidence_round10
