@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import os
 import threading
-import time
 from http.client import HTTPConnection
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -17,6 +16,7 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from tests.ui_server.server_start import wait_for_server_info
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -156,13 +156,8 @@ class TestUIServerIntegration:
         t = threading.Thread(target=run, daemon=True)
         t.start()
 
-        # Wait for info file
-        for _ in range(50):
-            if Path(info_file).exists():
-                info = json.loads(Path(info_file).read_text())
-                return info["port"], token, t
-            time.sleep(0.1)
-        pytest.fail("Server did not start in time")
+        info = wait_for_server_info(info_file, t)
+        return info["port"], token, t
 
     def test_server_starts_and_writes_info(self):
         port, token, t = self._start_server()

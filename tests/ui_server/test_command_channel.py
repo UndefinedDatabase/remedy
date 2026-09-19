@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import threading
-import time
 from http.client import HTTPConnection
 from pathlib import Path
 from urllib.parse import quote
@@ -21,6 +20,7 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from tests.ui_server.server_start import wait_for_server_info
 
 # The wire spelling is pinned here on purpose: a test that imports the constant
 # it is checking cannot catch a rename of the header the browser has to send.
@@ -98,14 +98,11 @@ class TestCommandChannelDoor:
             except (SystemExit, KeyboardInterrupt):
                 pass
 
-        threading.Thread(target=run, daemon=True).start()
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
 
-        for _ in range(50):
-            if Path(info_file).exists():
-                info = json.loads(Path(info_file).read_text())
-                return info["port"], token
-            time.sleep(0.1)
-        pytest.fail("Server did not start in time")
+        info = wait_for_server_info(info_file, t)
+        return info["port"], token
 
     # -- request helpers ---------------------------------------------------
 

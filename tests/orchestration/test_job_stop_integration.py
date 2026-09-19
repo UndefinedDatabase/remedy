@@ -22,7 +22,7 @@ from pathlib import Path
 import psutil
 import pytest
 
-from packages.orchestration.data_paths import job_record_path, runs_dir
+from packages.orchestration.data_paths import job_record_path
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_STOPPED,
@@ -245,12 +245,15 @@ class TestStopDuringAProviderCall:
         assert stopped.state == JOB_STOPPED
         assert stopped.tasks[0].status == TASK_PENDING
 
-        run = json.loads((runs_dir()
-                          / f"{stopped.tasks[0].run_id}.json").read_text()) \
-            if (runs_dir()
-                / f"{stopped.tasks[0].run_id}.json").is_file() else None
-        if run is not None:
-            assert run["reviewer_parse_retry_count"] == 0
+        # The run record is persisted before the stop is honoured, so it is read
+        # through the store's own reader and its absence FAILS (finding R-0815):
+        # the guarded read this replaces addressed `runs/<run_id>.json`, a path the
+        # store never writes, and so asserted nothing on every run.
+        from packages.orchestration.pingpong_loop import load_run
+
+        run = load_run(stopped.tasks[0].run_id)
+        assert run is not None, "the stopped task's run record was never persisted"
+        assert run["reviewer_parse_retry_count"] == 0
 
     def test_a_stop_is_never_dressed_up_as_a_failure(self, isolate_data_root, demo_repo):
         job = parse_job_file(_ONE_TASK_JOB, str(demo_repo))

@@ -346,7 +346,15 @@ class TestTheInFlightHelpersTouchOnlyTheirOwnKey:
     cannot say what the function it calls does: `next.delete(answerKey)` becoming
     `next.clear()` leaves every one of them green while a settled send clears
     EVERY answer's key and reinstates R-0687. These read the two helper BODIES,
-    which is where "only its own" is actually implemented."""
+    which is where "only its own" is actually implemented.
+
+    WHAT THESE CANNOT SEE (finding R-0691). Each body is pinned by a PRESENCE — it
+    adds, or deletes, the key it was handed — and by an EXCLUSION LIST of bulk
+    operations. That is containment, not completeness: a SECOND operation on a
+    key the body invents, such as `next.add(answerKey + "-x")` beside the real
+    one, is on neither list and leaves every assertion here green. A source
+    guard's reach ends where "and nothing else" begins; closing that gap needs a
+    test that RUNS the helpers, not a stronger substring."""
 
     def test_the_add_helper_copies_the_set_before_it_changes_it(self):
         body = ts_function_body(strip_ts_comments(CARD.read_text()), "withAnswerKey")
@@ -360,7 +368,7 @@ class TestTheInFlightHelpersTouchOnlyTheirOwnKey:
             "both as one and prove nothing about either"
         )
 
-    def test_the_add_helper_adds_the_passed_key_and_nothing_else(self):
+    def test_the_add_helper_adds_the_key_it_was_handed(self):
         body = ts_function_body(strip_ts_comments(CARD.read_text()), "withAnswerKey")
         assert "next.add(answerKey)" in body, (
             "a press marks ITS OWN answer in flight, named by the key it was "
@@ -378,11 +386,12 @@ class TestTheInFlightHelpersTouchOnlyTheirOwnKey:
             "the adder's makes"
         )
 
-    def test_the_remove_helper_deletes_the_passed_key_and_nothing_else(self):
+    def test_the_remove_helper_deletes_the_key_it_was_handed(self):
         body = ts_function_body(strip_ts_comments(CARD.read_text()), "withoutAnswerKey")
         assert "next.delete(answerKey)" in body, (
-            "a settled send takes ITS OWN key out of the set and no other, which "
-            "is the whole of finding R-0687 in a single line"
+            "a settled send takes ITS OWN key out of the set, named by the key "
+            "it was handed; that it touches no OTHER key is beyond this reading "
+            "(finding R-0691, class docstring)"
         )
 
     def test_neither_helper_carries_a_bulk_operation(self):
