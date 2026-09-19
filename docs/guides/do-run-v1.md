@@ -131,8 +131,8 @@ run with a commit flag push exactly as `--push` would; set without a commit flag
 ## Next-line commands
 
 `DoRunNextAction` in `packages/orchestration/do_run.py` is the label, command
-and reason of one next action, which `packages/orchestration/repair_loop.py`
-builds its results with. The check that a `remedy <group> <subcommand> ...`
+and reason of one next action; the repair loop that built its results with it
+was deleted by F273 (R-0923), so no production module imports it now. The check that a `remedy <group> <subcommand> ...`
 command names a real `<group>.<subcommand>` entry of the command catalog is the
 test helper `names_catalog_command` in `tests/orchestration/catalog_commands.py`
 (R-0903).

@@ -235,17 +235,10 @@ class TestDashboardShape:
         assert "proof" in dash["metrics"]
         assert "snapshot" in dash
         assert "continuation" in dash
-        assert "repair" in dash
+        # R-0926: the two repair sections read stores nothing writes, and went.
+        assert "repair" not in dash and "repair_request" not in dash
         for key in ("runs", "passed", "failed", "latest_state"):
             assert key in dash["metrics"]["tests"]
-
-    def test_repair_section_safe_shape(self):
-        job = JobPlan(job_title="t")
-        repair = _build_dashboard(job)["repair"]
-        assert repair["attempt_count"] == 0
-        assert repair["pending_approval_count"] == 0
-        assert repair["next_safe_action"] == ""  # no approve affordance without evidence
-        assert repair["source"] == "repair_attempts_v1"
 
     def test_overnight_section_present(self):
         job = JobPlan(job_title="t")
@@ -256,15 +249,6 @@ class TestDashboardShape:
         assert "can_run_unattended" in ov
         # No fabricated "ready" overnight state without evidence/policy.
         assert ov["can_run_unattended"] in (False, "unknown")
-
-    def test_repair_request_section_present(self):
-        # Read-only Repair Request Builder summary (Step 1381).
-        job = JobPlan(job_title="t")
-        dash = _build_dashboard(job)
-        assert "repair_request" in dash
-        rr = dash["repair_request"]
-        assert "request_package_count" in rr
-        assert "pending_response_count" in rr
 
     def test_self_dogfood_section_present(self):
         # Read-only Self-Dogfood summary (Step 1418).

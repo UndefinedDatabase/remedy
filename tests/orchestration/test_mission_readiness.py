@@ -21,9 +21,8 @@ import pytest
 
 from packages.core.models import Artifact, ArtifactKind
 from packages.orchestration import mission_readiness as OV
-from packages.orchestration import repair_loop as RL
-from packages.orchestration.data_paths import mint_job_id, normalize_job_id
-from packages.orchestration.pingpong_job import JobPlan, TaskEntry, load_job_plan, save_job_plan
+from packages.orchestration.data_paths import mint_job_id
+from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
 
 
 @pytest.fixture()
@@ -99,6 +98,21 @@ def _add_failure(data_dir, job, *, resolved=False, related_files=None, safe_summ
     return str(fa.id)
 
 
+def _add_pending_intent(data_dir, job):
+    """One patch intent with no recorded decision, which reads as pending."""
+    art = Artifact(name="build", content="x", kind=ArtifactKind.BUILDER_PROPOSAL,
+                   task_id=str(job.tasks[0].task_id),
+                   metadata={"patch_intent_explanations": [
+                       {"file": "docs/CHANGES.md", "action": "create", "risk": "low",
+                        "reason": "", "summary": "safe doc"}], "patch_intent_approvals": {}})
+    job.artifacts.append(art)
+    save_job_plan(job, root=data_dir)
+
+
+def _item(report, item_id):
+    return next(i for i in report.checklist if i.id == item_id)
+
+
 # ---------------------------------------------------------------------------
 # Policy (1247)
 # ---------------------------------------------------------------------------
@@ -160,18 +174,23 @@ class TestReadinessTruth:
         assert "unresolved_failures" in rep.blockers
         assert rep.can_run_unattended is False
 
-    def test_repair_pending_blocks_unattended(self, env):
+    def test_failure_resolved_reads_the_unresolved_failures(self, env):
+        # R-0923: with the repair-attempt store gone, only an unresolved failure
+        # artifact decides this item.
         job = _job(env)
-        fa = _add_failure(env, job)
-        job2 = load_job_plan(normalize_job_id(str(job.job_id)), env)
-        att = RL.RepairAttempt(attempt_id="a1", job_id=str(job.job_id), failure_artifact_id=fa,
-                               repair_intent_id="ri-1", status="approval_required",
-                               source="cli_v1", created_at="t")
-        RL.save_repair_attempt(job2, att)
         rep = OV.build_overnight_readiness(str(job.job_id), env)
-        assert "repair_pending_approval" in rep.blockers
-        na = rep.next_action
-        assert na.command == f"remedy patch approve {job.job_id} ri-1"
+        assert _item(rep, "failure_resolved").status == "skipped"
+        _add_failure(env, job)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
+        assert _item(rep, "failure_resolved").status == "pending"
+
+    def test_human_decision_needed_reads_the_pending_intents(self, env):
+        job = _job(env)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
+        assert _item(rep, "human_decision_needed").status == "skipped"
+        _add_pending_intent(env, job)
+        rep = OV.build_overnight_readiness(str(job.job_id), env)
+        assert _item(rep, "human_decision_needed").status == "pending"
 
     def test_no_command_for_missing_entity(self, env):
         job = _job(env)  # no intents, no failures
@@ -272,9 +291,6 @@ class TestArchitectureGuards:
         for ln in self._imports():
             assert "test_execution_service" not in ln
         assert "execute_test_run" not in self.SRC
-
-    def test_no_repair_propose_call(self):
-        assert "run_repair_attempt" not in self.SRC
 
     def test_no_provider_or_subprocess(self):
         # No provider/ollama/subprocess IMPORTS (the word may appear in safe

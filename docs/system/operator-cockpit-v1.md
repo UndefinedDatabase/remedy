@@ -36,8 +36,11 @@ derives the cockpit truth sections from authoritative sources:
 | `metrics.proof` | `build_proof_chain` (authoritative) | total_changes vs verified; state verified/partial/none |
 | `snapshot` | `build_snapshot_truth` over `list_durable_apply_ids` | apply_records/verified/reverted/drift_detected; `source = durable_apply_records` |
 | `continuation` | approved intents | available (approved-intent light check) only; the last_result/last_stop_reason half, fed by `do_continue_stopped` events nothing writes since F261 round 21, was deleted by F273 (R-0919) |
-| `repair` | `repair_attempts_v1` job metadata | attempt_count + pending_approval_count + a copyable `remedy patch approve` next action — never an Approve button |
 | `overnight` | `build_overnight_readiness` (read-only) | readiness_level + ready/can_run_unattended + blocker_count + next-action label + checklist counts; `unknown` when data root unavailable; never a button |
+
+F273 deleted the `repair` and `repair_request` sections (R-0926): they read the
+repair-attempt store and the repair request packages, which nothing writes since
+F261 round 22 deleted the `repair` group.
 
 When the data root cannot be resolved, every derived value is reported as the
 explicit string `"unknown"` (and the frontend renders `—`). Zeros are never
@@ -68,7 +71,7 @@ faked to stand in for unknown data.
   outcome used to feed the cockpit `continuation` section.
 - [snapshot-rollback-v1.md](snapshot-rollback-v1.md) — the durable snapshot/apply
   truth behind the `snapshot` section.
-- [repair-loop-v1.md](repair-loop-v1.md) — the repair attempts surfaced (read-only)
-  in the `repair` section.
+- [repair-loop-v1.md](repair-loop-v1.md) — the repair attempts the deleted `repair`
+  section used to surface.
 - [bounded-overnight-prep-v0.md](../archive/bounded-overnight-prep-v0.md) — the read-only
   `overnight` readiness section (level/blockers/next action/checklist counts).

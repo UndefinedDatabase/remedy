@@ -562,8 +562,8 @@ def execute_test_run(
 ) -> TestExecutionResult:
     """Run a test for a job. Enforces all gates. Returns a safe result.
 
-    This is the single entry point. CLI, repair_loop, and future flows all
-    call here. No raw output returned.
+    This is the single entry point. The CLI and future flows all call here.
+    No raw output returned.
 
     Args:
         request: Test execution request.

@@ -527,54 +527,6 @@ def _build_continuation_section(job: Any, data_dir: Path | None) -> dict[str, An
     return {"available": available}
 
 
-def _build_repair_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Repair Loop v1 summary for the cockpit (Step 1210).
-
-    Counts + safe statuses only — no failure output, no patch body, no source.
-    No mutation affordance: a pending approval surfaces a copyable CLI command,
-    never an Approve button.
-    """
-    attempts = (job.metadata or {}).get("repair_attempts_v1", {})
-    attempt_count = 0
-    pending_approval = 0
-    applied_count = 0
-    tested_passed_count = 0
-    tested_failed_count = 0
-    resolved_failure_count = 0
-    pending_intent_id = ""
-    if isinstance(attempts, dict):
-        for v in attempts.values():
-            if not isinstance(v, dict):
-                continue
-            attempt_count += 1
-            status = v.get("status")
-            if status == "approval_required":
-                pending_approval += 1
-                if not pending_intent_id and v.get("repair_intent_id"):
-                    pending_intent_id = str(v.get("repair_intent_id"))
-            if status in ("applied", "tested_passed", "tested_failed"):
-                applied_count += 1
-            if status == "tested_passed":
-                tested_passed_count += 1
-            if status == "tested_failed":
-                tested_failed_count += 1
-            if v.get("resolved_failure"):
-                resolved_failure_count += 1
-    next_action = ""
-    if pending_intent_id:
-        next_action = f"remedy patch approve {job.job_id} {pending_intent_id}"
-    return {
-        "attempt_count": attempt_count,
-        "pending_approval_count": pending_approval,
-        "applied_count": applied_count,
-        "tested_passed_count": tested_passed_count,
-        "tested_failed_count": tested_failed_count,
-        "resolved_failure_count": resolved_failure_count,
-        "next_safe_action": next_action,
-        "source": "repair_attempts_v1",
-    }
-
-
 def _build_overnight_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
     """Safe read-only Bounded Overnight Prep summary for the cockpit (Step 1262).
 
@@ -642,30 +594,6 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
                 "requires_human_approval": True,
                 "warning_count": "unknown", "next_safe_action": "", "live": False,
                 "source": "unavailable"}
-
-
-def _build_repair_request_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Repair Request Builder summary for the cockpit (Step 1381).
-
-    Counts + latest target only. No buttons, no mutation, no external execution,
-    no raw request content."""
-    try:
-        from packages.orchestration.provider_patch_material import load_materials
-        from packages.orchestration.repair_request_builder import load_request_packages
-        packages = list(load_request_packages(job).values())
-        materialized = {m.get("failure_artifact_id") for m in load_materials(job).values()
-                        if m.get("material_state") == "materialized"}
-        pending = sum(1 for p in packages if p.get("failure_artifact_id") not in materialized)
-        latest = packages[-1].get("target_kind", "") if packages else "none"
-        return {
-            "request_package_count": len(packages),
-            "pending_response_count": pending,
-            "latest_request_target": latest,
-            "source": "repair_request_builder",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"request_package_count": "unknown", "pending_response_count": "unknown",
-                "latest_request_target": "unknown", "source": "unavailable"}
 
 
 def _build_self_dogfood_section(job: Any) -> dict[str, Any]:
@@ -1097,12 +1025,10 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         },
         "snapshot": _build_snapshot_section(job, truth_data_dir),
         "continuation": _build_continuation_section(job, truth_data_dir),
-        "repair": _build_repair_section(job),
         "overnight": _build_overnight_section(job, truth_data_dir),
         "token_economy": _build_token_economy_section(job),
         "test_execution": _build_test_execution_section(job),
         "snapshot_rollback": _build_snapshot_rollback_section(job),
-        "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
         "token_usage": _build_token_usage(events),

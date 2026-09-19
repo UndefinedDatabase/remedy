@@ -187,8 +187,6 @@ packages.orchestration.rate_governor
 packages.orchestration.real_test_execution
 packages.orchestration.repair_attest
 packages.orchestration.repair_context
-packages.orchestration.repair_loop
-packages.orchestration.repair_request_builder
 packages.orchestration.repo_applicator
 packages.orchestration.repo_ignore
 packages.orchestration.repository_snapshot

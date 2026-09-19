@@ -269,35 +269,22 @@ def _detect_evidence_gaps(job: Any, items: list) -> None:
     if job is None:
         return
     job_id = str(job.job_id)
-    # Failure artifact without a repair attempt; repair without pending intent.
-    try:
-        from packages.orchestration.repair_loop import load_repair_attempts
-        attempts = list(load_repair_attempts(job).values())
-        attempt_failures = {a.failure_artifact_id for a in attempts}
-        failures = [a for a in job.artifacts if (a.metadata or {}).get("test_failure")
-                    and not (a.metadata or {}).get("failure_resolved")]
-        for fa in failures:
-            if str(fa.id) not in attempt_failures:
-                items.append(_mk_item(
-                    ItemType.EVIDENCE_GAP, Priority.HIGH, Confidence.HIGH,
-                    "Unresolved failure has no repair attempt", key=f"failure_no_repair_{fa.id}",
-                    detail="A failure artifact exists with no repair proposal.",
-                    source_type="repair_loop",
-                    evidence=[SelfImprovementEvidence("failure_artifact", str(fa.id))],
-                    next_action=SelfImprovementAction(
-                        "Read the failure evidence",
-                        f"remedy job show {job_id} --full --json",
-                        "Unresolved failure with no repair attempt; F261 round 22 "
-                        "deleted the command that proposed one.")))
-        for a in attempts:
-            if a.status == "approval_required" and not a.repair_intent_id:
-                items.append(_mk_item(
-                    ItemType.EVIDENCE_GAP, Priority.MEDIUM, Confidence.MEDIUM,
-                    "Repair attempt without a pending intent", key=f"repair_no_intent_{a.attempt_id}",
-                    detail="A repair attempt requires approval but has no patch intent.",
-                    source_type="repair_loop"))
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        pass
+    # An unresolved failure artifact. F273 deleted the repair-attempt store (R-0923), so no
+    # failure has a repair attempt and none is read.
+    failures = [a for a in job.artifacts if (a.metadata or {}).get("test_failure")
+                and not (a.metadata or {}).get("failure_resolved")]
+    for fa in failures:
+        items.append(_mk_item(
+            ItemType.EVIDENCE_GAP, Priority.HIGH, Confidence.HIGH,
+            "Unresolved failure has no repair attempt", key=f"failure_no_repair_{fa.id}",
+            detail="A failure artifact exists with no repair proposal.",
+            source_type="failure_artifact",
+            evidence=[SelfImprovementEvidence("failure_artifact", str(fa.id))],
+            next_action=SelfImprovementAction(
+                "Read the failure evidence",
+                f"remedy job show {job_id} --full --json",
+                "Unresolved failure with no repair attempt; F261 round 22 "
+                "deleted the command that proposed one.")))
 
 
 def _detect_roadmap(items: list) -> None:

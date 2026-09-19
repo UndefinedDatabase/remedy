@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Run Contract is an immutable execution boundary for a Remedy job run. It defines what actions are allowed, what paths are safe, and what budgets apply. It is enforced before each phase in `repair_loop`.
+A Run Contract is an immutable execution boundary for a Remedy job run. It defines what actions are allowed, what paths are safe, and what budgets apply. The repair loop that enforced it before each of its phases was deleted by F273 (R-0923).
 
 ## What the contract controls
 
@@ -61,7 +61,3 @@ No group of its own; its budget fields are written by `job budget set` (above). 
 amend0905-vocab D4, which frees the word `contract` for the acceptance criteria of a
 mission. A job's execution boundary is read as its permissions and fences with
 `remedy job show <job_id> --full --json`.
-
-## Integration
-
-- **repair_loop**: Loads same persisted contract via `ensure_contract(job)`, checks before create_fix_task and create_patch_intent, records usage

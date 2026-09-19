@@ -7,6 +7,9 @@
 > any more, so the counts it reports are frozen at whatever an earlier release left on
 > disk. There is NO heir: preparing a hand-off package for an external actor has no
 > surviving command. The page is kept as the record of what was built.
+>
+> **Status (F273):** F273 deleted the orchestration module `repair_request_builder`,
+> its test file and the cockpit's `repair_request` section together (R-0925, R-0926).
 
 Given a TestFailureArtifact, Remedy produces a **safe, structured request package**
 that can be handed to **any** external worker / model / human. Remedy stays

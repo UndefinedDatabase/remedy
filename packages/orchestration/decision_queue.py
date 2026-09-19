@@ -262,8 +262,7 @@ def list_decisions(
         meta = tf.get("metadata", {})
         # F032 R7 (R-0712): the ONLY emitter that produces this event,
         # `test_execution_service._safe_event_meta`, writes the key
-        # `command_safe` and never `command` — `repair_loop` reads
-        # `command_safe` off the same event in two places — so reading
+        # `command_safe` and never `command`, so reading
         # `command` first rendered "Test '?' failed." on every real failure.
         # The older key is STILL HONOURED and is NOT dead code:
         # `_fixture_test_failure` in `tests/orchestration/test_decision_inbox.py`

@@ -79,14 +79,6 @@ class TestApprovalGateRegression:
         assert "from packages.orchestration.source_apply import" not in source
         assert "source_apply(" not in source
 
-    def test_repair_loop_does_not_import_source_apply(self):
-        import inspect
-
-        from packages.orchestration import repair_loop
-        source = inspect.getsource(repair_loop)
-        assert "from packages.orchestration.source_apply import" not in source
-        assert "source_apply(" not in source
-
 
 # ---------------------------------------------------------------------------
 # Step 1055: Allowed action tests
