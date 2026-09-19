@@ -22,6 +22,7 @@ import json
 
 import pytest
 
+from packages.core.models import RunState
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
     JOB_PLANNED,
@@ -82,14 +83,23 @@ class TestTheRenderingIsUnchanged:
     def test_a_blocked_job_renders_and_exports_as_the_plain_word_blocked(self):
         """The guard move THREE has to keep green.
 
-        ``RunState``'s ``str()`` is ``'RunState.BLOCKED'`` while its f-string is the
-        value, so retyping ``state`` without ``.value`` at the boundaries leaving the
-        record changes exactly these two readings and nothing else visible.
+        A ``RunState`` member formats as its value, so retyping ``state`` without
+        ``.value`` at the boundaries leaving the record changes neither reading.
         """
         job = JobPlan(job_id="j1", state=JOB_BLOCKED)
         assert f"{job.state}" == "blocked"
         assert _export_job(job)["status"] == "blocked"
         assert isinstance(_export_job(job)["status"], str)
+
+    def test_every_run_state_member_formats_and_stringifies_as_its_value(self):
+        """T016 (a). Python 3.11 made ``format()`` of a mixed-in enum follow
+        ``__str__``, so a ``RunState`` without its own ``__str__`` renders
+        ``RunState.BLOCKED`` in every f-string there. Asserting ``str()`` as well
+        makes the guard red on 3.10 too, where ``format()`` alone cannot fail."""
+        for member in RunState:
+            assert str(member) == member.value, member
+            assert format(member) == member.value, member
+            assert f"{member}" == member.value, member
 
 
 class TestTheRetypeIsComplete:

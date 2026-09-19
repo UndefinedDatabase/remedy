@@ -46,6 +46,11 @@ class RunState(str, Enum):
     BLOCKED = "blocked"
     STOPPED = "stopped"
 
+    def __str__(self) -> str:
+        # Since Python 3.11 `format()` of a mixed-in enum follows `__str__`, so without
+        # this `f"{job.state}"` renders `RunState.BLOCKED` there and `blocked` on 3.10.
+        return self.value
+
 
 class ArtifactKind(str, Enum):
     """Semantic category of an Artifact.

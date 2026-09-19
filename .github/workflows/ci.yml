@@ -24,6 +24,14 @@ jobs:
     # (3900 s), so a slow stage dies at ITS OWN budget and names itself in the
     # summary, instead of the job being killed first and naming no stage at all.
     timeout-minutes: 90
+    # pyproject.toml promises `requires-python = ">=3.10"`, so the floor AND a
+    # current interpreter both run the whole suite (F273 T016 (a): 3.11 changed
+    # how a str-mixed enum formats and a 3.10-only CI could not see it). No
+    # fail-fast: one column's red must not cancel the other and hide its colour.
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.12']
     steps:
       - uses: actions/checkout@v4
         # Full history, not the checkout's default depth of one commit: the
@@ -34,7 +42,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: ${{ matrix.python-version }}
           cache: pip
 
       - uses: actions/setup-node@v4
