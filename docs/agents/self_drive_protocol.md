@@ -78,6 +78,9 @@ first action names Phase 1 rule 1 before rule 2.
    `.agent/authored/` by the worker; in-session there is no transport, so
    the hash-stamp ritual is replaced by a `cmp` of the applied file
    against the authored original — the proof obligation is unchanged.
+   Before the commit that saves a block copy, the worker compares the
+   saved file's line count and sha256 with the block text it was given
+   and reports both readings (finding R-0954).
 2. **Delegate.** One worker subagent per round, given the step block and
    nothing else it did not read itself. It follows AGENTS.md in full:
    self-review loop before every commit, small commits, `.agent/plan.md`
@@ -146,6 +149,10 @@ for it. Reverse by deleting this paragraph.
   checks run only inside a disposable `git worktree`, never in the
   primary checkout, which satisfies `git status --porcelain` == empty at
   every verdict.
+  The step that creates such a worktree names its path under
+  `.remedy-wt/` and removes it as that step's last action, reporting
+  `git worktree list` afterwards; the reviewer runs `git worktree list`
+  at the verdict of every round that used one (finding R-0940).
 - **G6 STOP file.** If `.agent/STOP` appears at any point, finish the
   current commit if one is half-written, then hand off and end.
 - **G7 Session limits.** The session states its round cap and wall-clock
