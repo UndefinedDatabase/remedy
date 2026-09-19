@@ -153,6 +153,7 @@ GROUPS: dict[str, GroupDef] = {
     "ci": GroupDef("ci", "CI", "Remedy's own CI stages, executed locally.", user_facing=False, feature="F083", reach="self-build"),
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False, feature="F261", reach="self-build"),
     "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False, feature="F261", reach="job-path"),
+    "data": GroupDef("data", "Data", "The data root's disk footprint, per directory class.", user_facing=False, feature="F276", reach="job-path"),
     "study": GroupDef("study", "Study", "Bounded, read-only repository comprehension pass. Files approved memory cards for `teacher ask` to answer from.", user_facing=False, feature="F266", reach="teacher"),
     # -- Hidden: in no help at all, callable (DECISION amend0905-vocab D4) --
     "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True, feature="F080", reach="self-build"),
@@ -2125,6 +2126,17 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID, _JSON_OPT),
         supports_json=True,
         related=("snapshot.inspect",),
+    ),
+
+    # ── data (F276: the data root's classes and footprint) ───────────────
+    CommandEntry(
+        command_id="data.usage",
+        group_id="data",
+        subcommand="usage",
+        description="Show the data root's bytes and files per class and per top-level directory (read-only).",
+        action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
     ),
 
     # ── config ──────────────────────────────────────────────────────────

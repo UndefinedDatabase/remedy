@@ -2460,6 +2460,18 @@ Resolution order (unchanged from historical convention):
 
 **Invariant**: In production Python under `apps/` and `packages/`, `data_paths.py` is the only file that contains `os.environ.get("REMEDY_DATA_DIR")`. Scripts and tests may still read it directly.
 
+**Data-root classes (F276 T001).** Every top-level child of the data root is in
+exactly one of `data_paths.EPHEMERAL_CLASSES` (scratch: `job_workspaces`,
+`workspaces`, `runs`, `job_logs`, `review_staging.*`) or `DURABLE_CLASSES`
+(everything else), each entry naming its owning module and its reclaim rule; the
+class-named `*_dir()` helpers resolve through `data_class_dir(name)`, which refuses
+an unregistered name. `tests/test_data_root_classes.py` scans `packages/`, `apps/` and
+`scripts/` for every child the code creates and reds on one in neither class.
+`remedy data usage [--json]` (`packages/orchestration/data_footprint.py`) reports
+bytes and files per class and per child from one read-only walk that follows no
+symlink; a child no class names, such as a legacy `task_jobs/`, reports as
+`unclassified`. Reclaim is T002 and does not exist yet.
+
 ### Part C — `packages/orchestration/path_utils.py`
 
 **Single canonical path-component sanitizer.**
