@@ -463,7 +463,6 @@ class TestSessionRegistry:
 
     def test_dead_archive_is_capped_at_ten(self, tmp_path, monkeypatch):
         import apps.cli.commands.ui as ui_mod
-        import datetime
 
         def patched_dead_sessions_dir():
             d = tmp_path / "ui" / "sessions_dead"
@@ -497,9 +496,9 @@ class TestSessionRegistry:
 
     def test_ui_status_all_flag_round_trips_through_grouped_cli(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        import apps.cli.commands.ui as ui_mod
-        from apps.cli import grouped
         import datetime
+
+        from apps.cli import grouped
 
         # Create the data dirs
         sessions_dir = tmp_path / "ui" / "sessions"

@@ -1125,6 +1125,7 @@ class TestEveryPredictedNumberCarriesItsBasis:
     def test_the_json_report_never_carries_a_prediction_without_its_basis(
             self, isolate_data_root, demo_repo, capsys):
         import json
+
         from apps.cli.commands.job import _cmd_job_budget
         _configure_price_basis(demo_repo, price_basis=0.01)
         job = _save_predictable_job(demo_repo, budgets={"max_cost_usd": 10.0})

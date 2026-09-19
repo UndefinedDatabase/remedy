@@ -164,14 +164,14 @@ def _fixture_proposal() -> tuple[JobPlan, list[dict]]:
     REMEDY_DATA_DIR, so we use that via the data_paths module.
     """
     from pathlib import Path
+
     from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.pingpong_job import save_job_plan
     from packages.orchestration.proposed_tasks import (
         ProposedTask,
         ProposedTaskStatus,
         add_proposed_task,
     )
-
-    from packages.orchestration.pingpong_job import save_job_plan
 
     job = _make_job()
     job_id = str(job.job_id)

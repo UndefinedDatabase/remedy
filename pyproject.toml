@@ -9,7 +9,7 @@ requires-python = ">=3.10"
 dependencies = ["pydantic>=2.0", "psutil>=5.9"]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-xdist", "ruff", "mypy", "pytest-cov", "coverage"]
+dev = ["pytest", "pytest-xdist", "ruff==0.15.17", "mypy", "pytest-cov", "coverage"]
 ollama = ["ollama>=0.4"]
 
 [project.scripts]
@@ -49,6 +49,11 @@ markers = [
 [tool.ruff]
 target-version = "py310"
 line-length = 120
+# WHY: the gauntlet sample project is its own project rooted at its own directory,
+# and its import sorting is correct there (`sampleproj` is first-party). Without
+# its root named here ruff reads `sampleproj` as third-party, and the file cannot
+# be "fixed" instead: the template is digest-frozen in scripts/gauntlet_orders.
+src = [".", "scripts/gauntlet_sample_project"]
 extend-exclude = [
     ".git",
     ".data",

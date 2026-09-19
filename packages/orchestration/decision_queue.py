@@ -989,8 +989,8 @@ def list_decisions(
     #    an unresolved task, or one approved for build but not yet materialized.
     try:
         from packages.orchestration.proposed_tasks import (
-            load_proposed_tasks_safe,
             ProposedTaskStatus,
+            load_proposed_tasks_safe,
         )
         proposed_tasks, degraded = load_proposed_tasks_safe(job_id)
         for task in proposed_tasks:

@@ -32,8 +32,9 @@ terminal-blocked path reports it instead of this module looping forever.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 from packages.core.models import RunState
 from packages.orchestration.pingpong_job import TaskEntry

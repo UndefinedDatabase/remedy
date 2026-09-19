@@ -619,8 +619,9 @@ class TestTeacherAskGroundsInStudyCards:
         assert "study" in payload["grounding_sources"]
 
     def test_teacher_ask_dedupes_study_cards_keeping_the_newest(self, teacher_ledger, capsys):
-        from packages.memory.local_gateway import store_memory, _jsonl_path, _load_entries, _rewrite_entries
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
+
+        from packages.memory.local_gateway import _jsonl_path, _load_entries, _rewrite_entries, store_memory
 
         # Extract project_id from the ledger path:
         # teacher_ledger = data_root / "projects" / str(project.id) / _LEDGER_NAME_PREFIX

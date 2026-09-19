@@ -22,6 +22,7 @@ import psutil
 import pytest
 
 from apps.cli.commands import runtime_cmd
+
 # The absolute-path detector is the SHARED one dev_server redacts with; it is
 # imported from its owning module rather than through dev_server's private
 # alias, which no longer exists.
@@ -41,11 +42,11 @@ from packages.runtimes.dev_server import (
     project_digest,
     save_state,
 )
+from tests.ports import worker_port
 from tests.runtimes.runtime_cleanup import (
     RuntimeRegistry,
     basetemp_survivors,
 )
-from tests.ports import worker_port
 
 pytestmark = pytest.mark.subprocess
 
