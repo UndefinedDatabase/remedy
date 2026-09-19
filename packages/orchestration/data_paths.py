@@ -33,6 +33,9 @@ Public API::
     projects_dir(root: Path | None = None) -> Path
     workspaces_dir(root: Path | None = None) -> Path
     viewers_dir(root: Path | None = None) -> Path
+    EPHEMERAL_CLASSES / DURABLE_CLASSES      # the data-root class registry (F276)
+    classify_data_child(name) -> "ephemeral" | "durable" | None
+    data_class_dir(name, root: Path | None = None) -> Path
 """
 
 from __future__ import annotations
@@ -40,9 +43,92 @@ from __future__ import annotations
 import os
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NoReturn
+from typing import Literal, NoReturn
 from uuid import UUID, uuid4
+
+# DECISION F276 T001: every top-level child of the data root belongs to exactly one
+# class, declared here as DATA, so reclaim (T002) addresses a class directory by its
+# name and never by a path it composed itself. tests/test_data_root_classes.py scans
+# packages/, apps/ and scripts/ for every child the code creates and reds on one that
+# is in neither tuple, or in both. "ping-pong runs" and "task jobs", named by the
+# feature file, own no directory in today's code: ping-pong results live in ``runs/``
+# and its copy staging in ``/tmp/remedy-pingpong-<run_id>``; ``task_jobs/`` was
+# retired by DECISION F260 D-A. A legacy one on disk reports as unclassified.
+
+DataClassKind = Literal["ephemeral", "durable"]
+
+
+@dataclass(frozen=True)
+class DataRootClass:
+    """One top-level child of the data root: its name, its writer, its reclaim rule.
+
+    ``prefix`` marks a class whose children are named ``<name>.<suffix>`` rather
+    than ``<name>`` itself — ``review_staging.XXXXXX``, minted by ``mktemp -d``.
+    """
+
+    name: str
+    owner: str
+    reclaim_rule: str
+    prefix: bool = False
+
+
+EPHEMERAL_CLASSES: tuple[DataRootClass, ...] = (
+    DataRootClass("job_workspaces", "packages.orchestration.pingpong_job",
+                  "a staging_<job> copy whose job is terminal"),
+    DataRootClass("workspaces", "packages.orchestration.workspace",
+                  "a <job> workspace whose job is terminal"),
+    DataRootClass("runs", "packages.orchestration.pingpong_loop",
+                  "a <run> directory whose job is terminal"),
+    DataRootClass("job_logs", "packages.orchestration.run_log",
+                  "a <job> run log whose job is terminal"),
+    DataRootClass("review_staging", "scripts/make_review_zip.sh",
+                  "any review_staging.* directory; the script's EXIT trap missed it",
+                  prefix=True),
+)
+
+DURABLE_CLASSES: tuple[DataRootClass, ...] = (
+    DataRootClass("jobs", "packages.orchestration.pingpong_job", "never; the job record and evidence"),
+    DataRootClass("projects", "packages.orchestration.project_registry", "never; project registry, ledgers, locks"),
+    DataRootClass("missions", "packages.orchestration.mission_state", "never; mission records"),
+    DataRootClass("control", "packages.orchestration.safe_points", "never; stop requests and their archive"),
+    DataRootClass("stops", "packages.orchestration.stop_reasons", "never; stop-reason log"),
+    DataRootClass("proposed_tasks", "packages.orchestration.proposed_tasks", "never; proposed-task records"),
+    DataRootClass("evidence_exports", "packages.orchestration.job_evidence", "F166 retention, not F276"),
+    DataRootClass("job_evidence_index", "packages.orchestration.evidence_index", "never; evidence index"),
+    DataRootClass("job_apply_records", "packages.orchestration.job_apply", "never; apply audit records"),
+    DataRootClass("memory", "packages.memory.local_gateway", "never; memory cards"),
+    DataRootClass("viewers", "apps.cli.commands.brain", "never; exported brain viewers"),
+    DataRootClass("ui", "apps.cli.commands.ui", "never; UI session registry and do logs"),
+    DataRootClass("roadmap", "packages.orchestration.roadmap_index", "never; roadmap index and drafts"),
+    DataRootClass("self_dogfood", "packages.orchestration.self_dogfood_execution", "never; self-dogfood attempts"),
+    DataRootClass("smoke", "scripts/remedy_smoke.sh", "never; smoke summaries `remedy dev` reads"),
+)
+
+_DATA_CLASS_KINDS: dict[str, DataClassKind] = {
+    **{c.name: "ephemeral" for c in EPHEMERAL_CLASSES},
+    **{c.name: "durable" for c in DURABLE_CLASSES},
+}
+_PREFIX_CLASS_NAMES = tuple(c.name for c in (*EPHEMERAL_CLASSES, *DURABLE_CLASSES) if c.prefix)
+
+
+def classify_data_child(name: str) -> DataClassKind | None:
+    """The class of one top-level data-root child NAME, or None when unregistered."""
+    kind = _DATA_CLASS_KINDS.get(name)
+    if kind is not None:
+        return kind
+    for base in _PREFIX_CLASS_NAMES:
+        if name.startswith(base + "."):
+            return _DATA_CLASS_KINDS[base]
+    return None
+
+
+def data_class_dir(name: str, root: Path | None = None) -> Path:
+    """The directory of one REGISTERED class; an unregistered name raises KeyError."""
+    if name not in _DATA_CLASS_KINDS:
+        raise KeyError(f"not a registered data-root class: {name!r}")
+    return (root if root is not None else resolve_data_root()) / name
 
 
 def resolve_data_root() -> Path:
@@ -68,17 +154,17 @@ def resolve_data_root() -> Path:
 
 def jobs_dir(root: Path | None = None) -> Path:
     """Return the jobs storage directory (<root>/jobs)."""
-    return (root if root is not None else resolve_data_root()) / "jobs"
+    return data_class_dir("jobs", root)
 
 
 def runs_dir(root: Path | None = None) -> Path:
     """Return the run store, keyed by RUN id (<root>/runs)."""
-    return (root if root is not None else resolve_data_root()) / "runs"
+    return data_class_dir("runs", root)
 
 
 def job_logs_dir(root: Path | None = None) -> Path:
     """The job-keyed run-log area (<root>/job_logs)."""
-    return (root if root is not None else resolve_data_root()) / "job_logs"
+    return data_class_dir("job_logs", root)
 
 
 # The run-log store, keyed by JOB id and living at ``<data_root>/job_logs/<job_id>/``
@@ -97,22 +183,22 @@ def run_log_dir(job_id: UUID | str, root: Path | None = None) -> Path:
 
 def projects_dir(root: Path | None = None) -> Path:
     """Return the projects storage directory (<root>/projects)."""
-    return (root if root is not None else resolve_data_root()) / "projects"
+    return data_class_dir("projects", root)
 
 
 def workspaces_dir(root: Path | None = None) -> Path:
     """Return the workspaces base directory (<root>/workspaces)."""
-    return (root if root is not None else resolve_data_root()) / "workspaces"
+    return data_class_dir("workspaces", root)
 
 
 def viewers_dir(root: Path | None = None) -> Path:
     """Return the brain viewer output directory (<root>/viewers)."""
-    return (root if root is not None else resolve_data_root()) / "viewers"
+    return data_class_dir("viewers", root)
 
 
 def proposed_tasks_dir(root: Path | None = None) -> Path:
     """Return the proposed tasks storage directory (<root>/proposed_tasks)."""
-    return (root if root is not None else resolve_data_root()) / "proposed_tasks"
+    return data_class_dir("proposed_tasks", root)
 
 
 def evidence_exports_dir(root: Path | None = None) -> Path:
@@ -121,7 +207,7 @@ def evidence_exports_dir(root: Path | None = None) -> Path:
     Evidence bundles default here instead of the repository root, so a working
     tree is never littered with ``remedy-job-evidence-*`` directories.
     """
-    return (root if root is not None else resolve_data_root()) / "evidence_exports"
+    return data_class_dir("evidence_exports", root)
 
 
 def job_evidence_export_dir(job_id: str, root: Path | None = None) -> Path:
@@ -131,7 +217,7 @@ def job_evidence_export_dir(job_id: str, root: Path | None = None) -> Path:
 
 def job_evidence_index_dir(root: Path | None = None) -> Path:
     """Return the existing job evidence index directory (<root>/job_evidence_index)."""
-    return (root if root is not None else resolve_data_root()) / "job_evidence_index"
+    return data_class_dir("job_evidence_index", root)
 
 
 def missions_dir(root: Path | None = None) -> Path:
@@ -140,7 +226,7 @@ def missions_dir(root: Path | None = None) -> Path:
     F056: one directory per project below this, holding one atomic JSON file
     per mission record; see ``packages/orchestration/mission_state.py``.
     """
-    return (root if root is not None else resolve_data_root()) / "missions"
+    return data_class_dir("missions", root)
 
 
 def control_dir(root: Path | None = None) -> Path:
@@ -150,7 +236,7 @@ def control_dir(root: Path | None = None) -> Path:
     from the evidence a job produces about itself. It is private (0700/0600); see
     ``packages/orchestration/safe_points.py``.
     """
-    return (root if root is not None else resolve_data_root()) / "control"
+    return data_class_dir("control", root)
 
 
 # DECISION F260 D2 (2026-09-06): every Remedy id is ``uuid4().hex[:16]``, but ONE
