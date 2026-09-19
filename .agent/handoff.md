@@ -1,120 +1,135 @@
-# Handoff — F271 No more legacy: ownership, reachability, replace-is-delete · Round 2
+# Handoff — F271 No more legacy: ownership, reachability, replace-is-delete · Round 3
 
 ## Session
 
-SESSION 1 of feature F271 · round 2 · rounds so far 2
+SESSION 1 of feature F271 · round 3 · rounds so far 3
 
-Context self-assessment: the worker read the block, AGENTS.md, `docs/roadmap/features/T2_F271.md`, DECISION F271 D2 and every non-deletion hunk of `prototype_final.diff` in full once each, and every figure below comes from a command run in this round.
+Context self-assessment: the worker read the block, AGENTS.md, `docs/roadmap/features/T2_F271.md`, DECISION F271 D3, the ledger and plan payloads and the whole of `prototype_final.diff` once each, and every figure below comes from a command run in this round.
 
 ## Range
 
-Review of c798fd2d..HEAD — branch `feature/f271-no-more-legacy`.
+Review of 8bacb0fc..HEAD — branch `feature/f271-no-more-legacy`.
 
 ## Summary
 
-- C1 is the bookkeeping. It saves the four payload copies, sets `.agent/plan.md` to plan.md, appends ledger.md to `.agent/live_review.md` (the F271 R1 gate entry, `Done: R-0893`, and R-0980, R-0981 and R-0982), and appends DECISION F271 D2 to `.agent/decisions.md`.
-- C2 is the D2 (4) deletion. It removes `diagnostic_comparison.py`, `task_plan_evidence.py` and `execution_config_evidence.py`, together with the test file that existed only for each.
-- C3 is the orphan-module test. It adds `tests/test_no_orphan_modules.py` with its 16 `ALLOWED_UNWIRED` entries and registers it in `ARCHITECTURE_FILES` in `tests/conftest.py` and in the `budgets` stage `test_paths` in `packages/orchestration/ci_stages.py`.
-- C4 is this handoff.
+- C1 is the bookkeeping. It saves the four payload copies, sets `.agent/plan.md` to plan.md, appends ledger.md to `.agent/live_review.md` (the F271 R2 gate entry and `Done: R-0982`), and appends DECISION F271 D3 to `.agent/decisions.md`.
+- C2 is the R-0982 deletion (D3 (3)). It deletes `packages/orchestration/patch_revert.py` and the five `TestPatchRevert` tests that exercised only that module. `test_brain_has_patch_revert_node` now plants the event itself and asserts the `ET_REVERTED_BY` edge. C2 also drops the `ALLOWED_UNWIRED` entry and the section 12q snapshot-directory check in `scripts/remedy_smoke.sh`.
+- C3 is T002's doctor part (D3 (2)). It adds the `_plant_dead_command` helper and two tests to `TestDoctorCoreDeadCommands`, one for JSON mode and one for text mode. It also rewrites the `_cmd_doctor_core` comment, which is only a comment, so that it names the tests.
+- C4 is T002's closure part (D3 (1)). It adds precondition 7 to `docs/roadmap/STATUS_closure_protocol.md`, which cites AGENTS.md's Scope Control rule "Replacing is deleting".
+- C5 is this handoff.
 
 ## Commits
 
-### 3b616e49 F271 R2 C1: book F271 round 1's verdict and R-0893, register R-0980 to R-0982, land DECISION F271 D2, save the round 2 payloads
+### 2395382b F271 R3 C1: book F271 round 2's verdict and Done R-0982, land DECISION F271 D3, save the round 3 payloads
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f271-r2-block.md` | +89 / -0 | Byte copy of the block |
-| `.agent/authored/f271-r2-decisions.md` | +50 / -0 | Byte copy |
-| `.agent/authored/f271-r2-ledger.md` | +10 / -0 | Byte copy |
-| `.agent/authored/f271-r2-plan.md` | +27 / -0 | Byte copy |
-| `.agent/decisions.md` | +50 / -0 | `c798fd2d` bytes + decisions.md (DECISION F271 D2) |
-| `.agent/live_review.md` | +10 / -0 | `c798fd2d` bytes + ledger.md |
-| `.agent/plan.md` | +9 / -11 | := plan.md |
+| `.agent/authored/f271-r3-block.md` | +92 / -0 | Byte copy of the block |
+| `.agent/authored/f271-r3-decisions.md` | +40 / -0 | Byte copy |
+| `.agent/authored/f271-r3-ledger.md` | +4 / -0 | Byte copy |
+| `.agent/authored/f271-r3-plan.md` | +26 / -0 | Byte copy |
+| `.agent/decisions.md` | +40 / -0 | `8bacb0fc` bytes + decisions.md (DECISION F271 D3) |
+| `.agent/live_review.md` | +4 / -0 | `8bacb0fc` bytes + ledger.md |
+| `.agent/plan.md` | +9 / -10 | := plan.md |
 
-245 insertions, 11 deletions (`git show --numstat`).
+215 insertions, 10 deletions (`git show --numstat`).
 
-### 430a0832 F271 R2 C2: delete diagnostic_comparison, task_plan_evidence and execution_config_evidence with their tests under DECISION F271 D2
+### 3c566f86 F271 R3 C2: delete patch_revert with the five tests only it served, its allowance and the smoke snapshot check, resolving R-0982 under DECISION F271 D3
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/diagnostic_comparison.py` | +0 / -172 | deleted (D2 (4)) |
-| `packages/orchestration/execution_config_evidence.py` | +0 / -64 | deleted (D2 (4)) |
-| `packages/orchestration/task_plan_evidence.py` | +0 / -72 | deleted (D2 (4)) |
-| `tests/orchestration/test_diagnostic_comparison.py` | +0 / -179 | deleted with its module |
-| `tests/orchestration/test_execution_config_evidence.py` | +0 / -144 | deleted with its module |
-| `tests/orchestration/test_task_plan_evidence.py` | +0 / -78 | deleted with its module |
+| `packages/orchestration/patch_revert.py` | +0 / -290 | deleted (D3 (3)) |
+| `scripts/remedy_smoke.sh` | +0 / -7 | 12q loses the `patch_snapshots/<intent>` check |
+| `tests/orchestration/test_source_apply.py` | +20 / -134 | five tests deleted; brain test plants the event and asserts the edge |
+| `tests/test_no_orphan_modules.py` | +0 / -2 | the R-0982 `ALLOWED_UNWIRED` entry goes |
 
-0 insertions, 709 deletions.
+20 insertions, 433 deletions.
 
-### e6d73a51 F271 R2 C3: T001 orphan-module test with its ALLOWED_UNWIRED list, registered in ARCHITECTURE_FILES and the budgets CI stage
+### 55ff1c3a F271 R3 C3: T002 planted-dead-command tests for doctor core in JSON and text mode, and the doctor comment naming them
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/ci_stages.py` | +1 / -0 | `budgets` stage `test_paths` gains the new file |
-| `tests/conftest.py` | +1 / -0 | `ARCHITECTURE_FILES` gains the new file |
-| `tests/test_no_orphan_modules.py` | +308 / -0 | the orphan scan, four tests, 16 `ALLOWED_UNWIRED` entries |
+| `apps/cli/commands/worker_facade_cmd.py` | +3 / -3 | comment only |
+| `tests/cli/test_worker_facade_cmd.py` | +41 / -2 | `_plant_dead_command` helper, two planted tests, class docstring |
 
-310 insertions, 0 deletions.
+44 insertions, 5 deletions.
 
-### C4 (this commit) F271 R2 C4: handoff
+### b1d0f9f8 F271 R3 C4: T002 closure precondition 7, no new module outside the reachable set unless its feature file names it, citing the rule Replacing is deleting
+| Path | +/- | Reason |
+|------|-----|--------|
+| `docs/roadmap/STATUS_closure_protocol.md` | +10 / -0 | precondition 7 |
+
+10 insertions, 0 deletions.
+
+### C5 (this commit) F271 R3 C5: handoff
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | rewritten | This handback |
 
-Every commit is under 500 inserted lines. The largest is C3, with 310.
+Every commit is under 500 inserted lines. The largest is C1, with 215.
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f271-r2-g5 e6d73a51` for G5, then `git worktree remove .remedy-wt/f271-r2-g5`. Afterwards `git worktree list` shows the primary checkout alone: `/home/decodeux/Repos/remedy  e6d73a51 [feature/f271-no-more-legacy]`.
-- `git push` after C4, not forced. No pull request is opened.
+- `git worktree add --detach .remedy-wt/f271-r3-g5wt b1d0f9f8` for G5, then `git worktree remove .remedy-wt/f271-r3-g5wt`. Afterwards `git worktree list` shows the primary checkout alone: `/home/decodeux/Repos/remedy  b1d0f9f8 [feature/f271-no-more-legacy]`.
+- `git push` after C5, not forced. No pull request is opened.
 - No evidence job and no zip.
 
 ## Verification
 
-All gates below ran at C3 (`e6d73a51`) before C4.
+All gates below ran at C4 (`b1d0f9f8`) before C5. Each exit code was read through `.remedy-wt/f271-r3/w_run.py`, which prints `EXIT <returncode>` for the command it runs.
 
-- **Transport**, before any write: `sha256sum` matched all four payload digests (plan.md `495356e5…`, ledger.md `9209c91f…`, decisions.md `30628c17…`, prototype_final.diff `3678d741…`) and the block's `1dd7da8f4ee1e9b3da46c8c70629b8c91e39e903b2d0dc6c1fa8d51b4298299c`. `git apply --check` on the prototype passed at `c798fd2d`.
-- **G1**: `python3 .remedy-wt/f271-r2/g1.py` printed `8 checks True` (exit 0). The checks are: the five digests; `.agent/plan.md` equals plan.md; `.agent/live_review.md` equals its `c798fd2d` bytes + ledger.md; `.agent/decisions.md` equals its `c798fd2d` bytes + decisions.md; and each of the four `.agent/authored/f271-r2-*` copies equals its payload. All are read at `e6d73a51`.
-- **G2**: `git diff --binary c798fd2d e6d73a51 -- . ':!.agent' | git patch-id --stable` printed `6d27af6437b714b225d8d96a2524cde9985403cc 0000000000000000000000000000000000000000`. `git patch-id --stable < prototype_final.diff` printed the same first field (exit 0). `git show --numstat 430a0832` lists exactly the six deleted paths, each `0` insertions (table above).
-- **G3**: `git status --porcelain` was empty. The eleven-target command, as ordered, run serially in the primary checkout, printed `544 passed in 71.15s (0:01:11)` (exit 0, 0 failed).
-- **G4**: `python3 -m ruff check tests/test_no_orphan_modules.py tests/conftest.py packages/orchestration/ci_stages.py` printed `All checks passed!` (exit 0). `git grep -n -E "diagnostic_comparison|task_plan_evidence|execution_config_evidence" -- . ':!.agent' ':!docs/roadmap'` (exit 0) printed exactly three lines, the ones D2 (4) keeps:
-  - `tests/docs/test_docs_consistency.py:2022:        assert "diagnostic_comparison" in doc`
-  - `tests/docs/test_docs_consistency.py:2023:        assert "produce_diagnostic_comparison" in doc or "validate_diagnostic_comparison" in doc`
-  - `tests/orchestration/test_job_evidence.py:1406:        assert "test_execution_config_evidence.py" not in src`
-- **G5**: disposable worktree `.remedy-wt/f271-r2-g5` at `e6d73a51`, driven by `.remedy-wt/f271-r2/g5.py`. Every run was `python3 -B -m pytest -q -p no:cacheprovider -rf tests/test_no_orphan_modules.py` from the worktree root, with `__pycache__` purged before it. Each change was reverted before the next.
-  - Control, unmutated: `4 passed in 1.24s`, exit 0.
-  - (a) `packages/orchestration/zz_orphan_probe.py` holding `X = 1`: `1 failed, 3 passed in 1.26s`, exit 1, `FAILED tests/test_no_orphan_modules.py::test_no_module_is_an_orphan`. The assertion output names `zz_orphan_probe` on two lines.
-  - (b) the two-line `scripts/rotate_live_review.py` entry removed: `1 failed, 3 passed in 1.24s`, exit 1, `FAILED tests/test_no_orphan_modules.py::test_no_module_is_an_orphan`. The output names `rotate_live_review` on two lines.
-  - (c) `("scripts/build_review_zip.py", "probe"),` added to `ALLOWED_UNWIRED`: `1 failed, 3 passed in 1.28s`, exit 1, `FAILED tests/test_no_orphan_modules.py::test_every_allowed_unwired_entry_is_a_live_orphan`. The output names `build_review_zip` on two lines.
-  - After the last revert, `git status --porcelain` in the worktree was empty. No change stayed green.
+- **Transport**, before any write: `sha256sum` matched the block's `38bfb15e6047d2ddb2f1214a904df1b162bc62af0737fd2b05881d79a43cce6e` and all four payload digests: plan.md `e8f54864…`, ledger.md `4897747e…`, decisions.md `5e937e42…` and prototype_final.diff `63ba2a7f…`. `git apply --check --index` on the prototype passed at `8bacb0fc`.
+- **G1**: `python3 .remedy-wt/f271-r3/w_g1.py` printed `12 checks, all True: True` (exit 0). The checks are:
+  - the five digests;
+  - `.agent/plan.md` equals plan.md;
+  - `.agent/live_review.md` equals its `8bacb0fc` bytes + ledger.md;
+  - `.agent/decisions.md` equals its `8bacb0fc` bytes + decisions.md;
+  - each of the four `.agent/authored/f271-r3-*` copies equals its payload.
+- **G2**: `python3 .remedy-wt/f271-r3/w_g2.py` exited 0.
+  - `git diff --binary 8bacb0fc b1d0f9f8 -- . ':!.agent' | git patch-id --stable` gives first field `0122492bf6ec20f8acd3ad95e1aeb2542cb51b85`. `git patch-id --stable < prototype_final.diff` gives the same field.
+  - `git show --numstat --format=` of C2, C3 and C4 lists exactly the paths the Bundle names (`paths match Bundle: True` for each; tables above).
+- **G3**: `git status --porcelain` was empty before and after the run. The twelve-target command, as ordered, ran serially in the primary checkout and printed `706 passed in 116.29s (0:01:56)` (exit 0, 0 failed). `bash -n scripts/remedy_smoke.sh` exited 0.
+- **G4**: `python3 -m ruff check apps/cli/commands/worker_facade_cmd.py tests/cli/test_worker_facade_cmd.py tests/orchestration/test_source_apply.py tests/test_no_orphan_modules.py` printed `All checks passed!` (exit 0). The ordered `git grep` (exit 0) printed exactly the three lines D3 accepts:
+  - `apps/cli/commands/patch.py:175:def _cmd_revert_patch_intent(`
+  - `apps/cli/commands/patch.py:407:    "patch.revert": lambda args: _cmd_revert_patch_intent(`
+  - ``docs/system/snapshot-rollback-v1.md:181:| `patch_apply.py` | Mandatory snapshot replaces `store_pre_apply_snapshot()`. `DurableApplyRecord` saved after apply. `snapshot_id` + `snapshot_verified` in artifact apply record. Legacy snapshot call removed (Step 1141). |``
+- **G5**: disposable worktree `.remedy-wt/f271-r3-g5wt` at `b1d0f9f8`, driven by `.remedy-wt/f271-r3/w_g5.py`. Every run was `python3 -B -m pytest -q -p no:cacheprovider -rf <file> -k <selector>` from the worktree root. `__pycache__` was purged before each run; the purge found 0 directories each time. Before each run the script printed the imported module path, which was always inside the worktree (`.../.remedy-wt/f271-r3-g5wt/apps/cli/commands/worker_facade_cmd.py`, or `.../packages/orchestration/project_brain.py` for (c)). Each target line counted 1 before it was mutated. Each change was reverted before the next, and after each revert the worktree's `git status --porcelain` was empty.
+  - Control, unmutated, `-k TestDoctorCoreDeadCommands`: `4 passed, 37 deselected in 8.15s`, exit 0.
+  - (a) `"dead_commands": dead_commands,` → `"dead_commands": [],`: `1 failed, 3 passed, 37 deselected in 8.24s`, exit 1, `FAILED tests/cli/test_worker_facade_cmd.py::TestDoctorCoreDeadCommands::test_json_mode_lists_exactly_the_planted_command`.
+  - (b) `for cid in dead_commands:` → `for cid in []:`: `1 failed, 3 passed, 37 deselected in 8.23s`, exit 1, `FAILED tests/cli/test_worker_facade_cmd.py::TestDoctorCoreDeadCommands::test_text_mode_lists_the_planted_command_in_the_section`.
+  - Brain control, unmutated, `tests/orchestration/test_source_apply.py -k test_brain_has_patch_revert_node`: `1 passed, 28 deselected in 0.32s`, exit 0.
+  - (c) in `project_brain.py`, `"patch_intent_reverted"` → `"patch_intent_reverted_x"`: `1 failed, 28 deselected in 0.34s`, exit 1, `FAILED tests/orchestration/test_source_apply.py::TestPatchRevert::test_brain_has_patch_revert_node`.
+  - No change stayed green.
 - **G6** comes after the push, so the round report carries it.
 - Full suite not run (amend0917-throughput).
 
 ## Authored-text proofs
 
-- The byte copies are at `.agent/authored/f271-r2-*`, four files. Each is `True` against its payload (G1). The block copy's digest is `1dd7da8f4ee1e9b3da46c8c70629b8c91e39e903b2d0dc6c1fa8d51b4298299c`.
-- `.agent/plan.md`, `.agent/live_review.md` and `.agent/decisions.md` were each built from payload bytes, or from `git show c798fd2d:` bytes plus the payload, and each byte check is `True` (G1).
-- The code of C2 and C3 is the prototype, byte for byte by patch-id (G2).
+- The byte copies are at `.agent/authored/f271-r3-*`, four files. Each is `True` against its payload (G1). The block copy's digest is `38bfb15e6047d2ddb2f1214a904df1b162bc62af0737fd2b05881d79a43cce6e`.
+- `.agent/plan.md`, `.agent/live_review.md` and `.agent/decisions.md` were each built from payload bytes, or from `git show 8bacb0fc:` bytes plus the payload. Each byte check is `True` (G1).
+- The code and doc text of C2 to C4 match the prototype byte for byte, as the patch-id shows (G2).
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 bookkeeping | done | `3b616e49` |
-| C2 deletion (D2 (4)) | done | `430a0832`; G4 grep leaves only the three kept lines |
-| C3 orphan-module test | done | `e6d73a51`; G5 red-proof holds for (a), (b) and (c) |
-| C4 handoff | done | This commit |
+| C1 bookkeeping | done | `2395382b` |
+| C2 R-0982 deletion (D3 (3)) | done | `3c566f86`; G4 grep leaves only the three accepted lines; G5 (c) red |
+| C3 T002 doctor planted command (D3 (2)) | done | `55ff1c3a`; G5 (a) and (b) red |
+| C4 T002 precondition 7 (D3 (1)) | done | `b1d0f9f8` |
+| C5 handoff | done | This commit |
 
 ## Open findings
 
-By distinct id on the committed `.agent/live_review.md` at C3, `^- R-\d+ — ` gives 136 ids and `^Done: R-\d+ — ` gives 5, all of them within the 136, so 131 are open. That is round 1's 129, minus R-0893 (now Done), plus R-0980, R-0981 and R-0982.
+This count is by distinct id on the committed `.agent/live_review.md` at C4. `^- R-\d+ — ` matches 136 ids and `^Done: R-\d+ — ` matches 6. All 6 are among the 136, so 130 are open: round 2's 131 minus R-0982, which is now Done.
 
 ## Deviations & assumptions
 
-- **Commit sequence:** as ordered (C1, C2, C3, C4, then the push). No extra commit.
-- **Prototype:** `git apply` put the whole prototype on the working tree at `c798fd2d` + C1. C2 staged and committed only the six deletions. C3 committed the three remaining paths. Nothing in the prototype was changed, and the worker found no defect in it.
-- **Driver scripts:** gates ran through gitignored scratch in `.remedy-wt/f271-r2/`: `g1.py`, `g5.py` and `openset.py`. The bash guard rejected the inline forms. The G3 run that was piped to `tail` was repeated with the output sent to `.remedy-wt/f271-r2/g3.log`, so the real exit code (0) could be read. Both runs read `544 passed`.
+- **Commit sequence:** as ordered (C1, C2, C3, C4, C5, then the push). No extra commit.
+- **Prototype:** `git apply --index` put the whole prototype on the index once, at `8bacb0fc` + C1. C2, C3 and C4 each committed their path subset with `git commit -- <paths>`. Nothing in the prototype was changed, and the worker found no defect in it.
+- **G5 extra control:** the block orders one unmutated control, for the doctor tests. The worker also ran the brain test unmutated before mutation (c), so that (c)'s red has a green control from the same selection. This adds a run and changes nothing.
+- **Driver scripts:** the gates ran through gitignored scratch in `.remedy-wt/f271-r3/`: `w_c1.py`, `w_g1.py`, `w_g2.py`, `w_g5.py`, `w_openset.py` and `w_run.py`. The bash guard rejects the inline forms. The G3 output was piped to `tail`. The exit code is still real, because `w_run.py` prints the pytest process's own return code.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`).
-2. The review of round 2.
+2. The review of round 3.
 
 Operator questions open: 5
