@@ -1070,23 +1070,6 @@ def build_checklist(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
                 "next_action": {},
             })
 
-    # Memory candidates from job metadata
-    candidates = (job.metadata or {}).get("memory_candidates", [])
-    for c in candidates:
-        items.append({
-            "id": c.get("id", f"mem-{len(items)}"),
-            "label": f"Memory: {c.get('safe_summary', 'candidate')[:40]}",
-            "state": "current" if c.get("status") == "pending" else "done",
-            "kind": "memory",
-            "checked": c.get("status") in ("approved", "rejected"),
-            "muted": c.get("status") != "pending",
-            "node_id": "",
-            "next_action": {
-                "label": "Review candidate",
-                "command": f"remedy memory candidates {str(job.job_id)[:8]}",
-            } if c.get("status") == "pending" else {},
-        })
-
     return {
         "version": 1,
         "job_id": str(job.job_id),

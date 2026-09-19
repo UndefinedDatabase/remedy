@@ -1950,42 +1950,6 @@ print('    do sequence: OK (jobs=' + str(len(d['job_ids'])) + ', stopped before 
     rm -rf "${TMP_DO}"
 
     # -------------------------------------------------------------------------
-    # 12aq. Memory candidates (Step 158)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12aq"
-    echo "--- 12aq. Memory candidates"
-    _MC_OUTPUT=$(remedy memory candidates "${DO_JOB_ID}" --json 2>&1) || {
-        echo "    memory candidates command failed (rc=$?)"
-        echo "    output: ${_MC_OUTPUT}"
-        remedy memory candidates --help 2>&1 || true
-        return 1
-    }
-    echo "${_MC_OUTPUT}" | python3 -c "
-import sys, json
-raw = sys.stdin.read()
-try:
-    d = json.loads(raw)
-except json.JSONDecodeError:
-    print('ERROR: memory candidates output not valid JSON', file=sys.stderr)
-    print('Raw: ' + raw[:200], file=sys.stderr)
-    sys.exit(1)
-if d.get('version') != 1:
-    print('ERROR: memory candidates version != 1', file=sys.stderr)
-    sys.exit(1)
-candidates = d.get('candidates', [])
-# The do sequence run may have created candidates; any it created must be pending
-if candidates:
-    # Verify all are pending (not auto-approved)
-    for c in candidates:
-        if c.get('status') != 'pending':
-            print('ERROR: candidate auto-approved: ' + c.get('id','?') + ' status=' + c.get('status','?'), file=sys.stderr)
-            sys.exit(1)
-    print('    memory candidates: OK (count=' + str(len(candidates)) + ', all pending)')
-else:
-    print('    memory candidates: OK (no candidates — acceptable)')
-"
-
-    # -------------------------------------------------------------------------
     # 12ar. Dev status expanded (Step 161)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12ar"
@@ -2000,7 +1964,7 @@ except json.JSONDecodeError:
     print('ERROR: dev status output not valid JSON', file=sys.stderr)
     print('Raw: ' + raw[:200], file=sys.stderr)
     sys.exit(1)
-for key in ('repair_loop_ok', 'reviewer_loop_ok', 'memory_candidates_ok', 'live_ui_ok'):
+for key in ('repair_loop_ok', 'reviewer_loop_ok', 'live_ui_ok'):
     if key not in d:
         print('ERROR: dev status missing: ' + key, file=sys.stderr)
         sys.exit(1)

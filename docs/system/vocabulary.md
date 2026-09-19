@@ -69,6 +69,16 @@ attestable-source policy and safe-diff hashing in
 `packages/orchestration/repair_attest.py` that it, the review subject and the
 review package builders share.
 
+Status (2026-09-19, F273 finding R-0992): a job has no memory candidates any
+more. The goal-driven path, `autorun`, was the only code that wrote a candidate
+onto a job's record, and it is deleted, so the `memory_candidates` module, the
+words `memory candidates`,
+`memory approve-candidate` and `memory reject-candidate`, the cockpit's candidate
+count and checklist items, and the `dev status` key `memory_candidates_ok` are
+deleted with it. A candidate a job record written before still holds is not
+read. What a job taught is kept by `memory learn`, which writes proposed memory
+cards that `memory card-approve` and `memory card-reject` decide.
+
 ## Do not confuse these
 
 Most of what this page exists to end was never someone failing to define a word.

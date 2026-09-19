@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -190,86 +190,6 @@ class TestReviewerRecommendations:
 
 
 # =========================================================================
-# Step 152 — Memory candidate v1
-# =========================================================================
-
-class TestMemoryCandidateHumanApprovalRequired:
-    """Memory candidates require human approval; not auto-approved."""
-
-    def test_create_candidate(self):
-        from packages.orchestration.memory_candidates import create_candidate
-        job = _make_job()
-        job.metadata = {}
-        c = create_candidate(job, "repair_pattern", "Fixed mul after partial")
-        assert c["status"] == "pending"
-        assert c["kind"] == "repair_pattern"
-        assert "Fixed mul" in c["safe_summary"]
-
-    def test_candidate_deduplication(self):
-        from packages.orchestration.memory_candidates import create_candidate
-        job = _make_job()
-        job.metadata = {}
-        c1 = create_candidate(job, "repair_pattern", "Fixed mul")
-        c2 = create_candidate(job, "repair_pattern", "Fixed mul")
-        assert c1["id"] == c2["id"]
-
-    def test_approve_creates_memory(self):
-        from packages.orchestration.memory_candidates import (
-            approve_candidate,
-            create_candidate,
-            list_candidates,
-        )
-        job = _make_job()
-        job.metadata = {}
-        c = create_candidate(job, "test_command", "pytest -x works")
-        # store_memory is lazily imported inside approve_candidate
-        with patch.dict("sys.modules", {
-            "packages.orchestration.memory": MagicMock(),
-        }):
-            ok = approve_candidate(job, c["id"])
-        assert ok is True
-        candidates = list_candidates(job)
-        approved = [x for x in candidates if x["id"] == c["id"]]
-        assert approved[0]["status"] == "approved"
-
-    def test_reject_no_memory(self):
-        from packages.orchestration.memory_candidates import (
-            create_candidate,
-            list_candidates,
-            reject_candidate,
-        )
-        job = _make_job()
-        job.metadata = {}
-        c = create_candidate(job, "test_command", "pytest -x")
-        ok = reject_candidate(job, c["id"])
-        assert ok is True
-        candidates = list_candidates(job)
-        rejected = [x for x in candidates if x["id"] == c["id"]]
-        assert rejected[0]["status"] == "rejected"
-
-    def test_invalid_kind_falls_back(self):
-        from packages.orchestration.memory_candidates import create_candidate
-        job = _make_job()
-        job.metadata = {}
-        c = create_candidate(job, "bogus_kind", "test")
-        assert c["kind"] == "review_note"
-
-    def test_candidate_not_auto_approved(self):
-        """Candidates must be pending, never auto-approved."""
-        from packages.orchestration.memory_candidates import (
-            create_candidate,
-            list_candidates,
-        )
-        job = _make_job()
-        job.metadata = {}
-        create_candidate(job, "repair_pattern", "A")
-        create_candidate(job, "test_command", "B")
-        candidates = list_candidates(job)
-        for c in candidates:
-            assert c["status"] == "pending"
-
-
-# =========================================================================
 # Step 153 — Live run UI v2
 # =========================================================================
 
@@ -285,9 +205,7 @@ class TestLiveStateRepairReviewerMemoryCounts:
         assert state["version"] == 3
         # v2 fields still present
         assert "repair_loop_used" in state
-        assert "memory_candidate_count" in state
         assert isinstance(state["repair_loop_used"], bool)
-        assert isinstance(state["memory_candidate_count"], int)
         # v3 fields
         assert state["demo_mode"] is False
         assert isinstance(state["stale"], bool)
@@ -302,7 +220,9 @@ class TestLiveStateRepairReviewerMemoryCounts:
             state = _build_live_state_json(job)
         assert state["repair_loop_used"] is True
 
-    def test_live_state_memory_candidate_count(self):
+    def test_live_state_counts_no_memory_candidate_a_record_still_holds(self):
+        """F273 R-0992: nothing writes the store, so a job record written before
+        its deletion is not read: the live state carries no candidate count."""
         from packages.orchestration.ui_server import _build_live_state_json
         job = _make_job()
         job.metadata = {"memory_candidates": [
@@ -310,7 +230,7 @@ class TestLiveStateRepairReviewerMemoryCounts:
         ]}
         with patch("packages.orchestration.ui_server._load_events", return_value=[]):
             state = _build_live_state_json(job)
-        assert state["memory_candidate_count"] == 1
+        assert "memory_candidate_count" not in state
 
     def test_live_state_running_accepts_both_states(self):
         from packages.core.models import RunState

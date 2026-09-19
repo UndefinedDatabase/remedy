@@ -143,7 +143,6 @@ packages.orchestration.long_run_executor
 packages.orchestration.manifest_schema
 packages.orchestration.manual_attestation
 packages.orchestration.markdown_output_safety
-packages.orchestration.memory_candidates
 packages.orchestration.memory_learn
 packages.orchestration.missing_tests_gate
 packages.orchestration.mission_compiler

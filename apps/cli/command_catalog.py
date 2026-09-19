@@ -1255,44 +1255,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--job", "Job ID scope (under its mission)", required=False, is_option=True),
         ),
     ),
-    CommandEntry(
-        command_id="memory.candidates",
-        group_id="memory",
-        subcommand="candidates",
-        description="List memory candidates for a job, under its mission (pending human approval).",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="memory.approve-candidate",
-        group_id="memory",
-        subcommand="approve-candidate",
-        description="Approve a memory candidate (creates approved memory).",
-        action_class="approval_gate",
-        args=(
-            _JOB_ID,
-            ArgDef("candidate_id", "Candidate ID to approve", required=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="memory.reject-candidate",
-        group_id="memory",
-        subcommand="reject-candidate",
-        description="Reject a memory candidate (no memory created).",
-        action_class="approval_gate",
-        args=(
-            _JOB_ID,
-            ArgDef("candidate_id", "Candidate ID to reject", required=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
 
     # ── change ───────────────────────────────────────────────────────────
     CommandEntry(

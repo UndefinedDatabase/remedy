@@ -1686,10 +1686,6 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         if test_events and not test_events[-1].get("metadata", {}).get("passed", True):
             bridge_stop_reason = "test_failed_after_apply"
 
-    # Memory candidate count
-    candidates = (job.metadata or {}).get("memory_candidates", [])
-    memory_candidate_count = len(candidates)
-
     # Approved memory usage from events
     mem_events = [e for e in events if e.get("event") == "project_memory_recalled"]
     memory_used_count = mem_events[-1].get("metadata", {}).get("item_count", 0) if mem_events else 0
@@ -1717,7 +1713,6 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "builder_patch_parsed": bridge_parse_success,
         "builder_patch_error": bridge_parse_error,
         "stop_reason": bridge_stop_reason,
-        "memory_candidate_count": memory_candidate_count,
         "memory_used_count": memory_used_count,
         # Truth contract
         "demo_mode": os.environ.get("REMEDY_UI_DEMO_MODE") == "1",
