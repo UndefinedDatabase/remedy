@@ -1,252 +1,263 @@
-# Handoff — F273 Findings paydown v1 · Round 18
+# Handoff — F273 Findings paydown v1 · Round 19
 
 ## Session
 
-SESSION 3 of feature F273 · round 18 · rounds so far 18
+SESSION 3 of feature F273 · round 19 · rounds so far 19
 
-Context self-assessment: the worker read the block, AGENTS.md, DECISION F273 D18, the handback template, round 17's handoff as the template's instance and every hunk of the three diffs as it applied them, and held all of it without loss; every figure below comes from a command run in this round.
+Context self-assessment: the worker read the block, AGENTS.md, DECISION F273 D19, the handback template, round 18's handoff as the template's instance and every hunk of the three diffs as it applied them, and held all of it without loss; every figure below comes from a command run in this round.
 
 ## Range
 
-Review of f445a2c0..HEAD — branch `feature/f273-findings-paydown-v1`.
+Review of 17c7f169..HEAD — branch `feature/f273-findings-paydown-v1`.
 
 ## Summary
 
-Round 18 books round 17's verdict and three resolutions, registers R-0993, lands DECISION F273 D18 and the third ruling of operator question Q4, and builds R-0993, R-0977 and R-0992 as the reviewer's dry run built them.
-- C1 books Gate F273 R17 (VERDICT PASS) and three `Done:` lines (R-0914, R-0927, R-0928), registers R-0993, lands DECISION F273 D18, rewrites the plan and `.agent/operator_questions.md` (Q4's third ruling), and saves the five payload copies.
-- C2 (R-0993): `dod_process_exec_policy` sets `PYTHONDONTWRITEBYTECODE=1` on the scrub source, and the pytest check runs with `-p no:cacheprovider`; two new tests prove a check writes nothing into the tree it judges and a gated pytest check in a repository with a passing suite leaves the `do` job completed.
-- C3 (R-0977): `do`'s shape step records on each job the milestone its outline came from (or the plan's only milestone) and merges that milestone's slice with `hold_on_milestone=False`; the planner criterion now reads `met` or `unmet`, never `open`, except under `--force-job` on a plan of several milestones. `docs/guides/do-run-v1.md` states both.
-- C4 (R-0992): `memory_candidates.py`, the `memory candidates`, `memory approve-candidate` and `memory reject-candidate` words, the cockpit's candidate count and checklist items, the `dev status` key `memory_candidates_ok` and the smoke section 12aq are deleted with their tests; `docs/system/vocabulary.md` carries a dated status paragraph.
+Round 19 books round 18's verdict and three resolutions and the fifteen ids that are moot or already met, lands DECISION F273 D19, and builds the dead residue, the small repairs and the D3 sentences D19 names, as the reviewer's dry run built them.
+- C1 books Gate F273 R18 (VERDICT PASS), three `Done:` lines for round 18's ids (R-0993, R-0977, R-0992) and fifteen for the moot or met ids (R-0830, R-0846, R-0849, R-0854, R-0857, R-0868, R-0869, R-0883, R-0840, R-0842, R-0844, R-0845, R-0848, R-0853, R-0865); lands DECISION F273 D19, whose part (4) amends DECISION F260 D3 with the sentences R-0851, R-0852, R-0856 and R-0860 asked of it; rewrites the plan; saves the four payload copies.
+- C2 (R-0831, R-0832, R-0850, R-0941, R-0867, R-0863, R-0884): the three route-policy flags in `apps/cli/grouped.py`, the `context_budget_optimized` schema and NowCard entry (the dead-coupling list empties and its ceiling falls to 0), `_job_with_repo`, the test-only functions of `proposed_tasks.py`, `provider_patch_material.py` with its roadmap rule, two `REVIEW_FINDINGS_OPEN` members, and `AcceptanceCheck` with `Verifier` are deleted with their tests.
+- C3 (R-0828, R-0826, R-0937): `_stop_job` sets `finished_at`; the self-use reporter answers a stop that never finalized, a run-manifest error and a task that did not pass with a blank error; the smoke script's message names `task_type=`.
+- C4 (R-0851, R-0852, R-0856, R-0860): `docs/system/core-product-spine-v0.md` carries a dated status banner and stops listing the deleted command groups.
 - C5 is this handoff.
 
-Landed: R-0993 — `ab9ab436` (C2)
-Landed: R-0977 — `77b644be` (C3)
-Landed: R-0992 — `d28f2826` (C4)
+Landed: R-0831 — `9189c0c9` (C2)
+Landed: R-0832 — `9189c0c9` (C2)
+Landed: R-0850 — `9189c0c9` (C2)
+Landed: R-0941 — `9189c0c9` (C2)
+Landed: R-0867 — `9189c0c9` (C2)
+Landed: R-0863 — `9189c0c9` (C2)
+Landed: R-0884 — `9189c0c9` (C2)
+Landed: R-0828 — `5108e9d1` (C3)
+Landed: R-0826 — `5108e9d1` (C3)
+Landed: R-0937 — `5108e9d1` (C3)
+Landed: R-0851 — `411f66b3` (C1, D19 (4)) and `1f8ea570` (C4)
+Landed: R-0852 — `411f66b3` (C1, D19 (4)) and `1f8ea570` (C4)
+Landed: R-0856 — `411f66b3` (C1, D19 (4)) and `1f8ea570` (C4)
+Landed: R-0860 — `411f66b3` (C1, D19 (4)) and `1f8ea570` (C4)
 
 ## Commits
 
-### a02d0477 F273 R18 C1: bookkeeping — round 17's verdict and its three resolutions booked, R-0993 registered, DECISION F273 D18 and Q4's third ruling landed
+### 411f66b3 F273 R19 C1: bookkeeping — round 18's verdict and three resolutions booked, the moot and met ids booked, DECISION F273 D19 landed
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f273-r18-block.md` | +119 / -0 | Byte copy of the block |
-| `.agent/authored/f273-r18-decisions.md` | +27 / -0 | Byte copy of decisions.md |
-| `.agent/authored/f273-r18-ledger.md` | +10 / -0 | Byte copy of ledger.md |
-| `.agent/authored/f273-r18-operator_questions.md` | +68 / -0 | Byte copy of operator_questions.md |
-| `.agent/authored/f273-r18-plan.md` | +30 / -0 | Byte copy of plan.md |
-| `.agent/decisions.md` | +27 / -0 | `f445a2c0` bytes + decisions.md (DECISION F273 D18) |
-| `.agent/live_review.md` | +10 / -0 | `f445a2c0` bytes + ledger.md (Gate F273 R17, three `Done:` lines, R-0993) |
-| `.agent/operator_questions.md` | +3 / -1 | := operator_questions.md (Q4 third ruling) |
-| `.agent/plan.md` | +13 / -10 | := plan.md |
+| `.agent/authored/f273-r19-block.md` | +112 / -0 | Byte copy of the block |
+| `.agent/authored/f273-r19-decisions.md` | +41 / -0 | Byte copy of decisions.md |
+| `.agent/authored/f273-r19-ledger.md` | +38 / -0 | Byte copy of ledger.md |
+| `.agent/authored/f273-r19-plan.md` | +30 / -0 | Byte copy of plan.md |
+| `.agent/decisions.md` | +41 / -0 | `17c7f169` bytes + decisions.md (DECISION F273 D19) |
+| `.agent/live_review.md` | +38 / -0 | `17c7f169` bytes + ledger.md (Gate F273 R18, eighteen `Done:` lines) |
+| `.agent/plan.md` | +14 / -14 | := plan.md |
 
-307 insertions, 11 deletions (`git show --numstat`).
+314 insertions, 14 deletions (`git show --numstat`).
 
-### ab9ab436 F273 R18 C2: R-0993 — a DoD check runs with PYTHONDONTWRITEBYTECODE set and pytest without its cache provider, so it writes nothing into the worktree it judges
-All by `git apply .remedy-wt/f273-proto-g8a.diff`.
+### 9189c0c9 F273 R19 C2: dead residue — the route-policy flags, the context_budget_optimized readers, _job_with_repo, the test-only proposed-task functions, provider_patch_material, two REVIEW_FINDINGS_OPEN members and AcceptanceCheck with Verifier go with their tests
+All by `git apply .remedy-wt/f273-proto-g9a2.diff`.
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/dod_runners.py` | +2 / -1 | pytest argv gains `-p no:cacheprovider` |
-| `packages/orchestration/exec_guard.py` | +7 / -1 | DoD policy env sets `PYTHONDONTWRITEBYTECODE=1` |
-| `tests/cli/test_do_sequence_cli.py` | +30 / -0 | `commit_a_passing_suite` helper; job completes under a gated pytest check |
-| `tests/orchestration/test_dod_runners.py` | +10 / -0 | A check writes no bytecode and no cache |
-| `tests/orchestration/test_exec_guard.py` | +4 / -1 | Policy env pins the set key, and the scrubbed child carries it |
-
-53 insertions, 3 deletions.
-
-### 77b644be F273 R18 C3: R-0977 — each do job records the milestone it serves, and its gate evaluates that milestone's criterion without holding the job on it
-All by `git apply .remedy-wt/f273-proto-g8b.diff`.
-| Path | +/- | Reason |
-|------|-----|--------|
-| `docs/guides/do-run-v1.md` | +3 / -2 | `shape` row and `--push` paragraph |
-| `packages/orchestration/do_sequence.py` | +36 / -16 | Milestone per job order; `record_job_milestone`; `hold_on_milestone=False` |
-| `packages/orchestration/mission_contract.py` | +9 / -5 | `hold_on_milestone` keyword on the slice merge |
-| `tests/cli/test_do_commit_flags.py` | +12 / -3 | Push tests commit a passing suite; open-criterion test uses `--force-job` on two milestones |
-| `tests/cli/test_do_sequence_cli.py` | +83 / -7 | Planner criterion reads `unmet`; two two-milestone tests |
-
-143 insertions, 33 deletions.
-
-### d28f2826 F273 R18 C4: R-0992 — the memory-candidate store, its three memory words, the cockpit readers, the dev status key and the smoke section go with their tests
-All by `git apply .remedy-wt/f273-proto-g8c.diff`.
-| Path | +/- | Reason |
-|------|-----|--------|
-| `apps/cli/command_catalog.py` | +0 / -38 | Three catalog entries deleted |
-| `apps/cli/commands/dev.py` | +1 / -11 | `memory_candidates_ok` key and its help line deleted |
-| `apps/cli/commands/memory.py` | +0 / -120 | Three handlers deleted |
-| `docs/system/vocabulary.md` | +10 / -0 | Status paragraph (R-0992) |
-| `packages/orchestration/memory_candidates.py` | +0 / -115 | Deleted |
-| `packages/orchestration/ui_server.py` | +0 / -5 | Live-state candidate count deleted |
-| `packages/orchestration/ui_view_model.py` | +0 / -17 | Checklist candidate items deleted |
-| `scripts/remedy_smoke.sh` | +1 / -37 | Smoke section 12aq and the dev-status key deleted |
+| `apps/cli/grouped.py` | +0 / -9 | Three route-policy flags (R-0831) |
+| `apps/ui/src/api/actionClass.ts` | +0 / -1 | `context_budget_optimized` bookkeeping kind (R-0832) |
+| `docs/system/provider-patch-materialization-v0.md` | +3 / -2 | The module is deleted (R-0867) |
+| `packages/contracts/interfaces.py` | +1 / -18 | `Verifier` protocol (R-0884) |
+| `packages/core/models.py` | +0 / -7 | `AcceptanceCheck` (R-0884) |
+| `packages/orchestration/event_schemas.py` | +0 / -5 | `context_budget_optimized` schema (R-0832) |
+| `packages/orchestration/mission_readiness.py` | +0 / -1 | `REVIEW_FINDINGS_OPEN` (R-0863) |
+| `packages/orchestration/proposed_tasks.py` | +1 / -342 | Test-only functions and their helpers (R-0941) |
+| `packages/orchestration/provider_patch_material.py` | +0 / -547 | Deleted (R-0867) |
+| `packages/orchestration/self_dogfood.py` | +0 / -3 | Roadmap rule testing for the deleted file (R-0867) |
+| `packages/orchestration/self_dogfood_execution.py` | +0 / -1 | `REVIEW_FINDINGS_OPEN` (R-0863) |
+| `pyproject.toml` | +0 / -1 | Deleted module's mypy entry |
 | `tests/orchestration/import_reachability_allowlist.txt` | +0 / -1 | Deleted module |
-| `tests/orchestration/test_project_brain.py` | +0 / -79 | Store tests removed |
-| `tests/test_cli_execution_loop_closure.py` | +5 / -117 | Word tests removed; absence of the count and key pinned |
-| `tests/test_command_catalog.py` | +3 / -0 | Three ids listed as deleted |
-| `tests/test_data_paths.py` | +1 / -3 | Routed-handler case re-pointed at `memory learn` |
-| `tests/test_repair_context_reviewer_memory.py` | +5 / -85 | Store tests removed; absence of the count pinned |
-| `tests/ui_contracts/test_ux_quality.py` | +7 / -8 | A held candidate is not listed |
+| `tests/orchestration/test_event_ledger.py` | +0 / -16 | Schema tests of the deleted event |
+| `tests/orchestration/test_event_name_coupling.py` | +7 / -8 | Dead-coupling list empty, ceiling 0 |
+| `tests/orchestration/test_proposed_tasks.py` | +8 / -206 | Tests of the deleted functions |
+| `tests/orchestration/test_provider_patch_material.py` | +0 / -103 | Deleted |
+| `tests/orchestration/test_token_economy_integration.py` | +0 / -17 | `_job_with_repo` (R-0850) |
+| `tests/orchestration/test_worker_execution.py` | +4 / -20 | Readiness test of the deleted report |
+| `tests/test_imports.py` | +3 / -6 | `AcceptanceCheck` and `Verifier` imports |
 
-33 insertions, 636 deletions.
+27 insertions, 1314 deletions.
 
-### C5 (this commit) F273 R18 C5: handoff
+### 5108e9d1 F273 R19 C3: small repairs — a stopped job records its finish time, the self-use reporter answers an unfinalized stop, a manifest error and a failed task with a blank error, and the smoke messages name keyword arguments
+All by `git apply .remedy-wt/f273-proto-g9b2.diff`.
+| Path | +/- | Reason |
+|------|-----|--------|
+| `docs/system/self-use-track-v1.md` | +1 / -1 | Reporter row names what it answers (R-0826) |
+| `packages/orchestration/pingpong_job.py` | +1 / -0 | `_stop_job` sets `finished_at` (R-0828) |
+| `packages/orchestration/self_use_findings.py` | +21 / -11 | Unfinalized stop, manifest error, non-passing task (R-0826) |
+| `scripts/remedy_smoke.sh` | +1 / -1 | Message names `task_type=` (R-0937) |
+| `tests/orchestration/test_predictive_budget.py` | +28 / -0 | Budget stop persists `stopped` with a finish time |
+| `tests/orchestration/test_self_use_findings.py` | +40 / -0 | Two reporter tests |
+| `tests/test_remedy_smoke_script.py` | +6 / -6 | Assertion messages name `task_type=` |
+
+98 insertions, 19 deletions.
+
+### 1f8ea570 F273 R19 C4: the command taxonomy of the core product spine stops listing the deleted command groups, as DECISION F260 D3's amendment in D19 rules
+All by `git apply .remedy-wt/f273-proto-g9c2.diff`.
+| Path | +/- | Reason |
+|------|-----|--------|
+| `docs/system/core-product-spine-v0.md` | +5 / -9 | Status banner; deleted groups leave the tables |
+
+5 insertions, 9 deletions.
+
+### C5 (this commit) F273 R19 C5: handoff
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | rewritten | This handback |
 
-Every commit is under 500 inserted lines. The largest is C1, with 307.
+Every commit is under 500 inserted lines. The largest is C1, with 314.
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f273-r18-g5 d28f2826` for G5, then `git worktree remove --force .remedy-wt/f273-r18-g5` as the step's last action (exit 0; the tree was clean, `git status --porcelain` read `''` after the reverts). `git worktree list` afterwards:
+- `git worktree add --detach .remedy-wt/f273-r19-g5 1f8ea570` for G5, then `git worktree remove --force .remedy-wt/f273-r19-g5` as the step's last action (exit 0; the tree's `git status --porcelain` read `''` after the reverts). `git worktree list` afterwards:
   ```
-  /home/decodeux/Repos/remedy                         d28f2826 [feature/f273-findings-paydown-v1]
-  /home/decodeux/Repos/remedy/.remedy-wt/f273-s3-r18  bd877325 (detached HEAD)
+  /home/decodeux/Repos/remedy                         1f8ea570 [feature/f273-findings-paydown-v1]
+  /home/decodeux/Repos/remedy/.remedy-wt/f273-s3-r19  71dd1f51 (detached HEAD)
   ```
-  `.remedy-wt/f273-s3-r18` is the reviewer's; the worker did not touch it.
+  `.remedy-wt/f273-s3-r19` is the reviewer's; the worker did not touch it.
 - The branch `remedy/job-81ec65896729405c` still exists in this repository. A research helper's probe created it before round 16; nobody may delete it without the operator. `git branch --list 'remedy/job-*'` reads 37 branches after the gates.
 - After C5: `git push`. No pull request is opened.
 
 ## Verification
 
-G1 to G5 ran at C4 `d28f2826` with a clean tree. Every script ran with an explicit `cwd`; a script's exit code is its process's own (the tool reports a non-zero exit as an error, and none was reported).
+G1 to G5 ran at C4 `1f8ea570` with a clean tree. Every script ran with an explicit `cwd`; exit codes are the process's own, printed as `EXIT_CODE` by `.remedy-wt/f273-r19/wk_run.py` or by the gate script itself.
 
-- **Transport**, before any write: `.remedy-wt/f273-r18/wk_digests.py` printed True for the block, the six payloads and the three diffs. The block file read 119 lines.
-- **Block copy**, before C1: `.remedy-wt/f273-r18/wk_c1.py`:
+- **Transport**, before any write: `sha256sum` of the block, the five payloads and the three diffs each equalled the block's digest; the block file read 112 lines.
+- **Block copy**, before C1: `.remedy-wt/f273-r19/wk_c1.py`:
   ```
-  saved block lines 119 sha256 b150c3023b578a750b8e0d4170711db2ea055b70f48867dd46b5625e5a4c1540
-  given block lines 119 sha256 b150c3023b578a750b8e0d4170711db2ea055b70f48867dd46b5625e5a4c1540
+  saved block sha256 cab453471fc37e3d6915b3b4228515e7ec50178802aec1e69344513197929dd4 lines 112
+  given block sha256 cab453471fc37e3d6915b3b4228515e7ec50178802aec1e69344513197929dd4 lines 112
   equal True
   ```
-- **G1**: `python3 .remedy-wt/f273-r18/wk_g1.py`, exit 0:
+- **G1 and G2**: `python3 .remedy-wt/f273-r19/wk_g1g2.py`, EXIT_CODE 0:
   ```
-  True digest .remedy-wt/f273-r18/plan.md
-  True digest .remedy-wt/f273-r18/ledger.md
-  True digest .remedy-wt/f273-r18/decisions.md
-  True digest .remedy-wt/f273-r18/operator_questions.md
-  True digest .remedy-wt/f273-r18/next.md
-  True digest .remedy-wt/f273-s3/r18_targets.txt
-  True digest .remedy-wt/f273-r18/block.md
-  True digest .remedy-wt/f273-proto-g8a.diff
-  True digest .remedy-wt/f273-proto-g8b.diff
-  True digest .remedy-wt/f273-proto-g8c.diff
-  True .agent/plan.md == payload
-  True .agent/operator_questions.md == payload
-  True .agent/live_review.md == base + ledger.md
-  True .agent/decisions.md == base + decisions.md
-  True .agent/authored/f273-r18-plan.md == payload
-  True .agent/authored/f273-r18-ledger.md == payload
-  True .agent/authored/f273-r18-decisions.md == payload
-  True .agent/authored/f273-r18-operator_questions.md == payload
-  True .agent/authored/f273-r18-block.md == payload
-  True ab9ab436 paths == numstat of f273-proto-g8a.diff 5
-  True 77b644be paths == numstat of f273-proto-g8b.diff 5
-  True d28f2826 paths == numstat of f273-proto-g8c.diff 15
+  G1
+  digest .remedy-wt/f273-r19/plan.md True
+  digest .remedy-wt/f273-r19/ledger.md True
+  digest .remedy-wt/f273-r19/decisions.md True
+  digest .remedy-wt/f273-r19/next.md True
+  digest .remedy-wt/f273-r19/block.md True
+  digest .remedy-wt/f273-s3/r19_targets.txt True
+  digest .remedy-wt/f273-proto-g9a2.diff True
+  digest .remedy-wt/f273-proto-g9b2.diff True
+  digest .remedy-wt/f273-proto-g9c2.diff True
+  plan.md == payload True
+  live_review.md == base + ledger True
+  decisions.md == base + decisions True
+  authored f273-r19-plan.md True
+  authored f273-r19-ledger.md True
+  authored f273-r19-decisions.md True
+  authored f273-r19-block.md True
+  paths 9189c0c9 f273-proto-g9a2.diff 20 True
+  paths 5108e9d1 f273-proto-g9b2.diff 7 True
+  paths 1f8ea570 f273-proto-g9c2.diff 1 True
+  G2
+  tests 9e0972ba882e0f07dee9d883474344ccf27eca05
+  packages 519a486b77948a2eabf0f3a45248265e56eaf712
+  apps 39a6be279a37193ae0ebcf00d97cadb542da960f
+  docs 562fdc1bab1c8ed3e18aaa6f6de27116dce0cb86
+  scripts 866c1b06bafcedd6f4cca87b588dccae60d37531
+  EXIT_CODE 0
   ```
-- **G2**: `python3 .remedy-wt/f273-r18/wk_g2.py` (`git rev-parse d28f2826:<sub>`), exit 0:
+  All five G2 objects equal the reviewer's dry-run objects.
+- **G3** (primary checkout, serial): `python3 .remedy-wt/f273-r19/wk_g3.py` runs `python3 -m pytest -q -p no:cacheprovider` over the lines of `r19_targets.txt`, `env=` without `REMEDY_OLLAMA_HOST` and `OLLAMA_HOST`:
   ```
-  a52f51b4dd93071e87afe8d23dc04a9bff425d99 tests True
-  9754f8efaa0572938f7ca34549d377a1c3912407 packages True
-  606b88b001ea70d32e9fa6d41e2fc2d64e95a426 apps True
-  f10debd13cab12e3de9e9289f6280395cae8e590 docs True
-  9dfa0d7d9f2824f65dbf9cc094ec2e1047b93e18 scripts True
+  target paths 24
+  R-0803 lines 0
+  2228 passed, 4 skipped in 195.06s (0:03:15)
+  EXIT_CODE 0
   ```
-  All five equal the reviewer's dry-run objects.
-- **G3** (primary checkout, serial): `python3 .remedy-wt/f273-r18/wk_g3.py` runs `python3 -m pytest -q -p no:cacheprovider` over the 30 lines of `r18_targets.txt`, `env=` without `PYTHONDONTWRITEBYTECODE`, exit 0:
+- **G4**: `ruff` and `bash -n`, each through `wk_run.py` with `cwd` the primary checkout's root:
   ```
-  targets 30
-  summary: 2576 passed, 5 skipped in 357.17s (0:05:57)
-  R-0803 lines: 0
-  pytest exit 0
-  ```
-- **G4**: `python3 .remedy-wt/f273-r18/wk_g4.py` (`ruff check . --output-format concise` and `bash -n scripts/remedy_smoke.sh`, both with `cwd` the primary checkout's root), exit 0:
-  ```
+  python3 -m ruff check . --output-format concise
   All checks passed!
-  ruff exit 0
-  bash -n exit 0
+  EXIT_CODE 0
+  bash -n scripts/remedy_smoke.sh
+  EXIT_CODE 0
   ```
-- **G5** (`python3 .remedy-wt/f273-r18/wk_g5.py`, exit 0): one detached worktree at `d28f2826`; `python3 -m pytest -q -p no:cacheprovider` over D, R and F from its root; env carries `REMEDY_OLLAMA_HOST=http://127.0.0.1:9` and `OLLAMA_HOST=http://127.0.0.1:9` and lacks `PYTHONDONTWRITEBYTECODE`; `__pycache__` purged before every run; each FROM counted as a whole line with its newline; each file reverted from its saved bytes.
+- **G5** (`python3 .remedy-wt/f273-r19/wk_g5.py`, exit 0): one detached worktree at `1f8ea570`; `python3 -m pytest -q -p no:cacheprovider` from its root; env carries `REMEDY_OLLAMA_HOST=http://127.0.0.1:9` and `OLLAMA_HOST=http://127.0.0.1:9`; `__pycache__` purged before every run; each FROM counted as a whole line with its newline; each file reverted from its saved bytes.
   ```
-  do_sequence resolves to: /home/decodeux/Repos/remedy/.remedy-wt/f273-r18-g5/packages/orchestration/do_sequence.py
-  inside worktree: True
-  [control] 119 passed in 94.48s | exit 0
-  (a) packages/orchestration/exec_guard.py: FROM count 1; expected red: D and R
-      [mut_a] 8 failed, 111 passed in 88.83s | exit 1 | RED
-          D ::test_a_gated_pytest_check_in_a_repo_with_a_passing_suite_leaves_the_job_completed
-          D ::test_a_two_milestone_do_in_a_repo_with_a_passing_suite_meets_both_planner_criteria
-          R ::TestPytestKind::test_a_check_writes_no_bytecode_and_no_cache_into_the_tree_it_judges
-          F ::test_push_sends_exactly_one_fast_forward_push_to_the_upstream
-          F ::test_the_key_with_a_commit_flag_pushes_once_without_push
-          F ::test_a_push_the_remote_refuses_leaves_the_commit_and_fails_the_walk
-          F ::test_a_two_job_walk_under_commit_lands_two_linear_commits_and_one_push
-          F ::test_the_apply_step_never_passes_push_to_a_job
-  (b) packages/orchestration/dod_runners.py: FROM count 1; expected red: R
-      [mut_b] 1 failed, 118 passed in 90.10s | exit 1 | RED
-          R ::TestPytestKind::test_a_check_writes_no_bytecode_and_no_cache_into_the_tree_it_judges
-  (c) packages/orchestration/do_sequence.py: FROM count 1; expected red: D
-      [mut_c] 4 failed, 115 passed in 91.80s | exit 1 | RED
-          D ::test_contract_cli_tool_gates_the_job_on_its_whole_mission_checks_and_names_the_unmet
-          D ::test_a_do_whose_order_proposes_no_template_names_only_criteria_not_met
-          D ::test_a_two_milestone_do_ends_with_no_planner_criterion_open
-          D ::test_a_two_milestone_do_in_a_repo_with_a_passing_suite_meets_both_planner_criteria
-  (d) packages/orchestration/mission_contract.py: FROM count 1; expected red: D and F
-      [mut_d] 37 failed, 82 passed in 81.03s | exit 1 | RED  (26 in D, 11 in F)
-          D ::test_init_to_study_registers_studies_once_and_records_it
-          D ::test_init_writes_every_ignore_entry_into_the_repos_exclude_file
-          D ::test_study_to_plan_creates_the_mission_carrying_the_order
-          D ::test_plan_to_shape_yields_one_job_linked_to_the_mission_targeting_the_repo
-          D ::test_shape_to_run_completes_on_the_named_fake_providers
-          D ::test_the_teacher_narrates_the_job_do_ran_without_a_budget
-          D ::test_run_to_stop_leaves_the_target_untouched_and_stops_before_apply
-          D ::test_job_apply_accepts_the_job_do_ran
-          (F, first of 11) ::test_commit_lands_one_commit_with_that_first_line_and_the_trailers
-  worktree git status after reverts: ''
+  import path: /home/decodeux/Repos/remedy/.remedy-wt/f273-r19-g5/packages/orchestration/pingpong_job.py
+  purged __pycache__ dirs: 2
+  control summary: 88 passed in 16.78s
+  control EXIT_CODE 0
+  (a) packages/orchestration/pingpong_job.py FROM count: 1
+  purged __pycache__ dirs: 9
+  (a) summary: 1 failed, 75 passed in 3.86s
+     FAILED tests/orchestration/test_predictive_budget.py::TestPredictiveStopAtTheLiveDispatchSafePoint::test_a_provider_call_budget_stop_persists_stopped_with_a_finish_time
+  (a) EXIT_CODE 1
+  (a) reverted: True
+  (b) packages/orchestration/self_use_findings.py FROM count: 1
+  purged __pycache__ dirs: 9
+  (b) summary: 1 failed, 5 passed in 1.32s
+     FAILED tests/orchestration/test_self_use_findings.py::TestDescribeSelfUseRunDefects::test_a_stop_that_never_finalized_surfaces_its_stop_and_its_manifest_error
+  (b) EXIT_CODE 1
+  (b) reverted: True
+  (c) tests/orchestration/test_event_name_coupling.py FROM count: 1
+  purged __pycache__ dirs: 7
+  (c) summary: 2 failed, 4 passed in 11.81s
+     FAILED tests/orchestration/test_event_name_coupling.py::TestEventNameCouplingRatchet::test_the_declared_set_only_ever_shrinks
+     FAILED tests/orchestration/test_event_name_coupling.py::TestEventNameCouplingRatchet::test_no_declared_entry_is_stale
+  (c) EXIT_CODE 1
+  (c) reverted: True
+  worktree status after reverts: ''
   ```
-  Each mutation printed `reverted: True`. Every mutation went red; none stayed green. The ids are abbreviated to their file letter; full logs are `.remedy-wt/f273-r18/g5_*.log`.
+  Every mutation went red in the file the block names; none stayed green.
 - **G6** runs after the push and is reported in the round report, because this commit comes before it.
 - Full suite: not run (amend0917-throughput).
 
 ## Authored-text proofs
 
-- Every edited `.agent/` file in C1 was built by `python3 .remedy-wt/f273-r18/wk_c1.py` from `git show f445a2c0:<path>` bytes and the payload bytes, with no hand edit. G1 re-proves every C1 file and every `.agent/authored/f273-r18-*` copy against its payload.
-- The code and docs arrived only by `git apply` of the three reviewer-verified diffs, in the block's order; before each commit `git status --porcelain` listed exactly the paths the apply touched, all staged (the deletion of `memory_candidates.py` included), and nothing untracked. G1 proves each commit's path set equals its diff's; G2's object ids equal the reviewer's dry-run objects.
-- The `## Next` body below is `next.md` byte for byte, appended by `.remedy-wt/f273-r18/wk_c5.py`.
+- Every edited `.agent/` file in C1 was built by `python3 .remedy-wt/f273-r19/wk_c1.py` from `git show 17c7f169:<path>` bytes and the payload bytes, with no hand edit. G1 re-proves every C1 file and every `.agent/authored/f273-r19-*` copy against its payload.
+- The code and docs arrived only by `git apply` of the three reviewer-verified diffs, in the block's order; before each commit `git status --porcelain` listed exactly the paths the apply touched, all staged (the deletions of `provider_patch_material.py` and its test included), and nothing untracked. G1 proves each commit's path set equals its diff's; G2's object ids equal the reviewer's dry-run objects.
+- The `## Next` body below is `next.md` byte for byte, appended by `.remedy-wt/f273-r19/wk_c5.py`.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 bookkeeping (Gate F273 R17, three `Done:` lines, R-0993 registered, D18, Q4 third ruling) | done | `a02d0477` |
-| R-0993 | done | `ab9ab436` (C2) |
-| R-0977 | done | `77b644be` (C3) |
-| R-0992 | done | `d28f2826` (C4) |
+| C1 bookkeeping (Gate F273 R18, eighteen `Done:` lines, D19) | done | `411f66b3` |
+| R-0831 | done | `9189c0c9` (C2) |
+| R-0832 | done | `9189c0c9` (C2) |
+| R-0850 | done | `9189c0c9` (C2) |
+| R-0941 | done | `9189c0c9` (C2) |
+| R-0867 | done | `9189c0c9` (C2) |
+| R-0863 | done | `9189c0c9` (C2) |
+| R-0884 | done | `9189c0c9` (C2) |
+| R-0828 | done | `5108e9d1` (C3) |
+| R-0826 | done | `5108e9d1` (C3) |
+| R-0937 | done | `5108e9d1` (C3) |
+| R-0851 | done | `411f66b3` (C1, D19 (4)) and `1f8ea570` (C4) |
+| R-0852 | done | `411f66b3` (C1, D19 (4)) and `1f8ea570` (C4) |
+| R-0856 | done | `411f66b3` (C1, D19 (4)) and `1f8ea570` (C4) |
+| R-0860 | done | `411f66b3` (C1, D19 (4)) and `1f8ea570` (C4) |
 | G1 to G5 | done | All green / red-proofs red as above |
 | C5 handoff + push | done | This commit, then the push |
 | G6 | done | After the push; in the round report |
 
 ## Open findings
 
-Measured by `.remedy-wt/f273-r18/wk_count.py`. It loads `scripts/rotate_live_review.py` by path, registers it in `sys.modules`, and calls `count_open_findings` (by distinct id) on the committed `.agent/live_review.md`:
-- at `a02d0477` (C1 onwards; C2 to C4 do not touch it; the same at `d28f2826`): **45 open**;
-- at `f445a2c0`: 47 open.
+Measured by `.remedy-wt/f273-r19/wk_count.py`. It loads `scripts/rotate_live_review.py` by path, registers it in `sys.modules`, and calls `count_open_findings` (by distinct id) on the committed `.agent/live_review.md`:
+- at `411f66b3` (C1 onwards; C2 to C4 do not touch it; the same at `1f8ea570`): **27 open**;
+- at `17c7f169`: 45 open.
 
-C1's three `Done:` lines close three distinct ids and it registers R-0993: 47 - 3 + 1 = 45. The three ids landed this round are still open in the ledger.
+C1's eighteen `Done:` lines close eighteen distinct ids: 45 - 18 = 27. The fourteen ids landed this round are still open in the ledger.
 
 ## Deviations & assumptions
 
 - **Commit sequence:** as ordered: C1 to C5, then the push. No extra commit.
-- **G4 first attempt:** before the scripted G4, the worker ran `python3 -m ruff check /home/decodeux/Repos/remedy --output-format concise` from the session's working directory (the same root, by absolute path rather than `.`); it read `All checks passed!`. The reported G4 is the scripted run with `cwd` the root and the literal `.`.
-- **An attempted `$?`:** one Bash call tried `echo "exit=$?"` after G1; the shell refused it before anything ran, and G1 was re-run plainly.
-- **G5 extra red:** mutation (a) reddens five tests in F beside the three in D and R the block names; mutation (d) reddens 26 in D and 11 in F. Both are wider than the block states, never narrower.
+- **An attempted `$?`:** one Bash call tried `echo "exit=$?"` after the first G1/G2 run; the shell refused the call before anything ran, and G1/G2 were run once through `wk_run.py`, which prints the real exit code.
 - **G5 worktree removal:** `worktree remove` was given `--force` as a precaution against ignored bytecode; the tree's `git status --porcelain` was empty beforehand, so nothing tracked was discarded. Made with `--detach`, so no branch was created.
-- **G5 interpreter:** `python3 -m pytest` without `-B`, as the block orders; `__pycache__` was purged before every run instead.
-- **Payload copies:** the five files the block names for C1 went to `.agent/authored/` as `f273-r18-<name>`. `next.md` is not copied; it lives in this handoff's `## Next`.
-- **Operator questions:** the count below is the number of `### Q<n>` headings in `.agent/operator_questions.md` (Q1, Q2, Q4, Q5, Q7).
-- **Scratch:** gitignored under `.remedy-wt/f273-r18/`: `wk_digests.py`, `wk_c1.py`, `wk_g1.py`, `wk_g2.py`, `wk_g3.py`, `wk_g4.py`, `wk_g5.py`, `wk_count.py`, `wk_c5.py`, `handoff_head.md`, and the logs `g3.log`, `g5_*.log`.
+- **G5 control scope:** the control ran B, S and E together (88 passed); each mutation ran only the file the block names for it.
+- **Payload copies:** the four files the block names for C1 went to `.agent/authored/` as `f273-r19-<name>`. `next.md` is not copied; it lives in this handoff's `## Next`.
+- **Operator questions:** the count below is the number of `### Q<n>` headings in `.agent/operator_questions.md` (Q1, Q2, Q4, Q5, Q7), unchanged this round.
+- **Scratch:** gitignored under `.remedy-wt/f273-r19/`: `wk_c1.py`, `wk_run.py`, `wk_g1g2.py`, `wk_g3.py`, `wk_g5.py`, `wk_count.py`, `wk_c5.py`, `handoff_head.md`.
 
 ## Next
 
-1. Phase 1 rule 1 (`.agent/STOP`), then the review of round 18 over `f445a2c0`..the round 18
-   handoff commit, booked as `Gate: F273 R18` with `Done:` lines for R-0993, R-0977 and R-0992 in
-   the next round's first commit.
-2. An owner for every open id outside F273's own list (amend0911-feedback rule A), then the
-   closure sequence.
+1. Phase 1 rule 1 (`.agent/STOP`), then the review of round 19 over `17c7f169`..the round 19
+   handoff commit, booked as `Gate: F273 R19` with `Done:` lines for R-0831, R-0832, R-0850,
+   R-0941, R-0867, R-0863, R-0884, R-0828, R-0826, R-0937, R-0851, R-0852, R-0856 and R-0860 in the
+   next round's first commit.
+2. The closure sequence of `docs/roadmap/STATUS_closure_protocol.md`, with the next paydown's
+   registration and the ownership paragraph DECISION F273 D19 (5) leads into.
 
 Operator questions open: 5
