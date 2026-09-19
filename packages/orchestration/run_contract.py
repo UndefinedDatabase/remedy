@@ -395,6 +395,27 @@ _CLOUD_ACTIONS = frozenset({
 })
 
 
+def job_budget_limits(job: JobPlan) -> tuple[int | None, int | None]:
+    """The job's F018 ``(max_total_tokens, max_wall_clock_minutes * 60)``, each None when unset.
+
+    R-0935: ``JobPlan.budgets`` is the persisted dict, so it is validated into ``JobBudgets``
+    (a ``JobBudgets`` passes as-is). A budget that does not validate lends the contract nothing;
+    ``run_job`` blocks such a job with ``corrupt_budget_state`` before any action is judged.
+    """
+    from packages.core.models import JobBudgets
+
+    budgets = getattr(job, "budgets", None)
+    if budgets is None:
+        return None, None
+    if not isinstance(budgets, JobBudgets):
+        try:
+            budgets = JobBudgets.model_validate(budgets)
+        except ValueError:
+            return None, None
+    minutes = budgets.max_wall_clock_minutes
+    return budgets.max_total_tokens, (None if minutes is None else minutes * 60)
+
+
 def build_default_run_contract(job: JobPlan) -> RunContract:
     """Build a sensible default RunContract for a job.
 
@@ -405,14 +426,9 @@ def build_default_run_contract(job: JobPlan) -> RunContract:
     so there is ONE budget authority — JobBudgets is canonical for
     max_tokens and max_runtime_seconds when it specifies them.
     """
-    max_tokens = 200_000
-    max_runtime_seconds = 600
-    budgets = getattr(job, "budgets", None)
-    if budgets is not None:
-        if getattr(budgets, "max_total_tokens", None) is not None:
-            max_tokens = budgets.max_total_tokens
-        if getattr(budgets, "max_wall_clock_minutes", None) is not None:
-            max_runtime_seconds = budgets.max_wall_clock_minutes * 60
+    budget_tokens, budget_runtime = job_budget_limits(job)
+    max_tokens = 200_000 if budget_tokens is None else budget_tokens
+    max_runtime_seconds = 600 if budget_runtime is None else budget_runtime
 
     return RunContract(
         version=1,
@@ -497,17 +513,9 @@ def ensure_contract(job: JobPlan) -> RunContract:
 
 def _reconcile_budget_fields(job: JobPlan, contract: RunContract) -> RunContract:
     """If JobBudgets diverged from the persisted contract, update contract."""
-    budgets = getattr(job, "budgets", None)
-    if budgets is None:
-        return contract
-
-    want_tokens = contract.max_tokens
-    want_runtime = contract.max_runtime_seconds
-
-    if getattr(budgets, "max_total_tokens", None) is not None:
-        want_tokens = budgets.max_total_tokens
-    if getattr(budgets, "max_wall_clock_minutes", None) is not None:
-        want_runtime = budgets.max_wall_clock_minutes * 60
+    budget_tokens, budget_runtime = job_budget_limits(job)
+    want_tokens = contract.max_tokens if budget_tokens is None else budget_tokens
+    want_runtime = contract.max_runtime_seconds if budget_runtime is None else budget_runtime
 
     if want_tokens == contract.max_tokens and want_runtime == contract.max_runtime_seconds:
         return contract

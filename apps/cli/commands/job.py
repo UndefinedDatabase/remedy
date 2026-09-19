@@ -19,6 +19,7 @@ from packages.orchestration.pingpong_job import (
     TaskEntry,
     require_job_plan,
     save_job_plan,
+    task_is_done,
 )
 
 if TYPE_CHECKING:
@@ -381,7 +382,7 @@ def _summary_section(job: JobPlan) -> tuple[dict, list[str]]:
 
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
     task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    done_count = sum(1 for t in job.tasks if task_is_done(t))
     pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
     event_count = len(events)
     has_real_events = event_count > 0
@@ -422,7 +423,7 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
 
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
     task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    done_count = sum(1 for t in job.tasks if task_is_done(t))
     pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
 
     blockers: list[str] = []
@@ -517,7 +518,7 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
 
     state = job.state.value if hasattr(job.state, "value") else str(job.state)
     task_count = len(job.tasks)
-    done_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed")
+    done_count = sum(1 for t in job.tasks if task_is_done(t))
     pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "pending")
 
     task_details = []
@@ -2238,9 +2239,22 @@ def _cmd_job_budget_set(
     if in_contract:
         from packages.orchestration.run_contract import (
             build_default_run_contract,
+            job_budget_limits,
             load_contract,
             save_contract,
         )
+        # R-0935: a job's F018 limit is canonical for the contract field it overlaps, and the
+        # next `ensure_contract` reconciles that field back to it, so a write here would not hold.
+        budget_tokens, budget_runtime = job_budget_limits(job)
+        f018_field = ""
+        if field_name == "max_tokens" and budget_tokens is not None:
+            f018_field = "max_total_tokens"
+        elif field_name == "max_runtime_seconds" and budget_runtime is not None:
+            f018_field = "max_wall_clock_minutes"
+        if f018_field:
+            _refuse_budget_set(
+                f"{field_name} follows this job's {f018_field}: set it with "
+                f"`remedy job run <job_id> --{f018_field.replace('_', '-')} <value>`.")
         contract = load_contract(job)
         if contract is None:
             contract = build_default_run_contract(job)

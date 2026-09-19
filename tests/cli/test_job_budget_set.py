@@ -20,6 +20,7 @@ from packages.orchestration.run_contract import (
     ContractAction,
     RunUsage,
     build_default_run_contract,
+    ensure_contract,
     evaluate_run_action,
     load_contract,
     save_contract,
@@ -149,6 +150,35 @@ class TestRefusals:
         assert capsys.readouterr().err == shown == f"Error: No job matches {missing!r}. Try: remedy job list.\n"
         assert not job_record_path(missing).exists()
         assert _profiles(data_root) == []
+
+
+class TestR0935AFieldTheJobBudgetsOwn:
+    """R-0935: once the contract inherits the job's F018 limits, `ensure_contract` reconciles the
+    overlapping field back to them, so `set` refuses that field instead of writing a value that
+    the next contract read overwrites."""
+
+    @pytest.mark.parametrize(("field", "value", "flag"), [
+        ("max_tokens", "9000", "remedy job run <job_id> --max-total-tokens <value>"),
+        ("max_runtime_seconds", "900", "remedy job run <job_id> --max-wall-clock-minutes <value>"),
+    ])
+    def test_the_overlapping_field_is_refused_and_nothing_is_written(
+            self, data_root, tmp_path, capsys, field, value, flag):
+        job = _job(tmp_path, budgets={"max_total_tokens": 5000, "max_wall_clock_minutes": 3})
+        record = job_record_path(job.job_id).read_bytes()
+
+        assert _cli("job", "budget", job.job_id, "set", field, value) == 2
+
+        assert flag in capsys.readouterr().err
+        assert job_record_path(job.job_id).read_bytes() == record
+
+    def test_without_the_f018_limit_the_field_is_written(self, data_root, tmp_path):
+        job = _job(tmp_path, budgets={"max_wall_clock_minutes": 3})
+
+        assert _cli("job", "budget", job.job_id, "set", "max_tokens", "9000") == 0
+
+        stored = require_job_plan(job.job_id)
+        assert load_contract(stored).max_tokens == 9000
+        assert ensure_contract(stored).max_tokens == 9000
 
 
 class TestTheShowFormIsUnchanged:

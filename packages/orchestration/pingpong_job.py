@@ -60,6 +60,17 @@ TASK_SKIPPED = "skipped"
 # "the job blocked and this never got a chance."
 TASK_SPLIT = "split"
 
+#: R-0898: the statuses of a task whose work is done, over BOTH task vocabularies. The job
+#: runner writes TASK_PASSED and then TASK_APPLIED; the fulfillment, mission and queue paths
+#: write RunState.COMPLETED. Skipped and split tasks did no work of their own, so they are not done.
+TASK_DONE_STATUSES = frozenset({TASK_PASSED, TASK_APPLIED, RunState.COMPLETED.value})
+
+
+def task_is_done(task: object) -> bool:
+    """True when ``task``'s status is one of ``TASK_DONE_STATUSES`` (a string or a ``RunState``)."""
+    status = getattr(task, "status", None)
+    return (status.value if isinstance(status, RunState) else str(status)) in TASK_DONE_STATUSES
+
 # F112 T003b1: every TaskEntry's model-routing class, honestly defaulted rather
 # than inferred from title text (DECISION F112 D2) — the seeded
 # model_routing.TASK_CLASS_TIERS key F016's own build/repair tasks already are.

@@ -433,6 +433,49 @@ class TestRunContractReconciliation:
         assert contract.max_tokens == 200000
 
 
+class TestR0935PersistedBudgetsReachTheRunContract:
+    """R-0935: a job's F018 budgets are the persisted dict, and they reach its run contract."""
+
+    def test_a_new_contract_inherits_the_token_and_wall_clock_budgets(self):
+        from packages.orchestration.pingpong_job import JobPlan, _export_job, _import_job
+        from packages.orchestration.run_contract import build_default_run_contract, ensure_contract
+
+        job = _import_job(_export_job(JobPlan(
+            job_title="budgeted", budgets={"max_total_tokens": 5000, "max_wall_clock_minutes": 3})))
+        assert isinstance(job.budgets, dict)
+
+        built = build_default_run_contract(job)
+        assert (built.max_tokens, built.max_runtime_seconds) == (5000, 180)
+        ensured = ensure_contract(job)
+        assert (ensured.max_tokens, ensured.max_runtime_seconds) == (5000, 180)
+
+    def test_a_persisted_contract_is_reconciled_to_the_budgets(self):
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.run_contract import (
+            build_default_run_contract,
+            ensure_contract,
+            load_contract,
+            save_contract,
+        )
+
+        job = JobPlan(job_title="budgeted later")
+        save_contract(job, build_default_run_contract(job))
+        job.budgets = {"max_total_tokens": 7000, "max_wall_clock_minutes": 2}
+
+        ensured = ensure_contract(job)
+        assert (ensured.max_tokens, ensured.max_runtime_seconds) == (7000, 120)
+        stored = load_contract(job)
+        assert (stored.max_tokens, stored.max_runtime_seconds) == (7000, 120)
+
+    def test_a_budget_that_does_not_validate_lends_the_contract_nothing(self):
+        from packages.orchestration.pingpong_job import JobPlan
+        from packages.orchestration.run_contract import build_default_run_contract
+
+        job = JobPlan(job_title="corrupt", budgets={"max_total_tokens": True, "max_wall_clock_minutes": 3})
+        built = build_default_run_contract(job)
+        assert (built.max_tokens, built.max_runtime_seconds) == (200_000, 600)
+
+
 class TestRuntimeIntegrationGateNonzero:
     """Finding #14: gate must have nonzero real checks."""
 

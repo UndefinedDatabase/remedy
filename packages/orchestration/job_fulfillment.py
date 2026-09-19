@@ -952,10 +952,8 @@ def run_job_fulfill(
         record.status = JobFulfillmentStatus.FINAL_REVIEW
         job = load_job_plan(normalize_job_id(job_id), data_dir)
 
-        all_tasks_done = all(
-            (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed"
-            for t in job.tasks
-        )
+        from packages.orchestration.pingpong_job import task_is_done
+        all_tasks_done = all(task_is_done(t) for t in job.tasks)
         final_pass = (
             all_tasks_done
             and review_result.verdict == "pass"
