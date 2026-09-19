@@ -1,0 +1,51 @@
+Evidence Job Summary for F273 Round 24 Closure Round A
+
+Created: 2026-09-19
+Evidence job ID: f273r24e1001
+Head commit: c62aa3b1577b9308f7aaf09a48fc08ac6fd249ba
+Base commit: 80f7c5290e434b13abc3d637b5fd9d5d06b8b1cc (the fork point)
+
+Base proof (pitfall (e)):
+  - git rev-list --ancestry-path --count 80f7c5290e434b13abc3d637b5fd9d5d06b8b1cc..c62aa3b1577b9308f7aaf09a48fc08ac6fd249ba: 110
+  - git rev-list --count 80f7c5290e434b13abc3d637b5fd9d5d06b8b1cc..c62aa3b1577b9308f7aaf09a48fc08ac6fd249ba: 110
+
+Deselection Applied: none
+
+Script: .remedy-wt/f273-r24/create_f273_evidence.py, reviewer-authored and
+adapted from create_f271_evidence.py: the test files, the fork-point base, the
+run id, the evidence dir, the job id and title, the step range and the review
+feature id changed; the collect-only parser, which keeps every
+"tests/...::..." line and checks its count against pytest's "N tests
+collected", is F271's unchanged.
+
+Test Verification Run:
+  - Run ID: vr-1124
+  - Test files: 5 files (sorted)
+    - tests/orchestration/test_integrity_gate.py
+    - tests/orchestration/test_job_plan_state_reads.py
+    - tests/orchestration/test_live_review_rotation.py
+    - tests/orchestration/test_self_use_queue.py
+    - tests/orchestration/test_token_ledger.py
+  - Node IDs collected: 181
+  - Passed: 181
+  - Failed: 0
+  - Skipped: 0
+  - Exit code: 0
+  - Output hash: 73d3086a58f84a32abf1ebb70f86ecc5fdf795bbfb9cd47be62b6c060bb765c0
+  - test_files: SORTED (required by packaging validator)
+
+Evidence Bundle:
+  - Job ID: f273r24e1001
+  - Verdict: PASS_WITH_RISKS
+  - Authoritative files: 325
+  - Commit count: 110
+  - Partition: T001=109, T002=109, T003=107
+  - Total passed: 181
+  - Manual completion: true
+  - Operator-attested tasks: T001, T002, T003
+
+Evidence Validation (scripts/build_review_manifest.py validate_evidence_candidate):
+  - is_valid_current_run: True
+  - validation_errors: []
+
+Evidence directory: .remedy-wt/f273_evidence_round24 (not committed)
