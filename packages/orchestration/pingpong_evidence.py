@@ -418,7 +418,7 @@ def write_evidence_bundle(
     behaviour bit-for-bit unchanged: no ledger is opened, no project is
     resolved, no file appears anywhere. Naming a target (``ledger_project_id``
     or ``ledger_path``) together with ``ledger_job_id`` and ``ledger_task_id``
-    records this task run as one ledger row. The mirror never changes this
+    records this task run's provider calls as ledger rows. The mirror never changes this
     function's return value and never fails the write —
     see ``_record_finalized_call_in_ledger``.
     """
@@ -534,18 +534,19 @@ def _record_finalized_call_in_ledger(
         # Imported lazily: a run that never asks for a ledger never pays for the
         # import, and the evidence exporter keeps its existing import graph.
         from packages.orchestration.token_ledger import (
-            call_record_from_evidence,
-            record_call,
+            call_records_from_evidence,
+            record_task_run_calls,
         )
 
         if out_path.parent.name != _TASK_RUNS_DIRNAME or out_path.name != str(task_id):
             # Not the task-run layout the ledger mirrors, so there is no honest
             # evidence_ref for the row. No row is invented for it.
             return
-        record = call_record_from_evidence(out_path.parent.parent, job_id, task_id)
-        if record is None:
+        # R-0807: one row per provider call where the evidence lists them.
+        records = call_records_from_evidence(out_path.parent.parent, job_id, task_id)
+        if records is None:
             return
-        record_call(record, project_id=project_id, path=ledger_path)
+        record_task_run_calls(records, project_id=project_id, path=ledger_path)
     except Exception:
         logger.error(
             "token ledger hook FAILED after writing evidence for task %r (the "

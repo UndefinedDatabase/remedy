@@ -696,6 +696,8 @@ def test_the_json_cost_has_a_row_per_role_with_the_ledgers_own_numbers(repo, cap
     [job_id] = data["job_ids"]
     report = query_cost(project_id=str(resolve_project(repo).id), job_id=job_id, by="role")
     assert report.ledger_exists and report.rows, "the run step mirrored nothing into the ledger"
+    # R-0807: one row per provider call, so the reviewer's calls are a role too.
+    assert [role["role"] for role in data["cost"]["roles"]] == ["builder", "reviewer"]
     assert data["cost"]["roles"] == [
         {"role": row.bucket, "calls": row.calls, "tokens_in": row.tokens_in,
          "tokens_out": row.tokens_out, "cache_read": row.cache_read, "cost_usd": row.cost_usd}

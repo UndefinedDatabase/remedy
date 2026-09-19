@@ -97,6 +97,8 @@ class ProviderAttempt:
     # stream evidence is off, or for fake/manual providers which never stream).
     stream_call_id: str = ""
     stream_artifact_refs: list[str] = field(default_factory=list)
+    # R-0807: the loop round this invocation belongs to (0 = not recorded).
+    round: int = 0
 
 
 @dataclass
@@ -2545,9 +2547,11 @@ def _record_attempt(
     *,
     is_retry: bool = False,
     is_parse_retry: bool = False,
+    round_num: int = 0,
 ) -> None:
     """Record a provider attempt for usage accounting."""
     result.provider_attempts.append(ProviderAttempt(
+        round=round_num,
         role=role,
         provider=provider,
         usage_actuals=getattr(out, "usage_actuals", None),
@@ -2591,6 +2595,7 @@ def _call_with_retry(
     call_reasons: list[str] | None = None,
     stop_check: Callable[[], Any] | None = None,
     rate_governor: ProviderRateGovernor | None = None,
+    round_num: int = 0,
 ) -> Any:
     """Call a provider function with bounded retry on transient failures.
 
@@ -2636,7 +2641,8 @@ def _call_with_retry(
     # The parse-retry call is itself a retry of the logical review; its transport
     # retries stay part of that ONE logical parse retry.
     _record_attempt(result, out, role, provider,
-                    is_retry=is_parse_retry, is_parse_retry=is_parse_retry)
+                    is_retry=is_parse_retry, is_parse_retry=is_parse_retry,
+                    round_num=round_num)
     if on_provider_attempt is not None:
         on_provider_attempt(result.provider_attempts[-1])
     for attempt in range(MAX_RETRIES):
@@ -2713,7 +2719,8 @@ def _call_with_retry(
             on_call(attempt + 2, True)
         out = call_fn()
         _record_attempt(result, out, role, provider,
-                        is_retry=True, is_parse_retry=is_parse_retry)
+                        is_retry=True, is_parse_retry=is_parse_retry,
+                        round_num=round_num)
         if on_provider_attempt is not None:
             on_provider_attempt(result.provider_attempts[-1])
 
@@ -3454,6 +3461,7 @@ def run_pingpong(
                 call_reasons=builder_call_reasons,
                 stop_check=_stopped,
                 rate_governor=_rate_governor,
+                round_num=round_num,
             )
             # F106 T002c: a resume attempt that errors falls back ONCE to the
             # full-context path within the same round — an honest, evidenced
@@ -3521,6 +3529,7 @@ def run_pingpong(
                     call_reasons=builder_call_reasons,
                     stop_check=_stopped,
                     rate_governor=_rate_governor,
+                    round_num=round_num,
                 )
                 builder_out.resume_fallback = True
                 # F109 T001b-ii: the resume failed, so nothing is proven about what that
@@ -3801,6 +3810,7 @@ def run_pingpong(
                 call_reasons=reviewer_call_reasons,
                 stop_check=_stopped,
                 rate_governor=_rate_governor,
+                round_num=round_num,
             )
             # F106 T002c: a resume attempt that errors falls back ONCE to the
             # full-context path within the same round — an honest, evidenced
@@ -3858,6 +3868,7 @@ def run_pingpong(
                     call_reasons=reviewer_call_reasons,
                     stop_check=_stopped,
                     rate_governor=_rate_governor,
+                    round_num=round_num,
                 )
                 reviewer_out.resume_fallback = True
                 # F109 T001b-ii: mirrors the Builder fallback — the replaced output reports
@@ -3919,6 +3930,7 @@ def run_pingpong(
                     call_reasons=reviewer_call_reasons,
                     stop_check=_stopped,
                     rate_governor=_rate_governor,
+                    round_num=round_num,
                 )
                 retry_out.parse_retried = True
                 if not retry_out.error:
@@ -4507,6 +4519,27 @@ def _aggregate_usage_actuals(result: PingPongResult) -> dict[str, Any] | None:
     }
 
 
+#: The attempt's own counter names → the ``usage`` keys provider_evidence.json uses.
+_ATTEMPT_USAGE_KEYS = (
+    ("input_tokens", "input_tokens"),
+    ("output_tokens", "output_tokens"),
+    ("cache_read", "cache_read_input_tokens"),
+    ("cache_creation", "cache_creation_input_tokens"),
+)
+
+
+def _attempt_usage_evidence(ua: dict[str, Any] | None) -> dict[str, Any]:
+    """One attempt's OWN reported usage and cost, copied verbatim (R-0807).
+
+    A counter the provider did not report is left out, and ``usage`` is None when
+    it reported none at all (the fake provider): nothing is split, coerced or
+    defaulted here, so an unmeasured call stays unmeasured.
+    """
+    ua = ua or {}
+    usage = {out: ua[key] for key, out in _ATTEMPT_USAGE_KEYS if ua.get(key) is not None}
+    return {"usage": usage or None, "total_cost_usd": ua.get("total_cost_usd")}
+
+
 def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
     """Build provider identity evidence with write mode and model info."""
     builder_kind = _provider_kind(result.builder_provider)
@@ -4540,8 +4573,14 @@ def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
 
     # F004: list every real provider attempt with its per-call stream artifacts.
     # Fake/manual attempts never stream, so they contribute no references.
+    # R-0807: each attempt also carries its own position (``seq``, 1-based — the
+    # F103 ledger keys one row per attempt by it), its round, and the usage and
+    # cost THAT call reported — null where it reported none, never a share of the
+    # task run's aggregate.
     attempts_evidence = [
         {
+            "seq": seq,
+            "round": a.round,
             "role": a.role,
             "provider": a.provider,
             "is_retry": a.is_retry,
@@ -4549,8 +4588,9 @@ def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
             "stream_call_id": a.stream_call_id,
             "stream_artifact_refs": list(a.stream_artifact_refs),
             "error": (a.error or "")[:200],
+            **_attempt_usage_evidence(a.usage_actuals),
         }
-        for a in result.provider_attempts
+        for seq, a in enumerate(result.provider_attempts, start=1)
     ]
     if attempts_evidence:
         evidence["provider_attempts"] = attempts_evidence

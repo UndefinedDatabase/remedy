@@ -36,11 +36,14 @@ does not exist:
   one OTHER writer, ``teacher_spend.record_teacher_question``, which is not an
   actuals path either: it records figures its caller was GIVEN and parses no
   provider output at all.
-* Remedy deliberately does NOT store one row per HTTP request. A ROW IS ONE
-  FINALIZED TASK RUN, keyed ``"<job_id>:<task_id>"`` (DECISION D16, recorded on
-  the feature file): ``task_runs/<task_id>/provider_evidence.json`` is the
-  finest record the actuals feature puts on disk, and a per-request row would
-  have to invent ids, timestamps and a usage split no file records. F115 D4 adds
+* A ROW IS ONE PROVIDER CALL where the evidence records calls one by one
+  (R-0807): each ``provider_attempts`` entry of
+  ``task_runs/<task_id>/provider_evidence.json`` carries its own ``seq``,
+  role, round, usage and cost, and is keyed ``"<job_id>:<task_id>:<seq>"``.
+  Evidence written before that keeps DECISION D16's ONE ROW PER FINALIZED TASK
+  RUN, keyed ``"<job_id>:<task_id>"``, because inventing a per-call row for it
+  would invent a usage split no file records; ``record_task_run_calls``
+  deletes that row when the per-call rows of the same task run land. F115 D4 adds
   ``call_segments`` BESIDE it rather than widening it — one row per segment of
   one composed prompt, keyed by the row's ``call_id`` plus the trace line's
   position — so the per-call breakdown lives in its own table and ``calls``
@@ -74,8 +77,11 @@ Public API::
     ledger_miss_count() -> int
     reset_ledger_miss_count() -> None
     call_id_for_task_run(job_id, task_id) -> str
+    call_id_for_provider_call(job_id, task_id, seq) -> str
     job_id_for_evidence_dir(evidence_dir) -> str
     call_record_from_evidence(evidence_dir, job_id, task_id) -> CallRecord | None
+    call_records_from_evidence(evidence_dir, job_id, task_id) -> list[CallRecord] | None
+    record_task_run_calls(records, *, project_id=None, path=None) -> bool
     segment_rows_from_trace_file(trace_path, *, call_id, task_id)
         -> list[CallSegmentRow]
     backfill_ledger(evidence_dir, *, project_id=None, path=None) -> BackfillResult
@@ -93,7 +99,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -642,6 +648,20 @@ def call_id_for_task_run(job_id: str, task_id: str) -> str:
     return f"{job}:{task}"
 
 
+# The ledger identity of one provider CALL of a task run (R-0807, amending D16).
+def call_id_for_provider_call(job_id: str, task_id: str, seq: int) -> str:
+    """Return ``"<job_id>:<task_id>:<seq>"`` — one row per provider call.
+
+    ``seq`` is the call's 1-based position in the task run's
+    ``provider_evidence.json`` ``provider_attempts`` list, which the evidence
+    writes as each attempt's own ``seq`` field. It is as immutable as the
+    task-run id: two identifiers and a position the file already carries.
+    """
+    if isinstance(seq, bool) or not isinstance(seq, int) or seq < 1:
+        raise ValueError(f"call seq must be a positive int, got {seq!r}")
+    return f"{call_id_for_task_run(job_id, task_id)}:{seq}"
+
+
 # The job an evidence tree belongs to — the left half of every call_id inside it.
 def job_id_for_evidence_dir(evidence_dir: Path | str) -> str:
     """Return the job id that ``evidence_dir`` belongs to.
@@ -737,6 +757,133 @@ def call_record_from_evidence(
         return None
 
 
+# Every ledger row one on-disk task run yields: one per provider call where the
+# evidence records calls one by one, else the single D16 task-run row.
+def call_records_from_evidence(
+    evidence_dir: Path | str,
+    job_id: str,
+    task_id: str,
+) -> list[CallRecord] | None:
+    """Build the rows for ``task_runs/<task_id>/``; None when it is unrecordable.
+
+    PER CALL when every entry of ``provider_attempts`` carries its own ``seq``
+    (the per-request evidence record R-0807 added): one row per attempt, keyed
+    ``call_id_for_provider_call``, with that attempt's role and the usage and
+    cost THAT call reported through ``token_truth``'s own extractor — NULL where
+    it reported none. The task run's aggregate is never split across its calls.
+
+    OTHERWISE — evidence written before R-0807, or a run with no attempt list —
+    the one D16 row ``call_record_from_evidence`` builds, unchanged, so old
+    evidence keeps the measured totals it already had.
+    """
+    base = Path(evidence_dir)
+    task = str(task_id)
+    evidence_path = base / _TASK_RUNS_DIRNAME / task / _PROVIDER_EVIDENCE_FILENAME
+    try:
+        provider_evidence = _read_evidence_object(evidence_path)
+    except (StrictJsonError, OSError, ValueError):
+        provider_evidence = None
+    attempts = (provider_evidence or {}).get("provider_attempts")
+    per_call = (
+        isinstance(attempts, list) and bool(attempts)
+        and all(isinstance(a, dict) and "seq" in a for a in attempts)
+    )
+    if not per_call:
+        record = call_record_from_evidence(base, job_id, task)
+        return None if record is None else [record]
+    ctx = f"{_TASK_RUNS_DIRNAME}/{task}/{_PROVIDER_EVIDENCE_FILENAME}"
+    try:
+        timestamp = (
+            _first_string(provider_evidence, _TIMESTAMP_FIELDS)
+            or _mtime_as_utc_iso(evidence_path)
+        )
+        verified = provider_evidence.get("actual_model_verified") is True
+        records = []
+        for attempt in attempts:
+            role = _first_string(attempt, ("role",))
+            actual = _extract_actual(attempt, f"{ctx}.provider_attempts") or {}
+            cost_usd = _strict_cost(attempt, "total_cost_usd", f"{ctx}.provider_attempts")
+            model = _first_string(provider_evidence, (f"{role}_actual_model",)) if (
+                verified and role) else None
+            records.append(CallRecord(
+                call_id=call_id_for_provider_call(job_id, task, attempt["seq"]),
+                job_id=str(job_id),
+                task_id=task,
+                role=role,
+                model=model or _first_string(provider_evidence, ("model",)),
+                ts_utc=timestamp,
+                tokens_in=actual.get("actual_prompt_tokens"),
+                tokens_out=actual.get("actual_completion_tokens"),
+                cache_read=actual.get("actual_cache_read_tokens"),
+                cache_write=actual.get("actual_cache_creation_tokens"),
+                cost_usd=cost_usd,
+                cost_basis=(COST_BASIS_PROVIDER_REPORTED if cost_usd is not None
+                            else COST_BASIS_UNKNOWN),
+                evidence_ref=f"{_TASK_RUNS_DIRNAME}/{task}#provider_attempts/{attempt['seq']}",
+            ))
+        return records
+    except (TokenEvidenceError, OSError, ValueError):
+        logger.warning(
+            "token ledger cannot record the calls of task run %r from %s: the "
+            "evidence is unrecordable, so no row is invented for it",
+            task, evidence_path, exc_info=True,
+        )
+        return None
+
+
+# Records one task run's rows in ONE transaction, superseding its D16 row.
+def record_task_run_calls(
+    records: list[CallRecord],
+    *,
+    project_id: UUID | str | None = None,
+    path: Path | str | None = None,
+) -> bool:
+    """Persist one task run's ``records``; NEVER raises, a failure is a counted miss.
+
+    THE SUPERSEDE RULE (R-0807): when ``records`` are per-call rows, the task
+    run's old ``"<job_id>:<task_id>"`` row — written before the evidence
+    recorded calls one by one — is DELETED in the same transaction, with its
+    ``call_segments``. Both describe the same provider spend, so keeping both
+    would count it twice; the per-call rows are re-derived from the files,
+    which remain the source of truth. A single D16 row supersedes nothing.
+    """
+    if not records:
+        return True
+    conn: sqlite3.Connection | None = None
+    try:
+        conn = open_ledger(_resolve_ledger_path(project_id=project_id, path=path))
+        columns = ", ".join(_CALL_COLUMNS)
+        placeholders = ", ".join("?" for _ in _CALL_COLUMNS)
+        with conn:
+            for record in records:
+                cursor = conn.execute(
+                    f"INSERT OR IGNORE INTO calls ({columns}) VALUES ({placeholders})",
+                    tuple(getattr(record, name) for name in _CALL_COLUMNS),
+                )
+                if cursor.rowcount == 0 and conn.execute(
+                    "SELECT 1 FROM calls WHERE call_id = ?", (record.call_id,)
+                ).fetchone() is None:
+                    raise sqlite3.IntegrityError(
+                        f"ledger rejected call_id={record.call_id!r}")
+            first = records[0]
+            legacy = call_id_for_task_run(first.job_id or "", first.task_id or "")
+            if first.call_id != legacy:
+                conn.execute("DELETE FROM call_segments WHERE call_id = ?", (legacy,))
+                conn.execute("DELETE FROM calls WHERE call_id = ?", (legacy,))
+        return True
+    except Exception:
+        _count_ledger_miss()
+        logger.error(
+            "token ledger write FAILED for the calls of %r (miss counted, run "
+            "continues; the evidence files remain the source of truth)",
+            getattr(records[0], "call_id", None), exc_info=True,
+        )
+        return False
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 # One task run's segment rows, read out of the prompt trace copied beside it.
 def segment_rows_from_trace_file(
     trace_path: Path | str,
@@ -797,6 +944,43 @@ def segment_rows_from_trace_file(
                     rows.append(row)
         trace_seq += 1
     return rows
+
+
+# A task run's segment rows keyed to ITS rows — per call only where provably 1:1.
+def _segment_rows_for_records(
+    trace_path: Path, records: list[CallRecord], task_id: str,
+) -> list[CallSegmentRow]:
+    """Segment rows for ``records``; never raises, never guesses an attribution.
+
+    A single D16 row takes every trace entry, exactly as before R-0807. Per-call
+    rows take trace entry ``i`` as call ``i + 1`` ONLY when the task run's trace
+    entries have the same roles in the same order as its calls; otherwise (a
+    transport retry the trace did not record separately, say) no segment row is
+    written and the calls read as unattributed rather than misattributed.
+    """
+    if len(records) == 1 and records[0].call_id == call_id_for_task_run(
+            records[0].job_id or "", task_id):
+        return segment_rows_from_trace_file(
+            trace_path, call_id=records[0].call_id, task_id=task_id)
+    roles: list[Any] = []
+    try:
+        for line in Path(trace_path).read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                entry = strict_loads(line, where=str(trace_path), require_object=True)
+            except StrictJsonError:
+                continue
+            if entry.get("task_id") == str(task_id):
+                roles.append(entry.get("role"))
+    except (OSError, UnicodeDecodeError):
+        return []
+    if roles != [record.role for record in records]:
+        return []
+    return [
+        replace(row, call_id=records[row.trace_seq].call_id)
+        for row in segment_rows_from_trace_file(trace_path, call_id="", task_id=task_id)
+    ]
 
 
 # Records one task run's segment rows; a failure is a counted miss, never a raise.
@@ -893,11 +1077,11 @@ def backfill_ledger(
                 # Nothing on disk to mirror: not an error, just not a call.
                 result.skipped += 1
                 continue
-            record = call_record_from_evidence(base, job_id, task_dir.name)
-            if record is None:
+            records = call_records_from_evidence(base, job_id, task_dir.name)
+            if records is None:
                 result.failed += 1
                 continue
-            if record_call(record, project_id=project_id, path=path):
+            if record_task_run_calls(records, project_id=project_id, path=path):
                 result.recorded += 1
                 # BACKFILL IS THE ONLY WIRED PATH, deliberately: the live hook
                 # at the actuals seam fires BEFORE the exporter copies
@@ -909,10 +1093,8 @@ def backfill_ledger(
                 # a counted ledger miss and nothing else, and `calls` mirroring
                 # must stay exactly as measurable as it was before F115.
                 record_call_segments(
-                    segment_rows_from_trace_file(
-                        task_dir / _PROMPT_TRACE_FILENAME,
-                        call_id=record.call_id,
-                        task_id=task_dir.name,
+                    _segment_rows_for_records(
+                        task_dir / _PROMPT_TRACE_FILENAME, records, task_dir.name,
                     ),
                     project_id=project_id,
                     path=path,
@@ -970,11 +1152,11 @@ def verify_ledger(
         if not (task_dir / _PROVIDER_EVIDENCE_FILENAME).is_file():
             continue
         result.checked += 1
-        record = call_record_from_evidence(base, job_id, task_dir.name)
-        if record is None:
+        records = call_records_from_evidence(base, job_id, task_dir.name)
+        if records is None:
             result.unreadable.append(call_id_for_task_run(job_id, task_dir.name))
             continue
-        on_disk[record.call_id] = record
+        on_disk.update((record.call_id, record) for record in records)
 
     stored: dict[str, CallRecord] = {}
     if target.exists():
@@ -995,10 +1177,12 @@ def verify_ledger(
         elif found != expected:
             result.drifted_rows.append(call_id)
 
+    # An unreadable task run asserts nothing about ANY of its rows, per-call ones included.
     unreadable = set(result.unreadable)
-    result.orphan_rows.extend(
-        sorted(cid for cid in stored if cid not in on_disk and cid not in unreadable)
-    )
+    result.orphan_rows.extend(sorted(
+        cid for cid, row in stored.items()
+        if cid not in on_disk and f"{row.job_id}:{row.task_id}" not in unreadable
+    ))
     return result
 
 
