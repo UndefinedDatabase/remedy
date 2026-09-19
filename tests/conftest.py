@@ -202,6 +202,7 @@ ARCHITECTURE_FILES = {
     "test_reserved_namespaces.py",
     "test_data_paths.py",
     "test_subprocess_timeouts.py",
+    "test_no_orphan_modules.py",
 }
 
 
