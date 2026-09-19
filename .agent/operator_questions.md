@@ -27,15 +27,23 @@ My recommendation: apply the prepared text as it is. It changes only the lines a
 
 What happens if you say nothing: the skill page keeps describing the deleted writer, and the finding it belongs to stays open until someone applies the text.
 
-### Q4 — manual achieve ignores the contract (2026-09-18, F269, round 2)
+### Q4 — two mission-contract rulings (2026-09-18, F269 round 2 and F270 round 4)
 
-What needs deciding: a mission now carries a contract, a list of acceptance criteria that each have a check. When the automatic run tries to declare a mission achieved while a blocking criterion is not yet met, it is refused and told which criteria are open. The manual command a person types to mark a mission achieved is not refused in that case. It prints which blocking criteria are still unmet and then marks the mission achieved anyway, because that command has always been described as the operator's own explicit judgement.
+This entry joins two earlier entries about how a mission's contract holds work back, so the file stays within its limit of five; both rulings are unchanged and each can be overturned on its own.
+
+First ruling, the manual achieve command. What needs deciding: a mission now carries a contract, a list of acceptance criteria that each have a check. When the automatic run tries to declare a mission achieved while a blocking criterion is not yet met, it is refused and told which criteria are open. The manual command a person types to mark a mission achieved is not refused in that case. It prints which blocking criteria are still unmet and then marks the mission achieved anyway, because that command has always been described as the operator's own explicit judgement.
 
 Why it matters: if the manual command also refused, a person could never close a mission whose contract they consider wrong or no longer relevant without first changing the contract. If it does not refuse, a mission can be marked achieved with a criterion unmet, although the command says so plainly.
 
 My recommendation: keep the manual command as the operator's override, with the unmet criteria printed every time, and let only the automatic run be held by the contract.
 
-What happens if you say nothing: the recommendation is already executed and stands until you say otherwise.
+Second ruling, pushes and unchecked criteria. What needs deciding: Remedy can now push a mission's committed work to the branch's remote when you ask it to, and the design says a push happens only when no blocking acceptance criterion of the mission is "red". A criterion can be met, failed, or not yet checked. The session first ruled that a criterion not yet checked also holds the push back. It then found that under the one-command start, the planner's per-milestone criteria are never checked at all, because that command's jobs serve no single milestone, so no real run could ever push. The session changed the rule: only a failed blocking criterion holds a push back, and every blocking criterion not yet checked is named in the push's output and its record.
+
+Why it matters: with the stricter rule the push feature never works outside test fixtures. With the new rule a push can publish work whose planner-written criteria no check has confirmed, although every failed criterion still stops it and the unchecked ones are listed each time.
+
+My recommendation: keep the new rule, which is the design's own word, and fix separately the gap that leaves the planner's criteria unchecked under the one-command start.
+
+What happens if you say nothing: both recommendations are already executed and stand until you say otherwise.
 
 ### Q5 — contract jobs are granted automatically (2026-09-18, F269, round 6)
 
@@ -47,12 +55,12 @@ My recommendation: keep the automatic grants for contract jobs. The three rights
 
 What happens if you say nothing: the recommendation is already executed and stands until you say otherwise.
 
-### Q6 — pushes wait only for failed criteria (2026-09-18, F270, round 4)
+### Q7 — four behaviour changes, one session (2026-09-19, F273, rounds 8 to 11)
 
-What needs deciding: Remedy can now push a mission's committed work to the branch's remote when you ask it to, and the design says a push happens only when no blocking acceptance criterion of the mission is "red". A criterion can be met, failed, or not yet checked. The session first ruled that a criterion not yet checked also holds the push back. It then found that under the one-command start, the planner's per-milestone criteria are never checked at all, because that command's jobs serve no single milestone, so no real run could ever push. The session changed the rule: only a failed blocking criterion holds a push back, and every blocking criterion not yet checked is named in the push's output and its record.
+What needs deciding: while repairing registered defects, the session changed four things a person using Remedy can notice. First, a job's spending and token limits now count the calls of the run that is happening, so a job can be stopped partway through a run once it passes its limit; before, the money limit only saw earlier runs and the token limit saw nothing at all, so neither stopped anything mid-run. Second, the event list of a job now shows the newest events first and its limit keeps the newest ones, like every other list; before, it showed the oldest fifty. Third, the command that sets a single field of a job's budget now refuses the token and runtime fields when the job already carries its own token or time limit, and names the flag that sets that limit; before, the value was accepted and then quietly put back the next time the job ran. Fourth, the automatic mission loop can now continue a paused job, or one that ran out of cycles, as the same job, behind the same checks the manual resume command applies; before, it could only start a new job.
 
-Why it matters: with the stricter rule the push feature never works outside test fixtures. With the new rule a push can publish work whose planner-written criteria no check has confirmed, although every failed criterion still stops it and the unchecked ones are listed each time.
+Why it matters: the first and third change what a limit does, the second changes what a list shows, and the fourth lets the loop continue work without a person typing a command, although it grants nothing the loop could not already start.
 
-My recommendation: keep the new rule, which is the design's own word, and fix separately the gap that leaves the planner's criteria unchecked under the one-command start.
+My recommendation: keep all four. Each repairs a behaviour that did not do what its own description promised, and each is covered by a test that fails if it is undone.
 
 What happens if you say nothing: the recommendation is already executed and stands until you say otherwise.
