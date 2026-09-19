@@ -1,123 +1,120 @@
-# Handoff — F271 No more legacy: ownership, reachability, replace-is-delete · Round 1
+# Handoff — F271 No more legacy: ownership, reachability, replace-is-delete · Round 2
 
 ## Session
 
-SESSION 1 of feature F271 · round 1 · rounds so far 1
+SESSION 1 of feature F271 · round 2 · rounds so far 2
 
-Context self-assessment: the worker read the block, AGENTS.md, `docs/roadmap/features/T2_F271.md`, DECISION F271 D1 and the prototype's C2 and C3 hunks in full once each, and every figure below comes from a command run in this round.
+Context self-assessment: the worker read the block, AGENTS.md, `docs/roadmap/features/T2_F271.md`, DECISION F271 D2 and every non-deletion hunk of `prototype_final.diff` in full once each, and every figure below comes from a command run in this round.
 
 ## Range
 
-Review of a4f79a94..HEAD — branch `feature/f271-no-more-legacy`, cut from `main` at `a4f79a94`.
+Review of c798fd2d..HEAD — branch `feature/f271-no-more-legacy`.
 
 ## Summary
 
-- C1 claims F271: payload copies, `.agent/plan.md` and `.agent/context.md` set, `.agent/live_review.md` re-headed with F270 round 8's verdict and `Done: R-0979` booked, DECISION F271 D1 appended to `.agent/decisions.md`, and the STATUS line flipped from `[ ]` to `[~]`.
-- C2 is T001. `apps/cli/command_catalog.py` gains `Reach`, which lists the seven reaches, and `GroupDef` gains two defaulted fields, `feature: str = ""` and `reach: Reach | None = None`. All 30 `GROUPS` entries get their owner and reach by keyword, exactly as D1 (3) gives them. `tests/test_command_catalog.py` gains `TestGroupOwnership`, whose second test plants four groups (no feature, no reach, reach `"nowhere"`, feature `F999`) and asserts their exact refusals. The STATUS lookup reads `docs/roadmap/STATUS.md` under `Path(__file__).resolve().parents[1]`.
-- C3 is the D6 deletion. It runs `git rm` on `packages/orchestration/builder_eval.py`, `tests/orchestration/test_builder_eval.py` and `scripts/remedy_builder_eval.sh`, removes the `REAL_OLLAMA_FILES` line from `tests/conftest.py`, and applies the brain pair to `docs/system/project-brain.md`.
+- C1 is the bookkeeping. It saves the four payload copies, sets `.agent/plan.md` to plan.md, appends ledger.md to `.agent/live_review.md` (the F271 R1 gate entry, `Done: R-0893`, and R-0980, R-0981 and R-0982), and appends DECISION F271 D2 to `.agent/decisions.md`.
+- C2 is the D2 (4) deletion. It removes `diagnostic_comparison.py`, `task_plan_evidence.py` and `execution_config_evidence.py`, together with the test file that existed only for each.
+- C3 is the orphan-module test. It adds `tests/test_no_orphan_modules.py` with its 16 `ALLOWED_UNWIRED` entries and registers it in `ARCHITECTURE_FILES` in `tests/conftest.py` and in the `budgets` stage `test_paths` in `packages/orchestration/ci_stages.py`.
 - C4 is this handoff.
 
 ## Commits
 
-### 6f2ea352 F271 R1 C1: claim F271 — book F270 round 8's verdict and R-0979, land DECISION F271 D1, STATUS [~], save the round 1 payloads
+### 3b616e49 F271 R2 C1: book F271 round 1's verdict and R-0893, register R-0980 to R-0982, land DECISION F271 D2, save the round 2 payloads
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f271-r1-block.md` | +98 / -0 | Byte copy of the block |
-| `.agent/authored/f271-r1-brain_from.txt` | +5 / -0 | Byte copy |
-| `.agent/authored/f271-r1-brain_to.txt` | +1 / -0 | Byte copy |
-| `.agent/authored/f271-r1-context.md` | +40 / -0 | Byte copy |
-| `.agent/authored/f271-r1-decisions.md` | +43 / -0 | Byte copy |
-| `.agent/authored/f271-r1-ledger.md` | +4 / -0 | Byte copy |
-| `.agent/authored/f271-r1-live_review_head.md` | +22 / -0 | Byte copy |
-| `.agent/authored/f271-r1-plan.md` | +29 / -0 | Byte copy |
-| `.agent/authored/f271-r1-status_from.txt` | +1 / -0 | Byte copy |
-| `.agent/authored/f271-r1-status_to.txt` | +1 / -0 | Byte copy |
-| `.agent/context.md` | +14 / -17 | := context.md |
-| `.agent/decisions.md` | +43 / -0 | `a4f79a94` bytes + decisions.md (DECISION F271 D1) |
-| `.agent/live_review.md` | +17 / -13 | head + `a4f79a94` bytes from `## Findings` + ledger.md |
-| `.agent/plan.md` | +19 / -15 | := plan.md |
-| `docs/roadmap/STATUS.md` | +1 / -1 | F271 line `[ ]` → `[~]` (status pair) |
+| `.agent/authored/f271-r2-block.md` | +89 / -0 | Byte copy of the block |
+| `.agent/authored/f271-r2-decisions.md` | +50 / -0 | Byte copy |
+| `.agent/authored/f271-r2-ledger.md` | +10 / -0 | Byte copy |
+| `.agent/authored/f271-r2-plan.md` | +27 / -0 | Byte copy |
+| `.agent/decisions.md` | +50 / -0 | `c798fd2d` bytes + decisions.md (DECISION F271 D2) |
+| `.agent/live_review.md` | +10 / -0 | `c798fd2d` bytes + ledger.md |
+| `.agent/plan.md` | +9 / -11 | := plan.md |
 
-338 insertions, 46 deletions (`git show --numstat`).
+245 insertions, 11 deletions (`git show --numstat`).
 
-### ee0bfe46 F271 R1 C2: T001 — every GroupDef names its owning feature and its reach, refused by TestGroupOwnership
+### 430a0832 F271 R2 C2: delete diagnostic_comparison, task_plan_evidence and execution_config_evidence with their tests under DECISION F271 D2
 | Path | +/- | Reason |
 |------|-----|--------|
-| `apps/cli/command_catalog.py` | +46 / -30 | `Reach`, the two defaulted `GroupDef` fields, 30 annotated `GROUPS` entries |
-| `tests/test_command_catalog.py` | +53 / -0 | `TestGroupOwnership` (shipped groups clean; planted groups refused exactly) |
+| `packages/orchestration/diagnostic_comparison.py` | +0 / -172 | deleted (D2 (4)) |
+| `packages/orchestration/execution_config_evidence.py` | +0 / -64 | deleted (D2 (4)) |
+| `packages/orchestration/task_plan_evidence.py` | +0 / -72 | deleted (D2 (4)) |
+| `tests/orchestration/test_diagnostic_comparison.py` | +0 / -179 | deleted with its module |
+| `tests/orchestration/test_execution_config_evidence.py` | +0 / -144 | deleted with its module |
+| `tests/orchestration/test_task_plan_evidence.py` | +0 / -78 | deleted with its module |
 
-99 insertions, 30 deletions.
+0 insertions, 709 deletions.
 
-### 154b34df F271 R1 C3: delete builder_eval.py with its test and script under DECISION amend0911-feedback D6
+### e6d73a51 F271 R2 C3: T001 orphan-module test with its ALLOWED_UNWIRED list, registered in ARCHITECTURE_FILES and the budgets CI stage
 | Path | +/- | Reason |
 |------|-----|--------|
-| `docs/system/project-brain.md` | +1 / -5 | brain pair: FROM 1x before, 0x after, TO 1x after |
-| `packages/orchestration/builder_eval.py` | +0 / -829 | deleted (D6) |
-| `scripts/remedy_builder_eval.sh` | +0 / -158 | deleted (D6) |
-| `tests/conftest.py` | +0 / -1 | `"test_builder_eval.py",` line removed from `REAL_OLLAMA_FILES` |
-| `tests/orchestration/test_builder_eval.py` | +0 / -752 | deleted (D6) |
+| `packages/orchestration/ci_stages.py` | +1 / -0 | `budgets` stage `test_paths` gains the new file |
+| `tests/conftest.py` | +1 / -0 | `ARCHITECTURE_FILES` gains the new file |
+| `tests/test_no_orphan_modules.py` | +308 / -0 | the orphan scan, four tests, 16 `ALLOWED_UNWIRED` entries |
 
-1 insertion, 1745 deletions.
+310 insertions, 0 deletions.
 
-### C4 (this commit) F271 R1 C4: handoff
+### C4 (this commit) F271 R2 C4: handoff
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | rewritten | This handback |
 
-Every commit is under 500 inserted lines. The largest is C1, with 338.
+Every commit is under 500 inserted lines. The largest is C3, with 310.
 
 ## External actions
 
-- `git checkout -b feature/f271-no-more-legacy` from `main` at `a4f79a94`. `gh pr list --state open` returned `[]` before the branch was cut.
-- `git worktree add -q --detach .remedy-wt/f271-r1-g5 154b34df` for G5, then `git worktree remove .remedy-wt/f271-r1-g5`. Afterwards `git worktree list` shows the primary checkout alone: `/home/decodeux/Repos/remedy  154b34df [feature/f271-no-more-legacy]`.
-- `git push -u origin feature/f271-no-more-legacy` after C4, not forced. No pull request is opened.
+- `git worktree add --detach .remedy-wt/f271-r2-g5 e6d73a51` for G5, then `git worktree remove .remedy-wt/f271-r2-g5`. Afterwards `git worktree list` shows the primary checkout alone: `/home/decodeux/Repos/remedy  e6d73a51 [feature/f271-no-more-legacy]`.
+- `git push` after C4, not forced. No pull request is opened.
 - No evidence job and no zip.
 
 ## Verification
 
-All gates below ran at C3 (`154b34df`) before C4.
+All gates below ran at C3 (`e6d73a51`) before C4.
 
-- **Transport**, before any write: `sha256sum` matched all ten digests: the block `785b649d…0cf2e747`, plan.md, context.md, live_review_head.md, ledger.md, decisions.md, status_from/to and brain_from/to. The prototype's digest `e6270600…a164ff` matched as well. The C1 build printed `STATUS FROM before 1 after 0 TO after 1`, and the C3 build printed `brain FROM before 1 after 0 TO after 1`.
-- **G1**: `python3 .remedy-wt/f271-r1/work/g1.py` printed `26 checks, all: True` (exit 0). The checks cover the ten payload digests, the ten `.agent/authored/f271-r1-*` copies at HEAD, plan.md, context.md, live_review.md (head + `a4f79a94` bytes from `## Findings` + ledger.md), decisions.md (`a4f79a94` bytes + payload), and STATUS.md and project-brain.md, each equal to its `a4f79a94` bytes with its pair applied.
-- **G2**: the fifteen-target command as ordered, run serially in the primary checkout, printed `949 passed in 132.01s (0:02:12)` (exit 0, 0 failed).
-- **G3**: `python3 -m ruff check apps/cli/command_catalog.py tests/test_command_catalog.py tests/conftest.py` printed `All checks passed!` (exit 0).
-- **G4**: `git grep -n -e builder_eval -e remedy_builder_eval -- . ':!.agent' ':!docs/roadmap'` printed nothing (exit 1). `git ls-tree -r --name-only 154b34df -- <the three deleted paths>` also printed nothing (exit 0), so all three are absent.
-- **G5**: disposable worktree `.remedy-wt/f271-r1-g5` at `154b34df`, run from its root with `python3 -B -m pytest -q -p no:cacheprovider tests/test_command_catalog.py -k TestGroupOwnership`. `__pycache__` was purged before each run and found 0 dirs each time. `apps.cli.command_catalog` resolved to `/home/decodeux/Repos/remedy/.remedy-wt/f271-r1-g5/apps/cli/command_catalog.py` on every run. The `"ci":` entry line counted 1.
-  - Control, unmutated: `2 passed, 55 deselected in 0.19s`, exit 0.
-  - (a) `feature="F083",` removed: `1 failed, 1 passed, 55 deselected in 0.21s`, exit 1, `FAILED tests/test_command_catalog.py::TestGroupOwnership::test_every_group_names_its_feature_and_its_reach`.
-  - (b) reach `"dev-path"`: `1 failed, 1 passed, 55 deselected in 0.21s`, exit 1, same failing id.
-  - (c) feature `"F999"`: `1 failed, 1 passed, 55 deselected in 0.21s`, exit 1, same failing id.
-  - Every mutation was reverted before the next, and the file was byte-equal to the original at the end (`reverted: True`). No mutation stayed green.
+- **Transport**, before any write: `sha256sum` matched all four payload digests (plan.md `495356e5…`, ledger.md `9209c91f…`, decisions.md `30628c17…`, prototype_final.diff `3678d741…`) and the block's `1dd7da8f4ee1e9b3da46c8c70629b8c91e39e903b2d0dc6c1fa8d51b4298299c`. `git apply --check` on the prototype passed at `c798fd2d`.
+- **G1**: `python3 .remedy-wt/f271-r2/g1.py` printed `8 checks True` (exit 0). The checks are: the five digests; `.agent/plan.md` equals plan.md; `.agent/live_review.md` equals its `c798fd2d` bytes + ledger.md; `.agent/decisions.md` equals its `c798fd2d` bytes + decisions.md; and each of the four `.agent/authored/f271-r2-*` copies equals its payload. All are read at `e6d73a51`.
+- **G2**: `git diff --binary c798fd2d e6d73a51 -- . ':!.agent' | git patch-id --stable` printed `6d27af6437b714b225d8d96a2524cde9985403cc 0000000000000000000000000000000000000000`. `git patch-id --stable < prototype_final.diff` printed the same first field (exit 0). `git show --numstat 430a0832` lists exactly the six deleted paths, each `0` insertions (table above).
+- **G3**: `git status --porcelain` was empty. The eleven-target command, as ordered, run serially in the primary checkout, printed `544 passed in 71.15s (0:01:11)` (exit 0, 0 failed).
+- **G4**: `python3 -m ruff check tests/test_no_orphan_modules.py tests/conftest.py packages/orchestration/ci_stages.py` printed `All checks passed!` (exit 0). `git grep -n -E "diagnostic_comparison|task_plan_evidence|execution_config_evidence" -- . ':!.agent' ':!docs/roadmap'` (exit 0) printed exactly three lines, the ones D2 (4) keeps:
+  - `tests/docs/test_docs_consistency.py:2022:        assert "diagnostic_comparison" in doc`
+  - `tests/docs/test_docs_consistency.py:2023:        assert "produce_diagnostic_comparison" in doc or "validate_diagnostic_comparison" in doc`
+  - `tests/orchestration/test_job_evidence.py:1406:        assert "test_execution_config_evidence.py" not in src`
+- **G5**: disposable worktree `.remedy-wt/f271-r2-g5` at `e6d73a51`, driven by `.remedy-wt/f271-r2/g5.py`. Every run was `python3 -B -m pytest -q -p no:cacheprovider -rf tests/test_no_orphan_modules.py` from the worktree root, with `__pycache__` purged before it. Each change was reverted before the next.
+  - Control, unmutated: `4 passed in 1.24s`, exit 0.
+  - (a) `packages/orchestration/zz_orphan_probe.py` holding `X = 1`: `1 failed, 3 passed in 1.26s`, exit 1, `FAILED tests/test_no_orphan_modules.py::test_no_module_is_an_orphan`. The assertion output names `zz_orphan_probe` on two lines.
+  - (b) the two-line `scripts/rotate_live_review.py` entry removed: `1 failed, 3 passed in 1.24s`, exit 1, `FAILED tests/test_no_orphan_modules.py::test_no_module_is_an_orphan`. The output names `rotate_live_review` on two lines.
+  - (c) `("scripts/build_review_zip.py", "probe"),` added to `ALLOWED_UNWIRED`: `1 failed, 3 passed in 1.28s`, exit 1, `FAILED tests/test_no_orphan_modules.py::test_every_allowed_unwired_entry_is_a_live_orphan`. The output names `build_review_zip` on two lines.
+  - After the last revert, `git status --porcelain` in the worktree was empty. No change stayed green.
 - **G6** comes after the push, so the round report carries it.
 - Full suite not run (amend0917-throughput).
 
 ## Authored-text proofs
 
-- The byte copies are at `.agent/authored/f271-r1-*`, ten files. Each is `True` against its payload (G1). The block copy's digest is `785b649d6e0cc3b1a09b0c4931418e21f325b93a0aaaae1a332a1cfa2cf0e747`.
-- `.agent/plan.md`, `.agent/context.md`, `.agent/live_review.md`, `.agent/decisions.md`, `docs/roadmap/STATUS.md` and `docs/system/project-brain.md` were each built from `git show a4f79a94:` bytes, and each byte check is `True` (G1).
+- The byte copies are at `.agent/authored/f271-r2-*`, four files. Each is `True` against its payload (G1). The block copy's digest is `1dd7da8f4ee1e9b3da46c8c70629b8c91e39e903b2d0dc6c1fa8d51b4298299c`.
+- `.agent/plan.md`, `.agent/live_review.md` and `.agent/decisions.md` were each built from payload bytes, or from `git show c798fd2d:` bytes plus the payload, and each byte check is `True` (G1).
+- The code of C2 and C3 is the prototype, byte for byte by patch-id (G2).
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 claim | done | `6f2ea352` |
-| C2 T001 | done | `ee0bfe46`; G5 red-proof holds for (a), (b) and (c) |
-| C3 deletion (D6) | done | `154b34df`; G4 grep at zero |
+| C1 bookkeeping | done | `3b616e49` |
+| C2 deletion (D2 (4)) | done | `430a0832`; G4 grep leaves only the three kept lines |
+| C3 orphan-module test | done | `e6d73a51`; G5 red-proof holds for (a), (b) and (c) |
 | C4 handoff | done | This commit |
 
 ## Open findings
 
-By distinct id on the committed `.agent/live_review.md` at C3, `^- R-\d+ — ` gives 133 ids and `^Done: R-\d+ — ` gives 4, so 129 are open. That is the reviewer's 130 at `a4f79a94` minus R-0979, now Done. `python3 scripts/rotate_live_review.py --dry-run` counts the live file together with its archive and read `open findings before: 128` (exit 0, nothing written). The archive therefore resolves one more id than the live file does alone.
+By distinct id on the committed `.agent/live_review.md` at C3, `^- R-\d+ — ` gives 136 ids and `^Done: R-\d+ — ` gives 5, all of them within the 136, so 131 are open. That is round 1's 129, minus R-0893 (now Done), plus R-0980, R-0981 and R-0982.
 
 ## Deviations & assumptions
 
 - **Commit sequence:** as ordered (C1, C2, C3, C4, then the push). No extra commit.
-- **Prototype:** C2 and C3 are the prototype's hunks, applied with `git apply --include` for C2. For C3, a python replace of the two authored pairs produced the same blobs (`dc48e5bc`, `3beb6acd`), and `git rm` removed the three files. The worker checked every C2 owner and reach against D1 (3). All 30 match, and all 18 distinct owners have a STATUS line.
-- **Driver scripts:** the builds and gates ran through gitignored scratch in `.remedy-wt/f271-r1/work/`: `build_c1.py`, `build_c3.py`, `g1.py`, `g5.py`, `openset.py` and `rungate.py` (which prints the exit code).
+- **Prototype:** `git apply` put the whole prototype on the working tree at `c798fd2d` + C1. C2 staged and committed only the six deletions. C3 committed the three remaining paths. Nothing in the prototype was changed, and the worker found no defect in it.
+- **Driver scripts:** gates ran through gitignored scratch in `.remedy-wt/f271-r2/`: `g1.py`, `g5.py` and `openset.py`. The bash guard rejected the inline forms. The G3 run that was piped to `tail` was repeated with the output sent to `.remedy-wt/f271-r2/g3.log`, so the real exit code (0) could be read. Both runs read `544 passed`.
 
 ## Next
 
 1. Phase 1 rule 1 (`.agent/STOP`).
-2. The review of round 1.
+2. The review of round 2.
 
 Operator questions open: 5
