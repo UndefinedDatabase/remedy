@@ -2425,6 +2425,9 @@ def _apply_fake_builder_changes(
         fp.parent.mkdir(parents=True, exist_ok=True)
         if fp.exists():
             content = fp.read_text(errors="replace")
+            # R-0810: a repair round keeps this task's one marker, never appends a second.
+            if f"<!-- Remedy: {goal} -->" in content.splitlines():
+                continue
             content += f"\n\n<!-- Remedy: {goal} -->\n"
             fp.write_text(content)
         else:

@@ -518,6 +518,21 @@ class TestFakeProviderE2E:
         assert result.changed_target_files == []
         assert len(result.staged_files) > 0
 
+    def test_a_repair_round_leaves_one_marker_per_task(self, demo_repo):
+        """R-0810: round 2 of the fake builder rewrites the task's marker, never appends."""
+        goal = "Fix README"
+        result = run_pingpong(goal, str(demo_repo), builder_name="fake", reviewer_name="fake",
+                              repair_rounds=2, keep_staging=True)
+        staging = Path(result.staging_path)
+        try:
+            assert len(result.rounds) == 2
+            [written] = result.staged_files
+            text = (staging / written).read_text()
+        finally:
+            import shutil
+            shutil.rmtree(staging, ignore_errors=True)
+        assert text.splitlines().count(f"<!-- Remedy: {goal} -->") == 1, text
+
     def test_summary_references_run_show(self, demo_repo):
         result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
         summary = summarize_pingpong(result)
