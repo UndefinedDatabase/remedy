@@ -11,6 +11,7 @@ dependencies = ["pydantic>=2.0", "psutil>=5.9"]
 [project.optional-dependencies]
 dev = ["pytest", "pytest-xdist", "ruff==0.15.17", "mypy", "pytest-cov", "coverage"]
 ollama = ["ollama>=0.4"]
+anthropic = ["anthropic>=0.40"]
 
 [project.scripts]
 remedy = "apps.cli.grouped:main"

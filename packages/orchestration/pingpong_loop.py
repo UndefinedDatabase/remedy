@@ -2433,6 +2433,20 @@ def _begin_stream_call(provider: Any, round_no: int, kind: str = "attempt") -> N
             pass
 
 
+def _offer_stable_prefix(provider: Any, composed: Any) -> None:
+    """Hand a cache-capable provider the stable prefix of the prompt it is sent next.
+
+    A no-op for providers that do not cache a prefix (every one but the
+    direct-API provider), the same duck-typed shape as ``_begin_stream_call``.
+    """
+    fn = getattr(provider, "offer_stable_prefix", None)
+    if callable(fn):
+        try:
+            fn(composed.stable_prefix())
+        except Exception:
+            pass
+
+
 def _record_attempt(
     result: PingPongResult,
     out: Any,
@@ -3341,6 +3355,7 @@ def run_pingpong(
             ))
 
             _begin_stream_call(builder_provider, round_num, "attempt")
+            _offer_stable_prefix(builder_provider, builder_composed)
             builder_call_reasons: list[str] = []
             builder_out = _call_with_retry(
                 lambda ts=builder_timeout: builder_provider.build(
@@ -3409,6 +3424,7 @@ def run_pingpong(
                     composed_prompt=builder_composed,
                 ))
                 _begin_stream_call(builder_provider, round_num, "attempt")
+                _offer_stable_prefix(builder_provider, builder_composed)
                 builder_call_reasons = []
                 builder_out = _call_with_retry(
                     lambda ts=builder_timeout: builder_provider.build(
@@ -3683,6 +3699,7 @@ def run_pingpong(
                 break
 
             _begin_stream_call(reviewer_provider, round_num, "attempt")
+            _offer_stable_prefix(reviewer_provider, reviewer_composed)
             # ONE logical reviewer call: its attempt AND its single parse retry share this
             # sink, and nothing from the builder or an earlier round is in it.
             reviewer_call_reasons: list[str] = []
@@ -3743,6 +3760,7 @@ def run_pingpong(
                 # dedupe marker, then the full-content one without it). An eager
                 # append here would make a THIRD and double-count one call.
                 _begin_stream_call(reviewer_provider, round_num, "attempt")
+                _offer_stable_prefix(reviewer_provider, reviewer_composed)
                 reviewer_call_reasons = []
                 reviewer_out = _call_with_retry(
                     lambda ts=reviewer_timeout: reviewer_provider.review(
