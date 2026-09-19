@@ -1128,6 +1128,55 @@ class TestDogfoodCommandShape:
         assert "tombstone_count" in data
         assert "base_commit" in data and "head_commit" in data
 
+    def test_a_deleted_source_file_is_a_tombstone_the_strict_decoder_accepts(
+        self, isolate_data_root, tmp_path,
+    ):
+        """The export's content proof wrote each tombstone as a ``{"status", "base_sha256",
+        "current_sha256"}`` object, and ``validate_content_proof_schema`` accepts only a lowercase
+        sha256 there — so any branch that deleted a source file exported a proof the packager
+        refuses. The tombstone is the removed blob: the subject's ``base_sha256`` for that path."""
+        import subprocess
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.review_subject import decode_content_proof_v1
+
+        repo = tmp_path / "delrepo"
+        repo.mkdir()
+
+        def git(*args: str) -> str:
+            return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True,
+                                  text=True).stdout.strip()
+
+        git("init", "-q")
+        git("config", "user.email", "t@t")
+        git("config", "user.name", "t")
+        (repo / "src").mkdir()
+        (repo / "src" / "keep.py").write_text("def keep():\n    return 1\n")
+        (repo / "src" / "gone.py").write_text("def gone():\n    return 2\n")
+        git("add", "-A")
+        git("commit", "-qm", "base")
+        base = git("rev-parse", "HEAD")
+        (repo / "src" / "keep.py").write_text("def keep():\n    return 10\n")
+        git("rm", "-q", "src/gone.py")
+        git("commit", "-qam", "modify keep, delete gone")
+
+        job = parse_job_file(_TWO_TASK_JOB, str(repo))
+        out = tmp_path / "evidence"
+        result = export_job_evidence(job.job_id, str(out), declared_base=base)
+
+        assert "error" not in result
+        assert not (out / "current_change_content_proof.error.txt").exists(), \
+            (out / "current_change_content_proof.error.txt").read_text()
+        proof_doc = json.loads((out / "current_change_content_proof.json").read_text())
+        subject = json.loads((out / "review_subject.json").read_text())
+        gone = [f for f in subject["files"] if f["path"] == "src/gone.py"]
+        assert len(gone) == 1 and gone[0]["status"] == "deleted", subject["files"]
+
+        proof = decode_content_proof_v1(proof_doc)  # strict: raises on a non-sha256 tombstone
+        assert proof.tombstones == {"src/gone.py": gone[0]["base_sha256"]}
+        assert "src/gone.py" in proof.authority_paths()
+        assert "src/keep.py" in proof.file_hashes
+
     def test_change_provenance_exists_after_export(self, isolate_data_root, demo_repo, tmp_path):
         """Change provenance gate must exist after export with stale_apply_proofs field."""
         job = _run_completed_job(demo_repo)

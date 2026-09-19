@@ -762,16 +762,20 @@ def export_job_evidence(
 
         # The content proof carries a TOMBSTONE for a deleted path rather than omitting it: a
         # file that was removed is part of the change, and "no entry" is indistinguishable from
-        # "never looked".
+        # "never looked". A tombstone is `path -> base_sha256`, the removed blob — the shape
+        # `validate_content_proof_schema` accepts; a deletion with no base blob has no honest
+        # tombstone, so the proof is refused (the gate error below) rather than written short.
         _file_hashes: dict[str, str] = {}
-        _tombstones: dict[str, dict[str, Any]] = {}
+        _tombstones: dict[str, str] = {}
         for _f in _subject.files:
             _sf = _normalize(_f.path)
             if not _is_source_file(_sf):
                 continue
             if _f.status == STATUS_DELETED:
-                _tombstones[_sf] = {"status": _f.status, "base_sha256": _f.base_sha256,
-                                    "current_sha256": None}
+                if not _f.base_sha256:
+                    raise ReviewSubjectError(
+                        f"deleted path {_sf!r} carries no base_sha256, so it has no tombstone")
+                _tombstones[_sf] = _f.base_sha256
             elif _f.current_sha256:
                 _file_hashes[_sf] = _f.current_sha256
         _proof = {
