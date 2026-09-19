@@ -34,6 +34,89 @@ def _review_packages_stay_out_of_the_operator_archive():
 
 
 @pytest.fixture(autouse=True)
+def _isolated_data_root(tmp_path_factory):
+    """Give every test its own temporary Remedy data root (finding R-0803).
+
+    ``resolve_data_root()`` answers ``$REMEDY_DATA_DIR``, else the configured
+    ``data_dir``, else ``<repo>/.data``. 224 test files set the variable
+    themselves; every test that did not wrote its missions, jobs and runs into
+    the operator's real data root, and a CLI subprocess inherited the same
+    default. Setting the variable here, before the test body runs, makes the
+    isolated root the default for the test AND for every child process that
+    inherits ``os.environ``; the environment variable outranks both
+    ``remedy.toml`` files, so a cwd or user config cannot route around it.
+
+    ``pytest_configure`` removes an inherited value, so a variable that is
+    already set here was set by a module- or class-scoped fixture that owns
+    the root for its whole scope, and it is left alone: measured, overriding
+    it made ``test_manual_completion_bundle.py`` look its module-built job up
+    in the wrong root. A test that sets its own value still wins, and one that
+    deletes it to exercise the default resolution gets the default. Like
+    ``_no_live_ollama_reach`` this does not request ``monkeypatch``, so it
+    stays out of that fixture's teardown ordering.
+    """
+    import os
+    if os.environ.get("REMEDY_DATA_DIR"):
+        yield
+        return
+    os.environ["REMEDY_DATA_DIR"] = str(tmp_path_factory.mktemp("remedy-data"))
+    yield
+    os.environ.pop("REMEDY_DATA_DIR", None)
+
+
+def _data_root_fingerprint(root):
+    """Every entry below ``root`` as (relative path, kind, size, mtime_ns), sorted."""
+    import os
+    if not os.path.lexists(root):
+        return None
+    entries = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        for name in dirnames + filenames:
+            path = os.path.join(dirpath, name)
+            st = os.lstat(path)
+            entries.append((os.path.relpath(path, root), st.st_mode >> 12, st.st_size, st.st_mtime_ns))
+    return sorted(entries)
+
+
+def pytest_configure(config):
+    """Record the configured data root, then drop an inherited ``REMEDY_DATA_DIR`` (R-0803).
+
+    The root is recorded BEFORE the variable is dropped, so a value exported in
+    the operator's shell is the root the guard protects. Only the controller
+    records it — comparing once, at the end of the whole run, is the claim —
+    and xdist workers start after this hook, so they inherit the dropped
+    variable.
+    """
+    import os
+    if not hasattr(config, "workerinput"):
+        from packages.orchestration.config import reset_config
+        from packages.orchestration.data_paths import resolve_data_root
+        root = resolve_data_root()
+        reset_config()
+        config._remedy_data_root_guard = (root, _data_root_fingerprint(root))
+    os.environ.pop("REMEDY_DATA_DIR", None)
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Fail the run when the configured data root changed while it ran (R-0803)."""
+    recorded = getattr(session.config, "_remedy_data_root_guard", None)
+    if recorded is None:
+        return
+    root, before = recorded
+    after = _data_root_fingerprint(root)
+    if after == before:
+        return
+    before_set, after_set = set(before or ()), set(after or ())
+    changed = sorted({e[0] for e in before_set ^ after_set})
+    session.exitstatus = pytest.ExitCode.TESTS_FAILED
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is not None:
+        reporter.write_line(
+            f"R-0803: the test run changed the configured data root {root} "
+            f"({len(changed)} entries), first: {changed[:10]}", red=True)
+
+
+@pytest.fixture(autouse=True)
 def _reset_config_cache():
     """Keep the process-global config cache from leaking between tests.
 
