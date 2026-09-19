@@ -1,0 +1,9 @@
+- R-0978 carries a resolution line naming the commit that makes
+  `tests/cli/test_study_cmd.py` `test_study_run_dispatch_e2e` run `study run` without a real
+  model, with its subprocess limit lowered rather than raised.
+- R-0980 carries a resolution line naming the commit that drops section 12s of
+  `scripts/remedy_smoke.sh`, or makes it assert the evidence of a product path that emits
+  `token_policy_applied`.
+- R-0981 carries a resolution line naming the commit that registers the role conventions
+  segment in the builder's and the reviewer's prompt composition, or deletes
+  `packages/orchestration/role_conventions.py` with its test and the reason.
