@@ -1,165 +1,231 @@
-# Handoff — F273 Findings paydown v1 · Round 22
+# Handoff — F273 Findings paydown v1 · Round 23
 
 ## Session
 
-SESSION 3 of feature F273 · round 22 · rounds so far 22
+SESSION 4 of feature F273 · round 23 · rounds so far 23
 
-Context self-assessment: the worker read the block, AGENTS.md, DECISION F273 D21, the amend0917-throughput paragraph, the handback template and round 21's transcript as its shape, and held all of it without loss; every figure below comes from a command run in this round.
+Context self-assessment: the worker read the block, AGENTS.md, closure precondition 6, F271's self-use commit `5781a607` and the handback template, and held all of it without loss; every figure below comes from a command run in this round.
 
 ## Range
 
-Review of 7e717bc4..HEAD — branch `feature/f273-findings-paydown-v1`.
+Review of 83ee29bb..HEAD — branch `feature/f273-findings-paydown-v1`.
 
 ## Summary
 
-Round 22 is the first closure repair round. It books round 21's verdict, registers R-0997, lands DECISION F273 D21, repairs the closure suite's one bad node and ran the full suite once more.
-- C1 books Gate F273 R21 (VERDICT PASS) and registers R-0997; appends DECISION F273 D21; rewrites the plan; saves the four payload copies.
-- C2 applies the reviewer's `r22_fix.diff` to `tests/orchestration/test_job_plan_state_reads.py` (R-0997).
-- C3 commits the second closure transcript. **The run is GREEN: 17517 passed, 20 skipped, exit 0, no bad node, no `R-0803:` line.**
-- C4 is this handoff.
+Round 23 opens the closure sequence (closure round A, first half).
+- C1 books Gate F273 R22 (VERDICT PASS), the resolutions of R-0997 and R-0803 and the registration of R-0998; rewrites the plan; saves four payload copies.
+- C2 runs the closure's one self-use item, SU-023 (generated from R-0499), to its approval gate, never applied, mirrors job `468c8e62a2cc4fac` into the token ledger and commits `.agent/selfuse_f273/` with the queue change. The job ended `blocked` (T001 `review_inconsistent`, reviewer verdict `fail`); `describe_self_use_run_defects` returned two strings; the run records list 2 provider calls and the ledger holds 2 rows for the job.
+- C3 is this handoff. No finding is written by the worker; the files are quoted below for the reviewer to register.
 
 ## Commits
 
-### 219629c1 F273 R22 C1: bookkeeping — round 21's PASS verdict booked, R-0997 registered, DECISION F273 D21 landed, the round 22 plan and the reviewer's payloads saved
+### 1b9ae606 F273 R23 C1: bookkeeping — round 22's PASS verdict booked, R-0997 and R-0803 resolved, R-0998 registered, the round 23 plan and the reviewer's payloads saved
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f273-r22-block.md` | +77 / -0 | Byte copy of the block |
-| `.agent/authored/f273-r22-decisions.md` | +17 / -0 | Byte copy of decisions.md |
-| `.agent/authored/f273-r22-ledger.md` | +4 / -0 | Byte copy of ledger.md |
-| `.agent/authored/f273-r22-plan.md` | +30 / -0 | Byte copy of plan.md |
-| `.agent/decisions.md` | +17 / -0 | `7e717bc4` bytes + decisions.md (DECISION F273 D21) |
-| `.agent/live_review.md` | +4 / -0 | `7e717bc4` bytes + ledger.md (Gate F273 R21, R-0997) |
-| `.agent/plan.md` | +5 / -5 | := plan.md |
+| `.agent/authored/f273-r23-block.md` | +78 / -0 | Byte copy of the block |
+| `.agent/authored/f273-r23-ledger.md` | +8 / -0 | Byte copy of ledger.md |
+| `.agent/authored/f273-r23-plan.md` | +29 / -0 | Byte copy of plan.md |
+| `.agent/authored/f273-r23-run_selfuse.py` | +155 / -0 | Byte copy of run_selfuse.py |
+| `.agent/live_review.md` | +8 / -0 | `83ee29bb` bytes + ledger.md (Gate F273 R22, Done R-0997, Done R-0803, R-0998) |
+| `.agent/plan.md` | +12 / -13 | := plan.md |
 
-154 insertions, 5 deletions (`git show --numstat`).
+290 insertions, 13 deletions (`git show --numstat`).
 
-### 40ace9fe F273 R22 C2: R-0997 — the retired-status scan's anti-blindness guard asserts its corpus holds every tracked production file that calls a JobPlan loader, found by git grep, instead of a fixed file count
+### a405f5ca F273 R23 C2: closure precondition 6 — generate SU-023, run it to the approval gate, mirror the job into the token ledger, record the evidence
 | Path | +/- | Reason |
 |------|-----|--------|
-| `tests/orchestration/test_job_plan_state_reads.py` | +19 / -3 | `git apply` of `r22_fix.diff` (R-0997) |
+| `.agent/selfuse_f273/SU-023.md` | +7 / -0 | Job file the runner wrote |
+| `.agent/selfuse_f273/entry_and_job_file.txt` | +5 / -0 | Written by run_selfuse.py |
+| `.agent/selfuse_f273/execution_config.txt` | +7 / -0 | Written by run_selfuse.py |
+| `.agent/selfuse_f273/full_transcript.txt` | +24 / -0 | Written by run_selfuse.py |
+| `.agent/selfuse_f273/ledger_rows.txt` | +14 / -0 | Written by run_selfuse.py (R-0807 reading) |
+| `.agent/selfuse_f273/result_state.txt` | +8 / -0 | Written by run_selfuse.py |
+| `.agent/selfuse_f273/run_defects.txt` | +4 / -0 | Written by run_selfuse.py |
+| `scripts/self_use_queue.json` | +8 / -0 | Generator appended SU-023, `consumed_by` empty |
 
-19 insertions, 3 deletions.
+77 insertions, 0 deletions (`git show --numstat`).
 
-### a463c0ac F273 R22 C3: the closure suite's second transcript — one run of the full suite in the primary checkout after R-0997's repair read 17517 passed, 20 skipped, no bad node and no R-0803 line
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/authored/f273-closure-suite-r22.txt` | +2 / -0 | Summary line and `R-0803 lines: 0`; no bad node |
-
-2 insertions, 0 deletions.
-
-### C4 (this commit) F273 R22 C4: handoff
+### C3 (this commit) F273 R23 C3: handoff
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | rewritten | This handback |
 
-Every commit is under 500 inserted lines. The largest is C1, with 154.
+Every commit is under 500 inserted lines. The largest is C1, with 290.
 
 ## External actions
 
-- No worktree was added or removed; no branch was created or deleted.
-- The branch `remedy/job-81ec65896729405c` still exists in this repository; nobody may delete it without the operator. `git branch --list 'remedy/job-*'` read 37 branches before C3 and 37 after the run.
-- After C4: `git push`. No pull request is opened.
+- The self-use run in C2 (through the runner's own functions, not by the worker) created one branch, `remedy/job-468c8e62a2cc4fac`, and one worktree, `.remedy-wt/job-468c8e62a2cc4fac` (cleanup status `retained`, the runner's own reading for a blocked job). The worker added and removed no worktree and created or deleted no branch.
+- `git branch --list 'remedy/job-*'`: 37 before C2, 38 after; created `['remedy/job-468c8e62a2cc4fac']`, removed `[]`.
+- The branch `remedy/job-81ec65896729405c` still exists in this repository. Nobody may delete a branch without the operator.
+- After C3: `git push`. No pull request is opened.
 
 ## Verification
 
-Every command ran with an explicit `cwd=` of the primary checkout through `.remedy-wt/f273-r22/wk_run.py`, whose child `env=` drops `REMEDY_OLLAMA_HOST` and `OLLAMA_HOST` and which prints the child's real exit code.
+Every command ran with an explicit `cwd=` of the primary checkout through small `wk_*.py` scripts under `.remedy-wt/f273-r23/`, each printing the child's real returncode. Unlike round 22, no child environment was changed: the block orders the self-use run "with no environment change", so every child inherited the session's environment.
 
-- **Transport**, before any write: `sha256sum` of `block.md`, `ledger.md`, `plan.md`, `decisions.md`, `next.md` and `r22_fix.diff` each equalled the block's digest; the block read 77 lines.
-- **Block copy**, before C1 (`python3 .remedy-wt/f273-r22/wk_build.py c1`):
+- **Transport**, before any write: `sha256sum` of `block.md`, `ledger.md`, `plan.md`, `next.md`, `run_selfuse.py` and `integrity_probe.py` each equalled the digest the block or the brief names.
+- **Block copy**, before C1 (`python3 .remedy-wt/f273-r23/wk_c1.py`):
   ```
-  saved block sha256 4a53fe5a68b14b496aadfb614e49f29068176176e357d0772123ae3effba8fad lines 77
-  ok c1
+  saved block sha256 f50fd0ca1a5348b6dcb92f6d91bc20f12f9bd907cc59063385c271784d7dfe01 lines 78
+  saved block equals given block True
   ```
-  Both equal the given block's digest and line count.
-- **G1** (`python3 .remedy-wt/f273-r22/wk_g1.py` at C2 `40ace9fe`):
+- **G1** (same script, after writing the C1 files, before the commit; exit 0):
   ```
   digest ledger.md True
   digest plan.md True
-  digest decisions.md True
   digest next.md True
-  digest r22_fix.diff True
+  digest run_selfuse.py True
+  digest integrity_probe.py True
   digest block.md True
-  live_review True
-  decisions True
-  plan True
-  authored ledger.md True
-  authored plan.md True
-  authored decisions.md True
-  authored block.md True
-  C2 paths ['tests/orchestration/test_job_plan_state_reads.py'] diff paths ['tests/orchestration/test_job_plan_state_reads.py']
-  C2 paths True
-  tests tree 395d7718d05267dcfb2c9b1fa6ef48d62dd5fcfd
-  tests tree True
+  git show .agent/live_review.md returncode 0
+  saved block sha256 f50fd0ca1a5348b6dcb92f6d91bc20f12f9bd907cc59063385c271784d7dfe01 lines 78
+  saved block equals given block True
+  git show .agent/live_review.md returncode 0
   True
-  EXIT CODE: 0  WALL: 0.1s
   ```
-- **G2** (`python3 -m pytest -q -p no:cacheprovider tests/orchestration/test_job_plan_state_reads.py tests/docs/ tests/cli/test_golden_path.py` at `40ace9fe`):
+- **G3, the run** (`python3 .remedy-wt/f273-r23/wk_c2.py`, which runs `python3 -B .remedy-wt/f273-r23/run_selfuse.py` once from the repository root): returncode 0, stderr empty. The script's stdout is quoted verbatim, unindented, under "Evidence, verbatim" below.
+  `git show --name-only --format= a405f5ca`:
   ```
-  360 passed in 122.65s (0:02:02)
-  EXIT CODE: 0  WALL: 205.4s
+  .agent/selfuse_f273/SU-023.md
+  .agent/selfuse_f273/entry_and_job_file.txt
+  .agent/selfuse_f273/execution_config.txt
+  .agent/selfuse_f273/full_transcript.txt
+  .agent/selfuse_f273/ledger_rows.txt
+  .agent/selfuse_f273/result_state.txt
+  .agent/selfuse_f273/run_defects.txt
+  scripts/self_use_queue.json
   ```
-  (`python3 -m ruff check . --output-format concise`):
+  Only paths under `.agent/selfuse_f273/` and `scripts/self_use_queue.json`. `git worktree list` after the run:
   ```
-  All checks passed!
-  EXIT CODE: 0  WALL: 0.0s
+  /home/decodeux/Repos/remedy                                  1b9ae606 [feature/f273-findings-paydown-v1]
+  /home/decodeux/Repos/remedy/.remedy-wt/job-468c8e62a2cc4fac  1b9ae606 [remedy/job-468c8e62a2cc4fac]
   ```
-- **G3 = C3** (`python3 -m pytest -n auto -q`, once, primary checkout, at `40ace9fe`, clean tree, nothing else running; output logged to the gitignored `.remedy-wt/f273-r22/wk_suite_log.txt`, 254 lines):
+- **G2** (`python3 -m pytest -q -p no:cacheprovider tests/docs/ tests/orchestration/test_roadmap_index.py tests/cli/test_golden_path.py tests/orchestration/test_self_use_queue.py tests/orchestration/test_self_use_generator.py tests/orchestration/test_live_review_rotation.py tests/orchestration/test_integrity_gate.py` at `a405f5ca`):
   ```
-  =============================== warnings summary ===============================
-  tests/orchestration/test_model_routing.py::TestTheUndeclaredRolePathWarnsAndAnswersConservatively::test_it_matches_role_configs_own_unknown_role_behaviour
-    [UserWarning: Role 'a_role_nobody_declared_a_class_for' declares no task class; ...]
-  17517 passed, 20 skipped, 1 warning in 210.98s (0:03:30)
-  EXIT CODE: 0  WALL: 295.1s
+  462 passed in 131.32s (0:02:11)
+  returncode 0
   ```
-  Exit code 0; bad nodes 0 (`grep -c -E "^(FAILED|ERROR)"` on the log reads 0); `R-0803:` lines 0. Transcript `.agent/authored/f273-closure-suite-r22.txt`, sha256 `ef5f76a4c0775bc8c5f2148e9513135781194e5d8451993fd63e1874274791ba`, built by `.remedy-wt/f273-r22/wk_transcript.py` from the log, verbatim:
+- **G4** (`python3 -B .remedy-wt/f273-r23/integrity_probe.py` at `a405f5ca`; returncode 0):
   ```
-  17517 passed, 20 skipped, 1 warning in 210.98s (0:03:30)
-  R-0803 lines: 0
+  passed: False fail_count: 1
+    handler_import: pass | handlers=143
+    live_review_verdict: warn | no verdict found
+    plan_consistency: pass | unchecked=0, context_complete=False
+    relevant_untracked: pass | untracked=0, relevant=0
+    high_blockers_open: fail | 1 open blocker/high: R-0807
   ```
-- **SHRINKING READING:** previous bad set (`.agent/authored/f273-closure-suite.txt`, round 21) = { `tests/orchestration/test_job_plan_state_reads.py::TestNoRetiredJobPlanStateReads::test_the_scan_reaches_a_real_corpus` }; new bad set = { } (empty). The new set is a strict subset of the previous one (1 -> 0), and no node is newly bad. The passed count rose by one, 17516 -> 17517, the repaired node; skipped is unchanged at 20.
-- **G4** runs after the push and is reported in the round report, because this commit comes before it.
+  The one FAIL names R-0807, the reading the block expects while it is open. The `live_review_verdict` WARN `no verdict found` is the reading R-0998 describes.
+- **G5** runs after the push and is reported in the round report, because this commit comes before it.
+
+### Evidence, verbatim
+
+The stdout of `python3 -B .remedy-wt/f273-r23/run_selfuse.py`:
+```
+generate_and_append_if_empty -> SU-023
+{
+  "entry": "SU-023",
+  "job_file": ".agent/selfuse_f273/SU-023.md",
+  "job_id": "468c8e62a2cc4fac",
+  "state": "blocked",
+  "defects": [
+    "job 468c8e62a2cc4fac (blocked): task_T001_gate_failed: final_status=review_inconsistent; reviewer_verdict=fail",
+    "T001 (blocked): completion_gate_failed: final_status=review_inconsistent; reviewer_verdict=fail"
+  ],
+  "calls": 2,
+  "rows": 2
+}
+```
+
+`.agent/selfuse_f273/ledger_rows.txt`:
+```
+Job ID: 468c8e62a2cc4fac
+Mirror: {"error": "", "ledger_mirrored": true, "out_dir": "/home/decodeux/Repos/remedy/.data/evidence_exports/468c8e62a2cc4fac"}
+Ledger project: 83cdfe8b-0885-4b64-95d1-6d7bd7c37389
+Ledger path: /home/decodeux/Repos/remedy/.data/projects/83cdfe8b-0885-4b64-95d1-6d7bd7c37389/ledger.sqlite
+Provider calls in the run records: 2
+  call T001 seq=1 round=1 role=builder
+  call T001 seq=2 round=1 role=reviewer
+Ledger rows for the job: 2
+  row 468c8e62a2cc4fac:T001:1 task=T001 role=builder
+  row 468c8e62a2cc4fac:T001:2 task=T001 role=reviewer
+Rows by role (query_cost by=role): [["builder", 1], ["reviewer", 1]]
+Total calls (query_cost): 2
+verify_ledger: {"checked": 1, "missing_rows": [], "orphan_rows": [], "drifted_rows": [], "unreadable": [], "has_drift": false}
+rows == calls: True
+```
+
+`.agent/selfuse_f273/run_defects.txt`:
+```
+From describe_self_use_run_defects():
+
+1. job 468c8e62a2cc4fac (blocked): task_T001_gate_failed: final_status=review_inconsistent; reviewer_verdict=fail
+2. T001 (blocked): completion_gate_failed: final_status=review_inconsistent; reviewer_verdict=fail
+```
+
+`.agent/selfuse_f273/result_state.txt` (the `Stop …` lines carry the file's own trailing space after the colon):
+```
+Job State: blocked
+Stop Reason: 
+Stop Source: 
+Stop Request ID: 
+Stopped At: 
+
+Task States:
+  T001: review_inconsistent (verdict: fail)
+```
+
+`.agent/selfuse_f273/execution_config.txt`:
+```
+Builder: ollama
+Builder Model: muse-glimmer:latest
+Reviewer: ollama
+Reviewer Model: muse-glimmer:latest
+Repair Rounds Allowed: 2
+Max Rounds: 3
+Isolation: worktree
+```
 
 ## Authored-text proofs
 
-- Every C1 file was built by `python3 .remedy-wt/f273-r22/wk_build.py` from `git show 7e717bc4:<path>` bytes and the digest-checked payload bytes, with no hand edit; C2 is `git apply` of the digest-checked diff. G1 re-proves each against its payload at `40ace9fe`.
-- `.agent/authored/f273-closure-suite.txt` is untouched.
-- The `## Next` body below is `next.md` byte for byte, appended by `.remedy-wt/f273-r22/wk_c4.py`, which checks the payload digest first.
+- Every C1 file was built by `python3 .remedy-wt/f273-r23/wk_c1.py` from `git show 83ee29bb:.agent/live_review.md` bytes and the digest-checked payload bytes, with no hand edit; G1 re-proves each against its payload.
+- The evidence files and the stdout above were spliced into this file by `.remedy-wt/f273-r23/wk_c3.py` from their bytes on disk, not retyped.
+- The `## Next` body below is `next.md` byte for byte, appended by the same script, which checks the payload digest first.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 bookkeeping (Gate F273 R21, R-0997 registered, DECISION F273 D21, plan, payload copies) | done | `219629c1` |
-| C2 R-0997 repair (`git apply` r22_fix.diff) | done | `40ace9fe` |
+| C1 bookkeeping (Gate F273 R22, Done R-0997, Done R-0803, R-0998 registered, plan, payload copies) | done | `1b9ae606` |
 | G1 | done | True, exit 0 |
-| G2 | done | 360 passed, exit 0; ruff "All checks passed!", exit 0 |
-| C3 closure suite run + transcript commit | done | `a463c0ac`; green, 0 bad nodes |
-| C4 handoff + push | done | This commit, then the push |
-| G4 | done | After the push; in the round report |
-
-Landed: R-0997 — C2 `40ace9fe` (F273 R22 C2) replaces the fixed `> 300` file floor with the assertion that the scan's corpus holds every tracked production file calling `load_job_plan` or `require_job_plan`, found by `git grep`, and that at least one exists; the closure suite at `40ace9fe` reads no bad node.
+| C2 self-use item SU-023 to the approval gate, ledger mirror, evidence | done | `a405f5ca`; job blocked, 2 defects, rows == calls |
+| G2 | done | 462 passed, exit 0 |
+| G3 | done | run exit 0; C2 paths as ordered; worktree list above |
+| G4 | done | FAIL on R-0807 (expected); exit 0 |
+| C3 handoff + push | done | This commit, then the push |
+| G5 | done | After the push; in the round report |
 
 ## Open findings
 
-Measured by `.remedy-wt/f273-r22/wk_count.py`, which loads `scripts/rotate_live_review.py` by path and calls `count_open_findings` (by distinct id) on the committed `.agent/live_review.md`:
-- at `219629c1` (C1; C2 and C3 do not touch it): **14 open** — R-0499, R-0622, R-0662, R-0803, R-0807, R-0819, R-0820, R-0829, R-0866, R-0880, R-0892, R-0950, R-0984, R-0997;
-- at `7e717bc4`: 13 open. C1 registers R-0997 and closes nothing: 13 + 1 = 14.
+Measured by `.remedy-wt/f273-r23/wk_count.py`, which loads `scripts/rotate_live_review.py` by path and calls `count_open_findings` (by distinct id) on the committed `.agent/live_review.md`:
+- at `1b9ae606` (C1; C2 and C3 do not touch it): **13 open** — R-0499, R-0622, R-0662, R-0807, R-0819, R-0820, R-0829, R-0866, R-0880, R-0892, R-0950, R-0984, R-0998;
+- at `83ee29bb`: 14 open. C1 closes R-0997 and R-0803 and registers R-0998: 14 − 2 + 1 = 13.
 
 ## Deviations & assumptions
 
-- **Commit sequence:** as ordered: C1 to C4, then the push. No extra commit.
-- **Run log location:** `/tmp` is denied to this session, so the suite log went to the gitignored scratch directory `.remedy-wt/f273-r22/`. Nothing from it is committed but the transcript.
-- **Transcript shape:** with no bad node, the transcript is the summary line followed directly by `R-0803 lines: 0`, as the block's "none -> nothing" orders.
+- **Commit sequence:** as ordered: C1 to C3, then the push. No extra commit.
+- **Retained job worktree:** the run left `.remedy-wt/job-468c8e62a2cc4fac` registered as a worktree (the runner's `retained` status for a blocked job). The worker did not remove it: the block orders no removal, the change set does not name it, and it holds the blocked job's state for the reviewer. So G5's reading "the primary checkout alone" will not hold; the round report states the literal `git worktree list`.
+- **SU-023.md:** the runner writes the job file into the evidence directory itself; it is committed with the directory as the block orders ("that directory").
+- **Findings:** none written. The two `describe_self_use_run_defects` strings are for the reviewer to register under precondition 6.
 - **Operator questions:** the count below is the number of `### Q<n>` headings in `.agent/operator_questions.md` (Q1, Q2, Q4, Q5, Q7), unchanged this round.
-- **Scratch:** gitignored under `.remedy-wt/f273-r22/`: `wk_run.py`, `wk_build.py`, `wk_g1.py`, `wk_transcript.py`, `wk_count.py`, `wk_c4.py`, `wk_suite_log.txt`, `handoff_head.md`.
+- **Scratch:** gitignored under `.remedy-wt/f273-r23/`: `wk_c1.py`, `wk_branches.py`, `branches_before.txt`, `wk_c2.py`, `c2_stdout.txt`, `c2_stderr.txt`, `wk_gates.py`, `g2_out.txt`, `wk_count.py`, `wk_c3.py`, `handoff_head.md`.
 
 ## Next
 
-1. Phase 1 rule 1 (`.agent/STOP`), then the review of round 22 over `7e717bc4`..the round 22
-   handoff commit, booked as `Gate: F273 R22` with a `Done:` line for R-0997 in the next round's
-   first commit, reading `.agent/authored/f273-closure-suite-r22.txt`.
-2. A bad set that is not empty: the next repair round by the shrinking rule. An empty one: closure
-   round A (the self-use item, the integrity check, the evidence job and the review zip), then
-   closure round B.
+1. Phase 1 rule 1 (`.agent/STOP`), then the review of round 23 over `83ee29bb`..the round 23
+   handoff commit, reading `.agent/selfuse_f273/ledger_rows.txt` for R-0807.
+2. Closure round A, second half: book round 23's verdict and R-0807's resolution or finding in
+   its first commit, then the integrity check, the evidence job and the review zip.
+3. Closure round B: ownership, rotation, the next paydown's registration, the STATUS flip with
+   the self-use item's `consumed_by`, and the pull request.
 
 Operator questions open: 5
