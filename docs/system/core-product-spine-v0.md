@@ -74,6 +74,11 @@ references a specific command template that constrains what the worker can do.
 
 ## Command taxonomy
 
+> **Status (2026-09-19):** the `approval`, `builder`, `overnight`, `dogfood`,
+> `local-advisor`, `local-candidate`, `tournament`, `external-builder` and `review`
+> command groups are deleted and `apps/cli/command_catalog.py` holds none of them, so
+> the tables below name only groups it holds.
+
 ### Primary operator path
 
 | Command | What it does | Mutates? | Executes? |
@@ -84,7 +89,6 @@ references a specific command template that constrains what the worker can do.
 | `ui <id>` | Open interactive UI | No | No |
 | `decision list <id> --json` | Proposed follow-ups and other open decisions | No | No |
 | `config list/show/get` | View config | No | No |
-| `review bundle <id>` | Review evidence bundle | No | No |
 
 *These commands orchestrate steps but do not execute external processes
 without prior explicit approval.
@@ -93,21 +97,13 @@ without prior explicit approval.
 
 | Command | What it does | When to use |
 |---------|-------------|-------------|
-| `approval summary/show/enable` | Execution approval policy | Advanced autonomy setting |
 | `mission run/report` | Mission contract facade | Internal bounded loops |
-| `builder adapter-show/enable/list` | Direct adapter management | Debugging adapter state |
-| `overnight *` | Bounded overnight preparation | Pre-run planning |
 
 ### Developer / internal path
 
 | Command | What it does | When to use |
 |---------|-------------|-------------|
-| `dogfood create/step/show/stop/replay` | Mission internals | Debugging mission state |
 | `self inspect/plan/propose/reconcile` | Self-dogfood internals | Development |
-| `local-advisor *` | Ollama advisory | Disabled by default |
-| `local-candidate *` | Local model candidate gen | Disabled by default |
-| `tournament *` | Model comparison harness | Evaluation only |
-| `external-builder *` | External builder ingress | Quarantine only |
 
 ## What Remedy still does not automate
 
