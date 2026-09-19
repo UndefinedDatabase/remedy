@@ -39,22 +39,32 @@ from typing import Any
 #: sentence that says plainly which part it does not know.
 UNKNOWN_FIELD = "unknown"
 
-#: The enumerated Stage 1 event set, in the order a job lives through them.
-#: Each value is a template over the TOP-LEVEL fields of a run-log event
-#: (packages/orchestration/run_log.py ``RunEvent``). Adding an entry here is
+#: The enumerated event set, in the order a job lives through them.
+#: Each value is a template over the fields of a run-log event
+#: (packages/orchestration/run_log.py ``RunEvent``): a TOP-LEVEL field first,
+#: then the same name in ``metadata``. Adding an entry here is
 #: the only way to narrate a new event: that is the point of the enumeration.
+#: R-0812: the unified job path (`run_job`) writes task_run_started,
+#: task_round_completed, task_run_completed / task_run_failed, budget.tick and
+#: job_stopped; the cockpit writes command.accepted into the same log.
 NARRATED_EVENTS: dict[str, str] = {
     "job_created": "The job was created.",
+    "command.accepted": "The cockpit accepted a command: {command}",
     "planning_started": "Planning started.",
     "planning_completed": "Planning finished and produced a task list.",
     "planning_failed": "Planning failed: {message}",
     "workspace_materialized": "The workspace was prepared for this run.",
     "task_run_started": "A task started: {task_id}",
+    "task_round_completed": ("A review round finished: task {task_id}, round {round_number} "
+                             "(verdict: {outcome})"),
+    "budget.tick": ("The budget was checked at a safe point: {spent_tokens} measured tokens "
+                    "spent, {unmeasured_calls} calls unmeasured."),
     "task_run_completed": "A task finished: {task_id} (outcome: {outcome})",
     "task_run_failed": "A task failed: {task_id} (outcome: {outcome})",
     "task_run_noop": "A task ran and changed nothing: {task_id}",
     "verification_passed": "Verification passed.",
     "verification_failed": "Verification failed: {message}",
+    "job_stopped": "The job stopped at a safe point: {reason}",
 }
 
 #: How an event outside NARRATED_EVENTS is narrated. It names the event rather
@@ -76,7 +86,9 @@ def narrate_run_event(event: Mapping[str, Any]) -> str:
     not a string, or is absent from :data:`NARRATED_EVENTS` is narrated as
     unrecognised.
     """
-    fields = _FieldsWithUnknown(event)
+    metadata = event.get("metadata")
+    fields = _FieldsWithUnknown(
+        {**(metadata if isinstance(metadata, Mapping) else {}), **event})
     name = event.get("event")
     if not isinstance(name, str) or name not in NARRATED_EVENTS:
         return UNRECOGNISED_TEMPLATE.format_map(fields)

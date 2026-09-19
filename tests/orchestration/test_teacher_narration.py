@@ -48,10 +48,14 @@ class TestEnumeratedSet:
         # Pinned by EXPECTED LITERAL: a test that reads the mapping it is meant
         # to freeze can never fail, however wrong that mapping becomes.
         assert sorted(NARRATED_EVENTS) == [
+            "budget.tick",
+            "command.accepted",
             "job_created",
+            "job_stopped",
             "planning_completed",
             "planning_failed",
             "planning_started",
+            "task_round_completed",
             "task_run_completed",
             "task_run_failed",
             "task_run_noop",
@@ -82,6 +86,17 @@ class TestMissingFields:
     def test_an_absent_template_field_renders_as_unknown(self):
         sentence = narrate_run_event(_event("task_run_started"))
         assert UNKNOWN_FIELD in sentence
+
+    def test_a_field_absent_at_top_level_is_read_from_metadata(self):
+        # R-0812: budget.tick and task_round_completed carry their figures in metadata.
+        sentence = narrate_run_event(_event("task_round_completed", task_id="T1",
+                                            outcome="pass", metadata={"round_number": 2}))
+        assert "round 2" in sentence and UNKNOWN_FIELD not in sentence
+
+    def test_a_top_level_field_wins_over_metadata(self):
+        sentence = narrate_run_event(_event("task_run_started", task_id="top",
+                                            metadata={"task_id": "meta"}))
+        assert "top" in sentence and "meta" not in sentence
 
     def test_a_present_field_is_used_verbatim(self):
         sentence = narrate_run_event(_event("task_run_started", task_id="task-42"))

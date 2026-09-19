@@ -157,6 +157,19 @@ def test_shape_to_run_completes_on_the_named_fake_providers(repo, capsys):
     assert (config.reviewer, config.reviewer_source) == ("fake", "cli")
 
 
+def test_the_teacher_narrates_the_job_do_ran_without_a_budget(repo, capsys):
+    """R-0812: `do` sets no budget, so no `budget.tick`; the task events still narrate."""
+    from apps.cli.commands.teacher_cmd import _cmd_teacher_narrate
+
+    [job_id] = _do_json(capsys)["job_ids"]
+    _cmd_teacher_narrate(job_id)
+    out = capsys.readouterr().out
+
+    assert "no events yet" not in out
+    assert "no narration for" not in out
+    assert "A task started:" in out and "A review round finished:" in out
+
+
 def _recorded_contract(repo, data, origins=frozenset({"planner"})):
     """The contract on the walk's mission record: planned, so never null."""
     from packages.orchestration.mission_state import load_mission

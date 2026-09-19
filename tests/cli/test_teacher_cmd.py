@@ -259,6 +259,83 @@ class TestTeacherReachesTaskJobs:
         assert "No job matches" in capsys.readouterr().err
 
 
+_TWO_TASK_JOB = """# Job: two tasks the teacher narrates
+
+## Task 1
+Update docs/README.md.
+
+Acceptance:
+- done
+
+## Task 2
+Update docs/README.md again.
+
+Acceptance:
+- done
+"""
+
+
+class TestTeacherNarratesTheUnifiedJobPath:
+    """R-0812: every kind `run_job` writes has a sentence, per task and per round.
+
+    The job is made by ``parse_job_file`` + ``run_job`` with the fake provider
+    NAMED, so each task gets its own ``FakeProvider`` and runs two rounds, and with
+    a token budget so ``budget.tick`` fires. The kind set is read from the run log
+    the job wrote, never listed here.
+    """
+
+    def _run_two_task_job(self, tmp_path, monkeypatch, budgets):
+        import subprocess
+
+        from packages.orchestration.pingpong_job import parse_job_file, run_job
+
+        monkeypatch.chdir(tmp_path)
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        for args in (["init", "-q"], ["config", "user.email", "t@e.com"],
+                     ["config", "user.name", "T"], ["config", "commit.gpgsign", "false"]):
+            subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+        (repo / "README.md").write_text("# Demo\n")
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-qm", "init"], cwd=repo, check=True,
+                       capture_output=True)
+        job = parse_job_file(_TWO_TASK_JOB, str(repo))
+        return run_job(job.job_id, builder_name="fake", reviewer_name="fake", budgets=budgets)
+
+    def _narrate(self, job_id, capsys) -> list[str]:
+        _cmd_teacher_narrate(job_id, json_output=True)
+        return json.loads(capsys.readouterr().out)["narration"]
+
+    def test_every_emitted_kind_is_in_the_narration_table(
+            self, data_root, tmp_path, monkeypatch, capsys):
+        from packages.orchestration.teacher_narration import NARRATED_EVENTS
+        from packages.orchestration.timeline import load_run_events
+
+        job = self._run_two_task_job(tmp_path, monkeypatch, {"max_total_tokens": 1_000_000})
+        kinds = {e.get("event") for e in load_run_events(data_root, job.job_id)}
+
+        assert "budget.tick" in kinds, "the budget must fire, or the subset proves less"
+        assert kinds <= set(NARRATED_EVENTS), sorted(kinds - set(NARRATED_EVENTS))
+        assert not [s for s in self._narrate(job.job_id, capsys) if "no narration for" in s]
+
+    def test_every_task_and_every_round_gets_a_sentence(
+            self, data_root, tmp_path, monkeypatch, capsys):
+        from packages.orchestration.pingpong_loop import load_run
+
+        job = self._run_two_task_job(tmp_path, monkeypatch, {"max_total_tokens": 1_000_000})
+        narration = self._narrate(job.job_id, capsys)
+        rounds = {t.task_id: len(load_run(t.run_id)["rounds"]) for t in job.tasks}
+
+        assert rounds == {t.task_id: 2 for t in job.tasks}
+        for task_id, count in rounds.items():
+            assert f"A task started: {task_id}" in narration
+            assert f"A task finished: {task_id} (outcome: pass)" in narration
+            for number in range(1, count + 1):
+                assert any(s.startswith(f"A review round finished: task {task_id}, "
+                                        f"round {number} ") for s in narration), (
+                    task_id, number, narration)
+
+
 class TestTeacherCatalogDeclaration:
     def test_the_command_is_declared_read_only(self):
         cmd = get_command("teacher.narrate")

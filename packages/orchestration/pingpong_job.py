@@ -2701,6 +2701,7 @@ def run_job(
         _persist_job(job)
 
         tasks_run = 0
+        task_log = None     # R-0812: opened when the first task starts, one run id per call
         previous_summaries: list[TaskProofSummary] = []
         job_baselines: dict[str, tuple[bool, str]] = {}
 
@@ -2836,6 +2837,9 @@ def run_job(
                         _persist_job(job)
                         continue
 
+            if task_log is None:
+                task_log = _open_task_log(job)
+            _log_task_started(task_log, task)
             try:
                 result = run_pingpong(
                     task.title,
@@ -2880,8 +2884,11 @@ def run_job(
                 task.error = f"pingpong_exception: {exc}"
                 job.state = JOB_BLOCKED
                 job.error = f"task_{task.task_id}_failed: {exc}"
+                _log_task_ended(task_log, task, "pingpong_exception")
                 _persist_job(job)
                 return job
+
+            _log_task_rounds(task_log, task, result)
 
             # Record task result
             task.run_id = result.run_id
@@ -2903,6 +2910,7 @@ def run_job(
             # its evidence is in the run record; the task never reached its completion/apply
             # boundary, so it goes back to `pending` and the job is stopped — NOT blocked,
             # NOT failed, and never dressed up as a provider or review failure.
+            # R-0812: so it writes no task_run_* terminal; `job_stopped` closes the log.
             if result.final_status == "stopped":
                 from packages.orchestration.safe_points import StopSignal as _StopSignal
                 signal = _StopSignal(
@@ -2926,6 +2934,7 @@ def run_job(
             if not gate_ok:
                 task.status = TASK_BLOCKED
                 task.error = f"completion_gate_failed: {'; '.join(gate_reasons)}"
+                _log_task_ended(task_log, task, "completion_gate_failed")
                 _block_job(job, idx, f"task_{task.task_id}_gate_failed: {'; '.join(gate_reasons)}")
                 return job
 
@@ -2937,6 +2946,7 @@ def run_job(
             if pre_guard.target_mutated:
                 task.status = TASK_BLOCKED
                 task.error = f"target_repo_mutated: {pre_guard.changed_target_files}"
+                _log_task_ended(task_log, task, "target_repo_mutated")
                 _block_job(job, idx, "target_repo_mutated_during_job")
                 return job
 
@@ -2958,6 +2968,7 @@ def run_job(
             if manifest.status != "applied":
                 task.status = TASK_BLOCKED
                 task.error = f"workspace_apply_blocked: {_manifest_block_reason(manifest)}"
+                _log_task_ended(task_log, task, "workspace_apply_blocked")
                 _block_job(job, idx, f"task_{task.task_id}_workspace_apply_blocked")
                 return job
 
@@ -2970,6 +2981,7 @@ def run_job(
             if post_guard.target_mutated:
                 task.status = TASK_BLOCKED
                 task.error = f"target_repo_mutated_after_apply: {post_guard.changed_target_files}"
+                _log_task_ended(task_log, task, "target_repo_mutated_after_apply")
                 _block_job(job, idx, "target_repo_mutated_after_apply")
                 return job
 
@@ -3000,9 +3012,11 @@ def run_job(
                     # D1 (5): a failed commit blocks the job; nothing is retried silently.
                     task.status = TASK_BLOCKED
                     task.error = f"worktree_commit_failed: {type(exc).__name__}: {exc}"
+                    _log_task_ended(task_log, task, "worktree_commit_failed")
                     _block_job(job, idx, f"task_{task.task_id}_worktree_commit_failed")
                     return job
 
+            _log_task_ended(task_log, task, "pass")
             tasks_run += 1
             _persist_job(job)
 
@@ -3582,6 +3596,54 @@ def _write_stop_postmortem(job: JobPlan, signal: Any, task_id: str) -> None:
         from packages.orchestration.failure_postmortem import safe_text
         job.stop_error = safe_text(
             f"stop_postmortem_write_failed: {type(write_exc).__name__}: {write_exc}")[:500]
+
+
+#: R-0812: what a task-lifecycle write may raise. It fails soft, as
+#: `safe_points._emit_budget_tick` does: a missing line must not stop the run it reports on.
+_TASK_LOG_ERRORS = (OSError, RuntimeError, ValueError, TypeError)
+
+
+def _open_task_log(job: JobPlan) -> Any:
+    """The job's run-log writer for task lifecycle events, or None if it cannot open."""
+    try:
+        from packages.orchestration.run_log import RunLogWriter
+        return RunLogWriter(job.job_id)
+    except _TASK_LOG_ERRORS:
+        return None
+
+
+# The event names below stay INLINE literals: tests/ui_contracts/test_humanize_catalog.py
+# derives the stream vocabulary from `.log("<name>", ...)` call sites.
+def _log_task_started(log: Any, task: TaskEntry) -> None:
+    """``task_run_started`` in the shape the timeline, cockpit and trust report read."""
+    try:
+        if log is not None:
+            log.log("task_run_started", task_id=task.task_id, task_type=task.task_class)
+    except _TASK_LOG_ERRORS:
+        pass
+
+
+def _log_task_rounds(log: Any, task: TaskEntry, result: Any) -> None:
+    """One ``task_round_completed`` per ping-pong round, with the reviewer's verdict."""
+    try:
+        for rnd in (result.rounds if log is not None else ()):
+            verdict = rnd.reviewer_output.verdict if rnd.reviewer_output else ""
+            log.log("task_round_completed", task_id=task.task_id,
+                    outcome=verdict or "no_review", round_number=rnd.round_number,
+                    round_kind=rnd.kind, test_passed=rnd.test_passed)
+    except _TASK_LOG_ERRORS:
+        pass
+
+
+def _log_task_ended(log: Any, task: TaskEntry, outcome: str) -> None:
+    """``task_run_completed`` for ``pass``, else ``task_run_failed`` naming the block."""
+    try:
+        if log is not None and outcome == "pass":
+            log.log("task_run_completed", task_id=task.task_id, outcome=outcome)
+        elif log is not None:
+            log.log("task_run_failed", task_id=task.task_id, outcome=outcome)
+    except _TASK_LOG_ERRORS:
+        pass
 
 
 def _append_job_stopped_event(job: JobPlan, signal: Any, task_id: str) -> None:
