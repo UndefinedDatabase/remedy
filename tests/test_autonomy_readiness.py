@@ -8,9 +8,7 @@ from packages.core.models import RunState
 from packages.orchestration.autonomy_readiness import (
     LEVELS,
     assess_job_readiness,
-    assess_project_readiness,
     export_readiness_json,
-    summarize_readiness,
 )
 from packages.orchestration.data_paths import mint_job_id
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
@@ -120,33 +118,18 @@ class TestReadinessJSON:
         json.loads(raw)  # must not raise
 
 
-class TestReadinessText:
-    def test_summarize_mentions_level(self):
-        job = _make_job()
-        report = assess_job_readiness(job, [])
-        text = summarize_readiness(report)
-        assert "Level 0" in text
-        assert "observe" in text
-
-    def test_summarize_mentions_missing(self):
-        job = _make_job()
-        report = assess_job_readiness(job, [])
-        text = summarize_readiness(report)
-        assert "missing" in text or "blockers" in text
-
-
-class TestProjectReadiness:
-    def test_empty_project(self):
-        report = assess_project_readiness("proj1", [], {})
-        assert report.scope == "project"
-        assert report.highest_eligible_level == 0
-
-    def test_project_aggregates_jobs(self):
-        j1 = _make_job(target_repo="/tmp/r1")
-        j2 = _make_job()
-        report = assess_project_readiness("proj2", [j1, j2], {})
-        # Level 1 should be eligible because j1 has repo+tasks
-        assert report.levels[1].eligible is True
+class TestLevelFourSignals:
+    def test_level_4_reads_no_inspection_event(self, tmp_path, monkeypatch):
+        """R-0907: nothing emits `run_contract_inspected` or
+        `token_policy_inspected`, so level 4 no longer requires either."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _make_job(target_repo=str(tmp_path))
+        events = [{"event": "agent_loop_inspected", "metadata": {}},
+                  {"event": "token_policy_applied", "metadata": {}}]
+        level = assess_job_readiness(job, events, data_dir=tmp_path / "data").levels[4]
+        assert level.present_signals == ("agent_loop", "token_policy_applied",
+                                         "no_open_decisions")
+        assert level.eligible is True
 
 
 class TestReadinessBrainNode:
@@ -288,8 +271,8 @@ class TestContractRepoTip:
 
     @staticmethod
     def _rendered_tip(job) -> str:
-        text = summarize_readiness(assess_job_readiness(job, []))
-        [line] = [ln for ln in text.splitlines() if "job contract" in ln]
+        tips = assess_job_readiness(job, []).next_actions
+        [line] = [tip for tip in tips if "job contract" in tip]
         return line
 
     def test_the_tip_names_the_job_and_its_projects_repository(self, tmp_path, monkeypatch):
@@ -309,7 +292,7 @@ class TestContractRepoTip:
         assert line.endswith(f"remedy job contract {job.job_id} — a job gets its repository "
                              f"and grants from its mission's contract; its project's "
                              f"repository is {repo}")
-        text = summarize_readiness(assess_job_readiness(job, []))
+        text = "\n".join(assess_job_readiness(job, []).next_actions)
         assert not re.search(r"<[a-z_]+>", text)
 
     def test_the_tip_without_a_project_names_where_the_repository_comes_from(
@@ -323,18 +306,18 @@ class TestContractRepoTip:
 
         assert line.endswith(f"remedy job contract {job.job_id} — a job gets its repository "
                              f"and grants from its mission's contract")
-        text = summarize_readiness(assess_job_readiness(job, []))
+        text = "\n".join(assess_job_readiness(job, []).next_actions)
         assert not re.search(r"<[a-z_]+>", text)
 
     def test_every_tip_of_every_level_names_the_real_job(self, tmp_path, monkeypatch):
-        """R-0811: the whole summary and every level's tips — no `<…>`, the real job id."""
+        """R-0811: the first blocked level's tips and every level's tips — no `<…>`, the real job id."""
         import re
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         job = JobPlan(job_id=mint_job_id(), job_title="no tasks yet", user_prompt="x")
 
         report = assess_job_readiness(job, [], data_dir=tmp_path / "data")
-        text = summarize_readiness(report)
+        text = "\n".join(report.next_actions)
         actions = [a for level in export_readiness_json(report)["levels"]
                    for a in level["next_actions"]]
 

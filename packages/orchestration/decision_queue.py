@@ -45,7 +45,7 @@ class HumanDecision:
     """A single item requiring human attention."""
 
     id: str
-    type: str  # patch_approval, stop_reason, test_failure, repo_dirty, ...
+    type: str  # patch_approval, stop_reason, test_failure, token_budget, ...
     status: str  # open, resolved
     severity: str  # info, warning, blocker
     source: str
@@ -71,8 +71,8 @@ class HumanDecision:
 
 
 DECISION_TYPES = frozenset({
-    "patch_approval", "stop_reason", "test_failure", "repo_dirty",
-    "token_budget", "worker_approval", "memory_review", "revert_missing",
+    "patch_approval", "stop_reason", "test_failure", "token_budget",
+    "worker_approval", "memory_review", "revert_missing",
     "task_plan_approval",
     # F051: a task raised a question mid-run; its branch waits, the run does not.
     "task_decision",
@@ -324,74 +324,7 @@ def list_decisions(
             ),
         ))
 
-    # 4. Dirty repo
-    git_reads = [e for e in events if e.get("event") == "git_status_read"]
-    if git_reads:
-        last = git_reads[-1].get("metadata", {})
-        if last.get("dirty"):
-            # F032 T002e: the thinnest branch in the queue cited nothing at all.
-            # THE EVENT NAME IS THE ONE RECEIPT THIS BRANCH IS GUARANTEED TO
-            # HAVE — the branch exists because that event was read — so it is
-            # emitted unguarded, which is also what keeps rule (a) of
-            # `evidence_triple_problems` satisfiable for the thin event
-            # `_fixture_repo_dirty` in `tests/orchestration/test_decision_inbox.py`
-            # writes, whose `metadata` carries `dirty` and nothing else.  The
-            # status fingerprint is OPTIONAL for exactly that reason: only the
-            # `repo status` command F261 deleted wrote `status_hash`, so an
-            # unguarded ref on it would point at nothing on that fixture and
-            # rule (c) would refuse the whole card.  NOTHING IS EMITTED for
-            # `branch`, `head_sha` or `changed_file_count`: no kind in
-            # `DECISION_EVIDENCE_REF_KINDS` types a branch name, a commit or a
-            # count without lying about what it is, and amendment A2 of
-            # `docs/roadmap/features/T5_F032.md` forbids inventing vocabulary.
-            _rd_refs = [DecisionEvidenceRef(
-                kind="failure",
-                target="git_status_read",
-                label="the run-log event that reported the working tree dirty",
-            )]
-            _rd_status_hash = str(last.get("status_hash", "") or "")
-            if _rd_status_hash:
-                _rd_refs.append(DecisionEvidenceRef(
-                    kind="failure",
-                    target=_rd_status_hash,
-                    label="the status fingerprint that reading recorded",
-                ))
-            decisions.append(HumanDecision(
-                id="dirty_repo",
-                type="repo_dirty",
-                status="open",
-                severity="warning",
-                source="git_status",
-                related_node_id="",
-                related_intent_id="",
-                related_file="",
-                safe_summary="Target repository has uncommitted changes.",
-                next_actions=("Commit or stash changes in target repo.",),
-                created_at=str(git_reads[-1].get("timestamp", "")),
-                resolved_at=None,
-                # NO `payload` IS ADDED HERE, deliberately.  This branch's one
-                # `next_action` is an instruction rather than a choice, so
-                # DECISION F032 D3's optionless case applies and rule (h)
-                # requires EXACTLY ONE outcome, keyed `UNKEYED_OPTION`.
-                evidence=DecisionEvidenceTriple(
-                    refs=tuple(_rd_refs),
-                    outcomes=(DecisionOptionOutcome(
-                        option=UNKEYED_OPTION,
-                        expected_outcome=(
-                            "Committing or stashing the target repository's "
-                            "changes leaves a clean tree, so a later diff "
-                            "shows only what this job did."
-                        ),
-                        downside=(
-                            "The job waits while that happens, and stashing "
-                            "work that is not this job's can hide changes "
-                            "their author still needs."
-                        ),
-                    ),),
-                ),
-            ))
-
-    # 5. Budget exhaustion — check job fields, metadata, AND stop events
+    # 4. Budget exhaustion — check job fields, metadata, AND stop events
     # JobPlan carries a real .metadata field too now (F112 T003a); getattr
     # still covers any job shape without one, so nothing here changed.
     _job_meta = getattr(job, "metadata", None) or {}
@@ -510,7 +443,7 @@ def list_decisions(
             ),
         ))
 
-    # 6. Stale/needs_review memory cards
+    # 5. Stale/needs_review memory cards
     try:
         from packages.memory.local_gateway import list_memory
         entries = list_memory()
@@ -605,7 +538,7 @@ def list_decisions(
     except (ImportError, ValueError, OSError):
         pass
 
-    # 7. Task plan approval
+    # 6. Task plan approval
     _task_plan = getattr(job, "task_plan", None)
     if isinstance(_task_plan, dict):
         _plan_approval = _task_plan.get("_approval")
@@ -803,7 +736,7 @@ def list_decisions(
                 ),
             ))
 
-    # 8. Task decisions raised mid-run (F051).  Derived from the escalation
+    # 7. Task decisions raised mid-run (F051).  Derived from the escalation
     #    records on the job — not a second queue, the same read-only
     #    aggregation as every branch above.
     try:
@@ -984,7 +917,7 @@ def list_decisions(
     except (ImportError, ValueError, OSError, AttributeError):
         pass
 
-    # 9. Proposed tasks awaiting decision or materialization (F280).
+    # 8. Proposed tasks awaiting decision or materialization (F280).
     #    A proposed task surfaces exactly what can_finalize blocks on:
     #    an unresolved task, or one approved for build but not yet materialized.
     try:

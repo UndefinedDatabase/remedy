@@ -108,8 +108,8 @@ DECISION_EVIDENCE_STATUS_LEGACY = "recorded_before_evidence_requirements"
 #: TYPE JOINS IS UNCHANGED (DECISION F032 D5): a type is added here ONLY in the
 #: same commit that gives its producer a real triple, never ahead of one, so the
 #: gate can fire on a regression and never on a card nobody has upgraded yet.
-#: THAT END CONDITION IS NOW REACHED (F032 T002g): all eight producing types are
-#: in the set, so the gate is FULLY LIVE and every card ``list_decisions``
+#: THAT END CONDITION IS NOW REACHED (F032 T002g): every producing type is in
+#: the set (`repo_dirty` left with its producer, R-0905), so the gate is FULLY LIVE and every card ``list_decisions``
 #: derives is checked.  THE CONSTANT IS STILL NOT DELETED, and the reason is not
 #: inertia.  ``decision_queue.DECISION_TYPES`` holds two types with NO PRODUCER
 #: AT ALL — ``worker_approval`` and ``revert_missing``, per DECISION F031 D3 —
@@ -121,7 +121,7 @@ DECISION_EVIDENCE_STATUS_LEGACY = "recorded_before_evidence_requirements"
 #: before.
 TRIPLE_REQUIRED_TYPES: frozenset[str] = frozenset({
     "token_budget", "test_failure", "patch_approval", "stop_reason",
-    "repo_dirty", "memory_review", "task_plan_approval", "task_decision",
+    "memory_review", "task_plan_approval", "task_decision",
 })
 
 

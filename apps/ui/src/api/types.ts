@@ -40,11 +40,9 @@ export interface RemedySnapshotSummary {
   source: string;
 }
 
-/** Safe continuation summary derived from do_continue events + approved intents. */
+/** Safe continuation summary derived from approved intents. */
 export interface RemedyContinuationSummary {
   available: boolean | "unknown";
-  lastResult: string;
-  lastStopReason: string;
 }
 export interface RemedyNextAction { label: string; command: string; risk: "low" | "medium" | "high"; requiresHuman: boolean; }
 export interface RemedyJourneyItem { id: string; kind: RemedyTaskKind; title: string; subtitle: string; state: RemedyState; nodeId: string; visibleFromZoom: number; }

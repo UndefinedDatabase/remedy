@@ -34,7 +34,6 @@ PRODUCING_DECISION_TYPES = (
     "patch_approval",
     "stop_reason",
     "test_failure",
-    "repo_dirty",
     "token_budget",
     "memory_review",
     "task_plan_approval",
@@ -121,14 +120,6 @@ def _fixture_test_failure() -> tuple[JobPlan, list[dict]]:
     }]
 
 
-def _fixture_repo_dirty() -> tuple[JobPlan, list[dict]]:
-    return _make_job(), [{
-        "event": "git_status_read",
-        "timestamp": "2026-08-23T11:30:00+00:00",
-        "metadata": {"dirty": True},
-    }]
-
-
 def _fixture_token_budget() -> tuple[JobPlan, list[dict]]:
     return _make_job(metadata={"target_repo": "/tmp/repo",
                                "budget_stop_reason": "budget_exhausted"}), []
@@ -195,7 +186,6 @@ PRODUCING_FIXTURES = {
     "patch_approval": _fixture_patch_approval,
     "stop_reason": _fixture_stop_reason,
     "test_failure": _fixture_test_failure,
-    "repo_dirty": _fixture_repo_dirty,
     "token_budget": _fixture_token_budget,
     "memory_review": _fixture_memory_review,
     "task_plan_approval": _fixture_task_plan_approval,

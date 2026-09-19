@@ -168,39 +168,6 @@ def _make_events() -> list[dict]:
 
 
 
-class TestTokenEconomy:
-    """Token Economy v1 — the token policy."""
-
-    def test_token_policy_json_has_all_fields(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job_plan(job)
-
-        from packages.orchestration.token_policy import (
-            build_default_token_policy,
-            export_token_policy_json,
-        )
-        policy = build_default_token_policy(job)
-        exported = export_token_policy_json(policy)
-        # Both canonical and detailed fields must be present
-        required = {
-            "version", "job_id", "scope", "zero_token_steps",
-            "local_first_steps", "expensive_model_steps",
-            "forbidden_context", "compaction_rules", "budget",
-            "default_mode", "max_context_tokens", "local_first",
-            "remote_model_requires_approval", "prefer_zero_token_tools",
-            "prohibited_payloads",
-        }
-        assert required <= set(exported.keys())
-        assert exported["local_first"] is True
-        assert exported["remote_model_requires_approval"] is True
-        assert exported["prefer_zero_token_tools"] is True
-        assert isinstance(exported["prohibited_payloads"], list)
-        assert isinstance(exported["max_context_tokens"], int)
-
-
-
-
 class TestTokenPolicyApplied:
     def test_schema_registered(self):
         from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS

@@ -2800,7 +2800,8 @@ It is an execution boundary, not a capability promise.
 
 None since F261 round 17 deleted the `policy` group. The contract is still built
 by `build_default_run_contract` and read by `do run`, the repair loop and the test
-execution service; the run-log event below has had no emitter since that round.
+execution service; the run-log event below has had no emitter since that round, and
+since F273 (R-0907) autonomy readiness no longer reads it.
 
 ### Run-log event
 
@@ -2854,7 +2855,8 @@ A `TokenPolicy` classifies job steps by token cost tier:
 
 None since F261 round 17 deleted the `policy` group. The policy is still built by
 `build_default_token_policy` for the brain graph and the autonomy loop; the run-log
-event below has had no emitter since that round.
+event below has had no emitter since that round, and since F273 (R-0907) autonomy
+readiness no longer reads it.
 
 ### Run-log event
 
@@ -3054,12 +3056,14 @@ Root help shows only the 12 groups — no old flat commands appear.
 - Signal-based boolean checks only — no LLM, no network
 - Each level has: eligible, present_signals, missing_signals, blockers, next_actions
 - Levels 5+ always blocked (rollback/MCP/provider not yet implemented)
+- Level 4 (`bounded_loop`) requires `agent_loop`, `token_policy_applied` and
+  `no_open_decisions`; since F273 (R-0907) it no longer requires the `run_contract`
+  and `token_policy` signals, whose inspection events nothing emits
 - CLI: none since F261 round 17 deleted the `readiness` group; the cockpit's
   `/api/jobs/<job_id>/readiness` payload is built from `assess_job_readiness`, and
   `remedy mission readiness <job_id>` answers the unattended-run question
 - Brain: `autonomy_readiness` node type, `has_readiness` edge, layer=1, color=#2ea043
 - Run-log: `readiness_assessed` event with metadata: scope, highest_eligible_level, missing_count, blocker_count
-- Project readiness aggregates across jobs (ANY-eligible logic)
 
 ### Memory Learn v0 (Step 50)
 

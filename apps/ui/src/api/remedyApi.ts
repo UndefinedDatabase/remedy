@@ -241,8 +241,6 @@ function normalizeContinuationSummary(raw: any): RemedyContinuationSummary | nul
   if (!raw || typeof raw !== "object") return null;
   return {
     available: typeof raw.available === "boolean" ? raw.available : "unknown",
-    lastResult: String(raw.last_result || "none"),
-    lastStopReason: String(raw.last_stop_reason || "none"),
   };
 }
 

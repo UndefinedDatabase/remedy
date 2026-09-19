@@ -34,7 +34,6 @@ REASON_CODES = frozenset({
     "no_target_repo",
     "unsafe_path",
     "unsupported_file_type",
-    "dirty_repo_blocks_level",
     "token_budget_exceeded",
     "no_safe_worker",
     "missing_snapshot",
@@ -281,21 +280,6 @@ def derive_stop_reasons(
             safe_summary=f"{len(unapproved)} patch intent(s) awaiting approval.",
             next_actions=_patch_approve_tips(job_id, unapproved),
         ))
-
-    # Dirty repo blocks higher levels
-    git_reads = [e for e in events if e.get("event") == "git_status_read"]
-    if git_reads:
-        last = git_reads[-1].get("metadata", {})
-        if last.get("dirty"):
-            reasons.append(StopReason(
-                id="derived_dirty_repo", job_id=job_id, source="git_status",
-                reason_code="dirty_repo_blocks_level", severity="warning",
-                status="active", created_at=now, resolved_at=None,
-                related_node_id="", related_intent_id="", related_file="",
-                safe_summary="Target repository has uncommitted changes.",
-                next_actions=(f"Commit or stash the changes in the target repository "
-                              f"of job {job_id}{f' ({target_repo})' if target_repo else ''}.",),
-            ))
 
     return reasons
 

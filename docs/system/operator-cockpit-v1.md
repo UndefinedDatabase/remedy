@@ -35,7 +35,7 @@ derives the cockpit truth sections from authoritative sources:
 | `metrics.tests` | `test_run_completed` events | runs/passed/failed/latest_state; missing `exit_code` is uncounted, never a fake fail |
 | `metrics.proof` | `build_proof_chain` (authoritative) | total_changes vs verified; state verified/partial/none |
 | `snapshot` | `build_snapshot_truth` over `list_durable_apply_ids` | apply_records/verified/reverted/drift_detected; `source = durable_apply_records` |
-| `continuation` | approved intents, and `do_continue_stopped` events nothing writes since F261 round 21 | available (approved-intent light check) + last_result/last_stop_reason, which now read `none` on every job |
+| `continuation` | approved intents | available (approved-intent light check) only; the last_result/last_stop_reason half, fed by `do_continue_stopped` events nothing writes since F261 round 21, was deleted by F273 (R-0919) |
 | `repair` | `repair_attempts_v1` job metadata | attempt_count + pending_approval_count + a copyable `remedy patch approve` next action — never an Approve button |
 | `overnight` | `build_overnight_readiness` (read-only) | readiness_level + ready/can_run_unattended + blocker_count + next-action label + checklist counts; `unknown` when data root unavailable; never a button |
 

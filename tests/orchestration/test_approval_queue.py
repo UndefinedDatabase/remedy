@@ -392,7 +392,6 @@ class TestDecisionQueue:
         assert "patch_approval" in DECISION_TYPES
         assert "stop_reason" in DECISION_TYPES
         assert "test_failure" in DECISION_TYPES
-        assert "repo_dirty" in DECISION_TYPES
         assert "memory_review" in DECISION_TYPES
 
     def test_test_failure_decisions(self):
@@ -408,19 +407,6 @@ class TestDecisionQueue:
         assert len(test_decs) >= 1
         assert test_decs[0].severity == "blocker"
         assert test_decs[0].status == "open"
-
-    def test_dirty_repo_decision(self):
-        from packages.orchestration.decision_queue import list_decisions
-        job = _make_job_s68()
-        events = [
-            {"event": "git_status_read", "run_id": "r1", "job_id": str(job.job_id),
-             "timestamp": "2026-01-01T00:01:00", "outcome": "ok",
-             "metadata": {"dirty": True, "branch": "main", "changed_file_count": 3}},
-        ]
-        decisions = list_decisions(job, events)
-        dirty_decs = [d for d in decisions if d.type == "repo_dirty"]
-        assert len(dirty_decs) == 1
-        assert dirty_decs[0].severity == "warning"
 
     def test_explain_decisions(self):
         from packages.orchestration.decision_queue import explain_decisions
@@ -452,8 +438,8 @@ class TestDecisionQueue:
                 next_actions=("fix",), created_at="", resolved_at=None,
             ),
             HumanDecision(
-                id="d2", type="repo_dirty", status="open", severity="warning",
-                source="git", related_node_id="", related_intent_id="",
+                id="d2", type="token_budget", status="open", severity="warning",
+                source="budget", related_node_id="", related_intent_id="",
                 related_file="", safe_summary="dirty",
                 next_actions=(), created_at="", resolved_at=None,
             ),
@@ -464,16 +450,17 @@ class TestDecisionQueue:
         assert summary["medium_count"] == 1  # warning
 
     def test_get_decision(self):
-        from packages.orchestration.decision_queue import get_decision
+        from packages.orchestration.decision_queue import get_decision, list_decisions
         job = _make_job_s68()
         events = [
-            {"event": "git_status_read", "run_id": "r1", "job_id": str(job.job_id),
-             "timestamp": "2026-01-01", "outcome": "ok",
-             "metadata": {"dirty": True, "branch": "main", "changed_file_count": 1}},
+            {"event": "test_run_completed", "run_id": "r1", "job_id": str(job.job_id),
+             "timestamp": "2026-01-01", "outcome": "failed",
+             "metadata": {"status": "failed", "command": "pytest", "test_run_id": "tr1"}},
         ]
-        d = get_decision(job, events, "dirty_repo")
+        wanted = [d for d in list_decisions(job, events) if d.type == "test_failure"][0]
+        d = get_decision(job, events, wanted.id)
         assert d is not None
-        assert d.type == "repo_dirty"
+        assert d.type == "test_failure"
 
     def test_get_decision_not_found(self):
         from packages.orchestration.decision_queue import get_decision

@@ -5,7 +5,6 @@ Coverage:
   - RunContract dataclass is frozen and JSON-serializable
   - build_default_run_contract produces valid contract from a Job
   - export_run_contract_json returns dict with all required keys
-  - summarize_run_contract returns non-empty string
   - Default contract has correct field values
   - No network, no subprocess, no shell in module
 """
@@ -20,7 +19,6 @@ from packages.orchestration.run_contract import (
     RunContract,
     build_default_run_contract,
     export_run_contract_json,
-    summarize_run_contract,
 )
 
 # ---------------------------------------------------------------------------
@@ -160,21 +158,6 @@ class TestExportRunContractJson:
         assert isinstance(result["denied_actions"], list)
         assert isinstance(result["stop_conditions"], list)
         assert isinstance(result["requires_approval_for"], list)
-
-
-class TestSummarizeRunContract:
-    def test_returns_string(self) -> None:
-        contract = build_default_run_contract(_make_job())
-        summary = summarize_run_contract(contract)
-        assert isinstance(summary, str)
-        assert len(summary) > 50
-
-    def test_contains_key_fields(self) -> None:
-        contract = build_default_run_contract(_make_job())
-        summary = summarize_run_contract(contract)
-        assert "Run Contract" in summary
-        assert "local_first" in summary
-        assert "allowlist_only" in summary
 
 
 class TestRunContractNoSubprocess:

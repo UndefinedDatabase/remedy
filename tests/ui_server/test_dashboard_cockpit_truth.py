@@ -74,12 +74,8 @@ class TestUnknownWhenNoDataDir:
 
     def test_continuation_unknown(self):
         job = JobPlan(job_title="t")
-        c = _build_continuation_section(job, [], None)
-        assert c == {
-            "available": "unknown",
-            "last_result": "unknown",
-            "last_stop_reason": "unknown",
-        }
+        c = _build_continuation_section(job, None)
+        assert c == {"available": "unknown"}
 
 
 class TestTaskTruthMaps:
@@ -225,33 +221,10 @@ class TestTaskTruthMaps:
         assert apply_alone["t2"] == "not_applied"
 
 
-class TestContinuationLastResult:
-    def test_last_result_from_stopped_event(self, tmp_path: Path):
-        job = JobPlan(job_title="t")
-        events = [
-            {"event": "do_continue_stopped",
-             "metadata": {"stop_reason": "completed_verified"}},
-        ]
-        c = _build_continuation_section(job, events, tmp_path)
-        assert c["last_result"] == "completed_verified"
-        assert c["last_stop_reason"] == "completed_verified"
-        assert c["available"] is False  # no approved intents on empty job
-
-    def test_non_result_stop_reason_maps_to_none(self, tmp_path: Path):
-        job = JobPlan(job_title="t")
-        events = [
-            {"event": "do_continue_stopped",
-             "metadata": {"stop_reason": "lease_unavailable"}},
-        ]
-        c = _build_continuation_section(job, events, tmp_path)
-        assert c["last_result"] == "none"
-        assert c["last_stop_reason"] == "lease_unavailable"
-
-    def test_no_stopped_event(self, tmp_path: Path):
-        job = JobPlan(job_title="t")
-        c = _build_continuation_section(job, [], tmp_path)
-        assert c["last_result"] == "none"
-        assert c["last_stop_reason"] == "none"
+class TestContinuationAvailable:
+    def test_no_approved_intent_reads_unavailable(self, tmp_path: Path):
+        c = _build_continuation_section(JobPlan(job_title="t"), tmp_path)
+        assert c == {"available": False}  # no approved intents on empty job
 
 
 class TestDashboardShape:

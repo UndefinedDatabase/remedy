@@ -477,16 +477,15 @@ describe("snapshot + continuation summaries", () => {
 
   it("maps continuation summary fields", () => {
     const payload = makeDashboardPayload({
-      continuation: { available: true, last_result: "completed_verified", last_stop_reason: "completed_verified" },
+      continuation: { available: true },
     });
     const result = normalizeDashboardPayload("abc-123", payload);
-    expect(result.continuation!.available).toBe(true);
-    expect(result.continuation!.lastResult).toBe("completed_verified");
+    expect(result.continuation).toEqual({ available: true });
   });
 
   it("continuation unknown available passes through", () => {
     const payload = makeDashboardPayload({
-      continuation: { available: "unknown", last_result: "unknown", last_stop_reason: "unknown" },
+      continuation: { available: "unknown" },
     });
     const result = normalizeDashboardPayload("abc-123", payload);
     expect(result.continuation!.available).toBe("unknown");

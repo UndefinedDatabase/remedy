@@ -510,18 +510,13 @@ def _build_snapshot_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
         return unknown
 
 
-def _build_continuation_section(
-    job: Any, events: list[dict[str, Any]], data_dir: Path | None,
-) -> dict[str, Any]:
-    """Safe continuation summary from do_continue events + approved intents.
+def _build_continuation_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
+    """Safe continuation summary from approved intents.
 
     available: eligibility-light — at least one approved patch intent exists.
-    last_result / last_stop_reason: from the most recent do_continue_stopped
-    event metadata (safe enum labels only — no raw content).
     """
-    unknown = {"available": "unknown", "last_result": "unknown", "last_stop_reason": "unknown"}
     if data_dir is None:
-        return unknown
+        return {"available": "unknown"}
     # available — light approved-intent check (not the full eligibility gate)
     available = False
     try:
@@ -533,23 +528,7 @@ def _build_continuation_section(
         available = any(i.get("state") == APPROVAL_APPROVED for i in intents)
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         available = False
-
-    # last result — most recent do_continue_stopped event
-    _RESULT_REASONS = {
-        "completed_verified", "test_failed_repair_available", "evidence_incomplete",
-    }
-    last_result = "none"
-    last_stop_reason = "none"
-    stopped = [e for e in events if e.get("event") == "do_continue_stopped"]
-    if stopped:
-        reason = str(stopped[-1].get("metadata", {}).get("stop_reason", ""))
-        last_stop_reason = reason or "none"
-        last_result = reason if reason in _RESULT_REASONS else "none"
-    return {
-        "available": available,
-        "last_result": last_result,
-        "last_stop_reason": last_stop_reason,
-    }
+    return {"available": available}
 
 
 def _build_repair_section(job: Any) -> dict[str, Any]:
@@ -1148,7 +1127,7 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "proof": _metrics_proof_from_chain(proof_chain),
         },
         "snapshot": _build_snapshot_section(job, truth_data_dir),
-        "continuation": _build_continuation_section(job, events, truth_data_dir),
+        "continuation": _build_continuation_section(job, truth_data_dir),
         "repair": _build_repair_section(job),
         "overnight": _build_overnight_section(job, truth_data_dir),
         "token_economy": _build_token_economy_section(job),

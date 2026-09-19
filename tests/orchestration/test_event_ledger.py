@@ -188,7 +188,7 @@ class TestEventLedgerScope:
             ("agent_loop_started", "agent"),
             ("memory_stored", "memory"),
             ("token_budget_check", "policy"),
-            ("git_status_read", "repo"),
+            ("git_probe", "repo"),
             ("job_created", "system"),
         ]
         for event_type, expected_scope in cases:

@@ -1496,7 +1496,7 @@ from packages.orchestration.decision_queue import (
 )
 
 chk(isinstance(DECISION_TYPES, frozenset), 'not frozenset')
-for dt in ('patch_approval', 'stop_reason', 'test_failure', 'repo_dirty', 'memory_review'):
+for dt in ('patch_approval', 'stop_reason', 'test_failure', 'memory_review'):
     chk(dt in DECISION_TYPES, 'missing type: ' + dt)
 
 d = HumanDecision(
