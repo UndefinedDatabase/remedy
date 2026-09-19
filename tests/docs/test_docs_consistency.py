@@ -78,8 +78,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: surface: descriptions, role labels, help wrapping, group order, README
 #: quickstart), was registered on 2026-09-17 by operator order
 #: amend0917-throughput, DECISION D4, which moved F280's T002 there whole and
-#: placed it directly after F280; see T2_F281.md.
-TOTAL_FEATURES = 281
+#: placed it directly after F280; see T2_F281.md. One more, F282 (findings
+#: paydown v2), was registered on 2026-09-19 by F273's closure under operator
+#: amendment amend0911-feedback rule B and placed after F263, the fifth
+#: unaccepted line below F273; see T2_F282.md.
+TOTAL_FEATURES = 282
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
