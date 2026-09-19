@@ -5,9 +5,7 @@ repair context, repair loop, reviewer, memory candidates, live UI v2, UX polish.
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -87,48 +85,6 @@ class TestDevStatusBlockerAdvisorySplit:
 # Step 148 — Commit-readiness can return ready=true
 # =========================================================================
 
-class TestCommitReadinessCanReturnReady:
-    """Prove commit-readiness can report ready=true for a valid fixture job."""
-
-    def test_fixture_builder_produces_ready_job(self):
-        """Fixture builder at autonomy 6 creates a passing job → ready=true."""
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "repo"
-            repo.mkdir()
-            # Initialize git so commit-readiness can inspect
-            subprocess.run(
-                ["git", "init"], cwd=str(repo),
-                capture_output=True, check=True,
-            )
-            subprocess.run(
-                ["git", "config", "user.email", "test@test.com"],
-                cwd=str(repo), capture_output=True,
-            )
-            subprocess.run(
-                ["git", "config", "user.name", "Test"],
-                cwd=str(repo), capture_output=True,
-            )
-            # Baseline commit
-            (repo / "README.md").write_text("init\n")
-            subprocess.run(
-                ["git", "add", "."], cwd=str(repo), capture_output=True,
-            )
-            subprocess.run(
-                ["git", "commit", "-m", "init"],
-                cwd=str(repo), capture_output=True,
-            )
-            # Run fixture builder
-            from packages.orchestration.autorun import run_autorun
-            result = run_autorun(
-                "Fix calc", str(repo),
-                autonomy_level=6, max_cycles=1,
-                fixture_builder=True, json_output=True,
-            )
-            assert result.job_id
-            # Check that tests passed in fixture
-            events_dict = {e["event"]: e["value"] for e in result.events}
-            assert events_dict.get("tests_passed") == "True"
-
 
 # =========================================================================
 # Step 149 — Repair context v1
@@ -192,25 +148,6 @@ class TestRepairContextSafeSummary:
 # =========================================================================
 # Step 150 — Deterministic repair loop E2E
 # =========================================================================
-
-class TestRepairLoopTwoCycleFixture:
-    """--fixture-builder repair-loop must fix a failing test in 2 cycles."""
-
-    def test_repair_loop_two_cycles(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "repo"
-            repo.mkdir()
-            from packages.orchestration.autorun import run_autorun
-            result = run_autorun(
-                "Fix calc", str(repo),
-                autonomy_level=6, max_cycles=3,
-                fixture_builder="repair-loop", json_output=True,
-            )
-            events_dict = {e["event"]: e["value"] for e in result.events}
-            assert result.cycles_run == 2
-            assert events_dict.get("repair_context_created") == "True"
-            assert events_dict.get("repair_loop_used") == "True"
-            assert events_dict.get("tests_passed") == "True"
 
 
 # =========================================================================

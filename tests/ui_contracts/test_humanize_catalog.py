@@ -147,7 +147,36 @@ def literals_emitted_in(source: str) -> frozenset[str]:
         argument = _event_argument(node, helpers)
         if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
             names.add(argument.value)
+    # R-0927: a name a function holds in a local first — `event_name = "a" if x else
+    # "b"` then `_emit(d, j, event_name, ...)` in `test_execution_service.py` — is a
+    # literal too. Once `autorun.py` went, that was the only emitter of
+    # `test_run_completed`, and its sibling `test_run_timed_out` had never been seen.
+    for fdef in ast.walk(tree):
+        if not isinstance(fdef, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        held: dict[str, set[str]] = {}
+        for node in ast.walk(fdef):
+            if (isinstance(node, ast.Assign) and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name)):
+                held.setdefault(node.targets[0].id, set()).update(_held_literals(node.value))
+        for node in ast.walk(fdef):
+            if not isinstance(node, ast.Call):
+                continue
+            argument = _event_argument(node, helpers)
+            if isinstance(argument, ast.Name):
+                names |= held.get(argument.id, set())
     return frozenset(names)
+
+
+def _held_literals(node: ast.expr) -> set[str]:
+    """The string literals an expression can only evaluate to: a constant, or a
+    conditional expression whose both arms are such. Anything else yields nothing."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return {node.value}
+    if isinstance(node, ast.IfExp):
+        body, orelse = _held_literals(node.body), _held_literals(node.orelse)
+        return body | orelse if body and orelse else set()
+    return set()
 
 
 def emitter_sources(base: Path) -> list[Path]:
@@ -316,6 +345,22 @@ class TestDerivation:
         assert literals_emitted_in(source) == {
             "alpha_stopped", "beta_started", "gamma_decided"}
         assert {"repair_loop_stopped", "contract_decision"} <= emission_literals()
+
+    def test_the_walk_finds_a_name_held_in_a_local(self):
+        """R-0927: `test_execution_service.py` holds `test_run_completed` and
+        `test_run_timed_out` in a local before it emits; a local bound to anything
+        but literals yields nothing."""
+        source = (
+            "def _emit(data_dir, job_id, event, metadata):\n"
+            "    append_run_event(data_dir, job_id, event=event, metadata=metadata)\n"
+            "def run(d, j, s):\n"
+            "    name = 'alpha_timed_out' if s else 'alpha_completed'\n"
+            "    _emit(d, j, name, {})\n"
+            "    other = compute()\n"
+            "    _emit(d, j, other, {})\n"
+        )
+        assert literals_emitted_in(source) == {"alpha_timed_out", "alpha_completed"}
+        assert {"test_run_completed", "test_run_timed_out"} <= emission_literals()
 
     def test_the_defined_trace_sets_are_read(self):
         assert trace_event_kinds(), "TRACE_EVENT_KINDS came back empty"

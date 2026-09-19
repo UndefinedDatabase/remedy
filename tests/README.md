@@ -6,7 +6,7 @@ Tests are organized by domain, not by implementation step number.
 
 ```
 tests/
-  orchestration/     Core engine: source_apply, approval_queue, autorun,
+  orchestration/     Core engine: source_apply, approval_queue,
                      test_runner, command_discovery, autonomy, event_ledger,
                      project_brain
   ui_server/         HTTP API: dashboard contract, live state, brain view model,

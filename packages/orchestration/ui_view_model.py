@@ -1034,18 +1034,7 @@ def build_checklist(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
     # Patch intents / approvals from events
     for e in events:
         etype = e.get("event", "")
-        if etype == "structured_patch_intent_created":
-            items.append({
-                "id": f"change-{len(items)}",
-                "label": "Proposed change",
-                "state": "done",
-                "kind": "change",
-                "checked": True,
-                "muted": False,
-                "node_id": "",
-                "next_action": {},
-            })
-        elif etype == "source_patch_applied":
+        if etype == "source_patch_applied":
             items.append({
                 "id": f"apply-{len(items)}",
                 "label": "Applied change",

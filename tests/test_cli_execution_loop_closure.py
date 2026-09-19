@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -101,69 +100,6 @@ class TestDoProviderCliParsing:
 # =========================================================================
 # Step 156 — Repair-loop Fake E2E Closure
 # =========================================================================
-
-class TestRepairLoopFullE2EClosure:
-    """Repair loop fixture proves 2-cycle controlled architecture."""
-
-    def test_repair_loop_full_json(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            from packages.orchestration.autorun import run_autorun
-            result = run_autorun(
-                "Fix calc", tmp,
-                autonomy_level=6, max_cycles=3,
-                fixture_builder="repair-loop", json_output=True,
-            )
-            events_dict = {e["event"]: e["value"] for e in result.events}
-            assert result.cycles_run == 2
-            assert result.stage == "completed"
-            assert events_dict.get("source_context_injected") == "True"
-            assert events_dict.get("structured_patch_created") == "True"
-            assert events_dict.get("source_patch_applied") == "True"
-            assert events_dict.get("repair_context_created") == "True"
-            assert events_dict.get("repair_loop_used") == "True"
-            assert events_dict.get("tests_passed") == "True"
-
-    def test_repair_loop_max_cycles_1_stops(self):
-        """max_cycles=1 stops after cycle 1 with tests_passed=false."""
-        with tempfile.TemporaryDirectory() as tmp:
-            from packages.orchestration.autorun import run_autorun
-            result = run_autorun(
-                "Fix calc", tmp,
-                autonomy_level=6, max_cycles=1,
-                fixture_builder="repair-loop", json_output=True,
-            )
-            events_dict = {e["event"]: e["value"] for e in result.events}
-            assert result.cycles_run == 1
-            assert events_dict.get("tests_passed") == "False"
-
-    def test_repair_loop_final_calc_correct(self):
-        """After repair loop, calc.py has correct implementation."""
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp)
-            from packages.orchestration.autorun import run_autorun
-            run_autorun(
-                "Fix calc", tmp,
-                autonomy_level=6, max_cycles=3,
-                fixture_builder="repair-loop", json_output=True,
-            )
-            calc_py = repo / "calc.py"
-            assert calc_py.exists()
-            src = calc_py.read_text()
-            assert "a * b" in src
-            assert "a + b" in src
-
-    def test_no_raw_leaks_in_json(self):
-        """JSON output must not contain raw stdout/stderr/traceback."""
-        with tempfile.TemporaryDirectory() as tmp:
-            from packages.orchestration.autorun import run_autorun
-            result = run_autorun(
-                "Fix calc", tmp,
-                autonomy_level=6, max_cycles=3,
-                fixture_builder="repair-loop", json_output=True,
-            )
-            full = json.dumps({"events": result.events, "stage": result.stage})
-            for bad in ("stdout", "stderr", "Traceback", "raw_output", "command_output"):
-                assert bad not in full
 
 
 # =========================================================================

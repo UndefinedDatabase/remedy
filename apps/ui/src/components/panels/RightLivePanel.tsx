@@ -36,12 +36,6 @@ export function RightLivePanel({ dashboard, serverToken, onSelectNode, streamSta
       </button>
       {showAdvanced && (
         <div className={styles.advancedSection} data-testid="advanced-details">
-          {dashboard.workerStatus && (
-            <div className={styles.advancedItem}>
-              <strong>Worker:</strong> {dashboard.workerStatus.lifecycle_state}
-              {dashboard.workerStatus.why_it_stopped && ` — ${dashboard.workerStatus.why_it_stopped.replace(/_/g, " ")}`}
-            </div>
-          )}
           {dashboard.pipeline && (
             <div className={styles.advancedItem}>
               <strong>Pipeline:</strong> {dashboard.pipeline.stop_reason || "running"}

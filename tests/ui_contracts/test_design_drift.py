@@ -43,10 +43,6 @@ class TestRightPanelUserFirst:
         content = RIGHT_PANEL.read_text()
         assert "NeedsAttentionCard" in content
 
-    def test_no_primary_worker_status(self):
-        content = RIGHT_PANEL.read_text()
-        assert "WorkerStatusMini" not in content or "advancedSection" in content
-
     def test_no_primary_pipeline_panel(self):
         content = RIGHT_PANEL.read_text()
         assert "PipelinePanel" not in content or "advancedSection" in content

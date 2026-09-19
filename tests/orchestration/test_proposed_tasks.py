@@ -525,47 +525,6 @@ class TestEventAudit:
         assert len(calls[0][1]["evaluation_notes"]) <= 200
 
 
-class TestWorkerQueueGate:
-    def test_unresolved_blocks_queue(self, tmp_path):
-        from packages.orchestration.worker_queue import enqueue_job, get_next_job
-        root = tmp_path / "data"
-        queue_dir = root / "queue"
-        queue_dir.mkdir(parents=True)
-
-        enqueue_job("blocked-job", root)
-        add_proposed_task("blocked-job", ProposedTask(title="Pending"), root=root)
-
-        result = get_next_job(root)
-        assert result is None
-
-    def test_approved_does_not_block_queue(self, tmp_path):
-        from packages.orchestration.worker_queue import enqueue_job, get_next_job
-        root = tmp_path / "data"
-        queue_dir = root / "queue"
-        queue_dir.mkdir(parents=True)
-
-        enqueue_job("ok-job", root)
-        add_proposed_task("ok-job", ProposedTask(title="Done", status=ProposedTaskStatus.APPROVED_FOR_BUILD, materialized_task_id="real-task"), root=root)
-
-        result = get_next_job(root)
-        assert result is not None
-        assert result.job_id == "ok-job"
-
-    def test_corrupt_store_blocks_queue(self, tmp_path):
-        from packages.orchestration.worker_queue import enqueue_job, get_next_job
-        root = tmp_path / "data"
-        queue_dir = root / "queue"
-        queue_dir.mkdir(parents=True)
-
-        enqueue_job("corrupt-job", root)
-        pt_dir = root / "proposed_tasks"
-        pt_dir.mkdir(parents=True)
-        (pt_dir / "corrupt-job.json").write_text("not json")
-
-        result = get_next_job(root)
-        assert result is None
-
-
 class TestMaterialization:
     def test_materialize_approved(self, tmp_store):
         t = ProposedTask(title="Build feature", status=ProposedTaskStatus.APPROVED_FOR_BUILD, task_type="feature", source=ProposedTaskSource.REVIEWER, risk="low")
@@ -873,7 +832,6 @@ class TestBackendReadiness:
         assert report["build_readiness"]["ready"] is True
         assert report["build_readiness"]["pending_tasks"] == 1
         assert report["finalize_readiness"]["ready"] is False
-
 
     def test_execution_health_section(self, tmp_path, monkeypatch):
         monkeypatch.setattr("packages.orchestration.proposed_tasks._STORE_DIR", tmp_path / "proposed_tasks")

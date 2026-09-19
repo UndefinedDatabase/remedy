@@ -17,7 +17,6 @@ const BOOKKEEPING_SUFFIXES: readonly string[] = [
 const BOOKKEEPING_KINDS: readonly string[] = [
   "brain_viewer_prepared",
   "context_budget_optimized",
-  "source_context_injected",
   "stream_cap_reached",
   "token_policy_applied",
 ];

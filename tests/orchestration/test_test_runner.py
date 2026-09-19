@@ -532,17 +532,41 @@ class TestSourceApplyPermissionBoundary:
         assert any("intent_id" in e for e in result.errors)
 
     def test_no_public_command_reaches_without_permission(self):
-        """No CLI command can invoke source_apply without permission + intent."""
-        src = Path("packages/orchestration/autorun.py").read_text()
-        lines = src.splitlines()
-        call_starts = [i for i, line in enumerate(lines)
-                       if "apply_structured_patch(" in line]
-        assert len(call_starts) >= 1
-        for start in call_starts:
-            # Collect lines until we find the closing call
-            block = "\n".join(lines[start:start + 6])
-            assert "job=job" in block, f"call at line {start + 1} missing job=job:\n{block}"
-            assert "intent_id=" in block, f"call at line {start + 1} missing intent_id:\n{block}"
+        """No production caller can invoke source_apply without permission + intent.
+
+        Every call to ``apply_structured_patch`` under ``packages/`` and ``apps/`` must
+        pass the job (whose ``repo_generated_write`` permission the apply checks) and an
+        ``intent_id`` by keyword. Finding R-0927 deleted ``autorun.py``, the caller this
+        guard first read; the three that survive are named below, so a caller that is
+        added, moved or deleted reds here rather than escaping the scan.
+        """
+        calls: dict[str, int] = {}
+        for root in ("packages", "apps"):
+            for path in sorted((_ROOT / root).rglob("*.py")):
+                if "node_modules" in path.parts:
+                    continue
+                rel = path.relative_to(_ROOT).as_posix()
+                tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
+                for node in ast.walk(tree):
+                    if not isinstance(node, ast.Call):
+                        continue
+                    fn = node.func
+                    name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", "")
+                    if name != "apply_structured_patch":
+                        continue
+                    calls[rel] = calls.get(rel, 0) + 1
+                    kw = {k.arg: k.value for k in node.keywords}
+                    where = f"{rel}:{node.lineno}"
+                    for required in ("job", "intent_id"):
+                        value = kw.get(required)
+                        assert value is not None, f"call at {where} missing {required}="
+                        assert not (isinstance(value, ast.Constant) and value.value is None), (
+                            f"call at {where} passes {required}=None")
+        assert calls == {
+            "packages/orchestration/builder_bridge.py": 1,
+            "packages/orchestration/diff_repair_apply.py": 1,
+            "packages/orchestration/hunk_apply.py": 1,
+        }
 
 
 # ---------------------------------------------------------------------------

@@ -878,16 +878,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         related=("worker.resources",),
     ),
     CommandEntry(
-        command_id="worker.status",
-        group_id="worker",
-        subcommand="status",
-        description="Show the current status of each worker: which role (builder, reviewer, planner or teacher) it is running, if any.",
-        action_class="read_only",
-        args=(_JSON_OPT,),
-        supports_json=True,
-        related=("worker.list",),
-    ),
-    CommandEntry(
         command_id="worker.doctor",
         group_id="worker",
         subcommand="doctor",

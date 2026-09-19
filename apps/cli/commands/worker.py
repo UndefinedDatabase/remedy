@@ -216,25 +216,6 @@ def _cmd_worker_unload(
             print("  No models to unload.")
 
 
-def _cmd_worker_status_live(*, json_output: bool = False) -> None:
-    from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.worker_queue import export_worker_status_json, get_worker_status
-    data_dir = resolve_data_root()
-    status = get_worker_status(data_dir)
-    if json_output:
-        print(_json.dumps(export_worker_status_json(status), sort_keys=True))
-    else:
-        print(f"Worker: {status.worker_id or '(none)'}")
-        print(f"State: {status.lifecycle_state}")
-        if status.current_job_id:
-            print(f"Job: {status.current_job_id[:8]}")
-        if status.last_action:
-            print(f"Last action: {status.last_action}")
-        if status.why_it_stopped:
-            print(f"Why stopped: {status.why_it_stopped}")
-        print(f"Processed: {status.processed_job_count}")
-
-
 def _cmd_worker_doctor(*, json_output: bool = False) -> None:
     """Read-only: does each `available` worker spec's own tooling actually exist?
 
@@ -308,6 +289,5 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         unload_all=getattr(args, "all", False),
         json_output=args.json,
     ),
-    "worker.status": lambda args: _cmd_worker_status_live(json_output=args.json),
     "worker.doctor": lambda args: _cmd_worker_doctor(json_output=args.json),
 }

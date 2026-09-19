@@ -147,20 +147,7 @@ def _make_approved_job() -> tuple:
 # ---------------------------------------------------------------------------
 
 
-
-
 class TestRemedyDo:
-    def test_do_creates_job(self, tmp_path):
-        from packages.orchestration.autorun import run_autorun
-        result = run_autorun("test", str(tmp_path), autonomy_level=0, max_cycles=1)
-        assert result.job_id != ""
-        assert result.stage == "job_created"
-
-    def test_do_respects_max_cycles(self, tmp_path):
-        from packages.orchestration.autorun import run_autorun
-        result = run_autorun("test", str(tmp_path), max_cycles=1, autonomy_level=0)
-        assert result.cycles_run <= 1
-
     def test_do_command_in_catalog(self):
         from apps.cli.command_catalog import get_command
         cmd = get_command("do.run")
@@ -174,13 +161,9 @@ class TestRemedyDo:
 # ---------------------------------------------------------------------------
 
 
-
-
 # ---------------------------------------------------------------------------
 # Step 109 — Source Context Finalization
 # ---------------------------------------------------------------------------
-
-
 
 
 class TestJobFocusedSingleOrigin:
@@ -270,8 +253,6 @@ class TestJobFocusedSingleOrigin:
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 123 — View-model Hardening
 # ═══════════════════════════════════════════════════════════════════════════
-
-
 
 
 class TestDoDirectGoalCommandRewrite:

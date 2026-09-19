@@ -113,7 +113,6 @@ def _make_full_chain_job(*, test_linked=True):
         test_meta["intent_id"] = intent_id
 
     events = [
-        {"event": "task_execution_completed", "metadata": {"task_id": str(task_id), "exec_status": "completed"}},
         {"event": "patch_intent_applied", "timestamp": "2026-01-01T00:00:00Z", "metadata": {"intent_id": intent_id, "outcome": "applied", "bytes_written": 100, "line_count": 10}},
         {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": intent_id, "before_sha256": "abc123", "after_sha256": "def456", "bytes_delta": 50}},
         {"event": "test_run_completed", "timestamp": "2026-01-01T00:01:00Z", "metadata": test_meta},
@@ -134,7 +133,6 @@ class TestProofStatusTruthRules:
             approval_state="approved", apply_state="applied",
             test_state="passed", test_link=TEST_LINK_INTENT,
             has_proof=True, has_apply_event=True,
-            task_blocked=False, task_failed=False,
             snapshot_verified=True,
         ) == PROOF_VERIFIED
 
@@ -144,7 +142,6 @@ class TestProofStatusTruthRules:
             approval_state="approved", apply_state="applied",
             test_state="not_required", test_link=TEST_LINK_NOT_REQUIRED,
             has_proof=True, has_apply_event=True,
-            task_blocked=False, task_failed=False,
             snapshot_verified=True,
         ) == PROOF_VERIFIED
 
@@ -154,7 +151,6 @@ class TestProofStatusTruthRules:
             approval_state="approved", apply_state="applied",
             test_state="passed", test_link=TEST_LINK_INTENT,
             has_proof=True, has_apply_event=True,
-            task_blocked=False, task_failed=False,
             snapshot_verified=False,
         ) == PROOF_UNVERIFIED
 
@@ -164,7 +160,6 @@ class TestProofStatusTruthRules:
             approval_state="approved", apply_state="applied",
             test_state="not_tested", test_link=TEST_LINK_NONE,
             has_proof=True, has_apply_event=True,
-            task_blocked=False, task_failed=False,
         ) == PROOF_INCOMPLETE
 
     def test_unlinked_passed_test_is_NOT_verified(self):
@@ -173,7 +168,6 @@ class TestProofStatusTruthRules:
             approval_state="approved", apply_state="applied",
             test_state="passed", test_link=TEST_LINK_NONE,
             has_proof=True, has_apply_event=True,
-            task_blocked=False, task_failed=False,
         ) == PROOF_INCOMPLETE
 
     def test_failed_linked_test(self):
@@ -181,23 +175,6 @@ class TestProofStatusTruthRules:
             approval_state="approved", apply_state="applied",
             test_state="failed", test_link=TEST_LINK_INTENT,
             has_proof=True, has_apply_event=True,
-            task_blocked=False, task_failed=False,
-        ) == PROOF_FAILED
-
-    def test_failed_task_blocked(self):
-        assert _classify_proof_status(
-            approval_state="approved", apply_state="applied",
-            test_state="not_tested", test_link=TEST_LINK_NONE,
-            has_proof=True, has_apply_event=True,
-            task_blocked=True, task_failed=False,
-        ) == PROOF_FAILED
-
-    def test_failed_task_failed(self):
-        assert _classify_proof_status(
-            approval_state="approved", apply_state="applied",
-            test_state="not_tested", test_link=TEST_LINK_NONE,
-            has_proof=True, has_apply_event=True,
-            task_blocked=False, task_failed=True,
         ) == PROOF_FAILED
 
     def test_incomplete_pending_approval(self):
@@ -205,7 +182,6 @@ class TestProofStatusTruthRules:
             approval_state="pending", apply_state="not_applied",
             test_state="not_tested", test_link=TEST_LINK_NONE,
             has_proof=False, has_apply_event=False,
-            task_blocked=False, task_failed=False,
         ) == PROOF_INCOMPLETE
 
     def test_incomplete_approved_not_applied(self):
@@ -213,7 +189,6 @@ class TestProofStatusTruthRules:
             approval_state="approved", apply_state="not_applied",
             test_state="not_tested", test_link=TEST_LINK_NONE,
             has_proof=False, has_apply_event=False,
-            task_blocked=False, task_failed=False,
         ) == PROOF_INCOMPLETE
 
     def test_incomplete_applied_no_proof(self):
@@ -221,7 +196,6 @@ class TestProofStatusTruthRules:
             approval_state="approved", apply_state="applied",
             test_state="not_tested", test_link=TEST_LINK_NONE,
             has_proof=False, has_apply_event=True,
-            task_blocked=False, task_failed=False,
         ) == PROOF_INCOMPLETE
 
     def test_incomplete_no_apply_event(self):
@@ -230,7 +204,6 @@ class TestProofStatusTruthRules:
             approval_state="approved", apply_state="applied",
             test_state="not_tested", test_link=TEST_LINK_NONE,
             has_proof=True, has_apply_event=False,
-            task_blocked=False, task_failed=False,
         ) == PROOF_INCOMPLETE
 
     def test_not_applicable_rejected(self):
@@ -238,7 +211,6 @@ class TestProofStatusTruthRules:
             approval_state="rejected", apply_state="not_applied",
             test_state="not_tested", test_link=TEST_LINK_NONE,
             has_proof=False, has_apply_event=False,
-            task_blocked=False, task_failed=False,
         ) == PROOF_NOT_APPLICABLE
 
     def test_task_linked_test_verified(self):
@@ -247,7 +219,6 @@ class TestProofStatusTruthRules:
             approval_state="approved", apply_state="applied",
             test_state="passed", test_link=TEST_LINK_TASK,
             has_proof=True, has_apply_event=True,
-            task_blocked=False, task_failed=False,
             snapshot_verified=True,
         ) == PROOF_VERIFIED
 
@@ -257,7 +228,6 @@ class TestProofStatusTruthRules:
             approval_state="approved", apply_state="applied",
             test_state="passed", test_link=TEST_LINK_SOLE_CHANGE,
             has_proof=True, has_apply_event=True,
-            task_blocked=False, task_failed=False,
             snapshot_verified=True,
         ) == PROOF_VERIFIED
 
@@ -854,23 +824,6 @@ class TestIncompleteChains:
         c = build_proof_chain(job, events).changes[0]
         assert c.proof_status == PROOF_VERIFIED
         assert c.test_link == TEST_LINK_TASK
-
-    def test_task_execution_blocked_linked(self):
-        """task_execution_blocked for linked task → FAILED"""
-        task = TaskEntry(title="Task")
-        explanations = [_explanation_record("src/file.py")]
-        art = _make_artifact_with_intents(task.task_id, explanations)
-        intent_id = make_intent_id(art.id, 0)
-        approvals = {intent_id: {"state": "approved", "decided_at": "", "decided_by": ""}}
-        art.metadata["patch_intent_approvals"] = approvals
-        job = _make_job(tasks=[task], artifacts=[art])
-        events = [
-            {"event": "patch_intent_applied", "metadata": {"intent_id": intent_id, "outcome": "applied", "bytes_written": 50, "line_count": 5}},
-            {"event": "patch_apply_proof_recorded", "metadata": {"intent_id": intent_id, "before_sha256": "a", "after_sha256": "b", "bytes_delta": 10}},
-            {"event": "task_execution_blocked", "metadata": {"task_id": str(task.task_id)}},
-        ]
-        chain = build_proof_chain(job, events)
-        assert chain.changes[0].proof_status == PROOF_FAILED
 
 
 # ---------------------------------------------------------------------------

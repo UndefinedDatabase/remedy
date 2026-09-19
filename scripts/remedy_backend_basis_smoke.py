@@ -38,7 +38,6 @@ def main() -> int:
         [
             "bash", PYTEST_SH,
             "tests/orchestration/test_worker_execution.py",
-            "tests/orchestration/test_task_execution.py",
             "tests/orchestration/test_proposed_tasks.py",
             "tests/orchestration/test_unified_store_parity.py",
             "-q", "--cache-clear",

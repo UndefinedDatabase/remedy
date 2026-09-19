@@ -261,7 +261,6 @@ SUBPROCESS_FILES = {
 # Real Ollama tests (require running server)
 REAL_OLLAMA_FILES = {
     "test_real_ollama_smoke.py",
-    "test_real_do_ollama_smoke.py",
 }
 
 # Smoke contract tests

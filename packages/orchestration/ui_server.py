@@ -1067,7 +1067,6 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "pipeline": _build_pipeline_section(job, events),
         "resume": _build_resume_section(job, events),
         "project_summary": _build_project_summary_section(job),
-        "worker": _build_worker_section(),
         "redaction": {
             "policy": "safe_summaries_only",
             "raw_content_exposed": False,
@@ -1212,19 +1211,10 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
         summary = build_project_summary(project, linked_jobs, all_events)
         patterns = detect_patterns(linked_jobs, all_events)
 
+        # R-0927: the real-builder count read an event only the deleted goal-driven
+        # path wrote, so no job can raise the confidence any more.
         model_confidence = "low"
         needs_real_check = True
-        real_builder_count = sum(
-            1 for evs in all_events.values() for ev in evs
-            if ev.get("event") == "autorun_builder_completed"
-            and ev.get("metadata", {}).get("provider") not in (None, "", "fixture", "mock")
-        )
-        if real_builder_count >= 15:
-            model_confidence = "high"
-            needs_real_check = False
-        elif real_builder_count >= 5:
-            model_confidence = "medium"
-            needs_real_check = False
 
         return {
             "project_id": summary.project_id,
@@ -1238,33 +1228,6 @@ def _build_project_summary_section(job: Any) -> dict[str, Any] | None:
             "needs_real_model_check": needs_real_check,
             "suggested_next_step": summary.suggested_next_step,
             "next_command": summary.next_command,
-            "redaction": "safe_metadata_only",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return None
-
-
-def _build_worker_section() -> dict[str, Any] | None:
-    """Build safe worker status for dashboard."""
-    try:
-        from packages.orchestration.data_paths import resolve_data_root
-        from packages.orchestration.worker_queue import get_worker_status, list_queued
-
-        data_dir = resolve_data_root()
-        status = get_worker_status(data_dir)
-        queue = list_queued(data_dir)
-        queued_count = sum(1 for e in queue if e.lifecycle_state == "queued")
-
-        return {
-            "worker_available": bool(status.worker_id),
-            "worker_id": status.worker_id,
-            "lifecycle_state": status.lifecycle_state,
-            "current_job_id": status.current_job_id,
-            "queue_count": queued_count,
-            "heartbeat_at": status.heartbeat_at,
-            "stale": status.stale,
-            "why_it_stopped": status.why_it_stopped,
-            "next_command": "",
             "redaction": "safe_metadata_only",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -1286,10 +1249,7 @@ def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
         total += tokens
 
         ev = e.get("event", "")
-        if ev == "source_context_injected":
-            by_role["context"] = by_role.get("context", 0) + tokens
-            sources_seen.add("source_context")
-        elif ev == "project_memory_recalled":
+        if ev == "project_memory_recalled":
             by_role["memory"] = by_role.get("memory", 0) + tokens
             sources_seen.add("memory")
         elif ev == "repair_context_created":
@@ -1300,8 +1260,6 @@ def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
 
     known = total > 0
     missing: list[str] = []
-    if "source_context" not in sources_seen:
-        missing.append("source_context")
     if "memory" not in sources_seen:
         missing.append("memory")
 
@@ -1351,33 +1309,10 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
     All fields derived from real events/job state. Unknown = null.
     No raw provider output, diffs, test output, or approval reasons.
     """
-    # Provider
-    started_events = [e for e in events if e.get("event") == "autorun_started"]
-    builder_events = [e for e in events if e.get("event") == "autorun_builder_completed"]
-    provider_error_events = [e for e in events if e.get("event") == "autorun_provider_error"]
-
+    # Provider and source context: R-0927 deleted the goal-driven path whose run-log
+    # events alone carried them, so they read as absent rather than guessed.
     provider = None
     provider_mode = "none"
-    if builder_events:
-        provider = builder_events[-1].get("metadata", {}).get("provider")
-        provider_mode = provider or "unknown"
-    elif provider_error_events:
-        provider = provider_error_events[-1].get("metadata", {}).get("provider")
-        provider_mode = provider or "unknown"
-
-    # Source context
-    ctx_events = [e for e in events if e.get("event") == "source_context_injected"]
-    source_context_injected = bool(ctx_events)
-    source_context_meta: dict[str, Any] = {}
-    if ctx_events:
-        cm = ctx_events[-1].get("metadata", {})
-        source_context_meta = {
-            "file_count": cm.get("file_count", 0),
-            "test_file_count": cm.get("test_file_count", 0),
-            "estimated_tokens": cm.get("estimated_tokens", 0),
-            "truncated": cm.get("truncated", False),
-            "selection_hash": str(cm.get("selection_hash", ""))[:12],
-        }
 
     # Memory
     mem_events = [e for e in events if e.get("event") == "project_memory_recalled"]
@@ -1388,7 +1323,7 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
 
     # Parse
     parse_events = [e for e in events if e.get("event") == "builder_patch_parsed"]
-    structured_patch_attempted = bool(builder_events or parse_events)
+    structured_patch_attempted = bool(parse_events)
     parse_success = None
     parse_error_kind = ""
     if parse_events:
@@ -1398,21 +1333,15 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
             parse_error_kind = pm.get("error_kind", "")
 
     # Intent / approval
-    intent_events = [e for e in events if e.get("event") in (
-        "structured_patch_intent_created", "builder_bridge_intent_approved")]
+    intent_events = [e for e in events if e.get("event") == "builder_bridge_intent_approved"]
     intent_id = ""
     intent_status = "none"
     approval_required = False
     approval_status = "none"
     if intent_events:
         intent_id = intent_events[-1].get("metadata", {}).get("intent_id", "")
-        if any(e.get("event") == "builder_bridge_intent_approved" for e in intent_events):
-            intent_status = "approved"
-            approval_status = "approved"
-        else:
-            intent_status = "created"
-            approval_required = True
-            approval_status = "pending"
+        intent_status = "approved"
+        approval_status = "approved"
 
     # Check job artifacts for pending approvals
     for art in job.artifacts:
@@ -1456,8 +1385,6 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
     elif parse_events and not parse_success:
         pm = parse_events[-1].get("metadata", {})
         stop_reason = pm.get("stop_reason", "") or pm.get("error_kind", "")
-    elif provider_error_events:
-        stop_reason = provider_error_events[-1].get("metadata", {}).get("stop_reason", "")
     elif test_events and tests_passed is False:
         stop_reason = "test_failed_after_apply"
 
@@ -1492,10 +1419,7 @@ def _build_pipeline_section(job: Any, events: list[dict[str, Any]]) -> dict[str,
         "version": 1,
         "provider": provider,
         "provider_mode": provider_mode,
-        "source_context": {
-            "injected": source_context_injected,
-            **source_context_meta,
-        },
+        "source_context": {"injected": False},
         "memory": {
             "used": memory_used,
             "item_count": memory_item_count,

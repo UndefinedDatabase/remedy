@@ -116,24 +116,19 @@ def _classify_proof_status(
     test_link: str,
     has_proof: bool,
     has_apply_event: bool,
-    task_blocked: bool,
-    task_failed: bool,
     snapshot_verified: bool = False,
 ) -> str:
     """Classify proof status from chain state.
 
     Truth rules (strict):
     - verified: approved + applied + apply_event + proof + snapshot_verified + (linked test passed OR explicit not_required)
-    - failed: applied + (linked test failed OR task blocked/failed)
+    - failed: applied + linked test failed
     - incomplete: intent exists but chain not complete
     - unverified: change exists but required linkage cannot be established
     - not_applicable: rejected
     """
     if approval_state == "rejected":
         return PROOF_NOT_APPLICABLE
-
-    if task_blocked or task_failed:
-        return PROOF_FAILED
 
     if apply_state == "applied" and test_state == "failed" and test_link != TEST_LINK_NONE:
         return PROOF_FAILED
@@ -574,19 +569,14 @@ def build_proof_chain(
         changes_raw = [c for c in changes_raw if c.target_path == path]
 
     # Index events
-    task_exec_events: dict[str, dict] = {}
     all_test_events: list[dict] = []
     apply_event_map: dict[str, dict] = {}
 
     for ev in events:
         ename = ev.get("event", "")
         meta = ev.get("metadata", {})
-        tid = meta.get("task_id", "")
         iid = meta.get("intent_id", "")
-        if ename in ("task_execution_completed", "task_execution_blocked", "task_execution_failed"):
-            if tid:
-                task_exec_events[tid] = {"event": ename, "meta": meta}
-        elif ename in ("test_run_completed", "test_run_timed_out"):
+        if ename in ("test_run_completed", "test_run_timed_out"):
             all_test_events.append(ev)
         elif ename == "patch_intent_applied" and iid:
             apply_event_map[iid] = ev
@@ -627,11 +617,6 @@ def build_proof_chain(
             total_applied_changes=total_applied,
         )
 
-        # Task execution state
-        task_ev = task_exec_events.get(task_id, {})
-        task_blocked = task_ev.get("event") == "task_execution_blocked"
-        task_failed = task_ev.get("event") == "task_execution_failed"
-
         # Snapshot fact: artifact metadata is the fallback; the durable
         # snapshot-truth builder is authoritative when data_dir is available.
         _snap_ver = c.proof.get("snapshot_verified", False)
@@ -665,8 +650,6 @@ def build_proof_chain(
             test_link=test_link,
             has_proof=has_proof,
             has_apply_event=has_apply_event,
-            task_blocked=task_blocked,
-            task_failed=task_failed,
             snapshot_verified=_snap_ver,
         )
         missing = _derive_missing_links(

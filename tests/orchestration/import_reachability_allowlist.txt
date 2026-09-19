@@ -61,7 +61,6 @@ packages.orchestration.artifact_contract_gate
 packages.orchestration.artifact_index
 packages.orchestration.artifact_summary
 packages.orchestration.autonomy_readiness
-packages.orchestration.autorun
 packages.orchestration.bench_history
 packages.orchestration.brain_detail
 packages.orchestration.brain_viewer
@@ -213,7 +212,6 @@ packages.orchestration.self_use_queue
 packages.orchestration.self_use_runner
 packages.orchestration.session_sent_index
 packages.orchestration.source_apply
-packages.orchestration.source_context
 packages.orchestration.spec_compliance
 packages.orchestration.staging_workspace
 packages.orchestration.status_mirror
@@ -226,7 +224,6 @@ packages.orchestration.structured_planner
 packages.orchestration.study
 packages.orchestration.task_actor_binding
 packages.orchestration.task_deliverables
-packages.orchestration.task_execution
 packages.orchestration.task_granularity
 packages.orchestration.task_registry
 packages.orchestration.task_runner
@@ -255,7 +252,6 @@ packages.orchestration.verifier
 packages.orchestration.verifier_profiles
 packages.orchestration.watchdog
 packages.orchestration.worker_adapters
-packages.orchestration.worker_queue
 packages.orchestration.workspace
 packages.orchestration.worktree_resume
 packages.orchestration.worktrees

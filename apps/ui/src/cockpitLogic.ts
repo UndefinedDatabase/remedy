@@ -17,7 +17,6 @@ export interface AgentStatus {
 /** Truthful "Agent is doing now" status — never claims work without evidence. */
 export function deriveAgentStatus(dashboard: RemedyDashboard): AgentStatus {
   const isRunning = dashboard.live.running === true;
-  const lifecycle = dashboard.workerStatus?.lifecycle_state;
 
   if (isRunning) {
     return {
@@ -25,13 +24,6 @@ export function deriveAgentStatus(dashboard: RemedyDashboard): AgentStatus {
       detail: dashboard.live.activeTaskLabel || "Processing a task.",
       isRunning: true,
     };
-  }
-  if (lifecycle === "waiting_for_approval") {
-    return { status: "Needs your decision", detail: "A patch is waiting for approval.", isRunning: false };
-  }
-  if (lifecycle === "blocked") {
-    const reason = dashboard.workerStatus?.why_it_stopped?.replace(/_/g, " ") || "";
-    return { status: "Blocked", detail: reason || "Cannot continue.", isRunning: false };
   }
   return { status: "Idle", detail: "No active work.", isRunning: false };
 }

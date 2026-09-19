@@ -364,10 +364,6 @@ class TestSmokeSafety:
         src = Path(_ROOT / "packages" / "orchestration" / "source_apply.py").read_text()
         assert "shell=True" not in src
 
-    def test_no_shell_true_in_autorun(self):
-        src = Path(_ROOT / "packages" / "orchestration" / "autorun.py").read_text()
-        assert "shell=True" not in src
-
     def test_ui_server_rejects_non_localhost(self):
         """UI server must refuse non-localhost bind."""
         from packages.orchestration.ui_server import start_ui_server

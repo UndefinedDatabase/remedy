@@ -100,7 +100,7 @@ class ResumeDryRun:
 
 _STAGE_ORDER = [
     "job_created", "planning_started", "planning_completed",
-    "source_context_injected", "memory_context_attached",
+    "memory_context_attached",
     "builder_started", "structured_patch_attempted", "structured_patch_created",
     "approval_required", "approval_recorded",
     "source_patch_applied", "test_run_completed",
@@ -109,12 +109,8 @@ _STAGE_ORDER = [
 ]
 
 _EVENT_TO_STAGE = {
-    "autorun_started": "job_created",
-    "source_context_injected": "source_context_injected",
     "project_memory_recalled": "memory_context_attached",
-    "autorun_builder_completed": "builder_started",
     "builder_patch_parsed": "structured_patch_attempted",
-    "structured_patch_intent_created": "structured_patch_created",
     "builder_bridge_intent_approved": "approval_recorded",
     "patch_intent_applied": "source_patch_applied",
     "test_run_completed": "test_run_completed",
@@ -123,7 +119,6 @@ _EVENT_TO_STAGE = {
     "repair_loop_succeeded": "repair_cycle_completed",
     "repair_loop_stopped": "stopped",
     "proof_collected": "proof_collected",
-    "autorun_provider_error": "stopped",
 }
 
 
@@ -155,8 +150,6 @@ def replay_job(job_id: str | UUID, data_dir: str | Path) -> JobReplayState:
         if stage:
             reached.add(stage)
 
-        if ev == "autorun_builder_completed":
-            state.provider = meta.get("provider", "")
         if ev == "builder_patch_parsed":
             state.structured_patch = {
                 "attempted": True,
@@ -169,9 +162,6 @@ def replay_job(job_id: str | UUID, data_dir: str | Path) -> JobReplayState:
                 "status": "approved",
                 "intent_id": meta.get("intent_id", ""),
             }
-        if ev == "structured_patch_intent_created":
-            if "status" not in state.approval:
-                state.approval = {"status": "pending"}
         if ev == "patch_intent_applied":
             state.source_apply = {"status": "applied"}
         if ev in ("test_run_completed", "builder_bridge_test_completed"):
@@ -183,19 +173,11 @@ def replay_job(job_id: str | UUID, data_dir: str | Path) -> JobReplayState:
                 "cycle": meta.get("cycle", 0),
                 "max_cycles": meta.get("max_cycles", 0),
             }
-        if ev == "source_context_injected":
-            state.source_context = {
-                "injected": True,
-                "file_count": meta.get("file_count", 0),
-                "estimated_tokens": meta.get("estimated_tokens", 0),
-            }
         if ev == "project_memory_recalled":
             state.memory = {
                 "used": True,
                 "item_count": meta.get("item_count", 0),
             }
-        if ev == "autorun_provider_error":
-            state.stop_reason = meta.get("stop_reason", "provider_unavailable")
         if ev == "repair_loop_stopped":
             state.stop_reason = meta.get("reason", "")
         if ev == "builder_patch_parsed" and not meta.get("parse_success"):
@@ -229,31 +211,6 @@ def find_checkpoints(replay: JobReplayState) -> list[JobCheckpoint]:
     jid = replay.job_id
 
     reached_ids = {s.id for s in replay.stages if s.reached}
-
-    # context_ready — inspectable but no builder resume path exists yet
-    if "source_context_injected" in reached_ids:
-        checkpoints.append(JobCheckpoint(
-            id=f"{jid}-ctx", job_id=jid, kind="context_ready",
-            label="Source context ready",
-            status="inspectable",
-            safe_to_resume=False, resume_mode="from_context",
-            resume_mode_supported=False,
-            blocked_reason="resume_mode_not_implemented",
-            next_command=f"remedy event replay {jid} --json",
-        ))
-
-    # patch_intent_created — needs approval first
-    if "structured_patch_created" in reached_ids or replay.approval.get("status") == "pending":
-        checkpoints.append(JobCheckpoint(
-            id=f"{jid}-intent", job_id=jid, kind="patch_intent_created",
-            label="Patch intent created",
-            status="blocked",
-            safe_to_resume=False,
-            resume_mode="from_intent",
-            blocked_reason="approval_pending",
-            required_approvals=["patch_intent"],
-            next_command=f"remedy patch show {jid} {replay.approval.get('intent_id', '<intent_id>')}",
-        ))
 
     # approval_recorded — patch approved but StructuredPatch not persisted on job
     if replay.approval.get("status") == "approved":

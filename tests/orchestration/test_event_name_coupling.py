@@ -52,7 +52,12 @@ READER_SUFFIXES = (".py", ".ts", ".tsx")
 # deleted the readers of `git_status_read` (R-0905) and dropped the level-4 readiness
 # signals `run_contract_inspected` and `token_policy_inspected` fed (R-0907), and the
 # widened recovery (R-0920) found no further dead name once R-0919 deleted the
-# cockpit's `do_continue_stopped` reader.
+# cockpit's `do_continue_stopped` reader. R-0927 deleted the goal-driven path, the
+# queue and the source-context injector, and with them the readers of the six names
+# only they emitted (`autorun_started`, `autorun_builder_completed`,
+# `autorun_provider_error`, `source_context_injected`, `structured_patch_intent_created`,
+# `task_execution_started`); `test_run_completed`, which a local holds before
+# `test_execution_service.py` emits it, is still emitted.
 KNOWN_DEAD_EVENT_COUPLINGS: tuple[str, ...] = (
     "context_budget_optimized",
 )
@@ -100,15 +105,39 @@ def _emit_helpers(tree: ast.AST) -> frozenset[str]:
     return frozenset(helpers)
 
 
+def _literals(node: ast.AST) -> set[str]:
+    """The string literals an expression can only evaluate to: a constant, or a conditional
+    expression over such constants. Anything else yields nothing."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return {node.value}
+    if isinstance(node, ast.IfExp):
+        body, orelse = _literals(node.body), _literals(node.orelse)
+        return body | orelse if body and orelse else set()
+    return set()
+
+
 def _emitted_names(source: str, path: str) -> set[str]:
     try:
         tree = ast.parse(source, filename=path)
     except SyntaxError:
         return set()
     helpers = _emit_helpers(tree)
-    return {a.value for node in ast.walk(tree) if _is_emit_call(node, helpers)
-            for a in node.args
-            if isinstance(a, ast.Constant) and isinstance(a.value, str)}
+    names = {a.value for node in ast.walk(tree) if _is_emit_call(node, helpers)
+             for a in node.args
+             if isinstance(a, ast.Constant) and isinstance(a.value, str)}
+    # R-0927: a name held in a local first — `event_name = "a" if x else "b"` then
+    # `_emit(d, j, event_name, ...)` in `test_execution_service.py` — is emitted too.
+    for fdef in ast.walk(tree):
+        if not isinstance(fdef, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        held: dict[str, set[str]] = defaultdict(set)
+        for node in ast.walk(fdef):
+            if (isinstance(node, ast.Assign) and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name)):
+                held[node.targets[0].id] |= _literals(node.value)
+        names |= {lit for node in ast.walk(fdef) if _is_emit_call(node, helpers)
+                  for a in node.args if isinstance(a, ast.Name) for lit in held.get(a.id, ())}
+    return names
 
 
 def events_emitted_by_deleted_modules() -> dict[str, set[str]]:
@@ -180,6 +209,17 @@ class TestEventNameCouplingRatchet:
         emitted = events_emitted_by_deleted_modules()
         assert emitted.get("do_continue_stopped") == {
             "packages/orchestration/do_continue.py"}
+
+    def test_the_recovery_finds_a_name_held_in_a_local(self) -> None:
+        # R-0927: `test_execution_service.py` holds `test_run_completed` in a local first.
+        source = (
+            "def run(d, j, s):\n"
+            "    name = 'alpha_timed_out' if s else 'alpha_completed'\n"
+            "    _emit(d, j, name, {})\n"
+            "    other = compute()\n"
+            "    _emit(d, j, other, {})\n"
+        )
+        assert _emitted_names(source, "m.py") == {"alpha_timed_out", "alpha_completed"}
 
     def test_the_declared_set_only_ever_shrinks(self) -> None:
         assert len(KNOWN_DEAD_EVENT_COUPLINGS) <= _COUPLING_CEILING

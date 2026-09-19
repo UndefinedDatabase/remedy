@@ -100,13 +100,11 @@ show_error_codes = true
 module = [
     "packages.orchestration.ui_view_model",
     "packages.orchestration.agent_loop",
-    "packages.orchestration.worker_queue",
     "packages.orchestration.command_discovery",
     "packages.orchestration.project_brain",
     "packages.orchestration.verifier",
     "packages.orchestration.do_run",
     "packages.orchestration.autonomy_readiness",
-    "packages.orchestration.autorun",
     "packages.orchestration.builder_bridge",
     "packages.orchestration.change_set",
     "packages.orchestration.context_coverage",
