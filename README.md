@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-85 of 282 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+86 of 282 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 27 | 35 |
+| 2 | Minimal Self-Build Runtime | 28 | 35 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -168,6 +168,14 @@ nothing outside the tests imports and no entry point runs, unless an
 allowance states why; `remedy doctor core` lists a catalog command nothing
 references; closure precondition 7 holds every feature to the rule that
 replacing is deleting; and five unreached modules are deleted),
+F273 findings paydown v1 (the open findings that describe a real defect were
+repaired as their own text specifies, from 130 open at the claim to 14 at the
+close, each of those carried by name to the next paydown: the suite runs on an
+isolated data root and fails when the configured one changes; the token
+ledger keeps one row per provider call; the integrity gate and the review
+package read the ledger through its one canonical reader; CI fails on any ruff
+finding and adds Python 3.12 to its matrix; and the modules, commands and
+cockpit sections nothing wrote to were deleted),
 F045 loop definitions, F057 rate-limit-aware scheduler,
 F077 autonomy watchdog, F082 self-benchmark, F083 CI self-check,
 F085 sandbox hardening, F111 diff-only repair,
