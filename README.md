@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-84 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+85 of 281 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 26 | 34 |
+| 2 | Minimal Self-Build Runtime | 27 | 34 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 1 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -155,7 +155,14 @@ nothing; `--commit "<message>"` and `--commit-auto` land one commit of the
 copied files, and `--push` pushes it once, never forced, to the branch's
 upstream while no blocking criterion is unmet; `remedy do` passes the flags
 through, chains its jobs under a commit flag and pushes the mission once; and
-without one of those flags Remedy commits nothing on the operator's branch).
+without one of those flags Remedy commits nothing on the operator's branch),
+F271 no more legacy (every command group names its owning feature and the
+product path that reaches it, and a catalog test refuses a group without both;
+a test fails on any module under `packages/`, `apps/` or `scripts/` that
+nothing outside the tests imports and no entry point runs, unless an
+allowance states why; `remedy doctor core` lists a catalog command nothing
+references; closure precondition 7 holds every feature to the rule that
+replacing is deleting; and five unreached modules are deleted).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

@@ -12,13 +12,12 @@ replacement, and `remedy doctor core` lists dead commands
 
 ## Current Step
 
-Round 5 is closure round A: it books round 4's verdict, runs the
-self-use item to its approval gate (closure precondition 6), records
-the integrity check (precondition 3), and builds the evidence job and
-the review zip (algorithm steps 1 and 2).
+Closed at round 6: STATUS `[x]` at PASS, README 85 of 281, SU-022
+consumed by F271, the ledger rotated, and the pull request into `main`
+opened and left unmerged.
 
 ## Next Steps
 
-1. Closure round B: ledger rotation, the closure commit (STATUS `[x]`,
-   README, the self-use item consumed), and the pull request into
-   `main`, never merged by this session.
+1. The Open PR Gate merges F271's pull request once its hosted CI
+   passes; the next feature is then claimed under Rule A5, and its
+   first commit books round 6's verdict.
