@@ -23,12 +23,7 @@ import subprocess
 import pytest
 
 from packages.orchestration.final_verifier import _is_source_for_alignment
-from packages.orchestration.repair_attest import (
-    _collect_workspace_diff,
-    build_safe_diff_text,
-    is_attestable_source,
-    parse_safe_diff_paths,
-)
+from packages.orchestration.repair_attest import is_attestable_source
 
 _OPERATOR_STATE = [".agent/context.md", ".agent/plan.md", ".agent/live_review.md"]
 _REAL_SOURCE = ["packages/orchestration/run_manifest.py", "README.md",
@@ -57,83 +52,6 @@ class TestTheOperatorStatePolicy:
                                       "x.pyc", "__pycache__/m.pyc", "htmlcov/i.html"])
     def test_the_other_operational_paths_stay_excluded(self, path):
         assert not is_attestable_source(path)
-
-
-# --------------------------------------------------------------------------- the real diff
-
-
-@pytest.fixture
-def repo(tmp_path):
-    r = tmp_path / "repo"
-    (r / ".agent").mkdir(parents=True)
-    (r / "packages").mkdir()
-    subprocess.run("git init -q && git config user.email t@t && git config user.name t",
-                   shell=True, cwd=r, check=True)
-    (r / "packages" / "mod.py").write_text("original = 1\n")
-    (r / ".agent" / "plan.md").write_text("# Plan — step 1\n")
-    subprocess.run("git add -A && git commit -qm init", shell=True, cwd=r, check=True)
-    # the operator edits BOTH real source and their own state notes
-    (r / "packages" / "mod.py").write_text("original = 2\n")
-    (r / ".agent" / "plan.md").write_text("# Plan — step 2\n")
-    (r / ".agent" / "live_review.md").write_text("# Live Review\n")     # untracked state
-    (r / "packages" / "new.py").write_text("fresh = True\n")            # untracked source
-    return r
-
-
-class TestTheAttestedDiffCarriesOnlySource:
-    def test_the_reproduced_case(self, repo):
-        """The attested union no longer contains the three operator-state files."""
-        ws = _collect_workspace_diff(str(repo))
-        assert ".agent/plan.md" not in ws.changed_files
-        assert ".agent/live_review.md" not in ws.changed_files
-        assert set(ws.changed_files) == {"packages/mod.py", "packages/new.py"}
-
-    def test_tracked_and_untracked_state_are_both_excluded(self, repo):
-        ws = _collect_workspace_diff(str(repo))
-        assert not any(f.startswith(".agent/") for f in ws.changed_files)
-        assert not any(str(u["path"]).startswith(".agent/")
-                       for u in ws.untracked_file_hashes)
-
-    def test_real_source_is_still_fully_attested(self, repo):
-        ws = _collect_workspace_diff(str(repo))
-        assert "packages/mod.py" in ws.changed_files          # tracked edit
-        assert "packages/new.py" in ws.changed_files          # untracked addition
-        assert "original = 2" in ws.tracked_diff
-
-    def test_the_safe_diff_and_the_file_list_are_one_account(self, repo):
-        """The packager demands EXACT equality. Filtering only the list would have moved the
-        mismatch into the diff: "only_in_diff=['.agent/plan.md']"."""
-        ws = _collect_workspace_diff(str(repo))
-        safe = build_safe_diff_text(ws.tracked_diff, ws.untracked_file_hashes)
-        assert set(parse_safe_diff_paths(safe)) == set(ws.changed_files)
-
-    def test_no_operator_state_hunk_survives_in_the_safe_diff(self, repo):
-        ws = _collect_workspace_diff(str(repo))
-        safe = build_safe_diff_text(ws.tracked_diff, ws.untracked_file_hashes)
-        assert ".agent/plan.md" not in safe
-        assert "step 2" not in safe
-
-    def test_a_change_that_is_only_operator_state_attests_nothing(self, tmp_path):
-        """Honest edge: if the whole diff is state, there is no source change to attest — an
-        empty account, not a fabricated one."""
-        r = tmp_path / "only_state"
-        (r / ".agent").mkdir(parents=True)
-        subprocess.run("git init -q && git config user.email t@t && git config user.name t "
-                       "&& echo x > f.txt && git add -A && git commit -qm i",
-                       shell=True, cwd=r, check=True)
-        (r / ".agent" / "plan.md").write_text("# only notes\n")
-        ws = _collect_workspace_diff(str(r))
-        assert ws.changed_files == []
-        assert build_safe_diff_text(ws.tracked_diff, ws.untracked_file_hashes) == ""
-
-    def test_a_clean_worktree_stays_empty(self, tmp_path):
-        r = tmp_path / "clean"
-        r.mkdir()
-        subprocess.run("git init -q && git config user.email t@t && git config user.name t "
-                       "&& echo x > f.txt && git add -A && git commit -qm i",
-                       shell=True, cwd=r, check=True)
-        ws = _collect_workspace_diff(str(r))
-        assert ws.changed_files == []
 
 
 # --------------------------------------------------------------------------- round 14

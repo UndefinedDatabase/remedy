@@ -57,6 +57,18 @@ amend0905-vocab D1 gave that word no table row and told F259 to write one from
 the feature that owns the concept; they were found by searching every `.py`
 file under `packages/` and under `apps/`.
 
+Status (2026-09-19, F273 finding R-0914): an operator repair is attested no
+longer. `attest_operator_repair`, which wrote an operator's hand-fix into a job's
+Evidence folder as an attested task, lost its only command word with F261 and is
+deleted, so no command records an operator repair, and `job evidence` no longer
+carries an attested task into its export. What survives is the closure
+evidence producer `create_manual_completion_bundle` in
+`packages/orchestration/job_evidence.py`, which writes its own operator-attested
+tasks through `packages/orchestration/manual_attestation.py`, and the
+attestable-source policy and safe-diff hashing in
+`packages/orchestration/repair_attest.py` that it, the review subject and the
+review package builders share.
+
 ## Do not confuse these
 
 Most of what this page exists to end was never someone failing to define a word.

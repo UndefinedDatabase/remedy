@@ -24,49 +24,6 @@ from packages.common.path_redaction import scrub_paths
 #: happens to target.
 _REMEDY_SOURCE_ROOT = str(Path(__file__).resolve().parents[2])
 
-#: The deterministic, documented token status a zero-provider-call manual completion produces. It is
-#: low confidence (heuristic only) with every actual/provider count zeroed and every cost unknown.
-MANUAL_TOKEN_TRUTH: dict[str, Any] = {
-    "schema_version": "1.0.0",
-    # Round 34 F2: the complete, closed TokenTruthV1 shape the real producer emits for a zero-task
-    # manual completion — every field present so it validates against the full output schema.
-    "source": "evidence_aggregation",
-    "provider": "claude-cli",
-    "model": "",
-    "per_task": {},
-    "actual_cache_creation_tokens": None,
-    "actual_cache_read_tokens": None,
-    "actual_available": False,
-    "actual_prompt_tokens": None,
-    "actual_completion_tokens": None,
-    "actual_total_tokens": None,
-    "estimated_prompt_tokens": 0,
-    "estimated_completion_tokens": 0,
-    "estimated_total_tokens": 0,
-    "builder_estimated_total": 0,
-    "reviewer_estimated_total": 0,
-    "repair_estimated_total": 0,
-    "measurement_source": "character_heuristic",
-    "measurement_confidence": "low",
-    "total_cost_usd": None,
-    "missing_reason": "actual token usage unavailable (operator attested; no provider measured usage)",
-    "provider_call_count": 0,
-    "prompt_trace_count": 0,
-    "actual_call_count": 0,
-    "actual_coverage_complete": False,
-    "actual_missing_reasons": None,
-    "cost_call_count": 0,
-    "cost_coverage_complete": False,
-    "cost_coverage_reason": "no_real_provider_calls",
-    "cli_version": None,
-    "builder_configured_model": "",
-    "reviewer_configured_model": "",
-    "builder_actual_model": None,
-    "reviewer_actual_model": None,
-    "actual_model_verified": False,
-}
-
-
 def _w(path: str, obj: Any) -> None:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
@@ -140,11 +97,6 @@ def write_manual_task_evidence(
        "=== Round 1: operator-attested manual completion ===\n"
        "Verification recorded in verification_tests.json; no per-task pytest re-run.\n"
        "0 passed, 0 failed\n")
-
-
-def token_accounting_sha_note() -> str:
-    """A stable helper marker (kept for symmetry with the diff-hash helpers callers already import)."""
-    return hashlib.sha256(b"manual").hexdigest()
 
 
 # Round 33 F4: the complete READY gate set for a manual completion, so the canonical operator entry

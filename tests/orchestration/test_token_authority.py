@@ -3,9 +3,50 @@ wrong-root / enum-violating / incoherent token truth is rejected; the determinis
 manual token truth is accepted and drives the producer's token_status."""
 from __future__ import annotations
 
-from packages.orchestration.manual_attestation import MANUAL_TOKEN_TRUTH
 from packages.orchestration.token_authority import validate_token_truth
 from packages.orchestration.token_measurement import token_measurement_summary
+
+#: The deterministic, documented token status a zero-provider-call manual completion produces. It is
+#: low confidence (heuristic only) with every actual/provider count zeroed and every cost unknown.
+MANUAL_TOKEN_TRUTH: dict = {
+    "schema_version": "1.0.0",
+    # Round 34 F2: the complete, closed TokenTruthV1 shape the real producer emits for a zero-task
+    # manual completion — every field present so it validates against the full output schema.
+    "source": "evidence_aggregation",
+    "provider": "claude-cli",
+    "model": "",
+    "per_task": {},
+    "actual_cache_creation_tokens": None,
+    "actual_cache_read_tokens": None,
+    "actual_available": False,
+    "actual_prompt_tokens": None,
+    "actual_completion_tokens": None,
+    "actual_total_tokens": None,
+    "estimated_prompt_tokens": 0,
+    "estimated_completion_tokens": 0,
+    "estimated_total_tokens": 0,
+    "builder_estimated_total": 0,
+    "reviewer_estimated_total": 0,
+    "repair_estimated_total": 0,
+    "measurement_source": "character_heuristic",
+    "measurement_confidence": "low",
+    "total_cost_usd": None,
+    "missing_reason": "actual token usage unavailable (operator attested; no provider measured usage)",
+    "provider_call_count": 0,
+    "prompt_trace_count": 0,
+    "actual_call_count": 0,
+    "actual_coverage_complete": False,
+    "actual_missing_reasons": None,
+    "cost_call_count": 0,
+    "cost_coverage_complete": False,
+    "cost_coverage_reason": "no_real_provider_calls",
+    "cli_version": None,
+    "builder_configured_model": "",
+    "reviewer_configured_model": "",
+    "builder_actual_model": None,
+    "reviewer_actual_model": None,
+    "actual_model_verified": False,
+}
 
 
 class TestTokenTruthValidator:

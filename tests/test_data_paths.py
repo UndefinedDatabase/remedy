@@ -508,7 +508,6 @@ class TestMintIds:
 _JOB_EVIDENCE_OWNING_MODULES = (
     "packages.orchestration.pingpong_job",
     "packages.orchestration.job_evidence",
-    "packages.orchestration.repair_attest",
     "apps.cli.commands.do_cmd",
 )
 

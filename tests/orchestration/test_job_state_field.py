@@ -162,18 +162,3 @@ class TestTheRenameLeftNoSilentReaderBehind:
 
         assert exc.value.code == 2
         assert "budget limits cannot be changed" in capsys.readouterr().err
-
-    def test_a_linked_job_that_loads_reports_its_real_state(self, tmp_path, monkeypatch):
-        """``_linked_job_summary`` reserves ``unknown`` for a job it could not
-        load. With the retired read every linked job read ``unknown`` while the
-        same summary reported that the job WAS available."""
-        from packages.orchestration.job_evidence import _linked_job_summary
-        from packages.orchestration.pingpong_job import save_job_plan
-
-        self._isolated_data_root(tmp_path, monkeypatch)
-        save_job_plan(JobPlan(job_id="0123456789abcdee", state="completed"))
-
-        summary = _linked_job_summary("0123456789abcdee")
-
-        assert summary["status"] == "completed", summary
-        assert summary["source"] != "unavailable", summary
