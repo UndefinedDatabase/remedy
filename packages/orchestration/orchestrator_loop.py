@@ -67,7 +67,7 @@ from packages.orchestration.prompt_trace import (
 #: Bump together with any change to what the protocol document ASKS the
 #: orchestrator to do. Every ledger entry records the version it ran under, so
 #: an audit can tell which contract a past decision was made against.
-PROTOCOL_VERSION = "v1"
+PROTOCOL_VERSION = "v2"
 
 #: Where the protocol document lives, relative to the repo root. The location
 #: is recorded in `.agent/decisions.md`; keeping it under ``docs/agents/``
@@ -1378,15 +1378,15 @@ def run_mission(
 #: still executing". A second dispatch against one of these is the
 #: six-identical-jobs loop campaign attempt 1 recorded (R-0184).
 #:
-#: ``paused`` is deliberately ABSENT. A paused job is one that asked a human
-#: something, and the move schema has NO resume kind — dispatch_job,
-#: wait_on_decisions, declare_milestone_done, declare_mission_achieved,
-#: abort_with_reason. Refusing a dispatch there would leave the loop with no
-#: legal move that advances the milestone once the decision is answered, i.e. a
-#: deadlock in place of a defect. (Observation for the reviewer, deliberately
-#: NOT fixed here: the absent resume verb is why re-dispatch is the only
-#: forward path out of a paused job.)
+#: ``paused`` is deliberately ABSENT: a paused job is one that asked a human
+#: something or was stopped, and ``resume_job`` CONTINUES it (R-0762) — but a
+#: fresh dispatch stays legal too, for work the model judges better restarted.
 IN_FLIGHT_JOB_STATES = ("pending", "planned", "running")
+
+#: R-0762. The executor's terminal that leaves a job RUNNING with work still
+#: pending (``long_run_executor.TERMINAL_MAX_CYCLES_REACHED``): the job is
+#: not in flight, it ran out of cycles, and ``resume_job`` continues it.
+MAX_CYCLES_REACHED = "max_cycles_reached"
 
 #: How many consecutive gate-blocked completions of ONE milestone the loop
 #: tolerates before handing it to a human (R-0190). Two, matching the loop's
@@ -1625,11 +1625,17 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
         MOVE_DECLARE_MILESTONE_DONE,
         MOVE_DECLARE_MISSION_ACHIEVED,
         MOVE_DISPATCH_JOB,
+        MOVE_RESUME_JOB,
         MOVE_WAIT_ON_DECISIONS,
     )
 
     payload = dict(getattr(move, "payload", {}) or {})
     kind = getattr(move, "kind", "")
+
+    if kind == MOVE_RESUME_JOB:
+        return resume_milestone_job(
+            project_id, mission_id, payload["milestone_id"], root=root,
+            execute=execute)
 
     if kind == MOVE_WAIT_ON_DECISIONS:
         return MoveOutcome(
@@ -1699,32 +1705,92 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
         # DECISION F269 D4 (4): the job's gate result decides its slice criteria.
         record_contract_results(project_id, mission_id, str(job.job_id),
                                 payload["milestone_id"], root)
-        # What execution PRODUCED, on the ledger entry, so the next iteration's
-        # context shows why the milestone is or is not claimable.
-        detail += (f"; executed: terminal={getattr(run, 'terminal_status', '')}"
-                   f" job_status={getattr(run, 'job_status', '')}")
-        stop_reason = getattr(run, "stop_reason", "")
-        if stop_reason:
-            detail += f" stop={stop_reason}"
-        cycles = getattr(run, "resolved_cycles", None) or {}
-        if cycles:
-            detail += (f" cycles={cycles.get('max_cycles')}"
-                       f"/{cycles.get('source')}"
-                       f"{' OVER-CAP' if cycles.get('over_cap') else ''}")
-        released = getattr(run, "gate_released", None)
-        if released is None:
-            detail += " gate=not-run"
-        else:
-            detail += f" gate={'released' if released else 'blocked'}"
-            if not released and getattr(run, "gate_blocker", ""):
-                detail += f" ({run.gate_blocker})"
-        return MoveOutcome(status="dispatched", detail=detail,
+        return MoveOutcome(status="dispatched",
+                           detail=detail + execution_detail(run),
                            job_id=str(job.job_id))
 
     # Unreachable through the schema: `kind` is a closed Literal, so anything
     # else failed validation long before it reached here. Kept as a loud
     # failure rather than a silent no-op in case the two ever drift.
     raise ValueError(f"unknown orchestrator move kind: {kind!r}")
+
+
+def execution_detail(run: Any) -> str:
+    """What execution PRODUCED, for the ledger entry of a dispatch or resume,
+    so the next iteration's context shows why the milestone is or is not
+    claimable."""
+    detail = (f"; executed: terminal={getattr(run, 'terminal_status', '')}"
+              f" job_status={getattr(run, 'job_status', '')}")
+    stop_reason = getattr(run, "stop_reason", "")
+    if stop_reason:
+        detail += f" stop={stop_reason}"
+    cycles = getattr(run, "resolved_cycles", None) or {}
+    if cycles:
+        detail += (f" cycles={cycles.get('max_cycles')}"
+                   f"/{cycles.get('source')}"
+                   f"{' OVER-CAP' if cycles.get('over_cap') else ''}")
+    released = getattr(run, "gate_released", None)
+    if released is None:
+        detail += " gate=not-run"
+    else:
+        detail += f" gate={'released' if released else 'blocked'}"
+        if not released and getattr(run, "gate_blocker", ""):
+            detail += f" ({run.gate_blocker})"
+    return detail
+
+
+#: A ``resume_job`` the guards let through: the SAME job ran again (R-0762).
+OUTCOME_RESUMED = "resumed"
+#: A ``resume_job`` the ``job resume`` guards stopped before the executor: a
+#: consumed stop request, worktree drift, the plan gate, an all-green job, or
+#: checkpoints of which none verifies. Not terminal — the next move decides.
+OUTCOME_RESUME_NOT_RUN = "resume_not_run"
+
+
+def resume_milestone_job(project_id: str, mission_id: str, milestone_id: str,
+                         *, root: Path | None = None,
+                         execute: Callable[[Any], Any] | None = None
+                         ) -> MoveOutcome:
+    """Continue the milestone's latest job as the SAME job (R-0762).
+
+    :func:`evaluate_resume` already refused a job that is not resumable. The
+    guards are ``checkpoints.decide_checkpoint_resume`` — the function
+    ``remedy job resume`` renders — so the loop is not a second door around a
+    stop request, a drifted worktree or the plan gate. A job the guards let
+    through runs through the same executor seam a dispatch uses.
+    """
+    from packages.orchestration.checkpoints import (
+        RESUME_PROCEED,
+        AllCheckpointsCorruptError,
+        decide_checkpoint_resume,
+        load_latest_valid,
+    )
+    from packages.orchestration.data_paths import normalize_job_id
+    from packages.orchestration.mission_contract import record_contract_results
+    from packages.orchestration.pingpong_job import require_job_plan
+
+    job = require_job_plan(normalize_job_id(
+        dispatched_job_for(project_id, mission_id, milestone_id, root)))
+    job_id = str(job.job_id)
+    try:
+        checkpoint = load_latest_valid(job_id)
+    except AllCheckpointsCorruptError as exc:
+        return MoveOutcome(status=OUTCOME_RESUME_NOT_RUN, job_id=job_id,
+                           detail=f"job {job_id} not resumed: {exc}")
+    decision = decide_checkpoint_resume(job, checkpoint)
+    if decision.action != RESUME_PROCEED:
+        return MoveOutcome(
+            status=OUTCOME_RESUME_NOT_RUN, job_id=job_id,
+            detail=f"job {job_id} not resumed ({decision.action}): "
+                   f"{decision.detail}")
+    run = (execute or execute_dispatched_job)(job)
+    record_contract_results(project_id, mission_id, job_id, milestone_id, root)
+    start = ("persisted job state" if checkpoint is None
+             else f"checkpoint {checkpoint.cycle_index}")
+    return MoveOutcome(
+        status=OUTCOME_RESUMED, job_id=job_id,
+        detail=f"job {job_id} resumed for {milestone_id} from {start}"
+               + execution_detail(run))
 
 
 def _auto_approve_if_gated(job: Any) -> bool:
@@ -1785,6 +1851,9 @@ class MilestoneEvidence:
     gate_released: bool | None = None
     gate_blocker: str = ""
     handback: Any = None
+    #: The executor's last terminal for this job (``cycle_terminal_status``);
+    #: ``max_cycles_reached`` is what makes a RUNNING job resumable (R-0762).
+    cycle_terminal_status: str = ""
 
 
 def dispatched_job_for(project_id: str, mission_id: str, milestone_id: str,
@@ -1841,17 +1910,20 @@ def collect_milestone_evidence(project_id: str, mission_id: str,
         # An unreadable job is an ABSENT observation, never a passing one.
         return MilestoneEvidence(job_id=job_id)
     state = str(getattr(getattr(job, "state", ""), "value", getattr(job, "state", "")))
-    handback = (getattr(job, "metadata", None) or {}).get("handback")
+    metadata = getattr(job, "metadata", None) or {}
+    handback = metadata.get("handback")
+    terminal = str(metadata.get("cycle_terminal_status", "") or "")
 
     gate = load_gate_result(job_id)
     if gate is None:
         return MilestoneEvidence(job_id=job_id, job_state=state,
-                                 handback=handback)
+                                 handback=handback,
+                                 cycle_terminal_status=terminal)
     return MilestoneEvidence(
         job_id=job_id, job_state=state,
         gate_released=bool(gate.get("released")),
         gate_blocker=str(gate.get("error", "") or ""),
-        handback=handback)
+        handback=handback, cycle_terminal_status=terminal)
 
 
 def evaluate_dispatch(mission: Any, milestone_id: str,
@@ -1919,6 +1991,47 @@ def _released_gate_refusal(milestone_id: str,
             f"Instead: declare_milestone_done for {milestone_id}")
 
 
+def _resumable(evidence: MilestoneEvidence | None) -> bool:
+    """A paused job, or a live one whose last run ended max_cycles_reached."""
+    if evidence is None or not evidence.job_id:
+        return False
+    if evidence.job_state == "paused":
+        return True
+    return (evidence.cycle_terminal_status == MAX_CYCLES_REACHED
+            and evidence.job_state not in TERMINAL_JOB_STATES)
+
+
+def evaluate_resume(mission: Any, milestone_id: str,
+                    evidence: MilestoneEvidence | None = None,
+                    job_id: str = "") -> str:
+    """Refusal reason for a ``resume_job`` move, or "" when it may proceed.
+
+    Only the milestone's LATEST job is continued — the one the evidence reads
+    — and only when it is paused or ran out of cycles; anything else has
+    nothing to continue, and the refusal names the move that can advance.
+    """
+    ids = milestone_ids(mission)
+    if milestone_id not in ids:
+        return (f"milestone {milestone_id!r} is not in this mission's plan "
+                f"({', '.join(ids) or 'no milestones'})")
+    if milestone_id in set(done_milestones(mission)):
+        return f"milestone {milestone_id} is already done — nothing to resume"
+    ev = evidence or MilestoneEvidence()
+    if not ev.job_id:
+        return (f"no job was ever dispatched for milestone {milestone_id}, so "
+                f"there is nothing to resume. Instead: dispatch_job")
+    if job_id and job_id != ev.job_id:
+        return (f"job {job_id} is not milestone {milestone_id}'s latest job "
+                f"({ev.job_id}); only the latest job is resumed")
+    if not _resumable(ev):
+        return (f"job {ev.job_id} for milestone {milestone_id} is not "
+                f"resumable: state {ev.job_state or 'unknown'!r}, last cycle "
+                f"terminal {ev.cycle_terminal_status or 'none'!r}. Only a "
+                f"paused job or one that ended {MAX_CYCLES_REACHED} is "
+                f"continued")
+    return ""
+
+
 def _in_flight_refusal(milestone_id: str,
                        evidence: MilestoneEvidence | None) -> str:
     """Refuse a second job for a milestone whose first one has not finished."""
@@ -1929,6 +2042,10 @@ def _in_flight_refusal(milestone_id: str,
     if evidence.gate_released:
         advice = (f"declare_milestone_done for {milestone_id} — its gate has "
                   f"already released")
+    elif _resumable(evidence):
+        advice = (f"resume_job for {milestone_id} — that job ended "
+                  f"{MAX_CYCLES_REACHED} with work pending, and resume_job "
+                  f"continues it as the same job")
     else:
         advice = ("wait_on_decisions, or declare_milestone_done once that job "
                   "finishes and its gate releases")
@@ -1963,8 +2080,10 @@ def evaluate_milestone_done(mission: Any, milestone_id: str,
                 f"there is nothing whose outcome could meet its Definition of "
                 f"Done")
     if ev.job_state not in TERMINAL_JOB_STATES:
+        advice = (f". Instead: resume_job for {milestone_id}"
+                  if _resumable(ev) else "")
         return (f"the job dispatched for milestone {milestone_id} is in state "
-                f"{ev.job_state or 'unknown'!r}, which is not terminal")
+                f"{ev.job_state or 'unknown'!r}, which is not terminal{advice}")
     if ev.gate_released is False:
         return (f"the Definition of Done for milestone {milestone_id} is not "
                 f"met: {ev.gate_blocker or 'the gate did not release'}")
@@ -2050,7 +2169,7 @@ def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
                   project_id: str, mission_id: str) -> str:
     """Refusal reason for one move, or "" when it may be executed.
 
-    Only the two ADVANCING moves are evaluated. ``wait_on_decisions``,
+    Only the ADVANCING moves are evaluated. ``wait_on_decisions``,
     ``abort_with_reason`` and ``declare_mission_achieved`` are the loop's ways
     of stopping, and refusing a stop would be the silent loop this feature
     exists to prevent — except that claiming the mission is achieved while
@@ -2062,6 +2181,7 @@ def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
         MOVE_DECLARE_MILESTONE_DONE,
         MOVE_DECLARE_MISSION_ACHIEVED,
         MOVE_DISPATCH_JOB,
+        MOVE_RESUME_JOB,
     )
 
     payload = dict(getattr(move, "payload", {}) or {})
@@ -2072,6 +2192,13 @@ def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
         return evaluate_dispatch(
             mission, milestone_id,
             observe(project_id, mission_id, milestone_id))
+
+    if kind == MOVE_RESUME_JOB:
+        milestone_id = payload.get("milestone_id", "")
+        return evaluate_resume(
+            mission, milestone_id,
+            observe(project_id, mission_id, milestone_id),
+            job_id=payload.get("job_id", ""))
 
     if kind == MOVE_DECLARE_MILESTONE_DONE:
         milestone_id = payload.get("milestone_id", "")

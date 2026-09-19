@@ -1407,13 +1407,12 @@ def _cmd_job_resume(
     import json as _json
 
     from packages.orchestration.checkpoints import (
+        RESUME_NOOP,
+        RESUME_STOPPED,
         AllCheckpointsCorruptError,
+        decide_checkpoint_resume,
         load_latest_valid,
-        resolve_live_worktree_head,
-        worktree_drift_message,
     )
-    from packages.orchestration.job_plan import task_plan_blocks_execution
-    from packages.orchestration.safe_points import consume_stop, stop_requested
 
     job_id = resolve_job_id(job_id_str)
     try:
@@ -1445,36 +1444,22 @@ def _cmd_job_resume(
             _print_resume_preview(preview)
         return
 
-    # 1. Pending stop request — consumed first, and it wins.
-    if stop_requested(jid) is not None:
-        signal = consume_stop(jid)
-        reason = getattr(signal, "reason", "") if signal is not None else ""
-        message = (
-            f"Job {jid} | stop request consumed — not resuming"
-            f"{' (reason: ' + reason + ')' if reason else ''}"
-        )
+    # The three guards and the all-green check are ONE function the loop's
+    # `resume_job` move calls too; this command only renders its verdict.
+    decision = decide_checkpoint_resume(job, checkpoint)
+    if decision.action == RESUME_STOPPED:
         if json_output:
             print(_json.dumps(
                 {"job_id": jid, "action": "stopped", "resumed": False,
-                 "stop_reason": reason}, indent=2, sort_keys=True))
+                 "stop_reason": decision.reason}, indent=2, sort_keys=True))
         else:
-            print(message)
+            print(f"Job {jid} | {decision.detail}")
         return
 
-    # 2. Worktree drift — refuse, and name both heads.
-    if checkpoint is not None and checkpoint.worktree_head:
-        live_head = resolve_live_worktree_head(jid)
-        if live_head and live_head != checkpoint.worktree_head:
-            print(
-                "Error: " + worktree_drift_message(
-                    checkpoint.worktree_head, live_head),
-                file=sys.stderr,
-            )
-            sys.exit(3)
-
-    # 3. Plan-approval gate — the same check `remedy job resume` makes.
-    block_reason = task_plan_blocks_execution(job)
-    if block_reason == "pending":
+    if decision.reason == "worktree_drift":
+        print("Error: " + decision.detail, file=sys.stderr)
+        sys.exit(3)
+    if decision.reason == "plan_pending":
         print(
             f"Error: plan awaiting approval. "
             f"Run: remedy decision resolve {job_id_str[:8]} plan:approval "
@@ -1482,16 +1467,14 @@ def _cmd_job_resume(
             file=sys.stderr,
         )
         sys.exit(3)
-    if block_reason == "rejected":
+    if decision.reason == "plan_rejected":
         print(
             f"Error: task plan rejected for job {job_id_str[:8]}.",
             file=sys.stderr,
         )
         sys.exit(3)
 
-    # An all-green job has nothing to resume.
-    pending = [t for t in job.tasks if t.status != RunState.COMPLETED]
-    if job.tasks and not pending:
+    if decision.action == RESUME_NOOP:
         if json_output:
             print(_json.dumps(
                 {"job_id": jid, "action": "noop", "resumed": False,

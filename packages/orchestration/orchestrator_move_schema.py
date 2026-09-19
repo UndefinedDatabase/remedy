@@ -3,7 +3,7 @@
 One orchestrator provider call per iteration returns exactly one move. The move
 is the ONLY thing the model gets to say, and this file is the whole vocabulary:
 
-    dispatch_job · wait_on_decisions · declare_milestone_done ·
+    dispatch_job · resume_job · wait_on_decisions · declare_milestone_done ·
     declare_mission_achieved · abort_with_reason
 
 **The authority boundary is this schema, not the prompt.** Remedy deliberately
@@ -13,6 +13,8 @@ model writes, and no prompt wording can widen the set. A response naming an
 unlisted kind (``create_mission``, say) fails ``Literal`` validation and is a
 parse-class failure like any other malformed answer. New goals travel the human
 idea/approval path; that absence is the feature, not an oversight.
+``resume_job`` widens nothing: it continues a job the loop already dispatched,
+behind the same guards ``remedy job resume`` applies (R-0762).
 
 Conventions follow F005 structured outputs and the F061/F069 precedent: a small
 model, ``extra="forbid"``, a REQUIRED ``schema_v`` (a bare ``Literal`` with no
@@ -41,6 +43,10 @@ ORCHESTRATOR_MOVE_SCHEMA_V = "om1"
 
 #: Ask for the next job on a milestone. Payload: ``milestone_id``, ``step``.
 MOVE_DISPATCH_JOB = "dispatch_job"
+#: Continue the milestone's latest job — paused, or ended ``max_cycles_reached``
+#: — as the SAME job, behind the ``job resume`` guards. Payload:
+#: ``milestone_id``; an optional ``job_id`` must name that latest job.
+MOVE_RESUME_JOB = "resume_job"
 #: Nothing can proceed until a human answers an open decision. No payload.
 MOVE_WAIT_ON_DECISIONS = "wait_on_decisions"
 #: Claim a milestone's outcome is reached. Payload: ``milestone_id``.
@@ -55,6 +61,7 @@ MOVE_ABORT_WITH_REASON = "abort_with_reason"
 #: deliberately absent and why.
 ORCHESTRATOR_MOVE_KINDS: tuple[str, ...] = (
     MOVE_DISPATCH_JOB,
+    MOVE_RESUME_JOB,
     MOVE_WAIT_ON_DECISIONS,
     MOVE_DECLARE_MILESTONE_DONE,
     MOVE_DECLARE_MISSION_ACHIEVED,
@@ -63,6 +70,7 @@ ORCHESTRATOR_MOVE_KINDS: tuple[str, ...] = (
 
 OrchestratorMoveKind = Literal[
     "dispatch_job",
+    "resume_job",
     "wait_on_decisions",
     "declare_milestone_done",
     "declare_mission_achieved",
@@ -73,6 +81,7 @@ OrchestratorMoveKind = Literal[
 #: takes no payload of its own. Kept beside the kinds so the two cannot drift.
 REQUIRED_PAYLOAD_KEYS: dict[str, tuple[str, ...]] = {
     MOVE_DISPATCH_JOB: ("milestone_id", "step"),
+    MOVE_RESUME_JOB: ("milestone_id",),
     MOVE_DECLARE_MILESTONE_DONE: ("milestone_id",),
     MOVE_ABORT_WITH_REASON: ("reason",),
 }
