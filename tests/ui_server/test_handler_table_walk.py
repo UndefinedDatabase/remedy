@@ -1,8 +1,8 @@
 """R-0804: every cockpit read endpoint answers 200 for a job the real job path created.
 
 The operator's tests.md run of 2026-09-05 crashed the brain endpoint for a ping-pong
-job with ``AttributeError: '_JobPlanTaskAdapter' object has no attribute 'inputs'``.
-The adapter is gone; this walk keeps the property. The job is made by
+job with an ``AttributeError`` (no attribute ``inputs``) raised through the cockpit's
+task adapter. That adapter is deleted; this walk keeps the property. The job is made by
 ``parse_job_file`` + ``run_job`` with the fake provider named, so each task gets its
 own ``FakeProvider`` and runs two rounds. The endpoint set is read from
 ``ui_server.py`` itself, so an endpoint added later is walked without editing here.
