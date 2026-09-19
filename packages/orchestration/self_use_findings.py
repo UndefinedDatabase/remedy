@@ -44,27 +44,37 @@ def describe_self_use_run_defects(result: JobPlan) -> tuple[str, ...]:
     (``"job {job_id} ({status}): {error}"``), and one when the job is
     ``stopped`` (``"job {job_id} (stopped): stop_reason={stop_reason};
     stop_source={stop_source}"``, R-0972) — a stop clears ``error``, so a
-    budget stop would otherwise answer nothing. Then, in task order, one
-    string per task whose own ``error`` is non-blank
-    (``"{task_id} ({status}): {error}"``), or, when its ``error`` is blank and
-    its ``final_status`` is ``stopped``, one naming the task
-    (``"{task_id} ({status}): final_status=stopped"``) — a stop sends the
-    task's ``status`` back to ``pending`` and records the stop only in
-    ``final_status``. An empty tuple means the run surfaced nothing to
-    register — not that nothing was checked; a job that completed with every
-    task's `error` blank answers ``()``.
+    budget stop would otherwise answer nothing. The same stop string is
+    answered when the state is NOT ``stopped`` but ``stop_reason`` is
+    non-blank (R-0826): a stop whose finalization failed leaves the state
+    behind. One more job string quotes a non-blank ``run_manifest_error``
+    (``"job {job_id} ({status}): run_manifest_error={run_manifest_error}"``).
+    Then, in task order, one string per task whose own ``error`` is
+    non-blank (``"{task_id} ({status}): {error}"``), or, when its ``error`` is
+    blank and its ``final_status`` is set to anything but
+    ``staged_review_passed``, one naming it
+    (``"{task_id} ({status}): final_status={final_status}"``) — a stop, for
+    one, sends the task's ``status`` back to ``pending`` and records the stop
+    only in ``final_status``. An empty tuple means the run surfaced nothing
+    to register — not that nothing was checked; a job that completed with
+    every task's `error` blank answers ``()``.
     """
     defects: list[str] = []
     if result.error:
         defects.append(f"job {result.job_id} ({result.state}): {result.error}")
-    if result.state == JOB_STOPPED:
+    if result.state == JOB_STOPPED or result.stop_reason.strip():
         defects.append(
             f"job {result.job_id} ({result.state}): stop_reason={result.stop_reason}; "
             f"stop_source={result.stop_source}"
         )
+    if result.run_manifest_error.strip():
+        defects.append(
+            f"job {result.job_id} ({result.state}): "
+            f"run_manifest_error={result.run_manifest_error}"
+        )
     for task in result.tasks:
         if task.error:
             defects.append(f"{task.task_id} ({task.status}): {task.error}")
-        elif task.final_status == "stopped":
+        elif task.final_status and task.final_status != "staged_review_passed":
             defects.append(f"{task.task_id} ({task.status}): final_status={task.final_status}")
     return tuple(defects)

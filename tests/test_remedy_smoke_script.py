@@ -442,19 +442,19 @@ class TestSmokeScriptText:
         )
 
     # ------------------------------------------------------------------
-    # Step 30.12: --task-type on create-job, no plan-job
+    # Step 30.12: task_type= on create-job, no plan-job
     # ------------------------------------------------------------------
 
     def test_create_job_uses_task_type_flag(self):
         text = _script_text()
         assert "task_type=" in text, (
-            "create-job call must use --task-type to bypass planner"
+            "create-job call must pass task_type= to bypass planner"
         )
 
     def test_create_job_uses_write_readme_task_type(self):
         text = _script_text()
         assert "task_type='write_readme'" in text, (
-            "create-job must set --task-type write_readme for smoke determinism"
+            "create-job must set task_type='write_readme' for smoke determinism"
         )
 
     def test_create_job_uses_task_description_flag(self):
@@ -466,18 +466,18 @@ class TestSmokeScriptText:
     def test_plan_job_not_called_in_smoke(self):
         text = _script_text()
         # 'job plan' must not appear as a standalone remedy call in smoke.
-        # The smoke uses --task-type on create to bypass the planner.
+        # The smoke passes task_type= on create to bypass the planner.
         import re
         matches = re.findall(r'remedy\s+job\s+plan\b', text)
         assert matches == [], (
-            "smoke must not call 'remedy job plan' — explicit --task-type replaces the planner. "
+            "smoke must not call 'remedy job plan' — an explicit task_type= replaces the planner. "
             f"Found: {matches}"
         )
 
     def test_smoke_asserts_job_state_planned_after_create(self):
         text = _script_text()
         assert "state" in text and "planned" in text, (
-            "smoke must assert job state=planned after create-job --task-type"
+            "smoke must assert job state=planned after create-job with task_type="
         )
 
     def test_smoke_asserts_single_write_readme_task(self):

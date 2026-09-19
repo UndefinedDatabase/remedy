@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from packages.core.models import RunState
 from packages.orchestration.pingpong_job import (
     JOB_STOPPED,
     TASK_PENDING,
@@ -103,4 +104,43 @@ class TestDescribeSelfUseRunDefects:
             "job 5edc7cfc1dee4d75 (stopped): stop_reason=budget_exhausted:max_provider_calls; "
             "stop_source=budget",
             "T001 (pending): final_status=stopped",
+        )
+
+    def test_a_stop_that_never_finalized_surfaces_its_stop_and_its_manifest_error(self):
+        """R-0826: SU-012's run — the stop was recorded but the manifest write failed,
+        so the state stayed ``running`` while every ``error`` stayed blank."""
+        manifest_error = "run_manifest_write_failed: ManifestError: disk gone"
+        result = JobPlan(
+            job_id="020c1ef366af4f07",
+            state=RunState.RUNNING,
+            stop_reason="budget_exhausted:max_provider_calls",
+            stop_source="budget",
+            stopped_at="2026-09-07T15:03:52.142876+00:00",
+            run_manifest_error=manifest_error,
+            tasks=[TaskEntry(task_id="T001", status=TASK_PENDING, final_status="stopped")],
+        )
+        assert result.error == "" and result.tasks[0].error == ""
+        assert describe_self_use_run_defects(result) == (
+            "job 020c1ef366af4f07 (running): stop_reason=budget_exhausted:max_provider_calls; "
+            "stop_source=budget",
+            f"job 020c1ef366af4f07 (running): run_manifest_error={manifest_error}",
+            "T001 (pending): final_status=stopped",
+        )
+
+    def test_a_task_that_did_not_pass_with_a_blank_error_is_named(self):
+        """R-0826: any final status other than ``staged_review_passed`` is a defect
+        when the task's own ``error`` says nothing; a task that never ran is not."""
+        result = JobPlan(
+            job_id="aaaabbbbccccdddd",
+            state=RunState.COMPLETED,
+            tasks=[
+                TaskEntry(task_id="T001", status=RunState.COMPLETED,
+                          final_status="staged_review_passed"),
+                TaskEntry(task_id="T002", status=RunState.COMPLETED,
+                          final_status="review_failed"),
+                TaskEntry(task_id="T003", status=TASK_PENDING),
+            ],
+        )
+        assert describe_self_use_run_defects(result) == (
+            "T002 (completed): final_status=review_failed",
         )

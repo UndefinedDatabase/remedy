@@ -771,6 +771,34 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
         assert done.budget_prediction is None
         assert builder.build_calls == 0
 
+    def test_a_provider_call_budget_stop_persists_stopped_with_a_finish_time(
+            self, isolate_data_root, demo_repo):
+        # R-0828: a job its own `max_provider_calls` budget stops is STOPPED on disk
+        # and carries the time it finished, like every other terminal state.
+        # A provider named "fake" is never counted, so this one carries another name.
+        from packages.orchestration.pingpong_job import (
+            JOB_STOPPED,
+            load_job_plan,
+            parse_job_file,
+            run_job,
+        )
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        class _Counted(FakeProvider):
+            @property
+            def name(self) -> str:
+                return "counted-stub"
+
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        run_job(job.job_id, builder_provider=_Counted(pass_on_round=1, fail_on_round=99),
+                reviewer_provider=_Counted(pass_on_round=1, fail_on_round=99),
+                repair_rounds=0, budgets={"max_provider_calls": 1})
+        on_disk = load_job_plan(job.job_id)
+        assert on_disk.state == JOB_STOPPED
+        assert on_disk.stop_reason == "budget_exhausted:max_provider_calls"
+        assert on_disk.stop_source == "budget"
+        assert on_disk.finished_at.strip()
+
     # -- REGRESSION: the inert paths --------------------------------------
     def test_without_a_cost_limit_nothing_is_predicted(
             self, isolate_data_root, demo_repo, monkeypatch):

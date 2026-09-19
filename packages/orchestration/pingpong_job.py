@@ -3914,6 +3914,7 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
 
     # --- 5. the durable STOPPED checkpoint --------------------------------------------
     job.state = JOB_STOPPED
+    job.finished_at = datetime.now(timezone.utc).isoformat()   # R-0828
     job.error = ""
     _persist_job(job)                 # if THIS throws, the request is still pending: good
 

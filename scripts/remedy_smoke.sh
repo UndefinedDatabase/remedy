@@ -312,7 +312,7 @@ job = json.loads(Path(sys.argv[1]).read_text())
 state = job.get('status', '')
 tasks = job.get('tasks', [])
 if state != 'planned':
-    print('ERROR: job state must be planned after job create --task-type, got: ' + repr(state), file=sys.stderr)
+    print('ERROR: job state must be planned after _cmd_create_job with task_type=, got: ' + repr(state), file=sys.stderr)
     sys.exit(1)
 if len(tasks) != 1:
     print('ERROR: expected exactly 1 task, got ' + str(len(tasks)), file=sys.stderr)
