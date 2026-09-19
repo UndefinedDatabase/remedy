@@ -2659,6 +2659,7 @@ def _call_with_retry(
         # "what counts as a timeout" is a second definition, and definitions drift.
         is_timeout = is_timeout_error(out.error)
         is_nonzero = is_nonzero_exit_error(out.error)
+        # WHY: ReviewerOutput.verdict defaults to "blocked", so ONLY the "provider_error:" prefix keeps a reviewer transport error (a rate limit too) retryable — R-0378.
         is_reject = (
             hasattr(out, "verdict")
             and out.verdict in ("needs_repair", "fail", "blocked")

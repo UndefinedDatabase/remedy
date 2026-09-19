@@ -114,7 +114,7 @@ describe("buildDecisionResolveCommand", () => {
     expect(buildDecisionResolveCommand(modelFrom(openCardEntry()), "", GOOD_NONCE)).toBeNull();
   });
 
-  it("refuses a whitespace-only answer, which the server accepts and writes ONCE", () => {
+  it("refuses a whitespace-only answer, one round trip before the server refuses it too", () => {
     const model = modelFrom(openCardEntry());
     expect(buildDecisionResolveCommand(model, "   ", GOOD_NONCE)).toBeNull();
     expect(buildDecisionResolveCommand(model, "\t", GOOD_NONCE)).toBeNull();

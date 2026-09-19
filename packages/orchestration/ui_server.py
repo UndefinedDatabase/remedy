@@ -2410,6 +2410,11 @@ COMMAND_EFFECT_SOURCE = "ui"
 #: this door issues (DECISION F009 D22, third clause).
 COMMAND_DECISION_STATE_MESSAGE = "decision is not open"
 
+#: What a `decision.resolve` whose `args.answer` is blank once stripped returns: a 400
+#: on field `answer`, audited `rejected_shape` (R-0685). Written once, a blank answer
+#: would resolve the decision with nothing and could never be corrected.
+COMMAND_BLANK_ANSWER_MESSAGE = "answer must not be blank"
+
 #: What an id that `_command_is_ui_exposed` admits but no dispatch clause matches
 #: returns. DECISION F009 D22 keeps the 501 as a GUARD rather than a placeholder:
 #: without it such a request falls off the end of the handler with no response
@@ -2861,7 +2866,8 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 return
             if accepted_body is None:
                 # D21, clause three: the effect RAN and DECLINED — the decision
-                # is absent or is no longer open. Nothing changed on disk, so
+                # is absent or is no longer open, or an absent answer degraded to ""
+                # and `answer_task_decision` refused it (R-0685). Nothing changed on disk, so
                 # nothing is published and a retry cannot answer it differently.
                 self._audit_attempt(str(job.job_id), "rejected_state", create=True,
                                     payload=payload)
@@ -2940,8 +2946,11 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         DECISION F009 D21: `answer_task_decision` and `save_job` are BOTH the
         effect, because the answer is durable only once `save_job` returns, so a
         raise from either is D18 clause four's `rejected_effect`. A None return
-        is NOT a failure — the decision is absent or is no longer open — and the
-        caller answers it 409 and audits it `rejected_state`.
+        is NOT a failure — the decision is absent or is no longer open, or an
+        absent or non-string answer degraded to "", which `answer_task_decision`
+        refuses (R-0685) — and the caller answers it 409 and audits it
+        `rejected_state`. A blank STRING answer never gets here: it is
+        `_read_command_payload`'s 400 on field `answer`.
 
         DECISION F009 D22: `source` is deliberately NOT passed, so the answer
         takes `answer_task_decision`'s default of `human`. `answer_source` names
@@ -3303,6 +3312,13 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         args = payload.get("args", {})
         if not isinstance(args, dict):
             return None, _command_field_error("args", "args must be a JSON object")
+        # R-0685: a blank answer is a SHAPE error, refused before any decision is read,
+        # so an OPEN decision is never answered "not open". An ABSENT or non-string
+        # answer still degrades to "" in `_dispatch_decision_resolve`, as D14 rules.
+        answer = args.get("answer")
+        if (command == DECISION_RESOLVE_COMMAND_ID and isinstance(answer, str)
+                and not answer.strip()):
+            return None, _command_field_error("answer", COMMAND_BLANK_ANSWER_MESSAGE)
         return {"command": command, "client_nonce": client_nonce, "args": args}, None
 
     def do_PUT(self) -> None:  # noqa: N802

@@ -497,6 +497,55 @@ class TestCommandChannelDoor:
             control_root_path=self.tmp_path / "control") == {"status": 200,
                                                              "body": body}
 
+    def test_a_whitespace_only_answer_is_refused_and_the_decision_stays_open(self):
+        """R-0685's server half: a blank answer resolves nothing, so it can be corrected.
+
+        Before the refusal the door answered this 200 and wrote `"   "` ONCE, and the
+        correction below was answered 409. The refusal is a SHAPE error on field
+        `answer`, never the "decision is not open" 409 — the decision IS open. Both
+        halves are asserted: the record stays OPEN on disk, and the real answer that
+        follows is accepted.
+        """
+        from datetime import datetime, timezone
+
+        from packages.orchestration.escalation import (
+            enqueue_task_decision,
+            find_task_decision,
+        )
+        from packages.orchestration.pingpong_job import load_job_plan, save_job_plan
+
+        record = enqueue_task_decision(
+            self.job, task_id=self.job.tasks[0].task_id,
+            question="Which database should the task use?",
+            now=datetime.now(timezone.utc))
+        save_job_plan(self.job)
+        decision_id = record["decision_id"]
+
+        port, token = self._start_server()
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(
+                command="decision.resolve", client_nonce="nonce-blank",
+                args={"decision_id": decision_id, "answer": " \t\n "}),
+            headers=self._auth_headers(token))
+
+        assert status == 400, body
+        assert body == {"error": "answer must not be blank", "field": "answer"}, body
+        assert self._audit_records()[-1]["outcome"] == "rejected_shape"
+        still_open = find_task_decision(load_job_plan(self.job.job_id), decision_id)
+        assert still_open["status"] == "open", still_open
+        assert still_open["answer"] == "", still_open
+
+        status, body = self._request(
+            port, "POST", self._commands_path(),
+            body=self._valid_body(
+                command="decision.resolve", client_nonce="nonce-corrected",
+                args={"decision_id": decision_id, "answer": "postgres"}),
+            headers=self._auth_headers(token))
+        assert status == 200, body
+        answered = find_task_decision(load_job_plan(self.job.job_id), decision_id)
+        assert answered["answer"] == "postgres", answered
+
     def test_yes_to_a_contract_remainder_decision_starts_the_follow_up_mission(self):
         """DECISION F269 D9 (3): the cockpit's `yes` acts as the CLI's does.
 
@@ -1620,6 +1669,86 @@ class TestCommandDoorImportGuard:
         assert [(m, n) for m, n in found if m in self.FORBIDDEN_MODULES] != []
         assert not {n for m, n in found
                     if m == self.STORAGE_MODULE} <= self.STORAGE_ALLOWED_NAMES
+
+    #: R-0745: the members of FORBIDDEN_MODULES the door reaches TRANSITIVELY, through
+    #: the module-level imports of the modules it imports directly. Equality, not
+    #: containment, so a new reach is a finding until it is recorded here with its route.
+    #: `subprocess` is deliberately absent: `evidence_index` imports it inside its two
+    #: git helpers, so the door's `resolve_job_evidence_dir` import carries no shell.
+    ACCEPTED_TRANSITIVE_FORBIDDEN = frozenset({
+        # command_audit (D6), command_nonce (D8), safe_points -> failure_postmortem:
+        # the door's own audit and nonce records are written through secure_fs.
+        "packages.common.secure_fs",
+        # timeline (D23) and save_job_plan (D21) -> pingpong_job, which imports shutil.
+        "shutil",
+    })
+
+    @staticmethod
+    def _module_level_closure(seeds) -> set:
+        """Every module reached from `seeds` through module-level imports.
+
+        Repository modules are parsed and followed; anything that does not resolve
+        to a file under the repository root is a leaf (the standard library). Imports
+        inside a function body run only when called, so they are not followed.
+        """
+        import ast
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2]
+
+        def resolve(name):
+            base = root.joinpath(*name.split("."))
+            for cand in (base.with_suffix(".py"), base / "__init__.py"):
+                if cand.is_file():
+                    return cand
+            return None
+
+        def imports_of(path):
+            out = []
+            pending = list(ast.parse(path.read_text(encoding="utf-8")).body)
+            while pending:
+                node = pending.pop()
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                    continue
+                if isinstance(node, ast.Import):
+                    out.extend(a.name for a in node.names)
+                elif isinstance(node, ast.ImportFrom):
+                    assert node.level == 0, f"relative import in {path}"
+                    out.append(node.module)
+                    # `from pkg import mod` imports a module when `pkg.mod` is one.
+                    out.extend(f"{node.module}.{a.name}" for a in node.names
+                               if resolve(f"{node.module}.{a.name}"))
+                pending.extend(ast.iter_child_nodes(node))
+            return out
+
+        seen, stack = set(), list(seeds)
+        while stack:
+            name = stack.pop()
+            parts = name.split(".")
+            for i in range(1, len(parts) + 1):  # importing a.b.c runs a and a.b first
+                prefix = ".".join(parts[:i])
+                if prefix in seen:
+                    continue
+                path = resolve(prefix)
+                if path is None and i < len(parts) and not root.joinpath(*parts[:i]).is_dir():
+                    break  # `a.b` where `a` is a stdlib module: `a` is the leaf
+                seen.add(prefix)
+                if path is not None:
+                    stack.extend(imports_of(path))
+        return seen
+
+    def test_the_door_reaches_only_the_accepted_forbidden_modules_transitively(self):
+        """R-0745: a direct-import guard cannot see what an imported module drags in.
+
+        Equality also keeps DECISION F033 D4 over the closure: no applier is accepted,
+        so an applier reached through any imported module fails here by name.
+        """
+        found = self._door_imports(self._server_source(), self.DOOR_METHODS)
+        reached = self._module_level_closure({m for m, _ in found}) & self.FORBIDDEN_MODULES
+        assert reached == set(self.ACCEPTED_TRANSITIVE_FORBIDDEN), {
+            "unrecorded": sorted(reached - self.ACCEPTED_TRANSITIVE_FORBIDDEN),
+            "vanished": sorted(self.ACCEPTED_TRANSITIVE_FORBIDDEN - reached),
+        }
 
 
 class TestUiExposedCommands:

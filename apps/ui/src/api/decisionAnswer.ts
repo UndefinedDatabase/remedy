@@ -23,20 +23,19 @@
 // searching this file for a request, a retry, a header or a token is searching
 // for something this module refuses to have.
 //
-// THE REFUSALS ARE NOT ALL MIRRORS, AND NONE OF THEM IS AN AUTHORITY. The
-// missing-id refusal, the nonce refusal and the not-open refusal are each a
-// SECOND copy of a rule `packages/orchestration/ui_server.py` already enforces:
-// for those the server's check stays the only authority, and this one exists to
-// spare the operator a round trip, never to replace it.
+// THE REFUSALS ARE MIRRORS, AND NONE OF THEM IS AN AUTHORITY. The missing-id
+// refusal, the nonce refusal, the not-open refusal and the blank-answer refusal
+// are each a SECOND copy of a rule the server already enforces: for those the
+// server's check stays the only authority, and this one exists to spare the
+// operator a round trip, never to replace it.
 //
-// THE BLANK-ANSWER REFUSAL IS THE BROWSER'S ALONE and mirrors nothing. The
-// server validates the answer's CONTENT not at all — `_dispatch_decision_resolve`
-// hands `args["answer"]` straight to `answer_task_decision`, which writes it and
-// returns — and answers are written ONCE, so a decision resolved with whitespace
-// is accepted 200, persisted, and can never be re-answered through this door.
-// That makes this the only place a blank answer can still be stopped. DECISION
-// F031 D14 rules the divergence deliberate and routes the server-side check to
-// F009, which owns the write door.
+// THE BLANK-ANSWER RULE on the server (R-0685): the door refuses an answer that
+// is blank once stripped as a shape error — 400 on field `answer`, before any
+// decision is read — and `answer_task_decision` in
+// `packages/orchestration/escalation.py` refuses it again for every other caller,
+// leaving the decision OPEN. Answers are written ONCE, so a blank one reaching the
+// record could never be corrected — which is why every half refuses it. DECISION
+// F031 D14 routed the server half to F009; F273 T008 landed it.
 import type { DecisionCardModel } from "./decisionCard";
 
 /** The command id the server routes a decision answer by, in the server's OWN
@@ -141,8 +140,8 @@ export function buildDecisionResolveCommand(
   if (model.id === "") {
     return null;
   }
-  // Refused because the record is written ONCE and the server checks nothing:
-  // a decision resolved with whitespace can never be re-answered.
+  // Refused because the record is written ONCE: a decision resolved with
+  // whitespace could never be re-answered. The server refuses it too (R-0685).
   if (trimmedAnswer === "") {
     return null;
   }

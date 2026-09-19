@@ -680,6 +680,39 @@ class TestRateGovernorSeam:
 
     @pytest.mark.unit
     @patch("packages.orchestration.pingpong_loop._time.sleep")
+    def test_provider_error_prefixed_reviewer_rate_limit_is_retried(self, mock_sleep):
+        """R-0378: the ``provider_error:`` prefix is what keeps a reviewer rate limit paced.
+
+        The first output leaves ``verdict`` at its DEFAULT, and the assertion on it is the
+        point: that default is ``"blocked"``, a reject verdict, so without the prefix
+        exemption in ``_call_with_retry``'s reject predicate this call is a review reject
+        and returns before the governor is consulted.
+        """
+        clock = SeamFakeClock()
+        governor = _seam_governor(clock)
+        result = PingPongResult()
+        rate_limited = ReviewerOutput(
+            error="provider_error: RuntimeError: 429 Too Many Requests", provider="acme")
+        assert rate_limited.verdict == "blocked"
+        outputs = [rate_limited, ReviewerOutput(verdict="pass", provider="acme")]
+
+        out = _call_with_retry(
+            lambda: outputs.pop(0),
+            result=result,
+            role="reviewer",
+            provider="acme",
+            rate_governor=governor,
+        )
+
+        assert out.verdict == "pass"
+        assert outputs == []
+        assert result.retries_used == 1
+        assert len(result.rate_limit_waits) == 1
+        assert result.rate_limit_waits[0]["reason"] == RATE_LIMIT_REASON_RATE_LIMITED
+        assert result.rate_limit_waits[0]["waited_s"] > 0.0
+
+    @pytest.mark.unit
+    @patch("packages.orchestration.pingpong_loop._time.sleep")
     def test_parse_retry_rate_limit_is_paced_end_to_end(self, mock_sleep, tmp_path):
         """R-0374: the reviewer PARSE-RETRY call site is paced by the governor too.
 
