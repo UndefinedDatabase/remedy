@@ -1,0 +1,7 @@
+Builder: ollama
+Builder Model: muse-glimmer:latest
+Reviewer: ollama
+Reviewer Model: muse-glimmer:latest
+Repair Rounds Allowed: 2
+Max Rounds: 3
+Isolation: worktree

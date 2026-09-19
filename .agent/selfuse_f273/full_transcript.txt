@@ -1,0 +1,24 @@
+Job ID: 468c8e62a2cc4fac
+Job Title: Address ledger finding R-0499
+Job State: blocked
+Isolation Mode: worktree
+Worktree Path: .remedy-wt/job-468c8e62a2cc4fac
+Worktree Cleanup Status: retained
+Error: task_T001_gate_failed: final_status=review_inconsistent; reviewer_verdict=fail
+
+Execution:
+- Builder: ollama
+- Reviewer: ollama
+- Repair Rounds: 2
+- Created: 2026-09-19T20:23:20.356558+00:00
+- Finished: 
+
+Task Summary:
+
+Task T001: Task 1
+- Status: blocked
+- Reviewer Verdict: fail
+- Final Status: review_inconsistent
+- Repair Rounds Used: 0
+- Repair Rounds Allowed: 2
+- Error: completion_gate_failed: final_status=review_inconsistent; reviewer_verdict=fail

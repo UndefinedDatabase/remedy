@@ -1,0 +1,14 @@
+Job ID: 468c8e62a2cc4fac
+Mirror: {"error": "", "ledger_mirrored": true, "out_dir": "/home/decodeux/Repos/remedy/.data/evidence_exports/468c8e62a2cc4fac"}
+Ledger project: 83cdfe8b-0885-4b64-95d1-6d7bd7c37389
+Ledger path: /home/decodeux/Repos/remedy/.data/projects/83cdfe8b-0885-4b64-95d1-6d7bd7c37389/ledger.sqlite
+Provider calls in the run records: 2
+  call T001 seq=1 round=1 role=builder
+  call T001 seq=2 round=1 role=reviewer
+Ledger rows for the job: 2
+  row 468c8e62a2cc4fac:T001:1 task=T001 role=builder
+  row 468c8e62a2cc4fac:T001:2 task=T001 role=reviewer
+Rows by role (query_cost by=role): [["builder", 1], ["reviewer", 1]]
+Total calls (query_cost): 2
+verify_ledger: {"checked": 1, "missing_rows": [], "orphan_rows": [], "drifted_rows": [], "unreadable": [], "has_drift": false}
+rows == calls: True
