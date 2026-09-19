@@ -252,7 +252,7 @@ class TestStreamArtifactsReachTheReviewZip:
         # set on the child below, never inherited outer-shell state).
         for helper in ("select_review_evidence.py", "stage_review_evidence.py",
                        "build_observability_index.py", "build_review_manifest.py",
-                       "build_review_zip.py"):
+                       "rotate_live_review.py", "build_review_zip.py"):
             src = MAKE_REVIEW_ZIP.parent / helper
             assert src.exists(), f"missing pipeline helper in the real repo: {helper}"
             shutil.copy2(src, repo / "scripts" / helper)

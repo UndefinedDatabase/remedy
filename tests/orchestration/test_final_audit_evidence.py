@@ -1,6 +1,11 @@
 """Tests for the cockpit bridge adapter and the review manifest's review state and subject."""
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 
 class TestCockpitBridgeAdapter:
     def test_load_job_accepts_uuid(self):
@@ -21,17 +26,26 @@ class TestCockpitBridgeAdapter:
 
 
 class TestReviewStateExtraction:
+    """The manifest reads the live ledger in the format the ledger is written in.
+
+    `Gate: F<n> R<n> — ... VERDICT <X>.` records carry the verdicts and
+    `- R-<n> — <Severity>...` lines register findings, closed by `Done: R-<n> — `
+    lines; the state is read through `scripts/rotate_live_review.py`, the canonical
+    reader, never through a private regex (T016 (b)).
+    """
+
     def test_pass_verdict_review_ready(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         agent_dir = tmp_path / ".agent"
         agent_dir.mkdir()
         (agent_dir / "live_review.md").write_text(
-            "# Live Review\n\n"
-            "## Verdict (reviewer-owned)\n"
-            "**PASS** @ abc123\n\n"
-            "---\n\n"
-            "## Builder Handoff — PR #100 merged\n\n"
-            "### Changed Files\n- foo.py\n"
+            "# Live Review — F900 Synthetic\n\n"
+            "## Findings\n\n"
+            "- R-0001 — Low, A FINDING THAT WAS RESOLVED.\n\n"
+            "Done: R-0001 — resolved at R2 by commit abc1234.\n\n"
+            "Gate: F900 R2 — the F900 round 2 entry. VERDICT PASS. Re-derived.\n\n"
+            "## Builder Handoff — PR #100 merged\n",
+            encoding="utf-8",
         )
         (agent_dir / "plan.md").write_text(
             "# Plan — Steps 100-120\n\n## Goal\nDo stuff.\n"
@@ -45,17 +59,16 @@ class TestReviewStateExtraction:
         assert rs["plan_step_range"] == "100-120"
         assert rs["plan_goal_present"] is True
 
-    def test_pending_verdict_not_ready(self, tmp_path, monkeypatch):
+    def test_a_ledger_with_no_gate_record_has_an_absent_verdict(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         agent_dir = tmp_path / ".agent"
         agent_dir.mkdir()
         (agent_dir / "live_review.md").write_text(
-            "# Live Review\n\n"
-            "## Verdict (reviewer-owned)\n"
-            "*(pending reviewer)*\n"
+            "# Live Review — F900 Synthetic\n\n## Findings\n", encoding="utf-8",
         )
         from scripts.build_review_manifest import _extract_review_state
         rs = _extract_review_state()
+        assert rs["latest_live_review_verdict"] == "absent"
         assert rs["review_ready"] is False
 
     def test_open_findings_not_ready(self, tmp_path, monkeypatch):
@@ -63,40 +76,29 @@ class TestReviewStateExtraction:
         agent_dir = tmp_path / ".agent"
         agent_dir.mkdir()
         (agent_dir / "live_review.md").write_text(
-            "# Live Review\n\n"
-            "## Verdict (reviewer-owned)\n"
-            "**PASS** @ abc123\n\n"
-            "## Builder Handoff — PR merged\n\n"
-            "### R-9001 Blocker — something\n"
-            "Still open.\n"
+            "# Live Review — F900 Synthetic\n\n"
+            "## Findings\n\n"
+            "- R-9001 — High, SOMETHING STILL OPEN.\n\n"
+            "Gate: F900 R1 — the F900 round 1 entry. VERDICT PASS.\n\n"
+            "## Builder Handoff — PR merged\n",
+            encoding="utf-8",
         )
         from scripts.build_review_manifest import _extract_review_state
         rs = _extract_review_state()
         assert rs["review_ready"] is False
-        assert "R-9001" in rs["open_findings"]
+        assert rs["open_findings"] == ["R-9001"]
 
-    def test_an_accepted_with_risks_closure_is_machine_readable(
-        self, tmp_path, monkeypatch,
-    ):
-        """The exact shape of an accepted closure live review.
-
-        The F007 closure package shipped a live review headed `## Verdict` with the
-        verdict on the next line. `remedy integrity check` accepted that (it reads the
-        line after any `## Verdict` heading), so the operator believed the verdict was
-        machine-readable — but the review MANIFEST requires the reviewer-owned heading and
-        a bold token, found neither, and packaged `latest_live_review_verdict: "absent"`.
-        This pins the contract the manifest actually parses.
-        """
+    def test_the_last_gate_record_carries_the_verdict(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         agent_dir = tmp_path / ".agent"
         agent_dir.mkdir()
         (agent_dir / "live_review.md").write_text(
-            "# Live Review — Steps 6621-6660 — F007 closure\n\n"
-            "## Verdict (reviewer-owned)\n"
-            "**PASS_WITH_RISKS** — ACCEPTED (F007, external review, 2026-07-13; "
-            "0 open findings)\n\n"
-            "## Builder Handoff\n\n"
-            "Operator closure by hand: no Builder, no provider call.\n"
+            "# Live Review — F900 Synthetic\n\n"
+            "Gate: F900 R1 — the F900 round 1 entry. VERDICT FAIL. One red.\n\n"
+            "Gate: F900 R2 — THE ROUND 1 VERDICT BOOKED INTO THE RECORD. "
+            "VERDICT PASS_WITH_RISKS — the closure verdict.\n\n"
+            "## Builder Handoff\n",
+            encoding="utf-8",
         )
         from scripts.build_review_manifest import _extract_review_state
         rs = _extract_review_state()
@@ -113,14 +115,36 @@ class TestReviewStateExtraction:
         agent_dir = tmp_path / ".agent"
         agent_dir.mkdir()
         (agent_dir / "live_review.md").write_text(
-            "# Live Review\n\n"
-            "## Verdict (reviewer-owned)\n"
-            "**PASS** @ abc123\n"
+            "# Live Review — F900 Synthetic\n\n"
+            "Gate: F900 R1 — the F900 round 1 entry. VERDICT PASS.\n",
+            encoding="utf-8",
         )
         from scripts.build_review_manifest import _extract_review_state
         rs = _extract_review_state()
         assert rs["review_ready"] is False
         assert rs["builder_handoff_present"] is False
+
+    def test_the_manifest_reads_the_real_ledger_as_the_canonical_reader_does(self, monkeypatch):
+        """T016 (b): fed the REAL `.agent/live_review.md`, the manifest's open set is
+        the canonical reader's by distinct id, and its verdict is the last booked
+        `Gate:` record's. The reader it replaced found no `## Verdict (reviewer-owned)`
+        heading and no `### R-<n>` block there, and reported `absent` and `[]`."""
+        from scripts.build_review_manifest import _extract_review_state
+        from scripts.rotate_live_review import count_open_findings, open_finding_ids
+
+        ledger = REPO_ROOT / ".agent" / "live_review.md"
+        text = ledger.read_bytes().decode("utf-8")
+        monkeypatch.chdir(REPO_ROOT)
+        rs = _extract_review_state()
+
+        assert rs["review_state_source"] == ".agent/live_review.md"
+        assert len(rs["open_findings"]) == count_open_findings(text)
+        assert rs["open_findings"] == open_finding_ids(text)
+        # the last booked verdict, read off the last `Gate:` line independently
+        last_gate = [line for line in text.split("\n") if line.startswith("Gate: ")][-1]
+        booked = re.search(r"\bVERDICT (PASS_WITH_RISKS|PASS|FAIL|NEEDS_REPAIR|BLOCKED)\b", last_gate)
+        assert booked is not None, last_gate[:120]
+        assert rs["latest_live_review_verdict"] == booked.group(1)
 
 
 class TestReviewSubjectClassification:

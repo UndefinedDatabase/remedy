@@ -100,8 +100,11 @@ def _run(ledger: Path, status: Path, archive: Path, *extra: str) -> int:
 
 
 def _open_count(data: bytes) -> int:
+    """The open set by DISTINCT id: registered ids minus ids carrying a ``Done:`` line."""
     text = data.decode("utf-8")
-    return len(re.findall(r"^- R-\d{4} — ", text, re.M)) - len(re.findall(r"^Done: R-\d{4} — ", text, re.M))
+    registered = set(re.findall(r"^- (R-\d{4}) — ", text, re.M))
+    done = set(re.findall(r"^Done: (R-\d{4}) — ", text, re.M))
+    return len(registered - done)
 
 
 def test_moved_records_reappear_byte_identical_and_leave_the_ledger(tmp_path: Path) -> None:
@@ -162,12 +165,39 @@ def test_non_movable_records_stay_in_place(tmp_path: Path) -> None:
 def test_open_findings_count_is_identical_before_and_after(tmp_path: Path) -> None:
     ledger, status, archive = _write(tmp_path, _ledger_text())
     before = _open_count(ledger.read_bytes())
-    assert before == 4 - 3  # four registrations, three Done lines
+    assert before == 4 - 2  # four registered ids, two of them carry a Done line (R-0003 two)
+    assert rot.count_open_findings(ledger.read_bytes().decode("utf-8")) == before
 
     assert _run(ledger, status, archive) == 0
 
     assert _open_count(ledger.read_bytes()) == before
     assert _open_count(ledger.read_bytes() + b"\n" + archive.read_bytes()) == before
+
+
+def test_the_open_set_counts_by_distinct_id_not_by_line() -> None:
+    """T016 (b): an id with two ``Done:`` lines is closed ONCE, and an id registered
+    twice is ONE open id; the line formula read ``3 - 3 = 0`` here."""
+    text = _ledger_text(
+        [
+            OPEN_FINDING,
+            OPEN_FINDING.replace("wrapped continuation", "a second registration"),
+            TWICE_REG,
+            TWICE_DONE_1,
+            TWICE_DONE_2,
+            "Done: R-0009 — a Done line whose registration is elsewhere closes nothing here.",
+        ]
+    )
+    assert rot.open_finding_ids(text) == ["R-0001"]
+    assert rot.count_open_findings(text) == 1
+
+
+def test_the_latest_gate_verdict_is_the_last_gate_records() -> None:
+    assert rot.latest_gate_verdict(_ledger_text([OPEN_FINDING])) == "absent"
+    assert rot.latest_gate_verdict(_ledger_text()) == "PASS"
+    failed = "Gate: F901 R2 — THE ROUND 1 VERDICT INTO THE RECORD. VERDICT FAIL. One red."
+    assert rot.latest_gate_verdict(_ledger_text([GATE_OPEN_FEATURE, failed, DECISION])) == "FAIL"
+    prose = "Gate: F901 R3 — the round 3 entry, no verdict word in it."
+    assert rot.latest_gate_verdict(_ledger_text([GATE_OPEN_FEATURE, prose])) == "unparsed"
 
 
 def test_archive_is_append_only_across_a_second_rotation(tmp_path: Path) -> None:
@@ -259,7 +289,7 @@ def test_dry_run_prints_the_sizes_and_writes_nothing(tmp_path: Path, capsys) -> 
     assert re.search(r"^new archive size: \d+ bytes$", out, re.M)
     assert "gate records moved: 2" in out
     assert "finding pairs moved: 1 (2 records)" in out
-    assert "open findings before: 1" in out and "open findings after: 1" in out
+    assert "open findings before: 2" in out and "open findings after: 2" in out
     assert "dry run; nothing written" in out
     assert ledger.read_bytes() == original_ledger
     assert ledger.stat().st_mtime_ns == ledger_mtime

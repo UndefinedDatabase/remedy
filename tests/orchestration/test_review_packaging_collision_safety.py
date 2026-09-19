@@ -17,7 +17,8 @@ pytestmark = pytest.mark.skipif(
     reason="git and bash required")
 
 _HELPERS = ("select_review_evidence.py", "stage_review_evidence.py",
-            "build_observability_index.py", "build_review_manifest.py", "build_review_zip.py")
+            "build_observability_index.py", "build_review_manifest.py", "build_review_zip.py",
+            "rotate_live_review.py")
 
 
 def _mini_repo(tmp_path: Path) -> Path:

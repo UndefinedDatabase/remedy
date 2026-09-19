@@ -91,8 +91,6 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "run by hand in every closure, STATUS_closure_protocol.md precondition 6 (F258 T002); a D11 entry point"),
     ("scripts/remedy_agent_tooling_doctor.py",
      "run by hand after tooling changes, per .claude/skills/remedy-agent-tooling/SKILL.md"),
-    ("scripts/rotate_live_review.py",
-     "run by hand in every closure sequence, per docs/agents/self_drive_protocol.md"),
     ("scripts/self_run_gauntlet.py",
      "the gauntlet campaign CLI, run by hand (docs/adr/0001, gauntlet_evaluator.py names it)"),
 )

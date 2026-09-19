@@ -20,7 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 _REQUIRED_SCRIPTS = ("make_review_zip.sh", "build_review_manifest.py", "build_review_zip.py",
                      "build_observability_index.py", "select_review_evidence.py",
-                     "stage_review_evidence.py")
+                     "stage_review_evidence.py", "rotate_live_review.py")
 _REQUIRED_MODULES = ("packages/orchestration/__init__.py", "packages/orchestration/data_paths.py",
                      "packages/orchestration/evidence_index.py",
                      "packages/orchestration/review_zip.py",

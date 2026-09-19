@@ -479,3 +479,65 @@ class TestDeletedSourceFileDoesNotBlockTheBundle:
         # Every SURVIVING changed source path still attests its content.
         for surviving in ("src_pkg/alpha.py", "src_pkg/beta.py"):
             assert surviving in hashes, sorted(hashes)
+
+    def test_the_content_proof_carries_a_tombstone_for_every_deleted_path(self, tmp_path, monkeypatch):
+        """R-0839 — the producer wrote ``"tombstones": {}`` and ``"tombstone_count": 0`` as literals,
+        so its content proof could not tell DELETED from NEVER IN SCOPE. The proof's tombstone set
+        must equal the deleted set, each carrying the removed blob's ``base_sha256`` from the review
+        subject, and ``ContentProofV1.authority_paths()`` must therefore cover the deleted path."""
+        from packages.orchestration.review_subject import decode_content_proof_v1
+
+        repo, base, head, evd = self._build_deletion_bundle(tmp_path)
+        proof_doc = json.loads((evd / "current_change_content_proof.json").read_text(encoding="utf-8"))
+        subject = json.loads((evd / "review_subject.json").read_text(encoding="utf-8"))
+        deleted = {f["path"]: f["base_sha256"] for f in subject["files"] if f["status"] == "deleted"}
+        assert deleted and set(deleted) == {"src_pkg/gamma.py"}, subject["files"]
+
+        assert proof_doc["tombstones"] == deleted
+        assert proof_doc["tombstone_count"] == len(deleted)
+        proof = decode_content_proof_v1(proof_doc)  # strict: raises on any schema problem
+        assert "src_pkg/gamma.py" in proof.authority_paths()
+        assert proof.authority_paths() == set(proof_doc["file_hashes"]) | set(deleted)
+
+        # ...and the bundle it sits in still passes the coordinator's own evaluation.
+        monkeypatch.chdir(repo)
+        ev = _brm._view_from_dir(str(evd))
+        assert _brm.validate_manual_completion(ev) == []
+        gm = _brm.evaluate_ready_gate_matrix(ev.gate_loader())
+        assert gm["ok"] is True, gm["blocking_reasons"]
+
+    def _build_deletion_bundle(self, tmp_path):
+        import subprocess
+
+        from packages.orchestration.job_evidence import create_manual_completion_bundle
+
+        repo = tmp_path / "repo"
+        _init_repo(repo)
+        _commit(repo, "src_pkg/alpha.py", "def a():\n    return 1\n", "base alpha")
+        _commit(repo, "src_pkg/beta.py", "def b():\n    return 2\n", "base beta")
+        _commit(repo, "src_pkg/gamma.py", "def g():\n    return 3\n", "base gamma")
+        _commit(repo, "tests_pkg/test_alpha.py", "def test_a():\n    assert True\n", "base ta")
+        _commit(repo, "tests_pkg/test_beta.py", "def test_b():\n    assert True\n", "base tb")
+        base = _rev(repo)
+        _commit(repo, "src_pkg/alpha.py", "def a():\n    return 10\n", "work alpha")
+        _commit(repo, "src_pkg/beta.py", "def b():\n    return 20\n", "work beta")
+        subprocess.run(["git", "rm", "-q", "src_pkg/gamma.py"], cwd=repo, check=True,
+                       capture_output=True)
+        subprocess.run(["git", "commit", "-qm", "drop gamma"], cwd=repo, check=True,
+                       capture_output=True)
+        head = _rev(repo)
+        runs = [{"run_id": "vr-0001", "command": "pytest -q tests_pkg", "exit_code": 0,
+                 "passed": 2, "failed": 0, "test_files": ["tests_pkg/test_alpha.py",
+                 "tests_pkg/test_beta.py"],
+                 "node_ids": ["tests_pkg/test_alpha.py::test_alpha",
+                              "tests_pkg/test_beta.py::test_beta"],
+                 "stdout_summary": "2 passed"}]
+        evd = tmp_path / "evidence"
+        create_manual_completion_bundle(
+            str(evd), repo_root=str(repo), base_commit=base, head_commit=head,
+            job_id="r0839tombstone1", job_title="R-0839 tombstone bundle", step_range="1-2",
+            prior_job_ids=["priorr08390001"], verification_runs=runs,
+            timestamp="2026-09-19T00:00:00+00:00",
+            generated_at="2026-09-19T00:00:00.000000+00:00", num_tasks=2,
+            note_prefix="R-0839 tombstone bundle", review_feature_id="r0839tombstone")
+        return repo, base, head, evd

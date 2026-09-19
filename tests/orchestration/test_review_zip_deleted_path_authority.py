@@ -20,6 +20,7 @@ from packages.orchestration.archive_plan import ArchivePlanError
 from packages.orchestration.review_subject import (
     KIND_DELETED,
     KIND_REGULAR,
+    ContentProofV1,
     ReviewFileV1,
     ReviewSubjectV1,
 )
@@ -95,3 +96,49 @@ class TestDeletedPathIsNotDemandedOfTheAuthoritySet:
         # discriminator fail under the mutation too, and then it could no longer tell a repaired
         # guard apart from a deleted check.
         assert LIVE_B in str(excinfo.value)
+
+
+def _proof(tombstones: dict) -> ContentProofV1:
+    return ContentProofV1(schema_version="1.1.0", base_commit="a" * 40, head_commit="b" * 40,
+                          file_hashes={LIVE_A: "2" * 64, LIVE_B: "4" * 64}, tombstones=tombstones)
+
+
+class TestATombstoneIsBoundToTheSubjectsDeletion:
+    """R-0839 — the content proof now carries a tombstone for the deleted path, so the authority it
+    decodes to is files PLUS tombstones. The coordinator binds each tombstone to a DELETED subject
+    path with the same base blob, and holds the coverage sets to the LIVE authority."""
+
+    def test_a_proof_carrying_the_deletions_tombstone_packages(self):
+        import build_review_zip
+
+        proof = _proof({DELETED: "5" * 64})
+        build_review_zip._assert_authority_equality(
+            authority=proof.authority_paths(),
+            subject=_subject_with_one_deletion(),
+            content_proof=proof,
+            staged=_StagedWithoutReports(),
+        )
+
+    def test_a_tombstone_the_subject_did_not_delete_blocks(self):
+        import build_review_zip
+
+        proof = _proof({"src_pkg/never_here.py": "5" * 64})
+        with pytest.raises(ArchivePlanError, match="tombstone 'src_pkg/never_here.py'"):
+            build_review_zip._assert_authority_equality(
+                authority=proof.authority_paths(),
+                subject=_subject_with_one_deletion(),
+                content_proof=proof,
+                staged=_StagedWithoutReports(),
+            )
+
+    def test_a_tombstone_with_another_blob_blocks(self):
+        import build_review_zip
+
+        proof = _proof({DELETED: "6" * 64})
+        with pytest.raises(ArchivePlanError, match="tombstone"):
+            build_review_zip._assert_authority_equality(
+                authority=proof.authority_paths(),
+                subject=_subject_with_one_deletion(),
+                content_proof=proof,
+                staged=_StagedWithoutReports(),
+            )

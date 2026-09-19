@@ -28,9 +28,14 @@ Verification happens BEFORE any write: the record model must round-trip the
 ledger byte for byte; every moved record must reappear in the new archive
 verbatim and hash (sha256) to the digest taken from the ledger; the new
 archive must start with the old archive's bytes; the open-findings count
-(``^- R-\\d{4} — `` lines minus ``^Done: R-\\d{4} — `` lines) must be identical
-before and after; and the records absent from the new ledger must be exactly
-the moved ones. Any failure exits non-zero and writes nothing.
+(the distinct ids of ``^- R-\\d{4} — `` lines minus the ids carrying at least
+one ``^Done: R-\\d{4} — `` line) must be identical before and after; and the
+records absent from the new ledger must be exactly the moved ones. Any failure
+exits non-zero and writes nothing.
+
+The same module is the ledger's one canonical reader: :func:`open_finding_ids`,
+:func:`count_open_findings` and :func:`latest_gate_verdict` are what every other
+consumer (the review-zip manifest among them) reads the ledger's state through.
 
 Usage::
 
@@ -75,8 +80,13 @@ _GATE_FORMS = (
 )
 _REGISTRATION = re.compile(r"^- (R-\d{4}) — ")
 _DONE = re.compile(r"^Done: (R-\d{4}) — ")
-_OPEN_REGISTRATION_LINE = re.compile(r"^- R-\d{4} — ", re.M)
-_DONE_LINE = re.compile(r"^Done: R-\d{4} — ", re.M)
+_OPEN_REGISTRATION_LINE = re.compile(r"^- (R-\d{4}) — ", re.M)
+_DONE_LINE = re.compile(r"^Done: (R-\d{4}) — ", re.M)
+# The verdict of a ``Gate:`` record is its first ``VERDICT <TOKEN>`` whose token is
+# a known verdict; the archive holds prose such as ``VERDICT INTO THE RECORD`` and
+# ``VERDICT ON THE ...`` ahead of the real one, so an unknown token is skipped.
+_GATE_VERDICT = re.compile(r"\bVERDICT ([A-Z][A-Z_]*)\b")
+GATE_VERDICTS = frozenset({"PASS", "PASS_WITH_RISKS", "FAIL", "NEEDS_REPAIR", "BLOCKED"})
 _CLOSED_FEATURE_LINE = re.compile(r"^- \[x\] F(\d{3}) — ", re.M)
 
 
@@ -117,9 +127,37 @@ def record_digest(body: str) -> str:
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
+def open_finding_ids(text: str) -> list[str]:
+    """The open set, by DISTINCT id: registered ids minus ids carrying at least one ``Done:`` line.
+
+    Sorted. An id registered twice is one id, and an id with two ``Done:`` lines is
+    closed once — the old line formula (registration lines minus ``Done:`` lines)
+    subtracted such an id twice and under-counted the open set.
+    """
+    registered = set(_OPEN_REGISTRATION_LINE.findall(text))
+    done = set(_DONE_LINE.findall(text))
+    return sorted(registered - done)
+
+
 def count_open_findings(text: str) -> int:
-    """The canonical line formula: registration lines minus ``Done:`` lines."""
-    return len(_OPEN_REGISTRATION_LINE.findall(text)) - len(_DONE_LINE.findall(text))
+    """The canonical open-findings count: the length of :func:`open_finding_ids`."""
+    return len(open_finding_ids(text))
+
+
+def latest_gate_verdict(text: str) -> str:
+    """The verdict of the ledger's last ``Gate:`` record, in record order.
+
+    ``"absent"`` when the ledger holds no ``Gate:`` record; ``"unparsed"`` when the
+    last one carries no ``VERDICT <TOKEN>`` with a token of :data:`GATE_VERDICTS`.
+    """
+    records, _ = split_records(text)
+    gates = [record for record in records if record.kind == "gate"]
+    if not gates:
+        return "absent"
+    for match in _GATE_VERDICT.finditer(gates[-1].body):
+        if match.group(1) in GATE_VERDICTS:
+            return match.group(1)
+    return "unparsed"
 
 
 def closed_feature_ids(status_text: str) -> frozenset[str]:

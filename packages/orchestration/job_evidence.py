@@ -3379,6 +3379,7 @@ def create_manual_completion_bundle(
         sha256_text,
     )
     from packages.orchestration.review_subject import (
+        STATUS_DELETED,
         commit_patch_bytes,
         commit_patch_filename,
         resolve_commit_chain,
@@ -3429,14 +3430,22 @@ def create_manual_completion_bundle(
 
     # 3) Review-subject artifacts: subject, content proof, commit chain, canonical patches, diff.
     _w("review_subject.json", subject.to_json())
+    # R-0839: a DELETED attestable path is part of the change, so the content proof carries a
+    # TOMBSTONE for it — the removed blob's ``base_sha256`` — rather than omitting it; "no entry" is
+    # indistinguishable from "never in scope". ``ContentProofV1.authority_paths()`` is the union.
     file_hashes: dict[str, str] = {}
+    tombstones: dict[str, str] = {}
     for f in subject.files:
-        if is_attestable_source(f.path) and f.current_sha256:
+        if not is_attestable_source(f.path):
+            continue
+        if f.current_sha256:
             file_hashes[f.path] = f.current_sha256
+        elif f.status == STATUS_DELETED and f.base_sha256:
+            tombstones[f.path] = f.base_sha256
     _w("current_change_content_proof.json", {
         "schema_version": "1.1.0", "base_commit": base_commit, "head_commit": head_commit,
         "file_hashes": file_hashes, "file_count": len(file_hashes),
-        "tombstones": {}, "tombstone_count": 0})
+        "tombstones": tombstones, "tombstone_count": len(tombstones)})
     chain = resolve_commit_chain(repo_root, base_commit, head_commit)
     _w("review_commit_chain.json", {"chain_v": 1, "base_commit": base_commit,
                                     "head_commit": head_commit,
