@@ -1,5 +1,5 @@
 {
-  "bench_order_set_version": 1,
+  "bench_order_set_version": 2,
   "bench_template_digest": "18321e82360faa7af0f4d34431e48d95a59f71b59248e5add620fd323b8de3e2",
   "orders": [
     {
@@ -24,6 +24,22 @@
       "version": 1,
       "digests": {
         "1": "dbf18a251b7825cb8275036825130553ac0fcd9164e40d7818f5fdb711e14183"
+      }
+    },
+    {
+      "id": "b04-api-create-endpoint",
+      "file": "b04-api-create-endpoint.json",
+      "version": 1,
+      "digests": {
+        "1": "59ec114334941932864758025ed35595b2aa2d5553b1e5c6af893038b309c593"
+      }
+    },
+    {
+      "id": "b05-widget-count-badge",
+      "file": "b05-widget-count-badge.json",
+      "version": 1,
+      "digests": {
+        "1": "563effaba9cec3b1a4c65678b754fa519d2c9a1c449f7a45dbcf93bd66d49949"
       }
     }
   ]

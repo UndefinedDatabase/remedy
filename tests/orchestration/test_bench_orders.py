@@ -15,6 +15,7 @@ import pytest
 
 from packages.orchestration.bench_orders import (
     BENCH_ORDER_SET_VERSION,
+    TEMPLATE_BENCH,
     BenchOrderSetError,
     default_bench_orders_dir,
     default_bench_template_dir,
@@ -22,14 +23,17 @@ from packages.orchestration.bench_orders import (
 )
 from packages.orchestration.gauntlet_orders import BUDGET_KEYS, ORDER_KINDS, template_tree_digest
 
-#: The ids the bench set is frozen at. Three, not five: F082's inventory S3
-#: found the API-endpoint and frontend-widget capabilities inexpressible against
-#: the sample project, and an order that cannot run would be frozen forever.
+#: The ids the bench set is frozen at: F082's five. b04 and b05 (R-0411) run in
+#: the bench's own sample project under DECISION F082 D3, the rest in the
+#: gauntlet's, which has no HTTP surface and no web asset.
 EXPECTED_BENCH_ORDER_IDS = (
     "b01-cli-report-width",
     "b02-config-lookup-bugfix",
     "b03-cli-render-refactor",
+    "b04-api-create-endpoint",
+    "b05-widget-count-badge",
 )
+EXPECTED_BENCH_FIXTURE_ORDER_IDS = ("b04-api-create-endpoint", "b05-widget-count-badge")
 
 
 @pytest.fixture()
@@ -56,6 +60,8 @@ def _entry(body: dict, order_id: str) -> dict:
 def test_the_frozen_set_loads_and_every_order_validates():
     orders = load_bench_order_set()
     assert tuple(o.id for o in orders) == EXPECTED_BENCH_ORDER_IDS
+    assert tuple(o.id for o in orders if o.template == TEMPLATE_BENCH) == \
+        EXPECTED_BENCH_FIXTURE_ORDER_IDS
     for order in orders:
         assert order.version >= 1
         assert order.order.kind in ORDER_KINDS

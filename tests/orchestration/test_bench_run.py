@@ -435,3 +435,11 @@ def test_an_order_naming_the_bench_template_runs_in_it_and_its_evidence_says_so(
     assert worlds == {o.id: BENCH_WORLD if o.template == "bench_sample_project" else GAUNTLET_WORLD
                       for o in load_bench_order_set(orders_dir)}
     assert len(load_order_set()) == 10
+
+
+def test_b04_and_b05_run_in_the_bench_fixture_and_the_rest_in_the_gauntlets(
+        tmp_path: Path, data_root: Path) -> None:
+    fixture_orders = {"b04-api-create-endpoint", "b05-widget-count-badge"}
+    assert _worlds(tmp_path, data_root) == {
+        order.id: BENCH_WORLD if order.id in fixture_orders else GAUNTLET_WORLD
+        for order in load_bench_order_set()}

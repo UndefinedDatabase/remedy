@@ -1,0 +1,32 @@
+{
+  "bench_order_version": 1,
+  "bench_template": "bench_sample_project",
+  "budget": {
+    "max_cycles": 5,
+    "max_iterations": 12,
+    "max_tokens": 700000,
+    "max_wall_seconds": 6000
+  },
+  "budget_rationale": "b01's sizing: one milestone, one module plus its test file, and a smoke run. No measured economics exist for an HTTP order, so the only measured small_app_feature_with_smoke sizing in this repository is reused rather than guessed.",
+  "gauntlet_order_version": 1,
+  "goal": "In the sample project, add POST /items to the item service: a JSON body with a non-blank name creates an item with the next free id and is answered 201 with the created item as JSON; a missing or blank name, or a body that is not JSON, is answered 400 with an error. The new item must then be returned by GET /items and GET /items/<id>. Prove it with tests driving the WSGI app, and with a smoke request against a served instance.",
+  "id": "b04-api-create-endpoint",
+  "injections": [],
+  "kind": "small_app_feature_with_smoke",
+  "milestones": [
+    {
+      "dod": [
+        "POST /items with {\"name\": \"third\"} answers 201 and the created item, and GET /items then lists it",
+        "POST /items with a blank name, no name, or a non-JSON body answers 400",
+        "the existing tests in tests/test_api.py are unedited and green, and new tests cover all three cases",
+        "a smoke POST against python3 -m benchproj.api on a local port answers 201",
+        "no file outside benchproj/api.py and tests/test_api.py changed"
+      ],
+      "id": "m1",
+      "title": "Create endpoint implemented, tested and smoke-proven"
+    }
+  ],
+  "rationale": "The API-endpoint-with-tests capability, written against the bench's own fixture because the gauntlet's sample project has no HTTP surface (R-0411, DECISION F082 D3). Premise, checked by the bench's own test: benchproj/api.py::make_app answers every non-GET method 405 today, so POST /items is refused and the endpoint is genuinely absent; tests/test_api.py already drives the app through wsgiref without a socket, so the harness for the new tests exists and the order asks for an endpoint and its tests, not for test infrastructure. The store is per-app, so a create that leaks between tests is visible.",
+  "risk_probed": "http_endpoint_with_validation_and_its_own_tests",
+  "title": "Add a create endpoint to a small HTTP service and test it"
+}

@@ -58,7 +58,10 @@ from packages.orchestration.gauntlet_orders import (
 #: Bench-set version, bumped by a human when the set itself deliberately changes
 #: (an order added or removed). Per-ORDER versions are independent of it: an
 #: order's series is its own, which is the comparability honesty F082 asks for.
-BENCH_ORDER_SET_VERSION = 1
+#: v2 (R-0411, DECISION F082 D3) adds b04 and b05 against the bench's own
+#: fixture. No count or series is keyed on this number, so the bump resets
+#: nothing: b01 to b03 keep their version 1 bytes and their series.
+BENCH_ORDER_SET_VERSION = 2
 
 #: The worlds an order's ``bench_template`` key may name; absent is the gauntlet's.
 #: The bench owns its own project so the gauntlet's stays frozen (DECISION F082 D3).
