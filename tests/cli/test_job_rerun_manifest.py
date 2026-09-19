@@ -1,10 +1,10 @@
-"""F012 T003 (hardened) — run-input manifest episodes, the stop transaction and the drift diff.
+"""F012 T003 (hardened) — run-input manifest episodes and the stop transaction.
 
 The command-line manifest check these tests also drove was deleted by F261 round 24 with the
-classes that called it. What stays drives the package directly against a real Git target repo:
-episodes (stop→resume→complete), the manifest write inside the stop transaction, the legacy
-marker, and `build_current_candidate` with `diff_manifests`. Nothing re-executes; no provider
-generation call is made.
+classes that called it, and F273 deleted the drift diff it ran (finding R-0931). What stays
+drives the package directly against a real Git target repo: episodes (stop→resume→complete),
+the manifest write inside the stop transaction and the legacy marker. Nothing re-executes; no
+provider generation call is made.
 """
 from __future__ import annotations
 
@@ -41,7 +41,6 @@ def _freeze_remedy_identity(monkeypatch):
     monkeypatch.setattr(_RM, "remedy_worktree_identity", lambda: snapshot)
 
 
-
 def _git_repo(path: Path) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     subprocess.run("git init -q && git config user.email t@t && git config user.name t "
@@ -69,15 +68,6 @@ def repo(tmp_path):
 def _prov():
     from packages.orchestration.pingpong_provider import FakeProvider
     return FakeProvider(pass_on_round=1, fail_on_round=99)
-
-
-@pytest.fixture
-def finished_job(data_root, repo):
-    from packages.orchestration.pingpong_job import parse_job_file, run_job
-    job = parse_job_file(_JOB, str(repo))
-    run_job(job.job_id, builder_provider=_prov(), reviewer_provider=_prov(),
-            repair_rounds=0)
-    return job.job_id
 
 
 # ---------------------------------------------------------------------------
@@ -218,25 +208,6 @@ class TestLegacyMarker:
         assert mi["ok"] is False
 
 
-class TestCompleteVerificationPath:
-    def test_pure_diff_equal_calls_is_same_inputs(self):
-        import tests.orchestration.test_run_manifest as T
-        from packages.orchestration.run_manifest import diff_manifests
-        a = T._mk()
-        b = T._mk()
-        d = diff_manifests(a, b)
-        assert d["same_inputs"] is True and d["verification_complete"] is True
-
-    def test_pure_diff_call_change_is_blocking(self):
-        import tests.orchestration.test_run_manifest as T
-        from packages.orchestration.run_manifest import diff_manifests
-        a = T._mk(calls=(T._call("T001", 1, fp="h1"),))
-        b = T._mk(calls=(T._call("T001", 1, fp="CHANGED"),))
-        d = diff_manifests(a, b)
-        assert d["same_inputs"] is False and any(e["category"] == "prompt"
-                                                 for e in d["blocking"])
-
-
 class TestSharedFinalizedCallContext:
     def test_f010_and_f012_build_the_same_context(self, data_root, repo):
         from packages.orchestration.pingpong_job import parse_job_file, run_job
@@ -263,54 +234,6 @@ class TestSharedFinalizedCallContext:
 # ---------------------------------------------------------------------------
 # Hardening round 3
 # ---------------------------------------------------------------------------
-
-class TestCompleteJobInputDrift:
-    def test_max_rounds_drift_blocks(self, finished_job):
-        from packages.orchestration.pingpong_job import job_evidence_dir, load_job_plan
-        from packages.orchestration.run_manifest import (
-            build_current_candidate,
-            diff_manifests,
-            load_latest_manifest_verified,
-        )
-        ev = job_evidence_dir(finished_job)
-        ref = load_latest_manifest_verified(ev, job_id=finished_job)
-        job = load_job_plan(finished_job)
-        job.execution_config.max_rounds = 99          # a material execution input changed
-        cand = build_current_candidate(ref, job)
-        diff = diff_manifests(ref, cand)
-        assert diff["same_inputs"] is False
-        assert any(e["field"] == "job_input_sha256" for e in diff["blocking"])
-
-    def test_test_command_drift_blocks(self, finished_job):
-        from packages.orchestration.pingpong_job import job_evidence_dir, load_job_plan
-        from packages.orchestration.run_manifest import (
-            build_current_candidate,
-            diff_manifests,
-            load_latest_manifest_verified,
-        )
-        ev = job_evidence_dir(finished_job)
-        ref = load_latest_manifest_verified(ev, job_id=finished_job)
-        job = load_job_plan(finished_job)
-        job.execution_config.test_command = "a-new-test-command"
-        diff = diff_manifests(ref, build_current_candidate(ref, job))
-        assert diff["same_inputs"] is False
-
-
-class TestRemedyContentDrift:
-    def test_remedy_worktree_digest_change_blocks(self):
-        import dataclasses
-
-        import tests.orchestration.test_run_manifest as T
-        from packages.orchestration.run_manifest import diff_manifests
-        a = T._mk()
-        b_snap = dataclasses.replace(
-            a.snapshot, remedy_worktree={"status": "ok", "head": "a" * 40,
-                                         "digest": "CHANGED", "problems": []})
-        b_wrapper = dataclasses.replace(a.episode_snapshot, input=b_snap)
-        b = dataclasses.replace(a, episode_snapshot=b_wrapper)
-        diff = diff_manifests(a, b)
-        assert diff["same_inputs"] is False
-        assert any(e["field"] == "remedy_worktree_digest" for e in diff["blocking"])
 
 
 class TestEpisodeIsolation:

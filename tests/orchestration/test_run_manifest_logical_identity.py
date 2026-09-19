@@ -17,7 +17,6 @@ from packages.orchestration.pingpong_job import (
     run_job,
 )
 from packages.orchestration.run_manifest import (
-    diff_manifests,
     load_latest_manifest_verified,
 )
 
@@ -68,13 +67,6 @@ class TestTwoRealRunsShareLogicalIdentity:
         assert a.record_sha256() != b.record_sha256()
         assert a.provenance_sha256() != b.provenance_sha256()
 
-    def test_two_real_runs_report_no_input_drift(self, data_root, repo):
-        a, b = _run_once(repo), _run_once(repo)
-        d = diff_manifests(a, b)
-        assert d["logical_input_match"] is True
-        assert not [e for e in d["blocking"]
-                    if e["category"] in ("missing_call", "extra_call", "call_order")]
-
 
 class TestSyntheticProjections:
     def _mk(self, **over):
@@ -110,9 +102,6 @@ class TestSyntheticProjections:
         a = self._mk(calls=(T._call(fp="one"),))
         b = self._mk(calls=(T._call(fp="two"),))
         assert a.logical_input_sha256() != b.logical_input_sha256()
-        d = diff_manifests(a, b)
-        assert d["same_inputs"] is False
-        assert any(e["category"] == "prompt" for e in d["blocking"])
 
     def test_changed_call_order_blocks(self):
         c1 = T._call(task="T001", seq=1, role="builder")
