@@ -15496,3 +15496,136 @@ flag family and a mission-level push over one of several jobs would publish a pa
 pushing per job, rejected by the feature file. REVERSE: restore the four flags to
 `_DO_FLAGS_NOT_YET_AVAILABLE` with its refusal, remove the chaining and the mission push, restore
 D3 (5)'s `open`-blocks rule, and delete this paragraph.
+
+## DECISION F271 D1 (2026-09-19, reviewer, round 1) — every command group names its owning feature and its reach; builder_eval is deleted
+CONTEXT: DECISION amend0905-vocab D11 (a) asks that every command group in the catalog name its
+owning feature and its reach, and that a catalog test refuse a group without both. Measured at
+`a4f79a94`: `GroupDef` in `apps/cli/command_catalog.py` has `id`, `label`, `description`,
+`user_facing`, `hidden` and `aliases`; `GROUPS` holds 30 groups; no test checks ownership; and
+`tests/cli/test_cli_ux.py` builds `GroupDef` positionally with three and five arguments, so a
+field without a default placed before `user_facing` breaks those tests, and one placed after the
+defaulted fields cannot exist in a dataclass. DECISION amend0911-feedback D6 orders
+`builder_eval.py` deleted with `tests/orchestration/test_builder_eval.py` and
+`scripts/remedy_builder_eval.sh`; the only other references at `a4f79a94` outside `.agent/` and
+`docs/roadmap/` are one line of `REAL_OLLAMA_FILES` in `tests/conftest.py` and a paragraph of
+`docs/system/project-brain.md` telling the reader to run that script.
+CHOSEN: (1) SHAPE. `apps/cli/command_catalog.py` gains `Reach`, a `Literal` of the seven reaches
+D11 (a) names — golden-path, job-path, mission-path, self-use, teacher, cockpit, self-build — and
+`GroupDef` gains, after `aliases`, `feature: str = ""` and `reach: Reach | None = None`. The
+defaults exist so that a group missing either is refused by the test, as D11 (a) requires, and not
+by a `TypeError` at import that would red every test importing the catalog. (2) THE TEST.
+`tests/test_command_catalog.py`, beside `TestCatalogIntegrity`, refuses a group whose `feature` is
+not `F` and three digits, whose `feature` has no line `- [<mark>] <id> — ` in
+`docs/roadmap/STATUS.md`, or whose `reach` is not one of `Reach`'s values; a second test plants
+bad groups and asserts the exact refusals. (3) OWNERS. A group's owner is the feature that
+introduced it or most of its commands, read from the commit that added the group and from the
+feature files that name its commands; where neither names one, the owner is F261, whose DECISION
+amend0905-vocab D4 kept the group. The annotation at round 1: do F268, status F147, decision F051,
+init F081, job F260, run F261, project F146, ui F261, doctor F254, config F081, worker F280,
+memory F266, teacher F255, runtime F007, stats F010, patch F033, test F261, brain F261, mission
+F056, change F261, file F261, event F261, blocker F051, self F257, dev F261, ci F083, integrity
+F261, snapshot F261, study F266, roadmap F080. Reaches: golden-path for do, status, decision,
+init, project, doctor, config and worker; job-path for job, run, runtime, stats, patch, test,
+change, file, event, blocker and snapshot; mission-path for mission; teacher for memory, teacher
+and study; cockpit for ui and brain; self-use for self; self-build for dev, ci, integrity and
+roadmap. (4) THE DELETION. One commit removes the three files D6 names, the
+`REAL_OLLAMA_FILES` line and the project-brain paragraph with its command block, which becomes one
+sentence saying confidence rises only as the project's jobs run their builder on a real model;
+the proof is a repository grep at zero outside `.agent/` and `docs/roadmap/`. No stub, no copy.
+ALTERNATIVES: required fields without defaults, rejected by the dataclass ordering and the
+positional test calls measured above; owners guessed from group names, rejected because the
+owner is a claim a later closure relies on; keeping `builder_eval.py` until the orphan-module
+test lands, rejected because D6 already rules its deletion and waiting buys nothing.
+REVERSE: remove `Reach`, the two fields, their 30 annotations and `TestGroupOwnership`, restore
+the three deleted files, the conftest line and the project-brain paragraph from `a4f79a94`, and
+delete this paragraph.
+
+## DECISION F271 D2 (2026-09-19, reviewer, round 2) — the orphan-module test, its entry-point rule, and how the unreached modules are resolved
+CONTEXT: `docs/roadmap/features/T2_F271.md` Design (c) orders `tests/test_no_orphan_modules.py`: an
+AST pass over `packages`, `apps` and `scripts` that fails on any module with zero non-test
+importers, excluding `__init__.py`, the documented reserved namespaces and an `ALLOWED_UNWIRED`
+tuple with a one-line reason per entry, listed in `ARCHITECTURE_FILES` and registered in the
+`budgets` CI stage; and it orders the nine modules it measured resolved, wired or deleted. A
+research helper's first scan at `a4f79a94`, counting only imports, found 41 modules with no
+importer outside `tests/`, most of them scripts that a tracked shell file or workflow runs by path
+or files of a fixture project. Its prototype at `c798fd2d`, with the rule below, finds 19: of the nine, `builder_eval.py` is already gone
+(D1) and eight remain, plus `autonomy_loop.py`, `event_schemas.py`, `hunk_apply.py`,
+`role_conventions.py`, `self_use_generator.py`, `self_use_runner.py`, `apps/cli/main.py`,
+`packages/contracts/interfaces.py`, `scripts/remedy_agent_tooling_doctor.py`,
+`scripts/rotate_live_review.py` and `scripts/self_run_gauntlet.py`.
+CHOSEN: (1) REACH. A module is reached by a static import in a non-test file under the three trees
+or at the repository root (relative imports resolved, `from pkg import mod` reaching the
+submodule, every name reaching its ancestor packages, a script's bare `import x` also reaching
+`scripts.x`), by `importlib.import_module` with a literal, by a script path literal inside
+`scripts/`, or by the ENTRY-POINT rule: its repository path or dotted name appears in
+`pyproject.toml`, in a `*.sh` at the root or under `scripts/`, or in a workflow under `.github/`,
+and a `x.py` token in a `.sh` reaches the `x.py` beside it. The walk reads the filesystem and
+skips caches, `node_modules`, virtualenvs, `dist`, `build` and `.remedy-wt`. (2) EXEMPT: every
+`__init__.py`, and the reserved namespace `scripts/gauntlet_sample_project/`, a fixture project.
+(3) TESTS: no unlisted orphan; every `ALLOWED_UNWIRED` entry is a live orphan, so the list only
+shrinks; every entry carries a one-line reason; and a synthetic tree under `tmp_path` that
+plants one orphan and exercises every reaching form yields exactly its two orphans — the
+scanner's red proof, standing. (4) DELETED in this round, each with the test file that exists
+only for it: `diagnostic_comparison.py`, `task_plan_evidence.py` and
+`execution_config_evidence.py`. What stays in the repository after the deletion, by design: two
+pins in `tests/docs/test_docs_consistency.py` that quote the historical text of
+`docs/roadmap/features/T0_F012.md`, and the negative assertion in
+`tests/orchestration/test_job_evidence.py` that keeps a hardcoded verification list out of
+`job_evidence.py`. (5) ALLOWED, with the reason the test file carries: the other 16, among them
+the five of the nine that are neither deleted by D1 nor by (4) — `feature_mission_adapter.py`
+(F080's adapter, whose consumer is F248's loop), `patch_revert.py` (finding R-0982, owned by this
+feature), `ci_budgets.py` (the ceilings the `budgets` stage's test compares), `bench_run.py`
+(F082's on-demand run) and `self_use_findings.py` (run by hand under closure precondition 6) —
+and `role_conventions.py` (finding R-0981). An entry
+naming a finding leaves the list when that finding is resolved. (6) `MEASURED_MAX_WALL_S["budgets"]`
+in `tests/orchestration/test_ci_stages.py` is left at its recorded 1.32 s. The prototype measured
+the stage at about 3.1 s with the new file, and the budget rule still gives 300 s, so the budget
+itself does not change.
+ALTERNATIVES: an import-only scan, rejected because it flags the scripts that shell files and
+workflows run by path; deleting every module that has no importer, rejected because hand-run
+closure tools and modules kept by earlier DECISIONs (F275 D18, F033 D4) would go with them, and
+the Design's "wired or deleted" is then met by an allowance that has to state its reason and fails
+when that reason stops being true; walking `git ls-files`, rejected because the planted-orphan
+check would then need a commit to be seen.
+REVERSE: delete `tests/test_no_orphan_modules.py` and its two registrations, restore the three
+deleted modules and their tests from `c798fd2d`, and delete this paragraph.
+
+## DECISION F271 D3 (2026-09-19, reviewer, round 3) — T002: closure precondition 7 and the planted dead command; R-0982: patch_revert is deleted
+CONTEXT: T2_F271.md T002 asks for precondition 7 in `docs/roadmap/STATUS_closure_protocol.md` and
+for a `remedy doctor core` fixture that plants a dead command and sees it listed; Design (d) asks
+that the closure protocol cite the AGENTS.md rule "Replacing is deleting" beside precondition 7.
+Read at `8bacb0fc`: the dead-command section already exists — F281 landed it in `_cmd_doctor_core`
+of `apps/cli/commands/worker_facade_cmd.py` over `packages/orchestration/dead_command_check.py`,
+with tests that see it empty — and a comment there leaves the planted-command red proof to F271.
+The rule "Replacing is deleting" sits under AGENTS.md's `## 🎯 Scope Control`, not under Core
+Workflow as the feature file's DECISIONs section says. No test pins the closure protocol's
+precondition count. Finding R-0982: `patch_revert.py` has no importer outside `tests/`, the
+`patch.revert` command routes through `revert_repository_apply()`, and the module is the only
+writer of `patch_intent_reverted`, which `change_set.py`, `project_brain.py`,
+`autonomy_readiness.py` and `ui_server.py` read.
+CHOSEN: (1) PRECONDITION 7, appended after precondition 6: no new module outside the reachable
+set unless its feature file names it; the reachability test and the orphan-module test are green
+in the transcript precondition 2 reads, so the reviewer re-runs nothing there; a line a feature
+adds to either list is named in its feature file; and the rule is cited as AGENTS.md's Scope
+Control rule "Replacing is deleting", not restated. The feature file's Core Workflow wording is
+corrected in its Built State at closure. (2) THE PLANTED DEAD COMMAND. No production change: a
+test helper monkeypatches the catalog module's `CATALOG` with one extra entry and
+`collect_all_handlers` with a handler that references no name. Its group and command ids are
+minted from a uuid at run time, because the scan reads `tests/` and a literal id in the test file
+would count as a reference. The JSON test asserts `dead_commands` equals exactly that command,
+and the text test asserts it is the section's only line. The comment in `_cmd_doctor_core` that
+leaves this to F271 is rewritten to name the test. (3) THE DELETION. `patch_revert.py` goes, with
+the five `TestPatchRevert` tests that exercised only it. `test_brain_has_patch_revert_node` keeps
+the brain's revert-node coverage by planting the event after a real apply, and gains an assertion
+on the `ET_REVERTED_BY` edge. The `ALLOWED_UNWIRED` entry goes. Section 12q of
+`scripts/remedy_smoke.sh` loses the check for `patch_snapshots/<intent>`, a directory only the
+deleted module wrote, which printed OK on both of its branches. The four readers of
+`patch_intent_reverted` stay: they read run logs already on disk. The brain's `patch_revert` node
+type and its labels are a data shape, not the module, and stay.
+ALTERNATIVES: a production seam to inject a catalog into `doctor core`, rejected because
+monkeypatching the two module attributes reaches the real scan unchanged; deleting the event's
+readers with the writer, rejected because run logs written before the deletion still carry the
+event and the brain and change-set views read them.
+REVERSE: remove precondition 7, the two planted-command tests and their helper, and restore the
+comment, `patch_revert.py`, the five tests, the fixture, the allowance and the smoke lines from
+`8bacb0fc`; then delete this paragraph.

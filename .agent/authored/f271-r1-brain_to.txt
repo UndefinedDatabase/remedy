@@ -1,0 +1,1 @@
+If confidence is low, the summary says "needs real model check." Confidence rises only as the project's jobs run their builder on a real model rather than a fixture.

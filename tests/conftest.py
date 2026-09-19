@@ -179,7 +179,6 @@ SUBPROCESS_FILES = {
 REAL_OLLAMA_FILES = {
     "test_real_ollama_smoke.py",
     "test_real_do_ollama_smoke.py",
-    "test_builder_eval.py",  # has skipif for real ollama section
 }
 
 # Smoke contract tests
@@ -203,6 +202,7 @@ ARCHITECTURE_FILES = {
     "test_reserved_namespaces.py",
     "test_data_paths.py",
     "test_subprocess_timeouts.py",
+    "test_no_orphan_modules.py",
 }
 
 

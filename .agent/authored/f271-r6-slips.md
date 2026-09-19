@@ -1,0 +1,1 @@
+2026-09-19, F271 round 2 — the reviewer's ledger slice registered R-0980 and R-0981 with `Owner: F273` and the same block gave T2_F273.md no Acceptance line for either, which amend0911-feedback rule A requires in that commit; round 4 added both. THE RULE THAT FOLLOWS: a block that writes `Owner: F<n>` names F<n>'s feature file in its change set with the Acceptance pair.

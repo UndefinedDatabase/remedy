@@ -41,6 +41,17 @@ ActionClass = Literal[
     "controlled_builder_execution",
 ]
 
+#: The product path that reaches a command group (DECISION amend0905-vocab D11 (a)).
+Reach = Literal[
+    "golden-path",
+    "job-path",
+    "mission-path",
+    "self-use",
+    "teacher",
+    "cockpit",
+    "self-build",
+]
+
 
 @dataclass(frozen=True)
 class GroupDef:
@@ -58,6 +69,11 @@ class GroupDef:
     #: `GroupDef` and one set of commands, never a duplicated definition.
     #: `resolve_group` maps each of them to `id` for every group lookup.
     aliases: tuple[str, ...] = ()
+    #: The owning feature id, e.g. "F261", and the path that reaches the group
+    #: (DECISION amend0905-vocab D11 (a)). Defaulted so that a group missing
+    #: either is refused by the catalog ownership test, not by a TypeError.
+    feature: str = ""
+    reach: Reach | None = None
 
 
 @dataclass(frozen=True)
@@ -107,39 +123,39 @@ class CommandEntry:
 
 GROUPS: dict[str, GroupDef] = {
     # -- Golden path (pinned first in help) --
-    "do": GroupDef("do", "Do", "Run, report, and apply Remedy tasks."),
-    "status": GroupDef("status", "Status", "Project status overview, across its repos and missions."),
-    "decision": GroupDef("decision", "Decision", "The queue of decisions Remedy cannot answer for itself."),
+    "do": GroupDef("do", "Do", "Run, report, and apply Remedy tasks.", feature="F268", reach="golden-path"),
+    "status": GroupDef("status", "Status", "Project status overview, across its repos and missions.", feature="F147", reach="golden-path"),
+    "decision": GroupDef("decision", "Decision", "The queue of decisions Remedy cannot answer for itself.", feature="F051", reach="golden-path"),
     # -- User-facing primary commands --
-    "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
-    "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
-    "run": GroupDef("run", "Run", "Show and list persisted ping-pong runs."),
-    "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
-    "ui": GroupDef("ui", "UI", "Open the local UI."),
-    "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
-    "config": GroupDef("config", "Config", "View or change settings.", aliases=("settings",)),
-    "worker": GroupDef("worker", "Worker", "Manage the workers that support a role: builder, reviewer, planner or teacher."),
-    "memory": GroupDef("memory", "Memory", "Memory scoped to the project's repos and missions."),
-    "teacher": GroupDef("teacher", "Teacher", "Explain a run from its evidence. Read-only, never steers it."),
-    "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project's repo dev server."),
-    "stats": GroupDef("stats", "Stats", "Honest counts from the run evidence on disk."),
+    "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo.", feature="F081", reach="golden-path"),
+    "job": GroupDef("job", "Job", "Create, inspect, and manage jobs.", feature="F260", reach="job-path"),
+    "run": GroupDef("run", "Run", "Show and list persisted ping-pong runs.", feature="F261", reach="job-path"),
+    "project": GroupDef("project", "Project", "Create, inspect, and manage projects.", feature="F146", reach="golden-path"),
+    "ui": GroupDef("ui", "UI", "Open the local UI.", feature="F261", reach="cockpit"),
+    "doctor": GroupDef("doctor", "Doctor", "Check Remedy health.", feature="F254", reach="golden-path"),
+    "config": GroupDef("config", "Config", "View or change settings.", aliases=("settings",), feature="F081", reach="golden-path"),
+    "worker": GroupDef("worker", "Worker", "Manage the workers that support a role: builder, reviewer, planner or teacher.", feature="F280", reach="golden-path"),
+    "memory": GroupDef("memory", "Memory", "Memory scoped to the project's repos and missions.", feature="F266", reach="teacher"),
+    "teacher": GroupDef("teacher", "Teacher", "Explain a run from its evidence. Read-only, never steers it.", feature="F255", reach="teacher"),
+    "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project's repo dev server.", feature="F007", reach="job-path"),
+    "stats": GroupDef("stats", "Stats", "Honest counts from the run evidence on disk.", feature="F010", reach="job-path"),
     # -- Advanced / internal commands (callable but hidden from default help) --
-    "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False),
-    "test": GroupDef("test", "Test", "Discover and execute tests in the project's repo.", user_facing=False),
-    "brain": GroupDef("brain", "Brain", "Inspect the project's repo brain graph.", user_facing=False),
-    "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded orchestrator facade (internal)."),
-    "change": GroupDef("change", "Change", "Review change sets (proof chain view).", user_facing=False),
-    "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False),
-    "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False),
-    "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons.", user_facing=False),
-    "self": GroupDef("self", "Self", "Self-dogfood — inspect Remedy's own run evidence.", user_facing=False),
-    "dev": GroupDef("dev", "Dev", "Developer utilities.", user_facing=False),
-    "ci": GroupDef("ci", "CI", "Remedy's own CI stages, executed locally.", user_facing=False),
-    "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
-    "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False),
-    "study": GroupDef("study", "Study", "Bounded, read-only repository comprehension pass. Files approved memory cards for `teacher ask` to answer from.", user_facing=False),
+    "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False, feature="F033", reach="job-path"),
+    "test": GroupDef("test", "Test", "Discover and execute tests in the project's repo.", user_facing=False, feature="F261", reach="job-path"),
+    "brain": GroupDef("brain", "Brain", "Inspect the project's repo brain graph.", user_facing=False, feature="F261", reach="cockpit"),
+    "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded orchestrator facade (internal).", feature="F056", reach="mission-path"),
+    "change": GroupDef("change", "Change", "Review change sets (proof chain view).", user_facing=False, feature="F261", reach="job-path"),
+    "file": GroupDef("file", "File", "File-level provenance and tracing.", user_facing=False, feature="F261", reach="job-path"),
+    "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False, feature="F261", reach="job-path"),
+    "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons.", user_facing=False, feature="F051", reach="job-path"),
+    "self": GroupDef("self", "Self", "Self-dogfood — inspect Remedy's own run evidence.", user_facing=False, feature="F257", reach="self-use"),
+    "dev": GroupDef("dev", "Dev", "Developer utilities.", user_facing=False, feature="F261", reach="self-build"),
+    "ci": GroupDef("ci", "CI", "Remedy's own CI stages, executed locally.", user_facing=False, feature="F083", reach="self-build"),
+    "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False, feature="F261", reach="self-build"),
+    "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False, feature="F261", reach="job-path"),
+    "study": GroupDef("study", "Study", "Bounded, read-only repository comprehension pass. Files approved memory cards for `teacher ask` to answer from.", user_facing=False, feature="F266", reach="teacher"),
     # -- Hidden: in no help at all, callable (DECISION amend0905-vocab D4) --
-    "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True),
+    "roadmap": GroupDef("roadmap", "Roadmap", "Read-only mirror of Remedy's own roadmap — what is active, what is next; proposes, never starts.", user_facing=False, hidden=True, feature="F080", reach="self-build"),
 }
 
 #: The default `remedy --help` order (DECISION amend0905-vocab D4, clarified by

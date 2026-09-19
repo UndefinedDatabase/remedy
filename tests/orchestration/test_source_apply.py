@@ -221,150 +221,36 @@ class TestPatchRevert:
         assert result.success, f"Revert failed: {result.block_reason} — {result.safe_summary}"
         assert target.read_text() == original
 
-    def test_revert_deletes_created_file(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.approval_queue import APPROVAL_APPROVED, make_intent_id, set_approval_state
-        from packages.orchestration.permissions import Capability, set_permission
-
-        repo = tmp_path / "repo"
-        repo.mkdir()
-
-        art_id = uuid4()
-        intent_id = make_intent_id(art_id, 0)
-        artifact = Artifact(
-            id=art_id, kind=ArtifactKind.BUILDER_PROPOSAL, name="create patch",
-            content="Summary:\nCreate file\nProposed Changes:\n  - New content\nNotes:\nNone",
-            metadata={
-                "patch_intent_explanations": [{
-                    "file": "new_file.md", "action": "create",
-                    "risk": "low", "reason": "test", "summary": "test",
-                }],
-            },
-        )
-        job = JobPlan(
-            job_id=mint_job_id(), job_title="create job", user_prompt="create",
-            state=RunState.RUNNING, tasks=[], artifacts=[artifact],
-            metadata={"target_repo": str(repo)},
-        )
-        set_approval_state(job, intent_id, APPROVAL_APPROVED)
-        set_permission(job, Capability.repo_generated_write, allow=True)
-        save_job_plan(job)
-
-        # Explicit legacy snapshot (Step 1141: apply_patch_intent no longer writes legacy snapshot)
-        from packages.orchestration.patch_revert import store_pre_apply_snapshot
-        store_pre_apply_snapshot(job, intent_id, "new_file.md", "create", repo, data_dir=tmp_path)
-
-        from packages.orchestration.patch_apply import apply_patch_intent
-        apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        assert (repo / "new_file.md").exists()
-
-        from packages.orchestration.patch_revert import revert_patch_intent
-        from packages.orchestration.pingpong_job import load_job_plan
-        job = load_job_plan(job.job_id)
-        result = revert_patch_intent(job, intent_id, data_dir=tmp_path)
-        assert result.state == "reverted"
-        assert not (repo / "new_file.md").exists()
-
-    def test_second_revert_noop(self, tmp_path, monkeypatch):
-        job, intent_id, repo = _make_job_with_intent(tmp_path, monkeypatch)
-
-        # Explicit legacy snapshot (Step 1141)
-        from packages.orchestration.patch_revert import store_pre_apply_snapshot
-        store_pre_apply_snapshot(job, intent_id, "notes.md", "modify", repo, data_dir=tmp_path)
-
-        from packages.orchestration.patch_apply import apply_patch_intent
-        apply_patch_intent(job, intent_id, data_dir=tmp_path)
-
-        from packages.orchestration.patch_revert import revert_patch_intent
-        from packages.orchestration.pingpong_job import load_job_plan
-        job = load_job_plan(job.job_id)
-        revert_patch_intent(job, intent_id, data_dir=tmp_path)
-
-        job = load_job_plan(job.job_id)
-        result2 = revert_patch_intent(job, intent_id, data_dir=tmp_path)
-        assert result2.state == "noop"
-        assert result2.outcome == "already_reverted"
-
-    def test_blocked_if_snapshot_missing(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job, intent_id, repo = _make_job_with_intent(tmp_path, monkeypatch)
-        # Don't apply — no snapshot exists
-        from packages.orchestration.patch_revert import revert_patch_intent
-        result = revert_patch_intent(job, intent_id, data_dir=tmp_path)
-        assert result.state == "blocked"
-        assert result.blocked_reason == "snapshot_missing"
-
-    def test_run_log_exact_schema(self, tmp_path, monkeypatch):
-        job, intent_id, repo = _make_job_with_intent(tmp_path, monkeypatch)
-
-        # Explicit legacy snapshot (Step 1141)
-        from packages.orchestration.patch_revert import store_pre_apply_snapshot
-        store_pre_apply_snapshot(job, intent_id, "notes.md", "modify", repo, data_dir=tmp_path)
-
-        from packages.orchestration.patch_apply import apply_patch_intent
-        apply_patch_intent(job, intent_id, data_dir=tmp_path)
-
-        from packages.orchestration.patch_revert import revert_patch_intent
-        from packages.orchestration.pingpong_job import load_job_plan
-        job = load_job_plan(job.job_id)
-        revert_patch_intent(job, intent_id, data_dir=tmp_path)
-
-        from packages.orchestration.timeline import load_run_events
-        events = load_run_events(tmp_path, job.job_id)
-        revert_events = [e for e in events if e.get("event") == "patch_intent_reverted"]
-        assert len(revert_events) >= 1
-        meta = revert_events[0]["metadata"]
-        required_keys = {
-            "intent_id", "target_path", "action", "outcome",
-            "existed_before", "bytes_written", "line_count",
-            "before_sha256", "after_sha256",
-        }
-        assert required_keys <= set(meta.keys())
-
     def test_brain_has_patch_revert_node(self, tmp_path, monkeypatch):
-        job, intent_id, repo = _make_job_with_intent(tmp_path, monkeypatch)
+        """The brain still reads `patch_intent_reverted` events already on disk.
 
-        # Explicit legacy snapshot (Step 1141)
-        from packages.orchestration.patch_revert import store_pre_apply_snapshot
-        store_pre_apply_snapshot(job, intent_id, "notes.md", "modify", repo, data_dir=tmp_path)
+        The event's only writer was deleted under finding R-0982, so the event
+        is planted here with the metadata that writer recorded.
+        """
+        job, intent_id, repo = _make_job_with_intent(tmp_path, monkeypatch)
 
         from packages.orchestration.patch_apply import apply_patch_intent
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
 
-        from packages.orchestration.patch_revert import revert_patch_intent
-        from packages.orchestration.pingpong_job import load_job_plan
-        job = load_job_plan(job.job_id)
-        revert_patch_intent(job, intent_id, data_dir=tmp_path)
-
         from packages.orchestration.timeline import load_run_events
-        events = load_run_events(tmp_path, job.job_id)
+        reverted = {
+            "event": "patch_intent_reverted",
+            "job_id": str(job.job_id),
+            "outcome": "reverted",
+            "metadata": {"intent_id": intent_id, "target_path": "notes.md",
+                         "action": "modify", "outcome": "reverted"},
+        }
+        events = [*load_run_events(tmp_path, job.job_id), reverted]
 
-        from packages.orchestration.project_brain import NT_PATCH_REVERT, build_project_brain
+        from packages.orchestration.project_brain import (
+            ET_REVERTED_BY,
+            NT_PATCH_REVERT,
+            build_project_brain,
+        )
         graph = build_project_brain(job, events)
-        types = {n.type for n in graph.nodes}
-        assert NT_PATCH_REVERT in types
-
-    def test_no_raw_content_in_revert_event(self, tmp_path, monkeypatch):
-        job, intent_id, repo = _make_job_with_intent(tmp_path, monkeypatch)
-
-        # Explicit legacy snapshot (Step 1141)
-        from packages.orchestration.patch_revert import store_pre_apply_snapshot
-        store_pre_apply_snapshot(job, intent_id, "notes.md", "modify", repo, data_dir=tmp_path)
-
-        from packages.orchestration.patch_apply import apply_patch_intent
-        apply_patch_intent(job, intent_id, data_dir=tmp_path)
-
-        from packages.orchestration.patch_revert import revert_patch_intent
-        from packages.orchestration.pingpong_job import load_job_plan
-        job = load_job_plan(job.job_id)
-        revert_patch_intent(job, intent_id, data_dir=tmp_path)
-
-        from packages.orchestration.timeline import load_run_events
-        events = load_run_events(tmp_path, job.job_id)
-        for ev in events:
-            if ev.get("event") == "patch_intent_reverted":
-                meta_str = json.dumps(ev["metadata"])
-                assert "Original content" not in meta_str
+        assert [n.ref_id for n in graph.nodes if n.type == NT_PATCH_REVERT] == [intent_id]
+        assert any(e.type == ET_REVERTED_BY and e.target == f"revert:{intent_id}"
+                   for e in graph.edges)
 
 
 # ===========================================================================

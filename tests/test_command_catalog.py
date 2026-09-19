@@ -10,17 +10,22 @@ Coverage:
   - Mutation/execution classification present for every command
   - JSON-support claims tested for representative commands
   - Group coverage
+  - Every group names its owning feature and its reach (F271)
 """
 
 from __future__ import annotations
 
 import re
+from pathlib import Path
+from typing import get_args
 
 import pytest
 
 from apps.cli.command_catalog import (
     CATALOG,
     GROUPS,
+    GroupDef,
+    Reach,
     _is_list_command,
     get_command,
     get_commands_for_group,
@@ -74,6 +79,54 @@ class TestCatalogIntegrity:
             if ref not in live
         )
         assert dangling == [], f"related= names commands that do not exist: {dangling}"
+
+
+# ---------------------------------------------------------------------------
+# Group ownership and reach (DECISION amend0905-vocab D11 (a), F271 T001)
+# ---------------------------------------------------------------------------
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+FEATURE_ID = re.compile(r"^F\d{3}$")
+
+
+def _registered_features() -> frozenset[str]:
+    """Every feature id with a line in docs/roadmap/STATUS.md."""
+    text = (REPO_ROOT / "docs" / "roadmap" / "STATUS.md").read_text(encoding="utf-8")
+    return frozenset(re.findall(r"^- \[.\] (F\d{3}) — ", text, re.MULTILINE))
+
+
+def _ownership_violations(groups: dict[str, GroupDef]) -> list[str]:
+    """Every group that names no registered owning feature or no allowed reach."""
+    allowed = set(get_args(Reach))
+    registered = _registered_features()
+    violations = []
+    for gid, gdef in sorted(groups.items()):
+        if not FEATURE_ID.match(gdef.feature):
+            violations.append(f"{gid}: feature={gdef.feature!r}")
+        elif gdef.feature not in registered:
+            violations.append(f"{gid}: feature={gdef.feature!r} is not in STATUS.md")
+        if gdef.reach not in allowed:
+            violations.append(f"{gid}: reach={gdef.reach!r}")
+    return violations
+
+
+class TestGroupOwnership:
+    def test_every_group_names_its_feature_and_its_reach(self) -> None:
+        assert _ownership_violations(GROUPS) == []
+
+    def test_a_group_missing_either_is_refused(self) -> None:
+        planted = {
+            "no-feature": GroupDef("no-feature", "X", "An x.", reach="job-path"),
+            "no-reach": GroupDef("no-reach", "X", "An x.", feature="F271"),
+            "bad-reach": GroupDef("bad-reach", "X", "An x.", feature="F271", reach="nowhere"),  # type: ignore[arg-type]
+            "unregistered": GroupDef("unregistered", "X", "An x.", feature="F999", reach="job-path"),
+        }
+        assert _ownership_violations(planted) == [
+            "bad-reach: reach='nowhere'",
+            "no-feature: feature=''",
+            "no-reach: reach=None",
+            "unregistered: feature='F999' is not in STATUS.md",
+        ]
 
 
 class TestCatalogClassification:

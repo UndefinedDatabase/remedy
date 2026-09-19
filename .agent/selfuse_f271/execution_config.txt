@@ -1,0 +1,7 @@
+Builder: ollama
+Builder Model: 
+Reviewer: ollama
+Reviewer Model: 
+Repair Rounds Allowed: 2
+Max Rounds: 3
+Isolation: worktree
