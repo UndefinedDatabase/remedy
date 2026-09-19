@@ -1,222 +1,218 @@
-# Handoff — F273 Findings paydown v1 · Round 3
+# Handoff — F273 Findings paydown v1 · Round 4
 
 ## Session
 
-SESSION 1 of feature F273 · round 3 · rounds so far 3
+SESSION 1 of feature F273 · round 4 · rounds so far 4
 
-Context self-assessment: the worker read the block, AGENTS.md, DECISION F273 D3, the handback template and the self-drive protocol's questions-file rule; every figure below comes from a command run in this round, and the worker's context held all of it without loss.
+Context self-assessment: the worker read the block, AGENTS.md, DECISION F273 D4, the handback template, the three code diffs and the questions-file rule of the self-drive protocol; every figure below comes from a command run in this round, and the worker's context held all of it without loss.
 
 ## Range
 
-Review of a5e3b9ce..HEAD — branch `feature/f273-findings-paydown-v1`.
+Review of 4862e71a..HEAD — branch `feature/f273-findings-paydown-v1`.
 
 ## Summary
 
-Round 3 books round 2's verdict, closes T003 and builds T016 as the reviewer's dry run built them.
-- C1 books Gate F273 R2 (VERDICT PASS) and the resolutions of R-0812, R-0396, R-0445 and R-0736, registers R-0983, R-0984 and R-0985, lands DECISION F273 D3, rewrites the plan and saves the six payload copies.
-- C2 (T003, R-0645) adds one clause to step 1 of `docs/agents/integration_gate.md`: the FAILED list is one run's sample, an empty one is evidence and never proof.
-- C3 (T016 (a), R-0984) gives `RunState` a `__str__` returning its value, adds a guard over `str()`, `format()` and the f-string of every member, and makes the CI `ci` job a `'3.10'`/`'3.12'` matrix with `fail-fast: false`, pinned by a test.
-- C4 (T016 (b) and (c), R-0985 and R-0839) makes `scripts/rotate_live_review.py` the ledger's one reader (`open_finding_ids`, `count_open_findings` by distinct id, `latest_gate_verdict`), loads it by path in the manifest, writes `path -> base_sha256` tombstones in `create_manual_completion_bundle`, and binds tombstones to deleted subject paths in the packager's `_assert_authority_equality`.
-- C5 (R-0983) makes `export_job_evidence` write `path -> base_sha256` tombstones and refuse a deleted path with no base blob.
-- C6 is this handoff.
+Round 4 books round 3's verdict, lands DECISION F273 D4 and builds T002's eight live repairs as the reviewer's dry run built them.
+- C1 books Gate F273 R3 (VERDICT PASS) and the resolutions of R-0671, R-0689 and R-0690, lands DECISION F273 D4, rewrites the plan and saves the four payload copies.
+- C2 (R-0518, R-0569, R-0649, R-0664): `test_vitest_passes` skips, naming the reason, when `apps/ui/node_modules` is absent; `write_runtime_config` defaults to `worker_port(2)`, with a test that two workers get two ports; the emitter walk skips any path with `node_modules` among its parts, with a red control; two source guards pin the feed card's `#{row.seq}` and the shell's one `onSelectNode`.
+- C3 (R-0691, R-0708, R-0734, R-0815): the two helper assertions are renamed to what they hold and the class docstring states the residual; `test_command_channel.py` and `test_live_state.py` wait through `wait_for_server_info`; the stopped run is read through `load_run` and asserted unconditionally.
+- C4 adds `tests/ui_server/server_start.py` (the one wait: absent, empty or half-written info is "not started yet", the wait lasts while the server thread lives, a 120-second backstop) with `tests/ui_server/test_server_start.py`, and switches the six other server-start copies to it.
+- C5 is this handoff.
 
-Landed: R-0645 — `52cee6d8`
-Landed: R-0984 — `49cd2717`; resolution also reads the 3.12 column of the closure pull request's hosted CI (DECISION F273 D3 (2))
-Landed: R-0985 — `cecc8881`
-Landed: R-0839 — `cecc8881`
-Landed: R-0983 — `531cc24a`
+Landed: R-0518 — `43760c74`
+Landed: R-0569 — `43760c74`
+Landed: R-0649 — `43760c74`
+Landed: R-0664 — `43760c74`
+Landed: R-0691 — `5206ece6`
+Landed: R-0708 — `5206ece6` (the named copy in `test_live_state.py`); the helper it now calls arrived in `b00a826f`
+Landed: R-0734 — `5206ece6` (the named copy in `test_command_channel.py`); the helper it now calls arrived in `b00a826f`
+Landed: R-0815 — `5206ece6`
 
 ## Commits
 
-### 8fe7ea35 F273 R3 C1: bookkeeping — round 2's verdict and four resolutions booked, R-0983 to R-0985 registered, DECISION F273 D3 landed
+### 42268f04 F273 R4 C1: bookkeeping — round 3's verdict and three resolutions booked, DECISION F273 D4 landed
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f273-r3-block.md` | +114 / -0 | Byte copy of the block |
-| `.agent/authored/f273-r3-decisions.md` | +48 / -0 | Byte copy of decisions.md |
-| `.agent/authored/f273-r3-gate_from.txt` | +1 / -0 | Byte copy of gate_from.txt |
-| `.agent/authored/f273-r3-gate_to.txt` | +5 / -0 | Byte copy of gate_to.txt |
-| `.agent/authored/f273-r3-ledger.md` | +16 / -0 | Byte copy of ledger.md |
-| `.agent/authored/f273-r3-plan.md` | +29 / -0 | Byte copy of plan.md |
-| `.agent/decisions.md` | +48 / -0 | `a5e3b9ce` bytes + decisions.md (DECISION F273 D3) |
-| `.agent/live_review.md` | +16 / -0 | `a5e3b9ce` bytes + ledger.md (Gate F273 R2, four `Done:` lines, R-0983 to R-0985) |
-| `.agent/plan.md` | +13 / -12 | := plan.md |
+| `.agent/authored/f273-r4-block.md` | +109 / -0 | Byte copy of the block |
+| `.agent/authored/f273-r4-decisions.md` | +43 / -0 | Byte copy of decisions.md |
+| `.agent/authored/f273-r4-ledger.md` | +8 / -0 | Byte copy of ledger.md |
+| `.agent/authored/f273-r4-plan.md` | +26 / -0 | Byte copy of plan.md |
+| `.agent/decisions.md` | +43 / -0 | `4862e71a` bytes + decisions.md (DECISION F273 D4) |
+| `.agent/live_review.md` | +8 / -0 | `4862e71a` bytes + ledger.md (Gate F273 R3, `Done:` R-0671, R-0689, R-0690) |
+| `.agent/plan.md` | +10 / -13 | := plan.md |
 
-290 insertions, 12 deletions (`git show --numstat`).
+237 insertions, 13 deletions (`git show --numstat`).
 
-### 52cee6d8 F273 R3 C2: T003, R-0645 — step 1 of the integration gate names its FAILED list one run's sample
+### 43760c74 F273 R4 C2: R-0518, R-0569, R-0649, R-0664 — vitest skips without node_modules, the smoke port is per worker, the emitter walk skips vendored files, the feed seq and the one callback are pinned
 | Path | +/- | Reason |
 |------|-----|--------|
-| `docs/agents/integration_gate.md` | +4 / -0 | `a5e3b9ce` bytes with gate_from.txt replaced by gate_to.txt (an append after the FROM line) |
+| `tests/orchestration/test_product_smoke.py` | +25 / -1 | R-0569: default port `worker_port(2)`, two-worker test — `git apply .remedy-wt/f273-proto-t002a.diff` |
+| `tests/orchestration/test_test_runner.py` | +10 / -0 | R-0518: `skipif` absent `apps/ui/node_modules` — same diff |
+| `tests/ui_contracts/test_brain_stream_ring.py` | +29 / -0 | R-0664: feed card prints `#{row.seq}`; shell hands one `onSelectNode` — same diff |
+| `tests/ui_contracts/test_humanize_catalog.py` | +50 / -14 | R-0649: `emitter_sources` skips `node_modules`, `literals_emitted_by`, red-controlled test — same diff |
 
-4 insertions, 0 deletions.
+114 insertions, 15 deletions.
 
-### 49cd2717 F273 R3 C3: T016 (a), R-0984 — a run state renders its value on every interpreter and CI runs 3.10 and 3.12
+### 5206ece6 F273 R4 C3: R-0691, R-0708, R-0734, R-0815 — the helper assertions say what they hold, two server starts wait on the thread, the stopped run is read through its store
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.github/workflows/ci.yml` | +9 / -1 | `ci` job matrix `['3.10', '3.12']`, `fail-fast: false` — `git apply .remedy-wt/f273-proto-t016a.diff` |
-| `packages/core/models.py` | +5 / -0 | `RunState.__str__` returns its value — same diff |
-| `tests/orchestration/test_ci_workflow.py` | +10 / -0 | Pins the matrix and the setup step reading it — same diff |
-| `tests/orchestration/test_job_state_field.py` | +13 / -3 | Guard over `str()`, `format()` and f-string of every member; docstring updated — same diff |
+| `tests/orchestration/test_job_stop_integration.py` | +10 / -7 | R-0815: read through `load_run`, absence fails, assertion unconditional — `git apply .remedy-wt/f273-proto-t002b.diff` |
+| `tests/ui_contracts/test_decision_answer_wiring.py` | +14 / -5 | R-0691: two assertions renamed, class docstring states the residual — same diff |
+| `tests/ui_server/test_command_channel.py` | +5 / -8 | R-0734: waits through `wait_for_server_info` — same diff |
+| `tests/ui_server/test_live_state.py` | +3 / -8 | R-0708: waits through `wait_for_server_info` — same diff |
 
-37 insertions, 4 deletions.
+32 insertions, 28 deletions.
 
-### cecc8881 F273 R3 C4: T016 (b) and (c), R-0985 and R-0839 — the manifest reads the ledger through its canonical reader and the manual bundle writes tombstones
+### b00a826f F273 R4 C4: the six other server-start copies wait on the thread through one helper, pinned by its own tests
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/job_evidence.py` | +11 / -2 | Manual bundle writes `path -> base_sha256` tombstones — `git apply .remedy-wt/f273-proto-t016bc.diff` |
-| `scripts/build_review_manifest.py` | +33 / -29 | Ledger reader loaded by path; manual-completion union and gate-matrix `proof_authority` read `file_hashes` only — same diff |
-| `scripts/build_review_zip.py` | +18 / -5 | Tombstones bound to deleted subject paths; coverage sets held to the live authority — same diff |
-| `scripts/rotate_live_review.py` | +45 / -7 | `open_finding_ids`, `count_open_findings` by distinct id, `latest_gate_verdict` — same diff |
-| `tests/orchestration/test_final_audit_evidence.py` | +63 / -39 | Manifest tests rewritten to the `Gate:` format; one reads the real ledger — same diff |
-| `tests/orchestration/test_live_review_rotation.py` | +33 / -3 | Distinct-id count and verdict reader tests — same diff |
-| `tests/orchestration/test_review_archive_artifacts.py` | +1 / -1 | Pipeline copy includes `rotate_live_review.py` — same diff |
-| `tests/orchestration/test_review_authoritative_e2e.py` | +1 / -1 | Same — same diff |
-| `tests/orchestration/test_review_final_status_source.py` | +1 / -1 | Same — same diff |
-| `tests/orchestration/test_review_manual_completion_shapes.py` | +62 / -0 | Tombstone for every deleted path — same diff |
-| `tests/orchestration/test_review_package_full_integration.py` | +1 / -1 | Pipeline copy includes the reader — same diff |
-| `tests/orchestration/test_review_package_root_chain.py` | +1 / -1 | Same — same diff |
-| `tests/orchestration/test_review_packaging_collision_safety.py` | +2 / -1 | Same — same diff |
-| `tests/orchestration/test_review_zip_deleted_path_authority.py` | +47 / -0 | Tombstone binding in the packager — same diff |
-| `tests/orchestration/test_review_zip_hygiene.py` | +1 / -0 | Reader among the required scripts — same diff |
-| `tests/orchestration/test_stream_export_e2e.py` | +1 / -1 | Pipeline copy includes the reader — same diff |
-| `tests/test_no_orphan_modules.py` | +0 / -2 | `rotate_live_review.py` leaves `ALLOWED_UNWIRED` — same diff |
+| `tests/ui_server/server_start.py` | +71 / -0 | New: `read_server_info`, `wait_for_server_info`, `SERVER_START_BACKSTOP_S` — `git apply .remedy-wt/f273-proto-t002c.diff` |
+| `tests/ui_server/test_server_start.py` | +98 / -0 | New: half-written file retried, slow live start waited for, dead thread fails at once, backstop ends a hung start — same diff |
+| `tests/ui_server/test_command_dispatch.py` | +4 / -7 | Waits through the helper — same diff |
+| `tests/ui_server/test_decisions_endpoint.py` | +5 / -9 | Same — same diff |
+| `tests/ui_server/test_diff_endpoint.py` | +9 / -14 | Same, both copies — same diff |
+| `tests/ui_server/test_digest_route.py` | +5 / -9 | Same — same diff |
+| `tests/ui_server/test_server_concurrency.py` | +4 / -9 | Same — same diff |
 
-321 insertions, 94 deletions.
+196 insertions, 48 deletions.
 
-### 531cc24a F273 R3 C5: R-0983 — the provider-run export writes a tombstone as the removed blob's sha256
-| Path | +/- | Reason |
-|------|-----|--------|
-| `packages/orchestration/job_evidence.py` | +8 / -4 | `export_job_evidence` tombstone is `base_sha256`; no base blob refuses the proof — `git apply .remedy-wt/f273-proto-r0983.diff` |
-| `tests/orchestration/test_job_evidence.py` | +49 / -0 | Export of a deleting branch strictly decodes — same diff |
-
-57 insertions, 4 deletions.
-
-### C6 (this commit) F273 R3 C6: handoff
+### C5 (this commit) F273 R4 C5: handoff
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | rewritten | This handback |
 
-Every commit is under 500 inserted lines. The largest is C4, with 321.
+Every commit is under 500 inserted lines. The largest is C1, with 237.
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f273-r3-g5 531cc24a` for G5, then `git worktree remove .remedy-wt/f273-r3-g5` (exit 0). `git worktree list` afterwards: the primary checkout at `531cc24a` on `feature/f273-findings-paydown-v1` and the reviewer's `.remedy-wt/f273-r3-dry` at `a5e3b9ce`, nothing else.
-- After C6: `git push`. No pull request is opened.
+- `git worktree add --detach .remedy-wt/f273-r4-g5 b00a826f` for G5 (exit 0), then `git worktree remove .remedy-wt/f273-r4-g5` (exit 0). `git worktree list` afterwards:
+  ```
+  /home/decodeux/Repos/remedy                         b00a826f [feature/f273-findings-paydown-v1]
+  /home/decodeux/Repos/remedy/.remedy-wt/f273-r4-dry  4862e71a (detached HEAD)
+  ```
+- After C5: `git push`. No pull request is opened.
 
 ## Verification
 
-Exit codes were read through `.remedy-wt/f273-r3/run.py <cwd> <outfile|-> cmd...` (runs with an explicit `cwd`, prints the output or, with an outfile, its last 15 lines and its line count, then `EXIT <returncode>`); every gate ran with `cwd=/home/decodeux/Repos/remedy` except G5, which ran in its own worktree. Interpreter: Python 3.10.12.
+Exit codes were read through `.remedy-wt/f273-r4/wk_run.py <cwd> <outfile|-> cmd...` (runs with an explicit `cwd`, prints the output or, with an outfile, its last 15 lines and its line count, then `EXIT <returncode>`); every gate ran with `cwd=/home/decodeux/Repos/remedy` except G5, which ran in its own worktree. Interpreter: Python 3.10.12.
 
-- **Transport**, before any write: `.remedy-wt/f273-r3/digests.py` printed MATCH for all six payloads (block.md `2b3f9f097b10a16a494f706667d6340de36520007b372cd5d2f980c1355aa69b`) and all three diffs, `ALL True`.
-- **G1** (at C5 `531cc24a`, clean tree): `.remedy-wt/f273-r3/g1.py`, EXIT 0:
+- **Transport**, before any write: `sha256sum` of the three payloads, the block and the three diffs matched the block's digests (block.md `c45278f50851556fcb35cbfd25aa897204bbc2bf4ac41e6091a3415ef1d7b192`); `.remedy-wt/f273-r4/wk_c1.py` re-checked the four payloads (MATCH) before writing.
+- **G1** (at C4 `b00a826f`, clean tree): `python3 .remedy-wt/f273-r4/wk_g1.py`, EXIT 0:
   ```
-  True plan.md == payload
-  True live_review.md == base + ledger
-  True decisions.md == base + decisions
-  True authored f273-r3-plan.md == payload
-  True authored f273-r3-ledger.md == payload
-  True authored f273-r3-decisions.md == payload
-  True authored f273-r3-gate_from.txt == payload
-  True authored f273-r3-gate_to.txt == payload
-  True authored f273-r3-block.md == payload
-  True TO contains FROM
-  True FROM exactly 1x before
-  True FROM exactly 1x after
-  True gate doc == base with FROM->TO
-  True C2 touches only the gate doc
-  True added 1x: "   That list is ONE run's sample, not th"
-  True added 1x: '   empty list is evidence that this run '
-  True added 1x: '   branch introduces no failure, and the'
-  True added 1x: '   a later run finds red is attributed b'
-  True C2 adds exactly the TO-only lines
-  ALL True 19 checks
+  True digest plan.md
+  True digest ledger.md
+  True digest decisions.md
+  True digest block.md
+  True digest f273-proto-t002a.diff
+  True digest f273-proto-t002b.diff
+  True digest f273-proto-t002c.diff
+  True plan.md == payload (at C4)
+  True live_review.md == 4862e71a bytes + ledger.md (at C4)
+  True decisions.md == 4862e71a bytes + decisions.md (at C4)
+  True authored f273-r4-plan.md == payload
+  True authored f273-r4-ledger.md == payload
+  True authored f273-r4-decisions.md == payload
+  True authored f273-r4-block.md == payload
+  True exactly four f273-r4-* copies: ['.agent/authored/f273-r4-block.md', '.agent/authored/f273-r4-decisions.md', '.agent/authored/f273-r4-ledger.md', '.agent/authored/f273-r4-plan.md']
+  ALL True 15 checks
   ```
-- **G2**: `git rev-parse 531cc24a:tests 531cc24a:packages 531cc24a:scripts 531cc24a:docs 531cc24a:.github`, EXIT 0:
+- **G2**: `git rev-parse b00a826f:tests b00a826f:apps b00a826f:packages`, EXIT 0:
   ```
-  7f2abd8ebf29f2260f47f4cf3ef3a00ee9e97969
+  f952ccd3491b9516afbe71d2f0cd5e873ff538c5
+  669c3a23f24a5dca64f2fc47dbd708c9084a1239
   33e5de700300b3644f0e979824eae0edcf526627
-  eac614e51c99eabe996a0cebe7b4bebaf2f8abd5
-  f1fd3da1ac35dae63ca2a6350f1ef205e3b0c2e4
-  118e627f2d62e6962f7c0d9cdafa54888d110085
   ```
-  All five equal the reviewer's dry-run subtrees.
-- **G3** (primary checkout, serial, the block's 26 targets, full output in `.remedy-wt/f273-r3/g3.txt`, 11 lines): `python3 -m pytest -q -p no:cacheprovider tests/orchestration/test_job_state_field.py ... tests/orchestration/test_release_workflow.py`:
+  All three equal the reviewer's dry-run subtrees.
+- **G3** (primary checkout at `b00a826f`, serial, the block's 15 targets, full output in `.remedy-wt/f273-r4/wk_g3.txt`, 19 lines): `python3 -m pytest -q -p no:cacheprovider tests/orchestration/test_product_smoke.py ... tests/cli/test_golden_path.py`:
   ```
-  699 passed in 217.48s (0:03:37)
+  1239 passed, 4 skipped in 182.58s (0:03:02)
   EXIT 0
   ```
-  0 failed. `grep -c "R-0803:"` over the full output file printed `0`. `git status --porcelain` read empty afterwards.
-- **G4** (primary checkout): `python3 -m ruff check` over the 21 Python files C3 to C5 touch, EXIT 0:
+  0 failed. `grep -c "R-0803:"` over the full output file printed `0`; `grep -c -i failed` printed `0`. `git status --porcelain` read empty afterwards. `apps/ui/node_modules` exists in the primary checkout, so `test_vitest_passes` ran there rather than skipping.
+- **G4** (primary checkout): `python3 -m ruff check --output-format concise` over the 15 Python files C2 to C4 touch, EXIT 1:
   ```
-  All checks passed!
+  tests/ui_server/test_live_state.py:465:9: I001 [*] Import block is un-sorted or un-formatted
+  tests/ui_server/test_live_state.py:466:16: F401 [*] `datetime` imported but unused
+  tests/ui_server/test_live_state.py:500:9: I001 [*] Import block is un-sorted or un-formatted
+  tests/ui_server/test_live_state.py:500:40: F401 [*] `apps.cli.commands.ui` imported but unused
+  Found 4 errors.
+  [*] 4 fixable with the `--fix` option.
   ```
-- **G5** (`python3 .remedy-wt/f273-r3/g5.py`, one worktree at `531cc24a`, `python3 -B -m pytest -q -p no:cacheprovider` from its root, `__pycache__` purged before every run, each mutation reverted by its saved bytes and `git status --porcelain` read empty after every revert), EXIT 0:
+  Exactly the four base findings. Control: the same command over `git show 4862e71a:tests/ui_server/test_live_state.py` saved as `.remedy-wt/f273-r4/wk_base_test_live_state.py` printed the same four codes at 470:9, 471:16, 505:9 and 505:40 (EXIT 1): five lines lower after C3, nothing else.
+- **G5** (`python3 .remedy-wt/f273-r4/wk_g5.py`, one worktree at `b00a826f`, `python3 -B -m pytest -q -p no:cacheprovider` from its root, `__pycache__` purged before every run, each mutation's FROM byte-counted first and reverted by its saved bytes, `git status --porcelain` empty after every revert), EXIT 0:
   ```
-  job_evidence resolves to: /home/decodeux/Repos/remedy/.remedy-wt/f273-r3-g5/packages/orchestration/job_evidence.py
-  inside worktree: True
-  [control] exit 0; summary: 164 passed in 26.16s
-  (a) packages/core/models.py: FROM count = 1
-  [mut_a] exit 1; summary: 1 failed, 14 passed in 0.32s
-      FAILED tests/orchestration/test_job_state_field.py::TestTheRenderingIsUnchanged::test_every_run_state_member_formats_and_stringifies_as_its_value
-  (b) scripts/rotate_live_review.py: FROM count = 1
-  [mut_b] exit 1; summary: 3 failed, 9 passed in 0.27s
-      FAILED tests/orchestration/test_live_review_rotation.py::test_open_findings_count_is_identical_before_and_after
-      FAILED tests/orchestration/test_live_review_rotation.py::test_the_open_set_counts_by_distinct_id_not_by_line
-      FAILED tests/orchestration/test_live_review_rotation.py::test_dry_run_prints_the_sizes_and_writes_nothing
-  (c) scripts/build_review_manifest.py: FROM count = 1
-  [mut_c] exit 1; summary: 2 failed, 13 passed in 0.31s
-      FAILED tests/orchestration/test_final_audit_evidence.py::TestReviewStateExtraction::test_open_findings_not_ready
-      FAILED tests/orchestration/test_final_audit_evidence.py::TestReviewStateExtraction::test_the_manifest_reads_the_real_ledger_as_the_canonical_reader_does
-  (d) packages/orchestration/job_evidence.py: FROM count = 1
-  [mut_d] exit 1; summary: 1 failed, 24 passed in 5.62s
-      FAILED tests/orchestration/test_review_manual_completion_shapes.py::TestDeletedSourceFileDoesNotBlockTheBundle::test_the_content_proof_carries_a_tombstone_for_every_deleted_path
-  (e) packages/orchestration/job_evidence.py: FROM count = 1
-  [mut_e] exit 1; summary: 1 failed, 96 passed in 22.07s
-      FAILED tests/orchestration/test_job_evidence.py::TestDogfoodCommandShape::test_a_deleted_source_file_is_a_tombstone_the_strict_decoder_accepts
-  control exit 0 ; mutation exits {'a': 1, 'b': 1, 'c': 1, 'd': 1, 'e': 1}
+  apps/ui/node_modules present before first run: False
+  tests.ui_server.server_start resolves to: /home/decodeux/Repos/remedy/.remedy-wt/f273-r4-g5/tests/ui_server/server_start.py (inside worktree: True)
+  packages.orchestration.pingpong_loop resolves to: /home/decodeux/Repos/remedy/.remedy-wt/f273-r4-g5/packages/orchestration/pingpong_loop.py (inside worktree: True)
+  [vitest_skip] exit 0; summary: 1 skipped, 48 deselected in 0.14s
+  [vitest_mut] FROM byte-count = 1; exit 1; summary: 1 failed, 48 deselected in 0.80s
+      FAILED tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes
+  [control] exit 0; summary: 430 passed in 35.93s
+  (a) FROM byte-count = 1; exit 1; 1 failed, 76 passed
+      FAILED tests/orchestration/test_product_smoke.py::test_the_default_port_is_owned_by_the_worker
+  (b) FROM byte-count = 1; exit 1; 1 failed, 9 passed
+      FAILED tests/ui_contracts/test_humanize_catalog.py::TestDerivation::test_vendored_python_under_node_modules_is_not_walked
+  (c) FROM byte-count = 1; exit 1; 1 failed, 68 passed
+      FAILED tests/ui_contracts/test_brain_stream_ring.py::TestTheFeedIsFedFromTheStream::test_the_card_prints_each_rows_seq
+  (d) FROM byte-count = 1; exit 1; 1 failed, 25 passed
+      FAILED tests/orchestration/test_job_stop_integration.py::TestStopDuringAProviderCall::test_a_stop_before_the_parse_retry_leaves_the_malformed_response_alone
+  (e) FROM byte-count = 1; exit 1; 4 failed, 3 passed
+      FAILED tests/ui_server/test_server_start.py::TestAHalfWrittenFileIsNotStartedYet::test_a_partial_read_is_retried_until_the_file_is_whole[empty]
+      FAILED ...::test_a_partial_read_is_retried_until_the_file_is_whole[one-byte]
+      FAILED ...::test_a_partial_read_is_retried_until_the_file_is_whole[half]
+      FAILED ...::TestAHalfWrittenFileIsNotStartedYet::test_a_partial_read_is_not_info
+  (f) FROM byte-count = 1; exit 1; 1 failed, 6 passed
+      FAILED tests/ui_server/test_server_start.py::TestTheWaitLastsAsLongAsTheStart::test_a_dead_server_thread_fails_at_once_rather_than_at_a_budget
+  (g) FROM byte-count = 1; exit 1; 125 failed, 61 passed
+      failing ids in all seven files: test_live_state.py (14, e.g. TestUIServerIntegration::test_server_starts_and_writes_info),
+      test_command_channel.py (79, TestCommandChannelDoor::*), test_server_concurrency.py (1, test_two_requests_are_in_flight_at_once),
+      test_digest_route.py (7), test_decisions_endpoint.py (4), test_command_dispatch.py (12), test_diff_endpoint.py (8)
+  (h) FROM byte-count = 1; exit 1; 1 failed, 54 passed
+      FAILED tests/ui_contracts/test_decision_answer_wiring.py::TestTheInFlightHelpersTouchOnlyTheirOwnKey::test_the_add_helper_adds_the_key_it_was_handed
+  results: {'vitest_skip': 0, 'vitest_mut': 1, 'control': 0, 'mut_a': 1, 'mut_b': 1, 'mut_c': 1, 'mut_d': 1, 'mut_e': 1, 'mut_f': 1, 'mut_g': 1, 'mut_h': 1}
   G5 PASS
   ```
-  The control ran over the five named test files. Every mutation went red; none stayed green. Every revert left the worktree clean. The worktree was then removed (see External actions).
+  The control ran over the twelve test files the mutations name. Every mutation went red; none stayed green. Full per-run output is in `.remedy-wt/f273-r4/wk_g5_*.txt`; (g)'s full list of 125 ids is in `wk_g5_mut_g.txt`.
 - **G6** runs after the push and is reported in the round report, because this commit precedes it.
 - Full suite: not run (amend0917-throughput).
 
 ## Authored-text proofs
 
-- Every edited `.agent/` file was built by `python3 .remedy-wt/f273-r3/c1.py` from `git show a5e3b9ce:<path>` bytes and the payload bytes, and `docs/agents/integration_gate.md` by `.remedy-wt/f273-r3/c2.py` from `git show a5e3b9ce:docs/agents/integration_gate.md` bytes. Nothing was hand-edited. G1 re-proves every file and every `.agent/authored/f273-r3-*` copy against its payload.
+- Every edited `.agent/` file was built by `python3 .remedy-wt/f273-r4/wk_c1.py` from `git show 4862e71a:<path>` bytes and the payload bytes. Nothing was hand-edited. G1 re-proves every file and every `.agent/authored/f273-r4-*` copy against its payload.
 - The code arrived only by `git apply` of the three reviewer-verified diffs, in the block's order. G2's subtree ids equal the reviewer's dry-run subtrees.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C1 bookkeeping | done | `8fe7ea35` |
-| C2 T003, R-0645 | done | `52cee6d8` |
-| C3 T016 (a), R-0984 | done | `49cd2717` |
-| C4 T016 (b) and (c), R-0985 and R-0839 | done | `cecc8881` |
-| C5 R-0983 | done | `531cc24a` |
-| C6 handoff + push | done | This commit, then the push |
-| G1 to G5 | done | EXIT 0 / exact match as above |
+| C1 bookkeeping | done | `42268f04` |
+| C2 R-0518, R-0569, R-0649, R-0664 | done | `43760c74` |
+| C3 R-0691, R-0708, R-0734, R-0815 | done | `5206ece6` |
+| C4 the six other server-start copies | done | `b00a826f` |
+| C5 handoff + push | done | This commit, then the push |
+| G1 to G5 | done | As above; G4's EXIT 1 is exactly the four base findings the block names |
 | G6 | done | After the push; in the round report |
 
 ## Open findings
 
-Measured by `.remedy-wt/f273-r3/measure.py` on the committed `.agent/live_review.md` at `531cc24a` (C1 onwards; C2 to C5 do not touch it):
-- **By distinct id** (registered ids minus ids with at least one `^Done: R-\d{4} — ` line): 127 open.
-- **By the canonical line formula** that `count_open_findings` had at `a5e3b9ce` (`^- R-\d{4} — ` lines minus `^Done: R-\d{4} — ` lines): 137 − 11 = 126.
+Measured by `.remedy-wt/f273-r4/wk_measure.py`, which loads `scripts/rotate_live_review.py` by path and calls `count_open_findings` (by distinct id) on the committed `.agent/live_review.md`:
+- at `b00a826f` (C1 onwards; C2 to C4 do not touch it): **124 open**;
+- at `4862e71a`: 127 open.
 
-Highest id R-0985. Against round 2's 128 and 127: C1 registered three ids (R-0983, R-0984, R-0985) and booked four `Done:` lines (R-0812, R-0396, R-0445, R-0736), so both readings fell by one. Since C4, `count_open_findings` itself counts by distinct id, so at `531cc24a` it returns 127.
+The fall of three is C1's `Done:` lines for R-0671, R-0689 and R-0690. The eight ids landed this round (R-0518, R-0569, R-0649, R-0664, R-0691, R-0708, R-0734, R-0815) are still open in the ledger, as are R-0499 and R-0662 (DECISION F273 D4 (9) and (10)). Highest registered id R-0985.
 
 ## Deviations & assumptions
 
-- **Commit sequence:** as ordered: C1, C2, C3, C4, C5, C6, then the push. No extra commit.
-- **G1 first run:** the worker's own added check "C2 touches only the gate doc" first diffed `a5e3b9ce..52cee6d8`, which spans C1 as well, and printed False. The check was corrected to diff C2 against its parent (`52cee6d8^..52cee6d8`), as was the added-lines count, and the script was made to exit 1 on any False. The re-run above is all True. No file under review was changed.
-- **Scratch runner:** the worker's shell cwd was the reviewer's `.remedy-wt/f273-r3-dry` worktree. Nothing was run in it; every git command used `git -C` on the primary checkout and every script used an explicit `cwd`.
-- **G5 purge:** `python3 -B` writes no `__pycache__`, so the purges found nothing to remove after the first; the purge still ran before every run.
-- **Payload copies:** "every payload above" was read as the six files the block lists under PAYLOADS. The three code diffs are listed under CODE, and they are not copied into `.agent/authored/`, as in round 2.
-- **Scratch:** gitignored, under `.remedy-wt/f273-r3/`: `digests.py`, `c1.py`, `c2.py`, `g1.py`, `g5.py`, `measure.py`, `run.py`, `g3.txt`, `g5_*.txt`.
+- **Commit sequence:** as ordered: C1, C2, C3, C4, C5, then the push. No extra commit.
+- **C3 alone does not import:** `5206ece6` makes `test_command_channel.py` and `test_live_state.py` import `tests.ui_server.server_start`, which the block's C4 diff creates, so at C3 by itself those two files fail at collection. This is the block's ordered split of the three diffs, applied unchanged; every gate ran at C4, where it resolves (G3, G5). A bisect landing on `5206ece6` would see it.
+- **G4 exit code:** ruff exits 1 because the four base findings remain; the block orders exactly those four and nothing else, which is what it printed.
+- **Payload copies:** "every payload above" was read as the four files the block lists under PAYLOADS, as in rounds 2 and 3. The three code diffs are listed under CODE and are not copied into `.agent/authored/`.
+- **G5 purge:** `python3 -B` writes no `__pycache__` of its own, but the purge before (a) and (e) removed four directories each, written by subprocesses the preceding runs' tests spawn without `-B`; the purge ran before every run.
+- **Scratch runner:** the worker's shell cwd was the reviewer's `.remedy-wt/f273-r4-dry` worktree. Nothing was run in it; every git command used `git -C` on the primary checkout and every script used an explicit `cwd`. The worker's scripts carry a `wk_` prefix so the reviewer's own files in `.remedy-wt/f273-r4/` were not overwritten.
+- **Scratch:** gitignored, under `.remedy-wt/f273-r4/`: `wk_c1.py`, `wk_g1.py`, `wk_g5.py`, `wk_measure.py`, `wk_run.py`, `wk_check.py`, `wk_base_test_live_state.py`, `wk_g3.txt`, `wk_g5_*.txt`.
 
 ## Next
 
-1. Phase 1 rule 1 (`.agent/STOP`), then the review of round 3.
+1. Phase 1 rule 1 (`.agent/STOP`), then the review of round 4.
 
 Operator questions open: 5
