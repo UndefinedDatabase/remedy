@@ -914,6 +914,36 @@ def test_contract_cli_tool_gates_the_job_on_its_whole_mission_checks_and_names_t
                     f"blocking criteria not met: {named}")
 
 
+def commit_a_passing_suite(repo: Path) -> None:
+    """One passing test under `tests/`, committed, so a pytest check has a suite to run."""
+    (repo / "tests").mkdir()
+    (repo / "tests" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "suite")
+
+
+def test_a_gated_pytest_check_in_a_repo_with_a_passing_suite_leaves_the_job_completed(
+        repo, capsys, monkeypatch):
+    """F273: the gate's pytest wrote `tests/__pycache__/*.pyc` into the job's
+    worktree, so the job ended `job_handoff_coverage_failed` on a file no task
+    wrote. The repository has no `.gitignore`, as a fresh one has not."""
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, load_job_plan
+
+    monkeypatch.delenv("PYTHONDONTWRITEBYTECODE", raising=False)
+    commit_a_passing_suite(repo)
+
+    data = json.loads(_do(capsys, "--json", "--contract", "cli-tool"))
+
+    [job_id] = data["job_ids"]
+    job = load_job_plan(job_id)
+    assert (job.state, job.error, job.unexpected_root_files) == (JOB_COMPLETED, "", [])
+    assert job.handoff_coverage_verdict == "PASS"
+    assert _step(data, "run")["status"] == "done"
+    assert data["contract"]["criteria"][0]["check"]["kind"] == "pytest"
+    assert {c["status"] for c in data["contract"]["criteria"]
+            if c["origin"] == "template"} == {"met"}
+
+
 def test_a_do_whose_order_proposes_no_template_names_only_criteria_not_met(repo, capsys):
     from packages.orchestration.dod_gate import load_dod
 

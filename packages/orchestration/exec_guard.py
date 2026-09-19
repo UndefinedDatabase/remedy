@@ -658,13 +658,19 @@ def dod_process_exec_policy(timeout_sec: float, cwd: str | None) -> ExecGuardPol
     `deny_network=True` is amendment F085 D1's network column for this row: a DoD
     check is a bounded, project-authored command, so it takes the same proxy
     posture the `test` class takes, written after the scrub that would delete it.
+
+    `PYTHONDONTWRITEBYTECODE` is SET, never merely passed through (F273): a DoD
+    check judges the job's worktree before its hand-off, and a Python check that
+    wrote `__pycache__/*.pyc` into that tree would end the job
+    `job_handoff_coverage_failed` on files no task wrote. The value becomes the scrub
+    SOURCE beside `os.environ`, as `test_command_exec_policy`'s overlay does.
     """
     return ExecGuardPolicy(
         wall_timeout_seconds=float(timeout_sec),
         output_cap_bytes=DOD_PROCESS_OUTPUT_CAP_BYTES,
         cwd=cwd,
         core_file_bytes=0,
-        env=None,
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
         env_allowlist=DOD_PROCESS_ENV_ALLOWLIST,
         deny_network=True,
     )

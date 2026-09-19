@@ -637,7 +637,10 @@ def test_the_dod_process_policy_keeps_the_wall_timeout_its_class_is_defined_by()
     assert policy.cwd == "/tmp/dod-cwd"
     assert policy.core_file_bytes == 0
     assert policy.output_cap_bytes == exec_guard.DOD_PROCESS_OUTPUT_CAP_BYTES
-    assert policy.env is None
+    # F273: the one key SET rather than passed through, so a check never writes
+    # bytecode into the tree it judges; the scrub still builds the child from it.
+    assert policy.env["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert exec_guard.plan_child_spawn(policy).env["PYTHONDONTWRITEBYTECODE"] == "1"
     assert policy.env_allowlist == exec_guard.DOD_PROCESS_ENV_ALLOWLIST
     assert not exec_guard.FORBIDDEN_ENV_KEYS & set(policy.env_allowlist)
     assert policy.cpu_seconds is None
