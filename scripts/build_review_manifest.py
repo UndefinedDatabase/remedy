@@ -2489,6 +2489,25 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
     return {"ok": not reasons, "gate_verdicts": verdicts, "blocking_reasons": reasons}
 
 
+#: R-0667: why a READY package can carry commit_execution_gate NEEDS_HUMAN_APPROVAL.
+_COMMIT_ARBITRATION_RULE = (
+    "package_status is governed by ready_gate_matrix. commit_execution_gate is a pre-acceptance "
+    "gate whose only accepted verdict is NEEDS_HUMAN_APPROVAL: a READY_FOR_REVIEW package is ready "
+    "for a human reviewer and still needs that human's approval before any commit. Any other "
+    "commit verdict, or a commit gate not exactly derived from the packaged verdicts, is listed in "
+    "ready_gate_matrix.blocking_reasons and blocks.")
+
+
+def commit_execution_arbitration(gate_matrix: dict) -> dict:
+    """R-0667: the commit-execution verdict beside the ready gate, with the rule arbitrating them."""
+    verdict = (gate_matrix.get("gate_verdicts") or {}).get(_COMMIT_GATE, "NOT_EVALUATED")
+    return {"commit_execution_gate_verdict": verdict,
+            "ready_gate_matrix_ok": bool(gate_matrix.get("ok")),
+            "governs_package_status": "ready_gate_matrix",
+            "human_approval_required": verdict == "NEEDS_HUMAN_APPROVAL",
+            "rule": _COMMIT_ARBITRATION_RULE}
+
+
 def _evidence_dir_gate_loader(ev: _EvidenceView):
     """A load_json for evaluate_ready_gate_matrix backed by the immutable Evidence view, raising on
     invalid JSON so a corrupt gate BLOCKS rather than silently passing."""
@@ -2726,8 +2745,12 @@ def _build_alignment(
 
     alignment_verdict = "PASS" if not issues else "BLOCKED"
 
+    # R-0666: the count is derived from a list that names every file it counted, so a non-zero
+    # count can never sit beside only empty lists.
+    counted = sorted({f.split()[-1] for f in dirty_files if f.strip()})
     return {
-        "dirty_file_count_total": len(dirty_files),
+        "dirty_file_count_total": len(counted),
+        "dirty_files": counted,
         "dirty_source_test_files": dirty_source_test,
         "intended_commit_files": fv_changed or cp_covered,
         "change_provenance_covered_files": cp_covered,
@@ -3201,7 +3224,9 @@ def build_manifest_from_snapshot(
 
     alignment: dict | None = None
     if evidence_view is not None:
-        alignment = _build_alignment(dirty, evidence_view)
+        # R-0666: the same dirty set the review subject reports — this invocation's own packaging
+        # outputs (the root manifest the coordinator rebuilds over) are not dirty source.
+        alignment = _build_alignment(review_subject["dirty_files"], evidence_view)
         if alignment["verdict"] == "BLOCKED" and current_evidence:
             current_evidence["evidence_freshness"]["evidence_authoritative"] = False
 
@@ -3371,6 +3396,7 @@ def build_manifest_from_snapshot(
         "review_package_created": True,
         "package_status": package_status,
         "ready_gate_matrix": gate_matrix,
+        "commit_execution_arbitration": commit_execution_arbitration(gate_matrix),
         "final_verifier_reproducibility": fv_repro,
         "git_status_snapshot": {"status": git_snapshot["status"],
                                 "diagnostic": git_snapshot["diagnostic"]},

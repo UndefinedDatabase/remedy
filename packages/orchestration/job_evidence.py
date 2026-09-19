@@ -3491,7 +3491,16 @@ def create_manual_completion_bundle(
         "target_guard": None, "error": "", "completion_mode": "manual_operator_repair",
         "effective_status": "operator_attested_complete", "evidence_available": True,
         "human_final_reviewer_required": True})
-    _w("job_report.json", "")
+    # R-0668: the job report was written as zero bytes while the artifact contract requires it and
+    # the fresh-evidence gate reads its job_id as a fallback. It now carries the same facts as the
+    # manifest and tasks.json beside it, in the shape `_build_job_report_safe` exports.
+    _w("job_report.json", {
+        "job_id": job_id, "job_title": job_title, "status": "planned",
+        "repo_identity": "[local]", "created_at": generated_at, "finished_at": "", "error": "",
+        "completion_mode": "manual_operator_repair",
+        "effective_status": "operator_attested_complete",
+        "tasks": [{"task_id": t, "title": f"Task {t}", "status": "pending",
+                   "changed_files": sorted(v)} for t, v in part.items()]})
     _w("job_timeline.json", {"job_id": job_id, "events": [], "sequencing_valid": True,
                              "timestamps_available": False})
     _w("tasks.json", [{"task_id": t, "title": f"Task {t}", "status": "pending",

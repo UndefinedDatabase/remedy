@@ -482,6 +482,8 @@ def main() -> int:
                 _ms = "BLOCKED_EVIDENCE"
             base_manifest["package_status"] = _ms
             base_manifest["ready_gate_matrix"] = gate_matrix
+            base_manifest["commit_execution_arbitration"] = _brm.commit_execution_arbitration(
+                gate_matrix)
             base_manifest["snapshot_inventory_status"] = {
                 "ok": not inventory_problems, "problems": inventory_problems[:8]}
             base_manifest["package_hash_chain"] = {

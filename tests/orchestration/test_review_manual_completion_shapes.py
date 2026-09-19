@@ -352,6 +352,28 @@ class TestManualCompletionRunsEndToEnd:
         assert summary["verdict"] == "PASS_WITH_RISKS"
         assert sorted(summary["operator_attested_tasks"]) == ["T001", "T002"]
 
+        # R-0667: this READY matrix sits beside a commit gate that still needs a human; the
+        # arbitration names both and the rule between them.
+        arb = _brm.commit_execution_arbitration(gm)
+        assert arb["ready_gate_matrix_ok"] is True
+        assert arb["commit_execution_gate_verdict"] == "NEEDS_HUMAN_APPROVAL"
+        assert arb["human_approval_required"] is True
+
+    def test_no_bundle_artifact_is_zero_bytes(self, tmp_path):
+        """R-0668: job_report.json was written as zero bytes into every bundle. It is required by
+        the artifact contract and read by the fresh-evidence gate, so it carries the job's facts."""
+        repo, base, head = self._make_repo(tmp_path)
+        evd = tmp_path / "evidence"
+        self._bundle(evd, repo, base, head)
+        empty = sorted(str(p.relative_to(evd)) for p in evd.rglob("*")
+                       if p.is_file() and p.stat().st_size == 0)
+        assert empty == []
+        report = json.loads((evd / "job_report.json").read_text(encoding="utf-8"))
+        manifest = json.loads((evd / "manifest.json").read_text(encoding="utf-8"))
+        assert report["job_id"] == manifest["job_id"] == "e2ef4bundle0001"
+        assert report["job_title"] == manifest["job_title"]
+        assert [t["task_id"] for t in report["tasks"]] == manifest["task_ids"]
+
     def test_producer_is_reproducible(self, tmp_path):
         # The same repo bundled twice yields byte-identical final verifier + token truth.
         repo, base, head = self._make_repo(tmp_path)
