@@ -45,6 +45,16 @@
    precondition and not an intention: "Remedy is used on Remedy" rots the
    moment it depends on someone remembering to do it, which is DECISION F257
    D2's CONSEQUENCE clause in as many words.
+7. NO NEW MODULE OUTSIDE THE REACHABLE SET UNLESS ITS FEATURE FILE NAMES IT
+   (F271). The closure's reachability measurement is green in the transcript
+   precondition 2 reads: `tests/orchestration/test_import_reachability.py`
+   (nothing outside `tests/orchestration/import_reachability_allowlist.txt`
+   is reachable from the entry points) and `tests/test_no_orphan_modules.py`
+   (no module under `packages/`, `apps/` or `scripts/` lacks a non-test
+   importer unless `ALLOWED_UNWIRED` lists it with its reason). A line this
+   feature adds to either list is named in its feature file. AGENTS.md's
+   Scope Control rule "Replacing is deleting" binds this closure; it is
+   cited here, not restated.
 
 ## Algorithm
 1. **Evidence job (worker).** Final evidence run, fresh job id, feature-
