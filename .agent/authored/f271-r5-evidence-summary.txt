@@ -1,0 +1,50 @@
+Evidence Job Summary for F271 Round 5 Closure Round A
+
+Created: 2026-09-19
+Evidence job ID: f271r5e1001
+Head commit: b54c7fb9519ceeddb37e7988a6304dce8117010d
+Base commit: a4f79a94056283ec59da3cf56624001171f96fbd (the fork point)
+
+Base proof (pitfall (e)):
+  - git rev-list --ancestry-path a4f79a94056283ec59da3cf56624001171f96fbd..b54c7fb9519ceeddb37e7988a6304dce8117010d --count: 20
+  - git rev-list a4f79a94056283ec59da3cf56624001171f96fbd..b54c7fb9519ceeddb37e7988a6304dce8117010d --count: 20
+
+Deselection Applied: none
+
+Script: .remedy-wt/f271-r5/create_f271_evidence.py, adapted from
+.remedy-wt/f270-r6/create_f270_evidence.py: the test files, the fork-point
+base, the run id, the evidence dir, the job id and title, the step range and
+the review feature id changed; the collect-only parser, which keeps every
+"tests/...::..." line and checks its count against pytest's "N tests
+collected", is F270's unchanged.
+
+Test Verification Run:
+  - Run ID: vr-1113
+  - Test files: 4 files (sorted)
+    - tests/cli/test_worker_facade_cmd.py
+    - tests/orchestration/test_source_apply.py
+    - tests/test_command_catalog.py
+    - tests/test_no_orphan_modules.py
+  - Node IDs collected: 131
+  - Passed: 131
+  - Failed: 0
+  - Skipped: 0
+  - Exit code: 0
+  - Output hash: 575fda6014851f4b980b960a0fc62b995e6be97d437c9a0d75525dc28f1fee42
+  - test_files: SORTED (required by packaging validator)
+
+Evidence Bundle:
+  - Job ID: f271r5e1001
+  - Verdict: PASS_WITH_RISKS
+  - Authoritative files: 15
+  - Commit count: 20
+  - Partition: T001=5, T002=5, T003=5
+  - Total passed: 131
+  - Manual completion: true
+  - Operator-attested tasks: T001, T002, T003
+
+Evidence Validation (scripts/build_review_manifest.py validate_evidence_candidate):
+  - is_valid_current_run: True
+  - validation_errors: []
+
+Evidence directory: .remedy-wt/f271_evidence_round5 (not committed)
