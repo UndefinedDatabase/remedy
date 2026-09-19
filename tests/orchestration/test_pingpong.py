@@ -364,9 +364,10 @@ def test_pingpong_loop_test_command_runs_on_the_guarded_seam(tmp_path, monkeypat
         return subprocess.CompletedProcess(list(cmd), 0, b"out-line\n", b"err-line\n")
 
     monkeypatch.setattr(pingpong_loop, "run_guarded_test_command", _fake_guarded)
-    passed, summary = pingpong_loop._run_test_command("pytest -q", tmp_path, timeout_sec=17)
+    passed, summary, tripped = pingpong_loop._run_test_command("pytest -q", tmp_path, timeout_sec=17)
 
     assert passed is True
+    assert tripped == ""
     assert seen == {"cmd": ["pytest", "-q"], "timeout_sec": 17, "cwd": str(tmp_path)}
     assert summary.startswith("exit=0")
     assert "out-line" in summary

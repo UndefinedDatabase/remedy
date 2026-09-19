@@ -32,7 +32,7 @@ from typing import Any
 from packages.orchestration import data_paths
 from packages.orchestration.artifact_summary import render_tiered_diff_text, summary_call_fn
 from packages.orchestration.data_paths import mint_run_id
-from packages.orchestration.exec_guard import run_guarded_test_command
+from packages.orchestration.exec_guard import TRIPPED_LIMIT_ATTR, run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
@@ -113,6 +113,9 @@ class PingPongRound:
     builder_output: BuilderOutput | None = None
     test_passed: bool | None = None
     test_summary: str = ""
+    # R-0568: the execution guard's `tripped_limit` for a test run that did NOT pass,
+    # "" otherwise. A passing run's trip explains no failure, so it is not kept.
+    test_tripped_limit: str = ""
     reviewer_output: ReviewerOutput | None = None
     repair_prompt: str = ""
     started_at: str = ""
@@ -3596,7 +3599,7 @@ def run_pingpong(
 
             # --- Test phase ---
             if has_test_command:
-                rd.test_passed, rd.test_summary = _run_test_command(
+                rd.test_passed, rd.test_summary, rd.test_tripped_limit = _run_test_command(
                     test_command, staging, timeout_sec=timeout_sec,
                 )
             else:
@@ -4228,15 +4231,18 @@ def _run_test_command(
     staging: Path,
     *,
     timeout_sec: int = 120,
-) -> tuple[bool, str]:
+) -> tuple[bool, str, str]:
     """Run a test command in the staging workspace.
 
-    Returns (passed, summary). Uses shlex.split — no shell=True.
+    Returns (passed, summary, tripped_limit). Uses shlex.split — no shell=True.
+    `tripped_limit` is the execution guard's own report of which limit it enforced
+    on a run that did NOT pass (R-0568) — "" when the run passed or the guard
+    tripped nothing — so the task's post-mortem can name the limit.
     """
     try:
         argv = shlex.split(command)
     except ValueError as exc:
-        return False, f"Invalid test command: {exc}"
+        return False, f"Invalid test command: {exc}", ""
     try:
         # Guarded since F085 T002b: rlimits, an env allowlist, a pinned cwd and the
         # guard's own wall deadline replace the bare spawn. The observable outcome is
@@ -4249,9 +4255,10 @@ def _run_test_command(
             cwd=str(staging),
         )
     except FileNotFoundError:
-        return False, f"Test command not found: {argv[0]}"
-    except subprocess.TimeoutExpired:
-        return False, f"Test command timed out after {timeout_sec}s"
+        return False, f"Test command not found: {argv[0]}", ""
+    except subprocess.TimeoutExpired as exc:
+        return (False, f"Test command timed out after {timeout_sec}s",
+                getattr(exc, TRIPPED_LIMIT_ATTR, None) or "")
 
     output = (proc.stdout or b"").decode("utf-8", "replace") + (proc.stderr or b"").decode("utf-8", "replace")
     if len(output) > _TEST_OUTPUT_CAP:
@@ -4262,7 +4269,8 @@ def _run_test_command(
         # Last few lines for summary
         last_lines = output.strip().splitlines()[-5:]
         summary += " | " + " ".join(last_lines)
-    return passed, summary
+    tripped = "" if passed else (getattr(proc, TRIPPED_LIMIT_ATTR, None) or "")
+    return passed, summary, tripped
 
 
 # ---------------------------------------------------------------------------

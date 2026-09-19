@@ -200,6 +200,10 @@ class TaskEntry:
     # F270 T001, DECISION F270 D1 (4): the commit this task landed on the job worktree
     # branch once applied; "" when none was made (copy mode, or not applied yet).
     worktree_commit: str = ""
+    # R-0568: the execution guard's `tripped_limit` on this task's last test run when
+    # that run did not pass; "" otherwise. The task post-mortem classifies it as
+    # `resource_limit` and names the limit.
+    tripped_limit: str = ""
 
 
 # F112 T003b2a: translates a live TaskEntry into the granularity machinery's
@@ -920,6 +924,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "output_artifact_ids": t.output_artifact_ids,
                 "budget": t.budget,
                 "worktree_commit": t.worktree_commit,
+                "tripped_limit": t.tripped_limit,
             }
             for t in job.tasks
         ],
@@ -1028,6 +1033,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             budget=t.get("budget"),
             # A record written before F270 carries no key: the task has no commit.
             worktree_commit=str(t.get("worktree_commit", "") or ""),
+            # A record written before R-0568 carries no key: no trip was recorded.
+            tripped_limit=str(t.get("tripped_limit", "") or ""),
         ))
     return job
 
@@ -2915,11 +2922,13 @@ def run_job(
             task.safe_diff_files = list(result.safe_diff_files)
             task.repair_rounds_used = result.repair_rounds_used
             task.repair_rounds_allowed = result.repair_rounds_allowed
+            task.tripped_limit = ""           # this attempt's trip only, never a stale one
 
             # Extract test/reviewer info from rounds
             if result.rounds:
                 last_round = result.rounds[-1]
                 task.test_passed = last_round.test_passed
+                task.tripped_limit = last_round.test_tripped_limit
                 if last_round.reviewer_output:
                     task.reviewer_verdict = last_round.reviewer_output.verdict
 

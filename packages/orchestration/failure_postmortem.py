@@ -102,12 +102,19 @@ class FailureClass(str, enum.Enum):
     #: (F075 R-0185, from a gauntlet run whose injected mid-write death read as
     #: ``unknown``).
     IO_FAILURE = "io_failure"
+    #: The F085 execution guard stopped or capped a NON-provider subprocess on
+    #: one of its own limits (R-0568). The reason names the limit
+    #: (`wall_timeout`, `cpu_seconds` or `output_bytes`). A provider call's wall
+    #: timeout is NOT this class: it stays ``provider_timeout``, which names it
+    #: more precisely, because the provider seam never reports a trip here.
+    RESOURCE_LIMIT = "resource_limit"
     UNKNOWN = "unknown"
 
 
 #: The precedence chain, most authoritative first. `signal_source` always names the
 #: winning link, so a contradictory input set can be explained rather than argued about.
 SIGNAL_TYPED_EXCEPTION = "typed_exception"
+SIGNAL_GUARD_TRIP = "guard_trip"
 SIGNAL_TERMINAL_STATUS = "terminal_status"
 SIGNAL_ERROR_CLASS = "error_class"
 SIGNAL_RETRY_REASONS = "retry_reasons"
@@ -212,6 +219,11 @@ class FailureSignals:
     #: A reviewer verdict such as ``needs_repair`` — a normal rejection, NOT a transport
     #: failure. Present so the classifier can refuse to misread it as one.
     reviewer_verdict: str = ""
+    #: The limit the F085 execution guard reported tripping on a NON-provider
+    #: subprocess (`ExecGuardResult.tripped_limit`), or "" when it reported none.
+    #: A provider seam never sets it: a provider's wall trip reaches the classifier
+    #: as its typed timeout and stays ``provider_timeout``.
+    tripped_limit: str = ""
 
 
 @dataclass(frozen=True)
@@ -307,6 +319,11 @@ def classify(signals: FailureSignals) -> Classification:
     Precedence, and the reason for it:
 
     1. **typed exception** — a `WorktreeLockError` is not an opinion;
+    1b. **guard trip** — the execution guard's own report that it stopped or capped a
+       non-provider subprocess on a named limit. It sits below the typed exception so a
+       provider's wall timeout can never become ``resource_limit``, and above the
+       terminal status because ``test_failed`` says that the layer gave up, not that
+       the guard's limit is why;
     2. **explicit terminal loop/task signal** — the layer that gave up said why;
     3. **structured ``error_class``** — the provider layer's own verdict (parse/config);
     4. **retry evidence** — what F001 saw while it was still trying;
@@ -321,6 +338,13 @@ def classify(signals: FailureSignals) -> Classification:
             return verdict
         # An untyped exception is still an exception: fall through to the weaker signals,
         # carrying its text.
+
+    tripped = (signals.tripped_limit or "").strip()
+    if tripped:
+        reason = f"tripped_limit={tripped}"
+        if signals.error_text:
+            reason = f"{reason}: {signals.error_text}"
+        return Classification(FailureClass.RESOURCE_LIMIT, SIGNAL_GUARD_TRIP, reason)
 
     if signals.runtime_probe_failed:
         return Classification(
@@ -886,6 +910,7 @@ def task_failure_signals(task: Any) -> FailureSignals:
         terminal_status=terminal,
         error_text=error,
         reviewer_verdict=str(getattr(task, "reviewer_verdict", "") or ""),
+        tripped_limit=str(getattr(task, "tripped_limit", "") or ""),
     )
 
 
@@ -904,6 +929,10 @@ def build_task_rollup(
     """
     resolved = signals if signals is not None else task_failure_signals(task)
     verdict = classify(resolved)
+    # A guard trip's reason leads with the limit's name, so the record says WHICH
+    # limit tripped rather than only what the task layer printed about it.
+    raw_reason = (verdict.reason if verdict.failure_class is FailureClass.RESOURCE_LIMIT
+                  else resolved.error_text or verdict.reason)
     return PostmortemV1(
         failure_class=verdict.failure_class,
         signal_source=verdict.signal_source,
@@ -912,7 +941,7 @@ def build_task_rollup(
         task_id=str(getattr(task, "task_id", "") or ""),
         run_id=str(getattr(task, "run_id", "") or ""),
         terminal_status=resolved.terminal_status,
-        raw_reason=resolved.error_text or verdict.reason,
+        raw_reason=raw_reason,
         evidence_refs=call_refs,
     )
 
