@@ -94,10 +94,12 @@ def test_unknown_stage_name_raises_naming_every_known_stage():
 
 #: The slowest wall second each stage was MEASURED at, three samples per stage:
 #: `.agent/f083_inventory.md` `## Q10` for `fast`, `ui` and `smoke`, `## Q11` for
-#: `standard`, whose three uncapped samples span 916.36 s to 935.14 s, and
-#: `## Q12` for `budgets`, whose three samples span 1.25 s to 1.32 s.
+#: `standard`, whose three uncapped samples span 916.36 s to 935.14 s. `budgets`
+#: was re-measured when F273 T015 (b) added its corpus-coverage guard, which
+#: collects the whole suite once: three samples 23.36 s, 24.40 s, 23.24 s
+#: (2026-09-19, 24-thread i9-13900), up from `## Q12`'s 1.25 s to 1.32 s.
 MEASURED_MAX_WALL_S = {
-    "fast": 397.45, "standard": 935.14, "ui": 8.09, "smoke": 11.07, "budgets": 1.32}
+    "fast": 397.45, "standard": 935.14, "ui": 8.09, "smoke": 11.07, "budgets": 24.40}
 
 #: The budget rule: twice the measured maximum, rounded UP to a whole multiple of
 #: this many seconds. Doubling absorbs a slow machine; the rounding keeps the
