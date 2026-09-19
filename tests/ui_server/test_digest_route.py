@@ -12,9 +12,7 @@ from __future__ import annotations
 
 import json
 import threading
-import time
 from http.client import HTTPConnection
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -22,6 +20,7 @@ import pytest
 from packages.orchestration.job_digest import JOB_DIGEST_VERSION, build_job_digest
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
 from packages.orchestration.ui_server import _load_events
+from tests.ui_server.server_start import wait_for_server_info
 
 #: The envelope's top-level contract, from ``job_digest.build_job_digest``.  A
 #: literal here on purpose: the point of the assertion is that the ROUTE cannot
@@ -83,14 +82,11 @@ class TestDigestRoute:
             except (SystemExit, KeyboardInterrupt):
                 pass
 
-        threading.Thread(target=run, daemon=True).start()
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
 
-        for _ in range(50):
-            if Path(info_file).exists():
-                info = json.loads(Path(info_file).read_text())
-                return info["port"], token
-            time.sleep(0.1)
-        pytest.fail("Server did not start in time")
+        info = wait_for_server_info(info_file, t)
+        return info["port"], token
 
     def _get(self, path: str):
         port, token = self._start_server()

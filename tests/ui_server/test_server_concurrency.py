@@ -9,16 +9,14 @@ DECISION F008 D1 makes that a prerequisite of T001 rather than part of it.
 
 from __future__ import annotations
 
-import json
 import secrets
 import threading
-import time
 import urllib.request
-from pathlib import Path
 
 import pytest
 
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from tests.ui_server.server_start import wait_for_server_info
 
 
 def _make_job(**overrides: object) -> JobPlan:
@@ -63,13 +61,10 @@ class TestServerServesConcurrentRequests:
             except (SystemExit, KeyboardInterrupt):
                 pass
 
-        threading.Thread(target=run, daemon=True).start()
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
 
-        for _ in range(50):
-            if Path(info_file).exists():
-                return json.loads(Path(info_file).read_text())["port"], token
-            time.sleep(0.1)
-        pytest.fail("Server did not start in time")
+        return wait_for_server_info(info_file, t)["port"], token
 
     def test_two_requests_are_in_flight_at_once(self, monkeypatch):
         # A barrier, not a stopwatch: both requests must be inside the handler

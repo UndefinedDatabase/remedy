@@ -13,13 +13,13 @@ from __future__ import annotations
 
 import json
 import threading
-import time
 from http.client import HTTPConnection
 from pathlib import Path
 
 import pytest
 
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from tests.ui_server.server_start import wait_for_server_info
 
 # Pinned as a literal for the reason its sibling gives: a test that imports the
 # constant it checks cannot catch a rename of the header the browser must send.
@@ -57,12 +57,9 @@ def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
         except (SystemExit, KeyboardInterrupt):
             pass
 
-    threading.Thread(target=run, daemon=True).start()
-    for _ in range(50):
-        if Path(info_file).exists():
-            return json.loads(Path(info_file).read_text())["port"], token
-        time.sleep(0.1)
-    pytest.fail("Server did not start in time")
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    return wait_for_server_info(info_file, t)["port"], token
 
 
 class TestJobStopDispatchEffects:

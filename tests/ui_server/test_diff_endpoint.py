@@ -20,6 +20,7 @@ import pytest
 
 from packages.orchestration.diff_parser import DIFF_VIEW_MAX_BODY_LINES
 from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+from tests.ui_server.server_start import wait_for_server_info
 
 # WHY the two diffs name DIFFERENT files: serving the job diff where the task
 # run's was asked for — or the reverse — is then a red rather than a shrug.
@@ -106,14 +107,11 @@ class TestDiffEndpoint:
             except (SystemExit, KeyboardInterrupt):
                 pass
 
-        threading.Thread(target=run, daemon=True).start()
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
 
-        for _ in range(50):
-            if Path(info_file).exists():
-                info = json.loads(Path(info_file).read_text())
-                return info["port"], token
-            time.sleep(0.1)
-        pytest.fail("Server did not start in time")
+        info = wait_for_server_info(info_file, t)
+        return info["port"], token
 
     @staticmethod
     def _get(port, path):
@@ -324,14 +322,11 @@ class TestDiffEndpointPerfBudget:
             except (SystemExit, KeyboardInterrupt):
                 pass
 
-        threading.Thread(target=run, daemon=True).start()
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
 
-        for _ in range(50):
-            if Path(info_file).exists():
-                info = json.loads(Path(info_file).read_text())
-                return info["port"], token
-            time.sleep(0.1)
-        pytest.fail("Server did not start in time")
+        info = wait_for_server_info(info_file, t)
+        return info["port"], token
 
     def _timed_diff_requests(self, port, token):
         """`_SAMPLE_COUNT` GETs of this job's diff route; (times, status, body).
