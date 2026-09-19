@@ -3215,20 +3215,33 @@ def resume_job_plan(job_id: str, **run_kwargs: Any) -> JobPlan:
     if job.state == JOB_COMPLETED and job.worktree_cleanup_status == "clean":
         return job                      # nothing to resume; do not recreate anything
 
-    if job.isolation_mode == "worktree":
-        if job.worktree_cleanup_status not in JOB_RECOVERABLE_STATES:
-            raise ValueError(
-                f"job_not_resumable: worktree cleanup_status="
-                f"{job.worktree_cleanup_status!r}"
-            )
-        from packages.orchestration import worktrees as W
-        if not W._branch_exists(job.repo_path, job.worktree_branch):
-            raise ValueError(
-                f"job_branch_missing: {job.worktree_branch!r}; refusing to create "
-                f"a replacement branch or fall back to a copy"
-            )
+    refusal = job_resume_refusal(job)
+    if refusal:
+        raise ValueError(refusal)
 
     return run_job(job_id, **run_kwargs)
+
+
+def job_resume_refusal(job: JobPlan) -> str:
+    """The reason a worktree job's recorded workspace cannot be continued, or ``""``.
+
+    One answer for ``resume_job_plan`` and the ``job run`` command (R-0913): a
+    cleanup status outside ``JOB_RECOVERABLE_STATES`` or a recorded branch that no
+    longer exists is refused, never rebuilt. A completed, cleanly cleaned job has
+    nothing to continue and is not refused here.
+    """
+    if job.isolation_mode != "worktree":
+        return ""
+    if job.state == JOB_COMPLETED and job.worktree_cleanup_status == "clean":
+        return ""
+    if job.worktree_cleanup_status not in JOB_RECOVERABLE_STATES:
+        return (f"job_not_resumable: worktree cleanup_status="
+                f"{job.worktree_cleanup_status!r}")
+    from packages.orchestration import worktrees as W
+    if not W._branch_exists(job.repo_path, job.worktree_branch):
+        return (f"job_branch_missing: {job.worktree_branch!r}; refusing to create "
+                f"a replacement branch or fall back to a copy")
+    return ""
 
 
 def _block_job(job: JobPlan, failed_idx: int, error: str) -> None:

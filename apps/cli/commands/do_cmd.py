@@ -698,8 +698,18 @@ def _cmd_job_run(
 
     from packages.orchestration.pingpong_job import (
         export_job_report,
+        job_resume_refusal,
+        load_job_plan,
         run_job,
     )
+
+    # R-0913: a job whose recorded worktree cannot be continued is refused with
+    # resume_job_plan's own words, before anything runs or the record is touched.
+    _recorded = load_job_plan(job_id)
+    _refusal = job_resume_refusal(_recorded) if _recorded is not None else ""
+    if _refusal:
+        print(f"Error: {_refusal}", file=sys.stderr)
+        sys.exit(1)
 
     job = run_job(
         job_id,

@@ -534,3 +534,75 @@ class TestEndToEndJobFlow:
         assert (repo / "one.txt").read_text() == "hello\n"
         assert _git(repo, "rev-parse", "HEAD").strip() == _git(
             repo, "rev-parse", job.worktree_base_commit).strip()   # no commit
+
+
+# ---------------------------------------------------------------------------
+# R-0974 — a tracked file that .gitignore matches is still part of the hand-off
+# ---------------------------------------------------------------------------
+
+class TestTrackedIgnoredFile:
+    def test_a_job_edit_to_a_tracked_ignored_file_reaches_the_diff_and_the_target(
+        self, repo, monkeypatch,
+    ):
+        (repo / ".gitignore").write_text("*.log\n")
+        (repo / "keep.log").write_text("original\n")
+        _git(repo, "add", ".gitignore")
+        _git(repo, "add", "-f", "keep.log")
+        _git(repo, "commit", "-qm", "track an ignored file")
+
+        job, _ = _run_job(repo, monkeypatch, {"keep.log": "edited by the job\n"})
+        assert job.state == JOB_COMPLETED, job.error
+
+        job_diff = (job_dir(job.job_id) / "result.diff").read_text()
+        assert "b/keep.log" in job_diff
+        assert "+edited by the job" in job_diff
+
+        res = apply_job(job.job_id, str(repo), approve=True)
+        assert res.status == "applied", res.blocked_reason
+        assert (repo / "keep.log").read_text() == "edited by the job\n"
+
+
+# ---------------------------------------------------------------------------
+# R-0913 — `job run` refuses what resume_job_plan refuses
+# ---------------------------------------------------------------------------
+
+class TestJobRunRefusesAnUnresumableWorkspace:
+    def _run_cli(self, job_id):
+        from apps.cli.commands import do_cmd
+
+        with pytest.raises(SystemExit) as exc:
+            do_cmd._cmd_job_run(job_id, builder_provider="fake",
+                                reviewer_provider="fake", max_rounds=1)
+        return exc.value.code
+
+    def test_a_missing_recorded_branch_is_refused_and_the_record_is_untouched(
+        self, repo, monkeypatch, capsys,
+    ):
+        job, handle = TestJobPlanResumeAfterCrash()._crashed_job(repo, monkeypatch)
+        _git(repo, "worktree", "remove", "--force", handle.path)
+        _git(repo, "branch", "-D", job.worktree_branch)
+        record = job_dir(job.job_id) / "job.json"
+        before = record.read_bytes()
+
+        assert self._run_cli(job.job_id) == 1
+
+        err = capsys.readouterr().err
+        assert f"job_branch_missing: {job.worktree_branch!r}" in err
+        assert record.read_bytes() == before
+        assert not W._branch_exists(repo, job.worktree_branch)   # never recreated
+        assert not Path(handle.path).exists()
+
+    def test_a_non_recoverable_cleanup_status_is_refused(self, repo, monkeypatch, capsys):
+        job, _ = TestJobPlanResumeAfterCrash()._crashed_job(repo, monkeypatch)
+        record = job_dir(job.job_id) / "job.json"
+        data = json.loads(record.read_text())
+        data["worktree"]["cleanup_status"] = "deleted"
+        record.write_text(json.dumps(data, indent=2))
+        before = record.read_bytes()
+
+        assert self._run_cli(job.job_id) == 1
+
+        err = capsys.readouterr().err
+        assert "job_not_resumable: worktree cleanup_status='deleted'" in err
+        assert record.read_bytes() == before
+        assert load_job_plan(job.job_id).worktree_cleanup_status == "deleted"
