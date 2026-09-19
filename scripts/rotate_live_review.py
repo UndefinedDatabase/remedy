@@ -34,8 +34,9 @@ records absent from the new ledger must be exactly the moved ones. Any failure
 exits non-zero and writes nothing.
 
 The same module is the ledger's one canonical reader: :func:`open_finding_ids`,
-:func:`count_open_findings` and :func:`latest_gate_verdict` are what every other
-consumer (the review-zip manifest among them) reads the ledger's state through.
+:func:`count_open_findings`, :func:`open_finding_severities` and
+:func:`latest_gate_verdict` are what every other consumer (the review-zip manifest
+and ``remedy integrity check`` among them) reads the ledger's state through.
 
 Usage::
 
@@ -82,6 +83,7 @@ _REGISTRATION = re.compile(r"^- (R-\d{4}) — ")
 _DONE = re.compile(r"^Done: (R-\d{4}) — ")
 _OPEN_REGISTRATION_LINE = re.compile(r"^- (R-\d{4}) — ", re.M)
 _DONE_LINE = re.compile(r"^Done: (R-\d{4}) — ", re.M)
+_REGISTRATION_SEVERITY = re.compile(r"^- (R-\d{4}) — ([A-Za-z]+)", re.M)
 # The verdict of a ``Gate:`` record is its first ``VERDICT <TOKEN>`` whose token is
 # a known verdict; the archive holds prose such as ``VERDICT INTO THE RECORD`` and
 # ``VERDICT ON THE ...`` ahead of the real one, so an unknown token is skipped.
@@ -142,6 +144,22 @@ def open_finding_ids(text: str) -> list[str]:
 def count_open_findings(text: str) -> int:
     """The canonical open-findings count: the length of :func:`open_finding_ids`."""
     return len(open_finding_ids(text))
+
+
+def open_finding_severities(text: str) -> dict[str, str]:
+    """Each open id mapped to its severity, lower-cased: ``{"R-0807": "high", ...}``.
+
+    The severity is the first word after the registration's ``— ``, which the ledger
+    writes as ``- R-xxxx — High, <headline>`` or ``- R-xxxx — Low — <headline>``; the
+    first registration of an id is the one read. Keyed by :func:`open_finding_ids`, so
+    an id carrying a ``Done:`` line is absent however severe it was.
+    """
+    open_ids = set(open_finding_ids(text))
+    severities: dict[str, str] = {}
+    for finding_id, severity in _REGISTRATION_SEVERITY.findall(text):
+        if finding_id in open_ids:
+            severities.setdefault(finding_id, severity.lower())
+    return severities
 
 
 def latest_gate_verdict(text: str) -> str:

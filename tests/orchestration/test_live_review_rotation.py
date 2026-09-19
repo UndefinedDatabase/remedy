@@ -191,6 +191,20 @@ def test_the_open_set_counts_by_distinct_id_not_by_line() -> None:
     assert rot.count_open_findings(text) == 1
 
 
+def test_open_severities_read_both_registration_forms_and_skip_done_ids() -> None:
+    """R-0648: the severity is the registration's first word, whether a comma or a
+    dash follows it, and an id carrying a ``Done:`` line is not in the map at all."""
+    text = _ledger_text(
+        [
+            "- R-0801 — High, THE COMMA FORM. An open High.",
+            "- R-0802 — Medium — the dash form, open.",
+            "- R-0803 — High, a High that was resolved.",
+            "Done: R-0803 — resolved at abc123.",
+        ]
+    )
+    assert rot.open_finding_severities(text) == {"R-0801": "high", "R-0802": "medium"}
+
+
 def test_the_latest_gate_verdict_is_the_last_gate_records() -> None:
     assert rot.latest_gate_verdict(_ledger_text([OPEN_FINDING])) == "absent"
     assert rot.latest_gate_verdict(_ledger_text()) == "PASS"

@@ -126,23 +126,37 @@ class TestHandlerImportCheck:
 
 
 class TestHighBlockerCheck:
-    def test_no_open_blockers(self, tmp_path):
+    """R-0648: the fixtures are ledgers in the form ``.agent/live_review.md`` really uses —
+    ``- R-XXXX — <Severity>, <headline>`` registrations resolved by ``Done: R-XXXX — `` lines.
+    """
+
+    @staticmethod
+    def _blocker_check(tmp_path, monkeypatch, ledger: str):
         agent_dir = tmp_path / ".agent"
         agent_dir.mkdir()
-        (agent_dir / "live_review.md").write_text(
-            "# Live Review\n## Verdict\nPASS\n\n"
-            "### R-0001: Something\n- **Status**: Resolved\n- **Severity**: Blocker\n"
-        )
+        (agent_dir / "live_review.md").write_text(ledger, encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        result = run_integrity_checks()
+        return next(c for c in result.checks if c.name == "high_blockers_open")
 
-        import os
-        old_cwd = os.getcwd()
-        try:
-            os.chdir(tmp_path)
-            result = run_integrity_checks()
-            blocker_check = next(c for c in result.checks if c.name == "high_blockers_open")
-            assert blocker_check.status == IntegrityStatus.PASS
-        finally:
-            os.chdir(old_cwd)
+    def test_an_open_high_in_the_real_ledger_form_fails(self, tmp_path, monkeypatch):
+        check = self._blocker_check(tmp_path, monkeypatch, (
+            "# Live Review\n\n## Findings\n\n"
+            "- R-0901 — High, AN OPEN HIGH THE CLOSURE MUST NOT PASS OVER. Measured.\n\n"
+            "- R-0902 — Low, an open Low that blocks nothing.\n"
+        ))
+        assert check.status == IntegrityStatus.FAIL
+        assert check.message == "1 open blocker/high: R-0901"
+
+    def test_a_resolved_high_and_open_lows_pass(self, tmp_path, monkeypatch):
+        check = self._blocker_check(tmp_path, monkeypatch, (
+            "# Live Review\n\n## Findings\n\n"
+            "- R-0901 — High, A HIGH THAT WAS REPAIRED.\n\n"
+            "- R-0902 — Medium — an open Medium, carried as a documented risk.\n\n"
+            "Done: R-0901 — repaired and red-proved.\n"
+        ))
+        assert check.status == IntegrityStatus.PASS
+        assert check.message == "no open blocker/high findings"
 
 
 # ---------------------------------------------------------------------------
