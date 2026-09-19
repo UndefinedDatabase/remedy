@@ -416,7 +416,20 @@ class TestVitestFrontendTestFoundation:
         ),
     )
     def test_vitest_passes(self):
-        """Run vitest and check it passes."""
+        """Run vitest and check it passes, under a MEASURED 30 s ceiling.
+
+        Measured 2026-09-19 (F273 T015 (c)), three runs of `npx vitest run` from
+        apps/ui (vitest 2.1.9, node v22.22.2, 38 files, 728 tests) with only the
+        cache moved out of the tree: 1.09 s, 1.01 s, 1.02 s wall, npx start-up
+        included, on a 24-thread Intel i9-13900 with 65574340 kB of RAM, Linux 6.17. No
+        CI-runner figure exists: the CI log times stages, not this test.
+
+        The rule is `tests/orchestration/test_ci_stages.py`'s budget rule, twice
+        the measured maximum: 2 x 1.09 s = 2.18 s, which 30 s clears. Its
+        rounding step (a whole multiple of 300 s) is sized for stage budgets and
+        would RAISE this ceiling tenfold, so it is not applied: the ceiling
+        stays at 30 s rather than rise without a runner measurement.
+        """
         import subprocess
         r = subprocess.run(
             ["npx", "vitest", "run"],
