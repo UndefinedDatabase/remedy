@@ -112,7 +112,6 @@ module = [
     "packages.orchestration.context_coverage",
     "packages.orchestration.do_continue",
     "packages.orchestration.guidance",
-    "packages.orchestration.orchestrator_brain",
     "packages.orchestration.proof_chain",
     "packages.orchestration.provider_patch_material",
     "packages.orchestration.real_test_execution",

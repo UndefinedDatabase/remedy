@@ -222,11 +222,11 @@ class TestReadinessTruth:
         assert any(r.id == "review_findings_unknown" for r in rep.risks)
 
     def test_next_actions_catalog_backed(self, env):
-        from packages.orchestration.do_run import validate_next_safe_action_command
+        from tests.orchestration.catalog_commands import names_catalog_command
         job = _job(env)
         fa = _add_failure(env, job)
         rep = OV.build_overnight_readiness(str(job.job_id), env)
-        assert validate_next_safe_action_command(rep.next_action.command)
+        assert names_catalog_command(rep.next_action.command)
 
 # ---------------------------------------------------------------------------
 # Redaction (1266)

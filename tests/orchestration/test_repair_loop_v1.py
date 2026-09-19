@@ -133,10 +133,10 @@ class TestEligibility:
         assert "failure_already_resolved" in elig.blockers
 
     def test_blocked_has_catalog_next_action(self, data_dir):
-        from packages.orchestration.do_run import validate_next_safe_action_command
+        from tests.orchestration.catalog_commands import names_catalog_command
         jid, _, _ = _make_job_with_failure(data_dir)
         elig = RL.evaluate_repair_eligibility(jid, "nope", data_dir)
-        assert validate_next_safe_action_command(elig.next_safe_action.command)
+        assert names_catalog_command(elig.next_safe_action.command)
 
 
 # ---------------------------------------------------------------------------
@@ -171,10 +171,10 @@ class TestProposeFixtureBuilder:
         assert r.repair_task_id  # fix task still created
 
     def test_next_actions_catalog_backed(self, data_dir):
-        from packages.orchestration.do_run import validate_next_safe_action_command
+        from tests.orchestration.catalog_commands import names_catalog_command
         jid, fa, _ = _make_job_with_failure(data_dir)
         r = RL.run_repair_attempt(jid, fa, fixture_builder=True, data_dir=data_dir)
-        assert validate_next_safe_action_command(r.next_safe_action.command)
+        assert names_catalog_command(r.next_safe_action.command)
 
 
 # ---------------------------------------------------------------------------

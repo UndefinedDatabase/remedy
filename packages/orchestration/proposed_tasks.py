@@ -382,40 +382,6 @@ def propose_task_from_review_finding(
     return task
 
 
-def propose_from_recommendation(
-    job_id: str,
-    rec: Any,
-    root: Path | None = None,
-) -> ProposedTask:
-    if hasattr(rec, "title"):
-        return propose_task_from_review_finding(
-            job_id,
-            title=rec.title,
-            reason=rec.reason,
-            description=getattr(rec, "description", ""),
-            risk=rec.risk,
-            priority=rec.priority,
-            task_type=rec.task_type,
-            origin_task_id=getattr(rec, "origin_task_id", ""),
-            origin_recommendation_id=rec.id,
-            source=ProposedTaskSource.REVIEWER,
-            root=root,
-        )
-    return propose_task_from_review_finding(
-        job_id,
-        title=str(rec.get("title", "")),
-        reason=str(rec.get("reason", "")),
-        description=str(rec.get("description", "")),
-        risk=str(rec.get("risk", "low")),
-        priority=str(rec.get("priority", "medium")),
-        task_type=str(rec.get("task_type", "unknown")),
-        origin_task_id=str(rec.get("origin_task_id", "")),
-        origin_recommendation_id=str(rec.get("id", "")),
-        source=ProposedTaskSource.REVIEWER,
-        root=root,
-    )
-
-
 # ---------------------------------------------------------------------------
 # Deterministic evaluator
 # ---------------------------------------------------------------------------

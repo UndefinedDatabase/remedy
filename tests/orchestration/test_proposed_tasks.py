@@ -34,7 +34,6 @@ from packages.orchestration.proposed_tasks import (
     load_proposed_tasks_safe,
     materialize_approved_task,
     overnight_readiness,
-    propose_from_recommendation,
     propose_rework,
     propose_task_from_review_finding,
     reconcile_materialized,
@@ -286,20 +285,6 @@ class TestReviewBridge:
         assert t.source == ProposedTaskSource.REVIEWER
         loaded = load_proposed_tasks(JOB_ID)
         assert len(loaded) == 1
-
-    def test_propose_from_recommendation_dict(self, tmp_store):
-        rec = {
-            "id": "rec-001",
-            "title": "Add edge case tests",
-            "description": "Test negative inputs",
-            "task_type": "test_improvement",
-            "reason": "Coverage gap",
-            "risk": "low",
-            "priority": "medium",
-        }
-        t = propose_from_recommendation(JOB_ID, rec)
-        assert t.title == "Add edge case tests"
-        assert t.origin_recommendation_id == "rec-001"
 
     def test_propose_rework(self, tmp_store):
         t = propose_rework(JOB_ID, failed_task_id="task-001", title="Fix test failure")

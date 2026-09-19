@@ -4,10 +4,10 @@
 > (F070, `docs/roadmap/features/T3_F070.md`). On conflict the roadmap wins.
 >
 > **Status (2026-09-15):** the `orchestrator` command group and the engine this page
-> describes were deleted by F261 round 14 (DECISION F261 D13); only
-> `list_decisions`, which the cockpit's orchestrator section reads, remains in
-> `packages/orchestration/orchestrator_brain.py`. The page is kept as the record of
-> the idea its heirs inherit.
+> describes were deleted by F261 round 14 (DECISION F261 D13), and F273 deleted the
+> last reader of its decision traces with the cockpit's orchestrator section, because
+> nothing writes a trace any more (R-0903). No module of this name remains. The page is
+> kept as the record of the idea its heirs inherit.
 
 The orchestrator reads the current project/job/system state from **safe summaries**,
 builds a Situation, generates deterministic Options, scores them, guards against

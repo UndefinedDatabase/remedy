@@ -365,13 +365,13 @@ class TestRepairLoopV0:
             _cleanup_env(old)
 
     def test_repair_loop_next_safe_action(self, tmp_path):
-        from packages.orchestration.do_run import validate_next_safe_action_command
         from packages.orchestration.repair_loop import start_repair_loop_v0
+        from tests.orchestration.catalog_commands import names_catalog_command
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
             result = start_repair_loop_v0(str(job.job_id), fail_art_id)
             assert result.next_safe_action is not None
-            assert validate_next_safe_action_command(result.next_safe_action.command)
+            assert names_catalog_command(result.next_safe_action.command)
         finally:
             _cleanup_env(old)
 
@@ -510,15 +510,15 @@ class TestRepairIntentTruth:
     def test_repair_intent_next_action_points_to_real_intent(self, tmp_path):
         """next_safe_action must reference intent that actually exists."""
         from packages.orchestration.approval_queue import get_patch_intent
-        from packages.orchestration.do_run import validate_next_safe_action_command
         from packages.orchestration.pingpong_job import load_job_plan
         from packages.orchestration.repair_loop import start_repair_loop_v0
+        from tests.orchestration.catalog_commands import names_catalog_command
 
         job, fail_art_id, data_dir, old = self._setup_failure(tmp_path)
         try:
             result = start_repair_loop_v0(str(job.job_id), fail_art_id, create_patch_intent=True)
             assert result.next_safe_action is not None
-            assert validate_next_safe_action_command(result.next_safe_action.command)
+            assert names_catalog_command(result.next_safe_action.command)
             # Command references intent_id that exists
             assert result.repair_patch_intent_id in result.next_safe_action.command
             reloaded = load_job_plan(str(job.job_id))

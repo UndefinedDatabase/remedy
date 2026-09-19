@@ -451,13 +451,17 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
     if open_decision_view["next_action"]:
         next_action = open_decision_view["next_action"]
     elif truth["approval_required"]:
-        next_action = "remedy patch approve <job_id> <patch_intent_id>"
+        # R-0989: name the first pending intent; with none recorded, list the job's intents.
+        from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
+        pending_ids = [i["intent_id"] for i in list_patch_intents(job) if i["state"] == APPROVAL_PENDING]
+        next_action = (f"remedy patch approve {jid} {pending_ids[0]}" if pending_ids
+                       else f"remedy patch list {jid}")
     elif truth.get("fulfillment_next_action"):
         next_action = truth["fulfillment_next_action"]
     elif state == "completed" and truth.get("fulfillment_status") == "completed_verified":
         next_action = f"remedy decision list {jid} --json"
     elif pending_count > 0:
-        next_action = "remedy job resume <job_id> --json"
+        next_action = f"remedy job resume {jid} --json"
     else:
         next_action = f"remedy job show {jid} --full --json"
 

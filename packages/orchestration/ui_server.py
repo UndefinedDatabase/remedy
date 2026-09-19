@@ -446,18 +446,14 @@ def _build_snapshot_rollback_section(job: Any) -> dict[str, Any]:
     """Safe read-only Snapshot/Rollback Proof v1 cockpit summary (Step 1892). Honest restore flags;
     no fake rollback-ready; no mutation; no raw data."""
     try:
-        from packages.orchestration.real_test_execution import (
-            list_rollback_proofs,
-            list_snapshot_proofs,
-        )
+        from packages.orchestration.real_test_execution import list_snapshot_proofs
         snaps = list_snapshot_proofs(job_id=str(job.job_id))
-        rbs = list_rollback_proofs(job_id=str(job.job_id))
+        # R-0903: no command writes a rollback proof, so no restore is available or tested.
         return {
             "snapshot_recorded": bool(snaps),
             "snapshot_proof_count": len(snaps),
-            "restore_available": any(r.get("restore_available") for r in rbs),
+            "restore_available": False,
             "restore_tested": False,
-            "rollback_proof_count": len(rbs),
             "next_safe_action": f"remedy snapshot create {str(job.job_id)} --json",
             "live": False, "source": "real_test_execution",
         }
@@ -720,32 +716,6 @@ def _build_self_execution_section(job: Any) -> dict[str, Any]:
                 "latest_state": "unknown", "source": "unavailable"}
 
 
-def _build_orchestrator_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Orchestrator Brain summary for the cockpit (Step 1484). Latest
-    decision only. No buttons, no mutation, no raw content."""
-    try:
-        from packages.orchestration.orchestrator_brain import list_decisions
-        decisions = list_decisions(f"job:{job.job_id}")
-        if not decisions:
-            return {"decision_count": 0, "latest_stop_reason": "none", "confidence": "",
-                    "next_safe_action": "", "loop_guard_status": "", "model_routing_tier": "",
-                    "source": "orchestrator_brain"}
-        latest = decisions[-1]
-        return {
-            "decision_count": len(decisions),
-            "latest_stop_reason": latest.get("stop_reason", ""),
-            "confidence": latest.get("confidence", ""),
-            "next_safe_action": latest.get("next_safe_action", ""),
-            "loop_guard_status": latest.get("loop_guard_status", ""),
-            "model_routing_tier": (latest.get("model_routing_plan") or {}).get("tier", ""),
-            "source": "orchestrator_brain",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"decision_count": "unknown", "latest_stop_reason": "unknown", "confidence": "unknown",
-                "next_safe_action": "", "loop_guard_status": "unknown",
-                "model_routing_tier": "unknown", "source": "unavailable"}
-
-
 _PROMPT_TRACE_PREVIEW_MAX = 1200
 _PROMPT_ROLES = ("builder", "reviewer", "system")
 _PROMPT_KINDS = ("initial", "review", "repair", "re-review", "unknown")
@@ -861,8 +831,7 @@ def _build_prompt_trace(ev_dir: Path | None) -> dict[str, Any]:
 
 
 # WHY: `metrics.open` and `open_decision_count` are both typed `int` with no "unknown"
-# state, so a failure here reads as 0 instead of propagating — unlike
-# `_build_orchestrator_section`, the richer shape that can answer "unknown". The event
+# state, so a failure here reads as 0 instead of propagating. The event
 # scans this replaces were constant zero in production: neither `human_decision_requested`
 # nor `stop_reason_recorded` has an emitter outside tests (DECISION F031 D2 / D9).
 def _count_open_decisions(job: Any, events: list[dict[str, Any]]) -> int:
@@ -1136,7 +1105,6 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "repair_request": _build_repair_request_section(job),
         "self_dogfood": _build_self_dogfood_section(job),
         "self_execution": _build_self_execution_section(job),
-        "orchestrator": _build_orchestrator_section(job),
         "token_usage": _build_token_usage(events),
         "budget_final": _build_budget_final(events),
         "tasks": task_items,
@@ -1868,10 +1836,6 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         if test_events and not test_events[-1].get("metadata", {}).get("passed", True):
             bridge_stop_reason = "test_failed_after_apply"
 
-    # Reviewer pending count
-    recs = (job.metadata or {}).get("reviewer_recommendations", [])
-    reviewer_pending = sum(1 for r in recs if r.get("status") == "pending")
-
     # Memory candidate count
     candidates = (job.metadata or {}).get("memory_candidates", [])
     memory_candidate_count = len(candidates)
@@ -1903,7 +1867,6 @@ def _build_live_state_json(job: Any) -> dict[str, Any]:
         "builder_patch_parsed": bridge_parse_success,
         "builder_patch_error": bridge_parse_error,
         "stop_reason": bridge_stop_reason,
-        "reviewer_pending_count": reviewer_pending,
         "memory_candidate_count": memory_candidate_count,
         "memory_used_count": memory_used_count,
         # Truth contract

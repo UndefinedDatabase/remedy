@@ -156,7 +156,6 @@ packages.orchestration.mission_readiness
 packages.orchestration.mission_state
 packages.orchestration.model_aliases
 packages.orchestration.model_routing
-packages.orchestration.orchestrator_brain
 packages.orchestration.orchestrator_loop
 packages.orchestration.orchestrator_move_schema
 packages.orchestration.patch_apply

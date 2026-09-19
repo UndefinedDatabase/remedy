@@ -285,16 +285,6 @@ class TestDashboardShape:
         assert "pending_candidate_count" in se
         assert "pending_approval_count" in se
 
-    def test_orchestrator_section_present(self):
-        # Read-only Orchestrator Brain summary (Step 1484).
-        job = JobPlan(job_title="t")
-        dash = _build_dashboard(job)
-        assert "orchestrator" in dash
-        ob = dash["orchestrator"]
-        assert "decision_count" in ob
-        assert "latest_stop_reason" in ob
-        assert "model_routing_tier" in ob
-
     def test_unknown_when_data_dir_unavailable(self, monkeypatch):
         monkeypatch.setattr(ui_server, "_resolve_dashboard_data_dir", lambda: None)
         job = JobPlan(job_title="t")

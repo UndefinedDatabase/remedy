@@ -193,9 +193,9 @@ class TestArchitectureGuards:
         assert "gh pr" not in self.SRC.lower()
 
     def test_next_action_catalog_backed(self, env):
-        from packages.orchestration.do_run import validate_next_safe_action_command
+        from tests.orchestration.catalog_commands import names_catalog_command
         d, _ = env
         job = _job(d)
         insp = SD.build_self_dogfood_inspection(str(job.job_id), d)
         assert insp.next_safe_action is not None
-        assert validate_next_safe_action_command(insp.next_safe_action.command)
+        assert names_catalog_command(insp.next_safe_action.command)

@@ -175,10 +175,10 @@ class TestReviewerPackageLoop:
 
     def test_reviewer_no_auto_append(self):
         """run_reviewer must NOT modify job.tasks."""
-        from packages.orchestration.reviewer import _fixture_reviewer, run_reviewer
+        from packages.orchestration.reviewer import run_reviewer
         job = _make_job()
         count = len(job.tasks)
-        run_reviewer(job, reviewer_fn=_fixture_reviewer)
+        run_reviewer(job, reviewer_fn=lambda ctx: [{"title": "Add edge case tests"}])
         assert len(job.tasks) == count
 
 
@@ -294,7 +294,7 @@ class TestUiBooleanFlagParsing:
             "version", "job_id", "cursor", "stage", "running",
             "node_count", "edge_count", "active_task_id",
             "latest_completed_task_id", "repair_loop_used",
-            "reviewer_pending_count", "memory_candidate_count",
+            "memory_candidate_count",
         }
         assert required.issubset(set(state.keys()))
 

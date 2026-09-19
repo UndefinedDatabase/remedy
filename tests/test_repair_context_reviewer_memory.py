@@ -217,64 +217,25 @@ class TestRepairLoopTwoCycleFixture:
 # Step 151 — Reviewer recommendation v1
 # =========================================================================
 
-class TestReviewerAcceptRejectRecommendation:
-    """Fixture reviewer returns deterministic recommendations; accept/reject works."""
+def _two_recommendations(context: dict) -> list[dict]:
+    """A deterministic reviewer; the module's own fixture had test callers only (R-0908)."""
+    return [{"title": "Add edge case tests", "task_type": "test_improvement", "risk": "low"},
+            {"title": "Add type hints to calc.py", "task_type": "code_quality", "risk": "low"}]
 
-    def test_fixture_reviewer_returns_two(self):
-        from packages.orchestration.reviewer import _fixture_reviewer, run_reviewer
+
+class TestReviewerRecommendations:
+    """A supplied reviewer's recommendations come back pending; nothing is appended to the job."""
+
+    def test_supplied_reviewer_returns_two(self):
+        from packages.orchestration.reviewer import run_reviewer
         job = _make_job(tasks=[
             {"type": "readme_draft", "status": "completed"},
         ])
-        recs = run_reviewer(job, reviewer_fn=_fixture_reviewer)
+        recs = run_reviewer(job, reviewer_fn=_two_recommendations)
         assert len(recs) == 2
         assert recs[0].title == "Add edge case tests"
         assert recs[1].title == "Add type hints to calc.py"
         assert all(r.status == "pending" for r in recs)
-
-    def test_accept_recommendation_creates_proposed_task(self, tmp_path, monkeypatch):
-        from packages.orchestration.proposed_tasks import load_proposed_tasks
-        from packages.orchestration.reviewer import (
-            _fixture_reviewer,
-            accept_recommendation,
-            run_reviewer,
-            store_recommendations,
-        )
-        monkeypatch.setattr(
-            "packages.orchestration.proposed_tasks._STORE_DIR",
-            tmp_path / "proposed_tasks",
-        )
-        job = _make_job()
-        job.metadata = {}
-        recs = run_reviewer(job, reviewer_fn=_fixture_reviewer)
-        store_recommendations(job, recs)
-        task_count_before = len(job.tasks)
-        ok = accept_recommendation(job, recs[0].id)
-        assert ok is True
-        assert len(job.tasks) == task_count_before  # No direct task
-        proposed = load_proposed_tasks(str(job.job_id))
-        assert len(proposed) == 1
-        assert proposed[0].title == "Add edge case tests"
-        assert proposed[0].source.value == "reviewer"
-
-    def test_reject_recommendation_no_task(self):
-        from packages.orchestration.reviewer import (
-            _fixture_reviewer,
-            list_recommendations,
-            reject_recommendation,
-            run_reviewer,
-            store_recommendations,
-        )
-        job = _make_job()
-        job.metadata = {}
-        recs = run_reviewer(job, reviewer_fn=_fixture_reviewer)
-        store_recommendations(job, recs)
-        task_count_before = len(job.tasks)
-        ok = reject_recommendation(job, recs[0].id)
-        assert ok is True
-        assert len(job.tasks) == task_count_before
-        stored = list_recommendations(job)
-        rejected = [r for r in stored if r["id"] == recs[0].id]
-        assert rejected[0]["status"] == "rejected"
 
     def test_default_reviewer_returns_empty(self):
         from packages.orchestration.reviewer import run_reviewer
@@ -284,10 +245,10 @@ class TestReviewerAcceptRejectRecommendation:
 
     def test_reviewer_no_auto_append(self):
         """Reviewer must NOT auto-append tasks; only accept does."""
-        from packages.orchestration.reviewer import _fixture_reviewer, run_reviewer
+        from packages.orchestration.reviewer import run_reviewer
         job = _make_job()
         task_count_before = len(job.tasks)
-        run_reviewer(job, reviewer_fn=_fixture_reviewer)
+        run_reviewer(job, reviewer_fn=_two_recommendations)
         assert len(job.tasks) == task_count_before
 
 
@@ -387,10 +348,8 @@ class TestLiveStateRepairReviewerMemoryCounts:
         assert state["version"] == 3
         # v2 fields still present
         assert "repair_loop_used" in state
-        assert "reviewer_pending_count" in state
         assert "memory_candidate_count" in state
         assert isinstance(state["repair_loop_used"], bool)
-        assert isinstance(state["reviewer_pending_count"], int)
         assert isinstance(state["memory_candidate_count"], int)
         # v3 fields
         assert state["demo_mode"] is False
@@ -405,18 +364,6 @@ class TestLiveStateRepairReviewerMemoryCounts:
         with patch("packages.orchestration.ui_server._load_events", return_value=events):
             state = _build_live_state_json(job)
         assert state["repair_loop_used"] is True
-
-    def test_live_state_reviewer_count(self):
-        from packages.orchestration.ui_server import _build_live_state_json
-        job = _make_job()
-        job.metadata = {"reviewer_recommendations": [
-            {"id": "a", "status": "pending"},
-            {"id": "b", "status": "accepted"},
-            {"id": "c", "status": "pending"},
-        ]}
-        with patch("packages.orchestration.ui_server._load_events", return_value=[]):
-            state = _build_live_state_json(job)
-        assert state["reviewer_pending_count"] == 2
 
     def test_live_state_memory_candidate_count(self):
         from packages.orchestration.ui_server import _build_live_state_json
@@ -471,7 +418,7 @@ class TestUXPolishRibbonMotionNextAction:
         """Live-state must not expose raw metadata blob."""
         from packages.orchestration.ui_server import _build_live_state_json
         job = _make_job()
-        job.metadata = {"secret": "leak", "reviewer_recommendations": []}
+        job.metadata = {"secret": "leak"}
         with patch("packages.orchestration.ui_server._load_events", return_value=[]):
             state = _build_live_state_json(job)
         assert "secret" not in json.dumps(state)

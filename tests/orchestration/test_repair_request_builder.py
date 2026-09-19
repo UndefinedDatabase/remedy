@@ -212,7 +212,7 @@ class TestArchitectureGuards:
         # Both halves matter. The two DEAD commands must be absent from every step the
         # builder emits (F275 T001 deleted them), and every command that IS still named
         # must resolve in the shipped catalog.
-        from packages.orchestration.do_run import validate_next_safe_action_command
+        from tests.orchestration.catalog_commands import names_catalog_command
         job, fid = _job(env)
         r = RB.build_repair_request_package(str(job.job_id), fid, data_dir=env)
         steps = "\n".join(r.next_steps)
@@ -222,4 +222,4 @@ class TestArchitectureGuards:
                  if c in steps]
         assert named, "the surviving steps must still name at least one live command"
         for cmd in named:
-            assert validate_next_safe_action_command(f"{cmd} {job.job_id} --json")
+            assert names_catalog_command(f"{cmd} {job.job_id} --json")

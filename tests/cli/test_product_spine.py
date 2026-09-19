@@ -8,6 +8,8 @@ import re
 import stat
 from pathlib import Path
 
+import pytest
+
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 #: The two quick-start lines that register the repository and check its health
@@ -499,6 +501,39 @@ class TestJobStatusReportTruthFields:
         assert 'tasks' in data
         assert len(data['tasks']) == 1
 
+
+
+class TestStatusNextActionNamesNoPlaceholder:
+    """R-0989: the status section's next action prints the real job id and intent id."""
+
+    @pytest.mark.parametrize("case", ["pending_intent", "no_intent_recorded", "pending_task"])
+    def test_next_action_has_no_angle_bracket_placeholder(self, case, tmp_path, monkeypatch):
+        from apps.cli.commands import job as job_cmd
+        from packages.core.models import Artifact
+        from packages.orchestration.approval_queue import make_intent_id
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+
+        monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
+        # The tips under test fire only when no open decision answers first.
+        monkeypatch.setattr(job_cmd, '_open_decisions_view',
+                            lambda job: {'lines': [], 'open_decisions': [], 'next_action': ''})
+        meta = {'patch_intent_count': 1}
+        if case == "pending_intent":
+            meta['patch_intent_explanations'] = [{'file': 'foo.py', 'action': 'modify'}]
+        art = Artifact(name='builder output', content='diff', metadata=meta)
+        job = JobPlan(job_title='Demo', tasks=[TaskEntry(title='Fix')],
+                      artifacts=[] if case == "pending_task" else [art])
+
+        status, lines = job_cmd._status_section(job)
+
+        nsa = status['next_safe_action']
+        assert re.findall(r"<[a-z_]+>", nsa + "\n".join(lines)) == []
+        jid = str(job.job_id)
+        assert nsa == {
+            "pending_intent": f"remedy patch approve {jid} {make_intent_id(art.id, 0)}",
+            "no_intent_recorded": f"remedy patch list {jid}",
+            "pending_task": f"remedy job resume {jid} --json",
+        }[case]
 
 
 class TestNoProviderNoApplyProof:

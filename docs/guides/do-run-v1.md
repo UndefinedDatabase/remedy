@@ -130,17 +130,18 @@ run with a commit flag push exactly as `--push` would; set without a commit flag
 
 ## Next-line commands
 
-`validate_next_safe_action_command` in `packages/orchestration/do_run.py`
-checks that a `remedy <group> <subcommand> ...` command names a real
-`<group>.<subcommand>` entry of the command catalog; `DoRunNextAction` in the
-same module is the label, command and reason of one next action, which
-`packages/orchestration/repair_loop.py` builds its results with.
+`DoRunNextAction` in `packages/orchestration/do_run.py` is the label, command
+and reason of one next action, which `packages/orchestration/repair_loop.py`
+builds its results with. The check that a `remedy <group> <subcommand> ...`
+command names a real `<group>.<subcommand>` entry of the command catalog is the
+test helper `names_catalog_command` in `tests/orchestration/catalog_commands.py`
+(R-0903).
 
 ## Source Files
 
 - `packages/orchestration/do_sequence.py` — the steps, `DO_SEQUENCE` and the walker
 - `apps/cli/commands/do_cmd.py` — CLI wiring and the output
-- `packages/orchestration/do_run.py` — `DoRunNextAction` and `validate_next_safe_action_command`
+- `packages/orchestration/do_run.py` — `DoRunNextAction`
 - `tests/cli/test_do_sequence_cli.py`, `tests/cli/test_do_flags.py` — the sequence through the CLI
 - `tests/orchestration/test_do_run.py` — the Next-line validator and the `do.run` catalog metadata
 

@@ -1098,20 +1098,6 @@ def build_checklist(job: Any, events: list[dict[str, Any]]) -> dict[str, Any]:
             } if c.get("status") == "pending" else {},
         })
 
-    # Reviewer recommendations
-    recs = (job.metadata or {}).get("reviewer_recommendations", [])
-    for r in recs:
-        items.append({
-            "id": r.get("id", f"review-{len(items)}"),
-            "label": f"Review: {r.get('safe_summary', 'suggestion')[:40]}",
-            "state": "suggested" if r.get("status") == "pending" else "done",
-            "kind": "review",
-            "checked": r.get("status") in ("accepted", "rejected"),
-            "muted": r.get("status") != "pending",
-            "node_id": "",
-            "next_action": {},
-        })
-
     return {
         "version": 1,
         "job_id": str(job.job_id),
