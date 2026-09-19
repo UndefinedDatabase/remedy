@@ -309,7 +309,7 @@ _cmd_create_job(
 import json, sys
 from pathlib import Path
 job = json.loads(Path(sys.argv[1]).read_text())
-state = job.get('state', '')
+state = job.get('status', '')
 tasks = job.get('tasks', [])
 if state != 'planned':
     print('ERROR: job state must be planned after job create --task-type, got: ' + repr(state), file=sys.stderr)
@@ -1369,33 +1369,8 @@ chk('changes' in data, 'missing changes')
 print('    change list: OK (count=' + str(len(data['changes'])) + ')')
 " "${CHANGE_LIST_JSON}"
 
-    # -------------------------------------------------------------------------
-    # 12s. Token policy (Step 56)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12s"
-    echo "--- 12s. Token policy applied"
-    # token_policy_applied run-log event
-    python3 -c "
-import json, sys
-from pathlib import Path
-runs = Path(sys.argv[1])
-job_dir = runs / sys.argv[2]
-events = []
-for f in sorted(job_dir.glob('*.jsonl')):
-    for line in f.read_text().splitlines():
-        if line.strip():
-            events.append(json.loads(line))
-tpa = [e for e in events if e.get('event') == 'token_policy_applied']
-if not tpa:
-    print('ERROR: no token_policy_applied event', file=sys.stderr)
-    sys.exit(1)
-meta = tpa[0].get('metadata', {})
-for key in ['mode', 'max_context_tokens', 'local_first']:
-    if key not in meta:
-        print('ERROR: token_policy_applied missing ' + key, file=sys.stderr)
-        sys.exit(1)
-print('    token_policy_applied: OK (mode=' + str(meta['mode']) + ')')
-" "${RUNS_ROOT}" "${JOB_ID}"
+    # Section 12s, which required the run log to hold a token-policy-applied
+    # event, was dropped by F273 (R-0980): no product path emits that event.
 
     # Brain has patch_revert, change_set nodes
     _SMOKE_SECTION="12t"
