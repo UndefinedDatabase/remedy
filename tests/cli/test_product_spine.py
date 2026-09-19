@@ -408,37 +408,77 @@ class TestJobTruthExtraction:
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         from apps.cli.commands.job import _extract_job_truth
         from packages.core.models import Artifact
+        from packages.orchestration.approval_queue import make_intent_id
         from packages.orchestration.pingpong_job import JobPlan
         art = Artifact(
             name='patch',
             content='diff output',
-            metadata={'patch_intent_count': 1},
+            metadata={'patch_intent_count': 1,
+                      'patch_intent_explanations': [{'file': 'foo.py', 'action': 'modify'}]},
         )
         job = JobPlan(job_title='patch test', artifacts=[art])
         truth = _extract_job_truth(job)
         assert truth['artifact_count'] == 1
-        assert len(truth['patch_intent_ids']) == 1
+        assert truth['patch_intent_ids'] == [make_intent_id(art.id, 0)]
         assert truth['approval_required'] is True
 
     def test_patch_applied_clears_approval(self, tmp_path, monkeypatch):
         monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
         from apps.cli.commands.job import _extract_job_truth
         from packages.core.models import Artifact
+        from packages.orchestration.approval_queue import make_intent_id
         from packages.orchestration.pingpong_job import JobPlan
-        intent_id = 'abcd1234-0'
         art = Artifact(
             name='patch',
             content='diff output',
             metadata={
                 'patch_intent_count': 1,
-                'patch_intent_apply_records': {
-                    intent_id: {'state': 'applied'},
-                },
+                'patch_intent_explanations': [{'file': 'foo.py', 'action': 'modify'}],
             },
         )
+        art.metadata['patch_intent_apply_records'] = {
+            make_intent_id(art.id, 0): {'state': 'applied'},
+        }
         job = JobPlan(job_title='applied test', artifacts=[art])
         truth = _extract_job_truth(job)
         assert truth['approval_required'] is False
+        assert truth['code_applied'] is True
+
+    def test_approving_every_intent_clears_approval_and_every_id_resolves(self, tmp_path, monkeypatch):
+        """R-0990: the ids are the ones `patch approve` accepts, and approving them clears the gate."""
+        monkeypatch.setenv('REMEDY_DATA_DIR', str(tmp_path))
+        from apps.cli.commands.job import _extract_job_truth
+        from packages.core.models import Artifact
+        from packages.orchestration.approval_queue import (
+            APPROVAL_APPROVED,
+            _find_artifact_for_intent,
+            set_approval_state,
+        )
+        from packages.orchestration.pingpong_job import JobPlan
+        exps = [{'file': 'a.py', 'action': 'modify'}, {'file': 'b.py', 'action': 'create'}]
+        arts = [Artifact(name=f'patch {n}', content='diff',
+                         metadata={'patch_intent_count': 2, 'patch_intent_explanations': list(exps)})
+                for n in range(2)]
+        job = JobPlan(job_title='approve test', artifacts=arts)
+
+        before = _extract_job_truth(job)
+        assert len(before['patch_intent_ids']) == 4
+        assert all(_find_artifact_for_intent(job, iid) is not None for iid in before['patch_intent_ids'])
+        assert before['approval_required'] is True
+
+        for iid in before['patch_intent_ids'][:-1]:
+            set_approval_state(job, iid, APPROVAL_APPROVED)
+        assert _extract_job_truth(job)['approval_required'] is True
+        set_approval_state(job, before['patch_intent_ids'][-1], APPROVAL_APPROVED)
+
+        after = _extract_job_truth(job)
+        assert after['patch_intent_ids'] == before['patch_intent_ids']
+        assert after['approval_required'] is False
+        # The run's earlier approval_required event does not outvote the recorded approvals.
+        from packages.orchestration import timeline
+        monkeypatch.setattr(timeline, 'load_run_events',
+                            lambda data_dir, job_id: [{'phase': 'approval_required'}])
+        assert _extract_job_truth(job)['approval_required'] is False
 
 
 class TestJobStatusReportTruthFields:
@@ -450,7 +490,8 @@ class TestJobStatusReportTruthFields:
         art = Artifact(
             name='builder output',
             content='diff --git a/foo.py',
-            metadata={'patch_intent_count': 1},
+            metadata={'patch_intent_count': 1,
+                      'patch_intent_explanations': [{'file': 'foo.py', 'action': 'modify'}]},
         )
         task = TaskEntry(title='Fix the bug', inputs={'task_type': 'code_repair'})
         job = JobPlan(
@@ -520,6 +561,11 @@ class TestStatusNextActionNamesNoPlaceholder:
         meta = {'patch_intent_count': 1}
         if case == "pending_intent":
             meta['patch_intent_explanations'] = [{'file': 'foo.py', 'action': 'modify'}]
+        if case == "no_intent_recorded":
+            # R-0990: with no intent listed, the run's approval_required event raises the gate.
+            from packages.orchestration import timeline
+            monkeypatch.setattr(timeline, 'load_run_events',
+                                lambda data_dir, job_id: [{'phase': 'approval_required'}])
         art = Artifact(name='builder output', content='diff', metadata=meta)
         job = JobPlan(job_title='Demo', tasks=[TaskEntry(title='Fix')],
                       artifacts=[] if case == "pending_task" else [art])

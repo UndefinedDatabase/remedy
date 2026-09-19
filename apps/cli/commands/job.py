@@ -449,8 +449,7 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
         next_action = open_decision_view["next_action"]
     elif truth["approval_required"]:
         # R-0989: name the first pending intent; with none recorded, list the job's intents.
-        from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
-        pending_ids = [i["intent_id"] for i in list_patch_intents(job) if i["state"] == APPROVAL_PENDING]
+        pending_ids = truth["pending_intent_ids"]
         next_action = (f"remedy patch approve {jid} {pending_ids[0]}" if pending_ids
                        else f"remedy patch list {jid}")
     elif pending_count > 0:
@@ -1748,31 +1747,21 @@ def _extract_job_truth(job: JobPlan) -> dict:
     """Extract safe truth from job model for status/report views."""
     artifact_count = len(job.artifacts) if hasattr(job, 'artifacts') else 0
 
-    # Find patch intents and approval/apply status from artifact metadata
-    patch_intent_ids: list[str] = []
-    pending_intents = 0
-    code_applied = False
-    for a in (job.artifacts if hasattr(job, 'artifacts') else []):
-        meta = a.metadata if hasattr(a, 'metadata') and a.metadata else {}
-        if meta.get('patch_intent_count'):
-            intent_id = str(a.id) + '-0'
-            patch_intent_ids.append(intent_id)
-            # Check if this intent has been applied
-            apply_records = meta.get('patch_intent_apply_records', {})
-            intent_applied = False
-            for rec in apply_records.values():
-                if isinstance(rec, dict) and rec.get('state') == 'applied':
-                    code_applied = True
-                    intent_applied = True
-                    break
-            # Check approval state
-            approvals = meta.get('patch_intent_approvals', {})
-            intent_approved = approvals.get(intent_id, {}).get('state') == 'approved'
-            # Only pending if not yet applied and not approved
-            if not intent_applied and not intent_approved:
-                pending_intents += 1
-
-    approval_required = pending_intents > 0
+    # R-0990: the ids and states are the approval queue's, the ids `patch approve` accepts.
+    from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
+    intents = list_patch_intents(job)
+    patch_intent_ids = [i['intent_id'] for i in intents]
+    applied_ids = {
+        iid for a in job.artifacts
+        for iid, rec in (a.metadata.get('patch_intent_apply_records') or {}).items()
+        if isinstance(rec, dict) and rec.get('state') == 'applied'
+    }
+    code_applied = bool(applied_ids)
+    pending_intent_ids = [
+        i['intent_id'] for i in intents
+        if i['state'] == APPROVAL_PENDING and i['intent_id'] not in applied_ids
+    ]
+    approval_required = bool(pending_intent_ids)
     latest_stop_reason = ''
 
     # Check timeline for stop reason
@@ -1790,13 +1779,15 @@ def _extract_job_truth(job: JobPlan) -> dict:
             status_val = ev_data.get('status', '')
             if phase == 'approval_required' or status_val == 'approval_required':
                 latest_stop_reason = 'approval_required'
-                if not code_applied:
+                # Recorded intents are authoritative; the event speaks only when none is listed.
+                if not code_applied and not intents:
                     approval_required = True
                 break
 
     return {
         'artifact_count': artifact_count,
         'patch_intent_ids': patch_intent_ids,
+        'pending_intent_ids': pending_intent_ids,
         'approval_required': approval_required,
         'latest_stop_reason': latest_stop_reason,
         'event_count': len(events),
