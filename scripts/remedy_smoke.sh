@@ -1320,13 +1320,6 @@ print('    project brain: OK (jobs=' + str(data['summary']['job_count'])
     _SMOKE_SECTION="12q"
     echo "--- 12q. Patch revert lifecycle"
     if [[ -n "${APPLIED_INTENT_ID:-}" ]]; then
-        # Verify snapshot exists after apply
-        SNAP_DIR=".data/workspaces/${JOB_ID}/patch_snapshots/${APPLIED_INTENT_ID}"
-        if [[ -d "${SNAP_DIR}" ]]; then
-            echo "    snapshot: OK (exists)"
-        else
-            echo "    snapshot: OK (snapshot dir may differ)"
-        fi
         # Revert
         REVERT_JSON="$(remedy patch revert "${JOB_ID}" "${APPLIED_INTENT_ID}" --json)"
         python3 -c "

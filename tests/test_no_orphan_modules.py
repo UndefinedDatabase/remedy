@@ -81,8 +81,6 @@ ALLOWED_UNWIRED: tuple[tuple[str, str], ...] = (
      "F080's feature-to-mission adapter; its consumer is the self-build loop F248 registers"),
     ("packages/orchestration/hunk_apply.py",
      "F033's hunk apply seam, unwired by design (F033 D4); forbidden by name in the command-channel guard"),
-    ("packages/orchestration/patch_revert.py",
-     "finding R-0982: `patch.revert` routes through revert_repository_apply; sole patch_intent_reverted emitter"),
     ("packages/orchestration/role_conventions.py",
      "finding R-0981: F105 T002's conventions loaders, which no prompt builder registers yet"),
     ("packages/orchestration/self_use_findings.py",
