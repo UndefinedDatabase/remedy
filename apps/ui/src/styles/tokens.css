@@ -2,6 +2,9 @@
   --remedy-font-display: "Avenir Next", "Manrope", "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --remedy-font-ui: "Avenir Next", "Manrope", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --remedy-font-mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  /* R-0661: PromptTracePanel asks for `--remedy-mono`, a spelling the design
+     reference never defines; it aliases the reference's `--remedy-font-mono`. */
+  --remedy-mono: var(--remedy-font-mono);
 
   --remedy-ink: #10285f;
   --remedy-ink-strong: #0a1c48;
@@ -78,6 +81,14 @@
   --remedy-state-planned: #ffffff;
   --remedy-state-planned-ring: #9db9ee;
   --remedy-state-blocked: #ef6363;
+
+  /* R-0661: the DegradedBanner's warn tint. The design reference defines no
+     warning token, and names the existing banner "canonical" and "unchanged"
+     (ux_spec.md §14, component_spec.md), so these carry the exact values that
+     banner has always rendered through its `var()` fallbacks. */
+  --remedy-warning-bg: #fff3cd;
+  --remedy-warning-border: #ffecb5;
+  --remedy-warning-fg: #664d03;
 
   color-scheme: light;
 }
