@@ -19,10 +19,10 @@ today; DECISION F258 D2 records why the other two are honest ``None``
 placeholders rather than half-built guesses:
 
   1. THE FINDING LEDGER. The oldest OPEN (no ``Done:`` line) Low or Medium
-     finding in ``.agent/live_review.md``, rendered as a job whose one task
-     quotes the finding paragraph VERBATIM and whose acceptance is "repair it,
-     or record why not" — never a per-finding summary this module would have
-     to invent.
+     finding in ``.agent/live_review.md`` that no existing queue entry already
+     targets (R-0838), rendered as a job whose one task quotes the finding
+     paragraph VERBATIM and whose acceptance is "repair it, or record why
+     not" — never a per-finding summary this module would have to invent.
   2. A documentation-staleness catalog. Not yet built: curating a catalog of
      concrete (doc, claim, shipped-truth) checks is its own future work,
      mirroring how ``ownership`` stayed an honest empty list in F040 until
@@ -49,6 +49,15 @@ Deliberate absences:
     like a markdown heading or an ``Acceptance:`` marker, and refuses to
     generate rather than ship a job whose task boundary the paragraph itself
     would silently move.
+  * REMEDY DELIBERATELY DOES NOT JUDGE WHETHER A BUILDER CAN PERFORM A
+    FINDING'S FIX (R-0784). Tier 1 has no reliable field that says a fix binds
+    the reviewer's practice rather than the code, and a guess would silently
+    retire findings from the track. A generated item whose fix no builder can
+    make is therefore run as it is, and the run BLOCKING at the approval gate
+    is the intended outcome: the gate refusing an unfinished job is the gate
+    working, the closing session registers what the run surfaced, and because
+    Tier 1 never re-selects a finding a queue entry already targets, such a
+    finding costs the track one close and not every close after it.
   * Remedy deliberately does not call
     :func:`packages.orchestration.pingpong_job.parse_job_file` to verify the
     rendered text — that function persists a job record as a side effect
@@ -77,6 +86,13 @@ _DONE_RE = re.compile(r"^Done: (R-\d+)", re.M)
 #: A queue item id, for finding the next free one in sequence.
 _QUEUE_ID_RE = re.compile(r"^SU-(\d{3})$")
 
+#: The provenance Tier 1 stamps on an item, and the pattern that reads the
+#: targeted finding back out of it (R-0838).
+_LEDGER_PROVENANCE = "generated (self-use-generator tier 1, ledger scan, {r_id})"
+_LEDGER_PROVENANCE_RE = re.compile(
+    r"^generated \(self-use-generator tier 1, ledger scan, (R-\d+)\)$"
+)
+
 #: Severities this generator's Tier 1 will pick from — never High or Critical,
 #: which are judgement calls a generator does not make for itself.
 _ELIGIBLE_SEVERITIES = ("Low", "Medium")
@@ -98,8 +114,22 @@ def default_ledger_path() -> Path:
     return root / ".agent" / "live_review.md"
 
 
-def _oldest_open_low_or_medium_finding(ledger_path: Path) -> tuple[str, str] | None:
-    """The oldest (lowest id) OPEN Low/Medium finding, with its full paragraph.
+def _targeted_findings(queue_path: Path | None) -> frozenset[str]:
+    """Every finding id an existing queue entry, consumed or not, already targets."""
+    return frozenset(
+        match.group(1)
+        for match in (
+            _LEDGER_PROVENANCE_RE.match(entry.provenance)
+            for entry in load_self_use_queue(queue_path)
+        )
+        if match is not None
+    )
+
+
+def _oldest_open_low_or_medium_finding(
+    ledger_path: Path, exclude: frozenset[str] = frozenset()
+) -> tuple[str, str] | None:
+    """The oldest (lowest id) OPEN Low/Medium finding not in ``exclude``, with its paragraph.
 
     ``None`` means Tier 1 has nothing to offer today, not that the ledger is
     unreadable — that raises instead.
@@ -115,7 +145,7 @@ def _oldest_open_low_or_medium_finding(ledger_path: Path) -> tuple[str, str] | N
         r_id, severity = match.group(1), match.group(2)
         if severity not in _ELIGIBLE_SEVERITIES:
             continue
-        if r_id in done_ids:
+        if r_id in done_ids or r_id in exclude:
             continue
         candidates.append((int(r_id.split("-")[1]), r_id))
 
@@ -151,8 +181,8 @@ def _next_queue_id(queue_path: Path | None) -> str:
 
 
 def _ledger_tier(queue_path: Path | None, ledger_path: Path) -> SelfUseQueueEntry | None:
-    """Tier 1: the oldest open Low/Medium finding, rendered as a job."""
-    found = _oldest_open_low_or_medium_finding(ledger_path)
+    """Tier 1: the oldest open Low/Medium finding no queue entry targets, as a job."""
+    found = _oldest_open_low_or_medium_finding(ledger_path, _targeted_findings(queue_path))
     if found is None:
         return None
     r_id, paragraph = found
@@ -191,7 +221,7 @@ def _ledger_tier(queue_path: Path | None, ledger_path: Path) -> SelfUseQueueEntr
         why=paragraph,
         job_markdown=job_markdown,
         consumed_by="",
-        provenance=f"generated (self-use-generator tier 1, ledger scan, {r_id})",
+        provenance=_LEDGER_PROVENANCE.format(r_id=r_id),
     )
 
 
@@ -245,7 +275,9 @@ def append_generated_item(entry: SelfUseQueueEntry, queue_path: Path | None = No
         "consumed_by": entry.consumed_by,
         "provenance": entry.provenance,
     })
-    path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+    # R-0785: `ensure_ascii=False`, so a non-ASCII character in content this
+    # writer never touched keeps its own bytes rather than becoming an escape.
+    path.write_text(json.dumps(body, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     # Re-validate through the real loader before returning, so a malformed
     # write is caught here rather than by the next unrelated reader.
     load_self_use_queue(path)

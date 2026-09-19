@@ -88,6 +88,12 @@ class TestShippedQueueLoads:
         for entry in load_self_use_queue():
             assert entry.provenance.strip(), f"{entry.id}: blank provenance"
 
+    def test_the_description_names_the_generator_that_appends_items(self):
+        """R-0786: the file an operator curates says Remedy appends items, and which module does."""
+        description = json.loads(default_self_use_queue_path().read_text(encoding="utf-8"))["description"]
+        assert "packages/orchestration/self_use_generator.py" in description
+        assert "never appends" not in description
+
 
 class TestEntryCarriesProvenance:
     """The loaded entry's provenance is the JSON value, verbatim."""
