@@ -120,6 +120,43 @@ def _status_tiers() -> dict[int, int]:
     return tiers
 
 
+def _accepted_ids() -> set[int]:
+    """Every feature STATUS.md marks accepted (`- [x]`)."""
+    status = STATUS.read_text(encoding="utf-8")
+    return {int(m.group(1)) for m in
+            re.finditer(r"^- \[x\] F(\d{3}) — ", status, re.MULTILINE)}
+
+
+#: A README accepted-list heading: "Accepted in Tier N so far:" or the Tier 0
+#: "Accepted foundation (Tier 0, complete):".
+_README_ACCEPTED_HEADING_RE = re.compile(
+    r"^Accepted (?:in Tier (\d{1,2}) so far|foundation \(Tier (\d{1,2}), "
+    r"complete\)):$", re.MULTILINE)
+#: A list entry opens a line or follows ", "; an id named inside an entry's
+#: prose is not an entry.
+_README_ACCEPTED_ENTRY_RE = re.compile(r"(?:^|, )F(\d{3}) ", re.MULTILINE)
+
+
+def _readme_accepted_lists() -> list[tuple[int, list[int]]]:
+    """[(tier, entry ids in order)] for every README accepted list.
+
+    A list runs from its heading to the next heading, the last one to the
+    "Full per-feature state" line, blank lines included.
+    """
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    end = readme.find("\nFull per-feature state:")
+    assert end != -1, "README must close the accepted lists with 'Full per-feature state:'"
+    heads = list(_README_ACCEPTED_HEADING_RE.finditer(readme, 0, end))
+    assert heads, "README must carry the accepted lists"
+    lists = []
+    for i, head in enumerate(heads):
+        stop = heads[i + 1].start() if i + 1 < len(heads) else end
+        ids = [int(x) for x in
+               _README_ACCEPTED_ENTRY_RE.findall(readme[head.end():stop])]
+        lists.append((int(head.group(1) or head.group(2)), ids))
+    return lists
+
+
 class TestFeatureLedger:
     def test_there_are_250_unique_feature_detail_files(self):
         ids = _feature_ids()
@@ -289,6 +326,50 @@ class TestPrimaryDocsAreHonest:
         missing = sorted(set(derived) - listed)
         assert not missing, f"accepted tiers with no README row: {missing}"
 
+    def test_every_accepted_feature_is_listed_under_its_tier(self):
+        """R-0570: pin the README accepted lists ledger→list.
+
+        The list→ledger test above iterates the ids the README LISTS, so an
+        id missing from a list can never fail it: at ec4e2e86 the Tier 2 list
+        was ten ids short of the ledger, Tier 1 nine and Tier 5 one, while
+        the tier table beside them was correct. Every accepted STATUS id must
+        be an entry of the README list for its own tier.
+        """
+        status_tiers = _status_tiers()
+        accepted = _accepted_ids()
+        listed: dict[int, set[int]] = {}
+        for tier, ids in _readme_accepted_lists():
+            assert tier not in listed, f"README has two accepted lists for Tier {tier}"
+            listed[tier] = set(ids)
+        unlisted = sorted(
+            f"F{num:03d} (Tier {status_tiers[num]})" for num in accepted
+            if num not in listed.get(status_tiers[num], set()))
+        assert unlisted == [], f"accepted in STATUS, absent from its README list: {unlisted}"
+
+    def test_every_listed_feature_sits_once_under_its_own_tier(self):
+        """R-0769: pin tier placement and uniqueness of the README entries.
+
+        F106 is a Tier 3 feature and had a second, differently worded entry
+        under "Accepted in Tier 5 so far:". Both directions of the id check
+        pass on that: F106 is accepted, and its Tier 3 entry exists. Every
+        entry must be an accepted feature of the tier its list names, and no
+        id may be an entry twice.
+        """
+        status_tiers = _status_tiers()
+        accepted = _accepted_ids()
+        seen: list[int] = []
+        misplaced = []
+        for tier, ids in _readme_accepted_lists():
+            for num in ids:
+                if num not in accepted or status_tiers.get(num) != tier:
+                    misplaced.append(
+                        f"F{num:03d} listed under Tier {tier}; STATUS: Tier "
+                        f"{status_tiers.get(num)}, accepted={num in accepted}")
+            seen.extend(ids)
+        assert misplaced == [], misplaced
+        repeated = sorted({f"F{num:03d}" for num in seen if seen.count(num) > 1})
+        assert repeated == [], f"README lists these ids more than once: {repeated}"
+
     def test_the_f010_documents_describe_all_three_scopes(self):
         status = STATUS.read_text(encoding="utf-8")
         f010 = re.search(r"^- \[x\] F010 —.*$", status, re.M)
@@ -390,6 +471,38 @@ class TestPrimaryDocLinksResolve:
             if not (path.parent / target).exists():
                 broken.append(target)
         assert broken == [], f"{doc} has broken links: {broken}"
+
+
+class TestRoutedDocsExist:
+    """Docs that send a builder to a file must send it to one that exists."""
+
+    ASSUMPTION_LOG = "docs/ui/design_reference/assumption_log.md"
+
+    def test_the_assumption_log_the_docs_route_to_exists_and_is_indexed(self):
+        """R-0665: 77 docs at ec4e2e86 routed UI deviations to an
+        `assumption_log` that no tracked path contained. It exists now; it must keep existing while
+        any doc names it, and stay registered in the docs index."""
+        naming = sorted(
+            str(p.relative_to(REPO)) for p in (REPO / "docs").rglob("*.md")
+            if "assumption_log" in p.read_text(encoding="utf-8"))
+        assert naming, "no doc names assumption_log; retire this pin with the route"
+        assert (REPO / self.ASSUMPTION_LOG).is_file(), (
+            f"{len(naming)} docs route to the assumption_log, and "
+            f"{self.ASSUMPTION_LOG} does not exist")
+        index = (REPO / "docs" / "README.md").read_text(encoding="utf-8")
+        assert "(ui/design_reference/assumption_log.md)" in index, (
+            "the assumption_log is not registered in docs/README.md")
+
+    def test_no_feature_file_names_the_singular_ui_contract_directory(self):
+        """R-0752: thirteen feature files named `tests/ui_contract/` while the
+        directory is the plural `tests/ui_contracts/`; three features each
+        spent part of a round rediscovering it."""
+        assert (REPO / "tests" / "ui_contracts").is_dir()
+        singular = re.compile(r"tests/ui_contract(?!s)")
+        offenders = sorted(
+            p.name for p in FEATURES.glob("*.md")
+            if singular.search(p.read_text(encoding="utf-8")))
+        assert offenders == [], f"feature files naming the singular path: {offenders}"
 
 
 class TestF012IdentityModelIsPinned:
