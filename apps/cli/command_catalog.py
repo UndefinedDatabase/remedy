@@ -981,7 +981,11 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="list",
         description="List missions (scoped to the current project by default; unreadable records are skipped and counted).",
         action_class="read_only",
-        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG, _JSON_OPT),
+        args=(
+            _PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG,
+            ArgDef("--status", "Only missions in this status: active, paused, achieved, abandoned, or planned (active, and no job started yet)", required=False, is_option=True),
+            _JSON_OPT,
+        ),
         supports_json=True,
         related=("mission.start", "mission.show"),
     ),
@@ -1019,7 +1023,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.show",
         group_id="mission",
         subcommand="show",
-        description="Show one mission and its job chain, each job with the state the job store reports now.",
+        description="Show one mission and its job chain, each job with the state the job store reports now, then every entry of the ledger its runs wrote (read-only).",
         action_class="read_only",
         args=(
             ArgDef("mission_id", "Mission id (or a unique prefix) that owns the jobs"),

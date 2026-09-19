@@ -408,6 +408,9 @@ class TestApprovalGateEnforcement:
         assert run.returncode == 3
         assert "task plan rejected" in run.stderr
         assert "replan" not in run.stderr
+        # R-0915: the refusal names what a user does next.
+        assert "give Remedy the order anew with `remedy do`" in run.stderr
+        assert "--plan-only" in run.stderr
 
 
 class TestDecisionResolve:
@@ -649,61 +652,6 @@ class TestConfigBudgetPrecedence:
         job_data = json.loads(show.stdout)
         # Plan fills max_provider_calls since config didn't set it
         assert job_data["budgets"]["max_provider_calls"] == 42
-
-
-class TestReplanApprovalRearm:
-    """R-0129: replan re-arms _approval to pending."""
-
-    def test_replan_rearms_approval(self, tmp_path):
-        from packages.orchestration.job_plan import replan
-        from packages.orchestration.schemas.models import TaskPlan
-
-        old_plan = {
-            "schema_v": "task_plan_v1",
-            "tasks": [{"id": "T001", "title": "X", "goal": "G",
-                        "acceptance": ["A"], "depends_on": [],
-                        "est_tokens_band": "M", "files_hint": []}],
-            "risks": [],
-            "_approval": "rejected",
-        }
-        new_plan = TaskPlan(
-            schema_v="task_plan_v1",
-            tasks=[{"id": "T001", "title": "Y", "goal": "G2",
-                    "acceptance": ["B"], "depends_on": [],
-                    "est_tokens_band": "S", "files_hint": []}],
-            risks=[],
-        )
-        ev_dir = tmp_path / "evidence"
-        ev_dir.mkdir()
-        result, version = replan(old_plan, new_plan, ev_dir)
-        assert result["_approval"] == "pending"
-        assert version == 2
-
-    def test_replan_rejected_after_completed_task(self, tmp_path):
-        import pytest
-
-        from packages.orchestration.job_plan import ReplanRejectedError, replan
-        from packages.orchestration.schemas.models import TaskPlan
-
-        old_plan = {
-            "schema_v": "task_plan_v1",
-            "tasks": [{"id": "T001", "title": "X", "goal": "G",
-                        "acceptance": ["A"], "depends_on": [],
-                        "est_tokens_band": "M", "files_hint": []}],
-            "risks": [],
-            "_approval": "approved",
-        }
-        new_plan = TaskPlan(
-            schema_v="task_plan_v1",
-            tasks=[{"id": "T001", "title": "Y", "goal": "G2",
-                    "acceptance": ["B"], "depends_on": [],
-                    "est_tokens_band": "S", "files_hint": []}],
-            risks=[],
-        )
-        ev_dir = tmp_path / "evidence"
-        ev_dir.mkdir()
-        with pytest.raises(ReplanRejectedError):
-            replan(old_plan, new_plan, ev_dir, any_task_completed=True)
 
 
 class TestApprovalGoldenPathCLI:

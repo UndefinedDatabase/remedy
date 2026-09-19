@@ -320,6 +320,7 @@ def _cmd_decision_resolve(
             sys.exit(1)
 
         from packages.orchestration.job_plan import (
+            REJECTED_PLAN_NEXT_STEP,
             clarifications_already_resolved,
             open_clarification_questions,
             resolve_task_plan_approval,
@@ -333,7 +334,7 @@ def _cmd_decision_resolve(
                     fp.get("clarifications_resolved")):
                 print(
                     "Error: clarifications already resolved for this job — "
-                    "answers are immutable.",
+                    f"answers are immutable.\n  {REJECTED_PLAN_NEXT_STEP}",
                     file=sys.stderr)
                 sys.exit(1)
             print("Error: no pending task plan approval for this job.", file=sys.stderr)
@@ -383,6 +384,7 @@ def _cmd_decision_resolve(
             resolve_task_plan_approval(
                 job, reason="reject", answers=answers, questions=questions)
             print(f"Task plan rejected for job {job_id_str}.")
+            print(f"  {REJECTED_PLAN_NEXT_STEP}")
     elif decision_id.startswith("proposal:"):
         from packages.orchestration.data_paths import resolve_job_id as _rji
         from packages.orchestration.proposed_tasks import (

@@ -299,7 +299,7 @@ class TestSegmentManifest:
         assert "prompt_traces" in source
 
     def test_appending_traces_keeps_the_earlier_ones(self, tmp_path):
-        """A replan must not truncate the traces its job's first run wrote."""
+        """A second planning pass must not truncate the traces the first wrote."""
         from packages.orchestration.prompt_trace import append_trace_jsonl
 
         composed = compose_intake_prompt("demo mission")

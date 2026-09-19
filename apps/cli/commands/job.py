@@ -30,6 +30,14 @@ if TYPE_CHECKING:
 _SAFE_TASK_TYPE_RE = re.compile(r'^[A-Za-z0-9_-]+$')
 
 
+def _plan_rejected_error(job_id_str: str) -> str:
+    """R-0915: the refusal for a rejected plan names what a user does next."""
+    from packages.orchestration.job_plan import REJECTED_PLAN_NEXT_STEP
+
+    return (f"Error: task plan rejected for job {job_id_str[:8]}.\n"
+            f"  {REJECTED_PLAN_NEXT_STEP}")
+
+
 def _cmd_create_job(
     prompt: str,
     *,
@@ -887,7 +895,7 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: task plan rejected for job {job_id_str[:8]}.",
+            _plan_rejected_error(job_id_str),
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1208,7 +1216,7 @@ def _cmd_job_run_cycles(
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: task plan rejected for job {job_id_str[:8]}.",
+            _plan_rejected_error(job_id_str),
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1470,7 +1478,7 @@ def _cmd_job_resume(
         sys.exit(3)
     if decision.reason == "plan_rejected":
         print(
-            f"Error: task plan rejected for job {job_id_str[:8]}.",
+            _plan_rejected_error(job_id_str),
             file=sys.stderr,
         )
         sys.exit(3)
@@ -1564,7 +1572,7 @@ def _cmd_resume(
         sys.exit(3)
     elif block_reason == "rejected":
         print(
-            f"Error: task plan rejected for job {job_id_str[:8]}.",
+            _plan_rejected_error(job_id_str),
             file=sys.stderr,
         )
         sys.exit(3)

@@ -1076,8 +1076,11 @@ def run_mission(
 
     def _record(iteration: int, digest: str, move: dict[str, Any],
                 outcome: MoveOutcome, cost: dict[str, Any]) -> None:
+        # R-0930: stamped HERE, so the entry `mission run` prints carries the
+        # same time as the copy `append_ledger_entry` writes to disk.
         entry = LedgerEntry(iteration=iteration, context_digest=digest,
-                            move=move, outcome=outcome.to_json(), cost=cost)
+                            move=move, outcome=outcome.to_json(), cost=cost,
+                            recorded_at=_utc_now_iso(now))
         append_ledger_entry(pid, mission_id, entry, root, now=now)
         result.entries.append(entry)
 

@@ -693,14 +693,21 @@ def write_plan_md(
 
 
 # ---------------------------------------------------------------------------
-# Replan versioning (T003)
+# Plan approval
 # ---------------------------------------------------------------------------
+
+#: R-0915: what a user does after a plan is rejected or its answers are
+#: final. A job's plan is never regenerated; a new order gets a new plan.
+REJECTED_PLAN_NEXT_STEP = (
+    "A job's plan is not made again: give Remedy the order anew with "
+    "`remedy do`, and add --plan-only to read the new plan before anything runs.")
+
 
 def task_plan_blocks_execution(job: Any) -> str | None:
     """Return blocking reason if task plan prevents execution, else None.
 
-    Returns "pending" when awaiting approval, "rejected" when plan was
-    rejected and needs replanning.
+    Returns "pending" when awaiting approval, "rejected" when the plan was
+    rejected, which is final for this job (see ``REJECTED_PLAN_NEXT_STEP``).
     """
     fp = getattr(job, "task_plan", None)
     if not isinstance(fp, dict):
@@ -751,44 +758,6 @@ def auto_approve_task_plan(
     body["_approval_audit"] = {"mode": AUTO_APPROVAL_MODE, "reason": reason}
     write_assumptions_md(body.get("clarifications_resolved"), evidence_dir)
     return body
-
-
-class ReplanRejectedError(Exception):
-    """Raised when replanning is rejected (e.g. after task completion)."""
-
-
-def replan(
-    job_task_plan: dict[str, Any],
-    new_plan: TaskPlan,
-    evidence_dir: Path,
-    *,
-    any_task_completed: bool = False,
-    transformations: list[dict[str, Any]] | None = None,
-) -> tuple[dict[str, Any], int]:
-    """Apply a new task plan version.
-
-    Returns (updated task_plan dict for Job, new version number).
-    Raises ReplanRejectedError if any task has already completed.
-    Old plan.md files are kept (plan.md, plan_v2.md, plan_v3.md, ...).
-    """
-    if any_task_completed:
-        raise ReplanRejectedError(
-            "Cannot replan after a task has completed. "
-            "This limitation will be lifted in a future feature.")
-
-    versions = job_task_plan.get("_versions", [])
-    current_version = len(versions) + 1
-    new_version = current_version + 1
-
-    new_plan_dict = new_plan.model_dump()
-    new_plan_dict["_versions"] = versions + [job_task_plan]
-    new_plan_dict["_version"] = new_version
-    new_plan_dict["_approval"] = "pending"
-
-    write_plan_md(
-        new_plan, evidence_dir, version=new_version,
-        transformations=transformations)
-    return new_plan_dict, new_version
 
 
 def resolve_task_plan_approval(

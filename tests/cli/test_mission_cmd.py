@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -1017,6 +1018,20 @@ class TestMissionRunInOrchestratorMode:
         assert proc.returncode == 2
         assert "max_iterations" in proc.stderr
 
+    def test_every_printed_iteration_carries_its_time(self, project):
+        """R-0930: the run's own ledger lines end in a timestamp, never bare `at`."""
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+
+        out = _run(["mission", "run", mission_id, "--project", project_id,
+                    "--no-llm"], data_root).stdout
+
+        at_lines = [ln for ln in out.splitlines() if "protocol:" in ln]
+        assert at_lines
+        for line in at_lines:
+            assert re.search(r"  at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}", line), line
+
     def test_an_unknown_id_still_reaches_the_pre_f070_facade(self, project):
         """A run id that names no mission must behave exactly as before."""
         data_root, project_id = project
@@ -1462,3 +1477,77 @@ class TestMissionReportIsTheCarriedReportView:
 
         assert "build_mission_morning_report" not in source
         assert "_cmd_mission_report" not in source
+
+
+class TestShowRendersTheWholeLedger:
+    """R-0929: `mission show` is the read-only view of every run's ledger."""
+
+    def test_entries_from_two_earlier_runs_render_without_an_append(self, project):
+        from packages.orchestration.orchestrator_loop import read_ledger
+
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+        for _ in range(2):
+            _run(["mission", "run", mission_id, "--project", project_id,
+                  "--no-llm"], data_root)
+        before = read_ledger(project_id, mission_id, data_root)
+        assert [e["iteration"] for e in before] == [1, 2]
+
+        out = _run(["mission", "show", mission_id, "--project", project_id],
+                   data_root).stdout
+        body = json.loads(_run(["mission", "show", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+
+        assert "Ledger (2 entries):" in out
+        assert "[1] " in out and "[2] " in out
+        assert out.index(f"Mission {mission_id}") < out.index("Ledger (")
+        assert body["ledger"] == before
+        assert read_ledger(project_id, mission_id, data_root) == before
+
+    def test_an_unrun_mission_prints_no_ledger_section(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+
+        out = _run(["mission", "show", mission_id, "--project", project_id],
+                   data_root).stdout
+        body = json.loads(_run(["mission", "show", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+
+        assert "Ledger" not in out
+        assert body["ledger"] == []
+
+
+class TestListStatusFilter:
+    """R-0904: `mission list --status`, with `planned` for a goal no job started."""
+
+    def _ids(self, data_root, project_id, status):
+        body = json.loads(_run(["mission", "list", "--project", project_id,
+                                "--status", status, "--json"], data_root).stdout)
+        return {m["id"] for m in body["missions"]}
+
+    def test_planned_lists_only_missions_no_job_has_started(self, project):
+        data_root, project_id = project
+        queued = _start(data_root, project_id, "Queued goal")
+        waiting = _start(data_root, project_id, "Planned job, never run")
+        _link_job(data_root, project_id, waiting, role="initial", state="planned")
+        worked = _start(data_root, project_id, "Worked goal")
+        _link_job(data_root, project_id, worked, role="initial", state="completed")
+        paused = _start(data_root, project_id, "Paused goal")
+        _run(["mission", "pause", paused, "--project", project_id], data_root)
+
+        assert self._ids(data_root, project_id, "planned") == {queued, waiting}
+        assert self._ids(data_root, project_id, "active") == {queued, waiting, worked}
+        assert self._ids(data_root, project_id, "paused") == {paused}
+        text = _run(["mission", "list", "--project", project_id, "--status",
+                     "planned"], data_root).stdout
+        assert queued[:12] in text and worked[:12] not in text
+
+    def test_an_unknown_status_is_a_usage_error(self, project):
+        data_root, project_id = project
+
+        proc = _run(["mission", "list", "--project", project_id, "--status",
+                     "queued"], data_root, expect_ok=False)
+
+        assert proc.returncode == 2
+        assert "planned" in proc.stderr

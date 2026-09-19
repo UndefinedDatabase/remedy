@@ -723,3 +723,31 @@ class TestCmdTrustReport:
         _cmd_trust_report(str(job.job_id))  # Must not raise SystemExit
         out = capsys.readouterr().out
         assert "Remedy Trust Report" in out
+
+
+class TestTipsNameNoPlaceholder:
+    """R-0970: every tip prints the real job id and intent id, or names it in words."""
+
+    @pytest.mark.parametrize("scenario", ["approved", "mixed", "pending", "none"])
+    def test_rendered_text_has_no_angle_bracket_placeholder(self, scenario):
+        import re
+
+        job = _make_job(state=RunState.COMPLETED)
+        job.tasks.append(_completed_task())
+        expected = []
+        if scenario in ("approved", "mixed"):
+            approved = _add_patch_artifact(job, risk=RISK_LOW)
+            set_approval_state(job, approved, APPROVAL_APPROVED)
+            expected.append(f"remedy patch apply {job.job_id} {approved}")
+        if scenario in ("mixed", "pending"):
+            pending = _add_patch_artifact(job, risk=RISK_LOW)
+            if scenario == "pending":
+                expected.append(f"remedy patch approve {job.job_id} {pending}")
+
+        out = summarize_trust_report(job, [])
+
+        assert re.findall(r"<[a-z_]+>", out) == []
+        for command in expected:
+            assert command in out
+        if scenario == "none":
+            assert "remedy do, then the order in quotes" in out

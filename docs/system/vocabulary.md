@@ -94,6 +94,12 @@ own budget, its fences and its own **Plan** — and that plan is a list of
 evidence folder. Inside a run the work happens in **Rounds**: round 1 builds and
 reviews, and every later round repairs.
 
+A job's plan waits for your approval before any task runs. A plan you reject
+stays rejected: Remedy does not make a job's plan again. You answer it with a
+new order — `remedy do`, with `--plan-only` to read the new plan before anything
+runs. `remedy mission list --status planned` lists the missions no job has
+started yet, and `remedy mission show` prints the whole ledger a mission's runs wrote.
+
 Everything above the Run is bookkeeping. The Run is where a model actually
 writes code, and the evidence folder it leaves behind is what you read
 afterwards to see what happened.
