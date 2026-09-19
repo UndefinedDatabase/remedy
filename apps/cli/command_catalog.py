@@ -1362,8 +1362,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             _JOB_ID,
             ArgDef("--type", "Filter by event type", required=False, is_option=True),
-            ArgDef("--since", "Filter events after timestamp", required=False, is_option=True),
-            ArgDef("--limit", "Max events (default: 50)", required=False, is_option=True, default="50"),
+            ArgDef("--limit", "Max events, newest first (default: 50)", required=False, is_option=True, default="50"),
             _JSON_OPT,
         ),
         supports_json=True,
@@ -2295,8 +2294,8 @@ def _with_list_options(entry: CommandEntry) -> CommandEntry:
     """Attach the shared list-option surface to a list-shaped entry.
 
     Add-only-if-missing: a command that already declares one of these flags
-    by name (today only `event.list`, which already has `--since` and
-    `--limit`) keeps its own existing ArgDef for that name untouched and
+    by name (today only `event.list`, which keeps its own `--limit` for its
+    default of 50) keeps its own existing ArgDef for that name untouched and
     only gains the flags it is missing. Appending a second ArgDef of an
     already-present name crashes argparse at parser-build time with a
     conflicting-option error (verified against `grouped.build_parser()`).

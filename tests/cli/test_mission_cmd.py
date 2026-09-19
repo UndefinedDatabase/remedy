@@ -216,6 +216,39 @@ class TestList:
         assert "1 job(s)" in proc.stdout
 
 
+class TestListOptions:
+    """R-0796: `mission list` honours the shared --sort/--since/--until/--limit."""
+
+    def test_the_newest_mission_leads_and_limit_caps_the_rows(self, project):
+        data_root, project_id = project
+        older = _start(data_root, project_id, "Older goal")
+        newer = _start(data_root, project_id, "Newer goal")
+
+        body = json.loads(_run(["mission", "list", "--all-projects", "--json"],
+                               data_root).stdout)
+        assert [m["id"] for m in body["missions"]] == [newer, older]
+        capped = json.loads(_run(["mission", "list", "--all-projects", "--json",
+                                  "--limit", "1"], data_root).stdout)
+        assert [m["id"] for m in capped["missions"]] == [newer]
+
+    def test_until_filters_by_the_missions_own_date(self, project):
+        data_root, project_id = project
+        _start(data_root, project_id, "Today's goal")
+
+        body = json.loads(_run(["mission", "list", "--all-projects", "--json",
+                                "--until", "1d"], data_root).stdout)
+        assert body["missions"] == []
+
+    def test_an_unknown_sort_field_exits_nonzero_naming_the_valid_set(self, project):
+        data_root, project_id = project
+        _start(data_root, project_id, "A goal")
+
+        proc = _run(["mission", "list", "--all-projects", "--sort", "bogus"],
+                    data_root, expect_ok=False)
+        assert proc.returncode == 1
+        assert "unknown --sort field 'bogus'; valid fields: created_at, goal, status" in proc.stderr
+
+
 class TestShow:
     def test_show_renders_the_chain_in_link_order(self, project):
         data_root, project_id = project

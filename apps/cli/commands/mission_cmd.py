@@ -89,7 +89,10 @@ def _cmd_mission_start(goal: str, *, project: str | None = None,
 
 
 def _cmd_mission_list(*, project: str | None = None, all_projects: bool = False,
-                      json_output: bool = False) -> None:
+                      json_output: bool = False, sort: str | None = None,
+                      desc: bool = False, since: str | None = None,
+                      until: str | None = None, limit: str | None = None) -> None:
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
     from packages.orchestration.mission_state import (
         list_missions_safe,
         project_ids_with_missions,
@@ -107,6 +110,21 @@ def _cmd_mission_list(*, project: str | None = None, all_projects: bool = False,
         missions, _degraded, skipped = list_missions_safe(project_id)
         skipped_total += len(skipped)
         rows.extend((project_id, mission) for mission in missions)
+    try:
+        rows = apply_list_options(
+            rows,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "created_at": lambda r: (r[1].created_at, r[1].id),
+                "status": lambda r: r[1].status,
+                "goal": lambda r: r[1].goal,
+            },
+            default_sort_field="created_at",
+            date_getter=lambda r: r[1].created_at or None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
 
     if json_output:
         print(_json.dumps({
@@ -628,6 +646,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         project=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),
         json_output=getattr(args, "json", False),
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
     ),
     "mission.continue": lambda args: _cmd_mission_continue(
         args.mission_id,

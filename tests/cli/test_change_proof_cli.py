@@ -308,3 +308,46 @@ def test_handler_output_bounded(capsys):
 def test_change_proof_in_handlers():
     from apps.cli.commands.change import COMMAND_HANDLERS
     assert "change.proof" in COMMAND_HANDLERS
+
+
+# ---------------------------------------------------------------------------
+# change list — shared list options (R-0796)
+# ---------------------------------------------------------------------------
+
+
+def _change_list_json(capsys, **flags):
+    from apps.cli.commands.change import _cmd_change_list
+    explanations = [
+        {"file": "src/old.py", "action": "modify", "risk": "low", "reason": "", "summary": "",
+         "created_at": "2026-09-01T00:00:00+00:00"},
+        {"file": "src/new.py", "action": "modify", "risk": "high", "reason": "", "summary": "",
+         "created_at": "2026-09-03T00:00:00+00:00"},
+    ]
+    art = Artifact(name="patch-intent", content="", kind=ArtifactKind.PATCH_INTENT,
+                   metadata={"patch_intent_explanations": explanations,
+                             "patch_intent_approvals": {}})
+    job = JobPlan(job_title="test-job", user_prompt="x")
+    job.artifacts = [art]
+    with patch("apps.cli.commands.change.require_job_plan", return_value=job), \
+         patch("apps.cli.commands.change.resolve_job_id", side_effect=lambda raw: raw), \
+         patch("apps.cli.commands.change.resolve_data_root", return_value="/tmp"), \
+         patch("packages.orchestration.timeline.load_run_events", return_value=[]):
+        _cmd_change_list(str(job.job_id), json_output=True, **flags)
+    return [c["target_path"] for c in json.loads(capsys.readouterr().out)["changes"]]
+
+
+def test_change_list_is_newest_first_by_its_intents_created_at(capsys):
+    assert _change_list_json(capsys) == ["src/new.py", "src/old.py"]
+    assert _change_list_json(capsys, desc=True) == ["src/old.py", "src/new.py"]
+
+
+def test_change_list_limit_and_time_window_filter_the_rows(capsys):
+    assert _change_list_json(capsys, limit="1") == ["src/new.py"]
+    assert _change_list_json(capsys, until="2026-09-02T00:00:00+00:00") == ["src/old.py"]
+
+
+def test_change_list_unknown_sort_field_exits_nonzero(capsys):
+    with pytest.raises(SystemExit) as exc:
+        _change_list_json(capsys, sort="bogus")
+    assert exc.value.code == 1
+    assert "valid fields: created_at, risk, status, target_path" in capsys.readouterr().err

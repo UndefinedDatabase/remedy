@@ -40,16 +40,37 @@ def _cmd_event_list(
     *,
     event_type: str | None = None,
     since: str | None = None,
-    limit: int = 50,
+    limit: str | None = "50",
     json_output: bool = False,
+    sort: str | None = None,
+    desc: bool = False,
+    until: str | None = None,
 ) -> None:
     from packages.orchestration.event_ledger import (
         export_ledger_event_json,
         list_events,
     )
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
 
     _job, events, jid = _load_job_events(job_id_str)
-    result = list_events(jid, events, event_type=event_type, since=since, limit=limit)
+    # Every row of the requested type first; the shared helper then filters by
+    # time, orders newest-first and caps — so --limit keeps the NEWEST events.
+    result = list_events(jid, events, event_type=event_type, limit=len(events) + 1)
+    try:
+        result = apply_list_options(
+            result,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "timestamp": lambda e: e.timestamp,
+                "event_type": lambda e: e.event_type,
+                "outcome": lambda e: e.outcome or "",
+            },
+            default_sort_field="timestamp",
+            date_getter=lambda e: e.timestamp or None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     if json_output:
         print(_json.dumps({
@@ -159,8 +180,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job_id,
         event_type=getattr(args, "type", None),
         since=getattr(args, "since", None),
-        limit=int(getattr(args, "limit", "50")),
+        limit=getattr(args, "limit", "50"),
         json_output=getattr(args, "json", False),
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        until=getattr(args, "until", None),
     ),
     "event.show": lambda args: _cmd_event_show(
         args.job_id,
