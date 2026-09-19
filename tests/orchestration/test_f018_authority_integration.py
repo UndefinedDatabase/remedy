@@ -1677,7 +1677,10 @@ Acceptance:
         actuals = result.budget_actuals
         assert actuals is not None
         assert actuals["provider_call_count"] == 3
-        assert actuals["schema_version"] == "1.0.0"
+        # R-0753: the job runner writes version 2, which carries the money of
+        # the live counters — none here: no cost limit, so no safe point priced it.
+        assert actuals["schema_version"] == "2.0.0"
+        assert actuals["measured_cost_usd"] is None
         assert result.stop_source == "budget"
 
 

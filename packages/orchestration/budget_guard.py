@@ -669,10 +669,61 @@ def collect_ledger_cost_for_job(
     return (total.cost_usd, total.measured_calls, total.unmeasured_calls)
 
 
+#: Version 1 carries tokens and calls only; every record written before R-0753
+#: is one, and it keeps decoding — with its money ABSENT, never a zero.
+PERSISTED_ACTUALS_SCHEMA_V1 = "1.0.0"
+#: Version 2 adds the three F104 money fields of the live counters (R-0753,
+#: DECISION F273 D5 (5)), so a reader across a process boundary can price a run.
+PERSISTED_ACTUALS_SCHEMA_V2 = "2.0.0"
+#: What the job runner writes today.
+PERSISTED_ACTUALS_SCHEMA_VERSION = PERSISTED_ACTUALS_SCHEMA_V2
+
 _PERSISTED_ACTUALS_FIELDS = frozenset({
     "schema_version", "provider_call_count", "actual_call_count",
     "unmeasured_call_count", "total_tokens", "actual_sources", "started_at",
 })
+_PERSISTED_MONEY_FIELDS = frozenset({
+    "measured_cost_usd", "priced_call_count", "unpriced_call_count",
+})
+#: Each version's CLOSED field set: a field outside its version's set is rejected.
+_PERSISTED_ACTUALS_FIELDS_BY_VERSION = {
+    PERSISTED_ACTUALS_SCHEMA_V1: _PERSISTED_ACTUALS_FIELDS,
+    PERSISTED_ACTUALS_SCHEMA_V2: _PERSISTED_ACTUALS_FIELDS | _PERSISTED_MONEY_FIELDS,
+}
+
+
+def _decode_persisted_money(raw: dict[str, Any]) -> tuple[float | None, int, int]:
+    """Validate a version-2 record's money fields; never repair one into another.
+
+    A null cost is UNPRICED and stays None (P6). The cost-side contradiction
+    ``BudgetCounters`` rejects is rejected here too, so a corrupt record fails
+    at the decode rather than at whichever reader builds counters from it.
+    """
+    cost = raw["measured_cost_usd"]
+    if cost is not None:
+        if isinstance(cost, bool) or not isinstance(cost, (int, float)):
+            raise BudgetCounterError(
+                f"persisted measured_cost_usd has type {type(cost).__name__}")
+        if not math.isfinite(cost) or cost < 0:
+            raise BudgetCounterError(
+                f"persisted measured_cost_usd is not a finite non-negative "
+                f"number: {cost!r}")
+        cost = float(cost)
+    counts = []
+    for name in ("priced_call_count", "unpriced_call_count"):
+        val = raw[name]
+        if isinstance(val, bool) or not isinstance(val, int):
+            raise BudgetCounterError(
+                f"persisted {name} has type {type(val).__name__}, not int")
+        if val < 0:
+            raise BudgetCounterError(f"persisted {name} is negative: {val}")
+        counts.append(val)
+    priced, unpriced = counts
+    if cost is not None and cost > 0 and priced == 0 and unpriced > 0:
+        raise BudgetCounterError(
+            f"persisted measured_cost_usd ({cost}) > 0 but priced_call_count "
+            f"is 0 and all {unpriced} cost-side calls are unpriced")
+    return cost, priced, unpriced
 
 
 def decode_persisted_budget_actuals(
@@ -680,10 +731,14 @@ def decode_persisted_budget_actuals(
     *,
     first_running_at: str | None = None,
 ) -> dict[str, Any]:
-    """Decode and validate a PersistedBudgetActualsV1 record.
+    """Decode and validate a persisted budget actuals record, version 1 or 2.
 
     Returns a validated dict with typed values. Raises BudgetCounterError on
     any schema violation — no default-zero repair, no invented sources.
+
+    Both versions decode to the SAME keys. A version-1 record never carried
+    money, so its ``measured_cost_usd`` is None and both call counts are 0 —
+    the record says nothing about price, and nothing is invented for it.
 
     When *first_running_at* is provided, the persisted started_at must
     represent the same UTC instant; a mismatch is corrupt state.
@@ -691,18 +746,28 @@ def decode_persisted_budget_actuals(
     if not isinstance(raw, dict):
         raise BudgetCounterError(
             f"persisted actuals must be a dict, got {type(raw).__name__}")
-    missing = _PERSISTED_ACTUALS_FIELDS - set(raw)
+    sv = raw.get("schema_version")
+    fields = _PERSISTED_ACTUALS_FIELDS_BY_VERSION.get(sv) if isinstance(sv, str) else None
+    if fields is None:
+        # A record without a known version is judged against version 1's set,
+        # so a missing or unknown field still names itself before the version.
+        fields = _PERSISTED_ACTUALS_FIELDS
+    missing = fields - set(raw)
     if missing:
         raise BudgetCounterError(
             f"persisted actuals missing required fields: {sorted(missing)}")
-    extra = set(raw) - _PERSISTED_ACTUALS_FIELDS
+    extra = set(raw) - fields
     if extra:
         raise BudgetCounterError(
             f"persisted actuals has unknown fields: {sorted(extra)}")
-    sv = raw["schema_version"]
-    if sv != "1.0.0":
+    if sv not in _PERSISTED_ACTUALS_FIELDS_BY_VERSION:
         raise BudgetCounterError(
-            f"persisted actuals schema_version {sv!r} is not '1.0.0'")
+            f"persisted actuals schema_version {sv!r} is not one of "
+            f"{sorted(_PERSISTED_ACTUALS_FIELDS_BY_VERSION)}")
+    if sv == PERSISTED_ACTUALS_SCHEMA_V2:
+        cost, priced, unpriced = _decode_persisted_money(raw)
+    else:
+        cost, priced, unpriced = None, 0, 0
 
     for name in ("provider_call_count", "actual_call_count",
                  "unmeasured_call_count", "total_tokens"):
@@ -785,6 +850,9 @@ def decode_persisted_budget_actuals(
         "total_tokens": tt,
         "actual_sources": tuple(str(s) for s in asrc),
         "started_at": sa_parsed,
+        "measured_cost_usd": cost,
+        "priced_call_count": priced,
+        "unpriced_call_count": unpriced,
     }
 
 
@@ -796,6 +864,8 @@ def counters_from_persisted(
     """Build BudgetCounters from a validated persisted actuals record.
 
     The record must have been validated by decode_persisted_budget_actuals first.
+    The F104 money fields are carried as decoded: a version-1 record decodes
+    them as unpriced (None, 0, 0), so its counters still answer ``absent``.
     """
     if now is None:
         now = datetime.now(timezone.utc)
@@ -810,4 +880,7 @@ def counters_from_persisted(
         evaluated_at=now,
         started_at=sa,
         actual_sources=validated["actual_sources"],
+        measured_cost_usd=validated.get("measured_cost_usd"),
+        unpriced_call_count=validated.get("unpriced_call_count", 0),
+        priced_call_count=validated.get("priced_call_count", 0),
     )

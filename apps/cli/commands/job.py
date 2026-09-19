@@ -2016,9 +2016,12 @@ def _cmd_job_budget(
 
     _has_cost_limit = _budgets is not None and _budgets.max_cost_usd is not None
 
-    # F104 money actuals. The persisted budget-actuals record carries NO cost
-    # field — the F103 ledger is the only place a real provider cost lives — so
-    # a money-limited job reads it here, exactly as run_job's safe point does.
+    # F104 money actuals. Since R-0753 a version-2 persisted record carries the
+    # money its run's last safe point read, but that figure is as old as that
+    # safe point and the F103 ledger is where a real provider cost lives, so a
+    # money-limited job still reads it here, exactly as run_job's safe point does,
+    # and the persisted figure stands only when the read fails or no ledger
+    # project resolves.
     # READ-ONLY: `query_cost` never creates a ledger and never writes one, which
     # is what keeps the show form of `remedy job budget` writing nothing. Any failure
     # leaves the cost UNMEASURED (None, never 0.0 — P6) and every other limit
@@ -2030,7 +2033,7 @@ def _cmd_job_budget(
     # failure so both surfaces can say it out loud; it stays None when the read
     # succeeded or was never attempted, which is what keeps the two cases apart.
     _cost_read_error = None
-    if _has_cost_limit and counters is not None and counters.measured_cost_usd is None:
+    if _has_cost_limit and counters is not None:
         try:
             from dataclasses import replace as _replace
 

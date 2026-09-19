@@ -2444,6 +2444,9 @@ def run_job(
         else:
             _accumulated_unmeasured += 1
 
+    # The counters the latest safe point evaluated, or None before the first one.
+    _last_budget_counters = None
+
     def _build_budget_counters():
         """The counters this safe point evaluates against — built ONCE per check.
 
@@ -2452,6 +2455,7 @@ def run_job(
         prediction that disagrees with the backstop it is supposed to precede is
         worse than no prediction.
         """
+        nonlocal _last_budget_counters
         from packages.orchestration.budget_guard import collect_counters_from_actuals
         _actuals = {
             "provider_call_count": _accumulated_provider_calls,
@@ -2511,6 +2515,9 @@ def run_job(
                 started_at=_run_started_at,
                 actual_sources=_sources,
             )
+        # R-0753: the persisted record carries THESE counters' money, so it is
+        # kept here rather than re-read from the ledger at persist time.
+        _last_budget_counters = counters
         return counters
 
     def _stop_check(*, next_task=None, previous_summaries=()):
@@ -2603,14 +2610,24 @@ def run_job(
         if _accumulated_measured > _prior_validated.get("actual_call_count", 0) if _prior_validated else _accumulated_measured > 0:
             _sources.add("pingpong_live")
         _sources.discard("persisted_resume")
+        from packages.orchestration.budget_guard import (
+            PERSISTED_ACTUALS_SCHEMA_VERSION as _actuals_schema_version,
+        )
+        # R-0753: the money is the latest safe point's live counters' own — a
+        # figure the budget check already evaluated — and is None (unpriced,
+        # never 0.0) when no safe point priced the job.
+        _money = _last_budget_counters
         job.budget_actuals = {
-            "schema_version": "1.0.0",
+            "schema_version": _actuals_schema_version,
             "provider_call_count": _accumulated_provider_calls,
             "actual_call_count": _accumulated_measured,
             "total_tokens": _accumulated_tokens,
             "started_at": _run_started_at.isoformat(),
             "actual_sources": tuple(sorted(_sources)),
             "unmeasured_call_count": _accumulated_unmeasured,
+            "measured_cost_usd": _money.measured_cost_usd if _money is not None else None,
+            "priced_call_count": _money.priced_call_count if _money is not None else 0,
+            "unpriced_call_count": _money.unpriced_call_count if _money is not None else 0,
         }
 
     # F018: allocate episode BEFORE computing budget identity so the stop
