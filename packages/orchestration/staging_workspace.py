@@ -1,17 +1,8 @@
-"""Staging Workspace — isolated apply/test/proof before the target apply.
-
-Creates a filtered copy of the target repo, runs all gates in isolation,
-and applies changed files to the real target only after all gates pass.
+"""Staging Workspace — a filtered copy of the target repo in an isolated directory.
 
 Design:
   - Filtered copy excludes: .git, .env*, node_modules, venv, __pycache__, .data
   - Symlinks resolving outside repo root are excluded (escape detection)
-  - Apply uses patch_apply with target_repo_override (no metadata mutation)
-  - Tests run with cwd=staging dir
-  - Proof built against staging artifacts
-  - Target apply: Markdown-only, prefix-based append-only for existing files
-  - Non-markdown files blocked during the target apply with blockers recorded
-  - Failure discards staging dir entirely — target untouched
 """
 from __future__ import annotations
 
@@ -19,7 +10,6 @@ import shutil
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 # Directories excluded from filtered copy
 _EXCLUDE_DIRS: frozenset[str] = frozenset({
@@ -64,25 +54,16 @@ def _is_symlink_escape(item: Path, repo_root: Path) -> bool:
         return True  # Cannot resolve — treat as escape
 
 
-def _check_path_containment(path: Path, root: Path) -> bool:
-    """Return True if resolved path is inside resolved root."""
-    try:
-        return path.resolve().is_relative_to(root.resolve())
-    except (OSError, ValueError):
-        return False
-
-
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
 
 @dataclass
 class StagingWorkspace:
-    """Isolated workspace for apply/test/proof gates."""
+    """An isolated, filtered copy of a target repo."""
     staging_dir: Path
     target_repo: Path
     job_id: str
-    fulfillment_id: str = ""
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     files_copied: int = 0
     dirs_copied: int = 0
@@ -90,42 +71,6 @@ class StagingWorkspace:
     excluded_symlinks: list[str] = field(default_factory=list)
     excluded_env_files: list[str] = field(default_factory=list)
     active: bool = True
-
-
-@dataclass
-class StagingApplyRecord:
-    """Record of a file applied in staging."""
-    relative_path: str
-    action: str  # "create" | "modify"
-    scope: str = "staged"  # "staged" | "target"
-    bytes_written: int = 0
-    staged: bool = True
-    applied_to_target: bool = False
-    applied_to_target_at: str = ""
-
-
-@dataclass
-class TargetApplyResult:
-    """Result of applying staged changes to the target repo."""
-    applied: bool = False
-    files_applied_to_target: list[str] = field(default_factory=list)
-    files_skipped: list[str] = field(default_factory=list)
-    files_blocked: list[str] = field(default_factory=list)
-    blockers: list[str] = field(default_factory=list)
-    reason: str = ""
-    applied_to_target_at: str = ""
-
-
-@dataclass
-class StagingResult:
-    """Complete result of staged fulfillment cycle."""
-    workspace: StagingWorkspace | None = None
-    apply_records: list[StagingApplyRecord] = field(default_factory=list)
-    test_passed: bool = False
-    proof_status: str = ""
-    target_apply: TargetApplyResult | None = None
-    discarded: bool = False
-    discard_reason: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -136,8 +81,6 @@ def create_staging_workspace(
     target_repo: Path,
     staging_parent: Path,
     job_id: str,
-    *,
-    fulfillment_id: str = "",
 ) -> StagingWorkspace:
     """Create a filtered copy of target_repo in an isolated staging directory.
 
@@ -189,195 +132,9 @@ def create_staging_workspace(
         staging_dir=staging_dir,
         target_repo=target_repo,
         job_id=job_id,
-        fulfillment_id=fulfillment_id,
         files_copied=files_copied,
         dirs_copied=dirs_copied,
         excluded_dirs=excluded,
         excluded_symlinks=excluded_symlinks,
         excluded_env_files=excluded_env_files,
     )
-
-
-# ---------------------------------------------------------------------------
-# Find changed files in staging
-# ---------------------------------------------------------------------------
-
-def find_staged_changes(workspace: StagingWorkspace) -> list[StagingApplyRecord]:
-    """Find files in staging that differ from target or are new."""
-    records: list[StagingApplyRecord] = []
-    staging = workspace.staging_dir
-    target = workspace.target_repo
-
-    for staged_file in sorted(staging.rglob("*")):
-        if staged_file.is_dir():
-            continue
-        rel = staged_file.relative_to(staging)
-        target_file = target / rel
-
-        if not target_file.exists():
-            records.append(StagingApplyRecord(
-                relative_path=str(rel),
-                action="create",
-                scope="staged",
-                bytes_written=staged_file.stat().st_size,
-            ))
-        else:
-            staged_content = staged_file.read_bytes()
-            target_content = target_file.read_bytes()
-            if staged_content != target_content:
-                records.append(StagingApplyRecord(
-                    relative_path=str(rel),
-                    action="modify",
-                    scope="staged",
-                    bytes_written=len(staged_content),
-                ))
-
-    return records
-
-
-# ---------------------------------------------------------------------------
-# Target apply gate
-# ---------------------------------------------------------------------------
-
-def apply_staged_changes_to_target(
-    workspace: StagingWorkspace,
-    apply_records: list[StagingApplyRecord],
-    *,
-    gates_passed: bool = False,
-) -> TargetApplyResult:
-    """Apply staged changes to the target repo.
-
-    Only runs if gates_passed=True. Rules:
-    - New .md files: copy from staging to target
-    - Modified .md files: prefix-based append-only (staged must start with
-      exact target content; only the suffix is appended)
-    - Non-.md files: BLOCKED (not applied, recorded in blockers)
-    - No file deletions. No overwrites of existing content.
-    - Path containment verified for all operations.
-    """
-    if not gates_passed:
-        return TargetApplyResult(
-            applied=False,
-            reason="gates_not_passed",
-        )
-
-    if not workspace.active:
-        return TargetApplyResult(
-            applied=False,
-            reason="workspace_not_active",
-        )
-
-    files_applied_to_target: list[str] = []
-    skipped_files: list[str] = []
-    blocked_files: list[str] = []
-    blockers: list[str] = []
-    now = datetime.now(timezone.utc).isoformat()
-
-    for rec in apply_records:
-        staged_path = workspace.staging_dir / rec.relative_path
-        target_path = workspace.target_repo / rec.relative_path
-
-        if not staged_path.exists():
-            skipped_files.append(rec.relative_path)
-            continue
-
-        # Path containment check
-        if not _check_path_containment(staged_path, workspace.staging_dir):
-            blocked_files.append(rec.relative_path)
-            blockers.append(f"path_escape:{rec.relative_path}")
-            continue
-        if not _check_path_containment(target_path, workspace.target_repo):
-            blocked_files.append(rec.relative_path)
-            blockers.append(f"target_path_escape:{rec.relative_path}")
-            continue
-
-        # Non-markdown files are blocked
-        if not rec.relative_path.endswith(".md"):
-            blocked_files.append(rec.relative_path)
-            blockers.append(f"non_markdown:{rec.relative_path}")
-            continue
-
-        if rec.action == "create":
-            if target_path.exists():
-                skipped_files.append(rec.relative_path)
-                continue
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(str(staged_path), str(target_path))
-            rec.applied_to_target = True
-            rec.applied_to_target_at = now
-            rec.scope = "target"
-            files_applied_to_target.append(rec.relative_path)
-
-        elif rec.action == "modify":
-            if not target_path.exists():
-                skipped_files.append(rec.relative_path)
-                continue
-            # Prefix-based append-only: staged content must start with
-            # exact target content. Only the new suffix is appended.
-            staged_content = staged_path.read_text(encoding="utf-8")
-            target_content = target_path.read_text(encoding="utf-8")
-
-            if not staged_content.startswith(target_content):
-                # Staged content doesn't preserve target prefix — blocked
-                blocked_files.append(rec.relative_path)
-                blockers.append(f"prefix_mismatch:{rec.relative_path}")
-                continue
-
-            new_suffix = staged_content[len(target_content):]
-            if new_suffix:
-                with open(target_path, "a", encoding="utf-8") as f:
-                    f.write(new_suffix)
-
-            rec.applied_to_target = True
-            rec.applied_to_target_at = now
-            rec.scope = "target"
-            files_applied_to_target.append(rec.relative_path)
-
-    return TargetApplyResult(
-        applied=len(files_applied_to_target) > 0,
-        files_applied_to_target=files_applied_to_target,
-        files_skipped=skipped_files,
-        files_blocked=blocked_files,
-        blockers=blockers,
-        reason="applied_to_target" if files_applied_to_target else "no_changes",
-        applied_to_target_at=now,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Discard
-# ---------------------------------------------------------------------------
-
-def discard_staging(workspace: StagingWorkspace, reason: str = "") -> None:
-    """Discard staging workspace entirely. Target repo untouched."""
-    if workspace.staging_dir.exists():
-        shutil.rmtree(workspace.staging_dir)
-    workspace.active = False
-
-
-# ---------------------------------------------------------------------------
-# Export
-# ---------------------------------------------------------------------------
-
-def export_staging_result_json(result: StagingResult) -> dict[str, Any]:
-    """Export staging result as safe JSON (no absolute paths)."""
-    ws = result.workspace
-    target_apply = result.target_apply
-    return {
-        "staging_active": ws.active if ws else False,
-        "files_copied": ws.files_copied if ws else 0,
-        "dirs_copied": ws.dirs_copied if ws else 0,
-        "excluded_count": len(ws.excluded_dirs) if ws else 0,
-        "excluded_symlinks": len(ws.excluded_symlinks) if ws else 0,
-        "excluded_env_files": len(ws.excluded_env_files) if ws else 0,
-        "apply_count": len(result.apply_records),
-        "test_passed": result.test_passed,
-        "proof_status": result.proof_status,
-        "applied_to_target": target_apply.applied if target_apply else False,
-        "files_applied_to_target": target_apply.files_applied_to_target if target_apply else [],
-        "files_skipped": target_apply.files_skipped if target_apply else [],
-        "files_blocked": target_apply.files_blocked if target_apply else [],
-        "blockers": target_apply.blockers if target_apply else [],
-        "discarded": result.discarded,
-        "discard_reason": result.discard_reason,
-    }

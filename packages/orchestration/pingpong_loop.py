@@ -538,19 +538,14 @@ def build_finding_status_map(rounds: list[PingPongRound]) -> list[FindingStatusE
 
 
 # ---------------------------------------------------------------------------
-# Task input loading and validation
+# Task input
 # ---------------------------------------------------------------------------
-
-_MAX_TASK_BYTES = 100_000
-_MAX_TASK_TOKENS_ESTIMATED = 25_000
-_TASK_REVIEW_EXCERPT_CHARS = 4000
-
 
 @dataclass
 class TaskInput:
-    """Validated task input from file or stdin."""
-    kind: str  # "file" or "stdin"
-    path: str  # original user-provided path (empty for stdin)
+    """A task body with its hash, size and review excerpt."""
+    kind: str  # "job_task" from the job runner
+    path: str  # empty for a job task
     title: str
     body: str
     sha256: str
@@ -558,93 +553,6 @@ class TaskInput:
     char_count: int
     tokens_estimated: int
     excerpt: str
-
-
-def _derive_title(text: str) -> str:
-    """Derive task title from first heading or first non-empty line."""
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        # Markdown heading
-        if stripped.startswith("#"):
-            return stripped.lstrip("#").strip()[:120]
-        # First non-empty line
-        return stripped[:120]
-    return "Untitled task"
-
-
-def load_task_file(path: str) -> TaskInput:
-    """Load and validate a task file. Raises ValueError on problems."""
-    p = Path(path)
-    if not p.exists():
-        raise ValueError(f"Task file not found: {path}")
-    if not p.is_file():
-        raise ValueError(f"Task path is not a file: {path}")
-    raw = p.read_bytes()
-    if len(raw) > _MAX_TASK_BYTES:
-        raise ValueError(
-            f"task_input_too_large: {len(raw)} bytes exceeds max {_MAX_TASK_BYTES}"
-        )
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        raise ValueError(f"Task file is not valid UTF-8: {path}")
-    if not text.strip():
-        raise ValueError("Task file is empty")
-    tokens_est = max(1, len(text) // 4)
-    if tokens_est > _MAX_TASK_TOKENS_ESTIMATED:
-        raise ValueError(
-            f"task_input_too_large: ~{tokens_est} tokens exceeds max {_MAX_TASK_TOKENS_ESTIMATED}"
-        )
-    sha = hashlib.sha256(raw).hexdigest()
-    title = _derive_title(text)
-    excerpt = text[:_TASK_REVIEW_EXCERPT_CHARS]
-    if len(text) > _TASK_REVIEW_EXCERPT_CHARS:
-        excerpt += "\n[TASK EXCERPT TRUNCATED]"
-    return TaskInput(
-        kind="file",
-        path=path,
-        title=title,
-        body=text,
-        sha256=sha,
-        byte_count=len(raw),
-        char_count=len(text),
-        tokens_estimated=tokens_est,
-        excerpt=excerpt,
-    )
-
-
-def load_task_stdin(text: str) -> TaskInput:
-    """Load and validate task input from stdin text. Raises ValueError on problems."""
-    if not text.strip():
-        raise ValueError("Task stdin is empty")
-    raw = text.encode("utf-8")
-    if len(raw) > _MAX_TASK_BYTES:
-        raise ValueError(
-            f"task_input_too_large: {len(raw)} bytes exceeds max {_MAX_TASK_BYTES}"
-        )
-    tokens_est = max(1, len(text) // 4)
-    if tokens_est > _MAX_TASK_TOKENS_ESTIMATED:
-        raise ValueError(
-            f"task_input_too_large: ~{tokens_est} tokens exceeds max {_MAX_TASK_TOKENS_ESTIMATED}"
-        )
-    sha = hashlib.sha256(raw).hexdigest()
-    title = _derive_title(text)
-    excerpt = text[:_TASK_REVIEW_EXCERPT_CHARS]
-    if len(text) > _TASK_REVIEW_EXCERPT_CHARS:
-        excerpt += "\n[TASK EXCERPT TRUNCATED]"
-    return TaskInput(
-        kind="stdin",
-        path="",
-        title=title,
-        body=text,
-        sha256=sha,
-        byte_count=len(raw),
-        char_count=len(text),
-        tokens_estimated=tokens_est,
-        excerpt=excerpt,
-    )
 
 
 def _persist_task_artifact(run_id: str, task: TaskInput) -> None:
@@ -950,9 +858,8 @@ def _dedupe_resumed_segments(
     return tuple(kept), tuple(replaced_names)
 
 
-# F105 T003 migration site 5. Rank order fixes two inversions the ad-hoc
-# concatenation had — `builder_scope_contract` (rank 2 DOSSIER) now precedes
-# `builder_context`, and the three rank-3 job-context segments now precede the
+# F105 T003 migration site 5. Rank order fixes the inversion the ad-hoc
+# concatenation had — the three rank-3 job-context segments now precede the
 # rank-4 `builder_task` — so this site's golden is equal-modulo-ordering, never
 # byte-exact.
 def compose_builder_prompt(
@@ -964,7 +871,6 @@ def compose_builder_prompt(
     staged_state: str = "",
     safe_diff: str = "",
     task_body: str = "",
-    scope_contract: str = "",
     test_result: str = "",
     hunk_ledger: Any = None,
     resume_hunks_text: str = "",
@@ -1023,11 +929,6 @@ def compose_builder_prompt(
     specs: list[tuple[str, SegmentStabilityRank, list[str]]] = [
         ("builder_system", SegmentStabilityRank.SYSTEM, [_BUILDER_SYSTEM, "\n"]),
     ]
-    if scope_contract:
-        specs.append((
-            "builder_scope_contract", SegmentStabilityRank.DOSSIER,
-            [f"{scope_contract}\n\n"],
-        ))
     specs.append(("builder_context", SegmentStabilityRank.JOB_CONTEXT, [context, "\n"]))
     if staged_state:
         specs.append((
@@ -1197,7 +1098,6 @@ def _build_builder_prompt(
     staged_state: str = "",
     safe_diff: str = "",
     task_body: str = "",
-    scope_contract: str = "",
     test_result: str = "",
     hunk_ledger: Any = None,
     resume_hunks_text: str = "",
@@ -1219,7 +1119,6 @@ def _build_builder_prompt(
         staged_state=staged_state,
         safe_diff=safe_diff,
         task_body=task_body,
-        scope_contract=scope_contract,
         test_result=test_result,
         hunk_ledger=hunk_ledger,
         resume_hunks_text=resume_hunks_text,
@@ -1511,7 +1410,7 @@ def _render_reviewer_scope_section(packet: dict[str, Any]) -> str:
 
 # F105 T003 migration site 6, the last of the six and the worst-ordered. Rank
 # order fixes the inversions the ad-hoc concatenation had — the rank-3
-# `reviewer_scope` and `reviewer_scope_contract` now precede the rank-4
+# `reviewer_scope` now precedes the rank-4
 # `reviewer_goal`, and on the fallback branch the rank-4 `reviewer_task_input`
 # now precedes the rank-5 `reviewer_repair` — so this site's golden is
 # equal-modulo-ordering, never byte-exact.
@@ -1526,7 +1425,6 @@ def compose_reviewer_prompt(
     task_excerpt: str = "",
     task_sha256: str = "",
     task_tokens_estimated: int = 0,
-    scope_contract: str = "",
     prior_findings: list[ReviewFinding] | None = None,
     repair_round: int = 0,
     scope_packet: dict[str, Any] | None = None,
@@ -1574,11 +1472,6 @@ def compose_reviewer_prompt(
         specs.append((
             "reviewer_scope", SegmentStabilityRank.JOB_CONTEXT,
             [_render_reviewer_scope_section(scope_packet)],
-        ))
-    if scope_contract:
-        specs.append((
-            "reviewer_scope_contract", SegmentStabilityRank.JOB_CONTEXT,
-            [f"{scope_contract}\n\n"],
         ))
     specs.append((
         "reviewer_goal", SegmentStabilityRank.TASK,
@@ -1759,7 +1652,6 @@ def _build_reviewer_prompt(
     task_excerpt: str = "",
     task_sha256: str = "",
     task_tokens_estimated: int = 0,
-    scope_contract: str = "",
     prior_findings: list[ReviewFinding] | None = None,
     repair_round: int = 0,
     scope_packet: dict[str, Any] | None = None,
@@ -1785,7 +1677,6 @@ def _build_reviewer_prompt(
         task_excerpt=task_excerpt,
         task_sha256=task_sha256,
         task_tokens_estimated=task_tokens_estimated,
-        scope_contract=scope_contract,
         prior_findings=prior_findings,
         repair_round=repair_round,
         scope_packet=scope_packet,
@@ -5170,146 +5061,3 @@ def _build_stop_info(result: PingPongResult) -> dict[str, Any]:
         "source": safe_text(result.stop_source or "")[:120],
         "requested_at": normalize_timestamp(result.stop_requested_at),
     }
-
-
-def summarize_pingpong(result: PingPongResult) -> str:
-    """Human-readable summary of a ping-pong run."""
-    lines = [
-        f"Run: {result.run_id}",
-        f"Goal: {result.goal}",
-        f"Mode: {result.mode}",
-        f"Builder: {result.builder_provider}",
-        f"Reviewer: {result.reviewer_provider}",
-        f"Rounds: {len(result.rounds)}/{result.max_rounds}",
-        f"Status: {result.final_status}",
-    ]
-    if result.tests_not_run:
-        lines.append("Tests: not run (no --test-command)")
-    if result.target_mutated:
-        lines.append(f"TARGET MUTATED: {result.changed_target_files}")
-    elif result.target_noise_detected:
-        lines.append("Target mutation: no meaningful target changes")
-        lines.append(f"Ignored target noise: {', '.join(result.ignored_target_noise_files)}")
-    norm_notes = [
-        d["normalization_note"]
-        for d in result.repair_decisions
-        if d.get("normalization_note")
-    ]
-    for note in norm_notes:
-        lines.append(f"Reviewer verdict normalized: {note}")
-    if result.reviewer_parse_retry_count > 0:
-        if result.reviewer_json_recovered:
-            lines.append(f"Reviewer parse: retried {result.reviewer_parse_retry_count}x, recovered")
-        else:
-            lines.append(f"Reviewer parse: retried {result.reviewer_parse_retry_count}x, NOT recovered")
-            if result.reviewer_parse_error:
-                lines.append(f"Parse error: {result.reviewer_parse_error}")
-    # F057: a run the governor paced says so, above the error line — a wait is run
-    # health, not a failure. The total is derived from the RECORDED waits and never
-    # from the governor's own total_waited_s(): the governor is not reachable from a
-    # PingPongResult, and a second source for one number is how the two drift.
-    if result.rate_limit_waits:
-        rate_limit_total_s = sum(w["waited_s"] for w in result.rate_limit_waits)
-        lines.append(
-            f"Rate limits: waited {rate_limit_total_s:.1f}s "
-            f"across {len(result.rate_limit_waits)} wait(s)"
-        )
-    if result.error:
-        lines.append(f"Error: {result.error}")
-    lines.append("")
-
-    # Repair loop summary
-    repair_status = _classify_repair_status(result)
-    # Check if any repair was triggered by test failure
-    test_driven = any(
-        d.get("reason") == "test_failure_evidence" for d in result.repair_decisions
-    )
-    if repair_status == "not_needed":
-        lines.append("Repair loop: not needed")
-    elif repair_status == "passed_after_repair":
-        trigger = "failed tests" if test_driven else "reviewer findings"
-        lines.append(f"Repair loop: passed after {result.repair_rounds_used} repair round(s) (triggered by {trigger})")
-        finding_map = build_finding_status_map(result.rounds)
-        resolved = [e.prior_finding_id for e in finding_map if e.status == "resolved"]
-        if resolved:
-            lines.append(f"Resolved findings: {', '.join(resolved)}")
-        lines.append("Open findings: none")
-    elif repair_status == "exhausted":
-        lines.append("Repair loop: exhausted")
-        if result.rounds:
-            last_rd = result.rounds[-1]
-            if last_rd.reviewer_output and last_rd.reviewer_output.findings:
-                open_ids = [f.id for f in last_rd.reviewer_output.findings]
-                lines.append(f"Open findings: {', '.join(open_ids)}")
-        if result.final_adjudication:
-            adj = result.final_adjudication
-            lines.append(f"Final adjudication: {adj['status']} — {adj['reason']}")
-            lines.append(f"Apply: {'allowed' if adj['apply_allowed'] else 'blocked'}")
-    elif repair_status == "stopped_on_test_failure":
-        lines.append("Repair loop: stopped — tests failed, repair disabled")
-        if result.final_adjudication:
-            adj = result.final_adjudication
-            lines.append(f"Final adjudication: {adj['status']} — {adj['reason']}")
-            lines.append(f"Apply: {'allowed' if adj['apply_allowed'] else 'blocked'}")
-    elif repair_status == "blocked_inconsistent_review":
-        lines.append("Repair loop: blocked by inconsistent review")
-    elif repair_status == "disabled":
-        pass  # no repair info if disabled
-    elif result.repair_rounds_allowed > 0:
-        lines.append(f"Repair rounds: {result.repair_rounds_used}/{result.repair_rounds_allowed}")
-
-    for rd in result.rounds:
-        kind_label = f" [{rd.kind}]" if rd.kind != "initial" else ""
-        lines.append(f"--- Round {rd.round_number}{kind_label} ---")
-        if rd.input_finding_ids:
-            lines.append(f"  Input findings: {len(rd.input_finding_ids)}")
-        if rd.resolved_finding_ids:
-            lines.append(f"  Resolved: {len(rd.resolved_finding_ids)}")
-        if rd.remaining_finding_ids:
-            lines.append(f"  Remaining: {len(rd.remaining_finding_ids)}")
-        if rd.builder_output:
-            lines.append(f"  Builder: {rd.builder_output.summary[:200]}")
-            if rd.builder_output.files_changed:
-                lines.append(f"  Files: {', '.join(rd.builder_output.files_changed)}")
-        if rd.test_passed is None:
-            lines.append("  Tests: not run")
-        else:
-            lines.append(f"  Tests: {'passed' if rd.test_passed else 'failed'} — {rd.test_summary}")
-        if rd.reviewer_output:
-            lines.append(f"  Reviewer: {rd.reviewer_output.verdict}")
-            if rd.reviewer_output.findings:
-                for f in rd.reviewer_output.findings:
-                    lines.append(f"    [{f.severity}] {f.id}: {f.summary}")
-            if rd.reviewer_output.summary:
-                lines.append(f"  Summary: {rd.reviewer_output.summary}")
-        lines.append("")
-
-    lines.append(f"Staged files: {result.staged_files}")
-    lines.append(f"Target mutated: {result.target_mutated}")
-    lines.append(f"Changed target files: {result.changed_target_files}")
-
-    if result.safe_diff_files:
-        lines.append(f"\nDiff files ({len(result.safe_diff_files)}): {', '.join(result.safe_diff_files)}")
-        if result.safe_diff_truncated:
-            lines.append("[diff truncated]")
-        if result.safe_diff_summary:
-            lines.append("\n" + result.safe_diff_summary)
-
-    if result.final_status == "staged_review_passed":
-        lines.append("\nResult: STAGED REVIEW PASSED — target not modified (staged mode).")
-    elif result.final_status == "max_rounds_reached":
-        lines.append(f"\nResult: MAX ROUNDS REACHED ({result.max_rounds}) — review not passed.")
-    elif result.final_status == "repair_exhausted":
-        lines.append(
-            f"\nResult: REPAIR EXHAUSTED — used {result.repair_rounds_used}/{result.repair_rounds_allowed} "
-            "repair rounds, findings remain."
-        )
-    elif result.final_status == "review_inconsistent":
-        lines.append("\nResult: REVIEW INCONSISTENT — reviewer output contradicts itself.")
-    elif result.final_status == "target_mutation_blocked":
-        lines.append("\nResult: TARGET MUTATION BLOCKED — safety guard caught target modification.")
-    else:
-        lines.append(f"\nResult: {result.final_status}")
-
-    lines.append(f"\nReport: remedy run show {result.run_id}")
-    return "\n".join(lines)

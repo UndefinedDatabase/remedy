@@ -1149,7 +1149,6 @@ BUILDER_SHAPES: tuple[dict, ...] = (
         "safe_diff": GOLDEN_DIFF + "@@ -9,1 +9,1 @@\n-old\n+new\n",
         "test_result": "1 failed, 3 passed",
         "task_body": "rewrite the greeting so it takes a name",
-        "scope_contract": "Touch only src/main.py.",
     },
 )
 
@@ -1160,7 +1159,6 @@ REVIEWER_SHAPES: tuple[dict, ...] = (
         "test_result": "1 failed, 3 passed",
         "prior_findings": [GOLDEN_FINDING],
         "repair_round": 2,
-        "scope_contract": "Touch only src/main.py.",
     },
 )
 

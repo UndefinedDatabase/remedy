@@ -51,8 +51,8 @@ budget fields `max_loops`, `max_test_runs`, `max_runtime_seconds`, `max_tokens` 
 default of `build_default_run_contract` when the job has none. No command sets any other field:
 F261 round 17 deleted the `contract` group, whose `set` subcommand also wrote
 `stop_before_apply`, `stop_on_unknown_risk`, `stop_on_medium_risk`, `no_cloud` and `notes`.
-The other contracts written are the default of `build_default_run_contract` and the
-fixture contract of `job_fulfillment`, which no command reaches since F280 round 3 deleted `job fulfill`.
+The other contract written is the default of `build_default_run_contract`; F273 deleted the
+fixture fulfillment spine, whose fixture contract no command had reached since F280 round 3.
 
 ## CLI
 

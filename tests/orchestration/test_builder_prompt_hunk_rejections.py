@@ -245,7 +245,6 @@ def test_manifest_ranks_stay_non_decreasing_with_the_segment_present():
             staged_state="M packages/widget.py",
             safe_diff="--- a/w.py\n+++ b/w.py\n+    resize()",
             task_body="Resize the widget.",
-            scope_contract="## Scope Contract\nTouch only packages/widget.py.",
             test_result="3 passed in 0.10s",
             hunk_ledger=_ledger(_rejected("h-8", _HOSTILE_REASON)),
         ),

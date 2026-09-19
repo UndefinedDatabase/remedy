@@ -149,17 +149,6 @@ def _build_manifest(
             "excerpt": _redact_secrets((task_input.get("excerpt", "") or "")[:200]),
         }
 
-    # Scope plan summary
-    scope_plan = run_data.get("scope_plan")
-    scope_summary: dict[str, Any] | None = None
-    if scope_plan:
-        scope_summary = {
-            "plan_id": scope_plan.get("plan_id", ""),
-            "feature_count": len(scope_plan.get("features", [])),
-            "approved_count": len(scope_plan.get("approved_features", [])),
-            "denied_count": len(scope_plan.get("denied_features", [])),
-        }
-
     manifest: dict[str, Any] = {
         "bundle_version": "0.1.0",
         "run_id": run_data.get("run_id", ""),
@@ -170,7 +159,6 @@ def _build_manifest(
         "started_at": run_data.get("started_at", ""),
         "finished_at": run_data.get("finished_at", ""),
         "task_input": task_meta,
-        "scope_plan": scope_summary,
         "sections": {
             "manifest.json": "present",
             "summary.md": "present",
@@ -554,40 +542,3 @@ def _record_finalized_call_in_ledger(
             "remain the source of truth and reconcile can heal the mirror)",
             task_id, exc_info=True,
         )
-
-
-# ---------------------------------------------------------------------------
-# CLI entry point
-# ---------------------------------------------------------------------------
-
-def export_evidence(
-    run_id: str,
-    out_dir: str,
-) -> dict[str, Any]:
-    """Load a persisted run and export evidence bundle.
-
-    Returns JSON-serializable result with output paths and manifest.
-    Does not call providers. Does not mutate target repo.
-    """
-    from packages.orchestration.pingpong_loop import load_run
-
-    run_data = load_run(run_id)
-    if run_data is None:
-        return {"error": f"Run {run_id!r} not found", "run_id": run_id}
-
-    bundle = build_evidence_bundle(run_data)
-
-    # Load persisted prompt traces if available
-    from packages.orchestration.data_paths import run_dir
-    trace_file = run_dir(run_id) / "prompt_trace.jsonl"
-    if trace_file.exists():
-        bundle["prompt_trace_jsonl_path"] = str(trace_file)
-
-    written = write_evidence_bundle(bundle, out_dir)
-
-    return _redact_json_value({
-        "run_id": run_id,
-        "out_dir": str(Path(out_dir).resolve()),
-        "files": written,
-        "manifest": bundle["manifest"],
-    })

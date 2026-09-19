@@ -1,6 +1,6 @@
 """Evidence bundle tests — Steps 4807-4811.
 
-Tests for deterministic evidence bundle export, redaction, safety, and CLI.
+Tests for deterministic evidence bundle export, redaction and safety.
 No real provider calls. No network. No target repo mutation.
 """
 from __future__ import annotations
@@ -11,14 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from packages.orchestration import data_paths
 from packages.orchestration.pingpong_evidence import (
     _redact_json_value,
     _redact_secrets,
     _sanitize_path,
     _validate_output_path,
     build_evidence_bundle,
-    export_evidence,
     write_evidence_bundle,
 )
 
@@ -196,13 +194,9 @@ def _make_run_data(
     return data
 
 
-def _persist_fake_run(data_dir: Path, run_data: dict) -> str:
-    """Persist a fake run for CLI testing."""
-    run_id = run_data["run_id"]
-    run_dir = data_paths.run_dir(run_id, data_dir)
-    run_dir.mkdir(parents=True)
-    (run_dir / "result.json").write_text(json.dumps(run_data, indent=2))
-    return run_id
+def _write_bundle(run_data: dict, out_dir: Path) -> dict[str, str]:
+    """Build and write a run's bundle as `job_evidence` does for each task run."""
+    return write_evidence_bundle(build_evidence_bundle(run_data), str(out_dir))
 
 
 # ---------------------------------------------------------------------------
@@ -310,25 +304,17 @@ class TestEvidenceBundleBuilder:
 
 
 # ---------------------------------------------------------------------------
-# Step 4808: CLI evidence command (via export_evidence)
+# Step 4808: the written bundle
 # ---------------------------------------------------------------------------
 
 class TestEvidenceCli:
-    """export_evidence loads run and writes bundle."""
+    """build_evidence_bundle and write_evidence_bundle write a run's bundle."""
 
-    def test_export_nonexistent_run(self, tmp_path):
-        """Missing run returns error, not crash."""
-        result = export_evidence("nonexistent_id", str(tmp_path / "out"))
-        assert result.get("error")
-        assert "not found" in result["error"]
-
-    def test_export_no_repair_run(self, isolate_data_root, tmp_path):
+    def test_export_no_repair_run(self, tmp_path):
         """Export works for a no-repair passed run."""
         data = _make_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        result = export_evidence("test_run_001", str(out_dir))
-        assert "error" not in result
+        _write_bundle(data, out_dir)
         assert (out_dir / "manifest.json").exists()
         assert (out_dir / "summary.md").exists()
         assert (out_dir / "safe.diff").exists()
@@ -348,10 +334,8 @@ class TestEvidenceCli:
             run_id="repair_run",
             findings=[{"id": "F-001", "severity": "high", "file": "main.py", "summary": "bug"}],
         )
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        result = export_evidence("repair_run", str(out_dir))
-        assert "error" not in result
+        _write_bundle(data, out_dir)
         repair = json.loads((out_dir / "repair_loop.json").read_text())
         assert repair["repair_rounds_used"] == 1
 
@@ -362,10 +346,8 @@ class TestEvidenceCli:
             repair_used=2,
             run_id="exhausted_run",
         )
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        result = export_evidence("exhausted_run", str(out_dir))
-        assert "error" not in result
+        _write_bundle(data, out_dir)
         manifest = json.loads((out_dir / "manifest.json").read_text())
         assert manifest["final_status"] == "repair_exhausted"
         assert manifest["apply_readiness"]["ready"] is False
@@ -437,9 +419,8 @@ class TestRedaction:
         data = _make_run_data()
         # Inject secret into test summary
         data["rounds"][0]["test_summary"] = "Test passed. API_KEY=sk-ant-mysecretkey123456789012 OK"
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         # Check tests.txt for redaction
         tests_content = (out_dir / "tests.txt").read_text()
         assert "sk-ant-mysecretkey" not in tests_content
@@ -453,45 +434,41 @@ class TestRedaction:
 class TestSafety:
     """Evidence export is read-only and safe."""
 
-    def test_no_provider_call(self, isolate_data_root, tmp_path):
-        """export_evidence does not call any provider."""
+    def test_no_provider_call(self, tmp_path):
+        """Writing the bundle does not call any provider."""
         data = _make_run_data()
-        _persist_fake_run(isolate_data_root, data)
-        # export_evidence only reads JSON, no provider imports needed
-        # If it tried to call a provider, it would fail since none are configured
-        result = export_evidence("test_run_001", str(tmp_path / "out"))
-        assert "error" not in result
+        # The producers only read the run record, no provider imports needed
+        # If they tried to call a provider, it would fail since none are configured
+        written = _write_bundle(data, tmp_path / "out")
+        assert "manifest.json" in written
 
-    def test_no_target_mutation(self, isolate_data_root, tmp_path):
-        """export_evidence does not mutate target repo."""
+    def test_no_target_mutation(self, tmp_path):
+        """Writing the bundle does not mutate target repo."""
         data = _make_run_data()
         repo_path = tmp_path / "target_repo"
         repo_path.mkdir()
         (repo_path / "file.txt").write_text("original")
         data["repo_path"] = str(repo_path)
-        _persist_fake_run(isolate_data_root, data)
-        export_evidence("test_run_001", str(tmp_path / "out"))
+        _write_bundle(data, tmp_path / "out")
         # Target repo unchanged
         assert (repo_path / "file.txt").read_text() == "original"
 
     def test_output_only_in_out_dir(self, isolate_data_root, tmp_path):
         """All output files are inside the requested output directory."""
         data = _make_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle_out"
-        result = export_evidence("test_run_001", str(out_dir))
+        written = _write_bundle(data, out_dir)
         out_resolved = str(out_dir.resolve())
-        for path in result.get("files", {}).values():
+        for path in written.values():
             assert path.startswith(out_resolved), f"{path} escapes {out_resolved}"
 
     def test_deterministic_output(self, isolate_data_root, tmp_path):
         """Same input produces identical output."""
         data = _make_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out1 = tmp_path / "out1"
         out2 = tmp_path / "out2"
-        export_evidence("test_run_001", str(out1))
-        export_evidence("test_run_001", str(out2))
+        _write_bundle(data, out1)
+        _write_bundle(data, out2)
         for fname in ("manifest.json", "summary.md", "review.json"):
             c1 = (out1 / fname).read_text()
             c2 = (out2 / fname).read_text()
@@ -629,54 +606,48 @@ class TestJsonLeakRegression:
     def test_manifest_task_excerpt_redacted(self, isolate_data_root, tmp_path):
         """manifest.json task excerpt does not leak API_KEY."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         content = (out_dir / "manifest.json").read_text()
         assert "supersecretvalue123" not in content
 
     def test_review_summary_redacted(self, isolate_data_root, tmp_path):
         """review.json reviewer summary does not leak sk-ant key."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         content = (out_dir / "review.json").read_text()
         assert "sk-ant-abcdef" not in content
 
     def test_review_finding_redacted(self, isolate_data_root, tmp_path):
         """review.json finding summary does not leak ghp token."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         content = (out_dir / "review.json").read_text()
         assert "ghp_abcdefghijklmnopqrstuvwxyz" not in content
 
     def test_token_accounting_redacted(self, isolate_data_root, tmp_path):
         """token_accounting.json does not leak Bearer token."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         content = (out_dir / "token_accounting.json").read_text()
         assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" not in content
 
     def test_provider_evidence_redacted(self, isolate_data_root, tmp_path):
         """provider_evidence.json does not leak AWS key."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         content = (out_dir / "provider_evidence.json").read_text()
         assert "AKIAIOSFODNN7EXAMPLE1" not in content
 
     def test_repair_loop_redacted(self, isolate_data_root, tmp_path):
         """repair_loop.json does not leak sk- key."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         content = (out_dir / "repair_loop.json").read_text()
         assert "sk-abcdefghijklmnopqrstuvwxyz" not in content
 
@@ -691,9 +662,8 @@ class TestFullOutputScanner:
     def test_no_secret_leaks_in_any_file(self, isolate_data_root, tmp_path):
         """No output file may contain unredacted known secret strings."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
 
         # Scan all emitted files
         for fpath in out_dir.iterdir():
@@ -714,9 +684,8 @@ class TestUsefulnessPreservation:
     def test_manifest_preserves_identity(self, isolate_data_root, tmp_path):
         """Manifest still has run_id, final_status, sections."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         manifest = json.loads((out_dir / "manifest.json").read_text())
         assert manifest["run_id"] == "test_run_001"
         assert manifest["final_status"] == "staged_review_passed"
@@ -726,9 +695,8 @@ class TestUsefulnessPreservation:
     def test_review_preserves_verdict_and_count(self, isolate_data_root, tmp_path):
         """review.json still has verdict and finding count."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         review = json.loads((out_dir / "review.json").read_text())
         assert review["total_reviews"] == 1
         # Verdict preserved (not a secret)
@@ -738,9 +706,8 @@ class TestUsefulnessPreservation:
     def test_token_accounting_preserves_kind(self, isolate_data_root, tmp_path):
         """token_accounting.json still has kind and estimates."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         ta = json.loads((out_dir / "token_accounting.json").read_text())
         assert ta["kind"] == "estimated"
         assert "builder_prompt_tokens_estimated" in ta
@@ -748,9 +715,8 @@ class TestUsefulnessPreservation:
     def test_provider_evidence_preserves_names(self, isolate_data_root, tmp_path):
         """provider_evidence.json still has provider names and kinds."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         pe = json.loads((out_dir / "provider_evidence.json").read_text())
         assert pe["builder_provider"] == "fake"
         assert pe["reviewer_provider"] == "fake"
@@ -759,9 +725,8 @@ class TestUsefulnessPreservation:
     def test_summary_md_still_readable(self, isolate_data_root, tmp_path):
         """summary.md is still human-readable markdown."""
         data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        export_evidence("test_run_001", str(out_dir))
+        _write_bundle(data, out_dir)
         summary = (out_dir / "summary.md").read_text()
         assert "# Remedy Run Evidence" in summary
         assert "## Providers" in summary
@@ -769,98 +734,26 @@ class TestUsefulnessPreservation:
 
 
 # ---------------------------------------------------------------------------
-# Step 4822: exported-bundle JSON leak regression test
+# Step 4822: a secret in the goal never reaches the written manifest
 # ---------------------------------------------------------------------------
 
 class TestExportedJsonRedaction:
-    """A serialized `export_evidence` return must not leak secrets."""
+    """A secret in the goal or the task excerpt never reaches manifest.json."""
 
-    def test_exported_json_redacted(self, isolate_data_root, tmp_path):
-        """json.dumps(export_evidence(...)) does not leak secrets."""
+    def test_exported_json_redacted(self, tmp_path):
+        """manifest.json carries [REDACTED] where the goal's secret was."""
         data = _make_run_data(has_task=True)
         data["goal"] = "Fix API_KEY=supersecretvalue123 leak"
         data["task_input"]["excerpt"] = "Use sk-ant-abcdef1234567890abcdef1234567890"
-        _persist_fake_run(isolate_data_root, data)
         out_dir = tmp_path / "bundle"
-        result = export_evidence("test_run_001", str(out_dir))
-        # What a caller serializing the return value would print
-        stdout = json.dumps(result, indent=2)
-        assert "supersecretvalue123" not in stdout
-        assert "sk-ant-abcdef" not in stdout
+        _write_bundle(data, out_dir)
+        manifest = (out_dir / "manifest.json").read_text()
+        assert "supersecretvalue123" not in manifest
+        assert "sk-ant-abcdef" not in manifest
+        assert "[REDACTED]" in manifest
         # Useful fields preserved
-        assert "test_run_001" in stdout
-        assert "staged_review_passed" in stdout
-
-
-# ---------------------------------------------------------------------------
-# Step 4823: export_evidence return-value regression test
-# ---------------------------------------------------------------------------
-
-class TestExportReturnRedaction:
-    """export_evidence() return value must be redacted."""
-
-    def test_return_manifest_redacted(self, isolate_data_root, tmp_path):
-        """Return manifest does not contain raw secrets."""
-        data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
-        out_dir = tmp_path / "bundle"
-        result = export_evidence("test_run_001", str(out_dir))
-        result_str = json.dumps(result)
-        for marker in _LEAK_MARKERS:
-            assert marker not in result_str, (
-                f"Secret leaked in export_evidence return: {marker!r}"
-            )
-
-    def test_return_preserves_useful_fields(self, isolate_data_root, tmp_path):
-        """Return value still has run_id, out_dir, manifest identity."""
-        data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
-        out_dir = tmp_path / "bundle"
-        result = export_evidence("test_run_001", str(out_dir))
-        assert result["run_id"] == "test_run_001"
-        assert "out_dir" in result
-        assert result["manifest"]["final_status"] == "staged_review_passed"
-        assert result["manifest"]["run_id"] == "test_run_001"
-
-    def test_return_has_redacted_placeholder(self, isolate_data_root, tmp_path):
-        """Return value contains [REDACTED] where secrets were."""
-        data = _make_run_data(has_task=True)
-        data["goal"] = "Fix API_KEY=supersecretvalue123"
-        _persist_fake_run(isolate_data_root, data)
-        out_dir = tmp_path / "bundle"
-        result = export_evidence("test_run_001", str(out_dir))
-        result_str = json.dumps(result)
-        assert "[REDACTED]" in result_str
-
-
-# ---------------------------------------------------------------------------
-# Step 4824: Extended full-output scanner (files + CLI/API payload)
-# ---------------------------------------------------------------------------
-
-class TestFullOutputScannerExtended:
-    """Scan files AND CLI/API return for known secrets."""
-
-    def test_no_leaks_in_files_or_api_return(self, isolate_data_root, tmp_path):
-        """Neither output files nor API return contain secrets."""
-        data = _make_poisoned_run_data()
-        _persist_fake_run(isolate_data_root, data)
-        out_dir = tmp_path / "bundle"
-        result = export_evidence("test_run_001", str(out_dir))
-
-        # Scan files
-        for fpath in out_dir.iterdir():
-            content = fpath.read_text()
-            for marker in _LEAK_MARKERS:
-                assert marker not in content, (
-                    f"Secret leaked in {fpath.name}: {marker!r}"
-                )
-
-        # Scan API return (simulates CLI --json stdout)
-        api_str = json.dumps(result, indent=2)
-        for marker in _LEAK_MARKERS:
-            assert marker not in api_str, (
-                f"Secret leaked in API return: {marker!r}"
-            )
+        assert "test_run_001" in manifest
+        assert "staged_review_passed" in manifest
 
 
 # -- F002: builder_no_changes still produces review/test evidence ----------

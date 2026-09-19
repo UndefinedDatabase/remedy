@@ -444,9 +444,6 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
         blockers.append("job_not_started")
     if state == "blocked":
         blockers.append("job_blocked")
-    # Surface fulfillment blockers
-    if truth.get("fulfillment_blockers"):
-        blockers.extend(truth["fulfillment_blockers"])
 
     if open_decision_view["next_action"]:
         next_action = open_decision_view["next_action"]
@@ -456,10 +453,6 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
         pending_ids = [i["intent_id"] for i in list_patch_intents(job) if i["state"] == APPROVAL_PENDING]
         next_action = (f"remedy patch approve {jid} {pending_ids[0]}" if pending_ids
                        else f"remedy patch list {jid}")
-    elif truth.get("fulfillment_next_action"):
-        next_action = truth["fulfillment_next_action"]
-    elif state == "completed" and truth.get("fulfillment_status") == "completed_verified":
-        next_action = f"remedy decision list {jid} --json"
     elif pending_count > 0:
         next_action = f"remedy job resume {jid} --json"
     else:
@@ -478,9 +471,6 @@ def _status_section(job: JobPlan) -> tuple[dict, list[str]]:
         "approval_required": truth["approval_required"],
         "code_applied": truth["code_applied"],
         "latest_stop_reason": truth["latest_stop_reason"],
-        "fulfillment_status": truth.get("fulfillment_status", ""),
-        "staging_used": truth.get("staging_used", False),
-        "applied_to_target": truth.get("applied_to_target", False),
         "blockers": blockers,
         "next_safe_action": next_action,
         # F051: open decisions first, with the exact command that answers each.
@@ -543,19 +533,6 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
             "type": t.inputs.get("task_type", "unknown") if t.inputs else "unknown",
         })
 
-    # Include fulfillment data if available
-    fulfillment_data: dict = {}
-    try:
-        from packages.orchestration.job_fulfillment import (
-            export_job_fulfillment_json,
-            list_fulfillment_records,
-        )
-        records = list_fulfillment_records(str(job.job_id), resolve_data_root())
-        if records:
-            fulfillment_data = export_job_fulfillment_json(records[-1])
-    except Exception:  # noqa: BLE001 — a read view never fails on the fulfillment record
-        pass
-
     report = {
         "job_id": str(job.job_id),
         "name": job.job_title,
@@ -569,20 +546,13 @@ def _report_section(job: JobPlan) -> tuple[dict, list[str]]:
         "approval_required": truth["approval_required"],
         "latest_stop_reason": truth["latest_stop_reason"],
         "code_applied": truth["code_applied"],
-        "fulfillment_status": truth.get("fulfillment_status", ""),
-        "staging_used": truth.get("staging_used", False),
-        "applied_to_target": truth.get("applied_to_target", False),
-        "fulfillment_blockers": truth.get("fulfillment_blockers", []),
         # F051: a blocked run's next action is the command that answers its
         # most urgent open decision — that is what unblocks it.
-        "next_safe_action": (open_decision_view["next_action"]
-                             or truth.get("fulfillment_next_action", "")),
+        "next_safe_action": open_decision_view["next_action"],
         "open_decisions": open_decision_view["open_decisions"],
         "open_decision_count": len(open_decision_view["open_decisions"]),
         "tasks": task_details,
     }
-    if fulfillment_data:
-        report["fulfillment"] = fulfillment_data
 
     lines = [
         *open_decision_view["lines"],
@@ -1824,48 +1794,6 @@ def _extract_job_truth(job: JobPlan) -> dict:
                     approval_required = True
                 break
 
-    # Also check fulfillment events for code_applied
-    if not code_applied:
-        for ev in events:
-            ev_data = ev if isinstance(ev, dict) else {}
-            if isinstance(ev_data, dict) and ev_data.get('event') == 'fulfillment_applied':
-                code_applied = True
-                break
-
-    # Load fulfillment record if available
-    fulfillment_status = ''
-    fulfillment_id = ''
-    staging_used = False
-    applied_to_target = False
-    fulfillment_blockers: list[str] = []
-    fulfillment_next_action = ''
-    try:
-        from packages.orchestration.job_fulfillment import list_fulfillment_records
-        records = list_fulfillment_records(str(job.job_id), data_dir)
-        if records:
-            latest = records[-1]
-            fulfillment_status = latest.status.value
-            fulfillment_id = latest.fulfillment_id
-            staging_used = latest.staging_used
-            applied_to_target = latest.applied_to_target
-            fulfillment_blockers = latest.contract_blockers or []
-            fulfillment_next_action = latest.next_safe_action or ''
-            # Surface fulfillment stop_reason as latest_stop_reason
-            if latest.stop_reason and not latest_stop_reason:
-                latest_stop_reason = latest.stop_reason
-            # Derive blocker from stop_reason if contract_blockers empty
-            if latest.status.value == 'blocked' and not fulfillment_blockers:
-                sr = latest.stop_reason or 'unknown'
-                # Extract first colon-delimited part as safe blocker
-                safe_reason = sr.split(':')[0] if ':' in sr else sr
-                fulfillment_blockers = [f'fulfillment_blocked:{safe_reason}']
-    except Exception:
-        pass
-
-    # When staging was used, applied_to_target is authoritative for code_applied
-    if staging_used:
-        code_applied = applied_to_target
-
     return {
         'artifact_count': artifact_count,
         'patch_intent_ids': patch_intent_ids,
@@ -1873,12 +1801,6 @@ def _extract_job_truth(job: JobPlan) -> dict:
         'latest_stop_reason': latest_stop_reason,
         'event_count': len(events),
         'code_applied': code_applied,
-        'fulfillment_status': fulfillment_status,
-        'fulfillment_id': fulfillment_id,
-        'staging_used': staging_used,
-        'applied_to_target': applied_to_target,
-        'fulfillment_blockers': fulfillment_blockers,
-        'fulfillment_next_action': fulfillment_next_action,
     }
 
 

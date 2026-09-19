@@ -355,7 +355,6 @@ class TestSegmentManifest:
             "job context",
             round_number=1,
             task_body="detailed task body",
-            scope_contract="scope contract text",
         )
         entry = build_trace_entry(
             prompt_text=composed.text,
@@ -365,7 +364,6 @@ class TestSegmentManifest:
         assert entry.segment_manifest != []
         assert [row["name"] for row in entry.segment_manifest] == [
             "builder_system",
-            "builder_scope_contract",
             "builder_context",
             "builder_task",
             "builder_task_body",
@@ -448,7 +446,6 @@ class TestSegmentManifest:
             task_excerpt="detailed task body",
             task_sha256="abc",
             task_tokens_estimated=7,
-            scope_contract="scope contract text",
         )
         entry = build_trace_entry(
             prompt_text=_reviewer_effective_prompt(composed.text),
@@ -458,7 +455,6 @@ class TestSegmentManifest:
         assert entry.segment_manifest != []
         assert [row["name"] for row in entry.segment_manifest] == [
             "reviewer_system",
-            "reviewer_scope_contract",
             "reviewer_goal",
             "reviewer_task_input",
             "reviewer_builder_summary",

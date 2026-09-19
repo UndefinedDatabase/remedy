@@ -1,11 +1,10 @@
 # First Fulfilled Job Demo v0 (command deleted 2026-09-16)
 
 > **Status (2026-09-16):** F280 round 3 deleted the `fulfill` word of the `job` group with its
-> `--fixture-demo` switch (DECISION amend0905-vocab D4 gives `job` no `fulfill`). Nothing runs the
-> fixture fulfillment spine below from the command line any more: `run_job_fulfill` in
-> `packages/orchestration/job_fulfillment.py` is kept and called by tests only, and
-> `remedy job show <job_id> --full --json` still reads back a fulfillment record written before.
-> The spine's fixture contract was the only write of a test-run budget above 0 until
+> `--fixture-demo` switch (DECISION amend0905-vocab D4 gives `job` no `fulfill`). F273 then deleted
+> the fixture fulfillment spine below with the report section's fulfillment fields of
+> `remedy job show <job_id> --full --json` (finding R-0936), and the status section's
+> `fulfillment_status`, `staging_used` and `applied_to_target` with them. The spine's fixture contract was the only write of a test-run budget above 0 until
 > `remedy job budget <job_id> set max_test_runs <n>` (DECISION F280 D3). F280 round 6 also
 > deleted the `create` word of the `job` group; `_cmd_create_job` in
 > `apps/cli/commands/job.py` is kept and called by tests and by the smoke script only. The page
@@ -98,9 +97,6 @@ service discovers and runs tests automatically.
   target untouched.
 - **Proof** may be `accepted` with reason in fixture mode because fixture
   workers do not emit all proof chain events.
-
-Use `create_demo_repo()` from `packages.orchestration.job_fulfillment` to
-generate a valid demo repo for testing.
 
 ## Blocked fulfillment behavior
 

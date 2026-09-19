@@ -1,4 +1,4 @@
-"""Tests for --task-file and --task-stdin large prompt input."""
+"""Tests for a run's task input: persistence, reports, prompt safety and token accounting."""
 from __future__ import annotations
 
 import hashlib
@@ -6,18 +6,27 @@ import io
 import json
 from contextlib import redirect_stdout
 
-import pytest
+# ---------------------------------------------------------------------------
+# Helpers: a task input as the job runner builds one, and a run with FakeProvider
+# ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Helper: create a task file and run with FakeProvider
-# ---------------------------------------------------------------------------
+def _task_input(text: str):
+    """A TaskInput built the way `pingpong_job` builds one, its only production builder."""
+    from packages.orchestration.pingpong_loop import TaskInput
+
+    raw = text.encode("utf-8")
+    return TaskInput(
+        kind="job_task", path="", title=text.splitlines()[0].lstrip("#").strip(),
+        body=text, sha256=hashlib.sha256(raw).hexdigest(), byte_count=len(raw),
+        char_count=len(text), tokens_estimated=len(text) // 4, excerpt=text[:200],
+    )
+
 
 def _make_task_run(tmp_path, monkeypatch, *, task_text="", task_file=True, goal="", repair_rounds=0):
-    """Create a task-file run with FakeProvider. Returns (result, data)."""
+    """Create a run with a task input and FakeProvider. Returns (result, data, task input)."""
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
     from packages.orchestration.pingpong_loop import (
         export_pingpong_json,
-        load_task_file,
         run_pingpong,
     )
     from packages.orchestration.pingpong_provider import FakeProvider
@@ -30,10 +39,7 @@ def _make_task_run(tmp_path, monkeypatch, *, task_text="", task_file=True, goal=
     if not task_text:
         task_text = "# Improve README\n\nMake the README better.\n\nConstraints:\n- Keep it short.\n"
 
-    task_path = tmp_path / "task.md"
-    task_path.write_text(task_text, encoding="utf-8")
-
-    ti = load_task_file(str(task_path))
+    ti = _task_input(task_text)
     result = run_pingpong(
         goal, str(demo),
         builder_provider=p, reviewer_provider=p,
@@ -42,69 +48,6 @@ def _make_task_run(tmp_path, monkeypatch, *, task_text="", task_file=True, goal=
     )
     data = export_pingpong_json(result)
     return result, data, ti
-
-
-# ---------------------------------------------------------------------------
-# 1. --task-file reads UTF-8 file content
-# ---------------------------------------------------------------------------
-
-class TestTaskFileLoading:
-    def test_task_file_reads_utf8(self, tmp_path):
-        from packages.orchestration.pingpong_loop import load_task_file
-        f = tmp_path / "task.md"
-        f.write_text("# Task\nDo stuff.\n", encoding="utf-8")
-        ti = load_task_file(str(f))
-        assert ti.kind == "file"
-        assert "Do stuff" in ti.body
-
-    def test_task_stdin_reads(self):
-        from packages.orchestration.pingpong_loop import load_task_stdin
-        ti = load_task_stdin("# Task\nDo stuff.\n")
-        assert ti.kind == "stdin"
-        assert "Do stuff" in ti.body
-
-    def test_empty_task_file_blocks(self, tmp_path):
-        from packages.orchestration.pingpong_loop import load_task_file
-        f = tmp_path / "empty.md"
-        f.write_text("   \n\n  ", encoding="utf-8")
-        with pytest.raises(ValueError, match="empty"):
-            load_task_file(str(f))
-
-    def test_empty_stdin_blocks(self):
-        from packages.orchestration.pingpong_loop import load_task_stdin
-        with pytest.raises(ValueError, match="empty"):
-            load_task_stdin("  \n  ")
-
-    def test_missing_file_blocks(self, tmp_path):
-        from packages.orchestration.pingpong_loop import load_task_file
-        with pytest.raises(ValueError, match="not found"):
-            load_task_file(str(tmp_path / "nonexistent.md"))
-
-    def test_non_utf8_blocks(self, tmp_path):
-        from packages.orchestration.pingpong_loop import load_task_file
-        f = tmp_path / "binary.md"
-        f.write_bytes(b"\x80\x81\x82\x83\xff\xfe")
-        with pytest.raises(ValueError, match="UTF-8"):
-            load_task_file(str(f))
-
-
-# ---------------------------------------------------------------------------
-# 5. --task-file + --task-stdin blocks
-# ---------------------------------------------------------------------------
-
-class TestTaskInputConflict:
-    def test_task_file_and_stdin_conflict(self, tmp_path):
-        """Both --task-file and --task-stdin should be blocked by CLI handler."""
-        # This is tested at the CLI handler level, not the loader level
-        # The loader functions are independent; the CLI handler blocks the combo
-        from packages.orchestration.pingpong_loop import load_task_file, load_task_stdin
-        f = tmp_path / "task.md"
-        f.write_text("# Task\nDo stuff.\n")
-        # Both can load independently
-        ti1 = load_task_file(str(f))
-        ti2 = load_task_stdin("# Task\nDo stuff.\n")
-        assert ti1.kind == "file"
-        assert ti2.kind == "stdin"
 
 
 # ---------------------------------------------------------------------------
@@ -120,22 +63,12 @@ class TestTitleDerivation:
         assert result.goal == "My Custom Title"
 
     def test_no_goal_derives_title(self, tmp_path, monkeypatch):
-        """No goal + task file derives title from first heading."""
+        """No goal: the run takes the task input's title as its goal."""
         result, data, ti = _make_task_run(
             tmp_path, monkeypatch, goal="",
             task_text="# Fix the Widget\n\nDetails here.\n"
         )
         assert result.goal == "Fix the Widget"
-
-    def test_no_heading_derives_first_line(self, tmp_path):
-        from packages.orchestration.pingpong_loop import _derive_title
-        title = _derive_title("Fix something\nMore details\n")
-        assert title == "Fix something"
-
-    def test_empty_text_defaults(self, tmp_path):
-        from packages.orchestration.pingpong_loop import _derive_title
-        title = _derive_title("")
-        assert title == "Untitled task"
 
 
 # ---------------------------------------------------------------------------
@@ -174,15 +107,6 @@ class TestTaskPersistence:
         _, data, _ = _make_task_run(tmp_path, monkeypatch)
         ti = data["task_input"]
         assert ti["tokens_estimated"] > 0
-
-    def test_task_excerpt_capped(self, tmp_path):
-        from packages.orchestration.pingpong_loop import _TASK_REVIEW_EXCERPT_CHARS, load_task_file
-        f = tmp_path / "big.md"
-        big_text = "# Big Task\n" + ("x" * (_TASK_REVIEW_EXCERPT_CHARS + 500))
-        f.write_text(big_text, encoding="utf-8")
-        ti = load_task_file(str(f))
-        assert len(ti.excerpt) < len(big_text)
-        assert "TRUNCATED" in ti.excerpt
 
 
 # ---------------------------------------------------------------------------
@@ -262,18 +186,6 @@ class TestPromptSafety:
         assert "1000" in prompt
         assert "First 4000 chars" in prompt
 
-    def test_reviewer_excerpt_cap(self, tmp_path, monkeypatch):
-        """Reviewer gets capped excerpt, not full task body."""
-        from packages.orchestration.pingpong_loop import (
-            _TASK_REVIEW_EXCERPT_CHARS,
-            load_task_file,
-        )
-        f = tmp_path / "big.md"
-        big_text = "# Big Task\n" + ("x" * (_TASK_REVIEW_EXCERPT_CHARS + 1000))
-        f.write_text(big_text, encoding="utf-8")
-        ti = load_task_file(str(f))
-        assert len(ti.excerpt) <= _TASK_REVIEW_EXCERPT_CHARS + 50  # + truncation notice
-
 
 # ---------------------------------------------------------------------------
 # 20. Token accounting includes task tokens
@@ -285,36 +197,6 @@ class TestTaskTokenAccounting:
         ta = data["token_accounting"]
         assert "task_tokens_estimated" in ta
         assert ta["task_tokens_estimated"] > 0
-
-
-# ---------------------------------------------------------------------------
-# 21-23. Oversized task and non-UTF8
-# ---------------------------------------------------------------------------
-
-class TestTaskSizeLimits:
-    def test_oversized_task_blocks(self, tmp_path):
-        from packages.orchestration.pingpong_loop import _MAX_TASK_BYTES, load_task_file
-        f = tmp_path / "huge.md"
-        f.write_text("x" * (_MAX_TASK_BYTES + 1), encoding="utf-8")
-        with pytest.raises(ValueError, match="task_input_too_large"):
-            load_task_file(str(f))
-
-    def test_oversized_json_error(self, tmp_path):
-        from packages.orchestration.pingpong_loop import _MAX_TASK_BYTES, load_task_file
-        f = tmp_path / "huge.md"
-        f.write_text("x" * (_MAX_TASK_BYTES + 1), encoding="utf-8")
-        try:
-            load_task_file(str(f))
-        except ValueError as exc:
-            error_str = str(exc)
-            assert "task_input_too_large" in error_str
-
-    def test_non_utf8_blocks_clearly(self, tmp_path):
-        from packages.orchestration.pingpong_loop import load_task_file
-        f = tmp_path / "binary.md"
-        f.write_bytes(b"\x80\x81\x82\x83\xff\xfe")
-        with pytest.raises(ValueError, match="UTF-8"):
-            load_task_file(str(f))
 
 
 # ---------------------------------------------------------------------------
@@ -422,7 +304,6 @@ class TestRunReportRendering:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import (
             export_pingpong_json,
-            load_task_file,
             run_pingpong,
         )
         from packages.orchestration.pingpong_provider import FakeProvider
@@ -431,10 +312,8 @@ class TestRunReportRendering:
         repo.mkdir()
         (repo / "README.md").write_text("# Test\n")
 
-        task_path = tmp_path / "task.md"
         secret = "SECRET_VALUE_SHOULD_NOT_APPEAR_IN_REPORT"
-        task_path.write_text(f"# Task\n{secret}\n\nFeatures:\n- Do stuff.\n", encoding="utf-8")
-        ti = load_task_file(str(task_path))
+        ti = _task_input(f"# Task\n{secret}\n\nFeatures:\n- Do stuff.\n")
 
         p = FakeProvider()
         result = run_pingpong(
@@ -554,7 +433,6 @@ class TestExistingFlows:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         from packages.orchestration.pingpong_loop import (
             export_pingpong_json,
-            load_task_file,
             run_pingpong,
         )
         from packages.orchestration.pingpong_provider import FakeProvider
@@ -562,9 +440,7 @@ class TestExistingFlows:
         repo = tmp_path / "repo"
         repo.mkdir()
         (repo / "README.md").write_text("# Test\n")
-        task_path = tmp_path / "task.md"
-        task_path.write_text("# Simple task\nDo stuff.\n", encoding="utf-8")
-        ti = load_task_file(str(task_path))
+        ti = _task_input("# Simple task\nDo stuff.\n")
         p = FakeProvider()
         result = run_pingpong(
             "", str(repo),

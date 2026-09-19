@@ -1573,7 +1573,6 @@ class TestCommandDoorImportGuard:
         "packages.orchestration.patch_apply",
         "packages.orchestration.hunk_apply",
         "packages.orchestration.diff_repair_apply",
-        "packages.orchestration.job_fulfillment",
         "packages.orchestration.exec_guard",
         "packages.orchestration.workspace",
         "packages.common.secure_fs",

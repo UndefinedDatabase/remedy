@@ -1569,7 +1569,7 @@ def execute_dispatched_job(job: Any, *,
     # rollout cap has to say so in its own evidence (R-0187).
     # R-0188: the gate runs at PRODUCTION job completion, here, once. It
     # persists its own verdict where load_gate_result reads it, so there is no
-    # second store and the fixture-demo fulfillment spine stays untouched.
+    # second store.
     released, blocker = run_gate_for_job(str(job.job_id), worktree_root)
     return JobExecution(terminal_status=result.terminal_status,
                         job_status=result.job_status,
